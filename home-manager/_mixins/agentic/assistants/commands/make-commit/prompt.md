@@ -16,15 +16,17 @@ A document is durable only when it is intended project documentation, for exampl
 
 Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
 
-1. Inspect the working tree with `git status --short --branch`, `git diff --staged --name-status`, and `git diff --name-status`.
+1. Inspect the working tree with `git status --short --branch`.
 2. Keep all already-staged content included. Do not reset, unstage, restore, or edit staged content.
 3. Identify unstaged durable changes that clearly belong in this commit. Leave unstaged non-durable working documents untouched. If a path is ambiguous, ask before staging it.
-4. Stage extra durable paths only with explicit path-limited `git add -- <path> ...`. Never use `git add .`, `git add -A`, `git add -u`, broad globs, or directory-wide staging unless every file in that directory was inspected and is intended for the commit.
-5. Verify the index with `git diff --staged --name-status` and `git diff --staged --check`. Stop if the index is empty or contains a non-durable working document.
-6. Follow the `draft-commit-message` prompt. Preserve its fenced commit message verbatim as the commit message source.
+4. Stage extra durable paths only with explicit path-limited `git add -- <path> ...`. For partially staged files, inspect the unstaged diff before adding the path. Add it only when every remaining change belongs in this commit. Never use `git add .`, `git add -A`, `git add -u`, broad globs, or directory-wide staging unless every file in that directory was inspected and is intended for the commit.
+5. Read `git diff --staged`. Stop if the index is empty or contains a non-durable working document. Run `git diff --staged --check` and stop if it fails.
+6. Follow the `draft-commit-message` prompt with the known intent, conventions, status and staged diff. Do not repeat discovery for evidence already in context. Preserve its fenced commit message verbatim as the commit message source.
 7. Strip only the Markdown fence lines. Write the remaining message text unchanged to a temporary file.
 8. Run `git commit -F <temp-file>`.
 9. Report the new short SHA and the commit message.
+
+Use `git log`, diff statistics or a final status check only to resolve a specific gap or verify an unexpected result.
 
 ### Output
 

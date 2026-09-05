@@ -6,10 +6,11 @@ Draft the conventional commit message for the staged or current changes. This st
 
 Run each command separately, no chaining:
 
-- `git status` - staging state and current branch (line 1: "On branch X")
+- `git status --short --branch` - staging state and current branch
 - `git diff --staged` - view staged changes
-- `git diff --staged --stat` - summarise staged files
-- `git log --oneline -10` - recent commits for style reference
+- `git diff` - view unstaged changes when nothing is staged
+- `git diff --staged --stat` - summarise staged files only when useful
+- `git log --oneline -10` - resolve unknown commit conventions
 
 ### Forbidden Commands
 
@@ -18,7 +19,7 @@ These bans govern this drafting step. They do not restrict the command that invo
 NEVER execute while drafting:
 
 - `git commit` / `git commit -m` - this step produces the message, the caller commits
-- `git branch` - use `git rev-parse --abbrev-ref HEAD` for the branch name
+- `git branch` - use the status output for the branch name
 - `git add` - this step never stages; the caller stages before invoking it
 - `git checkout` / `git reset` - never change the working tree
 - Command chaining with `&&`, `;`, or `|`
@@ -27,9 +28,9 @@ NEVER execute while drafting:
 
 1. Load and follow the `communication-rules` skill before drafting
 2. Load the `contribution-voice` skill before drafting anything. It governs the structure of text published under the user's name. If the platform cannot load a skill, continue with the rules restated below
-3. Run allowed commands one at a time to gather context
-4. If nothing is staged, describe the current changes
-5. Apply type selection from the agent definition
+3. When invoked inline, reuse known intent, conventions, status and staged evidence. Run allowed commands only for missing context. For standalone drafting, start with `git status --short --branch` and `git diff --staged`.
+4. If nothing is staged, use `git diff` and read relevant untracked files to describe the current changes. If there are no changes, report that there is nothing to draft.
+5. If Garfield's commit rules are absent from context, read its agent prompt without launching an agent. Apply its Type Selection, Scope Selection and commit-message Constraints. Reuse known scope conventions instead of repeating history discovery.
 6. Output the commit message in a fenced code block. This block is the deliverable and must reach the caller unchanged
 
 The commit message itself must follow the Communication Rules: concise (each fact once), British English spelling, active voice, lead with the conclusion, no banned words (filler, pleasantries, hedges, LLM tells), and no em or en dashes.
