@@ -728,12 +728,81 @@ in
       fi
     '';
 
+    # Make the managed API key the only credential on personal computers.
+    # Claude Code asks "Do you want to use this API key?" the first time it
+    # sees a key in `ANTHROPIC_API_KEY`, and it records the answer in
+    # `~/.claude.json` under `customApiKeyResponses` as the last 20 characters
+    # of the key. A rejected key is ignored on every later launch with no
+    # message, and Claude Code falls back to the sign-in flow. No official
+    # setting skips the prompt, so the approval is seeded here, after sops-nix
+    # has decrypted the secret. The subscription login is removed at the same
+    # time: `oauthAccount` from `~/.claude.json` and the OAuth token file. An
+    # approved key outranks a stored login, but leaving both produces an
+    # "Auth conflict" banner. `/login` restores the subscription if wanted.
+    home.activation.claudeCodeApproveApiKey = lib.mkIf config.agentic.personalComputer (
+      lib.hm.dag.entryAfter
+        [
+          "writeBoundary"
+          "sops-nix"
+        ]
+        ''
+          claude_config=${lib.escapeShellArg "${config.home.homeDirectory}/.claude.json"}
+          claude_credentials=${lib.escapeShellArg "${config.home.homeDirectory}/.claude/.credentials.json"}
+          anthropic_api_key_path=${lib.escapeShellArg config.sops.secrets.ANTHROPIC_API_KEY.path}
+          jq=${lib.getExe pkgs.jq}
+
+          # Skip silently when the secret is not decrypted yet, for example on
+          # the first activation before the sops-nix user service has run.
+          if [[ ! -r "$anthropic_api_key_path" ]]; then
+            echo "claude-code: Anthropic API key secret is not readable yet, skipping approval"
+            exit 0
+          fi
+
+          anthropic_api_key="$(< "$anthropic_api_key_path")"
+          anthropic_api_key_tail="''${anthropic_api_key: -20}"
+          unset anthropic_api_key
+
+          if [[ ! -f "$claude_config" ]]; then
+            ${pkgs.coreutils}/bin/install -m 600 /dev/null "$claude_config"
+            echo '{}' > "$claude_config"
+          fi
+
+          if ! "$jq" -e . "$claude_config" >/dev/null 2>&1; then
+            exit 0
+          fi
+
+          tmp="$(${pkgs.coreutils}/bin/mktemp "$claude_config.XXXXXX")"
+          if "$jq" --arg tail "$anthropic_api_key_tail" '
+            .hasCompletedOnboarding = true
+            | .customApiKeyResponses.approved = ((.customApiKeyResponses.approved // []) + [$tail] | unique)
+            | .customApiKeyResponses.rejected = ((.customApiKeyResponses.rejected // []) | map(select(. != $tail)))
+            | del(.oauthAccount)
+          ' "$claude_config" > "$tmp"; then
+            ${pkgs.coreutils}/bin/mv "$tmp" "$claude_config"
+          else
+            ${pkgs.coreutils}/bin/rm -f "$tmp"
+          fi
+
+          if [[ -f "$claude_credentials" ]]; then
+            echo "claude-code: removing subscription login so the API key is the only credential"
+            ${pkgs.coreutils}/bin/rm -f "$claude_credentials"
+          fi
+        ''
+    );
+
     # Declarative configuration for ccstatusline.
     # Settings are written to ~/.config/ccstatusline/settings.json, which is the
     # default path the tool reads on startup. The status line command is injected
     # into Claude Code's settings.json by the claude-code Home Manager module.
+    #
+    # The file must match ccstatusline's current schema version exactly. When
+    # the version is older, ccstatusline migrates the settings and writes the
+    # result back to the file. The file is a read-only Nix store symlink, so the
+    # write fails and ccstatusline falls back to its defaults with an
+    # "invalid config" badge. Bump the version and the migrated fields together
+    # whenever the pinned ccstatusline changes its schema.
     xdg.configFile."ccstatusline/settings.json".text = builtins.toJSON {
-      version = 3;
+      version = 4;
       # Plain values required: builtins.toJSON serialises lib.mkDefault wrappers
       # verbatim as attribute sets, which fails ccstatusline's Zod schema validation.
       flexMode = "full";
@@ -752,127 +821,147 @@ in
         autoAlign = false;
       };
       lines = [
-        [
-          # Single-line layout mirroring the Codex status line ordering as
-          # closely as ccstatusline permits. Claude has no native equivalents
-          # for Codex run-state, fast-mode, or permissions segments.
-          # Model and thinking effort joined by a space, matching the Codex
-          # status line's model-with-reasoning segment. The merge fields join
-          # each item to the next without the " · " separator, and the
-          # single-space custom-text supplies the gap.
-          {
-            id = "1";
-            type = "model";
-            color = ccColor "yellow";
-            rawValue = true;
-            merge = "no-padding";
-          }
-          {
-            id = "15";
-            type = "custom-text";
-            color = ccColor "yellow";
-            customText = " ";
-            merge = "no-padding";
-          }
-          {
-            id = "2";
-            type = "thinking-effort";
-            color = ccColor "yellow";
-            rawValue = true;
-          }
-          # Fast-mode state after the thinking effort, mirroring the Codex
-          # status line's fast-mode position and Pi's service-tier segment.
-          {
-            id = "14";
-            type = "custom-command";
-            color = ccColor "mauve";
-            commandPath = lib.getExe' fastModeIndicatorPackage "ccstatusline-fast-mode";
-            timeout = 1000;
-          }
-          # Show the git repository root's name, matching the Codex
-          # `project-name` item and Pi's `cwd-basename` widget. The cwd
-          # widget cannot render a bare basename (its segments mode always
-          # prefixes "…/"), so the git root widget carries the segment, and
-          # `hideNoGit` omits it outside a repository as Codex does.
-          {
-            id = "3";
-            type = "git-root-dir";
-            color = ccColor "green";
-            rawValue = true;
-            metadata = {
-              hideNoGit = "true";
-            };
-          }
-          {
-            id = "4";
-            type = "custom-text";
-            color = ccColor "red";
-            customText = "5h ";
-            merge = "no-padding";
-          }
-          {
-            id = "5";
-            type = "custom-command";
-            color = ccColor "red";
-            commandPath = "${lib.getExe usageRemainingPackage} five_hour";
-            timeout = 1000;
-          }
-          {
-            id = "6";
-            type = "custom-text";
-            color = ccColor "red";
-            customText = "weekly ";
-            merge = "no-padding";
-          }
-          {
-            id = "7";
-            type = "custom-command";
-            color = ccColor "red";
-            commandPath = "${lib.getExe usageRemainingPackage} seven_day";
-            timeout = 1000;
-          }
-          {
-            id = "8";
-            type = "context-window";
-            color = ccColor "peach";
-            rawValue = true;
-            merge = "no-padding";
-          }
-          {
-            id = "9";
-            type = "custom-text";
-            color = ccColor "peach";
-            customText = " window";
-          }
-          {
-            id = "10";
-            type = "custom-text";
-            color = ccColor "peach";
-            customText = "Context ";
-            merge = "no-padding";
-          }
-          {
-            id = "11";
-            type = "custom-command";
-            color = ccColor "peach";
-            commandPath = lib.getExe contextUsedPackage;
-            timeout = 1000;
-            merge = "no-padding";
-          }
-          {
-            id = "12";
-            type = "custom-text";
-            color = ccColor "peach";
-            customText = " used";
-          }
-          {
-            id = "13";
-            type = "custom-command";
-            color = ccColor "mauve";
-            commandPath = "${lib.getExe pkgs.bash} -c 'printf \"%s\\n\" \"\${NOUGHTY_AGENT_ISOLATION:-Unfenced}\"'";
-            timeout = 1000;
-          }
-        ]
+        (
+          [
+            # Single-line layout mirroring the Codex status line ordering as
+            # closely as ccstatusline permits. Claude has no native equivalents
+            # for Codex run-state, fast-mode, or permissions segments.
+            # Model and thinking effort joined by a space, matching the Codex
+            # status line's model-with-reasoning segment. The merge fields join
+            # each item to the next without the " · " separator, and the
+            # single-space custom-text supplies the gap.
+            {
+              id = "1";
+              type = "model";
+              color = ccColor "yellow";
+              rawValue = true;
+              merge = "no-padding";
+            }
+            {
+              id = "15";
+              type = "custom-text";
+              color = ccColor "yellow";
+              customText = " ";
+              merge = "no-padding";
+            }
+            {
+              id = "2";
+              type = "thinking-effort";
+              color = ccColor "yellow";
+              rawValue = true;
+            }
+            # Fast-mode state after the thinking effort, mirroring the Codex
+            # status line's fast-mode position and Pi's service-tier segment.
+            {
+              id = "14";
+              type = "custom-command";
+              color = ccColor "mauve";
+              commandPath = lib.getExe' fastModeIndicatorPackage "ccstatusline-fast-mode";
+              timeout = 1000;
+            }
+            # Show the git repository root's name, matching the Codex
+            # `project-name` item and Pi's `cwd-basename` widget. The cwd
+            # widget cannot render a bare basename (its segments mode always
+            # prefixes "…/"), so the git root widget carries the segment, and
+            # `hide = "no-git"` omits it outside a repository as Codex does.
+            # Schema v4 replaced the per-flag `hideNoGit` key with this list.
+            {
+              id = "3";
+              type = "git-root-dir";
+              color = ccColor "green";
+              rawValue = true;
+              metadata = {
+                hide = "no-git";
+              };
+            }
+          ]
+          # The 5h and weekly segments read the subscription OAuth token from
+          # `~/.claude/.credentials.json`. Personal computers authenticate with
+          # the API key only and have no token, so the estimated session spend
+          # from Claude Code's `cost.total_cost_usd` field takes that slot
+          # instead. Work hosts keep the subscription and the quota segments.
+          ++ lib.optionals config.agentic.personalComputer [
+            {
+              id = "4";
+              type = "session-cost";
+              color = ccColor "red";
+              rawValue = true;
+            }
+          ]
+          ++ lib.optionals (!config.agentic.personalComputer) [
+            {
+              id = "4";
+              type = "custom-text";
+              color = ccColor "red";
+              customText = "5h ";
+              merge = "no-padding";
+            }
+            {
+              id = "5";
+              type = "custom-command";
+              color = ccColor "red";
+              commandPath = "${lib.getExe usageRemainingPackage} five_hour";
+              timeout = 1000;
+            }
+            {
+              id = "6";
+              type = "custom-text";
+              color = ccColor "red";
+              customText = "weekly ";
+              merge = "no-padding";
+            }
+            {
+              id = "7";
+              type = "custom-command";
+              color = ccColor "red";
+              commandPath = "${lib.getExe usageRemainingPackage} seven_day";
+              timeout = 1000;
+            }
+          ]
+          ++ [
+            {
+              id = "8";
+              type = "context-window";
+              color = ccColor "peach";
+              rawValue = true;
+              merge = "no-padding";
+            }
+            {
+              id = "9";
+              type = "custom-text";
+              color = ccColor "peach";
+              customText = " window";
+            }
+            {
+              id = "10";
+              type = "custom-text";
+              color = ccColor "peach";
+              customText = "Context ";
+              merge = "no-padding";
+            }
+            {
+              id = "11";
+              type = "custom-command";
+              color = ccColor "peach";
+              commandPath = lib.getExe contextUsedPackage;
+              timeout = 1000;
+              merge = "no-padding";
+            }
+            {
+              id = "12";
+              type = "custom-text";
+              color = ccColor "peach";
+              customText = " used";
+            }
+            {
+              id = "13";
+              type = "custom-command";
+              color = ccColor "mauve";
+              commandPath = "${lib.getExe pkgs.bash} -c 'printf \"%s\\n\" \"\${NOUGHTY_AGENT_ISOLATION:-Unfenced}\"'";
+              timeout = 1000;
+            }
+          ]
+        )
       ];
     };
 

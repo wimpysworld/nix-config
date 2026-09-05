@@ -473,7 +473,7 @@ let
 
   piFooterColors = {
     # Match the Catppuccin roles used by ccstatusline: model and thinking
-    # yellow, fast state mauve, cwd green, quota red, context peach,
+    # yellow, fast state mauve, cwd green, quota and cost red, context peach,
     # isolation purple. The white agent icon marks the footer as Pi at a
     # glance, distinguishing it from the Codex status line.
     agentIcon = "pi:text";
@@ -482,6 +482,7 @@ let
     thinking = "pi:warning";
     cwd = "pi:success";
     quota = "pi:error";
+    cost = "pi:error";
     context = "pi:bashMode";
     isolation = "pi:thinkingHigh";
   };
@@ -527,82 +528,98 @@ let
       ];
     };
     lines = [
-      [
-        # White Pi glyph so the footer reads as Pi at a glance.
-        (piFooterWidget "agent-icon" "custom-text" {
-          raw = true;
-          fg = piFooterColors.agentIcon;
-          text = " ";
-        })
-        # Bare model id and thinking level joined by a space, matching the
-        # Codex status line's model-with-reasoning segment.
-        (piFooterWidget "model" "model" {
-          raw = true;
-          fg = piFooterColors.model;
-        })
-        (piFooterWidget "thinking" "thinking-level" {
-          icon = " ";
-          fg = piFooterColors.thinking;
-          hideWhenEmpty = true;
-        })
-        # Fast-mode state from pi-service-tier, mirroring the Codex status
-        # line's fast-mode position after the model and reasoning segments.
-        (piFooterWidget "service-tier" "external-status" {
-          icon = " · ";
-          fg = piFooterColors.serviceTier;
-          externalStatusKey = "noughty-service-tier:status";
-          hideWhenEmpty = true;
-          trimValue = 0;
-          preserveTrimStyles = true;
-        })
-        # Only the last path segment, matching the Claude Code status line.
-        (piFooterWidget "cwd" "cwd-basename" {
-          icon = " · ";
-          fg = piFooterColors.cwd;
-        })
-        (piFooterWidget "quota" "external-status" {
-          icon = " · ";
-          fg = piFooterColors.quota;
-          externalStatusKey = "noughty-quota:usage";
-          hideWhenEmpty = true;
-          trimValue = 0;
-          preserveTrimStyles = true;
-        })
-        (piFooterWidget "context-window" "context-window" {
-          icon = " · ";
-          fg = piFooterColors.context;
-          tokenFormatStyle = "compact";
-          contextConditionalColors = true;
-          warningFg = "pi:warning";
-          dangerFg = "pi:error";
-        })
-        (piFooterWidget "context-window-label" "custom-text" {
-          raw = true;
-          fg = piFooterColors.context;
-          text = " window";
-        })
-        (piFooterWidget "context-used" "context" {
-          icon = " · Context ";
-          fg = piFooterColors.context;
-          tokenFormatStyle = "compact";
-          contextConditionalColors = true;
-          warningFg = "pi:warning";
-          dangerFg = "pi:error";
-        })
-        (piFooterWidget "context-used-label" "custom-text" {
-          raw = true;
-          fg = piFooterColors.context;
-          text = " used";
-        })
-        (piFooterWidget "isolation" "external-status" {
-          icon = " · ";
-          fg = piFooterColors.isolation;
-          externalStatusKey = "noughty-isolation:status";
-          hideWhenEmpty = true;
-          trimValue = 0;
-          preserveTrimStyles = true;
-        })
-      ]
+      (
+        [
+          # White Pi glyph so the footer reads as Pi at a glance.
+          (piFooterWidget "agent-icon" "custom-text" {
+            raw = true;
+            fg = piFooterColors.agentIcon;
+            text = " ";
+          })
+          # Bare model id and thinking level joined by a space, matching the
+          # Codex status line's model-with-reasoning segment.
+          (piFooterWidget "model" "model" {
+            raw = true;
+            fg = piFooterColors.model;
+          })
+          (piFooterWidget "thinking" "thinking-level" {
+            icon = " ";
+            fg = piFooterColors.thinking;
+            hideWhenEmpty = true;
+          })
+          # Fast-mode state from pi-service-tier, mirroring the Codex status
+          # line's fast-mode position after the model and reasoning segments.
+          (piFooterWidget "service-tier" "external-status" {
+            icon = " · ";
+            fg = piFooterColors.serviceTier;
+            externalStatusKey = "noughty-service-tier:status";
+            hideWhenEmpty = true;
+            trimValue = 0;
+            preserveTrimStyles = true;
+          })
+          # Only the last path segment, matching the Claude Code status line.
+          (piFooterWidget "cwd" "cwd-basename" {
+            icon = " · ";
+            fg = piFooterColors.cwd;
+          })
+        ]
+        # Personal computers authenticate with the API key only, so no plan
+        # quota exists. Show the estimated session spend from Pi's own usage
+        # metrics in the same slot. Work hosts keep the subscription quota.
+        ++ lib.optionals config.agentic.personalComputer [
+          (piFooterWidget "cost" "cost" {
+            icon = " · ";
+            fg = piFooterColors.cost;
+            costFormatStyle = "default";
+          })
+        ]
+        ++ lib.optionals (!config.agentic.personalComputer) [
+          (piFooterWidget "quota" "external-status" {
+            icon = " · ";
+            fg = piFooterColors.quota;
+            externalStatusKey = "noughty-quota:usage";
+            hideWhenEmpty = true;
+            trimValue = 0;
+            preserveTrimStyles = true;
+          })
+        ]
+        ++ [
+          (piFooterWidget "context-window" "context-window" {
+            icon = " · ";
+            fg = piFooterColors.context;
+            tokenFormatStyle = "compact";
+            contextConditionalColors = true;
+            warningFg = "pi:warning";
+            dangerFg = "pi:error";
+          })
+          (piFooterWidget "context-window-label" "custom-text" {
+            raw = true;
+            fg = piFooterColors.context;
+            text = " window";
+          })
+          (piFooterWidget "context-used" "context" {
+            icon = " · Context ";
+            fg = piFooterColors.context;
+            tokenFormatStyle = "compact";
+            contextConditionalColors = true;
+            warningFg = "pi:warning";
+            dangerFg = "pi:error";
+          })
+          (piFooterWidget "context-used-label" "custom-text" {
+            raw = true;
+            fg = piFooterColors.context;
+            text = " used";
+          })
+          (piFooterWidget "isolation" "external-status" {
+            icon = " · ";
+            fg = piFooterColors.isolation;
+            externalStatusKey = "noughty-isolation:status";
+            hideWhenEmpty = true;
+            trimValue = 0;
+            preserveTrimStyles = true;
+          })
+        ]
+      )
     ];
   };
 

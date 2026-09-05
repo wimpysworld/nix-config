@@ -129,6 +129,8 @@ The `juicesharp/rpiv-mono` extensions add native Pi behaviour:
 
 Quota data comes from [`@marckrenn/pi-sub-core`](https://github.com/marckrenn/pi-sub). `sub-core` auto-detects the active provider from the current model. The local `quota-status` extension publishes the first two quota windows through Pi's extension status API, which `pi-footer` displays when data is available. Anthropic can provide 5h and weekly windows. OpenAI Codex provides its primary and secondary windows.
 
+On personal physical computers the API key is the only Anthropic credential, so no plan quota exists. The footer shows `pi-footer`'s `cost` widget in the quota slot instead, which is the estimated session spend in USD from Pi's own usage metrics.
+
 The footer uses the same Catppuccin colour roles as `ccstatusline`: model and thinking yellow, fast state mauve, current directory green, quotas red, and context peach. A white Pi glyph (`nf-fae-pi`) leads the line so the Pi footer is distinguishable from the Codex status line at a glance.
 
 `quota-status` uses stable window labels where possible and displays remaining quota, not used quota, so Anthropic usually appears as:

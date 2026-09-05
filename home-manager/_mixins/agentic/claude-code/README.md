@@ -12,6 +12,10 @@ On personal physical computers, the `claude` launch wrapper reads the managed `A
 
 The normal and fenced launch paths use the same credential wrapper. The fenced path reads the secret inside Fence, so the key does not enter Fence arguments.
 
+Claude Code asks "Do you want to use this API key?" the first time it sees a key and stores the answer in `~/.claude.json` under `customApiKeyResponses`, keyed by the last 20 characters of the key. A rejected key is ignored on every later launch with no message. On personal computers a Home Manager activation step runs after sops-nix decrypts the secret. It approves the key, removes any rejection, sets `hasCompletedOnboarding`, deletes `oauthAccount` from `~/.claude.json`, and removes `~/.claude/.credentials.json`. The API key is then the only credential. Run `/login` to restore the subscription on that host. The status line replaces the 5h and weekly usage segments on personal computers with ccstatusline's `session-cost` widget, the estimated session spend in USD, because the usage segments read the subscription token.
+
+Do not set `forceLoginMethod`. It restricts the login method and, since Claude Code 2.1.146, blocks sessions authenticated by `ANTHROPIC_API_KEY`.
+
 Work hosts do not receive the API key and keep Claude subscription authentication. The Claude ACP adapter does not use this wrapper.
 
 ## Package selection
