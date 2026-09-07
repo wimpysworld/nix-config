@@ -65,6 +65,7 @@ const float CURSOR_LANDING_TIME = 0.090;
 const vec2 CURSOR_LANDING_SCALE = vec2(0.25, -0.40);
 const int LANDING_PARTICLE_COUNT = 18;
 const float LANDING_PARTICLE_TIME = 1.000;
+const float LANDING_FULL_DISTANCE = 40.0;
 
 // ──────────────────────────────────────────────────────────────────────────
 // TAIL CATCHUP EASING
@@ -542,6 +543,12 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
     float particleAge = timeSince - landingStart;
     if (jump && particleAge >= 0.0 && particleAge < LANDING_PARTICLE_TIME) {
+        // Measure origin displacement in cells, independent of font size and aspect.
+        float cellDistance = length((cur.xy - prev.xy) / max(cur.zw, vec2(1e-6)));
+        float intensity = smoothstep(LANDING_FULL_DISTANCE / 12.0, LANDING_FULL_DISTANCE, cellDistance);
+        int particleCount = int(floor(mix(4.0, float(LANDING_PARTICLE_COUNT), intensity) + 0.5));
+        int starCount = int(floor(4.0 * intensity + 0.5));
+        float horizontalSpread = mix(0.25, 1.0, intensity);
         float pixel = 2.0 / iResolution.y;
         vec2 origin = cC - vec2(0.0, hC.y);
         vec2 offset = vu - origin;
@@ -550,26 +557,27 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         if (all(greaterThan(offset, -cur.zw * vec2(3.1, 2.8) - padding))
             && all(lessThan(offset, cur.zw * vec2(3.1, 1.0) + padding))) {
             for (int i = 0; i < LANDING_PARTICLE_COUNT; i++) {
+                if (i >= particleCount) break;
                 float a = hash(vec3(id, float(i), 410.0));
                 float b = hash(vec3(id, float(i), 411.0));
                 float c = hash(vec3(id, float(i), 412.0));
                 float lifetime = mix(0.700, LANDING_PARTICLE_TIME, a);
                 if (particleAge >= lifetime) continue;
 
-                float strand = 2.0 * float(i) / float(LANDING_PARTICLE_COUNT - 1) - 1.0;
+                float strand = 2.0 * float(i) / float(particleCount - 1) - 1.0;
                 float progress = particleAge / lifetime;
                 float apex = mix(0.34, 0.38, c);
                 float riseAge = progress / apex;
                 // Positive Y rises from the fixed lower edge, then gravity pulls down.
                 vec2 position = origin + cur.zw * vec2(
-                    strand * (0.4 + 2.7 * easeOutQuad(progress)),
+                    strand * (0.4 + 2.7 * easeOutQuad(progress)) * horizontalSpread,
                     mix(0.5, 1.0, b) * (2.0 * riseAge - riseAge * riseAge)
                 );
                 float radius = clamp(min(cur.z, cur.w) * mix(0.075, 0.16, c),
                     0.80 * pixel, 2.30 * pixel);
                 vec2 delta = abs(vu - position);
                 float distance = length(delta) - radius;
-                if (i % 5 == 0) {
+                if (i % 5 == 0 && i / 5 < starCount) {
                     // Two narrow diamonds form four points with concave sides.
                     distance = (min(delta.x + 3.0 * delta.y, 3.0 * delta.x + delta.y)
                         - 2.6 * radius) / sqrt(10.0);
