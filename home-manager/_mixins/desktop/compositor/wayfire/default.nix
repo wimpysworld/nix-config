@@ -144,7 +144,7 @@ in
         input = {
           xkb_layout = host.keyboard.layout;
           repeat_delay = 300;
-          repeat_rate = 30;
+          repeat_rate = config.noughty.user.keyboard.repeatRate;
           cursor_size = 32;
         };
         # Window movement - Super+Left Mouse to drag windows

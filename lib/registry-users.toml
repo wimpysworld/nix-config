@@ -3,3 +3,6 @@
 
 [martin]
 tags = ["developer"]
+
+[martin.keyboard]
+repeatRate = 30

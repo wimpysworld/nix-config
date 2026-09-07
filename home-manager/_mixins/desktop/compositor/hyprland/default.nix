@@ -236,7 +236,7 @@ in
         input = {
           follow_mouse = 2;
           kb_layout = host.keyboard.layout;
-          repeat_rate = 30;
+          repeat_rate = config.noughty.user.keyboard.repeatRate;
           repeat_delay = 300;
           touchpad = {
             clickfinger_behavior = true;

@@ -596,6 +596,12 @@ in
     # ── User identity ─────────────────────────────────────────────────
 
     user = {
+      keyboard.repeatRate = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 30;
+        description = "Key repeats per second for Linux compositors and the Ghostty cursor shader.";
+      };
+
       name = lib.mkOption {
         type = lib.types.str;
         default = "nobody";

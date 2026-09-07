@@ -175,6 +175,7 @@ rec {
       hostKeyboardLayout ? "gb",
       hostKeyboardVariant ? "",
       userTags ? [ ],
+      userKeyboard ? { },
     }:
     let
       # Generate the Catppuccin palette for this system
@@ -222,6 +223,7 @@ rec {
           };
           noughty.user.name = username;
           noughty.user.tags = userTags;
+          noughty.user.keyboard = userKeyboard;
         }
       ];
     };
@@ -245,6 +247,7 @@ rec {
       hostKeyboardLayout ? "gb",
       hostKeyboardVariant ? "",
       userTags ? [ ],
+      userKeyboard ? { },
     }:
     let
       # Generate the Catppuccin palette for this system
@@ -298,6 +301,7 @@ rec {
             };
             noughty.user.name = username;
             noughty.user.tags = userTags;
+            noughty.user.keyboard = userKeyboard;
           }
         ]
         ++ inputs.nixpkgs.lib.optionals (lib.elem "iso" hostTags) [ cd-dvd ];
@@ -321,6 +325,7 @@ rec {
       hostKeyboardLayout ? "gb",
       hostKeyboardVariant ? "",
       userTags ? [ ],
+      userKeyboard ? { },
     }:
     let
       # Generate the Catppuccin palette for this system
@@ -371,6 +376,7 @@ rec {
           };
           noughty.user.name = username;
           noughty.user.tags = userTags;
+          noughty.user.keyboard = userKeyboard;
         }
       ];
     };
@@ -405,6 +411,7 @@ rec {
       hostKeyboardLayout = (resolved.keyboard or { }).layout or "gb";
       hostKeyboardVariant = (resolved.keyboard or { }).variant or "";
       userTags = (resolved.userEntry or { }).tags or [ ];
+      userKeyboard = (resolved.userEntry or { }).keyboard or { };
     };
 
   # Generate configurations by filtering with a predicate function

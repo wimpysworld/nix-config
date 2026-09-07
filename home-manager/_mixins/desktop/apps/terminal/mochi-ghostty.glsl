@@ -1,3 +1,10 @@
+/*
+Mochi is the one-eyed block cursor, blinking innocently and flaring a tiny
+cloak as they scurry along a line. Leap between lines and they fart rainbows,
+kick-up sparkles and stars, and stick big landings hard enough to shake the
+whole terminal.
+*/
+
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
@@ -28,8 +35,11 @@ const float TAIL_FADE_DURATION = 0.15;
 const float LEG_PERSISTENCE = 0.25;
 
 // Timings are in seconds. Landing scale changes are fractions of cursor size.
-const float CURSOR_SMALL_MOVE_TIME = 0.080;
 const float CURSOR_TRAVEL_TIME = 0.140;
+#ifndef MOCHI_KEY_REPEAT_RATE
+#define MOCHI_KEY_REPEAT_RATE 30.0
+#endif
+const float CURSOR_SMALL_MOVE_TIME = 1.0 / MOCHI_KEY_REPEAT_RATE;
 const float CURSOR_LANDING_TIME = 0.090;
 const vec2 CURSOR_LANDING_SCALE = vec2(0.25, -0.40);
 const float CURSOR_TOP_RADIUS = 0.23;
@@ -505,17 +515,17 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
     vec2 vu = normalizeCoord(renderCoord, 1.0);
     vec4 outC = fragColor;
-    float strength = valid ? getBendStrength(mL) : 0.0;
-    float id = valid ? getMovementId(cP, cC, mL) : 0.0;
+    float strength = (valid || smallSlide) ? getBendStrength(mL) : 0.0;
+    float id = (valid || smallSlide) ? getMovementId(cP, cC, mL) : 0.0;
     float headProgress = 1.0;
     vec2 renderedCenter = cC;
     vec2 renderedHalfSize = hC;
     vec2 renderedScale = vec2(1.0);
 
     if (smallSlide && timeSince < CURSOR_SMALL_MOVE_TIME) {
-        float slideProgress = easeLinear(timeSince / CURSOR_SMALL_MOVE_TIME);
-        renderedCenter = mix(cP, cC, slideProgress);
-        renderedHalfSize = mix(hP, hC, slideProgress);
+        headProgress = easeLinear(timeSince / CURSOR_SMALL_MOVE_TIME);
+        renderedCenter = getBentPathPosition(cP, cC, headProgress, strength, id);
+        renderedHalfSize = mix(hP, hC, headProgress);
     } else if (jump && timeSince < jumpEnd) {
         headProgress = easeSmoothStep(timeSince / CURSOR_TRAVEL_TIME);
         renderedCenter = getBentPathPosition(cP, cC, headProgress, strength, id);

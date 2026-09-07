@@ -16,7 +16,14 @@ in
 lib.mkIf host.is.workstation {
   catppuccin.ghostty.enable = config.programs.ghostty.enable;
 
-  xdg.configFile."ghostty/shaders/winkle-cursor.glsl".source = ./winkle-cursor.glsl;
+  xdg.configFile."ghostty/shaders/mochi-ghostty.glsl".source =
+    if host.is.linux then
+      pkgs.writeText "mochi-ghostty.glsl" (
+        "#define MOCHI_KEY_REPEAT_RATE ${toString config.noughty.user.keyboard.repeatRate}.0\n"
+        + builtins.readFile ./mochi-ghostty.glsl
+      )
+    else
+      ./mochi-ghostty.glsl;
 
   programs.ghostty = {
     enable = true;
@@ -28,7 +35,7 @@ lib.mkIf host.is.workstation {
     package = if host.is.linux then pkgs.ghostty else null;
 
     settings = {
-      custom-shader = "shaders/winkle-cursor.glsl";
+      custom-shader = "shaders/mochi-ghostty.glsl";
       custom-shader-animation = true;
       cursor-opacity = 0.0;
       cursor-style = "block_hollow";

@@ -323,6 +323,9 @@ in
 |--------|------|---------|-------------|
 | `user.name` | `str` | `"nobody"` | Primary username of the managed system. |
 | `user.tags` | `listOf str` | `[]` | Freeform tags for user role or persona classification. |
+| `user.keyboard.repeatRate` | positive integer | `30` | Key repeats per second for Linux compositors and the Ghostty cursor shader. |
+
+Set `repeatRate` under `[martin.keyboard]` in `lib/registry-users.toml` to change Martin's rate across Linux hosts. Users without this setting default to `30`. macOS keeps the standalone shader timing and its existing keyboard settings.
 
 ### `noughty.network` - Network attributes
 
