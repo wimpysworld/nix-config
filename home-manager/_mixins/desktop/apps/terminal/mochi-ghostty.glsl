@@ -419,9 +419,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         sampleCoord = clamp(renderCoord, vec2(0.5), iResolution.xy - vec2(0.5));
     }
 
-    #if !defined(WEB)
     fragColor = texture(iChannel0, sampleCoord.xy / iResolution.xy);
-    #endif
 
     vec2 vu = normalizeCoord(renderCoord, 1.0);
     float pixel = 2.0 / iResolution.y;
