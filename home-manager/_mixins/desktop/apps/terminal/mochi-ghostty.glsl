@@ -613,15 +613,13 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
     if (cursorVisible) {
         float cursorAlpha = 1.0;
+        vec3 cursorColour = iCurrentCursorColor.rgb;
         if (iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW) {
             float movementEnd = jump ? jumpEnd : (smallSlide ? CURSOR_SMALL_MOVE_TIME : 0.0);
             float fadeDelay = movementEnd + ((smallSlide || jump) ? CURSOR_FADE_HOLD_TIME : 0.0);
             float resetTime = max(iTimeCursorChange + fadeDelay, iTimeFocus);
             cursorAlpha = getCursorAlpha(max(iTime - resetTime, 0.0));
-        }
 
-        vec3 cursorColour = iCurrentCursorColor.rgb;
-        if (iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW) {
             float eyeRadius = 0.72 * min(baseHalfSize.x, baseHalfSize.y);
             // Keep subpixel cursors plain when the pupil cannot remain clear.
             if (eyeRadius >= 2.0 * pixel) {
