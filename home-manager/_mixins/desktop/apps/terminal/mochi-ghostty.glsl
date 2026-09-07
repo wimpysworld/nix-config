@@ -40,6 +40,10 @@ const float CURSOR_TRAVEL_TIME = 0.140;
 #define MOCHI_KEY_REPEAT_RATE 30.0
 #endif
 const float CURSOR_SMALL_MOVE_TIME = 1.0 / MOCHI_KEY_REPEAT_RATE;
+const float CURSOR_BOB_PERIOD = 1.400;
+const float CURSOR_BOB_COMPRESSION = 0.14;
+const float CURSOR_BOB_HOLD_TIME = 0.140;
+const float CURSOR_BOB_RETURN_TIME = 0.400;
 const float CURSOR_LANDING_TIME = 0.090;
 const vec2 CURSOR_LANDING_SCALE = vec2(0.25, -0.40);
 const float CURSOR_TOP_RADIUS = 0.23;
@@ -539,6 +543,17 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
     vec2 baseHalfSize = renderedHalfSize / renderedScale;
     vec2 cursorLocal = (vu - renderedCenter) / renderedScale;
+    vec2 capeLocal = cursorLocal;
+    float capeDistanceScale = min(renderedScale.x, renderedScale.y);
+    if (smallSlide) {
+        // The shared clock keeps the bob phase continuous across repeated cells.
+        float cycle = 0.5 - 0.5 * cos(2.0 * PI * iTime / CURSOR_BOB_PERIOD);
+        float release = 1.0 - easeSmoothStep((timeSince - CURSOR_BOB_HOLD_TIME) / CURSOR_BOB_RETURN_TIME);
+        float bobScale = 1.0 - CURSOR_BOB_COMPRESSION * cycle * release;
+        // Scale only the head and eye about the lower edge, leaving the cape unchanged.
+        cursorLocal.y = (cursorLocal.y + baseHalfSize.y) / bobScale - baseHalfSize.y;
+        renderedScale.y *= bobScale;
+    }
     float sdfCur = sdfRect(vu, renderedCenter, renderedHalfSize);
     if (cursorGeometryValid && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW) {
         float cape = 0.0;
@@ -554,9 +569,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                 cape = motion * CURSOR_CAPE.y * (1.0 + 0.10 * sin(2.0 * PI * phase));
             }
         }
-        sdfCur = sdfCursor(cursorLocal, baseHalfSize);
-        if (cape != 0.0) sdfCur = min(sdfCur, sdfCursorCape(cursorLocal, baseHalfSize, cape));
-        sdfCur *= min(renderedScale.x, renderedScale.y);
+        sdfCur = sdfCursor(cursorLocal, baseHalfSize) * min(renderedScale.x, renderedScale.y);
+        if (cape != 0.0) sdfCur = min(sdfCur, sdfCursorCape(capeLocal, baseHalfSize, cape) * capeDistanceScale);
     }
     // Let the trail grow behind the moving cursor before its tail catches up.
     float trailTime = timeSince - (jump ? landingStart : 0.0);
