@@ -234,6 +234,10 @@ vec2 normalizeCoord(vec2 v, float isPosition) {
     return (v * 2.0 - (iResolution.xy * isPosition)) / iResolution.y;
 }
 
+float edgeWidth(float d, float pixel) {
+    return max(0.75 * fwidth(d), 0.5 * pixel);
+}
+
 float antialiasNoBlur(float d) {
     float w = fwidth(d) * 1.5;
     if (w < 0.001) w = 0.002;
@@ -420,6 +424,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     #endif
 
     vec2 vu = normalizeCoord(renderCoord, 1.0);
+    float pixel = 2.0 / iResolution.y;
     vec4 outC = fragColor;
     float strength = (valid || smallSlide) ? getBendStrength(mL) : 0.0;
     float id = (valid || smallSlide) ? getMovementId(cP, cC, mL) : 0.0;
@@ -558,7 +563,6 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         int particleCount = int(floor(mix(4.0, float(LANDING_PARTICLE_COUNT), intensity) + 0.5));
         int starCount = int(floor(4.0 * intensity + 0.5));
         float horizontalSpread = mix(0.25, 1.0, intensity);
-        float pixel = 2.0 / iResolution.y;
         vec2 origin = cC - vec2(0.0, hC.y);
         vec2 offset = vu - origin;
         // Include the widest star tips and their antialiasing edges.
@@ -619,7 +623,6 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         vec3 cursorColour = iCurrentCursorColor.rgb;
         if (iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW) {
             float eyeRadius = 0.72 * min(baseHalfSize.x, baseHalfSize.y);
-            float pixel = 2.0 / iResolution.y;
             // Keep subpixel cursors plain when the pupil cannot remain clear.
             if (eyeRadius >= 2.0 * pixel) {
                 vec2 eyeAnchor = vec2(0.0, min(0.12 * baseHalfSize.y + pixel, baseHalfSize.y - eyeRadius));
@@ -683,24 +686,24 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                     abs(eyeCoord.y) - eyeRadius * aperture) * distanceScale;
                 // Positive Y points up. Lower only the upper eyelid during the doze.
                 eyeDistance = max(eyeDistance, (eyeCoord.y - eyeRadius * (1.0 - 2.0 * lidDrop)) * distanceScale);
-                float eyeAA = max(0.75 * fwidth(eyeDistance), 0.5 * pixel);
+                float eyeAA = edgeWidth(eyeDistance, pixel);
                 float openVisibility = smoothstep(0.0, pixel, eyeRadius * aperture * renderedScale.y);
                 // Inset the outline and its antialiasing within the original eye footprint.
                 float outlineMask = (1.0 - smoothstep(-eyeAA, 0.0, eyeDistance)) * openVisibility;
                 float eyeMask = (1.0 - smoothstep(-eyeAA, 0.0, eyeDistance + 0.90 * pixel)) * openVisibility;
                 float pupilDistance = (length(eyeCoord - gaze) - 0.40 * eyeRadius) * distanceScale;
-                float pupilAA = max(0.75 * fwidth(pupilDistance), 0.5 * pixel);
+                float pupilAA = edgeWidth(pupilDistance, pixel);
                 float pupilMask = min(eyeMask, 1.0 - smoothstep(-pupilAA, pupilAA, pupilDistance));
                 vec2 glintCentre = gaze + vec2(-0.13, 0.15) * eyeRadius;
                 float glintDistance = (length(eyeCoord - glintCentre) - 0.11 * eyeRadius) * distanceScale;
-                float glintAA = max(0.75 * fwidth(glintDistance), 0.5 * pixel);
+                float glintAA = edgeWidth(glintDistance, pixel);
                 float glintMask = min(pupilMask, 1.0 - smoothstep(-glintAA, glintAA, glintDistance));
                 float lidX = eyeCoord.x / eyeRadius;
                 float lidCurve = -0.13 * eyeRadius * (1.0 - lidX * lidX);
                 float lidDistance = max(abs(eyeCoord.y - lidCurve)
                     / sqrt(1.0 + 0.0676 * lidX * lidX) * distanceScale - 0.50 * pixel,
                     (abs(eyeCoord.x) - 0.82 * eyeRadius) * distanceScale);
-                float lidAA = max(0.75 * fwidth(lidDistance), 0.5 * pixel);
+                float lidAA = edgeWidth(lidDistance, pixel);
                 float lidMask = (1.0 - smoothstep(-lidAA, lidAA, lidDistance))
                     * (1.0 - smoothstep(0.0, 0.35, aperture));
                 lidMask *= 1.0 - smoothstep(-eyeAA, 0.0,
@@ -721,7 +724,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                         mouthRadius.y *= mouthOpen;
                         float mouthDistance = (length((cursorLocal - mouthCentre)
                             / max(mouthRadius, vec2(1e-6))) - 1.0) * min(mouthRadius.x, mouthRadius.y) * distanceScale;
-                        float mouthAA = max(0.75 * fwidth(mouthDistance), 0.5 * pixel);
+                        float mouthAA = edgeWidth(mouthDistance, pixel);
                         float mouthMask = (1.0 - smoothstep(-mouthAA, 0.0, mouthDistance)) * mouthOpen;
                         cursorColour = mix(cursorColour, vec3(0.0), mouthMask);
                     }
