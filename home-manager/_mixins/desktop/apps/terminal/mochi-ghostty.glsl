@@ -70,10 +70,6 @@ const float TRAIL_SIZE_MID = 1.2;
 // Size at trail head (t = 1.0, at cursor position)
 const float TRAIL_SIZE_END = 1.0;
 
-// Enable smooth interpolation between size keyframes
-// 1.0 = smooth S-curve interpolation, 0.0 = linear interpolation
-const float TRAIL_SIZE_SMOOTH = 1.0;
-
 // ──────────────────────────────────────────────────────────────────────────
 // PATH BENDING: PRIMARY CURVE
 // ──────────────────────────────────────────────────────────────────────────
@@ -337,17 +333,11 @@ vec2 getBentPathPosition(vec2 A, vec2 B, float t, float strength) {
 
 // Interpolate size over the full path, not just its visible remainder.
 float getTrailSize(float t) {
-    float size, localT;
-    if (t < 0.5) {
-        localT = t * 2.0;
-        if (TRAIL_SIZE_SMOOTH > 0.5) localT = localT * localT * (3.0 - 2.0 * localT);
-        size = mix(TRAIL_SIZE_START, TRAIL_SIZE_MID, localT);
-    } else {
-        localT = (t - 0.5) * 2.0;
-        if (TRAIL_SIZE_SMOOTH > 0.5) localT = localT * localT * (3.0 - 2.0 * localT);
-        size = mix(TRAIL_SIZE_MID, TRAIL_SIZE_END, localT);
-    }
-    return size;
+    bool firstHalf = t < 0.5;
+    float localT = easeSmoothStep(firstHalf ? t * 2.0 : (t - 0.5) * 2.0);
+    return firstHalf
+        ? mix(TRAIL_SIZE_START, TRAIL_SIZE_MID, localT)
+        : mix(TRAIL_SIZE_MID, TRAIL_SIZE_END, localT);
 }
 
 float getTrailRadius(vec2 halfSize, vec2 aspect, float t) {
