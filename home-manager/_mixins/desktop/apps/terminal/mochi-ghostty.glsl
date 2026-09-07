@@ -47,9 +47,10 @@ const float CURSOR_BOB_RETURN_TIME = 0.400;
 const float CURSOR_LANDING_TIME = 0.090;
 const vec2 CURSOR_LANDING_SCALE = vec2(0.25, -0.40);
 const float CURSOR_TOP_RADIUS = 0.23;
-const vec2 CURSOR_CAPE = vec2(0.35, 0.55);
+const float CURSOR_CAPE = 2.0;
 const float CURSOR_CAPE_HOLD_TIME = 0.140;
 const float CURSOR_CAPE_RETURN_TIME = 0.400;
+const float CURSOR_IDLE_HEM_TIME = 0.200;
 const int LANDING_PARTICLE_COUNT = 18;
 const float LANDING_PARTICLE_TIME = 1.000;
 const float LANDING_FULL_DISTANCE = 40.0;
@@ -353,23 +354,37 @@ float sdfCursor(vec2 point, vec2 halfSize) {
     return length(max(distance, 0.0)) + min(max(distance.x, distance.y), 0.0) - radius;
 }
 
-float sdfCursorCape(vec2 point, vec2 halfSize, float cape) {
-    vec2 size = 2.0 * halfSize;
+float sdfCursorCape(vec2 point, vec2 halfSize, float cape, float settle) {
     point.x *= -sign(cape);
-    // Overlap the lower rear edge, then narrow to one point outside the body.
-    vec2 top = size * vec2(0.40, -0.20);
-    vec2 bottom = size * vec2(0.40, -0.50);
-    vec2 tip = vec2(halfSize.x + abs(cape),
-        -halfSize.y - 0.05 * abs(cape) * size.y / max(size.x, 1e-6));
-    vec2 upperEdge = tip - top;
-    vec2 lowerEdge = bottom - tip;
-    vec2 upperOffset = point - top;
-    vec2 lowerOffset = point - tip;
-    float upperDistance = (upperEdge.x * upperOffset.y - upperEdge.y * upperOffset.x)
-        / max(length(upperEdge), 1e-6);
-    float lowerDistance = (lowerEdge.x * lowerOffset.y - lowerEdge.y * lowerOffset.x)
-        / max(length(lowerEdge), 1e-6);
-    return max(top.x - point.x, max(upperDistance, lowerDistance));
+    float radius = 2.0 * CURSOR_TOP_RADIUS * min(halfSize.x, halfSize.y);
+    float root = halfSize.x - 0.25 * radius;
+    float tip = halfSize.x + abs(cape);
+    float span = max(tip - root, 1e-6);
+    float t = clamp((point.x - root) / span, 0.0, 1.0);
+    float taper = 1.0 - t;
+    float reach = abs(cape) / span;
+    float drop = 0.10 * radius * reach * reach * (1.0 - settle);
+    // Raise the tip and straighten the curve as the cape becomes an idle flare.
+    float lower = -halfSize.y - drop * t * (2.0 - t);
+    float upper = lower + radius * mix(taper * taper, taper, settle);
+    float lowerSlope = -2.0 * drop * taper / span;
+    float upperSlope = lowerSlope - radius * mix(2.0 * taper, 1.0, settle) / span;
+    float upperDistance = (point.y - upper - upperSlope * max(point.x - tip, 0.0))
+        / sqrt(1.0 + upperSlope * upperSlope);
+    float lowerDistance = (lower - point.y) / sqrt(1.0 + lowerSlope * lowerSlope);
+    float edgeDistance = max(root - point.x, max(upperDistance, lowerDistance));
+    return mix(max(point.x - tip, edgeDistance), edgeDistance, settle);
+}
+
+float sdfCursorIdleHem(vec2 point, vec2 halfSize, float extension) {
+    float radius = 2.0 * CURSOR_TOP_RADIUS * min(halfSize.x, halfSize.y);
+    point.x = abs(point.x);
+    vec2 top = vec2(halfSize.x - 0.25 * radius, -halfSize.y + radius);
+    vec2 edge = vec2(0.25 * radius + extension, -radius);
+    vec2 offset = point - top;
+    float upperDistance = (edge.x * offset.y - edge.y * offset.x) / max(length(edge), 1e-6);
+    // Mirror both tips and keep their lower edges on the body baseline.
+    return max(top.x - point.x, max(upperDistance, -halfSize.y - point.y));
 }
 
 // Return the tapered capsule distance and the closest position along it.
@@ -598,20 +613,39 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     float sdfCur = sdfRect(vu, renderedCenter, renderedHalfSize);
     if (cursorGeometryValid && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW) {
         float cape = 0.0;
+        float capeSettle = 0.0;
         if (smallSlide || jump) {
             vec2 movement = cur.xy - prev.xy;
             float horizontalDirection = movement.x / max(length(movement), 1e-6);
+            float capeLength = CURSOR_CAPE * 0.75 * 2.0 * CURSOR_TOP_RADIUS
+                * min(baseHalfSize.x, baseHalfSize.y);
             if (smallSlide) {
-                float extension = 1.0 - easeSmoothStep((timeSince - CURSOR_CAPE_HOLD_TIME) / CURSOR_CAPE_RETURN_TIME);
-                cape = horizontalDirection * extension * 2.0 * baseHalfSize.x * CURSOR_CAPE.x;
+                capeSettle = easeSmoothStep((timeSince - CURSOR_CAPE_HOLD_TIME) / CURSOR_CAPE_RETURN_TIME);
+                cape = sign(horizontalDirection) * mix(abs(horizontalDirection) * capeLength,
+                    capeLength / CURSOR_CAPE, capeSettle);
             } else {
                 float phase = clamp(timeSince / CURSOR_TRAVEL_TIME, 0.0, 1.0);
-                float motion = horizontalDirection * getSquashPulse(phase) * 2.0 * baseHalfSize.x;
-                cape = motion * CURSOR_CAPE.y * (1.0 + 0.10 * sin(2.0 * PI * phase));
+                float motion = horizontalDirection * getSquashPulse(phase) * capeLength;
+                cape = motion * (1.0 + 0.10 * sin(2.0 * PI * phase));
             }
         }
         sdfCur = sdfCursor(cursorLocal, baseHalfSize) * min(renderedScale.x, renderedScale.y);
-        if (cape != 0.0) sdfCur = min(sdfCur, sdfCursorCape(capeLocal, baseHalfSize, cape) * capeDistanceScale);
+        if (cape != 0.0 && (!smallSlide || capeSettle < 1.0)) {
+            sdfCur = min(sdfCur, sdfCursorCape(capeLocal, baseHalfSize, cape, capeSettle) * capeDistanceScale);
+        }
+        if (cursorVisible) {
+            float idleDelay = jump ? jumpEnd : CURSOR_CAPE_HOLD_TIME;
+            float idleStart = max(iTimeCursorChange + idleDelay, iTimeFocus + CURSOR_CAPE_HOLD_TIME);
+            float idleHem = smallSlide ? capeSettle : easeSmoothStep((iTime - idleStart) / CURSOR_IDLE_HEM_TIME);
+            if (idleHem > 0.0) {
+                float extension = idleHem * 0.75 * 2.0 * CURSOR_TOP_RADIUS * min(baseHalfSize.x, baseHalfSize.y);
+                float hemDistance = sdfCursorIdleHem(capeLocal, baseHalfSize, extension);
+                if (smallSlide && cape != 0.0 && capeSettle < 1.0) {
+                    hemDistance = max(hemDistance, -capeLocal.x * sign(cape));
+                }
+                sdfCur = min(sdfCur, hemDistance * capeDistanceScale);
+            }
+        }
     }
     // Let the trail grow behind the moving cursor before its tail catches up.
     float trailTime = timeSince - (jump ? landingStart : 0.0);
