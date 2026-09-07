@@ -1,35 +1,3 @@
-/*
- * WINKLE - GHOSTTY CURSOR TRAIL SHADER
- *
- * Derived from Wisp at:
- * https://github.com/hced/ghostty-cursor-trails/blob/78f597cf66427bc382077e5e33f26981a86bb207/wisp-cursor.glsl
- *
- * Winkle masks the trail inside its animated cursor rectangle and adds a
- * smooth WezTerm-style fade to its synthetic cursor.
- *
- * MIT License
- *
- * Copyright (c) 2026 H. Cederblad
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
@@ -60,6 +28,7 @@ const float TAIL_FADE_DURATION = 0.15;
 const float LEG_PERSISTENCE = 0.25;
 
 // Timings are in seconds. Landing scale changes are fractions of cursor size.
+const float CURSOR_SMALL_MOVE_TIME = 0.080;
 const float CURSOR_TRAVEL_TIME = 0.140;
 const float CURSOR_LANDING_TIME = 0.090;
 const vec2 CURSOR_LANDING_SCALE = vec2(0.25, -0.40);
@@ -473,6 +442,10 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         && !smallHorizontalMove && !smallVerticalMove && (mL > minD) && (mL < maxD) && timeSince >= 0.0;
     bool jump = cursorVisible && valid && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW
         && iTimeCursorChange > iTimeFocus;
+    bool smallSlide = cursorVisible && prev.z > 0.0 && prev.w > 0.0
+        && (smallHorizontalMove || smallVerticalMove) && length(cur.xy - prev.xy) > minD
+        && mL > minD && mL < maxD && timeSince >= 0.0
+        && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW && iTimeCursorChange > iTimeFocus;
     float landingStart = CURSOR_TRAVEL_TIME;
     float jumpEnd = landingStart + CURSOR_LANDING_TIME;
     // Measure origin displacement in cells, independent of font size and aspect.
@@ -510,7 +483,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 renderedHalfSize = hC;
     vec2 renderedScale = vec2(1.0);
 
-    if (jump && timeSince < jumpEnd) {
+    if (smallSlide && timeSince < CURSOR_SMALL_MOVE_TIME) {
+        float slideProgress = easeOutCubic(timeSince / CURSOR_SMALL_MOVE_TIME);
+        renderedCenter = mix(cP, cC, slideProgress);
+        renderedHalfSize = mix(hP, hC, slideProgress);
+    } else if (jump && timeSince < jumpEnd) {
         headProgress = easeSmoothStep(timeSince / CURSOR_TRAVEL_TIME);
         renderedCenter = getBentPathPosition(cP, cC, headProgress, strength, id);
         vec2 baseHalfSize = mix(hP, hC, headProgress);
@@ -654,16 +631,20 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             float pixel = 2.0 / iResolution.y;
             // Keep subpixel cursors plain when the pupil cannot remain clear.
             if (eyeRadius >= 2.0 * pixel) {
-                vec2 eyeCoord = (vu - renderedCenter) / renderedScale
-                    - vec2(0.0, 0.12 * baseHalfSize.y);
+                vec2 eyeAnchor = vec2(0.0, min(0.12 * baseHalfSize.y + pixel, baseHalfSize.y - eyeRadius));
+                vec2 eyeCoord = (vu - renderedCenter) / renderedScale - eyeAnchor;
                 vec2 gaze = vec2(0.0);
                 vec2 movement = cur.xy - prev.xy;
                 float movementLength = length(movement);
                 if (prev.z > 0.0 && prev.w > 0.0 && timeSince >= 0.0
                     && iTimeCursorChange > iTimeFocus && movementLength > minD && movementLength < maxD) {
-                    float gazePulse = easeSmoothStep(timeSince / 0.080)
-                        * (1.0 - easeSmoothStep((timeSince - CURSOR_TRAVEL_TIME) / 0.260));
+                    float gazePulse = (smallHorizontalMove || smallVerticalMove ? 1.0 : easeSmoothStep(timeSince / 0.080))
+                        * (1.0 - easeSmoothStep((timeSince - CURSOR_TRAVEL_TIME) / 1.200));
                     gaze = movement / movementLength * (0.20 * eyeRadius * gazePulse);
+                    vec2 eyeMargin = baseHalfSize - vec2(eyeRadius);
+                    vec2 eyeShift = clamp(movement / movementLength * (0.08 * eyeRadius),
+                        -eyeMargin - eyeAnchor, eyeMargin - eyeAnchor);
+                    eyeCoord -= eyeShift * gazePulse;
                 }
 
                 float aperture = getEyeAperture(max(iTime, 0.0));
