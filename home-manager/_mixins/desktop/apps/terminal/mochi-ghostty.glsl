@@ -244,9 +244,13 @@ float antialiasNoBlur(float d) {
     return 1.0 - smoothstep(-w, w, d);
 }
 
+float boxDistance(vec2 d) {
+    return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+
 float sdfRect(vec2 p, vec2 c, vec2 h) {
     vec2 d = abs(p - c) - h;
-    return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+    return boxDistance(d);
 }
 
 float cursorCornerRadius(vec2 halfSize) {
@@ -256,7 +260,7 @@ float cursorCornerRadius(vec2 halfSize) {
 float sdfCursor(vec2 point, vec2 halfSize) {
     float radius = point.y > 0.0 ? cursorCornerRadius(halfSize) : 0.0;
     vec2 distance = abs(point) - halfSize + radius;
-    return length(max(distance, 0.0)) + min(max(distance.x, distance.y), 0.0) - radius;
+    return boxDistance(distance) - radius;
 }
 
 float sdfCursorCape(vec2 point, vec2 halfSize, float cape, float settle) {
