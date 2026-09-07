@@ -30,9 +30,6 @@ const float TAIL_CATCHUP_TIME = 0.5;
 // Width of the tail fade in path coordinates, where the full path spans 0 to 1.
 const float TAIL_FADE_DURATION = 0.15;
 
-// Extend the rendering time limit. A fully caught-up tail still has no visible length.
-const float LEG_PERSISTENCE = 0.25;
-
 // Timings are in seconds. Landing scale changes are fractions of cursor size.
 const float CURSOR_TRAVEL_TIME = 0.140;
 #ifndef MOCHI_KEY_REPEAT_RATE
@@ -503,7 +500,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     }
     // Let the trail grow behind the moving cursor before its tail catches up.
     float trailTime = timeSince - (jump ? landingStart : 0.0);
-    bool visible = trailTime < (TAIL_CATCHUP_TIME + LEG_PERSISTENCE);
+    bool visible = trailTime < TAIL_CATCHUP_TIME;
 
     if (TRAIL_ENABLED > 0.5 && cursorVisible && valid && visible
         && iTimeCursorChange > iTimeFocus) {
