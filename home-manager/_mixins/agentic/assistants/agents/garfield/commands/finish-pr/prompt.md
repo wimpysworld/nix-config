@@ -16,9 +16,9 @@ Do not merge or edit the PR, change other tracker fields, add or rewrite remotes
 2. Use a local branch tip only to disambiguate candidates whose `headRefOid` equals it. Continue only with one candidate. Read it directly and require `state = MERGED`, `mergedAt`, the exact `headRefName`, a full `headRefOid`, and resolved base repository, head repository, `createdAt`, `mergedAt`, and base ref. Stop before all writes when proof is incomplete.
 3. Record the PR number for reads and the full head SHA for every later check. Resolve the base repository's current default branch with `gh repo view`.
 4. Inspect all fetch and push URLs for every local remote. Canonicalise only SSH or HTTPS syntax and terminal `.git`, then require one unambiguous fetch remote for the exact base repository.
-5. Resolve `sshUrl` with `gh repo view <head-owner/repository> --json sshUrl`. Use that authenticated URL for all head-ref checks and deletion, including private forks. Do not require a matching local remote.
-6. Fetch only the exact base default branch into its remote-tracking ref and record its commit. A missing or ambiguous base remote blocks dependent local work. A missing verified head SSH URL blocks remote deletion, but neither condition blocks tracker work.
-7. Read `refs/heads/<branch>` with `git ls-remote --heads <head-ssh-url>`. Absence means automatic remote deletion succeeded. One result must equal the PR head SHA. Multiple results, a different SHA, or uncertainty blocks destructive clean-up.
+5. Resolve the HTTPS clone URL with `gh repo view <head-owner/repository> --json url`. Use that URL for all head-ref checks and deletion, including private forks, so that Git authenticates through the `gh` credential helper and needs no SSH key. Do not require a matching local remote.
+6. Fetch only the exact base default branch into its remote-tracking ref and record its commit. A missing or ambiguous base remote blocks dependent local work. A missing verified head HTTPS URL blocks remote deletion, but neither condition blocks tracker work.
+7. Read `refs/heads/<branch>` with `git ls-remote --heads <head-https-url>`. Absence means automatic remote deletion succeeded. One result must equal the PR head SHA. Multiple results, a different SHA, or uncertainty blocks destructive clean-up.
 
 ### Update the tracker
 
@@ -48,13 +48,13 @@ Do not merge or edit the PR, change other tracker fields, add or rewrite remotes
 
 ### Delete the remote branch last
 
-Run remote deletion only after all applicable local checks and clean-up finish. Re-read the exact head ref through the recorded head SSH URL. Treat absence as success; otherwise require the PR head SHA and run:
+Run remote deletion only after all applicable local checks and clean-up finish. Re-read the exact head ref through the recorded head HTTPS URL. Treat absence as success; otherwise require the PR head SHA and run:
 
 ```sh
-git push --force-with-lease=refs/heads/<branch>:<full-head-sha> <exact-head-repository-ssh-url> :refs/heads/<branch>
+git push --force-with-lease=refs/heads/<branch>:<full-head-sha> <exact-head-repository-https-url> :refs/heads/<branch>
 ```
 
-Do not use an unleased delete, wildcard, API deletion, named local remote, or base URL for a fork. Do not retry a lease failure. Confirm absence with one final `git ls-remote --heads` against the same URL.
+Do not use an unleased delete, wildcard, API deletion, SSH URL, named local remote, or base URL for a fork. Do not retry a lease failure. Confirm absence with one final `git ls-remote --heads` against the same URL.
 
 ### Retry and output
 
