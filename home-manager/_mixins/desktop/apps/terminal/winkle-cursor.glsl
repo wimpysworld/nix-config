@@ -32,6 +32,10 @@ const float CURSOR_SMALL_MOVE_TIME = 0.080;
 const float CURSOR_TRAVEL_TIME = 0.140;
 const float CURSOR_LANDING_TIME = 0.090;
 const vec2 CURSOR_LANDING_SCALE = vec2(0.25, -0.40);
+const float CURSOR_TOP_RADIUS = 0.23;
+const vec2 CURSOR_CAPE = vec2(0.35, 0.55);
+const float CURSOR_CAPE_HOLD_TIME = 0.140;
+const float CURSOR_CAPE_RETURN_TIME = 0.400;
 const int LANDING_PARTICLE_COUNT = 18;
 const float LANDING_PARTICLE_TIME = 1.000;
 const float LANDING_FULL_DISTANCE = 40.0;
@@ -288,6 +292,31 @@ float sdfRect(vec2 p, vec2 c, vec2 h) {
     return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
 }
 
+float sdfCursor(vec2 point, vec2 halfSize) {
+    float radius = point.y > 0.0 ? 2.0 * CURSOR_TOP_RADIUS * min(halfSize.x, halfSize.y) : 0.0;
+    vec2 distance = abs(point) - halfSize + radius;
+    return length(max(distance, 0.0)) + min(max(distance.x, distance.y), 0.0) - radius;
+}
+
+float sdfCursorCape(vec2 point, vec2 halfSize, float cape) {
+    vec2 size = 2.0 * halfSize;
+    point.x *= -sign(cape);
+    // Overlap the lower rear edge, then narrow to one point outside the body.
+    vec2 top = size * vec2(0.40, -0.20);
+    vec2 bottom = size * vec2(0.40, -0.50);
+    vec2 tip = vec2(halfSize.x + abs(cape),
+        -halfSize.y - 0.05 * abs(cape) * size.y / max(size.x, 1e-6));
+    vec2 upperEdge = tip - top;
+    vec2 lowerEdge = bottom - tip;
+    vec2 upperOffset = point - top;
+    vec2 lowerOffset = point - tip;
+    float upperDistance = (upperEdge.x * upperOffset.y - upperEdge.y * upperOffset.x)
+        / max(length(upperEdge), 1e-6);
+    float lowerDistance = (lowerEdge.x * lowerOffset.y - lowerEdge.y * lowerOffset.x)
+        / max(length(lowerEdge), 1e-6);
+    return max(top.x - point.x, max(upperDistance, lowerDistance));
+}
+
 // Return the tapered capsule distance and the closest position along it.
 // Cursor-scaled coordinates give all segments the same elliptical aspect.
 vec2 sdfTrailSegment(vec2 p, vec2 a, vec2 b, float ra, float rb) {
@@ -484,7 +513,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 renderedScale = vec2(1.0);
 
     if (smallSlide && timeSince < CURSOR_SMALL_MOVE_TIME) {
-        float slideProgress = easeOutCubic(timeSince / CURSOR_SMALL_MOVE_TIME);
+        float slideProgress = easeLinear(timeSince / CURSOR_SMALL_MOVE_TIME);
         renderedCenter = mix(cP, cC, slideProgress);
         renderedHalfSize = mix(hP, hC, slideProgress);
     } else if (jump && timeSince < jumpEnd) {
@@ -498,7 +527,27 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         renderedCenter.y += renderedHalfSize.y - baseHalfSize.y;
     }
 
+    vec2 baseHalfSize = renderedHalfSize / renderedScale;
+    vec2 cursorLocal = (vu - renderedCenter) / renderedScale;
     float sdfCur = sdfRect(vu, renderedCenter, renderedHalfSize);
+    if (cursorGeometryValid && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW) {
+        float cape = 0.0;
+        if (smallSlide || jump) {
+            vec2 movement = cur.xy - prev.xy;
+            float horizontalDirection = movement.x / max(length(movement), 1e-6);
+            if (smallSlide) {
+                float extension = 1.0 - easeSmoothStep((timeSince - CURSOR_CAPE_HOLD_TIME) / CURSOR_CAPE_RETURN_TIME);
+                cape = horizontalDirection * extension * 2.0 * baseHalfSize.x * CURSOR_CAPE.x;
+            } else {
+                float phase = clamp(timeSince / CURSOR_TRAVEL_TIME, 0.0, 1.0);
+                float motion = horizontalDirection * getSquashPulse(phase) * 2.0 * baseHalfSize.x;
+                cape = motion * CURSOR_CAPE.y * (1.0 + 0.10 * sin(2.0 * PI * phase));
+            }
+        }
+        sdfCur = sdfCursor(cursorLocal, baseHalfSize);
+        if (cape != 0.0) sdfCur = min(sdfCur, sdfCursorCape(cursorLocal, baseHalfSize, cape));
+        sdfCur *= min(renderedScale.x, renderedScale.y);
+    }
     // Let the trail grow behind the moving cursor before its tail catches up.
     float trailTime = timeSince - (jump ? landingStart : 0.0);
     bool visible = trailTime < (TAIL_CATCHUP_TIME + LEG_PERSISTENCE);
@@ -626,13 +675,12 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
         vec3 cursorColour = iCurrentCursorColor.rgb;
         if (iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW) {
-            vec2 baseHalfSize = renderedHalfSize / renderedScale;
             float eyeRadius = 0.72 * min(baseHalfSize.x, baseHalfSize.y);
             float pixel = 2.0 / iResolution.y;
             // Keep subpixel cursors plain when the pupil cannot remain clear.
             if (eyeRadius >= 2.0 * pixel) {
                 vec2 eyeAnchor = vec2(0.0, min(0.12 * baseHalfSize.y + pixel, baseHalfSize.y - eyeRadius));
-                vec2 eyeCoord = (vu - renderedCenter) / renderedScale - eyeAnchor;
+                vec2 eyeCoord = cursorLocal - eyeAnchor;
                 vec2 gaze = vec2(0.0);
                 vec2 movement = cur.xy - prev.xy;
                 float movementLength = length(movement);
