@@ -105,7 +105,7 @@ const float TRAIL_SIZE_SMOOTH = 1.0;
 // PATH BENDING: PRIMARY CURVE
 // ──────────────────────────────────────────────────────────────────────────
 
-// Base lateral offset in normalised coordinates. Random variation can increase it.
+// Base lateral offset in normalised coordinates.
 const float BEND_STRENGTH = 0.12;
 
 // Movement distance below which no bending occurs (avoids jitter on tiny moves)
@@ -118,53 +118,10 @@ const float BEND_DISTANCE_MAX = 0.30;
 // PATH BENDING: DIRECTION CONTROL
 // ──────────────────────────────────────────────────────────────────────────
 
-// Use consistent screen-space arc direction instead of random per movement
-// 0.0 = random direction per movement (uses BEND_MIRROR_RANDOM)
-// 1.0 = always same screen-space direction (creates consistent "hill" or "valley" shape)
-const float BEND_CONSISTENT_ARC = 1.0;
-
-// Which direction the arc bends when BEND_CONSISTENT_ARC = 1.0:
-// For horizontal movement: 1.0 = up (hill), -1.0 = down (valley)
-// For vertical movement:   1.0 = right, -1.0 = left
+// Screen-space arc direction, independent of movement direction.
+// For horizontal movement: 1.0 = up, -1.0 = down.
+// For vertical movement: 1.0 = right, -1.0 = left.
 const float BEND_ARC_DIRECTION = 1.0;
-
-// Randomly flip bend direction per movement (only used when BEND_CONSISTENT_ARC = 0.0)
-// 0.0 = never flip, 1.0 = 50/50 random flip
-const float BEND_MIRROR_RANDOM = 1.0;
-
-// ──────────────────────────────────────────────────────────────────────────
-// PATH BENDING: VARIATION
-// ──────────────────────────────────────────────────────────────────────────
-
-// Vary bend strength per movement.
-// 0.0 = consistent strength, 1.0 = high variation (0.5x to 1.5x base strength)
-const float BEND_STRENGTH_RANDOM = 0.0;
-
-// ──────────────────────────────────────────────────────────────────────────
-// PATH BENDING: SECONDARY CURVE
-// ──────────────────────────────────────────────────────────────────────────
-
-// Add a second bend curve layered on top of primary (creates S-curves, waves)
-const float BEND2_ENABLED = 0.0;  // 1.0 = enable, 0.0 = disable
-
-// Strength of secondary curve (typically 0.3-0.7 of primary BEND_STRENGTH)
-const float BEND2_STRENGTH = 0.06;
-
-// Frequency multiplier for secondary curve
-// 2.0 = double wave (S-curve), 3.0 = triple wave, etc.
-const float BEND2_FREQUENCY = 2.0;
-
-// Randomise the secondary curve phase per movement.
-// 0.0 = fixed phase, 1.0 = random per movement
-const float BEND2_PHASE_RANDOM = 1.0;
-
-// ──────────────────────────────────────────────────────────────────────────
-// PATH BENDING: NOISE
-// ──────────────────────────────────────────────────────────────────────────
-
-// Add subtle per-point noise along the path (breaks up perfect curves)
-// 0.0 = smooth curve, higher = more jitter
-const float BEND_RANDOMNESS = 0.0;
 
 // ──────────────────────────────────────────────────────────────────────────
 // COLOUR SETTINGS
@@ -421,65 +378,15 @@ float getMovementId(vec2 prev, vec2 curr, float len) {
     return hash(vec3(t, p, m));
 }
 
-// Return the direction sign and strength multiplier for this movement.
-vec2 getBendRandomization(float id) {
-    float flip = 1.0, mult = 1.0;
-
-    if (BEND_CONSISTENT_ARC > 0.5) {
-        flip = BEND_ARC_DIRECTION;
-    } else if (BEND_MIRROR_RANDOM > 0.5) {
-        flip = hash(vec3(id, 100.0, 0.0)) > 0.5 ? 1.0 : -1.0;
-    }
-
-    if (BEND_STRENGTH_RANDOM > 0.001) {
-        mult = 1.0 + (hash(vec3(id, 100.0, 1.0)) - 0.5) * 2.0 * BEND_STRENGTH_RANDOM;
-        mult = clamp(mult, 0.5, 1.5);
-    }
-    return vec2(flip, mult);
-}
-
-float getBend2Phase(float id) {
-    if (BEND2_PHASE_RANDOM > 0.5) return hash(vec3(id, 200.0, 0.0)) * 2.0 * PI;
-    return 0.0;
-}
-
-// Apply the primary curve, optional secondary curve and noise to the straight path.
-vec2 getBentPathPosition(vec2 A, vec2 B, float t, float strength, float id) {
+// Apply a screen-space curve to the straight path.
+vec2 getBentPathPosition(vec2 A, vec2 B, float t, float strength) {
     vec2 pos = mix(A, B, t);
     if (strength < 0.001) return pos;
 
     vec2 dir = normalize(B - A + 0.0001);
-    vec2 perp = vec2(-dir.y, dir.x);
-
-    vec2 rand = getBendRandomization(id);
-    float flip = rand.x, mult = rand.y;
-
-    float offset;
-    vec2 bendDir;
-
-    if (BEND_CONSISTENT_ARC > 0.5) {
-        // Screen-space direction (consistent regardless of movement direction)
-        bool horizontal = abs(dir.x) > abs(dir.y);
-        bendDir = horizontal ? vec2(0.0, 1.0) : vec2(1.0, 0.0);
-        offset = sin(t * PI) * strength * mult * flip;
-    } else {
-        // Movement-relative perpendicular
-        bendDir = perp;
-        offset = sin(t * PI) * strength * mult;
-    }
-
-    // Secondary curve
-    if (BEND2_ENABLED > 0.5 && BEND2_STRENGTH > 0.001) {
-        float phase = getBend2Phase(id);
-        float offset2 = sin(t * PI * BEND2_FREQUENCY + phase) * BEND2_STRENGTH * mult;
-        offset2 *= sin(t * PI);  // Zero at endpoints
-        offset += offset2;
-    }
-
-    // Per-point noise
-    if (BEND_RANDOMNESS > 0.001) {
-        offset += (hash(vec3(id, t * 7.0, 300.0)) - 0.5) * 2.0 * BEND_RANDOMNESS * strength * 0.2;
-    }
+    bool horizontal = abs(dir.x) > abs(dir.y);
+    vec2 bendDir = horizontal ? vec2(0.0, 1.0) : vec2(1.0, 0.0);
+    float offset = sin(t * PI) * strength * BEND_ARC_DIRECTION;
 
     return pos + bendDir * offset;
 }
@@ -581,11 +488,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
     if (smallSlide && timeSince < CURSOR_SMALL_MOVE_TIME) {
         headProgress = easeLinear(timeSince / CURSOR_SMALL_MOVE_TIME);
-        renderedCenter = getBentPathPosition(cP, cC, headProgress, strength, id);
+        renderedCenter = getBentPathPosition(cP, cC, headProgress, strength);
         renderedHalfSize = mix(hP, hC, headProgress);
     } else if (jump && timeSince < jumpEnd) {
         headProgress = easeSmoothStep(timeSince / CURSOR_TRAVEL_TIME);
-        renderedCenter = getBentPathPosition(cP, cC, headProgress, strength, id);
+        renderedCenter = getBentPathPosition(cP, cC, headProgress, strength);
         vec2 baseHalfSize = mix(hP, hC, headProgress);
         vec2 squash = CURSOR_LANDING_SCALE * getSquashPulse((timeSince - landingStart) / CURSOR_LANDING_TIME);
         renderedScale += squash;
@@ -664,12 +571,12 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             vec2 aspect = max(hC, vec2(1e-6));
             vec2 point = vu / aspect;
             float previousT = tStart;
-            vec2 previousPos = getBentPathPosition(cP, cC, previousT, strength, id) / aspect;
+            vec2 previousPos = getBentPathPosition(cP, cC, previousT, strength) / aspect;
             float previousRadius = getTrailRadius(mix(hP, hC, previousT), aspect, previousT);
 
             for (int i = 1; i < PATH_SAMPLES; i++) {
                 float t = mix(tStart, tEnd, float(i) / float(PATH_SAMPLES - 1));
-                vec2 pathPos = getBentPathPosition(cP, cC, t, strength, id) / aspect;
+                vec2 pathPos = getBentPathPosition(cP, cC, t, strength) / aspect;
                 float radius = getTrailRadius(mix(hP, hC, t), aspect, t);
                 vec2 segment = sdfTrailSegment(point, previousPos, pathPos, previousRadius, radius);
 
