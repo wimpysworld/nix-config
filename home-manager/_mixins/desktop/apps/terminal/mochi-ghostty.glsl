@@ -175,9 +175,13 @@ float hash(vec3 p) {
     return fract((p.x + p.y) * p.z);
 }
 
+float envelope(float x, float riseStart, float riseEnd, float fallStart, float fallEnd) {
+    return smoothstep(riseStart, riseEnd, x) * (1.0 - smoothstep(fallStart, fallEnd, x));
+}
+
 float getBlinkClosure(float age, float duration) {
     float phase = age / duration;
-    return smoothstep(0.0, 0.30, phase) * (1.0 - smoothstep(0.57, 1.0, phase));
+    return envelope(phase, 0.0, 0.30, 0.57, 1.0);
 }
 
 vec3 getIdleExpressionEvent(float time, float idleReady) {
@@ -220,7 +224,7 @@ vec3 getIdleGaze(float time, float idleReady) {
         float direction = hash(vec3(slot, 730.0, 5.0)) < 0.5 ? -1.0 : 1.0;
         angle += direction * arc * smoothstep(0.30, 0.60, phase);
     }
-    float pulse = smoothstep(0.0, 0.20, phase) * (1.0 - smoothstep(0.60, 1.0, phase));
+    float pulse = envelope(phase, 0.0, 0.20, 0.60, 1.0);
     pulse *= mix(0.55, 0.85, hash(vec3(slot, 730.0, 6.0)));
     return vec3(cos(angle), sin(angle), pulse);
 }
@@ -623,8 +627,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                 float idleSince = max(iTimeCursorChange, iTimeFocus);
                 vec3 expressionEvent = getIdleExpressionEvent(time, idleSince + 10.0);
                 float expressionAge = time - expressionEvent.x;
-                float expressionWeight = smoothstep(0.0, 0.25, expressionAge)
-                    * (1.0 - smoothstep(expressionEvent.y - 0.35, expressionEvent.y, expressionAge));
+                float expressionWeight = envelope(expressionAge, 0.0, 0.25, expressionEvent.y - 0.35, expressionEvent.y);
                 float mouthOpen = 0.0;
                 float expressionClosure = 0.0;
                 float lidDrop = 0.0;
@@ -632,10 +635,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                 float startle = 0.0;
                 if (expressionWeight > 0.0) {
                     if (expressionEvent.z < 0.5) {
-                        mouthOpen = smoothstep(0.35, 1.0, expressionAge)
-                            * (1.0 - smoothstep(1.75, 2.25, expressionAge));
-                        expressionClosure = smoothstep(0.40, 1.0, expressionAge)
-                            * (1.0 - smoothstep(1.90, 2.70, expressionAge));
+                        mouthOpen = envelope(expressionAge, 0.35, 1.0, 1.75, 2.25);
+                        expressionClosure = envelope(expressionAge, 0.40, 1.0, 1.90, 2.70);
                         expressionGaze = 0.35 * smoothstep(0.0, 0.35, expressionAge)
                             * (1.0 - smoothstep(0.45, 0.95, expressionAge));
                     } else {
@@ -643,8 +644,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                             * (1.0 - smoothstep(2.50, 2.60, expressionAge));
                         expressionGaze = -0.70 * smoothstep(0.25, 1.90, expressionAge)
                             * (1.0 - smoothstep(2.50, 2.60, expressionAge));
-                        startle = smoothstep(2.50, 2.60, expressionAge)
-                            * (1.0 - smoothstep(3.80, 4.40, expressionAge));
+                        startle = envelope(expressionAge, 2.50, 2.60, 3.80, 4.40);
                         expressionClosure = max(getBlinkClosure(expressionAge - 3.05, 0.220),
                             getBlinkClosure(expressionAge - 3.36, 0.220));
                     }
@@ -674,8 +674,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                 vec2 landingWindow = jump ? iTimeCursorChange + vec2(landingStart - 0.060, jumpEnd + 0.160) : vec2(-100.0);
                 float aperture = getEyeAperture(time, expressionEvent, landingWindow) * (1.0 - expressionClosure);
                 if (jump) {
-                    float landingAperture = 1.0 - smoothstep(landingStart - 0.060, landingStart, timeSince)
-                        * (1.0 - smoothstep(jumpEnd + 0.040, jumpEnd + 0.160, timeSince));
+                    float landingAperture = 1.0 - envelope(timeSince, landingStart - 0.060, landingStart,
+                        jumpEnd + 0.040, jumpEnd + 0.160);
                     aperture = min(aperture, landingAperture);
                 }
                 float distanceScale = min(renderedScale.x, renderedScale.y);
