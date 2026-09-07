@@ -4,7 +4,7 @@
  * Derived from Wisp at:
  * https://github.com/hced/ghostty-cursor-trails/blob/78f597cf66427bc382077e5e33f26981a86bb207/wisp-cursor.glsl
  *
- * Winkle masks the trail inside Ghostty's native cursor rectangle and adds a
+ * Winkle masks the trail inside its animated cursor rectangle and adds a
  * smooth WezTerm-style fade to its synthetic cursor.
  *
  * MIT License
@@ -58,6 +58,11 @@ const float TAIL_FADE_DURATION = 0.15;
 
 // Extra time trail remains faintly visible after catchup completes
 const float LEG_PERSISTENCE = 0.25;
+
+// Timings are in seconds. Landing scale changes are fractions of cursor size.
+const float CURSOR_TRAVEL_TIME = 0.140;
+const float CURSOR_LANDING_TIME = 0.090;
+const vec2 CURSOR_LANDING_SCALE = vec2(0.25, -0.40);
 
 // ──────────────────────────────────────────────────────────────────────────
 // TAIL CATCHUP EASING
@@ -255,6 +260,10 @@ float getCursorAlpha(float elapsed) {
         : easeSmoothStep(t);
 }
 
+float getSquashPulse(float progress) {
+    return easeSmoothStep(1.0 - abs(2.0 * clamp(progress, 0.0, 1.0) - 1.0));
+}
+
 float applyTailEasing(float t) {
     if (TAIL_EASING_PRESET < 0.5) return easeLinear(t);
     if (TAIL_EASING_PRESET < 1.5) return easeInQuad(t);
@@ -439,7 +448,6 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 cP = prev.xy - (prev.zw * off);
     vec2 hP = prev.zw * 0.5;
 
-    float sdfCur = sdfRect(vu, cC, hC);
     vec2 mv = cC - cP;
     float mL = length(mv);
     float minD = cur.w * MIN_MOVE_DISTANCE;
@@ -448,17 +456,41 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec4 outC = fragColor;
     float timeSince = iTime - iTimeCursorChange;
 
-    bool valid = (mL > minD) && (mL < maxD);
-    bool visible = timeSince < (TAIL_CATCHUP_TIME + LEG_PERSISTENCE);
+    bool cursorGeometryValid = cur.z > 0.0 && cur.w > 0.0;
+    bool cursorVisible = iFocus > 0 && iCursorVisible > 0 && cursorGeometryValid;
+    bool valid = cursorGeometryValid && prev.z > 0.0 && prev.w > 0.0
+        && (mL > minD) && (mL < maxD) && timeSince >= 0.0;
+    bool jump = cursorVisible && valid && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW
+        && iTimeCursorChange > iTimeFocus;
+    float landingStart = CURSOR_TRAVEL_TIME;
+    float jumpEnd = landingStart + CURSOR_LANDING_TIME;
+    float strength = valid ? getBendStrength(mL) : 0.0;
+    float id = valid ? getMovementId(cP, cC, mL) : 0.0;
+    float headProgress = 1.0;
+    vec2 renderedCenter = cC;
+    vec2 renderedHalfSize = hC;
 
-    if (TRAIL_ENABLED > 0.5 && valid && visible) {
-        float strength = getBendStrength(mL);
-        float id = getMovementId(cP, cC, mL);
+    if (jump && timeSince < jumpEnd) {
+        headProgress = easeSmoothStep(timeSince / CURSOR_TRAVEL_TIME);
+        renderedCenter = getBentPathPosition(cP, cC, headProgress, strength, id);
+        vec2 baseHalfSize = mix(hP, hC, headProgress);
+        vec2 squash = CURSOR_LANDING_SCALE * getSquashPulse((timeSince - landingStart) / CURSOR_LANDING_TIME);
+        renderedHalfSize = baseHalfSize * (vec2(1.0) + squash);
+        // Keep the lower edge fixed while the cursor becomes shorter.
+        renderedCenter.y += renderedHalfSize.y - baseHalfSize.y;
+    }
 
-        float progress = clamp(timeSince / TAIL_CATCHUP_TIME, 0.0, 1.0);
+    float sdfCur = sdfRect(vu, renderedCenter, renderedHalfSize);
+    // Let the trail grow behind the moving cursor before its tail catches up.
+    float trailTime = timeSince - (jump ? landingStart : 0.0);
+    bool visible = trailTime < (TAIL_CATCHUP_TIME + LEG_PERSISTENCE);
+
+    if (TRAIL_ENABLED > 0.5 && cursorVisible && valid && visible
+        && iTimeCursorChange > iTimeFocus) {
+        float progress = clamp(trailTime / TAIL_CATCHUP_TIME, 0.0, 1.0);
         progress = applyTailEasing(progress);
 
-        float tStart = clamp(progress, 0.0, 1.0), tEnd = 1.0;
+        float tStart = clamp(progress, 0.0, headProgress), tEnd = headProgress;
 
         if (tStart < tEnd) {
             float minDist = 1e6, bestT = tStart;
@@ -521,11 +553,10 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         }
     }
 
-    bool cursorGeometryValid = cur.z > 0.0 && cur.w > 0.0;
-    if (iFocus > 0 && iCursorVisible > 0 && cursorGeometryValid) {
+    if (cursorVisible) {
         float cursorAlpha = 1.0;
         if (iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW) {
-            float resetTime = max(iTimeCursorChange, iTimeFocus);
+            float resetTime = max(iTimeCursorChange + (jump ? jumpEnd : 0.0), iTimeFocus);
             cursorAlpha = getCursorAlpha(max(iTime - resetTime, 0.0));
         }
 
