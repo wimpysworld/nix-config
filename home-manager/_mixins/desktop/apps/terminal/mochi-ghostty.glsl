@@ -59,30 +59,6 @@ const vec2 LANDING_SHAKE_PIXELS = vec2(1.25, -5.50);
 const float LANDING_SHAKE_DEGREES = 0.15;
 
 // ──────────────────────────────────────────────────────────────────────────
-// TAIL CATCHUP EASING
-// ──────────────────────────────────────────────────────────────────────────
-
-// Select the speed profile for tail catch-up in applyTailEasing.
-//
-// Available presets:
-//   0 = Linear           (constant speed)
-//   1 = EaseInQuad       (slow start, fast end)
-//   2 = EaseOutQuad      (fast start, slow end)
-//   3 = EaseInOutQuad    (slow-fast-slow)
-//   4 = EaseInCubic      (stronger acceleration)
-//   5 = EaseOutCubic     (smoother deceleration)
-//   6 = EaseInOutCubic   (very smooth S-curve)
-//   7 = EaseInQuart      (even slower start)
-//   8 = EaseOutQuart     (very gentle finish, selected below)
-//   9 = EaseInOutQuart   (extremely smooth)
-//  10 = Elastic          (bouncy overshoot - very noticeable)
-//  11 = Bounce           (ballistic bounce - very noticeable)
-//  12 = Back             (overshoot then settle)
-//  13 = SmoothStep       (gentle S-curve, softer than Quad)
-//  14 = Exponential      (fast catchup after delay)
-float TAIL_EASING_PRESET = 8.0;
-
-// ──────────────────────────────────────────────────────────────────────────
 // TRAIL SIZE CONTROL
 // ──────────────────────────────────────────────────────────────────────────
 
@@ -174,20 +150,9 @@ const int PATH_SAMPLES = 128;
 const float PI = 3.14159265359;
 
 float easeLinear(float t) { return clamp(t, 0.0, 1.0); }
-float easeInQuad(float t) { t = clamp(t, 0.0, 1.0); return t * t; }
 float easeOutQuad(float t) { t = clamp(t, 0.0, 1.0); return t * (2.0 - t); }
-float easeInOutQuad(float t) { t = clamp(t, 0.0, 1.0); return t < 0.5 ? 2.0 * t * t : -1.0 + (4.0 - 2.0 * t) * t; }
-float easeInCubic(float t) { t = clamp(t, 0.0, 1.0); return t * t * t; }
-float easeOutCubic(float t) { t = clamp(t, 0.0, 1.0); float mt = 1.0 - t; return 1.0 - mt * mt * mt; }
-float easeInOutCubic(float t) { t = clamp(t, 0.0, 1.0); return t < 0.5 ? 4.0 * t * t * t : 1.0 - pow(-2.0 * t + 2.0, 3.0) * 0.5; }
-float easeInQuart(float t) { t = clamp(t, 0.0, 1.0); return t * t * t * t; }
 float easeOutQuart(float t) { t = clamp(t, 0.0, 1.0); float mt = 1.0 - t; return 1.0 - mt * mt * mt * mt; }
-float easeInOutQuart(float t) { t = clamp(t, 0.0, 1.0); return t < 0.5 ? 8.0 * t * t * t * t : 1.0 - pow(-2.0 * t + 2.0, 4.0) * 0.5; }
-float easeElastic(float t) { t = clamp(t, 0.0, 1.0); if (t < 0.001 || t > 0.999) return t; float p = 0.3; return pow(2.0, -10.0 * t) * sin((t - p * 0.25) * (2.0 * PI) / p) + 1.0; }
-float easeBounce(float t) { t = clamp(t, 0.0, 1.0); float n1 = 7.5625, d1 = 2.75; if (t < 1.0 / d1) return n1 * t * t; else if (t < 2.0 / d1) { t -= 1.5 / d1; return n1 * t * t + 0.75; } else if (t < 2.5 / d1) { t -= 2.25 / d1; return n1 * t * t + 0.9375; } else { t -= 2.625 / d1; return n1 * t * t + 0.984375; } }
-float easeBack(float t) { t = clamp(t, 0.0, 1.0); float c1 = 1.70158, c3 = c1 + 1.0; return c3 * t * t * t - c1 * t * t; }
 float easeSmoothStep(float t) { t = clamp(t, 0.0, 1.0); return t * t * (3.0 - 2.0 * t); }
-float easeExponential(float t) { t = clamp(t, 0.0, 1.0); if (t < 0.001) return 0.0; return pow(2.0, 10.0 * (t - 1.0)); }
 
 float getCursorAlpha(float elapsed) {
     float phase = mod(elapsed, 2.0 * CURSOR_FADE_HALF_PERIOD);
@@ -205,24 +170,6 @@ float getLandingShakePulse(float progress) {
     if (progress < 0.15) return easeSmoothStep(progress / 0.15);
     if (progress < 0.60) return mix(1.0, -0.20, easeSmoothStep((progress - 0.15) / 0.45));
     return mix(-0.20, 0.0, easeSmoothStep((progress - 0.60) / 0.40));
-}
-
-float applyTailEasing(float t) {
-    if (TAIL_EASING_PRESET < 0.5) return easeLinear(t);
-    if (TAIL_EASING_PRESET < 1.5) return easeInQuad(t);
-    if (TAIL_EASING_PRESET < 2.5) return easeOutQuad(t);
-    if (TAIL_EASING_PRESET < 3.5) return easeInOutQuad(t);
-    if (TAIL_EASING_PRESET < 4.5) return easeInCubic(t);
-    if (TAIL_EASING_PRESET < 5.5) return easeOutCubic(t);
-    if (TAIL_EASING_PRESET < 6.5) return easeInOutCubic(t);
-    if (TAIL_EASING_PRESET < 7.5) return easeInQuart(t);
-    if (TAIL_EASING_PRESET < 8.5) return easeOutQuart(t);
-    if (TAIL_EASING_PRESET < 9.5) return easeInOutQuart(t);
-    if (TAIL_EASING_PRESET < 10.5) return easeElastic(t);
-    if (TAIL_EASING_PRESET < 11.5) return easeBounce(t);
-    if (TAIL_EASING_PRESET < 12.5) return easeBack(t);
-    if (TAIL_EASING_PRESET < 13.5) return easeSmoothStep(t);
-    return easeExponential(t);
 }
 
 // ============================================================================
@@ -561,7 +508,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     if (TRAIL_ENABLED > 0.5 && cursorVisible && valid && visible
         && iTimeCursorChange > iTimeFocus) {
         float progress = clamp(trailTime / TAIL_CATCHUP_TIME, 0.0, 1.0);
-        progress = applyTailEasing(progress);
+        progress = easeOutQuart(progress);
 
         float tStart = clamp(progress, 0.0, headProgress), tEnd = headProgress;
 
