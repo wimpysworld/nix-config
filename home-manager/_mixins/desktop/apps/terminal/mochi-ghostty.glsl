@@ -194,6 +194,7 @@ const float TRAIL_BASE_ALPHA = 0.80;
 
 // Each half of the cursor fade lasts this many seconds.
 const float CURSOR_FADE_HALF_PERIOD = 0.75;
+const float CURSOR_FADE_HOLD_TIME = 0.500;
 
 // ──────────────────────────────────────────────────────────────────────────
 // RENDERING SETTINGS
@@ -282,13 +283,33 @@ float hash(vec3 p) {
 }
 
 float getEyeAperture(float time) {
-    // Each blink stays inside its slot, independent of cursor movement and fading.
-    float slot = floor(time / 3.5);
-    float start = 0.5 + 1.5 * hash(vec3(slot, 720.0, 0.0));
+    // Blink starts are 2 to 10 seconds apart, independent of cursor movement and fading.
+    float slot = floor(time / 6.0);
+    float start = 0.5 + 4.0 * hash(vec3(slot, 720.0, 0.0));
     float duration = mix(0.280, 0.360, hash(vec3(slot, 720.0, 1.0)));
-    float phase = (mod(time, 3.5) - start) / duration;
+    float phase = (mod(time, 6.0) - start) / duration;
     return 1.0 - smoothstep(0.0, 0.30, phase)
         * (1.0 - smoothstep(0.57, 1.0, phase));
+}
+
+vec3 getIdleGaze(float time, float idleReady) {
+    // Jitter within fixed slots keeps event starts 5 to 12 seconds apart.
+    float slot = floor(time / 8.5);
+    float start = slot * 8.5 + 0.5 + 3.5 * hash(vec3(slot, 730.0, 0.0));
+    float duration = mix(1.4, 2.2, hash(vec3(slot, 730.0, 1.0)));
+    // Skip events that began before idle readiness instead of entering them partway through.
+    if (start < idleReady || time < start || time >= start + duration) return vec3(0.0);
+
+    float phase = (time - start) / duration;
+    float angle = 2.0 * PI * hash(vec3(slot, 730.0, 2.0));
+    if (hash(vec3(slot, 730.0, 3.0)) < 0.5) {
+        float arc = mix(0.25, 0.45, hash(vec3(slot, 730.0, 4.0))) * PI;
+        float direction = hash(vec3(slot, 730.0, 5.0)) < 0.5 ? -1.0 : 1.0;
+        angle += direction * arc * smoothstep(0.30, 0.60, phase);
+    }
+    float pulse = smoothstep(0.0, 0.20, phase) * (1.0 - smoothstep(0.60, 1.0, phase));
+    pulse *= mix(0.55, 0.85, hash(vec3(slot, 730.0, 6.0)));
+    return vec3(cos(angle), sin(angle), pulse);
 }
 
 vec2 normalizeCoord(vec2 v, float isPosition) {
@@ -693,7 +714,9 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     if (cursorVisible) {
         float cursorAlpha = 1.0;
         if (iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW) {
-            float resetTime = max(iTimeCursorChange + (jump ? jumpEnd : 0.0), iTimeFocus);
+            float movementEnd = jump ? jumpEnd : (smallSlide ? CURSOR_SMALL_MOVE_TIME : 0.0);
+            float fadeDelay = movementEnd + ((smallSlide || jump) ? CURSOR_FADE_HOLD_TIME : 0.0);
+            float resetTime = max(iTimeCursorChange + fadeDelay, iTimeFocus);
             cursorAlpha = getCursorAlpha(max(iTime - resetTime, 0.0));
         }
 
@@ -705,19 +728,22 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             if (eyeRadius >= 2.0 * pixel) {
                 vec2 eyeAnchor = vec2(0.0, min(0.12 * baseHalfSize.y + pixel, baseHalfSize.y - eyeRadius));
                 vec2 eyeCoord = cursorLocal - eyeAnchor;
-                vec2 gaze = vec2(0.0);
+                vec3 idleGaze = getIdleGaze(max(iTime, 0.0), max(iTimeCursorChange, iTimeFocus) + 2.0);
+                vec2 gazeDirection = idleGaze.xy;
+                float gazePulse = idleGaze.z;
                 vec2 movement = cur.xy - prev.xy;
                 float movementLength = length(movement);
-                if (prev.z > 0.0 && prev.w > 0.0 && timeSince >= 0.0
+                if (prev.z > 0.0 && prev.w > 0.0 && timeSince >= 0.0 && timeSince < 2.0
                     && iTimeCursorChange > iTimeFocus && movementLength > minD && movementLength < maxD) {
-                    float gazePulse = (smallHorizontalMove || smallVerticalMove ? 1.0 : easeSmoothStep(timeSince / 0.080))
+                    gazePulse = (smallHorizontalMove || smallVerticalMove ? 1.0 : easeSmoothStep(timeSince / 0.080))
                         * (1.0 - easeSmoothStep((timeSince - CURSOR_TRAVEL_TIME) / 1.200));
-                    gaze = movement / movementLength * (0.20 * eyeRadius * gazePulse);
-                    vec2 eyeMargin = baseHalfSize - vec2(eyeRadius);
-                    vec2 eyeShift = clamp(movement / movementLength * (0.08 * eyeRadius),
-                        -eyeMargin - eyeAnchor, eyeMargin - eyeAnchor);
-                    eyeCoord -= eyeShift * gazePulse;
+                    gazeDirection = movement / movementLength;
                 }
+                vec2 gaze = gazeDirection * (0.20 * eyeRadius * gazePulse);
+                vec2 eyeMargin = baseHalfSize - vec2(eyeRadius);
+                vec2 eyeShift = clamp(gazeDirection * (0.08 * eyeRadius),
+                    -eyeMargin - eyeAnchor, eyeMargin - eyeAnchor);
+                eyeCoord -= eyeShift * gazePulse;
 
                 float aperture = getEyeAperture(max(iTime, 0.0));
                 if (jump) {
