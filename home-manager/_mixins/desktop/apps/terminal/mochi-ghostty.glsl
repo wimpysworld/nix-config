@@ -13,25 +13,24 @@ whole terminal.
 // MASTER TOGGLES
 // ──────────────────────────────────────────────────────────────────────────
 
-// Enable/disable entire trail effect
+// Toggle the rainbow trail without changing the cursor or landing effects.
 const float TRAIL_ENABLED = 1.0;  // 1.0 = visible, 0.0 = hidden
 
-// Enable/disable path bending (curved trajectories)
+// Toggle curved paths for the cursor and trail.
 const float BEND_ENABLED = 1.0;   // 1.0 = curved, 0.0 = straight lines
 
 // ──────────────────────────────────────────────────────────────────────────
 // ANIMATION TIMING
 // ──────────────────────────────────────────────────────────────────────────
 
-// Time for trail tail to fully catch up to cursor (seconds)
-// Lower = snappier, higher = more visible easing
-// Recommended: 0.3-0.6 for visible easing effects
+// Tail catch-up time in seconds, measured from landing for jumps.
+// Shorter times make the trail disappear faster.
 const float TAIL_CATCHUP_TIME = 0.5;
 
-// Duration of soft fade zone at trail tail (where alpha transitions to 0)
+// Width of the tail fade in path coordinates, where the full path spans 0 to 1.
 const float TAIL_FADE_DURATION = 0.15;
 
-// Extra time trail remains faintly visible after catchup completes
+// Extend the rendering time limit. A fully caught-up tail still has no visible length.
 const float LEG_PERSISTENCE = 0.25;
 
 // Timings are in seconds. Landing scale changes are fractions of cursor size.
@@ -63,19 +62,18 @@ const float LANDING_SHAKE_DEGREES = 0.15;
 // TAIL CATCHUP EASING
 // ──────────────────────────────────────────────────────────────────────────
 
-// Controls the speed profile of tail catchup animation.
-// Must be float (not const) for runtime branching to work.
+// Select the speed profile for tail catch-up in applyTailEasing.
 //
 // Available presets:
 //   0 = Linear           (constant speed)
 //   1 = EaseInQuad       (slow start, fast end)
 //   2 = EaseOutQuad      (fast start, slow end)
-//   3 = EaseInOutQuad    (slow-fast-slow) ← DEFAULT, smooth & natural
+//   3 = EaseInOutQuad    (slow-fast-slow)
 //   4 = EaseInCubic      (stronger acceleration)
 //   5 = EaseOutCubic     (smoother deceleration)
 //   6 = EaseInOutCubic   (very smooth S-curve)
 //   7 = EaseInQuart      (even slower start)
-//   8 = EaseOutQuart     (very gentle finish)
+//   8 = EaseOutQuart     (very gentle finish, selected below)
 //   9 = EaseInOutQuart   (extremely smooth)
 //  10 = Elastic          (bouncy overshoot - very noticeable)
 //  11 = Bounce           (ballistic bounce - very noticeable)
@@ -88,10 +86,9 @@ float TAIL_EASING_PRESET = 8.0;
 // TRAIL SIZE CONTROL
 // ──────────────────────────────────────────────────────────────────────────
 
-// Size multipliers relative to actual cursor size (1.0 = same as cursor)
-// Interpolates smoothly between these keyframes along the path
+// Scale relative to the interpolated cursor size, using fixed positions on the full path.
 
-// Size at trail tail (t = 0.0, where animation starts)
+// Size at the previous cursor position (t = 0.0).
 const float TRAIL_SIZE_START = 0.0;
 
 // Size at path middle (t = 0.5)
@@ -108,8 +105,7 @@ const float TRAIL_SIZE_SMOOTH = 1.0;
 // PATH BENDING: PRIMARY CURVE
 // ──────────────────────────────────────────────────────────────────────────
 
-// Maximum lateral offset for the curved path (normalized units)
-// Higher = more pronounced curve
+// Base lateral offset in normalised coordinates. Random variation can increase it.
 const float BEND_STRENGTH = 0.12;
 
 // Movement distance below which no bending occurs (avoids jitter on tiny moves)
@@ -140,7 +136,7 @@ const float BEND_MIRROR_RANDOM = 1.0;
 // PATH BENDING: VARIATION
 // ──────────────────────────────────────────────────────────────────────────
 
-// Vary bend strength randomly per movement (adds organic feel)
+// Vary bend strength per movement.
 // 0.0 = consistent strength, 1.0 = high variation (0.5x to 1.5x base strength)
 const float BEND_STRENGTH_RANDOM = 0.0;
 
@@ -158,7 +154,7 @@ const float BEND2_STRENGTH = 0.06;
 // 2.0 = double wave (S-curve), 3.0 = triple wave, etc.
 const float BEND2_FREQUENCY = 2.0;
 
-// Randomize secondary curve phase per movement (adds variety)
+// Randomise the secondary curve phase per movement.
 // 0.0 = fixed phase, 1.0 = random per movement
 const float BEND2_PHASE_RANDOM = 1.0;
 
@@ -201,11 +197,10 @@ const float CURSOR_FADE_HOLD_TIME = 0.500;
 // RENDERING SETTINGS
 // ──────────────────────────────────────────────────────────────────────────
 
-// Maximum cursor movement distance (in cursor-width units) to consider valid
-// Movements larger than this won't trigger trail rendering
+// Maximum valid movement in cursor-height units, excluding the threshold itself.
 const float MAX_VALID_MOVE_DISTANCE = 100.0;
 
-// Minimum movement distance to trigger trail rendering (filters out jitter)
+// Minimum movement in cursor-height units, to filter out jitter.
 const float MIN_MOVE_DISTANCE = 0.01;
 
 // Allow small coordinate differences when detecting one-cell horizontal or vertical moves.
@@ -297,14 +292,14 @@ vec3 getIdleExpressionEvent(float time, float idleReady) {
 }
 
 float getEyeAperture(float time, vec3 expressionEvent, vec2 landingWindow) {
-    // Blink starts are 2 to 10 seconds apart, independent of cursor movement and fading.
+    // Blink events start 2 to 10 seconds apart. An event can contain two blinks.
     float slot = floor(time / 6.0);
     float start = 0.5 + 4.0 * hash(vec3(slot, 720.0, 0.0));
     float duration = mix(0.280, 0.360, hash(vec3(slot, 720.0, 1.0)));
     bool doubleBlink = hash(vec3(slot, 720.0, 2.0)) < 0.20;
     float secondStart = duration + 0.090;
     float eventEnd = slot * 6.0 + start + (doubleBlink ? secondStart + duration : duration);
-    // Skip the whole blink when an expression owns the eye, including its transition edges.
+    // Skip blink events that overlap an expression or landing, including transition edges.
     if (slot * 6.0 + start < expressionEvent.x + expressionEvent.y && eventEnd > expressionEvent.x) return 1.0;
     if (slot * 6.0 + start < landingWindow.y && eventEnd > landingWindow.x) return 1.0;
     float age = mod(time, 6.0) - start;
@@ -333,6 +328,7 @@ vec3 getIdleGaze(float time, float idleReady) {
     return vec3(cos(angle), sin(angle), pulse);
 }
 
+// Centre positions but not sizes. Both use screen-height units, with positive Y upwards.
 vec2 normalizeCoord(vec2 v, float isPosition) {
     return (v * 2.0 - (iResolution.xy * isPosition)) / iResolution.y;
 }
@@ -417,7 +413,7 @@ float getBendStrength(float L) {
     return BEND_STRENGTH * smoothstep(BEND_DISTANCE_MIN, BEND_DISTANCE_MAX, L);
 }
 
-// Unique per-movement ID (stable during entire trail animation)
+// Derive a repeatable random seed that stays fixed throughout each movement.
 float getMovementId(vec2 prev, vec2 curr, float len) {
     float t = fract(iTimeCursorChange * 10.0);
     float p = hash(vec3(prev, curr.x));
@@ -425,7 +421,7 @@ float getMovementId(vec2 prev, vec2 curr, float len) {
     return hash(vec3(t, p, m));
 }
 
-// Bend direction and strength variation per movement
+// Return the direction sign and strength multiplier for this movement.
 vec2 getBendRandomization(float id) {
     float flip = 1.0, mult = 1.0;
 
@@ -447,7 +443,7 @@ float getBend2Phase(float id) {
     return 0.0;
 }
 
-// Calculate bent path position
+// Apply the primary curve, optional secondary curve and noise to the straight path.
 vec2 getBentPathPosition(vec2 A, vec2 B, float t, float strength, float id) {
     vec2 pos = mix(A, B, t);
     if (strength < 0.001) return pos;
@@ -488,7 +484,7 @@ vec2 getBentPathPosition(vec2 A, vec2 B, float t, float strength, float id) {
     return pos + bendDir * offset;
 }
 
-// Trail size interpolation
+// Interpolate size over the full path, not just its visible remainder.
 float getTrailSize(float t) {
     float size, localT;
     if (t < 0.5) {
@@ -512,6 +508,7 @@ float getTrailRadius(vec2 halfSize, vec2 aspect, float t) {
 // MAIN
 // ============================================================================
 
+// Sample the terminal, then composite the trail, landing particles and cursor in that order.
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 off = vec2(-0.5, 0.5);
 
@@ -620,6 +617,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             float capeLength = CURSOR_CAPE * 0.75 * 2.0 * CURSOR_TOP_RADIUS
                 * min(baseHalfSize.x, baseHalfSize.y);
             if (smallSlide) {
+                // Match the moving cape to the idle flare before replacing it with the symmetric hem.
                 capeSettle = easeSmoothStep((timeSince - CURSOR_CAPE_HOLD_TIME) / CURSOR_CAPE_RETURN_TIME);
                 cape = sign(horizontalDirection) * mix(abs(horizontalDirection) * capeLength,
                     capeLength / CURSOR_CAPE, capeSettle);
@@ -641,6 +639,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                 float extension = idleHem * 0.75 * 2.0 * CURSOR_TOP_RADIUS * min(baseHalfSize.x, baseHalfSize.y);
                 float hemDistance = sdfCursorIdleHem(capeLocal, baseHalfSize, extension);
                 if (smallSlide && cape != 0.0 && capeSettle < 1.0) {
+                    // Let the moving cape cover its side until the transition finishes.
                     hemDistance = max(hemDistance, -capeLocal.x * sign(cape));
                 }
                 sdfCur = min(sdfCur, hemDistance * capeDistanceScale);
@@ -684,18 +683,15 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             }
             minDist *= min(aspect.x, aspect.y);
 
-            // Trail alpha components
-            float trailAlpha = bestT;  // Gradient: 0 at tail, 1 at cursor
+            float trailAlpha = bestT;  // Opacity rises from 0 to 1 along the full path.
 
             // Soft fade at trail tail
             if (bestT < tStart + TAIL_FADE_DURATION) {
                 trailAlpha *= smoothstep(tStart, tStart + TAIL_FADE_DURATION, bestT);
             }
 
-            // Antialiasing edge smoothing
             trailAlpha *= antialiasNoBlur(minDist);
 
-            // Base opacity multiplier
             trailAlpha *= TRAIL_BASE_ALPHA;
             trailAlpha *= step(0.0, sdfCur);
 
