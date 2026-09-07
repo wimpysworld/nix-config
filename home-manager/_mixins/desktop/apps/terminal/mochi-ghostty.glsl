@@ -429,6 +429,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
     vec2 mv = cC - cP;
     float mL = length(mv);
+    vec2 movement = cur.xy - prev.xy;
+    float movementLength = length(movement);
     float minD = cur.w * MIN_MOVE_DISTANCE;
     float maxD = cur.w * MAX_VALID_MOVE_DISTANCE;
     // Compare origins so cursor size changes do not imply a different row or column.
@@ -441,18 +443,18 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
     bool cursorGeometryValid = cur.z > 0.0 && cur.w > 0.0;
     bool cursorVisible = iFocus > 0 && iCursorVisible > 0 && cursorGeometryValid;
-    bool valid = cursorGeometryValid && prev.z > 0.0 && prev.w > 0.0
-        && !smallHorizontalMove && !smallVerticalMove && (mL > minD) && (mL < maxD) && timeSince >= 0.0;
-    bool jump = cursorVisible && valid && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW
+    bool prevGeometryValid = prev.z > 0.0 && prev.w > 0.0;
+    bool moveInRange = prevGeometryValid && mL > minD && mL < maxD && timeSince >= 0.0;
+    bool smallMove = smallHorizontalMove || smallVerticalMove;
+    bool valid = cursorGeometryValid && moveInRange && !smallMove;
+    bool hollowSinceFocus = cursorVisible && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW
         && iTimeCursorChange > iTimeFocus;
-    bool smallSlide = cursorVisible && prev.z > 0.0 && prev.w > 0.0
-        && (smallHorizontalMove || smallVerticalMove) && length(cur.xy - prev.xy) > minD
-        && mL > minD && mL < maxD && timeSince >= 0.0
-        && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW && iTimeCursorChange > iTimeFocus;
+    bool jump = hollowSinceFocus && valid;
+    bool smallSlide = hollowSinceFocus && moveInRange && smallMove && movementLength > minD;
     float landingStart = CURSOR_TRAVEL_TIME;
     float jumpEnd = landingStart + CURSOR_LANDING_TIME;
     // Measure origin displacement in cells, independent of font size and aspect.
-    float cellDistance = valid ? length((cur.xy - prev.xy) / max(cur.zw, vec2(1e-6))) : 0.0;
+    float cellDistance = valid ? length(movement / max(cur.zw, vec2(1e-6))) : 0.0;
     vec2 renderCoord = fragCoord;
     vec2 sampleCoord = fragCoord;
     if (jump && cellDistance > LANDING_SHAKE_DISTANCE
@@ -519,8 +521,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         float cape = 0.0;
         float capeSettle = 0.0;
         if (smallSlide || jump) {
-            vec2 movement = cur.xy - prev.xy;
-            float horizontalDirection = movement.x / max(length(movement), 1e-6);
+            float horizontalDirection = movement.x / max(movementLength, 1e-6);
             float capeLength = CURSOR_CAPE * 0.75 * 2.0 * CURSOR_TOP_RADIUS
                 * min(baseHalfSize.x, baseHalfSize.y);
             if (smallSlide) {
@@ -721,11 +722,9 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                 vec3 idleGaze = getIdleGaze(time, idleSince + 2.0);
                 vec2 gazeDirection = idleGaze.xy;
                 float gazePulse = idleGaze.z;
-                vec2 movement = cur.xy - prev.xy;
-                float movementLength = length(movement);
-                if (prev.z > 0.0 && prev.w > 0.0 && timeSince >= 0.0 && timeSince < 2.0
+                if (prevGeometryValid && timeSince >= 0.0 && timeSince < 2.0
                     && iTimeCursorChange > iTimeFocus && movementLength > minD && movementLength < maxD) {
-                    gazePulse = (smallHorizontalMove || smallVerticalMove ? 1.0 : easeSmoothStep(timeSince / 0.080))
+                    gazePulse = (smallMove ? 1.0 : easeSmoothStep(timeSince / 0.080))
                         * (1.0 - easeSmoothStep((timeSince - CURSOR_TRAVEL_TIME) / 1.200));
                     gazeDirection = movement / movementLength;
                 }
