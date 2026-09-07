@@ -245,15 +245,19 @@ float sdfRect(vec2 p, vec2 c, vec2 h) {
     return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
 }
 
+float cursorCornerRadius(vec2 halfSize) {
+    return 2.0 * CURSOR_TOP_RADIUS * min(halfSize.x, halfSize.y);
+}
+
 float sdfCursor(vec2 point, vec2 halfSize) {
-    float radius = point.y > 0.0 ? 2.0 * CURSOR_TOP_RADIUS * min(halfSize.x, halfSize.y) : 0.0;
+    float radius = point.y > 0.0 ? cursorCornerRadius(halfSize) : 0.0;
     vec2 distance = abs(point) - halfSize + radius;
     return length(max(distance, 0.0)) + min(max(distance.x, distance.y), 0.0) - radius;
 }
 
 float sdfCursorCape(vec2 point, vec2 halfSize, float cape, float settle) {
     point.x *= -sign(cape);
-    float radius = 2.0 * CURSOR_TOP_RADIUS * min(halfSize.x, halfSize.y);
+    float radius = cursorCornerRadius(halfSize);
     float root = halfSize.x - 0.25 * radius;
     float tip = halfSize.x + abs(cape);
     float span = max(tip - root, 1e-6);
@@ -274,7 +278,7 @@ float sdfCursorCape(vec2 point, vec2 halfSize, float cape, float settle) {
 }
 
 float sdfCursorIdleHem(vec2 point, vec2 halfSize, float extension) {
-    float radius = 2.0 * CURSOR_TOP_RADIUS * min(halfSize.x, halfSize.y);
+    float radius = cursorCornerRadius(halfSize);
     point.x = abs(point.x);
     vec2 top = vec2(halfSize.x - 0.25 * radius, -halfSize.y + radius);
     vec2 edge = vec2(0.25 * radius + extension, -radius);
