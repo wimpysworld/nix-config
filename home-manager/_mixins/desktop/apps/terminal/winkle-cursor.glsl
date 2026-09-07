@@ -176,40 +176,26 @@ const float BEND2_PHASE_RANDOM = 1.0;
 const float BEND_RANDOMNESS = 0.0;
 
 // ──────────────────────────────────────────────────────────────────────────
-// COLOR SETTINGS
+// COLOUR SETTINGS
 // ──────────────────────────────────────────────────────────────────────────
 
-// NOTE:
-// Format for all color values: vec4(R, G, B, A)
-// - R, G, B: Red/Green/Blue channels (0.0 = none, 1.0 = full)
-// - A: Alpha/opacity channel (0.0 = transparent, 1.0 = opaque)
-// Example: vec4(0.2, 0.6, 1.0, 0.5) = semi-transparent blue
-
-// Base Color (used for the whole trail when USE_CUSTOM_COLORS is disabled)
-// Format: vec4(R, G, B, A)
-// Default: iCurrentCursorColor (matches actual cursor)
-vec4 TRAIL_COLOR = iCurrentCursorColor;
-
-// Use custom colors for start/end (interpolation between tail and head)
-// When enabled: trail interpolates from TRAIL_START_COLOR (tail) to TRAIL_END_COLOR (head)
-// When disabled: entire trail uses TRAIL_COLOR
-const float USE_CUSTOM_COLORS = 1.0;  // 1.0 = enable, 0.0 = disable
-
-// Color at trail tail (t = 0.0, where animation starts)
-// Format: vec4(R, G, B, A) - alpha is respected and interpolated
-const vec4 TRAIL_START_COLOR = vec4(1.0, 1.0, 1.0, 1.0);  // White
-
-// Color at trail head (t = 1.0, at cursor position)
-// Format: vec4(R, G, B, A) - alpha is respected and interpolated
-// Default: iCurrentCursorColor (matches actual cursor, including its alpha)
-vec4 TRAIL_END_COLOR = vec4(0.2, 0.6, 1.0, 0.8);  // Blue
+// Catppuccin Mocha RGB values from lib/catppuccin-palette.json.
+// From cursor to tail: Red, Peach, Yellow, Green, Sapphire, Blue, Mauve.
+const vec3 TRAIL_COLOURS[7] = vec3[7](
+    vec3(243.0, 139.0, 168.0) / 255.0,
+    vec3(250.0, 179.0, 135.0) / 255.0,
+    vec3(249.0, 226.0, 175.0) / 255.0,
+    vec3(166.0, 227.0, 161.0) / 255.0,
+    vec3(116.0, 199.0, 236.0) / 255.0,
+    vec3(137.0, 180.0, 250.0) / 255.0,
+    vec3(203.0, 166.0, 247.0) / 255.0
+);
 
 // ──────────────────────────────────────────────────────────────────────────
 // OPACITY SETTINGS
 // ──────────────────────────────────────────────────────────────────────────
 
-// Base opacity multiplier for trail (applied after color alpha interpolation)
-// This multiplies the final alpha: color_alpha * TRAIL_BASE_ALPHA * fade * antialias
+// Base opacity multiplier for the trail.
 const float TRAIL_BASE_ALPHA = 0.80;
 
 // Each half of the cursor fade lasts this many seconds.
@@ -541,19 +527,10 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             trailAlpha *= TRAIL_BASE_ALPHA;
             trailAlpha *= step(0.0, sdfCur);
 
-            // Color selection with alpha preservation
-            vec4 trailColor;
-            if (USE_CUSTOM_COLORS > 0.5) {
-                // Interpolate both RGB and A from start to end color
-                // bestT: 0.0 = trail tail, 1.0 = cursor position
-                trailColor = mix(TRAIL_START_COLOR, TRAIL_END_COLOR, bestT);
-                // Multiply interpolated color alpha by trail alpha calculations
-                trailColor.a *= trailAlpha;
-            } else {
-                // Use single color: multiply its alpha by trail alpha calculations
-                trailColor = TRAIL_COLOR;
-                trailColor.a *= trailAlpha;
-            }
+            // Fit all seven bands to the remaining path as the tail catches up.
+            float colourPosition = clamp((tEnd - bestT) / (tEnd - tStart), 0.0, 1.0);
+            int colourBand = min(int(floor(colourPosition * 7.0)), 6);
+            vec4 trailColor = vec4(TRAIL_COLOURS[colourBand], mix(1.0, 0.8, bestT) * trailAlpha);
 
             if (trailColor.a > 0.001) {
                 outC = mix(outC, vec4(trailColor.rgb, outC.a), trailColor.a);
