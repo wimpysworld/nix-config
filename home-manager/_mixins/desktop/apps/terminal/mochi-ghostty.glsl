@@ -313,9 +313,7 @@ vec2 sdfTrailSegment(vec2 p, vec2 a, vec2 b, float ra, float rb) {
 }
 
 float getBendStrength(float L) {
-    if (BEND_ENABLED < 0.5 || L <= BEND_DISTANCE_MIN) return 0.0;
-    if (L >= BEND_DISTANCE_MAX) return BEND_STRENGTH;
-    return BEND_STRENGTH * smoothstep(BEND_DISTANCE_MIN, BEND_DISTANCE_MAX, L);
+    return BEND_ENABLED < 0.5 ? 0.0 : BEND_STRENGTH * smoothstep(BEND_DISTANCE_MIN, BEND_DISTANCE_MAX, L);
 }
 
 // Derive a repeatable random seed that stays fixed throughout each movement.
@@ -536,9 +534,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             float trailAlpha = bestT;  // Opacity rises from 0 to 1 along the full path.
 
             // Soft fade at trail tail
-            if (bestT < tStart + TAIL_FADE_DURATION) {
-                trailAlpha *= smoothstep(tStart, tStart + TAIL_FADE_DURATION, bestT);
-            }
+            trailAlpha *= smoothstep(tStart, tStart + TAIL_FADE_DURATION, bestT);
 
             trailAlpha *= antialiasNoBlur(minDist);
 
