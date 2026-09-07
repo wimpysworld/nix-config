@@ -226,6 +226,9 @@ const float MAX_VALID_MOVE_DISTANCE = 100.0;
 // Minimum movement distance to trigger trail rendering (filters out jitter)
 const float MIN_MOVE_DISTANCE = 0.01;
 
+// Allow small coordinate differences when detecting one-cell horizontal or vertical moves.
+const float SMALL_MOVE_TOLERANCE = 0.05;
+
 // Number of points joined by rounded segments over the remaining path.
 // Higher values follow the curve more closely but add GPU work.
 const int PATH_SAMPLES = 128;
@@ -452,6 +455,11 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     float mL = length(mv);
     float minD = cur.w * MIN_MOVE_DISTANCE;
     float maxD = cur.w * MAX_VALID_MOVE_DISTANCE;
+    // Compare origins so cursor size changes do not imply a different row or column.
+    bool smallHorizontalMove = abs(cur.y - prev.y) <= min(cur.w, prev.w) * SMALL_MOVE_TOLERANCE
+        && abs(cur.x - prev.x) <= min(cur.z, prev.z) * (1.0 + SMALL_MOVE_TOLERANCE);
+    bool smallVerticalMove = abs(cur.x - prev.x) <= min(cur.z, prev.z) * SMALL_MOVE_TOLERANCE
+        && abs(cur.y - prev.y) <= min(cur.w, prev.w) * (1.0 + SMALL_MOVE_TOLERANCE);
 
     vec4 outC = fragColor;
     float timeSince = iTime - iTimeCursorChange;
@@ -459,7 +467,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     bool cursorGeometryValid = cur.z > 0.0 && cur.w > 0.0;
     bool cursorVisible = iFocus > 0 && iCursorVisible > 0 && cursorGeometryValid;
     bool valid = cursorGeometryValid && prev.z > 0.0 && prev.w > 0.0
-        && (mL > minD) && (mL < maxD) && timeSince >= 0.0;
+        && !smallHorizontalMove && !smallVerticalMove && (mL > minD) && (mL < maxD) && timeSince >= 0.0;
     bool jump = cursorVisible && valid && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW
         && iTimeCursorChange > iTimeFocus;
     float landingStart = CURSOR_TRAVEL_TIME;
