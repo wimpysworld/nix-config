@@ -66,6 +66,10 @@ const vec2 CURSOR_LANDING_SCALE = vec2(0.25, -0.40);
 const int LANDING_PARTICLE_COUNT = 18;
 const float LANDING_PARTICLE_TIME = 1.000;
 const float LANDING_FULL_DISTANCE = 40.0;
+const float LANDING_SHAKE_DISTANCE = LANDING_FULL_DISTANCE * 1.25;
+const float LANDING_SHAKE_TIME = 0.260;
+const vec2 LANDING_SHAKE_PIXELS = vec2(1.25, -5.50);
+const float LANDING_SHAKE_DEGREES = 0.15;
 
 // ──────────────────────────────────────────────────────────────────────────
 // TAIL CATCHUP EASING
@@ -256,6 +260,12 @@ float getSquashPulse(float progress) {
     return easeSmoothStep(1.0 - abs(2.0 * clamp(progress, 0.0, 1.0) - 1.0));
 }
 
+float getLandingShakePulse(float progress) {
+    if (progress < 0.15) return easeSmoothStep(progress / 0.15);
+    if (progress < 0.60) return mix(1.0, -0.20, easeSmoothStep((progress - 0.15) / 0.45));
+    return mix(-0.20, 0.0, easeSmoothStep((progress - 0.60) / 0.40));
+}
+
 float applyTailEasing(float t) {
     if (TAIL_EASING_PRESET < 0.5) return easeLinear(t);
     if (TAIL_EASING_PRESET < 1.5) return easeInQuad(t);
@@ -425,11 +435,6 @@ float getTrailRadius(vec2 halfSize, vec2 aspect, float t) {
 // ============================================================================
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-    #if !defined(WEB)
-    fragColor = texture(iChannel0, fragCoord.xy / iResolution.xy);
-    #endif
-
-    vec2 vu = normalizeCoord(fragCoord, 1.0);
     vec2 off = vec2(-0.5, 0.5);
 
     vec4 cur = vec4(normalizeCoord(iCurrentCursor.xy, 1.0), normalizeCoord(iCurrentCursor.zw, 0.0));
@@ -450,7 +455,6 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     bool smallVerticalMove = abs(cur.x - prev.x) <= min(cur.z, prev.z) * SMALL_MOVE_TOLERANCE
         && abs(cur.y - prev.y) <= min(cur.w, prev.w) * (1.0 + SMALL_MOVE_TOLERANCE);
 
-    vec4 outC = fragColor;
     float timeSince = iTime - iTimeCursorChange;
 
     bool cursorGeometryValid = cur.z > 0.0 && cur.w > 0.0;
@@ -461,6 +465,34 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         && iTimeCursorChange > iTimeFocus;
     float landingStart = CURSOR_TRAVEL_TIME;
     float jumpEnd = landingStart + CURSOR_LANDING_TIME;
+    // Measure origin displacement in cells, independent of font size and aspect.
+    float cellDistance = valid ? length((cur.xy - prev.xy) / max(cur.zw, vec2(1e-6))) : 0.0;
+    vec2 renderCoord = fragCoord;
+    vec2 sampleCoord = fragCoord;
+    if (jump && cellDistance > LANDING_SHAKE_DISTANCE
+        && timeSince > landingStart && timeSince < landingStart + LANDING_SHAKE_TIME) {
+        float progress = (timeSince - landingStart) / LANDING_SHAKE_TIME;
+        float intensity = smoothstep(LANDING_SHAKE_DISTANCE, LANDING_SHAKE_DISTANCE * 1.5, cellDistance);
+        float pulse = intensity * getLandingShakePulse(progress);
+        // Inverse sampling moves the screen down first, then through one small rebound.
+        renderCoord -= LANDING_SHAKE_PIXELS * pulse;
+        float horizontalDirection = (cur.x - prev.x) / max(cur.z, 1e-6) / cellDistance;
+        float angle = radians(LANDING_SHAKE_DEGREES) * horizontalDirection * pulse;
+        float rotationCos = cos(angle);
+        float rotationSin = sin(angle);
+        vec2 pivot = iResolution.xy * 0.5;
+        // Anticlockwise source sampling makes rightward jumps rotate the screen clockwise.
+        renderCoord = pivot + mat2(rotationCos, rotationSin, -rotationSin, rotationCos) * (renderCoord - pivot);
+        // Clamp the source sample to texel centres without clipping procedural effects.
+        sampleCoord = clamp(renderCoord, vec2(0.5), iResolution.xy - vec2(0.5));
+    }
+
+    #if !defined(WEB)
+    fragColor = texture(iChannel0, sampleCoord.xy / iResolution.xy);
+    #endif
+
+    vec2 vu = normalizeCoord(renderCoord, 1.0);
+    vec4 outC = fragColor;
     float strength = valid ? getBendStrength(mL) : 0.0;
     float id = valid ? getMovementId(cP, cC, mL) : 0.0;
     float headProgress = 1.0;
@@ -543,8 +575,6 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
     float particleAge = timeSince - landingStart;
     if (jump && particleAge >= 0.0 && particleAge < LANDING_PARTICLE_TIME) {
-        // Measure origin displacement in cells, independent of font size and aspect.
-        float cellDistance = length((cur.xy - prev.xy) / max(cur.zw, vec2(1e-6)));
         float intensity = smoothstep(LANDING_FULL_DISTANCE / 12.0, LANDING_FULL_DISTANCE, cellDistance);
         int particleCount = int(floor(mix(4.0, float(LANDING_PARTICLE_COUNT), intensity) + 0.5));
         int starCount = int(floor(4.0 * intensity + 0.5));
