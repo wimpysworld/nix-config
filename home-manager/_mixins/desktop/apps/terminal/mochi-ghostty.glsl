@@ -282,14 +282,34 @@ float hash(vec3 p) {
     return fract((p.x + p.y) * p.z);
 }
 
-float getEyeAperture(float time) {
+float getBlinkClosure(float age, float duration) {
+    float phase = age / duration;
+    return smoothstep(0.0, 0.30, phase) * (1.0 - smoothstep(0.57, 1.0, phase));
+}
+
+vec3 getIdleExpressionEvent(float time, float idleReady) {
+    // Starts are 20 to 40 seconds apart. Only complete events after idle readiness qualify.
+    float slot = floor(time / 30.0);
+    float start = slot * 30.0 + 1.0 + 10.0 * hash(vec3(slot, 740.0, 0.0));
+    float doze = hash(vec3(slot, 740.0, 1.0)) < 0.25 ? 1.0 : 0.0;
+    return start >= idleReady ? vec3(start, mix(2.7, 4.8, doze), doze) : vec3(-100.0, 0.0, 0.0);
+}
+
+float getEyeAperture(float time, vec3 expressionEvent, vec2 landingWindow) {
     // Blink starts are 2 to 10 seconds apart, independent of cursor movement and fading.
     float slot = floor(time / 6.0);
     float start = 0.5 + 4.0 * hash(vec3(slot, 720.0, 0.0));
     float duration = mix(0.280, 0.360, hash(vec3(slot, 720.0, 1.0)));
-    float phase = (mod(time, 6.0) - start) / duration;
-    return 1.0 - smoothstep(0.0, 0.30, phase)
-        * (1.0 - smoothstep(0.57, 1.0, phase));
+    bool doubleBlink = hash(vec3(slot, 720.0, 2.0)) < 0.20;
+    float secondStart = duration + 0.090;
+    float eventEnd = slot * 6.0 + start + (doubleBlink ? secondStart + duration : duration);
+    // Skip the whole blink when an expression owns the eye, including its transition edges.
+    if (slot * 6.0 + start < expressionEvent.x + expressionEvent.y && eventEnd > expressionEvent.x) return 1.0;
+    if (slot * 6.0 + start < landingWindow.y && eventEnd > landingWindow.x) return 1.0;
+    float age = mod(time, 6.0) - start;
+    float closure = getBlinkClosure(age, duration);
+    if (doubleBlink) closure = max(closure, getBlinkClosure(age - secondStart, duration));
+    return 1.0 - closure;
 }
 
 vec3 getIdleGaze(float time, float idleReady) {
@@ -727,8 +747,41 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             // Keep subpixel cursors plain when the pupil cannot remain clear.
             if (eyeRadius >= 2.0 * pixel) {
                 vec2 eyeAnchor = vec2(0.0, min(0.12 * baseHalfSize.y + pixel, baseHalfSize.y - eyeRadius));
+                float time = max(iTime, 0.0);
+                float idleSince = max(iTimeCursorChange, iTimeFocus);
+                vec3 expressionEvent = getIdleExpressionEvent(time, idleSince + 10.0);
+                float expressionAge = time - expressionEvent.x;
+                float expressionWeight = smoothstep(0.0, 0.25, expressionAge)
+                    * (1.0 - smoothstep(expressionEvent.y - 0.35, expressionEvent.y, expressionAge));
+                float mouthOpen = 0.0;
+                float expressionClosure = 0.0;
+                float lidDrop = 0.0;
+                float expressionGaze = 0.0;
+                float startle = 0.0;
+                if (expressionWeight > 0.0) {
+                    if (expressionEvent.z < 0.5) {
+                        mouthOpen = smoothstep(0.35, 1.0, expressionAge)
+                            * (1.0 - smoothstep(1.75, 2.25, expressionAge));
+                        expressionClosure = smoothstep(0.40, 1.0, expressionAge)
+                            * (1.0 - smoothstep(1.90, 2.70, expressionAge));
+                        expressionGaze = 0.35 * smoothstep(0.0, 0.35, expressionAge)
+                            * (1.0 - smoothstep(0.45, 0.95, expressionAge));
+                    } else {
+                        lidDrop = 0.92 * smoothstep(0.25, 1.90, expressionAge)
+                            * (1.0 - smoothstep(2.50, 2.60, expressionAge));
+                        expressionGaze = -0.70 * smoothstep(0.25, 1.90, expressionAge)
+                            * (1.0 - smoothstep(2.50, 2.60, expressionAge));
+                        startle = smoothstep(2.50, 2.60, expressionAge)
+                            * (1.0 - smoothstep(3.80, 4.40, expressionAge));
+                        expressionClosure = max(getBlinkClosure(expressionAge - 3.05, 0.220),
+                            getBlinkClosure(expressionAge - 3.36, 0.220));
+                    }
+                }
+                float restingEyeRadius = eyeRadius;
+                eyeRadius = mix(eyeRadius, min(1.15 * eyeRadius,
+                    min(baseHalfSize.x, baseHalfSize.y - eyeAnchor.y)), startle);
                 vec2 eyeCoord = cursorLocal - eyeAnchor;
-                vec3 idleGaze = getIdleGaze(max(iTime, 0.0), max(iTimeCursorChange, iTimeFocus) + 2.0);
+                vec3 idleGaze = getIdleGaze(time, idleSince + 2.0);
                 vec2 gazeDirection = idleGaze.xy;
                 float gazePulse = idleGaze.z;
                 vec2 movement = cur.xy - prev.xy;
@@ -739,13 +792,17 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                         * (1.0 - easeSmoothStep((timeSince - CURSOR_TRAVEL_TIME) / 1.200));
                     gazeDirection = movement / movementLength;
                 }
+                vec2 blendedGaze = mix(gazeDirection * gazePulse, vec2(0.0, expressionGaze), expressionWeight);
+                gazePulse = length(blendedGaze);
+                gazeDirection = gazePulse > 0.0 ? blendedGaze / gazePulse : vec2(0.0);
                 vec2 gaze = gazeDirection * (0.20 * eyeRadius * gazePulse);
                 vec2 eyeMargin = baseHalfSize - vec2(eyeRadius);
                 vec2 eyeShift = clamp(gazeDirection * (0.08 * eyeRadius),
                     -eyeMargin - eyeAnchor, eyeMargin - eyeAnchor);
                 eyeCoord -= eyeShift * gazePulse;
 
-                float aperture = getEyeAperture(max(iTime, 0.0));
+                vec2 landingWindow = jump ? iTimeCursorChange + vec2(landingStart - 0.060, jumpEnd + 0.160) : vec2(-100.0);
+                float aperture = getEyeAperture(time, expressionEvent, landingWindow) * (1.0 - expressionClosure);
                 if (jump) {
                     float landingAperture = 1.0 - smoothstep(landingStart - 0.060, landingStart, timeSince)
                         * (1.0 - smoothstep(jumpEnd + 0.040, jumpEnd + 0.160, timeSince));
@@ -754,6 +811,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                 float distanceScale = min(renderedScale.x, renderedScale.y);
                 float eyeDistance = max(length(eyeCoord) - eyeRadius,
                     abs(eyeCoord.y) - eyeRadius * aperture) * distanceScale;
+                // Positive Y points up. Lower only the upper eyelid during the doze.
+                eyeDistance = max(eyeDistance, (eyeCoord.y - eyeRadius * (1.0 - 2.0 * lidDrop)) * distanceScale);
                 float eyeAA = max(0.75 * fwidth(eyeDistance), 0.5 * pixel);
                 float openVisibility = smoothstep(0.0, pixel, eyeRadius * aperture * renderedScale.y);
                 // Inset the outline and its antialiasing within the original eye footprint.
@@ -780,6 +839,23 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                 cursorColour = mix(cursorColour, vec3(1.0), eyeMask);
                 cursorColour = mix(cursorColour, vec3(0.0), pupilMask);
                 cursorColour = mix(cursorColour, vec3(1.0), glintMask);
+                if (mouthOpen > 0.0) {
+                    // Raise the mouth into the space below the closing eye.
+                    float mouthTop = eyeAnchor.y - 1.08 * restingEyeRadius - pixel
+                        + min(1.5 * pixel, 0.25 * restingEyeRadius) * expressionClosure;
+                    float mouthSpace = mouthTop + baseHalfSize.y;
+                    if (mouthSpace >= 1.5 * pixel) {
+                        vec2 mouthRadius = vec2(0.32 * restingEyeRadius,
+                            min(0.34 * restingEyeRadius, 0.45 * mouthSpace));
+                        vec2 mouthCentre = vec2(0.0, mouthTop - 0.5 * mouthSpace);
+                        mouthRadius.y *= mouthOpen;
+                        float mouthDistance = (length((cursorLocal - mouthCentre)
+                            / max(mouthRadius, vec2(1e-6))) - 1.0) * min(mouthRadius.x, mouthRadius.y) * distanceScale;
+                        float mouthAA = max(0.75 * fwidth(mouthDistance), 0.5 * pixel);
+                        float mouthMask = (1.0 - smoothstep(-mouthAA, 0.0, mouthDistance)) * mouthOpen;
+                        cursorColour = mix(cursorColour, vec3(0.0), mouthMask);
+                    }
+                }
             }
         }
 
