@@ -63,6 +63,8 @@ const float LEG_PERSISTENCE = 0.25;
 const float CURSOR_TRAVEL_TIME = 0.140;
 const float CURSOR_LANDING_TIME = 0.090;
 const vec2 CURSOR_LANDING_SCALE = vec2(0.25, -0.40);
+const int LANDING_PARTICLE_COUNT = 18;
+const float LANDING_PARTICLE_TIME = 1.000;
 
 // ──────────────────────────────────────────────────────────────────────────
 // TAIL CATCHUP EASING
@@ -534,6 +536,56 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
             if (trailColor.a > 0.001) {
                 outC = mix(outC, vec4(trailColor.rgb, outC.a), trailColor.a);
+            }
+        }
+    }
+
+    float particleAge = timeSince - landingStart;
+    if (jump && particleAge >= 0.0 && particleAge < LANDING_PARTICLE_TIME) {
+        float pixel = 2.0 / iResolution.y;
+        vec2 origin = cC - vec2(0.0, hC.y);
+        vec2 offset = vu - origin;
+        // Include the widest star tips and their antialiasing edges.
+        vec2 padding = vec2(10.0 * pixel);
+        if (all(greaterThan(offset, -cur.zw * vec2(3.1, 2.8) - padding))
+            && all(lessThan(offset, cur.zw * vec2(3.1, 1.0) + padding))) {
+            for (int i = 0; i < LANDING_PARTICLE_COUNT; i++) {
+                float a = hash(vec3(id, float(i), 410.0));
+                float b = hash(vec3(id, float(i), 411.0));
+                float c = hash(vec3(id, float(i), 412.0));
+                float lifetime = mix(0.700, LANDING_PARTICLE_TIME, a);
+                if (particleAge >= lifetime) continue;
+
+                float strand = 2.0 * float(i) / float(LANDING_PARTICLE_COUNT - 1) - 1.0;
+                float progress = particleAge / lifetime;
+                float apex = mix(0.34, 0.38, c);
+                float riseAge = progress / apex;
+                // Positive Y rises from the fixed lower edge, then gravity pulls down.
+                vec2 position = origin + cur.zw * vec2(
+                    strand * (0.4 + 2.7 * easeOutQuad(progress)),
+                    mix(0.5, 1.0, b) * (2.0 * riseAge - riseAge * riseAge)
+                );
+                float radius = clamp(min(cur.z, cur.w) * mix(0.075, 0.16, c),
+                    0.80 * pixel, 2.30 * pixel);
+                vec2 delta = abs(vu - position);
+                float distance = length(delta) - radius;
+                if (i % 5 == 0) {
+                    // Two narrow diamonds form four points with concave sides.
+                    distance = (min(delta.x + 3.0 * delta.y, 3.0 * delta.x + delta.y)
+                        - 2.6 * radius) / sqrt(10.0);
+                }
+                float alpha = 1.0 - smoothstep(-pixel, pixel, distance);
+                alpha *= smoothstep(0.0, 0.018, particleAge)
+                    * (1.0 - smoothstep(0.58, 1.0, progress));
+                float sparkle = pow(0.5 + 0.5 * sin(particleAge * 24.0 + c * 2.0 * PI), 8.0);
+                alpha *= mix(0.86, 0.98, b) * (0.86 + 0.14 * sparkle);
+                alpha *= smoothstep(0.0, pixel, sdfCur);
+                // Deepen the gold derived from Catppuccin Yellow and Peach.
+                vec3 colour = mix(TRAIL_COLOURS[2], TRAIL_COLOURS[1], a * 0.35)
+                    * vec3(1.0, 0.95, 0.55);
+                float core = 1.0 - smoothstep(0.15 * radius, 0.85 * radius, length(delta));
+                colour = mix(colour, vec3(1.0, 0.96, 0.72), core * (0.65 + 0.35 * sparkle));
+                outC = mix(outC, vec4(colour, outC.a), alpha);
             }
         }
     }
