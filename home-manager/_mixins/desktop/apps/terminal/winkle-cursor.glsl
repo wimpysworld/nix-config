@@ -221,9 +221,8 @@ const float MAX_VALID_MOVE_DISTANCE = 100.0;
 // Minimum movement distance to trigger trail rendering (filters out jitter)
 const float MIN_MOVE_DISTANCE = 0.01;
 
-// Number of points sampled along the path per pixel
-// Higher = smoother trail but more GPU load
-// 128 is a good balance for most systems
+// Number of points joined by rounded segments over the remaining path.
+// Higher values follow the curve more closely but add GPU work.
 const int PATH_SAMPLES = 128;
 
 // ============================================================================
@@ -248,17 +247,12 @@ float easeBack(float t) { t = clamp(t, 0.0, 1.0); float c1 = 1.70158, c3 = c1 + 
 float easeSmoothStep(float t) { t = clamp(t, 0.0, 1.0); return t * t * (3.0 - 2.0 * t); }
 float easeExponential(float t) { t = clamp(t, 0.0, 1.0); if (t < 0.001) return 0.0; return pow(2.0, 10.0 * (t - 1.0)); }
 
-float cubic(float a, float b, float c, float d, float t) {
-    float mt = 1.0 - t;
-    return a * mt * mt * mt + 3.0 * b * mt * mt * t + 3.0 * c * mt * t * t + d * t * t * t;
-}
-
 float getCursorAlpha(float elapsed) {
     float phase = mod(elapsed, 2.0 * CURSOR_FADE_HALF_PERIOD);
     float t = mod(phase, CURSOR_FADE_HALF_PERIOD) / CURSOR_FADE_HALF_PERIOD;
     return phase < CURSOR_FADE_HALF_PERIOD
-        ? 1.0 - cubic(0.42, 0.0, 1.0, 1.0, t)
-        : cubic(0.0, 0.0, 0.58, 1.0, t);
+        ? 1.0 - easeSmoothStep(t)
+        : easeSmoothStep(t);
 }
 
 float applyTailEasing(float t) {
@@ -302,6 +296,30 @@ float antialiasNoBlur(float d) {
 float sdfRect(vec2 p, vec2 c, vec2 h) {
     vec2 d = abs(p - c) - h;
     return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+
+// Return the tapered capsule distance and the closest position along it.
+// Cursor-scaled coordinates give all segments the same elliptical aspect.
+vec2 sdfTrailSegment(vec2 p, vec2 a, vec2 b, float ra, float rb) {
+    vec2 segment = b - a;
+    vec2 offset = p - a;
+    float segmentLength = length(segment);
+    float radiusChange = rb - ra;
+    float u;
+
+    // This also handles coincident endpoints without dividing by zero.
+    if (segmentLength <= abs(radiusChange)) {
+        u = rb > ra ? 1.0 : 0.0;
+    } else {
+        vec2 direction = segment / segmentLength;
+        float along = dot(offset, direction);
+        float across = length(offset - direction * along);
+        float sideLength = sqrt((segmentLength - abs(radiusChange))
+            * (segmentLength + abs(radiusChange)));
+        u = clamp((along + radiusChange * across / sideLength) / segmentLength, 0.0, 1.0);
+    }
+
+    return vec2(length(offset - segment * u) - mix(ra, rb, u), u);
 }
 
 float getBendStrength(float L) {
@@ -396,6 +414,11 @@ float getTrailSize(float t) {
     return size;
 }
 
+float getTrailRadius(vec2 halfSize, vec2 aspect, float t) {
+    vec2 scaledSize = halfSize / aspect;
+    return max(min(scaledSize.x, scaledSize.y) * getTrailSize(t), 0.0);
+}
+
 // ============================================================================
 // MAIN
 // ============================================================================
@@ -435,21 +458,33 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         float progress = clamp(timeSince / TAIL_CATCHUP_TIME, 0.0, 1.0);
         progress = applyTailEasing(progress);
 
-        float tStart = progress, tEnd = 1.0;
+        float tStart = clamp(progress, 0.0, 1.0), tEnd = 1.0;
 
         if (tStart < tEnd) {
-            float minDist = 1e6, bestT = 0.0;
+            float minDist = 1e6, bestT = tStart;
+            // A shared aspect keeps the elliptical caps identical at joins.
+            // Changed cursor proportions use the radius inside both dimensions.
+            vec2 aspect = max(hC, vec2(1e-6));
+            vec2 point = vu / aspect;
+            float previousT = tStart;
+            vec2 previousPos = getBentPathPosition(cP, cC, previousT, strength, id) / aspect;
+            float previousRadius = getTrailRadius(mix(hP, hC, previousT), aspect, previousT);
 
-            for (int i = 0; i < PATH_SAMPLES; i++) {
-                float t = float(i) / float(PATH_SAMPLES - 1);
-                if (t < tStart || t > tEnd) continue;
+            for (int i = 1; i < PATH_SAMPLES; i++) {
+                float t = mix(tStart, tEnd, float(i) / float(PATH_SAMPLES - 1));
+                vec2 pathPos = getBentPathPosition(cP, cC, t, strength, id) / aspect;
+                float radius = getTrailRadius(mix(hP, hC, t), aspect, t);
+                vec2 segment = sdfTrailSegment(point, previousPos, pathPos, previousRadius, radius);
 
-                vec2 pathPos = getBentPathPosition(cP, cC, t, strength, id);
-                vec2 pathSize = mix(hP, hC, t) * getTrailSize(t);
-                float d = sdfRect(vu, pathPos, pathSize);
-
-                if (d < minDist) { minDist = d; bestT = t; }
+                if (segment.x < minDist) {
+                    minDist = segment.x;
+                    bestT = mix(previousT, t, segment.y);
+                }
+                previousT = t;
+                previousPos = pathPos;
+                previousRadius = radius;
             }
+            minDist *= min(aspect.x, aspect.y);
 
             // Trail alpha components
             float trailAlpha = bestT;  // Gradient: 0 at tail, 1 at cursor
