@@ -25,7 +25,7 @@
     llm-agents.inputs.treefmt-nix.follows = "direnv-instant/treefmt-nix";
     sidra.url = "github:wimpysworld/sidra";
     sidra.inputs.nixpkgs.follows = "nixpkgs";
-    veila.url = "github:naurissteins/Veila/0.4.2";
+    veila.url = "github:naurissteins/Veila/0.4.4";
     veila.inputs.nixpkgs.follows = "nixpkgs";
     concord.url = "github:chojs23/concord/v2.5.17";
     concord.inputs.nixpkgs.follows = "nixpkgs-unstable";
