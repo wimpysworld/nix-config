@@ -44,6 +44,7 @@ const float CURSOR_LANDING_TIME = 0.090;
 const vec2 CURSOR_LANDING_SCALE = vec2(0.25, -0.40);
 const float CURSOR_TOP_RADIUS = 0.23;
 const float CURSOR_CAPE = 2.0;
+const float CAPE_ROOT_INSET = 0.25;
 const float CURSOR_CAPE_HOLD_TIME = 0.140;
 const float CURSOR_CAPE_RETURN_TIME = 0.400;
 const float CURSOR_IDLE_HEM_TIME = 0.200;
@@ -269,6 +270,10 @@ float cursorCornerRadius(vec2 halfSize) {
     return 2.0 * CURSOR_TOP_RADIUS * min(halfSize.x, halfSize.y);
 }
 
+float idleFlareLength(float scale, vec2 halfSize) {
+    return scale * 0.75 * 2.0 * CURSOR_TOP_RADIUS * min(halfSize.x, halfSize.y);
+}
+
 float sdfCursor(vec2 point, vec2 halfSize) {
     float radius = point.y > 0.0 ? cursorCornerRadius(halfSize) : 0.0;
     vec2 distance = abs(point) - halfSize + radius;
@@ -278,7 +283,7 @@ float sdfCursor(vec2 point, vec2 halfSize) {
 float sdfCursorCape(vec2 point, vec2 halfSize, float cape, float settle) {
     point.x *= -sign(cape);
     float radius = cursorCornerRadius(halfSize);
-    float root = halfSize.x - 0.25 * radius;
+    float root = halfSize.x - CAPE_ROOT_INSET * radius;
     float tip = halfSize.x + abs(cape);
     float span = max(tip - root, 1e-6);
     float t = clamp((point.x - root) / span, 0.0, 1.0);
@@ -302,8 +307,8 @@ float sdfCursorCape(vec2 point, vec2 halfSize, float cape, float settle) {
 float sdfCursorIdleHem(vec2 point, vec2 halfSize, float extension) {
     float radius = cursorCornerRadius(halfSize);
     point.x = abs(point.x);
-    vec2 top = vec2(halfSize.x - 0.25 * radius, -halfSize.y + radius);
-    vec2 edge = vec2(0.25 * radius + extension, -radius);
+    vec2 top = vec2(halfSize.x - CAPE_ROOT_INSET * radius, -halfSize.y + radius);
+    vec2 edge = vec2(CAPE_ROOT_INSET * radius + extension, -radius);
     vec2 offset = point - top;
     float upperDistance = (edge.x * offset.y - edge.y * offset.x) / max(length(edge), 1e-6);
     // Mirror both tips and keep their lower edges on the body baseline.
@@ -613,8 +618,7 @@ float sdfCursorBody(RenderedCursor rendered, MoveState move, vec2 vu) {
         float capeSettle = 0.0;
         if (move.smallSlide || move.jump) {
             float horizontalDirection = move.originDelta.x / max(move.originDistance, 1e-6);
-            float capeLength = CURSOR_CAPE * 0.75 * 2.0 * CURSOR_TOP_RADIUS
-                * min(rendered.baseHalfSize.x, rendered.baseHalfSize.y);
+            float capeLength = idleFlareLength(CURSOR_CAPE, rendered.baseHalfSize);
             if (move.smallSlide) {
                 // Match the moving cape to the idle flare before replacing it with the symmetric hem.
                 capeSettle = easeSmoothStep((move.timeSince - CURSOR_CAPE_HOLD_TIME) / CURSOR_CAPE_RETURN_TIME);
@@ -635,7 +639,7 @@ float sdfCursorBody(RenderedCursor rendered, MoveState move, vec2 vu) {
             float idleStart = max(iTimeCursorChange + idleDelay, iTimeFocus + CURSOR_CAPE_HOLD_TIME);
             float idleHem = move.smallSlide ? capeSettle : easeSmoothStep((iTime - idleStart) / CURSOR_IDLE_HEM_TIME);
             if (idleHem > 0.0) {
-                float extension = idleHem * 0.75 * 2.0 * CURSOR_TOP_RADIUS * min(rendered.baseHalfSize.x, rendered.baseHalfSize.y);
+                float extension = idleFlareLength(idleHem, rendered.baseHalfSize);
                 float hemDistance = sdfCursorIdleHem(rendered.capeLocal, rendered.baseHalfSize, extension);
                 if (move.smallSlide && cape != 0.0 && capeSettle < 1.0) {
                     // Let the moving cape cover its side until the transition finishes.
