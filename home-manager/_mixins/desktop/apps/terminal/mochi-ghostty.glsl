@@ -7,11 +7,8 @@ whole terminal.
 
 // Configuration.
 
-// Toggle the rainbow trail without changing the cursor or landing effects.
+// Toggle the rainbow trail without changing Mochi or the landing effects.
 const bool TRAIL_ENABLED = true;
-
-// Toggle curved paths for the cursor and trail.
-const bool CURVE_ENABLED = true;
 
 // Trail catch-up time in seconds, measured from landing for jumps.
 // Shorter times make the trail disappear faster.
@@ -20,24 +17,24 @@ const float TRAIL_CATCHUP_TIME = 0.5;
 // Width of the trail fade in path coordinates, where the full path spans 0 to 1.
 const float TRAIL_FADE_WIDTH = 0.15;
 
-// Timings are in seconds. Landing scale changes are fractions of cursor size.
-const float CURSOR_TRAVEL_TIME = 0.140;
+// Timings are in seconds. Landing scale changes are fractions of Mochi's size.
+const float MOCHI_TRAVEL_TIME = 0.140;
 #ifndef MOCHI_KEY_REPEAT_RATE
 #define MOCHI_KEY_REPEAT_RATE 30.0
 #endif
-const float CURSOR_SMALL_MOVE_TIME = 1.0 / MOCHI_KEY_REPEAT_RATE;
-const float CURSOR_BOB_PERIOD = 1.400;
-const float CURSOR_BOB_COMPRESSION = 0.14;
-const float CURSOR_BOB_HOLD_TIME = 0.140;
-const float CURSOR_BOB_RETURN_TIME = 0.400;
-const float CURSOR_LANDING_TIME = 0.090;
-const vec2 CURSOR_LANDING_SCALE = vec2(0.25, -0.40);
-const float CURSOR_TOP_RADIUS = 0.23;
-const float CURSOR_CAPE = 2.0;
+const float MOCHI_SMALL_MOVE_TIME = 1.0 / MOCHI_KEY_REPEAT_RATE;
+const float MOCHI_BOB_PERIOD = 1.400;
+const float MOCHI_BOB_COMPRESSION = 0.14;
+const float MOCHI_BOB_HOLD_TIME = 0.140;
+const float MOCHI_BOB_RETURN_TIME = 0.400;
+const float MOCHI_LANDING_TIME = 0.090;
+const vec2 MOCHI_LANDING_SCALE = vec2(0.25, -0.40);
+const float MOCHI_TOP_RADIUS = 0.23;
+const float MOCHI_CAPE = 2.0;
 const float CAPE_ROOT_INSET = 0.25;
-const float CURSOR_CAPE_HOLD_TIME = 0.140;
-const float CURSOR_CAPE_RETURN_TIME = 0.400;
-const float CURSOR_IDLE_HEM_TIME = 0.200;
+const float MOCHI_CAPE_HOLD_TIME = 0.140;
+const float MOCHI_CAPE_RETURN_TIME = 0.400;
+const float MOCHI_IDLE_HEM_TIME = 0.200;
 const int LANDING_PARTICLE_COUNT = 18;
 const float LANDING_PARTICLE_TIME = 1.000;
 const float LANDING_PARTICLE_SPREAD_BASE = 0.4;
@@ -89,7 +86,7 @@ const float CURVE_DISTANCE_MAX = 0.30;
 const float CURVE_DIRECTION = 1.0;
 
 // Catppuccin Mocha RGB values from lib/catppuccin-palette.json.
-// From the cursor to the far end of the trail: Red, Peach, Yellow, Green, Sapphire, Blue, Mauve.
+// From Mochi to the far end of the trail: Red, Peach, Yellow, Green, Sapphire, Blue, Mauve.
 const vec3 TRAIL_COLOURS[7] = vec3[7](
     vec3(243.0, 139.0, 168.0) / 255.0,
     vec3(250.0, 179.0, 135.0) / 255.0,
@@ -103,9 +100,9 @@ const vec3 TRAIL_COLOURS[7] = vec3[7](
 // Base opacity multiplier for the trail.
 const float TRAIL_BASE_ALPHA = 0.80;
 
-// Each half of the cursor fade lasts this many seconds.
-const float CURSOR_FADE_HALF_PERIOD = 0.75;
-const float CURSOR_FADE_HOLD_TIME = 0.500;
+// Each half of Mochi's fade lasts this many seconds.
+const float MOCHI_FADE_HALF_PERIOD = 0.75;
+const float MOCHI_FADE_HOLD_TIME = 0.500;
 
 // Maximum valid movement in cursor-height units, excluding the threshold itself.
 const float MAX_VALID_MOVE_DISTANCE = 100.0;
@@ -131,10 +128,10 @@ float easeOutQuad(float t) { t = clamp(t, 0.0, 1.0); return t * (2.0 - t); }
 float easeOutQuart(float t) { t = clamp(t, 0.0, 1.0); float mt = 1.0 - t; return 1.0 - mt * mt * mt * mt; }
 float easeSmoothStep(float t) { t = clamp(t, 0.0, 1.0); return t * t * (3.0 - 2.0 * t); }
 
-float getCursorAlpha(float elapsed) {
-    float phase = mod(elapsed, 2.0 * CURSOR_FADE_HALF_PERIOD);
-    float t = mod(phase, CURSOR_FADE_HALF_PERIOD) / CURSOR_FADE_HALF_PERIOD;
-    return phase < CURSOR_FADE_HALF_PERIOD
+float getMochiAlpha(float elapsed) {
+    float phase = mod(elapsed, 2.0 * MOCHI_FADE_HALF_PERIOD);
+    float t = mod(phase, MOCHI_FADE_HALF_PERIOD) / MOCHI_FADE_HALF_PERIOD;
+    return phase < MOCHI_FADE_HALF_PERIOD
         ? 1.0 - easeSmoothStep(t)
         : easeSmoothStep(t);
 }
@@ -251,24 +248,24 @@ float rectangleDistance(vec2 p, vec2 c, vec2 h) {
     return boxDistance(d);
 }
 
-float cursorCornerRadius(vec2 halfSize) {
-    return 2.0 * CURSOR_TOP_RADIUS * min(halfSize.x, halfSize.y);
+float mochiCornerRadius(vec2 halfSize) {
+    return 2.0 * MOCHI_TOP_RADIUS * min(halfSize.x, halfSize.y);
 }
 
 float idleFlareLength(float scale, vec2 halfSize) {
-    return scale * 0.75 * 2.0 * CURSOR_TOP_RADIUS * min(halfSize.x, halfSize.y);
+    return scale * 0.75 * 2.0 * MOCHI_TOP_RADIUS * min(halfSize.x, halfSize.y);
 }
 
-float cursorBodyDistance(vec2 point, vec2 halfSize) {
-    float radius = point.y > 0.0 ? cursorCornerRadius(halfSize) : 0.0;
+float mochiBodyDistance(vec2 point, vec2 halfSize) {
+    float radius = point.y > 0.0 ? mochiCornerRadius(halfSize) : 0.0;
     vec2 distance = abs(point) - halfSize + radius;
     return boxDistance(distance) - radius;
 }
 
-float cursorCapeDistance(vec2 point, vec2 halfSize, float cape, float settle) {
+float mochiCapeDistance(vec2 point, vec2 halfSize, float cape, float settle) {
     // Mirror the sample so one profile draws the cape opposite either horizontal movement direction.
     point.x *= -sign(cape);
-    float radius = cursorCornerRadius(halfSize);
+    float radius = mochiCornerRadius(halfSize);
     float root = halfSize.x - CAPE_ROOT_INSET * radius;
     float tip = halfSize.x + abs(cape);
     float span = max(tip - root, 1e-6);
@@ -286,12 +283,12 @@ float cursorCapeDistance(vec2 point, vec2 halfSize, float cape, float settle) {
     float lowerDistance = (lower - point.y) / sqrt(1.0 + lowerSlope * lowerSlope);
     float edgeDistance = max(root - point.x, max(upperDistance, lowerDistance));
     float distance = mix(max(point.x - tip, edgeDistance), edgeDistance, settle);
-    // Bound the slope-normalised distance so antialiasing cannot extend above the cursor.
+    // Bound the slope-normalised distance so antialiasing cannot extend above Mochi.
     return max(distance, point.y - halfSize.y);
 }
 
-float cursorIdleHemDistance(vec2 point, vec2 halfSize, float extension) {
-    float radius = cursorCornerRadius(halfSize);
+float mochiIdleHemDistance(vec2 point, vec2 halfSize, float extension) {
+    float radius = mochiCornerRadius(halfSize);
     point.x = abs(point.x);
     vec2 top = vec2(halfSize.x - CAPE_ROOT_INSET * radius, -halfSize.y + radius);
     vec2 edge = vec2(CAPE_ROOT_INSET * radius + extension, -radius);
@@ -328,7 +325,7 @@ vec4 trailSegmentDistance(vec2 p, vec2 a, vec2 b, float ra, float rb) {
 }
 
 float getCurveStrength(float L) {
-    return !CURVE_ENABLED ? 0.0 : CURVE_STRENGTH * smoothstep(CURVE_DISTANCE_MIN, CURVE_DISTANCE_MAX, L);
+    return CURVE_STRENGTH * smoothstep(CURVE_DISTANCE_MIN, CURVE_DISTANCE_MAX, L);
 }
 
 // Derive a repeatable random seed that stays fixed throughout each movement.
@@ -366,16 +363,16 @@ float getTrailRadius(vec2 halfSize, vec2 aspect, float t) {
     return max(min(scaledSize.x, scaledSize.y) * getTrailSize(t), 0.0);
 }
 
-// Cursor and trail rendering.
+// Mochi and trail rendering.
 
-struct CursorBox {
+struct MochiBox {
     vec2 centre;
     vec2 halfSize;
 };
 
-struct CursorPath {
-    CursorBox previous;
-    CursorBox current;
+struct MochiPath {
+    MochiBox previous;
+    MochiBox current;
     float curveStrength;
 };
 
@@ -388,8 +385,8 @@ struct MoveState {
     float originDistance;
     float minDistance;
     float maxDistance;
-    bool cursorGeometryValid;
-    bool cursorVisible;
+    bool mochiGeometryValid;
+    bool mochiVisible;
     bool prevGeometryValid;
     bool moveInRange;
     bool movedSinceFocus;
@@ -408,7 +405,7 @@ struct MoveState {
     float seed;
 };
 
-struct RenderedCursor {
+struct RenderedMochi {
     vec2 centre;
     vec2 halfSize;
     vec2 scale;
@@ -424,7 +421,7 @@ struct FragmentState {
     vec2 normalisedCoordDx;
     vec2 normalisedCoordDy;
     float pixel;
-    float cursorDistance;
+    float mochiOutlineDistance;
 };
 
 vec2 landingShakeCoord(vec2 fragCoord, MoveState move, out vec2 sampleCoord) {
@@ -450,12 +447,12 @@ vec2 landingShakeCoord(vec2 fragCoord, MoveState move, out vec2 sampleCoord) {
     return renderCoord;
 }
 
-vec4 compositeTrail(vec4 outC, CursorPath path, MoveState move, FragmentState fragment, float headProgress) {
-    // Let the trail grow behind the moving cursor before its far end catches up.
+vec4 compositeTrail(vec4 outC, MochiPath path, MoveState move, FragmentState fragment, float headProgress) {
+    // Let the trail grow behind Mochi before its far end catches up.
     float trailTime = move.timeSince - (move.jump ? move.landingStart : 0.0);
     bool visible = trailTime < TRAIL_CATCHUP_TIME;
 
-    if (TRAIL_ENABLED && move.cursorVisible && move.largeMoveValid && visible
+    if (TRAIL_ENABLED && move.mochiVisible && move.largeMoveValid && visible
         && move.movedSinceFocus) {
         float progress = clamp(trailTime / TRAIL_CATCHUP_TIME, 0.0, 1.0);
         progress = easeOutQuart(progress);
@@ -524,7 +521,7 @@ vec4 compositeTrail(vec4 outC, CursorPath path, MoveState move, FragmentState fr
             trailAlpha *= 1.0 - smoothstep(-trailAA, trailAA, minDist);
 
             trailAlpha *= TRAIL_BASE_ALPHA;
-            trailAlpha *= step(0.0, fragment.cursorDistance);
+            trailAlpha *= step(0.0, fragment.mochiOutlineDistance);
 
             // Fit all seven bands to the remaining path as the trail catches up.
             float colourPosition = clamp((tEnd - bestT) / (tEnd - tStart), 0.0, 1.0);
@@ -540,7 +537,7 @@ vec4 compositeTrail(vec4 outC, CursorPath path, MoveState move, FragmentState fr
     return outC;
 }
 
-vec4 compositeLandingParticles(vec4 outC, CursorBox current, MoveState move, FragmentState fragment) {
+vec4 compositeLandingParticles(vec4 outC, MochiBox current, MoveState move, FragmentState fragment) {
     float particleAge = move.timeSince - move.landingStart;
     if (move.jump && particleAge >= 0.0 && particleAge < LANDING_PARTICLE_TIME) {
         float intensity = move.landingIntensity;
@@ -587,7 +584,7 @@ vec4 compositeLandingParticles(vec4 outC, CursorBox current, MoveState move, Fra
                     * (1.0 - smoothstep(0.58, 1.0, progress));
                 float sparkle = pow(0.5 + 0.5 * sin(particleAge * 24.0 + c * 2.0 * PI), 8.0);
                 alpha *= mix(0.86, 0.98, b) * (0.86 + 0.14 * sparkle);
-                alpha *= smoothstep(0.0, fragment.pixel, fragment.cursorDistance);
+                alpha *= smoothstep(0.0, fragment.pixel, fragment.mochiOutlineDistance);
                 // Deepen the gold derived from Catppuccin Yellow and Peach.
                 vec3 colour = mix(TRAIL_COLOURS[2], TRAIL_COLOURS[1], a * 0.35)
                     * vec3(1.0, 0.95, 0.55);
@@ -601,37 +598,37 @@ vec4 compositeLandingParticles(vec4 outC, CursorBox current, MoveState move, Fra
     return outC;
 }
 
-float mochiDistance(RenderedCursor rendered, MoveState move, vec2 normalisedCoord) {
+float mochiDistance(RenderedMochi rendered, MoveState move, vec2 normalisedCoord) {
     float distance = rectangleDistance(normalisedCoord, rendered.centre, rendered.halfSize);
-    if (move.cursorGeometryValid && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW) {
+    if (move.mochiGeometryValid && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW) {
         float cape = 0.0;
         float capeSettle = 0.0;
         if (move.smallSlide || move.jump) {
             float horizontalDirection = move.originDelta.x / max(move.originDistance, 1e-6);
-            float capeLength = idleFlareLength(CURSOR_CAPE, rendered.baseHalfSize);
+            float capeLength = idleFlareLength(MOCHI_CAPE, rendered.baseHalfSize);
             if (move.smallSlide) {
                 // Match the moving cape to the idle flare before replacing it with the symmetric hem.
-                capeSettle = easeSmoothStep((move.timeSince - CURSOR_CAPE_HOLD_TIME) / CURSOR_CAPE_RETURN_TIME);
+                capeSettle = easeSmoothStep((move.timeSince - MOCHI_CAPE_HOLD_TIME) / MOCHI_CAPE_RETURN_TIME);
                 cape = sign(horizontalDirection) * mix(abs(horizontalDirection) * capeLength,
-                    capeLength / CURSOR_CAPE, capeSettle);
+                    capeLength / MOCHI_CAPE, capeSettle);
             } else {
-                float phase = clamp(move.timeSince / CURSOR_TRAVEL_TIME, 0.0, 1.0);
+                float phase = clamp(move.timeSince / MOCHI_TRAVEL_TIME, 0.0, 1.0);
                 float motion = horizontalDirection * getSquashPulse(phase) * capeLength;
                 cape = motion * (1.0 + 0.10 * sin(2.0 * PI * phase));
             }
         }
-        distance = cursorBodyDistance(rendered.bodyLocal, rendered.baseHalfSize) * min(rendered.scale.x, rendered.scale.y);
+        distance = mochiBodyDistance(rendered.bodyLocal, rendered.baseHalfSize) * min(rendered.scale.x, rendered.scale.y);
         if (cape != 0.0 && (!move.smallSlide || capeSettle < 1.0)) {
-            distance = min(distance, cursorCapeDistance(rendered.capeLocal, rendered.baseHalfSize, cape, capeSettle) * rendered.capeDistanceScale);
+            distance = min(distance, mochiCapeDistance(rendered.capeLocal, rendered.baseHalfSize, cape, capeSettle) * rendered.capeDistanceScale);
         }
-        if (move.cursorVisible) {
-            float hemDelay = move.jump ? move.jumpEnd : CURSOR_CAPE_HOLD_TIME;
-            float hemStart = max(iTimeCursorChange + hemDelay, iTimeFocus + CURSOR_CAPE_HOLD_TIME);
+        if (move.mochiVisible) {
+            float hemDelay = move.jump ? move.jumpEnd : MOCHI_CAPE_HOLD_TIME;
+            float hemStart = max(iTimeCursorChange + hemDelay, iTimeFocus + MOCHI_CAPE_HOLD_TIME);
             // Small slides use the cape transition, independent of slide completion and the fade hold.
-            float idleHem = move.smallSlide ? capeSettle : easeSmoothStep((iTime - hemStart) / CURSOR_IDLE_HEM_TIME);
+            float idleHem = move.smallSlide ? capeSettle : easeSmoothStep((iTime - hemStart) / MOCHI_IDLE_HEM_TIME);
             if (idleHem > 0.0) {
                 float extension = idleFlareLength(idleHem, rendered.baseHalfSize);
-                float hemDistance = cursorIdleHemDistance(rendered.capeLocal, rendered.baseHalfSize, extension);
+                float hemDistance = mochiIdleHemDistance(rendered.capeLocal, rendered.baseHalfSize, extension);
                 if (move.smallSlide && cape != 0.0 && capeSettle < 1.0) {
                     // Let the moving cape cover its side until the transition finishes.
                     hemDistance = max(hemDistance, -rendered.capeLocal.x * sign(cape));
@@ -644,9 +641,9 @@ float mochiDistance(RenderedCursor rendered, MoveState move, vec2 normalisedCoor
     return distance;
 }
 
-vec3 drawFace(vec3 cursorColour, RenderedCursor rendered, MoveState move, float pixel) {
+vec3 drawFace(vec3 mochiColour, RenderedMochi rendered, MoveState move, float pixel) {
     float eyeRadius = 0.72 * min(rendered.baseHalfSize.x, rendered.baseHalfSize.y);
-    // Keep subpixel cursors plain when the pupil cannot remain clear.
+    // Keep Mochi plain at subpixel sizes when the pupil cannot remain clear.
     if (eyeRadius >= 2.0 * pixel) {
         vec2 eyeAnchor = vec2(0.0, min(0.12 * rendered.baseHalfSize.y + pixel, rendered.baseHalfSize.y - eyeRadius));
         float time = max(iTime, 0.0);
@@ -687,7 +684,7 @@ vec3 drawFace(vec3 cursorColour, RenderedCursor rendered, MoveState move, float 
         if (move.prevGeometryValid && move.timeSince >= 0.0 && move.timeSince < 2.0
             && move.movedSinceFocus && move.originBeyondMinDistance && move.originDistance < move.maxDistance) {
             gazePulse = (move.smallMove ? 1.0 : easeSmoothStep(move.timeSince / 0.080))
-                * (1.0 - easeSmoothStep((move.timeSince - CURSOR_TRAVEL_TIME) / 1.200));
+                * (1.0 - easeSmoothStep((move.timeSince - MOCHI_TRAVEL_TIME) / 1.200));
             gazeDirection = move.originDelta / move.originDistance;
         }
         // Blend gaze vectors before separating direction and strength so opposite looks pass smoothly through the centre.
@@ -739,10 +736,10 @@ vec3 drawFace(vec3 cursorColour, RenderedCursor rendered, MoveState move, float 
             * (1.0 - smoothstep(0.0, 0.35, aperture));
         lidMask *= 1.0 - smoothstep(-eyeAA, 0.0,
             (length(eyeCoord) - eyeRadius) * distanceScale);
-        cursorColour = mix(cursorColour, vec3(0.0), max(outlineMask, lidMask));
-        cursorColour = mix(cursorColour, vec3(1.0), eyeMask);
-        cursorColour = mix(cursorColour, vec3(0.0), pupilMask);
-        cursorColour = mix(cursorColour, vec3(1.0), glintMask);
+        mochiColour = mix(mochiColour, vec3(0.0), max(outlineMask, lidMask));
+        mochiColour = mix(mochiColour, vec3(1.0), eyeMask);
+        mochiColour = mix(mochiColour, vec3(0.0), pupilMask);
+        mochiColour = mix(mochiColour, vec3(1.0), glintMask);
         if (mouthOpen > 0.0) {
             // Raise the mouth into the space below the closing eye.
             float mouthTop = eyeAnchor.y - 1.08 * restingEyeRadius - pixel
@@ -757,15 +754,15 @@ vec3 drawFace(vec3 cursorColour, RenderedCursor rendered, MoveState move, float 
                     / max(mouthRadius, vec2(1e-6))) - 1.0) * min(mouthRadius.x, mouthRadius.y) * distanceScale;
                 float mouthAA = edgeWidth(mouthDistance, pixel);
                 float mouthMask = (1.0 - smoothstep(-mouthAA, 0.0, mouthDistance)) * mouthOpen;
-                cursorColour = mix(cursorColour, vec3(0.0), mouthMask);
+                mochiColour = mix(mochiColour, vec3(0.0), mouthMask);
             }
         }
     }
 
-    return cursorColour;
+    return mochiColour;
 }
 
-// Sample the terminal, then composite the trail, landing particles and cursor in that order.
+// Sample the terminal, then composite the trail, landing particles and Mochi in that order.
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 off = vec2(-0.5, 0.5);
 
@@ -773,7 +770,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     move.currentRect = vec4(normalizeCoord(iCurrentCursor.xy, true), normalizeCoord(iCurrentCursor.zw, false));
     move.previousRect = vec4(normalizeCoord(iPreviousCursor.xy, true), normalizeCoord(iPreviousCursor.zw, false));
 
-    CursorPath path;
+    MochiPath path;
     path.current.centre = move.currentRect.xy - (move.currentRect.zw * off);
     path.current.halfSize = move.currentRect.zw * 0.5;
     path.previous.centre = move.previousRect.xy - (move.previousRect.zw * off);
@@ -793,21 +790,21 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
     move.timeSince = iTime - iTimeCursorChange;
 
-    move.cursorGeometryValid = move.currentRect.z > 0.0 && move.currentRect.w > 0.0;
-    move.cursorVisible = iFocus > 0 && iCursorVisible > 0 && move.cursorGeometryValid;
+    move.mochiGeometryValid = move.currentRect.z > 0.0 && move.currentRect.w > 0.0;
+    move.mochiVisible = iFocus > 0 && iCursorVisible > 0 && move.mochiGeometryValid;
     move.prevGeometryValid = move.previousRect.z > 0.0 && move.previousRect.w > 0.0;
     move.moveInRange = move.prevGeometryValid && move.centreDistance > move.minDistance && move.centreDistance < move.maxDistance && move.timeSince >= 0.0;
     move.movedSinceFocus = iTimeCursorChange > iTimeFocus;
     move.originBeyondMinDistance = move.originDistance > move.minDistance;
     move.smallMove = smallHorizontalMove || smallVerticalMove;
-    move.largeMoveValid = move.cursorGeometryValid && move.moveInRange && !move.smallMove;
-    move.hollowSinceFocus = move.cursorVisible && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW
+    move.largeMoveValid = move.mochiGeometryValid && move.moveInRange && !move.smallMove;
+    move.hollowSinceFocus = move.mochiVisible && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW
         && move.movedSinceFocus;
     move.jump = move.hollowSinceFocus && move.largeMoveValid;
     move.smallSlide = move.hollowSinceFocus && move.moveInRange && move.smallMove && move.originBeyondMinDistance;
-    move.landingStart = CURSOR_TRAVEL_TIME;
-    move.jumpEnd = move.landingStart + CURSOR_LANDING_TIME;
-    move.movementEnd = move.jump ? move.jumpEnd : (move.smallSlide ? CURSOR_SMALL_MOVE_TIME : 0.0);
+    move.landingStart = MOCHI_TRAVEL_TIME;
+    move.jumpEnd = move.landingStart + MOCHI_LANDING_TIME;
+    move.movementEnd = move.jump ? move.jumpEnd : (move.smallSlide ? MOCHI_SMALL_MOVE_TIME : 0.0);
     // Measure origin displacement in cells, independent of font size and aspect.
     move.cellDistance = move.largeMoveValid ? length(move.originDelta / max(move.currentRect.zw, vec2(1e-6))) : 0.0;
     move.landingIntensity = smoothstep(LANDING_MIN_DISTANCE, LANDING_FULL_DISTANCE, move.cellDistance);
@@ -824,24 +821,24 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec4 outC = fragColor;
     path.curveStrength = (move.largeMoveValid || move.smallSlide) ? getCurveStrength(move.centreDistance) : 0.0;
     move.seed = (move.largeMoveValid || move.smallSlide) ? getMovementSeed(path.previous.centre, path.current.centre, move.centreDistance) : 0.0;
-    RenderedCursor rendered;
+    RenderedMochi rendered;
     rendered.headProgress = 1.0;
     rendered.centre = path.current.centre;
     rendered.halfSize = path.current.halfSize;
     rendered.scale = vec2(1.0);
 
-    if (move.smallSlide && move.timeSince < CURSOR_SMALL_MOVE_TIME) {
-        rendered.headProgress = easeLinear(move.timeSince / CURSOR_SMALL_MOVE_TIME);
+    if (move.smallSlide && move.timeSince < MOCHI_SMALL_MOVE_TIME) {
+        rendered.headProgress = easeLinear(move.timeSince / MOCHI_SMALL_MOVE_TIME);
         rendered.centre = getCurvedPathPosition(path.previous.centre, path.current.centre, rendered.headProgress, path.curveStrength);
         rendered.halfSize = mix(path.previous.halfSize, path.current.halfSize, rendered.headProgress);
     } else if (move.jump && move.timeSince < move.jumpEnd) {
-        rendered.headProgress = easeSmoothStep(move.timeSince / CURSOR_TRAVEL_TIME);
+        rendered.headProgress = easeSmoothStep(move.timeSince / MOCHI_TRAVEL_TIME);
         rendered.centre = getCurvedPathPosition(path.previous.centre, path.current.centre, rendered.headProgress, path.curveStrength);
         vec2 landingHalfSize = mix(path.previous.halfSize, path.current.halfSize, rendered.headProgress);
-        vec2 squash = CURSOR_LANDING_SCALE * getSquashPulse((move.timeSince - move.landingStart) / CURSOR_LANDING_TIME);
+        vec2 squash = MOCHI_LANDING_SCALE * getSquashPulse((move.timeSince - move.landingStart) / MOCHI_LANDING_TIME);
         rendered.scale += squash;
         rendered.halfSize = landingHalfSize * rendered.scale;
-        // Keep the lower edge fixed while the cursor becomes shorter.
+        // Keep the lower edge fixed while Mochi becomes shorter.
         rendered.centre.y += rendered.halfSize.y - landingHalfSize.y;
     }
 
@@ -852,32 +849,32 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     rendered.capeDistanceScale = min(rendered.scale.x, rendered.scale.y);
     if (move.smallSlide) {
         // The shared clock keeps the bob phase continuous across repeated cells.
-        float cycle = 0.5 - 0.5 * cos(2.0 * PI * iTime / CURSOR_BOB_PERIOD);
-        float release = 1.0 - easeSmoothStep((move.timeSince - CURSOR_BOB_HOLD_TIME) / CURSOR_BOB_RETURN_TIME);
-        float bobScale = 1.0 - CURSOR_BOB_COMPRESSION * cycle * release;
+        float cycle = 0.5 - 0.5 * cos(2.0 * PI * iTime / MOCHI_BOB_PERIOD);
+        float release = 1.0 - easeSmoothStep((move.timeSince - MOCHI_BOB_HOLD_TIME) / MOCHI_BOB_RETURN_TIME);
+        float bobScale = 1.0 - MOCHI_BOB_COMPRESSION * cycle * release;
         // Scale only the head and eye about the lower edge, leaving the cape unchanged.
         rendered.bodyLocal.y = (rendered.bodyLocal.y + rendered.baseHalfSize.y) / bobScale - rendered.baseHalfSize.y;
         rendered.scale.y *= bobScale;
     }
-    fragment.cursorDistance = mochiDistance(rendered, move, fragment.normalisedCoord);
+    fragment.mochiOutlineDistance = mochiDistance(rendered, move, fragment.normalisedCoord);
     outC = compositeTrail(outC, path, move, fragment, rendered.headProgress);
 
     outC = compositeLandingParticles(outC, path.current, move, fragment);
 
-    if (move.cursorVisible) {
-        float cursorAlpha = 1.0;
-        vec3 cursorColour = iCurrentCursorColor.rgb;
+    if (move.mochiVisible) {
+        float mochiAlpha = 1.0;
+        vec3 mochiColour = iCurrentCursorColor.rgb;
         if (iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW) {
             // Fade waits for slide or jump completion, then the hold. Focus resets it without a hold.
-            float fadeDelay = move.movementEnd + ((move.smallSlide || move.jump) ? CURSOR_FADE_HOLD_TIME : 0.0);
+            float fadeDelay = move.movementEnd + ((move.smallSlide || move.jump) ? MOCHI_FADE_HOLD_TIME : 0.0);
             float fadeStart = max(iTimeCursorChange + fadeDelay, iTimeFocus);
-            cursorAlpha = getCursorAlpha(max(iTime - fadeStart, 0.0));
+            mochiAlpha = getMochiAlpha(max(iTime - fadeStart, 0.0));
 
-            cursorColour = drawFace(cursorColour, rendered, move, fragment.pixel);
+            mochiColour = drawFace(mochiColour, rendered, move, fragment.pixel);
         }
 
-        float cursorMask = antialiasNoBlur(fragment.cursorDistance) * cursorAlpha;
-        outC = mix(outC, vec4(cursorColour, outC.a), cursorMask);
+        float mochiMask = antialiasNoBlur(fragment.mochiOutlineDistance) * mochiAlpha;
+        outC = mix(outC, vec4(mochiColour, outC.a), mochiMask);
     }
 
     fragColor = outC;
