@@ -534,6 +534,64 @@ vec4 compositeTrail(vec4 outC, CursorPath path, MoveState move, FragmentState fr
     return outC;
 }
 
+vec4 compositeLandingParticles(vec4 outC, CursorBox current, MoveState move, FragmentState fragment) {
+    float particleAge = move.timeSince - move.landingStart;
+    if (move.jump && particleAge >= 0.0 && particleAge < LANDING_PARTICLE_TIME) {
+        float intensity = smoothstep(LANDING_FULL_DISTANCE / 12.0, LANDING_FULL_DISTANCE, move.cellDistance);
+        int particleCount = int(floor(mix(4.0, float(LANDING_PARTICLE_COUNT), intensity) + 0.5));
+        int starCount = int(floor(4.0 * intensity + 0.5));
+        float horizontalSpread = mix(0.25, 1.0, intensity);
+        vec2 origin = current.centre - vec2(0.0, current.halfSize.y);
+        vec2 offset = fragment.vu - origin;
+        // Include the widest star tips and their antialiasing edges.
+        vec2 padding = vec2(10.0 * fragment.pixel);
+        if (all(greaterThan(offset, -move.currentRect.zw * vec2(3.1, 2.8) - padding))
+            && all(lessThan(offset, move.currentRect.zw * vec2(3.1, 1.0) + padding))) {
+            for (int i = 0; i < LANDING_PARTICLE_COUNT; i++) {
+                if (i >= particleCount) break;
+                float a = hash(vec3(move.seed, float(i), 410.0));
+                float b = hash(vec3(move.seed, float(i), 411.0));
+                float c = hash(vec3(move.seed, float(i), 412.0));
+                float lifetime = mix(0.700, LANDING_PARTICLE_TIME, a);
+                if (particleAge >= lifetime) continue;
+
+                float strand = 2.0 * float(i) / float(particleCount - 1) - 1.0;
+                float progress = particleAge / lifetime;
+                float apex = mix(0.34, 0.38, c);
+                float riseAge = progress / apex;
+                // Positive Y rises from the fixed lower edge, then gravity pulls down.
+                vec2 position = origin + move.currentRect.zw * vec2(
+                    strand * (0.4 + 2.7 * easeOutQuad(progress)) * horizontalSpread,
+                    mix(0.5, 1.0, b) * (2.0 * riseAge - riseAge * riseAge)
+                );
+                float radius = clamp(min(move.currentRect.z, move.currentRect.w) * mix(0.075, 0.16, c),
+                    0.80 * fragment.pixel, 2.30 * fragment.pixel);
+                vec2 delta = abs(fragment.vu - position);
+                float distance = length(delta) - radius;
+                if (i % 5 == 0 && i / 5 < starCount) {
+                    // Two narrow diamonds form four points with concave sides.
+                    distance = (min(delta.x + 3.0 * delta.y, 3.0 * delta.x + delta.y)
+                        - 2.6 * radius) / sqrt(10.0);
+                }
+                float alpha = 1.0 - smoothstep(-fragment.pixel, fragment.pixel, distance);
+                alpha *= smoothstep(0.0, 0.018, particleAge)
+                    * (1.0 - smoothstep(0.58, 1.0, progress));
+                float sparkle = pow(0.5 + 0.5 * sin(particleAge * 24.0 + c * 2.0 * PI), 8.0);
+                alpha *= mix(0.86, 0.98, b) * (0.86 + 0.14 * sparkle);
+                alpha *= smoothstep(0.0, fragment.pixel, fragment.sdfCur);
+                // Deepen the gold derived from Catppuccin Yellow and Peach.
+                vec3 colour = mix(TRAIL_COLOURS[2], TRAIL_COLOURS[1], a * 0.35)
+                    * vec3(1.0, 0.95, 0.55);
+                float core = 1.0 - smoothstep(0.15 * radius, 0.85 * radius, length(delta));
+                colour = mix(colour, vec3(1.0, 0.96, 0.72), core * (0.65 + 0.35 * sparkle));
+                outC = mix(outC, vec4(colour, outC.a), alpha);
+            }
+        }
+    }
+
+    return outC;
+}
+
 // Sample the terminal, then composite the trail, landing particles and cursor in that order.
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 off = vec2(-0.5, 0.5);
@@ -663,59 +721,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     }
     outC = compositeTrail(outC, path, move, fragment, rendered.headProgress);
 
-    float particleAge = move.timeSince - move.landingStart;
-    if (move.jump && particleAge >= 0.0 && particleAge < LANDING_PARTICLE_TIME) {
-        float intensity = smoothstep(LANDING_FULL_DISTANCE / 12.0, LANDING_FULL_DISTANCE, move.cellDistance);
-        int particleCount = int(floor(mix(4.0, float(LANDING_PARTICLE_COUNT), intensity) + 0.5));
-        int starCount = int(floor(4.0 * intensity + 0.5));
-        float horizontalSpread = mix(0.25, 1.0, intensity);
-        vec2 origin = path.current.centre - vec2(0.0, path.current.halfSize.y);
-        vec2 offset = fragment.vu - origin;
-        // Include the widest star tips and their antialiasing edges.
-        vec2 padding = vec2(10.0 * fragment.pixel);
-        if (all(greaterThan(offset, -move.currentRect.zw * vec2(3.1, 2.8) - padding))
-            && all(lessThan(offset, move.currentRect.zw * vec2(3.1, 1.0) + padding))) {
-            for (int i = 0; i < LANDING_PARTICLE_COUNT; i++) {
-                if (i >= particleCount) break;
-                float a = hash(vec3(move.seed, float(i), 410.0));
-                float b = hash(vec3(move.seed, float(i), 411.0));
-                float c = hash(vec3(move.seed, float(i), 412.0));
-                float lifetime = mix(0.700, LANDING_PARTICLE_TIME, a);
-                if (particleAge >= lifetime) continue;
-
-                float strand = 2.0 * float(i) / float(particleCount - 1) - 1.0;
-                float progress = particleAge / lifetime;
-                float apex = mix(0.34, 0.38, c);
-                float riseAge = progress / apex;
-                // Positive Y rises from the fixed lower edge, then gravity pulls down.
-                vec2 position = origin + move.currentRect.zw * vec2(
-                    strand * (0.4 + 2.7 * easeOutQuad(progress)) * horizontalSpread,
-                    mix(0.5, 1.0, b) * (2.0 * riseAge - riseAge * riseAge)
-                );
-                float radius = clamp(min(move.currentRect.z, move.currentRect.w) * mix(0.075, 0.16, c),
-                    0.80 * fragment.pixel, 2.30 * fragment.pixel);
-                vec2 delta = abs(fragment.vu - position);
-                float distance = length(delta) - radius;
-                if (i % 5 == 0 && i / 5 < starCount) {
-                    // Two narrow diamonds form four points with concave sides.
-                    distance = (min(delta.x + 3.0 * delta.y, 3.0 * delta.x + delta.y)
-                        - 2.6 * radius) / sqrt(10.0);
-                }
-                float alpha = 1.0 - smoothstep(-fragment.pixel, fragment.pixel, distance);
-                alpha *= smoothstep(0.0, 0.018, particleAge)
-                    * (1.0 - smoothstep(0.58, 1.0, progress));
-                float sparkle = pow(0.5 + 0.5 * sin(particleAge * 24.0 + c * 2.0 * PI), 8.0);
-                alpha *= mix(0.86, 0.98, b) * (0.86 + 0.14 * sparkle);
-                alpha *= smoothstep(0.0, fragment.pixel, fragment.sdfCur);
-                // Deepen the gold derived from Catppuccin Yellow and Peach.
-                vec3 colour = mix(TRAIL_COLOURS[2], TRAIL_COLOURS[1], a * 0.35)
-                    * vec3(1.0, 0.95, 0.55);
-                float core = 1.0 - smoothstep(0.15 * radius, 0.85 * radius, length(delta));
-                colour = mix(colour, vec3(1.0, 0.96, 0.72), core * (0.65 + 0.35 * sparkle));
-                outC = mix(outC, vec4(colour, outC.a), alpha);
-            }
-        }
-    }
+    outC = compositeLandingParticles(outC, path.current, move, fragment);
 
     if (move.cursorVisible) {
         float cursorAlpha = 1.0;
