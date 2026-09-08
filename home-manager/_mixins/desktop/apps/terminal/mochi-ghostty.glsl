@@ -134,7 +134,7 @@ const float SMALL_MOVE_TOLERANCE = 0.05;
 
 // Number of points joined by rounded segments over the remaining path.
 // Higher values follow the curve more closely but add GPU work.
-const int PATH_SAMPLES = 128;
+const int PATH_SAMPLES = 32;
 
 // ============================================================================
 // EASING FUNCTIONS
