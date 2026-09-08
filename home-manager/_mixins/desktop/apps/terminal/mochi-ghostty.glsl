@@ -54,6 +54,8 @@ const float LANDING_PARTICLE_SPREAD_BASE = 0.4;
 const float LANDING_PARTICLE_SPREAD_GAIN = 2.7;
 const float LANDING_PARTICLE_APEX_MIN = 0.34;
 const float LANDING_FULL_DISTANCE = 40.0;
+const float LANDING_MIN_DISTANCE = LANDING_FULL_DISTANCE / 12.0;
+const float LANDING_BLINK_LEAD_TIME = 0.060;
 const float LANDING_SHAKE_DISTANCE = LANDING_FULL_DISTANCE * 1.25;
 const float LANDING_SHAKE_TIME = 0.260;
 const vec2 LANDING_SHAKE_PIXELS = vec2(1.25, -5.50);
@@ -444,6 +446,7 @@ struct MoveState {
     float jumpEnd;
     float movementEnd;
     float cellDistance;
+    float landingIntensity;
     float seed;
 };
 
@@ -581,7 +584,7 @@ vec4 compositeTrail(vec4 outC, CursorPath path, MoveState move, FragmentState fr
 vec4 compositeLandingParticles(vec4 outC, CursorBox current, MoveState move, FragmentState fragment) {
     float particleAge = move.timeSince - move.landingStart;
     if (move.jump && particleAge >= 0.0 && particleAge < LANDING_PARTICLE_TIME) {
-        float intensity = smoothstep(LANDING_FULL_DISTANCE / 12.0, LANDING_FULL_DISTANCE, move.cellDistance);
+        float intensity = move.landingIntensity;
         int particleCount = int(floor(mix(4.0, float(LANDING_PARTICLE_COUNT), intensity) + 0.5));
         int starCount = int(floor(4.0 * intensity + 0.5));
         float horizontalSpread = mix(0.25, 1.0, intensity);
@@ -737,15 +740,14 @@ vec3 drawFace(vec3 cursorColour, RenderedCursor rendered, MoveState move, float 
             -eyeMargin - eyeAnchor, eyeMargin - eyeAnchor);
         eyeCoord -= eyeShift * gazePulse;
 
-        float landingHold = mix(0.080, 0.250,
-            smoothstep(LANDING_FULL_DISTANCE / 12.0, LANDING_FULL_DISTANCE, move.cellDistance));
+        float landingHold = mix(0.080, 0.250, move.landingIntensity);
         float landingReopen = move.landingStart + landingHold;
         float landingBlinkEnd = landingReopen + 0.120;
         LandingWindow landingWindow = LandingWindow(move.jump,
-            iTimeCursorChange + (move.landingStart - 0.060), iTimeCursorChange + landingBlinkEnd);
+            iTimeCursorChange + (move.landingStart - LANDING_BLINK_LEAD_TIME), iTimeCursorChange + landingBlinkEnd);
         float aperture = getEyeAperture(time, expressionEvent, landingWindow) * (1.0 - expressionClosure);
         if (move.jump) {
-            float landingAperture = 1.0 - envelope(move.timeSince, move.landingStart - 0.060, move.landingStart,
+            float landingAperture = 1.0 - envelope(move.timeSince, move.landingStart - LANDING_BLINK_LEAD_TIME, move.landingStart,
                 landingReopen, landingBlinkEnd);
             aperture = min(aperture, landingAperture);
         }
@@ -847,6 +849,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     move.movementEnd = move.jump ? move.jumpEnd : (move.smallSlide ? CURSOR_SMALL_MOVE_TIME : 0.0);
     // Measure origin displacement in cells, independent of font size and aspect.
     move.cellDistance = move.valid ? length(move.originDelta / max(move.currentRect.zw, vec2(1e-6))) : 0.0;
+    move.landingIntensity = smoothstep(LANDING_MIN_DISTANCE, LANDING_FULL_DISTANCE, move.cellDistance);
     vec2 sampleCoord;
     vec2 renderCoord = landingShakeCoord(fragCoord, move, sampleCoord);
 
