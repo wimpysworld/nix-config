@@ -5,23 +5,13 @@ kick-up sparkles and stars, and stick big landings hard enough to shake the
 whole terminal.
 */
 
-// ============================================================================
-// CONFIGURATION
-// ============================================================================
-
-// ──────────────────────────────────────────────────────────────────────────
-// MASTER TOGGLES
-// ──────────────────────────────────────────────────────────────────────────
+// Configuration.
 
 // Toggle the rainbow trail without changing the cursor or landing effects.
 const bool TRAIL_ENABLED = true;
 
 // Toggle curved paths for the cursor and trail.
 const bool BEND_ENABLED = true;
-
-// ──────────────────────────────────────────────────────────────────────────
-// ANIMATION TIMING
-// ──────────────────────────────────────────────────────────────────────────
 
 // Tail catch-up time in seconds, measured from landing for jumps.
 // Shorter times make the trail disappear faster.
@@ -73,10 +63,6 @@ const float DOZE_STARTLE_END = 4.40;
 const float DOZE_WAKE_BLINK_FIRST = 3.05;
 const float DOZE_WAKE_BLINK_SECOND = 3.36;
 
-// ──────────────────────────────────────────────────────────────────────────
-// TRAIL SIZE CONTROL
-// ──────────────────────────────────────────────────────────────────────────
-
 // Scale relative to the interpolated cursor size, using fixed positions on the full path.
 
 // Size at the previous cursor position (t = 0.0).
@@ -88,10 +74,6 @@ const float TRAIL_SIZE_MID = 1.2;
 // Size at trail head (t = 1.0, at cursor position)
 const float TRAIL_SIZE_END = 1.0;
 
-// ──────────────────────────────────────────────────────────────────────────
-// PATH BENDING: PRIMARY CURVE
-// ──────────────────────────────────────────────────────────────────────────
-
 // Base lateral offset in normalised coordinates.
 const float BEND_STRENGTH = 0.12;
 
@@ -101,18 +83,10 @@ const float BEND_DISTANCE_MIN = 0.05;
 // Movement distance at which bending reaches full strength
 const float BEND_DISTANCE_MAX = 0.30;
 
-// ──────────────────────────────────────────────────────────────────────────
-// PATH BENDING: DIRECTION CONTROL
-// ──────────────────────────────────────────────────────────────────────────
-
 // Screen-space arc direction, independent of movement direction.
 // For horizontal movement: 1.0 = up, -1.0 = down.
 // For vertical movement: 1.0 = right, -1.0 = left.
 const float BEND_ARC_DIRECTION = 1.0;
-
-// ──────────────────────────────────────────────────────────────────────────
-// COLOUR SETTINGS
-// ──────────────────────────────────────────────────────────────────────────
 
 // Catppuccin Mocha RGB values from lib/catppuccin-palette.json.
 // From cursor to tail: Red, Peach, Yellow, Green, Sapphire, Blue, Mauve.
@@ -126,20 +100,12 @@ const vec3 TRAIL_COLOURS[7] = vec3[7](
     vec3(203.0, 166.0, 247.0) / 255.0
 );
 
-// ──────────────────────────────────────────────────────────────────────────
-// OPACITY SETTINGS
-// ──────────────────────────────────────────────────────────────────────────
-
 // Base opacity multiplier for the trail.
 const float TRAIL_BASE_ALPHA = 0.80;
 
 // Each half of the cursor fade lasts this many seconds.
 const float CURSOR_FADE_HALF_PERIOD = 0.75;
 const float CURSOR_FADE_HOLD_TIME = 0.500;
-
-// ──────────────────────────────────────────────────────────────────────────
-// RENDERING SETTINGS
-// ──────────────────────────────────────────────────────────────────────────
 
 // Maximum valid movement in cursor-height units, excluding the threshold itself.
 const float MAX_VALID_MOVE_DISTANCE = 100.0;
@@ -157,10 +123,6 @@ const int PATH_SAMPLES = 32;
 const float AA_DERIVATIVE_SCALE = 1.5;
 const float AA_FALLBACK_WIDTH = 0.002;
 const float AA_FALLBACK_BELOW = 0.001;
-
-// ============================================================================
-// EASING FUNCTIONS
-// ============================================================================
 
 const float PI = 3.14159265359;
 
@@ -186,10 +148,6 @@ float getLandingShakePulse(float progress) {
     if (progress < 0.60) return mix(1.0, -0.20, easeSmoothStep((progress - 0.15) / 0.45));
     return mix(-0.20, 0.0, easeSmoothStep((progress - 0.60) / 0.40));
 }
-
-// ============================================================================
-// UTILITIES
-// ============================================================================
 
 float hash(vec3 p) {
     p = fract(p * 0.1031);
@@ -406,9 +364,7 @@ float getTrailRadius(vec2 halfSize, vec2 aspect, float t) {
     return max(min(scaledSize.x, scaledSize.y) * getTrailSize(t), 0.0);
 }
 
-// ============================================================================
-// MAIN
-// ============================================================================
+// Cursor and trail rendering.
 
 struct CursorBox {
     vec2 centre;
