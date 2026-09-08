@@ -402,6 +402,8 @@ struct MoveState {
     bool cursorVisible;
     bool prevGeometryValid;
     bool moveInRange;
+    bool movedSinceFocus;
+    bool originBeyondMinDistance;
     bool smallMove;
     bool valid;
     bool hollowSinceFocus;
@@ -462,7 +464,7 @@ vec4 compositeTrail(vec4 outC, CursorPath path, MoveState move, FragmentState fr
     bool visible = trailTime < TAIL_CATCHUP_TIME;
 
     if (TRAIL_ENABLED > 0.5 && move.cursorVisible && move.valid && visible
-        && iTimeCursorChange > iTimeFocus) {
+        && move.movedSinceFocus) {
         float progress = clamp(trailTime / TAIL_CATCHUP_TIME, 0.0, 1.0);
         progress = easeOutQuart(progress);
 
@@ -686,7 +688,7 @@ vec3 drawFace(vec3 cursorColour, RenderedCursor rendered, MoveState move, float 
         vec2 gazeDirection = idleGaze.xy;
         float gazePulse = idleGaze.z;
         if (move.prevGeometryValid && move.timeSince >= 0.0 && move.timeSince < 2.0
-            && iTimeCursorChange > iTimeFocus && move.originDistance > move.minDistance && move.originDistance < move.maxDistance) {
+            && move.movedSinceFocus && move.originBeyondMinDistance && move.originDistance < move.maxDistance) {
             gazePulse = (move.smallMove ? 1.0 : easeSmoothStep(move.timeSince / 0.080))
                 * (1.0 - easeSmoothStep((move.timeSince - CURSOR_TRAVEL_TIME) / 1.200));
             gazeDirection = move.originDelta / move.originDistance;
@@ -796,12 +798,14 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     move.cursorVisible = iFocus > 0 && iCursorVisible > 0 && move.cursorGeometryValid;
     move.prevGeometryValid = move.previousRect.z > 0.0 && move.previousRect.w > 0.0;
     move.moveInRange = move.prevGeometryValid && move.centreDistance > move.minDistance && move.centreDistance < move.maxDistance && move.timeSince >= 0.0;
+    move.movedSinceFocus = iTimeCursorChange > iTimeFocus;
+    move.originBeyondMinDistance = move.originDistance > move.minDistance;
     move.smallMove = smallHorizontalMove || smallVerticalMove;
     move.valid = move.cursorGeometryValid && move.moveInRange && !move.smallMove;
     move.hollowSinceFocus = move.cursorVisible && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW
-        && iTimeCursorChange > iTimeFocus;
+        && move.movedSinceFocus;
     move.jump = move.hollowSinceFocus && move.valid;
-    move.smallSlide = move.hollowSinceFocus && move.moveInRange && move.smallMove && move.originDistance > move.minDistance;
+    move.smallSlide = move.hollowSinceFocus && move.moveInRange && move.smallMove && move.originBeyondMinDistance;
     move.landingStart = CURSOR_TRAVEL_TIME;
     move.jumpEnd = move.landingStart + CURSOR_LANDING_TIME;
     // Measure origin displacement in cells, independent of font size and aspect.
