@@ -55,6 +55,18 @@ const float LANDING_SHAKE_TIME = 0.260;
 const vec2 LANDING_SHAKE_PIXELS = vec2(1.25, -5.50);
 const float LANDING_SHAKE_DEGREES = 0.15;
 
+const float YAWN_DURATION = 2.7;
+const float DOZE_DURATION = 4.8;
+const float EXPRESSION_FADE_TIME = 0.35;
+const float DOZE_CLOSE_START = 0.25;
+const float DOZE_CLOSE_END = 1.90;
+const float DOZE_WAKE_START = 2.50;
+const float DOZE_WAKE_END = 2.60;
+const float DOZE_STARTLE_HOLD_END = 3.80;
+const float DOZE_STARTLE_END = 4.40;
+const float DOZE_WAKE_BLINK_FIRST = 3.05;
+const float DOZE_WAKE_BLINK_SECOND = 3.36;
+
 // ──────────────────────────────────────────────────────────────────────────
 // TRAIL SIZE CONTROL
 // ──────────────────────────────────────────────────────────────────────────
@@ -189,7 +201,7 @@ vec3 getIdleExpressionEvent(float time, float idleReady) {
     float slot = floor(time / 30.0);
     float start = slot * 30.0 + 1.0 + 10.0 * hash(vec3(slot, 740.0, 0.0));
     float doze = hash(vec3(slot, 740.0, 1.0)) < 0.25 ? 1.0 : 0.0;
-    return start >= idleReady ? vec3(start, mix(2.7, 4.8, doze), doze) : vec3(-100.0, 0.0, 0.0);
+    return start >= idleReady ? vec3(start, mix(YAWN_DURATION, DOZE_DURATION, doze), doze) : vec3(-100.0, 0.0, 0.0);
 }
 
 float getEyeAperture(float time, vec3 expressionEvent, vec2 landingWindow) {
@@ -644,7 +656,7 @@ vec3 drawFace(vec3 cursorColour, RenderedCursor rendered, MoveState move, float 
         float idleSince = max(iTimeCursorChange, iTimeFocus);
         vec3 expressionEvent = getIdleExpressionEvent(time, idleSince + 10.0);
         float expressionAge = time - expressionEvent.x;
-        float expressionWeight = envelope(expressionAge, 0.0, 0.25, expressionEvent.y - 0.35, expressionEvent.y);
+        float expressionWeight = envelope(expressionAge, 0.0, 0.25, expressionEvent.y - EXPRESSION_FADE_TIME, expressionEvent.y);
         float mouthOpen = 0.0;
         float expressionClosure = 0.0;
         float lidDrop = 0.0;
@@ -653,17 +665,17 @@ vec3 drawFace(vec3 cursorColour, RenderedCursor rendered, MoveState move, float 
         if (expressionWeight > 0.0) {
             if (expressionEvent.z < 0.5) {
                 mouthOpen = envelope(expressionAge, 0.35, 1.0, 1.75, 2.25);
-                expressionClosure = envelope(expressionAge, 0.40, 1.0, 1.90, 2.70);
+                expressionClosure = envelope(expressionAge, 0.40, 1.0, 1.90, YAWN_DURATION);
                 expressionGaze = 0.35 * smoothstep(0.0, 0.35, expressionAge)
                     * (1.0 - smoothstep(0.45, 0.95, expressionAge));
             } else {
-                lidDrop = 0.92 * smoothstep(0.25, 1.90, expressionAge)
-                    * (1.0 - smoothstep(2.50, 2.60, expressionAge));
-                expressionGaze = -0.70 * smoothstep(0.25, 1.90, expressionAge)
-                    * (1.0 - smoothstep(2.50, 2.60, expressionAge));
-                startle = envelope(expressionAge, 2.50, 2.60, 3.80, 4.40);
-                expressionClosure = max(getBlinkClosure(expressionAge - 3.05, 0.220),
-                    getBlinkClosure(expressionAge - 3.36, 0.220));
+                lidDrop = 0.92 * smoothstep(DOZE_CLOSE_START, DOZE_CLOSE_END, expressionAge)
+                    * (1.0 - smoothstep(DOZE_WAKE_START, DOZE_WAKE_END, expressionAge));
+                expressionGaze = -0.70 * smoothstep(DOZE_CLOSE_START, DOZE_CLOSE_END, expressionAge)
+                    * (1.0 - smoothstep(DOZE_WAKE_START, DOZE_WAKE_END, expressionAge));
+                startle = envelope(expressionAge, DOZE_WAKE_START, DOZE_WAKE_END, DOZE_STARTLE_HOLD_END, DOZE_STARTLE_END);
+                expressionClosure = max(getBlinkClosure(expressionAge - DOZE_WAKE_BLINK_FIRST, 0.220),
+                    getBlinkClosure(expressionAge - DOZE_WAKE_BLINK_SECOND, 0.220));
             }
         }
         float restingEyeRadius = eyeRadius;
