@@ -27,6 +27,11 @@ const float MOCHI_BOB_PERIOD = 1.400;
 const float MOCHI_BOB_COMPRESSION = 0.14;
 const float MOCHI_BOB_HOLD_TIME = 0.140;
 const float MOCHI_BOB_RETURN_TIME = 0.400;
+const float MOCHI_LAUNCH_PEAK_TIME = 0.030;
+const float MOCHI_LAUNCH_HOLD_END_TIME = 0.050;
+const float MOCHI_LAUNCH_END_TIME = 0.110;
+const vec2 MOCHI_LAUNCH_MIN_SCALE = vec2(0.95, 1.10);
+const vec2 MOCHI_LAUNCH_MAX_SCALE = vec2(0.80, 1.40);
 const float MOCHI_LANDING_COMPRESSION_TIME = 0.025;
 const vec2 MOCHI_LANDING_HOLD_TIME_RANGE = vec2(0.040, 0.080);
 const vec2 MOCHI_LANDING_RECOVERY_TIME_RANGE = vec2(0.120, 0.180);
@@ -863,6 +868,14 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         // Scale only the head and eye about the lower edge, leaving the cape unchanged.
         rendered.bodyLocal.y = (rendered.bodyLocal.y + rendered.baseHalfSize.y) / bobScale - rendered.baseHalfSize.y;
         rendered.scale.y *= bobScale;
+    } else if (move.jump && move.timeSince < MOCHI_LAUNCH_END_TIME) {
+        vec2 launchPeakScale = mix(MOCHI_LAUNCH_MIN_SCALE, MOCHI_LAUNCH_MAX_SCALE, move.landingIntensity);
+        float launchStretch = envelope(move.timeSince, 0.0, MOCHI_LAUNCH_PEAK_TIME, MOCHI_LAUNCH_HOLD_END_TIME, MOCHI_LAUNCH_END_TIME);
+        vec2 launchScale = mix(vec2(1.0), launchPeakScale, launchStretch);
+        // Stretch the body and eye about the lower edge, preserving the cape coordinate basis and distance scale.
+        rendered.bodyLocal.x /= launchScale.x;
+        rendered.bodyLocal.y = (rendered.bodyLocal.y + rendered.baseHalfSize.y) / launchScale.y - rendered.baseHalfSize.y;
+        rendered.scale *= launchScale;
     }
     fragment.mochiOutlineDistance = mochiDistance(rendered, move, fragment.normalisedCoord);
     outC = compositeTrail(outC, path, move, fragment, rendered.headProgress);
