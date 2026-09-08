@@ -50,6 +50,9 @@ const float CURSOR_CAPE_RETURN_TIME = 0.400;
 const float CURSOR_IDLE_HEM_TIME = 0.200;
 const int LANDING_PARTICLE_COUNT = 18;
 const float LANDING_PARTICLE_TIME = 1.000;
+const float LANDING_PARTICLE_SPREAD_BASE = 0.4;
+const float LANDING_PARTICLE_SPREAD_GAIN = 2.7;
+const float LANDING_PARTICLE_APEX_MIN = 0.34;
 const float LANDING_FULL_DISTANCE = 40.0;
 const float LANDING_SHAKE_DISTANCE = LANDING_FULL_DISTANCE * 1.25;
 const float LANDING_SHAKE_TIME = 0.260;
@@ -562,8 +565,11 @@ vec4 compositeLandingParticles(vec4 outC, CursorBox current, MoveState move, Fra
         float horizontalSpread = mix(0.25, 1.0, intensity);
         vec2 origin = current.centre - vec2(0.0, current.halfSize.y);
         vec2 offset = fragment.vu - origin;
-        // Include the widest star tips and their antialiasing edges.
+        // Star tips and antialiasing extend at most (2.6 * 2.30 + sqrt(10)) pixels, below this padding.
         vec2 padding = vec2(10.0 * fragment.pixel);
+        // Horizontal reach is the spread base plus its gain: 0.4 + 2.7 = 3.1 cursor widths.
+        // At the minimum apex, r = 1 / 0.34 gives a fall of r * r - 2 * r, approximately 2.768166 heights.
+        // The 2.8-height fall bound is conservative. The rise peaks at 1.0 height. Recheck these bounds when tuning particle motion.
         if (all(greaterThan(offset, -move.currentRect.zw * vec2(3.1, 2.8) - padding))
             && all(lessThan(offset, move.currentRect.zw * vec2(3.1, 1.0) + padding))) {
             for (int i = 0; i < LANDING_PARTICLE_COUNT; i++) {
@@ -576,11 +582,11 @@ vec4 compositeLandingParticles(vec4 outC, CursorBox current, MoveState move, Fra
 
                 float strand = 2.0 * float(i) / float(particleCount - 1) - 1.0;
                 float progress = particleAge / lifetime;
-                float apex = mix(0.34, 0.38, c);
+                float apex = mix(LANDING_PARTICLE_APEX_MIN, 0.38, c);
                 float riseAge = progress / apex;
                 // Positive Y rises from the fixed lower edge, then gravity pulls down.
                 vec2 position = origin + move.currentRect.zw * vec2(
-                    strand * (0.4 + 2.7 * easeOutQuad(progress)) * horizontalSpread,
+                    strand * (LANDING_PARTICLE_SPREAD_BASE + LANDING_PARTICLE_SPREAD_GAIN * easeOutQuad(progress)) * horizontalSpread,
                     mix(0.5, 1.0, b) * (2.0 * riseAge - riseAge * riseAge)
                 );
                 float radius = clamp(min(move.currentRect.z, move.currentRect.w) * mix(0.075, 0.16, c),
