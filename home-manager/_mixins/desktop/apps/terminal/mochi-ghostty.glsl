@@ -444,6 +444,96 @@ vec2 landingShakeCoord(vec2 fragCoord, MoveState move, out vec2 sampleCoord) {
     return renderCoord;
 }
 
+vec4 compositeTrail(vec4 outC, CursorPath path, MoveState move, FragmentState fragment, float headProgress) {
+    // Let the trail grow behind the moving cursor before its tail catches up.
+    float trailTime = move.timeSince - (move.jump ? move.landingStart : 0.0);
+    bool visible = trailTime < TAIL_CATCHUP_TIME;
+
+    if (TRAIL_ENABLED > 0.5 && move.cursorVisible && move.valid && visible
+        && iTimeCursorChange > iTimeFocus) {
+        float progress = clamp(trailTime / TAIL_CATCHUP_TIME, 0.0, 1.0);
+        progress = easeOutQuart(progress);
+
+        float tStart = clamp(progress, 0.0, headProgress), tEnd = headProgress;
+
+        // Bound every interpolated radius, including changes in cursor proportions.
+        vec2 aspect = max(path.current.halfSize, vec2(1e-6));
+        float distanceScale = min(aspect.x, aspect.y);
+        vec2 maxHalfSize = max(mix(path.previous.halfSize, path.current.halfSize, tStart), mix(path.previous.halfSize, path.current.halfSize, tEnd));
+        vec2 maxScaledSize = maxHalfSize / aspect;
+        float maxTrailSize = max(0.0, max(TRAIL_SIZE_START, max(TRAIL_SIZE_MID, TRAIL_SIZE_END)));
+        float maxRadius = min(maxScaledSize.x, maxScaledSize.y) * maxTrailSize;
+        // Bound the analytic AA in scaled space, including its fixed-width fallback.
+        float aaSupport = max(1.5 * (length(fragment.vuDx / aspect) + length(fragment.vuDy / aspect)),
+            0.002 / distanceScale);
+        float corridorRadius = abs(path.bend * BEND_ARC_DIRECTION)
+            + max(aspect.x, aspect.y) * (maxRadius + aaSupport);
+        vec2 chordStart = mix(path.previous.centre, path.current.centre, tStart), chordEnd = mix(path.previous.centre, path.current.centre, tEnd);
+        vec2 chord = chordEnd - chordStart;
+        float chordLengthSquared = dot(chord, chord);
+        float chordT = chordLengthSquared > 0.0
+            ? clamp(dot(fragment.vu - chordStart, chord) / chordLengthSquared, 0.0, 1.0) : 0.0;
+        vec2 corridorOffset = fragment.vu - mix(chordStart, chordEnd, chordT);
+        bool inCorridor = dot(corridorOffset, corridorOffset) <= corridorRadius * corridorRadius;
+
+        if (tStart < tEnd && inCorridor) {
+            int segments = max(int(ceil(float(PATH_SAMPLES - 1) * (tEnd - tStart))), 4);
+            float minDist = 1e6, bestT = tStart;
+            vec2 bestRadial = vec2(0.0);
+            // A shared aspect keeps the elliptical caps identical at joins.
+            // Changed cursor proportions use the radius inside both dimensions.
+            vec2 point = fragment.vu / aspect;
+            float previousT = tStart;
+            vec2 previousPos = getBentPathPosition(path.previous.centre, path.current.centre, previousT, path.bend) / aspect;
+            float previousRadius = getTrailRadius(mix(path.previous.halfSize, path.current.halfSize, previousT), aspect, previousT);
+
+            for (int i = 1; i <= segments; i++) {
+                float t = mix(tStart, tEnd, float(i) / float(segments));
+                vec2 pathPos = getBentPathPosition(path.previous.centre, path.current.centre, t, path.bend) / aspect;
+                float radius = getTrailRadius(mix(path.previous.halfSize, path.current.halfSize, t), aspect, t);
+                vec4 segment = sdfTrailSegment(point, previousPos, pathPos, previousRadius, radius);
+
+                if (segment.x < minDist) {
+                    minDist = segment.x;
+                    bestT = mix(previousT, t, segment.y);
+                    bestRadial = segment.zw;
+                }
+                previousT = t;
+                previousPos = pathPos;
+                previousRadius = radius;
+            }
+            minDist *= distanceScale;
+
+            float trailAlpha = bestT;  // Opacity rises from 0 to 1 along the full path.
+
+            // Soft fade at trail tail
+            trailAlpha *= smoothstep(tStart, tStart + TAIL_FADE_DURATION, bestT);
+
+            // At the optimal capsule position, the taper terms cancel in the spatial gradient.
+            float radialLength = length(bestRadial);
+            vec2 normal = radialLength > 0.0 ? bestRadial / radialLength : vec2(0.0);
+            vec2 gradient = normal / aspect * distanceScale;
+            float trailAA = 1.5 * (abs(dot(gradient, fragment.vuDx)) + abs(dot(gradient, fragment.vuDy)));
+            if (trailAA < 0.001) trailAA = 0.002;
+            trailAlpha *= 1.0 - smoothstep(-trailAA, trailAA, minDist);
+
+            trailAlpha *= TRAIL_BASE_ALPHA;
+            trailAlpha *= step(0.0, fragment.sdfCur);
+
+            // Fit all seven bands to the remaining path as the tail catches up.
+            float colourPosition = clamp((tEnd - bestT) / (tEnd - tStart), 0.0, 1.0);
+            int colourBand = min(int(floor(colourPosition * 7.0)), 6);
+            vec4 trailColor = vec4(TRAIL_COLOURS[colourBand], mix(1.0, 0.8, bestT) * trailAlpha);
+
+            if (trailColor.a > 0.001) {
+                outC = mix(outC, vec4(trailColor.rgb, outC.a), trailColor.a);
+            }
+        }
+    }
+
+    return outC;
+}
+
 // Sample the terminal, then composite the trail, landing particles and cursor in that order.
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 off = vec2(-0.5, 0.5);
@@ -571,91 +661,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             }
         }
     }
-    // Let the trail grow behind the moving cursor before its tail catches up.
-    float trailTime = move.timeSince - (move.jump ? move.landingStart : 0.0);
-    bool visible = trailTime < TAIL_CATCHUP_TIME;
-
-    if (TRAIL_ENABLED > 0.5 && move.cursorVisible && move.valid && visible
-        && iTimeCursorChange > iTimeFocus) {
-        float progress = clamp(trailTime / TAIL_CATCHUP_TIME, 0.0, 1.0);
-        progress = easeOutQuart(progress);
-
-        float tStart = clamp(progress, 0.0, rendered.headProgress), tEnd = rendered.headProgress;
-
-        // Bound every interpolated radius, including changes in cursor proportions.
-        vec2 aspect = max(path.current.halfSize, vec2(1e-6));
-        float distanceScale = min(aspect.x, aspect.y);
-        vec2 maxHalfSize = max(mix(path.previous.halfSize, path.current.halfSize, tStart), mix(path.previous.halfSize, path.current.halfSize, tEnd));
-        vec2 maxScaledSize = maxHalfSize / aspect;
-        float maxTrailSize = max(0.0, max(TRAIL_SIZE_START, max(TRAIL_SIZE_MID, TRAIL_SIZE_END)));
-        float maxRadius = min(maxScaledSize.x, maxScaledSize.y) * maxTrailSize;
-        // Bound the analytic AA in scaled space, including its fixed-width fallback.
-        float aaSupport = max(1.5 * (length(fragment.vuDx / aspect) + length(fragment.vuDy / aspect)),
-            0.002 / distanceScale);
-        float corridorRadius = abs(path.bend * BEND_ARC_DIRECTION)
-            + max(aspect.x, aspect.y) * (maxRadius + aaSupport);
-        vec2 chordStart = mix(path.previous.centre, path.current.centre, tStart), chordEnd = mix(path.previous.centre, path.current.centre, tEnd);
-        vec2 chord = chordEnd - chordStart;
-        float chordLengthSquared = dot(chord, chord);
-        float chordT = chordLengthSquared > 0.0
-            ? clamp(dot(fragment.vu - chordStart, chord) / chordLengthSquared, 0.0, 1.0) : 0.0;
-        vec2 corridorOffset = fragment.vu - mix(chordStart, chordEnd, chordT);
-        bool inCorridor = dot(corridorOffset, corridorOffset) <= corridorRadius * corridorRadius;
-
-        if (tStart < tEnd && inCorridor) {
-            int segments = max(int(ceil(float(PATH_SAMPLES - 1) * (tEnd - tStart))), 4);
-            float minDist = 1e6, bestT = tStart;
-            vec2 bestRadial = vec2(0.0);
-            // A shared aspect keeps the elliptical caps identical at joins.
-            // Changed cursor proportions use the radius inside both dimensions.
-            vec2 point = fragment.vu / aspect;
-            float previousT = tStart;
-            vec2 previousPos = getBentPathPosition(path.previous.centre, path.current.centre, previousT, path.bend) / aspect;
-            float previousRadius = getTrailRadius(mix(path.previous.halfSize, path.current.halfSize, previousT), aspect, previousT);
-
-            for (int i = 1; i <= segments; i++) {
-                float t = mix(tStart, tEnd, float(i) / float(segments));
-                vec2 pathPos = getBentPathPosition(path.previous.centre, path.current.centre, t, path.bend) / aspect;
-                float radius = getTrailRadius(mix(path.previous.halfSize, path.current.halfSize, t), aspect, t);
-                vec4 segment = sdfTrailSegment(point, previousPos, pathPos, previousRadius, radius);
-
-                if (segment.x < minDist) {
-                    minDist = segment.x;
-                    bestT = mix(previousT, t, segment.y);
-                    bestRadial = segment.zw;
-                }
-                previousT = t;
-                previousPos = pathPos;
-                previousRadius = radius;
-            }
-            minDist *= distanceScale;
-
-            float trailAlpha = bestT;  // Opacity rises from 0 to 1 along the full path.
-
-            // Soft fade at trail tail
-            trailAlpha *= smoothstep(tStart, tStart + TAIL_FADE_DURATION, bestT);
-
-            // At the optimal capsule position, the taper terms cancel in the spatial gradient.
-            float radialLength = length(bestRadial);
-            vec2 normal = radialLength > 0.0 ? bestRadial / radialLength : vec2(0.0);
-            vec2 gradient = normal / aspect * distanceScale;
-            float trailAA = 1.5 * (abs(dot(gradient, fragment.vuDx)) + abs(dot(gradient, fragment.vuDy)));
-            if (trailAA < 0.001) trailAA = 0.002;
-            trailAlpha *= 1.0 - smoothstep(-trailAA, trailAA, minDist);
-
-            trailAlpha *= TRAIL_BASE_ALPHA;
-            trailAlpha *= step(0.0, fragment.sdfCur);
-
-            // Fit all seven bands to the remaining path as the tail catches up.
-            float colourPosition = clamp((tEnd - bestT) / (tEnd - tStart), 0.0, 1.0);
-            int colourBand = min(int(floor(colourPosition * 7.0)), 6);
-            vec4 trailColor = vec4(TRAIL_COLOURS[colourBand], mix(1.0, 0.8, bestT) * trailAlpha);
-
-            if (trailColor.a > 0.001) {
-                outC = mix(outC, vec4(trailColor.rgb, outC.a), trailColor.a);
-            }
-        }
-    }
+    outC = compositeTrail(outC, path, move, fragment, rendered.headProgress);
 
     float particleAge = move.timeSince - move.landingStart;
     if (move.jump && particleAge >= 0.0 && particleAge < LANDING_PARTICLE_TIME) {
