@@ -132,7 +132,7 @@ const float MIN_MOVE_DISTANCE = 0.01;
 // Allow small coordinate differences when detecting one-cell horizontal or vertical moves.
 const float SMALL_MOVE_TOLERANCE = 0.05;
 
-// Number of points joined by rounded segments over the remaining path.
+// Maximum number of points joined by rounded segments over the full path.
 // Higher values follow the curve more closely but add GPU work.
 const int PATH_SAMPLES = 32;
 
@@ -515,6 +515,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         float tStart = clamp(progress, 0.0, headProgress), tEnd = headProgress;
 
         if (tStart < tEnd) {
+            int segments = max(int(ceil(float(PATH_SAMPLES - 1) * (tEnd - tStart))), 4);
             float minDist = 1e6, bestT = tStart;
             // A shared aspect keeps the elliptical caps identical at joins.
             // Changed cursor proportions use the radius inside both dimensions.
@@ -524,8 +525,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             vec2 previousPos = getBentPathPosition(cP, cC, previousT, strength) / aspect;
             float previousRadius = getTrailRadius(mix(hP, hC, previousT), aspect, previousT);
 
-            for (int i = 1; i < PATH_SAMPLES; i++) {
-                float t = mix(tStart, tEnd, float(i) / float(PATH_SAMPLES - 1));
+            for (int i = 1; i <= segments; i++) {
+                float t = mix(tStart, tEnd, float(i) / float(segments));
                 vec2 pathPos = getBentPathPosition(cP, cC, t, strength) / aspect;
                 float radius = getTrailRadius(mix(hP, hC, t), aspect, t);
                 vec2 segment = sdfTrailSegment(point, previousPos, pathPos, previousRadius, radius);
