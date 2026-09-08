@@ -706,11 +706,15 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                     -eyeMargin - eyeAnchor, eyeMargin - eyeAnchor);
                 eyeCoord -= eyeShift * gazePulse;
 
-                vec2 landingWindow = jump ? iTimeCursorChange + vec2(landingStart - 0.060, jumpEnd + 0.160) : vec2(-100.0);
+                float landingHold = mix(0.080, 0.250,
+                    smoothstep(LANDING_FULL_DISTANCE / 12.0, LANDING_FULL_DISTANCE, cellDistance));
+                float landingReopen = landingStart + landingHold;
+                float landingBlinkEnd = landingReopen + 0.120;
+                vec2 landingWindow = jump ? iTimeCursorChange + vec2(landingStart - 0.060, landingBlinkEnd) : vec2(-100.0);
                 float aperture = getEyeAperture(time, expressionEvent, landingWindow) * (1.0 - expressionClosure);
                 if (jump) {
                     float landingAperture = 1.0 - envelope(timeSince, landingStart - 0.060, landingStart,
-                        jumpEnd + 0.040, jumpEnd + 0.160);
+                        landingReopen, landingBlinkEnd);
                     aperture = min(aperture, landingAperture);
                 }
                 float distanceScale = min(renderedScale.x, renderedScale.y);
