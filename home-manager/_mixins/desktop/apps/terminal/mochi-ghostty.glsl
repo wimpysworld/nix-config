@@ -298,9 +298,9 @@ float sdfCursorIdleHem(vec2 point, vec2 halfSize, float extension) {
     return max(top.x - point.x, max(upperDistance, -halfSize.y - point.y));
 }
 
-// Return the tapered capsule distance and the closest position along it.
+// Return the tapered capsule distance, closest position and radial vector.
 // Cursor-scaled coordinates give all segments the same elliptical aspect.
-vec2 sdfTrailSegment(vec2 p, vec2 a, vec2 b, float ra, float rb) {
+vec4 sdfTrailSegment(vec2 p, vec2 a, vec2 b, float ra, float rb) {
     vec2 segment = b - a;
     vec2 offset = p - a;
     float segmentLength = length(segment);
@@ -319,7 +319,8 @@ vec2 sdfTrailSegment(vec2 p, vec2 a, vec2 b, float ra, float rb) {
         u = clamp((along + radiusChange * across / sideLength) / segmentLength, 0.0, 1.0);
     }
 
-    return vec2(length(offset - segment * u) - mix(ra, rb, u), u);
+    vec2 radial = offset - segment * u;
+    return vec4(length(radial) - mix(ra, rb, u), u, radial);
 }
 
 float getBendStrength(float L) {
@@ -428,6 +429,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     fragColor = texture(iChannel0, sampleCoord.xy / iResolution.xy);
 
     vec2 vu = normalizeCoord(renderCoord, 1.0);
+    vec2 vuDx = dFdx(vu), vuDy = dFdy(vu);
     float pixel = 2.0 / iResolution.y;
     vec4 outC = fragColor;
     float strength = (valid || smallSlide) ? getBendStrength(mL) : 0.0;
@@ -514,12 +516,32 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
         float tStart = clamp(progress, 0.0, headProgress), tEnd = headProgress;
 
-        if (tStart < tEnd) {
+        // Bound every interpolated radius, including changes in cursor proportions.
+        vec2 aspect = max(hC, vec2(1e-6));
+        float distanceScale = min(aspect.x, aspect.y);
+        vec2 maxHalfSize = max(mix(hP, hC, tStart), mix(hP, hC, tEnd));
+        vec2 maxScaledSize = maxHalfSize / aspect;
+        float maxTrailSize = max(0.0, max(TRAIL_SIZE_START, max(TRAIL_SIZE_MID, TRAIL_SIZE_END)));
+        float maxRadius = min(maxScaledSize.x, maxScaledSize.y) * maxTrailSize;
+        // Bound the analytic AA in scaled space, including its fixed-width fallback.
+        float aaSupport = max(1.5 * (length(vuDx / aspect) + length(vuDy / aspect)),
+            0.002 / distanceScale);
+        float corridorRadius = abs(strength * BEND_ARC_DIRECTION)
+            + max(aspect.x, aspect.y) * (maxRadius + aaSupport);
+        vec2 chordStart = mix(cP, cC, tStart), chordEnd = mix(cP, cC, tEnd);
+        vec2 chord = chordEnd - chordStart;
+        float chordLengthSquared = dot(chord, chord);
+        float chordT = chordLengthSquared > 0.0
+            ? clamp(dot(vu - chordStart, chord) / chordLengthSquared, 0.0, 1.0) : 0.0;
+        vec2 corridorOffset = vu - mix(chordStart, chordEnd, chordT);
+        bool inCorridor = dot(corridorOffset, corridorOffset) <= corridorRadius * corridorRadius;
+
+        if (tStart < tEnd && inCorridor) {
             int segments = max(int(ceil(float(PATH_SAMPLES - 1) * (tEnd - tStart))), 4);
             float minDist = 1e6, bestT = tStart;
+            vec2 bestRadial = vec2(0.0);
             // A shared aspect keeps the elliptical caps identical at joins.
             // Changed cursor proportions use the radius inside both dimensions.
-            vec2 aspect = max(hC, vec2(1e-6));
             vec2 point = vu / aspect;
             float previousT = tStart;
             vec2 previousPos = getBentPathPosition(cP, cC, previousT, strength) / aspect;
@@ -529,24 +551,31 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                 float t = mix(tStart, tEnd, float(i) / float(segments));
                 vec2 pathPos = getBentPathPosition(cP, cC, t, strength) / aspect;
                 float radius = getTrailRadius(mix(hP, hC, t), aspect, t);
-                vec2 segment = sdfTrailSegment(point, previousPos, pathPos, previousRadius, radius);
+                vec4 segment = sdfTrailSegment(point, previousPos, pathPos, previousRadius, radius);
 
                 if (segment.x < minDist) {
                     minDist = segment.x;
                     bestT = mix(previousT, t, segment.y);
+                    bestRadial = segment.zw;
                 }
                 previousT = t;
                 previousPos = pathPos;
                 previousRadius = radius;
             }
-            minDist *= min(aspect.x, aspect.y);
+            minDist *= distanceScale;
 
             float trailAlpha = bestT;  // Opacity rises from 0 to 1 along the full path.
 
             // Soft fade at trail tail
             trailAlpha *= smoothstep(tStart, tStart + TAIL_FADE_DURATION, bestT);
 
-            trailAlpha *= antialiasNoBlur(minDist);
+            // At the optimal capsule position, the taper terms cancel in the spatial gradient.
+            float radialLength = length(bestRadial);
+            vec2 normal = radialLength > 0.0 ? bestRadial / radialLength : vec2(0.0);
+            vec2 gradient = normal / aspect * distanceScale;
+            float trailAA = 1.5 * (abs(dot(gradient, vuDx)) + abs(dot(gradient, vuDy)));
+            if (trailAA < 0.001) trailAA = 0.002;
+            trailAlpha *= 1.0 - smoothstep(-trailAA, trailAA, minDist);
 
             trailAlpha *= TRAIL_BASE_ALPHA;
             trailAlpha *= step(0.0, sdfCur);
