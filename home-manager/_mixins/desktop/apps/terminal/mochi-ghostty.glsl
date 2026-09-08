@@ -28,10 +28,10 @@ const float MOCHI_BOB_COMPRESSION = 0.14;
 const float MOCHI_BOB_HOLD_TIME = 0.140;
 const float MOCHI_BOB_RETURN_TIME = 0.400;
 const float MOCHI_LANDING_TIME = 0.090;
-const vec2 MOCHI_LANDING_SCALE = vec2(0.25, -0.40);
-const float MOCHI_TOP_RADIUS = 0.23;
-const float MOCHI_CAPE = 2.0;
-const float CAPE_ROOT_INSET = 0.25;
+const vec2 MOCHI_LANDING_SCALE_DELTA = vec2(0.25, -0.40);
+const float MOCHI_TOP_RADIUS_FRACTION = 0.23;
+const float MOCHI_CAPE_LENGTH_MULTIPLIER = 2.0;
+const float CAPE_ROOT_INSET_RADIUS_FRACTION = 0.25;
 const float MOCHI_CAPE_HOLD_TIME = 0.140;
 const float MOCHI_CAPE_RETURN_TIME = 0.400;
 const float MOCHI_IDLE_HEM_TIME = 0.200;
@@ -39,7 +39,7 @@ const int LANDING_PARTICLE_COUNT = 18;
 const float LANDING_PARTICLE_TIME = 1.000;
 const float LANDING_PARTICLE_SPREAD_BASE = 0.4;
 const float LANDING_PARTICLE_SPREAD_GAIN = 2.7;
-const float LANDING_PARTICLE_APEX_MIN = 0.34;
+const float LANDING_PARTICLE_APEX_PROGRESS_MIN = 0.34;
 const float LANDING_FULL_DISTANCE = 40.0;
 const float LANDING_MIN_DISTANCE = LANDING_FULL_DISTANCE / 12.0;
 const float LANDING_BLINK_LEAD_TIME = 0.060;
@@ -185,15 +185,15 @@ ExpressionEvent getIdleExpressionEvent(float time, float idleReadyTime) {
 float getEyeAperture(float time, ExpressionEvent expressionEvent, LandingWindow landingWindow) {
     // Blink events start 2 to 10 seconds apart. An event can contain two blinks.
     float slot = floor(time / 6.0);
-    float start = 0.5 + 4.0 * hash(vec3(slot, 720.0, 0.0));
+    float slotStartOffset = 0.5 + 4.0 * hash(vec3(slot, 720.0, 0.0));
     float duration = mix(0.280, 0.360, hash(vec3(slot, 720.0, 1.0)));
     bool doubleBlink = hash(vec3(slot, 720.0, 2.0)) < 0.20;
     float secondStart = duration + 0.090;
-    float eventEnd = slot * 6.0 + start + (doubleBlink ? secondStart + duration : duration);
+    float eventEnd = slot * 6.0 + slotStartOffset + (doubleBlink ? secondStart + duration : duration);
     // Skip blink events that overlap an expression or landing, including transition edges.
-    if (expressionEvent.valid && slot * 6.0 + start < expressionEvent.start + expressionEvent.duration && eventEnd > expressionEvent.start) return 1.0;
-    if (landingWindow.valid && slot * 6.0 + start < landingWindow.end && eventEnd > landingWindow.start) return 1.0;
-    float age = mod(time, 6.0) - start;
+    if (expressionEvent.valid && slot * 6.0 + slotStartOffset < expressionEvent.start + expressionEvent.duration && eventEnd > expressionEvent.start) return 1.0;
+    if (landingWindow.valid && slot * 6.0 + slotStartOffset < landingWindow.end && eventEnd > landingWindow.start) return 1.0;
+    float age = mod(time, 6.0) - slotStartOffset;
     float closure = getBlinkClosure(age, duration);
     if (doubleBlink) closure = max(closure, getBlinkClosure(age - secondStart, duration));
     return 1.0 - closure;
@@ -249,11 +249,11 @@ float rectangleDistance(vec2 p, vec2 c, vec2 h) {
 }
 
 float mochiCornerRadius(vec2 halfSize) {
-    return 2.0 * MOCHI_TOP_RADIUS * min(halfSize.x, halfSize.y);
+    return 2.0 * MOCHI_TOP_RADIUS_FRACTION * min(halfSize.x, halfSize.y);
 }
 
 float idleFlareLength(float scale, vec2 halfSize) {
-    return scale * 0.75 * 2.0 * MOCHI_TOP_RADIUS * min(halfSize.x, halfSize.y);
+    return scale * 0.75 * 2.0 * MOCHI_TOP_RADIUS_FRACTION * min(halfSize.x, halfSize.y);
 }
 
 float mochiBodyDistance(vec2 point, vec2 halfSize) {
@@ -262,16 +262,16 @@ float mochiBodyDistance(vec2 point, vec2 halfSize) {
     return boxDistance(distance) - radius;
 }
 
-float mochiCapeDistance(vec2 point, vec2 halfSize, float cape, float settle) {
+float mochiCapeDistance(vec2 point, vec2 halfSize, float signedCapeLength, float settle) {
     // Mirror the sample so one profile draws the cape opposite either horizontal movement direction.
-    point.x *= -sign(cape);
+    point.x *= -sign(signedCapeLength);
     float radius = mochiCornerRadius(halfSize);
-    float root = halfSize.x - CAPE_ROOT_INSET * radius;
-    float tip = halfSize.x + abs(cape);
+    float root = halfSize.x - CAPE_ROOT_INSET_RADIUS_FRACTION * radius;
+    float tip = halfSize.x + abs(signedCapeLength);
     float span = max(tip - root, 1e-6);
     float t = clamp((point.x - root) / span, 0.0, 1.0);
     float taper = 1.0 - t;
-    float reach = abs(cape) / span;
+    float reach = abs(signedCapeLength) / span;
     float drop = 0.10 * radius * reach * reach * (1.0 - settle);
     // Raise the tip and straighten the curve as the cape becomes an idle flare.
     float lower = -halfSize.y - drop * t * (2.0 - t);
@@ -290,8 +290,8 @@ float mochiCapeDistance(vec2 point, vec2 halfSize, float cape, float settle) {
 float mochiIdleHemDistance(vec2 point, vec2 halfSize, float extension) {
     float radius = mochiCornerRadius(halfSize);
     point.x = abs(point.x);
-    vec2 top = vec2(halfSize.x - CAPE_ROOT_INSET * radius, -halfSize.y + radius);
-    vec2 edge = vec2(CAPE_ROOT_INSET * radius + extension, -radius);
+    vec2 top = vec2(halfSize.x - CAPE_ROOT_INSET_RADIUS_FRACTION * radius, -halfSize.y + radius);
+    vec2 edge = vec2(CAPE_ROOT_INSET_RADIUS_FRACTION * radius + extension, -radius);
     vec2 offset = point - top;
     float upperDistance = (edge.x * offset.y - edge.y * offset.x) / max(length(edge), 1e-6);
     // Mirror both tips and keep their lower edges on the body baseline.
@@ -563,12 +563,12 @@ vec4 compositeLandingParticles(vec4 outC, MochiBox current, MoveState move, Frag
 
                 float strand = 2.0 * float(i) / float(particleCount - 1) - 1.0;
                 float progress = particleAge / lifetime;
-                float apex = mix(LANDING_PARTICLE_APEX_MIN, 0.38, c);
-                float riseAge = progress / apex;
+                float apexProgress = mix(LANDING_PARTICLE_APEX_PROGRESS_MIN, 0.38, c);
+                float apexRelativeProgress = progress / apexProgress;
                 // Positive Y rises from the fixed lower edge, then gravity pulls down.
                 vec2 position = origin + move.currentRect.zw * vec2(
                     strand * (LANDING_PARTICLE_SPREAD_BASE + LANDING_PARTICLE_SPREAD_GAIN * easeOutQuad(progress)) * horizontalSpread,
-                    mix(0.5, 1.0, b) * (2.0 * riseAge - riseAge * riseAge)
+                    mix(0.5, 1.0, b) * (2.0 * apexRelativeProgress - apexRelativeProgress * apexRelativeProgress)
                 );
                 float radius = clamp(min(move.currentRect.z, move.currentRect.w) * mix(0.075, 0.16, c),
                     0.80 * fragment.pixel, 2.30 * fragment.pixel);
@@ -601,25 +601,25 @@ vec4 compositeLandingParticles(vec4 outC, MochiBox current, MoveState move, Frag
 float mochiDistance(RenderedMochi rendered, MoveState move, vec2 normalisedCoord) {
     float distance = rectangleDistance(normalisedCoord, rendered.centre, rendered.halfSize);
     if (move.mochiGeometryValid && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW) {
-        float cape = 0.0;
+        float signedCapeLength = 0.0;
         float capeSettle = 0.0;
         if (move.smallSlide || move.jump) {
             float horizontalDirection = move.originDelta.x / max(move.originDistance, 1e-6);
-            float capeLength = idleFlareLength(MOCHI_CAPE, rendered.baseHalfSize);
+            float capeLength = idleFlareLength(MOCHI_CAPE_LENGTH_MULTIPLIER, rendered.baseHalfSize);
             if (move.smallSlide) {
                 // Match the moving cape to the idle flare before replacing it with the symmetric hem.
                 capeSettle = easeSmoothStep((move.timeSince - MOCHI_CAPE_HOLD_TIME) / MOCHI_CAPE_RETURN_TIME);
-                cape = sign(horizontalDirection) * mix(abs(horizontalDirection) * capeLength,
-                    capeLength / MOCHI_CAPE, capeSettle);
+                signedCapeLength = sign(horizontalDirection) * mix(abs(horizontalDirection) * capeLength,
+                    capeLength / MOCHI_CAPE_LENGTH_MULTIPLIER, capeSettle);
             } else {
                 float phase = clamp(move.timeSince / MOCHI_TRAVEL_TIME, 0.0, 1.0);
                 float motion = horizontalDirection * getSquashPulse(phase) * capeLength;
-                cape = motion * (1.0 + 0.10 * sin(2.0 * PI * phase));
+                signedCapeLength = motion * (1.0 + 0.10 * sin(2.0 * PI * phase));
             }
         }
         distance = mochiBodyDistance(rendered.bodyLocal, rendered.baseHalfSize) * min(rendered.scale.x, rendered.scale.y);
-        if (cape != 0.0 && (!move.smallSlide || capeSettle < 1.0)) {
-            distance = min(distance, mochiCapeDistance(rendered.capeLocal, rendered.baseHalfSize, cape, capeSettle) * rendered.capeDistanceScale);
+        if (signedCapeLength != 0.0 && (!move.smallSlide || capeSettle < 1.0)) {
+            distance = min(distance, mochiCapeDistance(rendered.capeLocal, rendered.baseHalfSize, signedCapeLength, capeSettle) * rendered.capeDistanceScale);
         }
         if (move.mochiVisible) {
             float hemDelay = move.jump ? move.jumpEnd : MOCHI_CAPE_HOLD_TIME;
@@ -629,9 +629,9 @@ float mochiDistance(RenderedMochi rendered, MoveState move, vec2 normalisedCoord
             if (idleHem > 0.0) {
                 float extension = idleFlareLength(idleHem, rendered.baseHalfSize);
                 float hemDistance = mochiIdleHemDistance(rendered.capeLocal, rendered.baseHalfSize, extension);
-                if (move.smallSlide && cape != 0.0 && capeSettle < 1.0) {
+                if (move.smallSlide && signedCapeLength != 0.0 && capeSettle < 1.0) {
                     // Let the moving cape cover its side until the transition finishes.
-                    hemDistance = max(hemDistance, -rendered.capeLocal.x * sign(cape));
+                    hemDistance = max(hemDistance, -rendered.capeLocal.x * sign(signedCapeLength));
                 }
                 distance = min(distance, hemDistance * rendered.capeDistanceScale);
             }
@@ -835,7 +835,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         rendered.headProgress = easeSmoothStep(move.timeSince / MOCHI_TRAVEL_TIME);
         rendered.centre = getCurvedPathPosition(path.previous.centre, path.current.centre, rendered.headProgress, path.curveStrength);
         vec2 landingHalfSize = mix(path.previous.halfSize, path.current.halfSize, rendered.headProgress);
-        vec2 squash = MOCHI_LANDING_SCALE * getSquashPulse((move.timeSince - move.landingStart) / MOCHI_LANDING_TIME);
+        vec2 squash = MOCHI_LANDING_SCALE_DELTA * getSquashPulse((move.timeSince - move.landingStart) / MOCHI_LANDING_TIME);
         rendered.scale += squash;
         rendered.halfSize = landingHalfSize * rendered.scale;
         // Keep the lower edge fixed while Mochi becomes shorter.
