@@ -421,6 +421,29 @@ struct FragmentState {
     float sdfCur;
 };
 
+vec2 landingShakeCoord(vec2 fragCoord, MoveState move, out vec2 sampleCoord) {
+    vec2 renderCoord = fragCoord;
+    sampleCoord = fragCoord;
+    if (move.jump && move.cellDistance > LANDING_SHAKE_DISTANCE
+        && move.timeSince > move.landingStart && move.timeSince < move.landingStart + LANDING_SHAKE_TIME) {
+        float progress = (move.timeSince - move.landingStart) / LANDING_SHAKE_TIME;
+        float intensity = smoothstep(LANDING_SHAKE_DISTANCE, LANDING_SHAKE_DISTANCE * 1.5, move.cellDistance);
+        float pulse = intensity * getLandingShakePulse(progress);
+        // Inverse sampling moves the screen down first, then through one small rebound.
+        renderCoord -= LANDING_SHAKE_PIXELS * pulse;
+        float horizontalDirection = (move.currentRect.x - move.previousRect.x) / max(move.currentRect.z, 1e-6) / move.cellDistance;
+        float angle = radians(LANDING_SHAKE_DEGREES) * horizontalDirection * pulse;
+        float rotationCos = cos(angle);
+        float rotationSin = sin(angle);
+        vec2 pivot = iResolution.xy * 0.5;
+        // Anticlockwise source sampling makes rightward jumps rotate the screen clockwise.
+        renderCoord = pivot + mat2(rotationCos, rotationSin, -rotationSin, rotationCos) * (renderCoord - pivot);
+        // Clamp the source sample to texel centres without clipping procedural effects.
+        sampleCoord = clamp(renderCoord, vec2(0.5), iResolution.xy - vec2(0.5));
+    }
+    return renderCoord;
+}
+
 // Sample the terminal, then composite the trail, landing particles and cursor in that order.
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 off = vec2(-0.5, 0.5);
@@ -463,25 +486,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     move.jumpEnd = move.landingStart + CURSOR_LANDING_TIME;
     // Measure origin displacement in cells, independent of font size and aspect.
     move.cellDistance = move.valid ? length(move.originDelta / max(move.currentRect.zw, vec2(1e-6))) : 0.0;
-    vec2 renderCoord = fragCoord;
-    vec2 sampleCoord = fragCoord;
-    if (move.jump && move.cellDistance > LANDING_SHAKE_DISTANCE
-        && move.timeSince > move.landingStart && move.timeSince < move.landingStart + LANDING_SHAKE_TIME) {
-        float progress = (move.timeSince - move.landingStart) / LANDING_SHAKE_TIME;
-        float intensity = smoothstep(LANDING_SHAKE_DISTANCE, LANDING_SHAKE_DISTANCE * 1.5, move.cellDistance);
-        float pulse = intensity * getLandingShakePulse(progress);
-        // Inverse sampling moves the screen down first, then through one small rebound.
-        renderCoord -= LANDING_SHAKE_PIXELS * pulse;
-        float horizontalDirection = (move.currentRect.x - move.previousRect.x) / max(move.currentRect.z, 1e-6) / move.cellDistance;
-        float angle = radians(LANDING_SHAKE_DEGREES) * horizontalDirection * pulse;
-        float rotationCos = cos(angle);
-        float rotationSin = sin(angle);
-        vec2 pivot = iResolution.xy * 0.5;
-        // Anticlockwise source sampling makes rightward jumps rotate the screen clockwise.
-        renderCoord = pivot + mat2(rotationCos, rotationSin, -rotationSin, rotationCos) * (renderCoord - pivot);
-        // Clamp the source sample to texel centres without clipping procedural effects.
-        sampleCoord = clamp(renderCoord, vec2(0.5), iResolution.xy - vec2(0.5));
-    }
+    vec2 sampleCoord;
+    vec2 renderCoord = landingShakeCoord(fragCoord, move, sampleCoord);
 
     fragColor = texture(iChannel0, sampleCoord.xy / iResolution.xy);
 
