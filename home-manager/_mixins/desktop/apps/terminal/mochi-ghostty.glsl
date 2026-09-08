@@ -282,7 +282,9 @@ float sdfCursorCape(vec2 point, vec2 halfSize, float cape, float settle) {
         / sqrt(1.0 + upperSlope * upperSlope);
     float lowerDistance = (lower - point.y) / sqrt(1.0 + lowerSlope * lowerSlope);
     float edgeDistance = max(root - point.x, max(upperDistance, lowerDistance));
-    return mix(max(point.x - tip, edgeDistance), edgeDistance, settle);
+    float distance = mix(max(point.x - tip, edgeDistance), edgeDistance, settle);
+    // Bound the slope-normalised distance so antialiasing cannot extend above the cursor.
+    return max(distance, point.y - halfSize.y);
 }
 
 float sdfCursorIdleHem(vec2 point, vec2 halfSize, float extension) {
