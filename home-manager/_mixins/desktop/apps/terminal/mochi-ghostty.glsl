@@ -69,6 +69,11 @@ const float LIGHTNING_SPREAD = 0.75;
 const vec3 LIGHTNING_BLUE = vec3(0.02, 0.20, 1.0);
 const vec3 LIGHTNING_CYAN = vec3(0.0, 0.90, 1.0);
 const vec3 LIGHTNING_WHITE = vec3(1.0);
+const float TAKEOFF_SMOKE_MIN_DISTANCE = 50.0;
+const float TAKEOFF_SMOKE_OPACITY = 0.20;
+const float TAKEOFF_SMOKE_TIME = 0.700;
+const int TAKEOFF_SMOKE_LOBE_COUNT = 9;
+const vec3 TAKEOFF_SMOKE_GREY = vec3(127.0, 132.0, 156.0) / 255.0;
 
 const float YAWN_DURATION = 2.7;
 const float DOZE_DURATION = 4.8;
@@ -559,6 +564,67 @@ vec4 compositeTrail(vec4 outC, MochiPath path, MoveState move, FragmentState fra
     return outC;
 }
 
+vec4 compositeTakeoffSmoke(vec4 outC, MochiPath path, MoveState move, FragmentState fragment) {
+    if (!move.jump || move.cellDistance <= TAKEOFF_SMOKE_MIN_DISTANCE
+        || move.timeSince < 0.0 || move.timeSince >= TAKEOFF_SMOKE_TIME) return outC;
+
+    float size = 2.0 * min(path.previous.halfSize.x, path.previous.halfSize.y);
+    vec2 origin = path.previous.centre - vec2(0.0, path.previous.halfSize.y);
+    // Use the path tangent at takeoff, including the curve's axis tie-break and strength threshold.
+    vec2 pathDirection = move.centreDelta + vec2(0.0001);
+    vec2 curveAxis = abs(pathDirection.x) > abs(pathDirection.y) ? vec2(0.0, 1.0) : vec2(1.0, 0.0);
+    vec2 tangent = move.centreDelta;
+    if (path.curveStrength >= 0.001) {
+        tangent += curveAxis * PI * path.curveStrength * CURVE_DIRECTION;
+    }
+    vec2 backward = -tangent / max(length(tangent), 1e-6);
+    vec2 across = vec2(backward.y, -backward.x);
+    float progress = move.timeSince / TAKEOFF_SMOKE_TIME;
+    vec2 offset = fragment.normalisedCoord - origin - vec2(0.0, 0.08 * size * progress);
+    // Rotate in screen-height units so the cloud keeps its aspect, independent of the cell aspect.
+    vec2 local = vec2(dot(offset, across), dot(offset, backward));
+    // The local bound includes backward expansion and soft edges, after removing world-up drift.
+    if (any(greaterThan(abs(local), vec2(3.20) * size + fragment.pixel))) return outC;
+
+    float expansion = mix(0.38, 1.0, easeOutQuad(progress));
+    float dispersion = expansion * (1.0 + 0.35 * progress);
+    float softness = 0.075 * size + fragment.pixel;
+    float mask = 0.0;
+    for (int i = 0; i < TAKEOFF_SMOKE_LOBE_COUNT; i++) {
+        float seed = hash(vec3(move.seed, float(i), 610.0));
+        vec2 centre;
+        float radius;
+        float density;
+        if (i < 5) {
+            float strand = 0.5 * float(i) - 1.0;
+            centre = vec2(1.15 * strand, 0.75 + 0.30 * (1.0 - strand * strand)) * dispersion;
+            centre += vec2(0.30 * strand, 0.45) * progress;
+            radius = mix(0.42, 0.52, seed);
+            density = mix(0.86, 1.0, seed);
+        } else if (i < 7) {
+            centre = vec2(0.0, 0.25 + 0.27 * float(i - 5)) * dispersion;
+            centre += vec2(mix(-0.45, 0.45, seed), 0.30) * progress;
+            radius = mix(0.22, 0.26, seed);
+            density = 0.72;
+        } else {
+            centre = vec2(i == 7 ? -0.35 : 0.35, 0.07) * dispersion;
+            centre += vec2(i == 7 ? -0.35 : 0.35, 0.18) * progress;
+            radius = mix(0.28, 0.34, seed);
+            density = 0.80;
+        }
+        centre += vec2(seed - 0.5, 0.5 - seed) * 0.18 * progress;
+        radius *= dispersion * size;
+        float distance = length(local - centre * size);
+        float lobe = density * (1.0 - smoothstep(0.0, 1.60 * radius + softness, distance));
+        mask += (1.0 - mask) * lobe;
+    }
+    float alpha = TAKEOFF_SMOKE_OPACITY * mask;
+    alpha *= smoothstep(0.0, 0.018, move.timeSince) * (1.0 - smoothstep(0.0, 1.0, progress));
+    alpha /= 1.0 + 1.50 * progress;
+    alpha *= smoothstep(0.0, fragment.pixel, fragment.mochiOutlineDistance);
+    return mix(outC, vec4(TAKEOFF_SMOKE_GREY, outC.a), alpha);
+}
+
 vec4 compositeLightning(vec4 outC, MochiPath path, RenderedMochi rendered, MoveState move, FragmentState fragment) {
     if (!move.jump || move.cellDistance <= LIGHTNING_MIN_DISTANCE
         || move.timeSince < 0.0 || move.timeSince >= move.landingStart) return outC;
@@ -854,7 +920,7 @@ vec3 drawFace(vec3 mochiColour, RenderedMochi rendered, MoveState move, float pi
     return mochiColour;
 }
 
-// Sample the terminal, then composite the trail, lightning, landing particles and Mochi in that order.
+// Sample the terminal, then composite the trail, takeoff smoke, lightning, landing particles and Mochi in that order.
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 off = vec2(-0.5, 0.5);
 
@@ -965,6 +1031,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     }
     fragment.mochiOutlineDistance = mochiDistance(rendered, move, fragment.normalisedCoord);
     outC = compositeTrail(outC, path, move, fragment, rendered.headProgress);
+    outC = compositeTakeoffSmoke(outC, path, move, fragment);
     outC = compositeLightning(outC, path, rendered, move, fragment);
 
     outC = compositeLandingParticles(outC, path.current, move, fragment);
