@@ -592,6 +592,49 @@ vec4 compositeLandingParticles(vec4 outC, CursorBox current, MoveState move, Fra
     return outC;
 }
 
+float sdfCursorBody(RenderedCursor rendered, MoveState move, vec2 vu) {
+    float distance = sdfRect(vu, rendered.centre, rendered.halfSize);
+    if (move.cursorGeometryValid && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW) {
+        float cape = 0.0;
+        float capeSettle = 0.0;
+        if (move.smallSlide || move.jump) {
+            float horizontalDirection = move.originDelta.x / max(move.originDistance, 1e-6);
+            float capeLength = CURSOR_CAPE * 0.75 * 2.0 * CURSOR_TOP_RADIUS
+                * min(rendered.baseHalfSize.x, rendered.baseHalfSize.y);
+            if (move.smallSlide) {
+                // Match the moving cape to the idle flare before replacing it with the symmetric hem.
+                capeSettle = easeSmoothStep((move.timeSince - CURSOR_CAPE_HOLD_TIME) / CURSOR_CAPE_RETURN_TIME);
+                cape = sign(horizontalDirection) * mix(abs(horizontalDirection) * capeLength,
+                    capeLength / CURSOR_CAPE, capeSettle);
+            } else {
+                float phase = clamp(move.timeSince / CURSOR_TRAVEL_TIME, 0.0, 1.0);
+                float motion = horizontalDirection * getSquashPulse(phase) * capeLength;
+                cape = motion * (1.0 + 0.10 * sin(2.0 * PI * phase));
+            }
+        }
+        distance = sdfCursor(rendered.bodyLocal, rendered.baseHalfSize) * min(rendered.scale.x, rendered.scale.y);
+        if (cape != 0.0 && (!move.smallSlide || capeSettle < 1.0)) {
+            distance = min(distance, sdfCursorCape(rendered.capeLocal, rendered.baseHalfSize, cape, capeSettle) * rendered.capeDistanceScale);
+        }
+        if (move.cursorVisible) {
+            float idleDelay = move.jump ? move.jumpEnd : CURSOR_CAPE_HOLD_TIME;
+            float idleStart = max(iTimeCursorChange + idleDelay, iTimeFocus + CURSOR_CAPE_HOLD_TIME);
+            float idleHem = move.smallSlide ? capeSettle : easeSmoothStep((iTime - idleStart) / CURSOR_IDLE_HEM_TIME);
+            if (idleHem > 0.0) {
+                float extension = idleHem * 0.75 * 2.0 * CURSOR_TOP_RADIUS * min(rendered.baseHalfSize.x, rendered.baseHalfSize.y);
+                float hemDistance = sdfCursorIdleHem(rendered.capeLocal, rendered.baseHalfSize, extension);
+                if (move.smallSlide && cape != 0.0 && capeSettle < 1.0) {
+                    // Let the moving cape cover its side until the transition finishes.
+                    hemDistance = max(hemDistance, -rendered.capeLocal.x * sign(cape));
+                }
+                distance = min(distance, hemDistance * rendered.capeDistanceScale);
+            }
+        }
+    }
+
+    return distance;
+}
+
 // Sample the terminal, then composite the trail, landing particles and cursor in that order.
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 off = vec2(-0.5, 0.5);
@@ -681,44 +724,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         rendered.bodyLocal.y = (rendered.bodyLocal.y + rendered.baseHalfSize.y) / bobScale - rendered.baseHalfSize.y;
         rendered.scale.y *= bobScale;
     }
-    fragment.sdfCur = sdfRect(fragment.vu, rendered.centre, rendered.halfSize);
-    if (move.cursorGeometryValid && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW) {
-        float cape = 0.0;
-        float capeSettle = 0.0;
-        if (move.smallSlide || move.jump) {
-            float horizontalDirection = move.originDelta.x / max(move.originDistance, 1e-6);
-            float capeLength = CURSOR_CAPE * 0.75 * 2.0 * CURSOR_TOP_RADIUS
-                * min(rendered.baseHalfSize.x, rendered.baseHalfSize.y);
-            if (move.smallSlide) {
-                // Match the moving cape to the idle flare before replacing it with the symmetric hem.
-                capeSettle = easeSmoothStep((move.timeSince - CURSOR_CAPE_HOLD_TIME) / CURSOR_CAPE_RETURN_TIME);
-                cape = sign(horizontalDirection) * mix(abs(horizontalDirection) * capeLength,
-                    capeLength / CURSOR_CAPE, capeSettle);
-            } else {
-                float phase = clamp(move.timeSince / CURSOR_TRAVEL_TIME, 0.0, 1.0);
-                float motion = horizontalDirection * getSquashPulse(phase) * capeLength;
-                cape = motion * (1.0 + 0.10 * sin(2.0 * PI * phase));
-            }
-        }
-        fragment.sdfCur = sdfCursor(rendered.bodyLocal, rendered.baseHalfSize) * min(rendered.scale.x, rendered.scale.y);
-        if (cape != 0.0 && (!move.smallSlide || capeSettle < 1.0)) {
-            fragment.sdfCur = min(fragment.sdfCur, sdfCursorCape(rendered.capeLocal, rendered.baseHalfSize, cape, capeSettle) * rendered.capeDistanceScale);
-        }
-        if (move.cursorVisible) {
-            float idleDelay = move.jump ? move.jumpEnd : CURSOR_CAPE_HOLD_TIME;
-            float idleStart = max(iTimeCursorChange + idleDelay, iTimeFocus + CURSOR_CAPE_HOLD_TIME);
-            float idleHem = move.smallSlide ? capeSettle : easeSmoothStep((iTime - idleStart) / CURSOR_IDLE_HEM_TIME);
-            if (idleHem > 0.0) {
-                float extension = idleHem * 0.75 * 2.0 * CURSOR_TOP_RADIUS * min(rendered.baseHalfSize.x, rendered.baseHalfSize.y);
-                float hemDistance = sdfCursorIdleHem(rendered.capeLocal, rendered.baseHalfSize, extension);
-                if (move.smallSlide && cape != 0.0 && capeSettle < 1.0) {
-                    // Let the moving cape cover its side until the transition finishes.
-                    hemDistance = max(hemDistance, -rendered.capeLocal.x * sign(cape));
-                }
-                fragment.sdfCur = min(fragment.sdfCur, hemDistance * rendered.capeDistanceScale);
-            }
-        }
-    }
+    fragment.sdfCur = sdfCursorBody(rendered, move, fragment.vu);
     outC = compositeTrail(outC, path, move, fragment, rendered.headProgress);
 
     outC = compositeLandingParticles(outC, path.current, move, fragment);
