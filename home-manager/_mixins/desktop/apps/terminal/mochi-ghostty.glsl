@@ -17,7 +17,7 @@ const float TRAIL_CATCHUP_TIME = 0.5;
 // Width of the trail fade in path coordinates, where the full path spans 0 to 1.
 const float TRAIL_FADE_WIDTH = 0.15;
 
-// Timings are in seconds. Landing scale changes are fractions of Mochi's size.
+// Timings are in seconds. Landing scales are multiples of Mochi's size.
 const float MOCHI_TRAVEL_TIME = 0.140;
 #ifndef MOCHI_KEY_REPEAT_RATE
 #define MOCHI_KEY_REPEAT_RATE 30.0
@@ -27,8 +27,11 @@ const float MOCHI_BOB_PERIOD = 1.400;
 const float MOCHI_BOB_COMPRESSION = 0.14;
 const float MOCHI_BOB_HOLD_TIME = 0.140;
 const float MOCHI_BOB_RETURN_TIME = 0.400;
-const float MOCHI_LANDING_TIME = 0.090;
-const vec2 MOCHI_LANDING_SCALE_DELTA = vec2(0.25, -0.40);
+const float MOCHI_LANDING_COMPRESSION_TIME = 0.025;
+const vec2 MOCHI_LANDING_HOLD_TIME_RANGE = vec2(0.040, 0.080);
+const vec2 MOCHI_LANDING_RECOVERY_TIME_RANGE = vec2(0.120, 0.180);
+const vec2 MOCHI_LANDING_MIN_SCALE = vec2(1.30, 0.60);
+const vec2 MOCHI_LANDING_MAX_SCALE = vec2(1.65, 0.40);
 const float MOCHI_TOP_RADIUS_FRACTION = 0.23;
 const float MOCHI_CAPE_LENGTH_MULTIPLIER = 2.0;
 const float CAPE_ROOT_INSET_RADIUS_FRACTION = 0.25;
@@ -802,12 +805,16 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         && move.movedSinceFocus;
     move.jump = move.hollowSinceFocus && move.largeMoveValid;
     move.smallSlide = move.hollowSinceFocus && move.moveInRange && move.smallMove && move.originBeyondMinDistance;
-    move.landingStart = MOCHI_TRAVEL_TIME;
-    move.jumpEnd = move.landingStart + MOCHI_LANDING_TIME;
-    move.movementEnd = move.jump ? move.jumpEnd : (move.smallSlide ? MOCHI_SMALL_MOVE_TIME : 0.0);
     // Measure origin displacement in cells, independent of font size and aspect.
     move.cellDistance = move.largeMoveValid ? length(move.originDelta / max(move.currentRect.zw, vec2(1e-6))) : 0.0;
     move.landingIntensity = smoothstep(LANDING_MIN_DISTANCE, LANDING_FULL_DISTANCE, move.cellDistance);
+    move.landingStart = MOCHI_TRAVEL_TIME;
+    float landingHoldTime = mix(MOCHI_LANDING_HOLD_TIME_RANGE.x, MOCHI_LANDING_HOLD_TIME_RANGE.y, move.landingIntensity);
+    float landingRecoveryTime = mix(MOCHI_LANDING_RECOVERY_TIME_RANGE.x, MOCHI_LANDING_RECOVERY_TIME_RANGE.y, move.landingIntensity);
+    float landingCompressionEnd = move.landingStart + MOCHI_LANDING_COMPRESSION_TIME;
+    float landingRecoveryStart = landingCompressionEnd + landingHoldTime;
+    move.jumpEnd = landingRecoveryStart + landingRecoveryTime;
+    move.movementEnd = move.jump ? move.jumpEnd : (move.smallSlide ? MOCHI_SMALL_MOVE_TIME : 0.0);
     vec2 sampleCoord;
     vec2 renderCoord = landingShakeCoord(fragCoord, move, sampleCoord);
 
@@ -835,8 +842,9 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         rendered.headProgress = easeSmoothStep(move.timeSince / MOCHI_TRAVEL_TIME);
         rendered.centre = getCurvedPathPosition(path.previous.centre, path.current.centre, rendered.headProgress, path.curveStrength);
         vec2 landingHalfSize = mix(path.previous.halfSize, path.current.halfSize, rendered.headProgress);
-        vec2 squash = MOCHI_LANDING_SCALE_DELTA * getSquashPulse((move.timeSince - move.landingStart) / MOCHI_LANDING_TIME);
-        rendered.scale += squash;
+        vec2 landingPeakScale = mix(MOCHI_LANDING_MIN_SCALE, MOCHI_LANDING_MAX_SCALE, move.landingIntensity);
+        float landingCompression = envelope(move.timeSince, move.landingStart, landingCompressionEnd, landingRecoveryStart, move.jumpEnd);
+        rendered.scale = mix(vec2(1.0), landingPeakScale, landingCompression);
         rendered.halfSize = landingHalfSize * rendered.scale;
         // Keep the lower edge fixed while Mochi becomes shorter.
         rendered.centre.y += rendered.halfSize.y - landingHalfSize.y;
