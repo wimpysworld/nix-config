@@ -19,6 +19,7 @@ const float TRAIL_FADE_WIDTH = 0.15;
 
 // Timings are in seconds. Landing scales are multiples of Mochi's size.
 const float MOCHI_TRAVEL_TIME = 0.140;
+const float MOCHI_MAX_TRAVEL_TIME = 0.220;
 #ifndef MOCHI_KEY_REPEAT_RATE
 #define MOCHI_KEY_REPEAT_RATE 30.0
 #endif
@@ -55,6 +56,19 @@ const float LANDING_SHAKE_DISTANCE = LANDING_FULL_DISTANCE * 1.25;
 const float LANDING_SHAKE_TIME = 0.260;
 const vec2 LANDING_SHAKE_PIXELS = vec2(1.25, -5.50);
 const float LANDING_SHAKE_DEGREES = 0.15;
+const float LIGHTNING_MIN_DISTANCE = 60.0;
+const float LIGHTNING_FULL_DISTANCE = 80.0;
+const int LIGHTNING_BRANCH_COUNT = 3;
+const int LIGHTNING_SEGMENTS = 3;
+const float LIGHTNING_FADE_IN_TIME = 0.012;
+// Fade from twelve cells away to zero within five cells of the destination.
+const float LIGHTNING_FADE_NEAR_CELLS = 5.0;
+const float LIGHTNING_FADE_FAR_CELLS = 12.0;
+const float LIGHTNING_LENGTH = 2.0;
+const float LIGHTNING_SPREAD = 0.75;
+const vec3 LIGHTNING_BLUE = vec3(0.02, 0.20, 1.0);
+const vec3 LIGHTNING_CYAN = vec3(0.0, 0.90, 1.0);
+const vec3 LIGHTNING_WHITE = vec3(1.0);
 
 const float YAWN_DURATION = 2.7;
 const float DOZE_DURATION = 4.8;
@@ -545,6 +559,75 @@ vec4 compositeTrail(vec4 outC, MochiPath path, MoveState move, FragmentState fra
     return outC;
 }
 
+vec4 compositeLightning(vec4 outC, MochiPath path, RenderedMochi rendered, MoveState move, FragmentState fragment) {
+    if (!move.jump || move.cellDistance <= LIGHTNING_MIN_DISTANCE
+        || move.timeSince < 0.0 || move.timeSince >= move.landingStart) return outC;
+
+    float remainingCells = length((path.current.centre - rendered.centre) / max(move.currentRect.zw, vec2(1e-6)));
+    float alpha = smoothstep(LIGHTNING_MIN_DISTANCE, LIGHTNING_FULL_DISTANCE, move.cellDistance)
+        * smoothstep(0.0, LIGHTNING_FADE_IN_TIME, move.timeSince)
+        * smoothstep(LIGHTNING_FADE_NEAR_CELLS, LIGHTNING_FADE_FAR_CELLS, remainingCells);
+    if (alpha <= 0.0) return outC;
+
+    // Follow the same curve axis as the path, including its direction tie-break.
+    vec2 pathDirection = move.centreDelta + vec2(0.0001);
+    vec2 curveAxis = abs(pathDirection.x) > abs(pathDirection.y) ? vec2(0.0, 1.0) : vec2(1.0, 0.0);
+    vec2 tangent = move.centreDelta;
+    if (path.curveStrength >= 0.001) {
+        tangent += curveAxis * cos(min(rendered.headProgress, 0.99) * PI) * PI * path.curveStrength * CURVE_DIRECTION;
+    }
+    vec2 direction = tangent / max(length(tangent), 1e-6);
+    vec2 across = vec2(-direction.y, direction.x);
+    vec2 offset = fragment.normalisedCoord - rendered.centre;
+    vec2 local = vec2(dot(offset, direction), dot(offset, across));
+    float size = 2.0 * rendered.baseHalfSize.y;
+    float rear = dot(abs(direction), rendered.halfSize);
+    float coreRadius = max(0.040 * size, 0.70 * fragment.pixel);
+    float glowRadius = coreRadius + max(0.13 * size, 1.50 * fragment.pixel);
+    float aaSupport = max(0.75 * (length(fragment.normalisedCoordDx) + length(fragment.normalisedCoordDy)), 0.5 * fragment.pixel);
+    float padding = glowRadius + aaSupport;
+    // Every vertex stays inside this local box. Padding includes the glow and AA.
+    if (local.x < -rear - (0.27 + LIGHTNING_LENGTH) * size - padding
+        || local.x > -rear - 0.12 * size + padding
+        || abs(local.y) > LIGHTNING_SPREAD * size + padding) return outC;
+
+    float nearest = 1e6;
+    vec2 nearestRadial = vec2(0.0);
+    for (int branch = 0; branch < LIGHTNING_BRANCH_COUNT; branch++) {
+        float seed = hash(vec3(move.seed, float(branch), 510.0));
+        float side = branch == 1 ? -1.0 : 1.0;
+        float start = 0.12 + 0.15 * seed;
+        float reach = mix(1.1, LIGHTNING_LENGTH, seed);
+        float lateral = branch == 2 ? 0.65 : 0.35;
+        vec2 previous = vec2(-rear - start * size, side * lateral * size);
+        for (int segment = 1; segment <= LIGHTNING_SEGMENTS; segment++) {
+            float jitter = hash(vec3(seed, float(segment), 511.0));
+            float zigzag = (segment % 2 == 0 ? -1.0 : 1.0) * mix(0.12, 0.25, jitter);
+            vec2 next = vec2(-rear - (start + reach * float(segment) / float(LIGHTNING_SEGMENTS)) * size,
+                side * clamp(lateral + zigzag, 0.10, LIGHTNING_SPREAD) * size);
+            vec4 distance = trailSegmentDistance(local, previous, next, 0.0, 0.0);
+            if (distance.x < nearest) {
+                nearest = distance.x;
+                nearestRadial = distance.zw;
+            }
+            previous = next;
+        }
+    }
+    // Use the saved coordinate derivatives inside the spatial cull.
+    vec2 localNormal = nearestRadial / max(length(nearestRadial), 1e-6);
+    vec2 normal = direction * localNormal.x + across * localNormal.y;
+    float aa = max(0.75 * (abs(dot(normal, fragment.normalisedCoordDx))
+        + abs(dot(normal, fragment.normalisedCoordDy))), 0.5 * fragment.pixel);
+    float core = 1.0 - smoothstep(coreRadius - aa, coreRadius + aa, nearest);
+    float whiteCore = 1.0 - smoothstep(0.35 * coreRadius - aa, 0.35 * coreRadius + aa, nearest);
+    float glow = 1.0 - smoothstep(coreRadius, glowRadius + aa, nearest);
+    alpha *= smoothstep(0.0, fragment.pixel, fragment.mochiOutlineDistance);
+    // Saturated blue and cyan bands separate the narrow white core from the pastel trail.
+    outC = mix(outC, vec4(LIGHTNING_BLUE, outC.a), 0.80 * glow * alpha);
+    outC = mix(outC, vec4(LIGHTNING_CYAN, outC.a), core * alpha);
+    return mix(outC, vec4(LIGHTNING_WHITE, outC.a), whiteCore * alpha);
+}
+
 vec4 compositeLandingParticles(vec4 outC, MochiBox current, MoveState move, FragmentState fragment) {
     float particleAge = move.timeSince - move.landingStart;
     if (move.jump && particleAge >= 0.0 && particleAge < LANDING_PARTICLE_TIME) {
@@ -620,7 +703,7 @@ float mochiDistance(RenderedMochi rendered, MoveState move, vec2 normalisedCoord
                 signedCapeLength = sign(horizontalDirection) * mix(abs(horizontalDirection) * capeLength,
                     capeLength / MOCHI_CAPE_LENGTH_MULTIPLIER, capeSettle);
             } else {
-                float phase = clamp(move.timeSince / MOCHI_TRAVEL_TIME, 0.0, 1.0);
+                float phase = clamp(move.timeSince / move.landingStart, 0.0, 1.0);
                 float motion = horizontalDirection * getSquashPulse(phase) * capeLength;
                 signedCapeLength = motion * (1.0 + 0.10 * sin(2.0 * PI * phase));
             }
@@ -691,8 +774,9 @@ vec3 drawFace(vec3 mochiColour, RenderedMochi rendered, MoveState move, float pi
         float gazePulse = idleGaze.z;
         if (move.prevGeometryValid && move.timeSince >= 0.0 && move.timeSince < 2.0
             && move.movedSinceFocus && move.originBeyondMinDistance && move.originDistance < move.maxDistance) {
+            float gazeReturnStart = move.jump ? move.landingStart : MOCHI_TRAVEL_TIME;
             gazePulse = (move.smallMove ? 1.0 : easeSmoothStep(move.timeSince / 0.080))
-                * (1.0 - easeSmoothStep((move.timeSince - MOCHI_TRAVEL_TIME) / 1.200));
+                * (1.0 - easeSmoothStep((move.timeSince - gazeReturnStart) / 1.200));
             gazeDirection = move.originDelta / move.originDistance;
         }
         // Blend gaze vectors before separating direction and strength so opposite looks pass smoothly through the centre.
@@ -770,7 +854,7 @@ vec3 drawFace(vec3 mochiColour, RenderedMochi rendered, MoveState move, float pi
     return mochiColour;
 }
 
-// Sample the terminal, then composite the trail, landing particles and Mochi in that order.
+// Sample the terminal, then composite the trail, lightning, landing particles and Mochi in that order.
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 off = vec2(-0.5, 0.5);
 
@@ -813,7 +897,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     // Measure origin displacement in cells, independent of font size and aspect.
     move.cellDistance = move.largeMoveValid ? length(move.originDelta / max(move.currentRect.zw, vec2(1e-6))) : 0.0;
     move.landingIntensity = smoothstep(LANDING_MIN_DISTANCE, LANDING_FULL_DISTANCE, move.cellDistance);
-    move.landingStart = MOCHI_TRAVEL_TIME;
+    move.landingStart = mix(MOCHI_TRAVEL_TIME, MOCHI_MAX_TRAVEL_TIME, move.landingIntensity);
     float landingHoldTime = mix(MOCHI_LANDING_HOLD_TIME_RANGE.x, MOCHI_LANDING_HOLD_TIME_RANGE.y, move.landingIntensity);
     float landingRecoveryTime = mix(MOCHI_LANDING_RECOVERY_TIME_RANGE.x, MOCHI_LANDING_RECOVERY_TIME_RANGE.y, move.landingIntensity);
     float landingCompressionEnd = move.landingStart + MOCHI_LANDING_COMPRESSION_TIME;
@@ -844,7 +928,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         rendered.centre = getCurvedPathPosition(path.previous.centre, path.current.centre, rendered.headProgress, path.curveStrength);
         rendered.halfSize = mix(path.previous.halfSize, path.current.halfSize, rendered.headProgress);
     } else if (move.jump && move.timeSince < move.jumpEnd) {
-        rendered.headProgress = easeSmoothStep(move.timeSince / MOCHI_TRAVEL_TIME);
+        rendered.headProgress = easeSmoothStep(move.timeSince / move.landingStart);
         rendered.centre = getCurvedPathPosition(path.previous.centre, path.current.centre, rendered.headProgress, path.curveStrength);
         vec2 landingHalfSize = mix(path.previous.halfSize, path.current.halfSize, rendered.headProgress);
         vec2 landingPeakScale = mix(MOCHI_LANDING_MIN_SCALE, MOCHI_LANDING_MAX_SCALE, move.landingIntensity);
@@ -860,6 +944,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     rendered.bodyLocal = (fragment.normalisedCoord - rendered.centre) / rendered.scale;
     rendered.capeLocal = rendered.bodyLocal;
     rendered.capeDistanceScale = min(rendered.scale.x, rendered.scale.y);
+    // Scale the launch clock with travel so the stretch finishes before landing.
+    float launchTime = move.timeSince * MOCHI_TRAVEL_TIME / move.landingStart;
     if (move.smallSlide) {
         // The shared clock keeps the bob phase continuous across repeated cells.
         float cycle = 0.5 - 0.5 * cos(2.0 * PI * iTime / MOCHI_BOB_PERIOD);
@@ -868,9 +954,9 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         // Scale only the head and eye about the lower edge, leaving the cape unchanged.
         rendered.bodyLocal.y = (rendered.bodyLocal.y + rendered.baseHalfSize.y) / bobScale - rendered.baseHalfSize.y;
         rendered.scale.y *= bobScale;
-    } else if (move.jump && move.timeSince < MOCHI_LAUNCH_END_TIME) {
+    } else if (move.jump && launchTime < MOCHI_LAUNCH_END_TIME) {
         vec2 launchPeakScale = mix(MOCHI_LAUNCH_MIN_SCALE, MOCHI_LAUNCH_MAX_SCALE, move.landingIntensity);
-        float launchStretch = envelope(move.timeSince, 0.0, MOCHI_LAUNCH_PEAK_TIME, MOCHI_LAUNCH_HOLD_END_TIME, MOCHI_LAUNCH_END_TIME);
+        float launchStretch = envelope(launchTime, 0.0, MOCHI_LAUNCH_PEAK_TIME, MOCHI_LAUNCH_HOLD_END_TIME, MOCHI_LAUNCH_END_TIME);
         vec2 launchScale = mix(vec2(1.0), launchPeakScale, launchStretch);
         // Stretch the body and eye about the lower edge, preserving the cape coordinate basis and distance scale.
         rendered.bodyLocal.x /= launchScale.x;
@@ -879,6 +965,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     }
     fragment.mochiOutlineDistance = mochiDistance(rendered, move, fragment.normalisedCoord);
     outC = compositeTrail(outC, path, move, fragment, rendered.headProgress);
+    outC = compositeLightning(outC, path, rendered, move, fragment);
 
     outC = compositeLandingParticles(outC, path.current, move, fragment);
 
