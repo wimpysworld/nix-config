@@ -14,10 +14,10 @@ whole terminal.
 // ──────────────────────────────────────────────────────────────────────────
 
 // Toggle the rainbow trail without changing the cursor or landing effects.
-const float TRAIL_ENABLED = 1.0;  // 1.0 = visible, 0.0 = hidden
+const bool TRAIL_ENABLED = true;
 
 // Toggle curved paths for the cursor and trail.
-const float BEND_ENABLED = 1.0;   // 1.0 = curved, 0.0 = straight lines
+const bool BEND_ENABLED = true;
 
 // ──────────────────────────────────────────────────────────────────────────
 // ANIMATION TIMING
@@ -204,15 +204,28 @@ float getBlinkClosure(float age, float duration) {
     return envelope(phase, 0.0, 0.30, 0.57, 1.0);
 }
 
-vec3 getIdleExpressionEvent(float time, float idleReady) {
+struct ExpressionEvent {
+    bool valid;
+    float start;
+    float duration;
+    bool isDoze;
+};
+
+struct LandingWindow {
+    bool valid;
+    float start;
+    float end;
+};
+
+ExpressionEvent getIdleExpressionEvent(float time, float idleReady) {
     // Starts are 20 to 40 seconds apart. Only complete events after idle readiness qualify.
     float slot = floor(time / 30.0);
     float start = slot * 30.0 + 1.0 + 10.0 * hash(vec3(slot, 740.0, 0.0));
-    float doze = hash(vec3(slot, 740.0, 1.0)) < 0.25 ? 1.0 : 0.0;
-    return start >= idleReady ? vec3(start, mix(YAWN_DURATION, DOZE_DURATION, doze), doze) : vec3(-100.0, 0.0, 0.0);
+    bool isDoze = hash(vec3(slot, 740.0, 1.0)) < 0.25;
+    return ExpressionEvent(start >= idleReady, start, mix(YAWN_DURATION, DOZE_DURATION, isDoze ? 1.0 : 0.0), isDoze);
 }
 
-float getEyeAperture(float time, vec3 expressionEvent, vec2 landingWindow) {
+float getEyeAperture(float time, ExpressionEvent expressionEvent, LandingWindow landingWindow) {
     // Blink events start 2 to 10 seconds apart. An event can contain two blinks.
     float slot = floor(time / 6.0);
     float start = 0.5 + 4.0 * hash(vec3(slot, 720.0, 0.0));
@@ -221,8 +234,8 @@ float getEyeAperture(float time, vec3 expressionEvent, vec2 landingWindow) {
     float secondStart = duration + 0.090;
     float eventEnd = slot * 6.0 + start + (doubleBlink ? secondStart + duration : duration);
     // Skip blink events that overlap an expression or landing, including transition edges.
-    if (slot * 6.0 + start < expressionEvent.x + expressionEvent.y && eventEnd > expressionEvent.x) return 1.0;
-    if (slot * 6.0 + start < landingWindow.y && eventEnd > landingWindow.x) return 1.0;
+    if (expressionEvent.valid && slot * 6.0 + start < expressionEvent.start + expressionEvent.duration && eventEnd > expressionEvent.start) return 1.0;
+    if (landingWindow.valid && slot * 6.0 + start < landingWindow.end && eventEnd > landingWindow.start) return 1.0;
     float age = mod(time, 6.0) - start;
     float closure = getBlinkClosure(age, duration);
     if (doubleBlink) closure = max(closure, getBlinkClosure(age - secondStart, duration));
@@ -250,8 +263,8 @@ vec3 getIdleGaze(float time, float idleReady) {
 }
 
 // Centre positions but not sizes. Both use screen-height units, with positive Y upwards.
-vec2 normalizeCoord(vec2 v, float isPosition) {
-    return (v * 2.0 - (iResolution.xy * isPosition)) / iResolution.y;
+vec2 normalizeCoord(vec2 v, bool isPosition) {
+    return (v * 2.0 - (isPosition ? iResolution.xy : vec2(0.0))) / iResolution.y;
 }
 
 float edgeWidth(float d, float pixel) {
@@ -353,7 +366,7 @@ vec4 sdfTrailSegment(vec2 p, vec2 a, vec2 b, float ra, float rb) {
 }
 
 float getBendStrength(float L) {
-    return BEND_ENABLED < 0.5 ? 0.0 : BEND_STRENGTH * smoothstep(BEND_DISTANCE_MIN, BEND_DISTANCE_MAX, L);
+    return !BEND_ENABLED ? 0.0 : BEND_STRENGTH * smoothstep(BEND_DISTANCE_MIN, BEND_DISTANCE_MAX, L);
 }
 
 // Derive a repeatable random seed that stays fixed throughout each movement.
@@ -481,7 +494,7 @@ vec4 compositeTrail(vec4 outC, CursorPath path, MoveState move, FragmentState fr
     float trailTime = move.timeSince - (move.jump ? move.landingStart : 0.0);
     bool visible = trailTime < TAIL_CATCHUP_TIME;
 
-    if (TRAIL_ENABLED > 0.5 && move.cursorVisible && move.valid && visible
+    if (TRAIL_ENABLED && move.cursorVisible && move.valid && visible
         && move.movedSinceFocus) {
         float progress = clamp(trailTime / TAIL_CATCHUP_TIME, 0.0, 1.0);
         progress = easeOutQuart(progress);
@@ -677,16 +690,17 @@ vec3 drawFace(vec3 cursorColour, RenderedCursor rendered, MoveState move, float 
         float time = max(iTime, 0.0);
         // Idle expressions and gaze start from the latest move or focus, not animation completion.
         float lastActivityTime = max(iTimeCursorChange, iTimeFocus);
-        vec3 expressionEvent = getIdleExpressionEvent(time, lastActivityTime + 10.0);
-        float expressionAge = time - expressionEvent.x;
-        float expressionWeight = envelope(expressionAge, 0.0, 0.25, expressionEvent.y - EXPRESSION_FADE_TIME, expressionEvent.y);
+        ExpressionEvent expressionEvent = getIdleExpressionEvent(time, lastActivityTime + 10.0);
+        float expressionAge = time - expressionEvent.start;
+        float expressionWeight = expressionEvent.valid
+            ? envelope(expressionAge, 0.0, 0.25, expressionEvent.duration - EXPRESSION_FADE_TIME, expressionEvent.duration) : 0.0;
         float mouthOpen = 0.0;
         float expressionClosure = 0.0;
         float lidDrop = 0.0;
         float expressionGaze = 0.0;
         float startle = 0.0;
         if (expressionWeight > 0.0) {
-            if (expressionEvent.z < 0.5) {
+            if (!expressionEvent.isDoze) {
                 mouthOpen = envelope(expressionAge, 0.35, 1.0, 1.75, 2.25);
                 expressionClosure = envelope(expressionAge, 0.40, 1.0, 1.90, YAWN_DURATION);
                 expressionGaze = 0.35 * smoothstep(0.0, 0.35, expressionAge)
@@ -727,7 +741,8 @@ vec3 drawFace(vec3 cursorColour, RenderedCursor rendered, MoveState move, float 
             smoothstep(LANDING_FULL_DISTANCE / 12.0, LANDING_FULL_DISTANCE, move.cellDistance));
         float landingReopen = move.landingStart + landingHold;
         float landingBlinkEnd = landingReopen + 0.120;
-        vec2 landingWindow = move.jump ? iTimeCursorChange + vec2(move.landingStart - 0.060, landingBlinkEnd) : vec2(-100.0);
+        LandingWindow landingWindow = LandingWindow(move.jump,
+            iTimeCursorChange + (move.landingStart - 0.060), iTimeCursorChange + landingBlinkEnd);
         float aperture = getEyeAperture(time, expressionEvent, landingWindow) * (1.0 - expressionClosure);
         if (move.jump) {
             float landingAperture = 1.0 - envelope(move.timeSince, move.landingStart - 0.060, move.landingStart,
@@ -792,8 +807,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 off = vec2(-0.5, 0.5);
 
     MoveState move;
-    move.currentRect = vec4(normalizeCoord(iCurrentCursor.xy, 1.0), normalizeCoord(iCurrentCursor.zw, 0.0));
-    move.previousRect = vec4(normalizeCoord(iPreviousCursor.xy, 1.0), normalizeCoord(iPreviousCursor.zw, 0.0));
+    move.currentRect = vec4(normalizeCoord(iCurrentCursor.xy, true), normalizeCoord(iCurrentCursor.zw, false));
+    move.previousRect = vec4(normalizeCoord(iPreviousCursor.xy, true), normalizeCoord(iPreviousCursor.zw, false));
 
     CursorPath path;
     path.current.centre = move.currentRect.xy - (move.currentRect.zw * off);
@@ -838,7 +853,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     fragColor = texture(iChannel0, sampleCoord.xy / iResolution.xy);
 
     FragmentState fragment;
-    fragment.vu = normalizeCoord(renderCoord, 1.0);
+    fragment.vu = normalizeCoord(renderCoord, true);
     fragment.vuDx = dFdx(fragment.vu);
     fragment.vuDy = dFdy(fragment.vu);
     fragment.pixel = 2.0 / iResolution.y;
