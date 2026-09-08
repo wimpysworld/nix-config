@@ -152,6 +152,10 @@ const float SMALL_MOVE_TOLERANCE = 0.05;
 // Higher values follow the curve more closely but add GPU work.
 const int PATH_SAMPLES = 32;
 
+const float AA_DERIVATIVE_SCALE = 1.5;
+const float AA_FALLBACK_WIDTH = 0.002;
+const float AA_FALLBACK_BELOW = 0.001;
+
 // ============================================================================
 // EASING FUNCTIONS
 // ============================================================================
@@ -254,9 +258,14 @@ float edgeWidth(float d, float pixel) {
     return max(0.75 * fwidth(d), 0.5 * pixel);
 }
 
+float aaWidth(float derivative) {
+    float w = derivative * AA_DERIVATIVE_SCALE;
+    if (w < AA_FALLBACK_BELOW) w = AA_FALLBACK_WIDTH;
+    return w;
+}
+
 float antialiasNoBlur(float d) {
-    float w = fwidth(d) * 1.5;
-    if (w < 0.001) w = 0.002;
+    float w = aaWidth(fwidth(d));
     return 1.0 - smoothstep(-w, w, d);
 }
 
@@ -486,8 +495,8 @@ vec4 compositeTrail(vec4 outC, CursorPath path, MoveState move, FragmentState fr
         float maxTrailSize = max(0.0, max(TRAIL_SIZE_START, max(TRAIL_SIZE_MID, TRAIL_SIZE_END)));
         float maxRadius = min(maxScaledSize.x, maxScaledSize.y) * maxTrailSize;
         // Bound the analytic AA in scaled space, including its fixed-width fallback.
-        float aaSupport = max(1.5 * (length(fragment.vuDx / aspect) + length(fragment.vuDy / aspect)),
-            0.002 / distanceScale);
+        float aaSupport = max(AA_DERIVATIVE_SCALE * (length(fragment.vuDx / aspect) + length(fragment.vuDy / aspect)),
+            AA_FALLBACK_WIDTH / distanceScale);
         float corridorRadius = abs(path.bend * BEND_ARC_DIRECTION)
             + max(aspect.x, aspect.y) * (maxRadius + aaSupport);
         vec2 chordStart = mix(path.previous.centre, path.current.centre, tStart), chordEnd = mix(path.previous.centre, path.current.centre, tEnd);
@@ -535,8 +544,7 @@ vec4 compositeTrail(vec4 outC, CursorPath path, MoveState move, FragmentState fr
             float radialLength = length(bestRadial);
             vec2 normal = radialLength > 0.0 ? bestRadial / radialLength : vec2(0.0);
             vec2 gradient = normal / aspect * distanceScale;
-            float trailAA = 1.5 * (abs(dot(gradient, fragment.vuDx)) + abs(dot(gradient, fragment.vuDy)));
-            if (trailAA < 0.001) trailAA = 0.002;
+            float trailAA = aaWidth(abs(dot(gradient, fragment.vuDx)) + abs(dot(gradient, fragment.vuDy)));
             trailAlpha *= 1.0 - smoothstep(-trailAA, trailAA, minDist);
 
             trailAlpha *= TRAIL_BASE_ALPHA;
