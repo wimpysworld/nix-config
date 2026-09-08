@@ -366,56 +366,113 @@ float getTrailRadius(vec2 halfSize, vec2 aspect, float t) {
 // MAIN
 // ============================================================================
 
+struct CursorBox {
+    vec2 centre;
+    vec2 halfSize;
+};
+
+struct CursorPath {
+    CursorBox previous;
+    CursorBox current;
+    float bend;
+};
+
+struct MoveState {
+    vec4 currentRect;
+    vec4 previousRect;
+    vec2 centreDelta;
+    float centreDistance;
+    vec2 originDelta;
+    float originDistance;
+    float minDistance;
+    float maxDistance;
+    bool cursorGeometryValid;
+    bool cursorVisible;
+    bool prevGeometryValid;
+    bool moveInRange;
+    bool smallMove;
+    bool valid;
+    bool hollowSinceFocus;
+    bool jump;
+    bool smallSlide;
+    float timeSince;
+    float landingStart;
+    float jumpEnd;
+    float cellDistance;
+    float seed;
+};
+
+struct RenderedCursor {
+    vec2 centre;
+    vec2 halfSize;
+    vec2 scale;
+    vec2 baseHalfSize;
+    vec2 bodyLocal;
+    vec2 capeLocal;
+    float capeDistanceScale;
+    float headProgress;
+};
+
+struct FragmentState {
+    vec2 vu;
+    vec2 vuDx;
+    vec2 vuDy;
+    float pixel;
+    float sdfCur;
+};
+
 // Sample the terminal, then composite the trail, landing particles and cursor in that order.
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 off = vec2(-0.5, 0.5);
 
-    vec4 cur = vec4(normalizeCoord(iCurrentCursor.xy, 1.0), normalizeCoord(iCurrentCursor.zw, 0.0));
-    vec4 prev = vec4(normalizeCoord(iPreviousCursor.xy, 1.0), normalizeCoord(iPreviousCursor.zw, 0.0));
+    MoveState move;
+    move.currentRect = vec4(normalizeCoord(iCurrentCursor.xy, 1.0), normalizeCoord(iCurrentCursor.zw, 0.0));
+    move.previousRect = vec4(normalizeCoord(iPreviousCursor.xy, 1.0), normalizeCoord(iPreviousCursor.zw, 0.0));
 
-    vec2 cC = cur.xy - (cur.zw * off);
-    vec2 hC = cur.zw * 0.5;
-    vec2 cP = prev.xy - (prev.zw * off);
-    vec2 hP = prev.zw * 0.5;
+    CursorPath path;
+    path.current.centre = move.currentRect.xy - (move.currentRect.zw * off);
+    path.current.halfSize = move.currentRect.zw * 0.5;
+    path.previous.centre = move.previousRect.xy - (move.previousRect.zw * off);
+    path.previous.halfSize = move.previousRect.zw * 0.5;
 
-    vec2 mv = cC - cP;
-    float mL = length(mv);
-    vec2 movement = cur.xy - prev.xy;
-    float movementLength = length(movement);
-    float minD = cur.w * MIN_MOVE_DISTANCE;
-    float maxD = cur.w * MAX_VALID_MOVE_DISTANCE;
+    move.centreDelta = path.current.centre - path.previous.centre;
+    move.centreDistance = length(move.centreDelta);
+    move.originDelta = move.currentRect.xy - move.previousRect.xy;
+    move.originDistance = length(move.originDelta);
+    move.minDistance = move.currentRect.w * MIN_MOVE_DISTANCE;
+    move.maxDistance = move.currentRect.w * MAX_VALID_MOVE_DISTANCE;
     // Compare origins so cursor size changes do not imply a different row or column.
-    bool smallHorizontalMove = abs(cur.y - prev.y) <= min(cur.w, prev.w) * SMALL_MOVE_TOLERANCE
-        && abs(cur.x - prev.x) <= min(cur.z, prev.z) * (1.0 + SMALL_MOVE_TOLERANCE);
-    bool smallVerticalMove = abs(cur.x - prev.x) <= min(cur.z, prev.z) * SMALL_MOVE_TOLERANCE
-        && abs(cur.y - prev.y) <= min(cur.w, prev.w) * (1.0 + SMALL_MOVE_TOLERANCE);
+    bool smallHorizontalMove = abs(move.currentRect.y - move.previousRect.y) <= min(move.currentRect.w, move.previousRect.w) * SMALL_MOVE_TOLERANCE
+        && abs(move.currentRect.x - move.previousRect.x) <= min(move.currentRect.z, move.previousRect.z) * (1.0 + SMALL_MOVE_TOLERANCE);
+    bool smallVerticalMove = abs(move.currentRect.x - move.previousRect.x) <= min(move.currentRect.z, move.previousRect.z) * SMALL_MOVE_TOLERANCE
+        && abs(move.currentRect.y - move.previousRect.y) <= min(move.currentRect.w, move.previousRect.w) * (1.0 + SMALL_MOVE_TOLERANCE);
 
-    float timeSince = iTime - iTimeCursorChange;
+    move.timeSince = iTime - iTimeCursorChange;
 
-    bool cursorGeometryValid = cur.z > 0.0 && cur.w > 0.0;
-    bool cursorVisible = iFocus > 0 && iCursorVisible > 0 && cursorGeometryValid;
-    bool prevGeometryValid = prev.z > 0.0 && prev.w > 0.0;
-    bool moveInRange = prevGeometryValid && mL > minD && mL < maxD && timeSince >= 0.0;
-    bool smallMove = smallHorizontalMove || smallVerticalMove;
-    bool valid = cursorGeometryValid && moveInRange && !smallMove;
-    bool hollowSinceFocus = cursorVisible && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW
+    move.cursorGeometryValid = move.currentRect.z > 0.0 && move.currentRect.w > 0.0;
+    move.cursorVisible = iFocus > 0 && iCursorVisible > 0 && move.cursorGeometryValid;
+    move.prevGeometryValid = move.previousRect.z > 0.0 && move.previousRect.w > 0.0;
+    move.moveInRange = move.prevGeometryValid && move.centreDistance > move.minDistance && move.centreDistance < move.maxDistance && move.timeSince >= 0.0;
+    move.smallMove = smallHorizontalMove || smallVerticalMove;
+    move.valid = move.cursorGeometryValid && move.moveInRange && !move.smallMove;
+    move.hollowSinceFocus = move.cursorVisible && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW
         && iTimeCursorChange > iTimeFocus;
-    bool jump = hollowSinceFocus && valid;
-    bool smallSlide = hollowSinceFocus && moveInRange && smallMove && movementLength > minD;
-    float landingStart = CURSOR_TRAVEL_TIME;
-    float jumpEnd = landingStart + CURSOR_LANDING_TIME;
+    move.jump = move.hollowSinceFocus && move.valid;
+    move.smallSlide = move.hollowSinceFocus && move.moveInRange && move.smallMove && move.originDistance > move.minDistance;
+    move.landingStart = CURSOR_TRAVEL_TIME;
+    move.jumpEnd = move.landingStart + CURSOR_LANDING_TIME;
     // Measure origin displacement in cells, independent of font size and aspect.
-    float cellDistance = valid ? length(movement / max(cur.zw, vec2(1e-6))) : 0.0;
+    move.cellDistance = move.valid ? length(move.originDelta / max(move.currentRect.zw, vec2(1e-6))) : 0.0;
     vec2 renderCoord = fragCoord;
     vec2 sampleCoord = fragCoord;
-    if (jump && cellDistance > LANDING_SHAKE_DISTANCE
-        && timeSince > landingStart && timeSince < landingStart + LANDING_SHAKE_TIME) {
-        float progress = (timeSince - landingStart) / LANDING_SHAKE_TIME;
-        float intensity = smoothstep(LANDING_SHAKE_DISTANCE, LANDING_SHAKE_DISTANCE * 1.5, cellDistance);
+    if (move.jump && move.cellDistance > LANDING_SHAKE_DISTANCE
+        && move.timeSince > move.landingStart && move.timeSince < move.landingStart + LANDING_SHAKE_TIME) {
+        float progress = (move.timeSince - move.landingStart) / LANDING_SHAKE_TIME;
+        float intensity = smoothstep(LANDING_SHAKE_DISTANCE, LANDING_SHAKE_DISTANCE * 1.5, move.cellDistance);
         float pulse = intensity * getLandingShakePulse(progress);
         // Inverse sampling moves the screen down first, then through one small rebound.
         renderCoord -= LANDING_SHAKE_PIXELS * pulse;
-        float horizontalDirection = (cur.x - prev.x) / max(cur.z, 1e-6) / cellDistance;
+        float horizontalDirection = (move.currentRect.x - move.previousRect.x) / max(move.currentRect.z, 1e-6) / move.cellDistance;
         float angle = radians(LANDING_SHAKE_DEGREES) * horizontalDirection * pulse;
         float rotationCos = cos(angle);
         float rotationSin = sin(angle);
@@ -428,112 +485,115 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
     fragColor = texture(iChannel0, sampleCoord.xy / iResolution.xy);
 
-    vec2 vu = normalizeCoord(renderCoord, 1.0);
-    vec2 vuDx = dFdx(vu), vuDy = dFdy(vu);
-    float pixel = 2.0 / iResolution.y;
+    FragmentState fragment;
+    fragment.vu = normalizeCoord(renderCoord, 1.0);
+    fragment.vuDx = dFdx(fragment.vu);
+    fragment.vuDy = dFdy(fragment.vu);
+    fragment.pixel = 2.0 / iResolution.y;
     vec4 outC = fragColor;
-    float strength = (valid || smallSlide) ? getBendStrength(mL) : 0.0;
-    float id = (valid || smallSlide) ? getMovementId(cP, cC, mL) : 0.0;
-    float headProgress = 1.0;
-    vec2 renderedCenter = cC;
-    vec2 renderedHalfSize = hC;
-    vec2 renderedScale = vec2(1.0);
+    path.bend = (move.valid || move.smallSlide) ? getBendStrength(move.centreDistance) : 0.0;
+    move.seed = (move.valid || move.smallSlide) ? getMovementId(path.previous.centre, path.current.centre, move.centreDistance) : 0.0;
+    RenderedCursor rendered;
+    rendered.headProgress = 1.0;
+    rendered.centre = path.current.centre;
+    rendered.halfSize = path.current.halfSize;
+    rendered.scale = vec2(1.0);
 
-    if (smallSlide && timeSince < CURSOR_SMALL_MOVE_TIME) {
-        headProgress = easeLinear(timeSince / CURSOR_SMALL_MOVE_TIME);
-        renderedCenter = getBentPathPosition(cP, cC, headProgress, strength);
-        renderedHalfSize = mix(hP, hC, headProgress);
-    } else if (jump && timeSince < jumpEnd) {
-        headProgress = easeSmoothStep(timeSince / CURSOR_TRAVEL_TIME);
-        renderedCenter = getBentPathPosition(cP, cC, headProgress, strength);
-        vec2 baseHalfSize = mix(hP, hC, headProgress);
-        vec2 squash = CURSOR_LANDING_SCALE * getSquashPulse((timeSince - landingStart) / CURSOR_LANDING_TIME);
-        renderedScale += squash;
-        renderedHalfSize = baseHalfSize * renderedScale;
+    if (move.smallSlide && move.timeSince < CURSOR_SMALL_MOVE_TIME) {
+        rendered.headProgress = easeLinear(move.timeSince / CURSOR_SMALL_MOVE_TIME);
+        rendered.centre = getBentPathPosition(path.previous.centre, path.current.centre, rendered.headProgress, path.bend);
+        rendered.halfSize = mix(path.previous.halfSize, path.current.halfSize, rendered.headProgress);
+    } else if (move.jump && move.timeSince < move.jumpEnd) {
+        rendered.headProgress = easeSmoothStep(move.timeSince / CURSOR_TRAVEL_TIME);
+        rendered.centre = getBentPathPosition(path.previous.centre, path.current.centre, rendered.headProgress, path.bend);
+        vec2 landingHalfSize = mix(path.previous.halfSize, path.current.halfSize, rendered.headProgress);
+        vec2 squash = CURSOR_LANDING_SCALE * getSquashPulse((move.timeSince - move.landingStart) / CURSOR_LANDING_TIME);
+        rendered.scale += squash;
+        rendered.halfSize = landingHalfSize * rendered.scale;
         // Keep the lower edge fixed while the cursor becomes shorter.
-        renderedCenter.y += renderedHalfSize.y - baseHalfSize.y;
+        rendered.centre.y += rendered.halfSize.y - landingHalfSize.y;
     }
 
-    vec2 baseHalfSize = renderedHalfSize / renderedScale;
-    vec2 cursorLocal = (vu - renderedCenter) / renderedScale;
-    vec2 capeLocal = cursorLocal;
-    float capeDistanceScale = min(renderedScale.x, renderedScale.y);
-    if (smallSlide) {
+    rendered.baseHalfSize = rendered.halfSize / rendered.scale;
+    rendered.bodyLocal = (fragment.vu - rendered.centre) / rendered.scale;
+    rendered.capeLocal = rendered.bodyLocal;
+    rendered.capeDistanceScale = min(rendered.scale.x, rendered.scale.y);
+    if (move.smallSlide) {
         // The shared clock keeps the bob phase continuous across repeated cells.
         float cycle = 0.5 - 0.5 * cos(2.0 * PI * iTime / CURSOR_BOB_PERIOD);
-        float release = 1.0 - easeSmoothStep((timeSince - CURSOR_BOB_HOLD_TIME) / CURSOR_BOB_RETURN_TIME);
+        float release = 1.0 - easeSmoothStep((move.timeSince - CURSOR_BOB_HOLD_TIME) / CURSOR_BOB_RETURN_TIME);
         float bobScale = 1.0 - CURSOR_BOB_COMPRESSION * cycle * release;
         // Scale only the head and eye about the lower edge, leaving the cape unchanged.
-        cursorLocal.y = (cursorLocal.y + baseHalfSize.y) / bobScale - baseHalfSize.y;
-        renderedScale.y *= bobScale;
+        rendered.bodyLocal.y = (rendered.bodyLocal.y + rendered.baseHalfSize.y) / bobScale - rendered.baseHalfSize.y;
+        rendered.scale.y *= bobScale;
     }
-    float sdfCur = sdfRect(vu, renderedCenter, renderedHalfSize);
-    if (cursorGeometryValid && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW) {
+    fragment.sdfCur = sdfRect(fragment.vu, rendered.centre, rendered.halfSize);
+    if (move.cursorGeometryValid && iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW) {
         float cape = 0.0;
         float capeSettle = 0.0;
-        if (smallSlide || jump) {
-            float horizontalDirection = movement.x / max(movementLength, 1e-6);
+        if (move.smallSlide || move.jump) {
+            float horizontalDirection = move.originDelta.x / max(move.originDistance, 1e-6);
             float capeLength = CURSOR_CAPE * 0.75 * 2.0 * CURSOR_TOP_RADIUS
-                * min(baseHalfSize.x, baseHalfSize.y);
-            if (smallSlide) {
+                * min(rendered.baseHalfSize.x, rendered.baseHalfSize.y);
+            if (move.smallSlide) {
                 // Match the moving cape to the idle flare before replacing it with the symmetric hem.
-                capeSettle = easeSmoothStep((timeSince - CURSOR_CAPE_HOLD_TIME) / CURSOR_CAPE_RETURN_TIME);
+                capeSettle = easeSmoothStep((move.timeSince - CURSOR_CAPE_HOLD_TIME) / CURSOR_CAPE_RETURN_TIME);
                 cape = sign(horizontalDirection) * mix(abs(horizontalDirection) * capeLength,
                     capeLength / CURSOR_CAPE, capeSettle);
             } else {
-                float phase = clamp(timeSince / CURSOR_TRAVEL_TIME, 0.0, 1.0);
+                float phase = clamp(move.timeSince / CURSOR_TRAVEL_TIME, 0.0, 1.0);
                 float motion = horizontalDirection * getSquashPulse(phase) * capeLength;
                 cape = motion * (1.0 + 0.10 * sin(2.0 * PI * phase));
             }
         }
-        sdfCur = sdfCursor(cursorLocal, baseHalfSize) * min(renderedScale.x, renderedScale.y);
-        if (cape != 0.0 && (!smallSlide || capeSettle < 1.0)) {
-            sdfCur = min(sdfCur, sdfCursorCape(capeLocal, baseHalfSize, cape, capeSettle) * capeDistanceScale);
+        fragment.sdfCur = sdfCursor(rendered.bodyLocal, rendered.baseHalfSize) * min(rendered.scale.x, rendered.scale.y);
+        if (cape != 0.0 && (!move.smallSlide || capeSettle < 1.0)) {
+            fragment.sdfCur = min(fragment.sdfCur, sdfCursorCape(rendered.capeLocal, rendered.baseHalfSize, cape, capeSettle) * rendered.capeDistanceScale);
         }
-        if (cursorVisible) {
-            float idleDelay = jump ? jumpEnd : CURSOR_CAPE_HOLD_TIME;
+        if (move.cursorVisible) {
+            float idleDelay = move.jump ? move.jumpEnd : CURSOR_CAPE_HOLD_TIME;
             float idleStart = max(iTimeCursorChange + idleDelay, iTimeFocus + CURSOR_CAPE_HOLD_TIME);
-            float idleHem = smallSlide ? capeSettle : easeSmoothStep((iTime - idleStart) / CURSOR_IDLE_HEM_TIME);
+            float idleHem = move.smallSlide ? capeSettle : easeSmoothStep((iTime - idleStart) / CURSOR_IDLE_HEM_TIME);
             if (idleHem > 0.0) {
-                float extension = idleHem * 0.75 * 2.0 * CURSOR_TOP_RADIUS * min(baseHalfSize.x, baseHalfSize.y);
-                float hemDistance = sdfCursorIdleHem(capeLocal, baseHalfSize, extension);
-                if (smallSlide && cape != 0.0 && capeSettle < 1.0) {
+                float extension = idleHem * 0.75 * 2.0 * CURSOR_TOP_RADIUS * min(rendered.baseHalfSize.x, rendered.baseHalfSize.y);
+                float hemDistance = sdfCursorIdleHem(rendered.capeLocal, rendered.baseHalfSize, extension);
+                if (move.smallSlide && cape != 0.0 && capeSettle < 1.0) {
                     // Let the moving cape cover its side until the transition finishes.
-                    hemDistance = max(hemDistance, -capeLocal.x * sign(cape));
+                    hemDistance = max(hemDistance, -rendered.capeLocal.x * sign(cape));
                 }
-                sdfCur = min(sdfCur, hemDistance * capeDistanceScale);
+                fragment.sdfCur = min(fragment.sdfCur, hemDistance * rendered.capeDistanceScale);
             }
         }
     }
     // Let the trail grow behind the moving cursor before its tail catches up.
-    float trailTime = timeSince - (jump ? landingStart : 0.0);
+    float trailTime = move.timeSince - (move.jump ? move.landingStart : 0.0);
     bool visible = trailTime < TAIL_CATCHUP_TIME;
 
-    if (TRAIL_ENABLED > 0.5 && cursorVisible && valid && visible
+    if (TRAIL_ENABLED > 0.5 && move.cursorVisible && move.valid && visible
         && iTimeCursorChange > iTimeFocus) {
         float progress = clamp(trailTime / TAIL_CATCHUP_TIME, 0.0, 1.0);
         progress = easeOutQuart(progress);
 
-        float tStart = clamp(progress, 0.0, headProgress), tEnd = headProgress;
+        float tStart = clamp(progress, 0.0, rendered.headProgress), tEnd = rendered.headProgress;
 
         // Bound every interpolated radius, including changes in cursor proportions.
-        vec2 aspect = max(hC, vec2(1e-6));
+        vec2 aspect = max(path.current.halfSize, vec2(1e-6));
         float distanceScale = min(aspect.x, aspect.y);
-        vec2 maxHalfSize = max(mix(hP, hC, tStart), mix(hP, hC, tEnd));
+        vec2 maxHalfSize = max(mix(path.previous.halfSize, path.current.halfSize, tStart), mix(path.previous.halfSize, path.current.halfSize, tEnd));
         vec2 maxScaledSize = maxHalfSize / aspect;
         float maxTrailSize = max(0.0, max(TRAIL_SIZE_START, max(TRAIL_SIZE_MID, TRAIL_SIZE_END)));
         float maxRadius = min(maxScaledSize.x, maxScaledSize.y) * maxTrailSize;
         // Bound the analytic AA in scaled space, including its fixed-width fallback.
-        float aaSupport = max(1.5 * (length(vuDx / aspect) + length(vuDy / aspect)),
+        float aaSupport = max(1.5 * (length(fragment.vuDx / aspect) + length(fragment.vuDy / aspect)),
             0.002 / distanceScale);
-        float corridorRadius = abs(strength * BEND_ARC_DIRECTION)
+        float corridorRadius = abs(path.bend * BEND_ARC_DIRECTION)
             + max(aspect.x, aspect.y) * (maxRadius + aaSupport);
-        vec2 chordStart = mix(cP, cC, tStart), chordEnd = mix(cP, cC, tEnd);
+        vec2 chordStart = mix(path.previous.centre, path.current.centre, tStart), chordEnd = mix(path.previous.centre, path.current.centre, tEnd);
         vec2 chord = chordEnd - chordStart;
         float chordLengthSquared = dot(chord, chord);
         float chordT = chordLengthSquared > 0.0
-            ? clamp(dot(vu - chordStart, chord) / chordLengthSquared, 0.0, 1.0) : 0.0;
-        vec2 corridorOffset = vu - mix(chordStart, chordEnd, chordT);
+            ? clamp(dot(fragment.vu - chordStart, chord) / chordLengthSquared, 0.0, 1.0) : 0.0;
+        vec2 corridorOffset = fragment.vu - mix(chordStart, chordEnd, chordT);
         bool inCorridor = dot(corridorOffset, corridorOffset) <= corridorRadius * corridorRadius;
 
         if (tStart < tEnd && inCorridor) {
@@ -542,15 +602,15 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             vec2 bestRadial = vec2(0.0);
             // A shared aspect keeps the elliptical caps identical at joins.
             // Changed cursor proportions use the radius inside both dimensions.
-            vec2 point = vu / aspect;
+            vec2 point = fragment.vu / aspect;
             float previousT = tStart;
-            vec2 previousPos = getBentPathPosition(cP, cC, previousT, strength) / aspect;
-            float previousRadius = getTrailRadius(mix(hP, hC, previousT), aspect, previousT);
+            vec2 previousPos = getBentPathPosition(path.previous.centre, path.current.centre, previousT, path.bend) / aspect;
+            float previousRadius = getTrailRadius(mix(path.previous.halfSize, path.current.halfSize, previousT), aspect, previousT);
 
             for (int i = 1; i <= segments; i++) {
                 float t = mix(tStart, tEnd, float(i) / float(segments));
-                vec2 pathPos = getBentPathPosition(cP, cC, t, strength) / aspect;
-                float radius = getTrailRadius(mix(hP, hC, t), aspect, t);
+                vec2 pathPos = getBentPathPosition(path.previous.centre, path.current.centre, t, path.bend) / aspect;
+                float radius = getTrailRadius(mix(path.previous.halfSize, path.current.halfSize, t), aspect, t);
                 vec4 segment = sdfTrailSegment(point, previousPos, pathPos, previousRadius, radius);
 
                 if (segment.x < minDist) {
@@ -573,12 +633,12 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             float radialLength = length(bestRadial);
             vec2 normal = radialLength > 0.0 ? bestRadial / radialLength : vec2(0.0);
             vec2 gradient = normal / aspect * distanceScale;
-            float trailAA = 1.5 * (abs(dot(gradient, vuDx)) + abs(dot(gradient, vuDy)));
+            float trailAA = 1.5 * (abs(dot(gradient, fragment.vuDx)) + abs(dot(gradient, fragment.vuDy)));
             if (trailAA < 0.001) trailAA = 0.002;
             trailAlpha *= 1.0 - smoothstep(-trailAA, trailAA, minDist);
 
             trailAlpha *= TRAIL_BASE_ALPHA;
-            trailAlpha *= step(0.0, sdfCur);
+            trailAlpha *= step(0.0, fragment.sdfCur);
 
             // Fit all seven bands to the remaining path as the tail catches up.
             float colourPosition = clamp((tEnd - bestT) / (tEnd - tStart), 0.0, 1.0);
@@ -591,23 +651,23 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         }
     }
 
-    float particleAge = timeSince - landingStart;
-    if (jump && particleAge >= 0.0 && particleAge < LANDING_PARTICLE_TIME) {
-        float intensity = smoothstep(LANDING_FULL_DISTANCE / 12.0, LANDING_FULL_DISTANCE, cellDistance);
+    float particleAge = move.timeSince - move.landingStart;
+    if (move.jump && particleAge >= 0.0 && particleAge < LANDING_PARTICLE_TIME) {
+        float intensity = smoothstep(LANDING_FULL_DISTANCE / 12.0, LANDING_FULL_DISTANCE, move.cellDistance);
         int particleCount = int(floor(mix(4.0, float(LANDING_PARTICLE_COUNT), intensity) + 0.5));
         int starCount = int(floor(4.0 * intensity + 0.5));
         float horizontalSpread = mix(0.25, 1.0, intensity);
-        vec2 origin = cC - vec2(0.0, hC.y);
-        vec2 offset = vu - origin;
+        vec2 origin = path.current.centre - vec2(0.0, path.current.halfSize.y);
+        vec2 offset = fragment.vu - origin;
         // Include the widest star tips and their antialiasing edges.
-        vec2 padding = vec2(10.0 * pixel);
-        if (all(greaterThan(offset, -cur.zw * vec2(3.1, 2.8) - padding))
-            && all(lessThan(offset, cur.zw * vec2(3.1, 1.0) + padding))) {
+        vec2 padding = vec2(10.0 * fragment.pixel);
+        if (all(greaterThan(offset, -move.currentRect.zw * vec2(3.1, 2.8) - padding))
+            && all(lessThan(offset, move.currentRect.zw * vec2(3.1, 1.0) + padding))) {
             for (int i = 0; i < LANDING_PARTICLE_COUNT; i++) {
                 if (i >= particleCount) break;
-                float a = hash(vec3(id, float(i), 410.0));
-                float b = hash(vec3(id, float(i), 411.0));
-                float c = hash(vec3(id, float(i), 412.0));
+                float a = hash(vec3(move.seed, float(i), 410.0));
+                float b = hash(vec3(move.seed, float(i), 411.0));
+                float c = hash(vec3(move.seed, float(i), 412.0));
                 float lifetime = mix(0.700, LANDING_PARTICLE_TIME, a);
                 if (particleAge >= lifetime) continue;
 
@@ -616,25 +676,25 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                 float apex = mix(0.34, 0.38, c);
                 float riseAge = progress / apex;
                 // Positive Y rises from the fixed lower edge, then gravity pulls down.
-                vec2 position = origin + cur.zw * vec2(
+                vec2 position = origin + move.currentRect.zw * vec2(
                     strand * (0.4 + 2.7 * easeOutQuad(progress)) * horizontalSpread,
                     mix(0.5, 1.0, b) * (2.0 * riseAge - riseAge * riseAge)
                 );
-                float radius = clamp(min(cur.z, cur.w) * mix(0.075, 0.16, c),
-                    0.80 * pixel, 2.30 * pixel);
-                vec2 delta = abs(vu - position);
+                float radius = clamp(min(move.currentRect.z, move.currentRect.w) * mix(0.075, 0.16, c),
+                    0.80 * fragment.pixel, 2.30 * fragment.pixel);
+                vec2 delta = abs(fragment.vu - position);
                 float distance = length(delta) - radius;
                 if (i % 5 == 0 && i / 5 < starCount) {
                     // Two narrow diamonds form four points with concave sides.
                     distance = (min(delta.x + 3.0 * delta.y, 3.0 * delta.x + delta.y)
                         - 2.6 * radius) / sqrt(10.0);
                 }
-                float alpha = 1.0 - smoothstep(-pixel, pixel, distance);
+                float alpha = 1.0 - smoothstep(-fragment.pixel, fragment.pixel, distance);
                 alpha *= smoothstep(0.0, 0.018, particleAge)
                     * (1.0 - smoothstep(0.58, 1.0, progress));
                 float sparkle = pow(0.5 + 0.5 * sin(particleAge * 24.0 + c * 2.0 * PI), 8.0);
                 alpha *= mix(0.86, 0.98, b) * (0.86 + 0.14 * sparkle);
-                alpha *= smoothstep(0.0, pixel, sdfCur);
+                alpha *= smoothstep(0.0, fragment.pixel, fragment.sdfCur);
                 // Deepen the gold derived from Catppuccin Yellow and Peach.
                 vec3 colour = mix(TRAIL_COLOURS[2], TRAIL_COLOURS[1], a * 0.35)
                     * vec3(1.0, 0.95, 0.55);
@@ -645,19 +705,19 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         }
     }
 
-    if (cursorVisible) {
+    if (move.cursorVisible) {
         float cursorAlpha = 1.0;
         vec3 cursorColour = iCurrentCursorColor.rgb;
         if (iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW) {
-            float movementEnd = jump ? jumpEnd : (smallSlide ? CURSOR_SMALL_MOVE_TIME : 0.0);
-            float fadeDelay = movementEnd + ((smallSlide || jump) ? CURSOR_FADE_HOLD_TIME : 0.0);
+            float movementEnd = move.jump ? move.jumpEnd : (move.smallSlide ? CURSOR_SMALL_MOVE_TIME : 0.0);
+            float fadeDelay = movementEnd + ((move.smallSlide || move.jump) ? CURSOR_FADE_HOLD_TIME : 0.0);
             float resetTime = max(iTimeCursorChange + fadeDelay, iTimeFocus);
             cursorAlpha = getCursorAlpha(max(iTime - resetTime, 0.0));
 
-            float eyeRadius = 0.72 * min(baseHalfSize.x, baseHalfSize.y);
+            float eyeRadius = 0.72 * min(rendered.baseHalfSize.x, rendered.baseHalfSize.y);
             // Keep subpixel cursors plain when the pupil cannot remain clear.
-            if (eyeRadius >= 2.0 * pixel) {
-                vec2 eyeAnchor = vec2(0.0, min(0.12 * baseHalfSize.y + pixel, baseHalfSize.y - eyeRadius));
+            if (eyeRadius >= 2.0 * fragment.pixel) {
+                vec2 eyeAnchor = vec2(0.0, min(0.12 * rendered.baseHalfSize.y + fragment.pixel, rendered.baseHalfSize.y - eyeRadius));
                 float time = max(iTime, 0.0);
                 float idleSince = max(iTimeCursorChange, iTimeFocus);
                 vec3 expressionEvent = getIdleExpressionEvent(time, idleSince + 10.0);
@@ -686,60 +746,60 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                 }
                 float restingEyeRadius = eyeRadius;
                 eyeRadius = mix(eyeRadius, min(1.15 * eyeRadius,
-                    min(baseHalfSize.x, baseHalfSize.y - eyeAnchor.y)), startle);
-                vec2 eyeCoord = cursorLocal - eyeAnchor;
+                    min(rendered.baseHalfSize.x, rendered.baseHalfSize.y - eyeAnchor.y)), startle);
+                vec2 eyeCoord = rendered.bodyLocal - eyeAnchor;
                 vec3 idleGaze = getIdleGaze(time, idleSince + 2.0);
                 vec2 gazeDirection = idleGaze.xy;
                 float gazePulse = idleGaze.z;
-                if (prevGeometryValid && timeSince >= 0.0 && timeSince < 2.0
-                    && iTimeCursorChange > iTimeFocus && movementLength > minD && movementLength < maxD) {
-                    gazePulse = (smallMove ? 1.0 : easeSmoothStep(timeSince / 0.080))
-                        * (1.0 - easeSmoothStep((timeSince - CURSOR_TRAVEL_TIME) / 1.200));
-                    gazeDirection = movement / movementLength;
+                if (move.prevGeometryValid && move.timeSince >= 0.0 && move.timeSince < 2.0
+                    && iTimeCursorChange > iTimeFocus && move.originDistance > move.minDistance && move.originDistance < move.maxDistance) {
+                    gazePulse = (move.smallMove ? 1.0 : easeSmoothStep(move.timeSince / 0.080))
+                        * (1.0 - easeSmoothStep((move.timeSince - CURSOR_TRAVEL_TIME) / 1.200));
+                    gazeDirection = move.originDelta / move.originDistance;
                 }
                 vec2 blendedGaze = mix(gazeDirection * gazePulse, vec2(0.0, expressionGaze), expressionWeight);
                 gazePulse = length(blendedGaze);
                 gazeDirection = gazePulse > 0.0 ? blendedGaze / gazePulse : vec2(0.0);
                 vec2 gaze = gazeDirection * (0.20 * eyeRadius * gazePulse);
-                vec2 eyeMargin = baseHalfSize - vec2(eyeRadius);
+                vec2 eyeMargin = rendered.baseHalfSize - vec2(eyeRadius);
                 vec2 eyeShift = clamp(gazeDirection * (0.08 * eyeRadius),
                     -eyeMargin - eyeAnchor, eyeMargin - eyeAnchor);
                 eyeCoord -= eyeShift * gazePulse;
 
                 float landingHold = mix(0.080, 0.250,
-                    smoothstep(LANDING_FULL_DISTANCE / 12.0, LANDING_FULL_DISTANCE, cellDistance));
-                float landingReopen = landingStart + landingHold;
+                    smoothstep(LANDING_FULL_DISTANCE / 12.0, LANDING_FULL_DISTANCE, move.cellDistance));
+                float landingReopen = move.landingStart + landingHold;
                 float landingBlinkEnd = landingReopen + 0.120;
-                vec2 landingWindow = jump ? iTimeCursorChange + vec2(landingStart - 0.060, landingBlinkEnd) : vec2(-100.0);
+                vec2 landingWindow = move.jump ? iTimeCursorChange + vec2(move.landingStart - 0.060, landingBlinkEnd) : vec2(-100.0);
                 float aperture = getEyeAperture(time, expressionEvent, landingWindow) * (1.0 - expressionClosure);
-                if (jump) {
-                    float landingAperture = 1.0 - envelope(timeSince, landingStart - 0.060, landingStart,
+                if (move.jump) {
+                    float landingAperture = 1.0 - envelope(move.timeSince, move.landingStart - 0.060, move.landingStart,
                         landingReopen, landingBlinkEnd);
                     aperture = min(aperture, landingAperture);
                 }
-                float distanceScale = min(renderedScale.x, renderedScale.y);
+                float distanceScale = min(rendered.scale.x, rendered.scale.y);
                 float eyeDistance = max(length(eyeCoord) - eyeRadius,
                     abs(eyeCoord.y) - eyeRadius * aperture) * distanceScale;
                 // Positive Y points up. Lower only the upper eyelid during the doze.
                 eyeDistance = max(eyeDistance, (eyeCoord.y - eyeRadius * (1.0 - 2.0 * lidDrop)) * distanceScale);
-                float eyeAA = edgeWidth(eyeDistance, pixel);
-                float openVisibility = smoothstep(0.0, pixel, eyeRadius * aperture * renderedScale.y);
+                float eyeAA = edgeWidth(eyeDistance, fragment.pixel);
+                float openVisibility = smoothstep(0.0, fragment.pixel, eyeRadius * aperture * rendered.scale.y);
                 // Inset the outline and its antialiasing within the original eye footprint.
                 float outlineMask = (1.0 - smoothstep(-eyeAA, 0.0, eyeDistance)) * openVisibility;
-                float eyeMask = (1.0 - smoothstep(-eyeAA, 0.0, eyeDistance + 0.90 * pixel)) * openVisibility;
+                float eyeMask = (1.0 - smoothstep(-eyeAA, 0.0, eyeDistance + 0.90 * fragment.pixel)) * openVisibility;
                 float pupilDistance = (length(eyeCoord - gaze) - 0.40 * eyeRadius) * distanceScale;
-                float pupilAA = edgeWidth(pupilDistance, pixel);
+                float pupilAA = edgeWidth(pupilDistance, fragment.pixel);
                 float pupilMask = min(eyeMask, 1.0 - smoothstep(-pupilAA, pupilAA, pupilDistance));
                 vec2 glintCentre = gaze + vec2(-0.13, 0.15) * eyeRadius;
                 float glintDistance = (length(eyeCoord - glintCentre) - 0.11 * eyeRadius) * distanceScale;
-                float glintAA = edgeWidth(glintDistance, pixel);
+                float glintAA = edgeWidth(glintDistance, fragment.pixel);
                 float glintMask = min(pupilMask, 1.0 - smoothstep(-glintAA, glintAA, glintDistance));
                 float lidX = eyeCoord.x / eyeRadius;
                 float lidCurve = -0.13 * eyeRadius * (1.0 - lidX * lidX);
                 float lidDistance = max(abs(eyeCoord.y - lidCurve)
-                    / sqrt(1.0 + 0.0676 * lidX * lidX) * distanceScale - 0.50 * pixel,
+                    / sqrt(1.0 + 0.0676 * lidX * lidX) * distanceScale - 0.50 * fragment.pixel,
                     (abs(eyeCoord.x) - 0.82 * eyeRadius) * distanceScale);
-                float lidAA = edgeWidth(lidDistance, pixel);
+                float lidAA = edgeWidth(lidDistance, fragment.pixel);
                 float lidMask = (1.0 - smoothstep(-lidAA, lidAA, lidDistance))
                     * (1.0 - smoothstep(0.0, 0.35, aperture));
                 lidMask *= 1.0 - smoothstep(-eyeAA, 0.0,
@@ -750,17 +810,17 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
                 cursorColour = mix(cursorColour, vec3(1.0), glintMask);
                 if (mouthOpen > 0.0) {
                     // Raise the mouth into the space below the closing eye.
-                    float mouthTop = eyeAnchor.y - 1.08 * restingEyeRadius - pixel
-                        + min(1.5 * pixel, 0.25 * restingEyeRadius) * expressionClosure;
-                    float mouthSpace = mouthTop + baseHalfSize.y;
-                    if (mouthSpace >= 1.5 * pixel) {
+                    float mouthTop = eyeAnchor.y - 1.08 * restingEyeRadius - fragment.pixel
+                        + min(1.5 * fragment.pixel, 0.25 * restingEyeRadius) * expressionClosure;
+                    float mouthSpace = mouthTop + rendered.baseHalfSize.y;
+                    if (mouthSpace >= 1.5 * fragment.pixel) {
                         vec2 mouthRadius = vec2(0.32 * restingEyeRadius,
                             min(0.34 * restingEyeRadius, 0.45 * mouthSpace));
                         vec2 mouthCentre = vec2(0.0, mouthTop - 0.5 * mouthSpace);
                         mouthRadius.y *= mouthOpen;
-                        float mouthDistance = (length((cursorLocal - mouthCentre)
+                        float mouthDistance = (length((rendered.bodyLocal - mouthCentre)
                             / max(mouthRadius, vec2(1e-6))) - 1.0) * min(mouthRadius.x, mouthRadius.y) * distanceScale;
-                        float mouthAA = edgeWidth(mouthDistance, pixel);
+                        float mouthAA = edgeWidth(mouthDistance, fragment.pixel);
                         float mouthMask = (1.0 - smoothstep(-mouthAA, 0.0, mouthDistance)) * mouthOpen;
                         cursorColour = mix(cursorColour, vec3(0.0), mouthMask);
                     }
@@ -768,7 +828,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             }
         }
 
-        float cursorMask = antialiasNoBlur(sdfCur) * cursorAlpha;
+        float cursorMask = antialiasNoBlur(fragment.sdfCur) * cursorAlpha;
         outC = mix(outC, vec4(cursorColour, outC.a), cursorMask);
     }
 
