@@ -635,6 +635,123 @@ float sdfCursorBody(RenderedCursor rendered, MoveState move, vec2 vu) {
     return distance;
 }
 
+vec3 drawFace(vec3 cursorColour, RenderedCursor rendered, MoveState move, float pixel) {
+    float eyeRadius = 0.72 * min(rendered.baseHalfSize.x, rendered.baseHalfSize.y);
+    // Keep subpixel cursors plain when the pupil cannot remain clear.
+    if (eyeRadius >= 2.0 * pixel) {
+        vec2 eyeAnchor = vec2(0.0, min(0.12 * rendered.baseHalfSize.y + pixel, rendered.baseHalfSize.y - eyeRadius));
+        float time = max(iTime, 0.0);
+        float idleSince = max(iTimeCursorChange, iTimeFocus);
+        vec3 expressionEvent = getIdleExpressionEvent(time, idleSince + 10.0);
+        float expressionAge = time - expressionEvent.x;
+        float expressionWeight = envelope(expressionAge, 0.0, 0.25, expressionEvent.y - 0.35, expressionEvent.y);
+        float mouthOpen = 0.0;
+        float expressionClosure = 0.0;
+        float lidDrop = 0.0;
+        float expressionGaze = 0.0;
+        float startle = 0.0;
+        if (expressionWeight > 0.0) {
+            if (expressionEvent.z < 0.5) {
+                mouthOpen = envelope(expressionAge, 0.35, 1.0, 1.75, 2.25);
+                expressionClosure = envelope(expressionAge, 0.40, 1.0, 1.90, 2.70);
+                expressionGaze = 0.35 * smoothstep(0.0, 0.35, expressionAge)
+                    * (1.0 - smoothstep(0.45, 0.95, expressionAge));
+            } else {
+                lidDrop = 0.92 * smoothstep(0.25, 1.90, expressionAge)
+                    * (1.0 - smoothstep(2.50, 2.60, expressionAge));
+                expressionGaze = -0.70 * smoothstep(0.25, 1.90, expressionAge)
+                    * (1.0 - smoothstep(2.50, 2.60, expressionAge));
+                startle = envelope(expressionAge, 2.50, 2.60, 3.80, 4.40);
+                expressionClosure = max(getBlinkClosure(expressionAge - 3.05, 0.220),
+                    getBlinkClosure(expressionAge - 3.36, 0.220));
+            }
+        }
+        float restingEyeRadius = eyeRadius;
+        eyeRadius = mix(eyeRadius, min(1.15 * eyeRadius,
+            min(rendered.baseHalfSize.x, rendered.baseHalfSize.y - eyeAnchor.y)), startle);
+        vec2 eyeCoord = rendered.bodyLocal - eyeAnchor;
+        vec3 idleGaze = getIdleGaze(time, idleSince + 2.0);
+        vec2 gazeDirection = idleGaze.xy;
+        float gazePulse = idleGaze.z;
+        if (move.prevGeometryValid && move.timeSince >= 0.0 && move.timeSince < 2.0
+            && iTimeCursorChange > iTimeFocus && move.originDistance > move.minDistance && move.originDistance < move.maxDistance) {
+            gazePulse = (move.smallMove ? 1.0 : easeSmoothStep(move.timeSince / 0.080))
+                * (1.0 - easeSmoothStep((move.timeSince - CURSOR_TRAVEL_TIME) / 1.200));
+            gazeDirection = move.originDelta / move.originDistance;
+        }
+        vec2 blendedGaze = mix(gazeDirection * gazePulse, vec2(0.0, expressionGaze), expressionWeight);
+        gazePulse = length(blendedGaze);
+        gazeDirection = gazePulse > 0.0 ? blendedGaze / gazePulse : vec2(0.0);
+        vec2 gaze = gazeDirection * (0.20 * eyeRadius * gazePulse);
+        vec2 eyeMargin = rendered.baseHalfSize - vec2(eyeRadius);
+        vec2 eyeShift = clamp(gazeDirection * (0.08 * eyeRadius),
+            -eyeMargin - eyeAnchor, eyeMargin - eyeAnchor);
+        eyeCoord -= eyeShift * gazePulse;
+
+        float landingHold = mix(0.080, 0.250,
+            smoothstep(LANDING_FULL_DISTANCE / 12.0, LANDING_FULL_DISTANCE, move.cellDistance));
+        float landingReopen = move.landingStart + landingHold;
+        float landingBlinkEnd = landingReopen + 0.120;
+        vec2 landingWindow = move.jump ? iTimeCursorChange + vec2(move.landingStart - 0.060, landingBlinkEnd) : vec2(-100.0);
+        float aperture = getEyeAperture(time, expressionEvent, landingWindow) * (1.0 - expressionClosure);
+        if (move.jump) {
+            float landingAperture = 1.0 - envelope(move.timeSince, move.landingStart - 0.060, move.landingStart,
+                landingReopen, landingBlinkEnd);
+            aperture = min(aperture, landingAperture);
+        }
+        float distanceScale = min(rendered.scale.x, rendered.scale.y);
+        float eyeDistance = max(length(eyeCoord) - eyeRadius,
+            abs(eyeCoord.y) - eyeRadius * aperture) * distanceScale;
+        // Positive Y points up. Lower only the upper eyelid during the doze.
+        eyeDistance = max(eyeDistance, (eyeCoord.y - eyeRadius * (1.0 - 2.0 * lidDrop)) * distanceScale);
+        float eyeAA = edgeWidth(eyeDistance, pixel);
+        float openVisibility = smoothstep(0.0, pixel, eyeRadius * aperture * rendered.scale.y);
+        // Inset the outline and its antialiasing within the original eye footprint.
+        float outlineMask = (1.0 - smoothstep(-eyeAA, 0.0, eyeDistance)) * openVisibility;
+        float eyeMask = (1.0 - smoothstep(-eyeAA, 0.0, eyeDistance + 0.90 * pixel)) * openVisibility;
+        float pupilDistance = (length(eyeCoord - gaze) - 0.40 * eyeRadius) * distanceScale;
+        float pupilAA = edgeWidth(pupilDistance, pixel);
+        float pupilMask = min(eyeMask, 1.0 - smoothstep(-pupilAA, pupilAA, pupilDistance));
+        vec2 glintCentre = gaze + vec2(-0.13, 0.15) * eyeRadius;
+        float glintDistance = (length(eyeCoord - glintCentre) - 0.11 * eyeRadius) * distanceScale;
+        float glintAA = edgeWidth(glintDistance, pixel);
+        float glintMask = min(pupilMask, 1.0 - smoothstep(-glintAA, glintAA, glintDistance));
+        float lidX = eyeCoord.x / eyeRadius;
+        float lidCurve = -0.13 * eyeRadius * (1.0 - lidX * lidX);
+        float lidDistance = max(abs(eyeCoord.y - lidCurve)
+            / sqrt(1.0 + 0.0676 * lidX * lidX) * distanceScale - 0.50 * pixel,
+            (abs(eyeCoord.x) - 0.82 * eyeRadius) * distanceScale);
+        float lidAA = edgeWidth(lidDistance, pixel);
+        float lidMask = (1.0 - smoothstep(-lidAA, lidAA, lidDistance))
+            * (1.0 - smoothstep(0.0, 0.35, aperture));
+        lidMask *= 1.0 - smoothstep(-eyeAA, 0.0,
+            (length(eyeCoord) - eyeRadius) * distanceScale);
+        cursorColour = mix(cursorColour, vec3(0.0), max(outlineMask, lidMask));
+        cursorColour = mix(cursorColour, vec3(1.0), eyeMask);
+        cursorColour = mix(cursorColour, vec3(0.0), pupilMask);
+        cursorColour = mix(cursorColour, vec3(1.0), glintMask);
+        if (mouthOpen > 0.0) {
+            // Raise the mouth into the space below the closing eye.
+            float mouthTop = eyeAnchor.y - 1.08 * restingEyeRadius - pixel
+                + min(1.5 * pixel, 0.25 * restingEyeRadius) * expressionClosure;
+            float mouthSpace = mouthTop + rendered.baseHalfSize.y;
+            if (mouthSpace >= 1.5 * pixel) {
+                vec2 mouthRadius = vec2(0.32 * restingEyeRadius,
+                    min(0.34 * restingEyeRadius, 0.45 * mouthSpace));
+                vec2 mouthCentre = vec2(0.0, mouthTop - 0.5 * mouthSpace);
+                mouthRadius.y *= mouthOpen;
+                float mouthDistance = (length((rendered.bodyLocal - mouthCentre)
+                    / max(mouthRadius, vec2(1e-6))) - 1.0) * min(mouthRadius.x, mouthRadius.y) * distanceScale;
+                float mouthAA = edgeWidth(mouthDistance, pixel);
+                float mouthMask = (1.0 - smoothstep(-mouthAA, 0.0, mouthDistance)) * mouthOpen;
+                cursorColour = mix(cursorColour, vec3(0.0), mouthMask);
+            }
+        }
+    }
+
+    return cursorColour;
+}
+
 // Sample the terminal, then composite the trail, landing particles and cursor in that order.
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 off = vec2(-0.5, 0.5);
@@ -738,118 +855,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
             float resetTime = max(iTimeCursorChange + fadeDelay, iTimeFocus);
             cursorAlpha = getCursorAlpha(max(iTime - resetTime, 0.0));
 
-            float eyeRadius = 0.72 * min(rendered.baseHalfSize.x, rendered.baseHalfSize.y);
-            // Keep subpixel cursors plain when the pupil cannot remain clear.
-            if (eyeRadius >= 2.0 * fragment.pixel) {
-                vec2 eyeAnchor = vec2(0.0, min(0.12 * rendered.baseHalfSize.y + fragment.pixel, rendered.baseHalfSize.y - eyeRadius));
-                float time = max(iTime, 0.0);
-                float idleSince = max(iTimeCursorChange, iTimeFocus);
-                vec3 expressionEvent = getIdleExpressionEvent(time, idleSince + 10.0);
-                float expressionAge = time - expressionEvent.x;
-                float expressionWeight = envelope(expressionAge, 0.0, 0.25, expressionEvent.y - 0.35, expressionEvent.y);
-                float mouthOpen = 0.0;
-                float expressionClosure = 0.0;
-                float lidDrop = 0.0;
-                float expressionGaze = 0.0;
-                float startle = 0.0;
-                if (expressionWeight > 0.0) {
-                    if (expressionEvent.z < 0.5) {
-                        mouthOpen = envelope(expressionAge, 0.35, 1.0, 1.75, 2.25);
-                        expressionClosure = envelope(expressionAge, 0.40, 1.0, 1.90, 2.70);
-                        expressionGaze = 0.35 * smoothstep(0.0, 0.35, expressionAge)
-                            * (1.0 - smoothstep(0.45, 0.95, expressionAge));
-                    } else {
-                        lidDrop = 0.92 * smoothstep(0.25, 1.90, expressionAge)
-                            * (1.0 - smoothstep(2.50, 2.60, expressionAge));
-                        expressionGaze = -0.70 * smoothstep(0.25, 1.90, expressionAge)
-                            * (1.0 - smoothstep(2.50, 2.60, expressionAge));
-                        startle = envelope(expressionAge, 2.50, 2.60, 3.80, 4.40);
-                        expressionClosure = max(getBlinkClosure(expressionAge - 3.05, 0.220),
-                            getBlinkClosure(expressionAge - 3.36, 0.220));
-                    }
-                }
-                float restingEyeRadius = eyeRadius;
-                eyeRadius = mix(eyeRadius, min(1.15 * eyeRadius,
-                    min(rendered.baseHalfSize.x, rendered.baseHalfSize.y - eyeAnchor.y)), startle);
-                vec2 eyeCoord = rendered.bodyLocal - eyeAnchor;
-                vec3 idleGaze = getIdleGaze(time, idleSince + 2.0);
-                vec2 gazeDirection = idleGaze.xy;
-                float gazePulse = idleGaze.z;
-                if (move.prevGeometryValid && move.timeSince >= 0.0 && move.timeSince < 2.0
-                    && iTimeCursorChange > iTimeFocus && move.originDistance > move.minDistance && move.originDistance < move.maxDistance) {
-                    gazePulse = (move.smallMove ? 1.0 : easeSmoothStep(move.timeSince / 0.080))
-                        * (1.0 - easeSmoothStep((move.timeSince - CURSOR_TRAVEL_TIME) / 1.200));
-                    gazeDirection = move.originDelta / move.originDistance;
-                }
-                vec2 blendedGaze = mix(gazeDirection * gazePulse, vec2(0.0, expressionGaze), expressionWeight);
-                gazePulse = length(blendedGaze);
-                gazeDirection = gazePulse > 0.0 ? blendedGaze / gazePulse : vec2(0.0);
-                vec2 gaze = gazeDirection * (0.20 * eyeRadius * gazePulse);
-                vec2 eyeMargin = rendered.baseHalfSize - vec2(eyeRadius);
-                vec2 eyeShift = clamp(gazeDirection * (0.08 * eyeRadius),
-                    -eyeMargin - eyeAnchor, eyeMargin - eyeAnchor);
-                eyeCoord -= eyeShift * gazePulse;
-
-                float landingHold = mix(0.080, 0.250,
-                    smoothstep(LANDING_FULL_DISTANCE / 12.0, LANDING_FULL_DISTANCE, move.cellDistance));
-                float landingReopen = move.landingStart + landingHold;
-                float landingBlinkEnd = landingReopen + 0.120;
-                vec2 landingWindow = move.jump ? iTimeCursorChange + vec2(move.landingStart - 0.060, landingBlinkEnd) : vec2(-100.0);
-                float aperture = getEyeAperture(time, expressionEvent, landingWindow) * (1.0 - expressionClosure);
-                if (move.jump) {
-                    float landingAperture = 1.0 - envelope(move.timeSince, move.landingStart - 0.060, move.landingStart,
-                        landingReopen, landingBlinkEnd);
-                    aperture = min(aperture, landingAperture);
-                }
-                float distanceScale = min(rendered.scale.x, rendered.scale.y);
-                float eyeDistance = max(length(eyeCoord) - eyeRadius,
-                    abs(eyeCoord.y) - eyeRadius * aperture) * distanceScale;
-                // Positive Y points up. Lower only the upper eyelid during the doze.
-                eyeDistance = max(eyeDistance, (eyeCoord.y - eyeRadius * (1.0 - 2.0 * lidDrop)) * distanceScale);
-                float eyeAA = edgeWidth(eyeDistance, fragment.pixel);
-                float openVisibility = smoothstep(0.0, fragment.pixel, eyeRadius * aperture * rendered.scale.y);
-                // Inset the outline and its antialiasing within the original eye footprint.
-                float outlineMask = (1.0 - smoothstep(-eyeAA, 0.0, eyeDistance)) * openVisibility;
-                float eyeMask = (1.0 - smoothstep(-eyeAA, 0.0, eyeDistance + 0.90 * fragment.pixel)) * openVisibility;
-                float pupilDistance = (length(eyeCoord - gaze) - 0.40 * eyeRadius) * distanceScale;
-                float pupilAA = edgeWidth(pupilDistance, fragment.pixel);
-                float pupilMask = min(eyeMask, 1.0 - smoothstep(-pupilAA, pupilAA, pupilDistance));
-                vec2 glintCentre = gaze + vec2(-0.13, 0.15) * eyeRadius;
-                float glintDistance = (length(eyeCoord - glintCentre) - 0.11 * eyeRadius) * distanceScale;
-                float glintAA = edgeWidth(glintDistance, fragment.pixel);
-                float glintMask = min(pupilMask, 1.0 - smoothstep(-glintAA, glintAA, glintDistance));
-                float lidX = eyeCoord.x / eyeRadius;
-                float lidCurve = -0.13 * eyeRadius * (1.0 - lidX * lidX);
-                float lidDistance = max(abs(eyeCoord.y - lidCurve)
-                    / sqrt(1.0 + 0.0676 * lidX * lidX) * distanceScale - 0.50 * fragment.pixel,
-                    (abs(eyeCoord.x) - 0.82 * eyeRadius) * distanceScale);
-                float lidAA = edgeWidth(lidDistance, fragment.pixel);
-                float lidMask = (1.0 - smoothstep(-lidAA, lidAA, lidDistance))
-                    * (1.0 - smoothstep(0.0, 0.35, aperture));
-                lidMask *= 1.0 - smoothstep(-eyeAA, 0.0,
-                    (length(eyeCoord) - eyeRadius) * distanceScale);
-                cursorColour = mix(cursorColour, vec3(0.0), max(outlineMask, lidMask));
-                cursorColour = mix(cursorColour, vec3(1.0), eyeMask);
-                cursorColour = mix(cursorColour, vec3(0.0), pupilMask);
-                cursorColour = mix(cursorColour, vec3(1.0), glintMask);
-                if (mouthOpen > 0.0) {
-                    // Raise the mouth into the space below the closing eye.
-                    float mouthTop = eyeAnchor.y - 1.08 * restingEyeRadius - fragment.pixel
-                        + min(1.5 * fragment.pixel, 0.25 * restingEyeRadius) * expressionClosure;
-                    float mouthSpace = mouthTop + rendered.baseHalfSize.y;
-                    if (mouthSpace >= 1.5 * fragment.pixel) {
-                        vec2 mouthRadius = vec2(0.32 * restingEyeRadius,
-                            min(0.34 * restingEyeRadius, 0.45 * mouthSpace));
-                        vec2 mouthCentre = vec2(0.0, mouthTop - 0.5 * mouthSpace);
-                        mouthRadius.y *= mouthOpen;
-                        float mouthDistance = (length((rendered.bodyLocal - mouthCentre)
-                            / max(mouthRadius, vec2(1e-6))) - 1.0) * min(mouthRadius.x, mouthRadius.y) * distanceScale;
-                        float mouthAA = edgeWidth(mouthDistance, fragment.pixel);
-                        float mouthMask = (1.0 - smoothstep(-mouthAA, 0.0, mouthDistance)) * mouthOpen;
-                        cursorColour = mix(cursorColour, vec3(0.0), mouthMask);
-                    }
-                }
-            }
+            cursorColour = drawFace(cursorColour, rendered, move, fragment.pixel);
         }
 
         float cursorMask = antialiasNoBlur(fragment.sdfCur) * cursorAlpha;
