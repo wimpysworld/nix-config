@@ -429,6 +429,7 @@ struct MoveState {
     float timeSince;
     float landingStart;
     float jumpEnd;
+    float movementEnd;
     float cellDistance;
     float seed;
 };
@@ -649,9 +650,10 @@ float sdfCursorBody(RenderedCursor rendered, MoveState move, vec2 vu) {
             distance = min(distance, sdfCursorCape(rendered.capeLocal, rendered.baseHalfSize, cape, capeSettle) * rendered.capeDistanceScale);
         }
         if (move.cursorVisible) {
-            float idleDelay = move.jump ? move.jumpEnd : CURSOR_CAPE_HOLD_TIME;
-            float idleStart = max(iTimeCursorChange + idleDelay, iTimeFocus + CURSOR_CAPE_HOLD_TIME);
-            float idleHem = move.smallSlide ? capeSettle : easeSmoothStep((iTime - idleStart) / CURSOR_IDLE_HEM_TIME);
+            float hemDelay = move.jump ? move.jumpEnd : CURSOR_CAPE_HOLD_TIME;
+            float hemStart = max(iTimeCursorChange + hemDelay, iTimeFocus + CURSOR_CAPE_HOLD_TIME);
+            // Small slides use the cape transition, independent of slide completion and the fade hold.
+            float idleHem = move.smallSlide ? capeSettle : easeSmoothStep((iTime - hemStart) / CURSOR_IDLE_HEM_TIME);
             if (idleHem > 0.0) {
                 float extension = idleFlareLength(idleHem, rendered.baseHalfSize);
                 float hemDistance = sdfCursorIdleHem(rendered.capeLocal, rendered.baseHalfSize, extension);
@@ -673,8 +675,9 @@ vec3 drawFace(vec3 cursorColour, RenderedCursor rendered, MoveState move, float 
     if (eyeRadius >= 2.0 * pixel) {
         vec2 eyeAnchor = vec2(0.0, min(0.12 * rendered.baseHalfSize.y + pixel, rendered.baseHalfSize.y - eyeRadius));
         float time = max(iTime, 0.0);
-        float idleSince = max(iTimeCursorChange, iTimeFocus);
-        vec3 expressionEvent = getIdleExpressionEvent(time, idleSince + 10.0);
+        // Idle expressions and gaze start from the latest move or focus, not animation completion.
+        float lastActivityTime = max(iTimeCursorChange, iTimeFocus);
+        vec3 expressionEvent = getIdleExpressionEvent(time, lastActivityTime + 10.0);
         float expressionAge = time - expressionEvent.x;
         float expressionWeight = envelope(expressionAge, 0.0, 0.25, expressionEvent.y - EXPRESSION_FADE_TIME, expressionEvent.y);
         float mouthOpen = 0.0;
@@ -702,7 +705,7 @@ vec3 drawFace(vec3 cursorColour, RenderedCursor rendered, MoveState move, float 
         eyeRadius = mix(eyeRadius, min(1.15 * eyeRadius,
             min(rendered.baseHalfSize.x, rendered.baseHalfSize.y - eyeAnchor.y)), startle);
         vec2 eyeCoord = rendered.bodyLocal - eyeAnchor;
-        vec3 idleGaze = getIdleGaze(time, idleSince + 2.0);
+        vec3 idleGaze = getIdleGaze(time, lastActivityTime + 2.0);
         vec2 gazeDirection = idleGaze.xy;
         float gazePulse = idleGaze.z;
         if (move.prevGeometryValid && move.timeSince >= 0.0 && move.timeSince < 2.0
@@ -826,6 +829,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     move.smallSlide = move.hollowSinceFocus && move.moveInRange && move.smallMove && move.originBeyondMinDistance;
     move.landingStart = CURSOR_TRAVEL_TIME;
     move.jumpEnd = move.landingStart + CURSOR_LANDING_TIME;
+    move.movementEnd = move.jump ? move.jumpEnd : (move.smallSlide ? CURSOR_SMALL_MOVE_TIME : 0.0);
     // Measure origin displacement in cells, independent of font size and aspect.
     move.cellDistance = move.valid ? length(move.originDelta / max(move.currentRect.zw, vec2(1e-6))) : 0.0;
     vec2 sampleCoord;
@@ -884,10 +888,10 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         float cursorAlpha = 1.0;
         vec3 cursorColour = iCurrentCursorColor.rgb;
         if (iCurrentCursorStyle == CURSORSTYLE_BLOCK_HOLLOW) {
-            float movementEnd = move.jump ? move.jumpEnd : (move.smallSlide ? CURSOR_SMALL_MOVE_TIME : 0.0);
-            float fadeDelay = movementEnd + ((move.smallSlide || move.jump) ? CURSOR_FADE_HOLD_TIME : 0.0);
-            float resetTime = max(iTimeCursorChange + fadeDelay, iTimeFocus);
-            cursorAlpha = getCursorAlpha(max(iTime - resetTime, 0.0));
+            // Fade waits for slide or jump completion, then the hold. Focus resets it without a hold.
+            float fadeDelay = move.movementEnd + ((move.smallSlide || move.jump) ? CURSOR_FADE_HOLD_TIME : 0.0);
+            float fadeStart = max(iTimeCursorChange + fadeDelay, iTimeFocus);
+            cursorAlpha = getCursorAlpha(max(iTime - fadeStart, 0.0));
 
             cursorColour = drawFace(cursorColour, rendered, move, fragment.pixel);
         }
