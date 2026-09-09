@@ -12,7 +12,12 @@ let
   inherit (pkgs.stdenv.hostPlatform) system;
   aiSopsFile = ../../../../secrets/ai.yaml;
   fencedEnabled = !host.is.server;
-  piPackage = inputs.llm-agents.packages.${system}.pi;
+  # Use Node mode to retain the SDK modules that pi-subagents imports.
+  piPackage = (inputs.llm-agents.packages.${system}.pi.override { useBun = false; }).overrideAttrs {
+    # Pi 0.85.1 lists pi-server and pi-client as development dependencies.
+    # Keep them and their dependencies for the background runner.
+    dontNpmPrune = true;
+  };
   herdrIntegrations = pkgs.herdr-integrations;
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceAgentShare = import ../fence/agent-share.nix { inherit config pkgs; };
