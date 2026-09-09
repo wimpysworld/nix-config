@@ -67,6 +67,18 @@ let
     name = "fuzzel-launcher";
     text = "fuzzel --prompt '󱓞 '";
   };
+  fuzzelNotes = pkgs.writeShellApplication {
+    name = "fuzzel-notes";
+    runtimeInputs = with pkgs; [
+      coreutils
+      config.programs.fuzzel.package
+      jq
+      util-linux
+      zk
+    ];
+    runtimeEnv.ZED = lib.getExe config.programs.zed-editor.package;
+    text = builtins.readFile ./fuzzel-notes.sh;
+  };
   fuzzelWifi = pkgs.writeShellApplication {
     name = "fuzzel-wifi";
     text = ''iwmenu --launcher custom --launcher-command "fuzzel --dmenu --width=40 --prompt '󱚾 ' {password_flag:--password}"'';
@@ -97,6 +109,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
       fuzzelEmoji
       fuzzelHistory
       fuzzelLauncher
+      fuzzelNotes
       fuzzelWifi
       iwmenu
       pwmenu

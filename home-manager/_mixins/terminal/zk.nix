@@ -22,16 +22,13 @@
         fzf-line = lib.mkDefault ''{{style "title" title-or-path}}{{#each tags}} #{{this}}{{/each}} {{style "understate" body}}'';
       };
       note = {
-        filename = lib.mkDefault "{{id}}";
+        filename = lib.mkDefault "{{#if (slug title)}}{{slug title}}{{else}}untitled{{/if}}";
         extension = lib.mkDefault "md";
-        id-length = lib.mkDefault 8;
-        id-charset = lib.mkDefault "alphanum";
-        id-case = lib.mkDefault "lower";
         template = lib.mkDefault "default.md";
       };
       format.markdown = {
         link-format = lib.mkDefault "markdown";
-        link-drop-extension = lib.mkDefault true;
+        link-drop-extension = lib.mkDefault false;
         link-encode-path = lib.mkDefault true;
       };
     };

@@ -60,6 +60,8 @@ in
         command_session = "fuzzel-session-menu";
         binding_wifi = "<ctrl> <alt> KEY_W";
         command_wifi = "fuzzel-wifi";
+        binding_notes = "<ctrl> <alt> KEY_Z";
+        command_notes = "fuzzel-notes";
 
         binding_launcher = "<super>";
         command_launcher = "${pkgs.procps}/bin/pkill rofi || rofi -theme ${config.xdg.configHome}/rofi/launchers/rofi-appgrid/style.rasi -show drun";

@@ -51,6 +51,7 @@ in
         "CTRL ALT, E, exec, fuzzel-emoji"
         "CTRL ALT, P, exec, fuzzel-clipboard"
         "CTRL ALT, R, exec, fuzzel-history"
+        "CTRL ALT, Z, exec, fuzzel-notes"
         ", Print, exec, fuzzel-capture"
         "ALT, Print, exec, fuzzel-capture window"
         "SHIFT, Print, exec, fuzzel-capture region"

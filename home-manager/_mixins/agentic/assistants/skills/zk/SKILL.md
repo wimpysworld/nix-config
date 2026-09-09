@@ -19,15 +19,14 @@ Maintain the user's notebook without changing its meaning or imposing a note-tak
 
 ## Notebook contract
 
-- Default to `~/Notes`, with Markdown notes in the root and attachments in separate directories.
-- Default filenames are eight lowercase alphanumeric characters plus `.md`. Keep these IDs stable unless the request requires changes.
-- Use Markdown links such as `[Label](abcd1234)`, without the note extension, with encoded paths where needed.
-- Let the configured `zk` template and ID generator create notes. Do not invent IDs or duplicate the template manually.
+- Default to `~/Notes`. Preserve existing filenames, folders, and attachment locations unless the request changes them.
+- New notes use readable title-based filenames, such as `example-guide.md`, through the configured `zk` filename template.
+- Honour requested folders. Do not flatten the notebook or replace meaningful filenames with opaque IDs for a viewer.
+- Keep existing names with spaces, Unicode, or other meaningful forms. Do not normalise them to slugs without a request.
+- Use relative Markdown links with `.md`, such as `[Guide](guides/example-guide.md)`. Encode paths where needed.
+- Let the configured `zk` template create notes. Do not duplicate the template manually or overwrite an existing path.
 - Home Manager owns the global configuration and `default.md` template. Do not edit generated configuration.
 - Do not run `zk init` or edit the index database by hand.
-- Treat the flat layout and stable IDs as defaults, not a ban on requested reorganisation.
-- If a physical change conflicts with Weave, explain the specific affected behaviour before that change.
-  Continue independent work. Do not silently break Weave or reject the whole task.
 
 ## Workflow
 
@@ -47,7 +46,7 @@ Do not describe index-backed searches as having no filesystem effects.
 - Preserve facts, uncertainty, quotations, citations, code, and the author's intended meaning during rewrites.
 - Do not turn an inference into a fact or invent sources. Identify ambiguity instead of silently resolving it.
 - Keep `date`, tags, and unknown frontmatter fields unless the user requests their change.
-- For title changes, edit frontmatter `title` and the matching H1. Keep the filename and ID by default.
+- For title changes, edit frontmatter `title` and the matching H1. Keep the filename and folder unless the request changes them.
 - Preserve an unrelated H1. Review link labels that repeat the old title, without replacing contextual labels blindly.
 - Set frontmatter `modified` for content or title edits, using ISO 8601 with the current `Europe/London` offset.
 - Leave frontmatter `modified` unchanged for filename changes, moves, or link-target housekeeping alone.

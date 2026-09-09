@@ -9,14 +9,15 @@ Use this procedure for filename changes, moves, splits, merges, and substantial 
 3. Build an explicit old-path-to-new-path map before edits. Include attachment paths and fragment changes where needed.
 4. For splits, map each source section to its destination. For merges, record each source and the chosen destination.
 5. Check every destination for collisions, including case differences and existing files. Never overwrite a collision.
-6. Check whether Weave relies on the affected paths or flat layout. State any concrete conflict before the dependent change.
 
-Keep IDs and the flat layout where they meet the request. Do not substitute tags for an explicitly requested physical move.
+Preserve existing readable filenames and folders outside the requested changes. Do not substitute tags for a requested physical move.
+For requested renames, use meaningful filenames and the requested destination folders. Preserve spaces and Unicode unless the request changes them.
+For title-only edits, keep the existing path. A new title does not require a filename change.
 Do not require another approval for reversible work that the user already authorised.
 
 ## Apply the map
 
-- Create new split destinations through `zk` so configured templates and ID generation remain in control.
+- Create new split destinations through `zk` so configured content and filename templates remain in control.
 - Preserve all source information, qualifications, citations, code, and relevant metadata in the mapped destinations.
 - Keep conflicting claims distinct during merges. Do not resolve disagreements through wording changes.
 - Preserve each source's provenance and creation information when one destination cannot hold multiple original metadata values.
@@ -27,7 +28,7 @@ Do not require another approval for reversible work that the user already author
 - When an attachment moves, repair references from every affected note. Preserve the attachment bytes.
 - Handle Markdown inline links, reference definitions, images, encoded paths, and fragments in the affected files.
 - Leave external URLs, quoted examples, and code blocks unchanged unless the request explicitly covers them.
-- Use destination-aware edits. Do not replace IDs as plain text across the notebook.
+- Use destination-aware edits. Do not replace filenames as plain text across the notebook.
 
 For a split, send each incoming link to the relevant destination or a retained source navigation note.
 Do not send every link to one new note when the original links refer to different source sections.
@@ -46,7 +47,7 @@ Do not restore old filesystem timestamps after substantive edits.
 1. Check that every mapped destination exists and that no destination overwrote unrelated data.
 2. Compare source information against destinations. Account for every source section and attachment.
 3. Check direct destinations from the edited files and all affected incoming references.
-4. Resolve relative paths from the containing note. Decode encoded paths and account for extensionless note links.
+4. Resolve relative paths from the containing note. Decode encoded paths and check `.md` links and existing extensionless links.
 5. Check affected fragments against their destination headings using the notebook consumer's rules.
 6. Force reindexing and inspect stderr. Query both incoming and outgoing links for the mapped notes.
 7. Compare broken links against the starting state. Fix new defects caused by the edits.
