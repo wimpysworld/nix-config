@@ -85,7 +85,7 @@ Pi packages are installed through the Home Manager-owned package setting:
   "packages": [
     "npm:pi-mcp-adapter@2.32.1",
     "npm:pi-subagents@0.66.0",
-    "npm:pi-lens@4.1.3",
+    "npm:pi-lens@4.1.5",
     {
       "source": "npm:typescript@7.0.2",
       "extensions": [],
@@ -96,7 +96,7 @@ Pi packages are installed through the Home Manager-owned package setting:
     "npm:pi-footer@0.5.1",
     "npm:@marckrenn/pi-sub-core@1.5.0",
     "npm:pi-cc-header@1.1.1",
-    "npm:@heyhuynhgiabuu/pi-pretty@0.6.26",
+    "npm:@heyhuynhgiabuu/pi-pretty@0.6.27",
     "npm:pi-service-tier@0.3.0",
     "npm:@juicesharp/rpiv-ask-user-question@2.9.0",
     "npm:@juicesharp/rpiv-btw@2.9.0",
@@ -105,7 +105,7 @@ Pi packages are installed through the Home Manager-owned package setting:
 }
 ```
 
-Versioned Pi package specs are pinned and skipped by `pi update`. These packages are user-level JavaScript extensions installed by Pi's npm integration under the user-owned npm prefix. `typescript` supplies the compiler API that `pi-lens` imports at runtime but lists only as a development dependency. Its Pi resources are disabled because it is a runtime dependency, not an extension.
+Versioned Pi package specs are pinned and skipped by `pi update`. These packages are user-level JavaScript extensions installed by Pi's npm integration under the user-owned npm prefix. `typescript` supplies the compiler API that `pi-lens` imports at runtime but omits from its runtime dependencies. Its Pi resources are disabled because it is a runtime dependency, not an extension.
 
 `pi-cc-header` loads from its npm package with `ccHeader.readOnlyConfig` set in the Home Manager-owned `settings.json`. That upstream read-only mode (added in 1.1.1 for declarative setups) stops the extension writing `settings.json`, so header commands such as `/htg` apply for the current session only. It replaces the local writable-state patch that earlier releases needed.
 

@@ -43,9 +43,9 @@ let
   # any of these change, update `extensions/provider-router/index.ts` and the
   # agent-launch prelude in `assistants/default.nix` before merging.
   piSubagentsVersion = "0.66.0";
-  piLensVersion = "4.1.3";
-  # pi-lens imports the compiler API at runtime, but 4.1.3 lists TypeScript as
-  # a development dependency. Keep it as a direct Pi npm dependency until the
+  piLensVersion = "4.1.5";
+  # pi-lens imports the compiler API at runtime, but 4.1.5 omits TypeScript
+  # from its runtime dependencies. Keep it as a direct Pi npm dependency until the
   # upstream package restores TypeScript to dependencies.
   piLensTypescriptVersion = "7.0.2";
   piFooterVersion = "0.5.1";
@@ -58,7 +58,7 @@ let
   # pi-pretty re-renders built-in tool output (read, bash, ls, find, grep) and
   # replaces find/grep with its bundled FFF frecency search. Do not install
   # pi-fff alongside it: both would claim the same built-in tool names.
-  piPrettyVersion = "0.6.26";
+  piPrettyVersion = "0.6.27";
   # pi-service-tier adds /fast and /service-tier for provider service tiers.
   # It persists to its own ~/.pi/agent/service-tier.json and never touches
   # settings.json. The local service-tier-status extension bridges its
@@ -364,9 +364,6 @@ let
     doubleEscapeAction = "tree";
     treeFilterMode = "default";
     autocompleteMaxVisible = 8;
-    # Pad the editor content two columns from the border. Pi clamps this key
-    # to the 0-3 range and has no prompt-prefix glyph option.
-    editorPaddingX = 2;
     # Let the terminal emulator draw the cursor, which restores WezTerm's
     # blinking Catppuccin cursor and trail. Pi's editor still paints its own
     # inverse block on top; the local hardware-cursor extension strips that
