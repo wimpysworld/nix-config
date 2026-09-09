@@ -75,8 +75,12 @@ const float TAKEOFF_SMOKE_TIME = 0.700;
 const int TAKEOFF_SMOKE_LOBE_COUNT = 9;
 const vec3 TAKEOFF_SMOKE_GREY = vec3(127.0, 132.0, 156.0) / 255.0;
 
-const float YAWN_DURATION = 2.7;
+const float YAWN_DURATION = 3.2;
 const float DOZE_DURATION = 4.8;
+const float GRIN_DURATION = 3.0;
+const int EXPRESSION_YAWN = 0;
+const int EXPRESSION_DOZE = 1;
+const int EXPRESSION_GRIN = 2;
 const float EXPRESSION_FADE_TIME = 0.35;
 const float DOZE_CLOSE_START = 0.25;
 const float DOZE_CLOSE_END = 1.90;
@@ -192,7 +196,7 @@ struct ExpressionEvent {
     bool valid;
     float start;
     float duration;
-    bool isDoze;
+    int kind;
 };
 
 struct LandingWindow {
@@ -205,8 +209,10 @@ ExpressionEvent getIdleExpressionEvent(float time, float idleReadyTime) {
     // Starts are 20 to 40 seconds apart. Only complete events after idle readiness qualify.
     float slot = floor(time / 30.0);
     float start = slot * 30.0 + 1.0 + 10.0 * hash(vec3(slot, 740.0, 0.0));
-    bool isDoze = hash(vec3(slot, 740.0, 1.0)) < 0.25;
-    return ExpressionEvent(start >= idleReadyTime, start, mix(YAWN_DURATION, DOZE_DURATION, isDoze ? 1.0 : 0.0), isDoze);
+    float choice = hash(vec3(slot, 740.0, 1.0));
+    int kind = choice < 0.25 ? EXPRESSION_DOZE : (choice < 0.60 ? EXPRESSION_GRIN : EXPRESSION_YAWN);
+    float duration = kind == EXPRESSION_DOZE ? DOZE_DURATION : (kind == EXPRESSION_GRIN ? GRIN_DURATION : YAWN_DURATION);
+    return ExpressionEvent(start >= idleReadyTime, start, duration, kind);
 }
 
 float getEyeAperture(float time, ExpressionEvent expressionEvent, LandingWindow landingWindow) {
@@ -811,17 +817,18 @@ vec3 drawFace(vec3 mochiColour, RenderedMochi rendered, MoveState move, float pi
         float expressionWeight = expressionEvent.valid
             ? envelope(expressionAge, 0.0, 0.25, expressionEvent.duration - EXPRESSION_FADE_TIME, expressionEvent.duration) : 0.0;
         float mouthOpen = 0.0;
+        float grin = 0.0;
         float expressionClosure = 0.0;
         float lidDrop = 0.0;
         float expressionGaze = 0.0;
         float startle = 0.0;
         if (expressionWeight > 0.0) {
-            if (!expressionEvent.isDoze) {
-                mouthOpen = envelope(expressionAge, 0.35, 1.0, 1.75, 2.25);
-                expressionClosure = envelope(expressionAge, 0.40, 1.0, 1.90, YAWN_DURATION);
+            if (expressionEvent.kind == EXPRESSION_YAWN) {
+                mouthOpen = envelope(expressionAge, 0.35, 1.0, 2.25, 2.75);
+                expressionClosure = envelope(expressionAge, 0.40, 1.0, 2.40, YAWN_DURATION);
                 expressionGaze = 0.35 * smoothstep(0.0, 0.35, expressionAge)
                     * (1.0 - smoothstep(0.45, 0.95, expressionAge));
-            } else {
+            } else if (expressionEvent.kind == EXPRESSION_DOZE) {
                 lidDrop = 0.92 * smoothstep(DOZE_CLOSE_START, DOZE_CLOSE_END, expressionAge)
                     * (1.0 - smoothstep(DOZE_WAKE_START, DOZE_WAKE_END, expressionAge));
                 expressionGaze = -0.70 * smoothstep(DOZE_CLOSE_START, DOZE_CLOSE_END, expressionAge)
@@ -829,6 +836,8 @@ vec3 drawFace(vec3 mochiColour, RenderedMochi rendered, MoveState move, float pi
                 startle = envelope(expressionAge, DOZE_WAKE_START, DOZE_WAKE_END, DOZE_STARTLE_HOLD_END, DOZE_STARTLE_END);
                 expressionClosure = max(getBlinkClosure(expressionAge - DOZE_WAKE_BLINK_FIRST, 0.220),
                     getBlinkClosure(expressionAge - DOZE_WAKE_BLINK_SECOND, 0.220));
+            } else if (expressionEvent.kind == EXPRESSION_GRIN) {
+                grin = envelope(expressionAge, 0.0, 0.30, 2.50, GRIN_DURATION);
             }
         }
         float restingEyeRadius = eyeRadius;
@@ -871,6 +880,9 @@ vec3 drawFace(vec3 mochiColour, RenderedMochi rendered, MoveState move, float pi
             abs(eyeCoord.y) - eyeRadius * aperture) * distanceScale;
         // Positive Y points up. Lower only the upper eyelid during the doze.
         eyeDistance = max(eyeDistance, (eyeCoord.y - eyeRadius * (1.0 - 2.0 * lidDrop)) * distanceScale);
+        float happyLidX = eyeCoord.x / eyeRadius;
+        float happyLid = eyeRadius * (-1.0 + grin * (0.25 + 0.08 * (1.0 - happyLidX * happyLidX)));
+        eyeDistance = max(eyeDistance, (happyLid - eyeCoord.y) * distanceScale);
         float eyeAA = edgeWidth(eyeDistance, pixel);
         float openVisibility = smoothstep(0.0, pixel, eyeRadius * aperture * rendered.scale.y);
         // Inset the outline and its antialiasing within the original eye footprint.
@@ -913,6 +925,29 @@ vec3 drawFace(vec3 mochiColour, RenderedMochi rendered, MoveState move, float pi
                 float mouthAA = edgeWidth(mouthDistance, pixel);
                 float mouthMask = (1.0 - smoothstep(-mouthAA, 0.0, mouthDistance)) * mouthOpen;
                 mochiColour = mix(mochiColour, vec3(0.0), mouthMask);
+            }
+        }
+        if (grin > 0.0) {
+            float grinTop = eyeAnchor.y - 1.25 * restingEyeRadius - pixel;
+            float grinSpace = grinTop + rendered.baseHalfSize.y;
+            if (grinSpace >= 2.0 * pixel) {
+                float grinWidth = 0.95 * restingEyeRadius;
+                float grinHeight = min(0.80 * restingEyeRadius, 0.80 * grinSpace) * grin;
+                vec2 grinCoord = rendered.bodyLocal - vec2(0.0, grinTop);
+                float grinX = grinCoord.x / grinWidth;
+                float curve = 1.0 - grinX * grinX;
+                float top = -0.12 * grinHeight * curve;
+                float bottom = -grinHeight * curve;
+                float grinDistance = max(abs(grinCoord.x) - grinWidth,
+                    max(grinCoord.y - top, bottom - grinCoord.y)) * distanceScale;
+                float grinAA = 0.50 * pixel;
+                float grinMask = (1.0 - smoothstep(-grinAA, 0.0, grinDistance)) * grin;
+                float teethDistance = max(grinDistance + 0.60 * pixel,
+                    (top - grinCoord.y - 0.60 * grinHeight) * distanceScale);
+                float teethMask = min(grinMask,
+                    (1.0 - smoothstep(-grinAA, 0.0, teethDistance)) * grin);
+                mochiColour = mix(mochiColour, vec3(0.0), grinMask);
+                mochiColour = mix(mochiColour, vec3(1.0), teethMask);
             }
         }
     }
