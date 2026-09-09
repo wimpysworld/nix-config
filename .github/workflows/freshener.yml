@@ -62,6 +62,9 @@ jobs:
           - id: slk
             name: slk
             changelog: https://github.com/gammons/slk/releases
+          - id: weave
+            name: Weave
+            changelog: https://github.com/matze/weave/releases
           - id: wolfictl
             name: wolfictl
             changelog: https://github.com/wolfi-dev/wolfictl/releases
