@@ -2,6 +2,7 @@
   catppuccinPalette,
   config,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
@@ -10,11 +11,13 @@ let
   # Herdr reads its configuration from `~/.config/herdr/config.toml`.
   tomlFormat = pkgs.formats.toml { };
   # Herdr uses a single worktree root for every repository and appends
-  # `<repo-name>/<branch>` to it. The root sits under `~/Chainguard` because
-  # Fence permits writes there, and it keeps work worktrees beside the clones
-  # they come from. The path is absolute because herdr's own tilde expansion is
-  # not something this module should depend on.
-  worktreeRoot = "${config.home.homeDirectory}/Chainguard/_worktrees";
+  # `<repo-name>/<branch>` to it. Work hosts use `~/Chainguard`, and other hosts
+  # use `~/Development`. The absolute path avoids reliance on tilde expansion.
+  worktreeRoot =
+    if noughtyLib.hostHasTag "cg" then
+      "${config.home.homeDirectory}/Chainguard/_worktrees"
+    else
+      "${config.home.homeDirectory}/Development/_worktrees";
   settings = {
     # Herdr shows the onboarding screen until it writes `onboarding = false`
     # back to the configuration file. Nix renders that file as a read-only
