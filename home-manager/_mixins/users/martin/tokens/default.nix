@@ -40,6 +40,7 @@ let
     environment:
     pkgs.writeText "chainctl-${environment}.yaml" ''
       default:
+          skip-version-check: true
           social-login: google-oauth2
           use-refresh-token: true
       platform:
