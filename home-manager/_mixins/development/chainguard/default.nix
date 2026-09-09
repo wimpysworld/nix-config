@@ -7,9 +7,9 @@
 }:
 let
   isDeveloper = noughtyLib.userHasTag "developer";
-  isPolicyHost = noughtyLib.hostHasTag "policy";
+  isWorkHost = noughtyLib.hostHasTag "cg";
 in
-lib.mkIf (isDeveloper && isPolicyHost) {
+lib.mkIf (isDeveloper && isWorkHost) {
   home.packages = [
     pkgs.apko
     pkgs.chainctl

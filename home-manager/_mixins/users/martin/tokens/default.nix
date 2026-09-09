@@ -8,9 +8,7 @@
 let
   inherit (config.noughty) host;
   enabled =
-    noughtyLib.isUser [ "martin" ]
-    && noughtyLib.userHasTag "developer"
-    && noughtyLib.hostHasTag "policy";
+    noughtyLib.isUser [ "martin" ] && noughtyLib.userHasTag "developer" && noughtyLib.hostHasTag "cg";
 
   googleCloudSdk = pkgs.google-cloud-sdk.withExtraComponents (
     with pkgs.google-cloud-sdk.components; [ beta ]

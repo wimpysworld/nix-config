@@ -7,8 +7,8 @@
 }:
 let
   # The Slack workspace is a work account, so this mixin only applies where the
-  # work profile lives. The `workspace` tag marks those hosts.
-  isWorkHost = noughtyLib.hostHasTag "workspace";
+  # work profile lives. The `cg` tag marks those hosts.
+  isWorkHost = noughtyLib.hostHasTag "cg";
 
   # Post one message to Slack as the token owner. The Slack MCP server posts
   # through Anthropic's Slack app, so Slack stamps those messages with a

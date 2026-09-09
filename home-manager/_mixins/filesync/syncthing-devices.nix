@@ -44,8 +44,6 @@
       devices = [
         "bane"
         "ravi"
-        "skrye"
-        "zannah"
       ];
     };
     crypt = {

@@ -8,9 +8,9 @@ manually before the first deployment.
 
 ## Prerequisites
 
-- The target host must carry the `policy` tag in
+- The target host must carry the `cg` tag in
   `lib/registry-systems.toml`. The mixin gates itself with
-  `noughtyLib.hostHasTag "policy"`.
+  `noughtyLib.hostHasTag "cg"`.
 - The host must have sops-nix configured with age keys at
   `/var/lib/private/sops/age/keys.txt`.
 
@@ -187,7 +187,7 @@ lets a host raise the value further if 180 s ever proves insufficient.
 - **NixOS module**: Imported in `nixos/default.nix` as
   `inputs.kolide-launcher.nixosModules.kolide-launcher`.
 - **Policy mixin**: `nixos/_mixins/policy/default.nix` enables the service and
-  deploys the secret via sops-nix for hosts carrying the `policy` tag.
+  deploys the secret via sops-nix for hosts carrying the `cg` tag.
 - **Stop-grace override**: the policy mixin sets
   `systemd.services.kolide-launcher.serviceConfig.TimeoutStopSec` to 180 s
   via `lib.mkDefault` to accommodate osquery state-flush latency on

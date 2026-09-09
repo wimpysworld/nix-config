@@ -28,7 +28,7 @@ let
     }
   ) syncDefs.folders;
 
-  isKeybaseHost = host.is.linux && host.is.workstation && !(noughtyLib.hostHasTag "policy");
+  isKeybaseHost = host.is.linux && host.is.workstation && !(noughtyLib.hostHasTag "cg");
 
   keybasePackages = [
     pkgs.keybase

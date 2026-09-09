@@ -52,7 +52,7 @@ in
     home = {
       packages =
         lib.optionals (!isServerDeveloper) hubPackages
-        ++ lib.optional (isWorkstationDeveloper && noughtyLib.hostHasTag "workspace") dockerPurge;
+        ++ lib.optional (isWorkstationDeveloper && noughtyLib.hostHasTag "cg") dockerPurge;
     };
   };
 }

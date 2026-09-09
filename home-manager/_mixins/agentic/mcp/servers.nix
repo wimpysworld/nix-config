@@ -11,7 +11,7 @@ let
   # currently invoke this file with `{ inherit config pkgs; }`.
   inherit (pkgs) lib;
   inherit (config.noughty) host;
-  isWorkHost = lib.elem "workspace" (host.tags or [ ]);
+  isWorkHost = lib.elem "cg" (host.tags or [ ]);
   slackWriteTools = [
     "slack_send_message"
     "slack_send_message_draft"

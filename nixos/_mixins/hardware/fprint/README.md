@@ -13,7 +13,7 @@ Add `"fprintd"` to a host's tags in `lib/registry-systems.toml`:
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "laptop"
-tags = ["policy", "workspace", "dropbox", "fprintd"]
+tags = ["cg", "dropbox", "fprintd"]
 ```
 
 Rebuild and switch. No other files need changing - the mixin auto-imports via

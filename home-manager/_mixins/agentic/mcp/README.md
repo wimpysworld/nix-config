@@ -1,6 +1,6 @@
 # MCP Servers
 
-Five unconditional MCP servers provide reference material and agent delegation. Slack is emitted only on hosts tagged `workspace`. Definitions live once in `servers.nix` and are distributed to each enabled Claude Code, OpenCode, Zed, Codex, and Pi Agent client via per-consumer renderers.
+Five unconditional MCP servers provide reference material and agent delegation. Slack is emitted only on hosts tagged `cg`. Definitions live once in `servers.nix` and are distributed to each enabled Claude Code, OpenCode, Zed, Codex, and Pi Agent client via per-consumer renderers.
 
 The Nix composition is the delivery mechanism, not the strategy. Most servers here are information retrieval tools: documentation search, web reading, and package lookup. The practical reason: a language model with a training cutoff hallucinates library APIs that changed after the cutoff. A model that fetches live documentation does not need to guess.
 
@@ -141,13 +141,13 @@ Linear's official hosted MCP server. It uses Streamable HTTP at `https://mcp.lin
 
 Linear's MCP tools can read and mutate issues, projects, and comments. The server is active in Claude Code, Codex, OpenCode, Pi, and Zed on every host with those clients. Codex also sets `default_tools_approval_mode = "prompt"` for Linear so tool calls require review instead of inheriting the unattended default.
 
-`LINEAR_API_KEY` reads from `secrets/linear.yaml`. Hosts tagged `workspace` select the `chainguard` key. Other hosts select `wimpysworld`. The existing fish and bash secret exports expose the selected value to coding-agent clients.
+`LINEAR_API_KEY` reads from `secrets/linear.yaml`. Hosts tagged `cg` select the `chainguard` key. Other hosts select `wimpysworld`. The existing fish and bash secret exports expose the selected value to coding-agent clients.
 
 #### slack
 
 Slack's official hosted MCP server. It uses Streamable HTTP at `https://mcp.slack.com/mcp`. Slack rejects dynamic client registration, so each supported client receives the public client id `1601185624273.8899143856786` and callback port `3118` from Slack's Claude connection guide.
 
-The server exists only on hosts tagged `workspace`. Claude Code, Codex, OpenCode, and Pi enable it. Zed stays disabled. All four coding agents block `slack_send_message`, `slack_send_message_draft`, `slack_schedule_message`, and `slack_update_canvas`. OpenCode denies the server-prefixed tool names through its native permission map. Pi excludes the original names through `pi-mcp-adapter`. Slack reads, searches, profiles, files, and reactions remain available. Messages use `slack-post` so Slack attributes them to the user.
+The server exists only on hosts tagged `cg`. Claude Code, Codex, OpenCode, and Pi enable it. Zed stays disabled. All four coding agents block `slack_send_message`, `slack_send_message_draft`, `slack_schedule_message`, and `slack_update_canvas`. OpenCode denies the server-prefixed tool names through its native permission map. Pi excludes the original names through `pi-mcp-adapter`. Slack reads, searches, profiles, files, and reactions remain available. Messages use `slack-post` so Slack attributes them to the user.
 
 After applying Home Manager, sign in once per client and work computer:
 

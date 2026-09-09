@@ -12,7 +12,7 @@ let
   mcporterPackage = agentPackages.mcporter or null;
   mcpSopsFile = ../../../../secrets/mcp.yaml;
   linearSopsFile = ../../../../secrets/linear.yaml;
-  isWorkHost = lib.elem "workspace" (host.tags or [ ]);
+  isWorkHost = lib.elem "cg" (host.tags or [ ]);
   # Import shared MCP server definitions.
   mcpServerDefs = import ./servers.nix { inherit config pkgs; };
   inherit (mcpServerDefs) opencodeServers opencodeToolPermissions;

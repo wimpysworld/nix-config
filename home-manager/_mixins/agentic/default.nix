@@ -17,7 +17,7 @@ let
   aiSopsFile = ../../../secrets/ai.yaml;
   isDeveloper = noughtyLib.userHasTag "developer";
   isPersonalComputer =
-    noughtyLib.isUser [ "martin" ] && host.kind == "computer" && !(noughtyLib.hostHasTag "policy");
+    noughtyLib.isUser [ "martin" ] && host.kind == "computer" && !(noughtyLib.hostHasTag "cg");
   isWorkstationDeveloper = isDeveloper && host.is.workstation;
   chromiumEnabled = config.programs.chromium.enable || (host.is.linux && host.is.workstation);
   firefoxEnabled = config.programs.firefox.enable || (host.is.linux && host.is.workstation);

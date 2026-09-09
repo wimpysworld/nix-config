@@ -5,7 +5,7 @@
 }:
 let
   inherit (config.noughty) host;
-  isWorkspace = noughtyLib.hostHasTag "workspace";
+  isWorkHost = noughtyLib.hostHasTag "cg";
   basicExtensions = [
     { id = "hdokiejnpimakedhajhdlcegeplioahd"; } # LastPass
   ];
@@ -29,7 +29,7 @@ in
   # Install browser extensions for macOS; nix-darwin doesn't support it yet.
   programs = {
     brave = {
-      enable = host.is.darwin && host.is.workstation && !isWorkspace;
+      enable = host.is.darwin && host.is.workstation && !isWorkHost;
       extensions =
         if (noughtyLib.isUser [ "martin" ]) then basicExtensions ++ advancedExtensions else basicExtensions;
     };

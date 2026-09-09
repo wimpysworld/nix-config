@@ -12,7 +12,7 @@
 }:
 let
   inherit (config.noughty) host;
-  isPolicyHost = noughtyLib.hostHasTag "policy";
+  isWorkHost = noughtyLib.hostHasTag "cg";
   username = config.noughty.user.name;
 in
 {
@@ -92,12 +92,12 @@ in
     initrd.includeDefaultModules = true;
     initrd.verbose = false;
     kernelModules = lib.optionals host.is.workstation [ "vhost_vsock" ];
-    # Central kernel policy for installed systems. Servers, VMs, and policy
+    # Central kernel policy for installed systems. Servers, VMs, and cg-tagged
     # hosts use 6.18, and everything else tracks the latest packaged kernel.
     # Live ISO media keeps its defaults.
     kernelPackages = lib.mkIf (!host.is.iso) (
       lib.mkDefault (
-        if host.is.server || host.is.vm || isPolicyHost then
+        if host.is.server || host.is.vm || isWorkHost then
           pkgs.linuxPackages_6_18
         else
           pkgs.linuxPackages_latest

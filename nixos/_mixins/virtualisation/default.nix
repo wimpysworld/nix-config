@@ -10,7 +10,7 @@ let
   username = config.noughty.user.name;
   rootlessMode = false;
   virtualisationEnabled = noughtyLib.isUser [ "martin" ] && host.is.workstation;
-  dockerEnabled = noughtyLib.hostHasTag "workspace";
+  dockerEnabled = noughtyLib.hostHasTag "cg";
 
   # Introspect the root filesystem type from disko configuration
   # Docker storage driver recommendations:

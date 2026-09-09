@@ -82,7 +82,7 @@ let
     ];
   };
 in
-lib.mkIf (noughtyLib.hostHasTag "workspace") {
+lib.mkIf (noughtyLib.hostHasTag "cg") {
   environment.systemPackages = [
     pkgs._1password-gui
     googleChrome

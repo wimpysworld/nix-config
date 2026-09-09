@@ -10,9 +10,9 @@ This is unofficial and unsupported by CrowdStrike.
 
 ## Prerequisites
 
-- The target host must carry the `policy` tag in
+- The target host must carry the `cg` tag in
   `lib/registry-systems.toml`. The mixin gates itself with
-  `noughtyLib.hostHasTag "policy"`.
+  `noughtyLib.hostHasTag "cg"`.
 - The host must have sops-nix configured with age keys at
   `/var/lib/private/sops/age/keys.txt`.
 - The CrowdStrike CID must be encrypted in `secrets/policy.yaml` (see below).
@@ -29,7 +29,7 @@ The declarative setup has three layers:
    staged-update oneshot, tmpfiles rules, and a `logrotate` policy for the
    sensor's log files.
 2. **Policy mixin** (`nixos/_mixins/policy/default.nix`): enables the module
-   and wires up the CID via sops-nix for hosts carrying the `policy` tag.
+   and wires up the CID via sops-nix for hosts carrying the `cg` tag.
 3. **Bootstrap script** (`falcon-sensor-install`): automates the one-time
    extraction and patching of the sensor binaries into `/opt/CrowdStrike/`.
 
