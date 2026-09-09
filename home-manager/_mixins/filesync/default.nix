@@ -36,16 +36,46 @@ let
   ];
 in
 lib.mkIf (noughtyLib.isUser [ "martin" ] && !(noughtyLib.hostHasTag "lima")) {
-  home = lib.mkIf host.is.linux {
-    file = lib.mkIf isKeybaseHost {
+  home = {
+    file = lib.mkIf (host.is.linux && isKeybaseHost) {
       "${config.xdg.configHome}/keybase/autostart_created".text = ''
         This file is created the first time Keybase starts, along with
         ~/.config/autostart/keybase_autostart.desktop. As long as this
         file exists, the autostart file won't be automatically recreated.
       '';
     };
-    packages =
-      lib.optionals isSyncthingHost [ pkgs.stc-cli ] ++ lib.optionals isKeybaseHost keybasePackages;
+    packages = lib.mkIf host.is.linux (
+      lib.optionals isSyncthingHost [ pkgs.stc-cli ] ++ lib.optionals isKeybaseHost keybasePackages
+    );
+
+    activation.syncthingNotesIgnore = lib.mkIf (isSyncthingHost && hostFolders.notes.enable) (
+      lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "writeBoundary" ] ''
+        run ${lib.getExe pkgs.python3} - <<'PY'
+        import os
+        from pathlib import Path
+        import stat
+        import tempfile
+
+        path = Path(${builtins.toJSON "${config.home.homeDirectory}/${lib.removePrefix "~/" hostFolders.notes.path}/.stignore"})
+        pattern = b"/.zk/notebook.db*\n"
+        if path.is_symlink() or (path.exists() and not path.is_file()):
+            raise SystemExit(f"Cannot update Syncthing ignores: {path} is not a regular file")
+        existing = path.read_bytes() if path.exists() else b""
+        if not existing.startswith(pattern):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(dir=path.parent, prefix=".stignore-", delete=False) as output:
+                temporary = Path(output.name)
+                try:
+                    if path.exists():
+                        os.fchmod(output.fileno(), stat.S_IMODE(path.stat().st_mode))
+                    output.write(pattern + existing)
+                    output.close()
+                    os.replace(temporary, path)
+                finally:
+                    temporary.unlink(missing_ok=True)
+        PY
+      ''
+    );
   };
 
   programs.fish.shellAliases = lib.mkIf (host.is.linux && isSyncthingHost) {

@@ -59,6 +59,8 @@ let
         "${homeDirectory}/Chainguard/**"
         "${homeDirectory}/Development"
         "${homeDirectory}/Development/**"
+        "${homeDirectory}/Notes"
+        "${homeDirectory}/Notes/**"
         "${homeDirectory}/Volatile"
         "${homeDirectory}/Volatile/**"
         "${homeDirectory}/Zero"

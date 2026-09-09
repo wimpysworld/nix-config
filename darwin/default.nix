@@ -189,7 +189,6 @@ in
           "/Applications/Zed.app"
           "/Applications/Ghostty.app"
           "/System/Applications/Music.app"
-          "/Users/${username}/Applications/Home Manager Apps/Heynote.app"
           "/System/Applications/Apps.app"
         ];
         show-recents = false;

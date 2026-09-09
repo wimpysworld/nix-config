@@ -17,6 +17,7 @@ lib.mkIf isDeveloper {
         pkgs.rumdl # Markdown linter
       ]
       ++ lib.optionals isWorkstationDeveloper [
+        pkgs.markless
         pkgs.marp-cli # Terminal Markdown presenter
       ];
   };
@@ -25,6 +26,7 @@ lib.mkIf isDeveloper {
     zed-editor = lib.mkIf config.programs.zed-editor.enable {
       extensions = [
         "emoji-completions"
+        "zk"
       ]
       ++ lib.optional (!host.is.server) "rumdl";
       userSettings = {

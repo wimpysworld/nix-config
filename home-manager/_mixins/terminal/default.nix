@@ -60,6 +60,7 @@ in
     ./tldr.nix # Modern Unix `man`
     ./yazi.nix # Modern Unix `mc`
     ./yt-dlp.nix # Terminal YouTube downloader
+    ./zk.nix
     ./zoxide.nix # Modern Unix `cd`
   ];
   home = {
@@ -91,7 +92,6 @@ in
         croc # Terminal file transfer
         dotacat # Modern Unix lolcat
         entr # Modern Unix `watch`
-        frogmouth # Terminal Markdown viewer
         fselect # Modern Unix find with SQL-like syntax
         girouette # Modern Unix weather
         gping # Modern Unix `ping`
@@ -132,7 +132,7 @@ in
 
     # Environment variables for terminal applications
     sessionVariables = lib.mkIf host.is.workstation {
-      # Set Catppuccin Mocha theme for Textual-based applications (e.g., frogmouth)
+      # Set the Catppuccin Mocha theme for Textual-based applications.
       TEXTUAL_THEME = "catppuccin-mocha";
     };
   };
