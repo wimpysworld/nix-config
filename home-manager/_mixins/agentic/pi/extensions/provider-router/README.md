@@ -87,11 +87,14 @@ still produce `provider/modelId` without a thinking suffix. Explicit
 ## Runtime Constraints
 
 Provider Router covers the LLM tool-call path only. Current `pi-subagents`
-execution uses `workflowScript`. The router wraps the script in an async
-function and supplies a routing adapter for `runs`. The adapter routes child
-specifications passed to `runs.run` and `runs.all`, including specifications
-that the script creates dynamically. Other `runs` methods pass through
-unchanged.
+execution uses `workflowScript`. The router supplies a routing adapter for
+`runs` inside a lexical block. The script keeps its top-level `await` and
+`return` statements. No nested async function is added, because
+`pi-subagents` rejects those functions before child launch.
+
+The adapter routes child specifications passed to `runs.run` and `runs.all`,
+including specifications that the script creates dynamically. It copies the
+other `runs` methods unchanged, including `runs.steer`.
 
 The router retains support for legacy single calls, `tasks[]`, chain steps,
 parallel chain steps, and `action: "append-step"`. It does not change other
@@ -139,6 +142,16 @@ see an out-of-band `home-manager switch`. Run `/reload` or restart the Pi
 session after changing `agents.json`.
 
 ## Verification
+
+Run the regression tests from the repository root with Node.js 24 or later:
+
+```sh
+node --experimental-loader ./home-manager/_mixins/agentic/pi/extensions/provider-router/test-loader.mjs --test home-manager/_mixins/agentic/pi/extensions/provider-router/index.test.mjs
+```
+
+The tests use the installed `pi-subagents` validator and workflow worker with
+mock child launches. They make no model requests. Set `PI_SUBAGENTS_DIR` to
+test another installation without changing the active Pi session.
 
 Check that Home Manager's evaluated bytes match the deployed maps:
 

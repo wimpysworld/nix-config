@@ -42,7 +42,7 @@ let
   # `"fresh"` and `"fork"` with `"fresh"` as the safer non-forking default. If
   # any of these change, update `extensions/provider-router/index.ts` and the
   # agent-launch prelude in `assistants/default.nix` before merging.
-  piSubagentsVersion = "0.65.1";
+  piSubagentsVersion = "0.66.0";
   piLensVersion = "4.1.3";
   # pi-lens imports the compiler API at runtime, but 4.1.3 lists TypeScript as
   # a development dependency. Keep it as a direct Pi npm dependency until the

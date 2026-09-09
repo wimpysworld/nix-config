@@ -207,15 +207,14 @@ const __providerRouterRoute = (spec) => {
 	return { ...spec, model };
 };
 const __providerRouterRuns = Object.freeze({
+	...runs,
 	run: (key, spec) => runs.run(key, __providerRouterRoute(spec)),
 	all: (specs) => runs.all(specs.map(__providerRouterRoute)),
-	status: (...args) => runs.status(...args),
-	ref: (...args) => runs.ref(...args),
-	refs: (...args) => runs.refs(...args),
 });
-return await (async (runs) => {
+{
+	const runs = __providerRouterRuns;
 ${script}
-})(__providerRouterRuns);
+}
 `.trim();
 }
 

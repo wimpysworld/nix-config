@@ -84,7 +84,7 @@ Pi packages are installed through the Home Manager-owned package setting:
 {
   "packages": [
     "npm:pi-mcp-adapter@2.32.1",
-    "npm:pi-subagents@0.65.1",
+    "npm:pi-subagents@0.66.0",
     "npm:pi-lens@4.1.3",
     {
       "source": "npm:typescript@7.0.2",
