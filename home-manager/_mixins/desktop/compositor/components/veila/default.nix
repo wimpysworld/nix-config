@@ -18,10 +18,8 @@ let
   # Match the old hyprlock placeholder glyph: a fingerprint on fprintd hosts,
   # otherwise a key.
   unlockGlyph = if fprintdEnabled then "󰈷" else "󰌋";
-  # Veila detects the avatar image format from the file extension; the ~/.face
-  # symlink has none ("image format could not be determined"), so point Veila at
-  # the avatar's source store path, which ends in .png. Fall back to ~/.face for
-  # users without a configured avatar.
+  # Use the avatar's source store path. Fall back to ~/.face for users without
+  # a configured avatar.
   avatarImagePath =
     if config.home.file ? ".face" then
       "${config.home.file.".face".source}"
@@ -145,9 +143,7 @@ let
     color = "${palette.getColor "yellow"}"
 
     [visuals.avatar]
-    # Render the avatar via the documented visual key. Points at the source
-    # store path (ends in .png) so Veila's extension-based format detection
-    # works; ~/.face has no extension and fails to load.
+    # Render the avatar via the documented visual key.
     enabled = true
     image_path = "${avatarImagePath}"
 
