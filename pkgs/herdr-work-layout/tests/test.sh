@@ -34,9 +34,10 @@ export FAKE_HERDR_LOG="$log_file"
 write_invocation() {
   local worktree_path=$1
   local focused=$2
+  local cwd=${3:-${worktree_path:-$outside_path}}
 
   jq -cn \
-    --arg cwd "${worktree_path:-$outside_path}" \
+    --arg cwd "$cwd" \
     --argjson focused "$focused" \
     --argjson with_worktree "$([[ -n $worktree_path ]] && printf true || printf false)" '
       {
@@ -67,7 +68,7 @@ write_invocation() {
     ' >"$event_file"
 
   jq -cn \
-    --arg cwd "${worktree_path:-$outside_path}" \
+    --arg cwd "$cwd" \
     --argjson with_worktree "$([[ -n $worktree_path ]] && printf true || printf false)" '
       {
         workspace_id: "workspace-1",
@@ -113,7 +114,7 @@ expected_standard_log() {
 }
 
 expected_work_log() {
-  expected_standard_log "$inside_path"
+  expected_standard_log "${1:-$inside_path}"
   printf 'pane\trun\tpane-claude\tclaude-fenced\n'
   printf 'pane\trun\t%s\tcodex-fenced\n' "$codex_pane_id"
   printf 'pane\trun\t%s\tlg\n' "$git_pane_id"
@@ -127,14 +128,70 @@ run_standard_case() {
   local name=$1
   local path=$2
   local focused=$3
+  local cwd=${4:-${path:-$outside_path}}
   local expected="$TMPDIR/expected-$name.log"
 
-  write_invocation "$path" "$focused"
+  write_invocation "$path" "$focused" "$cwd"
   : >"$log_file"
   run_layout >"$TMPDIR/$name.out"
-  expected_standard_log "${path:-$outside_path}" >"$expected"
+  expected_standard_log "$cwd" >"$expected"
   cmp "$expected" "$log_file"
 }
+
+run_review_case() {
+  local name=$1
+  local path=$2
+  local autostart=$3
+  local expected="$TMPDIR/expected-$name.log"
+
+  write_invocation "$path" false
+  : >"$log_file"
+  run_layout >"$TMPDIR/$name.out"
+  {
+    printf 'tab\trename\ttab-claude\tCodex\n'
+    if [[ $autostart == true ]]; then
+      printf 'pane\trun\tpane-claude\tcodex-fenced\n'
+    fi
+  } >"$expected"
+  cmp "$expected" "$log_file"
+}
+
+review_path="$chainguard_root/project/review-123"
+review_middle_path="$chainguard_root/project/topic-review-123"
+review_development_path="$test_home/Development/project/review-123"
+review_prefix_path="$test_home/Chainguard-old/project/review-123"
+review_escape_path="$chainguard_root/review-escape"
+review_parent_path="$test_home/Outside/review-parent/feature"
+review_inside_parent_path="$chainguard_root/review-parent/feature"
+mkdir -p "$review_path" "$review_middle_path" "$review_development_path" \
+  "$review_prefix_path" "$review_parent_path" "$review_inside_parent_path"
+ln -s "$outside_path" "$review_escape_path"
+
+run_review_case review-prefix "$review_path" true
+run_review_case review-substring "$review_middle_path" true
+run_review_case review-trailing-slash "$review_path/" true
+run_review_case review-development "$review_development_path" false
+run_review_case review-root-prefix "$review_prefix_path" false
+run_review_case review-symlink-escape "$review_escape_path" false
+run_review_case review-missing "$chainguard_root/review-missing" false
+run_standard_case review-ordinary "" false "$review_path"
+run_standard_case review-parent "$review_parent_path" true
+
+write_invocation "$review_inside_parent_path" false
+: >"$log_file"
+run_layout >"$TMPDIR/review-inside-parent.out"
+expected_work_log "$review_inside_parent_path" >"$work_log"
+cmp "$work_log" "$log_file"
+
+write_invocation "$review_development_path" false
+jq '.data.workspace.worktree.is_linked_worktree = false' "$event_file" >"$TMPDIR/main-checkout-event.json"
+mv "$TMPDIR/main-checkout-event.json" "$event_file"
+jq '.worktree.is_linked_worktree = false' "$context_file" >"$TMPDIR/main-checkout-context.json"
+mv "$TMPDIR/main-checkout-context.json" "$context_file"
+: >"$log_file"
+run_layout >"$TMPDIR/main-checkout.out"
+expected_standard_log "$review_development_path" >"$work_log"
+cmp "$work_log" "$log_file"
 
 run_standard_case ordinary "" false
 run_standard_case external "$outside_path" true

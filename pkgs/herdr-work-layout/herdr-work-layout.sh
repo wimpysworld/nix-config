@@ -40,7 +40,7 @@ if ! jq -e '
 fi
 
 workspace_id=$(jq -er '.data.workspace.workspace_id' <<<"$event_json")
-claude_tab_id=$(jq -er '.data.workspace.active_tab_id' <<<"$event_json")
+initial_tab_id=$(jq -er '.data.workspace.active_tab_id' <<<"$event_json")
 
 fail_workspace() {
   printf 'herdr-work-layout: workspace %s: %s. The partial workspace was preserved. Run herdr workspace focus %s and finish the layout manually.\n' \
@@ -50,7 +50,7 @@ fail_workspace() {
 
 if ! jq -e \
   --arg workspace_id "$workspace_id" \
-  --arg tab_id "$claude_tab_id" \
+  --arg tab_id "$initial_tab_id" \
   --argjson worktree "$(jq -c '.data.workspace.worktree // null' <<<"$event_json")" '
     type == "object"
     and .workspace_id == $workspace_id
@@ -64,7 +64,7 @@ if ! jq -e \
 fi
 
 workspace_cwd=$(jq -er '.workspace_cwd' <<<"$context_json")
-claude_pane_id=$(jq -er '.focused_pane_id' <<<"$context_json")
+initial_pane_id=$(jq -er '.focused_pane_id' <<<"$context_json")
 
 if [[ ${HERDR_ENV:-} != "1" ]]; then
   fail_workspace "expected HERDR_ENV=1"
@@ -177,19 +177,27 @@ create_tab() {
   created_pane_id=$(jq -er '.result.root_pane.pane_id' <<<"$response")
 }
 
-herdr_call response "renaming the initial tab" tab rename "$claude_tab_id" Claude
-validate_tab_info "$response" "$claude_tab_id" Claude "renaming the initial tab"
-
-declare -A tab_ids=( [Claude]="$claude_tab_id" )
-declare -A pane_ids=( [Claude]="$claude_pane_id" )
-
-for label in Codex OpenCode Pi Git Code Linear GitHub Shell; do
-  create_tab "$label"
-  tab_ids["$label"]=$created_tab_id
-  pane_ids["$label"]=$created_pane_id
-done
-
 worktree_checkout=$(jq -r '.data.workspace.worktree.checkout_path // empty' <<<"$event_json")
+initial_label=Claude
+if [[ -n $worktree_checkout && $(basename -- "$worktree_checkout") == *review-* ]] \
+  && jq -e '.data.workspace.worktree.is_linked_worktree == true' >/dev/null <<<"$event_json"; then
+  initial_label=Codex
+fi
+
+herdr_call response "renaming the initial tab" tab rename "$initial_tab_id" "$initial_label"
+validate_tab_info "$response" "$initial_tab_id" "$initial_label" "renaming the initial tab"
+
+declare -A tab_ids=( ["$initial_label"]="$initial_tab_id" )
+declare -A pane_ids=( ["$initial_label"]="$initial_pane_id" )
+
+if [[ $initial_label == Claude ]]; then
+  for label in Codex OpenCode Pi Git Code Linear GitHub Shell; do
+    create_tab "$label"
+    tab_ids["$label"]=$created_tab_id
+    pane_ids["$label"]=$created_pane_id
+  done
+fi
+
 if [[ -z $worktree_checkout ]]; then
   printf 'herdr-work-layout: prepared shell tabs in workspace %s.\n' "$workspace_id"
   exit 0
@@ -231,6 +239,12 @@ close_created_tab() {
   herdr_call response "closing the $label tab" tab close "$tab_id"
   validate_ok "$response" "closing the $label tab"
 }
+
+if [[ $initial_label == Codex ]]; then
+  run_in_pane "${pane_ids[Codex]}" "codex-fenced"
+  printf 'herdr-work-layout: prepared Codex review worktree workspace %s.\n' "$workspace_id"
+  exit 0
+fi
 
 run_in_pane "${pane_ids[Claude]}" "claude-fenced"
 run_in_pane "${pane_ids[Codex]}" "codex-fenced"
