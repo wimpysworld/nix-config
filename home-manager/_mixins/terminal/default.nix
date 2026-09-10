@@ -74,6 +74,7 @@ in
         dua # Modern Unix `du`
         duf # Modern Unix `df`
         file # Terminal file info
+        markless
         mtr # Modern Unix `traceroute`
         pciutils # Terminal PCI info
         procs # Modern Unix `ps`

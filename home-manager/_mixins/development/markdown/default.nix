@@ -17,7 +17,6 @@ lib.mkIf isDeveloper {
         pkgs.rumdl # Markdown linter
       ]
       ++ lib.optionals isWorkstationDeveloper [
-        pkgs.markless
         pkgs.marp-cli # Terminal Markdown presenter
       ];
   };

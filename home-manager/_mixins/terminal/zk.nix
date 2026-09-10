@@ -6,6 +6,14 @@
 }:
 let
   launcherFilename = "{{#if (slug extra.filename-title)}}{{slug extra.filename-title}}{{else}}untitled{{/if}}";
+  browseEditor = lib.escapeShellArgs [
+    (lib.getExe pkgs.markless)
+    "--theme"
+    "dark"
+    "--editor"
+    (lib.getExe config.programs.fresh-editor.package)
+    "--"
+  ];
 in
 {
   home.shellAliases = {
@@ -20,21 +28,21 @@ in
     settings = {
       notebook.dir = lib.mkDefault "~/Notes";
       alias = {
-        browse = lib.mkDefault ''zk --notebook-dir "$HOME/Notes" -W "$HOME/Notes" edit --interactive "$@"'';
+        browse = lib.mkDefault ''ZK_EDITOR=${lib.escapeShellArg browseEditor} ${lib.getExe config.programs.zk.package} --notebook-dir "$HOME/Notes" -W "$HOME/Notes" edit --interactive "$@"'';
         tagged = lib.mkDefault ''
           case "''${1-}" in
             ""|-*) printf '%s\n' 'Usage: zk tagged TAG [OPTIONS...]' >&2; exit 2 ;;
           esac
           tag=$1
           shift
-          zk --notebook-dir "$HOME/Notes" -W "$HOME/Notes" edit --interactive --tag "$tag" "$@"
+          ZK_EDITOR=${lib.escapeShellArg browseEditor} ${lib.getExe config.programs.zk.package} --notebook-dir "$HOME/Notes" -W "$HOME/Notes" edit --interactive --tag "$tag" "$@"
         '';
       };
       tool = {
         shell = lib.mkDefault pkgs.runtimeShell;
         fzf-bind-new = lib.mkDefault "";
         fzf-options = lib.mkDefault (
-          "--tiebreak begin --tabstop 4 --height 100% --layout reverse --no-hscroll --preview-window wrap --multi"
+          "--tiebreak begin --tabstop 4 --height 100% --layout reverse --no-hscroll --preview-window wrap --no-multi"
           + " --header='Ctrl-N: New | Ctrl-S: Scratch | Ctrl-T: ToDo'"
           + " --bind='ctrl-n:become(${lib.getExe config.programs.zk.package} new > /dev/tty)'"
           + " --bind='ctrl-s:become(${lib.getExe config.programs.zk.package} scratch > /dev/tty)'"
