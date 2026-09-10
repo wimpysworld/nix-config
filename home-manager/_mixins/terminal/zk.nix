@@ -26,6 +26,7 @@
         extension = lib.mkDefault "md";
         template = lib.mkDefault "default.md";
       };
+      group.fuzzel.note.filename = lib.mkDefault "{{#if (slug extra.filename-title)}}{{slug extra.filename-title}}{{else}}untitled{{/if}}";
       format.markdown = {
         link-format = lib.mkDefault "markdown";
         link-drop-extension = lib.mkDefault false;
