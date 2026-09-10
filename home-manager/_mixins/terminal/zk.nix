@@ -1,5 +1,20 @@
-{ lib, pkgs, ... }:
 {
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+let
+  launcherFilename = "{{#if (slug extra.filename-title)}}{{slug extra.filename-title}}{{else}}untitled{{/if}}";
+in
+{
+  home.shellAliases = {
+    notes = lib.mkDefault "zk browse";
+    todo = lib.mkDefault "zk todo";
+    scratch = lib.mkDefault "zk scratch";
+    new-note = lib.mkDefault "zk new";
+  };
+
   programs.zk = {
     enable = lib.mkDefault true;
     settings = {
@@ -17,7 +32,14 @@
       };
       tool = {
         shell = lib.mkDefault pkgs.runtimeShell;
-        fzf-options = lib.mkDefault "--tiebreak begin --tabstop 4 --height 100% --layout reverse --no-hscroll --preview-window wrap --multi";
+        fzf-bind-new = lib.mkDefault "";
+        fzf-options = lib.mkDefault (
+          "--tiebreak begin --tabstop 4 --height 100% --layout reverse --no-hscroll --preview-window wrap --multi"
+          + " --header='Ctrl-N: New | Ctrl-S: Scratch | Ctrl-T: ToDo'"
+          + " --bind='ctrl-n:become(${lib.getExe config.programs.zk.package} new > /dev/tty)'"
+          + " --bind='ctrl-s:become(${lib.getExe config.programs.zk.package} scratch > /dev/tty)'"
+          + " --bind='ctrl-t:become(${lib.getExe config.programs.zk.package} todo > /dev/tty)'"
+        );
         fzf-preview = lib.mkDefault "${pkgs.bat}/bin/bat --language markdown --style plain --color always --paging never -- {-1}";
         fzf-line = lib.mkDefault ''{{style "title" title-or-path}}{{#each tags}} #{{this}}{{/each}} {{style "understate" body}}'';
       };
@@ -26,7 +48,8 @@
         extension = lib.mkDefault "md";
         template = lib.mkDefault "default.md";
       };
-      group.fuzzel.note.filename = lib.mkDefault "{{#if (slug extra.filename-title)}}{{slug extra.filename-title}}{{else}}untitled{{/if}}";
+      group.fuzzel.note.filename = lib.mkDefault launcherFilename;
+      group.terminal.note.filename = lib.mkDefault launcherFilename;
       format.markdown = {
         link-format = lib.mkDefault "markdown";
         link-drop-extension = lib.mkDefault false;
