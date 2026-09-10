@@ -76,7 +76,7 @@ let
       util-linux
       zk
     ];
-    runtimeEnv.ZED = lib.getExe config.programs.zed-editor.package;
+    runtimeEnv.MANUSCRIPT = lib.getExe pkgs.manuscript;
     text = builtins.readFile ./fuzzel-notes.sh;
   };
   fuzzelWifi = pkgs.writeShellApplication {

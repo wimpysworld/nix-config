@@ -50,6 +50,9 @@ jobs:
           - id: lan-mouse
             name: Lan Mouse
             changelog: https://github.com/feschber/lan-mouse/releases
+          - id: manuscript
+            name: Manuscript
+            changelog: https://gitlab.com/ilshat-apps/manuscript/-/blob/main/CHANGELOG.md
           - id: hermes-agent
             name: Hermes Agent
             changelog: https://github.com/NousResearch/hermes-agent/releases

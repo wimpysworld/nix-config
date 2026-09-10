@@ -121,7 +121,7 @@ if [[ "$action" == new ]]; then
   new_note
   rm -rf -- "$rendered"
   trap - EXIT
-  exec setsid --fork "$ZED" -- "$path" </dev/null >/dev/null 2>&1
+  exec setsid --fork "$MANUSCRIPT" -- "$path" </dev/null >/dev/null 2>&1
 fi
 IFS= read -r -d '' relative < <(jq -j --argjson i "$selected" '.[$i].path, "\u0000"' <<< "$entries")
 [[ "$relative" != /* ]] || fail 'The selected note is outside the notebook.'
@@ -139,4 +139,4 @@ if [[ "$action" == fixed && ! -e "$path" ]]; then
   ) || fail "Could not create $title without overwriting a file."
 fi
 [[ -f "$path" ]] || fail 'The selected note is not a regular file.'
-exec setsid --fork "$ZED" -- "$path" </dev/null >/dev/null 2>&1
+exec setsid --fork "$MANUSCRIPT" -- "$path" </dev/null >/dev/null 2>&1
