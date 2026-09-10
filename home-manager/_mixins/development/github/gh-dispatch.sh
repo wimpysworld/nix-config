@@ -16,6 +16,69 @@ die() {
 	exit 64
 }
 
+# `gh label create` writes a new label, which the policy allows. The `--force`
+# flag turns the same command into an overwrite of an existing label, which it
+# does not. Fence matches command strings by token prefix, so its
+# `gh label create` allowance cannot exclude a trailing flag; this check is the
+# only place that rejects one.
+#
+# gh 2.99.0 spells the flag `--force` and `-f`, and its flag parser accepts
+# `--force`, `--force=<value>`, `-f`, `-f=<value>`, and `f` inside a shorthand
+# cluster such as `-fc`. A cluster stops at the first shorthand that takes a
+# value, because the rest of the token, or the next token, is that value:
+# `-dforce` is a description, not a force. Tokens after `--` are positional, so
+# scanning stops there. `--force=false` is rejected as well: reading the flag
+# value would mean re-implementing the parser for no gain.
+label_create_is_forced() {
+	local -r value_shorthands='cdhR'
+	local token rest char
+	local skip_value=0
+
+	for token in "$@"; do
+		if ((skip_value)); then
+			skip_value=0
+			continue
+		fi
+
+		case "${token}" in
+		--)
+			return 1
+			;;
+		--force | --force=*)
+			return 0
+			;;
+		--repo | --hostname)
+			skip_value=1
+			continue
+			;;
+		--*)
+			continue
+			;;
+		-?*) ;;
+		*)
+			continue
+			;;
+		esac
+
+		rest=${token#-}
+		while [[ -n ${rest} ]]; do
+			char=${rest:0:1}
+			rest=${rest:1}
+			if [[ ${char} == f ]]; then
+				return 0
+			fi
+			if [[ ${value_shorthands} == *"${char}"* ]]; then
+				if [[ -z ${rest} ]]; then
+					skip_value=1
+				fi
+				continue 2
+			fi
+		done
+	done
+
+	return 1
+}
+
 # Find the command words after the persistent repository and hostname flags.
 # The real CLI accepts these flags before a command or its subcommand.
 command_words=()
@@ -139,6 +202,15 @@ issue)
 label)
 	case "${subcommand}" in
 	list | view) ;;
+	create)
+		# Creating a label is additive, so authorised smoke tests can do it.
+		# Overwriting one the repository already uses is not, so every
+		# force spelling stops here. `edit`, `delete`, and `clone` fall
+		# through to the family-wide deny below.
+		if label_create_is_forced "$@"; then
+			die 'gh label create --force'
+		fi
+		;;
 	*) die 'gh label' ;;
 	esac
 	;;

@@ -337,6 +337,15 @@ let
         "gh project item-list"
         "gh project item-add"
         "gh project item-edit"
+        # gh label create: authorised smoke tests need to create the input
+        # label they attach to a fixture pull request. Creation adds a new
+        # name; it does not change an existing one. Fence allow rules are
+        # token-prefix matches, so this entry also lets `--force` past the
+        # Fence layer, and `--force` turns creation into an overwrite of a
+        # label the repository already has. The gh dispatcher rejects every
+        # force spelling itself, so that widening stops there. `edit`,
+        # `delete`, and `clone` stay denied by the family-wide entry below.
+        "gh label create"
         # Discovery reads under otherwise family-wide-denied gh
         # namespaces. The principle is: list-like subcommands stay
         # available so the agent can inspect state, while any mutation
@@ -524,8 +533,10 @@ let
         "gh issue unpin"
         # gh label: repo-level configuration of triage taxonomy.
         # Family-wide deny so per-project label management stays under
-        # separate tooling. `gh label list` is carved out above for
-        # discovery.
+        # separate tooling. `gh label list` and `gh label view` are carved
+        # out above for discovery, and `gh label create` for smoke-test
+        # fixtures. `edit`, `delete`, and `clone` change or remove a label
+        # the repository already uses, so they stay denied here.
         "gh label"
         # gh pr: merges and moderation. `update-branch` is intentionally
         # not denied so the agent can resolve out-of-date PR branches.

@@ -192,6 +192,25 @@ assert_blocked 'agent alias' agent
 assert_blocked 'agents alias' agents
 assert_blocked 'skills alias' skills
 
+# Label creation reaches the backend, and every other label mutation does not.
+# `--force` overwrites an existing label, so each spelling of it is blocked.
+assert_backend 'label creation' 1 gh-backend label create ful-734-smoke:wY0WhBNT
+assert_backend 'label creation with a repository flag' 1 gh-backend label create bug --repo example/project
+assert_backend 'label creation with colour and description' 1 gh-backend label create bug --color E99695 --description 'Something is broken'
+assert_backend 'label creation with a clustered value shorthand' 1 gh-backend label create bug -cE99695
+assert_backend 'label creation with a description that starts with f' 1 gh-backend label create bug -dforce
+assert_backend 'label creation after the flag terminator' 1 gh-backend label create -- -f
+assert_blocked 'label force creation' label create bug --force
+assert_blocked 'label force creation with a value' label create bug --force=true
+assert_blocked 'label force creation disabled by value' label create bug --force=false
+assert_blocked 'label force creation shorthand' label create bug -f
+assert_blocked 'label force creation shorthand with a value' label create bug -f=true
+assert_blocked 'label force creation in a shorthand cluster' label create bug -fc E99695
+assert_blocked 'label force creation behind a repository flag' --repo example/project label create bug --force
+assert_blocked 'label edit' label edit bug --color E99695
+assert_blocked 'label deletion' label delete bug --yes
+assert_blocked 'label clone' label clone example/other
+
 # Persistent flags cannot hide a blocked command.
 assert_blocked 'root repository flag before merge' -R example/project pr merge 42
 assert_blocked 'family repository flag before merge' pr --repo example/project merge 42
@@ -205,8 +224,11 @@ alias_config_dir="${work}/gh-config"
 alias_marker="${work}/shell-alias-ran"
 mkdir -p "${alias_config_dir}"
 # The marker variable must expand when the configured shell alias runs.
+# The setup call itself must run unfenced. The last assertion above leaves
+# FENCE_SANDBOX=1 exported, and the dispatcher blocks `gh alias set`, so the
+# alias is never written and the precondition below fails.
 # shellcheck disable=SC2016
-GH_CONFIG_DIR="${alias_config_dir}" "${real_gh}" alias set fenced-shell-alias \
+FENCE_SANDBOX=0 GH_CONFIG_DIR="${alias_config_dir}" "${real_gh}" alias set fenced-shell-alias \
 	'!printf ran >"${GH_ALIAS_MARKER}"'
 
 saved_backend="${GH_DISPATCH_GH}"

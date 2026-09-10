@@ -323,7 +323,15 @@ plus longer-prefix allow pattern: list-like discovery reads under
 `gh repo deploy-key` are carved out above their respective family-wide
 denies. `gh project` also carves out `item-add` and `item-edit`, the two
 item writes the task commands use to place an issue on a project and set
-one field on it. `gh config` is the sole exception and is denied wholesale
+one field on it. `gh label` also carves out `create`, so an authorised
+smoke test can add a new label to a test repository. The force flag turns
+that creation into an overwrite of a label the repository already has, and
+a Fence token-prefix allowance cannot exclude a trailing flag, so the
+dispatcher rejects the flag itself in every spelling gh 2.99.0 parses:
+`--force`, `--force=<value>`, `-f`, `-f=<value>`, and `f` inside a
+shorthand cluster such as `-fc`. `gh label edit`, `gh label delete`, and
+`gh label clone` stay denied. `gh config` is the sole exception and is
+denied wholesale
 because `gh config get oauth_token --host github.com` can disclose the
 OAuth token stored in `~/.config/gh/hosts.yml`. The Fence source of truth is
 [`default.nix`](./default.nix). The dispatcher mirrors its GitHub rules in
