@@ -8,29 +8,11 @@
 let
   inherit (config.noughty) host;
   palette = catppuccinPalette;
-  compositor =
-    if host.is.linux && host.is.workstation then
-      lib.attrByPath [
-        host.desktop
-      ] null (import ../../../../../../lib/wayland-compositors.nix).compositors
-    else
-      null;
-  pickerEnabled = compositor != null && compositor.capabilities.picker;
-  swayncRun = pkgs.writeShellApplication {
-    name = "swaync-run";
-    text = ''
-      # Execute all arguments as a single command
-      # Check if any arguments were provided
-      if [ $# -ge 1 ]; then
-        # Close the swaync panel
-        swaync-client --close-panel --skip-wait
-        # Execute all arguments as a single command
-        exec "$@"
-      fi
-    '';
-  };
 in
 lib.mkIf (host.is.linux && host.is.workstation) {
+  # GTK's symbolic icon node parser ignores SVG group transforms in Papirus icons.
+  systemd.user.services.swaync.Service.Environment = [ "GDK_DISABLE=icon-nodes" ];
+
   # swaync is a notification daemon
   services = {
     swaync = {
@@ -38,11 +20,11 @@ lib.mkIf (host.is.linux && host.is.workstation) {
       settings = {
         "$schema" = "${pkgs.swaynotificationcenter}/etc/xdg/swaync/configSchema.json";
         notification-2fa-action = false;
-        notification-inline-replies = false;
+        notification-inline-replies = true;
         positionX = "right";
         positionY = "top";
+        control-center-width = 512;
         widgets = [
-          "menubar"
           "backlight"
           "volume"
           "mpris"
@@ -51,66 +33,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           "notifications"
         ];
         widget-config = {
-          menubar = {
-            "menu#screenshot-buttons" = {
-              label = "󰄀";
-              position = "left";
-              actions = [
-                {
-                  label = "󰹑  Screenshot  ";
-                  command = "${lib.getExe swayncRun} fuzzel-capture";
-                }
-              ]
-              ++ lib.optional pickerEnabled {
-                label = "󰏘  Color Picker";
-                command = "${lib.getExe swayncRun} fuzzel-picker";
-              };
-            };
-            "menu#powermode-buttons" = {
-              label = "󱐋";
-              position = "right";
-              actions = [
-                {
-                  label = "󰤇  Performance";
-                  command = "powerprofilesctl set performance";
-                }
-                {
-                  label = "󰗑  Balanced   ";
-                  command = "powerprofilesctl set balanced";
-                }
-                {
-                  label = "󰴻  Power-saver";
-                  command = "powerprofilesctl set power-saver";
-                }
-              ];
-            };
-            "menu#power-buttons" = {
-              label = "󰐦";
-              position = "right";
-              actions = [
-                {
-                  label = "󰌾  Lock    ";
-                  command = "${lib.getExe swayncRun} wayland-session lock";
-                }
-                {
-                  label = "󰗽  Logout  ";
-                  command = "${lib.getExe swayncRun} wayland-session logout";
-                }
-                {
-                  label = "󱍷  Reboot  ";
-                  command = "${lib.getExe swayncRun} wayland-session reboot";
-                }
-                {
-                  label = "󰤄  Suspend ";
-                  command = "${lib.getExe swayncRun} systemctl suspend";
-                }
-                {
-                  label = "  Shutdown";
-                  command = "${lib.getExe swayncRun} wayland-session shutdown";
-                }
-              ];
-            };
-          };
           title = {
             text = "Notifications";
             clear-all-button = true;
@@ -123,7 +45,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
             label = "󰃟";
           };
           mpris = {
-            blur = true;
+            show-album-art = "never";
           };
           volume = {
             label = "󰓃";
@@ -160,10 +82,10 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           box-shadow: 0 0 10px 0 rgba(17, 17, 17, 0.8), inset 0 0 0 1px ${palette.getColor "surface0"};
           border-radius: 12.6px;
           margin: 18px;
-          background-color: ${palette.getColor "base"};
+          background-color: ${palette.mkRgba "base" "0.9"};
           color: ${palette.getColor "text"};
           padding: 0;
-          opacity: 0.72;
+          opacity: 1;
         }
 
         .floating-notifications.background .notification-row .notification-background .notification {
@@ -197,33 +119,9 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           font-size: 1.2rem;
         }
 
-        .floating-notifications.background .notification-row .notification-background .notification > *:last-child > * {
-          min-height: 3.4em;
-        }
-
-        .floating-notifications.background .notification-row .notification-background .notification > *:last-child > * .notification-action {
-          border-radius: 7px;
-          color: ${palette.getColor "text"};
-          background-color: ${palette.getColor "surface0"};
-          box-shadow: inset 0 0 0 1px ${palette.getColor "surface1"};
-          margin: 7px;
-        }
-
-        .floating-notifications.background .notification-row .notification-background .notification > *:last-child > * .notification-action:hover {
-          box-shadow: inset 0 0 0 1px ${palette.getColor "surface1"};
-          background-color: ${palette.getColor "surface0"};
-          color: ${palette.getColor "text"};
-        }
-
-        .floating-notifications.background .notification-row .notification-background .notification > *:last-child > * .notification-action:active {
-          box-shadow: inset 0 0 0 1px ${palette.getColor "surface1"};
-          background-color: ${palette.getColor "sapphire"};
-          color: ${palette.getColor "text"};
-        }
-
         .floating-notifications.background .notification-row .notification-background .close-button {
-          margin: 7px;
-          padding: 2px;
+          margin: 10px;
+          padding: 6px;
           border-radius: 6.3px;
           color: ${palette.getColor "base"};
           background-color: ${palette.getColor "red"};
@@ -243,10 +141,15 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           box-shadow: 0 0 25px 0 rgba(17, 17, 17, 0.6), inset 0 0 0 1px ${palette.getColor "surface0"};
           border-radius: 12.6px;
           margin: 18px;
-          background-color: ${palette.getColor "base"};
+          background-color: ${palette.mkRgba "base" "0.72"};
           color: ${palette.getColor "text"};
           padding: 14px;
-          opacity: 0.72;
+          opacity: 1;
+        }
+
+        .control-center .widget-title {
+          margin-top: 14px;
+          margin-bottom: 8px;
         }
 
         .control-center .widget-title > label {
@@ -314,33 +217,9 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           font-size: 1.2rem;
         }
 
-        .control-center .notification-row .notification-background .notification > *:last-child > * {
-          min-height: 3.4em;
-        }
-
-        .control-center .notification-row .notification-background .notification > *:last-child > * .notification-action {
-          border-radius: 7px;
-          color: ${palette.getColor "text"};
-          background-color: ${palette.getColor "crust"};
-          box-shadow: inset 0 0 0 1px ${palette.getColor "surface1"};
-          margin: 7px;
-        }
-
-        .control-center .notification-row .notification-background .notification > *:last-child > * .notification-action:hover {
-          box-shadow: inset 0 0 0 1px ${palette.getColor "surface1"};
-          background-color: ${palette.getColor "surface0"};
-          color: ${palette.getColor "text"};
-        }
-
-        .control-center .notification-row .notification-background .notification > *:last-child > * .notification-action:active {
-          box-shadow: inset 0 0 0 1px ${palette.getColor "surface1"};
-          background-color: ${palette.getColor "sapphire"};
-          color: ${palette.getColor "text"};
-        }
-
         .control-center .notification-row .notification-background .close-button {
-          margin: 7px;
-          padding: 2px;
+          margin: 10px;
+          padding: 6px;
           border-radius: 6.3px;
           color: ${palette.getColor "base"};
           background-color: ${palette.getColor "maroon"};
@@ -362,14 +241,133 @@ lib.mkIf (host.is.linux && host.is.workstation) {
 
         .control-center .notification-row .notification-background:hover {
           box-shadow: inset 0 0 0 1px ${palette.getColor "surface1"};
-          background-color: ${palette.getColor "overlay1"};
+          background-color: ${palette.getColor "surface1"};
           color: ${palette.getColor "text"};
         }
 
         .control-center .notification-row .notification-background:active {
           box-shadow: inset 0 0 0 1px ${palette.getColor "surface1"};
-          background-color: ${palette.getColor "sapphire"};
+          background-color: ${palette.getColor "surface2"};
           color: ${palette.getColor "text"};
+        }
+
+        .notification .notification-alt-actions {
+          padding: 4px;
+        }
+
+        .notification .notification-action {
+          margin: 3px;
+          padding: 0;
+        }
+
+        .notification .notification-action > button,
+        .notification .inline-reply-button {
+          min-height: 28px;
+          min-width: 28px;
+          padding: 8px;
+          border-radius: 8px;
+          color: ${palette.getColor "text"};
+          background-color: ${palette.getColor "crust"};
+          box-shadow: inset 0 0 0 1px ${palette.getColor "surface2"};
+        }
+
+        .notification .notification-action > button label,
+        .notification .inline-reply-button label {
+          font-family: "Work Sans", "FiraCode Nerd Font Mono";
+          font-size: 18px;
+          font-weight: 600;
+        }
+
+        .notification .notification-action > button:hover,
+        .notification .inline-reply-button:hover {
+          background-color: ${palette.getColor "surface2"};
+        }
+
+        .notification .notification-action > button:active,
+        .notification .inline-reply-button:active {
+          background-color: ${palette.getColor "sapphire"};
+          color: ${palette.getColor "crust"};
+        }
+
+        .notification .notification-action > button:disabled,
+        .notification .inline-reply-button:disabled {
+          background-color: ${palette.getColor "surface0"};
+          color: ${palette.getColor "overlay1"};
+        }
+
+        .notification .inline-reply {
+          margin-top: 8px;
+        }
+
+        .notification .inline-reply-entry {
+          min-height: 28px;
+          padding: 8px;
+          border-radius: 8px;
+          background-color: ${palette.getColor "crust"};
+          color: ${palette.getColor "text"};
+          caret-color: ${palette.getColor "text"};
+          box-shadow: inset 0 0 0 1px ${palette.getColor "surface2"};
+        }
+
+        .notification .inline-reply-entry text {
+          font-family: "Work Sans";
+          font-size: 18px;
+        }
+
+        .notification .inline-reply-entry text > placeholder {
+          color: ${palette.getColor "subtext0"};
+        }
+
+        .notification .inline-reply-entry text > selection {
+          background-color: ${palette.getColor "sapphire"};
+          color: ${palette.getColor "crust"};
+        }
+
+        .notification .inline-reply-button {
+          margin-left: 8px;
+        }
+
+        .notification .inline-reply-entry:focus-within,
+        .notification .inline-reply-button:focus-visible,
+        .notification .notification-action > button:focus-visible,
+        .notification-background .close-button:focus-visible {
+          outline: 2px solid ${palette.getColor "sapphire"};
+          outline-offset: -2px;
+        }
+
+        .notification-row:focus .notification-background,
+        .notification-group.collapsed:focus .notification-row:last-child .notification-background,
+        .notification-group:not(.collapsed):focus {
+          outline: 2px solid ${palette.getColor "sapphire"};
+          outline-offset: -2px;
+          border-radius: 8px;
+        }
+
+        .notification .notification-content {
+          padding-right: 24px;
+        }
+
+        .notification .notification-content > picture {
+          margin-top: 8px;
+          border-radius: 8px;
+        }
+
+        .notification progressbar {
+          margin-top: 8px;
+          margin-bottom: 4px;
+        }
+
+        .notification progressbar trough {
+          min-height: 8px;
+          border-radius: 4px;
+          background-color: ${palette.getColor "crust"};
+          box-shadow: inset 0 0 0 1px ${palette.getColor "surface2"};
+        }
+
+        .notification progressbar progress {
+          min-height: 8px;
+          min-width: 0;
+          border-radius: 4px;
         }
 
         .notification.critical progress {
@@ -423,38 +421,96 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         }
 
         .widget-mpris .widget-mpris-player {
+          min-width: 512px;
+          min-height: 512px;
+          margin: 0;
+          padding: 0;
           background: ${palette.getColor "surface0"};
-          padding: 7px;
+          border-radius: 14px;
+        }
+
+        .widget-mpris .mpris-background {
+          filter: none;
+        }
+
+        .widget-mpris .mpris-overlay {
+          padding: 24px;
+          background: linear-gradient(
+            to bottom,
+            ${palette.mkRgba "crust" "0.05"} 0%,
+            ${palette.mkRgba "crust" "0.2"} 20%,
+            ${palette.mkRgba "crust" "0.76"} 40%,
+            ${palette.mkRgba "crust" "0.76"} 55%,
+            ${palette.mkRgba "crust" "0.5"} 70%,
+            ${palette.mkRgba "crust" "0.9"} 100%
+          );
+        }
+
+        .widget-mpris .mpris-overlay > box:first-child > box {
+          margin: 0 8px;
+        }
+
+        .widget-mpris .mpris-overlay > box:last-child {
+          margin-top: 20px;
+        }
+
+        .widget-mpris .mpris-overlay button {
+          color: ${palette.getColor "text"};
+          background: ${palette.mkRgba "text" "0.1"};
+          min-width: 24px;
+          min-height: 24px;
+          margin: 0 4px;
+          padding: 10px;
+          border-radius: 50%;
+        }
+
+        .widget-mpris .mpris-overlay button image {
+          -gtk-icon-size: 24px;
+          min-width: 24px;
+          min-height: 24px;
+          margin: 0;
+          padding: 0;
+        }
+
+        .widget-mpris .mpris-overlay button:nth-child(3) {
+          background: ${palette.getColor "text"};
+          color: ${palette.getColor "crust"};
+        }
+
+        .widget-mpris .mpris-overlay button:hover {
+          background: ${palette.getColor "surface2"};
+          color: ${palette.getColor "text"};
+        }
+
+        .widget-mpris .mpris-overlay button:focus-visible {
+          outline: 2px solid ${palette.getColor "sapphire"};
+          outline-offset: 3px;
+        }
+
+        .widget-mpris .mpris-overlay button:active,
+        .widget-mpris .mpris-overlay button:checked {
+          background: ${palette.getColor "sapphire"};
+          color: ${palette.getColor "base"};
+        }
+
+        .widget-mpris .mpris-overlay button:disabled {
+          color: ${palette.getColor "overlay1"};
+          background: transparent;
         }
 
         .widget-mpris .widget-mpris-title {
+          color: ${palette.getColor "text"};
           font-family: "Work Sans";
-          font-size: 1.2rem;
+          font-size: 28px;
+          font-weight: 700;
+          text-shadow: 0 1px 3px ${palette.getColor "crust"};
         }
 
         .widget-mpris .widget-mpris-subtitle {
+          color: ${palette.getColor "subtext1"};
           font-family: "Work Sans";
-          font-size: 0.8rem;
-        }
-
-        .widget-menubar > box > .menu-button-bar > button > label {
-          font-size: 1.5rem;
-          padding: 0 1rem;
-        }
-
-        .widget-menubar > box > .menu-button-bar > :nth-last-child(2) {
-          color: ${palette.getColor "yellow"};
-        }
-
-        .widget-menubar > box > .menu-button-bar > :last-child {
-          color: ${palette.getColor "red"};
-          padding: 0 0;
-        }
-
-        .power-buttons button:hover,
-        .powermode-buttons button:hover,
-        .screenshot-buttons button:hover {
-          background: ${palette.getColor "surface0"};
+          font-size: 18px;
+          text-shadow: 0 1px 3px ${palette.getColor "crust"};
         }
 
         .control-center .widget-label > label {
