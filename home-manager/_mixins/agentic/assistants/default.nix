@@ -538,21 +538,17 @@ let
       ${body}
     '';
 
-  # Build Codex's companion agents/openai.yaml for a command-derived skill
-  # when header.codex.toml declares allow-implicit-invocation. Absence keeps
-  # Codex's default implicit-selection behaviour and emits no sidecar file.
+  # Command-derived skills always require explicit invocation. A header can
+  # repeat the false policy but cannot enable implicit invocation.
   mkCodexCommandOpenAiYaml =
     cmdPath:
     let
       codexHeaderPath = cmdPath + "/header.codex.toml";
       codexHeader = readTomlOrEmpty codexHeaderPath;
-      hasAllowImplicitInvocation = builtins.hasAttr "allow-implicit-invocation" codexHeader;
-      rawAllowImplicitInvocation = codexHeader."allow-implicit-invocation" or null;
+      rawAllowImplicitInvocation = codexHeader."allow-implicit-invocation" or false;
     in
-    if !hasAllowImplicitInvocation then
-      null
-    else if !(builtins.isBool rawAllowImplicitInvocation) then
-      throw "Invalid allow-implicit-invocation value in ${toString codexHeaderPath}: expected boolean (true or false), got ${builtins.toJSON rawAllowImplicitInvocation}."
+    if !(builtins.isBool rawAllowImplicitInvocation) || rawAllowImplicitInvocation then
+      throw "Invalid allow-implicit-invocation value in ${toString codexHeaderPath}: expected false because commands require explicit invocation, got ${builtins.toJSON rawAllowImplicitInvocation}."
     else
       renderCodexOpenAiYaml { allowImplicitInvocation = rawAllowImplicitInvocation; };
 
@@ -662,7 +658,7 @@ let
   # are symlinked into place. The scanner only inspects SKILL.md itself for the
   # is_file() check, and it does follow symlinked directories, so symlinks for
   # extras are safe and avoid copying large reference trees. Command-derived
-  # skills can also write agents/openai.yaml from header.codex.toml.
+  # skills always write agents/openai.yaml with implicit invocation disabled.
   codexSkillsActivationScript =
     let
       skillCmds = lib.concatStringsSep "\n" (

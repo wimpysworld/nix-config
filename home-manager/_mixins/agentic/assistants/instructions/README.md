@@ -373,6 +373,10 @@ front-load its use case. Codex command skills in `default.nix` dispatch
 through `spawn_agent` by default for agent-scoped commands, mirroring the
 fresh-context default expressed in Pi's preludes.
 
+Generated Codex commands are manual-only through `policy.allow_implicit_invocation: false` in each command's `agents/openai.yaml`. The shared helper applies the policy to public and encrypted commands. Ordinary skills, including `delegate-task`, retain their existing invocation policies.
+
+Users invoke commands with `$name` or `/skills` in Codex CLI. Nested workflows explicitly load the generated `SKILL.md` from the configured skills root. They pass arguments, authority, and return requirements, and state who owns execution. A command reference in assistant prose does not invoke the client. Same-context reuse must explicitly bypass the launch wrapper, and workers never launch another specialist. See [workflow composition](../../codex/README.md#workflow-composition) for the configured paths.
+
 ## 7. References
 
 Authoritative sources behind the global rules and the generated

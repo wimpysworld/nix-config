@@ -8,7 +8,7 @@ This command is the sole dispatcher. Every planner, phase worker, and specialist
 
 Side effects: this command creates and checks out one Git branch; writes implementation and documentation files; writes and removes its task plan directories beneath `${TMPDIR:-/tmp}/agent-plans/`; updates tracker assignment, status, and comments or appends to a local task file; and stages and commits selected paths. It never pushes or opens a pull request.
 
-Command invocation: use the current provider's command prefix. Codex uses `$command`; slash-command runtimes use `/command`. Invoke named commands only from this context, wait for each return, and tell each launched specialist not to delegate.
+Resolve named workflows from the available skill catalogue, configured skill roots, or repository command source. Read their instructions before use. Apply workflow bodies with explicit arguments, this command's authority, and the required return contract. Ignore generated launch wrappers. This context owns every specialist dispatch, and each specialist returns directly without delegation.
 
 ### Process
 
@@ -32,11 +32,11 @@ Give each worker the task's scope and acceptance criteria plus its phase's depen
 
 **6. Validate and align that task here.** Check the task's combined changed files against its `Acceptance criteria` and `Scope`. Resolve open decisions with bounded research. If evidence still conflicts, take the conservative path that fits existing patterns and record why. Dispatch a fresh corrective phase for any implementation gap, then revalidate.
 
-After validation passes, invoke `align-documentation <changed files>` where documentation must change. For changed prompts, commands, skills, assistants, or project instructions, invoke the matching `update-command`, `update-skill`, `update-assistant`, or `update-agents-md` workflow. These are direct specialist dispatches from this command. Wait for each return and revalidate its changes.
+After validation passes, dispatch the `align-documentation` workflow body with the changed paths where documentation must change. For changed prompts, commands, skills, assistants, or project instructions, dispatch the matching `update-command`, `update-skill`, `update-assistant`, or `update-agents-md` body. Give each specialist the exact paths, authorised scope, and return contract. These are direct specialist dispatches from this command, without generated launch wrappers. Wait for each return and revalidate its changes.
 
 Read `contribution-voice` first unless its complete, current instructions are in this context. Apply it to the durable record. Write the durable record from this context: 2 to 4 prose sentences saying what now exists and anything a reader must act on. Use no headings, bullets, or file list. Include only a non-obvious decision or carried risk, say the acceptance criteria pass in one clause, and name a criterion only when it does not. Post it as the reference's `durable record` describes, or append it to the local task file.
 
-**7. Commit that task here, then loop.** One commit per task, as soon as its validation and durable record are done, in the commit order from step 2. Stage explicitly with path-limited `git add -- <path>` from that task's reports, so that parallel children's changes never mix in one commit. Never use `git add .`, `-A`, or `-u`. Invoke `draft-commit-message`, add the `Refs:` footer the reference's `branch link` section names for a tracked task, and commit from this context so workers never contend for the index. Delete that task's plan directory after its commit lands, then start the next task at step 4.
+**7. Commit that task here, then loop.** One commit per task, as soon as its validation and durable record are done, in the commit order from step 2. Stage explicitly with path-limited `git add -- <path>` from that task's reports, so that parallel children's changes never mix in one commit. Never use `git add .`, `-A`, or `-u`. Read and follow the `draft-commit-message` body in this context, without its launch wrapper. Supply the task intent and staged diff. Add the `Refs:` footer the reference's `branch link` section names for a tracked task. Commit from this context so workers never contend for the index. Delete that task's plan directory after its commit lands, then start the next task at step 4.
 
 **8. Stop after the final commit.** Do not push. Do not open a pull request or draft its body; the user runs `make-pr` manually.
 

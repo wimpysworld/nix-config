@@ -58,7 +58,7 @@ Keep it cheap. List the directory names under `agents/`, `commands/`, `agents/*/
 
 Report first. Never edit anything before the user chooses.
 
-For each accepted suggestion, delegate to `rosey`, one sub-agent per suggestion. Rosey owns prompts, skills, commands, and instruction files, and runs `create-command`, `update-command`, `create-skill`, `update-skill`, `update-agents-md`, or `create-agents-md` as the case needs.
+For each accepted suggestion, delegate to `rosey`, one sub-agent per suggestion. Supply the matching `create-command`, `update-command`, `create-skill`, `update-skill`, `update-agents-md`, or `create-agents-md` workflow body. Resolve it through the available skill catalogue, configured skill roots, or repository command source. Give Rosey the exact paths, accepted change, authority, and return contract. Rosey loads the required authoring skill and applies the body directly, without a generated launch wrapper or further delegation.
 
 A Fence policy change is the exception. It is Nix, not a prompt, so delegate that one to `donatello`, under the same report-first gate. Tell it to run `just eval` before it reports.
 

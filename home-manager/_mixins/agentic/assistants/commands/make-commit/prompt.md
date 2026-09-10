@@ -4,7 +4,7 @@ Draft the commit message with `draft-commit-message`, then create one Git commit
 
 This command mutates Git by staging selected files and running `git commit`. It never pushes.
 
-Run this command in the current context. Do not launch a sub-agent or a Task for any step; the current context holds the change intent that the commit message needs, and a delegation round trip loses it. For the draft phase, follow the `draft-commit-message` prompt directly in this context, ignoring any launch instruction in its composed body, and produce its fenced message here. One exception: when the staged diff is large and this session did not author it, delegate the whole command to the `garfield` agent instead.
+Run this command in the current context. Do not launch a sub-agent or a Task for any step; the current context holds the change intent that the commit message needs, and a delegation round trip loses it. Resolve `draft-commit-message` through the available skill catalogue, configured skill roots, or repository command source. Read its body and follow the draft phase here, ignoring generated launch instructions. Supply the known intent and staged diff, and preserve its fenced message. One exception: when the staged diff is large and this session did not author it, the top-level orchestrator delegates the whole command to `garfield`. A worker never delegates this exception.
 
 ### Non-durable working documents
 

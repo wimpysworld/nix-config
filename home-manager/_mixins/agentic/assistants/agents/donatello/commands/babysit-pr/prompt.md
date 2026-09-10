@@ -2,7 +2,7 @@
 
 Take GitHub PR `$ARGUMENTS` to the finish line: every check green on the current head, every review thread answered, and every required approval given. Fix the CI failures the PR caused, triage flakes, answer reviews, then wait for the humans. Ask for the PR URL only if `$ARGUMENTS` is blank.
 
-Invoke named commands with the provider's prefix. Codex uses `$make-commit`; slash-command runtimes use `/make-commit`. If the platform cannot expand a command, follow that command's prompt directly.
+Resolve named workflows through the available skill catalogue, configured skill roots, or repository command source. Read their bodies before use. Supply exact arguments, this command's authority, and the return contract. Follow `make-commit` and its direct draft phase in this context without generated launch wrappers. This command owns every specialist dispatch. Workers return directly and launch no agents.
 
 ### Authority
 
@@ -46,7 +46,7 @@ The merge is the user's. Reaching the finish line ends the loop with the report 
 
 ### The loop
 
-Every shift starts with the finish-line read, then a synchronous review scan: fetch the PR's current reviews and review threads through `gh-api-safe`, apply the filter under **Answer reviews**, dispatch `address-code-review` for anything that remains, and wait for it. This scan is an orchestrator action, not a watcher. Never report a head as finished until its scan has completed.
+Every shift starts with the finish-line read, then a synchronous review scan. Fetch the PR's current reviews and review threads through `gh-api-safe`. Apply the filter under **Answer reviews**, then follow the `address-code-review` body here for anything that remains. Wait for that workflow to complete. This scan is an orchestrator action, not a watcher. Never report a head as finished until its scan has completed.
 
 Then dispatch watchers with `delegate-task`, each with fresh context, read-only, and a 30 minute deadline stated in the packet. A watcher stops at the deadline and reports rather than exceeding it, and a watcher that reports "still running" is replaced with a fresh one. Which watchers run depends on what is outstanding:
 
@@ -77,7 +77,7 @@ State the evidence for each call.
 
 ### Fix what the PR caused
 
-One fresh sub-agent per distinct failure, in parallel where the fixes do not overlap, one error each. Each sub-agent makes the smallest fix, verifies locally where practical, and returns the files changed and why. The orchestrator then runs `make-commit` and pushes with an explicit refspec: `git push origin <branch>`. A bare `git push` depends on tracking configuration that may be absent, and pushes nothing when it is. Never pass `-u`: a sandbox mounts `.git/config` read-only, so the upstream write fails after the push has already landed.
+One fresh sub-agent per distinct failure, in parallel where the fixes do not overlap, one error each. Each sub-agent makes the smallest fix, verifies locally where practical, and returns the files changed and why. The orchestrator then follows the loaded `make-commit` body and pushes with an explicit refspec: `git push origin <branch>`. A bare `git push` depends on tracking configuration that may be absent, and pushes nothing when it is. Never pass `-u`: a sandbox mounts `.git/config` read-only, so the upstream write fails after the push has already landed.
 
 Verify the push landed before you watch, reply, or report the fix. Run `git fetch origin <branch>`, then compare `git rev-parse HEAD` against `git rev-parse FETCH_HEAD`. Report a mismatch and stop. Never trust the exit status alone: a push that matches nothing reports success while doing nothing, so CI never runs and the pull request sits on stale code.
 
@@ -98,9 +98,9 @@ Read `contribution-voice` first unless its complete, current instructions are in
 
 Thread filter, used by the shift scan and the review watcher alike: skip resolved threads, threads whose most recent reply came from the user, and outdated threads. This is the same filter `address-code-review` applies.
 
-When a review or review comment lands, from a bot or a human, dispatch a fresh sub-agent running `address-code-review` against the PR URL. Give it the same 30 minute deadline as a watcher, and require one progress message when it stops judging and starts fixing. On the deadline it reports the threads answered so far and stops, and the loop dispatches a fresh one.
+When a review or review comment lands, read and follow the `address-code-review` workflow body here with the exact PR URL. Ignore its generated launch wrapper. Keep its orchestration, staging, commits, push, and replies in this context. Set a 30 minute deadline for this single-pass review phase. Only this top-level orchestrator dispatches finding workers, with that deadline and no delegation. Report progress when judging ends and fixing starts. At the deadline, collect completed work and report the threads answered. Return to the watcher loop, then resume outstanding threads from live state on the next shift.
 
-That command owns the whole cycle. It skips threads already handled, judges each finding, fixes and commits what it accepts, pushes, replies in the thread, and resolves the threads its rules allow. Report what it returns and do nothing further with those threads.
+That workflow owns the review cycle within this command. It skips handled threads, judges each finding, dispatches fixes, commits, pushes, replies, and resolves threads as its rules allow. Report its result and do nothing further with those threads.
 
 When `reviewDecision` is `CHANGES_REQUESTED` and the fix for that review has been pushed, re-request the review once from that reviewer with `gh pr edit <url> --add-reviewer <login>`. Approvals are given by people. Never approve, never nudge anyone outside GitHub, and never treat a wait for approval as a fault.
 

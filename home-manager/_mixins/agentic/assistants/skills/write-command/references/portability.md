@@ -2,6 +2,12 @@
 
 Use the smallest portable set. Add fields only when a target needs them.
 
+## Current Codex command contract
+
+This repository emits commands as skills under the configured Codex skills path. Users invoke `$name`, not a custom slash command. Each command includes `agents/openai.yaml` with `policy.allow_implicit_invocation: false`. The composer owns this mandatory policy for plaintext and secret commands. Ordinary reusable skills retain their existing policies.
+
+Codex receives accompanying arguments as user text. It does not substitute `$ARGUMENTS`, `$1..$9`, or `$NAMED` inside a command-derived skill. Map the text to the command's declared inputs explicitly. A nested `$child` token does not load another skill. Read the workflow instructions through the available catalogue or configured skill roots. Preserve the arguments, authority, and context owner when applying that body.
+
 ## Frontmatter matrix
 
 | Field                      | Claude Code (legacy + skill-as-command) | OpenCode                                               | Pi                          | Codex (legacy `/prompts:`) |
@@ -21,11 +27,14 @@ Use the smallest portable set. Add fields only when a target needs them.
 | Claude Code | `.claude/commands/<name>.md` (legacy) or `.claude/skills/<name>/SKILL.md` | `/<name>`                              |
 | OpenCode    | `.opencode/commands/<name>.md` or `~/.config/opencode/commands/<name>.md` | `/<name>`                              |
 | Pi          | `~/.pi/agent/prompts/<name>.md` or `.pi/prompts/<name>.md`                | `/<name>` (skills via `/skill:<name>`) |
-| Codex       | `~/.codex/prompts/<name>.md` (flat, no subdirs)                           | `/prompts:<name>` (deprecated)         |
+| Codex       | `<configured-skills-root>/<name>/SKILL.md` plus `agents/openai.yaml`    | `$name` (manual-only command)          |
+| Codex legacy | `~/.codex/prompts/<name>.md` (flat, no subdirs)                         | `/prompts:<name>` (removed in CLI 0.117.0) |
 
 ## Placeholder matrix
 
-| Placeholder                             | Claude Code legacy                         | Claude Code skill-as-command   | OpenCode      | Pi                   | Codex         |
+The Codex column below describes legacy custom prompts only, not current command-derived skills.
+
+| Placeholder                             | Claude Code legacy                         | Claude Code skill-as-command   | OpenCode      | Pi                   | Codex legacy  |
 | --------------------------------------- | ------------------------------------------ | ------------------------------ | ------------- | -------------------- | ------------- |
 | `$ARGUMENTS`                            | yes (full string)                          | yes (full string)              | yes           | yes                  | yes           |
 | `$1..$9`                                | undocumented                               | `$ARGUMENTS[N]`, **0-indexed** | **1-indexed** | **1-indexed**        | **1-indexed** |
@@ -36,9 +45,9 @@ Use the smallest portable set. Add fields only when a target needs them.
 
 ## The `$1` hazard
 
-`$1` does not mean the same thing everywhere. Pi, OpenCode, and Codex treat `$1` as the **first** positional argument. The new Claude Code skill-as-command format treats `$N` as `$ARGUMENTS[N]` with **0-based indexing**, so `$0` is the first argument and `$1` is the second. The legacy Claude Code command format does not document positional placeholders at all.
+`$1` does not mean the same thing everywhere. Pi, OpenCode, and legacy Codex custom prompts treat `$1` as the **first** positional argument. The new Claude Code skill-as-command format treats `$N` as `$ARGUMENTS[N]` with **0-based indexing**, so `$0` is the first argument and `$1` is the second. The legacy Claude Code command format does not document positional placeholders at all. Current Codex command-derived skills perform no placeholder substitution.
 
-Rule for portable shims: use `$ARGUMENTS` when the whole user-typed string can pass through unchanged. Reserve `$1..$9` for command bodies consumed exclusively by Pi / OpenCode / Codex where position-by-position split is essential.
+Rule for shared shims: use `$ARGUMENTS` for the full user text. On Codex, map that text explicitly. Preserve existing positional placeholders, but define their positions for runtimes without substitution.
 
 ## OpenCode `subtask` semantics
 
@@ -57,7 +66,7 @@ OpenCode 0.6.4 and below ignored per-command `model:`; the fix shipped in a late
 
 ## Codex coverage
 
-Codex custom prompts are deprecated. Skills are the supported route for reusable invocation on Codex. Cover Codex briefly here; point new Codex work at `write-skill` and the companion `agents/openai.yaml` UI metadata file.
+Codex CLI 0.117.0 removed custom prompts. Use this repository's command composer for manual-only `$name` commands. Use `write-skill` for ordinary reusable skills. The companion `agents/openai.yaml` holds the invocation policy, not portable frontmatter.
 
 ## Cursor and Aider
 

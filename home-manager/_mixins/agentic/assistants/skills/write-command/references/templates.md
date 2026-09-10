@@ -2,6 +2,24 @@
 
 Three filled examples covering the supported forms. Copy and edit; do not invent a fourth form unless §3.1 of `SKILL.md`'s decision rules clearly demand it.
 
+## Contents
+
+- [Generated Codex policy](#generated-codex-policy)
+- [Form A: shim that loads a skill](#form-a-shim-that-loads-a-skill)
+- [Form B: trivial standalone](#form-b-trivial-standalone)
+- [Form C: standalone with output format](#form-c-standalone-with-output-format)
+
+## Generated Codex policy
+
+The composer adds the mandatory Codex policy to every form below, including commands with secret bodies. Do not copy it into shared provider headers. The generated `agents/openai.yaml` contains:
+
+```yaml
+policy:
+  allow_implicit_invocation: false
+```
+
+Users invoke the generated command as `$name`. Codex receives accompanying arguments as user text, without template substitution. Follow the argument mapping in `SKILL.md`.
+
 ## Form A: shim that loads a skill
 
 Five-line body. Captures `$ARGUMENTS`, names the flow, loads the skill, refuses to duplicate doctrine. Mirrors `create-skill`, `create-assistant`, `create-agents-md`.

@@ -26,7 +26,9 @@ Adding these to a portable skill is harmless on Codex/OpenCode/Pi (ignored), but
 
 ## Codex companion
 
-Codex supports `agents/openai.yaml` next to the skill for UI metadata and `allow_implicit_invocation`. Only needed when publishing skills to Codex users.
+Codex supports `<skill>/agents/openai.yaml` for UI metadata and `policy.allow_implicit_invocation`. Ordinary reusable skills keep their existing policy or Codex's default implicit invocation. This repository's composer sets `policy.allow_implicit_invocation: false` for every command-derived skill, including secret commands. Keep that mandatory command policy separate from ordinary skills and portable `SKILL.md` frontmatter.
+
+The policy controls implicit selection, not explicit file reads within an authorised workflow. A `$child` reference inside a loaded skill does not recursively load the child. Read dependent instructions through the available catalogue or configured skill roots before applying them.
 
 ## Pi specifics
 

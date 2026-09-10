@@ -16,19 +16,19 @@ When no composer exists, verify each supported client's current project path and
 | Client      | Repository form to verify                                          |
 | ----------- | ------------------------------------------------------------------ |
 | Claude Code | `.claude/commands/<name>.md` or a skill exposed as a command       |
-| Codex       | A skill under the current skills path; custom prompts are obsolete |
+| Codex       | A manual-only skill under the configured skills path, invoked as `$name` |
 | OpenCode    | `.opencode/commands/<name>.md`                                     |
 | Pi          | `.pi/prompts/<name>.md`                                            |
 
-Do not assume that provider frontmatter fields or agent routing work on another client. If Codex receives commands as generated skills, validate that generated skill as well as the slash-command forms.
+Do not assume that provider frontmatter fields or agent routing work on another client. If Codex receives commands as generated skills, validate the skill and its `agents/openai.yaml` companion. Require `policy.allow_implicit_invocation: false` for each command, including secret bodies. Preserve ordinary skill policies.
 
 ## Validate
 
 1. Check that every required source file and provider header exists and parses.
 2. Run the repository composer or evaluation for Claude Code, OpenCode, Pi, and any generated Codex skill form.
-3. Inspect each emitted artefact. Confirm its description, argument hint, `$ARGUMENTS` text, agent binding or launch wrapper, and body.
+3. Inspect each emitted artefact. Confirm its description, argument hint where supported, argument handling, agent binding or launch wrapper, and body. For Codex, check the companion policy and explicit argument mapping without assuming template substitution.
 4. Confirm the command appears in each installed client's discovery output when such diagnostics exist.
-5. Check flat command and skill namespaces for collisions.
+5. Check flat command and skill namespaces for collisions. Codex command-derived skills share the skill namespace. Verify nested workflows use explicit instruction reads or direct specialist dispatch, not recursive `$name` expansion.
 6. Run repository formatting, evaluation, and required checks.
 
 Do not claim cross-client support from the shared prompt alone. Validate the composed provider forms.

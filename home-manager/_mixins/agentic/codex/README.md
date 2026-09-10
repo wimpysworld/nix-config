@@ -89,9 +89,19 @@ SKILL.md frontmatter requires `name:` and `description:` fields. Quote any `desc
 
 ### Command Skills
 
-Codex no longer supports user-defined slash commands. The `/` commands are built into the binary. Custom commands are deployed as skills instead.
+Codex CLI uses `$name` or the `/skills` picker for custom commands, which this repository deploys as skills. It does not support custom `/name` commands. CLI custom prompts were removed in 0.117.0, so the historical `/prompts:name` syntax is unavailable.
 
-Each agent command becomes a skill named after the bare command (matching the Pi prompt convention; e.g. `$draft-commit-message` rather than `$garfield-draft-commit-message`). When the command has `header.codex.toml` with `spawn-agent = true`, the generated skill tells Codex to launch that specialist with `spawn_agent` and keep the parent thread as the orchestrator. Commands without that flag still embed the agent persona plus the command task prompt.
+Every generated command is manual-only, including standalone commands, agent-owned commands, and commands with encrypted bodies. The shared `mkCodexCommandOpenAiYaml` helper writes this companion file beside each command's `SKILL.md`:
+
+```yaml
+# agents/openai.yaml
+policy:
+  allow_implicit_invocation: false
+```
+
+The policy excludes commands from implicit selection while preserving explicit user invocation. It is not an access restriction. Ordinary reusable skills retain their existing policies. The policy belongs in `agents/openai.yaml`, not in `SKILL.md` frontmatter.
+
+Each agent command uses its bare name, such as `$draft-commit-message`, which matches the Pi prompt convention. Agent commands dispatch to their owning specialist through `spawn_agent` by default. The parent remains the orchestrator. A command with `spawn-agent = false` in `header.codex.toml` embeds the owning persona and task prompt in the caller's context.
 
 ```text
 $draft-commit-message
@@ -109,6 +119,14 @@ $grill-me
 ```
 
 The shared composer asserts at evaluation time that no two sources (project skill, standalone command, or agent-scoped command) produce the same skill name. Renaming the offending source is the fix; the throw message names both the duplicate and every source path that produces it.
+
+### Workflow composition
+
+`$name` is user input syntax. A `$child` reference inside a loaded command does not recursively invoke another command.
+
+For nested workflows, load the child's generated `SKILL.md` explicitly from the configured skills root. This root follows `home.preferXdgDirectories`: `~/.codex/skills` or `${XDG_CONFIG_HOME}/codex/skills`. Pass arguments, authority, and the return contract explicitly. State whether the current agent runs the task body or the top-level orchestrator dispatches the owning specialist.
+
+Keep agent launch wrappers unless the calling workflow explicitly requires same-context reuse. Workers must not launch another specialist. For example, `make-commit` reuses `draft-commit-message` in the current context and retains ownership of the Git index.
 
 ## Agents
 

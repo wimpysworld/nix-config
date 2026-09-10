@@ -223,11 +223,13 @@ voice differs by artefact; mixing them weakens adherence.
 
 ### 4.4 Argument substitution
 
-`$1` is the first positional argument on Pi, OpenCode, and Codex. In Claude
+`$1` is the first positional argument on Pi and OpenCode. In Claude
 Code's new merged skill-as-command format, `$N` is `$ARGUMENTS[N]` with
 zero-based indexing, so `$0` is the first argument and `$1` is the second.
 The portable choice for a single free-form argument is `$ARGUMENTS`; all
-Rosey shims standardise on it.
+Rosey shims standardise on it. Codex generated command skills do not provide
+native placeholder substitution. Treat trailing user text as the arguments,
+and bind `$ARGUMENTS` or positional inputs explicitly when reusing a workflow.
 
 ### 4.5 No README inside skills
 
@@ -274,8 +276,23 @@ needed.
 Codex implements the Agent Skills open spec and loads from `.agents/skills/`
 in the repo and `$HOME/.agents/skills` globally. The skill listing is
 capped at roughly 2% of the context window, so descriptions must front-load
-the use case. Codex custom prompts (`/prompts:<name>`) are deprecated;
-skills are the supported route for both explicit and implicit invocation.
+the use case. Codex CLI removed custom prompts in 0.117.0. The historical
+`/prompts:<name>` syntax is unavailable. Users invoke generated command skills
+with `$name` or `/skills`, not custom `/name` commands.
+
+This repository makes every generated command manual-only through
+`policy.allow_implicit_invocation: false` in `agents/openai.yaml`. The shared
+helper applies the policy to public and encrypted commands. Keep invocation
+policy out of `SKILL.md` frontmatter. Ordinary reusable skills retain their
+existing policies.
+
+For nested workflows, explicitly load the generated `SKILL.md` from the
+configured Codex skills root. Pass arguments, authority, and the return
+contract explicitly. Specify same-context reuse or dispatch by the top-level
+orchestrator. Bypass a launch wrapper only when the calling workflow explicitly
+requires same-context reuse. Workers must not launch another specialist.
+See [workflow composition](../../../codex/README.md#workflow-composition).
+
 `AGENTS.md` is the Codex memory file with a 32 KiB project-doc cap and
 `AGENTS.override.md` for nearest-wins overrides.
 
@@ -317,7 +334,7 @@ Rosey's design. URLs preserved verbatim.
 - Codex Agent Skills: https://developers.openai.com/codex/skills
 - Codex customisation concepts: https://developers.openai.com/codex/concepts/customization
 - Custom instructions with AGENTS.md: https://developers.openai.com/codex/guides/agents-md
-- Codex custom prompts (deprecated): https://developers.openai.com/codex/custom-prompts
+- Codex custom prompts (historical, removed from CLI 0.117.0): https://developers.openai.com/codex/custom-prompts
 - Codex CLI README: https://github.com/openai/codex/blob/9a8730f3/codex-cli/README.md
 - Codex system prompt source: https://github.com/openai/codex/blob/main/codex-rs/core/prompt.md
 - `skill-creator` skill: https://github.com/openai/skills/blob/main/skills/.system/skill-creator/SKILL.md

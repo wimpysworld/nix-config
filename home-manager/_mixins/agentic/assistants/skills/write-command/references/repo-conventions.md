@@ -42,4 +42,8 @@ This dispatches the command through Claude's Task tool instead of the `@agent` p
 
 ## Codex output
 
-Codex receives every command as a command-derived skill. Agent-scoped commands use `spawn_agent` by default. Set `spawn-agent = false` to embed the owning agent prompt in the caller's context. New Codex-only reference guidance belongs in a native skill.
+Codex receives every command as a manual-only command-derived skill. Users invoke `$name`. The composer emits `agents/openai.yaml` with `policy.allow_implicit_invocation: false` for every command, including secret bodies. The command policy is mandatory and does not change ordinary skill policies.
+
+Agent-scoped commands use `spawn_agent` by default. Set `spawn-agent = false` to embed the owning agent prompt in the caller's context. For nested workflows, follow the source body directly or dispatch it from the top-level orchestrator. Do not execute a generated launch wrapper inside a worker. Resolve installed instructions through the available catalogue or configured skill roots, not a fixed home path.
+
+Codex does not substitute `$ARGUMENTS` or positional placeholders in these skills. Map the user's accompanying text to the body's declared arguments. New Codex-only reference guidance belongs in a native skill.

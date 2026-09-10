@@ -2,9 +2,9 @@
 
 Work Linear issues in bulk: the whole Triage queue by default, or the issues named in the input. This command orchestrates; it never researches an issue and never writes to Linear itself. One fresh sub-agent per issue does both.
 
-Input: `$ARGUMENTS` is one or more Linear issue keys to triage, separated by spaces or commas. Blank means all: triage the whole queue. This command is Linear-only, because GitHub Projects has no Triage queue. Reject a GitHub issue reference and say so. This is a fan-out of fan-outs: each issue spawns `research-task`, which itself fans out across Linear, GitHub, Slack, and the web, so twenty issues is easily hundreds of sub-agents. Run at most five issue sub-agents at once. The cap is the point. Never exceed it.
+Input: `$ARGUMENTS` is one or more Linear issue keys to triage, separated by spaces or commas. Blank means all: triage the whole queue. This command is Linear-only, because GitHub Projects has no Triage queue. Reject a GitHub issue reference and say so. Each issue worker performs research and update in its own context, without further delegation. Run at most five issue sub-agents at once. The cap is the point. Never exceed it.
 
-Command invocation: use the current provider's command prefix. Codex uses `$command`; slash-command runtimes use `/command`. The steps below name commands without a prefix.
+Resolve `update-task` through the available skill catalogue, configured skill roots, or repository command source. Give each issue worker its workflow body, exact issue key, batch authority, and return contract. Each worker applies the body in its own research context without a generated launch wrapper and launches no agents.
 
 ### Process
 
@@ -25,8 +25,8 @@ The two sweeps differ in coverage, so report them apart: the assignee sweep is w
 
 **4. Spawn one fresh sub-agent per issue.** Never research an issue or write to Linear in this context. Never hand two issues to one sub-agent. Give each sub-agent the issue key and this instruction set:
 
-1. Load and apply the `research-task` skill to the issue key.
-2. Run `update-task <issue key>` in the same context. `research-task` files nothing, so `update-task` must see that research as its own session in order to have anything to merge. A sub-agent that runs only one of the two has done nothing useful.
+1. Load and apply the `research-task` skill to the issue key. Perform its research here without its agent fan-out. Preserve its research scope and evidence requirements.
+2. Read and follow the `update-task` workflow body with the exact issue key in this same context. Ignore its generated launch wrapper. `research-task` files nothing, so the update must consume this worker's research directly. Complete both phases without launching another agent.
 3. Where the research concludes the issue is a duplicate, is obsolete, or should be dropped, report that as a recommendation and change nothing.
 4. Return a short report only: issue key, what changed, the new status, and any recommendation. No research detail.
 5. Send one progress message to the parent when research completes and `update-task` starts.

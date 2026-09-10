@@ -97,6 +97,8 @@ Agent Tripwire is not an agent bypass system. Blocked write, edit, post, and sur
 
 ### Session Priming
 
+In Codex CLI, use `$ready` for the session command below. Claude Code, OpenCode, and Pi use `/ready`.
+
 Every session begins with `/ready We are going to <broad activity description>`. This is a step-back prompt ([Zheng et al., 2023](https://arxiv.org/abs/2310.06117)) - an abstraction-first technique that weights the model's attention toward the relevant domain before specifics arrive. The description stays deliberately vague ("document my MCP configuration", not "write a README for the assistants directory") so the model activates broad domain knowledge rather than narrowing prematurely. Detailed instructions follow in subsequent messages once the model's attention is oriented.
 
 ### Context-Efficient Orchestration
@@ -385,6 +387,18 @@ No other agent or command sets a model on any platform. The ten remaining agents
 `compose.nix` reads the source tree and generates platform-specific output. Each agent has one `prompt.md` and optional per-platform headers: `header.claude.yaml`, `header.opencode.yaml`, `header.codex.toml`, and `header.pi.yaml`. Only Garfield carries the Codex and Pi headers today. Codex agents use `header.codex.toml` for role-local config, and Codex command skills can use `header.codex.toml` with `spawn-agent = true` to delegate through `spawn_agent`.
 
 Pi composition routes through `compose.composeAgentFromPrompt "pi"` and `compose.composeCommand "pi"`. The agent-scoped command prelude is assembled in `default.nix` and wraps `composePiCommandFromPrompt`. The Codex output uses the same pattern with a `spawn_agent` wrapper around command-derived skills.
+
+### Codex command policy
+
+Codex CLI invokes generated commands with `$name` or the `/skills` picker. Custom `/name` commands are unsupported. Every generated command is manual-only, including standalone, agent-owned, and encrypted commands.
+
+The shared `mkCodexCommandOpenAiYaml` helper emits `policy.allow_implicit_invocation: false` in each command's `agents/openai.yaml`. Existing `allow-implicit-invocation = false` headers remain valid. A `true` override fails evaluation. Ordinary reusable skills retain their existing policies, and other providers retain their command formats.
+
+User invocation and workflow composition are separate. A nested `$child` reference does not invoke a command. Load its generated `SKILL.md` from the configured Codex skills root, then pass the arguments, authority, and return contract explicitly. The root follows `home.preferXdgDirectories`: `~/.codex/skills` or `${XDG_CONFIG_HOME}/codex/skills`.
+
+The calling workflow must name the executor: the current agent or a specialist dispatched by the top-level orchestrator. Same-context reuse must explicitly bypass the child's launch wrapper. Workers never launch another specialist. See [Codex command skills](../codex/README.md#command-skills) for the invocation examples.
+
+### Pi headers
 
 `header.pi.yaml` is optional. When absent, Pi subagents inherit three generated defaults: `systemPromptMode: append`, `inheritProjectContext: false`, and `inheritSkills: true`. The header file may carry any Pi-native frontmatter field: `model`, `thinking`, `tools`, `defaultContext`, `output`, `fallbackModels`, `maxSubagentDepth`, plus per-command `argument-hint`. Fields present in the file are appended verbatim, so explicit per-agent depth limits are preserved.
 

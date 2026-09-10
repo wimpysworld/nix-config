@@ -2,7 +2,9 @@
 
 Implement the plan at $1. Scope: $2 - an optional phase. When $2 is given, implement only that phase; when omitted, implement every phase in the plan.
 
-Invoke this command from a user session or a top-level orchestrator only. A sub-agent that needs a plan implemented reports what is needed and returns; it does not invoke this command.
+On Codex, map the user's accompanying text explicitly: $1 is the plan path and $2 is the optional phase. These placeholders are not substituted in a command-derived skill.
+
+The user invokes this command manually. An authorised top-level orchestrator can read and apply this workflow body with explicit plan and phase arguments. It retains all dispatch ownership and ignores any generated launch wrapper. A worker reports the implementation needed and returns, without applying this orchestrating workflow or launching agents.
 
 When $1 is omitted, derive the plan path from the task: `${TMPDIR:-/tmp}/agent-plans/<key>/plan.md`, where `<key>` is the lowercased Linear issue key, or the current branch name with `/` flattened to `-` when the task has no key. The plan is disposable: never copy it into the repo and never commit it.
 

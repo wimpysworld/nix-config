@@ -1,11 +1,11 @@
 ---
 name: write-command
-description: Use when creating, updating, or reviewing a slash command - shims that delegate to a skill or agent, standalone commands with an inline output format, and the `description` / `argument-hint` / `model` headers per provider. Covers Claude Code custom commands and the merged skill-as-command format, OpenCode commands, Pi prompt templates, and the legacy Codex `/prompts:` route. Use even if the user only says "slash command", "prompt template", "command shim", "create-command", or names the artefact by path.
+description: Use when creating, updating, or reviewing a slash command - shims that delegate to a skill or agent, standalone commands with an inline output format, and the `description` / `argument-hint` / `model` headers per provider. Covers Claude Code commands, OpenCode commands, Pi prompt templates, and Codex commands delivered as manual-only skills. Use even if the user only says "slash command", "prompt template", "command shim", "create-command", or names the artefact by path.
 ---
 
 # Write Command
 
-Author and maintain slash commands across Claude Code, OpenCode, Pi prompt templates, and legacy Codex custom prompts. One artefact, two flows: create from scratch or update in place.
+Author and maintain commands across Claude Code, OpenCode, Pi prompt templates, and Codex command-derived skills. One artefact, two flows: create from scratch or update in place.
 
 ## Decide first
 
@@ -58,9 +58,9 @@ Structure of a standalone-with-format command:
 
 ## Argument substitution
 
-`$ARGUMENTS` is the only portable choice across Claude Code, OpenCode, Pi, and Codex. Use it for any command that takes a single free-form argument.
+Use `$ARGUMENTS` for a shared command that takes one free-form argument. Claude Code, OpenCode, and Pi substitute it. Codex command-derived skills receive the user's accompanying text without template substitution. Treat `$ARGUMENTS` there as that text, not as an expanded variable.
 
-`$1..$9` is **not** portable: it is 1-indexed on Pi, OpenCode, and Codex, but the new Claude Code skill-as-command format treats `$N` as `$ARGUMENTS[N]` with **0-based indexing**, and the legacy Claude Code command format does not document positional placeholders at all. Use `$1..$9` only when the command body is consumed exclusively by Pi / OpenCode / Codex and the position-by-position split is essential.
+`$1..$9` is **not** portable. Pi, OpenCode, and legacy Codex custom prompts use 1-based positions. Claude Code skills use 0-based positions. Legacy Claude Code commands do not document positional placeholders. Codex command-derived skills do not substitute them. For shared bodies with existing positions, define their meaning and map the supplied text explicitly on Codex.
 
 `$@`, `${@:N}`, `${@:N:L}` are Pi-only. Keep them out of portable shims.
 
@@ -78,7 +78,17 @@ This repo composes platform headers from per-command files. `compose.nix` reads:
 
 `header.claude.yaml` and `header.opencode.yaml` are read with `readFile` and **must exist for every command, even if no per-provider fields are set** - leave them as empty files; omitting them makes Nix evaluation fail. `header.pi.yaml` is genuinely optional (read with `readOptionalFile`) and can be omitted when the command takes no arguments. On Claude Code, an agent binding via `header.opencode.yaml: agent:` causes `compose.nix` to prepend `@<agent>` to the body automatically; do not write `@agent` into `prompt.md`. The repo-local `use-task: true` field in `header.claude.yaml` rewrites the body into "Use the Task tool to launch the `<agent>` agent for the following task: …". `compose.nix` discovers commands by directory; no codegen edits are required when adding a new command.
 
-Codex receives each command as a command-derived skill. New Codex-only reference guidance belongs in a native skill instead (see anti-patterns).
+Codex receives each command as a manual-only command-derived skill, invoked by the user as `$name`. The composer owns `agents/openai.yaml` with `policy.allow_implicit_invocation: false` for every command, including secret bodies. Do not add this policy to shared frontmatter or ordinary reusable skills.
+
+## Nested workflows
+
+Manual-only controls command selection, not file access or workflow reuse within an authorised task. A `$child` token inside loaded Codex instructions does not recursively load that command.
+
+- Resolve the named workflow from the available skill catalogue, configured skill roots, or repository command source. Read its instructions before dependent work.
+- Supply the exact arguments, existing authority, output contract, and return point. A nested read grants no new mutation authority.
+- For same-context work, follow the workflow body without its generated agent-launch wrapper. Keep staging and commits in their declared owning context.
+- For specialist work, the top-level orchestrator dispatches the workflow body directly with a bounded packet. Workers return directly and launch no agents.
+- Preserve user-facing `$name` examples on Codex and `/name` examples on slash-command runtimes. Do not use prefix conversion as workflow composition.
 
 ## Command table
 
@@ -97,7 +107,7 @@ See `references/portability.md` for the full table. Headlines:
 - **Claude Code:** `description`, `argument-hint`, `model`, `allowed-tools`, `disable-model-invocation`. Legacy `.claude/commands/<name>.md` and the new skill-as-command format both yield `/<name>`.
 - **OpenCode:** `description`, `agent`, `model`, `subtask`. Per-command `model` was ignored on 0.6.4 and below; treat it as a hint, not a guarantee. `subtask` controls fresh-context execution - see below.
 - **Pi:** `description`, `argument-hint`. Model and routing live in the agent layer, not the prompt template.
-- **Codex (legacy):** `description`, `argument-hint`, `$ARGUMENTS`, `$1..$9`, `$NAMED`. Custom prompts are deprecated; point new Codex work at `write-skill`.
+- **Codex:** generated `SKILL.md` plus `agents/openai.yaml` with `policy.allow_implicit_invocation: false`. Users invoke `$name`. CLI 0.117.0 removed legacy custom prompts and their placeholder substitution.
 
 ## OpenCode `subtask`
 
@@ -127,7 +137,7 @@ If the body writes files, runs Bash, or hits the network, say so and list paths 
 - Long bodies that re-derive routing or response contract owned by `delegate-task`.
 - Time-sensitive text (dates, model IDs) in the body. Pin via `model:` instead.
 - Embedding generated content (e.g. agent registry snippets) into a command prefix - the volatile data breaks the prompt cache. Put it in a skill that loads on demand.
-- Targeting Codex via `/prompts:` for new work. Build a skill and point at `write-skill`.
+- Targeting Codex via legacy `/prompts:` for new work. Use the command composer for commands and `write-skill` for reusable skills.
 
 ## Update flow
 
