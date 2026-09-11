@@ -1,10 +1,3 @@
----
-name: love-thread
-description: Allows you to work with threads. Threads are separate Lua environments, running in parallel to the main code. As their code runs separately, they can be used to compute complex operations without adversely affecting the frame rate of the main thread. However, as they are separate environments, they cannot access the variables and functions of the main thread, and communication between threads is limited. All LOVE objects (userdata) are shared among threads so you'll only have to send their references across threads. You may run into concurrency issues if you manipulate an object on multiple threads at the same time. When a Thread is started, it only loads the love.thread module. Every other module has to be loaded with require. Use this skill when working with multi-threading, parallel processing, background tasks, or any thread-related operations in LÖVE games.
-license: MIT
-metadata:
-  author: Ron Dekker <rondekker.nl>
----
 
 ## When to use this skill
 Allows you to work with threads. Threads are separate Lua environments, running in parallel to the main code. As their code runs separately, they can be used to compute complex operations without adversely affecting the frame rate of the main thread. However, as they are separate environments, they cannot access the variables and functions of the main thread, and communication between threads is limited. All LOVE objects (userdata) are shared among threads so you'll only have to send their references across threads. You may run into concurrency issues if you manipulate an object on multiple threads at the same time. When a Thread is started, it only loads the love.thread module. Every other module has to be loaded with require. Use this skill when working with multi-threading, parallel processing, background tasks, or any thread-related operations in LÖVE games.

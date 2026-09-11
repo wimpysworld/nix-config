@@ -1,10 +1,3 @@
----
-name: love-touch
-description: Provides an interface to touch-screen presses. Use this skill when working with touch operations, multi-touch gestures, touch events, or any touch-related operations in LÖVE games.
-license: MIT
-metadata:
-  author: Ron Dekker <rondekker.nl>
----
 
 ## When to use this skill
 Provides an interface to touch-screen presses. Use this skill when working with touch operations, multi-touch gestures, touch events, or any touch-related operations in LÖVE games.

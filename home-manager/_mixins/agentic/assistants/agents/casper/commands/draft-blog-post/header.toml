@@ -1,0 +1,11 @@
+[common]
+description = "Draft Blog Post ✍️"
+
+[claude]
+argument-hint = "[topic]"
+
+[compose]
+agent = "casper"
+
+[pi]
+argument-hint = "[topic]"

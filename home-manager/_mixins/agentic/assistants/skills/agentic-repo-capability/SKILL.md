@@ -1,7 +1,3 @@
----
-name: agentic-repo-capability
-description: Use when adding or updating repository-local agent capabilities, including MCP servers, agent skills, or slash commands, or when a user asks to equip a repository with agent tooling across Claude Code, Codex, OpenCode, or Pi.
----
 
 # Agentic Repository Capability
 

@@ -1,0 +1,6 @@
+[common]
+description = "Create Skill 🧩"
+argument-hint = "[skill-name]"
+
+[compose]
+agent = "rosey"

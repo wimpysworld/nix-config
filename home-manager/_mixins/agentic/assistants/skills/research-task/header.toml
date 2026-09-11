@@ -1,0 +1,3 @@
+[common]
+name = "research-task"
+description = "Use when deeply researching an existing tracked task, including a Linear issue key or URL, a GitHub issue or pull request URL or owner/repo#123, or a local Markdown task file. Use for requests such as 'research this task', 'investigate this issue', or 'understand the work around this PR'. Follows linked and related work across Linear, GitHub, Slack, the web, and reachable data warehouses, then recommends cited solutions. Use `deep-research` for an open question with no tracked task."

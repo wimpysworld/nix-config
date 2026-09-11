@@ -1,0 +1,6 @@
+[common]
+name = "delegate-task"
+description = "Routes non-trivial work to the right specialist agent and applies when coordinating delegated results, waiting for agent completion, or relaying specialist responses."
+
+[claude]
+user-invocable = true

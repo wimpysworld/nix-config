@@ -1,10 +1,3 @@
----
-name: love-system
-description: Provides access to information about the user's system. Use this skill when working with system operations, platform detection, system information retrieval, or any system-related operations in LÖVE games.
-license: MIT
-metadata:
-  author: Ron Dekker <rondekker.nl>
----
 
 ## When to use this skill
 Provides access to information about the user's system. Use this skill when working with system operations, platform detection, system information retrieval, or any system-related operations in LÖVE games.

@@ -1,0 +1,7 @@
+[common]
+name = "love-touch"
+description = "Provides an interface to touch-screen presses. Use this skill when working with touch operations, multi-touch gestures, touch events, or any touch-related operations in LÖVE games."
+license = "MIT"
+
+[common.metadata]
+author = "Ron Dekker <rondekker.nl>"

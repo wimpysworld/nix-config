@@ -1,0 +1,6 @@
+[common]
+description = "Create Project 🗂️"
+argument-hint = "<name> [team]"
+
+[compose]
+agent = "penfold"

@@ -1,10 +1,3 @@
----
-name: love
-description: Provides functions for love operations. Use this skill when working with core functionality for LÖVE games.
-license: MIT
-metadata:
-  author: Ron Dekker <rondekker.nl>
----
 
 ## When to use this skill
 Provides functions for love operations. Use this skill when working with core functionality for LÖVE games.

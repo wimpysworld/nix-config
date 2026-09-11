@@ -1,0 +1,6 @@
+[common]
+description = "Plan Work Order 📐"
+argument-hint = "<projects...> [theme]"
+
+[compose]
+agent = "penfold"

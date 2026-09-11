@@ -1,0 +1,16 @@
+[common]
+description = "Draft Commit Message ✍️"
+
+[routing]
+
+[routing.claude]
+model = "sonnet"
+
+[compose]
+agent = "garfield"
+
+[compose.claude]
+use-task = true
+
+[opencode]
+subtask = true

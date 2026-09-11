@@ -1,0 +1,6 @@
+[common]
+description = "Create Slash Command 🪄"
+argument-hint = "[command-name]"
+
+[compose]
+agent = "rosey"

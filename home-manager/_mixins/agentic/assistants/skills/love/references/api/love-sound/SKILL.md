@@ -1,10 +1,3 @@
----
-name: love-sound
-description: This module is responsible for decoding sound files. It can't play the sounds, see love.audio for that. Use this skill when working with sound operations, audio decoding, sound data manipulation, or any sound-related operations in LÖVE games.
-license: MIT
-metadata:
-  author: Ron Dekker <rondekker.nl>
----
 
 ## When to use this skill
 This module is responsible for decoding sound files. It can't play the sounds, see love.audio for that. Use this skill when working with sound operations, audio decoding, sound data manipulation, or any sound-related operations in LÖVE games.

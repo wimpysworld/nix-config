@@ -1,7 +1,3 @@
----
-name: write-command
-description: Use when creating, updating, or reviewing a slash command - shims that delegate to a skill or agent, standalone commands with an inline output format, and the `description` / `argument-hint` / `model` headers per provider. Covers Claude Code commands, OpenCode commands, Pi prompt templates, and Codex commands delivered as manual-only skills. Use even if the user only says "slash command", "prompt template", "command shim", "create-command", or names the artefact by path.
----
 
 # Write Command
 
@@ -36,7 +32,7 @@ Rules:
 
 - `description` ≤60 chars where possible. Imperative or noun phrase. No trailing period. Trailing emoji is fine and conventional in this repo.
 - `argument-hint` ≤25 chars. `[arg]` for optional, `<arg>` for required. Anthropic's own examples use `[arg]` for both; if the body falls back to "ask if blank", the argument is optional and the hint must use `[…]`.
-- Vendor-specific fields (`model`, `allowed-tools`, `agent`, `subtask`, `disable-model-invocation`, repo-local `use-task` - Claude Code only; rewrites the body to dispatch through the Task tool) belong in the per-platform header files; see `references/portability.md`.
+- Vendor-specific fields (`allowed-tools`, `subtask`, and `disable-model-invocation`) belong in provider or routing tables in `header.toml`; see `references/portability.md`.
 
 ## Body
 
@@ -66,17 +62,26 @@ Use `$ARGUMENTS` for a shared command that takes one free-form argument. Claude 
 
 ## Repo composition
 
-This repo composes platform headers from per-command files. `compose.nix` reads:
+This repo reads one `header.toml` and one `prompt.md` per command. Keep the body free of frontmatter.
 
-| File                   | Required? | Purpose                                                             |
-| ---------------------- | --------- | ------------------------------------------------------------------- |
-| `prompt.md`            | yes       | Body. Shared across Claude / OpenCode / Pi.                         |
-| `description.txt`      | yes       | One-line label, trailing emoji conventional.                        |
-| `header.claude.yaml`   | yes       | `argument-hint`, `model`, `allowed-tools`, `use-task`.              |
-| `header.opencode.yaml` | yes       | `agent:` binding, optional `model`, optional `subtask` (see below). |
-| `header.pi.yaml`       | no        | `argument-hint` only - Pi has no model/agent at the prompt layer.   |
+```toml
+[common]
+description = "Create Skill 🧩"
+argument-hint = "[skill-name]"
 
-`header.claude.yaml` and `header.opencode.yaml` are read with `readFile` and **must exist for every command, even if no per-provider fields are set** - leave them as empty files; omitting them makes Nix evaluation fail. `header.pi.yaml` is genuinely optional (read with `readOptionalFile`) and can be omitted when the command takes no arguments. On Claude Code, an agent binding via `header.opencode.yaml: agent:` causes `compose.nix` to prepend `@<agent>` to the body automatically; do not write `@agent` into `prompt.md`. The repo-local `use-task: true` field in `header.claude.yaml` rewrites the body into "Use the Task tool to launch the `<agent>` agent for the following task: …". `compose.nix` discovers commands by directory; no codegen edits are required when adding a new command.
+[compose]
+agent = "rosey"
+```
+
+Use `[common]` for the description and a hint shared by Claude Code, OpenCode, and Pi. Preserve existing provider-specific omissions under `[claude]`, `[opencode]`, or `[pi]`.
+
+Keep native non-model fields in provider tables. Put model and effort overrides only under `[routing.<provider>]`. Pi agent routing uses `[routing.pi.<inference-provider>]`.
+
+Use `[compose] agent` for the repository agent binding. Set `[compose.claude] use-task = true` for a Task wrapper. Set `[compose.codex] spawn-agent = false` for same-context execution. Omitted controls preserve the composer defaults.
+
+Names derive from directories. Missing provider tables mean no overrides, not disabled output. TOML has no null. Omit fields to inherit defaults.
+
+The composer discovers commands by directory. Retired provider headers are removed. Retired `description.txt` files are not inputs. Keep them until the user authorises removal.
 
 Codex receives each command as a manual-only command-derived skill, invoked by the user as `$name`. The composer owns `agents/openai.yaml` with `policy.allow_implicit_invocation: false` for every command, including secret bodies. Do not add this policy to shared frontmatter or ordinary reusable skills.
 
@@ -100,7 +105,7 @@ Manual-only controls command selection, not file access or workflow reuse within
 
 ## Per-provider field matrix
 
-When a command accepts arguments, every provider header for a runtime that supports `argument-hint` carries the same hint text. Claude Code, OpenCode, and Pi all display it; do not skip a provider.
+When a command accepts arguments, put a shared `argument-hint` in `[common]`. Claude Code, OpenCode, and Pi all display it; do not skip a provider.
 
 See `references/portability.md` for the full table. Headlines:
 
@@ -121,7 +126,7 @@ In this repo:
 
 - Command-level pins are rare. Only `draft-commit-message` and `draft-pr-message` set `model: sonnet` in Claude Code. Every standalone command, including `make-pr`, omits `model` and inherits the root session model.
 - Pin a model on a new command only when both hold: the work needs a specific tier regardless of the caller's session, and the command can run detached from its agent. Otherwise leave it out.
-- OpenCode headers omit `model` so the user's session model wins. Per-command `model` was ignored on OpenCode 0.6.4 and below; treat it as a hint, not a guarantee.
+- OpenCode routing tables omit `model` so the user's session model wins. Per-command `model` was ignored on OpenCode 0.6.4 and below; treat it as a hint, not a guarantee.
 - Pi has no model field at the prompt-template layer; model and routing live on the agent.
 
 ## Side-effect declaration
@@ -135,22 +140,22 @@ If the body writes files, runs Bash, or hits the network, say so and list paths 
 - Bare `$1` in shims targeting Claude Code (use `$ARGUMENTS`).
 - `allowed-tools` left as `"*"` or bare `Bash`.
 - Long bodies that re-derive routing or response contract owned by `delegate-task`.
-- Time-sensitive text (dates, model IDs) in the body. Pin via `model:` instead.
+- Time-sensitive text (dates, model IDs) in the body. Pin via `[routing.<provider>] model` instead.
 - Embedding generated content (e.g. agent registry snippets) into a command prefix - the volatile data breaks the prompt cache. Put it in a skill that loads on demand.
 - Targeting Codex via legacy `/prompts:` for new work. Use the command composer for commands and `write-skill` for reusable skills.
 
 ## Update flow
 
-1. Read `prompt.md`, `description.txt`, and every `header.*.yaml`.
+1. Read `prompt.md` and `header.toml`.
 2. Identify the form band (shim / standalone / standalone-with-format). Enforce the shim and trivial caps; apply the long command choice before editing a standalone-with-format command.
 3. Diagnose: argument substitution (`$ARGUMENTS` vs `$1`), `argument-hint` bracket convention, persona leakage, missing or stale `description`, model mismatch with sibling commands, missing side-effect declaration, missing or stale README row.
-4. Edit narrowly. Preserve `description.txt` and `argument-hint` unless they are wrong. Do not rewrite a working body.
+4. Edit narrowly. Preserve `[common] description` and `argument-hint` unless they are wrong. Do not rewrite a working body.
 5. If a shim and an existing skill both grew the same doctrine, cut the shim back to the skill body's surface.
 6. Emit changed files plus a short changelog: `Changed`, `Rationale`.
 
 ## Output
 
-When invoked to **create**, produce `prompt.md`, `description.txt`, and the three `header.*.yaml` files in fenced blocks ready to save at the correct path.
+When invoked to **create**, produce `prompt.md` and `header.toml` in fenced blocks ready to save at the correct path.
 
 When invoked to **update**, produce only the changed files plus the changelog. Preserve unchanged sections verbatim.
 

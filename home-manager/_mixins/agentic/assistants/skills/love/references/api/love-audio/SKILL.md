@@ -1,10 +1,3 @@
----
-name: love-audio
-description: Provides an interface to create noise with the user's speakers. Use this skill when working with sound effects, music playback, audio recording, or any audio-related operations in LÖVE games.
-license: MIT
-metadata:
-  author: Ron Dekker <rondekker.nl>
----
 
 ## When to use this skill
 Provides an interface to create noise with the user's speakers. Use this skill when working with sound effects, music playback, audio recording, or any audio-related operations in LÖVE games.

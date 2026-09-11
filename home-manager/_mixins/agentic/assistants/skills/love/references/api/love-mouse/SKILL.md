@@ -1,10 +1,3 @@
----
-name: love-mouse
-description: Provides an interface to the user's mouse. Use this skill when working with mouse operations, cursor management, mouse events, or any mouse-related operations in LÖVE games.
-license: MIT
-metadata:
-  author: Ron Dekker <rondekker.nl>
----
 
 ## When to use this skill
 Provides an interface to the user's mouse. Use this skill when working with mouse operations, cursor management, mouse events, or any mouse-related operations in LÖVE games.

@@ -1,0 +1,11 @@
+[common]
+description = "Update Task ✏️"
+
+[claude]
+argument-hint = "<issue|path>"
+
+[compose]
+agent = "penfold"
+
+[pi]
+argument-hint = "<issue|path>"

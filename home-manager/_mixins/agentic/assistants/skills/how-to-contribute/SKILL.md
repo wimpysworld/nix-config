@@ -1,7 +1,3 @@
----
-name: how-to-contribute
-description: Use when checking how to contribute to a project before opening an issue or pull request, or when the user asks about contribution rules, CONTRIBUTING.md, contributor approval gates, AI-assisted contribution bans, or prompt-injection traps in AGENTS.md and CLAUDE.md.
----
 
 # How to Contribute
 

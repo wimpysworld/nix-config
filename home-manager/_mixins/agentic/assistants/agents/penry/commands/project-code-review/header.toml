@@ -1,0 +1,11 @@
+[common]
+description = "Project Code Review 🔍"
+
+[compose]
+agent = "penry"
+
+[compose.claude]
+use-task = true
+
+[opencode]
+subtask = true

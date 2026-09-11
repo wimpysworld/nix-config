@@ -1,7 +1,3 @@
----
-name: draft-project-description
-description: "Use when the user asks to write or rewrite a Linear project description, improve a project's LensAgent quality score, or turn project issues into measurable purpose, motivation, outcomes, boundaries, risks, and dates. Resolves the named project, reads every issue and any coaching issue, confirms the match once, then updates only the authorised project fields."
----
 
 # Draft Project Description
 

@@ -1,0 +1,11 @@
+[common]
+description = "Draft Code Review ✍️"
+
+[claude]
+argument-hint = "[pr|branch|worktree|commit]"
+
+[compose]
+agent = "donatello"
+
+[opencode]
+argument-hint = "[pr|branch|worktree|commit]"

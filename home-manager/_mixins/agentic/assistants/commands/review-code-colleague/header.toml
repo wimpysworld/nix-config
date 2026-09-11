@@ -1,0 +1,3 @@
+[common]
+description = "Review Colleague Code 🔍"
+argument-hint = "[pr|branch|worktree|commit]"

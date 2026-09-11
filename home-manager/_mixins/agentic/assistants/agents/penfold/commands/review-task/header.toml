@@ -1,0 +1,11 @@
+[common]
+description = "Review Task 🔬"
+
+[claude]
+argument-hint = "<issue-or-file>"
+
+[compose]
+agent = "penfold"
+
+[pi]
+argument-hint = "<issue-or-file>"

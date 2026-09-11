@@ -1,15 +1,20 @@
 {
   lib,
   pkgs ? null,
+  basePath ? ./.,
 }:
 let
   # Read a file, stripping trailing whitespace
   readFile = path: lib.trim (builtins.readFile path);
 
-  # Read a file if it exists, otherwise return an empty string. Used for
-  # optional per-platform headers such as `header.pi.yaml`, where absence
-  # means "use defaults".
-  readOptionalFile = path: if builtins.pathExists path then readFile path else "";
+  metadata = import ./metadata.nix { inherit lib; };
+  inherit (metadata) readHeader;
+  headerFor =
+    kind: platform: name: path:
+    metadata.project kind platform name (readHeader path);
+  renderHeader =
+    kind: platform: name: path:
+    metadata.renderYaml (headerFor kind platform name path);
 
   # Compose with YAML frontmatter: ---\n{header}\n---\n\n{body}\n
   # Adds blank line after frontmatter and trailing newline
@@ -30,108 +35,6 @@ let
     else
       lib.trim text;
 
-  isQuotedString =
-    value:
-    let
-      length = builtins.stringLength value;
-      first = builtins.substring 0 1 value;
-      last = builtins.substring (length - 1) 1 value;
-    in
-    length >= 2 && ((first == "\"" && last == "\"") || (first == "'" && last == "'"));
-
-  validateYamlHeader =
-    path:
-    if !(builtins.pathExists path) then
-      true
-    else
-      let
-        lines = lib.splitString "\n" (builtins.readFile path);
-        numberedLines = lib.imap0 (index: text: {
-          line = index + 1;
-          inherit text;
-        }) lines;
-        isHeaderLine =
-          entry:
-          let
-            trimmed = lib.trim entry.text;
-          in
-          trimmed == ""
-          || lib.hasPrefix "#" trimmed
-          || builtins.match "^[A-Za-z0-9_-]+:[[:space:]]*.*$" trimmed != null
-          || builtins.match "^[[:space:]]+[A-Za-z0-9_-]+:[[:space:]]*.*$" entry.text != null;
-        argumentHintValue =
-          line:
-          let
-            matched = builtins.match "^argument-hint:[[:space:]]*(.*)$" (lib.trim line);
-          in
-          if matched == null then null else builtins.elemAt matched 0;
-        invalidSyntax = lib.filter (entry: !(isHeaderLine entry)) numberedLines;
-        invalidArgumentHints = lib.filter (
-          entry:
-          let
-            value = argumentHintValue entry.text;
-          in
-          value != null && !(isQuotedString value)
-        ) numberedLines;
-        formatLine = entry: "${toString path}:${toString entry.line}: ${entry.text}";
-      in
-      if invalidSyntax != [ ] then
-        throw "Invalid YAML header syntax in ${toString path}:\n${
-          lib.concatMapStringsSep "\n" formatLine invalidSyntax
-        }"
-      else if invalidArgumentHints != [ ] then
-        throw "Invalid argument-hint in ${toString path}: expected a quoted string, got:\n${
-          lib.concatMapStringsSep "\n" formatLine invalidArgumentHints
-        }"
-      else
-        true;
-
-  stripMatchingQuotes =
-    value:
-    let
-      length = builtins.stringLength value;
-      first = builtins.substring 0 1 value;
-      last = builtins.substring (length - 1) 1 value;
-    in
-    if length >= 2 && ((first == "\"" && last == "\"") || (first == "'" && last == "'")) then
-      builtins.substring 1 (length - 2) value
-    else
-      value;
-
-  normaliseProviderModelValue =
-    value:
-    let
-      trimmed = lib.trim value;
-      length = builtins.stringLength trimmed;
-      first = builtins.substring 0 1 trimmed;
-      last = builtins.substring (length - 1) 1 trimmed;
-      hasMatchingQuotes =
-        length >= 2 && ((first == "\"" && last == "\"") || (first == "'" && last == "'"));
-      startsUnsupportedYaml = lib.any (prefix: lib.hasPrefix prefix trimmed) [
-        "|"
-        ">"
-        "&"
-        "*"
-      ];
-    in
-    if trimmed == "" || startsUnsupportedYaml then
-      null
-    else if hasMatchingQuotes then
-      stripMatchingQuotes trimmed
-    else if first == "\"" || first == "'" || lib.hasInfix ":" trimmed then
-      null
-    else
-      trimmed;
-
-  # Default Pi subagent header lines. Each generated agent inherits these.
-  # Optional `header.pi.yaml` content is appended verbatim so agent-specific
-  # Pi-native fields, including explicit depth limits, are preserved.
-  piAgentDefaultLines = [
-    "systemPromptMode: append"
-    "inheritProjectContext: false"
-    "inheritSkills: true"
-  ];
-
   # Discover directories in a path
   discoverDirs =
     path:
@@ -139,9 +42,6 @@ let
       lib.filterAttrs (_name: type: type == "directory") (builtins.readDir path)
     else
       { };
-
-  # Base path for all assistant files
-  basePath = ./.;
 
   # ============ AGENTS ============
 
@@ -151,113 +51,21 @@ let
   # Compose a single agent for a specific platform using the provided prompt.
   composeAgentFromPrompt =
     platform: agentName: prompt:
-    let
-      agentPath = basePath + "/agents/${agentName}";
-      description = readFile (agentPath + "/description.txt");
-      headerPath = agentPath + "/header.${platform}.yaml";
-      body = prompt;
-    in
-    if platform == "pi" then
-      # Pi: header.pi.yaml is optional. Inject `name` and `description`,
-      # then the generated subagent defaults, then any agent-specific
-      # Pi-native fields from header.pi.yaml verbatim.
-      let
-        rawHeader = builtins.seq (validateYamlHeader headerPath) (readOptionalFile headerPath);
-        baseLines = [
-          "name: ${agentName}"
-          "description: ${builtins.toJSON description}"
-        ]
-        ++ piAgentDefaultLines;
-        lines = baseLines ++ lib.optional (rawHeader != "") rawHeader;
-      in
-      composeWithFrontmatter (lib.concatStringsSep "\n" lines) body
-    else
-      let
-        header = builtins.seq (validateYamlHeader headerPath) (readFile headerPath);
-        # Inject description from description.txt into header
-        headerWithDescription = "description: \"${description}\"\n${header}";
-      in
-      composeWithFrontmatter headerWithDescription body;
+    composeWithFrontmatter (renderHeader "agent" platform agentName (
+      basePath + "/agents/${agentName}"
+    )) prompt;
 
-  parseAgentProviderModelLine =
-    line:
-    let
-      uncommented = lib.head (lib.splitString "#" line);
-      matched = builtins.match "^[[:space:]]*model-([A-Za-z0-9_-]+):[[:space:]]*(.+)[[:space:]]*$" uncommented;
-    in
-    if matched == null then
-      null
-    else
-      let
-        value = normaliseProviderModelValue (builtins.elemAt matched 1);
-      in
-      if value == null then
-        null
-      else
-        {
-          name = builtins.elemAt matched 0;
-          inherit value;
-        };
-
-  # Valid Pi thinking levels. `defaultThinkingLevel` and per-call `thinking`
-  # both use this set. Invalid values fail evaluation rather than silently
-  # entering the generated map.
-  validThinkingLevels = [
-    "off"
-    "minimal"
-    "low"
-    "medium"
-    "high"
-    "xhigh"
-  ];
-
-  parseAgentProviderThinkingLine =
-    agentName: line:
-    let
-      uncommented = lib.head (lib.splitString "#" line);
-      matched = builtins.match "^[[:space:]]*thinking-([A-Za-z0-9_-]+):[[:space:]]*(.+)[[:space:]]*$" uncommented;
-    in
-    if matched == null then
-      null
-    else
-      let
-        provider = builtins.elemAt matched 0;
-        value = normaliseProviderModelValue (builtins.elemAt matched 1);
-      in
-      if value == null then
-        null
-      else if !(lib.elem value validThinkingLevels) then
-        throw "Invalid thinking level ${builtins.toJSON value} for thinking-${provider} in agent ${agentName}/header.pi.yaml. Expected one of: ${lib.concatStringsSep ", " validThinkingLevels}."
-      else
-        {
-          name = provider;
-          inherit value;
-        };
-
-  # Regex-only harvester for flat `model-<provider>: <id>` keys in Pi
-  # headers. This is intentionally narrower than a YAML parser.
+  agentProviderRoutes = agentName: (readHeader (basePath + "/agents/${agentName}")).routing.pi or { };
   extractAgentProviderModels =
     agentName:
-    let
-      header = readOptionalFile (basePath + "/agents/${agentName}/header.pi.yaml");
-      entries = lib.filter (entry: entry != null) (
-        map parseAgentProviderModelLine (lib.splitString "\n" header)
-      );
-    in
-    lib.foldl' (acc: entry: acc // { "${entry.name}" = entry.value; }) { } entries;
-
-  # Sibling harvester for `thinking-<provider>: <level>` keys in Pi headers.
-  # Mirrors extractAgentProviderModels but validates against the closed set of
-  # Pi thinking levels; invalid values fail evaluation with a clear message.
+    lib.mapAttrs (_: route: route.model) (
+      lib.filterAttrs (_: route: route ? model) (agentProviderRoutes agentName)
+    );
   extractAgentProviderThinking =
     agentName:
-    let
-      header = readOptionalFile (basePath + "/agents/${agentName}/header.pi.yaml");
-      entries = lib.filter (entry: entry != null) (
-        map (parseAgentProviderThinkingLine agentName) (lib.splitString "\n" header)
-      );
-    in
-    lib.foldl' (acc: entry: acc // { "${entry.name}" = entry.value; }) { } entries;
+    lib.mapAttrs (_: route: route.thinking) (
+      lib.filterAttrs (_: route: route ? thinking) (agentProviderRoutes agentName)
+    );
 
   # Compose a single agent for a specific platform.
   composeAgent =
@@ -331,6 +139,7 @@ let
   commandSources =
     lib.mapAttrsToList (cmdName: _: {
       name = cmdName;
+      agentName = null;
       source = toString (basePath + "/commands/${cmdName}");
     }) standaloneCommandDirs
     ++ lib.concatLists (
@@ -338,6 +147,7 @@ let
         agentName: _:
         lib.mapAttrsToList (cmdName: _: {
           name = cmdName;
+          inherit agentName;
           source = toString (basePath + "/agents/${agentName}/commands/${cmdName}");
         }) (discoverAgentCommands agentName)
       ) agentDirs
@@ -347,65 +157,54 @@ let
   # `default.nix` for agent-scoped commands that wrap the body with
   # subagent-launch boilerplate before emitting frontmatter, and internally
   # by `composeCommand` for standalone commands.
+  commandPath =
+    agentName: cmdName:
+    if agentName != null then
+      basePath + "/agents/${agentName}/commands/${cmdName}"
+    else
+      basePath + "/commands/${cmdName}";
+
+  commandMetadata =
+    agentName: cmdName:
+    let
+      header = readHeader (commandPath agentName cmdName);
+      selectedAgent = header.compose.agent or agentName;
+    in
+    if selectedAgent != null && !(agentDirs ? ${selectedAgent}) then
+      throw "Unknown compose.agent ${selectedAgent} for command ${cmdName}."
+    else
+      header
+      // {
+        compose =
+          (header.compose or { }) // lib.optionalAttrs (selectedAgent != null) { agent = selectedAgent; };
+      };
+
   composePiCommandFromPrompt =
     agentName: cmdName: body:
-    let
-      cmdPath =
-        if agentName != null then
-          basePath + "/agents/${agentName}/commands/${cmdName}"
-        else
-          basePath + "/commands/${cmdName}";
-      description = readFile (cmdPath + "/description.txt");
-      headerPath = cmdPath + "/header.pi.yaml";
-      rawHeader = builtins.seq (validateYamlHeader headerPath) (readOptionalFile headerPath);
-      lines = [
-        "description: ${builtins.toJSON description}"
-      ]
-      ++ lib.optional (rawHeader != "") rawHeader;
-    in
-    composeWithFrontmatter (lib.concatStringsSep "\n" lines) body;
+    composeWithFrontmatter (metadata.renderYaml (
+      metadata.project "command" "pi" cmdName (commandMetadata agentName cmdName)
+    )) body;
 
-  # Compose a single command for a specific platform using the provided body.
-  # The body is wrapped verbatim with all per-platform boilerplate (Claude
-  # `@agent` prepend or `use-task` Task wrapper, Pi subagent prelude via
-  # composePiCommandFromPrompt). Passing the body as an argument lets callers
-  # substitute a sops placeholder string where the plaintext prompt would
-  # otherwise be read, so secret commands compose identically without the
-  # body ever entering the Nix store. Mirrors composeAgentFromPrompt and
-  # composePiCommandFromPrompt.
   composeCommandFromPrompt =
     platform: agentName: cmdName: body:
     let
-      cmdPath =
-        if agentName != null then
-          basePath + "/agents/${agentName}/commands/${cmdName}"
-        else
-          basePath + "/commands/${cmdName}";
+      source = commandMetadata agentName cmdName;
+      selectedAgent = source.compose.agent or null;
+      useTask = source.compose.claude.use-task or false;
+      native = metadata.project "command" platform cmdName source;
+      header = metadata.renderYaml (
+        native
+        // lib.optionalAttrs (platform == "opencode" && selectedAgent != null) { agent = selectedAgent; }
+      );
     in
-    if platform == "pi" then
-      composePiCommandFromPrompt agentName cmdName body
+    if platform == "claude" && selectedAgent != null && useTask then
+      composeWithFrontmatter header "Use the Task tool to launch the ${selectedAgent} agent for the following task:\n\n${body}"
+    else if platform == "claude" && selectedAgent != null then
+      composeWithFrontmatter header "@${selectedAgent}\n\n${body}"
+    else if platform == "pi" && selectedAgent != null then
+      composeWithFrontmatter header "Use the subagent tool to launch the `${selectedAgent}` agent for the task below.\n\nSet `context` to `\"fresh\"`.\n\n${body}"
     else
-      let
-        description = readFile (cmdPath + "/description.txt");
-        headerPath = cmdPath + "/header.${platform}.yaml";
-        rawHeader = builtins.seq (validateYamlHeader headerPath) (readFile headerPath);
-        # Inject description from description.txt into header
-        header = "description: \"${description}\"\n${rawHeader}";
-        # Check if this command should use Task tool for subagent execution
-        useTask = lib.hasInfix "use-task: true" rawHeader;
-      in
-      if platform == "claude" && agentName != null && useTask then
-        # Claude Code with agent + use-task: instruct to use Task tool for subagent
-        composeWithFrontmatter header ''
-          Use the Task tool to launch the ${agentName} agent for the following task:
-
-          ${body}''
-      else if platform == "claude" && agentName != null then
-        # Claude Code with agent (no use-task): prepend @agent on its own line before body
-        composeWithFrontmatter header "@${agentName}\n\n${body}"
-      else
-        # All other cases: standard frontmatter + body
-        composeWithFrontmatter header body;
+      composeWithFrontmatter header body;
 
   # Compose a single command for a specific platform
   # agentName is null for standalone commands
@@ -599,19 +398,13 @@ let
           agentName:
           let
             agentPath = basePath + "/agents/${agentName}";
-            description = escapeMarkdownTableCell (readFile (agentPath + "/description.txt"));
+            description = escapeMarkdownTableCell (readHeader agentPath).common.description;
           in
           "- **${agentName}**: ${description}"
         ) sortedAgentNames
       );
     in
     ''
-      ---
-      name: delegate-task
-      description: Routes non-trivial work to the right specialist agent and applies when coordinating delegated results, waiting for agent completion, or relaying specialist responses.
-      user-invocable: true
-      ---
-
       ## Agents
 
       ${agentLines}
@@ -713,49 +506,135 @@ let
     else
       throw "The communication-rules skill body (${toString skillPath}) has drifted from the house style (${toString stylePath}). Copy the body of house-style.md (frontmatter stripped) into SKILL.md below its frontmatter.";
 
-  generatedSkills = {
-    delegate-task = {
-      content = lib.trim delegateTaskSkillContent;
-      path =
-        if pkgs != null then
-          pkgs.writeTextDir "SKILL.md" delegateTaskSkillContent
-        else
-          throw "composeSkills requires pkgs to materialise generated skills";
-      extras = { };
+  generatedSkillsFor =
+    platform:
+    let
+      content = composeWithFrontmatter (renderHeader "skill" platform "delegate-task" (
+        basePath + "/skills/delegate-task"
+      )) (stripFrontmatter delegateTaskSkillContent);
+    in
+    {
+      delegate-task = {
+        inherit content;
+        path = buildSkillTree platform "delegate-task" (
+          [
+            {
+              name = "SKILL.md";
+              path = pkgs.writeText "SKILL.md" content;
+            }
+          ]
+          ++ skillCompanionEntries platform (basePath + "/skills/delegate-task")
+        );
+        extras =
+          lib.optionalAttrs (skillCompanionEntries platform (basePath + "/skills/delegate-task") != [ ])
+            {
+              agents = "directory";
+            };
+      };
     };
-  };
 
   skillDirs = physicalSkillDirs // {
     delegate-task = "generated";
   };
 
-  # Compose a single skill into a structured value:
-  #   - content: the SKILL.md body (verbatim, trimmed)
-  #   - path:    the source skill directory in the Nix store (used to copy
-  #              the entire tree wholesale for Claude Code and OpenCode)
-  #   - extras:  attrset of sibling entries beside SKILL.md ({ name = type; ... })
-  #              so callers (e.g. the Codex activation script) can deploy
-  #              supporting files and subdirectories generically
-  composeSkill =
-    skillName:
+  skillCompanionEntries =
+    platform: path:
     let
-      skillPath = basePath + "/skills/${skillName}";
-      entries = builtins.readDir skillPath;
-      extras = lib.filterAttrs (name: _: name != "SKILL.md") entries;
+      companion =
+        if platform == "codex" && builtins.pathExists (path + "/header.toml") then
+          metadata.skillCompanion path
+        else
+          { };
     in
-    {
-      content = readFile (skillPath + "/SKILL.md");
-      path = skillPath;
-      inherit extras;
+    lib.optional (companion != { }) {
+      name = "agents/openai.yaml";
+      path = pkgs.writeText "openai.yaml" (metadata.renderYaml companion + "\n");
     };
 
-  # Generate all skills. Secret skills are excluded, because every consumer of
-  # this attrset either reads the SKILL.md body or symlinks the source
-  # directory, and both would put plaintext in the store.
-  # Returns attrset: { skillName = { content; path; extras; }; ... }
-  composeSkills = builtins.seq communicationRulesSkillInSync (
-    generatedSkills // lib.mapAttrs (name: _: composeSkill name) physicalSkillDirs
-  );
+  skillTree =
+    platform: path:
+    lib.concatLists (
+      lib.mapAttrsToList (
+        name: type:
+        let
+          source = path + "/${name}";
+        in
+        if name == "header.toml" then
+          [ ]
+        else if type == "directory" then
+          map (entry: entry // { name = "${name}/${entry.name}"; }) (skillTree platform source)
+        else if name == "SKILL.md" && builtins.pathExists (path + "/header.toml") then
+          [
+            {
+              inherit name;
+              path = pkgs.writeText "SKILL.md" (
+                composeWithFrontmatter (renderHeader "skill" platform (builtins.baseNameOf path) path) (
+                  builtins.readFile source
+                )
+              );
+            }
+          ]
+        else
+          [
+            {
+              inherit name;
+              path = source;
+            }
+          ]
+      ) (builtins.readDir path)
+    )
+    ++ skillCompanionEntries platform path;
+
+  # Codex follows directory links but skips SKILL.md file links during discovery.
+  buildSkillTree =
+    platform: skillName: entries:
+    let
+      tree = pkgs.linkFarm "${platform}-skill-${skillName}" entries;
+    in
+    if platform != "codex" then
+      tree
+    else
+      tree.overrideAttrs (old: {
+        buildCommand =
+          old.buildCommand
+          + lib.concatMapStringsSep "\n" (entry: ''
+            cp --remove-destination -- ${lib.escapeShellArg "${entry.path}"} "$out"/${lib.escapeShellArg entry.name}
+          '') (lib.filter (entry: builtins.baseNameOf entry.name == "SKILL.md") entries);
+      });
+
+  composeSkill =
+    platform: skillName:
+    let
+      source = basePath + "/skills/${skillName}";
+      companionEntries = skillCompanionEntries platform source;
+      content = builtins.seq companionEntries (
+        composeWithFrontmatter (renderHeader "skill" platform skillName source) (
+          builtins.readFile (source + "/SKILL.md")
+        )
+      );
+      extras =
+        lib.filterAttrs (
+          name: _:
+          !(lib.elem name [
+            "SKILL.md"
+            "header.toml"
+          ])
+        ) (builtins.readDir source)
+        // lib.optionalAttrs (companionEntries != [ ]) {
+          agents = "directory";
+        };
+    in
+    {
+      inherit content extras;
+      path = buildSkillTree platform skillName (skillTree platform source);
+    };
+
+  composeSkillsFor =
+    platform:
+    builtins.seq communicationRulesSkillInSync (
+      generatedSkillsFor platform // lib.mapAttrs (name: _: composeSkill platform name) physicalSkillDirs
+    );
+  composeSkills = composeSkillsFor "claude";
 
   # ============ GLOBAL INSTRUCTIONS ============
 
@@ -763,14 +642,22 @@ let
     platform:
     let
       instructionsPath = basePath + "/instructions";
-      headerPath = instructionsPath + "/header.${platform}.yaml";
-      header = builtins.seq (validateYamlHeader headerPath) (readFile headerPath);
+      header = renderHeader "instructions" platform "instructions" instructionsPath;
       body = readFile (instructionsPath + "/global.md");
     in
     composeWithFrontmatter header body;
 
 in
 {
+  inherit
+    readHeader
+    headerFor
+    commandMetadata
+    commandPath
+    composeSkillsFor
+    ;
+  inherit (metadata) renderToml;
+
   # Agent composition functions
   inherit
     composeAgents

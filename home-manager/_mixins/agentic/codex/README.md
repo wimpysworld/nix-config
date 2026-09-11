@@ -85,6 +85,8 @@ Every generated skill is explicitly enabled in `config.toml` with `[[skills.conf
 
 Skills are written as real files via the shared assistants activation. Codex's scanner does not reliably follow symlinked skill files on Linux.
 
+Activation updates exact owned destinations instead of clearing the skills or agents directory. It preserves manual files, plugins, and modified former outputs. A conflicting unknown or modified destination stops helper writes. See [activation ownership and cleanup](../assistants/README.md#activation-ownership-and-cleanup) for migration and recovery limits.
+
 SKILL.md frontmatter requires `name:` and `description:` fields. Quote any `description:` value containing `: `, or Codex fails to parse the skill.
 
 ### Command Skills
@@ -101,7 +103,7 @@ policy:
 
 The policy excludes commands from implicit selection while preserving explicit user invocation. It is not an access restriction. Ordinary reusable skills retain their existing policies. The policy belongs in `agents/openai.yaml`, not in `SKILL.md` frontmatter.
 
-Each agent command uses its bare name, such as `$draft-commit-message`, which matches the Pi prompt convention. Agent commands dispatch to their owning specialist through `spawn_agent` by default. The parent remains the orchestrator. A command with `spawn-agent = false` in `header.codex.toml` embeds the owning persona and task prompt in the caller's context.
+Each agent command uses its bare name, such as `$draft-commit-message`, which matches the Pi prompt convention. Agent commands dispatch to their owning specialist through `spawn_agent` by default. The parent remains the orchestrator. A command with `spawn-agent = false` under `[compose.codex]` in `header.toml` embeds the owning persona and task prompt in the caller's context.
 
 ```text
 $draft-commit-message
@@ -132,7 +134,7 @@ Keep agent launch wrappers unless the calling workflow explicitly requires same-
 
 Agent role files live in `~/.codex/agents/*.toml`. They define roles available to Codex's `spawn_agent` tool, alongside built-in roles such as `explorer` and `worker`.
 
-Agent files are composed from `prompt.md`, `description.txt`, and `header.codex.toml`. The Codex header carries role-local config such as `model = "gpt-5.5"` and `model_reasoning_effort = "high"`.
+Agent files are composed from `prompt.md` and `header.toml`. `[common] description` supplies the description. Native non-model role settings belong under `[codex]`. Model and effort pins belong under `[routing.codex]`, with fields `model` and `model_reasoning_effort`.
 
 The files must be real TOML files, not symlinks. Codex's role discovery skips symlinked role files on Linux.
 
@@ -152,9 +154,8 @@ Fence owns filesystem isolation, network access, and command denials for this
 entry point. The Codex bypass flag prevents a second policy layer from
 interfering with the shared Fence configuration.
 
-Activation removes stale policy keys and generated rule files from both legacy
-and XDG Codex homes so Fence remains the only managed permission and isolation
-provider.
+Activation removes stale managed policy keys from both legacy and XDG Codex
+configurations. It leaves unverified legacy rule files untouched.
 
 Use `codex-fenced` when the shared Fence policy should be the only isolation and command boundary.
 
@@ -186,13 +187,13 @@ codex/
 assistants/
 ├── agents/<name>/
 │   ├── prompt.md
-│   ├── description.txt
+│   ├── header.toml
 │   └── commands/<cmd>/
 │       ├── prompt.md
-│       └── description.txt
+│       └── header.toml
 ├── commands/<name>/
 │   ├── prompt.md
-│   └── description.txt
+│   └── header.toml
 ├── skills/<name>/
 │   └── SKILL.md
 ├── compose.nix

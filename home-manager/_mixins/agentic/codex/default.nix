@@ -659,8 +659,6 @@ let
       if [ -L "$target_dir/config.toml" ]; then
         rm "$target_dir/config.toml"
       fi
-      rm -f "$target_dir/rules/default.rules"
-      rmdir "$target_dir/rules" 2>/dev/null || true
       ${tomlMergePython}/bin/python ${codexConfigMergeScriptFixed} ${codexConfigToml} "$target_dir/config.toml"
       chmod 644 "$target_dir/config.toml"
     }

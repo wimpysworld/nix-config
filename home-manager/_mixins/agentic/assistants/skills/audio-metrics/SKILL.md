@@ -1,8 +1,3 @@
----
-name: audio-metrics
-description: "Load for objective audio analysis from ffmpeg metrics - spectral statistics, spectrograms, loudness, EBU R128, LUFS, LU, RMS, dBFS, dBTP, true peak, crest factor, dynamic range, and noise floor. Covers the aspectralstats, astats, ebur128, and loudnorm filters: what each metric measures, how ffmpeg computes it, its units and range, and the external loudness standards and platform targets. Use when reading or producing ffmpeg audio measurements, even when the user names only a metric, filter, or standard."
-user-invocable: true
----
 
 # Audio Metrics Reference
 

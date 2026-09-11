@@ -22,7 +22,7 @@ Client versions differ in shared-path discovery. Prefer a shared path only after
 
 ## Validate
 
-1. Parse the frontmatter and confirm the directory name matches `name`.
+1. Parse `header.toml` when the repository composes skills. Confirm `[common] name` matches the directory and inspect generated frontmatter.
 2. Run at least three trigger scenarios as required by `write-skill`: one load, one ignore, and one defer or boundary case.
 3. Confirm every referenced file exists one level below `SKILL.md`; check required tables of contents and size limits.
 4. Evaluate or run the repository composer and inspect the emitted tree for each supported client.

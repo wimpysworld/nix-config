@@ -24,9 +24,13 @@ Use the smallest set that works. Add fields only when a target needs them.
 
 Adding these to a portable skill is harmless on Codex/OpenCode/Pi (ignored), but they confuse human readers. Restrict to skills that target Claude Code only.
 
+## Repository routing limits
+
+The composer rejects `[routing.opencode]` and `[routing.codex]` on ordinary skills. These runtimes lack native per-skill model selection in this composition path. Use an agent-backed command for a workflow that needs model or effort pins.
+
 ## Codex companion
 
-Codex supports `<skill>/agents/openai.yaml` for UI metadata and `policy.allow_implicit_invocation`. Ordinary reusable skills keep their existing policy or Codex's default implicit invocation. This repository's composer sets `policy.allow_implicit_invocation: false` for every command-derived skill, including secret commands. Keep that mandatory command policy separate from ordinary skills and portable `SKILL.md` frontmatter.
+Codex supports `<skill>/agents/openai.yaml` for UI metadata and `policy.allow_implicit_invocation`. In this repository, author companion fields under `[codex]` in `header.toml`, with policy under `[codex.policy]`. Ordinary reusable skills keep their existing policy or Codex's default implicit invocation. This repository's composer sets `policy.allow_implicit_invocation: false` for every command-derived skill, including secret commands. Keep that mandatory command policy separate from ordinary skills and portable `SKILL.md` frontmatter.
 
 The policy controls implicit selection, not explicit file reads within an authorised workflow. A `$child` reference inside a loaded skill does not recursively load the child. Read dependent instructions through the available catalogue or configured skill roots before applying them.
 

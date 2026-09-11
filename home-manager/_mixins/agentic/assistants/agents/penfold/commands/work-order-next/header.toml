@@ -1,0 +1,5 @@
+[common]
+description = "Find Next Work 👉"
+
+[compose]
+agent = "penfold"

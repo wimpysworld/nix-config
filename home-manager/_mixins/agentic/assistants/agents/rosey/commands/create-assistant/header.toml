@@ -1,0 +1,6 @@
+[common]
+description = "Create AI Assistant ✨"
+argument-hint = "[agent-name]"
+
+[compose]
+agent = "rosey"

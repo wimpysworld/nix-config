@@ -1,3 +1,5 @@
+import { resolve as resolveRouter } from "../provider-router/test-loader.mjs";
+
 const tuiStub = `
 export class Box {
   constructor() { this.children = []; }
@@ -11,11 +13,13 @@ export class Text {
 `;
 
 export async function resolve(specifier, context, nextResolve) {
+	if (context.parentURL?.includes("/node_modules/"))
+		return nextResolve(specifier, context);
 	if (specifier === "@earendil-works/pi-tui") {
 		return {
 			shortCircuit: true,
 			url: `data:text/javascript,${encodeURIComponent(tuiStub)}`,
 		};
 	}
-	return nextResolve(specifier, context);
+	return resolveRouter(specifier, context, nextResolve);
 }

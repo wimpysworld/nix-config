@@ -58,7 +58,7 @@ Default behaviour:
 
 `subtask: true` forces subagent invocation even when the bound agent is `mode: primary`. `subtask: false` keeps execution in the caller's session even when the bound agent is a subagent (spec-honoured; sst/opencode#10431 reports it ignored on some builds).
 
-Claude Code and Pi have no equivalent field: every slash invocation runs in the caller's session unless the body explicitly dispatches through the Task tool (Claude) or `/skill:` / sub-agent invocation (Pi). For Claude Code, the repo-local `use-task: true` field in `header.claude.yaml` is the closest analogue.
+Claude Code and Pi have no equivalent field: every slash invocation runs in the caller's session unless the body explicitly dispatches through the Task tool (Claude) or `/skill:` / sub-agent invocation (Pi). For Claude Code, the repo-local `[compose.claude] use-task = true` field in `header.toml` is the closest analogue.
 
 ## OpenCode `model:` honouring
 

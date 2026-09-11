@@ -1,0 +1,3 @@
+[common]
+description = "Reflect on the session and suggest tooling changes 💭"
+argument-hint = "[focus]"

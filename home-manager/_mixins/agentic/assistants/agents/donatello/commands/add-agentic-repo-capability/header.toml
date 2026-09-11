@@ -1,0 +1,6 @@
+[common]
+description = "Add Agentic Repo Capability 🧰"
+argument-hint = "[capability]"
+
+[compose]
+agent = "donatello"

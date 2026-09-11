@@ -1,0 +1,7 @@
+[common]
+name = "love-system"
+description = "Provides access to information about the user's system. Use this skill when working with system operations, platform detection, system information retrieval, or any system-related operations in LÖVE games."
+license = "MIT"
+
+[common.metadata]
+author = "Ron Dekker <rondekker.nl>"

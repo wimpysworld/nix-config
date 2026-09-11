@@ -1,0 +1,3 @@
+[common]
+description = "Answer a question 💬"
+argument-hint = "<question>"

@@ -1,0 +1,5 @@
+[claude]
+description = "Environment constraints and tool preferences for NixOS workstation"
+
+[opencode]
+description = "Environment constraints and tool preferences for NixOS workstation"

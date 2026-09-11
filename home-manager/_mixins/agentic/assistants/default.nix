@@ -1,14 +1,12 @@
 {
   config,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
 let
   readFileTrim = path: lib.trim (builtins.readFile path);
-  readFileTrimIfExists = path: if builtins.pathExists path then readFileTrim path else "";
-  readTomlOrEmpty =
-    path: if builtins.pathExists path then builtins.fromTOML (builtins.readFile path) else { };
   codexAgentPrompt =
     prompt:
     lib.replaceStrings
@@ -21,27 +19,6 @@ let
         "Permitted tools: `spawn_agent` for delegation, direct conversation"
       ]
       prompt;
-  tomlMultilineLiteral =
-    value: if lib.hasInfix "'''" value then builtins.toJSON value else "'''\n${value}\n'''";
-  renderCodexAgentToml =
-    {
-      name,
-      description,
-      developerInstructions,
-      header ? "",
-    }:
-    ''
-      ${lib.optionalString (header != "") "${header}\n"}
-      name = ${builtins.toJSON name}
-      description = ${builtins.toJSON description}
-      developer_instructions = ${tomlMultilineLiteral developerInstructions}
-    '';
-  renderCodexOpenAiYaml =
-    { allowImplicitInvocation }:
-    ''
-      policy:
-        allow_implicit_invocation: ${if allowImplicitInvocation then "true" else "false"}
-    '';
   codexDir =
     if config.home.preferXdgDirectories then
       "${config.xdg.configHome}/codex"
@@ -54,6 +31,7 @@ let
   codingAgentDirs = lib.removeAttrs compose.agentDirs [ "traya" ];
 
   globalInstructions = readFileTrim ./instructions/global.md;
+  piEnabled = noughtyLib.userHasTag "developer";
 
   # ============ SECRET COMMANDS ============
 
@@ -108,9 +86,8 @@ let
   secretOpencodePath = cmdName: "${config.xdg.configHome}/opencode/commands/${cmdName}.md";
   secretPiPath = cmdName: "${config.home.homeDirectory}/.pi/agent/prompts/${cmdName}.md";
 
-  # sops templates for Claude, OpenCode, and Pi. Each renders the composed
-  # command (frontmatter + per-platform body wrapper) with the sops placeholder
-  # standing in for the prompt body, written to an explicit path at activation.
+  # sops templates for Claude, OpenCode, and Pi render in private sops paths.
+  # The ownership helper links them to the explicit client destinations.
   # Pi reuses the subagent-launch prelude assembled for non-secret agent
   # commands so the placeholder body carries identical routing.
   secretCommandTemplates = lib.listToAttrs (
@@ -127,7 +104,7 @@ let
           else
             let
               piPrompt = ''
-                Use the subagent tool to launch the `${agentName}` agent for the task below.
+                Use the subagent tool to launch the `${(compose.commandMetadata agentName cmdName).compose.agent}` agent for the task below.
 
                 - Set `context` to `"fresh"`. Do not set `"fork"`; the parent session is large and forking inherits parent prose without bound.
 
@@ -148,7 +125,7 @@ let
           path = secretOpencodePath cmdName;
         })
       ]
-      ++ [
+      ++ lib.optionals piEnabled [
         (lib.nameValuePair "assistant-pi-command-${cmdName}" {
           content = piBody;
           path = secretPiPath cmdName;
@@ -162,10 +139,9 @@ let
   # Collect every secret skill with the metadata each platform needs. A skill
   # is secret when its directory holds a `SKILL.sops` marker instead of a
   # plaintext `SKILL.md`; supporting `.sops` markers render beside it so
-  # progressive disclosure survives encryption. Nothing here enters the store:
-  # Claude, OpenCode, and Pi receive sops templates written to explicit paths
-  # at activation, and Codex copies the decrypted secrets in its activation
-  # script.
+  # progressive disclosure survives encryption. Decrypted bodies stay outside
+  # the store. The ownership helper links rendered templates for Claude,
+  # OpenCode, and Pi, and copies decrypted files for Codex.
   secretSkillList = lib.mapAttrsToList (skillName: _: {
     name = skillName;
     inherit ((compose.skillSecretInfo skillName)) key;
@@ -229,8 +205,7 @@ let
       ) entry.supportFiles
     ) secretSkillList;
 
-  # Claude and OpenCode only receive templates when their programs are enabled;
-  # Pi is ungated, matching how secret commands are deployed.
+  # Secret destinations follow the same client gates as public files.
   secretSkillTemplates = lib.listToAttrs (
     lib.optionals config.programs.claude-code.enable (
       mkSecretSkillTemplates "claude" secretSkillClaudeDir
@@ -238,7 +213,7 @@ let
     ++ lib.optionals config.programs.opencode.enable (
       mkSecretSkillTemplates "opencode" secretSkillOpencodeDir
     )
-    ++ mkSecretSkillTemplates "pi" secretSkillPiDir
+    ++ lib.optionals piEnabled (mkSecretSkillTemplates "pi" secretSkillPiDir)
   );
 
   # ============ CLAUDE CODE ============
@@ -299,7 +274,7 @@ let
   piSkillFiles = lib.mapAttrs' (name: skill: {
     name = ".pi/agent/skills/${name}";
     value.source = skill.path;
-  }) skills;
+  }) piSkills;
   piStandalonePromptFiles = lib.mapAttrs' (cmdName: _: {
     name = ".pi/agent/prompts/${cmdName}.md";
     value.text = compose.composeCommand "pi" null cmdName;
@@ -332,7 +307,7 @@ let
         # variants. The prelude is the sole carrier of agent routing now
         # that the filename no longer encodes the owning agent.
         piPrompt = ''
-          Use the subagent tool to launch the `${agentName}` agent for the task below.
+          Use the subagent tool to launch the `${(compose.commandMetadata agentName cmdName).compose.agent}` agent for the task below.
 
           - Set `context` to `"fresh"`. Do not set `"fork"`; the parent session is large and forking inherits parent prose without bound.
 
@@ -393,13 +368,44 @@ let
     lib.mapAttrs (name: _: compose.extractAgentProviderThinking name) codingAgentDirs
   );
 
+  piInvocationRoutes = {
+    commands = lib.listToAttrs (
+      map (
+        entry:
+        let
+          metadata = compose.commandMetadata entry.agentName entry.name;
+        in
+        {
+          inherit (entry) name;
+          value =
+            lib.optionalAttrs ((metadata.compose or { }) ? agent) { inherit (metadata.compose) agent; }
+            // {
+              providers = metadata.routing.pi or { };
+            };
+        }
+      ) compose.commandSources
+    );
+    skills = lib.mapAttrs (
+      name: _:
+      let
+        metadata = compose.readHeader (./skills + "/${name}");
+      in
+      {
+        providers = metadata.routing.pi or { };
+      }
+    ) (lib.removeAttrs compose.skillDirs [ "delegate-task" ]);
+  };
+
   # ============ SKILLS ============
 
   # composeSkills returns { name = { content; path; extras; }; ... }
   # where `extras` enumerates sibling files and subdirectories alongside
   # SKILL.md (e.g. references/, rules/, metadata.json) that must be deployed
   # for the skill to function.
-  skills = compose.composeSkills;
+  skills = compose.composeSkillsFor "codex";
+  claudeSkills = compose.composeSkillsFor "claude";
+  opencodeSkills = compose.composeSkillsFor "opencode";
+  piSkills = compose.composeSkillsFor "pi";
 
   # Codex's activation script expects { name = "SKILL.md content"; ... } so
   # it can merge in command-derived skill texts. Project skills only.
@@ -412,7 +418,7 @@ let
   mkClaudeSkillFiles = lib.mapAttrs' (name: skill: {
     name = "${config.home.homeDirectory}/.claude/skills/${name}";
     value.source = skill.path;
-  }) skills;
+  }) claudeSkills;
 
   # Generate home.file entries for OpenCode skills.
   # Same approach: symlink the whole skill directory under
@@ -420,48 +426,53 @@ let
   mkOpencodeSkillFiles = lib.mapAttrs' (name: skill: {
     name = "${config.xdg.configHome}/opencode/skills/${name}";
     value.source = skill.path;
-  }) skills;
+  }) opencodeSkills;
 
   # Collect all Codex agent name -> TOML content pairs.
   # codex-rs discovers agent roles by scanning the agents/ directory for .toml
   # files using file_type().is_file(), which returns false for symlinks on Linux.
   # home.file creates symlinks, so agents written via home.file are invisible.
   # Content is written as real files via the activation script below.
-  codexAgents = lib.mapAttrs (
-    name: _:
+  codexRole =
+    name: agentName: route:
     let
-      agentPath = ./agents + "/${name}";
-      description = readFileTrim (agentPath + "/description.txt");
-      prompt = codexAgentPrompt (readFileTrim (agentPath + "/prompt.md"));
-      header = readFileTrimIfExists (agentPath + "/header.codex.toml");
+      agentPath = ./agents + "/${agentName}";
+      metadata = compose.headerFor "agent" "codex" agentName agentPath;
     in
-    renderCodexAgentToml {
-      inherit name description;
-      developerInstructions = prompt;
-      inherit header;
-    }
-  ) codingAgentDirs;
+    compose.renderToml (
+      lib.recursiveUpdate metadata route
+      // {
+        inherit name;
+        developer_instructions = codexAgentPrompt (readFileTrim (agentPath + "/prompt.md"));
+      }
+    );
 
-  # Activation script that writes Codex agent files as real files (not symlinks).
-  codexAgentsActivationScript =
-    let
-      agentCmds = lib.concatStringsSep "\n" (
-        lib.mapAttrsToList (
-          name: content:
-          let
-            escaped = lib.escapeShellArg content;
-          in
-          ''printf '%s' ${escaped} > "${codexDir}/agents/${name}.toml"''
-        ) codexAgents
-      );
-    in
-    ''
-        # Write Codex agent files as real files (not symlinks).
-        # codex-rs skips symlinked .toml files during agent role discovery.
-      rm -rf "${codexDir}/agents"
-      mkdir -p "${codexDir}/agents"
-      ${agentCmds}
-    '';
+  metadataHelpers = import ./metadata.nix { inherit lib; };
+  codexCommandDispatch =
+    cmdName: agentName: cmdPath:
+    metadataHelpers.commandDispatch codingAgentDirs cmdName agentName (compose.readHeader cmdPath);
+
+  codexCommandRoles = lib.listToAttrs (
+    lib.concatMap (
+      entry:
+      let
+        path = /. + entry.source;
+        dispatch = codexCommandDispatch entry.name entry.agentName path;
+      in
+      lib.optional (dispatch.route != { }) {
+        name = dispatch.role;
+        value = codexRole dispatch.role dispatch.selectedAgent dispatch.route;
+      }
+    ) compose.commandSources
+  );
+  codexAgents =
+    if
+      lib.intersectLists (builtins.attrNames codingAgentDirs) (builtins.attrNames codexCommandRoles)
+      != [ ]
+    then
+      throw "A generated Codex command role conflicts with an existing agent."
+    else
+      lib.mapAttrs (name: _: codexRole name name { }) codingAgentDirs // codexCommandRoles;
 
   # Build a Codex skill file (SKILL.md) for a command.
   # Custom prompt support was removed from codex-rs in March 2026. Commands
@@ -473,7 +484,7 @@ let
   # task in a fresh sub-thread. The owning agent's persona is therefore
   # resolved at runtime by Codex's agent role config, not embedded in the
   # skill body. Opt out of spawn dispatch by setting `spawn-agent = false`
-  # in `header.codex.toml`; the composer then embeds the agent's `prompt.md`
+  # in `header.toml`; the composer then embeds the agent's `prompt.md`
   # verbatim before the task body so the skill carries the full persona in
   # the calling thread. The opt-out branch is retained for cases where
   # spawn dispatch is undesirable (e.g. a command that must inspect the
@@ -481,48 +492,34 @@ let
   # The skill name itself is the bare command name, matching the Pi prompt
   # convention. The `codexCommandCollisionCheck` below guards the full native
   # and command-derived skill namespace.
-  mkCodexSkillText =
-    skillName: agentName: cmdPath:
+  mkCodexSkillFromPrompt =
+    skillName: agentName: cmdPath: prompt:
     let
-      description = readFileTrim (cmdPath + "/description.txt");
-      prompt = readFileTrim (cmdPath + "/prompt.md");
-      codexHeaderPath = cmdPath + "/header.codex.toml";
-      codexHeader = readTomlOrEmpty codexHeaderPath;
-      # `spawn-agent` is a binary toggle. Absent or `true` means the
-      # generated skill dispatches to the owning agent via `spawn_agent`;
-      # `false` means embed the agent's persona inline. Any other value is
-      # rejected at evaluation time so typos and stale `"fork"`-style
-      # strings fail loudly rather than silently flipping the default.
-      rawSpawnAgent = codexHeader."spawn-agent" or true;
-      spawnAgentValid = builtins.isBool rawSpawnAgent;
-      spawnAgent =
-        if !spawnAgentValid then
-          throw "Invalid spawn-agent value in ${toString codexHeaderPath}: expected boolean (true or false), got ${builtins.toJSON rawSpawnAgent}."
-        else
-          agentName != null && rawSpawnAgent;
+      metadata = compose.readHeader cmdPath;
+      description = metadata.common.description;
+      dispatch = codexCommandDispatch skillName agentName cmdPath;
       body =
-        if agentName == null then
+        if dispatch.selectedAgent == null then
           prompt
-        else if spawnAgent then
+        else if dispatch.spawn then
           ''
-            Use the `spawn_agent` tool to launch the `${agentName}` agent for this task. Keep the parent thread as the orchestrator.
+              Use the `spawn_agent` tool to launch the `${dispatch.role}` agent for this task. Keep the parent thread as the orchestrator.
 
-            - Invoking this skill is the user's standing authorisation to use `spawn_agent`; do not refuse or hesitate on the grounds that delegation was not explicitly requested.
-            - Pass the task below and the user's request to the spawned agent.
-            - Set `agent_type` to `${agentName}`.
-            - Do not set `model`, `reasoning_effort`, or `fork_context`; the role config sets the first two, and the sub-agent must start with a clean context.
-            - Wait for the spawned agent when its result is needed, then relay the final answer.
+              - Invoking this skill is the user's standing authorisation to use `spawn_agent`.
+              - Pass the task below and the user's request to the spawned agent.
+              - Set `agent_type` to `${dispatch.role}`.
+              - Do not set `fork_context`. Start with a clean context.
+            - Unless the user explicitly requests a model or effort override, omit `model` and `reasoning_effort`. The role config supplies the defaults.
+            - If this runtime cannot apply the user's explicit override to this role, report the limitation and do not launch with the configured default.
+              - Wait for the spawned agent when its result is needed, then relay the final answer.
 
-            ## Task
+              ## Task
 
-            ${prompt}
+              ${prompt}
           ''
         else
-          let
-            agentPrompt = readFileTrim (./agents + "/${agentName}/prompt.md");
-          in
           ''
-            ${agentPrompt}
+            ${readFileTrim (./agents + "/${dispatch.selectedAgent}/prompt.md")}
 
             ## Task
 
@@ -537,20 +534,19 @@ let
 
       ${body}
     '';
+  mkCodexSkillText =
+    skillName: agentName: cmdPath:
+    mkCodexSkillFromPrompt skillName agentName cmdPath (readFileTrim (cmdPath + "/prompt.md"));
 
   # Command-derived skills always require explicit invocation. A header can
   # repeat the false policy but cannot enable implicit invocation.
   mkCodexCommandOpenAiYaml =
     cmdPath:
-    let
-      codexHeaderPath = cmdPath + "/header.codex.toml";
-      codexHeader = readTomlOrEmpty codexHeaderPath;
-      rawAllowImplicitInvocation = codexHeader."allow-implicit-invocation" or false;
-    in
-    if !(builtins.isBool rawAllowImplicitInvocation) || rawAllowImplicitInvocation then
-      throw "Invalid allow-implicit-invocation value in ${toString codexHeaderPath}: expected false because commands require explicit invocation, got ${builtins.toJSON rawAllowImplicitInvocation}."
-    else
-      renderCodexOpenAiYaml { allowImplicitInvocation = rawAllowImplicitInvocation; };
+    metadataHelpers.renderYaml (
+      lib.removeAttrs (metadataHelpers.commandPolicy (compose.readHeader cmdPath)) [
+        "allow-implicit-invocation"
+      ]
+    );
 
   # Collision guard for the Codex skill namespace. Codex loads every skill
   # from `$CODEX_HOME/skills/<name>/SKILL.md`, so the keyspace is the union
@@ -646,177 +642,98 @@ let
     codexStandaloneCommandOpenAiYamls // codexAgentCommandOpenAiYamls
   );
 
-  # Activation script that writes Codex skills as real files.
-  # codex-rs scans for SKILL.md using entry.file_type() which does NOT follow
-  # symlinks on Linux - it returns the type of the symlink itself. The scanner
-  # only follows symlinked directories, not symlinked files; it skips symlinked
-  # SKILL.md files entirely. home.file creates symlinks, so skills written via
-  # home.file are invisible to codex. Writing real files via activation avoids
-  # this limitation.
-  #
-  # Supporting entries beside SKILL.md (e.g. references/, rules/, metadata.json)
-  # are symlinked into place. The scanner only inspects SKILL.md itself for the
-  # is_file() check, and it does follow symlinked directories, so symlinks for
-  # extras are safe and avoid copying large reference trees. Command-derived
-  # skills always write agents/openai.yaml with implicit invocation disabled.
-  codexSkillsActivationScript =
-    let
-      skillCmds = lib.concatStringsSep "\n" (
-        lib.mapAttrsToList (
-          name: content:
-          let
-            escaped = lib.escapeShellArg content;
-            # Project skills carry `extras`; command-derived skills do not
-            # appear in `skills` and so contribute nothing here.
-            inherit ((skills.${name} or { extras = { }; })) extras;
-            extrasCmds = lib.concatStringsSep "\n" (
-              lib.mapAttrsToList (
-                entryName: _:
-                let
-                  src = "${skills.${name}.path}/${entryName}";
-                  dst = "${codexDir}/skills/${name}/${entryName}";
-                in
-                "ln -sfn ${lib.escapeShellArg src} ${lib.escapeShellArg dst}"
-              ) extras
-            );
-            openAiYaml = codexCommandOpenAiYamls.${name} or null;
-            openAiYamlCmd = lib.optionalString (openAiYaml != null) ''
-              mkdir -p "${codexDir}/skills/${name}/agents"
-              printf '%s' ${lib.escapeShellArg openAiYaml} > "${codexDir}/skills/${name}/agents/openai.yaml"
-            '';
-          in
-          ''
-            mkdir -p "${codexDir}/skills/${name}"
-            printf '%s' ${escaped} > "${codexDir}/skills/${name}/SKILL.md"
-            ${extrasCmds}
-            ${openAiYamlCmd}''
-        ) codexSkills
-      );
-    in
-    ''
-      # Write Codex skill files as real files (not symlinks).
-      # codex-rs skips symlinked SKILL.md files during discovery; supporting
-      # entries (subdirectories and sibling files) are symlinked into the
-      # skill directory beside the real SKILL.md.
-      rm -rf "${codexDir}/skills"
-      ${skillCmds}
-    '';
+  ownedFile = path: content: {
+    inherit path;
+    kind = "file";
+    source = toString (pkgs.writeText (builtins.baseNameOf path) content);
+    mode = "0600";
+  };
 
-  codexRootInstructionsActivationScript =
-    let
-      escaped = lib.escapeShellArg globalInstructions;
-    in
-    ''
-      # Write Codex root instructions from the canonical global prompt.
-      mkdir -p "${codexDir}"
-      printf '%s\n' ${escaped} > "${codexDir}/AGENTS.md"
-    '';
+  codexOwnedFiles = [
+    (ownedFile "${codexDir}/AGENTS.md" (globalInstructions + "\n"))
+  ]
+  ++ lib.mapAttrsToList (
+    name: content: ownedFile "${codexDir}/agents/${name}.toml" content
+  ) codexAgents
+  ++ lib.concatLists (
+    lib.mapAttrsToList (
+      name: content:
+      [ (ownedFile "${codexDir}/skills/${name}/SKILL.md" content) ]
+      ++ lib.mapAttrsToList (entryName: _: {
+        path = "${codexDir}/skills/${name}/${entryName}";
+        source = "${skills.${name}.path}/${entryName}";
+        kind = "symlink";
+      }) (skills.${name}.extras or { })
+      ++ lib.optional (codexCommandOpenAiYamls ? ${name}) (
+        ownedFile "${codexDir}/skills/${name}/agents/openai.yaml" codexCommandOpenAiYamls.${name}
+      )
+    ) codexSkills
+  );
 
-  # Activation script that writes Codex SKILL.md files for secret commands.
-  # The Codex skill activation above does `rm -rf skills`, so a sops template
-  # writing into that tree would lose the race. Instead this composes each
-  # secret skill at activation: the public frontmatter plus the spawn_agent
-  # prelude (or the bare standalone form) are written from Nix, then the
-  # decrypted body is appended by reading config.sops.secrets.<key>.path.
-  # Command-derived agents/openai.yaml files use the same header.codex.toml
-  # contract as non-secret commands.
-  # This entry is ordered after codexFiles (which recreates skills/) and after
-  # the sops-nix activation node so the decrypted secret is present.
-  codexSecretSkillsActivationScript =
-    let
-      cmds = lib.concatStringsSep "\n" (
-        map (
-          entry:
-          let
-            inherit (entry) agentName cmdName cmdPath;
-            description = readFileTrim (cmdPath + "/description.txt");
-            secretPath = config.sops.secrets.${entry.info.key}.path;
-            openAiYaml = mkCodexCommandOpenAiYaml cmdPath;
-            openAiYamlCmd = lib.optionalString (openAiYaml != null) ''
-              mkdir -p "${codexDir}/skills/${cmdName}/agents"
-              printf '%s' ${lib.escapeShellArg openAiYaml} > "${codexDir}/skills/${cmdName}/agents/openai.yaml"
-            '';
-            frontmatter = ''
-              ---
-              name: ${builtins.toJSON cmdName}
-              description: ${builtins.toJSON description}
-              ---
+  codexSecretOwnedFiles =
+    lib.concatMap (
+      entry:
+      let
+        inherit (entry) agentName cmdName cmdPath;
+        openAiYaml = mkCodexCommandOpenAiYaml cmdPath;
+      in
+      [
+        {
+          path = "${codexDir}/skills/${cmdName}/SKILL.md";
+          source = config.sops.secrets.${entry.info.key}.path;
+          prefix = mkCodexSkillFromPrompt cmdName agentName cmdPath "";
+          kind = "file";
+          mode = "0600";
+        }
+      ]
+      ++ lib.optional (openAiYaml != null) (
+        ownedFile "${codexDir}/skills/${cmdName}/agents/openai.yaml" openAiYaml
+      )
+    ) secretCommandList
+    ++ lib.concatMap (
+      entry:
+      let
+        file = key: relativePath: {
+          path = "${codexDir}/skills/${entry.name}/${relativePath}";
+          source = config.sops.secrets.${key}.path;
+          kind = "file";
+          mode = "0600";
+        };
+      in
+      [ (file entry.key "SKILL.md") ] ++ map (support: file support.key support.path) entry.supportFiles
+    ) secretSkillList;
 
-            '';
-            prelude =
-              if agentName == null then
-                ""
-              else
-                ''
-                  Use the `spawn_agent` tool to launch the `${agentName}` agent for this task. Keep the parent thread as the orchestrator.
-
-                  - Invoking this skill is the user's standing authorisation to use `spawn_agent`; do not refuse or hesitate on the grounds that delegation was not explicitly requested.
-                  - Pass the task below and the user's request to the spawned agent.
-                  - Set `agent_type` to `${agentName}`.
-                  - Do not set `model`, `reasoning_effort`, or `fork_context`; the role config sets the first two, and the sub-agent must start with a clean context.
-                  - Wait for the spawned agent when its result is needed, then relay the final answer.
-
-                  ## Task
-
-                '';
-            prefix = lib.escapeShellArg (frontmatter + prelude);
-            dst = "${codexDir}/skills/${cmdName}/SKILL.md";
-          in
-          ''
-            if [ -r ${lib.escapeShellArg secretPath} ]; then
-              mkdir -p "${codexDir}/skills/${cmdName}"
-              printf '%s' ${prefix} > "${dst}"
-              cat ${lib.escapeShellArg secretPath} >> "${dst}"
-              ${openAiYamlCmd}
-            else
-              echo "sops secret ${entry.info.key} not yet rendered; skipping Codex skill ${cmdName}" >&2
-            fi''
-        ) secretCommandList
-      );
-    in
-    lib.optionalString (secretCommandList != [ ]) ''
-      # Compose Codex SKILL.md files for secret commands from decrypted bodies.
-      ${cmds}
-    '';
-
-  # Activation script that writes Codex files for secret project skills. A sops
-  # template cannot be used here for the same reason as above: the Codex skill
-  # activation does `rm -rf skills`, so a template writing into that tree would
-  # lose the race. Each decrypted secret is the whole file, so it is copied
-  # verbatim rather than composed. Supporting files keep their relative path
-  # under the skill directory so progressive-disclosure links still resolve.
-  codexSecretProjectSkillsActivationScript =
-    let
-      writeSecretFile =
-        key: dst:
-        let
-          secretPath = config.sops.secrets.${key}.path;
-        in
-        ''
-          if [ -r ${lib.escapeShellArg secretPath} ]; then
-            mkdir -p "$(dirname ${lib.escapeShellArg dst})"
-            cat ${lib.escapeShellArg secretPath} > ${lib.escapeShellArg dst}
-          else
-            echo "sops secret ${key} not yet rendered; skipping Codex skill file ${dst}" >&2
-          fi'';
-      cmds = lib.concatStringsSep "\n" (
-        lib.concatMap (
-          entry:
-          let
-            dir = "${codexDir}/skills/${entry.name}";
-          in
-          [ (writeSecretFile entry.key "${dir}/SKILL.md") ]
-          ++ map (file: writeSecretFile file.key "${dir}/${file.path}") entry.supportFiles
-        ) secretSkillList
-      );
-    in
-    lib.optionalString (secretSkillList != [ ]) ''
-      # Write Codex files for secret project skills from decrypted secrets.
-      ${cmds}
-    '';
-
+  secretTemplates = secretCommandTemplates // secretSkillTemplates;
+  secretOwnedFiles = lib.mapAttrsToList (name: template: {
+    inherit (template) path;
+    source = config.sops.templates.${name}.path;
+    kind = "symlink";
+  }) secretTemplates;
+  ownedFiles =
+    lib.optionals config.programs.codex.enable (codexOwnedFiles ++ codexSecretOwnedFiles)
+    ++ secretOwnedFiles;
+  ownedDeployment = import ./owned-deployment.nix {
+    inherit
+      config
+      lib
+      pkgs
+      ownedFiles
+      ;
+    requiresSecrets =
+      secretOwnedFiles != [ ] || (config.programs.codex.enable && codexSecretOwnedFiles != [ ]);
+  };
 in
 {
+  options.agentic.assistants.ownedSpec = lib.mkOption {
+    type = lib.types.attrs;
+    internal = true;
+    description = "Desired assistant files and permitted ownership roots.";
+  };
+  options.agentic.assistants.requiresSecrets = lib.mkOption {
+    type = lib.types.bool;
+    internal = true;
+    description = "Whether assistant deployment requires a successful secret refresh.";
+  };
   options.agentic.assistants.pi = {
     homeFiles = lib.mkOption {
       type = lib.types.attrs;
@@ -824,21 +741,29 @@ in
       internal = true;
       description = "Home Manager file entries for Pi Agent assistant resources.";
     };
+    invocationRoutes = lib.mkOption {
+      type = lib.types.attrs;
+      default = { };
+      internal = true;
+      description = "Routes applied only at explicit command and skill invocation boundaries.";
+    };
     providerRouterMap = lib.mkOption {
       type = lib.types.attrsOf (lib.types.attrsOf lib.types.str);
       default = { };
       internal = true;
-      description = "Per-agent provider->modelId map harvested from header.pi.yaml. Consumed by the local pi-provider-router extension.";
+      description = "Per-agent provider->modelId map read from header.toml routing.pi. Consumed by the local pi-provider-router extension.";
     };
     providerRouterThinkingMap = lib.mkOption {
       type = lib.types.attrsOf (lib.types.attrsOf lib.types.str);
       default = { };
       internal = true;
-      description = "Per-agent provider->thinking-level map harvested from header.pi.yaml. Consumed by the local pi-provider-router extension as a sidecar to providerRouterMap.";
+      description = "Per-agent provider->thinking-level map read from header.toml routing.pi. Consumed by the local pi-provider-router extension as a sidecar to providerRouterMap.";
     };
   };
 
   config = {
+    agentic.assistants.ownedSpec = ownedDeployment.spec;
+    agentic.assistants.requiresSecrets = ownedDeployment.requiresSecrets;
     # Report whether OpenCode and Pi carry the house style in their system
     # prompt. Neither has an output-style mechanism, so the carriage is the
     # append to their global instructions below. The flag is read back from the
@@ -846,24 +771,20 @@ in
     # Rules tripwire falls back to injecting the full rules on a fresh context.
     agentic.houseStyle.inSystemPrompt = {
       opencode = config.programs.opencode.enable && carriesHouseStyle opencodeInstructions;
-      pi = carriesHouseStyle piHomeFiles.".pi/agent/AGENTS.md".text;
+      pi = piEnabled && carriesHouseStyle piHomeFiles.".pi/agent/AGENTS.md".text;
     };
 
     agentic.assistants.pi = {
       homeFiles = piHomeFiles;
+      invocationRoutes = piInvocationRoutes;
       providerRouterMap = piProviderRouterMap;
       providerRouterThinkingMap = piProviderRouterThinkingMap;
     };
 
-    # sops-nix declarations for secret command prompts and secret skills.
-    # Secrets decrypt the bodies; templates substitute the placeholder into the
-    # composed Claude, OpenCode, and Pi files at activation, writing each to its
-    # explicit path so plaintext never enters the store. Codex is handled by
-    # activation scripts instead (see codexSecretSkillsActivationScript and
-    # codexSecretProjectSkillsActivationScript).
+    # Render secrets privately before the ownership helper installs client files.
     sops = {
       secrets = secretCommandSecrets // secretSkillSecrets;
-      templates = secretCommandTemplates // secretSkillTemplates;
+      templates = lib.mapAttrs (_: template: builtins.removeAttrs template [ "path" ]) secretTemplates;
     };
 
     home = {
@@ -883,27 +804,7 @@ in
         (lib.mkIf config.programs.opencode.enable mkOpencodeSkillFiles)
       ];
 
-      # Codex skills and agents: written as real files via activation script (not symlinks).
-      # codex-rs uses file_type().is_file() for discovery, which returns false for symlinks
-      # on Linux. home.file creates symlinks, so both are invisible without this workaround.
-      activation.codexFiles = lib.mkIf config.programs.codex.enable (
-        lib.hm.dag.entryAfter [ "writeBoundary" ] (
-          codexRootInstructionsActivationScript + codexSkillsActivationScript + codexAgentsActivationScript
-        )
-      );
-
-      # Write Codex files for secret commands and secret skills after
-      # codexFiles has recreated skills/ and after sops-nix has rendered the
-      # decrypted secrets. A sops template cannot be used here because
-      # codexFiles does `rm -rf skills`; these entries write the decrypted
-      # bodies from the secret paths instead.
-      activation.codexSecretFiles =
-        lib.mkIf (config.programs.codex.enable && (secretCommandList != [ ] || secretSkillList != [ ]))
-          (
-            lib.hm.dag.entryAfter [ "codexFiles" "sops-nix" ] (
-              codexSecretSkillsActivationScript + codexSecretProjectSkillsActivationScript
-            )
-          );
+      inherit (ownedDeployment) activation;
     };
 
     programs = {

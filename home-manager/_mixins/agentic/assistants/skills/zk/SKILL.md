@@ -1,7 +1,3 @@
----
-name: zk
-description: Handles requested maintenance of the zk notebook at ~/Notes. Use when the user asks to create, find, search, update, rewrite, rename, split, merge, or reorganise notes there, or names zk for notebook work. Includes title changes, filenames, links, attachments, metadata, and bulk reorganisation. Does not provide automatic agent memory, session capture, or a prescribed Zettelkasten method. Do not load for unrelated Markdown files or general uses of the word notes.
----
 
 # zk
 

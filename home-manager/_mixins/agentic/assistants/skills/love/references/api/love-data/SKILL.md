@@ -1,10 +1,3 @@
----
-name: love-data
-description: Provides functionality for creating and transforming data. Use this skill when working with data operations, encoding/decoding, compression, data transformation, or any data-related operations in LÖVE games.
-license: MIT
-metadata:
-  author: Ron Dekker <rondekker.nl>
----
 
 ## When to use this skill
 Provides functionality for creating and transforming data. Use this skill when working with data operations, encoding/decoding, compression, data transformation, or any data-related operations in LÖVE games.

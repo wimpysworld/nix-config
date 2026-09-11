@@ -1,8 +1,3 @@
----
-name: slack
-description: "Use when posting, replying, or sending a DM in Slack, or when the user mentions Slack, a Slack channel, a Slack thread, or a Slack message URL. Covers the `slack-post` helper, its target forms, and channel resolution. Use even if the user only says 'post this in Slack', 'reply in the thread', or 'DM them'."
-user-invocable: true
----
 
 # Slack
 

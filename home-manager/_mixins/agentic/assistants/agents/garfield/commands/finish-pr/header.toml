@@ -1,0 +1,12 @@
+[common]
+description = "Wrap up a finished PR 🧹"
+argument-hint = "[branch]"
+
+[compose]
+agent = "garfield"
+
+[compose.claude]
+use-task = true
+
+[opencode]
+subtask = true

@@ -1,0 +1,6 @@
+[common]
+description = "Draft Self-Review 🪞"
+argument-hint = "<cycle> [activity-file]"
+
+[compose]
+agent = "penfold"

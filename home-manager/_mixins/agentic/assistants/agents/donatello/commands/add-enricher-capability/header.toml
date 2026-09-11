@@ -1,0 +1,11 @@
+[common]
+description = "Add manifest-gen enricher capability 🧬"
+
+[claude]
+argument-hint = "[capability]"
+
+[compose]
+agent = "donatello"
+
+[pi]
+argument-hint = "[capability]"

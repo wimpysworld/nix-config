@@ -1,10 +1,3 @@
----
-name: love-image
-description: Provides an interface to decode encoded image data. Use this skill when working with image operations, texture management, image data manipulation, or any image-related operations in LÖVE games.
-license: MIT
-metadata:
-  author: Ron Dekker <rondekker.nl>
----
 
 ## When to use this skill
 Provides an interface to decode encoded image data. Use this skill when working with image operations, texture management, image data manipulation, or any image-related operations in LÖVE games.

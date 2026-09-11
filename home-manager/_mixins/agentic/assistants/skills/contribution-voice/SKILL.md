@@ -1,8 +1,3 @@
----
-name: contribution-voice
-description: "Use when drafting text that is published under the user's name in public: a GitHub, Linear, or Slack comment, an issue, a bug report, a pull request description, a review reply, or a commit message. Governs the structure of the text (length, layout, sign-offs, the cut pass) rather than its vocabulary. Use even if the user only says 'reply to this issue', 'write the PR description', or 'draft a comment'."
-user-invocable: true
----
 
 # Contribution Voice
 

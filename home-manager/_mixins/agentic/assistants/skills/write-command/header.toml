@@ -1,0 +1,3 @@
+[common]
+name = "write-command"
+description = "Use when creating, updating, or reviewing a slash command - shims that delegate to a skill or agent, standalone commands with an inline output format, and the `description` / `argument-hint` / `model` headers per provider. Covers Claude Code commands, OpenCode commands, Pi prompt templates, and Codex commands delivered as manual-only skills. Use even if the user only says \"slash command\", \"prompt template\", \"command shim\", \"create-command\", or names the artefact by path."

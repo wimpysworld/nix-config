@@ -1,0 +1,6 @@
+[common]
+description = "Create Work Order 📋"
+argument-hint = "<cycle> [team]"
+
+[compose]
+agent = "penfold"

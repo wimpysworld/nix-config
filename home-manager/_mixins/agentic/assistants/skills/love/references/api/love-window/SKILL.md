@@ -1,10 +1,3 @@
----
-name: love-window
-description: Provides an interface for modifying and retrieving information about the program's window. Use this skill when working with window operations, display settings, fullscreen modes, or any window-related operations in LÖVE games.
-license: MIT
-metadata:
-  author: Ron Dekker <rondekker.nl>
----
 
 ## When to use this skill
 Provides an interface for modifying and retrieving information about the program's window. Use this skill when working with window operations, display settings, fullscreen modes, or any window-related operations in LÖVE games.

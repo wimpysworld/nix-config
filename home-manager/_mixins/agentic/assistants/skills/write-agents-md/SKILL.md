@@ -1,7 +1,3 @@
----
-name: write-agents-md
-description: Use when creating, updating, consolidating, or reviewing an AGENTS.md (or CLAUDE.md, CLAUDE.local.md, .claude/rules/*.md, .cursorrules, .cursor/rules/*.mdc, AGENTS.override.md, or .github/instructions/*.instructions.md) project instruction file. Covers the open agents.md spec, Codex precedence rules, Claude Code memory loading, and migration from legacy formats. Use even if the user only says "instructions", "rules", "project memory", or names a single legacy filename.
----
 
 # Write AGENTS.md
 

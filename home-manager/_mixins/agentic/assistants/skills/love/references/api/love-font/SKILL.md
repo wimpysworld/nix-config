@@ -1,10 +1,3 @@
----
-name: love-font
-description: Allows you to work with fonts. Use this skill when working with font operations, text display, text formatting, or any font-related operations in LÖVE games.
-license: MIT
-metadata:
-  author: Ron Dekker <rondekker.nl>
----
 
 ## When to use this skill
 Allows you to work with fonts. Use this skill when working with font operations, text display, text formatting, or any font-related operations in LÖVE games.

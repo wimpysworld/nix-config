@@ -1,0 +1,29 @@
+[common]
+description = "A specialised git workflow assistant that enforces best practices for commit messages, pull requests, and code explanations while strictly adhering to Conventional Commits standards."
+
+[routing]
+
+[routing.claude]
+model = "sonnet"
+
+[routing.codex]
+model = "gpt-5.6-terra"
+model_reasoning_effort = "medium"
+
+[routing.pi]
+
+[routing.pi.anthropic]
+model = "claude-sonnet-5"
+
+[routing.pi.openai-codex]
+model = "gpt-5.6-terra"
+thinking = "medium"
+
+[routing.pi.google]
+model = "gemini-3-flash"
+
+[opencode]
+
+[opencode.permission]
+task = "deny"
+question = "allow"

@@ -1,0 +1,3 @@
+[common]
+name = "draft-comment"
+description = "Use when drafting one comment, reply, or message for a GitHub issue, pull request, or review thread; a Linear issue or comment; or a Slack message or thread. Use for requests such as 'draft a comment', 'write a reply', or 'help me respond'. Keeps drafting read-only. When the user asks to post, use this as the drafting phase before the relevant write command."

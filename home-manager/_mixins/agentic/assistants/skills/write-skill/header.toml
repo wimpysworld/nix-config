@@ -1,0 +1,3 @@
+[common]
+name = "write-skill"
+description = "Use when creating, updating, or reviewing an Agent Skill - authoring or revising a `SKILL.md`, its frontmatter, layout, references, and progressive disclosure. Use when the user mentions writing, editing, splitting, renaming, or auditing a skill, even if they do not say \"skill\" explicitly. Covers cross-platform portability across Claude Code, Codex, OpenCode, and Pi."

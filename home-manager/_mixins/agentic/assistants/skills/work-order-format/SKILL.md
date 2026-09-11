@@ -1,7 +1,3 @@
----
-name: work-order-format
-description: "Use when creating or updating a cycle work order document in Linear. Defines the document title and parent, the wave headings with dependency lines, the strict-parallel rule, the issue bullet and deferred entry forms, and stable wave numbering. Use whenever a command writes or patches a work order."
----
 
 # Work Order Format
 

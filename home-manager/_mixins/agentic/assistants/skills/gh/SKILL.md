@@ -1,8 +1,3 @@
----
-name: gh
-description: "Use when the user mentions `gh`, `gh api`, the GitHub CLI, the GitHub API, or wants to view, query, search, or change GitHub. Covers querying the GitHub API, raw API calls, PRs/pull requests, review comment replies, issues, workflows/Actions/CI, releases, repos, notifications, status, and any task that views or queries GitHub data."
-user-invocable: true
----
 
 # GitHub CLI (gh) Reference
 

@@ -1,0 +1,11 @@
+[common]
+description = "Implement Plan 👨‍💻"
+
+[claude]
+argument-hint = "[plan-file] [phase]"
+
+[compose]
+agent = "donatello"
+
+[pi]
+argument-hint = "[plan-file] [phase]"

@@ -1,0 +1,6 @@
+[common]
+description = "Gather Review Data 📊"
+argument-hint = "<start-date> <end-date>"
+
+[compose]
+agent = "penfold"

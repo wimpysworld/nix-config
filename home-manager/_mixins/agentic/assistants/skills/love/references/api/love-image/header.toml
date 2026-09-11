@@ -1,0 +1,7 @@
+[common]
+name = "love-image"
+description = "Provides an interface to decode encoded image data. Use this skill when working with image operations, texture management, image data manipulation, or any image-related operations in LÖVE games."
+license = "MIT"
+
+[common.metadata]
+author = "Ron Dekker <rondekker.nl>"
