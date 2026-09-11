@@ -46,14 +46,14 @@ skills/
 
 | Skill             | Owns                                                                                     | Loads when                                                                                        |
 | ----------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `write-skill`     | Agent Skills open spec, SKILL.md frontmatter, progressive disclosure, references layout  | User edits or creates a `SKILL.md`; mentions "skill", "skills", or names a skill path             |
+| `write-skill`     | Agent Skills open spec, repository metadata, generated native frontmatter, progressive disclosure, references layout | User edits or creates a `SKILL.md`; mentions "skill", "skills", or names a skill path             |
 | `write-assistant` | Agent system prompts, persona, capabilities, voice, output contracts, sub-agent triggers | User edits or creates an agent prompt, sub-agent, assistant, or persona artefact                  |
 | `write-agents-md` | `AGENTS.md` open spec, `CLAUDE.md`, `.cursor/rules/*`, consolidation and migration       | User edits or creates project instructions, rules, project memory, or mentions any of those names |
-| `write-command`   | Slash commands and prompt templates, shim structure, headers per provider, `$ARGUMENTS`  | User edits or creates a slash command, prompt template, or command shim                           |
+| `write-command`   | Slash commands and prompt templates, shim structure, repository metadata, generated native frontmatter per provider, `$ARGUMENTS` | User edits or creates a slash command, prompt template, or command shim                           |
 
 Each skill is description-triggered. The trigger phrases live in the
-`description` frontmatter field, not in the body, because the body only loads
-after the description has already matched.
+`[common] description` field in `header.toml`, which the composer emits in
+generated native frontmatter. The body only loads after the description matches.
 
 ### 2.2 Shim, not monolith
 
@@ -177,7 +177,7 @@ The repo targets four runtimes: Claude Code, OpenCode, Pi, and Codex.
 Skill and command artefacts must work across all four; vendor extensions
 are isolated to references and provider tables in `header.toml`.
 
-### 4.1 Portable frontmatter only
+### 4.1 Repository metadata and native frontmatter
 
 Repository skills use `header.toml` for metadata and a frontmatter-free `SKILL.md` for the body. The composer generates native frontmatter.
 
