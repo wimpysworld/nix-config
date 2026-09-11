@@ -16,6 +16,52 @@ REPO = ASSISTANTS.parents[3]
 
 
 class SkillFileTests(unittest.TestCase):
+    def test_pi_routes_include_secret_skills_with_public_headers(self):
+        files = {
+            "skills/routed/SKILL.sops": "fixture-routed\n",
+            "skills/routed/header.toml": '''[common]
+name = "routed"
+description = "An encrypted fixture skill."
+[routing.pi.openai]
+model = "fixture-model"
+thinking = "high"
+''',
+            "skills/self-review/SKILL.sops": "fixture-headerless\n",
+            "skills/public/SKILL.md": "Run the public fixture.\n",
+            "skills/public/header.toml": '''[common]
+name = "public"
+description = "A public fixture skill."
+''',
+        }
+        with tempfile.TemporaryDirectory(prefix="assistant-skill-routes-") as directory:
+            for name in ("default.nix", "compose.nix", "metadata.nix"):
+                Path(directory, name).write_text((ASSISTANTS / name).read_text())
+            for name, content in files.items():
+                path = Path(directory, name)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content)
+            expression = f'''let
+              flake = builtins.getFlake {json.dumps(str(REPO))};
+              pkgs = import flake.inputs.nixpkgs {{ system = builtins.currentSystem; }};
+              assistants = import {directory}/default.nix {{
+                inherit pkgs;
+                inherit (pkgs) lib;
+                config = {{}};
+                noughtyLib = {{}};
+              }};
+            in assistants.config.agentic.assistants.pi.invocationRoutes.skills'''
+            result = subprocess.run(
+                ["nix", "eval", "--impure", "--json", "--expr", expression],
+                capture_output=True, text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout), {
+                "public": {"providers": {}},
+                "routed": {"providers": {
+                    "openai": {"model": "fixture-model", "thinking": "high"},
+                }},
+            })
+
     def test_codex_discovers_regular_root_and_nested_skill_files(self):
         header = '''[common]
 name = "NAME"
