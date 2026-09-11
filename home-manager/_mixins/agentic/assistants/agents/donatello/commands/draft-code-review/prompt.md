@@ -31,7 +31,7 @@ NEVER execute while drafting:
 
 1. Read `communication-rules` first unless its complete, current instructions are in this context. Apply it before drafting
 2. Read `contribution-voice` first unless its complete, current instructions are in this context. Apply it. It governs the structure of text published under the user's name
-3. Load and follow the `review-report-path` skill. Use `${XDG_STATE_HOME:-${HOME}/.local/state}/agent-reviews/` as the report root
+3. Load and follow `review-report-path` for the report root and ordinary lookup
 4. Resolve the report from `$ARGUMENTS`:
    - For an exact report path, derive `<project>` from the current repository:
      1. Resolve the report root and the file's parent directory with POSIX `cd -P` and `pwd -P`. Do not use `realpath` or `readlink -f`
@@ -39,7 +39,7 @@ NEVER execute while drafting:
      3. Reject paths outside that tree, missing files, and names that match `findings-*.md`
      4. Use the accepted file only
    - For a `run-*` ID, find that exact run directory under the current project's report tree. Stop and list the matches if the ID is not unique. In the unique run, exclude `findings-*.md` and use the sole final report. If several final reports remain, list their names and ask which one to use
-   - For a target or blank input, derive `<project>` and `<target>` with `review-report-path`. Find final reports under `<report-root>/<project>/<target>/run-*/`, excluding `findings-*.md`. Use the sole report. If several reports remain, list each run ID and report name, then ask which one to use. If none remain, list the target directories under `<report-root>/<project>/` and stop, saying a review must be run first for this target
+   - For a target or blank input, use `review-report-path` to find and select a final report without a supplied report name. If none exists, say that a review must run first for this target
 5. Never delete or overwrite a run directory or report
 6. Read the report and decide the verdict from its findings, not from a wish to be agreeable
 7. Draft from the report's Findings section only. Its summary, verification, resolved, still-open, and notes sections are evidence that the review happened; none of them reaches the comment. A comment that follows the report's section order is a compression of the report, which is the failure

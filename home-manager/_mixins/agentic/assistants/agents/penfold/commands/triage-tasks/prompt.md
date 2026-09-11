@@ -26,7 +26,7 @@ The two sweeps differ in coverage, so report them apart: the assignee sweep is w
 **4. Spawn one fresh sub-agent per issue.** Never research an issue or write to Linear in this context. Never hand two issues to one sub-agent. Give each sub-agent the issue key and this instruction set:
 
 1. Load and apply the `research-task` skill to the issue key. Perform its research here without its agent fan-out. Preserve its research scope and evidence requirements.
-2. Read and follow the `update-task` workflow body with the exact issue key in this same context. Ignore its generated launch wrapper. `research-task` files nothing, so the update must consume this worker's research directly. Complete both phases without launching another agent.
+2. Read and follow the `update-task` workflow body with the exact issue key in this same context. Ignore its generated launch wrapper. `research-task` does not update the task or tracker automatically. Consume this worker's research directly, without requiring an intermediate report file. Complete both phases without launching another agent.
 3. Where the research concludes the issue is a duplicate, is obsolete, or should be dropped, report that as a recommendation and change nothing.
 4. Return a short report only: issue key, what changed, the new status, and any recommendation. No research detail.
 5. Send one progress message to the parent when research completes and `update-task` starts.

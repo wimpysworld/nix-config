@@ -1,7 +1,7 @@
 
 # Review Report Path
 
-Every review, audit, and analysis report goes to durable per-user state storage:
+Store private diagnostic reports from reviews, audits, and analysis in durable per-user state storage by default:
 
 ```
 ${XDG_STATE_HOME:-${HOME}/.local/state}/agent-reviews/<project>/<target>/<run-id>/<report-name>
@@ -9,7 +9,9 @@ ${XDG_STATE_HOME:-${HOME}/.local/state}/agent-reviews/<project>/<target>/<run-id
 
 The calling command supplies `<report-name>`. This skill supplies `<project>`, `<target>`, and `<run-id>`.
 
-Do not use `/tmp` or `$TMPDIR`. A fenced process can have private temporary storage that disappears after that process exits.
+This convention excludes project documents, tracker content, disposable plans, transport payloads, and runtime logs. Keep those outputs under their own workflow contracts.
+
+Honour explicit user destinations unless the calling workflow restricts the input or output boundary. Otherwise, keep reports outside the repository and never commit them. Do not use `/tmp` or `$TMPDIR` for default report storage. A fenced process can have private temporary storage that disappears after that process exits.
 
 ## Project
 
@@ -38,7 +40,9 @@ Normalise every slug: lowercase it, replace each character outside `a-z0-9` with
 
 ## Run
 
-Create a new run directory for every invocation, after deriving `<project>` and `<target>`:
+Only the owner starting a new report-writing workflow allocates a run. Lookup creates no directories or files. Workers use the supplied run and fallback paths, not a new run.
+
+For a new report-writing workflow, derive `<project>` and `<target>`, then allocate one run before any worker writes fallback findings:
 
 ```sh
 report_root="${XDG_STATE_HOME:-${HOME}/.local/state}/agent-reviews/<project>/<target>"
@@ -84,14 +88,12 @@ The run directory stays in each result, so the caller can select an exact past r
 
 ## Rules
 
-- Create the state and target directories if they do not exist.
-- Create a new run directory before any worker writes a fallback findings file.
-- Never delete a run directory or a report. Never reuse a run directory for a later invocation.
-- Never overwrite an existing report or findings file. If an expected new path exists before fan-out, create another run directory.
-- Keep reports outside the repository and never commit them.
+- Create missing state and target directories only when allocating a new report run.
+- Never delete a run directory, report, or fallback findings file. Never reuse a run directory for a later invocation.
+- Never overwrite an existing report or findings file. If an expected new path exists, stop writing to it. The workflow owner allocates another run and supplies replacement paths before workers write.
 - Report the written path in your output so the user can find it.
 - To find a report, derive the same project and target directory in per-user state storage. Search all `run-*` directories under that target.
 - When the caller names a report file, list each matching `<run-id>/<report-name>`. Use the sole match, or ask which run to use when several match.
 - When the caller does not name a report file, list the reports with their run IDs. Use the sole report, or ask which one to use when several exist.
-- Never select the newest report when several reports match. Ask the caller to select an exact run.
-- When the target directory is missing or empty, list target directories under `${XDG_STATE_HOME:-${HOME}/.local/state}/agent-reviews/<project>/` instead of guessing.
+- Unless the calling workflow explicitly overrides selection, never select the newest report when several reports match. Ask the caller to select an exact run.
+- When no matching report exists, list available target directories under `${XDG_STATE_HOME:-${HOME}/.local/state}/agent-reviews/<project>/` and stop instead of guessing. This includes missing, empty, and fallback-only target directories.

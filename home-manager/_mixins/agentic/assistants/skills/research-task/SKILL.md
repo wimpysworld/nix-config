@@ -84,7 +84,7 @@ The caller is the sole orchestrator. Each sub-agent covers its assigned source a
 [Concrete actions]
 ```
 
-The report is not filed automatically. The user can capture it with `create-task` or `update-task`.
+This skill does not update the task or tracker automatically. `create-task` or `update-task` captures the research when authorised. Private report storage follows the inherited delivery rules. Research consumed directly by a later workflow needs no intermediate report file.
 
 Markers: 📌 KEY (critical finding), ⚠️ CAVEAT (limitation or uncertainty), → (recommendation).
 
