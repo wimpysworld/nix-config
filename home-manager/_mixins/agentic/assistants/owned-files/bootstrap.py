@@ -36,17 +36,14 @@ def printf_content(fmt, body):
     raise Unsupported("Unsupported printf format")
 
 
-def parse_public(section, directories=None):
+def parse_public(section):
     words = tokens(section)
     records = {}
-    created = set()
     i = 0
     while i < len(words):
         if words[i:i + 2] in (["mkdir", "-p"], ["rm", "-rf"]):
             if i + 3 > len(words):
                 raise Unsupported("Incomplete directory command")
-            if words[i] == "mkdir":
-                created.add(words[i + 2])
             i += 3
         elif words[i:i + 2] == ["ln", "-sfn"] and i + 4 <= len(words):
             records[words[i + 3]] = {"kind": "symlink", "target": words[i + 2]}
@@ -56,8 +53,6 @@ def parse_public(section, directories=None):
             i += 5
         else:
             raise Unsupported("Unsupported public writer command")
-    if directories is not None:
-        directories.update(created)
     return records
 
 
@@ -67,10 +62,9 @@ def safe_secret_source(source, home, config_home=None, secret_root=None):
     return path.is_absolute() and ".." not in path.parts and path.is_relative_to(root) and path != root
 
 
-def parse_secrets(section, home, config_home=None, directories=None, secret_root=None):
+def parse_secrets(section, home, config_home=None, secret_root=None):
     words = tokens(section)
     records = {}
-    created = set()
     unavailable = False
     i = 0
     while i < len(words):
@@ -88,8 +82,6 @@ def parse_secrets(section, home, config_home=None, directories=None, secret_root
                     arguments = shlex.split(directory[2:-1])
                     if len(arguments) != 2 or arguments[0] != "dirname":
                         raise Unsupported("Unsupported directory expression")
-                    directory = str(Path(arguments[1]).parent)
-                created.add(directory)
                 i += 3
             elif words[i] == "printf" and i + 5 <= len(words) and words[i + 3] == ">":
                 contents[words[i + 4]] = printf_content(words[i + 1], words[i + 2])
@@ -112,8 +104,6 @@ def parse_secrets(section, home, config_home=None, directories=None, secret_root
             raise Unsupported("Unsupported secret fallback")
         i += 6
         records.update({path: fingerprint(body) for path, body in contents.items() if body is not None})
-    if directories is not None:
-        directories.update(created)
     if unavailable:
         print("Owned-file bootstrap: previous secret bodies are unavailable, leaving unverified copies unchanged.", file=sys.stderr)
     return records
@@ -261,12 +251,7 @@ def old_secret_links(generation, roots, config_relative=Path(".config"), manifes
     return records
 
 
-def verified_directories(directories, roots):
-    return sorted(path for path in directories if allowed(path, roots) and Path(path).is_dir()
-                  and not any(parent.is_symlink() for parent in (Path(path), *Path(path).parents)))
-
-
-def capture(spec, old_generation, directories=None):
+def capture(spec, old_generation):
     if (Path(spec["stateDir"]) / "manifest.json").exists() or not old_generation:
         return {}
     generation = Path(old_generation).resolve()
@@ -275,7 +260,6 @@ def capture(spec, old_generation, directories=None):
         return {}
     script_sections = sections(immutable_text(generation / "activate"))
     expected = {}
-    created = set()
     manifest = {}
     try:
         config_relative = Path(spec.get("configHome", str(Path(spec["home"]) / ".config"))).relative_to(spec["home"])
@@ -283,15 +267,13 @@ def capture(spec, old_generation, directories=None):
         expected.update(old_secret_links(generation, spec["roots"], config_relative, manifest))
     except (OSError, Unsupported, ValueError, KeyError, TypeError):
         print("Owned-file bootstrap: cannot verify previous secret links, leaving them unchanged.", file=sys.stderr)
-    for name, parser in (("codexFiles", lambda text: parse_public(text, created)),
-                         ("codexSecretFiles", lambda text: parse_secrets(text, spec["home"], spec.get("configHome"), created, manifest.get("symlinkPath")))):
+    for name, parser in (("codexFiles", parse_public),
+                         ("codexSecretFiles", lambda text: parse_secrets(text, spec["home"], spec.get("configHome"), manifest.get("symlinkPath")))):
         try:
             expected.update({path: record for path, record in parser(script_sections.get(name, "")).items()
                              if assistant_path(path, spec["roots"], codex_only=True)})
         except (Unsupported, ValueError, IndexError):
             print(f"Owned-file bootstrap: unsupported previous {name} writer, leaving its files unchanged.", file=sys.stderr)
-    if directories is not None:
-        directories.update(verified_directories(created, spec["roots"]))
     return verified_records(expected, spec["roots"])
 
 
@@ -308,7 +290,6 @@ def main():
     if any(parent.is_symlink() for parent in (destination.parent, *destination.parent.parents)):
         raise ValueError("Bootstrap state directory must not contain symlinks")
     records = {}
-    directories = set()
     if destination.exists() and not (Path(spec["stateDir"]) / "manifest.json").exists():
         info = destination.lstat()
         if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) != 0o600:
@@ -317,9 +298,8 @@ def main():
         if previous.get("version") != 1 or not isinstance(previous.get("files"), dict):
             raise ValueError("Invalid existing bootstrap manifest")
         records.update(verified_records(previous["files"], spec["roots"]))
-        directories.update(verified_directories(previous.get("directories", []), spec["roots"]))
-    records.update(capture(spec, args.old_generation, directories))
-    result = {"version": 1, "files": records, "directories": sorted(directories)}
+    records.update(capture(spec, args.old_generation))
+    result = {"version": 1, "files": records, "directories": []}
     destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     os.chmod(destination.parent, 0o700)
     fd, temporary = tempfile.mkstemp(prefix=".bootstrap-", dir=destination.parent)

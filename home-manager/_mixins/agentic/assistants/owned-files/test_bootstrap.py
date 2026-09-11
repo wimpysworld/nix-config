@@ -37,17 +37,56 @@ class BootstrapTests(unittest.TestCase):
         self.target.write_text("User modification.\n")
         self.assertEqual(set(bootstrap.verified_records(expected, [str(self.root)])), {str(link)})
 
-    def test_only_declared_real_directories_are_captured(self):
-        declared = self.target.parent
-        manual = self.root / "manual"
-        manual.mkdir()
-        alias = self.root / "alias"
-        alias.symlink_to(manual, target_is_directory=True)
-        directories = set()
-        bootstrap.parse_public(f"mkdir -p {declared}\nmkdir -p {alias}\n", directories)
-        verified = bootstrap.verified_directories(directories, [str(self.root)])
-        self.assertEqual(set(verified), {str(declared)})
-        self.assertNotIn(str(manual), verified)
+    def test_legacy_mkdir_does_not_claim_manual_directories_on_disable_or_migration(self):
+        module_spec = importlib.util.spec_from_file_location("deploy_bootstrap", Path(__file__).with_name("deploy.py"))
+        deploy = importlib.util.module_from_spec(module_spec)
+        module_spec.loader.exec_module(deploy)
+        source = self.home / ".config/sops-nix/secrets/fake"
+        source.parent.mkdir(parents=True)
+        source.write_text("Generated content.\n")
+        for writer in ("codexFiles", "codexSecretFiles"):
+            for migrate in (False, True):
+                with self.subTest(writer=writer, migrate=migrate):
+                    fixture = f"{writer}-{migrate}"
+                    manual = self.root / "skills" / fixture
+                    manual.mkdir()
+                    target = manual / "SKILL.md"
+                    target.write_bytes(source.read_bytes())
+                    empty = manual / "empty"
+                    empty.mkdir()
+                    commands = f"mkdir -p {manual}\nmkdir -p {empty}\n"
+                    if writer == "codexFiles":
+                        commands += f"printf '%s' {shlex.quote(source.read_text())} > {target}\n"
+                    else:
+                        commands = f"if [ -r {source} ]; then\n{commands}cat {source} > {target}\nelse\necho 'Missing fake secret.' >&2\nfi\n"
+                    generation = self.home / f"generation-{fixture}"
+                    generation.mkdir()
+                    (generation / "activate").write_text(f'_iNote "Activating %s" "{writer}"\n{commands}')
+                    state = self.home / f"state-{fixture}"
+                    spec = {"version": 1, "stateDir": str(state), "roots": [str(self.root)], "home": str(self.home), "files": []}
+                    desired = self.home / f"spec-{fixture}.json"
+                    desired.write_text(json.dumps(spec))
+                    captured = state / "bootstrap.json"
+                    with mock.patch.object(bootstrap, "store_path", return_value=True):
+                        with mock.patch("sys.argv", ["bootstrap.py", str(desired), "--old-generation", str(generation), "--output", str(captured)]):
+                            bootstrap.main()
+                    records = json.loads(captured.read_text())
+                    self.assertEqual(records["directories"], [])
+                    self.assertEqual(records["files"], {str(target): bootstrap.fingerprint(source.read_bytes())})
+                    replacement = self.root / "skills" / f"new-{fixture}" / "SKILL.md"
+                    if migrate:
+                        spec["files"] = [{"kind": "file", "path": str(replacement), "source": str(source)}]
+                    deploy.deploy(spec, bootstrap_manifest=str(captured))
+                    self.assertFalse(target.exists())
+                    self.assertTrue(manual.is_dir())
+                    self.assertTrue(empty.is_dir())
+                    if migrate:
+                        self.assertEqual(replacement.read_bytes(), source.read_bytes())
+                        spec["files"] = []
+                        deploy.deploy(spec)
+                        self.assertFalse(replacement.parent.exists())
+                        self.assertTrue(manual.is_dir())
+                        self.assertTrue(empty.is_dir())
 
     def secret_script(self, source):
         return f"if [ -r {shlex.quote(str(source))} ]; then\nmkdir -p {shlex.quote(str(self.target.parent))}\nprintf '%s' 'Prefix\n' > {shlex.quote(str(self.target))}\ncat {shlex.quote(str(source))} >> {shlex.quote(str(self.target))}\nelse\necho 'Missing fake secret.' >&2\nfi\n"
@@ -133,13 +172,15 @@ class BootstrapTests(unittest.TestCase):
         deploy.deploy(spec, bootstrap_manifest=str(captured))
         self.assertEqual(destination.readlink(), new_source)
 
-    def test_retry_keeps_prior_proof_when_secret_content_changes(self):
+    def test_retry_keeps_file_proof_but_drops_unproven_directories(self):
         state = self.home / "state"
         state.mkdir(mode=0o700)
         self.target.write_text("Fake old copied secret.\n")
         record = bootstrap.fingerprint(self.target.read_bytes())
         captured = state / "bootstrap.json"
-        captured.write_text(json.dumps({"version": 1, "files": {str(self.target): record}}))
+        manual = self.root / "skills/manual"
+        manual.mkdir()
+        captured.write_text(json.dumps({"version": 1, "files": {str(self.target): record}, "directories": [str(manual), str(self.target.parent)]}))
         captured.chmod(0o600)
         spec = self.home / "spec.json"
         spec.write_text(json.dumps({"stateDir": str(state), "roots": [str(self.root)], "home": str(self.home)}))
@@ -147,6 +188,14 @@ class BootstrapTests(unittest.TestCase):
             with mock.patch("sys.argv", ["bootstrap.py", str(spec), "--output", str(captured)]):
                 bootstrap.main()
         self.assertEqual(json.loads(captured.read_text())["files"], {str(self.target): record})
+        self.assertEqual(json.loads(captured.read_text())["directories"], [])
+        module_spec = importlib.util.spec_from_file_location("deploy_retry", Path(__file__).with_name("deploy.py"))
+        deploy = importlib.util.module_from_spec(module_spec)
+        module_spec.loader.exec_module(deploy)
+        deploy.deploy({"version": 1, "stateDir": str(state), "roots": [str(self.root)], "files": []}, bootstrap_manifest=str(captured))
+        self.assertFalse(self.target.exists())
+        self.assertTrue(self.target.parent.is_dir())
+        self.assertTrue(manual.is_dir())
 
     def darwin_fixture(self, direct_launcher=False):
         generation = self.home / "darwin-generation"
