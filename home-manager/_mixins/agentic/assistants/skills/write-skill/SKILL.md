@@ -9,7 +9,9 @@ Author and maintain Agent Skills (`SKILL.md`) that load via description-triggere
 - **Skill** vs **command**. Skills are description-triggered and reusable; commands are deterministic and user-invoked. If the workflow needs an argument and a fixed name, build a command that loads the skill.
 - **Add a reference** vs **enlarge the body**. Add a `references/<topic>.md` when material is needed only some of the time, exceeds ~100 lines, or contains variants that differ per task.
 
-## Frontmatter (portable, required)
+## Native output frontmatter (portable, required)
+
+Native skills require the frontmatter below. In this repository, the composer generates it from `header.toml`. Keep source `SKILL.md` files body-only.
 
 ```yaml
 ---
