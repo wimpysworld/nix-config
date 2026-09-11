@@ -1,10 +1,3 @@
----
-name: love-video
-description: This module is responsible for decoding, controlling, and streaming video files. It can't draw the videos, see love.graphics.newVideo and Video objects for that. Use this skill when working with video operations, video decoding, video streaming, or any video-related operations in LÖVE games.
-license: MIT
-metadata:
-  author: Ron Dekker <rondekker.nl>
----
 
 ## When to use this skill
 This module is responsible for decoding, controlling, and streaming video files. It can't draw the videos, see love.graphics.newVideo and Video objects for that. Use this skill when working with video operations, video decoding, video streaming, or any video-related operations in LÖVE games.

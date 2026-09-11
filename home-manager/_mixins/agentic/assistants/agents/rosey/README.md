@@ -110,7 +110,7 @@ caps them at 10,000 characters. Rosey's targets sit inside that band:
 | `AGENTS.md` root    | 50-200 lines                           | 32 KiB (Codex truncates) |
 | Command shim body   | 4-6 lines                              | 10 lines                 |
 | Standalone command  | 30-60 lines if it has an output format | 80 lines                 |
-| `description.txt`   | ≤50 chars                              | 60 chars                 |
+| `[common] description`   | ≤50 chars                              | 60 chars                 |
 | `argument-hint`     | ≤25 chars                              | 30 chars                 |
 
 The numbers are guidance, not religion. The "would removing this cause the
@@ -175,26 +175,21 @@ consume context and, on OpenAI, still count against rate limits.
 
 The repo targets four runtimes: Claude Code, OpenCode, Pi, and Codex.
 Skill and command artefacts must work across all four; vendor extensions
-are isolated to references and per-provider header files.
+are isolated to references and provider tables in `header.toml`.
 
 ### 4.1 Portable frontmatter only
 
-A SKILL.md frontmatter in this repo uses only the two fields from the open
-spec at `agentskills.io`:
+Repository skills use `header.toml` for metadata and a frontmatter-free `SKILL.md` for the body. The composer generates native frontmatter.
 
-```yaml
----
-name: <kebab-case, ≤64 chars, matches parent dir>
-description: <≤1024 chars, third person, when-to-use, trigger-rich>
----
+```toml
+[common]
+name = "example-skill"
+description = "Use when the user asks for the example workflow."
 ```
 
-Vendor-specific fields (`when_to_use`, `allowed-tools`, `disable-model-invocation`,
-`user-invocable`, `argument-hint`, `paths`, `model`, `effort`, `context`,
-`agent`, `hooks`, `shell` from Claude Code; `agent` and `subtask` from
-OpenCode; the Codex companion `agents/openai.yaml`) are documented in
-`write-skill/references/portability.md` but kept out of the SKILL.md
-frontmatter so the file loads cleanly on every runtime.
+The explicit skill name must match its directory. Optional portable fields include `license`, `compatibility`, and `metadata`. Native non-model fields belong in client tables. Model and effort pins belong in routing tables. Ordinary Codex companion policy belongs under `[codex.policy]`.
+
+See `write-skill` for the complete source contract. Agent and command names derive from directory names.
 
 `AGENTS.md` uses **no** frontmatter at all; the open `agents.md` spec is
 plain Markdown with any headings, and vendor parsers do not read YAML at the

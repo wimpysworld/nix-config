@@ -1,0 +1,11 @@
+[common]
+description = "Create Task 📝"
+
+[claude]
+argument-hint = "<project|path>"
+
+[compose]
+agent = "penfold"
+
+[pi]
+argument-hint = "<project|path>"

@@ -151,7 +151,7 @@ Home Manager deploys local Pi extensions under `~/.pi/agent/extensions/`.
 
 `provider-router` lives at `~/.pi/agent/extensions/provider-router/`. It routes
 Pi `subagent` tool calls to provider-specific models declared in assistant
-`header.pi.yaml` files.
+`header.toml` files under `[routing.pi.<inference-provider>]`.
 
 `quota-status` lives at `~/.pi/agent/extensions/quota-status/`. It listens to
 `sub-core` quota updates and publishes the compact quota segment consumed by
@@ -301,7 +301,7 @@ The extension config is managed at `~/.pi/agent/extensions/subagent/config.json`
 }
 ```
 
-`maxSubagentDepth = 1` allows explicit direct subagent use from top-level Pi sessions. Generated assistant agents do not add a per-agent `maxSubagentDepth` by default; set `maxSubagentDepth` in an individual `header.pi.yaml` only when that agent needs its own depth limit.
+`maxSubagentDepth = 1` allows explicit direct subagent use from top-level Pi sessions. Generated assistant agents do not add a per-agent `maxSubagentDepth` by default; set `[pi] maxSubagentDepth` in an individual `header.toml` only when that agent needs its own depth limit.
 
 The builtin `researcher` agent is disabled by default because it requires `pi-web-access`, which this module does not install.
 
@@ -312,14 +312,18 @@ Source content comes from `home-manager/_mixins/agentic/assistants`. Rendering f
 | Source                                          | Pi destination                     | Mapping                                                                                                                                                                                                                                                                                                            |
 | ----------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `instructions/global.md`                        | `~/.pi/agent/AGENTS.md`            | Global context file loaded by Pi                                                                                                                                                                                                                                                                                   |
-| `agents/<name>/prompt.md` and `description.txt` | `~/.pi/agent/agents/<name>.md`     | Pi subagent Markdown with YAML frontmatter                                                                                                                                                                                                                                                                         |
+| `agents/<name>/prompt.md` and `header.toml` | `~/.pi/agent/agents/<name>.md`     | Pi subagent Markdown with YAML frontmatter                                                                                                                                                                                                                                                                         |
 | `agents/<name>/commands/<command>/prompt.md`    | `~/.pi/agent/prompts/<command>.md` | Prompt template that asks Pi to call the matching subagent. The owning agent is pinned by a `Use the subagent tool to launch the <name> agent` prelude in the body, not by the filename. Evaluation fails if two source directories (across agents or with standalone commands) produce the same `<command>` name. |
 | `commands/<command>/prompt.md`                  | `~/.pi/agent/prompts/<command>.md` | Native Pi prompt template                                                                                                                                                                                                                                                                                          |
 | `skills/<name>/`                                | `~/.pi/agent/skills/<name>/`       | Symlinked Agent Skills directory                                                                                                                                                                                                                                                                                   |
 
 Traya is the unnamed default prompt through `instructions/global.md`. She is not emitted as a named Pi subagent.
 
-Pi agent frontmatter is sourced from `header.pi.yaml`. When the file is absent the agent inherits three defaults: `systemPromptMode: append`, `inheritProjectContext: false`, and `inheritSkills: true`. `name` and `description` are injected automatically from the directory name and `description.txt`. Per-agent values for `model`, `thinking`, `tools`, `defaultContext`, `maxSubagentDepth`, and other Pi-native fields go in `header.pi.yaml` alongside `header.claude.yaml` and `header.codex.toml`. Prompt templates use `header.pi.yaml` for `argument-hint` rather than reading the Claude header.
+The next successful activation retires the approved legacy regular file `~/.pi/agent/agents/traya.md` once. It preserves a symlink or other non-regular path. Public resource links remain Home Manager-owned. Secret resource links use the shared [activation ownership and cleanup](../assistants/README.md#activation-ownership-and-cleanup) helper.
+
+Pi agent frontmatter comes from `header.toml`. Agents retain three generated defaults: `systemPromptMode: append`, `inheritProjectContext: false`, and `inheritSkills: true`. Explicit `[pi]` values override these defaults. Names derive from directories, and descriptions come from `[common] description`.
+
+Native non-model fields, such as `tools`, `defaultContext`, and `maxSubagentDepth`, belong under `[pi]`. Model and thinking overrides belong under `[routing.pi.<inference-provider>]`. Prompt templates receive `argument-hint` from `[common]` or `[pi]`. Missing tables mean no overrides, not disabled output.
 
 Pi subagent Markdown supports explicit `tools` allowlists through Pi-native
 frontmatter when an individual agent needs a narrower tool surface.

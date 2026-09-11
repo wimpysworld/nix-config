@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, test } from "node:test";
 import register from "./index.ts";
+import registerRouter from "../provider-router/index.ts";
 
 const tempDirs = [];
 afterEach(async () =>
@@ -30,6 +31,7 @@ function harness(commands = []) {
 	let renderer;
 	let beforeAgentStarts = 0;
 	const pi = {
+		events: { on: (name, fn) => { handlers[name] = fn; return () => delete handlers[name]; }, emit: (name, data) => handlers[name]?.(data) },
 		getCommands: () => commands,
 		registerEntryRenderer: (_type, value) => {
 			renderer = value;
@@ -45,6 +47,7 @@ function harness(commands = []) {
 			sentUsers.push({ content, options });
 		},
 	};
+	registerRouter(pi);
 	register(pi);
 	const invoke = (event, mode = "tui") =>
 		handlers.input(event, {

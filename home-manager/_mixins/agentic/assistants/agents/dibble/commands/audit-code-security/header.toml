@@ -1,0 +1,11 @@
+[common]
+description = "Audit Code Security 🔍"
+
+[compose]
+agent = "dibble"
+
+[compose.claude]
+use-task = true
+
+[opencode]
+subtask = true

@@ -1,8 +1,3 @@
----
-name: review-code
-description: "Use when reviewing a pull request, branch, worktree, or commit for defects, or when the user says 'review this PR', 'review my code', 'review this branch', 'code review', or asks to get a change reviewed before it ships. Runs a wide sub-agent fan-out, pressure-tests every blocking finding, and writes a review report."
-user-invocable: true
----
 
 # Review Code
 

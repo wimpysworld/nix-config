@@ -1,7 +1,3 @@
----
-name: sizing
-description: "Use when sizing or estimating a task, issue, or ticket, or when checking an estimate someone else set. Defines the T-shirt scale (XS, S, M, L, XL) and what the work at each size looks like, plus the rules for spikes, parent tracking issues, and splitting oversized work. Use even if the user only says 'how big is this', 'what should the estimate be', 'story points', or names a size."
----
 
 # Sizing
 

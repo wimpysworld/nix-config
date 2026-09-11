@@ -1,10 +1,3 @@
----
-name: love-math
-description: Provides system-independent mathematical functions. Use this skill when working with mathematical operations, random number generation, geometric calculations, or any math-related operations in LÖVE games.
-license: MIT
-metadata:
-  author: Ron Dekker <rondekker.nl>
----
 
 ## When to use this skill
 Provides system-independent mathematical functions. Use this skill when working with mathematical operations, random number generation, geometric calculations, or any math-related operations in LÖVE games.

@@ -1,10 +1,3 @@
----
-name: love-physics
-description: Can simulate 2D rigid body physics in a realistic manner. This module is based on Box2D, and this API corresponds to the Box2D API as closely as possible. Use this skill when working with physics operations, collision detection, rigid body dynamics, or any physics-related operations in LÖVE games.
-license: MIT
-metadata:
-  author: Ron Dekker <rondekker.nl>
----
 
 ## When to use this skill
 Can simulate 2D rigid body physics in a realistic manner. This module is based on Box2D, and this API corresponds to the Box2D API as closely as possible. Use this skill when working with physics operations, collision detection, rigid body dynamics, or any physics-related operations in LÖVE games.

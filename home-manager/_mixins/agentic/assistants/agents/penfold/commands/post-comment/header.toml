@@ -1,0 +1,6 @@
+[common]
+description = "Post Comment 📤"
+argument-hint = "[target]"
+
+[compose]
+agent = "penfold"

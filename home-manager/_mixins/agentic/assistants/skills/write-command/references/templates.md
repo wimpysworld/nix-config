@@ -36,29 +36,15 @@ Skill name argument: $ARGUMENTS. Use it if provided; otherwise ask for the name 
 Apply `write-skill` end-to-end: frontmatter, body, layout, references, anti-patterns, output format. Do not duplicate that guidance here.
 ```
 
-`description.txt`:
+`header.toml`:
 
-```text
-Create Skill 🧩
-```
+```toml
+[common]
+description = "Create Skill 🧩"
+argument-hint = "[skill-name]"
 
-`header.claude.yaml`:
-
-```yaml
-argument-hint: "[skill-name]"
-model: opus
-```
-
-`header.opencode.yaml`:
-
-```yaml
-agent: rosey
-```
-
-`header.pi.yaml`:
-
-```yaml
-argument-hint: "[skill-name]"
+[compose]
+agent = "rosey"
 ```
 
 ## Form B: trivial standalone
@@ -71,28 +57,12 @@ One- or two-line body. No format. Mirrors `ack`, `ready`.
 $ARGUMENTS Assess and acknowledge my message, then yield your turn.
 ```
 
-`description.txt`:
+`header.toml`:
 
-```text
-Acknowledge a phase or message ✅
-```
-
-`header.claude.yaml`:
-
-```yaml
-argument-hint: "[phase]"
-```
-
-`header.opencode.yaml`:
-
-```yaml
-
-```
-
-`header.pi.yaml`:
-
-```yaml
-argument-hint: "[phase]"
+```toml
+[common]
+description = "Acknowledge a phase or message ✅"
+argument-hint = "[phase]"
 ```
 
 ## Form C: standalone with output format
@@ -131,22 +101,14 @@ If the user supplied a focus, tailor the handover to that next-session goal.
 - Exclude easily discoverable information.
 ```
 
-`description.txt`:
+`header.toml`:
 
-```text
-Handover 📤
+```toml
+[common]
+description = "Handover 📤"
+
+[compose]
+agent = "rosey"
 ```
 
-`header.claude.yaml`:
-
-```yaml
-model: sonnet
-```
-
-`header.opencode.yaml`:
-
-```yaml
-agent: rosey
-```
-
-(No `header.pi.yaml`: the command takes no positional arg.)
+Omit `argument-hint` when the command takes no argument. Add model pins only under `[routing.<provider>]` when the command needs one.

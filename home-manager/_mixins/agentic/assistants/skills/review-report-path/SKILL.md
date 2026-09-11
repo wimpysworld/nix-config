@@ -1,7 +1,3 @@
----
-name: review-report-path
-description: "Use when a review, audit, or analysis command must decide where to write its report, or must find a report written earlier. Defines durable per-user report storage and the slug and run rules that preserve parallel and past reviews of pull requests, issues, branches, commits, and worktrees. Use even when the caller only says 'write the report', 'read the review report', or names a report file."
----
 
 # Review Report Path
 

@@ -110,7 +110,7 @@ itself the parent's job.
 
 `delegate-task` is generated from the agent registry by `compose.nix`. The
 generator iterates over `sortedAgentNames`, reads each agent's
-`description.txt`, and emits a SKILL.md with the routing table, fresh-context
+`header.toml` descriptions, and emits a SKILL.md with the routing table, fresh-context
 rule, packet template, response contract, and relay policy already filled in.
 
 ### 3.1 What the skill owns
@@ -402,8 +402,7 @@ Authoritative sources behind the global rules and the generated
 
 - `home-manager/_mixins/agentic/assistants/instructions/global.md`
 - `home-manager/_mixins/agentic/assistants/styles/house-style/house-style.md`
-- `home-manager/_mixins/agentic/assistants/instructions/header.claude.yaml`
-- `home-manager/_mixins/agentic/assistants/instructions/header.opencode.yaml`
+- `home-manager/_mixins/agentic/assistants/instructions/header.toml`
 - `home-manager/_mixins/agentic/assistants/compose.nix` (the `delegate-task`
   generator at lines 579-676 and the `communication-rules` generator at
   lines 681-689)

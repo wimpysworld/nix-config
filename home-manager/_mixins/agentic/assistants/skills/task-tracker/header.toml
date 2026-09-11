@@ -1,0 +1,3 @@
+[common]
+name = "task-tracker"
+description = "Use when a command reads or writes a tracked task and must know which tracker holds it: Linear, a GitHub Project, or a local Markdown file. Resolves the tracker from an issue key, an issue URL, `owner/repo#N`, a project URL, or a path, then names the tracker-specific mechanics for status, type, labels, priority, estimate, parent and child order, assignee, comments, long research, and branch links. Use whenever `create-task`, `review-task`, `update-task`, `implement-task`, `make-pr`, or `finish-pr` touches a task, even when the caller names only Linear or only GitHub."

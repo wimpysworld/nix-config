@@ -53,15 +53,31 @@ in
     # sops-nix.service twice on ravi (the unit is a store symlink placed
     # outside systemd.user.services, so the generation diff can miss it),
     # which left sops templates rendering old content until a manual
-    # daemon-reload. Both commands are idempotent, and the failure guards
-    # keep activation working when the user bus is unreachable, for
-    # example during a remote push-home.
-    activation.refreshSopsNix = lib.mkIf host.is.linux (
-      lib.hm.dag.entryAfter [ "reloadSystemd" ] ''
-        run ${pkgs.systemd}/bin/systemctl --user daemon-reload || true
-        run ${pkgs.systemd}/bin/systemctl --user restart sops-nix.service || true
-      ''
-    );
+    # daemon-reload. Assistant secret deployment requires this refresh to
+    # succeed before it replaces the previously installed files.
+    activation.refreshSopsNix = lib.mkMerge [
+      (lib.mkIf host.is.linux (
+        lib.hm.dag.entryAfter [ "reloadSystemd" "sops-nix" ] ''
+          run ${pkgs.systemd}/bin/systemctl --user daemon-reload || ${
+            if config.agentic.assistants.requiresSecrets then "exit 1" else "true"
+          }
+          run ${pkgs.systemd}/bin/systemctl --user restart sops-nix.service || ${
+            if config.agentic.assistants.requiresSecrets then "exit 1" else "true"
+          }
+        ''
+      ))
+      (lib.mkIf (host.is.darwin && config.agentic.assistants.requiresSecrets) (
+        lib.hm.dag.entryAfter [ "sops-nix" "linkGeneration" ] ''
+          run ${pkgs.coreutils}/bin/env ${
+            lib.escapeShellArgs (
+              lib.mapAttrsToList (
+                name: value: "${name}=${value}"
+              ) config.launchd.agents.sops-nix.config.EnvironmentVariables
+            )
+          } ${config.launchd.agents.sops-nix.config.Program}
+        ''
+      ))
+    ];
     homeDirectory =
       if host.is.darwin then
         "/Users/${username}"

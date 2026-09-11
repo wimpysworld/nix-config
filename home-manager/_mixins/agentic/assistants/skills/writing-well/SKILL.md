@@ -1,7 +1,3 @@
----
-name: writing-well
-description: "Use when drafting or revising a prose artefact: documentation, a README, a blog post, a technical guide, a migration guide, release notes, a video script, or long-form explanatory content. Covers composition principles (active voice, concrete language, omitting needless words, emphatic endings, parallel structure, keeping related words together) and the catalogue of AI writing patterns, including puffery, superficial '-ing' analysis, copulative avoidance, chatbot leakage, and overused vocabulary."
----
 
 # Writing Well
 

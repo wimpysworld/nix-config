@@ -1,10 +1,3 @@
----
-name: love-filesystem
-description: Provides an interface to the user's filesystem. Use this skill when working with file operations, directory management, file reading/writing, or any filesystem-related operations in LÖVE games.
-license: MIT
-metadata:
-  author: Ron Dekker <rondekker.nl>
----
 
 ## When to use this skill
 Provides an interface to the user's filesystem. Use this skill when working with file operations, directory management, file reading/writing, or any filesystem-related operations in LÖVE games.

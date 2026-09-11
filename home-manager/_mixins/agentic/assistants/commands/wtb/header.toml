@@ -1,0 +1,3 @@
+[common]
+description = "Want to Buy 🪿"
+argument-hint = "[pr-url] [#channel]"

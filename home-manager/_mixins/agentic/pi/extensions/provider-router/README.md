@@ -1,193 +1,135 @@
 # Provider Router
 
-Provider Router is a local Pi extension for subagent model routing. It
-intercepts Pi `tool_call` events for the `subagent` tool. For workflow scripts,
-it wraps `runs.run` and `runs.all` so each child receives the mapped model. For
-legacy structured calls, it writes the child `model` directly. The per-agent
-mapping always wins when the active provider has a model or thinking-level
-entry. Pi then hands the call to `pi-subagents`.
+Provider Router selects models for explicit Pi tasks without changing the inference
+provider. Home Manager generates its maps from unified `header.toml` metadata.
 
-## Deployed Scope
+## Precedence
 
-Home Manager deploys the extension under
-`~/.pi/agent/extensions/provider-router/`. The directory contains
-`agents.json`, `thinking.json`, `index.ts`, `types.d.ts`, `LICENSE`, and `README.md`.
+The first available selection wins for each task:
 
-`index.ts` is the runtime extension. `agents.json` and `thinking.json` are both
-generated from assistant `header.pi.yaml` files. The runtime reads them from
-`~/.pi/agent/extensions/provider-router/`.
+1. An explicit caller model or a user model selection.
+2. A command route.
+3. A directly invoked skill route.
+4. An agent route.
+5. The session model.
 
-## Map Format
+`--model` and native user model changes take priority for the rest of the session.
+A workflow child can supply its own `model`. The router validates that model and
+preserves its selection. Routes cannot select a different inference provider.
 
-`agents.json` is an object keyed by agent name. Each agent value is an object
-keyed by provider name. Each provider value is the model id for that provider.
+## Direct commands and skills
+
+The native `input` event handles `/command` and `/skill:name`. The local
+`prompt-template-display` extension calls the same dispatcher before it consumes
+TUI command input. Both paths validate and stage the route without changing the
+session model. At `before_agent_start`, after prompt preflight, the router applies
+the route through Pi's `setModel` and `setThinkingLevel` APIs.
+
+Routed input requires an idle session. The router rejects routed steering and
+follow-up input with an error. Unrouted input keeps its existing behaviour.
+After `agent_settled`, the router restores the previous session model and thinking
+level. Routes remain active through retries and overflow recovery.
+A user model change cancels restoration and takes priority over later routes.
+Children launched during the task inherit its command or directly invoked skill
+route, unless the caller supplies a model or a more specific command.
+
+Reading a supporting `SKILL.md` never selects a model. The `skills` list on a
+child task also does not select a model.
+
+## Workflow children
+
+The `subagent` tool hook wraps `runs.run` and `runs.all`. Each child specification
+is resolved immediately before its launch. Top-level `await`, `return`, dynamic
+specifications, and the other `runs` methods remain available.
+
+A child can declare `command: "review-code"` or `directSkill: "research-task"`
+to request a route. The wrapper removes these routing fields before native child
+validation. These fields select routing metadata. They do not expand prompt
+content, so the caller must also supply the task instructions.
+
+Legacy single calls, `tasks`, chain steps, parallel chain steps, and
+`action: "append-step"` use the same resolver. Other management actions remain
+unchanged. External extension event-bus delegation does not pass through the
+`tool_call` hook. Use the supported `subagent` workflow path for routed children.
+
+## Generated maps
+
+Home Manager deploys these files under
+`~/.pi/agent/extensions/provider-router/`:
+
+| File | Content |
+|------|---------|
+| `agents.json` | Agent name, inference provider, model ID. |
+| `thinking.json` | Agent name, inference provider, thinking level. |
+| `routes.json` | Command and directly invoked skill routes. |
+
+`routes.json` has this structure:
 
 ```json
 {
-  "garfield": {
-    "anthropic": "claude-sonnet-5",
-    "google": "gemini-3-flash",
-    "openai-codex": "gpt-5.6-terra"
+  "commands": {
+    "review-code": {
+      "agent": "penry",
+      "providers": {
+        "openai-codex": { "model": "gpt-5.6-terra", "thinking": "high" }
+      }
+    }
+  },
+  "skills": {
+    "research-task": {
+      "providers": {
+        "openai-codex": { "thinking": "high" }
+      }
+    }
   }
 }
 ```
 
-For an Anthropic parent session, the runtime writes
-`anthropic/claude-sonnet-5`. For an `openai-codex` parent session, it writes
-`openai-codex/gpt-5.6-terra`.
+Declare routes in the command, skill, or assistant's `header.toml`:
 
-`thinking.json` mirrors that structure with one value per provider drawn from
-Pi's closed set of effort levels (`off`, `minimal`, `low`, `medium`, `high`,
-`xhigh`):
-
-```json
-{
-  "garfield": { "openai-codex": "medium" }
-}
+```toml
+[routing.pi.openai-codex]
+model = "gpt-5.6-terra"
+thinking = "high"
 ```
 
-When both a model and a thinking level are mapped, the runtime emits
-`provider/modelId:thinking`. When only a thinking level is mapped, it reuses
-the active session model id (`ctx.model.id`) as the bare model and emits
-`provider/<active-id>:thinking`. The unsuffixed model id is the only value
-passed to `ctx.modelRegistry.find`; the thinking suffix is Pi routing syntax
-and must not reach the registry lookup.
+Thinking-only routes use the current session model. The accepted levels are
+`off`, `minimal`, `low`, `medium`, `high`, `xhigh`, and `max`. Pi's native
+`getSupportedThinkingLevels` further checks support for the selected model.
 
-## Declaration Format
+## Errors and freshness
 
-Declare provider-specific models and effort in an agent's `header.pi.yaml`. The
-suffix after `model-` or `thinking-` must match the active Pi provider name
-exactly, including hyphens (`openai-codex`, not `openai`):
+Unknown explicit command or skill route names, unavailable models, unsupported
+thinking levels, and malformed map files produce errors. A command or skill with
+routes but no entry for the active provider also produces an error. An agent with
+no route for that provider keeps its existing behaviour.
 
-```yaml
-model-anthropic: claude-sonnet-5
-model-openai-codex: gpt-5.6-terra
-model-google: 'gemini-3-flash'
-thinking-openai-codex: xhigh
-```
+The router uses `modelRegistry.getAvailable()` to validate authenticated models.
+Tool errors return `{ block: true, reason }`, because Pi catches hook exceptions
+and otherwise continues execution. Workflow errors stop the child launch.
+Input errors notify the user and return `handled`.
 
-The provider name is the suffix after `model-` or `thinking-`. The harvester
-accepts plain scalar values, plus matching single or double quotes which it
-strips. It ignores empty values, block scalars, anchors, aliases, unmatched
-quotes, and unquoted values containing `:`. `thinking-<provider>` values are
-validated at evaluation time against the closed set
-`off|minimal|low|medium|high|xhigh`; invalid values fail `nix eval` with a
-clear message. Provider names are not validated; a typo simply becomes a map
-key that never matches the active Pi provider.
-
-Garfield is the only agent in this repo with a `header.pi.yaml`, so he is the
-only agent either map contains. Any agent that does need routing should declare
-both `model-<provider>` and `thinking-<provider>`, so the routing decision is
-readable from the agent's own `header.pi.yaml`. The runtime still accepts
-thinking-only entries (it falls back to `ctx.model.id` for the bare model in
-that case), and bare `model-<provider>` entries without a thinking sibling
-still produce `provider/modelId` without a thinking suffix. Explicit
-`model-<provider>` plus `thinking-<provider>` is the preferred form.
-
-## Runtime Constraints
-
-Provider Router covers the LLM tool-call path only. Current `pi-subagents`
-execution uses `workflowScript`. The router supplies a routing adapter for
-`runs` inside a lexical block. The script keeps its top-level `await` and
-`return` statements. No nested async function is added, because
-`pi-subagents` rejects those functions before child launch.
-
-The adapter routes child specifications passed to `runs.run` and `runs.all`,
-including specifications that the script creates dynamically. It copies the
-other `runs` methods unchanged, including `runs.steer`.
-
-The router retains support for legacy single calls, `tasks[]`, chain steps,
-parallel chain steps, and `action: "append-step"`. It does not change other
-management actions, slash-command calls, or prompt-template-bridge calls. The
-router has no per-project override.
-
-For known agents, the runtime is authoritative. It replaces the child `model`
-whether or not the orchestrator supplied one, and it applies the thinking
-suffix consistently. Unknown agents pass through unchanged. The runtime
-validates the bare model with `ctx.modelRegistry.find(provider, modelId)` before
-it builds the workflow wrapper. The suffixed string never reaches the registry.
-
-When the extension overrides a child model that the orchestrator passed, it
-emits a single line to stderr:
-
-```text
-provider-router: override model for agent=<name> orchestrator=<orig> -> routed=<new>
-```
-
-No log is emitted in the common case where the orchestrator left `model` unset.
-
-## Graceful No-Ops
-
-These miss paths leave the child model unchanged:
-
-1. The agent is absent from both `agents.json` and `thinking.json`.
-2. The agent has no entry for the active provider in either map.
-3. The mapped (or active-session) model is not authenticated locally.
-4. There is no active provider, or no active session model when only a
-   thinking level is mapped.
-
-In all cases, `pi-subagents` receives the original call. Its resolver then
-falls through to `agentConfig.model` from frontmatter. If that is absent, it
-inherits the parent model.
-
-If either sidecar file cannot be read or parsed, the extension uses an empty
-map for that source. Every lookup against that source then follows the first
-miss path.
-
-## Freshness
-
-The extension loads the map at startup. It refreshes the map on Pi
-`session_start` and `resources_discover` events. Long-running sessions may not
-see an out-of-band `home-manager switch`. Run `/reload` or restart the Pi
-session after changing `agents.json`.
+Maps reload on `session_start` and `resources_discover`. After deploying changed
+maps, use `/reload` or start a fresh session. No live session is needed for tests.
 
 ## Verification
 
-Run the regression tests from the repository root with Node.js 24 or later:
+Run the runtime and display tests with Node.js 24 or later:
 
 ```sh
-node --experimental-loader ./home-manager/_mixins/agentic/pi/extensions/provider-router/test-loader.mjs --test home-manager/_mixins/agentic/pi/extensions/provider-router/index.test.mjs
+node --experimental-loader ./home-manager/_mixins/agentic/pi/extensions/provider-router/test-loader.mjs \
+  --experimental-loader ./home-manager/_mixins/agentic/pi/extensions/prompt-template-display/test-loader.mjs \
+  --test home-manager/_mixins/agentic/pi/extensions/provider-router/*.test.mjs \
+  home-manager/_mixins/agentic/pi/extensions/prompt-template-display/index.test.ts
 ```
 
-The tests use the installed `pi-subagents` validator and workflow worker with
-mock child launches. They make no model requests. Set `PI_SUBAGENTS_DIR` to
-test another installation without changing the active Pi session.
-
-Check that Home Manager's evaluated bytes match the deployed maps:
-
-```sh
-home='.#homeConfigurations."martin@skrye".config.home.file'
-agents="$home.\".pi/agent/extensions/provider-router/agents.json\".text"
-thinking="$home.\".pi/agent/extensions/provider-router/thinking.json\".text"
-nix eval --raw "$agents" > /tmp/router-eval.json
-diff /tmp/router-eval.json ~/.pi/agent/extensions/provider-router/agents.json
-nix eval --raw "$thinking" > /tmp/router-thinking-eval.json
-diff /tmp/router-thinking-eval.json ~/.pi/agent/extensions/provider-router/thinking.json
-```
-
-Check deployed files and smoke-test Pi extension loading:
-
-```sh
-test -f ~/.pi/agent/extensions/provider-router/agents.json
-test -f ~/.pi/agent/extensions/provider-router/thinking.json
-test -f ~/.pi/agent/extensions/provider-router/index.ts
-test -f ~/.pi/agent/extensions/provider-router/types.d.ts
-test -f ~/.pi/agent/extensions/provider-router/LICENSE
-test -f ~/.pi/agent/extensions/provider-router/README.md
-pi -p "echo hi" 2>&1 | tee /tmp/pi-provider-router-smoke.log
-! grep -i "failed to load" /tmp/pi-provider-router-smoke.log
-jq '.garfield' ~/.pi/agent/extensions/provider-router/agents.json
-jq '.garfield' ~/.pi/agent/extensions/provider-router/thinking.json
-```
-
-## Current Validation Status
-
-Nix evaluation verifies the generated `agents.json` and `thinking.json` bytes.
-A live Pi session still needs `home-manager switch` and a fresh Pi session, or
-`/reload` in an existing session, before it can exercise the deployed files.
-Do not treat this README as evidence that an interactive Pi session has passed
-provider-routing checks.
+Workflow tests use the installed `pi-subagents` validator and worker with mock
+child launches. Set `PI_SUBAGENTS_DIR` to test another installation. Invocation
+tests use mocked Pi hooks and model APIs. Set `PI_CODING_AGENT_DIR` to the installed
+`@earendil-works/pi-coding-agent` package directory to include native lifecycle tests.
+Those tests use Pi's agent loop and session methods with fake inference and compaction.
+Tests make no model requests and do not change the active Pi session.
 
 ## Licence
 
-BlueOak Model License 1.0.0; see `LICENSE`.
+BlueOak Model License 1.0.0. See `LICENSE`.

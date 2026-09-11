@@ -1,0 +1,3 @@
+[common]
+name = "write-assistant"
+description = "Use when creating, updating, refactoring, or reviewing an AI assistant or sub-agent system prompt - persona, role, capabilities, tools, output format, examples, and constraints. Covers Claude Code agents, OpenAI Codex / Responses-API agents, Pi assistants, and OpenCode agents. Use even if the user only says \"agent prompt\", \"assistant\", \"subagent\", \"persona\", or names the artefact by file path."

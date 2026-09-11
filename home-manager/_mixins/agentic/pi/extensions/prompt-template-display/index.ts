@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
 import { Box, Text } from "@earendil-works/pi-tui";
+import { routeInvocation } from "../provider-router/index.ts";
 
 const ENTRY_TYPE = "prompt-template-command";
 const MESSAGE_TYPE = "prompt-template-expanded";
@@ -186,6 +187,16 @@ export default function registerPromptTemplateDisplay(pi: ExtensionAPI): void {
 			templateBody(source),
 			parseCommandArgs(invocation[2] ?? ""),
 		);
+		try {
+			if (
+				!(await routeInvocation(event.text, ctx, event.streamingBehavior, pi))
+			) {
+				return { action: "handled" };
+			}
+		} catch (error) {
+			ctx.ui.notify(String(error), "error");
+			return { action: "handled" };
+		}
 		if (event.streamingBehavior) {
 			const content: (TextContent | ImageContent)[] = [
 				{ type: "text", text: expanded },

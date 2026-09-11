@@ -1,7 +1,3 @@
----
-name: write-skill
-description: Use when creating, updating, or reviewing an Agent Skill - authoring or revising a `SKILL.md`, its frontmatter, layout, references, and progressive disclosure. Use when the user mentions writing, editing, splitting, renaming, or auditing a skill, even if they do not say "skill" explicitly. Covers cross-platform portability across Claude Code, Codex, OpenCode, and Pi.
----
 
 # Write Skill
 
@@ -28,6 +24,20 @@ Rules:
 - `description` ≤1024 chars. Third person. Front-load the use case. Include explicit trigger phrases and synonyms so the model selects the skill without being asked by name.
 - Add platform-specific fields (`user-invocable`, `when_to_use`, `argument-hint`, `disable-model-invocation`, `allowed-tools`, …) **only if required** for behaviour on that platform. See `references/portability.md`.
 
+## Repository source
+
+In this repository, author metadata in `header.toml`, not in the Markdown body. The composer generates native client frontmatter.
+
+Use `[common] description` for the shared description. Skills require an explicit `[common] name` that matches the directory. Portable `license`, `compatibility`, and `metadata` also belong in `[common]`. Keep `SKILL.md` body-only, including nested API skills.
+
+Use `[claude]`, `[opencode]`, `[codex]`, and `[pi]` for native non-model fields. Model and effort overrides belong only under `[routing.<provider>]`. Pi pins use `[routing.pi.<inference-provider>] model` and `thinking`.
+
+The composer rejects model and effort routes for ordinary OpenCode and Codex skills. Use an agent-backed command when a workflow needs those pins.
+
+Missing provider tables mean no overrides, not disabled output. Omit fields to inherit defaults. TOML has no null.
+
+For ordinary Codex skills, put companion policy under `[codex.policy]`. Command-derived skills always use the composer's manual-only policy. Keep encrypted `SKILL.sops` files unchanged as complete native skills.
+
 ## Body
 
 Lean, imperative, action-oriented. Smaller is better. Cap at 500 lines; most skills stay well under that, often under 200. The body loads only after the description triggers, so put all when-to-use phrasing in the description, not in a "When to use" heading.
@@ -44,7 +54,8 @@ Structure:
 
 ```
 <skill-name>/
-├── SKILL.md          required
+├── header.toml       metadata in this repository
+├── SKILL.md          body in this repository, complete skill elsewhere
 ├── references/       loaded on demand from SKILL.md links
 ├── scripts/          executable helpers (no library code)
 └── assets/           templates, static files
@@ -80,7 +91,7 @@ Skill text joins the cached prompt prefix once loaded. Static, short, stable bod
 
 ## Update flow
 
-1. Read `SKILL.md` and every file under `references/`, `scripts/`, `assets/`.
+1. Read `header.toml` when present, `SKILL.md`, and every file under `references/`, `scripts/`, `assets/`.
 2. Identify original intent before changing it.
 3. Diagnose: description triggers, instruction quality, structure, bundled resources, drift.
 4. Preserve the `name` field and the directory name exactly. Never rename a live skill in place.
@@ -107,9 +118,9 @@ Skills are not semver. Treat changes as:
 
 ## Output
 
-When invoked to **create**, produce the new `SKILL.md` (and any references) in fenced blocks ready to save, at the correct path.
+When invoked to **create**, produce `header.toml` and body-only `SKILL.md` in this repository, or a complete native `SKILL.md` elsewhere (and any references) in fenced blocks ready to save, at the correct path.
 
-When invoked to **update**, produce the edited `SKILL.md` (and changed references) in fenced blocks plus a brief changelog: `Changed`, `Rationale`. Preserve unchanged sections verbatim.
+When invoked to **update**, produce the changed metadata, `SKILL.md`, and references in fenced blocks plus a brief changelog: `Changed`, `Rationale`. Preserve unchanged sections verbatim.
 
 If invoked as a sub-agent for routing reasons, follow the response contract from `delegate-task`: start non-artefact work with `Answer:`; return raw artefacts only when the artefact is the deliverable.
 

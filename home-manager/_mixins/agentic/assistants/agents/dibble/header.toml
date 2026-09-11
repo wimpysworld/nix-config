@@ -1,0 +1,8 @@
+[common]
+description = "Use for explicit code security audits of application source, dependencies, secrets, and LLM app risks when present."
+
+[opencode]
+
+[opencode.permission]
+task = "deny"
+question = "allow"

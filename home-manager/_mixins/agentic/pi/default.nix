@@ -292,7 +292,7 @@ let
       # extension, and custom tools, so injecting only the built-in names
       # would hide every extension tool (subtask, lens, footer widgets,
       # MCP/adapter tools, etc.). Per-agent allowlists are expressed in the
-      # agent's Pi-native frontmatter (`tools:` in `header.pi.yaml`).
+      # agent's Pi-native frontmatter (`pi.tools` in `header.toml`).
       exec "${lib.getExe piPackage}" "''${pi_resume[@]}" "$@"
     '';
   };
@@ -797,6 +797,8 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
         builtins.toJSON piAssistant.providerRouterMap;
       ".pi/agent/extensions/provider-router/thinking.json".text =
         builtins.toJSON piAssistant.providerRouterThinkingMap;
+      ".pi/agent/extensions/provider-router/routes.json".text =
+        builtins.toJSON piAssistant.invocationRoutes;
       ".pi/agent/extensions/provider-router/index.ts".source = ./extensions/provider-router/index.ts;
       ".pi/agent/extensions/provider-router/types.d.ts".source = ./extensions/provider-router/types.d.ts;
       ".pi/agent/extensions/provider-router/LICENSE".source = ./extensions/provider-router/LICENSE;

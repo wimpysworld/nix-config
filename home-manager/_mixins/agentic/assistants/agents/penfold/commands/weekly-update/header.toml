@@ -1,0 +1,6 @@
+[common]
+description = "Weekly Update 📣"
+argument-hint = "<slack-channel>"
+
+[compose]
+agent = "penfold"

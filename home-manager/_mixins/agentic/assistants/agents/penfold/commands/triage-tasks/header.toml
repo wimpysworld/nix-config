@@ -1,0 +1,6 @@
+[common]
+description = "Triage Tasks 🗂️"
+argument-hint = "[issue-id ...]"
+
+[compose]
+agent = "penfold"

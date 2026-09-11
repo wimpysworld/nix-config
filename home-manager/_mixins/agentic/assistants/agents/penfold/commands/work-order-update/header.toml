@@ -1,0 +1,6 @@
+[common]
+description = "Update Work Order ✏️"
+argument-hint = "<instructions>"
+
+[compose]
+agent = "penfold"

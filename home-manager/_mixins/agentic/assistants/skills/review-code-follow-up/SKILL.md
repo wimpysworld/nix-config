@@ -1,8 +1,3 @@
----
-name: review-code-follow-up
-description: "Use for a follow-up code review after an author responds to earlier findings, including requests to re-review, review again, verify fixes, or check addressed feedback. Rechecks the prior feedback and the response delta without restarting the full review."
-user-invocable: true
----
 
 # Review Code Follow-up
 

@@ -1,0 +1,6 @@
+[common]
+description = "Post Issue 📮"
+argument-hint = "<repo>"
+
+[compose]
+agent = "penfold"

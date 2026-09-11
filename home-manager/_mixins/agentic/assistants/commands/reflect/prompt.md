@@ -52,7 +52,7 @@ A block the user asked for is not friction. Denials exist so an agent stops: `gh
 
 The tree lives at `~/Zero/nix-config/home-manager/_mixins/agentic/assistants/`. This session may be running anywhere, so check what exists before judging what is missing.
 
-Keep it cheap. List the directory names under `agents/`, `commands/`, `agents/*/commands/`, and `skills/`. The names are descriptive, so shortlist from them, then read `description.txt` or the `SKILL.md` frontmatter for the few candidates that matter. Do not read `README.md`. Do not read every prompt: the tree holds dozens of commands, and this review does not warrant that cost.
+Keep it cheap. List the directory names under `agents/`, `commands/`, `agents/*/commands/`, and `skills/`. The names are descriptive, so shortlist from them, then read `[common] description` in `header.toml` for the few candidates that matter. Do not read `README.md`. Do not read every prompt: the tree holds dozens of commands, and this review does not warrant that cost.
 
 ### Act only on what the user picks
 

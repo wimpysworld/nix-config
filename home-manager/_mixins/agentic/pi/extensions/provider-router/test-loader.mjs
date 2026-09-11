@@ -8,6 +8,14 @@ export function isToolCallEventType(name, event) {
 `;
 
 export async function resolve(specifier, context, nextResolve) {
+	if (context.parentURL?.includes("/node_modules/"))
+		return nextResolve(specifier, context);
+	if (specifier === "@earendil-works/pi-ai/compat") {
+		return {
+			shortCircuit: true,
+			url: `data:text/javascript,${encodeURIComponent('export function getSupportedThinkingLevels(model) { return model.supportedThinking ?? ["off", "minimal", "low", "medium", "high", "xhigh"]; }')}`,
+		};
+	}
 	if (specifier === "@earendil-works/pi-coding-agent") {
 		return {
 			shortCircuit: true,

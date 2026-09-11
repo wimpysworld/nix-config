@@ -1,7 +1,3 @@
----
-name: love
-description: "Load when working with LÖVE 2D, the LÖVE engine, love2d, .love archives, Lua 5.1/LuaJIT 2.1 game development, or LÖVE callbacks, modules, conf.lua, and packaging."
----
 
 # LÖVE Skill
 

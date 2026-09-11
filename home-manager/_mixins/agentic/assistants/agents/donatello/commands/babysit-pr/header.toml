@@ -1,0 +1,6 @@
+[common]
+description = "Babysit a PR to the finish line 🍼"
+argument-hint = "[pr-url]"
+
+[compose]
+agent = "donatello"

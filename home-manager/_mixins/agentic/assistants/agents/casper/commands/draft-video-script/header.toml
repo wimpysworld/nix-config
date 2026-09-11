@@ -1,0 +1,11 @@
+[common]
+description = "Draft Video Script 🎬"
+
+[claude]
+argument-hint = "[topic]"
+
+[compose]
+agent = "casper"
+
+[pi]
+argument-hint = "[topic]"

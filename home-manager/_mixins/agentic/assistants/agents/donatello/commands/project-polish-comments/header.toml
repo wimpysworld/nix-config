@@ -1,0 +1,11 @@
+[common]
+description = "Project Polish Comments ✨"
+
+[claude]
+argument-hint = "[paths] [scope]"
+
+[compose]
+agent = "donatello"
+
+[pi]
+argument-hint = "[paths] [scope]"

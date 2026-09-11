@@ -1,0 +1,11 @@
+[common]
+description = "Address Code Review 👀"
+
+[claude]
+argument-hint = "[pr|file|text]"
+
+[compose]
+agent = "donatello"
+
+[pi]
+argument-hint = "[pr|file|text]"

@@ -1,0 +1,6 @@
+[common]
+description = "Open Source Attestation Review 🧾"
+argument-hint = "[pr|branch|worktree]"
+
+[compose]
+agent = "penfold"

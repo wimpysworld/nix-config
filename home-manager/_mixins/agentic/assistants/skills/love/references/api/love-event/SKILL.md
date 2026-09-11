@@ -1,10 +1,3 @@
----
-name: love-event
-description: Manages events, like keypresses. Use this skill when working with event management, event callbacks, event pumping, or any event-related operations in LÖVE games.
-license: MIT
-metadata:
-  author: Ron Dekker <rondekker.nl>
----
 
 ## When to use this skill
 Manages events, like keypresses. Use this skill when working with event management, event callbacks, event pumping, or any event-related operations in LÖVE games.

@@ -1,0 +1,6 @@
+[common]
+description = "Update AI Assistant ⚡"
+argument-hint = "[agent-prompt]"
+
+[compose]
+agent = "rosey"

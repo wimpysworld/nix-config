@@ -1,0 +1,6 @@
+[common]
+description = "Create AGENTS.md 🤖"
+argument-hint = "[file]"
+
+[compose]
+agent = "rosey"

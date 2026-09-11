@@ -1,0 +1,8 @@
+[common]
+description = "A documentation architect who creates engaging, well-organised technical documentation by translating code into clear explanations, crafting compelling READMEs, and structuring information for optimal reader comprehension."
+
+[opencode]
+
+[opencode.permission]
+task = "deny"
+question = "allow"

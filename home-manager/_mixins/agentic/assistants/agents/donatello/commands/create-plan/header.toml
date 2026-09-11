@@ -1,0 +1,11 @@
+[common]
+description = "Create Plan 💾"
+
+[claude]
+argument-hint = "[task]"
+
+[compose]
+agent = "donatello"
+
+[pi]
+argument-hint = "[task]"

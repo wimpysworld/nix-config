@@ -1,0 +1,11 @@
+[common]
+description = "Align Documentation 📚"
+
+[claude]
+argument-hint = "[scope]"
+
+[compose]
+agent = "velma"
+
+[pi]
+argument-hint = "[scope]"

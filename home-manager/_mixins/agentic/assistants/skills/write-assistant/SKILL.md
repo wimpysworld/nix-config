@@ -1,7 +1,3 @@
----
-name: write-assistant
-description: Use when creating, updating, refactoring, or reviewing an AI assistant or sub-agent system prompt - persona, role, capabilities, tools, output format, examples, and constraints. Covers Claude Code agents, OpenAI Codex / Responses-API agents, Pi assistants, and OpenCode agents. Use even if the user only says "agent prompt", "assistant", "subagent", "persona", or names the artefact by file path.
----
 
 # Write Assistant
 
@@ -49,6 +45,16 @@ description: <one-sentence trigger summary>
 ```
 
 The seven-element template (role, mission, capabilities, process, constraints, output format, examples) is the consensus across Anthropic, OpenAI, and Google guidance. See `references/structure.md` for filled examples per platform.
+
+## Repository source
+
+In this repository, author metadata in `header.toml`, not in the Markdown body. The composer generates native client frontmatter.
+
+Use `[common] description` for the shared description. Agent names derive from directory names. Keep the agent body in `prompt.md` without frontmatter.
+
+Use `[claude]`, `[opencode]`, `[codex]`, and `[pi]` for native non-model fields. Model and effort overrides belong only under `[routing.<provider>]`. Pi pins use `[routing.pi.<inference-provider>] model` and `thinking`.
+
+Missing provider tables mean no overrides, not disabled output. Omit fields to inherit defaults. TOML has no null.
 
 ## Voice
 
@@ -116,7 +122,7 @@ Keep examples compact. Use `<example_input>` / `<example_output>` tags.
 
 ## Output
 
-When invoked to **create**, produce the complete agent prompt at the requested path.
+When invoked to **create**, produce `header.toml` and `prompt.md` in this repository. Elsewhere, produce the complete native agent prompt.
 
 When invoked to **update**, produce the edited prompt plus this changelog:
 

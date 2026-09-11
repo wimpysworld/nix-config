@@ -1,10 +1,3 @@
----
-name: love-joystick
-description: Provides an interface to the user's joystick. Use this skill when working with game controllers, joystick input, gamepad operations, or any input device-related operations in LÖVE games.
-license: MIT
-metadata:
-  author: Ron Dekker <rondekker.nl>
----
 
 ## When to use this skill
 Provides an interface to the user's joystick. Use this skill when working with game controllers, joystick input, gamepad operations, or any input device-related operations in LÖVE games.

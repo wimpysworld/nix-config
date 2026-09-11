@@ -1,7 +1,3 @@
----
-name: draft-issue
-description: "Use when drafting a GitHub issue, bug report, or feature request for a repository, including requests such as 'draft an issue', 'write a bug report', or 'help me report this'. Checks contribution policy, duplicate issues, and issue templates before writing. Keeps drafting read-only. When the user asks to file or create the issue, use this as the drafting phase before `post-issue`."
----
 
 # Draft Issue
 

@@ -41,7 +41,7 @@ The Nix composition is the delivery mechanism, not the strategy. Everything belo
 
 Pi Agent resources are rendered here and consumed by `../pi`, which owns the Pi package, runtime wrapper, settings, MCP adapter, subagent extension config, and theme files.
 
-Agent, command, prompt, and skill files use Markdown with YAML frontmatter. Pi and Codex global instruction files are plain Markdown; Codex agent definitions are TOML. No agent pins a model on any platform except Garfield; every other agent inherits the model selected in the coding tool. OpenCode headers intentionally omit `model` on every agent, so users can switch Anthropic and OpenAI models manually. In frontmatter files, the prompt body follows the `---` delimiters. No build step is required - drop the files in and they work.
+The repository stores metadata in `header.toml` and bodies in Markdown. The composer generates native client files through Home Manager. Agent and command names derive from their directories. Skills declare `[common] name`, which must match the directory. Generated skill files contain YAML frontmatter. Pi and Codex global instructions are plain Markdown, and Codex agents are TOML.
 
 ## Contents
 
@@ -376,7 +376,7 @@ Garfield is the sole pinned agent. His two message-drafting commands also set a 
 | Pi (Google)         | `gemini-3-flash`                                            |
 | Codex               | `gpt-5.6-terra`, reasoning `medium`                         |
 
-No other agent or command sets a model on any platform. The ten remaining agents have no `header.pi.yaml` and no `header.codex.toml` at all, and their `header.claude.yaml` omits `model`.
+No other agent or command sets a model on any platform. The ten remaining agents omit model and effort overrides from `header.toml`.
 
 **Command-level model pins:** `draft-commit-message` and `draft-pr-message` set `model: sonnet` in Claude Code. No other command sets a model. The standalone `make-commit` and `make-pr` commands run in the caller's context and inherit the root session model.
 
@@ -384,7 +384,25 @@ No other agent or command sets a model on any platform. The ten remaining agents
 
 ## Platform Delivery
 
-`compose.nix` reads the source tree and generates platform-specific output. Each agent has one `prompt.md` and optional per-platform headers: `header.claude.yaml`, `header.opencode.yaml`, `header.codex.toml`, and `header.pi.yaml`. Only Garfield carries the Codex and Pi headers today. Codex agents use `header.codex.toml` for role-local config, and Codex command skills can use `header.codex.toml` with `spawn-agent = true` to delegate through `spawn_agent`.
+`compose.nix` reads one `header.toml` per agent, command, skill, or instruction source. It projects metadata into each client's native format.
+
+| Table | Purpose |
+| --- | --- |
+| `[common]` | Shared description and argument hint. Skills also declare `name`, optional `license`, `compatibility`, and `metadata`. |
+| `[claude]`, `[opencode]`, `[codex]`, `[pi]` | Native non-model fields, such as permissions, tools, and context settings. |
+| `[compose]` | Repository agent binding through `agent`. |
+| `[compose.claude]`, `[compose.codex]` | Repository controls `use-task` and `spawn-agent`. |
+| `[routing.claude]`, `[routing.opencode]`, `[routing.codex]` | Native model and effort overrides. |
+| `[routing.pi.<inference-provider>]` | Pi model and thinking overrides for the named inference provider. |
+
+Common hints apply to Claude Code, OpenCode, and Pi. Provider-specific hints preserve differences in presence or value. Missing tables mean no overrides, not disabled output. Omit unset values because TOML has no null.
+
+Ordinary OpenCode and Codex skills do not support model or effort routes in this composer. Such routes fail evaluation. Use an agent-backed command when the workflow needs a model pin.
+
+Keep agent and command bodies in `prompt.md`. Keep skill bodies in frontmatter-free `SKILL.md`, including nested API skills. The composer rebuilds native frontmatter for each client. Encrypted `SKILL.sops` files remain complete native skills.
+
+Retired provider headers are removed. Retired `description.txt` files remain in the repository but are not consumed. Edit only `header.toml` for live metadata.
+
 
 Pi composition routes through `compose.composeAgentFromPrompt "pi"` and `compose.composeCommand "pi"`. The agent-scoped command prelude is assembled in `default.nix` and wraps `composePiCommandFromPrompt`. The Codex output uses the same pattern with a `spawn_agent` wrapper around command-derived skills.
 
@@ -392,7 +410,7 @@ Pi composition routes through `compose.composeAgentFromPrompt "pi"` and `compose
 
 Codex CLI invokes generated commands with `$name` or the `/skills` picker. Custom `/name` commands are unsupported. Every generated command is manual-only, including standalone, agent-owned, and encrypted commands.
 
-The shared `mkCodexCommandOpenAiYaml` helper emits `policy.allow_implicit_invocation: false` in each command's `agents/openai.yaml`. Existing `allow-implicit-invocation = false` headers remain valid. A `true` override fails evaluation. Ordinary reusable skills retain their existing policies, and other providers retain their command formats.
+The shared `mkCodexCommandOpenAiYaml` helper emits `policy.allow_implicit_invocation: false` in each command's `agents/openai.yaml`. Do not duplicate this constant policy in source metadata. Ordinary skill companion policy belongs under `[codex.policy]`. Ordinary reusable skills retain their existing policies, and other providers retain their command formats.
 
 User invocation and workflow composition are separate. A nested `$child` reference does not invoke a command. Load its generated `SKILL.md` from the configured Codex skills root, then pass the arguments, authority, and return contract explicitly. The root follows `home.preferXdgDirectories`: `~/.codex/skills` or `${XDG_CONFIG_HOME}/codex/skills`.
 
@@ -400,60 +418,42 @@ The calling workflow must name the executor: the current agent or a specialist d
 
 ### Pi headers
 
-`header.pi.yaml` is optional. When absent, Pi subagents inherit three generated defaults: `systemPromptMode: append`, `inheritProjectContext: false`, and `inheritSkills: true`. The header file may carry any Pi-native frontmatter field: `model`, `thinking`, `tools`, `defaultContext`, `output`, `fallbackModels`, `maxSubagentDepth`, plus per-command `argument-hint`. Fields present in the file are appended verbatim, so explicit per-agent depth limits are preserved.
+`[pi]` holds native non-model fields such as `tools`, `defaultContext`, `output`, `fallbackModels`, and `maxSubagentDepth`. Pi agents retain three generated defaults: `systemPromptMode: append`, `inheritProjectContext: false`, and `inheritSkills: true`. Explicit values override these defaults.
 
 OpenCode `permission` headers are not mapped to Pi. Pi supports an explicit `tools` allowlist for subagents, but OpenCode's allow/deny permission model is not equivalent.
 
 ### Provider routing
 
-Pi can route a subagent to a provider-specific model and/or reasoning effort
-through extra `model-<provider>` and `thinking-<provider>` keys in the agent's
-`header.pi.yaml`:
+Pi routes subagents through inference-provider tables in each agent's `header.toml`. Garfield declares:
 
-```yaml
-model-anthropic: claude-sonnet-5
-model-openai-codex: gpt-5.6-terra
-model-google: 'gemini-3-flash'
-thinking-openai-codex: medium
+```toml
+[routing.pi.anthropic]
+model = "claude-sonnet-5"
+
+[routing.pi.openai-codex]
+model = "gpt-5.6-terra"
+thinking = "medium"
+
+[routing.pi.google]
+model = "gemini-3-flash"
 ```
 
-That is Garfield's live header, quoted verbatim. He is the only agent with a
-`header.pi.yaml`, so he is the only agent the router matches.
+The inference-provider name must match Pi exactly, including hyphens. The default provider is `openai-codex`, not `openai`.
 
-The suffix after `model-` or `thinking-` must match the active Pi provider
-name exactly, including hyphens (this repo's default provider is
-`openai-codex`, not `openai`). The value must be a plain scalar, with optional
-matching single or double quotes. The Nix harvester uses a regex-only parser,
-so block scalars, anchors, aliases, unmatched quotes, and unquoted values
-containing `:` are ignored.
+`thinking` accepts `off`, `minimal`, `low`, `medium`, `high`, or `xhigh`. Invalid values fail evaluation.
 
-`thinking-<provider>` values are validated at evaluation time against
-`off|minimal|low|medium|high|xhigh`; invalid values fail `nix eval` rather than
-silently entering the generated map.
-
-When both keys are present, Pi receives `provider/modelId:thinking`. When only
-`thinking-<provider>` is set, the runtime reuses the active session model id
-as the bare model, so the agent keeps the parent model and only its reasoning
-effort changes.
-
-This repo's convention is **no headers by default**. Only Garfield declares
-`model-<provider>` and `thinking-<provider>` keys; every other agent ships
-without a `header.pi.yaml` and inherits the model selected in the session. Any
-agent that does need a pin should declare `model-anthropic`,
-`model-openai-codex`, and `thinking-openai-codex` together, so the active model
-and reasoning effort are readable from the agent's own header. Additional
-providers (e.g. `model-google`) are added per-agent where relevant. The router
-also supports thinking-only entries, where the runtime reuses the active
-session model id.
+When both fields exist, Pi receives `provider/modelId:thinking`. A thinking-only entry reuses the active session model ID. Model and effort pins are independent. An omitted table preserves session inheritance.
 
 Pi's global `defaultThinkingLevel = "medium"` and `defaultModel = "gpt-5.6-sol"`
 set the session default for the unnamed global prompt. Agents that omit a
 header do not fall back to them per-agent; they inherit whatever model the
 session is running.
 
-Provider routing covers Pi's LLM tool-call path only. Slash commands such as
-`/run`, `/chain`, `/parallel`, `/run-chain`, and prompt-template bridge calls
-keep their normal Pi and `pi-subagents` model resolution.
+Pi validates and stages routes for direct `/command` and `/skill:name` invocations before prompt expansion. The display extension uses the same dispatcher before it consumes TUI input. The router applies the route at `before_agent_start`, after prompt preflight. At `agent_settled`, after retries and recovery, Pi restores the previous session model and thinking level.
+
+An explicit `--model` or a user model selection takes precedence for the rest of the session. A routed invocation during streaming fails with an error. Supporting skill reads do not change the model.
+
+Subagent workflows route explicit command or direct-skill targets before agent routes. Children inherit the active direct invocation route when no more specific route applies. The router removes routing fields before child launch.
 
 Runtime behaviour lives in
 [`../pi/extensions/provider-router/README.md`](../pi/extensions/provider-router/README.md).
@@ -466,7 +466,7 @@ Pi exposes two surfaces that can take user input, and they handle arguments diff
 
 **Skills** (`/skill:<name>`) do not substitute. Trailing arguments after the skill invocation become a follow-up `User:` message appended after the skill body. A skill is reference content the model loads for context; trailing args are the user request that follows.
 
-This split keeps the surfaces semantically clean: prompts take inputs, skills provide guidance. `argument-hint` in `header.pi.yaml` documents the expected positional arguments for prompt autocomplete; skills carry no equivalent because they do not pattern-match arguments.
+This split keeps the surfaces semantically clean: prompts take inputs, skills provide guidance. `argument-hint` in `[common]` or `[pi]` documents the expected positional arguments for prompt autocomplete; skills carry no equivalent because they do not pattern-match arguments.
 
 | Platform    | Agents                                 | Commands                                  | Global rules                      | Skills                                 |
 | ----------- | -------------------------------------- | ----------------------------------------- | --------------------------------- | -------------------------------------- |
@@ -479,11 +479,39 @@ This split keeps the surfaces semantically clean: prompts take inputs, skills pr
 
 A few command and skill bodies must not enter git or the Nix store. Those directories ship a marker file instead of the plaintext: `prompt.sops` for a command, `SKILL.sops` for a skill. The marker holds one thing, the name of a top-level key in `secrets/assistant-prompts.yaml` whose value is the body. A secret skill's supporting files follow the same convention under the general rule that any `<name>.sops` marker renders to `<name>`, so `references/cycle-mechanics.md.sops` renders to `references/cycle-mechanics.md`; `SKILL.sops` and `prompt.sops` are the two fixed, named exceptions to that rule.
 
-`compose.nix` detects the marker and composes the file with a sops placeholder where the body would go. Claude Code, OpenCode, and Pi receive a sops template that sops-nix renders at activation. Codex gets an activation script that appends the decrypted body, because the Codex skill step clears its own output directory first. Either way the plaintext lives only in the activated file, never in the store.
+`compose.nix` detects the marker and composes the file with a sops placeholder where the body belongs. Claude Code, OpenCode, and Pi use helper-owned links to private sops templates. Codex receives regular files that combine the generated prefix with the decrypted body. Activation checks the refreshed secret sources before the helper writes client files. Plaintext stays outside the Nix store.
 
 A directory holding both the marker and its plaintext counterpart fails evaluation, so the two can never drift apart.
 
-`description.txt` and the `header.*.yaml` files stay plaintext and are composed normally. Keep them free of whatever the encrypted body protects.
+`header.toml` stays plaintext and is composed normally. Keep them free of whatever the encrypted body protects.
+
+### Activation ownership and cleanup
+
+The shared helper updates generated Codex files and custom links that Home Manager does not own. It records ownership in `${XDG_STATE_HOME:-$HOME/.local/state}/agentic/assistants/manifest.json`.
+
+The private manifest stores file hashes, link targets, helper-created directories, and completed one-off retirements. It stores no file bodies or secret history.
+
+| Destination state | Activation action |
+| --- | --- |
+| Unchanged owned output remains in the configuration | Replace it with the new output. |
+| Unchanged owned output leaves the configuration | Remove that exact file or link. |
+| Modified former output leaves the configuration | Preserve it and stop tracking it. |
+| Unknown or modified path conflicts with a desired output | Stop before helper writes and report the path. |
+| Unrelated manual file, plugin, or backup | Leave it untouched. |
+
+Review each reported conflict before the next activation. Keep local changes outside generated destinations. Do not remove the manifest to bypass a conflict.
+
+Cleanup still runs when a client is disabled. It removes only unchanged recorded outputs and empty directories that the helper created, not whole client trees.
+
+On the first migration, activation reads the previous immutable generation and sops records to establish ownership. It never executes an old activation script. Unverified files remain outside ownership.
+
+The approved one-off exception retires the regular file `~/.pi/agent/agents/traya.md` on the next successful activation. Completion is recorded, so later files at that path are not repeatedly removed. A symlink or other non-regular path stays untouched.
+
+Activation captures migration evidence before the final secret refresh. The helper then checks every required source and stages regular-file content before it changes client destinations. A caught apply failure restores the helper's previous files and links. The manifest changes only after successful application.
+
+This transaction does not include public Home Manager links, the sops refresh, or other activation steps. File replacement is atomic per file, not across the whole activation after a machine crash.
+
+Old unverified MCP backups and Nix rollback generations remain outside this cleanup. See [the helper README](owned-files/README.md) for safe tests.
 
 ### Skills
 

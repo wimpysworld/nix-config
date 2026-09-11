@@ -1,0 +1,7 @@
+[common]
+name = "love-mouse"
+description = "Provides an interface to the user's mouse. Use this skill when working with mouse operations, cursor management, mouse events, or any mouse-related operations in LÖVE games."
+license = "MIT"
+
+[common.metadata]
+author = "Ron Dekker <rondekker.nl>"

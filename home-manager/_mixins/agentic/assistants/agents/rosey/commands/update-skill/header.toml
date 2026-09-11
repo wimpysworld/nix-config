@@ -1,0 +1,6 @@
+[common]
+description = "Update Skill ⚡"
+argument-hint = "[skill-path]"
+
+[compose]
+agent = "rosey"

@@ -1,0 +1,6 @@
+[common]
+description = "Update Slash Command ⚡"
+argument-hint = "[command-path]"
+
+[compose]
+agent = "rosey"
