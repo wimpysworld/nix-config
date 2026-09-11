@@ -440,7 +440,7 @@ model = "gemini-3-flash"
 
 The inference-provider name must match Pi exactly, including hyphens. The default provider is `openai-codex`, not `openai`.
 
-`thinking` accepts `off`, `minimal`, `low`, `medium`, `high`, or `xhigh`. Invalid values fail evaluation.
+`thinking` accepts `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`. Invalid values fail evaluation. The runtime also checks that the selected model supports the thinking level.
 
 When both fields exist, Pi receives `provider/modelId:thinking`. A thinking-only entry reuses the active session model ID. Model and effort pins are independent. An omitted table preserves session inheritance.
 
