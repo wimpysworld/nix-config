@@ -9,7 +9,9 @@ Author and maintain agent system prompts: the always-loaded persona, capabilitie
 - **Examples** vs **no examples**. Add 1-2 examples for subjective style or judgment work; omit for procedural agents.
 - **Triggers** vs **direct invocation**. Sub-agents selected by routing need a trigger-rich `description`; user-invoked agents only need a name.
 
-## Required structure
+## Required native structure
+
+This template shows native client output. In this repository, keep metadata in `header.toml` and the body in `prompt.md` without frontmatter (see [Repository source](#repository-source)).
 
 ```markdown
 ---
