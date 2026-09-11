@@ -295,7 +295,7 @@ def main():
         if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) != 0o600:
             raise ValueError("Existing bootstrap must be a private regular file owned by the current user")
         previous = json.loads(destination.read_text())
-        if previous.get("version") != 1 or not isinstance(previous.get("files"), dict):
+        if not isinstance(previous, dict) or previous.get("version") != 1 or not isinstance(previous.get("files"), dict):
             raise ValueError("Invalid existing bootstrap manifest")
         records.update(verified_records(previous["files"], spec["roots"]))
     records.update(capture(spec, args.old_generation))

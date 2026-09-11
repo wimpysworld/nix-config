@@ -208,6 +208,20 @@ class DeploymentTests(unittest.TestCase):
         self.activate(success=False)
         self.assertEqual(self.snapshot(), before)
 
+    def test_non_object_manifest_fails_cleanly_before_writes(self):
+        self.spec["files"] = [self.entry("existing/SKILL.md")]
+        self.activate()
+        self.spec["files"] = [self.entry("new/SKILL.md")]
+        manifest = self.state / "manifest.json"
+        for data in ([], None, "invalid", 1, True):
+            with self.subTest(data=data):
+                manifest.write_text(json.dumps(data))
+                before = self.snapshot()
+                result = self.activate(success=False)
+                self.assertEqual(result.returncode, 1)
+                self.assertEqual(result.stderr, "Agent file deployment failed: Unsupported ownership manifest\n")
+                self.assertEqual(self.snapshot(), before)
+
     def test_stale_symlink_changed_by_user_is_preserved(self):
         self.spec["files"] = [self.entry("guide.md", kind="symlink")]
         self.activate()
