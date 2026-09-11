@@ -67,6 +67,13 @@ in
         fzf-line = lib.mkDefault ''{{style "title" title-or-path}}{{#each tags}} #{{this}}{{/each}} {{style "understate" body}}'';
       };
       note = {
+        exclude = lib.mkDefault [
+          "**/.git/**"
+          "**/.gitignore"
+          "AGENTS.md"
+          "CLAUDE.md"
+          "README.md"
+        ];
         filename = lib.mkDefault "{{#if (slug title)}}{{slug title}}{{else}}untitled{{/if}}";
         extension = lib.mkDefault "md";
         template = lib.mkDefault "default.md";
