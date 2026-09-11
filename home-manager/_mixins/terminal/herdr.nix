@@ -97,8 +97,8 @@ let
     ui.status_indicators = "symbols";
     ui.show_agent_labels_on_pane_borders = true;
     ui.sound.enabled = false;
-    ui.toast.delivery = "herdr";
-    experimental.kitty_graphics = true;
+    ui.toast.delivery = "system";
+    terminal.kitty_graphics = true;
     worktrees.directory = worktreeRoot;
   };
   herdrWorktree = pkgs.writeShellApplication {
@@ -292,7 +292,7 @@ in
 {
   config = lib.mkIf (!host.is.iso) {
     # `pkgs.herdr` comes from the `modifiedPackages` overlay, which exposes the
-    # llm-agents flake build directly.
+    # llm-agents flake build with a stable-release override.
     home.packages = [
       herdrWorktree
       pkgs.herdr

@@ -36,7 +36,7 @@ if ! jq -e '
     )
   )
 ' >/dev/null 2>&1 <<<"$event_json"; then
-  die "HERDR_PLUGIN_EVENT_JSON is not a valid Herdr v0.8.2 workspace.created event"
+  die "HERDR_PLUGIN_EVENT_JSON is not a valid Herdr workspace.created event"
 fi
 
 workspace_id=$(jq -er '.data.workspace.workspace_id' <<<"$event_json")

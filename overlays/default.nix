@@ -96,9 +96,21 @@ in
 
       fresh = final.unstable.fresh-editor;
 
-      # Agent-adjacent tools sourced from the same pinned llm-agents flake as the
-      # rest of the agent tooling.
-      inherit (inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}) herdr;
+      herdr = inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}.herdr.overrideAttrs (
+        finalAttrs: _oldAttrs: {
+          version = "0.9.0";
+          src = final.fetchFromGitHub {
+            owner = "herdrdev";
+            repo = "herdr";
+            tag = "v${finalAttrs.version}";
+            hash = "sha256-SUYF4bbaYwNgoe498VoCUzuLPcjBLQXR0o0DWjjoSnI=";
+          };
+          cargoDeps = final.rustPlatform.fetchCargoVendor {
+            inherit (finalAttrs) pname version src;
+            hash = "sha256-CW/SF/cAPDv47gS5B7XbVZEE6LC9F1a2I1TLTJ4AWdw=";
+          };
+        }
+      );
 
       inherit (final.unstable) ollama;
       inherit (final.unstable) ollama-cuda;

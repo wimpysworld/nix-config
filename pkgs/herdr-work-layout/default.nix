@@ -27,9 +27,10 @@ let
     fakeHerdr = ./tests/fake-herdr.sh;
   } (builtins.readFile ./tests/test.sh);
 in
-assert lib.assertMsg (
-  herdr.version == "0.8.2"
-) "herdr-work-layout requires the Herdr v0.8.2 event schema";
+assert lib.assertMsg (builtins.elem herdr.version [
+  "0.8.2"
+  "0.9.0"
+]) "herdr-work-layout requires the Herdr v0.8.2 or v0.9.0 event schema";
 stdenvNoCC.mkDerivation {
   pname = "herdr-work-layout";
   version = "0.3.1";
