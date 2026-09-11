@@ -385,15 +385,25 @@ let
         }
       ) compose.commandSources
     );
-    skills = lib.mapAttrs (
-      name: _:
-      let
-        metadata = compose.readHeader (./skills + "/${name}");
-      in
-      {
-        providers = metadata.routing.pi or { };
-      }
-    ) (lib.removeAttrs compose.skillDirs [ "delegate-task" ]);
+    skills =
+      lib.mapAttrs
+        (
+          name: _:
+          let
+            metadata = compose.readHeader (./skills + "/${name}");
+          in
+          {
+            providers = metadata.routing.pi or { };
+          }
+        )
+        (
+          lib.removeAttrs (
+            compose.skillDirs
+            // lib.filterAttrs (
+              name: _: builtins.pathExists (./skills + "/${name}/header.toml")
+            ) compose.secretSkillDirs
+          ) [ "delegate-task" ]
+        );
   };
 
   # ============ SKILLS ============
