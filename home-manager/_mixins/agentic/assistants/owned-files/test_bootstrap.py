@@ -197,6 +197,25 @@ class BootstrapTests(unittest.TestCase):
         self.assertTrue(self.target.parent.is_dir())
         self.assertTrue(manual.is_dir())
 
+    def test_retry_rejects_non_object_manifest_before_writes(self):
+        state = self.home / "state"
+        state.mkdir(mode=0o700)
+        captured = state / "bootstrap.json"
+        spec = self.home / "spec.json"
+        spec.write_text(json.dumps({"stateDir": str(state), "roots": [str(self.root)], "home": str(self.home)}))
+        for data in ([], None, "invalid", 1, True):
+            with self.subTest(data=data):
+                captured.write_text(json.dumps(data))
+                captured.chmod(0o600)
+                before = captured.read_bytes()
+                with mock.patch.object(bootstrap, "capture") as capture:
+                    with mock.patch("sys.argv", ["bootstrap.py", str(spec), "--output", str(captured)]):
+                        with self.assertRaisesRegex(ValueError, "Invalid existing bootstrap manifest"):
+                            bootstrap.main()
+                    capture.assert_not_called()
+                self.assertEqual(captured.read_bytes(), before)
+                self.assertEqual(list(state.iterdir()), [captured])
+
     def darwin_fixture(self, direct_launcher=False):
         generation = self.home / "darwin-generation"
         plist = generation / "LaunchAgents/org.nix-community.home.sops-nix.plist"

@@ -57,7 +57,7 @@ def load_manifest(path):
     if not stat.S_ISREG(path.lstat().st_mode):
         raise Conflict(f"Manifest is not a regular file: {path}")
     data = json.loads(path.read_text())
-    if data.get("version") != 1 or not isinstance(data.get("files"), dict):
+    if not isinstance(data, dict) or data.get("version") != 1 or not isinstance(data.get("files"), dict):
         raise Conflict("Unsupported ownership manifest")
     directories = data.get("directories", [])
     if not isinstance(directories, list) or any(not isinstance(path, str) for path in directories):
