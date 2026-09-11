@@ -106,6 +106,7 @@ If the user supplied a focus, tailor the handover to that next-session goal.
 ```toml
 [common]
 description = "Handover 📤"
+argument-hint = "[focus]"
 
 [compose]
 agent = "rosey"
