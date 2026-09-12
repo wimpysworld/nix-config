@@ -1,0 +1,12 @@
+[common]
+name = "diagram-design"
+description = "Creates branded diagrams and charts as HTML with inline SVG, with optional SVG or PNG export. Use when the user asks for architecture diagrams, flowcharts, sequence diagrams, data models, timelines, maps, or charts, or asks to redraw draw.io, Mermaid, or Excalidraw sources. Also use for diagram brand profiles, website token extraction, accessible motion, and hand-drawn diagram styles. Do not use for plain text diagrams or general UI design."
+license = "MIT"
+compatibility = "Python 3 is required for standard-library checks and import helpers. Browser tools and Playwright with Chromium are optional. Default Google Fonts require network access. Installed files are read-only."
+
+[common.metadata]
+version = "2.6"
+upstream = "https://github.com/cathrynlavery/diagram-design"
+revision = "8d8b2993ee2256ee7dfc0eeb3b5713aba3b60792"
+source = "skills/diagram-design"
+local-changes = "Composer metadata, safe external profile writes, user preference resolver, explicit paired modes, generated colour replacement guidance, read-only installation, optional browsers, and symlink-safe self-check paths. See the assistants README for refresh steps."

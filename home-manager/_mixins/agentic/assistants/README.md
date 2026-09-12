@@ -565,6 +565,7 @@ Shared skills provide background knowledge and reference material. Most are sour
 | -------------------- | ------------------------------------------------------------------------- |
 | `contribution-voice` | Structure rules for text published under the user's name in public        |
 | `deep-research`      | Multi-round research on an open question, synthesised into a cited report |
+| `diagram-design`     | Branded HTML/SVG diagrams, chart layouts, imports, and external brand profiles |
 | `research-task`      | Research an existing tracked task and its linked work into a cited report |
 | `draft-project-description` | Write a Linear project description in the form the quality coach scores   |
 | `draft-comment`      | Read-only drafting for GitHub, Linear, or Slack comments and replies      |
@@ -575,3 +576,77 @@ Shared skills provide background knowledge and reference material. Most are sour
 | `review-code-follow-up` | Follow-up review method: prior findings, response delta, restrained report |
 | `semgrep`               | Semgrep CLI usage and custom rule creation reference                      |
 | `slack`              | Slack reference - `slack-post` target forms, channel resolution, threads  |
+
+### Vendored Diagram Design
+
+`skills/diagram-design/` contains the complete upstream skill from
+[`cathrynlavery/diagram-design`](https://github.com/cathrynlavery/diagram-design/tree/8d8b2993ee2256ee7dfc0eeb3b5713aba3b60792/skills/diagram-design).
+The pinned commit is `8d8b2993ee2256ee7dfc0eeb3b5713aba3b60792`.
+The import preserves all upstream assets, references, and four Python scripts at their original relative paths.
+Imported CRLF files use LF line endings. Trailing whitespace is removed, with Markdown hard breaks preserved as backslashes.
+The local `scripts/resolve_profile.py` adds read-only preference resolution.
+`LICENSE` and `THIRD_PARTY_LICENSES.md` are unchanged copies from the upstream repository root.
+Paths in the third-party notices refer to the upstream repository layout, not this installation.
+
+Upstream plugin manifests, commands, maintainer scripts, and website screenshots are not part of the skill import.
+The composer discovers the skill without registration and generates Claude Code, Codex, OpenCode, and Pi output.
+`header.toml` holds the description, licence, upstream version, source path, commit, and local-change summary.
+The source `SKILL.md` has no frontmatter.
+
+The assistant module supplies `pkgs.python3` when any supported client is enabled, including Pi on developer servers.
+The import helpers and mandatory self-check use only the Python standard library.
+The self-check keeps its invoked path so that symlinked scripts can find the adjacent motion template.
+The local formatter also formats that script. The other three scripts remain byte-for-byte upstream copies.
+Playwright and Chromium remain optional for PNG export. This integration adds neither dependency and runs no installation workflow.
+Default templates load Google Fonts over the network. Offline fallback fonts can change layout, and exact brand matching needs rendered verification.
+
+Installed files are read-only. Custom guides use `~/.diagram-design/profiles/<slug>.md`.
+The marker contains only `profile: <slug>`. The reserved `default` reads the installed guide directly, without an external snapshot.
+Onboarding, save, load, switch, update, and reset never write into the installation.
+Marker changes and profile replacement require consent. Diagrams and exports belong in a user-approved output directory.
+
+#### User default and paired profile
+
+For Martin, Home Manager manages these individual read-only files on all hosts that import the assistant module:
+
+- `~/.diagram-design/profiles/catppuccin-blue.md`, a complete paired style guide.
+- `~/.diagram-design/preferences`, containing exactly `profile: catppuccin-blue` and one final newline.
+
+The profile directory remains writable for other named profiles. Do not replace the directory or edit managed symlinks.
+Change the managed preference in `default.nix`, or copy the profile to a new slug for customisation.
+`diagram-profiles/catppuccin-blue.md` is the source template. Home Manager substitutes both flavours from `lib/catppuccin-palette.json`.
+The shared `catppuccinPalette` argument contains only Mocha, so the template uses the existing full palette data instead.
+The colour roles match the official Catppuccin palette and style guide. Tint opacities are local design choices.
+
+Resolution order is explicit request, project `.diagram-design`, user `preferences`, then the existing setup gate.
+Both selectors accept only `profile: <slug>`. An explicit request does not persist without consent.
+Invalid selectors produce a warning and permit the next source. Unreadable selectors and missing selected profiles stop generation.
+The reserved `default` always selects the installed guide, even when an external `default.md` exists.
+Use light by default and dark only on explicit request. The paired modes use Latte and Mocha with blue accents.
+No automatic theme detection or persistent mode setting is added. The terminal variant keeps its separate palette and typography.
+
+The skill requires replacements in generated CSS, SVG attributes, arrowheads, cards, and masks, not only CSS variables.
+Upstream templates remain unchanged. Run the focused checks without activation:
+
+```sh
+python3 -m unittest discover -s home-manager/_mixins/agentic/assistants/tests -p test_diagram_profiles.py
+```
+
+#### Refresh
+
+1. Select an upstream commit.
+2. Download `https://codeload.github.com/cathrynlavery/diagram-design/tar.gz/<commit>` into a separate temporary directory.
+3. Compare `skills/diagram-design/` and the two root licence files with the current import before replacement.
+4. Import the complete upstream skill tree mechanically, preserving file bytes and relative paths. Do not run upstream installation scripts.
+5. Move upstream frontmatter into `header.toml` and update its provenance fields.
+6. Reapply local changes in `SKILL.md`, `references/profiles.md`, `references/onboarding.md`, `references/style-guide.md`, and `references/export.md`.
+   Keep `scripts/self_check.py` compatible with symlinked script files through `Path(__file__).absolute()`, not `resolve()`.
+7. Preserve slug and marker validation, overwrite consent, external profile storage, the read-only default, and optional browser requirements.
+   Preserve `scripts/resolve_profile.py`, user preference precedence, safe writes, explicit modes, and generated colour replacement rules.
+   Keep `diagram-profiles/catppuccin-blue.md` and its Home Manager deployment outside the upstream replacement.
+   Recheck both flavours against the official palette when palette data changes, then run `test_diagram_profiles.py`.
+8. Normalise imported CRLF files to LF and remove trailing whitespace, preserving Markdown hard breaks as backslashes.
+   Check every relative reference and compare unchanged files byte-for-byte against the selected archive after this whitespace normalisation.
+9. Run the bundled self-check on a safe HTML fixture, the assistant tests, and `just eval` before activation.
+
+Description checks: an architecture diagram request loads this skill. A plain-text diagram request does not. A general UI design request uses another capability.
