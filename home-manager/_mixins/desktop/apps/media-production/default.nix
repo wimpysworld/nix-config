@@ -7,6 +7,13 @@
 }:
 let
   inherit (config.noughty) host;
+  blenderEnabled = host.is.workstation && noughtyLib.hostHasTag "gamedev";
+  blenderConfigHome =
+    if host.is.darwin then
+      "${config.home.homeDirectory}/Library/Application Support/Blender"
+    else
+      "${config.xdg.configHome}/blender";
+  blenderVersion = lib.versions.majorMinor blenderPackage.version;
   davinciResolve = pkgs.davinci-resolve.override { studioVariant = true; };
   # Blender's GPU render backend follows the host's compute GPU vendor:
   # AMD uses HIP (rocmSupport), NVIDIA uses CUDA/OptiX (cudaSupport). Other
@@ -61,6 +68,14 @@ in
   };
 
   home.file = {
+    "${blenderConfigHome}/${blenderVersion}/scripts/startup/agent_bridge.py" = lib.mkIf blenderEnabled {
+      source = ./blender-agent-bridge.py;
+    };
+    "${blenderConfigHome}/${blenderVersion}/extensions/user_default/claude_blender" =
+      lib.mkIf blenderEnabled
+        {
+          source = "${pkgs.blender-agent-bridge}/share/blender-agent-bridge/claude_blender";
+        };
     "${config.xdg.configHome}/easyeffects/input/mic-skrye-oktava.json" =
       lib.mkIf (noughtyLib.isHost [ "skrye" ])
         {
@@ -428,8 +443,9 @@ in
       gimp3
       inkscape
     ]
-    ++ lib.optionals (host.is.workstation && noughtyLib.hostHasTag "gamedev") [
+    ++ lib.optionals blenderEnabled [
       blenderPackage
+      blender-agent-bridge
     ]
     ++ lib.optionals (host.is.workstation && noughtyLib.hostHasTag "davinci") [
       davinciResolve
