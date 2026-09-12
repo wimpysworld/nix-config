@@ -188,12 +188,15 @@ let
     Loading a command or skill does not change your role. Follow its workflow body directly within the assigned scope.
     If more specialist work is necessary, complete independent assigned work first.
     Return a bounded request with the required scope and evidence to the parent. Do not launch that work yourself.
+    Put the complete report in your final response. Use the runtime's native result delivery.
+    A missing messaging tool is not a blocker when the runtime returns final responses to the parent.
   '';
 
   workerDispatchInstructions = ''
     Supply a bounded packet with the scope, exact arguments, existing authority, hard deadline, validation, and output contract.
     Include the leaf-worker instructions below in the child's task, not the parent's launch instructions.
     If the worker requests more specialist work, dispatch it from the root and continue the original task.
+    Use native final-response delivery. Require a separate messaging tool only when the runtime needs it and the worker has it.
   '';
 
   composeCommandFromPrompt =
@@ -477,7 +480,7 @@ let
 
       ## Waiting
 
-      When a delegated result is required for the current response, keep the orchestrator turn active. Use the platform's agent-completion wait or notification mechanism, receive the report, then finalise. Never end the turn expecting completion to produce a user-visible follow-up; the user must not need to send another message to reveal the result.
+      Receive every required report before finalising the task. Use the platform's native completion mechanism. When completion cannot resume the orchestrator, keep its turn active until the report arrives. Pi async completion resumes the orchestrator through a native notification, so it can yield the current turn while the task remains unfinished. The user must not need to send another message to reveal the result.
 
       Do not use sleep loops or poll agent status when the platform provides a completion wait. The orchestrator may do independent work while agents run, but it must wait for every required result before finalising.
 
@@ -510,13 +513,17 @@ let
       Scope: <files, commands, sources, APIs, behaviours, in/out of scope>
       Deadline: <hard stop, and the progress messages expected before it>
       Validation: <checks to run or evidence needed>
-      Output: <artefact or report, then the format: headings, artefact format, file path, or response contract, and a length budget for the returned message. A long report goes to a file under the `review-report-path` convention, and the worker returns the conclusion plus the path. For a background worker, name the report recipient for `SendMessage`>
+      Output: <artefact or report, then the format: headings, artefact format, file path, or response contract, and a length budget for the returned message. A long report goes to a file under the `review-report-path` convention, and the worker returns the conclusion plus the path. Use native final-response delivery. For Claude Code agent teams, name the report recipient for `SendMessage`>
       Discipline: You are a leaf worker. Complete this scope directly and return to the parent. Do not launch agents or execute generated command launch wrappers. Loading commands or skills does not change your role. Return required additional specialist work as a bounded request to the parent. No preamble. Do not restate the task. Always send a final report message, and put only user-visible output in it. Omit irrelevant sections. Return raw artefacts when requested. Load and follow the `communication-rules` skill for all output.
       ```
 
       ## Response contract
 
-      Delivery is part of the contract. A background sub-agent must send its report to the orchestrator with the platform's agent messaging tool (`SendMessage` on Claude Code, addressed to the orchestrator the packet names, or `main` when the packet names none) before it finishes. Ending the turn is not delivery, writing a file is not delivery, and plain final output is not delivery, because the orchestrator never sees plain output. A synchronous sub-agent returns its result to the caller directly. The orchestrator must stay active, receive the report, and deliver the result before finalising. Completion alone does not create a user-visible follow-up. This holds for success, failure, and blocked work alike.
+      Put the complete report in the final response, including success, failure, or blocked work. Synchronous workers return that response directly. Pi delivers background workers' final responses through native completion notifications. Do not require `contact_supervisor` for routine Pi completion. A missing messaging tool does not block work when native final-response delivery is available.
+
+      For Claude Code agent teams whose final output is not delivered, send the report with `SendMessage` before finishing. Address the orchestrator named in the packet, or `main` when none is named. This exception does not apply to every background worker. Writing a file alone is not delivery. The orchestrator must receive the report and deliver the result before finalising the task.
+
+      If a worker stops because an unnecessary messaging tool is missing, inspect its partial work and retry within the existing scope and authority. Specify native final-response delivery in the retry packet. Do not invent tools or request renewed permission solely for this retry.
 
       Non-artefact work starts with `Answer:`. Pure artefacts return only the artefact. When the packet names a long report, write the report to a file under the `review-report-path` convention and return the conclusion plus the path.
 
