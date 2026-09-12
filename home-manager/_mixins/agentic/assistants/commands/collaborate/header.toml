@@ -1,3 +1,6 @@
 [common]
 description = "Read a task and collaborate on it 🤝"
 argument-hint = "<issue-or-file>"
+
+[compose]
+root = true

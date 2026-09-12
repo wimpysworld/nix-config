@@ -3,3 +3,4 @@ description = "Project Performance Review ⚡"
 
 [compose]
 agent = "gonzales"
+root = true

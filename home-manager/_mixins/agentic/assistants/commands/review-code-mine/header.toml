@@ -1,3 +1,6 @@
 [common]
 description = "Review My Code 🪞"
 argument-hint = "[pr|branch|worktree|commit]"
+
+[compose]
+root = true

@@ -5,6 +5,7 @@ Author and maintain commands across Claude Code, OpenCode, Pi prompt templates, 
 
 ## Decide first
 
+- **Root** vs **leaf**. Set `[compose] root = true` for fan-out, direct worker dispatch, caller transcript/state, or same-context Git work. Leaf specialist work keeps the default `root = false`.
 - **Long command choice.** Before editing, when a command is likely to exceed 100 lines, pause and ask one focused question: keep it inline, or use a thin command plus a skill for reusable guidance? Recommend based on reuse, not length alone. Keep command-specific guidance inline; recommend a skill when the guidance has independent reuse. Honour the user's choice.
 - **Shim** vs **standalone** vs **standalone-with-format**. A shim is a 3-8 line body that names the flow and loads a skill. A standalone command carries its own one-verb body. Add an inline output format only when it is non-trivial and not reused.
 - **Single-purpose output-format commands stay standalone.** Do not refactor a working standalone-with-format command into a shim speculatively. Recommend extraction when a sibling command would share ≥30% of the body or the guidance has independent reuse.
@@ -77,7 +78,9 @@ Use `[common]` for the description and a hint shared by Claude Code, OpenCode, a
 
 Keep native non-model fields in provider tables. Put model and effort overrides only under `[routing.<provider>]`. Pi agent routing uses `[routing.pi.<inference-provider>]`.
 
-Use `[compose] agent` for the repository agent binding. Set `[compose.claude] use-task = true` for a Task wrapper. Set `[compose.codex] spawn-agent = false` for same-context execution. Omitted controls preserve the composer defaults.
+Use `[compose] agent` for the repository agent binding. Shared `root = true` takes precedence over provider launch controls and keeps the caller's context and persona. It suppresses Claude agent/Task wrappers, OpenCode agent binding, Pi launches, and Codex persona/spawn wrappers. OpenCode also receives `subtask: false`.
+
+For leaf commands, `[compose.claude] use-task = true` selects a Task wrapper. `[compose.codex] spawn-agent = false` embeds the agent persona in the caller's context. That Codex-only switch is not shared root execution. Omitted controls preserve the composer defaults.
 
 Names derive from directories. Missing provider tables mean no overrides, not disabled output. TOML has no null. Omit fields to inherit defaults.
 
@@ -92,6 +95,7 @@ Manual-only controls command selection, not file access or workflow reuse within
 - Resolve the named workflow from the available skill catalogue, configured skill roots, or repository command source. Read its instructions before dependent work.
 - Supply the exact arguments, existing authority, output contract, and return point. A nested read grants no new mutation authority.
 - For same-context work, follow the workflow body without its generated agent-launch wrapper. Keep staging and commits in their declared owning context.
+- Applying a nested workflow inside a worker does not authorise its generated launch wrapper or further delegation.
 - For specialist work, the top-level orchestrator dispatches the workflow body directly with a bounded packet. Workers return directly and launch no agents.
 - Preserve user-facing `$name` examples on Codex and `/name` examples on slash-command runtimes. Do not use prefix conversion as workflow composition.
 
@@ -118,7 +122,7 @@ See `references/portability.md` for the full table. Headlines:
 
 OpenCode's slash commands invoke in the caller's session by default. The exception is when `agent:` binds to a subagent: that binding alone triggers a subagent invocation, so the command body runs in a fresh context owned by the named agent. `subtask: true` **forces** subagent invocation even when the bound agent is `mode: primary`, so the body still runs in a fresh subagent context without polluting the caller's session. `subtask: false` explicitly opts out and keeps execution in the caller's session even if the bound agent is a subagent (honoured by spec; some 2026-era builds ignore it - see sst/opencode#10431).
 
-Repo convention for Rosey's shims: **omit `subtask`**. The `agent: <name>` binding already owns the context boundary, and OpenCode's default subagent invocation gives the fresh context for free. Set `subtask: true` only on a standalone command that needs a fresh context without changing the active agent (e.g. a `/review`-style command bound to a primary agent that you want isolated from the main thread).
+For leaf specialist shims, omit `subtask`. The agent binding already selects a fresh context. For root commands, use shared `root = true`. The composer removes the agent binding and forces `subtask: false`. Reserve `subtask: true` for leaf commands that need a fresh context with a primary agent.
 
 ## Model selection
 
@@ -148,7 +152,7 @@ If the body writes files, runs Bash, or hits the network, say so and list paths 
 
 1. Read `prompt.md` and `header.toml`.
 2. Identify the form band (shim / standalone / standalone-with-format). Enforce the shim and trivial caps; apply the long command choice before editing a standalone-with-format command.
-3. Diagnose: argument substitution (`$ARGUMENTS` vs `$1`), `argument-hint` bracket convention, persona leakage, missing or stale `description`, model mismatch with sibling commands, missing side-effect declaration, missing or stale README row.
+3. Diagnose: root/leaf ownership, argument substitution (`$ARGUMENTS` vs `$1`), `argument-hint` bracket convention, persona leakage, missing or stale `description`, model mismatch with sibling commands, missing side-effect declaration, missing or stale README row.
 4. Edit narrowly. Preserve `[common] description` and `argument-hint` unless they are wrong. Do not rewrite a working body.
 5. If a shim and an existing skill both grew the same doctrine, cut the shim back to the skill body's surface.
 6. Emit changed files plus a short changelog: `Changed`, `Rationale`.

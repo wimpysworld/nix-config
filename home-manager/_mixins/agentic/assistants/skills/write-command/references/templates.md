@@ -63,6 +63,9 @@ $ARGUMENTS Assess and acknowledge my message, then yield your turn.
 [common]
 description = "Acknowledge a phase or message ✅"
 argument-hint = "[phase]"
+
+[compose]
+root = true
 ```
 
 ## Form C: standalone with output format
@@ -110,6 +113,7 @@ argument-hint = "[focus]"
 
 [compose]
 agent = "rosey"
+root = true
 ```
 
 Omit `argument-hint` when the command takes no argument. Add model pins only under `[routing.<provider>]` when the command needs one.

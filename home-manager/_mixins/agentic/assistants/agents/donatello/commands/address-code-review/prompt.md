@@ -54,7 +54,7 @@ A reply must be true when the reviewer reads it, so the code lands before the wo
 1. Read `communication-rules` first unless its complete, current instructions are in this context. Apply it before starting
 2. Filter the threads, then judge every finding
 3. Group the accepted findings by the files they touch. Findings that touch the same file run in sequence, never in parallel, or their edits clobber each other. Different groups may run in parallel
-4. Dispatch one fresh sub-agent per finding, in that order. Never hand two findings to one sub-agent. Fresh context per finding keeps attention high and changes small
+4. Dispatch one fresh sub-agent per finding through the available sub-agent or task tool, in that order. Never hand two findings to one sub-agent. Fresh context per finding keeps attention high and changes small
 5. When a finding's fix depends on or conflicts with a fix already applied, re-evaluate it against the current state of the code rather than applying it blind
 6. Commit after each finding that produced a change, one commit per finding. Stage explicitly with path-limited `git add -- <path>` using the files in that finding's report. Never `git add .`, `-A`, or `-u`. Follow the `make-commit` body and its direct draft phase. Commit from this context only, one finding at a time, so parallel sub-agents never contend for the index
 7. Run the project's test suite once, after the last fix

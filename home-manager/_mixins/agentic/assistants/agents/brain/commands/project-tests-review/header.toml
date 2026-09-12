@@ -3,3 +3,4 @@ description = "Project Tests Review 🧪"
 
 [compose]
 agent = "brain"
+root = true

@@ -5,6 +5,7 @@ description = "Update Task ✏️"
 argument-hint = "<issue|path>"
 
 [compose]
+root = true
 agent = "penfold"
 
 [pi]

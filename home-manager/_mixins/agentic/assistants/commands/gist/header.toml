@@ -1,2 +1,5 @@
 [common]
 description = "Rewrite the previous response concisely"
+
+[compose]
+root = true

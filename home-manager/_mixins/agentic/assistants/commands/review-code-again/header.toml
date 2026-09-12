@@ -1,3 +1,6 @@
 [common]
 description = "Review Code Again 🔁"
 argument-hint = "[target|report]"
+
+[compose]
+root = true

@@ -3,4 +3,5 @@ description = "Post Issue 📮"
 argument-hint = "<repo>"
 
 [compose]
+root = true
 agent = "penfold"

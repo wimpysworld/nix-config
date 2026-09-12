@@ -2,4 +2,5 @@
 description = "Project Documentation Review 📋"
 
 [compose]
+root = true
 agent = "velma"
