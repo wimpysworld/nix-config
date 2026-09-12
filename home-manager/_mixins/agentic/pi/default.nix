@@ -14,8 +14,7 @@ let
   fencedEnabled = !host.is.server;
   # Use Node mode to retain the SDK modules that pi-subagents imports.
   piPackage = (inputs.llm-agents.packages.${system}.pi.override { useBun = false; }).overrideAttrs {
-    # Pi 0.85.1 lists pi-server and pi-client as development dependencies.
-    # Keep them and their dependencies for the background runner.
+    # Retain the SDK dependency tree for native background sessions.
     dontNpmPrune = true;
   };
   herdrIntegrations = pkgs.herdr-integrations;
@@ -32,7 +31,7 @@ let
     else
       import ../fence/chromium.nix { inherit pkgs; };
   fenceLogging = import ../fence/logging.nix { inherit pkgs; };
-  # pi-mcp-adapter 2.32.1 requires pi-ai ^0.84.1, which the pinned Pi 0.85.0
+  # pi-mcp-adapter 2.32.1 requires pi-ai ^0.84.1, which the pinned Pi 0.85.1
   # runtime satisfies.
   piMcpAdapterVersion = "2.32.1";
   # When bumping pi-subagents, verify the tool still uses the `subagent` name;
@@ -42,7 +41,7 @@ let
   # `"fresh"` and `"fork"` with `"fresh"` as the safer non-forking default. If
   # any of these change, update `extensions/provider-router/index.ts` and the
   # agent-launch prelude in `assistants/default.nix` before merging.
-  piSubagentsVersion = "0.66.0";
+  piSubagentsVersion = "0.67.0";
   piLensVersion = "4.1.5";
   # pi-lens imports the compiler API at runtime, but 4.1.5 omits TypeScript
   # from its runtime dependencies. Keep it as a direct Pi npm dependency until the
@@ -733,7 +732,7 @@ let
   };
 
   piSubagentsConfig = {
-    asyncByDefault = false;
+    asyncByDefault = true;
     forceTopLevelAsync = false;
     parallel = {
       maxTasks = 4;

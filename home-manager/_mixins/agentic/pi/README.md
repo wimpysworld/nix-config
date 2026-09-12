@@ -84,7 +84,7 @@ Pi packages are installed through the Home Manager-owned package setting:
 {
   "packages": [
     "npm:pi-mcp-adapter@2.32.1",
-    "npm:pi-subagents@0.66.0",
+    "npm:pi-subagents@0.67.0",
     "npm:pi-lens@4.1.5",
     {
       "source": "npm:typescript@7.0.2",
@@ -287,7 +287,7 @@ The extension config is managed at `~/.pi/agent/extensions/subagent/config.json`
 
 ```json
 {
-  "asyncByDefault": false,
+  "asyncByDefault": true,
   "forceTopLevelAsync": false,
   "parallel": {
     "maxTasks": 4,
@@ -300,6 +300,14 @@ The extension config is managed at `~/.pi/agent/extensions/subagent/config.json`
   }
 }
 ```
+
+Ordinary subagents run in the background by default, which loads ambient
+extensions such as the MCP adapter. Explicit `async: false` remains available
+for children that do not need ambient extensions because `forceTopLevelAsync`
+is disabled.
+
+Set `async: true` on each MCP-dependent workflow child, including each `runs.all`
+entry. Do not rely on the workflow root's `async` setting.
 
 `maxSubagentDepth = 1` allows explicit direct subagent use from top-level Pi sessions. Generated assistant agents do not add a per-agent `maxSubagentDepth` by default; set `[pi] maxSubagentDepth` in an individual `header.toml` only when that agent needs its own depth limit.
 

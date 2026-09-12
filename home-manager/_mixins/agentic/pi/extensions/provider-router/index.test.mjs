@@ -95,6 +95,24 @@ return (await runs.run('second', {agent: 'worker', task: first.output + '-second
 	assert.ok(calls.every(({ model }) => model === "openai-codex/test-model:high"));
 });
 
+test("preserves explicit and omitted child execution modes through routing", async () => {
+	for (const method of ["run", "all"]) {
+		const { calls } = await execute(`
+const specs = [
+  {key: 'background', agent: 'worker', task: 'background', async: true},
+  {key: 'foreground', agent: 'worker', task: 'foreground', async: false},
+  {key: 'default', agent: 'worker', task: 'default'}
+];
+${method === "all" ? "return await runs.all(specs);" : "for (const spec of specs) await runs.run(spec.key, spec);"}
+`);
+		assert.equal(calls.length, 3, method);
+		assert.equal(calls[0].async, true, method);
+		assert.equal(calls[1].async, false, method);
+		assert.equal(Object.hasOwn(calls[2], "async"), false, method);
+		assert.ok(calls.every(({ model }) => model === "openai-codex/test-model:high"), method);
+	}
+});
+
 test("preserves an explicit model ahead of the agent route", async () => {
 	const { calls } = await execute(`
 return await runs.all([
