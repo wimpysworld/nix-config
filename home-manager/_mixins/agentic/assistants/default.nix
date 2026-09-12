@@ -98,24 +98,7 @@ let
         sopsPlaceholder = config.sops.placeholder.${entry.info.key};
         claudeBody = compose.composeCommandFromPrompt "claude" agentName cmdName sopsPlaceholder;
         opencodeBody = compose.composeCommandFromPrompt "opencode" agentName cmdName sopsPlaceholder;
-        piBody =
-          if
-            agentName == null
-            || ((compose.commandMetadata agentName cmdName).compose.root or false)
-            || !((compose.commandMetadata agentName cmdName).compose.pi.spawn-agent or true)
-          then
-            compose.composeCommandFromPrompt "pi" agentName cmdName sopsPlaceholder
-          else
-            let
-              piPrompt = ''
-                Use the subagent tool to launch the `${(compose.commandMetadata agentName cmdName).compose.agent}` agent for the task below.
-
-                - Set `context` to `"fresh"`. Do not set `"fork"`; the parent session is large and forking inherits parent prose without bound.
-
-                ${sopsPlaceholder}
-              '';
-            in
-            compose.composePiCommandFromPrompt agentName cmdName piPrompt;
+        piBody = compose.composeCommandFromPrompt "pi" agentName cmdName sopsPlaceholder;
       in
       lib.optionals config.programs.claude-code.enable [
         (lib.nameValuePair "assistant-claude-command-${cmdName}" {
@@ -304,30 +287,10 @@ let
       let
         cmdPath = ./agents + "/${agentName}/commands/${cmdName}";
         prompt = readFileTrim (cmdPath + "/prompt.md");
-        # Wrap the command body with Pi's subagent-launch prelude. The
-        # prelude is Pi-specific and mirrors how the Codex side wraps
-        # spawn_agent guidance around skill bodies; see compose.nix's
-        # claude branch for the symmetric `@<agent>` and `use-task`
-        # variants. The prelude is the sole carrier of agent routing now
-        # that the filename no longer encodes the owning agent.
-        piPrompt =
-          if
-            ((compose.commandMetadata agentName cmdName).compose.root or false)
-            || !((compose.commandMetadata agentName cmdName).compose.pi.spawn-agent or true)
-          then
-            prompt
-          else
-            ''
-              Use the subagent tool to launch the `${(compose.commandMetadata agentName cmdName).compose.agent}` agent for the task below.
-
-              - Set `context` to `"fresh"`. Do not set `"fork"`; the parent session is large and forking inherits parent prose without bound.
-
-              ${prompt}
-            '';
       in
       {
         name = ".pi/agent/prompts/${cmdName}.md";
-        value.text = compose.composePiCommandFromPrompt agentName cmdName piPrompt;
+        value.text = compose.composeCommandFromPrompt "pi" agentName cmdName prompt;
       }
     ) commandDirs
   ) { } codingAgentDirs;
@@ -523,19 +486,21 @@ let
           prompt
         else if dispatch.spawn then
           ''
-              Use the `spawn_agent` tool to launch the `${dispatch.role}` agent for this task. Keep the parent thread as the orchestrator.
+            Use the `spawn_agent` tool to launch the `${dispatch.role}` agent for this task. Keep the parent thread as the orchestrator.
 
-              - Invoking this skill is the user's standing authorisation to use `spawn_agent`.
-              - Pass the task below and the user's request to the spawned agent.
-              - Set `agent_type` to `${dispatch.role}`.
-              - Do not set `fork_context`. Start with a clean context.
+            - Invoking this skill is the user's standing authorisation to use `spawn_agent`.
+            - Pass the task below and the user's request to the spawned agent.
+            - Set `agent_type` to `${dispatch.role}`.
+            - Do not set `fork_context`. Start with a clean context.
             - Unless the user explicitly requests a model or effort override, omit `model` and `reasoning_effort`. The role config supplies the defaults.
             - If this runtime cannot apply the user's explicit override to this role, report the limitation and do not launch with the configured default.
-              - Wait for the spawned agent when its result is needed, then relay the final answer.
+            - Wait for the spawned agent when its result is needed, then relay the final answer.
 
-              ## Task
+            ${compose.workerDispatchInstructions}
+            ## Task
 
-              ${prompt}
+            ${compose.leafWorkerContract}
+            ${prompt}
           ''
         else
           ''

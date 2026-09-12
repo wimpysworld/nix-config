@@ -4,6 +4,8 @@ File the outcome of this session as a durable task: one tracked issue, several i
 
 Input: $ARGUMENTS is a Linear project name, a GitHub project URL, or a filesystem path for a local task file, optionally followed by a status. If $ARGUMENTS is blank, infer the project from this session: the repository, the task's subject, and any project named in the conversation.
 
+The root preserves session context, decisions, and task structure. At root, delegate missing discovery, research, and substantive validation through `delegate-task` with bounded scope and existing authority. Integrate the returned evidence before writing. If a worker receives this source body, perform only the assigned scope directly, without generated wrappers or further delegation. Return any additional specialist requirement as a bounded dispatch request to the root, which continues the task.
+
 ### Process
 
 **1. Resolve the target**
@@ -79,7 +81,7 @@ Read `contribution-voice` first unless its complete, current instructions are in
 
 Before writing any body:
 
-- Search the codebase for the utilities, helpers, and patterns that already cover part of the work. Name exact file paths and function names in `Context`.
+- Use existing session evidence where sufficient. Otherwise, assign codebase discovery to a bounded read-only worker. Require existing utilities, helpers, and patterns with exact paths and function names for `Context`. In worker mode, perform that assigned discovery directly.
 - For each bullet in `Scope`, say whether existing code is reused, extended, or written new. Justify every new.
 - Give every material claim its source: a permalink pinned to a commit SHA, a spec URL, or a repo path with what the implementer will find there. Cut a claim that carries none.
 - Record findings, not the search log. Where the session weighed options, state the chosen approach and the rejected alternatives in one line each.

@@ -22,7 +22,11 @@ thinking = "medium"
 [routing.pi.google]
 model = "gemini-3-flash"
 
+[claude]
+disallowedTools = ["Agent"]
+
 [opencode]
+mode = "subagent"
 
 [opencode.permission]
 task = "deny"

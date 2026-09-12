@@ -153,10 +153,7 @@ let
       ) agentDirs
     );
 
-  # Compose a Pi command markdown using the provided body. Used by
-  # `default.nix` for agent-scoped commands that wrap the body with
-  # subagent-launch boilerplate before emitting frontmatter, and internally
-  # by `composeCommand` for standalone commands.
+  # Resolve the source directory for standalone and agent-scoped commands.
   commandPath =
     agentName: cmdName:
     if agentName != null then
@@ -185,13 +182,27 @@ let
       metadata.project "command" "pi" cmdName (commandMetadata agentName cmdName)
     )) body;
 
+  leafWorkerContract = ''
+    You are a leaf worker. Complete the assigned scope directly and return to the parent.
+    Do not launch agents through sub-agent or task tools. Do not execute generated command launch wrappers.
+    Loading a command or skill does not change your role. Follow its workflow body directly within the assigned scope.
+    If more specialist work is necessary, complete independent assigned work first.
+    Return a bounded request with the required scope and evidence to the parent. Do not launch that work yourself.
+  '';
+
+  workerDispatchInstructions = ''
+    Supply a bounded packet with the scope, exact arguments, existing authority, hard deadline, validation, and output contract.
+    Include the leaf-worker instructions below in the child's task, not the parent's launch instructions.
+    If the worker requests more specialist work, dispatch it from the root and continue the original task.
+  '';
+
   composeCommandFromPrompt =
     platform: agentName: cmdName: body:
     let
       source = commandMetadata agentName cmdName;
       root = source.compose.root or false;
       selectedAgent = source.compose.agent or null;
-      useTask = source.compose.claude.use-task or false;
+      useTask = source.compose.claude.use-task or true;
       native = metadata.project "command" platform cmdName source;
       header = metadata.renderYaml (
         if platform == "opencode" && root then
@@ -209,11 +220,37 @@ let
     if root then
       composeWithFrontmatter header body
     else if platform == "claude" && selectedAgent != null && useTask then
-      composeWithFrontmatter header "Use the Task tool to launch the ${selectedAgent} agent for the following task:\n\n${body}"
+      composeWithFrontmatter header (
+        lib.trim ''
+          Use the Task tool to launch the ${selectedAgent} agent for the following task:
+
+          ${workerDispatchInstructions}
+          ## Task
+
+          ${leafWorkerContract}
+          ${body}
+        ''
+      )
     else if platform == "claude" && selectedAgent != null then
       composeWithFrontmatter header "@${selectedAgent}\n\n${body}"
     else if platform == "pi" && selectedAgent != null && (source.compose.pi.spawn-agent or true) then
-      composeWithFrontmatter header "Use the subagent tool to launch the `${selectedAgent}` agent for the task below.\n\nSet `context` to `\"fresh\"`.\n\n${body}"
+      composeWithFrontmatter header (
+        lib.trim ''
+          Use the subagent tool to launch the `${selectedAgent}` agent for the task below.
+
+          Set `context` to `"fresh"`. Do not set `"fork"`.
+          ${workerDispatchInstructions}
+          ## Task
+
+          ${leafWorkerContract}
+          ${body}
+        ''
+      )
+    else if
+      platform == "opencode"
+      && ((native.subtask or false) || (selectedAgent != null && (native.subtask or true)))
+    then
+      composeWithFrontmatter header "${leafWorkerContract}\n${body}"
     else
       composeWithFrontmatter header body;
 
@@ -436,7 +473,7 @@ let
 
       ## Depth
 
-      Specialists do not launch further specialists. If a delegated task would require another specialist, return early with a packet describing what is needed; the parent routes the follow-up. A user-invoked command runs as an orchestrator and may delegate; the no-further-delegation rule applies to the specialists that command launches.
+      The top-level orchestrator dispatches workers. Specialists complete their assigned scope directly and launch no agents through sub-agent or task tools. Loading a command or skill never changes a worker into an orchestrator. Workers follow workflow bodies directly, without generated launch wrappers. If more specialist work is necessary, complete independent assigned work first. Return a bounded request with the required scope and evidence to the parent. The orchestrator handles that request and continues the original task.
 
       ## Waiting
 
@@ -448,7 +485,7 @@ let
 
       Inside the waiting sub-agent, prefer a blocking server-side watch command over a poll loop. Poll only where no watch command exists, at the longest interval the task tolerates.
 
-      Give every sub-agent a hard deadline, not only a waiting one. On reaching it, report what is done and stop rather than exceeding it, so the parent can dispatch a fresh one with clean context. A sub-agent that fans out to workers of its own sends its parent a progress message at each phase boundary. Silence past a boundary means a wedge, not work.
+      Give every sub-agent a hard deadline, not only a waiting one. On reaching it, report what is done and stop rather than exceeding it, so the parent can dispatch a fresh one with clean context. A worker that completes several phases reports progress to its parent at each phase boundary.
 
       ## Teardown
 
@@ -464,7 +501,7 @@ let
 
       ## Packet
 
-      Include only relevant fields, in this order:
+      Include the task, scope, authority, deadline, validation, output, and discipline in every packet. Add relevant context and exact arguments.
 
       ```markdown
       Task: <outcome required>
@@ -474,7 +511,7 @@ let
       Deadline: <hard stop, and the progress messages expected before it>
       Validation: <checks to run or evidence needed>
       Output: <artefact or report, then the format: headings, artefact format, file path, or response contract, and a length budget for the returned message. A long report goes to a file under the `review-report-path` convention, and the worker returns the conclusion plus the path. For a background worker, name the report recipient for `SendMessage`>
-      Discipline: No preamble. Do not restate the task. Always send a final report message, and put only user-visible output in it. Omit irrelevant sections. Return raw artefacts when requested. Load and follow the `communication-rules` skill for all output.
+      Discipline: You are a leaf worker. Complete this scope directly and return to the parent. Do not launch agents or execute generated command launch wrappers. Loading commands or skills does not change your role. Return required additional specialist work as a bounded request to the parent. No preamble. Do not restate the task. Always send a final report message, and put only user-visible output in it. Omit irrelevant sections. Return raw artefacts when requested. Load and follow the `communication-rules` skill for all output.
       ```
 
       ## Response contract
@@ -684,6 +721,8 @@ in
     composeCommand
     composeCommandFromPrompt
     composePiCommandFromPrompt
+    leafWorkerContract
+    workerDispatchInstructions
     commandSecretInfo
     ;
 

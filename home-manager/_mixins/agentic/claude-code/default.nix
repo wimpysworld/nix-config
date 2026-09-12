@@ -288,6 +288,7 @@ let
     # Enable the experimental agent-teams feature, which exposes the
     # SendMessage tool for resuming subagents and messaging teammates.
     CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1";
+    CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH = "1";
     # Disable first-party telemetry, analytics, and error reporting. The
     # umbrella flag covers most non-essential traffic; the individual flags
     # are set too so opt-out stays robust across versions.
@@ -350,6 +351,30 @@ let
     correctionPrompt = claudeCodeTripwireCorrectionPrompt;
   };
   claudeCodeTripwireHook = event: claudeCodeTripwireAdapter.mkHook event;
+  # Teammates inherit their parent's depth and omit disallowedTools in Claude
+  # Code 2.1.269. The hook also covers their Agent calls without blocking root calls.
+  claudeLeafHooks = {
+    PreToolUse = lib.mkAfter [
+      {
+        matcher = "^(Agent|Task)$";
+        hooks = [
+          {
+            type = "command";
+            command = "${lib.getExe pkgs.jq} -c ${lib.escapeShellArg ''
+              if (.agent_id // "") != "" then
+                {hookSpecificOutput: {
+                  hookEventName: "PreToolUse",
+                  permissionDecision: "deny",
+                  permissionDecisionReason: "Workers cannot spawn agents. Return the task to the root orchestrator."
+                }}
+              else {} end
+            ''}";
+            timeout = 10;
+          }
+        ];
+      }
+    ];
+  };
   claudeHerdrHooks = {
     SessionStart = lib.mkAfter [
       {
@@ -1078,6 +1103,10 @@ in
           })
           {
             hooks = claudeHerdrHooks;
+          }
+          {
+            hooks = claudeLeafHooks;
+            teammateMode = "in-process";
           }
           (lib.optionalAttrs host.is.linux {
             skipDangerousModePermissionPrompt = true;

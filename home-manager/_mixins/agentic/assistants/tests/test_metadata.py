@@ -6,6 +6,8 @@ Requires Nix and PyYAML. No configuration is built or activated.
 
 import json
 from pathlib import Path
+import re
+import shlex
 import subprocess
 import tempfile
 import tomllib
@@ -256,6 +258,15 @@ inheritSkills = false
                                 self.assertIs(native["subtask"], False)
                 elif command["dispatch"]["selectedAgent"] is not None:
                     self.assertTrue(command["dispatch"]["spawn"])
+                    for platform, rendered in command["rendered"].items():
+                        with self.subTest(platform=platform):
+                            task = rendered.split("---", 2)[2]
+                            child = (task if platform == "opencode"
+                                     else task.split("\n## Task\n", 1)[1])
+                            self.assertIn("You are a leaf worker.", child)
+                            self.assertTrue(child.rstrip().endswith("INVENTORY_TASK_SENTINEL"))
+                            self.assertNotIn("Use the Task tool to launch", child)
+                            self.assertNotIn("Use the subagent tool to launch", child)
 
     def test_pi_command_spawn_control_preserves_body_and_other_providers(self):
         body = "Delegate independent checks.\n\nReview $ARGUMENTS and return the report."
@@ -316,6 +327,119 @@ reasoningEffort = "high"
             "metadata": {"model": "A descriptive label"},
             "reasoningEffort": "high",
         })
+
+    def test_only_child_dispatch_gets_the_leaf_contract(self):
+        body = "Review $ARGUMENTS. Return the report."
+        files = {"agents/worker/prompt.md": "PERSONA_SENTINEL\n"}
+        for name, controls in {
+            "default": "",
+            "inline": ('[compose.claude]\nuse-task = false\n'
+                       '[compose.pi]\nspawn-agent = false\n'
+                       '[opencode]\nsubtask = false\n'),
+        }.items():
+            directory = f"agents/worker/commands/{name}"
+            files[directory + "/header.toml"] = (
+                '[common]\ndescription = "Check a task."\n' + controls)
+            files[directory + "/prompt.md"] = body
+        result = self.evaluate('''let composer = import ''' + str(ASSISTANTS) + '''/compose.nix {
+          inherit lib; basePath = fixture;
+        }; in lib.genAttrs [ "claude" "opencode" "pi" ] composer.composeCommands''',
+                               files=files)
+        for platform, commands in result.items():
+            with self.subTest(platform=platform):
+                inline = commands["inline"].split("---", 2)[2].strip()
+                self.assertEqual(inline, ("@worker\n\n" if platform == "claude" else "") + body)
+                delegated = commands["default"].split("---", 2)[2]
+                child = (delegated if platform == "opencode"
+                         else delegated.split("\n## Task\n", 1)[1])
+                self.assertIn("You are a leaf worker.", child)
+                self.assertTrue(child.rstrip().endswith(body))
+
+    def test_native_specialists_keep_routes_and_tools_without_nested_dispatch(self):
+        result = self.evaluate('''lib.genAttrs [ "claude" "opencode" "pi" ]
+          (platform: lib.mapAttrs (name: _: c.composeAgentFromPrompt platform name
+            "PERSONA_SENTINEL") c.agentDirs)''')
+        for platform, agents in result.items():
+            for name, rendered in agents.items():
+                with self.subTest(platform=platform, agent=name):
+                    native = yaml.safe_load(rendered.split("---", 2)[1])
+                    self.assertEqual(rendered.split("---", 2)[2].strip(), "PERSONA_SENTINEL")
+                    original = tomllib.loads((ASSISTANTS / "agents" / name / "header.toml").read_text())
+                    for key, value in original.get("routing", {}).get(platform, {}).items():
+                        if platform != "pi":
+                            self.assertEqual(native[key], value)
+                    if platform == "claude":
+                        self.assertIn("Agent", native["disallowedTools"])
+                    elif platform == "opencode":
+                        self.assertEqual(native["mode"], "subagent")
+                        self.assertEqual(native["permission"]["task"], "deny")
+                        self.assertEqual(native["permission"]["question"], "allow")
+                    else:
+                        self.assertFalse(native["inheritProjectContext"])
+                        self.assertTrue(native["inheritSkills"])
+
+    def project_runtime(self, client, projection):
+        # Evaluate the original let bindings without packages, activation or secrets.
+        source = (ASSISTANTS.parent / client / "default.nix").read_text()
+        source = re.sub(r"(?<=import )\.\./[\w./-]+",
+                        lambda match: str((ASSISTANTS.parent / client / match[0]).resolve()),
+                        source)
+        bindings, module = source.rsplit("\nin\n", 1)
+        projected = bindings + "\n  runtimeModule = " + module + ";\nin " + projection
+        return self.evaluate('''let
+          runtime = import (fixture + "/runtime-projection.nix") {
+            inherit lib;
+            pkgs = import ''' + self.nixpkgs + ''' { system = builtins.currentSystem; };
+            config.noughty.host.tags = [];
+            config.noughty.host.is.linux = false;
+            inputs = {}; noughtyLib = {}; catppuccinPalette = {};
+          };
+        in runtime''', files={"runtime-projection.nix": projected})
+
+    def test_runtime_depth_keeps_root_dispatch_available(self):
+        codex = self.project_runtime("codex", '''{
+          inherit (codexSettings) agents;
+          inherit (codexSettings.features) multi_agent multi_agent_v2;
+        }''')
+        self.assertEqual(codex["agents"]["max_depth"], 1)
+        self.assertGreater(codex["agents"]["max_threads"], 1)
+        self.assertIs(codex["multi_agent"], True)
+        self.assertIs(codex["multi_agent_v2"], False)
+        claude = self.project_runtime("claude-code", '''{
+          environment = claudeEnvironment;
+          teammateMode = (lib.evalModules {
+            modules = [{ options.teammateMode = lib.mkOption { type = lib.types.str; }; }]
+              ++ map (settings: lib.filterAttrs (name: _: name == "teammateMode") settings)
+                runtimeModule.config.content.programs.claude-code.settings.contents;
+          }).config.teammateMode;
+        }''')
+        self.assertEqual(claude["environment"]["CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH"], "1")
+        self.assertEqual(claude["environment"]["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"], "1")
+        self.assertEqual(claude["teammateMode"], "in-process")
+
+    def test_claude_hook_blocks_workers_but_keeps_root_and_messages(self):
+        groups = self.project_runtime("claude-code", "claudeLeafHooks.PreToolUse.content")
+        self.assertEqual(len(groups), 1)
+        group = groups[0]
+        for tool in ("Agent", "Task"):
+            self.assertIsNotNone(re.fullmatch(group["matcher"], tool))
+        for tool in ("SendMessage", "Read", "Bash", "TaskOutput", "TaskStop"):
+            self.assertIsNone(re.fullmatch(group["matcher"], tool))
+        command = shlex.split(group["hooks"][0]["command"])
+        for identity in ({}, {"agent_id": None}, {"agent_id": ""},
+                         {"agent_id": "worker-123"}, {"agent_id": "reviewer@team"}):
+            with self.subTest(identity=identity):
+                payload = {"hook_event_name": "PreToolUse", "tool_name": "Agent",
+                           "tool_input": {"prompt": "Delegate another task."}, **identity}
+                result = subprocess.run(command, input=json.dumps(payload),
+                                        capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                response = json.loads(result.stdout)
+                if identity.get("agent_id"):
+                    self.assertEqual(response["hookSpecificOutput"]["permissionDecision"], "deny")
+                    self.assertEqual(response["hookSpecificOutput"]["hookEventName"], "PreToolUse")
+                else:
+                    self.assertEqual(response, {})
 
     def test_pi_skill_routing_is_absent_from_native_frontmatter(self):
         result = self.evaluate('m.project "skill" "pi" "fixture" h', '''

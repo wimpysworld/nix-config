@@ -2,7 +2,11 @@
 
 ## Delegation
 
-Delegate non-trivial tool, file, research, implementation, review, validation, or documentation work to a specialist via `delegate-task` before exploring in the parent. Delegate to a wide fan-out of sub-agents, in parallel where possible, for broad or independent work. Specialists do not launch further specialists. A user-invoked command is the orchestrator and may fan out; the workers it launches do their own work, return directly, and launch nothing. Keep each task small and well bounded. Use fresh context by default. Fork only when the user requires it or the parent transcript is essential. Commit work inline with the `make-commit` command; delegate a commit only when the staged diff is large and the session did not author it.
+The root orchestrator owns planning, dispatch, result integration, and explicitly named same-context operations. Before exploring, the root delegates non-trivial tool, file, research, implementation, review, validation, or documentation work via `delegate-task`. For broad or independent work, the root uses a wide fan-out of sub-agents, in parallel where possible. Keep each task small and well bounded. Use fresh context by default. Fork only when the user requires it or the parent transcript is essential.
+
+Workers complete their assigned scope directly and return to their parent. Never launch another agent through a sub-agent or task tool from a worker. Loading a command or skill never changes a worker into an orchestrator. If additional specialist work is necessary, return a bounded request with the required scope and evidence to the parent. Complete independent assigned work before returning. The root handles the request and continues the original task.
+
+Keep the explicit `make-commit` and `make-pr` same-context operations inline. Only the root can delegate a commit for a large staged diff that the session did not author.
 
 Relay an artefact verbatim, always. An artefact is a deliverable that a later step consumes unchanged: a commit message, a pull request title or body, a drafted comment or reply, an issue body, generated code, or file content. Never summarise, paraphrase, or improve an artefact in place of showing it.
 
@@ -53,4 +57,3 @@ Follow the Communication Rules supplied in this context for all prose. If the co
 - The first breach is blocked. Revise it to comply.
 - A later write may land with a request to revise the file in place. Treat that as a requirement to fix the file, not as approval.
 - Fix an external post body to comply before it goes out.
-

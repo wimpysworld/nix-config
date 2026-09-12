@@ -13,21 +13,17 @@ agents/<agent>/commands/<name>/               (agent-scoped)
 
 `compose.nix` discovers commands by directory listing - no codegen edits when adding a new command.
 
-## Agent prepend on Claude Code
+## Claude Code dispatch
 
-For leaf commands with `[compose] agent = "<name>"`, the composer prepends `@<name>` to the Claude Code body. Do not write `@agent` into `prompt.md`. Shared `root = true` suppresses this prepend and all provider launch wrappers. Root commands retain the caller's context and persona. OpenCode root output omits `agent` and forces `subtask: false`.
+For leaf commands with `[compose] agent = "<name>"`, the composer dispatches through Claude's Task tool by default. Omitted `[compose.claude] use-task` means `true`. Explicit `use-task = false` selects the inline `@<name>` prepend without a child launch. Do not write either wrapper into `prompt.md`.
 
-## `use-task: true` (repo-local)
+Shared `root = true` suppresses this prepend and all provider launch wrappers. Root commands retain the caller's context and persona. OpenCode root output omits `agent` and forces `subtask: false`.
 
-For leaf commands, `[compose.claude] use-task = true` rewrites the Claude Code body into:
+## Leaf dispatch wrappers
 
-```
-Use the Task tool to launch the <agent> agent for the following task:
+The composer owns launch instructions and the terminal-worker contract. Keep these out of command source bodies. Generated wrappers name the native tool: Claude `Task`, Pi `subagent`, or Codex `spawn_agent`.
 
-<prompt.md body>
-```
-
-This dispatches the command through Claude's Task tool instead of the `@agent` prepend. Use sparingly; the prepend pattern is the default.
+The parent supplies a bounded packet with scope, exact arguments, existing authority, deadline, validation, and output contract. The child's task includes the leaf contract and workflow body, without a generated launch wrapper. The child works directly, launches no agents, and returns to the parent. The parent handles requests for further specialist work and continues the original task.
 
 ## OpenCode `/init` override
 
