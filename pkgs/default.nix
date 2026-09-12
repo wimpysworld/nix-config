@@ -2,6 +2,7 @@
 # You can build them using 'nix build .#example'
 pkgs: {
   # Local packages
+  blender-agent-bridge = pkgs.callPackage ./blender-agent-bridge { };
   brow6el = pkgs.callPackage ./brow6el { };
   casty = pkgs.callPackage ./casty { };
   cg-mcp-proxy = pkgs.callPackage ./cg-mcp-proxy { };
