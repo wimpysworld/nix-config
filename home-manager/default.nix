@@ -271,6 +271,8 @@ in
     };
   };
 
+  targets.darwin.mac-app-util.enable = lib.mkDefault host.is.darwin;
+
   xdg = {
     enable = host.is.linux;
     mime.enable = host.is.linux && host.is.workstation;
