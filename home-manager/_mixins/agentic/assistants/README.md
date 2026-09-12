@@ -404,7 +404,11 @@ Keep agent and command bodies in `prompt.md`. Keep skill bodies in frontmatter-f
 Retired provider headers are removed. Retired `description.txt` files remain in the repository but are not consumed. Edit only `header.toml` for live metadata.
 
 
-Pi composition routes through `compose.composeAgentFromPrompt "pi"` and `compose.composeCommand "pi"`. The agent-scoped command prelude is assembled in `default.nix` and wraps `composePiCommandFromPrompt`. The Codex output uses the same pattern with a `spawn_agent` wrapper around command-derived skills.
+Pi composition routes through `compose.composeAgentFromPrompt "pi"` and `compose.composeCommandFromPrompt "pi"`. The composer shares the launch wrapper across public and encrypted commands. Codex uses a `spawn_agent` wrapper around command-derived skills.
+
+Generated child tasks carry a shared leaf-worker contract. Workers complete assigned work directly, launch no agents, and return to the parent. They follow nested workflow bodies without executing generated launch wrappers. If more specialist work is necessary, they return a bounded request after completing independent assigned work. The root dispatches that work and continues the original task.
+
+Launch wrappers require a bounded packet with scope, exact arguments, existing authority, deadline, validation, and output. Claude Code uses the Task wrapper by default for agent-bound commands. Set `[compose.claude] use-task = false` to retain the inline `@agent` form. OpenCode native subtask bodies carry the contract, but explicit `subtask = false` keeps the caller context.
 
 ### Caller-context commands
 

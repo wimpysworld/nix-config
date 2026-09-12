@@ -80,7 +80,7 @@ Keep native non-model fields in provider tables. Put model and effort overrides 
 
 Use `[compose] agent` for the repository agent binding. Shared `root = true` takes precedence over provider launch controls and keeps the caller's context and persona. It suppresses Claude agent/Task wrappers, OpenCode agent binding, Pi launches, and Codex persona/spawn wrappers. OpenCode also receives `subtask: false`.
 
-For leaf commands, `[compose.claude] use-task = true` selects a Task wrapper. `[compose.codex] spawn-agent = false` embeds the agent persona in the caller's context. That Codex-only switch is not shared root execution. Omitted controls preserve the composer defaults.
+Agent-bound leaf commands use Claude's Task wrapper by default. Explicit `[compose.claude] use-task = false` selects the inline `@agent` exception without a child launch. `[compose.codex] spawn-agent = false` embeds the agent persona in the caller's context. Neither exception is shared root execution.
 
 Names derive from directories. Missing provider tables mean no overrides, not disabled output. TOML has no null. Omit fields to inherit defaults.
 
@@ -97,6 +97,7 @@ Manual-only controls command selection, not file access or workflow reuse within
 - For same-context work, follow the workflow body without its generated agent-launch wrapper. Keep staging and commits in their declared owning context.
 - Applying a nested workflow inside a worker does not authorise its generated launch wrapper or further delegation.
 - For specialist work, the top-level orchestrator dispatches the workflow body directly with a bounded packet. Workers return directly and launch no agents.
+- Put the leaf contract in the child's task, not the parent's launch instructions. Use native tool names in wrappers and generic delegation terms in shared prose.
 - Preserve user-facing `$name` examples on Codex and `/name` examples on slash-command runtimes. Do not use prefix conversion as workflow composition.
 
 ## Command table

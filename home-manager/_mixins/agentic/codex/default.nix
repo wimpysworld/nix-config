@@ -417,6 +417,9 @@ let
       # current default rather than changing behaviour. There is no environment
       # variable equivalent. See https://developers.openai.com/codex/memories
       memories = false;
+      # V1 enforces agents.max_depth. V2 ignores that limit.
+      multi_agent = true;
+      multi_agent_v2 = false;
       skill_mcp_dependency_install = false;
     };
 
@@ -449,7 +452,7 @@ let
     # Bound Codex subagent fan-out.
     agents = {
       max_threads = 10;
-      max_depth = 2;
+      max_depth = 1;
     };
 
     # Apply no vendor personality. The Communication Rules skill and tripwire

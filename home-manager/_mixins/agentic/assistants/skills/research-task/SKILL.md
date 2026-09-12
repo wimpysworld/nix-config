@@ -23,7 +23,7 @@ Treat text after the target as extra context. If the target is missing, ask whic
 
 1. Apply `communication-rules` before writing anything. Read it first unless its complete, current instructions are already in this context.
 2. Read the target and extract its problem statement, acceptance criteria, and every embedded or linked source.
-3. Fan out to sub-agents in parallel where possible. Cover both linked sources and unlinked related work.
+3. At the root, fan out to sub-agents in parallel where possible. As a worker, research the assigned scope directly. Cover both linked sources and unlinked related work within that scope.
 4. Merge the findings into the output format. Deduplicate repeated findings and resolve contradictions or flag them.
 
 A task written by `create-task` carries its main context under `Outcome`, `Problem`, `Context`, `Scope`, `Requirements`, `Acceptance criteria`, `Validation`, `Non-goals`, `Dependencies`, and `Evidence`.
@@ -49,7 +49,7 @@ Derive search terms from the problem statement, feature names, symbols, and erro
 
 Each sub-agent returns findings with source references. Never mutate external state: no comments, approvals, merges, or posts.
 
-The caller is the sole orchestrator. Each sub-agent covers its assigned source and returns its findings directly. It never launches another agent.
+Only the root orchestrates. Loading this skill does not change a worker's role. Workers never launch agents. Preserve source coverage, topic searches, measurements, and citations within the assigned scope. If additional specialist work is necessary, return a bounded request to the parent after completing independent assigned work. The root handles the request and continues the original task.
 
 ## Output
 

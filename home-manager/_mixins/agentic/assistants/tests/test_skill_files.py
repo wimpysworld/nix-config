@@ -144,6 +144,24 @@ class SkillFileTests(unittest.TestCase):
                         self.assertIn("Use the Task tool to launch the worker agent", task)
                     else:
                         self.assertEqual(native["agent"], "worker")
+                    child = selection != "unbound" and mode != "root" and not (
+                        platform == "codex" and mode == "inline")
+                    if child:
+                        if platform == "opencode":
+                            self.assertIs(native.get("subtask", True), True)
+                            child_task = task
+                        else:
+                            launch, child_task = task.split("\n## Task\n", 1)
+                            self.assertNotIn("You are a leaf worker.", launch)
+                            if expected_body:
+                                self.assertNotIn(expected_body, launch)
+                        self.assertIn("You are a leaf worker.", child_task)
+                        for wrapper in ("Use the `spawn_agent` tool to launch",
+                                        "Use the subagent tool to launch",
+                                        "Use the Task tool to launch"):
+                            self.assertNotIn(wrapper, child_task)
+                    else:
+                        self.assertNotIn("You are a leaf worker.", task)
                     if expected_body:
                         self.assertIn(expected_body, task)
 

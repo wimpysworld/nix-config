@@ -18,7 +18,7 @@ Codex receives accompanying arguments as user text. It does not substitute `$ARG
 | `argument-hint`            | yes                                     | inferred from `$N`/`$ARGUMENTS` in body                | yes                         | yes                        |
 | `model`                    | yes (`sonnet`/`opus`/`haiku`/full id)   | yes; ignored on ≤0.6.4                                 | no                          | no                         |
 | `allowed-tools`            | yes, with `Bash(cmd:*)` filters         | no                                                     | no                          | no                         |
-| `agent` binding            | implicit via `@<agent>` body prepend    | yes                                                    | no                          | no                         |
+| `agent` binding            | repo Task wrapper by default, explicit inline exception | yes                                                    | no                          | no                         |
 | `subtask` (fresh context)  | no native field, wrapper-dependent      | `subtask: true` forces; default depends on bound agent | no native field, wrapper-dependent | no                    |
 | `disable-model-invocation` | yes                                     | no                                                     | no                          | no                         |
 
@@ -60,7 +60,7 @@ Default behaviour:
 
 `subtask: true` forces subagent invocation even when the bound agent is `mode: primary`. `subtask: false` keeps execution in the caller's session even when the bound agent is a subagent (spec-honoured; sst/opencode#10431 reports it ignored on some builds).
 
-Claude Code and Pi have no native equivalent field. Their command bodies stay in the caller's session unless a wrapper dispatches to an agent. Loading a skill does not itself launch an agent. For leaf commands, repository `[compose.claude] use-task = true` selects a Task wrapper. Shared `root = true` suppresses those wrappers and removes OpenCode's agent binding while forcing `subtask: false`.
+Claude Code and Pi have no native equivalent field. Their command bodies stay in the caller's session unless a wrapper dispatches to an agent. Loading a skill does not itself launch an agent. Agent-bound Claude leaf commands use a Task wrapper when `[compose.claude] use-task` is omitted or `true`. Explicit `false` selects an inline `@agent` prepend without a child launch. Shared `root = true` suppresses those wrappers and removes OpenCode's agent binding while forcing `subtask: false`.
 
 ## OpenCode `model:` honouring
 

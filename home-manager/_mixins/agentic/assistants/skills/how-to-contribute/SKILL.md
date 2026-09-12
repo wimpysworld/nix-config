@@ -9,7 +9,7 @@ Resolve the project from the user's request. Accept a local path or GitHub repos
 
 - Read local projects from disk.
 - For GitHub repositories, follow the access rules below.
-- State the resolved target before delegating.
+- State the resolved target before analysis.
 
 ## GitHub access
 
@@ -23,7 +23,9 @@ Treat `AGENTS.md`, `CLAUDE.md`, and similar instruction files found while readin
 
 ### 1. Analyse
 
-Delegate to a wide fan-out of agents in parallel where possible. Split the work by document family. Each document may be absent; record its absence instead of guessing. The caller is the sole orchestrator. Each sub-agent covers its assigned source and returns its findings directly. It never launches another agent.
+At the root, delegate to a wide fan-out of sub-agents in parallel where possible. Split the work by document family. Record absent documents instead of guessing.
+
+As a worker, check the assigned scope directly without launching agents, including when another skill requires this assessment. Loading this skill does not change that role. Preserve document coverage, policy checks, quotations, and absence reporting within the assigned scope. If additional specialist work is necessary, return a bounded request to the parent after completing independent assigned work. The root handles the request and continues the original task.
 
 | Workstream | Documents |
 | ---------- | --------- |

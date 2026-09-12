@@ -4,6 +4,8 @@ Fold the decisions from this session into an existing task, so the task stays th
 
 Input: $ARGUMENTS is a Linear issue key or URL, a GitHub issue URL or `owner/repo#N`, or a path to a local task file. If $ARGUMENTS is blank, stop and ask for the target before doing anything else.
 
+The root preserves session context and decisions. At root, delegate missing discovery, research, and substantive validation through `delegate-task` with bounded scope and existing authority. Integrate the returned evidence before updating the task. In a worker, including a `triage-tasks` issue worker, apply this source body directly within the assigned scope and authority. Never run generated launch wrappers or dispatch another agent. Return any additional specialist requirement as a bounded dispatch request to the root, which continues the task.
+
 ### Process
 
 **1. Read the target first**
@@ -30,7 +32,7 @@ Ignore session talk that changes nothing in the task.
 
 Find the unresolved items in the task: `Open questions`, `TBD`, `TODO`, `TBC`, `FIXME`, option lists with no choice made, and assumptions that block implementation. For each item the session has not already settled:
 
-- Research only as far as the decision needs. Source order: this repo's code and patterns, upstream source, current documentation, then the web.
+- Assign each missing research question to a bounded worker. In worker mode, research the assigned question directly. Research only as far as the decision needs. Source order: this repo's code and patterns, upstream source, current documentation, then the web.
 - Align each decision with the task's stated outcome, the evidence already in the task, and the existing code patterns. Deviate only when the task gives no good guidance and authoritative sources settle it. Flag every deviation, with the reason it departs from the task and the sources that support it.
 - When evidence still conflicts after research, take the conservative option: the one that best serves the outcome, existing patterns, testability, and reversibility. Say in one line which evidence conflicted and why the chosen option won.
 - Leave an item open only when outside input is required. Mark it blocked, naming the missing input and the evidence already checked.

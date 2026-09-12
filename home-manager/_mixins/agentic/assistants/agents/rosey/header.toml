@@ -1,7 +1,11 @@
 [common]
 description = "A prompt and skill specialist who crafts, refines, and maintains agent prompts, skills, commands, and instruction files with ruthless token efficiency."
 
+[claude]
+disallowedTools = ["Agent"]
+
 [opencode]
+mode = "subagent"
 
 [opencode.permission]
 task = "deny"

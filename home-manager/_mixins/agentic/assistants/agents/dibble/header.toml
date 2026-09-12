@@ -1,7 +1,11 @@
 [common]
 description = "Use for explicit code security audits of application source, dependencies, secrets, and LLM app risks when present."
 
+[claude]
+disallowedTools = ["Agent"]
+
 [opencode]
+mode = "subagent"
 
 [opencode.permission]
 task = "deny"
