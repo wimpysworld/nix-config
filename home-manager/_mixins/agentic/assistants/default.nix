@@ -99,8 +99,12 @@ let
         claudeBody = compose.composeCommandFromPrompt "claude" agentName cmdName sopsPlaceholder;
         opencodeBody = compose.composeCommandFromPrompt "opencode" agentName cmdName sopsPlaceholder;
         piBody =
-          if agentName == null then
-            compose.composeCommandFromPrompt "pi" null cmdName sopsPlaceholder
+          if
+            agentName == null
+            || ((compose.commandMetadata agentName cmdName).compose.root or false)
+            || !((compose.commandMetadata agentName cmdName).compose.pi.spawn-agent or true)
+          then
+            compose.composeCommandFromPrompt "pi" agentName cmdName sopsPlaceholder
           else
             let
               piPrompt = ''
@@ -306,13 +310,20 @@ let
         # claude branch for the symmetric `@<agent>` and `use-task`
         # variants. The prelude is the sole carrier of agent routing now
         # that the filename no longer encodes the owning agent.
-        piPrompt = ''
-          Use the subagent tool to launch the `${(compose.commandMetadata agentName cmdName).compose.agent}` agent for the task below.
+        piPrompt =
+          if
+            ((compose.commandMetadata agentName cmdName).compose.root or false)
+            || !((compose.commandMetadata agentName cmdName).compose.pi.spawn-agent or true)
+          then
+            prompt
+          else
+            ''
+              Use the subagent tool to launch the `${(compose.commandMetadata agentName cmdName).compose.agent}` agent for the task below.
 
-          - Set `context` to `"fresh"`. Do not set `"fork"`; the parent session is large and forking inherits parent prose without bound.
+              - Set `context` to `"fresh"`. Do not set `"fork"`; the parent session is large and forking inherits parent prose without bound.
 
-          ${prompt}
-        '';
+              ${prompt}
+            '';
       in
       {
         name = ".pi/agent/prompts/${cmdName}.md";
@@ -496,9 +507,8 @@ let
   # skill body. Opt out of spawn dispatch by setting `spawn-agent = false`
   # in `header.toml`; the composer then embeds the agent's `prompt.md`
   # verbatim before the task body so the skill carries the full persona in
-  # the calling thread. The opt-out branch is retained for cases where
-  # spawn dispatch is undesirable (e.g. a command that must inspect the
-  # parent thread's context); no command in the tree uses it today.
+  # the calling thread. Set compose.root to keep the caller's context without
+  # a launch wrapper or an embedded specialist persona.
   # The skill name itself is the bare command name, matching the Pi prompt
   # convention. The `codexCommandCollisionCheck` below guards the full native
   # and command-derived skill namespace.
@@ -509,7 +519,7 @@ let
       description = metadata.common.description;
       dispatch = codexCommandDispatch skillName agentName cmdPath;
       body =
-        if dispatch.selectedAgent == null then
+        if dispatch.root || dispatch.selectedAgent == null then
           prompt
         else if dispatch.spawn then
           ''

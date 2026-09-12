@@ -143,6 +143,159 @@ inheritSkills = false
             with self.subTest(header=header):
                 self.evaluate("h", header, success=False)
 
+    def test_pi_spawn_control_rejects_non_boolean_values(self):
+        for value in ('"false"', '0', '[]', '{}'):
+            with self.subTest(value=value):
+                error = self.evaluate("h", f'[compose.pi]\nspawn-agent = {value}\n',
+                                      success=False)
+                self.assertIn("Composition switches must be booleans.", error)
+
+    def test_root_control_requires_a_boolean_and_overrides_spawn(self):
+        for value in ('"true"', '0', '[]', '{}'):
+            with self.subTest(value=value):
+                self.evaluate("h", f'[compose]\nroot = {value}\n', success=False)
+        for value in (None, "false", "true"):
+            with self.subTest(value=value):
+                header = '[compose]\nagent = "worker"\n'
+                if value is not None:
+                    header += f'root = {value}\n'
+                header += '[compose.codex]\nspawn-agent = true\n'
+                result = self.evaluate(
+                    'm.commandDispatch { worker = true; } "fixture" null h', header)
+                self.assertEqual(result["spawn"], value != "true")
+        self.evaluate('m.commandDispatch { worker = true; } "fixture" "worker" h',
+                      '[compose]\nroot = true\n[routing.codex]\nmodel = "pinned"\n',
+                      success=False)
+
+    def test_root_commands_override_native_bindings_and_preserve_the_task(self):
+        body = "Keep caller context. Delegate independent checks for $ARGUMENTS."
+        files = {"agents/worker/prompt.md": "PERSONA_SENTINEL\n"}
+        for selection in ("scoped", "bound", "unbound"):
+            for mode in ("absent", "false", "true"):
+                name = f"{selection}-{mode}"
+                directory = (f"agents/worker/commands/{name}" if selection == "scoped"
+                             else f"commands/{name}")
+                header = '[common]\ndescription = "Check caller context."\n[compose]\n'
+                if selection == "bound":
+                    header += 'agent = "worker"\n'
+                if mode != "absent":
+                    header += f'root = {mode}\n'
+                header += ('[compose.claude]\nuse-task = true\n'
+                           '[compose.pi]\nspawn-agent = true\n'
+                           '[compose.codex]\nspawn-agent = true\n'
+                           '[claude]\ncontext = "fork"\nagent = "worker"\n'
+                           '[opencode]\nagent = "worker"\nsubtask = true\n')
+                files[directory + "/header.toml"] = header
+                files[directory + "/prompt.md"] = body + "\n"
+        result = self.evaluate('''let
+          composer = import ''' + str(ASSISTANTS) + '''/compose.nix {
+            inherit lib; basePath = fixture;
+          };
+        in lib.genAttrs [ "claude" "opencode" "pi" "codex" ] composer.composeCommands''',
+                               files=files)
+        for platform, commands in result.items():
+            for selection in ("scoped", "bound", "unbound"):
+                with self.subTest(platform=platform, selection=selection):
+                    self.assertEqual(commands[selection + "-absent"],
+                                     commands[selection + "-false"])
+                    rendered = commands[selection + "-true"]
+                    header, task = rendered.split("---", 2)[1:]
+                    native = yaml.safe_load(header)
+                    self.assertEqual(task.strip(), body)
+                    self.assertNotIn("compose", native)
+                    self.assertNotIn("root", native)
+                    self.assertNotIn("agent", native)
+                    if platform == "claude":
+                        self.assertNotIn("context", native)
+                    if platform == "opencode":
+                        self.assertIs(native["subtask"], False)
+                    if selection != "unbound":
+                        leaf = commands[selection + "-false"]
+                        if platform == "claude":
+                            self.assertIn("Use the Task tool to launch the worker agent", leaf)
+                        elif platform == "pi":
+                            self.assertIn("Use the subagent tool to launch the `worker` agent", leaf)
+                        elif platform == "opencode":
+                            self.assertEqual(yaml.safe_load(leaf.split("---", 2)[1])["agent"],
+                                             "worker")
+
+    def test_real_command_inventory_keeps_root_orchestrators_and_leaf_specialists(self):
+        result = self.evaluate('''lib.listToAttrs (map (entry: {
+          name = entry.name;
+          value = let header = c.commandMetadata entry.agentName entry.name; in {
+            root = header.compose.root or false;
+            dispatch = m.commandDispatch c.agentDirs entry.name entry.agentName header;
+            rendered = lib.genAttrs [ "claude" "opencode" "pi" ]
+              (platform: c.composeCommandFromPrompt platform entry.agentName entry.name
+                "INVENTORY_TASK_SENTINEL");
+            policy = m.commandPolicy header;
+          };
+        }) c.commandSources)''')
+        for name in ("address-code-review", "make-commit", "make-pr", "implement-task",
+                     "implement-plan", "finish-pr", "babysit-pr", "handover-fresh",
+                     "handover-fork", "review-code-mine", "project-tests-review",
+                     "gather-review-data", "audit-code-security"):
+            with self.subTest(root_command=name):
+                self.assertTrue(result[name]["root"])
+        self.assertFalse(result["create-agents-md"]["root"])
+        for name, command in result.items():
+            with self.subTest(command=name):
+                self.assertIs(command["policy"]["policy"]["allow_implicit_invocation"], False)
+                if command["root"]:
+                    self.assertFalse(command["dispatch"]["spawn"])
+                    self.assertEqual(command["dispatch"]["route"], {})
+                    for platform, rendered in command["rendered"].items():
+                        with self.subTest(platform=platform):
+                            header, task = rendered.split("---", 2)[1:]
+                            native = yaml.safe_load(header)
+                            self.assertEqual(task.strip(), "INVENTORY_TASK_SENTINEL")
+                            self.assertNotIn("agent", native)
+                            if platform == "claude":
+                                self.assertNotIn("context", native)
+                            if platform == "opencode":
+                                self.assertIs(native["subtask"], False)
+                elif command["dispatch"]["selectedAgent"] is not None:
+                    self.assertTrue(command["dispatch"]["spawn"])
+
+    def test_pi_command_spawn_control_preserves_body_and_other_providers(self):
+        body = "Delegate independent checks.\n\nReview $ARGUMENTS and return the report."
+        for selection in ("scoped", "standalone"):
+            with self.subTest(selection=selection):
+                files = {"agents/worker/prompt.md": "Check the task.\n"}
+                for switch in ("absent", "true", "false"):
+                    directory = (f"agents/worker/commands/{switch}" if selection == "scoped"
+                                 else f"commands/{switch}")
+                    header = '[common]\ndescription = "Check a task."\n'
+                    if selection == "standalone":
+                        header += '[compose]\nagent = "worker"\n'
+                    if switch != "absent":
+                        header += f'[compose.pi]\nspawn-agent = {switch}\n'
+                    files[directory + "/header.toml"] = header
+                    files[directory + "/prompt.md"] = body + "\n"
+                result = self.evaluate('''let
+                  fixtureComposer = import ''' + str(ASSISTANTS) + '''/compose.nix {
+                    inherit lib;
+                    basePath = fixture;
+                  };
+                in lib.genAttrs [ "pi" "claude" "opencode" "codex" ]
+                  fixtureComposer.composeCommands''', files=files)
+                for platform, commands in result.items():
+                    with self.subTest(platform=platform):
+                        self.assertEqual(commands["absent"], commands["true"])
+                        for rendered in commands.values():
+                            frontmatter = yaml.safe_load(rendered.split("---", 2)[1])
+                            self.assertNotIn("compose", frontmatter)
+                            self.assertNotIn("spawn-agent", frontmatter)
+                            self.assertTrue(rendered.endswith(body + "\n"))
+                        if platform == "pi":
+                            self.assertEqual(commands["false"].split("---", 2)[2],
+                                             "\n\n" + body + "\n")
+                            self.assertIn("Use the subagent tool to launch the `worker` agent",
+                                          commands["true"])
+                            self.assertIn('Set `context` to `"fresh"`.', commands["true"])
+                        else:
+                            self.assertEqual(commands["absent"], commands["false"])
+
     def test_opencode_options_cannot_bypass_routing(self):
         error = self.evaluate("h", '''
 [opencode.options]

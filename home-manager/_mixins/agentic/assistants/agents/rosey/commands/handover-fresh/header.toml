@@ -3,4 +3,5 @@ description = "Handover to a fresh session 📤"
 argument-hint = "[focus]"
 
 [compose]
+root = true
 agent = "rosey"

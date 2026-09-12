@@ -3,3 +3,4 @@ description = "Project Peer Review 👁️"
 
 [compose]
 agent = "donatello"
+root = true

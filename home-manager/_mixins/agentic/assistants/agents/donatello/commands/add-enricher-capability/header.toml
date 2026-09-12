@@ -6,6 +6,7 @@ argument-hint = "[capability]"
 
 [compose]
 agent = "donatello"
+root = true
 
 [pi]
 argument-hint = "[capability]"

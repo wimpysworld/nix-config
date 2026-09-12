@@ -4,9 +4,4 @@ argument-hint = "[branch]"
 
 [compose]
 agent = "garfield"
-
-[compose.claude]
-use-task = true
-
-[opencode]
-subtask = true
+root = true

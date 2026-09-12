@@ -1,2 +1,5 @@
 [common]
 description = "Draft and make a commit ✍️"
+
+[compose]
+root = true

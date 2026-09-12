@@ -4,3 +4,4 @@ argument-hint = "[pr-url]"
 
 [compose]
 agent = "donatello"
+root = true

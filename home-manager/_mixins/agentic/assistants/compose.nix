@@ -189,19 +189,30 @@ let
     platform: agentName: cmdName: body:
     let
       source = commandMetadata agentName cmdName;
+      root = source.compose.root or false;
       selectedAgent = source.compose.agent or null;
       useTask = source.compose.claude.use-task or false;
       native = metadata.project "command" platform cmdName source;
       header = metadata.renderYaml (
-        native
-        // lib.optionalAttrs (platform == "opencode" && selectedAgent != null) { agent = selectedAgent; }
+        if platform == "opencode" && root then
+          (lib.removeAttrs native [ "agent" ]) // { subtask = false; }
+        else if platform == "claude" && root then
+          lib.removeAttrs native [
+            "agent"
+            "context"
+          ]
+        else
+          native
+          // lib.optionalAttrs (platform == "opencode" && selectedAgent != null) { agent = selectedAgent; }
       );
     in
-    if platform == "claude" && selectedAgent != null && useTask then
+    if root then
+      composeWithFrontmatter header body
+    else if platform == "claude" && selectedAgent != null && useTask then
       composeWithFrontmatter header "Use the Task tool to launch the ${selectedAgent} agent for the following task:\n\n${body}"
     else if platform == "claude" && selectedAgent != null then
       composeWithFrontmatter header "@${selectedAgent}\n\n${body}"
-    else if platform == "pi" && selectedAgent != null then
+    else if platform == "pi" && selectedAgent != null && (source.compose.pi.spawn-agent or true) then
       composeWithFrontmatter header "Use the subagent tool to launch the `${selectedAgent}` agent for the task below.\n\nSet `context` to `\"fresh\"`.\n\n${body}"
     else
       composeWithFrontmatter header body;

@@ -6,6 +6,7 @@ argument-hint = "[paths] [scope]"
 
 [compose]
 agent = "donatello"
+root = true
 
 [pi]
 argument-hint = "[paths] [scope]"

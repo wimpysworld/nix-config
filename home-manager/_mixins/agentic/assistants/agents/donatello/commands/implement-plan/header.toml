@@ -6,6 +6,7 @@ argument-hint = "[plan-file] [phase]"
 
 [compose]
 agent = "donatello"
+root = true
 
 [pi]
 argument-hint = "[plan-file] [phase]"

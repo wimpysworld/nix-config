@@ -3,4 +3,5 @@ description = "Compact handover to a subagent 🔀"
 argument-hint = "[focus]"
 
 [compose]
+root = true
 agent = "rosey"

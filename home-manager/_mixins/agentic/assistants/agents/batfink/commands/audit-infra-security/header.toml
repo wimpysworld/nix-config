@@ -3,9 +3,4 @@ description = "Audit Infrastructure Security 🛡️"
 
 [compose]
 agent = "batfink"
-
-[compose.claude]
-use-task = true
-
-[opencode]
-subtask = true
+root = true

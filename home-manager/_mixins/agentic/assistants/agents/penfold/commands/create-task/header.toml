@@ -5,6 +5,7 @@ description = "Create Task 📝"
 argument-hint = "<project|path>"
 
 [compose]
+root = true
 agent = "penfold"
 
 [pi]

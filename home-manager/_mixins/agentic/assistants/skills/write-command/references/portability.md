@@ -2,6 +2,8 @@
 
 Use the smallest portable set. Add fields only when a target needs them.
 
+Repository `[compose] root = true` keeps execution in the caller's context across all four clients. It overrides provider launch controls. See `SKILL.md` for the root/leaf decision rule and the Codex persona distinction.
+
 ## Current Codex command contract
 
 This repository emits commands as skills under the configured Codex skills path. Users invoke `$name`, not a custom slash command. Each command includes `agents/openai.yaml` with `policy.allow_implicit_invocation: false`. The composer owns this mandatory policy for plaintext and secret commands. Ordinary reusable skills retain their existing policies.
@@ -17,7 +19,7 @@ Codex receives accompanying arguments as user text. It does not substitute `$ARG
 | `model`                    | yes (`sonnet`/`opus`/`haiku`/full id)   | yes; ignored on ≤0.6.4                                 | no                          | no                         |
 | `allowed-tools`            | yes, with `Bash(cmd:*)` filters         | no                                                     | no                          | no                         |
 | `agent` binding            | implicit via `@<agent>` body prepend    | yes                                                    | no                          | no                         |
-| `subtask` (fresh context)  | per-invocation (always fresh)           | `subtask: true` forces; default depends on bound agent | always fresh per invocation | no                         |
+| `subtask` (fresh context)  | no native field, wrapper-dependent      | `subtask: true` forces; default depends on bound agent | no native field, wrapper-dependent | no                    |
 | `disable-model-invocation` | yes                                     | no                                                     | no                          | no                         |
 
 ## File location and invocation
@@ -58,7 +60,7 @@ Default behaviour:
 
 `subtask: true` forces subagent invocation even when the bound agent is `mode: primary`. `subtask: false` keeps execution in the caller's session even when the bound agent is a subagent (spec-honoured; sst/opencode#10431 reports it ignored on some builds).
 
-Claude Code and Pi have no equivalent field: every slash invocation runs in the caller's session unless the body explicitly dispatches through the Task tool (Claude) or `/skill:` / sub-agent invocation (Pi). For Claude Code, the repo-local `[compose.claude] use-task = true` field in `header.toml` is the closest analogue.
+Claude Code and Pi have no native equivalent field. Their command bodies stay in the caller's session unless a wrapper dispatches to an agent. Loading a skill does not itself launch an agent. For leaf commands, repository `[compose.claude] use-task = true` selects a Task wrapper. Shared `root = true` suppresses those wrappers and removes OpenCode's agent binding while forcing `subtask: false`.
 
 ## OpenCode `model:` honouring
 

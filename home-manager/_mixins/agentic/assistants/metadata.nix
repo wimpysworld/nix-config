@@ -115,10 +115,13 @@ let
           key:
           lib.elem key [
             "agent"
+            "root"
             "claude"
             "codex"
+            "pi"
           ]
         ) (builtins.attrNames controls)
+        && builtins.isBool (controls.root or false)
         &&
           lib.all
             (
@@ -133,6 +136,7 @@ let
             [
               "claude"
               "codex"
+              "pi"
             ];
     in
     if unknown != [ ] then
@@ -260,7 +264,8 @@ let
     knownAgents: cmdName: agentName: header:
     let
       selectedAgent = header.compose.agent or agentName;
-      spawn = header.compose.codex.spawn-agent or true;
+      root = header.compose.root or false;
+      spawn = !root && (header.compose.codex.spawn-agent or true);
       route = header.routing.codex or { };
     in
     if selectedAgent != null && !(knownAgents ? ${selectedAgent}) then
@@ -269,8 +274,19 @@ let
       throw "Codex command ${cmdName} routes inline work. Select an agent with spawn-agent = true, or remove routing.codex."
     else
       {
-        inherit selectedAgent spawn route;
-        role = if route == { } then selectedAgent else "command-${cmdName}";
+        inherit
+          selectedAgent
+          root
+          spawn
+          route
+          ;
+        role =
+          if root then
+            null
+          else if route == { } then
+            selectedAgent
+          else
+            "command-${cmdName}";
       };
 
   commandPolicy =

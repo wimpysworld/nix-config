@@ -3,9 +3,4 @@ description = "Audit Communication Rules 🛡️"
 
 [compose]
 agent = "penry"
-
-[compose.claude]
-use-task = true
-
-[opencode]
-subtask = true
+root = true

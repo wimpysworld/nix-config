@@ -68,7 +68,7 @@ instructions/global.md          ← environment constraints, tool preferences, s
 
 **`instructions/global.md`** is the role-neutral foundation for every platform. It sets delegation triggers, fresh-context defaults, trust boundaries, reference-tool preferences, GitHub safety, LSP guidance, file rules, skill references, and the relay rules for artefacts and reports. Full specialist routing and output contracts live in the generated `delegate-task` skill. See [`instructions/README.md`](instructions/README.md) for the research that informs the global rules and the generated skill.
 
-Agent prompts inherit the global constraints and add specialisation. Agent-scoped command prompts inherit the agent context and focus on one task. Standalone commands run in the caller's context. A command can set its own model header. Only `draft-commit-message` and `draft-pr-message` do.
+Agent prompts inherit the global constraints and add specialisation. Agent-scoped commands use the agent context unless `[compose] root = true` keeps the caller's context. Unbound standalone commands run in the caller's context. A command can set its own model header. Only `draft-commit-message` and `draft-pr-message` do.
 
 ---
 
@@ -390,8 +390,8 @@ No other agent or command sets a model on any platform. The ten remaining agents
 | --- | --- |
 | `[common]` | Shared description and argument hint. Skills also declare `name`, optional `license`, `compatibility`, and `metadata`. |
 | `[claude]`, `[opencode]`, `[codex]`, `[pi]` | Native non-model fields, such as permissions, tools, and context settings. |
-| `[compose]` | Repository agent binding through `agent`. |
-| `[compose.claude]`, `[compose.codex]` | Repository controls `use-task` and `spawn-agent`. |
+| `[compose]` | Repository agent binding through `agent`, or caller-context execution through `root = true`. |
+| `[compose.claude]`, `[compose.codex]`, `[compose.pi]` | Repository controls `use-task` and `spawn-agent`. |
 | `[routing.claude]`, `[routing.opencode]`, `[routing.codex]` | Native model and effort overrides. |
 | `[routing.pi.<inference-provider>]` | Pi model and thinking overrides for the named inference provider. |
 
@@ -406,6 +406,21 @@ Retired provider headers are removed. Retired `description.txt` files remain in 
 
 Pi composition routes through `compose.composeAgentFromPrompt "pi"` and `compose.composeCommand "pi"`. The agent-scoped command prelude is assembled in `default.nix` and wraps `composePiCommandFromPrompt`. The Codex output uses the same pattern with a `spawn_agent` wrapper around command-derived skills.
 
+### Caller-context commands
+
+Set `[compose] root = true` when the command owns orchestration or needs the caller's context. The default is `false`. This switch takes precedence over agent bindings and per-client dispatch controls for plaintext and encrypted commands.
+
+| Client | Output for `root = true` |
+| --- | --- |
+| Claude Code | No `@agent` prefix, Task wrapper, or native `agent` and `context` overrides. |
+| OpenCode | No `agent` binding and `subtask: false`, so the caller retains its agent and permissions. |
+| Pi | Command body without a subagent launch wrapper. |
+| Codex | Command body without `spawn_agent` or an inline specialist persona. The manual-only companion policy remains. |
+
+Root commands cannot set `[routing.codex]` because that route requires a spawned role. Evaluation rejects the combination. Other supported routing fields retain their existing behaviour.
+
+Per-client controls remain available when `root` is false. In Codex, `[compose.codex] spawn-agent = false` embeds the specialist persona in the caller's context. Use `root = true` to preserve the caller's role instead.
+
 ### Codex command policy
 
 Codex CLI invokes generated commands with `$name` or the `/skills` picker. Custom `/name` commands are unsupported. Every generated command is manual-only, including standalone, agent-owned, and encrypted commands.
@@ -417,6 +432,8 @@ User invocation and workflow composition are separate. A nested `$child` referen
 The calling workflow must name the executor: the current agent or a specialist dispatched by the top-level orchestrator. Same-context reuse must explicitly bypass the child's launch wrapper. Workers never launch another specialist. See [Codex command skills](../codex/README.md#command-skills) for the invocation examples.
 
 ### Pi headers
+
+Agent-bound Pi commands launch a fresh worker by default. Set `[compose.pi] spawn-agent = false` for a Pi-only opt-out. Use `[compose] root = true` for caller-context execution across all clients. Both controls apply to plaintext and encrypted commands.
 
 `[pi]` holds native non-model fields such as `tools`, `defaultContext`, `output`, `fallbackModels`, and `maxSubagentDepth`. Pi agents retain three generated defaults: `systemPromptMode: append`, `inheritProjectContext: false`, and `inheritSkills: true`. Explicit values override these defaults.
 

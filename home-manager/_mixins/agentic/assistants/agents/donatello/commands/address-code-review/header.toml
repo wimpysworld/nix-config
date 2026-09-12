@@ -6,6 +6,7 @@ argument-hint = "[pr|file|text]"
 
 [compose]
 agent = "donatello"
+root = true
 
 [pi]
 argument-hint = "[pr|file|text]"

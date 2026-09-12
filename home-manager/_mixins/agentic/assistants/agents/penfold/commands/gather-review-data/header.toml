@@ -3,4 +3,5 @@ description = "Gather Review Data 📊"
 argument-hint = "<start-date> <end-date>"
 
 [compose]
+root = true
 agent = "penfold"
