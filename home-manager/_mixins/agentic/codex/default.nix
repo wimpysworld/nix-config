@@ -446,8 +446,8 @@ let
     # built-in fetch tool. MCP servers are independent, so Exa is unaffected.
     web_search = "disabled";
 
-    model = "gpt-5.6-sol";
-    model_reasoning_effort = "high";
+    model = "gpt-6-astra";
+    model_reasoning_effort = "medium";
 
     # Bound Codex subagent fan-out.
     agents = {
