@@ -32,6 +32,23 @@ let
 
   globalInstructions = readFileTrim ./instructions/global.md;
   piEnabled = noughtyLib.userHasTag "developer";
+  diagramPalette = builtins.fromJSON (builtins.readFile ../../../../lib/catppuccin-palette.json);
+  diagramColours =
+    lib.concatMap
+      (
+        flavour:
+        lib.mapAttrsToList (name: colour: {
+          token = "@${flavour}.${name}@";
+          value = colour.hex;
+        }) diagramPalette.${flavour}.colors
+      )
+      [
+        "latte"
+        "mocha"
+      ];
+  diagramProfile = lib.replaceStrings (map (colour: colour.token) diagramColours) (map (
+    colour: colour.value
+  ) diagramColours) (builtins.readFile ./diagram-profiles/catppuccin-blue.md);
 
   # ============ SECRET COMMANDS ============
 
@@ -773,7 +790,18 @@ in
     };
 
     home = {
+      packages = lib.optional (
+        config.programs.claude-code.enable
+        || config.programs.opencode.enable
+        || config.programs.codex.enable
+        || piEnabled
+      ) pkgs.python3;
+
       file = lib.mkMerge [
+        (lib.mkIf (noughtyLib.isUser [ "martin" ]) {
+          ".diagram-design/preferences".text = lib.mkDefault "profile: catppuccin-blue\n";
+          ".diagram-design/profiles/catppuccin-blue.md".text = diagramProfile;
+        })
         (lib.mkIf config.programs.claude-code.enable (
           {
             # Claude Code global instructions
