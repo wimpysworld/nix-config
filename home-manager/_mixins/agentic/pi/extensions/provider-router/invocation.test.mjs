@@ -26,14 +26,22 @@ writeFileSync(
 	}),
 );
 for (const [file, values] of Object.entries({
-	"agents.json": { worker: { "openai-codex": "worker" }, support: { "openai-codex": "support" } },
-	"thinking.json": { worker: { "openai-codex": "high" }, support: { "openai-codex": "low" } },
-})) writeFileSync(join(dir, file), JSON.stringify(values));
+	"agents.json": {
+		worker: { "openai-codex": "worker" },
+		support: { "openai-codex": "support" },
+	},
+	"thinking.json": {
+		worker: { "openai-codex": "high" },
+		support: { "openai-codex": "low" },
+	},
+}))
+	writeFileSync(join(dir, file), JSON.stringify(values));
 const originalHome = process.env.HOME;
 process.env.HOME = home;
 const { default: registerRouter } = await import("./index.ts");
-const { default: registerDisplay } =
-	await import("../prompt-template-display/index.ts");
+const { default: registerDisplay } = await import(
+	"../prompt-template-display/index.ts"
+);
 if (originalHome === undefined) delete process.env.HOME;
 else process.env.HOME = originalHome;
 
@@ -41,10 +49,12 @@ function harness(display = false) {
 	const handlers = new Map();
 	const notifications = [];
 	const sent = [];
-	const models = ["parent", "command", "skill", "user", "worker", "support"].map((id) => ({
-		id,
-		provider: "openai-codex",
-	}));
+	const models = ["parent", "command", "skill", "user", "worker", "support"].map(
+		(id) => ({
+			id,
+			provider: "openai-codex",
+		}),
+	);
 	let model = models[0];
 	let thinking = "medium";
 	let aborted = false;
@@ -124,11 +134,24 @@ for (const display of [false, true]) {
 			h.pi.setModel = async () => assert.fail("router changed root model");
 			h.pi.setThinkingLevel = () => assert.fail("router changed root thinking");
 			await h.emit("input", { text, source: "interactive" });
-			for (const event of ["before_agent_start", "agent_start", "agent_end", "before_agent_start", "agent_start", "agent_settled"])
+			for (const event of [
+				"before_agent_start",
+				"agent_start",
+				"agent_end",
+				"before_agent_start",
+				"agent_start",
+				"agent_settled",
+			])
 				await h.emit(event, {});
-			for (const [agent, thinking] of [["worker", "high"], ["support", "low"]]) {
+			for (const [agent, thinking] of [
+				["worker", "high"],
+				["support", "low"],
+			]) {
 				const input = { subagent_type: agent };
-				assert.equal(await h.emit("tool_call", { toolName: "Agent", input }), undefined);
+				assert.equal(
+					await h.emit("tool_call", { toolName: "Agent", input }),
+					undefined,
+				);
 				assert.equal(input.model, `openai-codex/${agent}`);
 				assert.equal(input.thinking, thinking);
 			}
@@ -136,7 +159,8 @@ for (const display of [false, true]) {
 			assert.equal(h.pi.getThinkingLevel(), "medium");
 			assert.equal(h.aborted, false);
 			assert.deepEqual(h.notifications, []);
-			if (display && text !== "/skill:focused task") assert.equal(h.sent.length, 1);
+			if (display && text !== "/skill:focused task")
+				assert.equal(h.sent.length, 1);
 		});
 	}
 }
@@ -157,7 +181,10 @@ test("root model selection does not override a named child route", async () => {
 
 test("supporting skill reads leave root settings unchanged", async () => {
 	const h = harness();
-	await h.emit("tool_call", { toolName: "read", input: { path: "focused/SKILL.md" } });
+	await h.emit("tool_call", {
+		toolName: "read",
+		input: { path: "focused/SKILL.md" },
+	});
 	assert.equal(h.ctx.model.id, "parent");
 	assert.equal(h.pi.getThinkingLevel(), "medium");
 });
@@ -173,167 +200,158 @@ test("invocation routing does not reject streaming or unavailable root routes", 
 });
 
 const nativeDirectory = process.env.PI_CODING_AGENT_DIR;
-test(
-	"native Pi keeps root settings through preflight, retries, and settlement",
-	{
-		skip:
-			!nativeDirectory &&
-			"Set PI_CODING_AGENT_DIR to test the installed Pi runtime",
-	},
-	async () => {
-		const { AgentSession } = await import(
-			pathToFileURL(join(nativeDirectory, "dist/core/agent-session.js"))
-		);
-		const { Agent } = await import(
-			pathToFileURL(
-				join(
-					nativeDirectory,
-					"node_modules/@earendil-works/pi-agent-core/dist/agent.js",
-				),
-			)
-		);
-		for (const outcome of [
-			"success",
-			"retry",
-			"overflow",
-			"aborted",
-			"throw",
-			"preflight",
-		]) {
-			const h = harness();
-			const requests = [];
-			const session = Object.create(AgentSession.prototype);
-			const agent = new Agent({
-				initialState: {
-					model: h.ctx.model,
-					thinkingLevel: "medium",
-					systemPrompt: "base",
-				},
-				streamFn: (model, context, options) => {
-					requests.push({
-						model: model.id,
-						context,
-						reasoning: options.reasoning,
-					});
-					if (outcome === "throw")
-						throw new Error("synthetic transport failure");
-					const failed =
-						requests.length === 1 && ["retry", "overflow"].includes(outcome);
-					const message = {
-						role: "assistant",
-						provider: model.provider,
-						model: model.id,
-						api: "openai-responses",
-						content: [],
-						timestamp: Date.now(),
-						stopReason: failed
-							? "error"
-							: outcome === "aborted"
-								? "aborted"
-								: "stop",
-						errorMessage: failed
-							? outcome === "retry"
-								? "503 Service Unavailable"
-								: "context window exceeded"
-							: undefined,
-						usage: {
-							input: 0,
-							output: 0,
-							totalTokens: 0,
-							cacheRead: 0,
-							cacheWrite: 0,
-						},
-					};
-					return {
-						async *[Symbol.asyncIterator]() {
-							yield { type: "done", message };
-						},
-						result: async () => message,
-					};
-				},
-			});
-			const setModel = h.pi.setModel;
-			h.pi.setModel = async (model) => {
-				agent.state.model = model;
-				return setModel(model);
-			};
-			const setThinking = h.pi.setThinkingLevel;
-			h.pi.setThinkingLevel = (thinking) => {
-				agent.state.thinkingLevel = thinking;
-				setThinking(thinking);
-			};
-			h.ctx.abort = () => agent.abort();
-			let compacted = false;
-			Object.assign(session, {
-				agent,
-				_retryAttempt: 0,
-				_pendingNextTurnMessages: [],
-				_baseSystemPrompt: "base",
-				settingsManager: {
-					getRetrySettings: () => ({
-						enabled: true,
-						maxRetries: 1,
-						baseDelayMs: 0,
-					}),
-					getCompactionSettings: () => ({ enabled: false }),
-				},
-				_modelRuntime: {
-					hasConfiguredAuth: () => outcome !== "preflight",
-					checkAuth: async () => undefined,
-					isUsingOAuth: () => false,
-				},
-				_emit() {},
-				_flushPendingBashMessages() {},
-				_flushPendingCustomMessages() {},
-				_compactBeforeNextAssistantResponse: async (context) => context,
-				_checkCompaction: async () => {
-					if (outcome !== "overflow" || compacted) return false;
-					compacted = true;
-					agent.state.messages.pop();
-					return true;
-				},
-				_extensionRunner: {
-					hasHandlers: () => true,
-					emitInput: async (text) =>
-						(await h.emit("input", { text })) ?? { action: "continue" },
-					emitBeforeAgentStart: async () => h.emit("before_agent_start", {}),
-					emit: (event) => h.emit(event.type, event),
-				},
-			});
-			session._installAgentNextTurnRefresh();
-			agent.subscribe(async (event) => {
-				if (event.type === "message_end" && event.message.role === "assistant")
-					session._lastAssistantMessage = event.message;
-				await h.emit(event.type, event);
-			});
-			if (outcome === "preflight") {
-				await assert.rejects(
-					session.prompt("/review", { expandPromptTemplates: false }),
-					/No API key/,
-				);
-				assert.equal(requests.length, 0);
-			} else {
-				await session.prompt("/review", { expandPromptTemplates: false });
-				assert.equal(
-					requests.length,
-					["retry", "overflow"].includes(outcome) ? 2 : 1,
-					outcome,
-				);
-				assert.ok(
-					requests.every((request) => request.model === "parent"),
-					outcome,
-				);
-				assert.ok(
-					requests.every((request) => request.reasoning === "medium"),
-					outcome,
-				);
-				assert.ok(
-					requests.every((request) => request.context.systemPrompt === "base"),
-					outcome,
-				);
-			}
-			assert.equal(h.ctx.model.id, "parent", outcome);
-			assert.equal(h.pi.getThinkingLevel(), "medium", outcome);
+test("native Pi keeps root settings through preflight, retries, and settlement", {
+	skip:
+		!nativeDirectory &&
+		"Set PI_CODING_AGENT_DIR to test the installed Pi runtime",
+}, async () => {
+	const { AgentSession } = await import(
+		pathToFileURL(join(nativeDirectory, "dist/core/agent-session.js"))
+	);
+	const { Agent } = await import(
+		pathToFileURL(
+			join(
+				nativeDirectory,
+				"node_modules/@earendil-works/pi-agent-core/dist/agent.js",
+			),
+		)
+	);
+	for (const outcome of [
+		"success",
+		"retry",
+		"overflow",
+		"aborted",
+		"throw",
+		"preflight",
+	]) {
+		const h = harness();
+		const requests = [];
+		const session = Object.create(AgentSession.prototype);
+		const agent = new Agent({
+			initialState: {
+				model: h.ctx.model,
+				thinkingLevel: "medium",
+				systemPrompt: "base",
+			},
+			streamFn: (model, context, options) => {
+				requests.push({
+					model: model.id,
+					context,
+					reasoning: options.reasoning,
+				});
+				if (outcome === "throw") throw new Error("synthetic transport failure");
+				const failed =
+					requests.length === 1 && ["retry", "overflow"].includes(outcome);
+				const message = {
+					role: "assistant",
+					provider: model.provider,
+					model: model.id,
+					api: "openai-responses",
+					content: [],
+					timestamp: Date.now(),
+					stopReason: failed ? "error" : outcome === "aborted" ? "aborted" : "stop",
+					errorMessage: failed
+						? outcome === "retry"
+							? "503 Service Unavailable"
+							: "context window exceeded"
+						: undefined,
+					usage: {
+						input: 0,
+						output: 0,
+						totalTokens: 0,
+						cacheRead: 0,
+						cacheWrite: 0,
+					},
+				};
+				return {
+					async *[Symbol.asyncIterator]() {
+						yield { type: "done", message };
+					},
+					result: async () => message,
+				};
+			},
+		});
+		const setModel = h.pi.setModel;
+		h.pi.setModel = async (model) => {
+			agent.state.model = model;
+			return setModel(model);
+		};
+		const setThinking = h.pi.setThinkingLevel;
+		h.pi.setThinkingLevel = (thinking) => {
+			agent.state.thinkingLevel = thinking;
+			setThinking(thinking);
+		};
+		h.ctx.abort = () => agent.abort();
+		let compacted = false;
+		Object.assign(session, {
+			agent,
+			_retryAttempt: 0,
+			_pendingNextTurnMessages: [],
+			_baseSystemPrompt: "base",
+			settingsManager: {
+				getRetrySettings: () => ({
+					enabled: true,
+					maxRetries: 1,
+					baseDelayMs: 0,
+				}),
+				getCompactionSettings: () => ({ enabled: false }),
+			},
+			_modelRuntime: {
+				hasConfiguredAuth: () => outcome !== "preflight",
+				checkAuth: async () => undefined,
+				isUsingOAuth: () => false,
+			},
+			_emit() {},
+			_flushPendingBashMessages() {},
+			_flushPendingCustomMessages() {},
+			_compactBeforeNextAssistantResponse: async (context) => context,
+			_checkCompaction: async () => {
+				if (outcome !== "overflow" || compacted) return false;
+				compacted = true;
+				agent.state.messages.pop();
+				return true;
+			},
+			_extensionRunner: {
+				hasHandlers: () => true,
+				emitInput: async (text) =>
+					(await h.emit("input", { text })) ?? { action: "continue" },
+				emitBeforeAgentStart: async () => h.emit("before_agent_start", {}),
+				emit: (event) => h.emit(event.type, event),
+			},
+		});
+		session._installAgentNextTurnRefresh();
+		agent.subscribe(async (event) => {
+			if (event.type === "message_end" && event.message.role === "assistant")
+				session._lastAssistantMessage = event.message;
+			await h.emit(event.type, event);
+		});
+		if (outcome === "preflight") {
+			await assert.rejects(
+				session.prompt("/review", { expandPromptTemplates: false }),
+				/No API key/,
+			);
+			assert.equal(requests.length, 0);
+		} else {
+			await session.prompt("/review", { expandPromptTemplates: false });
+			assert.equal(
+				requests.length,
+				["retry", "overflow"].includes(outcome) ? 2 : 1,
+				outcome,
+			);
+			assert.ok(
+				requests.every((request) => request.model === "parent"),
+				outcome,
+			);
+			assert.ok(
+				requests.every((request) => request.reasoning === "medium"),
+				outcome,
+			);
+			assert.ok(
+				requests.every((request) => request.context.systemPrompt === "base"),
+				outcome,
+			);
 		}
-	},
-);
+		assert.equal(h.ctx.model.id, "parent", outcome);
+		assert.equal(h.pi.getThinkingLevel(), "medium", outcome);
+	}
+});

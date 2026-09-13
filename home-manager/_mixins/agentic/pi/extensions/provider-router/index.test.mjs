@@ -200,24 +200,51 @@ test("native invocation config accepts routed and explicit child fields", () => 
 
 test("explicit thinking replaces route thinking before capability validation", () => {
 	const state = {
-		provider: "openai-codex", model: "test-model",
+		provider: "openai-codex",
+		model: "test-model",
 		agents: { worker: { "openai-codex": "test-model" } },
 		thinking: { worker: { "openai-codex": "high" } },
 		routes: { commands: {}, skills: {} },
-		available: ["test-model"], supportedThinking: { "test-model": ["off"] },
+		available: ["test-model"],
+		supportedThinking: { "test-model": ["off"] },
 	};
-	assert.equal(resolveTaskRoute({ agent: "worker", thinking: "off" }, state), "openai-codex/test-model:off");
-	assert.throws(() => resolveTaskRoute({ agent: "worker" }, state), /does not support/);
+	assert.equal(
+		resolveTaskRoute({ agent: "worker", thinking: "off" }, state),
+		"openai-codex/test-model:off",
+	);
+	assert.throws(
+		() => resolveTaskRoute({ agent: "worker" }, state),
+		/does not support/,
+	);
 	for (const malformed of [[], null, true, { extra: "field" }]) {
 		state.routes.commands.invalid = { providers: { "openai-codex": malformed } };
-		assert.throws(() => resolveTaskRoute({ agent: "worker", command: "invalid", thinking: "off" }, state), /unsupported route fields/);
+		assert.throws(
+			() =>
+				resolveTaskRoute(
+					{ agent: "worker", command: "invalid", thinking: "off" },
+					state,
+				),
+			/unsupported route fields/,
+		);
 	}
-	assert.equal(route({ subagent_type: "worker", model: "explicit-model:high", thinking: "off" }).thinking, "off");
+	assert.equal(
+		route({
+			subagent_type: "worker",
+			model: "explicit-model:high",
+			thinking: "off",
+		}).thinking,
+		"off",
+	);
 });
 
 test("unmapped agents keep native parent fallback", () => {
-	assert.deepEqual(route({ subagent_type: "unmapped" }), { subagent_type: "unmapped" });
-	assert.equal(route({ subagent_type: "unmapped", thinking: "low" }).model, "openai-codex/parent-model");
+	assert.deepEqual(route({ subagent_type: "unmapped" }), {
+		subagent_type: "unmapped",
+	});
+	assert.equal(
+		route({ subagent_type: "unmapped", thinking: "low" }).model,
+		"openai-codex/parent-model",
+	);
 });
 
 test("supporting skill reads and result tools do not select models", () => {
@@ -290,15 +317,20 @@ await agent("primary", {agentType: "worker", command: "review"});
 await agent("support", {agentType: "support"});
 return await agent("override", {agentType: "worker", model: "explicit-model:high", effort: "low"});`);
 	assert.equal(result.status, "completed", result.error);
-	assert.deepEqual(calls.map(({ model, effort }) => [model, effort]), [
-		["openai-codex/command-model", "medium"],
-		["openai-codex/skill-model", "low"],
-		["openai-codex/explicit-model", "low"],
-	]);
+	assert.deepEqual(
+		calls.map(({ model, effort }) => [model, effort]),
+		[
+			["openai-codex/command-model", "medium"],
+			["openai-codex/skill-model", "low"],
+			["openai-codex/explicit-model", "low"],
+		],
+	);
 });
 
 test("native workflow rejects off effort before launching a child", async () => {
-	const { calls, result } = await execute('return await agent("off", {agentType: "worker", effort: "off"});');
+	const { calls, result } = await execute(
+		'return await agent("off", {agentType: "worker", effort: "off"});',
+	);
 	assert.equal(result.status, "failed");
 	assert.match(result.error, /opts.effort must be one of/);
 	assert.equal(calls.length, 0);
