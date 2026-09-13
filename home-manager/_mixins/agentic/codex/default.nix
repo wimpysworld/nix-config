@@ -122,7 +122,7 @@ let
           ;;
       esac
 
-      exec "$codex_bin" "''${bypass[@]}" "''${codex_resume[@]}" "$@"
+      exec "$codex_bin" -c 'service_tier="default"' "''${bypass[@]}" "''${codex_resume[@]}" "$@"
     '';
   };
   codexFencedPackage = pkgs.writeShellApplication {
@@ -451,6 +451,7 @@ let
 
     model = "gpt-6-astra";
     model_reasoning_effort = "medium";
+    service_tier = "default";
 
     # Bound Codex subagent fan-out.
     agents = {

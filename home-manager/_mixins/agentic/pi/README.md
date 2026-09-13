@@ -97,7 +97,6 @@ Pi packages are installed through the Home Manager-owned package setting:
     "npm:@marckrenn/pi-sub-core@1.5.0",
     "npm:pi-cc-header@1.1.1",
     "npm:@heyhuynhgiabuu/pi-pretty@0.6.27",
-    "npm:pi-service-tier@0.3.0",
     "npm:@juicesharp/rpiv-ask-user-question@2.9.0",
     "npm:@juicesharp/rpiv-btw@2.9.0",
     "npm:@juicesharp/rpiv-todo@2.9.0"
@@ -136,14 +135,26 @@ The footer uses the same Catppuccin colour roles as `ccstatusline`: model and th
 `quota-status` uses stable window labels where possible and displays remaining quota, not used quota, so Anthropic usually appears as:
 
 ```text
- claude-opus-5 high · Fast off · project · 5h 93% · weekly 96% · 1.0M window · Context 3.1% used
+ claude-opus-5 high · Requested standard; tier standard_only · project · 5h 93% · weekly 96% · 1.0M window · Context 3.1% used
 ```
 
 Home Manager also owns `~/.pi/agent/pi-sub-core-settings.json` to refresh quota data every five seconds and on turn start. `sub-core` renders cached state first, so the quota segment can appear a few seconds after the footer itself. If Anthropic returns only the 5h window, `quota-status` mirrors the Claude Code statusline helper by treating the missing weekly bucket as 100% remaining. Other providers show only the usable windows they return. `quota-status` keeps the last valid value for the active provider when `sub-core` emits a transient empty update.
 
 Anthropic quota data requires an OAuth token, not the `ANTHROPIC_API_KEY` used for model calls. The `pi` wrapper reads `~/.claude/.credentials.json` or `$CLAUDE_CONFIG_DIR/.credentials.json` and exports `ANTHROPIC_OAUTH_TOKEN` when the Claude Code login token has the `user:profile` scope. Without that local login, the Anthropic quota segment stays hidden. OpenAI Codex quota data comes from Pi's `auth.json`, Codex environment variables, or the legacy Codex auth file as supported by `sub-core`.
 
-[`pi-service-tier`](https://github.com/mavam/pi-service-tier) provides `/fast` and `/service-tier` for provider service tiers (OpenAI and Codex flex/priority, Anthropic priority/standard). It persists to its own `~/.pi/agent/service-tier.json` and never writes `settings.json`. It publishes its state only as `pi-fancy-footer` widget events, so the local `service-tier-status` extension bridges those events into the `noughty-service-tier:status` key, which the footer shows as a yellow `Fast on` or `Fast off` segment after the thinking level. The bridge sends the `pi-fancy-footer:ready` handshake at session start so the load order does not matter. Do not install `pi-fancy-footer` alongside the bridge, because both would answer the same handshake.
+The local `service-tier-status` extension owns `/fast on`, `/fast off`, and `/fast status`. Bare `/fast` shows status. Repeated `on` or `off` commands are safe. Invalid arguments do not change the selection. Changes wait for idle so request headers and bodies agree.
+
+Fast starts off in every session, including children, resume, fork, and `/reload`. Model or provider changes reset Fast off. The selection stays in memory only. The extension does not read or change legacy `~/.pi/agent/service-tier.json`, model selection, or thinking levels. `pi-service-tier` is no longer installed through this configuration. Do not load it separately because its request hooks and commands conflict with this policy.
+
+| Direct provider | Off request | On request |
+| --- | --- | --- |
+| OpenAI Responses | `service_tier: "default"` | `service_tier: "priority"` |
+| OpenAI Codex | Omit `service_tier` | `service_tier: "priority"` |
+| Anthropic | Remove `speed` and the exact Fast beta token, set `service_tier: "standard_only"` | Add `speed: "fast"` and `fast-mode-2026-02-01`, retain `standard_only` |
+
+Fast requires a registered model and an exact verified ID. OpenAI supports `gpt-6-astra`, `gpt-5.6-sol`, `gpt-5.6-terra`, and `gpt-5.6-luna`. Anthropic supports `claude-opus-5` and `claude-opus-4-8`. Pi's catalogue has no speed capability field, so other IDs stay unavailable until verified. Custom endpoints and other providers stay unavailable without a claim that standard speed is enforced.
+
+The footer reports **requested** speed and tier, not server usage or account entitlement. Codex tier omission follows its native off behaviour, not a verified server guarantee. `auto`, `flex`, and Anthropic service priority are not Fast speed. See the [OpenAI Fast mode contract](https://developers.openai.com/api/docs/guides/fast-mode) and [Anthropic Fast mode contract](https://platform.claude.com/docs/en/build-with-claude/fast-mode).
 
 ## Local extensions
 
@@ -158,8 +169,12 @@ Pi `Agent` and `SubagentWorkflow` calls to provider-specific models declared in 
 `pi-footer`.
 
 `service-tier-status` lives at `~/.pi/agent/extensions/service-tier-status/`.
-It mirrors `pi-service-tier`'s fast-mode widget events into the
-`noughty-service-tier:status` key consumed by `pi-footer`.
+It applies the session-local request policy and publishes requested speed through
+`noughty-service-tier:status`, which `pi-footer` consumes. Run its offline checks with Node.js 24 or later:
+
+```sh
+node --test home-manager/_mixins/agentic/pi/extensions/service-tier-status/index.test.mjs
+```
 
 `hardware-cursor` lives at `~/.pi/agent/extensions/hardware-cursor/`. Pi's
 editor always paints its own inverse-block cursor, and `showHardwareCursor`
