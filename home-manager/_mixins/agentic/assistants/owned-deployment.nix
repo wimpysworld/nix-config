@@ -21,9 +21,8 @@ let
       "${home}/.pi/agent"
     ];
     files = ownedFiles;
-    retire = lib.optional (
-      home == "/home/martin" && config.noughty.host.name == "zannah"
-    ) "${home}/.pi/agent/agents/traya.md";
+    # Preserve unmanaged agents, including the separately migrated Traya file.
+    retire = [ ];
   };
   specFile = pkgs.writeText "assistant-owned-files.json" (builtins.toJSON spec);
 in

@@ -18,7 +18,7 @@ The upstream package comes from `inputs.llm-agents.packages.${system}.pi`, match
   - `~/.pi/agent/mcp.json`
   - `~/.pi/agent/extensions/pi-footer.json`
   - `~/.pi/agent/pi-sub-core-settings.json`
-  - `~/.pi/agent/extensions/subagent/config.json`
+  - `~/.pi/agent/subagents.json`
   - `~/.pi/agent/AGENTS.md`
   - `~/.pi/agent/agents/*.md`
   - `~/.pi/agent/prompts/*.md`
@@ -84,7 +84,7 @@ Pi packages are installed through the Home Manager-owned package setting:
 {
   "packages": [
     "npm:pi-mcp-adapter@2.32.1",
-    "npm:pi-subagents@0.67.0",
+    "npm:@tintinweb/pi-subagents@0.19.0",
     "npm:pi-lens@4.1.5",
     {
       "source": "npm:typescript@7.0.2",
@@ -150,7 +150,7 @@ Anthropic quota data requires an OAuth token, not the `ANTHROPIC_API_KEY` used f
 Home Manager deploys local Pi extensions under `~/.pi/agent/extensions/`.
 
 `provider-router` lives at `~/.pi/agent/extensions/provider-router/`. It routes
-Pi `subagent` tool calls to provider-specific models declared in assistant
+Pi `Agent` and `SubagentWorkflow` calls to provider-specific models declared in assistant
 `header.toml` files under `[routing.pi.<inference-provider>]`.
 
 `quota-status` lives at `~/.pi/agent/extensions/quota-status/`. It listens to
@@ -196,7 +196,7 @@ frontmatter. Pi also installs the skill under `~/.pi/agent/skills/`, while
 `context` event for model-call injection, `input` for non-blocking reminders,
 `tool_call` for outgoing writes, edits, Bash prose side effects, and post
 bodies, `message_end` for final-message correction, and `tool_result` for
-displayed `subagent` tool results.
+displayed `Agent`, `get_subagent_result`, and `SubagentWorkflow` tool results.
 
 Pi can stream text before `message_end`. Agent Tripwire treats that as an
 accepted v1 platform limit: final-message correction still runs at
@@ -281,37 +281,37 @@ The Pi-specific file emits full server entries, not partial overrides, because `
 
 ## Subagents
 
-[`pi-subagents`](https://github.com/nicobailon/pi-subagents) is installed through the pinned package setting.
+[Tintinweb pi-subagents](https://github.com/tintinweb/pi-subagents) is pinned to `npm:@tintinweb/pi-subagents@0.19.0`.
+Home Manager writes its settings to `~/.pi/agent/subagents.json`.
+The former package, configuration output, and `subagents.disableBuiltins` setting are no longer configured.
+Historical logs and sessions remain untouched.
 
-The extension config is managed at `~/.pi/agent/extensions/subagent/config.json`:
+| Setting | Value | Effect |
+| --- | --- | --- |
+| `backgroundByDefault` | `true` | Detached `Agent` calls notify the parent on completion. |
+| `maxConcurrent`, `maxConcurrentForeground` | `2` each | Independent background and foreground pools, not a combined cap. |
+| `maxSubagentDepth` | `1` | Only the root launches specialists. |
+| `defaultMaxTurns`, `graceTurns` | `50`, `5` | Bounded turns, not a wall-clock deadline. |
+| `disableDefaultAgents`, `strictAgentFiles` | `true` | Use explicit custom agents and reject malformed headers. |
+| `fallbackSubagent` | `"none"` | Do not substitute a default agent. |
+| `defaultJoinMode` | `"async"` | Use native completion delivery. |
+| `rememberAgents`, `outputTranscript` | `true` | Preserve sessions and transcripts for inspection and continuation. |
+| `workflowsEnabled` | `true` | Enable routed scripted workflows. |
+| `agentMentions`, `schedulingEnabled` | `"off"`, `false` | Avoid launch paths that bypass routing. |
+| `worktreeIsolation` | `false` | Avoid upstream cleanup that can lose uncommitted work. |
 
-```json
-{
-  "asyncByDefault": true,
-  "forceTopLevelAsync": false,
-  "parallel": {
-    "maxTasks": 4,
-    "concurrency": 2
-  },
-  "defaultSessionDir": "~/.pi/agent/sessions/subagent",
-  "maxSubagentDepth": 1,
-  "intercomBridge": {
-    "mode": "off"
-  }
-}
-```
+Use `Agent` with `subagent_type`, `description`, and `prompt`. Set `inherit_context: false` for fresh context.
+`run_in_background: false` requests a foreground child. Both modes retain extensions and skills.
+Use `get_subagent_result` for completed output, `steer_subagent` for active guidance, and `Agent` with `resume` for continuation.
+Children run as SDK sessions inside Pi. They do not continue execution after the parent process exits.
 
-Ordinary subagents run in the background by default, which loads ambient
-extensions such as the MCP adapter. Explicit `async: false` remains available
-for children that do not need ambient extensions because `forceTopLevelAsync`
-is disabled.
+Use `SubagentWorkflow` with inline source, `scriptPath`, or a saved `name`.
+Scripts use `agent(prompt, { agentType })`, `parallel`, and `pipeline`.
+The router limits each workflow to two active children and 64 launches, and rejects failed required results.
+Nested `workflow()` calls are rejected because their source bypasses routing. Launch saved workflows through the tool instead.
+Use separate sessions in separate checkouts for concurrent writers. Isolation requests fail rather than silently using the shared checkout.
 
-Set `async: true` on each MCP-dependent workflow child, including each `runs.all`
-entry. Do not rely on the workflow root's `async` setting.
-
-`maxSubagentDepth = 1` allows explicit direct subagent use from top-level Pi sessions. Generated assistant agents do not add a per-agent `maxSubagentDepth` by default; set `[pi] maxSubagentDepth` in an individual `header.toml` only when that agent needs its own depth limit.
-
-The builtin `researcher` agent is disabled by default because it requires `pi-web-access`, which this module does not install.
+After activation, close the old Pi session and start a fresh session. Do not load both subagent extensions together.
 
 ## Assistant mapping
 
@@ -321,17 +321,23 @@ Source content comes from `home-manager/_mixins/agentic/assistants`. Rendering f
 | ----------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `instructions/global.md`                        | `~/.pi/agent/AGENTS.md`            | Global context file loaded by Pi                                                                                                                                                                                                                                                                                   |
 | `agents/<name>/prompt.md` and `header.toml` | `~/.pi/agent/agents/<name>.md`     | Pi subagent Markdown with YAML frontmatter                                                                                                                                                                                                                                                                         |
-| `agents/<name>/commands/<command>/prompt.md`    | `~/.pi/agent/prompts/<command>.md` | Prompt template that asks Pi to call the matching subagent. The owning agent is pinned by a `Use the subagent tool to launch the <name> agent` prelude in the body, not by the filename. Evaluation fails if two source directories (across agents or with standalone commands) produce the same `<command>` name. |
+| `agents/<name>/commands/<command>/prompt.md`    | `~/.pi/agent/prompts/<command>.md` | Prompt template that asks Pi to call the matching subagent. The owning agent is pinned by a `Use the Agent tool with subagent_type` prelude in the body, not by the filename. Evaluation fails if two source directories (across agents or with standalone commands) produce the same `<command>` name. |
 | `commands/<command>/prompt.md`                  | `~/.pi/agent/prompts/<command>.md` | Native Pi prompt template                                                                                                                                                                                                                                                                                          |
 | `skills/<name>/`                                | `~/.pi/agent/skills/<name>/`       | Symlinked Agent Skills directory                                                                                                                                                                                                                                                                                   |
 
 Traya is the unnamed default prompt through `instructions/global.md`. She is not emitted as a named Pi subagent.
 
-The next successful activation retires the approved legacy regular file `~/.pi/agent/agents/traya.md` once. It preserves a symlink or other non-regular path. Public resource links remain Home Manager-owned. Secret resource links use the shared [activation ownership and cleanup](../assistants/README.md#activation-ownership-and-cleanup) helper.
+Activation preserves unmanaged agents, including `~/.pi/agent/agents/traya.md`. Public resource links remain Home Manager-owned. Secret resource links use the shared [activation ownership and cleanup](../assistants/README.md#activation-ownership-and-cleanup) helper.
 
-Pi agent frontmatter comes from `header.toml`. Agents retain three generated defaults: `systemPromptMode: append`, `inheritProjectContext: false`, and `inheritSkills: true`. Explicit `[pi]` values override these defaults. Names derive from directories, and descriptions come from `[common] description`.
+Pi agent frontmatter comes from `header.toml`. Generated defaults are `prompt_mode: replace`, `extensions: true`, `skills: true`, and `isolated: false`.
+The composer preserves specialist bodies and adds the leaf contract, shared safety rules, and house style only for Pi.
+Children read applicable project instructions themselves instead of copying the parent's system prompt.
+Names derive from directories, and descriptions come from `[common] description`.
 
-Native non-model fields, such as `tools`, `defaultContext`, and `maxSubagentDepth`, belong under `[pi]`. Model and thinking overrides belong under `[routing.pi.<inference-provider>]`. Prompt templates receive `argument-hint` from `[common]` or `[pi]`. Missing tables mean no overrides, not disabled output.
+Native non-model fields, such as `tools`, `max_turns`, `persist_session`, and `run_in_background`, belong under `[pi]`.
+Omit `inherit_context` so the caller can select fresh or inherited context.
+Model and thinking overrides belong under `[routing.pi.<inference-provider>]`.
+Prompt templates receive `argument-hint` from `[common]` or `[pi]`. Missing tables mean no overrides, not disabled output.
 
 Pi subagent Markdown supports explicit `tools` allowlists through Pi-native
 frontmatter when an individual agent needs a narrower tool surface.

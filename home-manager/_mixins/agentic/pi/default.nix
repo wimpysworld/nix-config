@@ -34,14 +34,10 @@ let
   # pi-mcp-adapter 2.32.1 requires pi-ai ^0.84.1, which the pinned Pi 0.85.1
   # runtime satisfies.
   piMcpAdapterVersion = "2.32.1";
-  # When bumping pi-subagents, verify the tool still uses the `subagent` name;
-  # workflow execution still uses `workflowScript`, `runs.run`, and `runs.all`;
-  # child parameters still include `agent`, `task`, and `model`; model thinking
-  # still travels as a `provider/id:level` suffix; and `context` still accepts
-  # `"fresh"` and `"fork"` with `"fresh"` as the safer non-forking default. If
-  # any of these change, update `extensions/provider-router/index.ts` and the
-  # agent-launch prelude in `assistants/default.nix` before merging.
-  piSubagentsVersion = "0.67.0";
+  # Verify Agent, SubagentWorkflow, and native header compatibility on updates.
+  # The provider router uses separate model and thinking fields for Agent,
+  # and model and effort fields for workflow children.
+  piSubagentsVersion = "0.19.0";
   piLensVersion = "4.1.5";
   # pi-lens imports the compiler API at runtime, but 4.1.5 omits TypeScript
   # from its runtime dependencies. Keep it as a direct Pi npm dependency until the
@@ -67,7 +63,7 @@ let
   rpivBtwVersion = "2.9.0";
   rpivTodoVersion = "2.9.0";
   piMcpAdapterSource = "npm:pi-mcp-adapter@${piMcpAdapterVersion}";
-  piSubagentsSource = "npm:pi-subagents@${piSubagentsVersion}";
+  piSubagentsSource = "npm:@tintinweb/pi-subagents@${piSubagentsVersion}";
   piLensSource = "npm:pi-lens@${piLensVersion}";
   piLensTypescriptSource = "npm:typescript@${piLensTypescriptVersion}";
   piFooterSource = "npm:pi-footer@${piFooterVersion}";
@@ -432,7 +428,6 @@ let
     enableSkillCommands = true;
     npmCommand = [ "${piNpmPackage}/bin/pi-npm" ];
 
-    subagents.disableBuiltins = true;
   };
 
   piMcpConfig = {
@@ -733,15 +728,25 @@ let
   };
 
   piSubagentsConfig = {
-    asyncByDefault = true;
-    forceTopLevelAsync = false;
-    parallel = {
-      maxTasks = 4;
-      concurrency = 2;
-    };
-    defaultSessionDir = "~/.pi/agent/sessions/subagent";
+    backgroundByDefault = true;
+    maxConcurrent = 2;
+    maxConcurrentForeground = 2;
     maxSubagentDepth = 1;
-    intercomBridge.mode = "off";
+    defaultMaxTurns = 50;
+    graceTurns = 5;
+    defaultJoinMode = "async";
+    disableDefaultAgents = true;
+    fallbackSubagent = "none";
+    strictAgentFiles = true;
+    rememberAgents = true;
+    outputTranscript = true;
+    workflowsEnabled = true;
+    # Use the routed tool entry points, not independent launch paths.
+    agentMentions = "off";
+    schedulingEnabled = false;
+    # Upstream 0.19.0 force-removes worktrees after preservation errors.
+    # The router rejects isolation requests rather than silently downgrading them.
+    worktreeIsolation = false;
   };
 in
 lib.mkIf (noughtyLib.userHasTag "developer") {
@@ -790,7 +795,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
       ".pi/agent/extensions/pi-footer.json".text = builtins.toJSON piFooterConfig;
       ".pi/agent/pi-pretty.json".text = builtins.toJSON piPrettyConfig;
       ".pi/agent/pi-sub-core-settings.json".text = builtins.toJSON piSubCoreConfig;
-      ".pi/agent/extensions/subagent/config.json".text = builtins.toJSON piSubagentsConfig;
+      ".pi/agent/subagents.json".text = builtins.toJSON piSubagentsConfig;
       # Provider-router deploys its static extension files beside the generated
       # provider map consumed at runtime.
       ".pi/agent/extensions/provider-router/agents.json".text =

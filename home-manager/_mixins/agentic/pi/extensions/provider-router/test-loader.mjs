@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { stripTypeScriptTypes } from "node:module";
+import { fileURLToPath } from "node:url";
 
 const sdkStub = `
 export function isToolCallEventType(name, event) {
@@ -8,8 +9,15 @@ export function isToolCallEventType(name, event) {
 `;
 
 export async function resolve(specifier, context, nextResolve) {
-	if (context.parentURL?.includes("/node_modules/"))
-		return nextResolve(specifier, context);
+	if (context.parentURL?.includes("/node_modules/")) {
+		try {
+			return await nextResolve(specifier, context);
+		} catch (error) {
+			if (error.code !== "ERR_MODULE_NOT_FOUND" || !specifier.endsWith(".js"))
+				throw error;
+			return nextResolve(specifier.slice(0, -3) + ".ts", context);
+		}
+	}
 	if (specifier === "@earendil-works/pi-ai/compat") {
 		return {
 			shortCircuit: true,
@@ -30,7 +38,9 @@ export async function load(url, context, nextLoad) {
 		return {
 			shortCircuit: true,
 			format: "module",
-			source: stripTypeScriptTypes(await readFile(new URL(url), "utf8")),
+			source: stripTypeScriptTypes(await readFile(fileURLToPath(url), "utf8"), {
+				mode: "transform",
+			}),
 		};
 	}
 	return nextLoad(url, context);
