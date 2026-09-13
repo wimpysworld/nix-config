@@ -14,7 +14,7 @@ import { after, test } from "node:test";
 const packageDir =
 	process.env.PI_SUBAGENTS_DIR ??
 	join(homedir(), ".pi/agent/npm/node_modules/@tintinweb/pi-subagents");
-const { runWorkflow, validateScript } = await import(
+const { runWorkflow, validateScript, WORKFLOW_AGENT_CAP } = await import(
 	pathToFileURL(join(packageDir, "src/workflow/runtime.ts")).href
 );
 const fixtureHome = mkdtempSync(join(tmpdir(), "provider-router-test-"));
@@ -221,14 +221,14 @@ test("resume retains the existing child contract", () => {
 	assert.deepEqual(route({ ...input }), input);
 });
 
-test("native parallel workflow queues above six and routes every child", async () => {
-	const keys = Array.from({ length: 9 }, (_, n) => String(n));
+test("native parallel workflow queues above twelve and routes every child", async () => {
+	const keys = Array.from({ length: 15 }, (_, n) => String(n));
 	const { calls, result, peak } = await execute(
 		`return await parallel(${JSON.stringify(keys)}.map(key => () => agent(key, {agentType: "worker"})));`,
 	);
 	assert.equal(result.status, "completed", result.error);
 	assert.deepEqual(result.value, keys);
-	assert.equal(peak, 6);
+	assert.equal(peak, 12);
 	assert.equal(calls.length, keys.length);
 	assert.ok(
 		calls.every(
@@ -278,13 +278,23 @@ test("missing agent types and failed required children cannot report success", a
 	}
 });
 
-test("workflow launch count is bounded even when the script catches errors", async () => {
+test("workflows accept more than 64 calls", async () => {
 	const { result, calls } = await execute(
-		'for (let n = 0; n < 65; n++) { try { await agent(String(n), {agentType: "worker"}); } catch {} }',
+		'for (let n = 0; n < 65; n++) await agent(String(n), {agentType: "worker"}); return "done";',
+	);
+	assert.equal(result.status, "completed", result.error);
+	assert.equal(result.value, "done");
+	assert.equal(calls.length, 65);
+});
+
+test("native 1000-call cap remains even when the script catches errors", async () => {
+	assert.equal(WORKFLOW_AGENT_CAP, 1000);
+	const { result, calls } = await execute(
+		'return await parallel(Array.from({length: 1001}, (_, n) => async () => { try { return await agent(String(n), {agentType: "worker"}); } catch { return "hidden"; } }));',
 	);
 	assert.equal(result.status, "failed");
-	assert.equal(calls.length, 64);
-	assert.match(result.error, /launch limit/);
+	assert.equal(calls.length, 1000);
+	assert.match(result.error, /cap of 1000 agents/);
 });
 
 test("scriptPath and saved sources receive the same routing wrapper", async () => {

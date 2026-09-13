@@ -289,6 +289,7 @@ let
     # SendMessage tool for resuming subagents and messaging teammates.
     CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1";
     CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH = "1";
+    CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS = "12";
     # Disable first-party telemetry, analytics, and error reporting. The
     # umbrella flag covers most non-essential traffic; the individual flags
     # are set too so opt-out stays robust across versions.
