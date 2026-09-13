@@ -299,7 +299,7 @@ test("B1 allow-revise: a second breach to the same target allows the write and n
   assert.equal(second, undefined, "B1 strike 2 should allow-revise (undefined), not block");
   const notice = loaded.notifications.slice(before).find((n) => n.text.includes(B1_TARGET));
   assert.ok(notice, "B1 allow-revise should notify with the resolved revision notice");
-  assert.match(notice!.text, new RegExp(B1_TARGET.replace(/[.]/g, "\\$&")), "notice names the target file");
+  assert.ok(notice!.text.includes(B1_TARGET), "notice names the target file");
 
   // The raw core decision confirms the surface and verb the Pi return omits.
   const decision = coreDecision("tool_call", b1Payload());
