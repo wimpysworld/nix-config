@@ -54,11 +54,6 @@ let
   # replaces find/grep with its bundled FFF frecency search. Do not install
   # pi-fff alongside it: both would claim the same built-in tool names.
   piPrettyVersion = "0.6.27";
-  # pi-service-tier adds /fast and /service-tier for provider service tiers.
-  # It persists to its own ~/.pi/agent/service-tier.json and never touches
-  # settings.json. The local service-tier-status extension bridges its
-  # pi-fancy-footer widget events into the footer's fast-mode segment.
-  piServiceTierVersion = "0.3.0";
   rpivAskUserQuestionVersion = "2.9.0";
   rpivBtwVersion = "2.9.0";
   rpivTodoVersion = "2.9.0";
@@ -70,7 +65,6 @@ let
   piSubCoreSource = "npm:@marckrenn/pi-sub-core@${piSubCoreVersion}";
   piCcHeaderSource = "npm:pi-cc-header@${piCcHeaderVersion}";
   piPrettySource = "npm:@heyhuynhgiabuu/pi-pretty@${piPrettyVersion}";
-  piServiceTierSource = "npm:pi-service-tier@${piServiceTierVersion}";
   rpivAskUserQuestionSource = "npm:@juicesharp/rpiv-ask-user-question@${rpivAskUserQuestionVersion}";
   rpivBtwSource = "npm:@juicesharp/rpiv-btw@${rpivBtwVersion}";
   rpivTodoSource = "npm:@juicesharp/rpiv-todo@${rpivTodoVersion}";
@@ -409,7 +403,6 @@ let
       piSubCoreSource
       piCcHeaderSource
       piPrettySource
-      piServiceTierSource
       rpivAskUserQuestionSource
       rpivBtwSource
       rpivTodoSource

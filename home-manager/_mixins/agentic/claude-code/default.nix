@@ -1000,6 +1000,9 @@ in
         package = claudePackageWithMcp;
         settings = lib.mkMerge [
           {
+            fastMode = false;
+            fastModePerSessionOptIn = true;
+
             # MCP servers are selected by the shared MCP mixin. Project
             # MCP servers remain opt-in instead of being silently trusted.
             enableAllProjectMcpServers = false;

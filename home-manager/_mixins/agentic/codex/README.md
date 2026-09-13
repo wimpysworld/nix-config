@@ -48,6 +48,23 @@ Activation merges the generated baseline into existing runtime config:
 
 Both legacy `~/.codex` and XDG Codex homes are seeded because Codex, Home Manager, and older runtime state can disagree about which home exists first.
 
+## Service tier
+
+Fast is off at each `codex` and `codex-fenced` launch, including automatic resume and cold resume after a restart. The baseline sets `service_tier = "default"`. The launcher also passes `-c 'service_tier="default"'` before user arguments, so a saved Fast setting cannot silently enable the next launch.
+
+Use `/fast` to select Fast in the live session, or opt in at launch:
+
+```bash
+codex -c 'service_tier="fast"'
+codex resume --last -c 'service_tier="fast"'
+```
+
+The later CLI override wins. `/fast` still persists its setting in the mutable config file. The launcher overrides that setting at the next start, not the write itself.
+
+Native Codex 0.154.0 treats `default` as an explicit choice that bypasses the model catalogue default and omits the outbound service tier. Cold resume uses the current configuration, not the tier from session history.
+
+**Fast also applies to child agents.** Existing and future native children follow the root tier on each step, including compaction. Role overrides cannot provide per-child opt-in. Keep the root on the default tier when children must not use Fast.
+
 ## Agent Tripwire
 
 Codex receives the portable `communication-rules` skill from the assistants module. Root instructions and generated agents load it by name. Hook reminders, block messages, and correction prompts use the complete skill body without frontmatter.
@@ -207,9 +224,12 @@ Source for agents, commands, and skills lives under `assistants/`. The assistant
 After changing this module, run:
 
 ```bash
+python3 home-manager/_mixins/agentic/codex/service-tier.test.py
 nixfmt --check home-manager/_mixins/agentic/codex/default.nix
 just eval
 ```
+
+The offline service-tier tests run the launcher's shell body with a fake CLI and temporary home. They check argument order and preserve a saved Fast setting. They do not test upstream request handling or child inheritance.
 
 Useful runtime checks after activation and a fresh Codex restart:
 
