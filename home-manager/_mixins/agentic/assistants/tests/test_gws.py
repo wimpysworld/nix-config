@@ -1,11 +1,11 @@
 """Check the Workspace skill set without credentials or API calls."""
 
 import json
-from pathlib import Path
 import re
 import subprocess
 import tomllib
 import unittest
+from pathlib import Path
 
 import yaml
 
@@ -70,7 +70,7 @@ class GwsTests(unittest.TestCase):
             for dependency in re.findall(r"\.\./(gws-[a-z-]+)/SKILL\.md", body):
                 self.assertIn(dependency, NAMES)
 
-    def test_package_client_and_route_gates(self):
+    def test_package_client_gates_preserve_agent_routing(self):
         expression = f"""let
           flake = builtins.getFlake {json.dumps(str(REPO))};
           pkgs = import flake.inputs.nixpkgs {{ system = builtins.currentSystem; }};
@@ -113,7 +113,8 @@ class GwsTests(unittest.TestCase):
             packages = if gcloud.condition then gcloud.content.home.packages else [];
             environment = if gcloud.condition then gcloud.content.home.sessionVariables else {{}};
             names = builtins.attrNames composer.skillDirs;
-            routes = builtins.attrNames assistants.config.agentic.assistants.pi.invocationRoutes.skills;
+            agentModels = assistants.config.agentic.assistants.pi.providerRouterMap;
+            agentThinking = assistants.config.agentic.assistants.pi.providerRouterThinkingMap;
             clients = lib.genAttrs [ "claude" "codex" "opencode" "pi" ] (platform:
               lib.mapAttrs (_: skill: skill.content)
                 (lib.filterAttrs (name: _: lib.hasPrefix "gws-" name)
@@ -154,9 +155,10 @@ class GwsTests(unittest.TestCase):
                 else {},
             )
             self.assertEqual(set(case["names"]), baseline | expected)
-            self.assertEqual(
-                {n for n in case["routes"] if n.startswith("gws-")}, expected
-            )
+            self.assertEqual(case["agentModels"], cases[0]["agentModels"])
+            self.assertEqual(case["agentThinking"], cases[0]["agentThinking"])
+            self.assertTrue(NAMES.isdisjoint(case["agentModels"]))
+            self.assertTrue(NAMES.isdisjoint(case["agentThinking"]))
             for platform, skills in case["clients"].items():
                 self.assertEqual(set(skills), expected, platform)
                 for name, content in skills.items():

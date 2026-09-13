@@ -26,7 +26,9 @@ Adding these to a portable skill is harmless on Codex/OpenCode/Pi (ignored), but
 
 ## Repository routing limits
 
-The composer rejects `[routing.opencode]` and `[routing.codex]` on ordinary skills. These runtimes lack native per-skill model selection in this composition path. Use an agent-backed command for a workflow that needs model or effort pins.
+Ordinary skills remain model-neutral. The composer rejects non-empty skill routing for Claude Code, Codex, and Pi. OpenCode skill routing remains rejected. Native Claude Code model and effort fields above do not permit repository skill routes.
+
+Use an agent-backed command for a workflow that needs agent defaults. Put those defaults in the agent's header, not the command or skill. Explicit launch-time child overrides remain supported. Skill invocation and reads never change the orchestrator model.
 
 ## Codex companion
 

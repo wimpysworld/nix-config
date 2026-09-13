@@ -1,17 +1,15 @@
 # Provider Router
 
 Provider Router selects models for new Pi child launches without changing the inference
-provider or the root session settings. Home Manager generates its maps from unified `header.toml` metadata.
+provider or the root session settings. Home Manager generates its maps only from agent `header.toml` routing defaults.
 
 ## Precedence
 
 The first available selection wins for each new child:
 
 1. An explicit child `model`.
-2. An explicit child `command` route.
-3. An explicit child `directSkill` route.
-4. The named agent route.
-5. The native session fallback.
+2. The named agent route for the exact active provider.
+3. The native session fallback.
 
 Explicit child `thinking` (workflow `effort`) overrides route thinking and a model suffix.
 An explicit model without thinking leaves thinking to the native runtime.
@@ -21,8 +19,7 @@ Routes cannot select a different inference provider.
 ## Direct commands and skills
 
 Commands and skills do not change the root model or thinking level.
-The router acknowledges the existing `prompt-template-display` invocation event
-without staging a route. Native input, retries, and settlement leave settings unchanged.
+`routeInvocation` and `provider-router:invoke` remain no-ops for `prompt-template-display` compatibility. Native input, retries, and settlement leave settings unchanged.
 Pi and the display extension retain control of input delivery.
 
 Children do not inherit command or skill routes from root input or earlier children.
@@ -54,10 +51,8 @@ This aggregate rule is guidance, not a shared scheduler.
 Workflow children occupy neither direct pool. Foreground resumes can exceed their pool limit.
 A failed or skipped required child fails the workflow, even when a stage catches the error.
 
-A child can declare `command: "review-code"` or `directSkill: "research-task"`
-to request a route. The wrapper removes these routing fields before native child
-validation. These fields select routing metadata. They do not expand prompt
-content, so the caller must also supply the task instructions.
+The router no longer supports custom `command` or `directSkill` child fields.
+Supply the named agent and task instructions, with explicit launch-time model or thinking overrides when required.
 
 Use the routed tools for delegation. Nested `workflow()` calls are rejected because their source bypasses the tool hook.
 Launch saved workflows through `SubagentWorkflow` instead.
@@ -77,31 +72,8 @@ Home Manager deploys these files under
 |------|---------|
 | `agents.json` | Agent name, inference provider, model ID. |
 | `thinking.json` | Agent name, inference provider, thinking level. |
-| `routes.json` | Command and directly invoked skill routes. |
 
-`routes.json` has this structure:
-
-```json
-{
-  "commands": {
-    "review-code": {
-      "agent": "penry",
-      "providers": {
-        "openai-codex": { "model": "gpt-5.6-terra", "thinking": "high" }
-      }
-    }
-  },
-  "skills": {
-    "research-task": {
-      "providers": {
-        "openai-codex": { "thinking": "high" }
-      }
-    }
-  }
-}
-```
-
-Declare routes in the command, skill, or assistant's `header.toml`:
+Declare defaults only in the agent's `header.toml`:
 
 ```toml
 [routing.pi.openai-codex]
@@ -117,10 +89,9 @@ Use `off` only with native `Agent` until upstream workflow support changes.
 
 ## Errors and freshness
 
-Unknown explicit command or skill route names, unavailable models, unsupported
-thinking levels, and malformed map files produce errors. A command or skill with
-routes but no entry for the active provider also produces an error. An agent with
-no route for that provider keeps its existing behaviour.
+Unavailable models, unsupported thinking levels, and malformed map files produce errors.
+An agent with no route for the exact active provider uses native fallback.
+The router does not select a route from another provider.
 
 The router uses `modelRegistry.getAvailable()` to validate authenticated models.
 Tool errors return `{ block: true, reason }`, because Pi catches hook exceptions

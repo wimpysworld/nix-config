@@ -12,25 +12,27 @@ Codex receives accompanying arguments as user text. It does not substitute `$ARG
 
 ## Frontmatter matrix
 
-| Field                      | Claude Code (legacy + skill-as-command) | OpenCode                                               | Pi                          | Codex (legacy `/prompts:`) |
-| -------------------------- | --------------------------------------- | ------------------------------------------------------ | --------------------------- | -------------------------- |
-| `description`              | optional (fallback: first body line)    | optional but recommended                               | optional (fallback)         | required for popup label   |
-| `argument-hint`            | yes                                     | inferred from `$N`/`$ARGUMENTS` in body                | yes                         | yes                        |
-| `model`                    | yes (`sonnet`/`opus`/`haiku`/full id)   | yes; ignored on ≤0.6.4                                 | no                          | no                         |
-| `allowed-tools`            | yes, with `Bash(cmd:*)` filters         | no                                                     | no                          | no                         |
-| `agent` binding            | repo Task wrapper by default, explicit inline exception | yes                                                    | no                          | no                         |
-| `subtask` (fresh context)  | no native field, wrapper-dependent      | `subtask: true` forces; default depends on bound agent | no native field, wrapper-dependent | no                    |
-| `disable-model-invocation` | yes                                     | no                                                     | no                          | no                         |
+This matrix describes native capabilities, not repository routing policy. This repository rejects non-empty command routing for Claude Code, Codex, and Pi. Agent headers own their defaults. OpenCode command model metadata remains supported.
+
+| Field | Claude Code (legacy + skill-as-command) | OpenCode | Pi | Codex (legacy `/prompts:`) |
+| --- | --- | --- | --- | --- |
+| `description` | optional (fallback: first body line) | optional but recommended | optional (fallback) | required for popup label |
+| `argument-hint` | yes | inferred from `$N`/`$ARGUMENTS` in body | yes | yes |
+| `model` | yes (`sonnet`/`opus`/`haiku`/full id) | yes; ignored on ≤0.6.4 | no | no |
+| `allowed-tools` | yes, with `Bash(cmd:*)` filters | no | no | no |
+| `agent` binding | repo Task wrapper by default, explicit inline exception | yes | no | no |
+| `subtask` (fresh context) | no native field, wrapper-dependent | `subtask: true` forces; default depends on bound agent | no native field, wrapper-dependent | no |
+| `disable-model-invocation` | yes | no | no | no |
 
 ## File location and invocation
 
-| Platform    | Location                                                                  | Invocation                             |
-| ----------- | ------------------------------------------------------------------------- | -------------------------------------- |
-| Claude Code | `.claude/commands/<name>.md` (legacy) or `.claude/skills/<name>/SKILL.md` | `/<name>`                              |
-| OpenCode    | `.opencode/commands/<name>.md` or `~/.config/opencode/commands/<name>.md` | `/<name>`                              |
-| Pi          | `~/.pi/agent/prompts/<name>.md` or `.pi/prompts/<name>.md`                | `/<name>` (skills via `/skill:<name>`) |
-| Codex       | `<configured-skills-root>/<name>/SKILL.md` plus `agents/openai.yaml`    | `$name` (manual-only command)          |
-| Codex legacy | `~/.codex/prompts/<name>.md` (flat, no subdirs)                         | `/prompts:<name>` (removed in CLI 0.117.0) |
+| Platform | Location | Invocation |
+| --- | --- | --- |
+| Claude Code | `.claude/commands/<name>.md` (legacy) or `.claude/skills/<name>/SKILL.md` | `/<name>` |
+| OpenCode | `.opencode/commands/<name>.md` or `~/.config/opencode/commands/<name>.md` | `/<name>` |
+| Pi | `~/.pi/agent/prompts/<name>.md` or `.pi/prompts/<name>.md` | `/<name>` (skills via `/skill:<name>`) |
+| Codex | `<configured-skills-root>/<name>/SKILL.md` plus `agents/openai.yaml` | `$name` (manual-only command) |
+| Codex legacy | `~/.codex/prompts/<name>.md` (flat, no subdirs) | `/prompts:<name>` (removed in CLI 0.117.0) |
 
 ## Placeholder matrix
 

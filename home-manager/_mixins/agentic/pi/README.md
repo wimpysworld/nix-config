@@ -161,8 +161,12 @@ The footer reports **requested** speed and tier, not server usage or account ent
 Home Manager deploys local Pi extensions under `~/.pi/agent/extensions/`.
 
 `provider-router` lives at `~/.pi/agent/extensions/provider-router/`. It routes
-Pi `Agent` and `SubagentWorkflow` calls to provider-specific models declared in assistant
-`header.toml` files under `[routing.pi.<inference-provider>]`.
+new named children from Pi `Agent` and `SubagentWorkflow` calls through agent
+`header.toml` defaults under `[routing.pi.<inference-provider>]`.
+The provider must match the active provider exactly. Missing routes use native fallback.
+Explicit launch-time child model and thinking overrides remain supported.
+Commands and skills never change the root model or thinking.
+`routeInvocation` and `provider-router:invoke` remain no-ops for display compatibility.
 
 `quota-status` lives at `~/.pi/agent/extensions/quota-status/`. It listens to
 `sub-core` quota updates and publishes the compact quota segment consumed by
@@ -230,6 +234,7 @@ Managed files:
 - `~/.pi/agent/extensions/provider-router/index.ts`
 - `~/.pi/agent/extensions/provider-router/types.d.ts`
 - `~/.pi/agent/extensions/provider-router/agents.json`
+- `~/.pi/agent/extensions/provider-router/thinking.json`
 - `~/.pi/agent/extensions/provider-router/README.md`
 - `~/.pi/agent/extensions/provider-router/LICENSE`
 - `~/.pi/agent/extensions/hardware-cursor/index.ts`
@@ -356,7 +361,10 @@ Names derive from directories, and descriptions come from `[common] description`
 
 Native non-model fields, such as `tools`, `max_turns`, `persist_session`, and `run_in_background`, belong under `[pi]`.
 Omit `inherit_context` so the caller can select fresh or inherited context.
-Model and thinking overrides belong under `[routing.pi.<inference-provider>]`.
+Agent model and thinking defaults belong under `[routing.pi.<inference-provider>]`.
+Generated native agent headers leave model and thinking unset so routed launch arguments take effect.
+Separately installed native agent pins can take precedence over `Agent` launch arguments.
+Non-empty Pi command and skill routing fails evaluation. Custom child `command` and `directSkill` routing fields are no longer supported.
 Prompt templates receive `argument-hint` from `[common]` or `[pi]`. Missing tables mean no overrides, not disabled output.
 
 Pi subagent Markdown supports explicit `tools` allowlists through Pi-native

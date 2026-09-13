@@ -202,8 +202,10 @@ class SkillFileTests(unittest.TestCase):
                     if expected_body:
                         self.assertIn(expected_body, task)
 
-    def test_pi_routes_include_secret_skills_with_public_headers(self):
+    def test_pi_secret_skills_preserve_output_without_agent_routes(self):
         files = {
+            "styles/house-style/house-style.md": "Use plain language.\n",
+            "skills/communication-rules/SKILL.md": "Use plain language.\n",
             "skills/routed/SKILL.sops": "fixture-routed\n",
             "skills/routed/header.toml": """[common]
 name = "routed"
@@ -232,27 +234,45 @@ description = "A public fixture skill."
               assistants = import {directory}/default.nix {{
                 inherit pkgs;
                 inherit (pkgs) lib;
-                config = {{}};
-                noughtyLib = {{}};
+                config = {{
+                  home.homeDirectory = "/fixture";
+                  programs.claude-code.enable = false;
+                  programs.opencode.enable = false;
+                  sops.placeholder = {{
+                    fixture-routed = "PLACEHOLDER_ROUTED";
+                    fixture-headerless = "PLACEHOLDER_HEADERLESS";
+                  }};
+                }};
+                noughtyLib = {{ userHasTag = _: true; hostHasTag = _: false; }};
               }};
-            in assistants.config.agentic.assistants.pi.invocationRoutes.skills"""
+            in {{
+              models = assistants.config.agentic.assistants.pi.providerRouterMap;
+              thinking = assistants.config.agentic.assistants.pi.providerRouterThinkingMap;
+              templates = assistants.config.sops.templates;
+              public = assistants.config.agentic.assistants.pi.homeFiles.
+                ".pi/agent/skills/public".source;
+            }}"""
             result = subprocess.run(
                 ["nix", "eval", "--impure", "--json", "--expr", expression],
                 capture_output=True,
                 text=True,
             )
             self.assertEqual(result.returncode, 0, result.stderr)
+            generated = json.loads(result.stdout)
+            self.assertEqual(generated["models"], {})
+            self.assertEqual(generated["thinking"], {})
             self.assertEqual(
-                json.loads(result.stdout),
+                generated["templates"],
                 {
-                    "public": {"providers": {}},
-                    "routed": {
-                        "providers": {
-                            "openai": {"model": "fixture-model", "thinking": "high"},
-                        }
+                    "assistant-pi-skill-routed": {
+                        "content": "PLACEHOLDER_ROUTED",
+                    },
+                    "assistant-pi-skill-self-review": {
+                        "content": "PLACEHOLDER_HEADERLESS",
                     },
                 },
             )
+            self.assertTrue(generated["public"].endswith("-pi-skill-public"))
 
     def test_codex_discovers_regular_root_and_nested_skill_files(self):
         header = """[common]
