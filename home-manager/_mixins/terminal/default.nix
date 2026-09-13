@@ -14,6 +14,7 @@ let
     grep = "${pkgs.gnugrep}/bin/grep --color=auto";
     lsusb = "${pkgs.cyme}/bin/cyme --headings";
     micro = "fresh";
+    ml = lib.mkDefault (lib.getExe pkgs.markless);
     nano = "fresh";
     rsync-copy = "${pkgs.rsync}/bin/rsync --archive --block-size=131072 --human-readable --info=progress2 --inplace --no-compress --partial --stats";
     rsync-mirror = "${pkgs.rsync}/bin/rsync --archive --block-size=131072 --delete --human-readable --info=progress2 --no-compress --inplace --partial --stats";
