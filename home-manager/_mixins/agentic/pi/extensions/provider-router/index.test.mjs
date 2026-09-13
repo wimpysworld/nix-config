@@ -39,26 +39,7 @@ writeFileSync(
 		support: { "openai-codex": "low" },
 	}),
 );
-writeFileSync(
-	join(mapDir, "routes.json"),
-	JSON.stringify({
-		commands: {
-			review: {
-				agent: "worker",
-				providers: {
-					"openai-codex": { model: "command-model", thinking: "medium" },
-				},
-			},
-			missing: { providers: { "openai-codex": { model: "unavailable-model" } } },
-			foreign: { providers: { anthropic: { model: "claude-sonnet-5" } } },
-		},
-		skills: {
-			focused: {
-				providers: { "openai-codex": { model: "skill-model", thinking: "low" } },
-			},
-		},
-	}),
-);
+writeFileSync(join(mapDir, "routes.json"), "{malformed stale routes");
 const originalHome = process.env.HOME;
 let registerProviderRouter;
 try {
@@ -163,20 +144,27 @@ test("preserves explicit, foreground, and inherited-context requests", () => {
 	);
 });
 
-test("explicit child command and skill routes override agent routes", () => {
-	const result = route({ subagent_type: "worker", command: "review" });
-	assert.equal(result.model, "openai-codex/command-model");
-	assert.equal(result.thinking, "medium");
-	assert.ok(!("command" in result));
-	assert.equal(
-		route({ subagent_type: "worker", directSkill: "focused" }).model,
-		"openai-codex/skill-model",
-	);
-	assert.equal(
-		route({ subagent_type: "worker", command: "review", model: "explicit-model" })
-			.model,
-		"openai-codex/explicit-model",
-	);
+test("stale routes are ignored and obsolete native fields pass through unchanged", () => {
+	for (const obsolete of [{ command: "review" }, { directSkill: "focused" }]) {
+		assert.deepEqual(route({ subagent_type: "worker", ...obsolete }), {
+			subagent_type: "worker",
+			...obsolete,
+			model: "openai-codex/test-model",
+			thinking: "high",
+		});
+		assert.deepEqual(route({ subagent_type: "unmapped", ...obsolete }), {
+			subagent_type: "unmapped",
+			...obsolete,
+		});
+		assert.throws(() => route(obsolete), /explicit specialist/);
+	}
+});
+
+test("explicit model without thinking keeps native thinking fallback", () => {
+	assert.deepEqual(route({ subagent_type: "worker", model: "explicit-model" }), {
+		subagent_type: "worker",
+		model: "openai-codex/explicit-model",
+	});
 });
 
 test("native invocation config accepts routed and explicit child fields", () => {
@@ -204,7 +192,6 @@ test("explicit thinking replaces route thinking before capability validation", (
 		model: "test-model",
 		agents: { worker: { "openai-codex": "test-model" } },
 		thinking: { worker: { "openai-codex": "high" } },
-		routes: { commands: {}, skills: {} },
 		available: ["test-model"],
 		supportedThinking: { "test-model": ["off"] },
 	};
@@ -216,17 +203,6 @@ test("explicit thinking replaces route thinking before capability validation", (
 		() => resolveTaskRoute({ agent: "worker" }, state),
 		/does not support/,
 	);
-	for (const malformed of [[], null, true, { extra: "field" }]) {
-		state.routes.commands.invalid = { providers: { "openai-codex": malformed } };
-		assert.throws(
-			() =>
-				resolveTaskRoute(
-					{ agent: "worker", command: "invalid", thinking: "off" },
-					state,
-				),
-			/unsupported route fields/,
-		);
-	}
 	assert.equal(
 		route({
 			subagent_type: "worker",
@@ -247,6 +223,20 @@ test("unmapped agents keep native parent fallback", () => {
 	);
 });
 
+test("agents without an active provider route keep native fallback", async () => {
+	assert.deepEqual(route({ subagent_type: "worker" }, "anthropic"), {
+		subagent_type: "worker",
+	});
+	const { calls, result } = await execute(
+		'return await agent("fallback", {agentType: "worker"});',
+		{ provider: "anthropic" },
+	);
+	assert.equal(result.status, "completed", result.error);
+	assert.equal(calls.length, 1);
+	assert.equal(calls[0].model, undefined);
+	assert.equal(calls[0].effort, undefined);
+});
+
 test("supporting skill reads and result tools do not select models", () => {
 	const read = { path: "/skills/focused/SKILL.md" };
 	assert.deepEqual(route({ ...read }, undefined, "read"), read);
@@ -261,12 +251,12 @@ test("supporting skill reads and result tools do not select models", () => {
 	);
 });
 
-test("unknown routes, unavailable models, and unsupported thinking block launches", () => {
+test("unavailable models and unsupported thinking block launches", () => {
 	for (const input of [
-		{ command: "unknown" },
-		{ directSkill: "unknown" },
-		{ command: "missing" },
-		{ command: "foreign" },
+		{ model: "unavailable-model" },
+		{ model: "" },
+		{ model: null },
+		{ thinking: true },
 		{ model: "anthropic/claude-sonnet-5" },
 		{ thinking: "max" },
 	])
@@ -284,15 +274,26 @@ test("unsafe worktrees, isolated policy bypasses, and schedules are rejected", (
 		{ extensions: false },
 		{ schedule: "+5m" },
 	])
-		assert.throws(
-			() => route({ subagent_type: "worker", ...input }),
-			/provider-router:/,
-		);
+		for (const resume of [undefined, "child"])
+			assert.throws(
+				() => route({ subagent_type: "worker", resume, ...input }),
+				/provider-router:/,
+			);
 });
 
-test("resume retains the existing child contract", () => {
-	const input = { resume: "child", prompt: "Continue", run_in_background: true };
-	assert.deepEqual(route({ ...input }), input);
+test("resume retains the existing child contract without route validation", () => {
+	for (const overrides of [
+		{},
+		{ subagent_type: "worker", model: "unavailable-model", thinking: "invalid" },
+	]) {
+		const input = {
+			resume: "child",
+			prompt: "Continue",
+			run_in_background: true,
+			...overrides,
+		};
+		assert.deepEqual(route({ ...input }), input);
+	}
 });
 
 test("native parallel workflow queues above twelve and routes every child", async () => {
@@ -313,14 +314,14 @@ test("native parallel workflow queues above twelve and routes every child", asyn
 
 test("workflow specialists have independent routes and explicit effort wins", async () => {
 	const { calls, result } = await execute(`
-await agent("primary", {agentType: "worker", command: "review"});
+await agent("primary", {agentType: "worker"});
 await agent("support", {agentType: "support"});
 return await agent("override", {agentType: "worker", model: "explicit-model:high", effort: "low"});`);
 	assert.equal(result.status, "completed", result.error);
 	assert.deepEqual(
 		calls.map(({ model, effort }) => [model, effort]),
 		[
-			["openai-codex/command-model", "medium"],
+			["openai-codex/test-model", "high"],
 			["openai-codex/skill-model", "low"],
 			["openai-codex/explicit-model", "low"],
 		],
@@ -346,14 +347,18 @@ return await pipeline([first], value => agent(value + "-second", {agentType: "wo
 	assert.equal(calls[1].effort, "low");
 });
 
-test("workflow routes strip routing-only fields before the native API", async () => {
-	const { calls, result } = await execute(
-		`return await agent("review", {agentType: "worker", command: "review"});`,
-	);
-	assert.equal(result.status, "completed", result.error);
-	assert.equal(calls[0].model, "openai-codex/command-model");
-	assert.equal(calls[0].effort, "medium");
-	assert.ok(!("command" in calls[0]));
+test("native workflow validation rejects obsolete routing options", async () => {
+	for (const field of ["command", "directSkill"]) {
+		const { calls, result } = await execute(
+			`return await agent("review", {agentType: "worker", ${field}: "review"});`,
+		);
+		assert.equal(result.status, "failed");
+		assert.match(
+			result.error,
+			new RegExp(`opts\\.${field} is not a recognised option`),
+		);
+		assert.equal(calls.length, 0);
+	}
 });
 
 test("missing agent types and failed required children cannot report success", async () => {
@@ -361,7 +366,7 @@ test("missing agent types and failed required children cannot report success", a
 		['return await agent("missing type");', false],
 		['return await agent("failure", {agentType: "worker"});', true],
 		[
-			'try { await agent("invalid", {agentType: "worker", command: "missing"}); } catch {} return "hidden";',
+			'try { await agent("invalid", {agentType: "worker", model: "unavailable-model"}); } catch {} return "hidden";',
 			false,
 		],
 		['return await parallel([() => {throw new Error("stage");}]);', false],

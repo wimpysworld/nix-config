@@ -33,7 +33,7 @@ Rules:
 
 - `description` ≤60 chars where possible. Imperative or noun phrase. No trailing period. Trailing emoji is fine and conventional in this repo.
 - `argument-hint` ≤25 chars. `[arg]` for optional, `<arg>` for required. Anthropic's own examples use `[arg]` for both; if the body falls back to "ask if blank", the argument is optional and the hint must use `[…]`.
-- Vendor-specific fields (`allowed-tools`, `subtask`, and `disable-model-invocation`) belong in provider or routing tables in `header.toml`; see `references/portability.md`.
+- Vendor-specific fields (`allowed-tools`, `subtask`, and `disable-model-invocation`) belong in native provider tables in `header.toml`; see `references/portability.md`.
 
 ## Body
 
@@ -76,7 +76,7 @@ agent = "rosey"
 
 Use `[common]` for the description and a hint shared by Claude Code, OpenCode, and Pi. Preserve existing provider-specific omissions under `[claude]`, `[opencode]`, or `[pi]`.
 
-Keep native non-model fields in provider tables. Put model and effort overrides only under `[routing.<provider>]`. Pi agent routing uses `[routing.pi.<inference-provider>]`.
+Keep native non-model fields in provider tables. Claude Code, Codex, and Pi reject non-empty command routing. Put their routing defaults only in the owning agent's `header.toml`. OpenCode command model metadata remains supported under `[routing.opencode]`.
 
 Use `[compose] agent` for the repository agent binding. Shared `root = true` takes precedence over provider launch controls and keeps the caller's context and persona. It suppresses Claude agent/Task wrappers, OpenCode agent binding, Pi launches, and Codex persona/spawn wrappers. OpenCode also receives `subtask: false`.
 
@@ -114,7 +114,7 @@ When a command accepts arguments, put a shared `argument-hint` in `[common]`. Cl
 
 See `references/portability.md` for the full table. Headlines:
 
-- **Claude Code:** `description`, `argument-hint`, `model`, `allowed-tools`, `disable-model-invocation`. Legacy `.claude/commands/<name>.md` and the new skill-as-command format both yield `/<name>`.
+- **Claude Code:** `description`, `argument-hint`, `allowed-tools`, `disable-model-invocation`. Native command `model` exists, but this repository rejects command routing. Legacy `.claude/commands/<name>.md` and the new skill-as-command format both yield `/<name>`.
 - **OpenCode:** `description`, `agent`, `model`, `subtask`. Per-command `model` was ignored on 0.6.4 and below; treat it as a hint, not a guarantee. `subtask` controls fresh-context execution - see below.
 - **Pi:** `description`, `argument-hint`. Model and routing live in the agent layer, not the prompt template.
 - **Codex:** generated `SKILL.md` plus `agents/openai.yaml` with `policy.allow_implicit_invocation: false`. Users invoke `$name`. CLI 0.117.0 removed legacy custom prompts and their placeholder substitution.
@@ -129,10 +129,11 @@ For leaf specialist shims, omit `subtask`. The agent binding already selects a f
 
 In this repo:
 
-- Command-level pins are rare. Only `draft-commit-message` and `draft-pr-message` set `model: sonnet` in Claude Code. Every standalone command, including `make-pr`, omits `model` and inherits the root session model.
-- Pin a model on a new command only when both hold: the work needs a specific tier regardless of the caller's session, and the command can run detached from its agent. Otherwise leave it out.
-- OpenCode routing tables omit `model` so the user's session model wins. Per-command `model` was ignored on OpenCode 0.6.4 and below; treat it as a hint, not a guarantee.
-- Pi has no model field at the prompt-template layer; model and routing live on the agent.
+- Agent headers are the sole routing default source for Claude Code, Codex, and Pi. Commands and ordinary skills stay model-neutral.
+- General and agent-owned root execution never changes the orchestrator model. Preserve `compose.root` and provider launch controls.
+- Child launches use the owning agent's defaults. Explicit launch-time child model, thinking, or effort overrides remain supported.
+- OpenCode agent and command model metadata support is unchanged. Current OpenCode agents and commands omit model pins.
+- Pi uses the exact active provider's agent route, or native fallback when that route is absent.
 
 ## Side-effect declaration
 
@@ -145,7 +146,7 @@ If the body writes files, runs Bash, or hits the network, say so and list paths 
 - Bare `$1` in shims targeting Claude Code (use `$ARGUMENTS`).
 - `allowed-tools` left as `"*"` or bare `Bash`.
 - Long bodies that re-derive routing or response contract owned by `delegate-task`.
-- Time-sensitive text (dates, model IDs) in the body. Pin via `[routing.<provider>] model` instead.
+- Time-sensitive text (dates, model IDs) in the body. Put routing defaults in the owning agent's header instead.
 - Embedding generated content (e.g. agent registry snippets) into a command prefix - the volatile data breaks the prompt cache. Put it in a skill that loads on demand.
 - Targeting Codex via legacy `/prompts:` for new work. Use the command composer for commands and `write-skill` for reusable skills.
 

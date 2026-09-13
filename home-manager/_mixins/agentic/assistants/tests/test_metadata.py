@@ -110,12 +110,6 @@ subtask = false
 extension = "pi-only"
 [compose.claude]
 use-task = true
-[routing.claude]
-model = "sonnet"
-effort = "high"
-[routing.pi.openai-codex]
-model = "gpt-5.6-terra"
-thinking = "medium"
 """
         result = self.evaluate(
             '{ claude = m.project "command" "claude" "task" h; '
@@ -129,8 +123,6 @@ thinking = "medium"
                 "description": "Task description",
                 "argument-hint": "<path>",
                 "context": "fork",
-                "model": "sonnet",
-                "effort": "high",
             },
         )
         self.assertEqual(
@@ -329,9 +321,10 @@ skills = false
                 self.assertIs(
                     command["policy"]["policy"]["allow_implicit_invocation"], False
                 )
+                self.assertNotIn("route", command["dispatch"])
                 if command["root"]:
                     self.assertFalse(command["dispatch"]["spawn"])
-                    self.assertEqual(command["dispatch"]["route"], {})
+                    self.assertIsNone(command["dispatch"]["role"])
                     for platform, rendered in command["rendered"].items():
                         with self.subTest(platform=platform):
                             header, task = rendered.split("---", 2)[1:]
@@ -694,31 +687,54 @@ reasoningEffort = "high"
                 else:
                     self.assertEqual(response, {})
 
-    def test_pi_skill_routing_is_absent_from_native_frontmatter(self):
-        result = self.evaluate(
-            'm.project "skill" "pi" "fixture" h',
-            """
-[common]
-name = "fixture"
-description = "A directly invoked skill."
-[routing.pi.openai-codex]
-model = "test-model"
-thinking = "high"
-""",
-        )
-        self.assertEqual(
-            result, {"name": "fixture", "description": "A directly invoked skill."}
-        )
+    def test_commands_and_skills_reject_non_agent_routing(self):
+        routes = {
+            "claude": '[routing.claude]\nmodel = "sonnet"\n',
+            "codex": '[routing.codex]\nmodel = "test-model"\n',
+            "pi": '[routing.pi.openai-codex]\nmodel = "test-model"\n',
+        }
+        for kind in ("command", "skill"):
+            for provider, route in routes.items():
+                with self.subTest(kind=kind, provider=provider):
+                    error = self.evaluate(
+                        f'm.project "{kind}" "{provider}" "fixture" h',
+                        '[common]\nname = "fixture"\ndescription = "Fixture."\n'
+                        + route,
+                        success=False,
+                    )
+                    self.assertIn(
+                        f"Unsupported {provider} routing for {kind} fixture.", error
+                    )
 
-    def test_unsupported_skill_routing_fails_instead_of_disappearing(self):
-        for provider in ("codex", "opencode"):
-            with self.subTest(provider=provider):
-                self.evaluate(
-                    f'm.project "skill" "{provider}" "fixture" h',
-                    '[common]\nname = "fixture"\ndescription = "Fixture."\n'
-                    f'[routing.{provider}]\nmodel = "test-model"\n',
+    def test_empty_command_and_skill_routes_remain_valid(self):
+        for kind in ("command", "skill"):
+            for provider in ("claude", "codex", "pi", "opencode"):
+                with self.subTest(kind=kind, provider=provider):
+                    result = self.evaluate(
+                        f'm.project "{kind}" "{provider}" "fixture" h',
+                        '[common]\nname = "fixture"\ndescription = "Fixture."\n'
+                        f"[routing.{provider}]\n",
+                    )
+                    self.assertEqual(result["description"], "Fixture.")
+                    self.assertNotIn("model", result)
+
+    def test_opencode_command_routing_rules_remain_unchanged(self):
+        result = self.evaluate(
+            'm.project "command" "opencode" "fixture" h',
+            '[routing.opencode]\nmodel = "test-model"\n',
+        )
+        self.assertEqual(result, {"model": "test-model"})
+        for kind, route in (
+            ("command", '[routing.opencode]\nreasoningEffort = "high"\n'),
+            ("skill", '[routing.opencode]\nmodel = "test-model"\n'),
+        ):
+            with self.subTest(kind=kind):
+                error = self.evaluate(
+                    f'm.project "{kind}" "opencode" "fixture" h',
+                    '[common]\nname = "fixture"\ndescription = "Fixture."\n' + route,
                     success=False,
                 )
+                self.assertIn(f"Unsupported opencode routing for {kind}", error)
 
     def test_migrated_garfield_routes_preserve_model_pins(self):
         result = self.evaluate(
@@ -737,29 +753,23 @@ thinking = "high"
             },
         )
 
-    def test_codex_command_pin_uses_a_separate_role(self):
+    def test_codex_dispatch_rejects_routing_without_projection(self):
+        for route in (
+            '{ model = "command-model"; }',
+            '{ model_reasoning_effort = "high"; }',
+        ):
+            with self.subTest(route=route):
+                error = self.evaluate(
+                    'm.commandDispatch { worker = true; } "review" "worker" '
+                    f"{{ routing.codex = {route}; }}",
+                    success=False,
+                )
+                self.assertIn("Unsupported codex routing for command review.", error)
         result = self.evaluate(
-            """{
-          pinned = m.commandDispatch { worker = true; } "review" "worker" h;
-          ordinary = m.commandDispatch { worker = true; } "inspect" "worker" {};
-        }""",
-            """
-[routing.codex]
-model = "command-model"
-model_reasoning_effort = "high"
-""",
+            'm.commandDispatch { worker = true; } "inspect" "worker" {}'
         )
-        self.assertEqual(result["pinned"]["role"], "command-review")
-        self.assertEqual(result["pinned"]["selectedAgent"], "worker")
-        self.assertEqual(
-            result["pinned"]["route"],
-            {
-                "model": "command-model",
-                "model_reasoning_effort": "high",
-            },
-        )
-        self.assertEqual(result["ordinary"]["role"], "worker")
-        self.assertEqual(result["ordinary"]["route"], {})
+        self.assertEqual(result["role"], "worker")
+        self.assertNotIn("route", result)
 
     def test_standalone_codex_commands_remain_inline_unless_an_agent_is_selected(self):
         result = self.evaluate(
@@ -770,14 +780,12 @@ model_reasoning_effort = "high"
             """
 [compose]
 agent = "worker"
-[routing.codex]
-model = "command-model"
 """,
         )
         self.assertIsNone(result["inline"]["selectedAgent"])
         self.assertIsNone(result["inline"]["role"])
         self.assertEqual(result["delegated"]["selectedAgent"], "worker")
-        self.assertEqual(result["delegated"]["role"], "command-review")
+        self.assertEqual(result["delegated"]["role"], "worker")
         self.assertTrue(result["delegated"]["spawn"])
 
     def test_codex_inline_routes_and_unknown_agents_fail(self):

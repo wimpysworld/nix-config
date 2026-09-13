@@ -66,12 +66,12 @@ Instructions stack in four layers. Each layer narrows scope and increases specif
 instructions/global.md          ← environment constraints, tool preferences, skill references
     └── AGENTS.md / CLAUDE.md   ← project-specific context, conventions, commands
             └── agent prompt    ← specialist persona, expertise, tools, constraints
-                    └── command prompt  ← single task, may repeat the agent's model pin
+                    └── command prompt  ← single task, model-neutral on Claude Code, Codex, and Pi
 ```
 
 **`instructions/global.md`** is the role-neutral foundation for every platform. It sets delegation triggers, fresh-context defaults, trust boundaries, reference-tool preferences, GitHub safety, LSP guidance, file rules, skill references, and the relay rules for artefacts and reports. Full specialist routing and output contracts live in the generated `delegate-task` skill. See [`instructions/README.md`](instructions/README.md) for the research that informs the global rules and the generated skill.
 
-Agent prompts inherit the global constraints and add specialisation. Agent-scoped commands use the agent context unless `[compose] root = true` keeps the caller's context. Unbound standalone commands run in the caller's context. A command can set its own model header. Only `draft-commit-message` and `draft-pr-message` do.
+Agent prompts inherit the global constraints and add specialisation. Agent-scoped commands use the agent context unless `[compose] root = true` keeps the caller's context. Unbound standalone commands run in the caller's context. Claude Code, Codex, and Pi commands use only the owning agent's routing defaults for child launches. Root execution never changes the orchestrator model.
 
 ---
 
@@ -299,7 +299,7 @@ Precise implementation engineer executing code changes from specifications. Read
 
 Git workflow specialist enforcing Conventional Commits 1.0.0. Analyses existing commit history for project-specific scope patterns before writing messages. Handles type classification, scope determination, and breaking change footers.
 
-**Model:** the only pinned agent in the tree. Claude Code takes `model: sonnet` on the agent and his two message-drafting commands. Pi takes `claude-sonnet-5` on the Anthropic route, `gpt-5.6-terra` at thinking `medium` on the OpenAI route, and `gemini-3-flash` on Google. Codex takes `gpt-5.6-terra` at reasoning `medium`. Git message generation is a structured task with clear rules, so it does not need the session's reasoning budget.
+**Model:** the only pinned agent in the tree. Claude Code takes `model: sonnet` on the agent only. Pi takes `claude-sonnet-5` on Anthropic, `gpt-5.6-terra` at thinking `medium` on `openai-codex`, and `gemini-3-flash` on Google. Codex takes `gpt-5.6-terra` at reasoning `medium`. Git message generation is a structured task with clear rules, so it does not need the session's reasoning budget.
 
 | Command                | Purpose                                                                                                                                  |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
@@ -378,13 +378,13 @@ Documentation architect creating technically precise guides through progressive 
 
 ## Model Selection
 
-Agents follow the model selected in the coding tool. Martin picks a model once per session and every specialist he delegates to runs on it, so there is one decision to make and no per-agent tier to remember. Claude Code, OpenCode, Codex, and Pi all behave the same way: with no `model` in the header, the agent inherits the session model.
+Agents without routing defaults inherit the model selected in the coding tool. Garfield is the exception on Claude Code, Codex, and supported Pi providers. OpenCode agents currently inherit the session model.
 
-Garfield is the sole pinned agent. His two message-drafting commands also set a Claude Code model. Commit and PR message work is structured and deterministic, so it does not need the session's reasoning budget:
+Garfield is the sole pinned agent. His message-drafting commands carry no model routes. Commit and PR message work is structured and deterministic, so it does not need the session's reasoning budget:
 
 | Platform            | Pin                                                         |
 | ------------------- | ----------------------------------------------------------- |
-| Claude Code         | `model: sonnet` on the agent and two Git message commands   |
+| Claude Code         | `model: sonnet` on the agent only   |
 | Pi (Anthropic)      | `claude-sonnet-5`                                           |
 | Pi (`openai-codex`) | `gpt-5.6-terra`, thinking `medium`                          |
 | Pi (Google)         | `gemini-3-flash`                                            |
@@ -392,7 +392,9 @@ Garfield is the sole pinned agent. His two message-drafting commands also set a 
 
 No other agent or command sets a model on any platform. The ten remaining agents omit model and effort overrides from `header.toml`.
 
-**Command-level model pins:** `draft-commit-message` and `draft-pr-message` set `model: sonnet` in Claude Code. No other command sets a model. The standalone `make-commit` and `make-pr` commands run in the caller's context and inherit the root session model.
+Agent `header.toml` files are the sole routing default source for Claude Code, Codex, and Pi. Commands and ordinary skills remain model-neutral. Explicit launch-time child model, thinking, or effort overrides remain supported. General and agent-owned root commands never change the orchestrator model. The standalone `make-commit` and `make-pr` commands retain the caller's model.
+
+OpenCode is unchanged: agent and command model metadata remain supported, and current agents inherit the session model.
 
 ---
 
@@ -406,12 +408,13 @@ No other agent or command sets a model on any platform. The ten remaining agents
 | `[claude]`, `[opencode]`, `[codex]`, `[pi]` | Native non-model fields, such as permissions, tools, and context settings. |
 | `[compose]` | Repository agent binding through `agent`, or caller-context execution through `root = true`. |
 | `[compose.claude]`, `[compose.codex]`, `[compose.pi]` | Repository controls `use-task` and `spawn-agent`. |
-| `[routing.claude]`, `[routing.opencode]`, `[routing.codex]` | Native model and effort overrides. |
-| `[routing.pi.<inference-provider>]` | Pi model and thinking overrides for the named inference provider. |
+| `[routing.claude]`, `[routing.codex]` | Agent model and effort defaults. |
+| `[routing.opencode]` | Existing agent and command model metadata. |
+| `[routing.pi.<inference-provider>]` | Agent model and thinking defaults for the exact inference provider. |
 
 Common hints apply to Claude Code, OpenCode, and Pi. Provider-specific hints preserve differences in presence or value. Missing tables mean no overrides, not disabled output. Omit unset values because TOML has no null.
 
-Ordinary OpenCode and Codex skills do not support model or effort routes in this composer. Such routes fail evaluation. Use an agent-backed command when the workflow needs a model pin.
+Non-empty command or skill routing for Claude Code, Codex, or Pi fails evaluation. Ordinary OpenCode skill routing remains rejected. OpenCode command model metadata remains supported. Put shared workflow defaults in the owning agent's header.
 
 Keep agent and command bodies in `prompt.md`. Keep skill bodies in frontmatter-free `SKILL.md`, including nested API skills. The composer rebuilds native frontmatter for each client. Encrypted `SKILL.sops` files remain complete native skills.
 
@@ -434,7 +437,7 @@ Set `[compose] root = true` when the command owns orchestration or needs the cal
 | Pi | Command body without a subagent launch wrapper. |
 | Codex | Command body without `spawn_agent` or an inline specialist persona. The manual-only companion policy remains. |
 
-Root commands cannot set `[routing.codex]` because that route requires a spawned role. Evaluation rejects the combination. Other supported routing fields retain their existing behaviour.
+Root commands retain the orchestrator model. Claude Code, Codex, and Pi reject non-empty command routing for both root and leaf commands. Codex launches the owning agent role without a command-specific role. OpenCode routing support is unchanged.
 
 Per-client controls remain available when `root` is false. In Codex, `[compose.codex] spawn-agent = false` embeds the specialist persona in the caller's context. Use `root = true` to preserve the caller's role instead.
 
@@ -487,11 +490,11 @@ set the session default for the unnamed global prompt. Agents that omit a
 header do not fall back to them per-agent; they inherit whatever model the
 session is running.
 
-Pi validates and stages routes for direct `/command` and `/skill:name` invocations before prompt expansion. The display extension uses the same dispatcher before it consumes TUI input. The router applies the route at `before_agent_start`, after prompt preflight. At `agent_settled`, after retries and recovery, Pi restores the previous session model and thinking level.
+Pi routes only new named children through `agents.json` and `thinking.json`, using the exact active provider. Without an agent route for that provider, native fallback applies. Explicit launch-time child overrides take precedence over generated defaults. Root `--model` and user model selections do not suppress named agent routes.
 
-An explicit `--model` or a user model selection takes precedence for the rest of the session. A routed invocation during streaming fails with an error. Supporting skill reads do not change the model.
+Commands, direct skill invocations, and supporting skill reads never change root model or thinking. `routeInvocation` and `provider-router:invoke` remain no-ops for display compatibility. The router no longer supports custom `command` or `directSkill` child fields.
 
-Subagent workflows route explicit command or direct-skill targets before agent routes. Children inherit the active direct invocation route when no more specific route applies. The router removes routing fields before child launch.
+Generated Pi agent headers leave native model and thinking pins unset. Separately installed native agent pins can take precedence over routed `Agent` arguments. See the runtime reference for native priority rules.
 
 Runtime behaviour lives in
 [`../pi/extensions/provider-router/README.md`](../pi/extensions/provider-router/README.md).

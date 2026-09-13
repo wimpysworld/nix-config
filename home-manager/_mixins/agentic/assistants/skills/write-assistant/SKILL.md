@@ -54,7 +54,13 @@ In this repository, author metadata in `header.toml`, not in the Markdown body. 
 
 Use `[common] description` for the shared description. Agent names derive from directory names. Keep the agent body in `prompt.md` without frontmatter.
 
-Use `[claude]`, `[opencode]`, `[codex]`, and `[pi]` for native non-model fields. Model and effort overrides belong only under `[routing.<provider>]`. Pi pins use `[routing.pi.<inference-provider>] model` and `thinking`.
+Use `[claude]`, `[opencode]`, `[codex]`, and `[pi]` for native non-model fields. Put agent model and effort defaults under `[routing.<provider>]`. Pi defaults use `[routing.pi.<inference-provider>] model` and `thinking`.
+
+Agent headers are the sole routing default source for Claude Code, Codex, and Pi. Their commands and ordinary skills remain model-neutral. Explicit launch-time child model, thinking, or effort overrides remain supported. Root execution never changes the orchestrator model.
+
+Pi uses only the exact active provider's agent route. Missing routes use native fallback. Generated Pi headers leave native model and thinking pins unset so launch arguments take effect. Separately installed native agent pins can take precedence over `Agent` arguments.
+
+OpenCode agent and command model metadata support remains unchanged. Current OpenCode agents inherit the session model. Ordinary OpenCode skill routing remains rejected.
 
 Missing provider tables mean no overrides, not disabled output. Omit fields to inherit defaults. TOML has no null.
 

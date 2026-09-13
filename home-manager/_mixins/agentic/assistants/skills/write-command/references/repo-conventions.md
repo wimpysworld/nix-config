@@ -33,7 +33,7 @@ The parent supplies a bounded packet with scope, exact arguments, existing autho
 
 Use `[common] argument-hint` when Claude Code, OpenCode, and Pi share its presence and value. Preserve differing hints in native provider tables.
 
-Missing provider tables mean no overrides, not disabled output. Use `[routing.<provider>]` for model and effort fields. Pi agent pins belong under `[routing.pi.<inference-provider>]`.
+Missing provider tables mean no overrides, not disabled output. Claude Code, Codex, and Pi reject non-empty command routing. Their defaults belong only in agent headers. OpenCode command model metadata remains supported under `[routing.opencode]`. Root execution never changes the orchestrator model.
 
 Retired provider headers are removed. Retired `description.txt` files remain unconsumed until the user authorises removal.
 
@@ -41,6 +41,6 @@ Retired provider headers are removed. Retired `description.txt` files remain unc
 
 Codex receives every command as a manual-only command-derived skill. Users invoke `$name`. The composer emits `agents/openai.yaml` with `policy.allow_implicit_invocation: false` for every command, including secret bodies. The command policy is mandatory and does not change ordinary skill policies.
 
-Agent-scoped leaf commands use `spawn_agent` by default. Set `[compose.codex] spawn-agent = false` to embed the owning agent prompt in the caller's context. Shared `root = true` takes precedence and emits neither the agent persona nor the spawn wrapper. For nested workflows, follow the source body directly or dispatch it from the top-level orchestrator. Do not execute a generated launch wrapper inside a worker. Resolve installed instructions through the available catalogue or configured skill roots, not a fixed home path.
+Agent-scoped leaf commands use `spawn_agent` with the owning agent role by default, without a command-specific role. Set `[compose.codex] spawn-agent = false` to embed the owning agent prompt in the caller's context. Shared `root = true` takes precedence and emits neither the agent persona nor the spawn wrapper. For nested workflows, follow the source body directly or dispatch it from the top-level orchestrator. Do not execute a generated launch wrapper inside a worker. Resolve installed instructions through the available catalogue or configured skill roots, not a fixed home path.
 
 Codex does not substitute `$ARGUMENTS` or positional placeholders in these skills. Map the user's accompanying text to the body's declared arguments. New Codex-only reference guidance belongs in a native skill.

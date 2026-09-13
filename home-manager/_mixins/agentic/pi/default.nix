@@ -795,8 +795,6 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
         builtins.toJSON piAssistant.providerRouterMap;
       ".pi/agent/extensions/provider-router/thinking.json".text =
         builtins.toJSON piAssistant.providerRouterThinkingMap;
-      ".pi/agent/extensions/provider-router/routes.json".text =
-        builtins.toJSON piAssistant.invocationRoutes;
       ".pi/agent/extensions/provider-router/index.ts".source = ./extensions/provider-router/index.ts;
       ".pi/agent/extensions/provider-router/types.d.ts".source = ./extensions/provider-router/types.d.ts;
       ".pi/agent/extensions/provider-router/LICENSE".source = ./extensions/provider-router/LICENSE;

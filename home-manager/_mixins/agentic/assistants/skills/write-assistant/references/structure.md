@@ -2,6 +2,8 @@
 
 The seven-element template applies everywhere. The frontmatter varies. Pick the smallest frontmatter set the target needs.
 
+These examples show native formats. In this repository, put agent routing defaults in `header.toml`, not `prompt.md`. Generated Pi agent frontmatter leaves model and thinking unset. The router supplies child launch arguments from the exact active provider's agent defaults.
+
 ## Claude Code sub-agent
 
 ```markdown

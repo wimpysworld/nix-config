@@ -116,4 +116,4 @@ agent = "rosey"
 root = true
 ```
 
-Omit `argument-hint` when the command takes no argument. Add model pins only under `[routing.<provider>]` when the command needs one.
+Omit `argument-hint` when the command takes no argument. Keep Claude Code, Codex, and Pi commands model-neutral. Put their routing defaults in the owning agent's header. OpenCode command model metadata support remains unchanged.

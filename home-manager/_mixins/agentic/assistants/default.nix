@@ -357,44 +357,6 @@ let
     lib.mapAttrs (name: _: compose.extractAgentProviderThinking name) codingAgentDirs
   );
 
-  piInvocationRoutes = {
-    commands = lib.listToAttrs (
-      map (
-        entry:
-        let
-          metadata = compose.commandMetadata entry.agentName entry.name;
-        in
-        {
-          inherit (entry) name;
-          value =
-            lib.optionalAttrs ((metadata.compose or { }) ? agent) { inherit (metadata.compose) agent; }
-            // {
-              providers = metadata.routing.pi or { };
-            };
-        }
-      ) compose.commandSources
-    );
-    skills =
-      lib.mapAttrs
-        (
-          name: _:
-          let
-            metadata = compose.readHeader (./skills + "/${name}");
-          in
-          {
-            providers = metadata.routing.pi or { };
-          }
-        )
-        (
-          lib.removeAttrs (
-            compose.skillDirs
-            // lib.filterAttrs (
-              name: _: builtins.pathExists (./skills + "/${name}/header.toml")
-            ) compose.secretSkillDirs
-          ) [ "delegate-task" ]
-        );
-  };
-
   # ============ SKILLS ============
 
   # composeSkills returns { name = { content; path; extras; }; ... }
@@ -433,13 +395,13 @@ let
   # home.file creates symlinks, so agents written via home.file are invisible.
   # Content is written as real files via the activation script below.
   codexRole =
-    name: agentName: route:
+    name:
     let
-      agentPath = ./agents + "/${agentName}";
-      metadata = compose.headerFor "agent" "codex" agentName agentPath;
+      agentPath = ./agents + "/${name}";
+      metadata = compose.headerFor "agent" "codex" name agentPath;
     in
     compose.renderToml (
-      lib.recursiveUpdate metadata route
+      metadata
       // {
         inherit name;
         developer_instructions = codexAgentPrompt (readFileTrim (agentPath + "/prompt.md"));
@@ -451,27 +413,7 @@ let
     cmdName: agentName: cmdPath:
     metadataHelpers.commandDispatch codingAgentDirs cmdName agentName (compose.readHeader cmdPath);
 
-  codexCommandRoles = lib.listToAttrs (
-    lib.concatMap (
-      entry:
-      let
-        path = /. + entry.source;
-        dispatch = codexCommandDispatch entry.name entry.agentName path;
-      in
-      lib.optional (dispatch.route != { }) {
-        name = dispatch.role;
-        value = codexRole dispatch.role dispatch.selectedAgent dispatch.route;
-      }
-    ) compose.commandSources
-  );
-  codexAgents =
-    if
-      lib.intersectLists (builtins.attrNames codingAgentDirs) (builtins.attrNames codexCommandRoles)
-      != [ ]
-    then
-      throw "A generated Codex command role conflicts with an existing agent."
-    else
-      lib.mapAttrs (name: _: codexRole name name { }) codingAgentDirs // codexCommandRoles;
+  codexAgents = lib.mapAttrs (name: _: codexRole name) codingAgentDirs;
 
   # Build a Codex skill file (SKILL.md) for a command.
   # Custom prompt support was removed from codex-rs in March 2026. Commands
@@ -741,12 +683,6 @@ in
       internal = true;
       description = "Home Manager file entries for Pi Agent assistant resources.";
     };
-    invocationRoutes = lib.mkOption {
-      type = lib.types.attrs;
-      default = { };
-      internal = true;
-      description = "Routes applied only at explicit command and skill invocation boundaries.";
-    };
     providerRouterMap = lib.mkOption {
       type = lib.types.attrsOf (lib.types.attrsOf lib.types.str);
       default = { };
@@ -776,7 +712,6 @@ in
 
     agentic.assistants.pi = {
       homeFiles = piHomeFiles;
-      invocationRoutes = piInvocationRoutes;
       providerRouterMap = piProviderRouterMap;
       providerRouterThinkingMap = piProviderRouterThinkingMap;
     };

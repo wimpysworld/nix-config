@@ -190,13 +190,18 @@ let
       route = (header.routing or { }).${platform} or { };
       unsupported =
         (
-          kind == "skill"
+          lib.elem kind [
+            "command"
+            "skill"
+          ]
           && lib.elem platform [
+            "claude"
             "codex"
-            "opencode"
+            "pi"
           ]
           && route != { }
         )
+        || (kind == "skill" && platform == "opencode" && route != { })
         || (kind == "instructions" && route != { })
         || (platform == "opencode" && kind == "command" && route ? reasoningEffort);
       projectedRoute = if platform == "pi" then { } else route;
@@ -271,23 +276,16 @@ let
     in
     if selectedAgent != null && !(knownAgents ? ${selectedAgent}) then
       throw "Unknown Codex agent ${selectedAgent} for ${cmdName}."
-    else if route != { } && (selectedAgent == null || !spawn) then
-      throw "Codex command ${cmdName} routes inline work. Select an agent with spawn-agent = true, or remove routing.codex."
+    else if route != { } then
+      throw "Unsupported codex routing for command ${cmdName}."
     else
       {
         inherit
           selectedAgent
           root
           spawn
-          route
           ;
-        role =
-          if root then
-            null
-          else if route == { } then
-            selectedAgent
-          else
-            "command-${cmdName}";
+        role = if root then null else selectedAgent;
       };
 
   commandPolicy =

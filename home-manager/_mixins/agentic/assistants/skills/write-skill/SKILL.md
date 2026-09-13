@@ -32,9 +32,9 @@ In this repository, author metadata in `header.toml`, not in the Markdown body. 
 
 Use `[common] description` for the shared description. Skills require an explicit `[common] name` that matches the directory. Portable `license`, `compatibility`, and `metadata` also belong in `[common]`. Keep `SKILL.md` body-only, including nested API skills.
 
-Use `[claude]`, `[opencode]`, `[codex]`, and `[pi]` for native non-model fields. Model and effort overrides belong only under `[routing.<provider>]`. Pi pins use `[routing.pi.<inference-provider>] model` and `thinking`.
+Use `[claude]`, `[opencode]`, `[codex]`, and `[pi]` for native non-model fields. Ordinary skills remain model-neutral. The composer rejects non-empty skill routing for Claude Code, Codex, and Pi. OpenCode skill routing remains rejected.
 
-The composer rejects model and effort routes for ordinary OpenCode and Codex skills. Use an agent-backed command when a workflow needs those pins.
+Agent headers are the sole routing default source for Claude Code, Codex, and Pi. Use an agent-backed command when a workflow needs an agent's defaults. Skill invocation and supporting reads never change the orchestrator model. Explicit launch-time child model, thinking, or effort overrides remain supported.
 
 Missing provider tables mean no overrides, not disabled output. Omit fields to inherit defaults. TOML has no null.
 
@@ -54,7 +54,7 @@ Structure:
 
 ## Layout
 
-```
+```text
 <skill-name>/
 ├── header.toml       metadata in this repository
 ├── SKILL.md          body in this repository, complete skill elsewhere

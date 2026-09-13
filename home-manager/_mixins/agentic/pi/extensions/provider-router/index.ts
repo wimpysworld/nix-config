@@ -10,18 +10,12 @@ import {
 import { getSupportedThinkingLevels } from "@earendil-works/pi-ai/compat";
 
 type Route = { model?: string; thinking?: string };
-type Entry = { agent?: string; providers: Record<string, Route> };
-type Routes = {
-	commands: Record<string, Entry>;
-	skills: Record<string, Entry>;
-};
 type Task = Record<string, unknown>;
 type State = {
 	provider?: string;
 	model?: string;
 	agents: Record<string, Record<string, string>>;
 	thinking: Record<string, Record<string, string>>;
-	routes: Routes;
 	available: string[];
 	supportedThinking: Record<string, string[]>;
 };
@@ -52,29 +46,11 @@ export function resolveTaskRoute(task: Task, state: State): string | undefined {
 	};
 	const levels = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
 	const provider = state.provider;
-	const entry = (
-		kind: "commands" | "skills",
-		name: unknown,
-	): Entry | undefined => {
-		if (name === undefined) return undefined;
-		if (typeof name !== "string" || !Object.hasOwn(state.routes[kind], name))
-			return fail(`unknown ${kind} route ${String(name)}`);
-		return state.routes[kind][name];
-	};
-	const command = entry("commands", task.command);
-	const skill = entry("skills", task.directSkill);
-	const agent = typeof task.agent === "string" ? task.agent : command?.agent;
+	const agent = typeof task.agent === "string" ? task.agent : undefined;
 	let route: Route | undefined;
 	const explicitModel = task.model;
 	if (explicitModel === undefined) {
-		for (const candidate of [command, skill]) {
-			if (!candidate || Object.keys(candidate.providers).length === 0) continue;
-			if (!provider || !Object.hasOwn(candidate.providers, provider))
-				return fail(`no route for active provider ${provider ?? "(none)"}`);
-			route = candidate.providers[provider];
-			break;
-		}
-		if (route === undefined && agent && provider) {
+		if (agent && provider) {
 			const model = state.agents[agent]?.[provider];
 			const thinking = state.thinking[agent]?.[provider];
 			if (model !== undefined || thinking !== undefined)
@@ -89,14 +65,6 @@ export function resolveTaskRoute(task: Task, state: State): string | undefined {
 			model = model.slice(provider.length + 1);
 		route = { model, thinking: match[2] };
 	}
-	if (
-		route !== undefined &&
-		(!route ||
-			typeof route !== "object" ||
-			Array.isArray(route) ||
-			Object.keys(route).some((key) => key !== "model" && key !== "thinking"))
-	)
-		return fail("unsupported route fields");
 	if (task.thinking !== undefined) {
 		if (typeof task.thinking !== "string")
 			return fail("thinking must be a string");
@@ -154,8 +122,6 @@ export function resolveNativeTask(
 		if (match[2] !== undefined)
 			native[workflow ? "effort" : "thinking"] = match[2];
 	}
-	delete native.command;
-	delete native.directSkill;
 	return native;
 }
 
@@ -246,18 +212,13 @@ export async function routeInvocation(
 }
 
 export default function registerProviderRouter(pi: ExtensionAPI): void {
-	let maps: Pick<State, "agents" | "thinking" | "routes">;
+	let maps: Pick<State, "agents" | "thinking">;
 	let loadError: unknown;
 	const reload = (): void => {
 		try {
-			const routes = load("routes.json");
 			maps = {
 				agents: load("agents.json"),
 				thinking: load("thinking.json"),
-				routes: {
-					commands: routes.commands ?? {},
-					skills: routes.skills ?? {},
-				},
 			};
 			loadError = undefined;
 		} catch (error) {

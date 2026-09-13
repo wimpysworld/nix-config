@@ -114,7 +114,7 @@ function harness(display = false) {
 	};
 	writeFileSync(join(home, "template.md"), "Perform the task.");
 	if (display) registerDisplay(pi);
-	registerRouter(pi);
+	registerRouter({ on: pi.on, events: pi.events });
 	return {
 		emit,
 		pi,
@@ -189,7 +189,7 @@ test("supporting skill reads leave root settings unchanged", async () => {
 	assert.equal(h.pi.getThinkingLevel(), "medium");
 });
 
-test("invocation routing does not reject streaming or unavailable root routes", async () => {
+test("invocation acknowledgement needs no root model or thinking APIs", async () => {
 	const { routeInvocation } = await import("./index.ts");
 	const h = harness();
 	h.ctx.isIdle = () => false;
@@ -197,6 +197,17 @@ test("invocation routing does not reject streaming or unavailable root routes", 
 		assert.equal(await routeInvocation(text, h.ctx, "steer", h.pi), true);
 	assert.deepEqual(h.notifications, []);
 	assert.equal(h.ctx.model.id, "parent");
+});
+
+test("invocation acknowledgement ends when the router shuts down", async () => {
+	const { routeInvocation } = await import("./index.ts");
+	const h = harness();
+	assert.equal(await routeInvocation("/review", h.ctx, undefined, h.pi), true);
+	await h.emit("session_shutdown", {});
+	await assert.rejects(
+		routeInvocation("/review", h.ctx, undefined, h.pi),
+		/routing extension is not loaded/,
+	);
 });
 
 const nativeDirectory = process.env.PI_CODING_AGENT_DIR;

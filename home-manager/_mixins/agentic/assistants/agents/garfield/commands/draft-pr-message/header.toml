@@ -1,11 +1,6 @@
 [common]
 description = "Draft PR Message 🐙"
 
-[routing]
-
-[routing.claude]
-model = "sonnet"
-
 [compose]
 agent = "garfield"
 
