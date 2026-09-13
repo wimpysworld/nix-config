@@ -104,7 +104,7 @@ Skills are written as real files via the shared assistants activation. Codex's s
 
 Activation updates exact owned destinations instead of clearing the skills or agents directory. It preserves manual files, plugins, and modified former outputs. A conflicting unknown or modified destination stops helper writes. See [activation ownership and cleanup](../assistants/README.md#activation-ownership-and-cleanup) for migration and recovery limits.
 
-SKILL.md frontmatter requires `name:` and `description:` fields. Quote any `description:` value containing `: `, or Codex fails to parse the skill.
+SKILL.md frontmatter requires `name:` and `description:` fields. Quote any `description:` value that contains a colon followed by a space, or Codex fails to parse the skill.
 
 ### Command Skills
 
