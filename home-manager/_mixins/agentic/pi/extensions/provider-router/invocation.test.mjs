@@ -25,6 +25,10 @@ writeFileSync(
 		},
 	}),
 );
+for (const [file, values] of Object.entries({
+	"agents.json": { worker: { "openai-codex": "worker" }, support: { "openai-codex": "support" } },
+	"thinking.json": { worker: { "openai-codex": "high" }, support: { "openai-codex": "low" } },
+})) writeFileSync(join(dir, file), JSON.stringify(values));
 const originalHome = process.env.HOME;
 process.env.HOME = home;
 const { default: registerRouter } = await import("./index.ts");
@@ -37,7 +41,7 @@ function harness(display = false) {
 	const handlers = new Map();
 	const notifications = [];
 	const sent = [];
-	const models = ["parent", "command", "skill", "user"].map((id) => ({
+	const models = ["parent", "command", "skill", "user", "worker", "support"].map((id) => ({
 		id,
 		provider: "openai-codex",
 	}));
@@ -113,140 +117,64 @@ function harness(display = false) {
 	};
 }
 
-test("routes a display-consumed command and restores the session", async () => {
-	const h = harness(true);
-	await h.emit("input", { text: "/review", source: "interactive" });
-	assert.equal(h.ctx.model.id, "parent");
-	await h.emit("before_agent_start", {});
-	await h.emit("agent_start", {});
-	assert.equal(h.ctx.model.id, "command");
-	assert.equal(h.pi.getThinkingLevel(), "high");
-	assert.equal(h.sent.length, 1);
-	await h.emit("agent_end", {});
-	assert.equal(h.ctx.model.id, "command");
-	await h.emit("agent_settled", {});
-	assert.equal(h.ctx.model.id, "parent");
-	assert.equal(h.pi.getThinkingLevel(), "medium");
-});
-
-test("direct skill invocation routes but supporting reads do not", async () => {
-	const h = harness();
-	await h.emit("tool_call", {
-		toolName: "read",
-		input: { path: "focused/SKILL.md" },
-	});
-	assert.equal(h.ctx.model.id, "parent");
-	await h.emit("input", { text: "/skill:focused task", source: "interactive" });
-	await h.emit("before_agent_start", {});
-	await h.emit("agent_start", {});
-	assert.equal(h.ctx.model.id, "skill");
-	await h.emit("agent_settled", {});
-	assert.equal(h.ctx.model.id, "parent");
-});
-
-test("a user model choice wins and prevents stale restoration", async () => {
-	const h = harness();
-	await h.emit("input", { text: "/review", source: "interactive" });
-	await h.emit("before_agent_start", {});
-	await h.emit("agent_start", {});
-	await h.pi.setModel({ provider: "openai-codex", id: "user" });
-	await h.emit("agent_settled", {});
-	await h.emit("input", { text: "/review", source: "interactive" });
-	assert.equal(h.ctx.model.id, "user");
-});
-
-test("an explicit model choice cancels a staged route", async () => {
-	const h = harness();
-	await h.emit("input", { text: "/review" });
-	await h.pi.setModel({ provider: "openai-codex", id: "user" });
-	await h.emit("before_agent_start", {});
-	await h.emit("agent_start", {});
-	await h.emit("agent_settled", {});
-	assert.equal(h.ctx.model.id, "user");
-});
-
-test("a failed preflight leaves no model change or route on the next input", async () => {
-	const h = harness();
-	await h.emit("input", { text: "/review" });
-	assert.equal(h.ctx.model.id, "parent");
-	await h.emit("input", { text: "ordinary prompt" });
-	await h.emit("before_agent_start", {});
-	await h.emit("agent_start", {});
-	assert.equal(h.ctx.model.id, "parent");
-});
-
-test("failed model selection aborts the run and restores session settings", async () => {
-	const h = harness();
-	const setModel = h.pi.setModel;
-	h.pi.setModel = async (model) =>
-		model.id === "command" ? false : setModel(model);
-	await h.emit("input", { text: "/review" });
-	await h.emit("before_agent_start", {});
-	await h.emit("agent_start", {});
-	assert.equal(h.aborted, true);
-	assert.equal(h.ctx.model.id, "parent");
-	assert.equal(h.pi.getThinkingLevel(), "medium");
-	assert.match(h.notifications[0], /could not select routed model/);
-});
-
-for (const continuation of [
-	"HTTP retry",
-	"overflow recovery",
-	"queued follow-up",
-]) {
-	test(`keeps the route across ${continuation} until settlement`, async () => {
-		const h = harness();
-		await h.emit("input", { text: "/review" });
-		await h.emit("before_agent_start", {});
-		await h.emit("agent_start", {});
-		await h.emit("agent_end", {});
-		await h.emit("before_agent_start", {});
-		await h.emit("agent_start", {});
-		assert.equal(h.ctx.model.id, "command");
-		assert.equal(h.pi.getThinkingLevel(), "high");
-		await h.emit("agent_end", {});
-		await h.emit("agent_settled", {});
-		assert.equal(h.ctx.model.id, "parent");
-		assert.equal(h.pi.getThinkingLevel(), "medium");
-	});
+for (const display of [false, true]) {
+	for (const text of ["/review", "/skill:focused task", "/missing"]) {
+		test(`input preserves root settings and independent children: ${text}, display=${display}`, async () => {
+			const h = harness(display);
+			h.pi.setModel = async () => assert.fail("router changed root model");
+			h.pi.setThinkingLevel = () => assert.fail("router changed root thinking");
+			await h.emit("input", { text, source: "interactive" });
+			for (const event of ["before_agent_start", "agent_start", "agent_end", "before_agent_start", "agent_start", "agent_settled"])
+				await h.emit(event, {});
+			for (const [agent, thinking] of [["worker", "high"], ["support", "low"]]) {
+				const input = { subagent_type: agent };
+				assert.equal(await h.emit("tool_call", { toolName: "Agent", input }), undefined);
+				assert.equal(input.model, `openai-codex/${agent}`);
+				assert.equal(input.thinking, thinking);
+			}
+			assert.equal(h.ctx.model.id, "parent");
+			assert.equal(h.pi.getThinkingLevel(), "medium");
+			assert.equal(h.aborted, false);
+			assert.deepEqual(h.notifications, []);
+			if (display && text !== "/skill:focused task") assert.equal(h.sent.length, 1);
+		});
+	}
 }
 
-test("cancellation and thrown run errors restore at settlement", async () => {
-	for (const reason of ["aborted", "error"]) {
-		const h = harness();
-		await h.emit("input", { text: "/review" });
-		await h.emit("before_agent_start", {});
-		await h.emit("agent_start", {});
-		await h.emit("agent_end", { messages: [{ stopReason: reason }] });
-		await h.emit("agent_settled", {});
-		assert.equal(h.ctx.model.id, "parent");
-	}
-});
-
-test("unsupported model effort blocks direct skill input", async () => {
+test("root model selection does not override a named child route", async () => {
 	const h = harness();
-	h.ctx.modelRegistry.find("openai-codex", "skill").supportedThinking = ["off"];
-	await h.emit("input", { text: "/skill:focused", source: "interactive" });
-	assert.equal(h.ctx.model.id, "parent");
-	assert.match(h.notifications[0], /does not support thinking level low/);
+	await h.pi.setModel({ provider: "openai-codex", id: "user" });
+	const input = { subagent_type: "worker" };
+	await h.emit("tool_call", { toolName: "Agent", input });
+	assert.equal(input.model, "openai-codex/worker");
+	const explicit = { subagent_type: "support", model: "user", thinking: "off" };
+	await h.emit("tool_call", { toolName: "Agent", input: explicit });
+	assert.equal(explicit.model, "openai-codex/user");
+	assert.equal(explicit.thinking, "off");
+	await h.emit("agent_settled", {});
+	assert.equal(h.ctx.model.id, "user");
 });
 
-test("display-consumed unavailable and streaming routes never dispatch", async () => {
-	for (const event of [
-		{ text: "/missing" },
-		{ text: "/review", streamingBehavior: "steer" },
-	]) {
-		const h = harness(true);
-		await h.emit("input", { ...event, source: "interactive" });
-		assert.equal(h.sent.length, 0);
-		assert.equal(h.ctx.model.id, "parent");
-		assert.equal(h.notifications.length, 1);
-	}
+test("supporting skill reads leave root settings unchanged", async () => {
+	const h = harness();
+	await h.emit("tool_call", { toolName: "read", input: { path: "focused/SKILL.md" } });
+	assert.equal(h.ctx.model.id, "parent");
+	assert.equal(h.pi.getThinkingLevel(), "medium");
+});
+
+test("invocation routing does not reject streaming or unavailable root routes", async () => {
+	const { routeInvocation } = await import("./index.ts");
+	const h = harness();
+	h.ctx.isIdle = () => false;
+	for (const text of ["/review", "/missing", "/skill:focused"])
+		assert.equal(await routeInvocation(text, h.ctx, "steer", h.pi), true);
+	assert.deepEqual(h.notifications, []);
+	assert.equal(h.ctx.model.id, "parent");
 });
 
 const nativeDirectory = process.env.PI_CODING_AGENT_DIR;
 test(
-	"native Pi applies routes after preflight and keeps them through retries",
+	"native Pi keeps root settings through preflight, retries, and settlement",
 	{
 		skip:
 			!nativeDirectory &&
@@ -392,11 +320,11 @@ test(
 					outcome,
 				);
 				assert.ok(
-					requests.every((request) => request.model === "command"),
+					requests.every((request) => request.model === "parent"),
 					outcome,
 				);
 				assert.ok(
-					requests.every((request) => request.reasoning === "high"),
+					requests.every((request) => request.reasoning === "medium"),
 					outcome,
 				);
 				assert.ok(

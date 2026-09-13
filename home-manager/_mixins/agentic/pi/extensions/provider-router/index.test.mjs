@@ -14,6 +14,10 @@ import { after, test } from "node:test";
 const packageDir =
 	process.env.PI_SUBAGENTS_DIR ??
 	join(homedir(), ".pi/agent/npm/node_modules/@tintinweb/pi-subagents");
+const { resolveAgentInvocationConfig } = await import(
+	pathToFileURL(join(packageDir, "src/invocation-config.ts")).href
+);
+const { resolveTaskRoute } = await import("./index.ts?resolver");
 const { runWorkflow, validateScript, WORKFLOW_AGENT_CAP } = await import(
 	pathToFileURL(join(packageDir, "src/workflow/runtime.ts")).href
 );
@@ -25,12 +29,14 @@ writeFileSync(
 	join(mapDir, "agents.json"),
 	JSON.stringify({
 		worker: { "openai-codex": "test-model" },
+		support: { "openai-codex": "skill-model" },
 	}),
 );
 writeFileSync(
 	join(mapDir, "thinking.json"),
 	JSON.stringify({
 		worker: { "openai-codex": "high" },
+		support: { "openai-codex": "low" },
 	}),
 );
 writeFileSync(
@@ -157,7 +163,7 @@ test("preserves explicit, foreground, and inherited-context requests", () => {
 	);
 });
 
-test("command and directly invoked skill routes override agent routes", () => {
+test("explicit child command and skill routes override agent routes", () => {
 	const result = route({ subagent_type: "worker", command: "review" });
 	assert.equal(result.model, "openai-codex/command-model");
 	assert.equal(result.thinking, "medium");
@@ -171,6 +177,47 @@ test("command and directly invoked skill routes override agent routes", () => {
 			.model,
 		"openai-codex/explicit-model",
 	);
+});
+
+test("native invocation config accepts routed and explicit child fields", () => {
+	for (const task of [
+		{ subagent_type: "worker" },
+		{ subagent_type: "worker", model: "explicit-model", thinking: "off" },
+	]) {
+		const input = route(task);
+		const config = resolveAgentInvocationConfig({ extensions: true }, input);
+		assert.equal(config.modelInput, input.model);
+		assert.equal(config.thinking, input.thinking);
+		assert.equal(config.modelFromParams, true);
+	}
+	const pinned = resolveAgentInvocationConfig(
+		{ model: "definition-model", thinking: "high" },
+		{ model: "explicit-model", thinking: "low" },
+	);
+	assert.equal(pinned.modelInput, "definition-model");
+	assert.equal(pinned.thinking, "high");
+});
+
+test("explicit thinking replaces route thinking before capability validation", () => {
+	const state = {
+		provider: "openai-codex", model: "test-model",
+		agents: { worker: { "openai-codex": "test-model" } },
+		thinking: { worker: { "openai-codex": "high" } },
+		routes: { commands: {}, skills: {} },
+		available: ["test-model"], supportedThinking: { "test-model": ["off"] },
+	};
+	assert.equal(resolveTaskRoute({ agent: "worker", thinking: "off" }, state), "openai-codex/test-model:off");
+	assert.throws(() => resolveTaskRoute({ agent: "worker" }, state), /does not support/);
+	for (const malformed of [[], null, true, { extra: "field" }]) {
+		state.routes.commands.invalid = { providers: { "openai-codex": malformed } };
+		assert.throws(() => resolveTaskRoute({ agent: "worker", command: "invalid", thinking: "off" }, state), /unsupported route fields/);
+	}
+	assert.equal(route({ subagent_type: "worker", model: "explicit-model:high", thinking: "off" }).thinking, "off");
+});
+
+test("unmapped agents keep native parent fallback", () => {
+	assert.deepEqual(route({ subagent_type: "unmapped" }), { subagent_type: "unmapped" });
+	assert.equal(route({ subagent_type: "unmapped", thinking: "low" }).model, "openai-codex/parent-model");
 });
 
 test("supporting skill reads and result tools do not select models", () => {
@@ -235,6 +282,26 @@ test("native parallel workflow queues above twelve and routes every child", asyn
 			(call) => call.model === "openai-codex/test-model" && call.effort === "high",
 		),
 	);
+});
+
+test("workflow specialists have independent routes and explicit effort wins", async () => {
+	const { calls, result } = await execute(`
+await agent("primary", {agentType: "worker", command: "review"});
+await agent("support", {agentType: "support"});
+return await agent("override", {agentType: "worker", model: "explicit-model:high", effort: "low"});`);
+	assert.equal(result.status, "completed", result.error);
+	assert.deepEqual(calls.map(({ model, effort }) => [model, effort]), [
+		["openai-codex/command-model", "medium"],
+		["openai-codex/skill-model", "low"],
+		["openai-codex/explicit-model", "low"],
+	]);
+});
+
+test("native workflow rejects off effort before launching a child", async () => {
+	const { calls, result } = await execute('return await agent("off", {agentType: "worker", effort: "off"});');
+	assert.equal(result.status, "failed");
+	assert.match(result.error, /opts.effort must be one of/);
+	assert.equal(calls.length, 0);
 });
 
 test("native sequential and pipeline workflows preserve values and args", async () => {

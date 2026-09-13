@@ -1,37 +1,32 @@
 # Provider Router
 
-Provider Router selects models for explicit Pi tasks without changing the inference
-provider. Home Manager generates its maps from unified `header.toml` metadata.
+Provider Router selects models for new Pi child launches without changing the inference
+provider or the root session settings. Home Manager generates its maps from unified `header.toml` metadata.
 
 ## Precedence
 
-The first available selection wins for each task:
+The first available selection wins for each new child:
 
-1. An explicit caller model or a user model selection.
-2. A command route.
-3. A directly invoked skill route.
-4. An agent route.
-5. The session model.
+1. An explicit child `model`.
+2. An explicit child `command` route.
+3. An explicit child `directSkill` route.
+4. The named agent route.
+5. The native session fallback.
 
-`--model` and native user model changes take priority for the rest of the session.
-A workflow child can supply its own `model`. The router validates that model and
-preserves its selection. Routes cannot select a different inference provider.
+Explicit child `thinking` (workflow `effort`) overrides route thinking and a model suffix.
+An explicit model without thinking leaves thinking to the native runtime.
+Root `--model` and user model changes do not override named agent routes.
+Routes cannot select a different inference provider.
 
 ## Direct commands and skills
 
-The native `input` event handles `/command` and `/skill:name`. The local
-`prompt-template-display` extension calls the same dispatcher before it consumes
-TUI command input. Both paths validate and stage the route without changing the
-session model. At `before_agent_start`, after prompt preflight, the router applies
-the route through Pi's `setModel` and `setThinkingLevel` APIs.
+Commands and skills do not change the root model or thinking level.
+The router acknowledges the existing `prompt-template-display` invocation event
+without staging a route. Native input, retries, and settlement leave settings unchanged.
+Pi and the display extension retain control of input delivery.
 
-Routed input requires an idle session. The router rejects routed steering and
-follow-up input with an error. Unrouted input keeps its existing behaviour.
-After `agent_settled`, the router restores the previous session model and thinking
-level. Routes remain active through retries and overflow recovery.
-A user model change cancels restoration and takes priority over later routes.
-Children launched during the task inherit its command or directly invoked skill
-route, unless the caller supplies a model or a more specific command.
+Children do not inherit command or skill routes from root input or earlier children.
+Each new supporting specialist uses its own agent route unless its launch specifies an override.
 
 Reading a supporting `SKILL.md` never selects a model. The `skills` list on a
 child task also does not select a model.
@@ -41,7 +36,12 @@ child task also does not select a model.
 The router handles Tintinweb's `Agent` and `SubagentWorkflow` tools.
 `Agent` receives separate `model` and `thinking` fields. Workflow `agent()` calls receive `model` and `effort`.
 Every new launch must name a specialist through `subagent_type` or workflow `agentType`.
-Resumed children retain their existing role, model, and thinking level.
+Resumed children pass through without route changes. Launch safety checks still apply.
+
+Native `Agent` resolves agent frontmatter before tool arguments, then uses the parent fallback.
+Generated agent headers leave both model and thinking unset, so routed arguments and explicit overrides take effect.
+A separately installed agent with pinned frontmatter can override those arguments.
+Workflow host code gives explicit `model` and `effort` priority over agent defaults.
 
 Inline scripts, `scriptPath`, and saved `name` sources receive the same wrapper.
 Source precedence matches upstream: path, inline script, then saved name.
@@ -112,6 +112,8 @@ thinking = "high"
 Thinking-only routes use the current session model. The accepted levels are
 `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, and `max`. Pi's native
 `getSupportedThinkingLevels` further checks support for the selected model.
+Native workflow validation rejects `effort: "off"`, including an `off` route.
+Use `off` only with native `Agent` until upstream workflow support changes.
 
 ## Errors and freshness
 
@@ -123,7 +125,7 @@ no route for that provider keeps its existing behaviour.
 The router uses `modelRegistry.getAvailable()` to validate authenticated models.
 Tool errors return `{ block: true, reason }`, because Pi catches hook exceptions
 and otherwise continues execution. Workflow errors stop the child launch.
-Input errors notify the user and return `handled`.
+Root input does not validate child routes.
 
 Maps reload on `session_start` and `resources_discover`. After deploying changed
 maps, use `/reload` or start a fresh session. No live session is needed for tests.
@@ -140,7 +142,7 @@ node --experimental-loader ./home-manager/_mixins/agentic/pi/extensions/provider
 ```
 
 Workflow tests use the installed `@tintinweb/pi-subagents` validator and VM with mock child launches.
-Header tests evaluate all generated agents and load their symlinks through the upstream loader. Set `PI_SUBAGENTS_DIR` to test another installation. Invocation
+Header tests evaluate all generated agents, check that model and thinking are unset, and load their symlinks through the upstream loader. Set `PI_SUBAGENTS_DIR` to test another installation. Invocation
 tests use mocked Pi hooks and model APIs. Set `PI_CODING_AGENT_DIR` to the installed
 `@earendil-works/pi-coding-agent` package directory to include native lifecycle tests.
 Those tests use Pi's agent loop and session methods with fake inference and compaction.

@@ -24,9 +24,6 @@ type State = {
 	routes: Routes;
 	available: string[];
 	supportedThinking: Record<string, string[]>;
-	explicitModel?: string;
-	command?: string;
-	directSkill?: string;
 };
 
 const directory = path.join(
@@ -64,11 +61,11 @@ export function resolveTaskRoute(task: Task, state: State): string | undefined {
 			return fail(`unknown ${kind} route ${String(name)}`);
 		return state.routes[kind][name];
 	};
-	const command = entry("commands", task.command ?? state.command);
-	const skill = entry("skills", task.directSkill ?? state.directSkill);
+	const command = entry("commands", task.command);
+	const skill = entry("skills", task.directSkill);
 	const agent = typeof task.agent === "string" ? task.agent : command?.agent;
 	let route: Route | undefined;
-	const explicitModel = task.model ?? state.explicitModel;
+	const explicitModel = task.model;
 	if (explicitModel === undefined) {
 		for (const candidate of [command, skill]) {
 			if (!candidate || Object.keys(candidate.providers).length === 0) continue;
@@ -77,7 +74,7 @@ export function resolveTaskRoute(task: Task, state: State): string | undefined {
 			route = candidate.providers[provider];
 			break;
 		}
-		if (!route && agent && provider) {
+		if (route === undefined && agent && provider) {
 			const model = state.agents[agent]?.[provider];
 			const thinking = state.thinking[agent]?.[provider];
 			if (model !== undefined || thinking !== undefined)
@@ -92,13 +89,19 @@ export function resolveTaskRoute(task: Task, state: State): string | undefined {
 			model = model.slice(provider.length + 1);
 		route = { model, thinking: match[2] };
 	}
-	if (!route) return undefined;
 	if (
-		typeof route !== "object" ||
-		Array.isArray(route) ||
-		Object.keys(route).some((key) => key !== "model" && key !== "thinking")
+		route !== undefined &&
+		(!route || typeof route !== "object" ||
+			Array.isArray(route) ||
+			Object.keys(route).some((key) => key !== "model" && key !== "thinking"))
 	)
 		return fail("unsupported route fields");
+	if (task.thinking !== undefined) {
+		if (typeof task.thinking !== "string")
+			return fail("thinking must be a string");
+		route = { ...route, thinking: task.thinking };
+	}
+	if (!route) return undefined;
 	if (!provider) return fail("a route requires an active inference provider");
 	const model = route.model ?? state.model;
 	if (typeof model !== "string" || !model.trim())
@@ -142,15 +145,7 @@ export function resolveNativeTask(
 	if (typeof agent !== "string" || !agent.trim())
 		throw new Error("provider-router: name an explicit specialist agent");
 	const effort = workflow ? native.effort : native.thinking;
-	const normalised: Task = { ...native, agent };
-	if (effort !== undefined) {
-		if (typeof effort !== "string")
-			throw new Error("provider-router: thinking must be a string");
-		const routed = resolveTaskRoute(normalised, state);
-		const model =
-			routed?.replace(/:[^/:]+$/, "") ?? `${state.provider}/${state.model}`;
-		normalised.model = `${model}:${effort}`;
-	}
+	const normalised: Task = { ...native, agent, thinking: effort };
 	const resolved = resolveTaskRoute(normalised, state);
 	if (resolved) {
 		const match = resolved.match(/^(.*?)(?::([^/:]+))?$/)!;
@@ -252,30 +247,6 @@ export async function routeInvocation(
 export default function registerProviderRouter(pi: ExtensionAPI): void {
 	let maps: Pick<State, "agents" | "thinking" | "routes">;
 	let loadError: unknown;
-	let changing = false;
-	const callerModel = process.argv.some(
-		(arg) => arg === "--model" || arg.startsWith("--model="),
-	);
-	let explicit = callerModel;
-	let abortPending = false;
-	let pending:
-		| {
-				text: string;
-				model: any;
-				thinking?: string;
-				command?: string;
-				directSkill?: string;
-		  }
-		| undefined;
-	let active:
-		| {
-				text: string;
-				model: any;
-				thinking: any;
-				command?: string;
-				directSkill?: string;
-		  }
-		| undefined;
 	const reload = (): void => {
 		try {
 			const routes = load("routes.json");
@@ -303,131 +274,18 @@ export default function registerProviderRouter(pi: ExtensionAPI): void {
 			...maps,
 			provider,
 			model: ctx.model?.id,
-			command: active?.command,
-			directSkill: active?.directSkill,
-			explicitModel:
-				explicit && provider && ctx.model?.id
-					? `${provider}/${ctx.model.id}:${pi.getThinkingLevel()}`
-					: undefined,
 			available: available.map((model) => model.id),
 			supportedThinking: Object.fromEntries(
 				available.map((model) => [model.id, getSupportedThinkingLevels(model)]),
 			),
 		};
 	};
-	const restore = async (): Promise<void> => {
-		const previous = active;
-		active = undefined;
-		if (!previous) return;
-		changing = true;
-		try {
-			if (!(await pi.setModel(previous.model)))
-				throw new Error("provider-router: could not restore session model");
-			pi.setThinkingLevel(previous.thinking);
-		} finally {
-			changing = false;
-		}
-	};
-	pi.on("session_start", () => {
-		active = undefined;
-		pending = undefined;
-		abortPending = false;
-		explicit = callerModel;
-		reload();
-	});
+	pi.on("session_start", reload);
 	pi.on("resources_discover", reload);
-	pi.on("model_select", (event) => {
-		if (!changing && event.source !== "restore") {
-			explicit = true;
-			active = undefined;
-			pending = undefined;
-			abortPending = false;
-		}
-	});
-	pi.on("agent_settled", restore);
-	pi.on("agent_start", async (_event, ctx) => {
-		if (abortPending) {
-			abortPending = false;
-			ctx.abort();
-		}
-	});
-	pi.on("before_agent_start", async (_event, ctx) => {
-		const request = pending;
-		pending = undefined;
-		if (!request) return;
-		active = {
-			...request,
-			model: ctx.model,
-			thinking: pi.getThinkingLevel(),
-		};
-		changing = true;
-		try {
-			if (!(await pi.setModel(request.model)))
-				throw new Error("provider-router: could not select routed model");
-			if (request.thinking) {
-				pi.setThinkingLevel(request.thinking);
-				if (pi.getThinkingLevel() !== request.thinking)
-					throw new Error("provider-router: could not select routed thinking level");
-			}
-		} catch (error) {
-			abortPending = true;
-			ctx.ui.notify(String(error), "error");
-			await restore();
-		} finally {
-			changing = false;
-		}
-	});
-	const dispatch = async (
-		text: string,
-		ctx: ExtensionContext,
-		streaming?: string,
-	): Promise<boolean> => {
-		pending = undefined;
-		abortPending = false;
-		const match = text.match(/^\/(skill:)?([^\s]+)(?:\s|$)/);
-		if (!match) return true;
-		try {
-			if (loadError) throw loadError;
-			const kind = match[1] ? "skills" : "commands";
-			if (!Object.hasOwn(maps.routes[kind], match[2])) return true;
-			if (active?.text === text && !streaming) return true;
-			const task =
-				kind === "skills" ? { directSkill: match[2] } : { command: match[2] };
-			if (explicit) return true;
-			const state = stateFor(ctx);
-			const resolved = resolveTaskRoute(task, state);
-			if (!resolved) return true;
-			if (streaming || !ctx.isIdle())
-				throw new Error(
-					"provider-router: routed commands and skills require an idle session",
-				);
-			const selected = resolved
-				.slice(state.provider!.length + 1)
-				.match(/^(.*?)(?::([^/:]+))?$/)!;
-			const model = ctx.modelRegistry.find(state.provider!, selected[1]);
-			if (!model)
-				throw new Error(`provider-router: model ${resolved} is unavailable`);
-			pending = {
-				text,
-				model,
-				thinking: selected[2],
-				...task,
-			};
-			return true;
-		} catch (error) {
-			ctx.ui.notify(String(error), "error");
-			return false;
-		}
-	};
 	const unsubscribe = pi.events.on("provider-router:invoke", (request: any) => {
-		request.result = dispatch(request.text, request.ctx, request.streaming);
+		request.result = Promise.resolve(true);
 	});
 	pi.on("session_shutdown", unsubscribe);
-	pi.on("input", async (event, ctx) => ({
-		action: (await dispatch!(event.text, ctx, event.streamingBehavior))
-			? "continue"
-			: "handled",
-	}));
 	pi.on("tool_call", (event, ctx) => {
 		if (event.toolName !== "Agent" && event.toolName !== "SubagentWorkflow")
 			return;

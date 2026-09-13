@@ -54,6 +54,7 @@ in c.composeAgents "pi"`;
 			assert.equal(agent.inheritContext, undefined, name);
 			assert.equal(agent.enabled, true, name);
 			assert.equal(agent.model, undefined, name);
+			assert.equal(agent.thinking, undefined, name);
 			assert.ok(
 				agent.systemPrompt.startsWith(
 					readFileSync(join(assistants, "agents", name, "prompt.md"), "utf8").trim(),
