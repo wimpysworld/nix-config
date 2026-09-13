@@ -105,6 +105,7 @@ async function execute(body, options = {}) {
 	const result = await runWorkflow({
 		script: input.script,
 		args: { marker: "kept" },
+		concurrency: 16,
 		signal: AbortSignal.timeout(5000),
 		host: {
 			spawnAgent: async (request) => {
@@ -220,14 +221,15 @@ test("resume retains the existing child contract", () => {
 	assert.deepEqual(route({ ...input }), input);
 });
 
-test("native parallel workflow routes every child and limits concurrency", async () => {
+test("native parallel workflow queues above six and routes every child", async () => {
+	const keys = Array.from({ length: 9 }, (_, n) => String(n));
 	const { calls, result, peak } = await execute(
-		`return await parallel(["a", "b", "c", "d", "e"].map(key => () => agent(key, {agentType: "worker"})));`,
+		`return await parallel(${JSON.stringify(keys)}.map(key => () => agent(key, {agentType: "worker"})));`,
 	);
 	assert.equal(result.status, "completed", result.error);
-	assert.deepEqual(result.value, ["a", "b", "c", "d", "e"]);
-	assert.equal(peak, 2);
-	assert.equal(calls.length, 5);
+	assert.deepEqual(result.value, keys);
+	assert.equal(peak, 6);
+	assert.equal(calls.length, keys.length);
 	assert.ok(
 		calls.every(
 			(call) => call.model === "openai-codex/test-model" && call.effort === "high",
@@ -351,6 +353,15 @@ test("native workflow cancellation aborts its active mock child", async () => {
 	});
 	assert.equal(result.status, "killed");
 	assert.equal(aborted.length, 1);
+});
+
+test("clean findings complete without verifier launches", async () => {
+	const { result, calls } = await execute(`
+const findings = [];
+return await parallel(findings.map(finding => () => agent(finding, {agentType: "worker"})));`);
+	assert.equal(result.status, "completed", result.error);
+	assert.deepEqual(result.value, []);
+	assert.equal(calls.length, 0);
 });
 
 test("workflows with no provider route can return without launching children", async () => {

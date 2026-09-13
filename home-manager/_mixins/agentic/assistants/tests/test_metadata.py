@@ -519,6 +519,7 @@ reasoningEffort = "high"
                         self.assertTrue(native["skills"])
                         self.assertTrue(native["extensions"])
                         self.assertFalse(native["isolated"])
+                        self.assertNotIn("allowed_subagents", native)
                         self.assertNotIn("inherit_context", native)
                         self.assertNotIn("inheritSkills", native)
                         self.assertNotIn("systemPromptMode", native)
@@ -588,8 +589,8 @@ reasoningEffort = "high"
         )
         settings = result["piSubagentsConfig"]
         self.assertEqual(settings["maxSubagentDepth"], 1)
-        self.assertEqual(settings["maxConcurrent"], 2)
-        self.assertEqual(settings["maxConcurrentForeground"], 2)
+        self.assertEqual(settings["maxConcurrent"], 6)
+        self.assertEqual(settings["maxConcurrentForeground"], 6)
         self.assertTrue(settings["workflowsEnabled"])
         self.assertTrue(settings["disableDefaultAgents"])
         self.assertTrue(settings["strictAgentFiles"])
@@ -597,6 +598,33 @@ reasoningEffort = "high"
         self.assertFalse(settings["schedulingEnabled"])
         self.assertEqual(settings["fallbackSubagent"], "none")
         self.assertNotIn("asyncByDefault", settings)
+        self.assertEqual(settings["defaultMaxTurns"], 50)
+        self.assertEqual(settings["graceTurns"], 5)
+        self.assertEqual(settings["agentMentions"], "off")
+
+    def test_pi_delegation_guidance_keeps_separate_limits_and_selective_verification(
+        self,
+    ):
+        skills = self.evaluate(
+            'let skills = c.composeSkillsFor "pi"; in { '
+            "delegate = skills.delegate-task.content; "
+            "review = skills.review-code.content; }"
+        )
+        for instruction in (
+            "six active calls and 64 total `agent()` calls",
+            "not one global aggregate cap",
+            "launch no agents through sub-agent or task tools",
+            "follow `review-code` for selective verification",
+            "empty findings array for clean results, never `null`",
+        ):
+            self.assertIn(instruction, skills["delegate"])
+        for instruction in (
+            "Deduplicate overlapping findings before verification",
+            "Do not launch verifiers for reports with no actionable findings",
+            "concrete unresolved question or an explicit user request",
+            "resume its existing context",
+        ):
+            self.assertIn(instruction, skills["review"])
 
     def test_claude_hook_blocks_workers_but_keeps_root_and_messages(self):
         groups = self.project_runtime(

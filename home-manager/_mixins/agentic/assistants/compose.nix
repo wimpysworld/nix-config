@@ -608,7 +608,10 @@ let
               Supply `script`, `scriptPath`, or a saved workflow `name`. Start scripts with `export const meta = { name, description }`.
               Inside scripts, use `agent(prompt, { agentType })`, `parallel`, and `pipeline`. Name every specialist explicitly.
               Await every launch. A failed or skipped required child fails the workflow, even if a stage catches the error.
-              The router limits each workflow to two active children and 64 launches. Separate workflows have separate limits.
+              The router limits each workflow to six active calls and 64 total `agent()` calls, including resumes and rejected calls.
+              The background pool, foreground pool, and each workflow have separate limits of six, not one global aggregate cap.
+              Native CPU-based capacity can lower workflow concurrency. Foreground resumes can exceed their pool limit.
+              For reviews, follow `review-code` for selective verification. Return an empty findings array for clean results, never `null`.
               Launch saved workflows through the tool, not nested `workflow()` calls, so each script receives routing checks.
               Use separate sessions in separate checkouts for concurrent writers. Automatic worktrees are disabled because upstream cleanup can lose changes.
               Keep policy extensions enabled. Do not use isolated children, schedules, agent mentions, or slash-command launch shortcuts.
