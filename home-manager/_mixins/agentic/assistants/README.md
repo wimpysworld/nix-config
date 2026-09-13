@@ -79,6 +79,18 @@ Agent prompts inherit the global constraints and add specialisation. Agent-scope
 
 `instructions/global.md` has no persona. It tells the coordinator to use `delegate-task` before parent-thread exploration for non-trivial tool, file, research, implementation, review, validation, or documentation work.
 
+The root must keep at most twelve workers active across all delegation tools and workflows combined, and wait for capacity before another launch.
+This aggregate rule is guidance, not a shared scheduler. Workers remain leaf workers and cannot launch other workers.
+
+| Client | Native limit | Scope |
+| --- | --- | --- |
+| Claude Code | `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS = "12"` | Concurrent subagents, with spawn depth one. No total-spawn setting is configured. |
+| Codex | `agents.max_concurrent_threads_per_session = 12` | Open child threads per session, not only active workers, with depth one. |
+| Pi | `maxConcurrent = 12`, `maxConcurrentForeground = 12` | Separate direct pools, with depth one. Each workflow has a separate twelve-call active limit and the native 1000-call total cap. |
+| OpenCode | No supported native worker concurrency setting | Shared aggregate guidance applies. Specialist `task` access remains denied. |
+
+Native CPU capacity can lower Pi workflow concurrency. Claude Code's parallel tool scheduler remains unchanged because it is separate from worker concurrency.
+
 ### Agent Tripwire
 
 `styles/house-style/house-style.md` is the canonical Communication Rules source. It carries no frontmatter, so every consumer reads the same body verbatim. Global instructions, agents, commands, and skills refer to the rules by name instead of carrying copied rule text.

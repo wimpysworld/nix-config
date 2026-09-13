@@ -558,7 +558,8 @@ reasoningEffort = "high"
         }""",
         )
         self.assertEqual(codex["agents"]["max_depth"], 1)
-        self.assertGreater(codex["agents"]["max_threads"], 1)
+        self.assertEqual(codex["agents"]["max_concurrent_threads_per_session"], 12)
+        self.assertNotIn("max_threads", codex["agents"])
         self.assertIs(codex["multi_agent"], True)
         self.assertIs(codex["multi_agent_v2"], False)
         claude = self.project_runtime(
@@ -576,6 +577,9 @@ reasoningEffort = "high"
             claude["environment"]["CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH"], "1"
         )
         self.assertEqual(
+            claude["environment"]["CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS"], "12"
+        )
+        self.assertEqual(
             claude["environment"]["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"], "1"
         )
         self.assertEqual(claude["teammateMode"], "in-process")
@@ -589,8 +593,8 @@ reasoningEffort = "high"
         )
         settings = result["piSubagentsConfig"]
         self.assertEqual(settings["maxSubagentDepth"], 1)
-        self.assertEqual(settings["maxConcurrent"], 6)
-        self.assertEqual(settings["maxConcurrentForeground"], 6)
+        self.assertEqual(settings["maxConcurrent"], 12)
+        self.assertEqual(settings["maxConcurrentForeground"], 12)
         self.assertTrue(settings["workflowsEnabled"])
         self.assertTrue(settings["disableDefaultAgents"])
         self.assertTrue(settings["strictAgentFiles"])
@@ -611,7 +615,11 @@ reasoningEffort = "high"
             "review = skills.review-code.content; }"
         )
         for instruction in (
-            "six active calls and 64 total `agent()` calls",
+            "twelve active calls",
+            "native runtime retains its 1000-call limit per workflow",
+            "separate limits of twelve",
+            "Native CPU-based capacity can lower workflow concurrency",
+            "not nested `workflow()` calls",
             "not one global aggregate cap",
             "launch no agents through sub-agent or task tools",
             "follow `review-code` for selective verification",
@@ -625,6 +633,26 @@ reasoningEffort = "high"
             "resume its existing context",
         ):
             self.assertIn(instruction, skills["review"])
+
+    def test_shared_root_limit_and_leaf_rule_reach_every_client(self):
+        instructions = self.evaluate(
+            'lib.genAttrs [ "claude" "codex" "opencode" "pi" ] c.composeInstructions'
+        )
+        for platform, body in instructions.items():
+            with self.subTest(platform=platform):
+                self.assertIn(
+                    "at most twelve workers active across all delegation tools and workflows combined",
+                    body,
+                )
+                self.assertIn("wait for capacity before another launch", body)
+                self.assertIn(
+                    "Never launch another agent through a sub-agent or task tool from a worker",
+                    body,
+                )
+                self.assertIn(
+                    "Loading a command or skill never changes a worker into an orchestrator",
+                    body,
+                )
 
     def test_claude_hook_blocks_workers_but_keeps_root_and_messages(self):
         groups = self.project_runtime(

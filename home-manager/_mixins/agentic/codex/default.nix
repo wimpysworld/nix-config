@@ -454,7 +454,7 @@ let
 
     # Bound Codex subagent fan-out.
     agents = {
-      max_threads = 10;
+      max_concurrent_threads_per_session = 12;
       max_depth = 1;
     };
 

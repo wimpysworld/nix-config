@@ -608,8 +608,9 @@ let
               Supply `script`, `scriptPath`, or a saved workflow `name`. Start scripts with `export const meta = { name, description }`.
               Inside scripts, use `agent(prompt, { agentType })`, `parallel`, and `pipeline`. Name every specialist explicitly.
               Await every launch. A failed or skipped required child fails the workflow, even if a stage catches the error.
-              The router limits each workflow to six active calls and 64 total `agent()` calls, including resumes and rejected calls.
-              The background pool, foreground pool, and each workflow have separate limits of six, not one global aggregate cap.
+              The router limits each workflow to twelve active calls. The native runtime retains its 1000-call limit per workflow.
+              The background pool, foreground pool, and each workflow have separate limits of twelve, not one global aggregate cap.
+              Follow the shared root limit of twelve active workers across all delegation tools and workflows combined.
               Native CPU-based capacity can lower workflow concurrency. Foreground resumes can exceed their pool limit.
               For reviews, follow `review-code` for selective verification. Return an empty findings array for clean results, never `null`.
               Launch saved workflows through the tool, not nested `workflow()` calls, so each script receives routing checks.

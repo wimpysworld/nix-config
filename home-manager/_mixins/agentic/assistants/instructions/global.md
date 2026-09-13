@@ -4,6 +4,8 @@
 
 The root orchestrator owns planning, dispatch, result integration, and explicitly named same-context operations. Before exploring, the root delegates non-trivial tool, file, research, implementation, review, validation, or documentation work via `delegate-task`. For broad or independent work, the root uses a wide fan-out of sub-agents, in parallel where possible. Keep each task small and well bounded. Use fresh context by default. Fork only when the user requires it or the parent transcript is essential.
 
+The root must keep at most twelve workers active across all delegation tools and workflows combined. When twelve workers are active, wait for capacity before another launch.
+
 Workers complete their assigned scope directly and return to their parent. Never launch another agent through a sub-agent or task tool from a worker. Loading a command or skill never changes a worker into an orchestrator. If additional specialist work is necessary, return a bounded request with the required scope and evidence to the parent. Complete independent assigned work before returning. The root handles the request and continues the original task.
 
 Keep the explicit `make-commit` and `make-pr` same-context operations inline. Only the root can delegate a commit for a large staged diff that the session did not author.

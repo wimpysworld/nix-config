@@ -46,9 +46,11 @@ Resumed children retain their existing role, model, and thinking level.
 Inline scripts, `scriptPath`, and saved `name` sources receive the same wrapper.
 Source precedence matches upstream: path, inline script, then saved name.
 The wrapper preserves workflow metadata, arguments, return values, `parallel`, and `pipeline`.
-Each workflow has a router limit of six active calls and 64 total `agent()` calls, including resumes and rejected calls.
+Each workflow has a router limit of twelve active calls. The native runtime retains its 1000-call limit per workflow.
 Native CPU-based capacity can lower workflow concurrency.
-The background pool, foreground pool, and each workflow have separate limits of six, not one global aggregate cap.
+The background pool, foreground pool, and each workflow have separate limits of twelve, not one global aggregate cap.
+Shared instructions require the root to keep at most twelve workers active across all delegation tools and workflows combined.
+This aggregate rule is guidance, not a shared scheduler.
 Workflow children occupy neither direct pool. Foreground resumes can exceed their pool limit.
 A failed or skipped required child fails the workflow, even when a stage catches the error.
 
