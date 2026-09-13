@@ -1,0 +1,7 @@
+[common]
+description = "Digest existing sources for orientation 🧭"
+argument-hint = "[sources ...]"
+
+[compose]
+agent = "penfold"
+root = true
