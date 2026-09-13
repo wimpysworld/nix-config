@@ -122,14 +122,12 @@ The house style owns response discipline, every platform carries it in the syste
 | `ahem`                  | Re-issue the Communication Rules as a first warning                      |
 | `ask`                   | Answer a question without treating it as an instruction                 |
 | `call`                  | Give one recommended solution with its reasoning, never a menu           |
-| `collaborate`           | Read a task or file, meet the team, and prepare to collaborate            |
 | `gist`                  | Rewrite the previous response concisely                                  |
 | `grill-me`              | Interview the user until every branch of a design is resolved            |
 | `implement-task`        | Take a tracked task through to implemented, validated, committed work    |
 | `make-commit`           | Draft the message, then create one commit from the durable work          |
 | `make-pr`               | Draft and open a PR, update linked tracker issues, and offer `babysit-pr` |
 | `oi`                    | Re-issue the Communication Rules bluntly, after `ahem` failed            |
-| `orientate`             | Inspect the repository and report orientation notes                      |
 | `ready`                 | Prime the session for a broad activity                                   |
 | `reflect`               | Review the session and suggest tooling and AGENTS.md changes             |
 | `review-code-again`     | Recheck prior findings and defects caused by the author's response       |
@@ -319,6 +317,7 @@ Research partner for exploring ideas, generating options, and framing problems f
 
 | Command                          | Purpose                                                                 |
 | -------------------------------- | ----------------------------------------------------------------------- |
+| `orientate`                      | Digest existing sources into cited findings without independent research |
 | `create-task`                    | File the session outcome as a task, or a parent wrapping children       |
 | `update-task`                    | Fold session decisions into an existing task                            |
 | `triage-tasks`                   | Research and update the whole Triage queue, or the named Linear issues  |

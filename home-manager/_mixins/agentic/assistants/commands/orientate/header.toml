@@ -1,6 +1,0 @@
-[common]
-description = "Orientate 🧭"
-argument-hint = "[focus]"
-
-[compose]
-root = true
