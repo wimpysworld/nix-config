@@ -56,7 +56,6 @@ from core.dispatch import (
 )
 from core.types import ExtractorRecord
 
-
 # The gh CLI tools Pi packages can register. A post run through one is external
 # (B2). This is the SURFACE-CHOICE signal only; the command body is scanned by
 # scan_bash.
@@ -146,7 +145,12 @@ def message_text(message: dict[str, Any]) -> str | None:
 
 
 def tool_result_text(event: dict[str, Any]) -> str | None:
-    if tool_name(event) != "subagent":
+    if tool_name(event) not in {
+        "Agent",
+        "get_subagent_result",
+        "SubagentWorkflow",
+        "subagent",
+    }:
         return ""
     parts = text_blocks(event.get("content"))
     if not parts and is_record(event.get("result")):
@@ -198,7 +202,9 @@ def is_post_capable_mcp_tool(name: str, post_tool_terms: tuple[str, ...]) -> boo
     return any(term in leaf for term in post_tool_terms)
 
 
-def collect_post_texts(value: Any, post_text_keys: frozenset[str], key: str = "") -> list[str]:
+def collect_post_texts(
+    value: Any, post_text_keys: frozenset[str], key: str = ""
+) -> list[str]:
     if isinstance(value, str):
         return [value] if key.lower() in post_text_keys else []
     if isinstance(value, list):
@@ -209,7 +215,9 @@ def collect_post_texts(value: Any, post_text_keys: frozenset[str], key: str = ""
     if is_record(value):
         output = []
         for child_key, child_value in value.items():
-            output.extend(collect_post_texts(child_value, post_text_keys, str(child_key)))
+            output.extend(
+                collect_post_texts(child_value, post_text_keys, str(child_key))
+            )
         return output
     return []
 
@@ -225,7 +233,9 @@ def is_external_surface(event: dict[str, Any], config: Config) -> bool:
         return True
     input_value = tool_input(event)
     if is_record(input_value):
-        command = input_value.get("command", input_value.get("cmd", input_value.get("script")))
+        command = input_value.get(
+            "command", input_value.get("cmd", input_value.get("script"))
+        )
         if isinstance(command, str):
             return _command_leads_with_gh(command)
     return False
@@ -277,11 +287,8 @@ def local_target(event: dict[str, Any]) -> str | None:
     # write/edit/patch tools. Returns None for bash or a pathless call, so the key
     # falls back to session+tool. Mirrors the old Pi extension's localTarget.
     normalised = tool_name(event).lower().replace("-", "_").replace(".", "_")
-    is_file_tool = (
-        normalised in _FILE_TOOL_NAMES
-        or normalised.endswith("_write")
-        or normalised.endswith("_edit")
-        or normalised.endswith("_patch")
+    is_file_tool = normalised in _FILE_TOOL_NAMES or normalised.endswith(
+        ("_write", "_edit", "_patch")
     )
     if not is_file_tool:
         return None
@@ -295,9 +302,7 @@ def local_target(event: dict[str, Any]) -> str | None:
     return None
 
 
-def tool_call_payload(
-    event: dict[str, Any], config: Config
-) -> tuple[str, str | None]:
+def tool_call_payload(event: dict[str, Any], config: Config) -> tuple[str, str | None]:
     name = tool_name(event)
     input_value = tool_input(event)
 
@@ -338,13 +343,17 @@ def _existing_blocked() -> bool:
 
 def _pass(session: str) -> Extraction:
     return Extraction(
-        record=ExtractorRecord(session=session, turn=None, tool="", target=None, texts=[]),
+        record=ExtractorRecord(
+            session=session, turn=None, tool="", target=None, texts=[]
+        ),
         event_class=EVENT_PASS,
         scan_mode=SCAN_NONE,
     )
 
 
-def _extract_tool_call(event: dict[str, Any], session: str, config: Config) -> Extraction:
+def _extract_tool_call(
+    event: dict[str, Any], session: str, config: Config
+) -> Extraction:
     action, payload = tool_call_payload(event, config)
 
     if action == "pass":
@@ -354,7 +363,9 @@ def _extract_tool_call(event: dict[str, Any], session: str, config: Config) -> E
     is_external = is_external_surface(event, config)
     surface = "external" if is_external else "local"
     target = external_target(event, config) if is_external else local_target(event)
-    record = ExtractorRecord(session=session, turn=None, tool=name, target=target, texts=[])
+    record = ExtractorRecord(
+        session=session, turn=None, tool=name, target=target, texts=[]
+    )
 
     gate_args = {
         "record": record,
@@ -385,7 +396,9 @@ def _extract_tool_call(event: dict[str, Any], session: str, config: Config) -> E
 
 
 def _extract_message_end(event: dict[str, Any], session: str) -> Extraction:
-    record = ExtractorRecord(session=session, turn=None, tool="message_end", target=None, texts=[])
+    record = ExtractorRecord(
+        session=session, turn=None, tool="message_end", target=None, texts=[]
+    )
     facing = {
         "record": record,
         "event_class": EVENT_FACING,
@@ -406,12 +419,16 @@ def _extract_message_end(event: dict[str, Any], session: str) -> Extraction:
     return Extraction(scan_mode=SCAN_TEXT, **facing)
 
 
-def _extract_tool_result(event: dict[str, Any], session: str, config: Config) -> Extraction:
+def _extract_tool_result(
+    event: dict[str, Any], session: str, config: Config
+) -> Extraction:
     # A subagent report is a deliverable the orchestrator consumes. Tier A
     # facing never blocks, so a breach notifies and the report still lands.
     # Gating this surface destroyed first-strike reports, which cost more than
     # the style breach it prevented.
-    record = ExtractorRecord(session=session, turn=None, tool="tool_result", target=None, texts=[])
+    record = ExtractorRecord(
+        session=session, turn=None, tool="tool_result", target=None, texts=[]
+    )
     facing = {
         "record": record,
         "event_class": EVENT_FACING,
@@ -446,7 +463,9 @@ def extract(event: str, payload: dict[str, Any], config: Config) -> Extraction:
         # The context build carries no body. The core reads the once-per-session
         # base-rules dedupe and the pending-reissue flag from the record session
         # and returns the injection flags; the shim applies them.
-        record = ExtractorRecord(session=session, turn=None, tool="context", target=None, texts=[])
+        record = ExtractorRecord(
+            session=session, turn=None, tool="context", target=None, texts=[]
+        )
         return Extraction(record=record, event_class=EVENT_CONTEXT, scan_mode=SCAN_NONE)
 
     inner = event_payload(payload)
@@ -454,7 +473,9 @@ def extract(event: str, payload: dict[str, Any], config: Config) -> Extraction:
         # A broken payload fails closed on a gating handler; message_end and
         # tool_result stay Tier A (re-issue, not block). Map both shapes to an
         # unresolved record.
-        record = ExtractorRecord(session=session, turn=None, tool=event, target=None, texts=[])
+        record = ExtractorRecord(
+            session=session, turn=None, tool=event, target=None, texts=[]
+        )
         if event in {"message_end", "tool_result"}:
             return Extraction(
                 record=record,

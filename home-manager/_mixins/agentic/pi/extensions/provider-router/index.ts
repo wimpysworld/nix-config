@@ -4,7 +4,6 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import {
-	isToolCallEventType,
 	type ExtensionAPI,
 	type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
@@ -49,7 +48,7 @@ function load(name: string): any {
 	}
 }
 
-// This function also runs inside the workflow worker, so it has no external references.
+// These route functions also run in the workflow VM, without module imports.
 export function resolveTaskRoute(task: Task, state: State): string | undefined {
 	const fail = (message: string): never => {
 		throw new Error(`provider-router: ${message}`);
@@ -70,15 +69,7 @@ export function resolveTaskRoute(task: Task, state: State): string | undefined {
 	const agent = typeof task.agent === "string" ? task.agent : command?.agent;
 	let route: Route | undefined;
 	const explicitModel = task.model ?? state.explicitModel;
-	if (explicitModel !== undefined) {
-		if (typeof explicitModel !== "string" || !explicitModel.trim())
-			return fail("explicit model must be a non-empty string");
-		const match = explicitModel.match(/^(.*?)(?::([^/:]+))?$/)!;
-		let model = match[1];
-		if (provider && model.startsWith(`${provider}/`))
-			model = model.slice(provider.length + 1);
-		route = { model, thinking: match[2] };
-	} else {
+	if (explicitModel === undefined) {
 		for (const candidate of [command, skill]) {
 			if (!candidate || Object.keys(candidate.providers).length === 0) continue;
 			if (!provider || !Object.hasOwn(candidate.providers, provider))
@@ -92,6 +83,14 @@ export function resolveTaskRoute(task: Task, state: State): string | undefined {
 			if (model !== undefined || thinking !== undefined)
 				route = { model, thinking };
 		}
+	} else {
+		if (typeof explicitModel !== "string" || !explicitModel.trim())
+			return fail("explicit model must be a non-empty string");
+		const match = explicitModel.match(/^(.*?)(?::([^/:]+))?$/)!;
+		let model = match[1];
+		if (provider && model.startsWith(`${provider}/`))
+			model = model.slice(provider.length + 1);
+		route = { model, thinking: match[2] };
 	}
 	if (!route) return undefined;
 	if (
@@ -118,6 +117,120 @@ export function resolveTaskRoute(task: Task, state: State): string | undefined {
 			`model ${provider}/${model} does not support thinking level ${route.thinking}`,
 		);
 	return `${provider}/${model}${route.thinking === undefined ? "" : `:${route.thinking}`}`;
+}
+
+export function resolveNativeTask(
+	task: Task,
+	state: State,
+	workflow = false,
+): Task {
+	const native = { ...task };
+	if (native.isolation && native.isolation !== "off")
+		throw new Error(
+			"provider-router: automatic worktrees are unsafe in upstream 0.19.0; use a separate checkout session",
+		);
+	if (native.isolated === true || native.extensions === false)
+		throw new Error(
+			"provider-router: child policy extensions must remain enabled",
+		);
+	if (native.schedule !== undefined)
+		throw new Error(
+			"provider-router: scheduled launches bypass current routing and are disabled",
+		);
+	if (native.resume !== undefined) return native;
+	const agent = workflow ? native.agentType : native.subagent_type;
+	if (typeof agent !== "string" || !agent.trim())
+		throw new Error("provider-router: name an explicit specialist agent");
+	const effort = workflow ? native.effort : native.thinking;
+	const normalised: Task = { ...native, agent };
+	if (effort !== undefined) {
+		if (typeof effort !== "string")
+			throw new Error("provider-router: thinking must be a string");
+		const routed = resolveTaskRoute(normalised, state);
+		const model =
+			routed?.replace(/:[^/:]+$/, "") ?? `${state.provider}/${state.model}`;
+		normalised.model = `${model}:${effort}`;
+	}
+	const resolved = resolveTaskRoute(normalised, state);
+	if (resolved) {
+		const match = resolved.match(/^(.*?)(?::([^/:]+))?$/)!;
+		native.model = match[1];
+		if (match[2] !== undefined)
+			native[workflow ? "effort" : "thinking"] = match[2];
+	}
+	delete native.command;
+	delete native.directSkill;
+	return native;
+}
+
+export function readWorkflow(input: Task, cwd: string): string {
+	if (typeof input.scriptPath === "string" && input.scriptPath.trim())
+		return fs.readFileSync(path.resolve(cwd, input.scriptPath.trim()), "utf8");
+	if (typeof input.script === "string" && input.script.trim())
+		return input.script;
+	const name = typeof input.name === "string" ? input.name.trim() : "";
+	if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name) || name.includes(".."))
+		throw new Error(
+			"provider-router: supply script, scriptPath, or a safe saved workflow name",
+		);
+	const roots = [
+		path.join(cwd, ".pi/workflows"),
+		path.join(cwd, ".agents/workflows"),
+		path.join(
+			process.env.PI_CODING_AGENT_DIR ?? path.join(os.homedir(), ".pi/agent"),
+			"workflows",
+		),
+	];
+	for (const root of roots) {
+		const file = path.join(root, `${name}.js`);
+		if (!fs.existsSync(root) || fs.lstatSync(root).isSymbolicLink()) continue;
+		if (!fs.existsSync(file) || fs.lstatSync(file).isSymbolicLink()) continue;
+		return fs.readFileSync(file, "utf8");
+	}
+	throw new Error(`provider-router: saved workflow ${name} was not found`);
+}
+
+export function wrapWorkflow(script: string, state: State): string {
+	return `
+const __routerState = ${JSON.stringify(state)};
+const resolveTaskRoute = ${resolveTaskRoute.toString()};
+const resolveNativeTask = ${resolveNativeTask.toString()};
+const __nativeAgent = agent;
+const __nativeParallel = parallel;
+const __nativePipeline = pipeline;
+let __running = 0;
+let __launches = 0;
+let __failure;
+const __waiting = [];
+const __check = (value) => {
+ if (value === null || (Array.isArray(value) && value.some(v => v === null))) {
+  __failure ??= new Error("provider-router: a required workflow child failed or was skipped");
+  throw __failure;
+ }
+ return value;
+};
+const __result = await (async () => {
+ const agent = async (prompt, options = {}) => {
+  try {
+   if (++__launches > 64) throw new Error("provider-router: workflow launch limit is 64");
+   const native = resolveNativeTask(options, __routerState, true);
+   if (__running >= 2) await new Promise(resolve => __waiting.push(resolve));
+   else __running++;
+   try { return __check(await __nativeAgent(prompt, native)); }
+   finally { const next = __waiting.shift(); if (next) next(); else __running--; }
+  } catch (error) { __failure ??= error; throw error; }
+ };
+ const parallel = async (...args) => __check(await __nativeParallel(...args));
+ const pipeline = async (...args) => __check(await __nativePipeline(...args));
+ const workflow = () => {
+  __failure ??= new Error("provider-router: launch saved workflows through SubagentWorkflow so routing applies");
+  throw __failure;
+ };
+${script}
+})();
+if (__failure) throw __failure;
+return __result;
+`.trim();
 }
 
 export async function routeInvocation(
@@ -318,44 +431,20 @@ export default function registerProviderRouter(pi: ExtensionAPI): void {
 			: "handled",
 	}));
 	pi.on("tool_call", (event, ctx) => {
-		if (!isToolCallEventType<"subagent", Task>("subagent", event)) return;
-		const input = event.input;
-		if (input.action && input.action !== "append-step") return;
+		if (event.toolName !== "Agent" && event.toolName !== "SubagentWorkflow")
+			return;
+		const input = event.input as Task;
 		try {
 			const state = stateFor(ctx);
-			if (typeof input.workflowScript === "string") {
-				input.workflowScript = `
-const __providerRouterState = ${JSON.stringify(state)};
-const __providerRouterResolve = ${resolveTaskRoute.toString()};
-const __providerRouterRoute = (spec) => {
- const model = __providerRouterResolve(spec, __providerRouterState);
- const {command, directSkill, ...native} = spec;
- return model ? {...native, model} : native;
-};
-const __providerRouterRuns = Object.freeze({
- ...runs,
- run: (key, spec) => runs.run(key, __providerRouterRoute(spec)),
- all: (specs) => runs.all(specs.map(__providerRouterRoute)),
-});
-{
- const runs = __providerRouterRuns;
-${input.workflowScript}
-}`.trim();
-				return;
+			if (event.toolName === "SubagentWorkflow") {
+				input.script = wrapWorkflow(readWorkflow(input, ctx.cwd), state);
+				delete input.scriptPath;
+				delete input.name;
+			} else {
+				const native = resolveNativeTask(input, state);
+				for (const key of Object.keys(input)) delete input[key];
+				Object.assign(input, native);
 			}
-			const apply = (task: unknown): void => {
-				if (!task || typeof task !== "object" || Array.isArray(task)) return;
-				const value = task as Task;
-				const model = resolveTaskRoute(value, state);
-				if (model) value.model = model;
-				delete value.command;
-				delete value.directSkill;
-				if (Array.isArray(value.parallel)) value.parallel.forEach(apply);
-				else if (value.parallel) apply(value.parallel);
-			};
-			apply(input);
-			if (Array.isArray(input.tasks)) input.tasks.forEach(apply);
-			if (Array.isArray(input.chain)) input.chain.forEach(apply);
 		} catch (error) {
 			return { block: true, reason: String(error) };
 		}

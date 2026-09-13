@@ -1,34 +1,58 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import {
+	mkdtempSync,
+	mkdirSync,
+	writeFileSync,
+	rmSync,
+	symlinkSync,
+} from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { after, test } from "node:test";
 
-const packageDir = process.env.PI_SUBAGENTS_DIR
-	?? join(homedir(), ".pi/agent/npm/node_modules/pi-subagents");
-const { runWorkflowScript, validateWorkflowScript } = await import(
-	pathToFileURL(join(packageDir, "src/workflows/scripted-workflow.ts")).href
+const packageDir =
+	process.env.PI_SUBAGENTS_DIR ??
+	join(homedir(), ".pi/agent/npm/node_modules/@tintinweb/pi-subagents");
+const { runWorkflow, validateScript } = await import(
+	pathToFileURL(join(packageDir, "src/workflow/runtime.ts")).href
 );
-
 const fixtureHome = mkdtempSync(join(tmpdir(), "provider-router-test-"));
 after(() => rmSync(fixtureHome, { recursive: true, force: true }));
 const mapDir = join(fixtureHome, ".pi/agent/extensions/provider-router");
 mkdirSync(mapDir, { recursive: true });
-writeFileSync(join(mapDir, "agents.json"), JSON.stringify({
-	worker: { "openai-codex": "test-model" },
-}));
-writeFileSync(join(mapDir, "thinking.json"), JSON.stringify({
-	worker: { "openai-codex": "high" },
-}));
-writeFileSync(join(mapDir, "routes.json"), JSON.stringify({
-	commands: {
-		review: { agent: "worker", providers: { "openai-codex": { model: "command-model", thinking: "medium" } } },
-		missing: { providers: { "openai-codex": { model: "unavailable-model" } } },
-		foreign: { providers: { anthropic: { model: "claude-sonnet-5" } } },
-	},
-	skills: { focused: { providers: { "openai-codex": { model: "skill-model", thinking: "low" } } } },
-}));
+writeFileSync(
+	join(mapDir, "agents.json"),
+	JSON.stringify({
+		worker: { "openai-codex": "test-model" },
+	}),
+);
+writeFileSync(
+	join(mapDir, "thinking.json"),
+	JSON.stringify({
+		worker: { "openai-codex": "high" },
+	}),
+);
+writeFileSync(
+	join(mapDir, "routes.json"),
+	JSON.stringify({
+		commands: {
+			review: {
+				agent: "worker",
+				providers: {
+					"openai-codex": { model: "command-model", thinking: "medium" },
+				},
+			},
+			missing: { providers: { "openai-codex": { model: "unavailable-model" } } },
+			foreign: { providers: { anthropic: { model: "claude-sonnet-5" } } },
+		},
+		skills: {
+			focused: {
+				providers: { "openai-codex": { model: "skill-model", thinking: "low" } },
+			},
+		},
+	}),
+);
 const originalHome = process.env.HOME;
 let registerProviderRouter;
 try {
@@ -39,173 +63,298 @@ try {
 	else process.env.HOME = originalHome;
 }
 
-function route(input, provider = "openai-codex", options = {}) {
+function route(input, provider = "openai-codex", toolName = "Agent") {
 	const handlers = new Map();
-	registerProviderRouter({ on: (name, handler) => handlers.set(name, handler), events: { on: () => () => {}, emit: () => {} } });
-	const result = handlers.get("tool_call")({ toolName: options.toolName ?? "subagent", input }, {
-		model: { provider, id: "parent-model" },
-		modelRegistry: {
-			getAvailable: () => ["test-model", "command-model", "skill-model", "explicit-model", "parent-model"]
-				.map((id) => ({ provider: "openai-codex", id })),
-		},
+	registerProviderRouter({
+		on: (name, handler) => handlers.set(name, handler),
+		events: { on: () => () => {}, emit: () => {} },
 	});
+	const result = handlers.get("tool_call")(
+		{ toolName, input },
+		{
+			cwd: fixtureHome,
+			model: { provider, id: "parent-model" },
+			modelRegistry: {
+				getAvailable: () =>
+					[
+						"test-model",
+						"command-model",
+						"skill-model",
+						"explicit-model",
+						"parent-model",
+					].map((id) => ({ provider: "openai-codex", id })),
+			},
+		},
+	);
 	if (result?.block) throw new Error(result.reason);
 	return input;
 }
 
-function childResult(key, params = {}) {
-	return { key, runId: `test-${key}`, ok: true, output: params.task ?? key, artifactPaths: [] };
-}
-
-async function execute(script, provider = "openai-codex") {
-	const input = route({ workflowScript: script }, provider);
-	assert.deepEqual(validateWorkflowScript(input.workflowScript), { ok: true, errors: [] });
+const meta =
+	'export const meta = {name: "Router test", description: "Test native routes", phases: [{title: "Check"}]};';
+async function execute(body, options = {}) {
+	const input = route(
+		{ script: `${meta}\n${body}`, ...options.input },
+		options.provider,
+		"SubagentWorkflow",
+	);
+	assert.equal(validateScript(input.script).meta.name, "Router test");
 	const calls = [];
-	const result = await runWorkflowScript({
-		script: input.workflowScript,
-		timeoutMs: 5000,
-		launch: async (key, params) => {
-			calls.push({ key, ...params });
-			return childResult(key, params);
+	let running = 0;
+	let peak = 0;
+	const result = await runWorkflow({
+		script: input.script,
+		args: { marker: "kept" },
+		signal: AbortSignal.timeout(5000),
+		host: {
+			spawnAgent: async (request) => {
+				calls.push(request);
+				peak = Math.max(peak, ++running);
+				await new Promise((resolve) => setTimeout(resolve, 5));
+				running--;
+				return options.fail
+					? { ok: false, error: "test failure" }
+					: { ok: true, text: request.prompt };
+			},
+			resumeAgent: async (_id, prompt) => ({ ok: true, text: prompt }),
+			abortAgent: () => {},
 		},
-		status: async (key) => childResult(key),
 	});
-	return { calls, result };
+	return { calls, result, peak };
 }
 
-test("routes a top-level parallel workflow without nested async functions", async () => {
-	const { calls, result } = await execute(`
-const specs = ['a', 'b'].map((key) => ({ key, agent: 'worker', task: key }));
-return await runs.all(specs);
-`);
-	assert.equal(calls.length, 2);
-	assert.deepEqual(calls.map(({ key, model }) => ({ key, model })), [
-		{ key: "a", model: "openai-codex/test-model:high" },
-		{ key: "b", model: "openai-codex/test-model:high" },
-	]);
-	assert.deepEqual(result.value.map(({ output }) => output), ["a", "b"]);
+test("routes Agent with separate model and thinking fields", () => {
+	const result = route({
+		subagent_type: "worker",
+		description: "Check",
+		prompt: "direct",
+		inherit_context: false,
+		run_in_background: true,
+	});
+	assert.equal(result.model, "openai-codex/test-model");
+	assert.equal(result.thinking, "high");
+	assert.equal(result.inherit_context, false);
+	assert.equal(result.run_in_background, true);
+	assert.equal(result.prompt, "direct");
 });
 
-test("routes sequential children and preserves explicit return values", async () => {
-	const { calls, result } = await execute(`
-const first = await runs.run('first', {agent: 'worker', task: 'first'});
-return (await runs.run('second', {agent: 'worker', task: first.output + '-second'})).output;
-`);
-	assert.equal(result.value, "first-second");
-	assert.ok(calls.every(({ model }) => model === "openai-codex/test-model:high"));
+test("preserves explicit, foreground, and inherited-context requests", () => {
+	const result = route({
+		subagent_type: "worker",
+		model: "openai-codex/explicit-model",
+		thinking: "low",
+		inherit_context: true,
+		run_in_background: false,
+	});
+	assert.equal(result.model, "openai-codex/explicit-model");
+	assert.equal(result.thinking, "low");
+	assert.equal(result.inherit_context, true);
+	assert.equal(result.run_in_background, false);
+	assert.equal(
+		route({ subagent_type: "worker", model: "explicit-model:medium" }).thinking,
+		"medium",
+	);
 });
 
-test("preserves explicit and omitted child execution modes through routing", async () => {
-	for (const method of ["run", "all"]) {
-		const { calls } = await execute(`
-const specs = [
-  {key: 'background', agent: 'worker', task: 'background', async: true},
-  {key: 'foreground', agent: 'worker', task: 'foreground', async: false},
-  {key: 'default', agent: 'worker', task: 'default'}
-];
-${method === "all" ? "return await runs.all(specs);" : "for (const spec of specs) await runs.run(spec.key, spec);"}
-`);
-		assert.equal(calls.length, 3, method);
-		assert.equal(calls[0].async, true, method);
-		assert.equal(calls[1].async, false, method);
-		assert.equal(Object.hasOwn(calls[2], "async"), false, method);
-		assert.ok(calls.every(({ model }) => model === "openai-codex/test-model:high"), method);
+test("command and directly invoked skill routes override agent routes", () => {
+	const result = route({ subagent_type: "worker", command: "review" });
+	assert.equal(result.model, "openai-codex/command-model");
+	assert.equal(result.thinking, "medium");
+	assert.ok(!("command" in result));
+	assert.equal(
+		route({ subagent_type: "worker", directSkill: "focused" }).model,
+		"openai-codex/skill-model",
+	);
+	assert.equal(
+		route({ subagent_type: "worker", command: "review", model: "explicit-model" })
+			.model,
+		"openai-codex/explicit-model",
+	);
+});
+
+test("supporting skill reads and result tools do not select models", () => {
+	const read = { path: "/skills/focused/SKILL.md" };
+	assert.deepEqual(route({ ...read }, undefined, "read"), read);
+	const result = { agent_id: "child" };
+	assert.deepEqual(
+		route({ ...result }, undefined, "get_subagent_result"),
+		result,
+	);
+	assert.equal(
+		route({ subagent_type: "worker", skills: true }).model,
+		"openai-codex/test-model",
+	);
+});
+
+test("unknown routes, unavailable models, and unsupported thinking block launches", () => {
+	for (const input of [
+		{ command: "unknown" },
+		{ directSkill: "unknown" },
+		{ command: "missing" },
+		{ command: "foreign" },
+		{ model: "anthropic/claude-sonnet-5" },
+		{ thinking: "max" },
+	])
+		assert.throws(
+			() => route({ subagent_type: "worker", ...input }),
+			/provider-router:/,
+		);
+	assert.throws(() => route({ prompt: "missing type" }), /explicit specialist/);
+});
+
+test("unsafe worktrees, isolated policy bypasses, and schedules are rejected", () => {
+	for (const input of [
+		{ isolation: "worktree" },
+		{ isolated: true },
+		{ extensions: false },
+		{ schedule: "+5m" },
+	])
+		assert.throws(
+			() => route({ subagent_type: "worker", ...input }),
+			/provider-router:/,
+		);
+});
+
+test("resume retains the existing child contract", () => {
+	const input = { resume: "child", prompt: "Continue", run_in_background: true };
+	assert.deepEqual(route({ ...input }), input);
+});
+
+test("native parallel workflow routes every child and limits concurrency", async () => {
+	const { calls, result, peak } = await execute(
+		`return await parallel(["a", "b", "c", "d", "e"].map(key => () => agent(key, {agentType: "worker"})));`,
+	);
+	assert.equal(result.status, "completed", result.error);
+	assert.deepEqual(result.value, ["a", "b", "c", "d", "e"]);
+	assert.equal(peak, 2);
+	assert.equal(calls.length, 5);
+	assert.ok(
+		calls.every(
+			(call) => call.model === "openai-codex/test-model" && call.effort === "high",
+		),
+	);
+});
+
+test("native sequential and pipeline workflows preserve values and args", async () => {
+	const { calls, result } = await execute(`
+const first = await agent(args.marker, {agentType: "worker"});
+return await pipeline([first], value => agent(value + "-second", {agentType: "worker", model: "explicit-model", effort: "low"}));`);
+	assert.equal(result.status, "completed", result.error);
+	assert.deepEqual(result.value, ["kept-second"]);
+	assert.equal(calls[1].model, "openai-codex/explicit-model");
+	assert.equal(calls[1].effort, "low");
+});
+
+test("workflow routes strip routing-only fields before the native API", async () => {
+	const { calls, result } = await execute(
+		`return await agent("review", {agentType: "worker", command: "review"});`,
+	);
+	assert.equal(result.status, "completed", result.error);
+	assert.equal(calls[0].model, "openai-codex/command-model");
+	assert.equal(calls[0].effort, "medium");
+	assert.ok(!("command" in calls[0]));
+});
+
+test("missing agent types and failed required children cannot report success", async () => {
+	for (const [body, fail] of [
+		['return await agent("missing type");', false],
+		['return await agent("failure", {agentType: "worker"});', true],
+		[
+			'try { await agent("invalid", {agentType: "worker", command: "missing"}); } catch {} return "hidden";',
+			false,
+		],
+		['return await parallel([() => {throw new Error("stage");}]);', false],
+		['return await pipeline(["a"], () => {throw new Error("stage");});', false],
+		[
+			'return await agent("unsafe", {agentType: "worker", isolation: "worktree"});',
+			false,
+		],
+		['return await workflow("unrouted");', false],
+	]) {
+		const { result } = await execute(body, { fail });
+		assert.equal(result.status, "failed", body);
 	}
 });
 
-test("preserves an explicit model ahead of the agent route", async () => {
-	const { calls } = await execute(`
-return await runs.all([
-  {key: 'known', agent: 'worker', task: 'known', model: 'openai-codex/explicit-model'},
-  {key: 'unknown', agent: 'unmapped', task: 'unknown', model: 'openai-codex/explicit-model'}
-]);
-`);
-	assert.equal(calls[0].model, "openai-codex/explicit-model");
-	assert.equal(calls[1].model, "openai-codex/explicit-model");
+test("workflow launch count is bounded even when the script catches errors", async () => {
+	const { result, calls } = await execute(
+		'for (let n = 0; n < 65; n++) { try { await agent(String(n), {agentType: "worker"}); } catch {} }',
+	);
+	assert.equal(result.status, "failed");
+	assert.equal(calls.length, 64);
+	assert.match(result.error, /launch limit/);
 });
 
-test("preserves other workflow methods and global helpers", async () => {
-	const { result } = await execute(`
-const child = await runs.run('child', {agent: 'worker', task: 'child'});
-const status = await runs.status('child');
-emit('complete');
-return {output: status.output, steer: typeof runs.steer, ref: typeof runs.ref, refs: typeof runs.refs};
-`);
-	assert.deepEqual(result.value, { output: "test-child", steer: "function", ref: "function", refs: "function" });
-	assert.deepEqual(result.emits, ["complete"]);
+test("scriptPath and saved sources receive the same routing wrapper", async () => {
+	const root = join(fixtureHome, ".pi/workflows");
+	mkdirSync(root, { recursive: true });
+	const file = join(root, "fixture.js");
+	writeFileSync(
+		file,
+		`${meta}\nreturn await agent("file", {agentType: "worker"});`,
+	);
+	for (const input of [{ scriptPath: file }, { script: "", name: "fixture" }]) {
+		const { calls, result } = await execute(
+			"throw new Error('wrong precedence');",
+			{ input },
+		);
+		assert.equal(result.status, "completed", result.error);
+		assert.equal(result.value, "file");
+		assert.equal(calls[0].model, "openai-codex/test-model");
+	}
+	symlinkSync(file, join(root, "linked.js"));
+	assert.throws(
+		() => route({ name: "linked" }, undefined, "SubagentWorkflow"),
+		/not found/,
+	);
+	assert.throws(
+		() => route({ name: "../fixture" }, undefined, "SubagentWorkflow"),
+		/safe saved/,
+	);
 });
 
-test("preserves workflow results when the provider has no route", async () => {
-	const { result, calls } = await execute("return 42;", "unknown");
-	assert.equal(result.value, 42);
-	assert.deepEqual(calls, []);
+test("workflow resume preserves the original specialist contract", async () => {
+	const { result, calls } = await execute(`
+await agent("first", {agentType: "worker", label: "review"});
+return await agent("follow-up", {resume: "review"});`);
+	assert.equal(result.status, "completed", result.error);
+	assert.equal(result.value, "follow-up");
+	assert.equal(calls.length, 1);
 });
 
-test("keeps management calls unchanged and routes direct children", () => {
-	const validation = { action: "validate", workflowScript: "return 42;" };
-	assert.deepEqual(route({ ...validation }), validation);
-	assert.equal(route({ agent: "worker", task: "direct" }).model, "openai-codex/test-model:high");
+test("unawaited workflow launches cannot report completion", async () => {
+	const { result } = await execute(
+		'agent("unobserved", {agentType: "worker"}); return "early";',
+	);
+	assert.equal(result.status, "failed");
+	assert.match(result.error, /unawaited/);
 });
 
-test("routes parallel and chain children with the same precedence", () => {
-	const result = route({
-		tasks: [{ agent: "worker", command: "review" }, { agent: "worker", model: "openai-codex/explicit-model" }],
-		chain: [{ agent: "worker" }, { parallel: [{ agent: "worker", command: "review" }] }],
+test("native workflow cancellation aborts its active mock child", async () => {
+	const controller = new AbortController();
+	const aborted = [];
+	const input = route(
+		{ script: `${meta}\nreturn await agent("wait", {agentType: "worker"});` },
+		undefined,
+		"SubagentWorkflow",
+	);
+	const result = await runWorkflow({
+		script: input.script,
+		signal: controller.signal,
+		host: {
+			spawnAgent: async () => {
+				controller.abort();
+				return new Promise(() => {});
+			},
+			abortAgent: (id) => aborted.push(id),
+		},
 	});
-	assert.equal(result.tasks[0].model, "openai-codex/command-model:medium");
-	assert.equal(result.tasks[1].model, "openai-codex/explicit-model");
-	assert.equal(result.chain[0].model, "openai-codex/test-model:high");
-	assert.equal(result.chain[1].parallel[0].model, "openai-codex/command-model:medium");
+	assert.equal(result.status, "killed");
+	assert.equal(aborted.length, 1);
 });
 
-test("command routing overrides agent defaults but not explicit caller choices", () => {
-	assert.equal(route({ agent: "worker", command: "review" }).model, "openai-codex/command-model:medium");
-	assert.equal(route({ agent: "worker", command: "review", model: "openai-codex/explicit-model" }).model,
-		"openai-codex/explicit-model");
-});
-
-test("supporting skills and file reads do not select a model", () => {
-	assert.equal(route({ agent: "worker", skills: ["focused"] }).model, "openai-codex/test-model:high");
-	const read = { path: "/skills/focused/SKILL.md", directSkill: "focused" };
-	assert.deepEqual(route({ ...read }, "openai-codex", { toolName: "read" }), read);
-	assert.equal(route({ directSkill: "focused" }).model, "openai-codex/skill-model:low");
-});
-
-test("unknown explicit routes and unavailable models block child launch", () => {
-	assert.throws(() => route({ command: "unknown-command" }), /unknown|not found/i);
-	assert.throws(() => route({ directSkill: "unknown-skill" }), /unknown|not found/i);
-	assert.throws(() => route({ command: "missing" }), /unavailable|not found|not available/i);
-	assert.throws(() => route({ command: "foreign" }), /provider|route/i);
-});
-
-test("explicit model selection cannot silently change the inference provider", () => {
-	assert.throws(() => route({ agent: "worker", model: "anthropic/claude-sonnet-5" }), /provider/i);
-});
-
-test("workflow command routes reach native launches without routing-only fields", async () => {
-	const { calls } = await execute(`
-return await runs.all([
-  {key: 'command', agent: 'worker', command: 'review', task: 'review'},
-  {key: 'skill', agent: 'worker', directSkill: 'focused', task: 'focus'}
-]);
-`);
-	assert.equal(calls[0].model, "openai-codex/command-model:medium");
-	assert.equal(calls[1].model, "openai-codex/skill-model:low");
-	assert.ok(calls.every((call) => !("command" in call) && !("directSkill" in call)));
-});
-
-test("an invalid route stops a workflow before any child launches", async () => {
-	const { calls, result } = await execute(`
-try {
-  await runs.all([
-    {key: 'valid', agent: 'worker', task: 'valid'},
-    {key: 'invalid', agent: 'worker', command: 'missing', task: 'invalid'}
-  ]);
-  return 'launched';
-} catch (error) {
-  return error.message;
-}
-`);
-	assert.deepEqual(calls, []);
-	assert.match(result.value, /unavailable/i);
+test("workflows with no provider route can return without launching children", async () => {
+	const { result } = await execute("return 42;", { provider: "unknown" });
+	assert.equal(result.status, "completed", result.error);
+	assert.equal(result.value, 42);
 });

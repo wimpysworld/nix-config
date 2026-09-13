@@ -52,9 +52,27 @@ let
   # Compose a single agent for a specific platform using the provided prompt.
   composeAgentFromPrompt =
     platform: agentName: prompt:
-    composeWithFrontmatter (renderHeader "agent" platform agentName (
-      basePath + "/agents/${agentName}"
-    )) prompt;
+    composeWithFrontmatter (renderHeader "agent" platform agentName (basePath + "/agents/${agentName}"))
+      (
+        if platform == "pi" then
+          lib.concatStringsSep "\n\n" [
+            prompt
+            leafWorkerContract
+            ''
+              ## Shared safety rules
+
+              Read the applicable project instructions before work in that project.
+              Preserve unrelated changes. Do not delete files or backups without explicit consent.
+              Do not change external state without explicit authority in the task packet.
+              Do not expose secrets, tokens, or credentials.
+              Use read, edit, and write for files. Use current reference tools for technical documentation.
+              Load required skills before dependent work. Loading a skill grants no additional authority.
+            ''
+            houseStyleBody
+          ]
+        else
+          prompt
+      );
 
   agentProviderRoutes = agentName: (readHeader (basePath + "/agents/${agentName}")).routing.pi or { };
   extractAgentProviderModels =
@@ -240,9 +258,10 @@ let
     else if platform == "pi" && selectedAgent != null && (source.compose.pi.spawn-agent or true) then
       composeWithFrontmatter header (
         lib.trim ''
-          Use the subagent tool to launch the `${selectedAgent}` agent for the task below.
+          Use the Agent tool with `subagent_type: "${selectedAgent}"` for the task below.
 
-          Set `context` to `"fresh"`. Do not set `"fork"`.
+          Set `inherit_context` to `false` and `run_in_background` to `true`.
+          Supply a short `description` and put the task in `prompt`.
           ${workerDispatchInstructions}
           ## Task
 
@@ -568,9 +587,34 @@ let
   generatedSkillsFor =
     platform:
     let
-      content = composeWithFrontmatter (renderHeader "skill" platform "delegate-task" (
-        basePath + "/skills/delegate-task"
-      )) (stripFrontmatter delegateTaskSkillContent);
+      content =
+        composeWithFrontmatter
+          (renderHeader "skill" platform "delegate-task" (basePath + "/skills/delegate-task"))
+          (
+            stripFrontmatter delegateTaskSkillContent
+            + lib.optionalString (platform == "pi") ''
+
+              ## Pi native delegation
+
+              Use `Agent` with `subagent_type`, a short `description`, and the full packet in `prompt`.
+              Set `inherit_context: false` unless the packet requires the parent transcript.
+              Use `run_in_background: true` by default. Receive the completion notification before you use the result.
+              Use `get_subagent_result` to read completed output and `steer_subagent` to send guidance to an active child.
+              Resume a completed child with `Agent` and its `resume` identifier. Preserve the child's existing model and role.
+              Completed children have no live process to stop. Use the native UI or RPC cancellation for active children.
+              Deadlines in packets are instructions, not runtime timers. Use a tested cancellation path for a hard wall-clock limit.
+
+              Use `SubagentWorkflow` for scripted parallel work and dependent stages.
+              Supply `script`, `scriptPath`, or a saved workflow `name`. Start scripts with `export const meta = { name, description }`.
+              Inside scripts, use `agent(prompt, { agentType })`, `parallel`, and `pipeline`. Name every specialist explicitly.
+              Await every launch. A failed or skipped required child fails the workflow, even if a stage catches the error.
+              The router limits each workflow to two active children and 64 launches. Separate workflows have separate limits.
+              Launch saved workflows through the tool, not nested `workflow()` calls, so each script receives routing checks.
+              Use separate sessions in separate checkouts for concurrent writers. Automatic worktrees are disabled because upstream cleanup can lose changes.
+              Keep policy extensions enabled. Do not use isolated children, schedules, agent mentions, or slash-command launch shortcuts.
+              Do not use the former `subagent`, `runs.run`, `runs.all`, `bg_wait`, or `subagent_supervisor` APIs.
+            ''
+          );
     in
     {
       delegate-task = {

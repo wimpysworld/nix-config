@@ -36,21 +36,32 @@ route, unless the caller supplies a model or a more specific command.
 Reading a supporting `SKILL.md` never selects a model. The `skills` list on a
 child task also does not select a model.
 
-## Workflow children
+## Native children and workflows
 
-The `subagent` tool hook wraps `runs.run` and `runs.all`. Each child specification
-is resolved immediately before its launch. Top-level `await`, `return`, dynamic
-specifications, and the other `runs` methods remain available.
+The router handles Tintinweb's `Agent` and `SubagentWorkflow` tools.
+`Agent` receives separate `model` and `thinking` fields. Workflow `agent()` calls receive `model` and `effort`.
+Every new launch must name a specialist through `subagent_type` or workflow `agentType`.
+Resumed children retain their existing role, model, and thinking level.
+
+Inline scripts, `scriptPath`, and saved `name` sources receive the same wrapper.
+Source precedence matches upstream: path, inline script, then saved name.
+The wrapper preserves workflow metadata, arguments, return values, `parallel`, and `pipeline`.
+Each workflow has a limit of two active children and 64 launches. Separate workflows have separate limits.
+A failed or skipped required child fails the workflow, even when a stage catches the error.
 
 A child can declare `command: "review-code"` or `directSkill: "research-task"`
 to request a route. The wrapper removes these routing fields before native child
 validation. These fields select routing metadata. They do not expand prompt
 content, so the caller must also supply the task instructions.
 
-Legacy single calls, `tasks`, chain steps, parallel chain steps, and
-`action: "append-step"` use the same resolver. Other management actions remain
-unchanged. External extension event-bus delegation does not pass through the
-`tool_call` hook. Use the supported `subagent` workflow path for routed children.
+Use the routed tools for delegation. Nested `workflow()` calls are rejected because their source bypasses the tool hook.
+Launch saved workflows through `SubagentWorkflow` instead.
+Agent mentions and scheduling are disabled. Do not use slash-command launch shortcuts or event-bus launches, which bypass routing.
+
+Automatic worktrees are disabled because upstream 0.19.0 cleanup can discard changes after a preservation error.
+The router rejects isolation requests rather than silently using the shared checkout.
+Use separate Pi sessions in separate checkouts for concurrent writers.
+Children must retain policy extensions. `isolated: true` and `extensions: false` requests fail.
 
 ## Generated maps
 
@@ -123,8 +134,8 @@ node --experimental-loader ./home-manager/_mixins/agentic/pi/extensions/provider
   home-manager/_mixins/agentic/pi/extensions/prompt-template-display/index.test.ts
 ```
 
-Workflow tests use the installed `pi-subagents` validator and worker with mock
-child launches. Set `PI_SUBAGENTS_DIR` to test another installation. Invocation
+Workflow tests use the installed `@tintinweb/pi-subagents` validator and VM with mock child launches.
+Header tests evaluate all generated agents and load their symlinks through the upstream loader. Set `PI_SUBAGENTS_DIR` to test another installation. Invocation
 tests use mocked Pi hooks and model APIs. Set `PI_CODING_AGENT_DIR` to the installed
 `@earendil-works/pi-coding-agent` package directory to include native lifecycle tests.
 Those tests use Pi's agent loop and session methods with fake inference and compaction.

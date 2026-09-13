@@ -248,11 +248,8 @@ let
 
   # ============ PI AGENT ============
 
-  # Pi agent prompts replace Claude's "Task tool" wording with Pi's
-  # "subagent tool" terminology so subagent invocation prose is platform-
-  # appropriate. The transformation is applied to the agent prompt body
-  # before composition; command bodies are unchanged because the subagent-
-  # launch boilerplate for agent-scoped commands is composed below.
+  # Pi uses its native Agent tool name. The composer adds the leaf contract
+  # and shared rules without changing other clients or specialist bodies.
   piAgentPrompt =
     prompt:
     lib.replaceStrings
@@ -261,8 +258,8 @@ let
         "Permitted tools: Task tool for delegation, direct conversation"
       ]
       [
-        "subagent tool"
-        "Permitted tools: subagent tool for delegation, direct conversation"
+        "Agent tool"
+        "Permitted tools: Agent tool for delegation, direct conversation"
       ]
       prompt;
   piAgentFiles = lib.mapAttrs' (

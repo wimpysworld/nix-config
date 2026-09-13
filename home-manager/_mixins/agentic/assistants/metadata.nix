@@ -177,9 +177,10 @@ let
         else
           [ ];
       defaults = lib.optionalAttrs (kind == "agent" && platform == "pi") {
-        systemPromptMode = "append";
-        inheritProjectContext = false;
-        inheritSkills = true;
+        prompt_mode = "replace";
+        extensions = true;
+        skills = true;
+        isolated = false;
       };
       native =
         if kind == "skill" && platform == "codex" then

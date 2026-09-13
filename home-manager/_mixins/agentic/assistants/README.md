@@ -406,7 +406,6 @@ Keep agent and command bodies in `prompt.md`. Keep skill bodies in frontmatter-f
 
 Retired provider headers are removed. Retired `description.txt` files remain in the repository but are not consumed. Edit only `header.toml` for live metadata.
 
-
 Pi composition routes through `compose.composeAgentFromPrompt "pi"` and `compose.composeCommandFromPrompt "pi"`. The composer shares the launch wrapper across public and encrypted commands. Codex uses a `spawn_agent` wrapper around command-derived skills.
 
 Generated child tasks carry a shared leaf-worker contract. Workers complete assigned work directly, launch no agents, and return to the parent. They follow nested workflow bodies without executing generated launch wrappers. If more specialist work is necessary, they return a bounded request after completing independent assigned work. The root dispatches that work and continues the original task.
@@ -442,7 +441,10 @@ The calling workflow must name the executor: the current agent or a specialist d
 
 Agent-bound Pi commands launch a fresh worker by default. Set `[compose.pi] spawn-agent = false` for a Pi-only opt-out. Use `[compose] root = true` for caller-context execution across all clients. Both controls apply to plaintext and encrypted commands.
 
-`[pi]` holds native non-model fields such as `tools`, `defaultContext`, `output`, `fallbackModels`, and `maxSubagentDepth`. Pi agents retain three generated defaults: `systemPromptMode: append`, `inheritProjectContext: false`, and `inheritSkills: true`. Explicit values override these defaults.
+`[pi]` holds native fields such as `tools`, `max_turns`, `persist_session`, and `run_in_background`.
+Tintinweb defaults are `prompt_mode: replace`, `extensions: true`, `skills: true`, and `isolated: false`.
+The Pi composer adds the leaf contract, shared safety rules, and house style without changing specialist source bodies or other clients.
+Omit `inherit_context` so callers can select fresh or inherited context. The global `maxSubagentDepth: 1` prevents nested delegation.
 
 OpenCode `permission` headers are not mapped to Pi. Pi supports an explicit `tools` allowlist for subagents, but OpenCode's allow/deny permission model is not equivalent.
 
@@ -466,7 +468,8 @@ The inference-provider name must match Pi exactly, including hyphens. The defaul
 
 `thinking` accepts `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`. Invalid values fail evaluation. The runtime also checks that the selected model supports the thinking level.
 
-When both fields exist, Pi receives `provider/modelId:thinking`. A thinking-only entry reuses the active session model ID. Model and effort pins are independent. An omitted table preserves session inheritance.
+`Agent` receives `model: provider/modelId` and a separate `thinking` field. Workflow children receive `model` and `effort`.
+A thinking-only entry reuses the active session model ID. Model and effort pins are independent. An omitted table preserves session inheritance.
 
 Pi's global `defaultThinkingLevel = "medium"` and `defaultModel = "gpt-5.6-sol"`
 set the session default for the unnamed global prompt. Agents that omit a
@@ -529,7 +532,7 @@ Cleanup still runs when a client is disabled. It removes only unchanged recorded
 
 On the first migration, activation reads the previous immutable generation and sops records to establish ownership. It never executes an old activation script. Unverified files remain outside ownership.
 
-The approved one-off exception retires the regular file `~/.pi/agent/agents/traya.md` on the next successful activation. Completion is recorded, so later files at that path are not repeatedly removed. A symlink or other non-regular path stays untouched.
+Activation preserves unmanaged files, including `~/.pi/agent/agents/traya.md`. The Tintinweb migration removes the former one-off retirement request.
 
 Activation captures migration evidence before the final secret refresh. The helper then checks every required source and stages regular-file content before it changes client destinations. A caught apply failure restores the helper's previous files and links. The manifest changes only after successful application.
 
