@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { stripTypeScriptTypes } from "node:module";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { join } from "node:path";
 
 const sdkStub = `
 export function isToolCallEventType(name, event) {
@@ -13,6 +14,11 @@ export async function resolve(specifier, context, nextResolve) {
 		try {
 			return await nextResolve(specifier, context);
 		} catch (error) {
+			if (error.code === "ERR_MODULE_NOT_FOUND" &&
+				specifier === "@earendil-works/pi-coding-agent" &&
+				process.env.PI_CODING_AGENT_DIR) {
+				return nextResolve(pathToFileURL(join(process.env.PI_CODING_AGENT_DIR, "dist/index.js")).href, context);
+			}
 			if (error.code !== "ERR_MODULE_NOT_FOUND" || !specifier.endsWith(".js"))
 				throw error;
 			return nextResolve(specifier.slice(0, -3) + ".ts", context);
