@@ -91,7 +91,8 @@ export function resolveTaskRoute(task: Task, state: State): string | undefined {
 	}
 	if (
 		route !== undefined &&
-		(!route || typeof route !== "object" ||
+		(!route ||
+			typeof route !== "object" ||
 			Array.isArray(route) ||
 			Object.keys(route).some((key) => key !== "model" && key !== "thinking"))
 	)

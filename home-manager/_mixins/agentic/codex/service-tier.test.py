@@ -18,7 +18,9 @@ DEFAULT_ARGS = ["-c", 'service_tier="default"']
 def launcher_shell(home):
     """Extract the real shell body and replace only its Nix path interpolations."""
     source = MODULE.read_text()
-    package = source.split("  codexLauncherPackage = pkgs.writeShellApplication {", 1)[1]
+    package = source.split("  codexLauncherPackage = pkgs.writeShellApplication {", 1)[
+        1
+    ]
     shell = package.split("    text = ''\n", 1)[1].split("\n    '';", 1)[0]
     paths = {
         "lib.escapeShellArg codexDir": shlex.quote(str(home / ".codex")),
@@ -80,7 +82,9 @@ class ServiceTierTests(unittest.TestCase):
     def test_automatic_resume_for_bare_prompt_and_flags(self):
         for args in ([], ["a prompt with spaces"], ["--model", "example"]):
             with self.subTest(args=args):
-                self.assertEqual(self.launch(args), DEFAULT_ARGS + ["resume", "--last"] + args)
+                self.assertEqual(
+                    self.launch(args), DEFAULT_ARGS + ["resume", "--last"] + args
+                )
 
     def test_explicit_subcommands_and_help(self):
         for args in (
@@ -98,7 +102,9 @@ class ServiceTierTests(unittest.TestCase):
         for flag in ("-c", "--config"):
             for prefix in ([], ["resume", "--last"], ["exec"]):
                 args = prefix + [flag, 'service_tier="fast"', "a prompt with spaces"]
-                expected = DEFAULT_ARGS + ([] if prefix else ["resume", "--last"]) + args
+                expected = (
+                    DEFAULT_ARGS + ([] if prefix else ["resume", "--last"]) + args
+                )
                 with self.subTest(flag=flag, prefix=prefix):
                     self.assertEqual(self.launch(args), expected)
 
@@ -106,13 +112,20 @@ class ServiceTierTests(unittest.TestCase):
         self.assertEqual(
             self.launch(["hello"], bypass=True),
             DEFAULT_ARGS
-            + ["--dangerously-bypass-approvals-and-sandbox", "resume", "--last", "hello"],
+            + [
+                "--dangerously-bypass-approvals-and-sandbox",
+                "resume",
+                "--last",
+                "hello",
+            ],
         )
 
     def test_new_process_after_fast_starts_with_default(self):
         self.launch(["-c", 'service_tier="fast"'])
         self.assertEqual(self.launch([]), DEFAULT_ARGS + ["resume", "--last"])
-        self.assertEqual(self.launch(["resume", "--last"]), DEFAULT_ARGS + ["resume", "--last"])
+        self.assertEqual(
+            self.launch(["resume", "--last"]), DEFAULT_ARGS + ["resume", "--last"]
+        )
 
     def test_stable_binary_fallbacks(self):
         for relative in (".codex/bin/codex", ".config/codex/bin/codex"):
