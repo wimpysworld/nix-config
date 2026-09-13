@@ -27,6 +27,7 @@ let
   # Import compose module
   compose = import ./compose.nix {
     inherit lib pkgs;
+    gwsEnabled = noughtyLib.userHasTag "developer" && noughtyLib.hostHasTag "cg";
   };
   codingAgentDirs = lib.removeAttrs compose.agentDirs [ "traya" ];
 

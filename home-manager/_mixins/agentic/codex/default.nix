@@ -337,7 +337,10 @@ let
   mcpServerDefs = import ../mcp/servers.nix {
     inherit config pkgs;
   };
-  assistantCompose = import ../assistants/compose.nix { inherit lib; };
+  assistantCompose = import ../assistants/compose.nix {
+    inherit lib;
+    gwsEnabled = isDeveloper && noughtyLib.hostHasTag "cg";
+  };
 
   codexSkillNames =
     let

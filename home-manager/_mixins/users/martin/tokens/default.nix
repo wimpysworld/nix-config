@@ -10,10 +10,6 @@ let
   enabled =
     noughtyLib.isUser [ "martin" ] && noughtyLib.userHasTag "developer" && noughtyLib.hostHasTag "cg";
 
-  googleCloudSdk = pkgs.google-cloud-sdk.withExtraComponents (
-    with pkgs.google-cloud-sdk.components; [ beta ]
-  );
-
   productionAudiences = [
     "https://console-api.enforce.dev"
     "apk.cgr.dev"
@@ -69,8 +65,10 @@ let
     runtimeInputs = [
       pkgs.chainctl
       pkgs.coreutils
-      googleCloudSdk
+      pkgs.google-cloud-sdk
       pkgs.gnugrep
+      pkgs.gws
+      pkgs.jq
     ];
     text = ''
       export MINT_PROD_AUDIENCES=${

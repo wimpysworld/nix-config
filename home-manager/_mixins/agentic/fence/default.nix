@@ -124,6 +124,10 @@ let
         "${config.xdg.dataHome}/**"
         "${config.xdg.stateHome}/**"
       ]
+      ++ lib.optionals (noughtyLib.userHasTag "developer" && noughtyLib.hostHasTag "cg") [
+        "${config.xdg.configHome}/gws"
+        "${config.xdg.configHome}/gws/**"
+      ]
       ++ lib.optionals host.is.darwin [
         darwinSigstoreCacheHome
         "${darwinSigstoreCacheHome}/**"

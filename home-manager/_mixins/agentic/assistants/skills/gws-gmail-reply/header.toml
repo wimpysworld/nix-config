@@ -1,0 +1,5 @@
+[common]
+name = "gws-gmail-reply"
+description = "Gmail: Reply to a message (handles threading automatically)."
+metadata = { "version" = "0.22.5", "openclaw" = { "category" = "productivity", "requires" = { "bins" = ["gws"] }, "cliHelp" = "gws gmail +reply --help" }, "upstream" = "https://github.com/googleworkspace/cli", "revision" = "a3768d0e82ad83cca2da97724e46bea4ff0e6dbd" }
+license = "Apache-2.0"
