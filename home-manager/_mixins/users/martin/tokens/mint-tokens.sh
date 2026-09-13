@@ -5,11 +5,17 @@ usage() {
     cat <<'EOF'
 Usage: mint-tokens [--force] [--headless]
 
-Refresh Google, Chainguard, MCP, and Docker credentials for all configured audiences.
+Refresh Google Cloud, Workspace, Chainguard, MCP, and Docker credentials.
 
   --force     Log in again even when existing credentials are valid.
   --headless  Use non-browser login where supported.
   -h, --help  Show this help and exit without checking credentials.
+
+Workspace needs a manually configured client_secret.json and interactive login.
+Gmail is read-only. Calendar, Docs, Sheets, and Slides are read-write.
+Drive uses drive.file, limited to files created or authorised through the app.
+MINT_GWS_ACCOUNT selects the Workspace account (default: active gcloud account).
+With --headless, Workspace repair fails without starting a browser login.
 EOF
 }
 
@@ -89,6 +95,60 @@ if ((force || adc_valid == 0 || user_valid == 0)); then
     gcloud auth login "${gcloud_login_flags[@]}"
     echo "✔ gcloud user credentials and Application Default Credentials renewed."
 fi
+
+gws_scopes='https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/documents,https://www.googleapis.com/auth/spreadsheets,https://www.googleapis.com/auth/presentations'
+export GOOGLE_WORKSPACE_CLI_CONFIG_DIR="${GOOGLE_WORKSPACE_CLI_CONFIG_DIR:-${XDG_CONFIG_HOME:-${HOME}/.config}/gws}"
+for override in GOOGLE_WORKSPACE_CLI_TOKEN GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE GOOGLE_WORKSPACE_CLI_CLIENT_ID GOOGLE_WORKSPACE_CLI_CLIENT_SECRET; do
+    if [[ -v "$override" ]]; then
+        echo "✘ ERROR! Unset ${override} before mint-tokens. Workspace requires its own encrypted desktop login." >&2
+        exit 1
+    fi
+done
+gws_account=${MINT_GWS_ACCOUNT:-$(gcloud auth list --filter=status:ACTIVE --format='value(account)' 2>/dev/null || true)}
+if [[ -z "$gws_account" || "$gws_account" == *$'\n'* ]]; then
+    echo '✘ ERROR! Select one active gcloud account or set MINT_GWS_ACCOUNT before Workspace login.' >&2
+    exit 1
+fi
+workspace_credentials_usable() {
+    local status
+    status=$(timeout --signal=TERM --kill-after=1s 30s gws auth status </dev/null 2>/dev/null) || return 1
+    jq -e --arg account "$gws_account" --arg scopes "$gws_scopes" '
+        ($scopes | split(",")) as $required |
+        ["openid", "https://www.googleapis.com/auth/userinfo.email",
+         "https://www.googleapis.com/auth/userinfo.profile"] as $identity |
+        .auth_method == "oauth2" and .storage == "encrypted" and
+        .encryption_valid == true and .has_refresh_token == true and
+        .token_valid == true and .user == $account and
+        (.scopes | type) == "array" and
+        (($required - .scopes) | length) == 0 and
+        ((.scopes - ($required + $identity)) | length) == 0
+    ' <<<"$status" >/dev/null 2>&1
+}
+
+echo '◍ Checking Workspace credentials, account, and scopes...'
+if ((force)) || ! workspace_credentials_usable; then
+    if ((headless)); then
+        echo '✘ ERROR! Workspace requires interactive login. Run mint-tokens without --headless on a browser-capable host.' >&2
+        exit 1
+    fi
+    if [[ ! -r "$GOOGLE_WORKSPACE_CLI_CONFIG_DIR/client_secret.json" ]]; then
+        echo "✘ ERROR! Save the Desktop OAuth client JSON as ${GOOGLE_WORKSPACE_CLI_CONFIG_DIR}/client_secret.json, then run mint-tokens again." >&2
+        exit 1
+    fi
+    echo '◍ Workspace login requires the selected account and all requested scopes (five-minute limit).'
+    timeout --signal=TERM --kill-after=1s 300s gws auth login --scopes "$gws_scopes"
+    # gws 0.22.5 login keeps tokens cached for the previous account and scopes.
+    if [[ -e "$GOOGLE_WORKSPACE_CLI_CONFIG_DIR/token_cache.json" ]]; then
+        cache_backup=$(mktemp -d "$GOOGLE_WORKSPACE_CLI_CONFIG_DIR/token-cache-backup.XXXXXXXX")
+        mv -- "$GOOGLE_WORKSPACE_CLI_CONFIG_DIR/token_cache.json" "$cache_backup/token_cache.json"
+    fi
+    if ! workspace_credentials_usable; then
+        echo '✘ ERROR! Workspace verification failed. Check the account, scopes, consent, and network before retrying.' >&2
+        echo 'Remove any older, broader app grant in your Google Account before retrying with these scopes.' >&2
+        exit 1
+    fi
+fi
+echo '✔ Workspace credentials match the selected account and scopes.'
 
 audience_flags() {
     local audience

@@ -2,6 +2,7 @@
   lib,
   pkgs ? null,
   basePath ? ./.,
+  gwsEnabled ? false,
 }:
 let
   # Read a file, stripping trailing whitespace
@@ -439,7 +440,10 @@ let
   # directories under skills/ are ignored so they do not break evaluation, and
   # secret skills are filtered out first so their bodies never enter the store.
   physicalSkillDirs = lib.filterAttrs (
-    name: _: !(secretSkillDirs ? ${name}) && builtins.pathExists (basePath + "/skills/${name}/SKILL.md")
+    name: _:
+    (!(lib.hasPrefix "gws-" name) || gwsEnabled)
+    && !(secretSkillDirs ? ${name})
+    && builtins.pathExists (basePath + "/skills/${name}/SKILL.md")
   ) skillCandidateDirs;
 
   delegateTaskSkillContent =

@@ -17,6 +17,43 @@ case "$*" in
 'auth login '*) exit "${GCLOUD_LOGIN_EXIT:-0}" ;;
 esac
 EOF
+cat >"$tmp/bin/gws" <<'EOF'
+#!/usr/bin/env bash
+printf 'gws %s\n' "$*" >>"$TEST_LOG"
+case "$*" in
+'auth status')
+    printf '%s\n' SECRET_STATUS_ERROR >&2
+    if [[ "${GWS_REPAIR:-0}" == 1 ]] && grep -Fq 'gws auth login ' "$TEST_LOG"; then
+        GWS_STATE=valid
+    fi
+    [[ "${GWS_STATE:-valid}" != timeout ]] || exit 124
+    if [[ "${GWS_STATE:-valid}" == malformed ]]; then
+        printf '%s\n' 'not json'
+        exit 0
+    fi
+    if [[ "${GWS_STATE:-valid}" == missing ]]; then
+        printf '%s\n' '{"storage":"none"}'
+        exit 0
+    fi
+    jq -n --arg state "${GWS_STATE:-valid}" '
+      {auth_method:"oauth2", storage:"encrypted", encryption_valid:true,
+       has_refresh_token:true, token_valid:true, user:"user@example.com",
+       scopes:(["gmail.readonly","calendar","drive.file","documents","spreadsheets","presentations","userinfo.email","userinfo.profile"] |
+         map("https://www.googleapis.com/auth/" + .)) + ["openid"]} |
+      if $state == "revoked" then .token_valid = false
+      elif $state == "metadata" then del(.token_valid,.user,.scopes)
+      elif $state == "wrong-account" then .user = "other@example.com"
+      elif $state == "scopes" then .scopes = []
+      elif $state == "broad" then .scopes += ["https://www.googleapis.com/auth/gmail.send"]
+      elif $state == "full-drive" then .scopes += ["https://www.googleapis.com/auth/drive"]
+      elif $state == "plaintext" then .storage = "plaintext"
+      elif $state == "corrupt" then .encryption_valid = false
+      else . end'
+    ;;
+'auth login --scopes '*) exit "${GWS_LOGIN_EXIT:-0}" ;;
+*) exit 98 ;;
+esac
+EOF
 cat >"$tmp/bin/chainctl" <<'EOF'
 #!/usr/bin/env bash
 printf 'chainctl %s\n' "$*" >>"$TEST_LOG"
@@ -77,6 +114,11 @@ export MINT_PROD_AUDIENCES='prod mcp-prod'
 export MINT_STAGE_AUDIENCES='stage mcp-stage'
 export MINT_MCP_TOKENS="$tmp/bin/mcp-private"
 export MINT_STAGE_ENV='stage.example'
+export GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$XDG_CONFIG_HOME/gws"
+unset GOOGLE_WORKSPACE_CLI_TOKEN GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE
+unset GOOGLE_WORKSPACE_CLI_CLIENT_ID GOOGLE_WORKSPACE_CLI_CLIENT_SECRET MINT_GWS_ACCOUNT
+mkdir -p "$GOOGLE_WORKSPACE_CLI_CONFIG_DIR"
+printf '%s\n' '{}' >"$GOOGLE_WORKSPACE_CLI_CONFIG_DIR/client_secret.json"
 unset MINT_DEV_AUDIENCES MINT_DEV_ENV
 
 fail() {
@@ -137,6 +179,8 @@ for adc in 0 1; do
             assert_log 'gcloud auth login --update-adc'
         fi
         assert_no_log 'chainctl auth login '
+        assert_no_log 'gws auth login '
+        assert_log 'gws auth status'
         [[ $(grep -c '^probe skip-auto-login=true ' "$log") == 4 ]] ||
             fail 'all production and staging audiences were not probed'
         for audience in prod mcp-prod stage mcp-stage; do
@@ -157,8 +201,13 @@ run_success env INVALID_AUDIENCES=stage bash "$script" >"$tmp/stage-invalid-outp
 assert_no_log 'chainctl auth login --audience=prod'
 assert_log 'auth login --audience=stage --audience=mcp-stage'
 
+printf '%s\n' 'OLD_ENCRYPTED_CACHE' >"$GOOGLE_WORKSPACE_CLI_CONFIG_DIR/token_cache.json"
 run_success bash "$script" --force >"$tmp/force-output"
+[[ ! -e "$GOOGLE_WORKSPACE_CLI_CONFIG_DIR/token_cache.json" ]] || fail 'Workspace kept the old active token cache'
+grep -Fq OLD_ENCRYPTED_CACHE "$GOOGLE_WORKSPACE_CLI_CONFIG_DIR"/token-cache-backup.*/token_cache.json ||
+    fail 'Workspace did not preserve the old token cache'
 assert_log 'gcloud auth login --update-adc --force'
+assert_log 'gws auth login --scopes https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/documents,https://www.googleapis.com/auth/spreadsheets,https://www.googleapis.com/auth/presentations'
 [[ $(grep -c '^gcloud auth login ' "$log") == 1 ]] || fail '--force ran more than one gcloud login'
 assert_log 'chainctl auth login --audience=prod --audience=mcp-prod'
 assert_log 'auth login --audience=stage --audience=mcp-stage'
@@ -176,11 +225,65 @@ assert_development_untouched
 
 for flags in '--force --headless' '--headless --force'; do
     read -r -a args <<<"$flags"
-    run_success bash "$script" "${args[@]}" >/dev/null
+    : >"$log"
+    if bash "$script" "${args[@]}" >"$tmp/headless-output" 2>&1; then
+        fail 'forced headless Workspace repair returned success'
+    fi
     assert_log 'gcloud auth login --update-adc --force --no-launch-browser'
-    assert_log 'chainctl auth login --headless --audience=prod --audience=mcp-prod'
-    assert_log 'auth login --headless --audience=stage --audience=mcp-stage'
+    assert_no_log 'gws auth login '
+    assert_no_log 'chainctl '
+    grep -Fq 'Workspace requires interactive login' "$tmp/headless-output" || fail 'headless error is missing'
 done
+
+run_success env INVALID_AUDIENCES='prod stage' bash "$script" --headless >/dev/null
+assert_no_log 'gws auth login '
+assert_log 'chainctl auth login --headless --audience=prod --audience=mcp-prod'
+assert_log 'auth login --headless --audience=stage --audience=mcp-stage'
+
+run_success env GWS_STATE=revoked GWS_REPAIR=1 bash "$script" >"$tmp/gws-repair-output"
+assert_log 'gws auth login --scopes '
+[[ $(grep -c '^gws auth status' "$log") == 2 ]] || fail 'Workspace repair did not verify the new login'
+
+for state in missing revoked metadata wrong-account scopes broad full-drive plaintext corrupt malformed timeout; do
+    for flags in '' '--headless'; do
+        : >"$log"
+        read -r -a args <<<"$flags"
+        if GWS_STATE="$state" bash "$script" "${args[@]}" >"$tmp/gws-output" 2>&1; then
+            fail "invalid Workspace state $state returned success"
+        fi
+        if [[ "$flags" == --headless ]]; then
+            assert_no_log 'gws auth login '
+        else
+            assert_log 'gws auth login --scopes '
+            grep -Fq 'Workspace verification failed' "$tmp/gws-output" || fail 'post-login verification is missing'
+        fi
+        assert_no_log 'chainctl '
+        ! grep -Fq 'SECRET_STATUS_ERROR' "$tmp/gws-output" || fail 'Workspace probe stderr leaked'
+    done
+done
+
+: >"$log"
+if GWS_LOGIN_EXIT=1 bash "$script" --force >/dev/null 2>&1; then
+    fail 'Workspace login failure returned success'
+fi
+assert_no_log 'chainctl '
+
+: >"$log"
+if GOOGLE_WORKSPACE_CLI_TOKEN=SECRET_TOKEN bash "$script" >"$tmp/override-output" 2>&1; then
+    fail 'Workspace token override returned success'
+fi
+assert_no_log 'gws '
+! grep -Fq 'SECRET_TOKEN' "$tmp/override-output" || fail 'Workspace override leaked'
+
+mv "$GOOGLE_WORKSPACE_CLI_CONFIG_DIR/client_secret.json" "$tmp/client.json"
+run_success bash "$script" >/dev/null
+: >"$log"
+if GWS_STATE=missing bash "$script" >"$tmp/client-output" 2>&1; then
+    fail 'missing Workspace client returned success'
+fi
+assert_no_log 'gws auth login '
+grep -Fq 'Desktop OAuth client JSON' "$tmp/client-output" || fail 'missing client error is missing'
+mv "$tmp/client.json" "$GOOGLE_WORKSPACE_CLI_CONFIG_DIR/client_secret.json"
 
 run_success env INVALID_AUDIENCES='prod stage' bash "$script" >/dev/null
 prod_login=$(line_of 'chainctl auth login --audience=prod')

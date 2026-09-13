@@ -1,8 +1,11 @@
 # AI Agents
 
-Eleven specialist agents, 61 commands, twenty-five physical skills, and two generated skills - composed by Nix from a single source tree and delivered to each enabled Claude Code, OpenCode, Codex, and Pi Agent client without duplication.
+Nix composes agents, commands, and skills from one source tree for each enabled Claude Code, OpenCode, Codex, and Pi Agent client.
 
 Developer servers keep Pi Agent resources. Claude Code, OpenCode, and Codex resources are emitted only when those clients are enabled.
+
+The [20 Workspace skills](gws.md) also require a `developer` user and a `cg` host, matching the `gws` package gate.
+Their pinned source, local changes, and refresh procedure are documented separately. [Authentication](../../development/gcloud/README.md) uses the existing Google Cloud project.
 
 The Nix composition is the delivery mechanism, not the strategy. Everything below - the prompt hierarchy, agent specialisation, model selection where pinned, context-efficiency constraints, and orchestration patterns - is a general approach to prompt and context engineering. The portable source uses Markdown prompts with provider-specific headers, and Nix emits each client's native file layout. If you use Claude Code or OpenCode directly, you can recreate any part of this by placing files in the right directories.
 
