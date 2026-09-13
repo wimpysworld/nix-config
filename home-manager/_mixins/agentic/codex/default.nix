@@ -681,75 +681,80 @@ let
     ${lib.concatMapStringsSep "\n" (targetDir: ''merge_codex_config "${targetDir}"'') codexDirs}
   '';
 in
-lib.mkIf (isDeveloper && !host.is.server) {
-  # Report whether Codex carries the house style in its system prompt. The
-  # `developer_instructions` key in codexSettings is the carriage, so the flag
-  # is read back from it: drop or empty that key and the Communication Rules
-  # tripwire falls back to injecting the full rules on a fresh session. A Codex
-  # sub-agent gets the full rules either way, since no developer instructions
-  # reach a sub-agent context.
-  agentic.houseStyle.inSystemPrompt.codex =
-    config.programs.codex.enable
-    && (codexSettings ? developer_instructions)
-    && codexSettings.developer_instructions != "";
+lib.mkMerge [
+  (lib.mkIf host.is.workstation {
+    home.packages = [ inputs.llm-agents.packages.${system}.chatgpt ];
+  })
+  (lib.mkIf (isDeveloper && !host.is.server) {
+    # Report whether Codex carries the house style in its system prompt. The
+    # `developer_instructions` key in codexSettings is the carriage, so the flag
+    # is read back from it: drop or empty that key and the Communication Rules
+    # tripwire falls back to injecting the full rules on a fresh session. A Codex
+    # sub-agent gets the full rules either way, since no developer instructions
+    # reach a sub-agent context.
+    agentic.houseStyle.inSystemPrompt.codex =
+      config.programs.codex.enable
+      && (codexSettings ? developer_instructions)
+      && codexSettings.developer_instructions != "";
 
-  home = {
-    packages = [
-      codexAcpPackage
-      codexPruneRolloutsPackage
-    ]
-    ++ lib.optional communicationRules.enable codexTripwireAdapter.hookPackage
-    ++ lib.optional fencedEnabled codexFencedPackage;
-    # config.toml is written as a real mutable file (not a symlink) so that
-    # codex can edit it in-place at runtime. See codexConfigActivationScript.
-    activation.codexConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] codexConfigActivationScript;
-    sessionVariables = {
-      CODEX_HOME = codexDir;
-    };
-  };
-
-  # Enforce the rollout retention window on a daily schedule. macOS gets the
-  # `codex-prune-rollouts` command but no timer, matching the agentsview mixin,
-  # which also schedules on Linux only.
-  systemd.user.services.codex-prune-rollouts = lib.mkIf host.is.linux {
-    Unit.Description = "Prune Codex session rollouts older than ${toString rolloutRetentionDays} days";
-
-    Service = {
-      Type = "oneshot";
-      ExecStart = lib.getExe codexPruneRolloutsPackage;
-    };
-  };
-
-  systemd.user.timers.codex-prune-rollouts = lib.mkIf host.is.linux {
-    Unit.Description = "Prune Codex session rollouts on a schedule";
-
-    Timer = {
-      OnCalendar = "daily";
-      RandomizedDelaySec = "1h";
-      Persistent = true;
-      Unit = "codex-prune-rollouts.service";
+    home = {
+      packages = [
+        codexAcpPackage
+        codexPruneRolloutsPackage
+      ]
+      ++ lib.optional communicationRules.enable codexTripwireAdapter.hookPackage
+      ++ lib.optional fencedEnabled codexFencedPackage;
+      # config.toml is written as a real mutable file (not a symlink) so that
+      # codex can edit it in-place at runtime. See codexConfigActivationScript.
+      activation.codexConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] codexConfigActivationScript;
+      sessionVariables = {
+        CODEX_HOME = codexDir;
+      };
     };
 
-    Install.WantedBy = [
-      "timers.target"
-    ];
-  };
+    # Enforce the rollout retention window on a daily schedule. macOS gets the
+    # `codex-prune-rollouts` command but no timer, matching the agentsview mixin,
+    # which also schedules on Linux only.
+    systemd.user.services.codex-prune-rollouts = lib.mkIf host.is.linux {
+      Unit.Description = "Prune Codex session rollouts older than ${toString rolloutRetentionDays} days";
 
-  programs = {
-    bash.shellAliases = lib.mkIf fencedEnabled {
-      codex-fenced = lib.getExe codexFencedPackage;
+      Service = {
+        Type = "oneshot";
+        ExecStart = lib.getExe codexPruneRolloutsPackage;
+      };
     };
-    codex = {
-      enable = true;
-      package = codexLauncherPackage;
-      # The assistants mixin writes AGENTS.md from the canonical global prompt.
-      context = "";
+
+    systemd.user.timers.codex-prune-rollouts = lib.mkIf host.is.linux {
+      Unit.Description = "Prune Codex session rollouts on a schedule";
+
+      Timer = {
+        OnCalendar = "daily";
+        RandomizedDelaySec = "1h";
+        Persistent = true;
+        Unit = "codex-prune-rollouts.service";
+      };
+
+      Install.WantedBy = [
+        "timers.target"
+      ];
     };
-    fish.shellAliases = lib.mkIf fencedEnabled {
-      codex-fenced = lib.getExe codexFencedPackage;
+
+    programs = {
+      bash.shellAliases = lib.mkIf fencedEnabled {
+        codex-fenced = lib.getExe codexFencedPackage;
+      };
+      codex = {
+        enable = true;
+        package = codexLauncherPackage;
+        # The assistants mixin writes AGENTS.md from the canonical global prompt.
+        context = "";
+      };
+      fish.shellAliases = lib.mkIf fencedEnabled {
+        codex-fenced = lib.getExe codexFencedPackage;
+      };
+      zsh.shellAliases = lib.mkIf fencedEnabled {
+        codex-fenced = lib.getExe codexFencedPackage;
+      };
     };
-    zsh.shellAliases = lib.mkIf fencedEnabled {
-      codex-fenced = lib.getExe codexFencedPackage;
-    };
-  };
-}
+  })
+]
