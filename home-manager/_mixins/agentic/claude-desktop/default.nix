@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
@@ -10,7 +11,7 @@ let
   # Claude Desktop is a graphical Electron application sourced from the
   # llm-agents flake, so it is available on Linux only and belongs on
   # workstations rather than servers or headless hosts.
-  desktopEnabled = host.is.workstation && host.is.linux;
+  desktopEnabled = host.is.workstation && host.is.linux && noughtyLib.hostHasTag "cg";
 in
 {
   config = lib.mkIf desktopEnabled {
