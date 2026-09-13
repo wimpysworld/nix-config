@@ -729,8 +729,8 @@ let
 
   piSubagentsConfig = {
     backgroundByDefault = true;
-    maxConcurrent = 2;
-    maxConcurrentForeground = 2;
+    maxConcurrent = 6;
+    maxConcurrentForeground = 6;
     maxSubagentDepth = 1;
     defaultMaxTurns = 50;
     graceTurns = 5;

@@ -32,7 +32,7 @@ Use `review-report-path` for report storage. The calling command supplies `<revi
 4. Apply `review-report-path` to the resolved target before any worker starts. Use that run for the report and worker fallbacks.
 5. Fan out to sub-agents, per **Fan-out**. Name each sub-agent's fallback findings file in its packet, `<run-dir>/findings-<concern>-<worker-id>.md`, so no two collide. Never reuse a fallback path.
 6. Re-request once from any sub-agent that went idle without returning findings. The follow-up carries a one-line recap of its scope, the two or three questions that matter most named concretely, and an instruction to reply in text rather than write a file. A sub-agent that fails twice is your own work to finish, to the same standard, not a gap in the report.
-7. Pressure-test every blocking finding, per **Adversarial pressure-test**.
+7. Deduplicate overlapping findings before verification. Pressure-test every qualifying blocking finding, per **Adversarial pressure-test**.
 8. Synthesise one report at the derived path: resolved target, full reviewed head SHA, caller-supplied lens and severity bar, summary of the change, verification performed, deduplicated findings, and conclusion. Put `Target`, `Reviewed SHA`, `Lens`, and `Severity bar` fields before the Summary heading, so follow-up and posting commands can recover the review contract. The sub-agent replies and durable fallback files are the record; read a findings file only as a convenience where one exists. Drop duplicates raised by more than one agent. Every section except Findings is evidence for the user, never material for a comment, so mark none of it for reuse. Write each finding to the three-sentence budget below, because Findings is the only section `draft-code-review` reads.
 9. Deliver the conclusion and every finding the user must act on, in house style (the `communication-rules` skill). Report the path. The file keeps the full report.
 
@@ -62,7 +62,10 @@ Each sub-agent's delegation packet must instruct it to:
 
 ### Adversarial pressure-test
 
-For each finding rated medium or higher that would justify blocking, send a follow-up to the sub-agent that raised it (continue its context): adversarially verify the finding's preconditions against deployment reality. Does the threat or failure mode arise in the deployed configuration? Check the actual runtime context (what executes where, isolation, who can read what, what gets logged or persisted), not just the diff. Downgrade findings whose preconditions do not hold. Where the sub-agent cannot be reached, pressure-test the finding yourself to the same standard, rather than letting it through or dropping it.
+Accept clean reports as complete. Do not launch verifiers for reports with no actionable findings.
+Use an independent verifier only for a concrete unresolved question or an explicit user request.
+
+For each finding rated medium or higher that would justify blocking, send one follow-up to the sub-agent that raised it (resume its existing context): adversarially verify the finding's preconditions against deployment reality. Does the threat or failure mode arise in the deployed configuration? Check the actual runtime context (what executes where, isolation, who can read what, what gets logged or persisted), not just the diff. Downgrade findings whose preconditions do not hold. Where the sub-agent cannot be reached, pressure-test the finding yourself to the same standard, rather than letting it through or dropping it.
 
 This step stops false positives reaching a human. Do not skip it and do not soften it.
 

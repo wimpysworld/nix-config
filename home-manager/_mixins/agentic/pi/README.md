@@ -289,7 +289,7 @@ Historical logs and sessions remain untouched.
 | Setting | Value | Effect |
 | --- | --- | --- |
 | `backgroundByDefault` | `true` | Detached `Agent` calls notify the parent on completion. |
-| `maxConcurrent`, `maxConcurrentForeground` | `2` each | Independent background and foreground pools, not a combined cap. |
+| `maxConcurrent`, `maxConcurrentForeground` | `6` each | Independent background and foreground pools, not a combined cap. |
 | `maxSubagentDepth` | `1` | Only the root launches specialists. |
 | `defaultMaxTurns`, `graceTurns` | `50`, `5` | Bounded turns, not a wall-clock deadline. |
 | `disableDefaultAgents`, `strictAgentFiles` | `true` | Use explicit custom agents and reject malformed headers. |
@@ -307,7 +307,10 @@ Children run as SDK sessions inside Pi. They do not continue execution after the
 
 Use `SubagentWorkflow` with inline source, `scriptPath`, or a saved `name`.
 Scripts use `agent(prompt, { agentType })`, `parallel`, and `pipeline`.
-The router limits each workflow to two active children and 64 launches, and rejects failed required results.
+The router limits each workflow to six active calls and 64 total `agent()` calls, including resumes and rejected calls.
+Failed or skipped required results still fail the workflow.
+Each workflow has a separate pool, independent of both direct pools, so six is not a global aggregate cap.
+Native CPU-based capacity can lower workflow concurrency. Foreground resumes can exceed their pool limit.
 Nested `workflow()` calls are rejected because their source bypasses routing. Launch saved workflows through the tool instead.
 Use separate sessions in separate checkouts for concurrent writers. Isolation requests fail rather than silently using the shared checkout.
 

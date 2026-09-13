@@ -214,7 +214,7 @@ const __result = await (async () => {
   try {
    if (++__launches > 64) throw new Error("provider-router: workflow launch limit is 64");
    const native = resolveNativeTask(options, __routerState, true);
-   if (__running >= 2) await new Promise(resolve => __waiting.push(resolve));
+   if (__running >= 6) await new Promise(resolve => __waiting.push(resolve));
    else __running++;
    try { return __check(await __nativeAgent(prompt, native)); }
    finally { const next = __waiting.shift(); if (next) next(); else __running--; }
