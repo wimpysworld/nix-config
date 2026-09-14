@@ -223,6 +223,7 @@ lib.mkIf isHandyHost {
       ConditionEnvironment = [ "WAYLAND_DISPLAY" ];
     };
     Service = {
+      ExecStart = lib.mkForce "${lib.getExe config.services.handy.package} --start-hidden";
       ExecStartPre = lib.getExe prepareHandySettings;
     };
     Install.WantedBy = lib.mkForce [ sessionTarget ];
