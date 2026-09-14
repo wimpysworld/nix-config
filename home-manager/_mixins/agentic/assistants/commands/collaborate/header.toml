@@ -1,0 +1,6 @@
+[common]
+description = "Read supplied sources and prepare to collaborate 🤝"
+argument-hint = "[references...]"
+
+[compose]
+root = true
