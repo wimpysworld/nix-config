@@ -40,19 +40,25 @@ class GeneratedDeploymentTests(unittest.TestCase):
             for number, name in enumerate(("SKILL.md", "references/nested/SKILL.md")):
                 source = base / f"fixture-{number}.md"
                 source.write_text("Synthetic skill resource.\n")
-                spec["files"].append({
-                    "path": str(fixture_root / name),
-                    "source": str(source),
-                    "kind": "file",
-                    "mode": "0600",
-                })
+                spec["files"].append(
+                    {
+                        "path": str(fixture_root / name),
+                        "source": str(source),
+                        "kind": "file",
+                        "mode": "0600",
+                    }
+                )
 
             desired = base / "desired.json"
             helper = Path(__file__).with_name("deploy.py")
 
             def activate():
                 desired.write_text(json.dumps(spec))
-                result = subprocess.run([sys.executable, str(helper), str(desired)], capture_output=True, text=True)
+                result = subprocess.run(
+                    [sys.executable, str(helper), str(desired)],
+                    capture_output=True,
+                    text=True,
+                )
                 self.assertEqual(result.returncode, 0, result.stderr)
 
             activate()
@@ -61,14 +67,20 @@ class GeneratedDeploymentTests(unittest.TestCase):
                 with self.subTest(path=path):
                     if entry["kind"] == "file":
                         self.assertTrue(stat.S_ISREG(path.lstat().st_mode))
-                        self.assertEqual(path.read_bytes(), entry.get("prefix", "").encode() + Path(entry["source"]).read_bytes())
+                        self.assertEqual(
+                            path.read_bytes(),
+                            entry.get("prefix", "").encode()
+                            + Path(entry["source"]).read_bytes(),
+                        )
                     else:
                         self.assertEqual(os.readlink(path), entry["source"])
             manifest = Path(spec["stateDir"]) / "manifest.json"
             before = manifest.read_bytes()
             activate()
             self.assertEqual(manifest.read_bytes(), before)
-            self.assertEqual({p.name for p in manifest.parent.iterdir()}, {"manifest.json"})
+            self.assertEqual(
+                {p.name for p in manifest.parent.iterdir()}, {"manifest.json"}
+            )
             for name in ("SKILL.md", "references/nested/SKILL.md"):
                 self.assertTrue(stat.S_ISREG((fixture_root / name).lstat().st_mode))
             manual = fixture_root / "manual.md"
@@ -81,16 +93,21 @@ class GeneratedDeploymentTests(unittest.TestCase):
             self.assertEqual(manual.read_text(), "Manual content.\n")
 
     def test_synthetic_nested_resources_install_repeat_and_disable(self):
-        self.check_specification({
-            "version": 1,
-            "home": "/fixture",
-            "stateDir": "/fixture/.local/state/agentic-owned-files",
-            "roots": [],
-            "files": [],
-            "retire": [],
-        })
+        self.check_specification(
+            {
+                "version": 1,
+                "home": "/fixture",
+                "stateDir": "/fixture/.local/state/agentic-owned-files",
+                "roots": [],
+                "files": [],
+                "retire": [],
+            }
+        )
 
-    @unittest.skipUnless(os.environ.get("ASSISTANT_OWNED_SPEC"), "Set ASSISTANT_OWNED_SPEC to a built specification.")
+    @unittest.skipUnless(
+        os.environ.get("ASSISTANT_OWNED_SPEC"),
+        "Set ASSISTANT_OWNED_SPEC to a built specification.",
+    )
     def test_generated_spec_install_repeat_and_disable(self):
         spec = json.loads(Path(os.environ["ASSISTANT_OWNED_SPEC"]).read_text())
         self.check_specification(spec)

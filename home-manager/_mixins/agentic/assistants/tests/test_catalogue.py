@@ -160,9 +160,10 @@ class CatalogueTests(unittest.TestCase):
 
     def test_update_recipe_evaluates_all_outputs_before_replacement(self):
         for failure in (1, 2, 3, 0):
-            with self.subTest(failure=failure), tempfile.TemporaryDirectory(
-                prefix="assistant-update-"
-            ) as directory:
+            with (
+                self.subTest(failure=failure),
+                tempfile.TemporaryDirectory(prefix="assistant-update-") as directory,
+            ):
                 root = Path(directory)
                 targets = [
                     root / f"home-manager/_mixins/agentic/assistants/{kind}/README.md"
@@ -174,7 +175,7 @@ class CatalogueTests(unittest.TestCase):
                 fake_nix = root / "nix"
                 fake_nix.write_text(
                     "#!/bin/sh\n"
-                    'count=$(cat count 2>/dev/null || printf 0)\n'
+                    "count=$(cat count 2>/dev/null || printf 0)\n"
                     'count=$((count + 1))\nprintf "%s" "$count" > count\n'
                     'printf "OUTPUT %s\\n" "$count"\n'
                     f'if [ "$count" -eq {failure} ]; then exit 1; fi\n'
@@ -183,9 +184,16 @@ class CatalogueTests(unittest.TestCase):
                 recipe = root / "justfile"
                 recipe.write_text((REPO / "justfile").read_text())
                 result = subprocess.run(
-                    ["just", "--justfile", str(recipe), "--working-directory",
-                     directory, "update-assistant-catalogue"],
-                    env=os.environ | {
+                    [
+                        "just",
+                        "--justfile",
+                        str(recipe),
+                        "--working-directory",
+                        directory,
+                        "update-assistant-catalogue",
+                    ],
+                    env=os.environ
+                    | {
                         "PATH": directory + os.pathsep + os.environ["PATH"],
                         "BASH_ENV": "",
                     },
@@ -195,7 +203,11 @@ class CatalogueTests(unittest.TestCase):
                 self.assertEqual(result.returncode == 0, failure == 0, result.stderr)
                 self.assertEqual((root / "count").read_text(), str(failure or 3))
                 for number, target in enumerate(targets, 1):
-                    expected = "Keep the existing catalogue.\n" if failure else f"OUTPUT {number}\n"
+                    expected = (
+                        "Keep the existing catalogue.\n"
+                        if failure
+                        else f"OUTPUT {number}\n"
+                    )
                     self.assertEqual(target.read_text(), expected)
                     self.assertEqual(list(target.parent.iterdir()), [target])
 
@@ -217,7 +229,9 @@ class CatalogueTests(unittest.TestCase):
         records = {entry["name"]: entry for entry in data["skillRecords"]}
         self.assertEqual(set(records), {"delegate-task", "gws-fixture", "self-review"})
         self.assertEqual(records["delegate-task"]["sourceType"], "generated")
-        self.assertIn("developer user and cg host", records["gws-fixture"]["availability"])
+        self.assertIn(
+            "developer user and cg host", records["gws-fixture"]["availability"]
+        )
         secret = records["self-review"]
         self.assertEqual(secret["visibility"], "secret")
         self.assertIsNone(secret["description"])
@@ -226,21 +240,28 @@ class CatalogueTests(unittest.TestCase):
             self.assertIsNone(client["controls"])
         self.assertNotIn("PRIVATE_", json.dumps(data))
         self.assertEqual(data, self.evaluate(dict(reversed(list(files.items())))))
-        files["commands/gws-fixture/command.toml"] = '[common]\ndescription = "Collision."\n'
+        files["commands/gws-fixture/command.toml"] = (
+            '[common]\ndescription = "Collision."\n'
+        )
         files["commands/gws-fixture/command.md"] = "PRIVATE_COMMAND"
         self.evaluate(files, success=False)
 
     def test_catalogue_does_not_read_bodies_or_secret_markers(self):
-        data = self.evaluate(self.fixture() | {
-            "commands/alpha/command.md": None,
-            "commands/zulu/command.sops": None,
-            "skills/plain/header.toml": '[common]\nname = "plain"\ndescription = "Public skill."\n',
-            "skills/plain/SKILL.md": None,
-            "skills/self-review/SKILL.sops": None,
-        })
+        data = self.evaluate(
+            self.fixture()
+            | {
+                "commands/alpha/command.md": None,
+                "commands/zulu/command.sops": None,
+                "skills/plain/header.toml": '[common]\nname = "plain"\ndescription = "Public skill."\n',
+                "skills/plain/SKILL.md": None,
+                "skills/self-review/SKILL.sops": None,
+            }
+        )
         self.assertEqual(len(data["skillRecords"]), 3)
         self.assertEqual(len(data["agentRecords"]), 1)
-        self.assertTrue(all(data[f"{kind}Markdown"] for kind in ("commands", "agents", "skills")))
+        self.assertTrue(
+            all(data[f"{kind}Markdown"] for kind in ("commands", "agents", "skills"))
+        )
 
     def test_client_projections_policies_escaping_and_no_prompt_export(self):
         files = self.fixture()
@@ -253,31 +274,45 @@ class CatalogueTests(unittest.TestCase):
             '[opencode.permission]\ntask = "deny"\n'
         )
         files["skills/delegate-task/header.toml"] += (
-            '[claude]\nuser-invocable = false\ndisable-model-invocation = true\n'
+            "[claude]\nuser-invocable = false\ndisable-model-invocation = true\n"
             'description = "Skill | <override>\\nnext"\n'
-            '[codex.policy]\nallow_implicit_invocation = false\n'
+            "[codex.policy]\nallow_implicit_invocation = false\n"
             '[codex.interface]\ndisplay_name = "PRIVATE_INTERFACE"\n'
-            '[pi]\ndisable-model-invocation = true\n'
+            "[pi]\ndisable-model-invocation = true\n"
         )
         data = self.evaluate(files)
         agent = data["agentRecords"][0]
         self.assertEqual(agent["description"], "Worker.")
-        self.assertEqual(agent["clients"]["claude"]["controls"], {"disallowedTools": ["Agent"]})
-        self.assertEqual(agent["clients"]["opencode"]["controls"]["permission"], {"task": "deny"})
+        self.assertEqual(
+            agent["clients"]["claude"]["controls"], {"disallowedTools": ["Agent"]}
+        )
+        self.assertEqual(
+            agent["clients"]["opencode"]["controls"]["permission"], {"task": "deny"}
+        )
         self.assertEqual(agent["clients"]["codex"]["controls"], {})
         self.assertEqual(agent["clients"]["pi"]["controls"]["prompt_mode"], "replace")
         policies = data["skillRecords"][0]["clients"]
-        self.assertEqual(policies["claude"]["invocationPolicy"], {
-            "user-invocable": False, "disable-model-invocation": True,
-        })
-        self.assertEqual(policies["codex"]["invocationPolicy"], {"allow_implicit_invocation": False})
-        self.assertEqual(policies["pi"]["invocationPolicy"], {"disable-model-invocation": True})
+        self.assertEqual(
+            policies["claude"]["invocationPolicy"],
+            {
+                "user-invocable": False,
+                "disable-model-invocation": True,
+            },
+        )
+        self.assertEqual(
+            policies["codex"]["invocationPolicy"], {"allow_implicit_invocation": False}
+        )
+        self.assertEqual(
+            policies["pi"]["invocationPolicy"], {"disable-model-invocation": True}
+        )
         self.assertEqual(policies["opencode"]["invocationPolicy"], {})
         self.assertIn("Worker \\| &lt;override&gt; next", data["agentsMarkdown"])
         self.assertIn("Skill \\| &lt;override&gt; next", data["skillsMarkdown"])
         self.assertIn("No metadata override", data["agentsMarkdown"])
         self.assertNotIn("PRIVATE_", json.dumps(data))
-        files["skills/delegate-task/header.toml"] = self.fixture()["skills/delegate-task/header.toml"]
+        files["skills/delegate-task/header.toml"] = self.fixture()[
+            "skills/delegate-task/header.toml"
+        ]
         ordinary = self.evaluate(files)["skillRecords"][0]
         self.assertEqual(ordinary["clients"]["codex"]["invocationPolicy"], {})
 
@@ -293,14 +328,23 @@ class CatalogueTests(unittest.TestCase):
                 files["skills/delegate-task/header.toml"] = header
                 self.evaluate(files, success=False)
         files = self.fixture()
-        files["skills/delegate-task/header.toml"] += '[codex.policy]\nallow_implicit_invocation = false\n'
+        files["skills/delegate-task/header.toml"] += (
+            "[codex.policy]\nallow_implicit_invocation = false\n"
+        )
         for source in ("agents/openai.yaml", "agents"):
             with self.subTest(source=source):
-                self.evaluate(files | {f"skills/delegate-task/{source}": "CONFLICT"}, success=False)
-        self.evaluate(self.fixture() | {
-            "skills/both/SKILL.md": "PRIVATE_BODY",
-            "skills/both/SKILL.sops": "PRIVATE_KEY",
-        }, success=False)
+                self.evaluate(
+                    files | {f"skills/delegate-task/{source}": "CONFLICT"},
+                    success=False,
+                )
+        self.evaluate(
+            self.fixture()
+            | {
+                "skills/both/SKILL.md": "PRIVATE_BODY",
+                "skills/both/SKILL.sops": "PRIVATE_KEY",
+            },
+            success=False,
+        )
         files = self.fixture()
         files["agents/worker/header.toml"] = '[common]\ndescription = ""\n'
         self.evaluate(files, success=False)
