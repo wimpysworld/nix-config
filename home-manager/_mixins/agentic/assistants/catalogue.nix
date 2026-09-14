@@ -178,7 +178,7 @@ let
             projected = metadata.project "skill" client name header;
           in
           {
-            description = projected.description;
+            inherit (projected) description;
             controls = select [ "allowed-tools" ] projected;
             invocationPolicy =
               if client == "claude" then
