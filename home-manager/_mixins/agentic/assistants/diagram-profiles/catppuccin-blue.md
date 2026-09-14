@@ -70,16 +70,22 @@ Series colours identify categories, not success or failure.
 
 | Role | Family | Size | Weight | Usage |
 |---|---|---|---|---|
-| `title` | Instrument Serif | 1.75rem | 400 | Page H1 |
-| `node-name` | Geist (sans) | 12px | 600 | Human-readable labels |
-| `sublabel` | Geist Mono | 9px | 400 | Port, protocol, URL, field type |
-| `eyebrow` | Geist Mono | 7-8px | 500, tracked 0.18em, uppercase | Type tags, axis labels |
-| `arrow-label` | Geist Mono | 8px | 400, tracked 0.06em | Arrow annotations |
-| `callout` | Instrument Serif *italic* | 14px | 400 | Editorial asides only |
+| `title` | Work Sans | 1.75rem | 600 | Page H1 |
+| `node-name` | Work Sans | 12px | 600 | Human-readable labels |
+| `sublabel` | Fira Code | 9px | 400 | Port, protocol, URL, field type |
+| `eyebrow` | Fira Code | 7-8px | 500, tracked 0.18em, uppercase | Type tags, axis labels |
+| `arrow-label` | Fira Code | 8px | 400, tracked 0.06em | Arrow annotations |
+| `callout` | Work Sans *italic* | 14px | 400 | Editorial asides only |
 
-Preserve the installed guide's Google Fonts link, font stacks, and Korean and Chinese label rules.
+Load this Google Fonts link in every generated diagram instead of the installed guide's link:
+
+```html
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Fira+Code:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;600&display=swap" rel="stylesheet">
+```
+
+Pair Work Sans and Fira Code with the installed Noto CJK fallback stacks and keep the Korean and Chinese label rules.
 Keep CJK labels at least 12px. Use the installed Noto fallbacks and width rules.
-Use Geist for names and Geist Mono for technical content. Do not substitute JetBrains Mono.
+Use Work Sans for names and Fira Code for technical content. Do not substitute JetBrains Mono.
 Offline fallback fonts can change layout. Without rendered checks, report exact-font verification as untested.
 
 ## Geometry and node treatment
