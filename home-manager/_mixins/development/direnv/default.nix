@@ -75,6 +75,7 @@ in
   programs = {
     direnv = {
       enable = true;
+      config.global.hide_env_diff = lib.mkDefault true;
       enableBashIntegration = config.programs.bash.enable;
       enableZshIntegration = config.programs.zsh.enable;
       nix-direnv = {
