@@ -304,7 +304,7 @@ in
             init = {
               description = "Create AGENTS.md ${robotEmoji}";
               agent = "rosey";
-              template = builtins.readFile ../assistants/agents/rosey/commands/create-agents-md/prompt.md;
+              template = builtins.readFile ../assistants/agents/rosey/commands/create-agents-md/command.md;
             };
           };
         };

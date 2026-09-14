@@ -67,6 +67,79 @@ class MetadataTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, "Invalid metadata was accepted")
         return result.stderr
 
+    def test_source_names_are_specific_to_commands(self):
+        header = '[common]\ndescription = "Fixture."\n'
+        files = {
+            "agents/worker/header.toml": header,
+            "agents/worker/prompt.md": "AGENT_BODY\n",
+            "commands/standalone/command.toml": header,
+            "commands/standalone/command.md": "STANDALONE_BODY\n",
+            "agents/worker/commands/owned/command.toml": header,
+            "agents/worker/commands/owned/command.md": "OWNED_BODY\n",
+            "skills/fixture/header.toml": header + 'name = "fixture"\n',
+            "skills/fixture/SKILL.md": "SKILL_BODY\n",
+        }
+        composer = f"import {ASSISTANTS}/compose.nix {{ inherit lib; basePath = fixture; }}"
+        expression = f'''let composer = {composer}; in {{
+          commands = composer.composeCommands "claude";
+          agents = composer.composeAgents "claude";
+          skill = composer.headerFor "skill" "claude" "fixture" (fixture + "/skills/fixture");
+        }}'''
+        result = self.evaluate(expression, files=files)
+        self.assertEqual(set(result["commands"]), {"standalone", "owned"})
+        self.assertIn("AGENT_BODY", result["agents"]["worker"])
+        self.assertEqual(result["skill"]["name"], "fixture")
+        for source in ("commands/standalone", "agents/worker/commands/owned"):
+            for new, old in (("command.toml", "header.toml"), ("command.md", "prompt.md")):
+                with self.subTest(source=source, missing=new):
+                    legacy = dict(files)
+                    legacy[f"{source}/{old}"] = legacy.pop(f"{source}/{new}")
+                    error = self.evaluate(expression, files=legacy, success=False)
+                    self.assertIn(new, error)
+        duplicate = dict(files)
+        duplicate["commands/owned/command.toml"] = header
+        duplicate["commands/owned/command.md"] = "DUPLICATE\n"
+        error = self.evaluate(expression, files=duplicate, success=False)
+        self.assertIn("collision", error)
+        self.assertIn("owned", error)
+        for source in ("commands/standalone", "agents/worker/commands/owned"):
+            with self.subTest(secret_source=source):
+                secret = dict(files)
+                secret[f"{source}/command.sops"] = "fixture-secret\n"
+                error = self.evaluate(expression, files=secret, success=False)
+                self.assertIn("both command.sops and command.md", error)
+
+    def test_repository_command_pairs_keep_agent_and_skill_names(self):
+        directories = list((ASSISTANTS / "commands").iterdir())
+        directories += list(ASSISTANTS.glob("agents/*/commands/*"))
+        names = []
+        for directory in directories:
+            if not directory.is_dir():
+                continue
+            names.append(directory.name)
+            with self.subTest(directory=directory):
+                self.assertTrue((directory / "command.toml").is_file())
+                self.assertTrue((directory / "command.md").is_file() or (directory / "command.sops").is_file())
+                self.assertFalse((directory / "prompt.md").exists())
+                self.assertFalse((directory / "header.toml").exists())
+        self.assertEqual(len(names), len(set(names)))
+        for directory in (ASSISTANTS / "agents").iterdir():
+            if directory.is_dir():
+                self.assertTrue((directory / "prompt.md").is_file())
+                self.assertTrue((directory / "header.toml").is_file())
+                self.assertFalse((directory / "command.toml").exists())
+        for body in (ASSISTANTS / "skills").rglob("SKILL.md"):
+            self.assertTrue(body.with_name("header.toml").is_file(), body)
+            self.assertFalse(body.with_name("command.toml").exists(), body)
+
+    def test_command_metadata_errors_name_the_command_file(self):
+        error = self.evaluate(
+            "m.readCommandHeader fixture",
+            files={"command.toml": "[unknown]\nvalue = true\n"},
+            success=False,
+        )
+        self.assertIn("/command.toml: Unknown tables", error)
+
     def test_nested_values_and_false_survive_both_output_formats(self):
         header = """
 [common]
@@ -256,8 +329,8 @@ skills = false
                     '[claude]\ncontext = "fork"\nagent = "worker"\n'
                     '[opencode]\nagent = "worker"\nsubtask = true\n'
                 )
-                files[directory + "/header.toml"] = header
-                files[directory + "/prompt.md"] = body + "\n"
+                files[directory + "/command.toml"] = header
+                files[directory + "/command.md"] = body + "\n"
         result = self.evaluate(
             """let
           composer = import """
@@ -316,8 +389,6 @@ skills = false
         }) c.commandSources)""")
         for name in (
             "address-code-review",
-            "make-commit",
-            "make-pr",
             "implement-task",
             "implement-plan",
             "finish-pr",
@@ -368,6 +439,121 @@ skills = false
                             self.assertNotIn("Use the Task tool to launch", child)
                             self.assertNotIn("Use the Agent tool with", child)
 
+    def test_git_commands_are_unique_garfield_leaves_with_context_handover(self):
+        result = self.evaluate("""{
+          sources = c.commandSources;
+          commands = lib.genAttrs [ "claude" "opencode" "pi" ] c.composeCommands;
+          metadata = lib.genAttrs [ "make-commit" "make-pr" ]
+            (name: c.commandMetadata "garfield" name);
+          skills = lib.genAttrs [ "claude" "codex" "opencode" "pi" ]
+            (platform: (c.composeSkillsFor platform).delegate-task.content);
+        }""")
+        for name in ("make-commit", "make-pr"):
+            with self.subTest(command=name):
+                sources = [s for s in result["sources"] if s["name"] == name]
+                self.assertEqual(len(sources), 1)
+                self.assertEqual(sources[0]["agentName"], "garfield")
+                self.assertFalse((ASSISTANTS / "commands" / name).exists())
+                metadata = result["metadata"][name]
+                self.assertNotIn("root", metadata["compose"])
+                self.assertNotIn("routing", metadata)
+                self.assertEqual(metadata["common"]["argument-hint"], "[context]")
+                for platform, commands in result["commands"].items():
+                    rendered = commands[name]
+                    native = yaml.safe_load(rendered.split("---", 2)[1])
+                    self.assertEqual(native["argument-hint"], "[context]")
+                    self.assertNotIn("model", native)
+                    task = rendered.split("---", 2)[2]
+                    if platform == "opencode":
+                        self.assertEqual(native["agent"], "garfield")
+                        self.assertNotIn("Before launch, add", task)
+                        child = task
+                    else:
+                        launch, child = task.split("\n## Task\n", 1)
+                        self.assertIn("Before launch, add the known intent", launch)
+                        self.assertIn("exclusions, and validation evidence", launch)
+                        self.assertIn("explicit mutation authority", launch)
+                        self.assertIn(
+                            "not the general conversation or transcript", launch
+                        )
+                        self.assertIn("Launch only one Garfield worker", launch)
+                    self.assertIn("You are a leaf worker.", child)
+                    self.assertIn("accompanying invocation text", child)
+                    self.assertIn(
+                        "require explicit context or clarify missing decisions", child
+                    )
+                    self.assertIn("stop before dependent writes", child)
+                    self.assertNotIn("Use the Task tool to launch", child)
+                    self.assertNotIn("Use the Agent tool with", child)
+        for skill in result["skills"].values():
+            self.assertIn("Directly invoked `make-commit` and `make-pr`", skill)
+            self.assertIn("one garfield leaf worker", skill)
+            self.assertIn("The root retains index ownership", skill)
+            self.assertIn("Garfield never launches monitoring", skill)
+            self.assertNotIn("staged diff is large", skill)
+
+    def test_git_command_collisions_are_rejected_for_every_client(self):
+        for platform in ("claude", "opencode", "pi", "codex"):
+            for name in ("make-commit", "make-pr"):
+                with self.subTest(platform=platform, command=name):
+                    error = self.evaluate(
+                        f'''c.assertNoCommandCollisions {{
+                          context = "{platform} commands";
+                          sources = c.commandSources ++ [ {{
+                            name = "{name}"; source = "duplicate source";
+                          }} ];
+                        }}''',
+                        success=False,
+                    )
+                    self.assertIn(f"{platform} commands name collision", error)
+                    self.assertIn(name, error)
+                    self.assertIn("duplicate source", error)
+
+    def test_git_bodies_preserve_safety_and_root_inline_reuse(self):
+        garfield = ASSISTANTS / "agents/garfield"
+        commit = (garfield / "commands/make-commit/command.md").read_text()
+        pr = (garfield / "commands/make-pr/command.md").read_text()
+        for text in (
+            "Keep all already-staged content included",
+            "Do not reset, unstage, restore, or edit staged content",
+            "git add -- <path>",
+            "git diff --staged --check",
+            "It never pushes",
+            "without its generated launch wrapper",
+        ):
+            self.assertIn(text, commit)
+        self.assertNotIn("One exception", commit)
+        for text in (
+            "Read its body directly",
+            "`draft-pr-message`",
+            "supplied parent evidence supports for the committed changes",
+            "A delegated task must restate push, PR creation, review metadata, and tracker mutation authority",
+            "Never report success from `gh pr create` alone",
+            "Watch handover: ROOT can offer babysit-pr",
+            "Never invoke `babysit-pr`",
+        ):
+            self.assertIn(text, pr)
+        self.assertNotIn("invoke the provider-specific command", pr)
+        root_paths = {
+            "agents/donatello/commands/address-code-review": (
+                "without generated launch wrappers",
+                "Follow the `make-commit` body and its direct draft phase",
+                "Commit from this context only",
+            ),
+            "commands/implement-task": (
+                "Read and follow the `draft-commit-message` body in this context",
+                "Commit from this context so workers never contend for the index",
+                "Claiming an issue, writing its durable record, staging, and committing happen in this context only",
+            ),
+        }
+        for path, instructions in root_paths.items():
+            header = tomllib.loads((ASSISTANTS / path / "command.toml").read_text())
+            self.assertTrue(header["compose"]["root"])
+            body = (ASSISTANTS / path / "command.md").read_text()
+            for instruction in instructions:
+                self.assertIn(instruction, body)
+            self.assertNotIn("garfield", body)
+
     def test_pi_command_spawn_control_preserves_body_and_other_providers(self):
         body = (
             "Delegate independent checks.\n\nReview $ARGUMENTS and return the report."
@@ -386,8 +572,8 @@ skills = false
                         header += '[compose]\nagent = "worker"\n'
                     if switch != "absent":
                         header += f"[compose.pi]\nspawn-agent = {switch}\n"
-                    files[directory + "/header.toml"] = header
-                    files[directory + "/prompt.md"] = body + "\n"
+                    files[directory + "/command.toml"] = header
+                    files[directory + "/command.md"] = body + "\n"
                 result = self.evaluate(
                     """let
                   fixtureComposer = import """
@@ -466,10 +652,10 @@ reasoningEffort = "high"
             ),
         }.items():
             directory = f"agents/worker/commands/{name}"
-            files[directory + "/header.toml"] = (
+            files[directory + "/command.toml"] = (
                 '[common]\ndescription = "Check a task."\n' + controls
             )
-            files[directory + "/prompt.md"] = body
+            files[directory + "/command.md"] = body
         result = self.evaluate(
             """let composer = import """
             + str(ASSISTANTS)

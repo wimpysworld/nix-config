@@ -1,10 +1,14 @@
 ## Make PR
 
-Draft the pull request title and body with the inline contract below. Then create a pull request for the current branch. On a work repository, open the body with a bold why line and append a reviewer orientation block, both before creation. A work pull request also carries a review request for the work review team and the `ai-review` label.
+Draft the pull request title and body with `draft-pr-message` and the inline contract below. Then create a pull request for the current branch. On a work repository, open the body with a bold why line and append a reviewer orientation block, both before creation. A work pull request also carries a review request for the work review team and the `ai-review` label.
 
-Run the pull request creation flow in the current context. Do not launch a sub-agent or a Task for any step. The current context holds the change intent, validation results, and non-goals that the pull request message needs. The watch handover after successful creation is separate and may invoke `babysit-pr` when the user selects it.
+Use the supplied intent, paths, exclusions, validation evidence, and mutation authority. Optional `$ARGUMENTS` supplies context. On Codex, use the accompanying invocation text instead. Do not assume access to the parent conversation. OpenCode's native command binding supplies no parent-written packet, so require explicit context or clarify missing decisions.
 
-Load the `gh` skill before any GitHub access and follow its GitHub policy. This command mutates remote Git and GitHub state by pushing only when needed, running `gh pr create`, and repairing missing review metadata with `gh pr edit`, and it moves any linked tracked issue, Linear or GitHub Project, to its in-review status. Treat explicit human invocation of this command as consent for those actions.
+Read current Git state before mutations. If intent, scope, or authority is missing or conflicts with Git evidence, stop before dependent writes. Ask the user, or return the missing decision to the parent. Accept parent validation evidence that names the command, result, and tested revision or files. Check that the evidence applies to the committed changes. Do not invent results or present a parent's checks as checks that you ran. Omit unsupported validation claims.
+
+Resolve `draft-pr-message` through the available skill catalogue, configured skill roots, or repository command source. Read its body directly and follow the draft phase here, without its generated launch wrapper. Supply the intent, committed diff, exclusions, validation evidence, and resolved issue footers. Apply the command-specific contract below and preserve the fenced draft. Never launch another agent.
+
+Load the `gh` skill before any GitHub access and follow its GitHub policy. This command mutates remote Git and GitHub state by pushing only when needed, running `gh pr create`, and repairing missing review metadata with `gh pr edit`, and it moves any linked tracked issue, Linear or GitHub Project, to its in-review status. Treat explicit human invocation of this command as consent for those actions, subject to the user's exclusions. A delegated task must restate push, PR creation, review metadata, and tracker mutation authority. Reading this body grants no new authority. If authority excludes a tracker write, skip that transition and report the exclusion.
 
 ### Pull request draft
 
@@ -25,7 +29,7 @@ Derive the scope from the repository's existing commit convention and the affect
 
 Write the title as `<type>(<scope>): <imperative description>`, or `<type>: <imperative description>` when the scope is omitted. Use imperative mood, keep the title to 72 characters or fewer, and describe the branch's main effect.
 
-Write a focused pull request body as prose, with one paragraph for what changes and why, followed by one validation sentence when validation was run. State only checks that this session verified. Omit validation when none ran. Use headings only when several independent concerns or a long commit series need navigation. Do not restate a single commit title, use bullet scaffolding, or hard-wrap body paragraphs.
+Write a focused pull request body as prose, with one paragraph for what changes and why, followed by one validation sentence when validation was run. State only checks that you ran or that the supplied parent evidence supports for the committed changes. Omit validation when none is evidenced. Use headings only when several independent concerns or a long commit series need navigation. Do not restate a single commit title, use bullet scaffolding, or hard-wrap body paragraphs.
 
 Put each supported issue reference or `Refs:` footer on its own line at the end, in the form the **Tracker transition** section below resolves. For a GitHub Project task, the last body lines are one `Closes #<n>` line per linked issue, so the merge closes it. Include a breaking-change footer when the branch contains a breaking change. Do not invent or infer a reference that the branch does not support.
 
@@ -96,7 +100,7 @@ Filling it in:
 - `Out of scope` names follow-on work only where a tracked issue exists. Link it the same way as `Tracking`. Say nothing where no follow-on is tracked.
 - Control leaks. These pull requests land on repositories that may be public. Drop anything naming an internal system, a customer, a colleague, a roadmap item, or a dated plan. Omit any line that cannot be written without one of those. An omitted line is a clean outcome; a leaked one is not.
 - Every issue is a link, and its text is the bare key. For Linear, write `[FUL-1](https://linear.app/<workspace>/issue/FUL-1)`: that URL resolves, while the slugged URL Linear hands you ends in the issue title and publishes it on a repository that may be public. Never paste a slugged Linear URL. For a GitHub issue in this repository write `#123`, and `owner/repo#123` for one elsewhere; GitHub links both itself, so neither takes a URL.
-- Derive `Verified` from the branch's committed diff and what this session ran, not from the issue. Never claim a check that was not run.
+- Derive `Verified` from checks that you ran or that the supplied parent evidence supports for the committed changes, not from the issue. Never claim a check that was not run.
 - Omit an empty bullet. Never stub one with "N/A" or "None".
 - Omit the why line when it would only restate the pull request title. Skip the details block when no bullet adds anything; noise trains reviewers to collapse it unread. Say in the report what was skipped, and why.
 
@@ -165,7 +169,7 @@ Never fatal. The pull request is the deliverable. If the tracker is unreachable,
 
 ### Output
 
-Return this report to the user:
+Return this report to the parent, or directly to the user when no parent receives it:
 
 ````markdown
 Pull request: <url>
@@ -181,23 +185,10 @@ Excluded:
 
 The `Review requested` and `Label` lines belong to a work pull request. Omit both lines on a personal or community repository, so that no work name reaches a report that is not a work report.
 
-### Watch choice
+### Watch handover
 
-If the report does not contain a verified pull request URL, finish after the report. Do not ask a question or offer a next action.
+Without a verified pull request URL, finish after the report. Do not offer monitoring.
 
-If the report contains a verified pull request URL, define `<watch-command>` with that URL. Codex uses `$babysit-pr <url>`. Slash-command runtimes use `/babysit-pr <url>`. Replace `<url>` and show only the matching form.
+With a verified URL, append `Watch handover: ROOT can offer babysit-pr for <url> after user consent.` Substitute the verified URL. Return to the parent and stop. Never invoke `babysit-pr`, execute its launch wrapper, or start monitoring from this worker.
 
-In an interactive session, use the available structured user-question tool to ask one single-select question after the report:
-
-- Header: `Babysit PR`
-- Question: `Babysit this pull request?`
-- `Babysit (Recommended)` - Run `<watch-command>` to fix checks, answer reviews, and wait for approvals.
-- `Stop here` - Finish after the report.
-
-Use the verified URL from the report. Do not add an `Other` choice. The client can add its own free-text choice.
-
-If the user selects `Babysit (Recommended)`, invoke the provider-specific command and wait for it to finish. If the user selects `Stop here`, finish without another summary. Treat cancellation, silence, and any other answer as `Stop here`.
-
-If no structured user-question tool is available in an interactive session, print the same question and choices with the provider-specific command, then wait.
-
-In a non-interactive session, print `Next action: $babysit-pr <url>` on Codex or `Next action: /babysit-pr <url>` on a slash-command runtime, with the verified URL substituted. Then finish.
+The root owns the watch choice and any later dispatch. It offers `Babysit (Recommended)` and `Stop here` after the report. Only an explicit selection of `Babysit` authorises the root to continue. Cancellation, silence, or any other answer means stop. When no parent can resume, return the verified URL and handover for a later root invocation.

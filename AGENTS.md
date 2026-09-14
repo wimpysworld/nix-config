@@ -73,8 +73,8 @@ Edit shared assistant sources under `home-manager/_mixins/agentic/assistants/`, 
 | Change | Source |
 | --- | --- |
 | Specialist agent | `agents/<agent>/prompt.md` and `header.toml` |
-| Agent-owned command | `agents/<agent>/commands/<command>/prompt.md` and `header.toml` |
-| Standalone command | `commands/<command>/prompt.md` and `header.toml` |
+| Agent-owned command | `agents/<agent>/commands/<command>/command.md` and `command.toml` |
+| Standalone command | `commands/<command>/command.md` and `command.toml` |
 | Reusable skill | `skills/<skill>/SKILL.md`, `header.toml`, and supporting files |
 | Global instructions | `instructions/global.md` |
 | Communication Rules | `styles/house-style/house-style.md` |
@@ -84,7 +84,7 @@ Edit shared assistant sources under `home-manager/_mixins/agentic/assistants/`, 
 
 Load the matching `write-assistant`, `write-command`, `write-skill`, or `write-agents-md` skill before changing those artefacts. Keep authoring guidance in those skills, not copied into agent prompts.
 
-Keep public Markdown bodies free of frontmatter. Put live metadata in `header.toml`, not retired `description.txt` files. Agent and command names derive from directories. Skills require `[common] name` to match their directory.
+Keep public Markdown bodies free of frontmatter. Put command metadata in `command.toml` and other live metadata in `header.toml`, not retired `description.txt` files. Agent and command names derive from directories. Skills require `[common] name` to match their directory.
 
 The composer discovers source directories automatically. Keep command names unique across standalone and agent-owned directories. Codex commands must also avoid reusable skill names.
 

@@ -28,10 +28,13 @@ let
       lib.all noNull value
     else
       value != null;
-  readHeader =
-    path:
+  readHeader = readMetadata "header.toml";
+  readCommandHeader = readMetadata "command.toml";
+  readMetadata =
+    filename: path:
     let
-      header = builtins.fromTOML (builtins.readFile (path + "/header.toml"));
+      fail = path: message: throw "${toString path}/${filename}: ${message}";
+      header = builtins.fromTOML (builtins.readFile (path + "/${filename}"));
       unknown = lib.subtractLists (
         [
           "common"
@@ -344,6 +347,7 @@ in
 {
   inherit
     readHeader
+    readCommandHeader
     project
     renderYaml
     renderToml

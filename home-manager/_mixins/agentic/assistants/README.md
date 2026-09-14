@@ -44,7 +44,7 @@ The Nix composition is the delivery mechanism, not the strategy. Everything belo
 
 Pi Agent resources are rendered here and consumed by `../pi`, which owns the Pi package, runtime wrapper, settings, MCP adapter, subagent extension config, and theme files.
 
-The repository stores metadata in `header.toml` and bodies in Markdown. The composer generates native client files through Home Manager. Agent and command names derive from their directories. Skills declare `[common] name`, which must match the directory. Generated skill files contain YAML frontmatter. Pi and Codex global instructions are plain Markdown, and Codex agents are TOML.
+The repository stores command metadata in `command.toml`, other metadata in `header.toml`, and bodies in Markdown. The composer generates native client files through Home Manager. Agent and command names derive from their directories. Skills declare `[common] name`, which must match the directory. Generated skill files contain YAML frontmatter. Pi and Codex global instructions are plain Markdown, and Codex agents are TOML.
 
 ## Contents
 
@@ -137,8 +137,6 @@ The house style owns response discipline, every platform carries it in the syste
 | `clarify-plan`          | Ask focused questions until every branch of a design is resolved         |
 | `gist`                  | Rewrite the previous response concisely                                  |
 | `implement-task`        | Take a tracked task through to implemented, validated, committed work    |
-| `make-commit`           | Draft the message, then create one commit from the durable work          |
-| `make-pr`               | Draft and open a PR, update linked tracker issues, and offer `babysit-pr` |
 | `oi`                    | Re-issue the Communication Rules bluntly, after `ahem` failed            |
 | `ready`                 | Prime the session for a broad activity                                   |
 | `reflect`               | Review the session and suggest tooling and AGENTS.md changes             |
@@ -148,7 +146,9 @@ The house style owns response discipline, every platform carries it in the syste
 | `review-code-mine`      | Adversarially review my own changes before filing a PR                   |
 | `wtb`                   | Run the Want to Buy workflow for a pull request and Slack channel        |
 
-The root `make-pr` command keeps the current context and inherits the root session model for message drafting, PR creation, and the `babysit-pr` choice. It does not launch Garfield.
+Direct human invocation of `make-commit` or `make-pr` runs one Garfield leaf worker. Optional context supplies intent, paths, exclusions, validation evidence, and mutation authority. Claude Code, Codex, and Pi wrappers add known parent decisions to the packet, without the transcript. OpenCode uses native agent binding without a parent wrapper, so missing decisions require explicit context or clarification.
+
+`make-pr` returns the verified PR URL and a watch handover. The root offers `babysit-pr` and runs its root workflow only after consent. Garfield never starts monitoring. Explicit root inline commit procedures in `address-code-review`, `implement-task`, and `babysit-pr` retain index ownership. They read workflow bodies without invoking generated launch wrappers.
 
 ---
 
@@ -297,7 +297,7 @@ Precise implementation engineer executing code changes from specifications. Read
 
 ### Garfield - Git Workflow Specialist
 
-Git workflow specialist enforcing Conventional Commits 1.0.0. Analyses existing commit history for project-specific scope patterns before writing messages. Handles type classification, scope determination, and breaking change footers.
+Git workflow specialist enforcing Conventional Commits 1.0.0. Analyses existing commit history for project-specific scope patterns before writing messages. Handles type classification, scope determination, breaking change footers, and authorised commit and PR execution.
 
 **Model:** the only pinned agent in the tree. Claude Code takes `model: sonnet` on the agent only. Pi takes `claude-sonnet-5` on Anthropic, `gpt-5.6-terra` at thinking `medium` on `openai-codex`, and `gemini-3-flash` on Google. Codex takes `gpt-5.6-terra` at reasoning `medium`. Git message generation is a structured task with clear rules, so it does not need the session's reasoning budget.
 
@@ -305,6 +305,8 @@ Git workflow specialist enforcing Conventional Commits 1.0.0. Analyses existing 
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `draft-commit-message` | Draft a conventional commit message for the staged or current changes                                                                    |
 | `draft-pr-message`     | Draft a conventional commit message summarising the branch for a PR body                                                                 |
+| `make-commit`          | Draft the message, then create one commit from the durable work                                                                          |
+| `make-pr`              | Draft and open a PR, update authorised linked issues, and return a watch handover to the root                                            |
 | `finish-pr`            | Summarise the merged PR on its Linear or GitHub issues, move them to done, and safely delete its local and remote branch                 |
 
 ---
@@ -380,7 +382,7 @@ Documentation architect creating technically precise guides through progressive 
 
 Agents without routing defaults inherit the model selected in the coding tool. Garfield has routes for Claude Code, Codex, Pi, and direct-root OpenCode tasks.
 
-Garfield is the sole pinned agent. His message-drafting commands carry no model routes. Commit and PR message work is structured and deterministic, so it does not need the session's reasoning budget:
+Garfield is the sole pinned agent. His commands carry no model routes. Commit and PR message work is structured and deterministic, so it does not need the session's reasoning budget:
 
 | Platform            | Pin                                            |
 | ------------------- | ---------------------------------------------- |
@@ -394,15 +396,15 @@ Garfield is the sole pinned agent. His message-drafting commands carry no model 
 
 No other agent or command sets a model on any platform. The ten remaining agents omit model and effort overrides from `header.toml`.
 
-Agent `header.toml` files are the sole routing default source for Claude Code, Codex, and Pi. Commands and ordinary skills remain model-neutral. Explicit launch-time child model, thinking, or effort overrides remain supported. General and agent-owned root commands never change the orchestrator model. The standalone `make-commit` and `make-pr` commands retain the caller's model.
+Agent `header.toml` files are the sole routing default source for Claude Code, Codex, and Pi. Commands and ordinary skills remain model-neutral. Explicit launch-time child model, thinking, or effort overrides remain supported. General and agent-owned root commands never change the orchestrator model. Direct `make-commit` and `make-pr` launches use Garfield's agent defaults on Claude Code, Codex, and Pi. Explicit root inline reuse retains the caller's model.
 
-The [OpenCode router](../opencode/README.md#provider-router-prototype) installs whenever OpenCode is enabled, without a version restriction. Version 1.18.30 is the tested and source-reviewed version. Google and other missing routes retain native behaviour. Existing OpenCode command model metadata remains supported.
+The [OpenCode router](../opencode/README.md#provider-router-prototype) installs whenever OpenCode is enabled, without a version restriction. Version 1.18.30 is the tested and source-reviewed version. Google and other missing routes retain native behaviour. Existing OpenCode command model metadata remains supported. OpenCode's direct slash commands use native agent binding. Do not assume that binding uses the router, which applies only to direct-root native task children.
 
 ---
 
 ## Platform Delivery
 
-`compose.nix` reads one `header.toml` per agent, command, skill, or instruction source. It projects metadata into each client's native format.
+`compose.nix` reads `command.toml` for each command and `header.toml` for each agent, skill, or instruction source. It projects metadata into each client's native format.
 
 | Table | Purpose |
 | --- | --- |
@@ -419,9 +421,9 @@ Common hints apply to Claude Code, OpenCode, and Pi. Provider-specific hints pre
 
 Non-empty command or skill routing for Claude Code, Codex, or Pi fails evaluation. Ordinary OpenCode skill routing remains rejected. OpenCode command model metadata remains supported. Put shared workflow defaults in the owning agent's header.
 
-Keep agent and command bodies in `prompt.md`. Keep skill bodies in frontmatter-free `SKILL.md`, including nested API skills. The composer rebuilds native frontmatter for each client. Encrypted `SKILL.sops` files remain complete native skills.
+Keep agent bodies in `prompt.md` and command bodies in `command.md`. Keep skill bodies in frontmatter-free `SKILL.md`, including nested API skills. The composer rebuilds native frontmatter for each client. Encrypted `SKILL.sops` files remain complete native skills.
 
-Retired provider headers are removed. Retired `description.txt` files remain in the repository but are not consumed. Edit only `header.toml` for live metadata.
+Retired provider headers are removed. Retired `description.txt` files remain in the repository but are not consumed. Edit `command.toml` for command metadata and `header.toml` for other live metadata.
 
 Pi composition routes through `compose.composeAgentFromPrompt "pi"` and `compose.composeCommandFromPrompt "pi"`. The composer shares the launch wrapper across public and encrypted commands. Codex uses a `spawn_agent` wrapper around command-derived skills.
 
@@ -521,13 +523,13 @@ This split keeps the surfaces semantically clean: prompts take inputs, skills pr
 
 ### Secret prompts
 
-A few command and skill bodies must not enter git or the Nix store. Those directories ship a marker file instead of the plaintext: `prompt.sops` for a command, `SKILL.sops` for a skill. The marker holds one thing, the name of a top-level key in `secrets/assistant-prompts.yaml` whose value is the body. A secret skill's supporting files follow the same convention under the general rule that any `<name>.sops` marker renders to `<name>`, so `references/cycle-mechanics.md.sops` renders to `references/cycle-mechanics.md`; `SKILL.sops` and `prompt.sops` are the two fixed, named exceptions to that rule.
+A few command and skill bodies must not enter git or the Nix store. Those directories ship a marker file instead of the plaintext: `command.sops` for a command, `SKILL.sops` for a skill. The marker holds one thing, the name of a top-level key in `secrets/assistant-prompts.yaml` whose value is the body. A secret skill's supporting files follow the same convention under the general rule that any `<name>.sops` marker renders to `<name>`, so `references/cycle-mechanics.md.sops` renders to `references/cycle-mechanics.md`; `SKILL.sops` and `command.sops` are the two fixed, named exceptions to that rule.
 
 `compose.nix` detects the marker and composes the file with a sops placeholder where the body belongs. Claude Code, OpenCode, and Pi use helper-owned links to private sops templates. Codex receives regular files that combine the generated prefix with the decrypted body. Activation checks the refreshed secret sources before the helper writes client files. Plaintext stays outside the Nix store.
 
 A directory holding both the marker and its plaintext counterpart fails evaluation, so the two can never drift apart.
 
-`header.toml` stays plaintext and is composed normally. Keep them free of whatever the encrypted body protects.
+Command `command.toml` and skill `header.toml` files stay plaintext and are composed normally. Keep them free of whatever the encrypted body protects.
 
 ### Activation ownership and cleanup
 

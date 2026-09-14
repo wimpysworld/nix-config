@@ -24,7 +24,7 @@ Users invoke the generated command as `$name`. Codex receives accompanying argum
 
 Five-line body. Captures `$ARGUMENTS`, names the flow, loads the skill, refuses to duplicate doctrine. Mirrors `create-skill`, `create-assistant`, `create-agents-md`.
 
-`prompt.md`:
+`command.md`:
 
 ```markdown
 ## Create Skill
@@ -36,7 +36,7 @@ Skill name argument: $ARGUMENTS. Use it if provided; otherwise ask for the name 
 Apply `write-skill` end-to-end: frontmatter, body, layout, references, anti-patterns, output format. Do not duplicate that guidance here.
 ```
 
-`header.toml`:
+`command.toml`:
 
 ```toml
 [common]
@@ -51,13 +51,13 @@ agent = "rosey"
 
 One- or two-line body. No format. Mirrors `ack`, `ready`.
 
-`prompt.md`:
+`command.md`:
 
 ```markdown
 $ARGUMENTS Assess and acknowledge my message, then yield your turn.
 ```
 
-`header.toml`:
+`command.toml`:
 
 ```toml
 [common]
@@ -72,7 +72,7 @@ root = true
 
 30-60 line body owning a non-trivial output template, sections table, and constraints. Mirrors `handover-fresh`, `handover-fork`, `orientate`. No persona; persona lives in the bound agent.
 
-`prompt.md`:
+`command.md`:
 
 ```markdown
 ## Project Handover (Fresh Session)
@@ -104,7 +104,7 @@ If the user supplied a focus, tailor the handover to that next-session goal.
 - Exclude easily discoverable information.
 ```
 
-`header.toml`:
+`command.toml`:
 
 ```toml
 [common]

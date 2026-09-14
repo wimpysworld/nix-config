@@ -54,13 +54,13 @@ let
   # ============ SECRET COMMANDS ============
 
   # The fixed sops file holding every encrypted assistant prompt body. Each
-  # secret command's `prompt.sops` marker names a top-level key in this file.
+  # secret command's `command.sops` marker names a top-level key in this file.
   assistantPromptsSopsFile = ../../../../secrets/assistant-prompts.yaml;
 
   # Collect every secret command (standalone and agent-scoped) with the
   # metadata each platform needs. A command is secret when its directory holds
-  # a `prompt.sops` marker; compose.commandSecretInfo reads the marker and
-  # rejects directories that also carry a plaintext prompt.md. The decrypted
+  # a `command.sops` marker; compose.commandSecretInfo reads the marker and
+  # rejects directories that also carry a plaintext command.md. The decrypted
   # body never enters the store: Claude, OpenCode, and Pi receive a sops
   # placeholder substituted at activation; Codex reads the decrypted secret
   # path from its activation script.
@@ -86,7 +86,7 @@ let
     lib.filter (entry: entry.info.secret) (standalone ++ agentScoped);
 
   # Set of secret command names, used to exclude them from the store-backed
-  # attrsets that read prompt.md (Pi prompt files, Codex skill map).
+  # attrsets that read command.md (Pi prompt files, Codex skill map).
   secretCommandNames = lib.listToAttrs (
     map (entry: lib.nameValuePair entry.cmdName true) secretCommandList
   );
@@ -301,7 +301,7 @@ let
       cmdName: _:
       let
         cmdPath = ./agents + "/${agentName}/commands/${cmdName}";
-        prompt = readFileTrim (cmdPath + "/prompt.md");
+        prompt = readFileTrim (cmdPath + "/command.md");
       in
       {
         name = ".pi/agent/prompts/${cmdName}.md";
@@ -414,7 +414,9 @@ let
   metadataHelpers = import ./metadata.nix { inherit lib; };
   codexCommandDispatch =
     cmdName: agentName: cmdPath:
-    metadataHelpers.commandDispatch codingAgentDirs cmdName agentName (compose.readHeader cmdPath);
+    metadataHelpers.commandDispatch codingAgentDirs cmdName agentName (
+      compose.readCommandHeader cmdPath
+    );
 
   codexAgents = lib.mapAttrs (name: _: codexRole name) codingAgentDirs;
 
@@ -428,7 +430,7 @@ let
   # task in a fresh sub-thread. The owning agent's persona is therefore
   # resolved at runtime by Codex's agent role config, not embedded in the
   # skill body. Opt out of spawn dispatch by setting `spawn-agent = false`
-  # in `header.toml`; the composer then embeds the agent's `prompt.md`
+  # in `command.toml`; the composer then embeds the agent's `prompt.md`
   # verbatim before the task body so the skill carries the full persona in
   # the calling thread. Set compose.root to keep the caller's context without
   # a launch wrapper or an embedded specialist persona.
@@ -438,7 +440,7 @@ let
   mkCodexSkillFromPrompt =
     skillName: agentName: cmdPath: prompt:
     let
-      metadata = compose.readHeader cmdPath;
+      metadata = compose.readCommandHeader cmdPath;
       description = metadata.common.description;
       dispatch = codexCommandDispatch skillName agentName cmdPath;
       body =
@@ -457,6 +459,7 @@ let
             - Wait for the spawned agent when its result is needed, then relay the final answer.
 
             ${compose.workerDispatchInstructions}
+            ${compose.commandContextInstructions skillName}
             ## Task
 
             ${compose.leafWorkerContract}
@@ -481,14 +484,14 @@ let
     '';
   mkCodexSkillText =
     skillName: agentName: cmdPath:
-    mkCodexSkillFromPrompt skillName agentName cmdPath (readFileTrim (cmdPath + "/prompt.md"));
+    mkCodexSkillFromPrompt skillName agentName cmdPath (readFileTrim (cmdPath + "/command.md"));
 
   # Command-derived skills always require explicit invocation. A header can
   # repeat the false policy but cannot enable implicit invocation.
   mkCodexCommandOpenAiYaml =
     cmdPath:
     metadataHelpers.renderYaml (
-      lib.removeAttrs (metadataHelpers.commandPolicy (compose.readHeader cmdPath)) [
+      lib.removeAttrs (metadataHelpers.commandPolicy (compose.readCommandHeader cmdPath)) [
         "allow-implicit-invocation"
       ]
     );

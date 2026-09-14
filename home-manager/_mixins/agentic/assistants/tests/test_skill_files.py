@@ -55,10 +55,18 @@ class SkillFileTests(unittest.TestCase):
                             '[claude]\ncontext = "fork"\nagent = "worker"\n'
                             '[opencode]\nagent = "worker"\nsubtask = true\n'
                         )
-                    files[directory + "/header.toml"] = header
-                    files[directory + ("/prompt.sops" if secret else "/prompt.md")] = (
+                    files[directory + "/command.toml"] = header
+                    files[directory + ("/command.sops" if secret else "/command.md")] = (
                         name if secret else body
                     ) + "\n"
+        for name in ("make-commit", "make-pr"):
+            cases[name] = ("garfield", "leaf", False)
+            for filename in ("command.toml", "command.md"):
+                path = f"agents/garfield/commands/{name}/{filename}"
+                files[path] = (ASSISTANTS / path).read_text()
+        for filename in ("header.toml", "prompt.md"):
+            path = f"agents/garfield/{filename}"
+            files[path] = (ASSISTANTS / path).read_text()
         with tempfile.TemporaryDirectory(
             prefix="assistant-command-routes-"
         ) as directory:
@@ -120,6 +128,11 @@ class SkillFileTests(unittest.TestCase):
             for platform in ("claude", "opencode", "pi", "codex"):
                 with self.subTest(command=name, platform=platform):
                     expected_body = "PLACEHOLDER_" + name if secret else body
+                    agent = "garfield" if selection == "garfield" else "worker"
+                    if selection == "garfield":
+                        expected_body = files[
+                            f"agents/garfield/commands/{name}/command.md"
+                        ].strip()
                     if platform == "codex":
                         entry = owned[f"/fixture/.codex/skills/{name}/SKILL.md"]
                         rendered = entry["prefix"] if secret else entry["source"]
@@ -162,26 +175,27 @@ class SkillFileTests(unittest.TestCase):
                             self.assertNotIn("Use the `spawn_agent` tool", task)
                         else:
                             self.assertIn(
-                                "Use the `spawn_agent` tool to launch the `worker` agent",
+                                f"Use the `spawn_agent` tool to launch the `{agent}` agent",
                                 task,
                             )
                             self.assertNotIn("PERSONA_SENTINEL", task)
                     elif platform == "pi":
                         self.assertIn(
-                            'Use the Agent tool with `subagent_type: "worker"`', task
+                            f'Use the Agent tool with `subagent_type: "{agent}"`', task
                         )
                     elif platform == "claude":
                         self.assertIn(
-                            "Use the Task tool to launch the worker agent", task
+                            f"Use the Task tool to launch the {agent} agent", task
                         )
                     else:
-                        self.assertEqual(native["agent"], "worker")
+                        self.assertEqual(native["agent"], agent)
                     child = (
                         selection != "unbound"
                         and mode != "root"
                         and not (platform == "codex" and mode == "inline")
                     )
                     if child:
+                        launch = ""
                         if platform == "opencode":
                             self.assertIs(native.get("subtask", True), True)
                             child_task = task
@@ -191,6 +205,28 @@ class SkillFileTests(unittest.TestCase):
                             if expected_body:
                                 self.assertNotIn(expected_body, launch)
                         self.assertIn("You are a leaf worker.", child_task)
+                        if selection == "garfield":
+                            self.assertNotIn("Before launch, add", child_task)
+                            self.assertNotIn("model", native)
+                            if platform != "codex":
+                                self.assertEqual(native["argument-hint"], "[context]")
+                            self.assertIn("accompanying invocation text", child_task)
+                            if platform != "opencode":
+                                self.assertIn(
+                                    "Before launch, add the known intent", launch
+                                )
+                                self.assertIn("explicit mutation authority", launch)
+                                self.assertIn(
+                                    "not the general conversation or transcript", launch
+                                )
+                                if name == "make-pr":
+                                    self.assertIn("Only after explicit consent", launch)
+                                    self.assertIn(
+                                        "Do not send monitoring to Garfield", launch
+                                    )
+                            if name == "make-pr":
+                                self.assertIn("Watch handover: ROOT", child_task)
+                                self.assertIn("Never invoke `babysit-pr`", child_task)
                         for wrapper in (
                             "Use the `spawn_agent` tool to launch",
                             "Use the Agent tool with",

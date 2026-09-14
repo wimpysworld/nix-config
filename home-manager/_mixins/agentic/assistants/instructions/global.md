@@ -8,7 +8,9 @@ The root must keep at most twelve workers active across all delegation tools and
 
 Workers complete their assigned scope directly and return to their parent. Never launch another agent through a sub-agent or task tool from a worker. Loading a command or skill never changes a worker into an orchestrator. If additional specialist work is necessary, return a bounded request with the required scope and evidence to the parent. Complete independent assigned work before returning. The root handles the request and continues the original task.
 
-Keep the explicit `make-commit` and `make-pr` same-context operations inline. Only the root can delegate a commit for a large staged diff that the session did not author.
+Route directly invoked `make-commit` and `make-pr` commands to one Garfield leaf worker. Supply intent, paths, exclusions, test evidence, and explicit mutation authority, not the parent transcript. Keep explicit root inline procedures in `address-code-review`, `implement-task`, and `babysit-pr` unchanged. Those procedures read command bodies without invoking generated launch wrappers and retain root ownership of the Git index. Never run concurrent index mutations.
+
+After `make-pr` returns a verified PR URL, the root offers `babysit-pr` and runs its root workflow only after user consent. Garfield returns the watch handover and never launches monitoring. Without a verified URL or consent, stop.
 
 Relay an artefact verbatim, always. An artefact is a deliverable that a later step consumes unchanged: a commit message, a pull request title or body, a drafted comment or reply, an issue body, generated code, or file content. Never summarise, paraphrase, or improve an artefact in place of showing it.
 

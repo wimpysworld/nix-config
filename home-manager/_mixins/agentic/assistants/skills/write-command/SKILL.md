@@ -33,7 +33,7 @@ Rules:
 
 - `description` ≤60 chars where possible. Imperative or noun phrase. No trailing period. Trailing emoji is fine and conventional in this repo.
 - `argument-hint` ≤25 chars. `[arg]` for optional, `<arg>` for required. Anthropic's own examples use `[arg]` for both; if the body falls back to "ask if blank", the argument is optional and the hint must use `[…]`.
-- Vendor-specific fields (`allowed-tools`, `subtask`, and `disable-model-invocation`) belong in native provider tables in `header.toml`; see `references/portability.md`.
+- Vendor-specific fields (`allowed-tools`, `subtask`, and `disable-model-invocation`) belong in native provider tables in `command.toml`; see `references/portability.md`.
 
 ## Body
 
@@ -63,7 +63,7 @@ Use `$ARGUMENTS` for a shared command that takes one free-form argument. Claude 
 
 ## Repo composition
 
-This repo reads one `header.toml` and one `prompt.md` per command. Keep the body free of frontmatter.
+This repo reads one `command.toml` and one `command.md` per command. Keep the body free of frontmatter.
 
 ```toml
 [common]
@@ -152,7 +152,7 @@ If the body writes files, runs Bash, or hits the network, say so and list paths 
 
 ## Update flow
 
-1. Read `prompt.md` and `header.toml`.
+1. Read `command.md` and `command.toml`.
 2. Identify the form band (shim / standalone / standalone-with-format). Enforce the shim and trivial caps; apply the long command choice before editing a standalone-with-format command.
 3. Diagnose: root/leaf ownership, argument substitution (`$ARGUMENTS` vs `$1`), `argument-hint` bracket convention, persona leakage, missing or stale `description`, model mismatch with sibling commands, missing side-effect declaration, missing or stale README row.
 4. Edit narrowly. Preserve `[common] description` and `argument-hint` unless they are wrong. Do not rewrite a working body.
@@ -161,7 +161,7 @@ If the body writes files, runs Bash, or hits the network, say so and list paths 
 
 ## Output
 
-When invoked to **create**, produce `prompt.md` and `header.toml` in fenced blocks ready to save at the correct path.
+When invoked to **create**, produce `command.md` and `command.toml` in fenced blocks ready to save at the correct path.
 
 When invoked to **update**, produce only the changed files plus the changelog. Preserve unchanged sections verbatim.
 

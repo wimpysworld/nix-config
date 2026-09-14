@@ -7,15 +7,17 @@ This repo's command estate composes through `home-manager/_mixins/agentic/assist
 ```
 commands/<name>/                              (standalone)
 agents/<agent>/commands/<name>/               (agent-scoped)
-├── prompt.md             body without frontmatter
-└── header.toml           shared, provider, composition, and routing metadata
+├── command.md            body without frontmatter
+└── command.toml          shared, provider, composition, and routing metadata
 ```
+
+For a secret body, use `command.sops` instead of `command.md`. The marker contains the existing SOPS key, not the body. Keep `command.toml` plaintext. Never put both body files in one directory.
 
 `compose.nix` discovers commands by directory listing - no codegen edits when adding a new command.
 
 ## Claude Code dispatch
 
-For leaf commands with `[compose] agent = "<name>"`, the composer dispatches through Claude's Task tool by default. Omitted `[compose.claude] use-task` means `true`. Explicit `use-task = false` selects the inline `@<name>` prepend without a child launch. Do not write either wrapper into `prompt.md`.
+For leaf commands with `[compose] agent = "<name>"`, the composer dispatches through Claude's Task tool by default. Omitted `[compose.claude] use-task` means `true`. Explicit `use-task = false` selects the inline `@<name>` prepend without a child launch. Do not write either wrapper into `command.md`.
 
 Shared `root = true` suppresses this prepend and all provider launch wrappers. Root commands retain the caller's context and persona. OpenCode root output omits `agent` and forces `subtask: false`.
 
@@ -27,7 +29,7 @@ The parent supplies a bounded packet with scope, exact arguments, existing autho
 
 ## OpenCode `/init` override
 
-`home-manager/_mixins/agentic/opencode/default.nix` (around lines 110-120) reads `agents/rosey/commands/create-agents-md/prompt.md` directly and overrides OpenCode's built-in `/init` command with it. If you rename `create-agents-md` or move its `prompt.md`, update that file in the same change. Overriding any other OpenCode built-in (e.g. `/review`) follows the same pattern: one entry in `opencode/default.nix` reading a `prompt.md` from the assistants tree.
+`home-manager/_mixins/agentic/opencode/default.nix` reads `agents/rosey/commands/create-agents-md/command.md` directly and overrides OpenCode's built-in `/init` command with it. If you rename `create-agents-md` or move its `command.md`, update that file in the same change. Overriding any other OpenCode built-in (e.g. `/review`) follows the same pattern: one entry in `opencode/default.nix` reading a `command.md` from the assistants tree.
 
 ## Provider tables
 

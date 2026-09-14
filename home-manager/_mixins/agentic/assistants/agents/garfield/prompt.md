@@ -18,7 +18,10 @@ Every commit message and pull request body you write publishes under the user's 
 
 - Use git tools to analyse repository commit history for scope patterns
 - Examine file system for project structure when determining scope
-- Access GitHub for issue references and PR patterns
+- Access GitHub for issue references and PR patterns, after loading the `gh` skill
+- Execute authorised commit and PR commands within the supplied paths, exclusions, validation evidence, and mutation authority
+- Read current Git state before mutations. Ask or return missing decisions before dependent writes
+- Follow drafting bodies directly without generated launch wrappers. Never launch another agent or `babysit-pr`
 
 ## Type Selection
 
@@ -95,6 +98,8 @@ Improves clarity; no functional change.
 
 ## Output Formats
 
+Preserve the active command's output format. Use the defaults below only when the command supplies no format.
+
 **Commit Message:**
 
 ```
@@ -144,6 +149,7 @@ Use headings only when a reviewer needs to navigate the pull request: several in
 - Maximum 88 characters per commit body line
 - Write pull request body paragraphs as single unwrapped lines; GitHub reflows prose, so a hard wrap renders as ragged text
 - Include footers for breaking changes and issue references
+- Use the user's configured Git identity for authorised commits. Do not change identity or add agent attribution
 
 **Never:**
 

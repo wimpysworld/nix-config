@@ -9,10 +9,12 @@ let
   readFile = path: lib.trim (builtins.readFile path);
 
   metadata = import ./metadata.nix { inherit lib; };
-  inherit (metadata) readHeader;
+  inherit (metadata) readHeader readCommandHeader;
   headerFor =
     kind: platform: name: path:
-    metadata.project kind platform name (readHeader path);
+    metadata.project kind platform name (
+      if kind == "command" then readCommandHeader path else readHeader path
+    );
   renderHeader =
     kind: platform: name: path:
     metadata.renderYaml (headerFor kind platform name path);
@@ -128,8 +130,8 @@ let
   standaloneCommandDirs = discoverDirs (basePath + "/commands");
 
   # Report whether a command is secret and, if so, its sops key. A command is
-  # secret when its directory holds a `prompt.sops` marker (and no plaintext
-  # `prompt.md`). The marker's trimmed content is the top-level key in
+  # secret when its directory holds a `command.sops` marker (and no plaintext
+  # `command.md`). The marker's trimmed content is the top-level key in
   # `secrets/assistant-prompts.yaml` whose value is the prompt body. The body
   # is substituted at activation time via a sops placeholder, so plaintext
   # never reaches the Nix store. Having both files is a configuration error and
@@ -142,12 +144,12 @@ let
           basePath + "/agents/${agentName}/commands/${cmdName}"
         else
           basePath + "/commands/${cmdName}";
-      sopsPath = cmdPath + "/prompt.sops";
+      sopsPath = cmdPath + "/command.sops";
       hasSops = builtins.pathExists sopsPath;
-      hasPlain = builtins.pathExists (cmdPath + "/prompt.md");
+      hasPlain = builtins.pathExists (cmdPath + "/command.md");
     in
     if hasSops && hasPlain then
-      throw "Command ${cmdName} (${toString cmdPath}) has both prompt.sops and prompt.md. A secret command must have only prompt.sops; remove prompt.md."
+      throw "Command ${cmdName} (${toString cmdPath}) has both command.sops and command.md. A secret command must have only command.sops; remove command.md."
     else if hasSops then
       {
         secret = true;
@@ -189,7 +191,7 @@ let
   commandMetadata =
     agentName: cmdName:
     let
-      header = readHeader (commandPath agentName cmdName);
+      header = readCommandHeader (commandPath agentName cmdName);
       selectedAgent = header.compose.agent or agentName;
     in
     if selectedAgent != null && !(agentDirs ? ${selectedAgent}) then
@@ -224,6 +226,29 @@ let
     Use native final-response delivery. Require a separate messaging tool only when the runtime needs it and the worker has it.
   '';
 
+  commandContextInstructions =
+    cmdName:
+    lib.optionalString
+      (builtins.elem cmdName [
+        "make-commit"
+        "make-pr"
+      ])
+      ''
+        Before launch, add the known intent, exact paths, exclusions, and validation evidence to the child's packet.
+        Include each check's command, result, and tested revision or files. Mark missing evidence as unknown.
+        Carry the user's optional context and explicit mutation authority, including any limits, into that packet.
+        For make-commit, name staging and commit authority. For make-pr, name push, PR, review metadata, and tracker authority.
+        Pass these decisions as text, not the general conversation or transcript. Ask for missing decisions before dependent writes.
+        Launch only one Garfield worker. Keep other index mutations stopped until it returns.
+      ''
+    + lib.optionalString (cmdName == "make-pr") ''
+      After a verified PR URL returns, offer the user Babysit (Recommended) or Stop here.
+      Use a structured question when available. Without that tool, ask in text and wait.
+      Only after explicit consent, run the babysit-pr root workflow for that URL and own any worker dispatch.
+      Do not send monitoring to Garfield. Cancellation, silence, or any other answer means stop.
+      Without a verified URL, do not offer monitoring. In non-interactive use, return the handover without starting it.
+    '';
+
   composeCommandFromPrompt =
     platform: agentName: cmdName: body:
     let
@@ -253,6 +278,7 @@ let
           Use the Task tool to launch the ${selectedAgent} agent for the following task:
 
           ${workerDispatchInstructions}
+          ${commandContextInstructions cmdName}
           ## Task
 
           ${leafWorkerContract}
@@ -269,6 +295,7 @@ let
           Set `inherit_context` to `false` and `run_in_background` to `true`.
           Supply a short `description` and put the task in `prompt`.
           ${workerDispatchInstructions}
+          ${commandContextInstructions cmdName}
           ## Task
 
           ${leafWorkerContract}
@@ -293,7 +320,7 @@ let
           basePath + "/agents/${agentName}/commands/${cmdName}"
         else
           basePath + "/commands/${cmdName}";
-      prompt = readFile (cmdPath + "/prompt.md");
+      prompt = readFile (cmdPath + "/command.md");
     in
     composeCommandFromPrompt platform agentName cmdName prompt;
 
@@ -379,7 +406,7 @@ let
   # Report whether a skill is secret and, if so, its sops key. A skill is
   # secret when its directory holds a `SKILL.sops` marker (and no plaintext
   # `SKILL.md`). `SKILL.sops` is a fixed, named marker that renders to
-  # `SKILL.md`, exactly as `prompt.sops` renders to `prompt.md` for commands;
+  # `SKILL.md`, exactly as `command.sops` replaces `command.md` for commands;
   # every other marker renders to its own name minus the suffix, which
   # secretSkillSupportFiles below handles. The marker's trimmed content is the
   # top-level key in `secrets/assistant-prompts.yaml` whose value is the entire
@@ -500,7 +527,9 @@ let
       - Non-Nix implementation from a defined plan: donatello.
       - Prompts, skills, commands, or instruction files: rosey.
       - Tests: brain. Documentation: velma. General research or option framing: penfold.
-      - Committing intended work: run the `make-commit` command inline; delegate to garfield only when the staged diff is large and the session did not author it.
+      - Directly invoked `make-commit` and `make-pr`: one garfield leaf worker. Supply intent, paths, exclusions, test evidence, and explicit mutation authority.
+      - Keep explicit root inline commit procedures in `address-code-review`, `implement-task`, and `babysit-pr`. Read their draft and commit bodies without launch wrappers. The root retains index ownership. Never run concurrent index mutations.
+      - After `make-pr` returns a verified URL, the root offers `babysit-pr` and continues only after user consent. Garfield never launches monitoring.
       - If no route matches, use the smallest capable specialist or ask.
 
       ## Depth
@@ -764,6 +793,7 @@ in
 {
   inherit
     readHeader
+    readCommandHeader
     headerFor
     commandMetadata
     commandPath
@@ -789,6 +819,7 @@ in
     composePiCommandFromPrompt
     leafWorkerContract
     workerDispatchInstructions
+    commandContextInstructions
     commandSecretInfo
     ;
 

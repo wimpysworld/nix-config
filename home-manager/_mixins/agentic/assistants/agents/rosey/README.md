@@ -175,7 +175,7 @@ consume context and, on OpenAI, still count against rate limits.
 
 The repo targets four runtimes: Claude Code, OpenCode, Pi, and Codex.
 Skill and command artefacts must work across all four; vendor extensions
-are isolated to references and provider tables in `header.toml`.
+are isolated to references and provider tables in skill `header.toml` or command `command.toml` files.
 
 ### 4.1 Repository metadata and native frontmatter
 
@@ -298,72 +298,72 @@ Rosey's design. URLs preserved verbatim.
 
 ### 6.1 The `agents.md` and Agent Skills specs
 
-- Agent Skills open specification: https://agentskills.io/specification
-- Agent Skills spec source on GitHub: https://github.com/agentskills/agentskills/blob/main/docs/specification.mdx
-- `agents.md` home page: https://agents.md/
+- Agent Skills open specification: <https://agentskills.io/specification>
+- Agent Skills spec source on GitHub: <https://github.com/agentskills/agentskills/blob/main/docs/specification.mdx>
+- `agents.md` home page: <https://agents.md/>
 
 ### 6.2 Anthropic - skills, agents, memory, prompting
 
-- Skill authoring best practices: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
-- Claude Code skills (extended doc): https://code.claude.com/docs/en/skills.md
-- Extend Claude with skills: https://docs.anthropic.com/en/docs/claude-code/skills
-- Create custom subagents: https://docs.anthropic.com/en/docs/claude-code/sub-agents
-- How Claude remembers your project (CLAUDE.md): https://code.claude.com/docs/en/memory
-- Memory: https://docs.anthropic.com/en/docs/claude-code/memory
-- Output styles: https://docs.anthropic.com/en/docs/claude-code/output-styles
-- Prompting best practices: https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/system-prompts
-- Chain prompts (XML tags, role-setting): https://docs.anthropic.com/claude/docs/chain-prompts
-- Best practices for Claude Code: https://code.claude.com/docs/en/best-practices
-- CLAUDE.md context (Help Center): https://support.claude.com/en/articles/14553240
-- Building effective agents: https://www.anthropic.com/engineering/building-effective-agents
-- Custom skills (Help Center): https://support.anthropic.com/en/articles/12512198-creating-custom-skills
-- Prompt caching: https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching
-- Hooks reference: https://docs.anthropic.com/en/docs/claude-code/hooks
-- Slash commands (SDK): https://code.claude.com/docs/en/agent-sdk/slash-commands
-- `claude-code` `skill-development` skill: https://github.com/anthropics/claude-code/blob/main/plugins/plugin-dev/skills/skill-development/SKILL.md
-- `claude-code` `agent-development` skill: https://github.com/anthropics/claude-code/blob/main/plugins/plugin-dev/skills/agent-development/SKILL.md
-- `claude-code` `command-development` skill: https://github.com/anthropics/claude-code/blob/main/plugins/plugin-dev/skills/command-development/README.md
+- Skill authoring best practices: <https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices>
+- Claude Code skills (extended doc): <https://code.claude.com/docs/en/skills.md>
+- Extend Claude with skills: <https://docs.anthropic.com/en/docs/claude-code/skills>
+- Create custom subagents: <https://docs.anthropic.com/en/docs/claude-code/sub-agents>
+- How Claude remembers your project (CLAUDE.md): <https://code.claude.com/docs/en/memory>
+- Memory: <https://docs.anthropic.com/en/docs/claude-code/memory>
+- Output styles: <https://docs.anthropic.com/en/docs/claude-code/output-styles>
+- Prompting best practices: <https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/system-prompts>
+- Chain prompts (XML tags, role-setting): <https://docs.anthropic.com/claude/docs/chain-prompts>
+- Best practices for Claude Code: <https://code.claude.com/docs/en/best-practices>
+- CLAUDE.md context (Help Center): <https://support.claude.com/en/articles/14553240>
+- Building effective agents: <https://www.anthropic.com/engineering/building-effective-agents>
+- Custom skills (Help Center): <https://support.anthropic.com/en/articles/12512198-creating-custom-skills>
+- Prompt caching: <https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching>
+- Hooks reference: <https://docs.anthropic.com/en/docs/claude-code/hooks>
+- Slash commands (SDK): <https://code.claude.com/docs/en/agent-sdk/slash-commands>
+- `claude-code` `skill-development` skill: <https://github.com/anthropics/claude-code/blob/main/plugins/plugin-dev/skills/skill-development/SKILL.md>
+- `claude-code` `agent-development` skill: <https://github.com/anthropics/claude-code/blob/main/plugins/plugin-dev/skills/agent-development/SKILL.md>
+- `claude-code` `command-development` skill: <https://github.com/anthropics/claude-code/blob/main/plugins/plugin-dev/skills/command-development/README.md>
 
 ### 6.3 OpenAI - Codex, agents, prompting
 
-- Codex Agent Skills: https://developers.openai.com/codex/skills
-- Codex customisation concepts: https://developers.openai.com/codex/concepts/customization
-- Custom instructions with AGENTS.md: https://developers.openai.com/codex/guides/agents-md
-- Codex custom prompts (historical, removed from CLI 0.117.0): https://developers.openai.com/codex/custom-prompts
-- Codex CLI README: https://github.com/openai/codex/blob/9a8730f3/codex-cli/README.md
-- Codex system prompt source: https://github.com/openai/codex/blob/main/codex-rs/core/prompt.md
-- `skill-creator` skill: https://github.com/openai/skills/blob/main/skills/.system/skill-creator/SKILL.md
-- Prompting (Responses API): https://developers.openai.com/api/docs/guides/prompting
-- Agent definitions: https://developers.openai.com/api/docs/guides/agents/define-agents
-- Agent orchestration and handoffs: https://developers.openai.com/api/docs/guides/agents/orchestration
-- GPT-5.1 prompting guide: https://developers.openai.com/cookbook/examples/gpt-5/gpt-5-1_prompting_guide
-- Best practices for prompt engineering: https://help.openai.com/en/articles/6654000
-- Prompt caching: https://developers.openai.com/api/docs/guides/prompt-caching
-- Prompt Caching 201 (Cookbook): https://developers.openai.com/cookbook/examples/prompt_caching_201
+- Codex Agent Skills: <https://developers.openai.com/codex/skills>
+- Codex customisation concepts: <https://developers.openai.com/codex/concepts/customization>
+- Custom instructions with AGENTS.md: <https://developers.openai.com/codex/guides/agents-md>
+- Codex custom prompts (historical, removed from CLI 0.117.0): <https://developers.openai.com/codex/custom-prompts>
+- Codex CLI README: <https://github.com/openai/codex/blob/9a8730f3/codex-cli/README.md>
+- Codex system prompt source: <https://github.com/openai/codex/blob/main/codex-rs/core/prompt.md>
+- `skill-creator` skill: <https://github.com/openai/skills/blob/main/skills/.system/skill-creator/SKILL.md>
+- Prompting (Responses API): <https://developers.openai.com/api/docs/guides/prompting>
+- Agent definitions: <https://developers.openai.com/api/docs/guides/agents/define-agents>
+- Agent orchestration and handoffs: <https://developers.openai.com/api/docs/guides/agents/orchestration>
+- GPT-5.1 prompting guide: <https://developers.openai.com/cookbook/examples/gpt-5/gpt-5-1_prompting_guide>
+- Best practices for prompt engineering: <https://help.openai.com/en/articles/6654000>
+- Prompt caching: <https://developers.openai.com/api/docs/guides/prompt-caching>
+- Prompt Caching 201 (Cookbook): <https://developers.openai.com/cookbook/examples/prompt_caching_201>
 
 ### 6.4 Google - Gemini prompting
 
-- System instructions intro: https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/prompts/system-instruction-introduction
-- Prompt design strategies: https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/prompts/prompt-design-strategies
+- System instructions intro: <https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/prompts/system-instruction-introduction>
+- Prompt design strategies: <https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/prompts/prompt-design-strategies>
 
 ### 6.5 Pi
 
-- Skills documentation: https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/skills.md
-- Prompt templates documentation: https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/prompt-templates.md
-- Substitution source: https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/src/core/prompt-templates.ts
-- Usage and RPC: https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/usage.md
+- Skills documentation: <https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/skills.md>
+- Prompt templates documentation: <https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/prompt-templates.md>
+- Substitution source: <https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/src/core/prompt-templates.ts>
+- Usage and RPC: <https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/usage.md>
 
 ### 6.6 OpenCode, Cursor, Aider
 
-- OpenCode commands: https://opencode.ai/docs/commands
-- OpenCode commands (mirror): https://github.com/anomalyco/opencode/blob/dev/packages/web/src/content/docs/commands.mdx
-- OpenCode-Book command system chapter: https://www.opencodebook.xyz/en/chapter_14_skill_system/14.3_command_system
-- OpenCode `model:` ignored bug: https://github.com/sst/opencode/issues/2461
-- Cursor custom commands: https://docs.cursor.com/en/agent/custom-commands
-- Aider in-chat commands: https://aider.chat/docs/usage/commands.html
+- OpenCode commands: <https://opencode.ai/docs/commands>
+- OpenCode commands (mirror): <https://github.com/anomalyco/opencode/blob/dev/packages/web/src/content/docs/commands.mdx>
+- OpenCode-Book command system chapter: <https://www.opencodebook.xyz/en/chapter_14_skill_system/14.3_command_system>
+- OpenCode `model:` ignored bug: <https://github.com/sst/opencode/issues/2461>
+- Cursor custom commands: <https://docs.cursor.com/en/agent/custom-commands>
+- Aider in-chat commands: <https://aider.chat/docs/usage/commands.html>
 
 ### 6.7 Community references
 
-- RedKenrok `writing-skill-md`: https://raw.githubusercontent.com/RedKenrok/skills/refs/heads/main/skills/writing-skill-md/SKILL.md
-- `mgechev/skills-best-practices`: https://github.com/mgechev/skills-best-practices
-- OpenCode `command-creator` (community): https://playbooks.com/skills/igorwarzocha/opencode-workflows/command-creator
+- RedKenrok `writing-skill-md`: <https://raw.githubusercontent.com/RedKenrok/skills/refs/heads/main/skills/writing-skill-md/SKILL.md>
+- `mgechev/skills-best-practices`: <https://github.com/mgechev/skills-best-practices>
+- OpenCode `command-creator` (community): <https://playbooks.com/skills/igorwarzocha/opencode-workflows/command-creator>

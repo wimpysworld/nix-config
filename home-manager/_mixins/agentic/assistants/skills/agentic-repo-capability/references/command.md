@@ -6,7 +6,7 @@ Create or update a user-invoked command through the repository's command composi
 
 1. Load `write-command` and read it in full before editing.
 2. Follow its decision rules for a shim, standalone command, or standalone command with an output format. Do not reproduce its doctrine here.
-3. Inspect nearby commands, the owning agent, composition code, the shared `header.toml`, and discovery rules.
+3. Inspect nearby commands, the owning agent, composition code, the shared `command.toml`, and discovery rules.
 4. Put reusable workflow guidance in a skill. Keep a command shim limited to invocation, `$ARGUMENTS` handling, and delegation to that skill.
 5. Use `$ARGUMENTS` for a portable free-form argument. Use `[common] argument-hint` for a shared hint. Preserve provider-specific omissions when migrating existing commands.
 6. Bind the command to its owning agent through the repository's native header or composer. Do not embed the agent persona in the shared body.
@@ -24,7 +24,7 @@ Do not assume that provider frontmatter fields or agent routing work on another 
 
 ## Validate
 
-1. Check that every required source file exists and `header.toml` parses.
+1. Check that every required source file exists and `command.toml` parses.
 2. Run the repository composer or evaluation for Claude Code, OpenCode, Pi, and any generated Codex skill form.
 3. Inspect each emitted artefact. Confirm its description, argument hint where supported, argument handling, agent binding or launch wrapper, and body. For Codex, check the companion policy and explicit argument mapping without assuming template substitution.
 4. Confirm the command appears in each installed client's discovery output when such diagnostics exist.

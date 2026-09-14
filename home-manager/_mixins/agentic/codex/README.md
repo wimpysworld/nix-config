@@ -120,7 +120,7 @@ policy:
 
 The policy excludes commands from implicit selection while preserving explicit user invocation. It is not an access restriction. Ordinary reusable skills retain their existing policies. The policy belongs in `agents/openai.yaml`, not in `SKILL.md` frontmatter.
 
-Each agent command uses its bare name, such as `$draft-commit-message`, which matches the Pi prompt convention. Agent commands dispatch to their owning specialist through `spawn_agent` by default. The parent remains the orchestrator. A command with `spawn-agent = false` under `[compose.codex]` in `header.toml` embeds the owning persona and task prompt in the caller's context.
+Each agent command uses its bare name, such as `$draft-commit-message`, which matches the Pi prompt convention. Agent commands dispatch to their owning specialist through `spawn_agent` by default. The parent remains the orchestrator. A command with `spawn-agent = false` under `[compose.codex]` in `command.toml` embeds the owning persona and task prompt in the caller's context.
 
 ```text
 $draft-commit-message
@@ -206,11 +206,11 @@ assistants/
 │   ├── prompt.md
 │   ├── header.toml
 │   └── commands/<cmd>/
-│       ├── prompt.md
-│       └── header.toml
+│       ├── command.md
+│       └── command.toml
 ├── commands/<name>/
-│   ├── prompt.md
-│   └── header.toml
+│   ├── command.md
+│   └── command.toml
 ├── skills/<name>/
 │   └── SKILL.md
 ├── compose.nix
