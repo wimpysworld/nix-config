@@ -74,6 +74,12 @@ let
           prompt
       );
 
+  extractOpenCodeProviderModels =
+    agentName:
+    lib.mapAttrs (_: route: route.model) (
+      (readHeader (basePath + "/agents/${agentName}")).routing.opencode.providers or { }
+    );
+
   agentProviderRoutes = agentName: (readHeader (basePath + "/agents/${agentName}")).routing.pi or { };
   extractAgentProviderModels =
     agentName:
@@ -771,6 +777,7 @@ in
     composeAgent
     composeAgentFromPrompt
     extractAgentProviderModels
+    extractOpenCodeProviderModels
     extractAgentProviderThinking
     ;
 

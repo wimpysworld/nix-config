@@ -516,8 +516,9 @@ reasoningEffort = "high"
                     for key, value in (
                         original.get("routing", {}).get(platform, {}).items()
                     ):
-                        if platform != "pi":
+                        if platform != "pi" and key != "providers":
                             self.assertEqual(native[key], value)
+                    self.assertNotIn("providers", native)
                     if platform == "claude":
                         self.assertIn("Agent", native["disallowedTools"])
                     elif platform == "opencode":
@@ -753,6 +754,41 @@ reasoningEffort = "high"
                     success=False,
                 )
                 self.assertIn(f"Unsupported opencode routing for {kind}", error)
+
+    def test_opencode_provider_routes_are_agent_only_and_not_native_fields(self):
+        header = '[routing.opencode.providers.openai]\nmodel = "gpt-5.6-terra"\n'
+        result = self.evaluate(
+            'lib.genAttrs [ "claude" "codex" "opencode" "pi" ] '
+            '(platform: m.project "agent" platform "fixture" h)',
+            header,
+        )
+        for native in result.values():
+            self.assertNotIn("providers", native)
+            self.assertNotIn("model", native)
+        for kind in ("command", "skill", "instructions"):
+            with self.subTest(kind=kind):
+                self.evaluate(
+                    f'm.project "{kind}" "opencode" "fixture" h', header, success=False
+                )
+        self.assertEqual(
+            self.evaluate('c.extractOpenCodeProviderModels "garfield"'),
+            {"openai": "gpt-5.6-terra", "anthropic": "claude-sonnet-5"},
+        )
+
+    def test_invalid_opencode_provider_routes_fail_schema_validation(self):
+        for header in (
+            '[routing.opencode.providers.openai]\nmodel = ""\n',
+            '[routing.opencode.providers.openai]\nmodel = "anthropic/claude-sonnet-5"\n',
+            '[routing.opencode.providers.openai]\nmodel = "with space"\n',
+            "[routing.opencode.providers.openai]\nmodel = 42\n",
+            '[routing.opencode.providers.openai]\nthinking = "high"\n',
+            '[routing.opencode.providers.openai]\nmodel = "ok"\nvariant = "high"\n',
+            '[routing.opencode.providers."bad/provider"]\nmodel = "ok"\n',
+            '[routing.opencode]\nproviders = "openai"\n',
+            '[routing.opencode]\nmodel = "pin"\n[routing.opencode.providers.openai]\nmodel = "ok"\n',
+        ):
+            with self.subTest(header=header):
+                self.evaluate("h", header, success=False)
 
     def test_migrated_garfield_routes_preserve_model_pins(self):
         result = self.evaluate(

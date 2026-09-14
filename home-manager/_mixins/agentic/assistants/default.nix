@@ -350,6 +350,9 @@ let
     // piStandalonePromptFiles
     // piAgentPromptFiles
   );
+  opencodeProviderRouterMap = lib.filterAttrs (_: models: models != { }) (
+    lib.mapAttrs (name: _: compose.extractOpenCodeProviderModels name) codingAgentDirs
+  );
   piProviderRouterMap = lib.filterAttrs (_: models: models != { }) (
     lib.mapAttrs (name: _: compose.extractAgentProviderModels name) codingAgentDirs
   );
@@ -676,6 +679,12 @@ in
     internal = true;
     description = "Whether assistant deployment requires a successful secret refresh.";
   };
+  options.agentic.assistants.opencode.providerRouterMap = lib.mkOption {
+    type = lib.types.attrsOf (lib.types.attrsOf lib.types.str);
+    default = { };
+    internal = true;
+    description = "Exact provider and model routes for the local OpenCode task plugin.";
+  };
   options.agentic.assistants.pi = {
     homeFiles = lib.mkOption {
       type = lib.types.attrs;
@@ -698,6 +707,7 @@ in
   };
 
   config = {
+    agentic.assistants.opencode.providerRouterMap = opencodeProviderRouterMap;
     agentic.assistants.ownedSpec = ownedDeployment.spec;
     agentic.assistants.requiresSecrets = ownedDeployment.requiresSecrets;
     # Report whether OpenCode and Pi carry the house style in their system

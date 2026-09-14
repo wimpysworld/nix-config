@@ -26,6 +26,14 @@ let
   # Use the pre-built binary from numtide's llm-agents.nix flake.
   # This avoids upstream source build issues entirely.
   opencodeUpstreamPackage = inputs.llm-agents.packages.${system}.opencode;
+  providerRouterMap = pkgs.writeText "opencode-provider-routes.json" (
+    builtins.toJSON config.agentic.assistants.opencode.providerRouterMap
+  );
+  providerRouterPlugin =
+    builtins.replaceStrings
+      [ "@routerModule@" "@routerMap@" ]
+      [ "${./provider-router/index.mjs}" "${providerRouterMap}" ]
+      (builtins.readFile ./plugins/provider-router.ts);
   geminiKeyPath = config.sops.secrets.GEMINI_API_KEY.path;
   opencodeApiKeyShell = ''
     if [ -r "${geminiKeyPath}" ]; then
@@ -203,6 +211,9 @@ in
   ) opencodeFencedPackage;
 
   xdg.configFile = lib.mkMerge [
+    (lib.mkIf (config.programs.opencode.enable && opencodeUpstreamPackage.version == "1.18.30") {
+      "opencode/plugins/provider-router.ts".text = providerRouterPlugin;
+    })
     (lib.mkIf (config.programs.opencode.enable && communicationRules.enable) {
       "opencode/plugins/communication-rules.ts".text = opencodeTripwirePlugin.pluginText;
     })

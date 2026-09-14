@@ -378,23 +378,25 @@ Documentation architect creating technically precise guides through progressive 
 
 ## Model Selection
 
-Agents without routing defaults inherit the model selected in the coding tool. Garfield is the exception on Claude Code, Codex, and supported Pi providers. OpenCode agents currently inherit the session model.
+Agents without routing defaults inherit the model selected in the coding tool. Garfield has routes for Claude Code, Codex, Pi, and direct-root OpenCode tasks.
 
 Garfield is the sole pinned agent. His message-drafting commands carry no model routes. Commit and PR message work is structured and deterministic, so it does not need the session's reasoning budget:
 
-| Platform            | Pin                                                         |
-| ------------------- | ----------------------------------------------------------- |
-| Claude Code         | `model: sonnet` on the agent only   |
-| Pi (Anthropic)      | `claude-sonnet-5`                                           |
-| Pi (`openai-codex`) | `gpt-5.6-terra`, thinking `medium`                          |
-| Pi (Google)         | `gemini-3-flash`                                            |
-| Codex               | `gpt-5.6-terra`, reasoning `medium`                         |
+| Platform            | Pin                                            |
+| ------------------- | ---------------------------------------------- |
+| Claude Code         | `model: sonnet` on the agent only               |
+| Pi (Anthropic)      | `claude-sonnet-5`                               |
+| Pi (`openai-codex`)  | `gpt-5.6-terra`, thinking `medium`               |
+| Pi (Google)         | `gemini-3-flash`                                |
+| Codex               | `gpt-5.6-terra`, reasoning `medium`              |
+| OpenCode (OpenAI)    | `gpt-5.6-terra`, direct-root native tasks only   |
+| OpenCode (Anthropic) | `claude-sonnet-5`, direct-root native tasks only |
 
 No other agent or command sets a model on any platform. The ten remaining agents omit model and effort overrides from `header.toml`.
 
 Agent `header.toml` files are the sole routing default source for Claude Code, Codex, and Pi. Commands and ordinary skills remain model-neutral. Explicit launch-time child model, thinking, or effort overrides remain supported. General and agent-owned root commands never change the orchestrator model. The standalone `make-commit` and `make-pr` commands retain the caller's model.
 
-OpenCode is unchanged: agent and command model metadata remain supported, and current agents inherit the session model.
+The [OpenCode router](../opencode/README.md#provider-router-prototype) supports version 1.18.30 only. Google and other missing routes retain native behaviour. Existing OpenCode command model metadata remains supported.
 
 ---
 
@@ -409,7 +411,8 @@ OpenCode is unchanged: agent and command model metadata remain supported, and cu
 | `[compose]` | Repository agent binding through `agent`, or caller-context execution through `root = true`. |
 | `[compose.claude]`, `[compose.codex]`, `[compose.pi]` | Repository controls `use-task` and `spawn-agent`. |
 | `[routing.claude]`, `[routing.codex]` | Agent model and effort defaults. |
-| `[routing.opencode]` | Existing agent and command model metadata. |
+| `[routing.opencode]` | Existing native agent and command model metadata. |
+| `[routing.opencode.providers.<inference-provider>]` | Agent-only exact model routes for the local OpenCode plugin. These fields never enter native headers. |
 | `[routing.pi.<inference-provider>]` | Agent model and thinking defaults for the exact inference provider. |
 
 Common hints apply to Claude Code, OpenCode, and Pi. Provider-specific hints preserve differences in presence or value. Missing tables mean no overrides, not disabled output. Omit unset values because TOML has no null.
@@ -437,7 +440,7 @@ Set `[compose] root = true` when the command owns orchestration or needs the cal
 | Pi | Command body without a subagent launch wrapper. |
 | Codex | Command body without `spawn_agent` or an inline specialist persona. The manual-only companion policy remains. |
 
-Root commands retain the orchestrator model. Claude Code, Codex, and Pi reject non-empty command routing for both root and leaf commands. Codex launches the owning agent role without a command-specific role. OpenCode routing support is unchanged.
+Root commands retain the orchestrator model. Claude Code, Codex, and Pi reject non-empty command routing for both root and leaf commands. Codex launches the owning agent role without a command-specific role. OpenCode provider routes apply only to direct-root native task children.
 
 Per-client controls remain available when `root` is false. In Codex, `[compose.codex] spawn-agent = false` embeds the specialist persona in the caller's context. Use `root = true` to preserve the caller's role instead.
 

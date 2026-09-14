@@ -99,12 +99,26 @@ let
             "max"
           ]
         );
+      opencodeProviders = routing.opencode.providers or { };
+      opencodeProvidersValid =
+        builtins.isAttrs opencodeProviders
+        && lib.all (
+          provider:
+          builtins.match "[a-z0-9]+(-[a-z0-9]+)*" provider != null
+          && builtins.isAttrs opencodeProviders.${provider}
+          && builtins.attrNames opencodeProviders.${provider} == [ "model" ]
+          && nonEmptyString opencodeProviders.${provider}.model
+          && builtins.match "[^[:space:]/]+" opencodeProviders.${provider}.model != null
+        ) (builtins.attrNames opencodeProviders)
+        && (opencodeProviders == { } || !(routing.opencode ? model || routing.opencode ? reasoningEffort));
       routesValid = lib.all (
         provider:
         lib.elem provider providers
         && (
           if provider == "pi" then
             builtins.isAttrs routing.pi && lib.all (routeValid "pi") (builtins.attrValues routing.pi)
+          else if provider == "opencode" then
+            routeValid provider (lib.removeAttrs routing.opencode [ "providers" ]) && opencodeProvidersValid
           else
             routeValid provider routing.${provider}
         )
@@ -204,8 +218,15 @@ let
         )
         || (kind == "skill" && platform == "opencode" && route != { })
         || (kind == "instructions" && route != { })
-        || (platform == "opencode" && kind == "command" && route ? reasoningEffort);
-      projectedRoute = if platform == "pi" then { } else route;
+        || (platform == "opencode" && kind == "command" && route ? reasoningEffort)
+        || (platform == "opencode" && kind != "agent" && (route.providers or { }) != { });
+      projectedRoute =
+        if platform == "pi" then
+          { }
+        else if platform == "opencode" then
+          lib.removeAttrs route [ "providers" ]
+        else
+          route;
       identity = lib.optionalAttrs (
         kind == "agent"
         && lib.elem platform [

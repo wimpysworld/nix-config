@@ -34,6 +34,50 @@ OpenCode v1 cannot hard-block final or subagent prose before display. The accept
 
 There is no OpenCode command, flag, environment variable, allow rule, or prompt escape that bypasses Tripwire. Operator recovery is still available through normal config disablement, such as `disableAllHooks`, or by rebuilding without the Agent Tripwire mixin.
 
+## Provider router prototype
+
+Home Manager installs `plugins/provider-router.ts` only when OpenCode is enabled and its package version is exactly `1.18.30`. Other versions retain native behaviour. Review the upstream hooks before extending that version gate.
+
+The shared agent header owns the routes. Garfield alone declares:
+
+```toml
+[routing.opencode.providers.openai]
+model = "gpt-5.6-terra"
+
+[routing.opencode.providers.anthropic]
+model = "claude-sonnet-5"
+```
+
+`assistants/metadata.nix` validates these tables. `compose.nix` extracts the map, and the OpenCode module supplies it to `provider-router/index.mjs`. Provider routes cannot coexist with native agent model or effort pins. Commands and skills cannot declare provider routes. No provider-route fields enter native headers.
+
+The plugin changes only `chat.message` output for a direct child of a root session. It matches one running native `task` part by `state.metadata.sessionId`. The containing assistant message supplies the provider, not the latest parent message or the session model. Simultaneous siblings remain independent. Missing or ambiguous matches, root sessions, nested sessions, and missing routes retain native behaviour. Google has no route and no preview-model substitution.
+
+An unavailable exact provider or model rejects the prompt. The plugin never searches another provider. It leaves native task arguments, permissions, cancellation, and model variants unchanged. Per-call overrides and thinking controls are outside this prototype.
+
+The plugin saves its route in supported text-part metadata, alongside the routed user message. Resume restores that saved model, even after the parent changes provider. Existing children without route metadata retain native behaviour. Invalid saved metadata rejects the prompt. Keep child and originating parent history together. Removing or importing partial history can prevent safe restoration.
+
+An in-process guard rejects overlapping child hooks and further prompts while the routed task remains active. Saved invocation metadata also rejects a repeated active task after restart. Multiple running task matches with no established route remain ambiguous and use native behaviour.
+
+### Version evidence and tests
+
+The implementation depends on OpenCode v1.18.30 source order:
+
+- [Public `chat.message` hook](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/plugin/src/index.ts#L234-L243).
+- [Task metadata before the child prompt](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/opencode/src/tool/task.ts#L150-L256).
+- [Live message persistence and inference model selection](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/opencode/src/session/prompt.ts#L999-L1141).
+- [SDK session, message, and provider types](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/sdk/js/src/gen/types.gen.ts).
+- [Supported text-part metadata](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/schema/src/v1/session.ts#L102-L116).
+
+Run the offline checks from the repository root:
+
+```sh
+node --test home-manager/_mixins/agentic/opencode/provider-router/index.test.mjs
+python -m unittest discover -s home-manager/_mixins/agentic/assistants/tests
+just eval
+```
+
+Router tests use SDK fixtures and a fresh process with serialised history. They make no inference requests. They do not replace a live OpenCode integration test.
+
 ## LSP
 
 OpenCode includes built-in LSP support - no per-language server configuration required. The only explicit LSP entry is Semgrep, added for security diagnostics across all supported file types (50+ extensions covering R, Bash, C/C++, Clojure, Dart, Elixir, Go, Java, JavaScript/TypeScript, Julia, Kotlin, Lua, Nix, PHP, Python, Ruby, Rust, Scala, Swift, Terraform, and more).
