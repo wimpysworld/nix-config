@@ -6,33 +6,16 @@
 let
   root = ../../../../../.;
   targetNames = [
-    "bane"
-    "ravi"
     "skrye"
     "zannah"
   ];
+  untaggedNames = [
+    "bane"
+    "ravi"
+    "tanis"
+  ];
 
   expectedHosts = {
-    bane = {
-      connector = "eDP-1";
-      desktopWidth = 2560;
-      desktopHeight = 1600;
-      monitorX = 0;
-      monitorY = 0;
-      defaultWidth = 2560;
-      defaultHeight = 1600;
-      greetdLayout = "";
-    };
-    ravi = {
-      connector = "eDP-1";
-      desktopWidth = 2880;
-      desktopHeight = 1920;
-      monitorX = 0;
-      monitorY = 0;
-      defaultWidth = 2880;
-      defaultHeight = 1920;
-      greetdLayout = "";
-    };
     skrye = {
       connector = "DP-1";
       desktopWidth = 2560;
@@ -165,12 +148,29 @@ let
 
   sessionPasses = name: (homeConfigFor name).systemd.user.services ? reframe-session;
 
-  untaggedConfig = configFor "tanis";
-  untaggedHomeConfig = homeConfigFor "tanis";
-  untaggedCaddy =
-    untaggedConfig.services.caddy.virtualHosts."tanis.${untaggedConfig.noughty.network.tailNet}".extraConfig;
-  reframePackage = (configFor "bane").services.reframe.package;
-  autostartCheck = flake.nixosConfigurations.bane.pkgs.runCommand "reframe-no-autostart" { } ''
+  untaggedPasses =
+    name:
+    let
+      config = configFor name;
+      homeConfig = homeConfigFor name;
+      caddyConfig =
+        config.services.caddy.virtualHosts."${name}.${config.noughty.network.tailNet}".extraConfig;
+    in
+    lib.all (value: value) [
+      (!(builtins.elem "reframe" config.noughty.host.tags))
+      (!config.services.reframe.enable)
+      (!(builtins.elem "uinput" config.boot.kernelModules))
+      (!(builtins.elem "reframe" config.users.users.martin.extraGroups))
+      (!(config.sops.secrets ? reframe-password))
+      (!(config.sops.templates ? reframe-main))
+      (!(config.systemd.services ? "reframe-server@main"))
+      (!(config.systemd.services ? reframe-websockify))
+      (!(homeConfig.systemd.user.services ? reframe-session))
+      (!(lib.hasInfix "/novnc" caddyConfig))
+    ];
+
+  reframePackage = (configFor "skrye").services.reframe.package;
+  autostartCheck = flake.nixosConfigurations.skrye.pkgs.runCommand "reframe-no-autostart" { } ''
     test ! -e ${reframePackage}/etc/xdg/autostart/reframe-session.desktop
     grep -qx 'User=reframe' ${reframePackage}/lib/systemd/system/reframe-server@.service
     ! grep -q '^User=' ${reframePackage}/lib/systemd/system/reframe-streamer@.service
@@ -179,15 +179,9 @@ let
   '';
 in
 assert lib.all targetPasses targetNames;
-assert lib.all homePasses (targetNames ++ [ "tanis" ]);
+assert lib.all homePasses (targetNames ++ untaggedNames);
 assert lib.all sessionPasses targetNames;
-assert !(builtins.elem "reframe" untaggedConfig.noughty.host.tags);
-assert !untaggedConfig.services.reframe.enable;
-assert !(builtins.elem "uinput" untaggedConfig.boot.kernelModules);
-assert !(untaggedConfig.sops.templates ? reframe-main);
-assert !(untaggedConfig.systemd.services ? reframe-websockify);
-assert !(untaggedHomeConfig.systemd.user.services ? reframe-session);
-assert !(lib.hasInfix "/novnc" untaggedCaddy);
+assert lib.all untaggedPasses untaggedNames;
 assert !(builtins.pathExists (root + "/home-manager/_mixins/services/wayvnc/default.nix"));
 assert !(builtins.pathExists (root + "/home-manager/_mixins/services/wayvnc/README.md"));
 assert reframePackage.version == "1.20.1";
