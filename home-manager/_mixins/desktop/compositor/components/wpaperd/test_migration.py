@@ -16,7 +16,7 @@ OWNED = "/nix/store/ljih5kpjd0al1jm5ylc1zhfdqry1lyd3-home-manager-files/" + RELA
 class MigrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        expression = r'''
+        expression = r"""
           let
             flake = builtins.getFlake REPO;
             baseLib = flake.inputs.nixpkgs.lib;
@@ -44,10 +44,12 @@ class MigrationTests(unittest.TestCase):
             wayfire = evaluate "wayfire-session.target";
             graphical = evaluate "graphical-session.target";
           }
-        '''.replace("REPO", json.dumps(str(ROOT))).replace("MODULE", str(MODULE))
+        """.replace("REPO", json.dumps(str(ROOT))).replace("MODULE", str(MODULE))
         result = subprocess.run(
             ["nix", "eval", "--impure", "--json", "--expr", expression],
-            check=True, capture_output=True, text=True,
+            check=True,
+            capture_output=True,
+            text=True,
         )
         cls.entries = json.loads(result.stdout)
 
@@ -67,11 +69,17 @@ class MigrationTests(unittest.TestCase):
         self.assertEqual(entry["before"], ["linkGeneration"])
         self.assertEqual(entry["after"], ["writeBoundary"])
         script = entry["data"].replace("/fixture-home", str(self.home))
-        run = 'run() { :; }\n' if dry_run else 'run() { "$@"; }\n'
+        run = "run() { :; }\n" if dry_run else 'run() { "$@"; }\n'
         subprocess.run(
-            ["bash", "-euc", run + script], check=True,
-            env={**os.environ, "HOME": str(self.home), "newGenPath": str(self.generation)},
-            capture_output=True, text=True,
+            ["bash", "-euc", run + script],
+            check=True,
+            env={
+                **os.environ,
+                "HOME": str(self.home),
+                "newGenPath": str(self.generation),
+            },
+            capture_output=True,
+            text=True,
         )
 
     def test_stale_owned_link_removed_and_repeat_safe(self):
@@ -85,7 +93,8 @@ class MigrationTests(unittest.TestCase):
 
     def test_arbitrary_symlinks_preserved(self):
         for destination in (
-            "../wpaperd.service", str(self.home / "user-wpaperd.service"),
+            "../wpaperd.service",
+            str(self.home / "user-wpaperd.service"),
             OWNED.replace("home-manager-files", "user-files"),
             OWNED.replace("/" + RELATIVE, "/different/wpaperd.service"),
             OWNED.replace("ljih5kpjd0al1jm5ylc1zhfdqry1lyd3", "not-a-store-hash"),
