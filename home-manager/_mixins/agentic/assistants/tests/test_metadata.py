@@ -89,6 +89,7 @@ labels = ["first", "second"]
             "description": 'A description: with # punctuation and "quotes".',
             "prompt_mode": "replace",
             "extensions": True,
+            "exclude_extensions": "pi-cc-header",
             "isolated": False,
             "skills": False,
             "maxDepth": 0,
@@ -152,6 +153,7 @@ skills = false
                 "name": "worker",
                 "prompt_mode": "replace",
                 "extensions": True,
+                "exclude_extensions": "pi-cc-header",
                 "isolated": False,
                 "skills": True,
             },
@@ -162,11 +164,25 @@ skills = false
                 "name": "worker",
                 "prompt_mode": "append",
                 "extensions": True,
+                "exclude_extensions": "pi-cc-header",
                 "isolated": False,
                 "inherit_context": True,
                 "skills": False,
             },
         )
+
+    def test_header_exclusion_is_only_a_pi_agent_default(self):
+        for provider in ("claude", "opencode", "codex", "pi"):
+            for kind in ("agent", "command", "skill", "instructions"):
+                with self.subTest(provider=provider, kind=kind):
+                    result = self.evaluate(
+                        f'm.project "{kind}" "{provider}" "fixture" h',
+                        '[common]\nname = "fixture"\ndescription = "Fixture."\n',
+                    )
+                    if provider == "pi" and kind == "agent":
+                        self.assertEqual(result["exclude_extensions"], "pi-cc-header")
+                    else:
+                        self.assertNotIn("exclude_extensions", result)
 
     def test_native_model_settings_cannot_compete_with_routing(self):
         for provider in ("common", "claude", "opencode", "codex", "pi"):
@@ -493,6 +509,7 @@ reasoningEffort = "high"
                         self.assertIn("## Sentences", body)
                     else:
                         self.assertEqual(body, "PERSONA_SENTINEL")
+                        self.assertNotIn("exclude_extensions", native)
                     original = tomllib.loads(
                         (ASSISTANTS / "agents" / name / "header.toml").read_text()
                     )
@@ -511,6 +528,7 @@ reasoningEffort = "high"
                         self.assertEqual(native["prompt_mode"], "replace")
                         self.assertTrue(native["skills"])
                         self.assertTrue(native["extensions"])
+                        self.assertEqual(native["exclude_extensions"], "pi-cc-header")
                         self.assertFalse(native["isolated"])
                         self.assertNotIn("allowed_subagents", native)
                         self.assertNotIn("inherit_context", native)
