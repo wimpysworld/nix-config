@@ -12,6 +12,9 @@ let
   inherit (pkgs.stdenv.hostPlatform) system;
   aiSopsFile = ../../../../secrets/ai.yaml;
   fencedEnabled = !host.is.server;
+  # OpenCode Zen is a personal-model gateway. Work hosts carry the "cg" tag
+  # and keep the key out of sops-nix rendering entirely.
+  zenEnabled = !noughtyLib.hostHasTag "cg";
   # Use Node mode to retain the SDK modules that pi-subagents imports.
   piPackage = (inputs.llm-agents.packages.${system}.pi.override { useBun = false; }).overrideAttrs {
     # Retain the SDK dependency tree for native background sessions.
@@ -249,6 +252,12 @@ let
         export BASETEN_API_KEY
       fi
 
+      opencode_zen_api_key_path="${if zenEnabled then config.sops.secrets.OPENCODE_API_KEY.path else ""}"
+      if [ -n "$opencode_zen_api_key_path" ] && [ -r "$opencode_zen_api_key_path" ]; then
+        OPENCODE_API_KEY="$(cat "$opencode_zen_api_key_path")"
+        export OPENCODE_API_KEY
+      fi
+
       if [ "''${NOUGHTY_AGENT_LAUNCH_COMMAND:-pi}" = "pi-fenced" ]; then
         export NOUGHTY_AGENT_ISOLATION="Fenced"
       else
@@ -343,6 +352,9 @@ let
       "openai-codex/gpt-5.6-terra"
       "openai-codex/gpt-5.6-luna"
       "openai-codex/gpt-5.3-codex-spark"
+      # OpenCode Zen gateway. The OPENCODE_API_KEY credential arrives through
+      # the wrapper on non-cg hosts; Pi's built-in opencode provider reads it.
+      "opencode/glm-5.3-flash"
     ];
 
     theme = piThemeName;
@@ -756,6 +768,11 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
   };
 
   sops.secrets.BASETEN_API_KEY = {
+    sopsFile = aiSopsFile;
+    mode = "0400";
+  };
+
+  sops.secrets.OPENCODE_API_KEY = lib.mkIf zenEnabled {
     sopsFile = aiSopsFile;
     mode = "0400";
   };

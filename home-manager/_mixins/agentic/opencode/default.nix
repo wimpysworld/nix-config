@@ -2,6 +2,7 @@
   config,
   inputs,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
@@ -11,6 +12,9 @@ let
   defaultOpenCodeEnabled = !host.is.server;
   fencedEnabled = !host.is.server;
   aiSopsFile = ../../../../secrets/ai.yaml;
+  # OpenCode Zen is a personal-model gateway. Work hosts carry the "cg" tag
+  # and keep the key out of sops-nix rendering entirely.
+  zenEnabled = !noughtyLib.hostHasTag "cg";
   herdrIntegrations = pkgs.herdr-integrations;
   # Directories whose project-level OpenCode config is trusted to load.
   trustedProjectConfigRoots = [
@@ -47,6 +51,15 @@ let
     if [ -r "${config.sops.secrets.ANTHROPIC_API_KEY.path}" ]; then
       ANTHROPIC_API_KEY="$(cat "${config.sops.secrets.ANTHROPIC_API_KEY.path}")"
       export ANTHROPIC_API_KEY
+    fi
+  ''
+  # The OpenCode Zen gateway (provider "opencode") reads OPENCODE_API_KEY.
+  # The secret is declared only on non-cg hosts, so the read skips silently
+  # wherever the key is not rendered.
+  + lib.optionalString zenEnabled ''
+    if [ -r "${config.sops.secrets.OPENCODE_API_KEY.path}" ]; then
+      OPENCODE_API_KEY="$(cat "${config.sops.secrets.OPENCODE_API_KEY.path}")"
+      export OPENCODE_API_KEY
     fi
   '';
   communicationRules = config.agentic.communicationRules;
@@ -200,6 +213,11 @@ let
 in
 {
   sops.secrets.GEMINI_API_KEY = lib.mkIf config.programs.opencode.enable {
+    sopsFile = aiSopsFile;
+    mode = "0400";
+  };
+
+  sops.secrets.OPENCODE_API_KEY = lib.mkIf (config.programs.opencode.enable && zenEnabled) {
     sopsFile = aiSopsFile;
     mode = "0400";
   };
