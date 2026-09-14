@@ -345,19 +345,9 @@ let
   codexSkillNames =
     let
       sharedSkillNames = builtins.attrNames assistantCompose.skillDirs;
-      commandSkillNames = builtins.attrNames assistantCompose.standaloneCommandDirs;
-      # Agent-scoped command skills are emitted under the bare `cmdName` to
-      # match the Pi prompt convention. The collision guard in the shared
-      # assistants composer enforces uniqueness across project skills,
-      # standalone commands, and agent-scoped commands, so flattening here
-      # is safe.
-      agentCommandSkillNames = lib.flatten (
-        lib.mapAttrsToList (
-          agentName: _: builtins.attrNames (assistantCompose.discoverAgentCommands agentName)
-        ) assistantCompose.agentDirs
-      );
+      commandSkillNames = builtins.attrNames assistantCompose.commandDirs;
     in
-    lib.sort (a: b: a < b) (sharedSkillNames ++ commandSkillNames ++ agentCommandSkillNames);
+    lib.sort (a: b: a < b) (sharedSkillNames ++ commandSkillNames);
 
   # Codex config.toml settings. These are written via activation script (not
   # home.file) so the deployed file is a real mutable file. Codex can persist

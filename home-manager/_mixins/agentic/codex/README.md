@@ -92,11 +92,12 @@ Configured servers:
 
 Skills inject instructions into the active conversation. Type `$` in the composer to open the picker, or type `$skill-name` directly.
 
-Skills come from three generated sets:
+Skills come from two generated sets:
 
 - Shared skills from `assistants/skills/*/SKILL.md`, plus generated shared skills
-- Standalone assistant commands from `assistants/commands/*`
-- Agent command skills named `<command>` (bare command name)
+- Commands from `assistants/commands/<name>/`, each with `command.toml` and exactly one `command.md` or `command.sops`
+
+The [command catalogue](../assistants/commands/README.md) lists command descriptions, associated agents, client entry behaviour, source types, and a separate table of agent routing defaults.
 
 Every generated skill is explicitly enabled in `config.toml` with `[[skills.config]]`, so root sessions and spawned agents can use the same declarative skill set.
 
@@ -110,7 +111,7 @@ SKILL.md frontmatter requires `name:` and `description:` fields. Quote any `desc
 
 Codex CLI uses `$name` or the `/skills` picker for custom commands, which this repository deploys as skills. It does not support custom `/name` commands. CLI custom prompts were removed in 0.117.0, so the historical `/prompts:name` syntax is unavailable.
 
-Every generated command is manual-only, including standalone commands, agent-owned commands, and commands with encrypted bodies. The shared `mkCodexCommandOpenAiYaml` helper writes this companion file beside each command's `SKILL.md`:
+Every generated command is manual-only, including unbound commands, agent-bound commands, and commands with encrypted bodies. The shared `mkCodexCommandOpenAiYaml` helper writes this companion file beside each command's `SKILL.md`:
 
 ```yaml
 # agents/openai.yaml
@@ -120,7 +121,9 @@ policy:
 
 The policy excludes commands from implicit selection while preserving explicit user invocation. It is not an access restriction. Ordinary reusable skills retain their existing policies. The policy belongs in `agents/openai.yaml`, not in `SKILL.md` frontmatter.
 
-Each agent command uses its bare name, such as `$draft-commit-message`, which matches the Pi prompt convention. Agent commands dispatch to their owning specialist through `spawn_agent` by default. The coordinator remains in the parent thread. A command with `spawn-agent = false` under `[compose.codex]` in `command.toml` embeds the owning persona and task prompt in the caller's context.
+Every command uses its bare name, such as `$draft-commit-message`. Agent-bound commands select a specialist through explicit `[compose] agent`, not directory inheritance. They dispatch through `spawn_agent` by default. The coordinator remains in the parent thread. Maintenance ownership is independent of the selected agent and executing caller, with no ownership metadata.
+
+A command with `[compose.codex] spawn-agent = false` embeds the selected agent's persona and task prompt in the caller's context. Shared `[compose] caller-context = true` takes precedence and suppresses both the persona and launch wrapper. Caller-context execution retains the caller's role and model. Agent routing defaults remain in `header.toml`.
 
 ```text
 $draft-commit-message
@@ -128,7 +131,7 @@ $implement-plan
 $research-task
 ```
 
-Standalone commands sit in the same namespace under the same form:
+Session and workflow commands use the same namespace and invocation form:
 
 ```text
 $ready
@@ -137,7 +140,7 @@ $collaborate
 $clarify-plan
 ```
 
-The shared composer asserts at evaluation time that no two sources (project skill, standalone command, or agent-scoped command) produce the same skill name. Renaming the offending source is the fix; the throw message names both the duplicate and every source path that produces it.
+The shared composer asserts at evaluation time that no two sources (reusable skill or command) produce the same skill name. Renaming the offending source is the fix; the throw message names both the duplicate and every source path that produces it.
 
 ### Workflow composition
 
@@ -204,13 +207,12 @@ codex/
 assistants/
 ├── agents/<name>/
 │   ├── prompt.md
-│   ├── header.toml
-│   └── commands/<cmd>/
-│       ├── command.md
-│       └── command.toml
-├── commands/<name>/
-│   ├── command.md
-│   └── command.toml
+│   └── header.toml
+├── commands/
+│   ├── README.md          # Generated catalogue
+│   └── <name>/
+│       ├── command.toml
+│       └── command.md     # Or command.sops, never both
 ├── skills/<name>/
 │   └── SKILL.md
 ├── compose.nix

@@ -55,6 +55,7 @@ As the coordinator, use parallel workers for Standard and Thorough depth when th
 As a worker, research the assigned scope directly without launching agents. Loading this skill does not change that role. Preserve the chosen depth, source checks, iteration, and citations within the assigned scope. If additional specialist work is necessary, return a bounded request to the parent after completing independent assigned work. The coordinator handles the request and continues the original task.
 
 For each plan item:
+
 1. Mark it `[~]` in the plan before starting.
 2. Choose the available tools that can search the live web and fetch or read URLs. Prefer Exa search and fetch tools when available. Otherwise use any suitable web search and web fetch or page-reading tools. Tool names vary by platform, so never require a specific tool identifier.
 3. Search with specific queries before broad ones. Use date ranges, domain filters, categories, highlights, summaries, or subpage crawling when the chosen tool supports them.
@@ -74,6 +75,7 @@ Maintain a visited URL set. Never read the same URL twice. When extracting facts
 **5. Iterate**
 
 After completing each plan item, assess:
+
 - Are there follow-up questions raised by the findings?
 - Do any claims contradict across sources?
 - Are there gaps that need a new plan item?

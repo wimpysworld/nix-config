@@ -1,6 +1,6 @@
 # Command templates
 
-Three filled examples covering the supported forms. Copy and edit; do not invent a fourth form unless §3.1 of `SKILL.md`'s decision rules clearly demand it.
+Three filled examples cover the supported forms. Use `commands/<name>/command.toml` and exactly one `command.md` or `command.sops`. Agent selection uses explicit `[compose] agent`, never directory inheritance. See `SKILL.md` for form selection and catalogue generation.
 
 ## Contents
 
@@ -22,7 +22,7 @@ Users invoke the generated command as `$name`. Codex receives accompanying argum
 
 ## Form A: shim that loads a skill
 
-Five-line body. Captures `$ARGUMENTS`, names the flow, loads the skill, refuses to duplicate doctrine. Mirrors `create-skill`, `create-assistant`, `create-agents-md`.
+Save this example under `commands/create-skill/`. The body captures `$ARGUMENTS` and loads the skill without duplicate doctrine.
 
 `command.md`:
 
@@ -49,7 +49,7 @@ agent = "rosey"
 
 ## Form B: trivial standalone
 
-One- or two-line body. No format. Mirrors `ack`, `ready`.
+Save this example under `commands/ack/`. The body has no output format.
 
 `command.md`:
 
@@ -70,7 +70,7 @@ caller-context = true
 
 ## Form C: standalone with output format
 
-30-60 line body owning a non-trivial output template, sections table, and constraints. Mirrors `handover-fresh`, `handover-fork`, `orientate`. No persona; persona lives in the bound agent.
+Save this example under `commands/handover-fresh/`. A standalone body has 30-60 lines with an output template and constraints. Persona stays in the selected agent.
 
 `command.md`:
 
@@ -116,4 +116,4 @@ agent = "rosey"
 caller-context = true
 ```
 
-Omit `argument-hint` when the command takes no argument. Keep Claude Code, Codex, and Pi commands model-neutral. Put their routing defaults in the owning agent's header. OpenCode command model metadata support remains unchanged.
+Omit `argument-hint` when the command takes no argument. Keep Claude Code, Codex, and Pi commands model-neutral. Put their routing defaults in the selected agent's `header.toml`. OpenCode command model metadata support remains unchanged.

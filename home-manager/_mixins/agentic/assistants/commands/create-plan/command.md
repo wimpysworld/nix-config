@@ -54,6 +54,7 @@ Report the plan path in your output so the caller can pass it on.
 ## Phase 1: Authentication Foundation
 
 ### 1.1 - Add JWT dependency and configuration
+
 - **Assigned Agent**: Current agent selected by `delegate-task`
 - **Assignment Reason**: Owns dependency and configuration changes in the current agent set
 - **Dependencies**: None
@@ -63,6 +64,7 @@ Report the plan path in your output so the caller can pass it on.
 - **Success Criteria**: `npm test` passes, config loads from env
 
 ### 1.2 - Implement token generation service
+
 - **Assigned Agent**: Current agent selected by `delegate-task`
 - **Assignment Reason**: Owns service implementation in the current agent set
 - **Dependencies**: 1.1
@@ -74,6 +76,7 @@ Report the plan path in your output so the caller can pass it on.
 - **Flags**: 🔍 Review token expiry values
 
 ### 1.3 - Add auth middleware
+
 - **Assigned Agent**: Current agent selected by `delegate-task`
 - **Assignment Reason**: Owns middleware integration in the current agent set
 - **Dependencies**: 1.2

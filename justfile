@@ -6,6 +6,24 @@ backup_ext := `date +%Y%m%d-%H%M`
 default:
     @just --list --unsorted
 
+# Update the tracked assistant catalogue without staging new sources.
+update-assistant-catalogue:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    target="home-manager/_mixins/agentic/assistants/commands/README.md"
+    temporary=$(mktemp "${target}.XXXXXX")
+    trap 'rm -f "$temporary"' EXIT
+    nix eval --raw "path:$PWD#lib.assistantCatalogue.markdown" > "$temporary"
+    chmod 644 "$temporary"
+    mv "$temporary" "$target"
+
+# Check that the tracked assistant catalogue matches its sources.
+check-assistant-catalogue:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    system=$(nix eval --impure --raw --expr builtins.currentSystem)
+    nix build --no-link "path:$PWD#checks.${system}.assistant-catalogue"
+
 # Check FlakeHub token freshness and warn if expiry is approaching
 token-check:
     #!/usr/bin/env bash

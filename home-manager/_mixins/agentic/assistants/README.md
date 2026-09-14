@@ -44,13 +44,14 @@ The Nix composition is the delivery mechanism, not the strategy. Everything belo
 
 Pi Agent resources are rendered here and consumed by `../pi`, which owns the Pi package, runtime wrapper, settings, MCP adapter, subagent extension config, and theme files.
 
-The repository stores command metadata in `command.toml`, other metadata in `header.toml`, and bodies in Markdown. The composer generates native client files through Home Manager. Agent and command names derive from their directories. Skills declare `[common] name`, which must match the directory. Generated skill files contain YAML frontmatter. Pi and Codex global instructions are plain Markdown, and Codex agents are TOML.
+Every command uses `commands/<name>/command.toml` and exactly one `command.md` or `command.sops`. Agent sources stay in `agents/<name>/prompt.md` and `header.toml`. Other metadata stays in `header.toml`. The composer generates native client files through Home Manager. Agent and command names derive from their directories. Skills declare `[common] name`, which must match the directory. Generated skill files contain YAML frontmatter. Pi and Codex global instructions are plain Markdown, and Codex agents are TOML.
 
 ## Contents
 
 - [Prompt Hierarchy](#prompt-hierarchy)
 - [Global Instructions](#global-instructions)
 - [Task Lifecycle](#task-lifecycle)
+- [Command catalogue](commands/README.md)
 - [Agents](#agents)
 - [Model Selection](#model-selection)
 - [Platform Delivery](#platform-delivery)
@@ -71,7 +72,7 @@ instructions/global.md          ← environment constraints, tool preferences, s
 
 **`instructions/global.md`** is the role-neutral foundation for every platform. It sets delegation triggers, fresh-context defaults, trust boundaries, reference-tool preferences, GitHub safety, LSP guidance, file rules, skill references, and the relay rules for artefacts and reports. Full specialist routing and output contracts live in the generated `delegate-task` skill. See [`instructions/README.md`](instructions/README.md) for the research that informs the global rules and the generated skill.
 
-Agent prompts inherit the global constraints and add specialisation. Agent-scoped commands select the directory specialist unless `[compose] agent` overrides that selection. `[compose] caller-context = true` preserves the caller's role. Unbound standalone commands run in the caller's context. Claude Code, Codex, and Pi commands use the selected agent's routing defaults for child launches. Caller-context execution never changes the caller's model.
+Agent prompts inherit the global constraints and add specialisation. Commands select a specialist only through explicit `[compose] agent`, with no directory inheritance. Maintenance ownership is independent of the selected agent and executing caller, and has no metadata field. `[compose] caller-context = true` preserves the caller's role. Unbound commands run in the caller's context. Claude Code, Codex, and Pi commands use the selected agent's routing defaults for child launches. Caller-context execution never changes the caller's model.
 
 ---
 
@@ -126,27 +127,13 @@ When the coordinator lacks context, it delegates discovery instead of researchin
 
 The house style owns response discipline, every platform carries it in the system prompt, and the hooks enforce it. The parent relays an artefact verbatim and never summarises it in place. The parent delivers a report as the answer plus the recommendations, and a long report goes to a file under the `review-report-path` convention, returned as the conclusion plus the path. The parent intervenes only for safety.
 
-### Standalone Commands
+### Command workflows
 
-| Command                 | Purpose                                                                  |
-| ----------------------- | ------------------------------------------------------------------------ |
-| `ack`                   | Acknowledge a phase or message and yield                                 |
-| `ahem`                  | Re-issue the Communication Rules as a first warning                      |
-| `ask`                   | Answer a question without treating it as an instruction                 |
-| `call`                  | Give one recommended solution with its reasoning, never a menu           |
-| `clarify-plan`          | Ask focused questions until every branch of a design is resolved         |
-| `gist`                  | Rewrite the previous response concisely                                  |
-| `implement-task`        | Take a tracked task through to implemented, validated, committed work    |
-| `oi`                    | Re-issue the Communication Rules bluntly, after `ahem` failed            |
-| `ready`                 | Prime the session for a broad activity                                   |
-| `reflect`               | Review the session and suggest tooling and AGENTS.md changes             |
-| `review-code-again`     | Recheck prior findings and defects caused by the author's response       |
-| `review-code-colleague` | Review a colleague's PR for defects only; no suggestions, no nits        |
-| `review-code-community` | Review a community PR for correctness, gaps, and malicious code          |
-| `review-code-mine`      | Adversarially review my own changes before filing a PR                   |
-| `wtb`                   | Run the Want to Buy workflow for a pull request and Slack channel        |
+The generated [command catalogue](commands/README.md) lists descriptions, associated agents, entry behaviour for each client, and public or secret sources. A separate agent table lists model routing defaults from `header.toml`.
 
-The four standalone commands `review-code-community`, `review-code-colleague`, `review-code-mine`, and `review-code-again` each launch one Donatello worker. Their source directories remain under `commands/`. Donatello completes the review directly without further agent launches.
+Update command metadata or agent routing at its source, then run `just update-assistant-catalogue`. Run `just check-assistant-catalogue` to check the tracked output. Do not edit catalogue rows manually or decrypt secret bodies to generate the catalogue.
+
+The four commands `review-code-community`, `review-code-colleague`, `review-code-mine`, and `review-code-again` each launch one Donatello worker. Donatello completes the review directly without further agent launches.
 
 The shared `review-code` skill supports direct worker mode and coordinator mode. Coordinator mode retains fan-out and selective verification. The `review-code-follow-up` skill keeps its prior-report and response-delta scope in direct worker mode. A complete-review worker allocates one exclusive report run when none is supplied. Review-lane workers reuse their parent's paths.
 
@@ -190,11 +177,11 @@ Validation is inline. Each task's changed files are checked against the task's `
 
 ## Agents
 
+See the [command catalogue](commands/README.md) for command associations and the separate table of agent routing defaults.
+
 ### Rosey - Prompt & Skill Specialist
 
 Prompt and skill specialist for agent prompts, skills, commands, and instruction files. Rosey edits these artefacts directly, applies context-efficiency constraints, and keeps prompt guidance short enough to hold. She is not the global coordinator; `instructions/global.md` owns default delegation policy. See [`agents/rosey/README.md`](agents/rosey/README.md) for the research that informs Rosey's prompt, skills, and command shims.
-
-**Model:** inherits the model selected in the coding tool on every platform.
 
 Rosey's prompt engineering rules:
 
@@ -214,30 +201,11 @@ The older under-10K target remains useful as compliance evidence, not as the Ope
 
 Compact, stable system prompts preserve Claude prompt-cache hits; bloated or variable prompt prefixes defeat caching. Rosey's `update-assistant` command removes ineffective patterns while preserving output templates, few-shot examples, decision criteria, explicit constraints, tool-specific guidance, and numeric limits.
 
-| Command            | Purpose                                                           |
-| ------------------ | ----------------------------------------------------------------- |
-| `create-assistant` | Generate a new agent prompt from requirements                     |
-| `create-agents-md` | Create `AGENTS.md` from codebase analysis                         |
-| `create-skill`     | Create a reusable `SKILL.md`                                      |
-| `create-command`   | Create a slash command (shim or standalone)                       |
-| `update-assistant` | Apply context-efficiency pass to an existing agent                |
-| `update-agents-md` | Apply targeted changes or consolidate scattered instruction files |
-| `update-skill`     | Improve an existing reusable skill                                |
-| `update-command`   | Update an existing slash command and its provider headers         |
-| `handover-fresh`   | Write structured handover document for a new session              |
-| `handover-fork`    | Fork-compact briefing for an in-session specialist worker       |
-
 ---
 
 ### Batfink - Infrastructure Security Auditor
 
 Infrastructure security auditor assessing configuration hardening, defensive resilience, and blast radius across cloud, container, and network infrastructure. Identifies misconfigurations, privilege escalation paths, and lateral movement risks. Every finding is mapped to concrete remediation.
-
-**Model:** inherits the model selected in the coding tool on every platform. Infrastructure security assessment reasons across interacting systems, trust boundaries, and attack chains simultaneously.
-
-| Command                | Purpose                                  |
-| ---------------------- | ---------------------------------------- |
-| `audit-infra-security` | Structured infrastructure security audit |
 
 ---
 
@@ -245,24 +213,11 @@ Infrastructure security auditor assessing configuration hardening, defensive res
 
 Pragmatic test engineer identifying high-impact unit tests that catch real bugs. Analyses git history to find frequently-fixed files, searches GitHub issues for bug patterns, and reads existing tests before recommending new ones. Focuses on coverage gaps that matter rather than coverage numbers.
 
-**Model:** inherits the model selected in the coding tool on every platform.
-
-| Command                | Purpose                                        |
-| ---------------------- | ---------------------------------------------- |
-| `project-tests-review` | Analyse codebase for high-value test additions |
-
 ---
 
 ### Casper - Technical Writer
 
 Ghost writer emulating Martin Wimpress's blog voice: enthusiastic, conversational British English combining Linux expertise with accessible humour. First-person narrative, direct reader address, British colloquialisms integrated naturally. Loads `writing-well` for extended writing.
-
-**Model:** inherits the model selected in the coding tool on every platform.
-
-| Command              | Purpose                                |
-| -------------------- | -------------------------------------- |
-| `draft-blog-post`    | Write a blog post in Martin's voice    |
-| `draft-video-script` | Write a video script in Martin's voice |
 
 ---
 
@@ -270,32 +225,11 @@ Ghost writer emulating Martin Wimpress's blog voice: enthusiastic, conversationa
 
 Code security auditor methodically patrolling codebases for vulnerabilities, insecure patterns, and dependency risks. Cites CWE and OWASP classifications for every finding. Distinguishes confirmed vulnerabilities from theoretical risks and prioritises by exploitability.
 
-**Model:** inherits the model selected in the coding tool on every platform. Vulnerability identification reasons across data flows, trust boundaries, and exploitation conditions.
-
-| Command               | Purpose                        |
-| --------------------- | ------------------------------ |
-| `audit-code-security` | Structured code security audit |
-
 ---
 
 ### Donatello - Implementation Engineer
 
 Precise implementation engineer executing code changes from specifications. Reads related files before any implementation, reuses existing utilities before writing new ones, identifies blockers early. Preserves existing conventions and architectural decisions. Loads the `nix` skill for Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, and `.nix` files. Loads the `love` skill for LÖVE 2D and Lua 5.1/LuaJIT 2.1 game development.
-
-**Model:** inherits the model selected in the coding tool on every platform.
-
-| Command                   | Purpose                                                            |
-| ------------------------- | ------------------------------------------------------------------ |
-| `create-plan`             | Break implementation into ordered phases in a disposable plan      |
-| `implement-plan`          | Execute a plan, one fresh worker per phase                      |
-| `draft-code-review`       | Draft the house-style review comment from a completed review       |
-| `post-code-review`        | Post your text or a drafted review, as comment or approval         |
-| `address-code-review`     | Work review findings one at a time, committing each fix            |
-| `babysit-pr`              | Take a PR to green checks, answered reviews, and approvals         |
-| `project-peer-review`     | Give an ecosystem-specific codebase verdict                        |
-| `project-polish-comments` | Comment-quality pass over a file set; comments only, never logic   |
-| `add-agentic-repo-capability` | Add a repository-local MCP server, skill, or command across clients |
-| `add-enricher-capability` | Add a manifest-gen enricher capability                             |
 
 ---
 
@@ -303,27 +237,11 @@ Precise implementation engineer executing code changes from specifications. Read
 
 Git workflow specialist enforcing Conventional Commits 1.0.0. Analyses existing commit history for project-specific scope patterns before writing messages. Handles type classification, scope determination, breaking change footers, and authorised commit and PR execution.
 
-**Model:** the only pinned agent in the tree. Claude Code takes `model: sonnet` on the agent only. Pi takes `claude-sonnet-5` on Anthropic, `gpt-5.6-terra` at thinking `medium` on `openai-codex`, and `gemini-3-flash` on Google. Codex takes `gpt-5.6-terra` at reasoning `medium`. Git message generation is a structured task with clear rules, so it does not need the session's reasoning budget.
-
-| Command                | Purpose                                                                                                                                  |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `draft-commit-message` | Draft a conventional commit message for the staged or current changes                                                                    |
-| `draft-pr-message`     | Draft a conventional commit message summarising the branch for a PR body                                                                 |
-| `make-commit`          | Draft the message, then create one commit from the durable work                                                                          |
-| `make-pr`              | Draft and open a PR, update authorised linked issues, and return a watch handover to the coordinator                                            |
-| `finish-pr`            | Summarise the merged PR on its Linear or GitHub issues, move them to done, and safely delete its local and remote branch                 |
-
 ---
 
 ### Gonzales - Performance Specialist
 
 Performance optimisation specialist focused on user-perceivable improvements. Rates optimisations on a 1-10 impact scale. Only recommends changes where the user-perceivable effect justifies the maintainability cost.
-
-**Model:** inherits the model selected in the coding tool on every platform. Separating true bottlenecks from theoretical micro-optimisations reasons across algorithmic complexity, memory patterns, and I/O behaviour simultaneously.
-
-| Command                      | Purpose                                                 |
-| ---------------------------- | ------------------------------------------------------- |
-| `project-performance-review` | Identify optimisation opportunities with impact ratings |
 
 ---
 
@@ -331,39 +249,11 @@ Performance optimisation specialist focused on user-perceivable improvements. Ra
 
 Research partner for exploring ideas, generating options, and framing problems for downstream specialists. Penfold owns the task lifecycle commands that file session outcomes, fold decisions back into tasks, triage the queue, and judge implementation readiness. Flags uncertainty explicitly (confidence: high/medium/low). Produces handoffs specialists can use without clarification. Loads the `audio-metrics` skill for objective audio analysis from ffmpeg metrics: spectral statistics, loudness (EBU R128, LUFS, true peak), levels, and spectrograms.
 
-**Model:** inherits the model selected in the coding tool on every platform. Penfold synthesises research, frames problems, and weighs trade-offs; specialist agents still handle domain-specific validation.
-
-| Command                          | Purpose                                                                 |
-| -------------------------------- | ----------------------------------------------------------------------- |
-| `orientate`                      | Digest existing sources into cited findings without independent research |
-| `create-task`                    | File the session outcome as a task, or a parent wrapping children       |
-| `update-task`                    | Fold session decisions into an existing task                            |
-| `triage-tasks`                   | Research and update the whole Triage queue, or the named Linear issues  |
-| `review-task`                    | Judge whether a task is ready to implement, and what must change first  |
-| `create-project`                 | Find or create one Linear project, and stop                             |
-| `post-comment`                   | Post the agreed comment to GitHub, Linear, or Slack                     |
-| `post-issue`                     | Create the agreed issue on GitHub                                       |
-| `weekly-update`                  | Write this week's project updates, schedule Up Next, post to Slack      |
-| `work-order-create`              | Order a cycle's issues into waves, publish and wire the document        |
-| `work-order-update`              | Apply the user's instructions to the work order, and report drift       |
-| `work-order-plan`                | Shortlist next cycle's issues to a live capacity target from Linear     |
-| `work-order-next`                | Find the next ready implementation work in the current cycle order      |
-| `gather-review-data`             | Collect the user's own contribution evidence for a date range           |
-| `draft-self-review`              | Draft a periodic self-review from gathered evidence                     |
-| `review-open-source-attestation` | Check whether a `mono` change is safe to export, before human sign-off  |
-
 ---
 
 ### Penry - Code Reviewer
 
 Maintainability specialist reviewing for simplification, duplication, dead code, and naming clarity. Every suggestion is small, safe, and preserves exact functionality. Uses an impact scale; only flags changes where the maintainability benefit justifies the diff.
-
-**Model:** inherits the model selected in the coding tool on every platform.
-
-| Command                     | Purpose                                                       |
-| --------------------------- | ------------------------------------------------------------- |
-| `project-code-review`       | Maintainability review: deletion, replacement, simplification |
-| `project-smells-review`     | Hunt for genuine code smells: god objects, feature envy, etc. |
 
 ---
 
@@ -371,35 +261,13 @@ Maintainability specialist reviewing for simplification, duplication, dead code,
 
 Documentation architect creating technically precise guides through progressive disclosure. Transforms codebases into accessible documentation. Loads `writing-well` for extended writing tasks.
 
-**Model:** inherits the model selected in the coding tool on every platform. Documentation writing is a structured task where voice, clarity, and organisation carry the result.
-
-| Command                        | Purpose                                                     |
-| ------------------------------ | ----------------------------------------------------------- |
-| `draft-readme`                 | Write README following standard structure                   |
-| `align-documentation`          | Update documentation to reflect code changes                |
-| `project-documentation-review` | Audit documentation, identify gaps, prioritise improvements |
-
 ---
 
 ## Model Selection
 
-Agents without routing defaults inherit the model selected in the coding tool. Garfield has routes for Claude Code, Codex, Pi, and direct-root OpenCode tasks.
+Agents without routing defaults inherit the model selected in the coding tool. The [command catalogue](commands/README.md) has a separate agent table with current defaults from `header.toml`. Defaults do not guarantee the model for every invocation. Client entry behaviour and explicit overrides determine whether a route applies.
 
-Garfield is the sole pinned agent. His commands carry no model routes. Commit and PR message work is structured and deterministic, so it does not need the session's reasoning budget:
-
-| Platform            | Pin                                            |
-| ------------------- | ---------------------------------------------- |
-| Claude Code         | `model: sonnet` on the agent only               |
-| Pi (Anthropic)      | `claude-sonnet-5`                               |
-| Pi (`openai-codex`)  | `gpt-5.6-terra`, thinking `medium`               |
-| Pi (Google)         | `gemini-3-flash`                                |
-| Codex               | `gpt-5.6-terra`, reasoning `medium`              |
-| OpenCode (OpenAI)    | `gpt-5.6-terra`, direct-root native tasks only   |
-| OpenCode (Anthropic) | `claude-sonnet-5`, direct-root native tasks only |
-
-No other agent or command sets a model on any platform. The ten remaining agents omit model and effort overrides from `header.toml`.
-
-Agent `header.toml` files are the sole routing default source for Claude Code, Codex, and Pi. Commands and ordinary skills remain model-neutral. Explicit launch-time child model, thinking, or effort overrides remain supported. General and agent-owned caller-context commands never change the caller's model. Direct `make-commit` and `make-pr` launches use Garfield's agent defaults on Claude Code, Codex, and Pi. Explicit coordinator inline reuse retains the caller's model.
+Agent `header.toml` files are the sole routing default source for Claude Code, Codex, and Pi. Commands and ordinary skills remain model-neutral. Explicit launch-time child model, thinking, or effort overrides remain supported. Caller-context commands never change the caller's model, whether or not they have an agent binding. Direct `make-commit` and `make-pr` launches use Garfield's agent defaults on Claude Code, Codex, and Pi. Explicit coordinator inline reuse retains the caller's model.
 
 The [OpenCode router](../opencode/README.md#provider-router-prototype) installs whenever OpenCode is enabled, without a version restriction. Version 1.18.30 is the tested and source-reviewed version. Google and other missing routes retain native behaviour. Existing OpenCode command model metadata remains supported. OpenCode's direct slash commands use native agent binding. Do not assume that binding uses the router, which applies only to direct-root native task children.
 
@@ -423,9 +291,9 @@ The [OpenCode router](../opencode/README.md#provider-router-prototype) installs 
 
 Common hints apply to Claude Code, OpenCode, and Pi. Provider-specific hints preserve differences in presence or value. Missing tables mean no overrides, not disabled output. Omit unset values because TOML has no null.
 
-Non-empty command or skill routing for Claude Code, Codex, or Pi fails evaluation. Ordinary OpenCode skill routing remains rejected. OpenCode command model metadata remains supported. Put shared workflow defaults in the owning agent's header.
+Non-empty command or skill routing for Claude Code, Codex, or Pi fails evaluation. Ordinary OpenCode skill routing remains rejected. OpenCode command model metadata remains supported. Put shared workflow defaults in the selected agent's `header.toml`.
 
-Keep agent bodies in `prompt.md` and command bodies in `command.md`. Keep skill bodies in frontmatter-free `SKILL.md`, including nested API skills. The composer rebuilds native frontmatter for each client. Encrypted `SKILL.sops` files remain complete native skills.
+Keep agent bodies in `prompt.md`. Use `commands/<name>/command.toml` and exactly one `command.md` or `command.sops` for each command. Keep skill bodies in frontmatter-free `SKILL.md`, including nested API skills. The composer rebuilds native frontmatter for each client. Encrypted `SKILL.sops` files remain complete native skills.
 
 Retired provider headers are removed. Retired `description.txt` files remain in the repository but are not consumed. Edit `command.toml` for command metadata and `header.toml` for other live metadata.
 
@@ -454,7 +322,7 @@ Per-client controls remain available when `caller-context` is false. In Codex, `
 
 ### Codex command policy
 
-Codex CLI invokes generated commands with `$name` or the `/skills` picker. Custom `/name` commands are unsupported. Every generated command is manual-only, including standalone, agent-owned, and encrypted commands.
+Codex CLI invokes generated commands with `$name` or the `/skills` picker. Custom `/name` commands are unsupported. Every generated command is manual-only, including unbound, agent-bound, and encrypted commands.
 
 The shared `mkCodexCommandOpenAiYaml` helper emits `policy.allow_implicit_invocation: false` in each command's `agents/openai.yaml`. Do not duplicate this constant policy in source metadata. Ordinary skill companion policy belongs under `[codex.policy]`. Ordinary reusable skills retain their existing policies, and other providers retain their command formats.
 
@@ -475,19 +343,7 @@ OpenCode `permission` headers are not mapped to Pi. Pi supports an explicit `too
 
 ### Provider routing
 
-Pi routes subagents through inference-provider tables in each agent's `header.toml`. Garfield declares:
-
-```toml
-[routing.pi.anthropic]
-model = "claude-sonnet-5"
-
-[routing.pi.openai-codex]
-model = "gpt-5.6-terra"
-thinking = "medium"
-
-[routing.pi.google]
-model = "gemini-3-flash"
-```
+Pi routes subagents through inference-provider tables in each agent's `header.toml`. See the [command catalogue](commands/README.md) for the current agent routes.
 
 The inference-provider name must match Pi exactly, including hyphens. The default provider is `openai-codex`, not `openai`.
 

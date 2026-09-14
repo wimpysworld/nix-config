@@ -2,6 +2,9 @@
 description = "Draft and open a PR 🐙"
 argument-hint = "[context]"
 
+[compose]
+agent = "garfield"
+
 [compose.coordinator]
 before-launch = """
 Before launch, add the known intent, exact paths, exclusions, and validation evidence to the child's packet.

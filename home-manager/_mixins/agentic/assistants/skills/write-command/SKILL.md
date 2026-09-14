@@ -20,7 +20,9 @@ Length bands:
 | Trivial standalone (no format) | 1-2          | Hard cap: 3       |
 | Standalone with output format  | 30-60        | Ask above 100     |
 
-## Frontmatter (portable, required)
+## Generated native frontmatter
+
+The composer generates native frontmatter from `command.toml`. Keep repository Markdown bodies free of frontmatter.
 
 ```yaml
 ---
@@ -63,9 +65,9 @@ Use `$ARGUMENTS` for a shared command that takes one free-form argument. Claude 
 
 ## Repo composition
 
-Use the global vocabulary: the coordinator owns planning, dispatch, integration, and assigned inline operations. A worker completes bounded work and never launches agents. The caller invokes a command or follows its body and can be a worker. Parent and child name only the immediate delegation relationship. The command owner is the directory specialist, not necessarily the selected agent or executor. Context is instructions and evidence, not role or authority.
+Use the global vocabulary: the coordinator owns planning, dispatch, integration, and assigned inline operations. A worker completes bounded work and never launches agents. The caller invokes a command or follows its body and can be a worker. Parent and child name only the immediate delegation relationship. The command owner maintains the workflow, independent of its location, selected agent, and executor. Do not add ownership metadata. Context is instructions and evidence, not role or authority.
 
-This repo reads one `command.toml` and one `command.md` per command. Keep the body free of frontmatter.
+Store every command in `commands/<name>/` with `command.toml` and exactly one `command.md` or `command.sops`. Keep public bodies free of frontmatter. A secret marker names the existing SOPS key, not the body.
 
 ```toml
 [common]
@@ -78,9 +80,9 @@ agent = "rosey"
 
 Use `[common]` for the description and a hint shared by Claude Code, OpenCode, and Pi. Preserve existing provider-specific omissions under `[claude]`, `[opencode]`, or `[pi]`.
 
-Keep native non-model fields in provider tables. Claude Code, Codex, and Pi reject non-empty command routing. Put their routing defaults only in the owning agent's `header.toml`. OpenCode command model metadata remains supported under `[routing.opencode]`.
+Keep native non-model fields in provider tables. Claude Code, Codex, and Pi reject non-empty command routing. Put their routing defaults only in the selected agent's `header.toml`. OpenCode command model metadata remains supported under `[routing.opencode]`.
 
-Use `[compose] agent` for the repository agent binding. Shared `caller-context = true` takes precedence over provider launch controls and keeps the caller's context and persona. It suppresses Claude agent/Task wrappers, OpenCode agent binding, Pi launches, and Codex persona/spawn wrappers. OpenCode also receives `subtask: false`.
+Set `[compose] agent` explicitly for an agent binding. No directory supplies an inherited agent. Omit `agent` for an unbound command. Shared `caller-context = true` takes precedence over provider launch controls and keeps the caller's context and persona. It suppresses Claude agent/Task wrappers, OpenCode agent binding, Pi launches, and Codex persona/spawn wrappers. OpenCode also receives `subtask: false`.
 
 Agent-bound specialist commands use Claude's Task wrapper by default. Explicit `[compose.claude] use-task = false` selects the inline `@agent` exception without a child launch. `[compose.codex] spawn-agent = false` embeds the agent persona in the caller's context. Neither exception preserves the caller's role through the shared setting.
 
@@ -100,7 +102,7 @@ Ask for consent before the next workflow.
 
 Only `before-launch` and `after-return` are valid keys. Both accept strings, including multiline strings. Omitted keys or an omitted table add no guidance. Empty strings are valid. Unknown keys and other value types fail validation.
 
-The composer reads these fields from the command source, even when `[compose] agent` selects a different specialist. Claude Code, Pi, and Codex launch wrappers place both instructions before `## Task`, outside the worker body and native metadata. `after-return` describes what the coordinator does after the worker returns. These fields are prose, not executable hooks or role grants.
+The composer reads these fields from the command source, regardless of the selected agent. Claude Code, Pi, and Codex launch wrappers place both instructions before `## Task`, outside the worker body and native metadata. `after-return` describes what the coordinator does after the worker returns. These fields are prose, not executable hooks or role grants.
 
 Caller-context execution and per-provider inline modes bypass both fields. Direct workflow body reuse is unchanged. OpenCode native binding cannot run coordinator preparation or continuation steps. Keep required explicit-context checks and watch handover instructions in its shared worker body. Do not add a simulated wrapper.
 
@@ -108,7 +110,7 @@ Caller-context execution and per-provider inline modes bypass both fields. Direc
 
 Names derive from directories. Missing provider tables mean no overrides, not disabled output. TOML has no null. Omit fields to inherit defaults.
 
-The composer discovers commands by directory. Retired provider headers are removed. Retired `description.txt` files are not inputs. Keep them until the user authorises removal.
+The composer discovers commands only under `commands/<name>/`. Retired provider headers are removed. Retired `description.txt` files are not inputs. Keep them until the user authorises removal.
 
 Codex receives each command as a manual-only command-derived skill, invoked by the user as `$name`. The composer owns `agents/openai.yaml` with `policy.allow_implicit_invocation: false` for every command, including secret bodies. Do not add this policy to shared frontmatter or ordinary reusable skills.
 
@@ -124,13 +126,15 @@ Manual-only controls command selection, not file access or workflow reuse within
 - Put the worker contract in the child's task, not the parent's launch instructions. Use native tool names in wrappers and generic delegation terms in shared prose.
 - Preserve user-facing `$name` examples on Codex and `/name` examples on slash-command runtimes. Do not use prefix conversion as workflow composition.
 
-## Command table
+## Command catalogue
 
-`home-manager/_mixins/agentic/assistants/README.md` documents every command. Update it in the same change: a new command gets a row, a renamed command gets its row renamed, a command whose purpose changes gets its purpose line rewritten.
+The generated `home-manager/_mixins/agentic/assistants/commands/README.md` lists command metadata and client entry behaviour. A separate agent table lists routing defaults from `header.toml`. The main README links the catalogue and keeps workflow guidance, not duplicate inventories.
 
-- Pick the table first. `### Standalone Commands` covers commands under `commands/` with no agent binding; each `### <Agent> - <Role>` section under `## Agents` carries its own table for the commands under `agents/<agent>/commands/`.
-- `### Standalone Commands` rows are alphabetical by command name. An agent table keeps its existing grouping.
-- The purpose line says what the command does for the user, not which skill it loads. "Rewrite the previous response concisely", not "Load the `communication-rules` skill".
+- Update `command.toml` when a command's description, binding, or entry behaviour changes.
+- Write descriptions that state what the command does for the user, not which skill it loads.
+- After command additions, renames, metadata changes, or agent routing changes, run `just update-assistant-catalogue`.
+- Run `just check-assistant-catalogue` to check the tracked output. Do not edit generated rows manually.
+- Check the associated agent, per-client entry behaviour, routing defaults, and public/secret source classification. Never decrypt bodies for catalogue generation.
 
 ## Per-provider field matrix
 
@@ -154,8 +158,8 @@ For specialist shims, omit `subtask`. The agent binding already selects a fresh 
 In this repo:
 
 - Agent headers are the sole routing default source for Claude Code, Codex, and Pi. Commands and ordinary skills stay model-neutral.
-- General and agent-owned caller-context execution never changes the caller's model. Preserve `compose.caller-context` and provider launch controls.
-- Child launches use the owning agent's defaults. Explicit launch-time child model, thinking, or effort overrides remain supported.
+- Caller-context execution never changes the caller's model, whether or not the command has an agent binding. Preserve `compose.caller-context` and provider launch controls.
+- Child launches use the selected agent's defaults. Explicit launch-time child model, thinking, or effort overrides remain supported.
 - OpenCode agent and command model metadata support is unchanged. Current OpenCode agents and commands omit model pins.
 - Pi uses the exact active provider's agent route, or native fallback when that route is absent.
 
@@ -170,15 +174,15 @@ If the body writes files, runs Bash, or hits the network, say so and list paths 
 - Bare `$1` in shims targeting Claude Code (use `$ARGUMENTS`).
 - `allowed-tools` left as `"*"` or bare `Bash`.
 - Long bodies that re-derive routing or response contract owned by `delegate-task`.
-- Time-sensitive text (dates, model IDs) in the body. Put routing defaults in the owning agent's header instead.
+- Time-sensitive text (dates, model IDs) in the body. Put routing defaults in the selected agent's header instead.
 - Embedding generated content (e.g. agent registry snippets) into a command prefix - the volatile data breaks the prompt cache. Put it in a skill that loads on demand.
 - Targeting Codex via legacy `/prompts:` for new work. Use the command composer for commands and `write-skill` for reusable skills.
 
 ## Update flow
 
-1. Read `command.md` and `command.toml`.
+1. Read `command.toml` and the public `command.md`, or identify the `command.sops` marker without decrypting it.
 2. Identify the form band (shim / standalone / standalone-with-format). Enforce the shim and trivial caps; apply the long command choice before editing a standalone-with-format command.
-3. Diagnose: caller role, command owner and selected executor, argument substitution (`$ARGUMENTS` vs `$1`), `argument-hint` bracket convention, persona leakage, missing or stale `description`, model mismatch with sibling commands, missing side-effect declaration, missing or stale README row.
+3. Distinguish caller role, maintenance ownership, selected agent, and executor. Check argument substitution (`$ARGUMENTS` vs `$1`) and the `argument-hint` bracket convention. Check persona leakage, stale descriptions, routing defaults, missing side-effect declarations, and catalogue freshness.
 4. Edit narrowly. Preserve `[common] description` and `argument-hint` unless they are wrong. Do not rewrite a working body.
 5. If a shim and an existing skill both grew the same doctrine, cut the shim back to the skill body's surface.
 6. Emit changed files plus a short changelog: `Changed`, `Rationale`.

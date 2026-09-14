@@ -32,6 +32,7 @@ Before any worker starts, load and follow the `review-report-path` skill. Create
 ### Output
 
 **1. Current State**
+
 - What exists and where
 - Missing docs (critical paths undocumented)
 - Stale content (contradicts code or describes removed features)
@@ -39,12 +40,14 @@ Before any worker starts, load and follow the `review-report-path` skill. Create
 **2. Prioritised Improvements**
 
 Per improvement:
+
 - **Issue**: What's wrong or missing
 - **Impact**: Critical/High/Medium/Low
 - **Recommendation**: Specific action
 - **Effort**: T-shirt size from the `sizing` skill
 
 **3. Structure Changes** (if needed)
+
 - Proposed reorganisation with rationale
 - Migration path
 

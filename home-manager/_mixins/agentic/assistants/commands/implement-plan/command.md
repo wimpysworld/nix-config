@@ -6,7 +6,7 @@ On Codex, map the user's accompanying text explicitly: $1 is the plan path and $
 
 The user invokes this command manually. An authorised coordinator can read and apply this workflow body with explicit plan and phase arguments. It retains all dispatch ownership and ignores any generated launch wrapper. A worker reports the implementation needed and returns, without applying this orchestrating workflow or launching agents.
 
-When $1 is omitted, derive the plan path from the task: `${TMPDIR:-/tmp}/agent-plans/<key>/plan.md`, where `<key>` is the lowercased Linear issue key, or the current branch name with `/` flattened to `-` when the task has no key. The plan is disposable: never copy it into the repo and never commit it.
+When $1 is omitted, derive the plan path from the task: `${TMPDIR:-/tmp}/agent-plans/<key>/plan.md`, where`<key>` is the lowercased Linear issue key, or the current branch name with `/` flattened to `-` when the task has no key. The plan is disposable: never copy it into the repo and never commit it.
 
 ### Workflow
 
@@ -49,12 +49,14 @@ When $1 is omitted, derive the plan path from the task: `${TMPDIR:-/tmp}/agent-p
 **Reuse:** `src/utils/crypto.ts` - used existing `generateSecret()` for token signing
 
 **Changes:**
+
 | File | Change |
 |------|--------|
 | `src/services/auth/token.ts` | Created with sign/verify/refresh using existing crypto utils |
 | `src/services/auth/token.test.ts` | Unit tests for all three functions |
 
 **Verification:**
+
 | Success Criterion | Result |
 |--------------------|--------|
 | Unit tests pass for sign/verify/refresh | ✅ Pass |

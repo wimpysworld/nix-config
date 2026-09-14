@@ -37,7 +37,7 @@ class SkillFileTests(unittest.TestCase):
                     name = f"{selection}-{mode}-{'secret' if secret else 'public'}"
                     cases[name] = (selection, mode, secret)
                     directory = (
-                        f"agents/{'owner' if selection == 'override' else 'worker'}/commands/{name}"
+                        f"commands/{name}"
                         if selection in ("scoped", "override")
                         else f"commands/{name}"
                     )
@@ -45,7 +45,7 @@ class SkillFileTests(unittest.TestCase):
                     header += (
                         f"caller-context = {str(mode == 'caller-context').lower()}\n"
                     )
-                    if selection in ("bound", "override"):
+                    if selection in ("bound", "override", "scoped"):
                         header += 'agent = "worker"\n'
                     for provider, key in (
                         ("claude", "use-task"),
@@ -70,7 +70,7 @@ class SkillFileTests(unittest.TestCase):
         for name in ("make-commit", "make-pr"):
             cases[name] = ("garfield", "worker", False)
             for filename in ("command.toml", "command.md"):
-                path = f"agents/garfield/commands/{name}/{filename}"
+                path = f"commands/{name}/{filename}"
                 files[path] = (ASSISTANTS / path).read_text()
         for suffix in ("community", "colleague", "mine", "again"):
             name = f"review-code-{suffix}"
@@ -148,12 +148,8 @@ class SkillFileTests(unittest.TestCase):
                         if selection in ("garfield", "donatello")
                         else "worker"
                     )
-                    if selection == "donatello":
+                    if selection == "donatello" or selection == "garfield":
                         expected_body = files[f"commands/{name}/command.md"].strip()
-                    elif selection == "garfield":
-                        expected_body = files[
-                            f"agents/garfield/commands/{name}/command.md"
-                        ].strip()
                     if platform == "codex":
                         entry = owned[f"/fixture/.codex/skills/{name}/SKILL.md"]
                         rendered = entry["prefix"] if secret else entry["source"]

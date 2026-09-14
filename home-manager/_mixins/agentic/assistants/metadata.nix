@@ -307,10 +307,54 @@ let
       lib.mapAttrsToList (key: item: "${builtins.toJSON key} = ${scalar item}") value
     );
 
-  commandDispatch =
-    knownAgents: cmdName: agentName: header:
+  commandExecution =
+    platform: name: header:
     let
-      selectedAgent = header.compose.agent or agentName;
+      selectedAgent = header.compose.agent or null;
+      callerContext = header.compose.caller-context or false;
+      projected = project "command" platform name header;
+      native =
+        if platform == "opencode" && callerContext then
+          (lib.removeAttrs projected [ "agent" ]) // { subtask = false; }
+        else if platform == "claude" && callerContext then
+          lib.removeAttrs projected [
+            "agent"
+            "context"
+          ]
+        else
+          projected
+          // lib.optionalAttrs (platform == "opencode" && selectedAgent != null) { agent = selectedAgent; };
+      mode =
+        if callerContext then
+          "caller-context"
+        else if platform == "claude" && selectedAgent != null then
+          if header.compose.claude.use-task or true then "claude-task" else "claude-agent"
+        else if platform == "pi" && selectedAgent != null && (header.compose.pi.spawn-agent or true) then
+          "pi-agent"
+        else if
+          platform == "opencode"
+          && ((projected.subtask or false) || (selectedAgent != null && (projected.subtask or true)))
+        then
+          "opencode-subtask"
+        else if platform == "codex" && selectedAgent != null then
+          if header.compose.codex.spawn-agent or true then "codex-agent" else "codex-inline"
+        else
+          "body";
+    in
+    {
+      inherit
+        selectedAgent
+        callerContext
+        native
+        mode
+        ;
+    };
+
+  commandDispatch =
+    knownAgents: cmdName: header:
+    let
+      execution = commandExecution "codex" cmdName header;
+      inherit (execution) selectedAgent;
       callerContext = header.compose.caller-context or false;
       spawn = !callerContext && (header.compose.codex.spawn-agent or true);
       route = header.routing.codex or { };
@@ -368,6 +412,7 @@ in
     renderYaml
     renderToml
     commandDispatch
+    commandExecution
     commandPolicy
     skillCompanion
     ;

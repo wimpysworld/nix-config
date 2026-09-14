@@ -123,11 +123,14 @@ let
 
   # ============ COMMANDS ============
 
-  # Discover commands for a specific agent
-  discoverAgentCommands = agentName: discoverDirs (basePath + "/agents/${agentName}/commands");
-
-  # Discover standalone commands
-  standaloneCommandDirs = discoverDirs (basePath + "/commands");
+  nestedCommandAgents = lib.filterAttrs (
+    name: _: discoverDirs (basePath + "/agents/${name}/commands") != { }
+  ) agentDirs;
+  commandDirs =
+    if nestedCommandAgents != { } then
+      throw "Commands must live under commands/<name>, not agents/<agent>/commands: ${lib.concatStringsSep ", " (builtins.attrNames nestedCommandAgents)}."
+    else
+      discoverDirs (basePath + "/commands");
 
   # Report whether a command is secret and, if so, its sops key. A command is
   # secret when its directory holds a `command.sops` marker (and no plaintext
@@ -137,13 +140,9 @@ let
   # never reaches the Nix store. Having both files is a configuration error and
   # fails evaluation. Returns `{ secret = bool; key = stringOrNull; }`.
   commandSecretInfo =
-    agentName: cmdName:
+    cmdName:
     let
-      cmdPath =
-        if agentName != null then
-          basePath + "/agents/${agentName}/commands/${cmdName}"
-        else
-          basePath + "/commands/${cmdName}";
+      cmdPath = commandPath cmdName;
       sopsPath = cmdPath + "/command.sops";
       hasSops = builtins.pathExists sopsPath;
       hasPlain = builtins.pathExists (cmdPath + "/command.md");
@@ -155,6 +154,8 @@ let
         secret = true;
         key = readFile sopsPath;
       }
+    else if !hasPlain then
+      throw "Command ${cmdName} requires command.md or command.sops."
     else
       {
         secret = false;
@@ -163,50 +164,50 @@ let
 
   # Flat command namespaces must be collision-free for every provider that
   # emits slash commands or command-derived skills.
-  commandSources =
-    lib.mapAttrsToList (cmdName: _: {
-      name = cmdName;
-      agentName = null;
-      source = toString (basePath + "/commands/${cmdName}");
-    }) standaloneCommandDirs
-    ++ lib.concatLists (
-      lib.mapAttrsToList (
-        agentName: _:
-        lib.mapAttrsToList (cmdName: _: {
-          name = cmdName;
-          inherit agentName;
-          source = toString (basePath + "/agents/${agentName}/commands/${cmdName}");
-        }) (discoverAgentCommands agentName)
-      ) agentDirs
-    );
+  commandSources = lib.mapAttrsToList (name: _: {
+    inherit name;
+    source = toString (commandPath name);
+  }) commandDirs;
 
-  # Resolve the source directory for standalone and agent-scoped commands.
-  commandPath =
-    agentName: cmdName:
-    if agentName != null then
-      basePath + "/agents/${agentName}/commands/${cmdName}"
-    else
-      basePath + "/commands/${cmdName}";
+  commandPath = cmdName: basePath + "/commands/${cmdName}";
 
   commandMetadata =
-    agentName: cmdName:
+    cmdName:
     let
-      header = readCommandHeader (commandPath agentName cmdName);
-      selectedAgent = header.compose.agent or agentName;
+      header = readCommandHeader (commandPath cmdName);
+      selectedAgent = header.compose.agent or null;
+      projections = map (platform: metadata.commandExecution platform cmdName header) [
+        "claude"
+        "opencode"
+        "codex"
+        "pi"
+      ];
     in
     if selectedAgent != null && !(agentDirs ? ${selectedAgent}) then
       throw "Unknown compose.agent ${selectedAgent} for command ${cmdName}."
+    else if
+      !(builtins.isString (header.common.description or null)) || lib.trim header.common.description == ""
+    then
+      throw "${toString (commandPath cmdName)}/command.toml: A non-empty common.description is required."
+    else if
+      !(lib.all (
+        execution: !(execution.native ? argument-hint) || builtins.isString execution.native.argument-hint
+      ) projections)
+    then
+      throw "${toString (commandPath cmdName)}/command.toml: Argument hints must be strings."
     else
-      header
-      // {
-        compose =
-          (header.compose or { }) // lib.optionalAttrs (selectedAgent != null) { agent = selectedAgent; };
-      };
+      builtins.deepSeq projections (builtins.deepSeq (metadata.commandPolicy header) header);
+
+  commandRegistry = lib.mapAttrs (name: _: {
+    path = commandPath name;
+    header = commandMetadata name;
+    inherit ((commandSecretInfo name)) secret;
+  }) commandDirs;
 
   composePiCommandFromPrompt =
-    agentName: cmdName: body:
+    cmdName: body:
     composeWithFrontmatter (metadata.renderYaml (
-      metadata.project "command" "pi" cmdName (commandMetadata agentName cmdName)
+      metadata.project "command" "pi" cmdName (commandMetadata cmdName)
     )) body;
 
   leafWorkerContract = ''
@@ -236,29 +237,16 @@ let
     );
 
   composeCommandFromPrompt =
-    platform: agentName: cmdName: body:
+    platform: cmdName: body:
     let
-      source = commandMetadata agentName cmdName;
-      callerContext = source.compose.caller-context or false;
-      selectedAgent = source.compose.agent or null;
-      useTask = source.compose.claude.use-task or true;
-      native = metadata.project "command" platform cmdName source;
-      header = metadata.renderYaml (
-        if platform == "opencode" && callerContext then
-          (lib.removeAttrs native [ "agent" ]) // { subtask = false; }
-        else if platform == "claude" && callerContext then
-          lib.removeAttrs native [
-            "agent"
-            "context"
-          ]
-        else
-          native
-          // lib.optionalAttrs (platform == "opencode" && selectedAgent != null) { agent = selectedAgent; }
-      );
+      source = commandMetadata cmdName;
+      execution = metadata.commandExecution platform cmdName source;
+      inherit (execution) selectedAgent mode;
+      header = metadata.renderYaml execution.native;
     in
-    if callerContext then
+    if mode == "caller-context" then
       composeWithFrontmatter header body
-    else if platform == "claude" && selectedAgent != null && useTask then
+    else if mode == "claude-task" then
       composeWithFrontmatter header (
         lib.trim ''
           Use the Task tool to launch the ${selectedAgent} agent for the following task:
@@ -271,9 +259,9 @@ let
           ${body}
         ''
       )
-    else if platform == "claude" && selectedAgent != null then
+    else if mode == "claude-agent" then
       composeWithFrontmatter header "@${selectedAgent}\n\n${body}"
-    else if platform == "pi" && selectedAgent != null && (source.compose.pi.spawn-agent or true) then
+    else if mode == "pi-agent" then
       composeWithFrontmatter header (
         lib.trim ''
           Use the Agent tool with `subagent_type: "${selectedAgent}"` for the task below.
@@ -288,53 +276,22 @@ let
           ${body}
         ''
       )
-    else if
-      platform == "opencode"
-      && ((native.subtask or false) || (selectedAgent != null && (native.subtask or true)))
-    then
+    else if mode == "opencode-subtask" then
       composeWithFrontmatter header "${leafWorkerContract}\n${body}"
     else
       composeWithFrontmatter header body;
 
-  # Compose a single command for a specific platform
-  # agentName is null for standalone commands
   composeCommand =
-    platform: agentName: cmdName:
-    let
-      cmdPath =
-        if agentName != null then
-          basePath + "/agents/${agentName}/commands/${cmdName}"
-        else
-          basePath + "/commands/${cmdName}";
-      prompt = readFile (cmdPath + "/command.md");
-    in
-    composeCommandFromPrompt platform agentName cmdName prompt;
+    platform: cmdName:
+    composeCommandFromPrompt platform cmdName (readFile (commandPath cmdName + "/command.md"));
 
-  # Generate all commands for a platform (both agent-specific and standalone)
-  # Returns attrset: { cmdName = "composed content"; ... }
   composeCommands =
     platform:
-    let
-      # Agent commands. Secret commands are excluded; default.nix emits them
-      # as sops templates so the body never enters the store-backed attrset.
-      agentCommands = lib.foldlAttrs (
-        acc: agentName: _:
-        let
-          cmdDirs = lib.filterAttrs (cmdName: _: !(commandSecretInfo agentName cmdName).secret) (
-            discoverAgentCommands agentName
-          );
-          cmds = lib.mapAttrs (cmdName: _: composeCommand platform agentName cmdName) cmdDirs;
-        in
-        acc // cmds
-      ) { } agentDirs;
-
-      # Standalone commands. Secret commands are excluded; see above.
-      standaloneCmds = lib.mapAttrs (cmdName: _: composeCommand platform null cmdName) (
-        lib.filterAttrs (cmdName: _: !(commandSecretInfo null cmdName).secret) standaloneCommandDirs
-      );
-      commandCollisionCheck = composeCommandsNoCollisions platform;
-    in
-    builtins.seq commandCollisionCheck (agentCommands // standaloneCmds);
+    builtins.seq (composeCommandsNoCollisions platform) (
+      lib.mapAttrs (cmdName: _: composeCommand platform cmdName) (
+        lib.filterAttrs (_: entry: !entry.secret) commandRegistry
+      )
+    );
 
   composeCommandsNoCollisions =
     platform:
@@ -832,8 +789,8 @@ in
   # Discovery helpers (useful for debugging)
   inherit
     agentDirs
-    standaloneCommandDirs
-    discoverAgentCommands
+    commandDirs
+    commandRegistry
     skillDirs
     ;
 }

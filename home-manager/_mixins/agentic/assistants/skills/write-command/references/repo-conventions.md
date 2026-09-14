@@ -5,15 +5,16 @@ This repo's command estate composes through `home-manager/_mixins/agentic/assist
 ## File set per command
 
 ```
-commands/<name>/                              (standalone)
-agents/<agent>/commands/<name>/               (agent-scoped)
-├── command.md            body without frontmatter
-└── command.toml          shared, provider, composition, and routing metadata
+commands/<name>/
+├── command.toml          shared, provider, composition, and routing metadata
+└── command.md            body without frontmatter, or command.sops marker
 ```
 
 For a secret body, use `command.sops` instead of `command.md`. The marker contains the existing SOPS key, not the body. Keep `command.toml` plaintext. Never put both body files in one directory.
 
-`compose.nix` discovers commands by directory listing - no codegen edits when adding a new command.
+`compose.nix` discovers commands under `commands/<name>/`. Set `[compose] agent` explicitly to select a specialist. No directory supplies an inherited agent. Maintenance ownership is independent of selection and execution, with no ownership metadata.
+
+After command or routing changes, run `just update-assistant-catalogue`, then `just check-assistant-catalogue`. The tracked `commands/README.md` is generated, not hand-edited.
 
 ## Claude Code dispatch
 
@@ -29,7 +30,7 @@ The parent supplies a bounded packet with scope, exact arguments, existing autho
 
 ## OpenCode `/init` override
 
-`home-manager/_mixins/agentic/opencode/default.nix` reads `agents/rosey/commands/create-agents-md/command.md` directly and overrides OpenCode's built-in `/init` command with it. If you rename `create-agents-md` or move its `command.md`, update that file in the same change. Overriding any other OpenCode built-in (e.g. `/review`) follows the same pattern: one entry in `opencode/default.nix` reading a `command.md` from the assistants tree.
+`home-manager/_mixins/agentic/opencode/default.nix` reads `commands/create-agents-md/command.md` directly and overrides OpenCode's built-in `/init` command with it. If you rename `create-agents-md` or move its `command.md`, update that file in the same change. Overriding any other OpenCode built-in (e.g. `/review`) follows the same pattern: one entry in `opencode/default.nix` reading a `command.md` from the assistants tree.
 
 ## Provider tables
 
@@ -43,6 +44,6 @@ Retired provider headers are removed. Retired `description.txt` files remain unc
 
 Codex receives every command as a manual-only command-derived skill. Users invoke `$name`. The composer emits `agents/openai.yaml` with `policy.allow_implicit_invocation: false` for every command, including secret bodies. The command policy is mandatory and does not change ordinary skill policies.
 
-Agent-scoped specialist commands use `spawn_agent` with the owning agent role by default, without a command-specific role. Set `[compose.codex] spawn-agent = false` to embed the owning agent prompt in the caller's context. Shared `caller-context = true` takes precedence and emits neither the agent persona nor the spawn wrapper. For nested workflows, follow the source body directly or dispatch it from the coordinator. Do not execute a generated launch wrapper inside a worker. Resolve installed instructions through the available catalogue or configured skill roots, not a fixed home path.
+Agent-bound specialist commands use `spawn_agent` with the selected agent role by default, without a command-specific role. Set `[compose.codex] spawn-agent = false` to embed the selected agent prompt in the caller's context. Shared `caller-context = true` takes precedence and emits neither the agent persona nor the spawn wrapper. For nested workflows, follow the source body directly or dispatch it from the coordinator. Do not execute a generated launch wrapper inside a worker. Resolve installed instructions through the available catalogue or configured skill roots, not a fixed home path.
 
 Codex does not substitute `$ARGUMENTS` or positional placeholders in these skills. Map the user's accompanying text to the body's declared arguments. New Codex-only reference guidance belongs in a native skill.

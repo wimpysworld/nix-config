@@ -356,7 +356,7 @@ frontmatter `systemPromptMode: append`, `inheritProjectContext: false`, and
 subagent system prompts. This is why `global.md` is strictly role-neutral:
 no persona, no orchestration-only language. Pi's command preludes in
 `default.nix` force fresh context and explicitly avoid fork for
-agent-scoped commands. Pi may not auto-invoke skills on description alone,
+commands with explicit `compose.agent` bindings. Pi may not auto-invoke skills on description alone,
 so `/skill:delegate-task` remains available as an explicit fallback.
 
 ### 6.4 Codex
@@ -370,7 +370,7 @@ unset so Codex keeps its built-in coding prompt, and `personality` stays
 Skills open spec from `.agents/skills/`. The skill listing is capped at
 roughly 2% of the context window, so `delegate-task`'s description has to
 front-load its use case. Codex command skills in `default.nix` dispatch
-through `spawn_agent` by default for agent-scoped commands, mirroring the
+through `spawn_agent` by default for commands with explicit `compose.agent` bindings, mirroring the
 fresh-context default expressed in Pi's preludes.
 
 Generated Codex commands are manual-only through `policy.allow_implicit_invocation: false` in each command's `agents/openai.yaml`. The shared helper applies the policy to public and encrypted commands. Ordinary skills, including `delegate-task`, retain their existing invocation policies.
@@ -384,19 +384,19 @@ Authoritative sources behind the global rules and the generated
 
 ### 7.1 Anthropic - subagents, skills, memory, prompting, caching
 
-- Create custom subagents: https://docs.anthropic.com/en/docs/claude-code/sub-agents
-- Extend Claude with skills: https://docs.anthropic.com/en/docs/claude-code/skills
-- How Claude remembers your project (memory): https://docs.anthropic.com/en/docs/claude-code/memory
-- Output styles: https://docs.anthropic.com/en/docs/claude-code/output-styles
-- Prompting best practices (system prompts): https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/system-prompts
-- Prompt caching: https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching
+- Create custom subagents: <https://docs.anthropic.com/en/docs/claude-code/sub-agents>
+- Extend Claude with skills: <https://docs.anthropic.com/en/docs/claude-code/skills>
+- How Claude remembers your project (memory): <https://docs.anthropic.com/en/docs/claude-code/memory>
+- Output styles: <https://docs.anthropic.com/en/docs/claude-code/output-styles>
+- Prompting best practices (system prompts): <https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/system-prompts>
+- Prompt caching: <https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching>
 
 ### 7.2 OpenAI - caching, agents, orchestration
 
-- Prompt caching: https://developers.openai.com/api/docs/guides/prompt-caching
-- Prompt Caching 201 (Cookbook): https://developers.openai.com/cookbook/examples/prompt_caching_201
-- Agent orchestration and handoffs: https://developers.openai.com/api/docs/guides/agents/orchestration
-- Agent definitions: https://developers.openai.com/api/docs/guides/agents/define-agents
+- Prompt caching: <https://developers.openai.com/api/docs/guides/prompt-caching>
+- Prompt Caching 201 (Cookbook): <https://developers.openai.com/cookbook/examples/prompt_caching_201>
+- Agent orchestration and handoffs: <https://developers.openai.com/api/docs/guides/agents/orchestration>
+- Agent definitions: <https://developers.openai.com/api/docs/guides/agents/define-agents>
 
 ### 7.3 Local source artefacts
 

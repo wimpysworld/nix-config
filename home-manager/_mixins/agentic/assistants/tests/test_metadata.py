@@ -126,8 +126,8 @@ class MetadataTests(unittest.TestCase):
             "agents/worker/prompt.md": "AGENT_BODY\n",
             "commands/standalone/command.toml": header,
             "commands/standalone/command.md": "STANDALONE_BODY\n",
-            "agents/worker/commands/owned/command.toml": header,
-            "agents/worker/commands/owned/command.md": "OWNED_BODY\n",
+            "commands/owned/command.toml": header + '[compose]\nagent = "worker"\n',
+            "commands/owned/command.md": "OWNED_BODY\n",
             "skills/fixture/header.toml": header + 'name = "fixture"\n',
             "skills/fixture/SKILL.md": "SKILL_BODY\n",
         }
@@ -143,7 +143,7 @@ class MetadataTests(unittest.TestCase):
         self.assertEqual(set(result["commands"]), {"standalone", "owned"})
         self.assertIn("AGENT_BODY", result["agents"]["worker"])
         self.assertEqual(result["skill"]["name"], "fixture")
-        for source in ("commands/standalone", "agents/worker/commands/owned"):
+        for source in ("commands/standalone", "commands/owned"):
             for new, old in (
                 ("command.toml", "header.toml"),
                 ("command.md", "prompt.md"),
@@ -153,13 +153,12 @@ class MetadataTests(unittest.TestCase):
                     legacy[f"{source}/{old}"] = legacy.pop(f"{source}/{new}")
                     error = self.evaluate(expression, files=legacy, success=False)
                     self.assertIn(new, error)
-        duplicate = dict(files)
-        duplicate["commands/owned/command.toml"] = header
-        duplicate["commands/owned/command.md"] = "DUPLICATE\n"
-        error = self.evaluate(expression, files=duplicate, success=False)
-        self.assertIn("collision", error)
-        self.assertIn("owned", error)
-        for source in ("commands/standalone", "agents/worker/commands/owned"):
+        nested = dict(files)
+        nested["agents/worker/commands/legacy/command.toml"] = header
+        nested["agents/worker/commands/legacy/command.md"] = "LEGACY"
+        error = self.evaluate(expression, files=nested, success=False)
+        self.assertIn("Commands must live under commands/<name>", error)
+        for source in ("commands/standalone", "commands/owned"):
             with self.subTest(secret_source=source):
                 secret = dict(files)
                 secret[f"{source}/command.sops"] = "fixture-secret\n"
@@ -350,21 +349,21 @@ skills = false
         files = {
             "agents/owner/prompt.md": "OWNER_PERSONA",
             "agents/executor/prompt.md": "EXECUTOR_PERSONA",
-            "agents/owner/commands/check/command.md": "BODY",
-            "agents/owner/commands/check/command.toml": '[common]\ndescription = "Check."\n[compose]\nagent = "executor"\n',
+            "commands/check/command.md": "BODY",
+            "commands/check/command.toml": '[common]\ndescription = "Check."\n[compose]\nagent = "executor"\n',
         }
         result = self.evaluate(
             f"""let composer = import {ASSISTANTS}/compose.nix {{
               inherit lib; basePath = fixture;
-            }}; header = composer.commandMetadata "owner" "check";
+            }}; header = composer.commandMetadata "check";
             in {{
-              owner = (builtins.head composer.commandSources).agentName;
-              dispatch = m.commandDispatch composer.agentDirs "check" "owner" header;
+              owner = null;
+              dispatch = m.commandDispatch composer.agentDirs "check" header;
               commands = lib.genAttrs [ "claude" "opencode" "pi" ] composer.composeCommands;
             }}""",
             files=files,
         )
-        self.assertEqual(result["owner"], "owner")
+        self.assertIsNone(result["owner"])
         self.assertEqual(result["dispatch"]["selectedAgent"], "executor")
         self.assertEqual(result["dispatch"]["role"], "executor")
         for platform, commands in result["commands"].items():
@@ -378,7 +377,7 @@ skills = false
             "Worker: a delegated assistant with bounded scope",
             "A caller can be a worker",
             "Parent and child: the immediate delegation relationship",
-            "Command owner: the directory specialist",
+            "Selected agent: the specialist explicitly named by `compose.agent`.",
             "Context: instructions and evidence, not a role or authority",
         ):
             self.assertIn(text, body)
@@ -415,11 +414,11 @@ skills = false
                     header += f"caller-context = {value}\n"
                 header += "[compose.codex]\nspawn-agent = true\n"
                 result = self.evaluate(
-                    'm.commandDispatch { worker = true; } "fixture" null h', header
+                    'm.commandDispatch { worker = true; } "fixture" h', header
                 )
                 self.assertEqual(result["spawn"], value != "true")
         self.evaluate(
-            'm.commandDispatch { worker = true; } "fixture" "worker" h',
+            'm.commandDispatch { worker = true; } "fixture" h',
             '[compose]\ncaller-context = true\n[routing.codex]\nmodel = "pinned"\n',
             success=False,
         )
@@ -433,12 +432,10 @@ skills = false
             for mode in ("absent", "false", "true"):
                 name = f"{selection}-{mode}"
                 directory = (
-                    f"agents/worker/commands/{name}"
-                    if selection == "scoped"
-                    else f"commands/{name}"
+                    f"commands/{name}" if selection == "scoped" else f"commands/{name}"
                 )
                 header = '[common]\ndescription = "Check caller context."\n[compose]\n'
-                if selection == "bound":
+                if selection in ("bound", "scoped"):
                     header += 'agent = "worker"\n'
                 if mode != "absent":
                     header += f"caller-context = {mode}\n"
@@ -499,12 +496,12 @@ skills = false
     def test_inventory_keeps_caller_context_and_specialist_selection(self):
         result = self.evaluate("""lib.listToAttrs (map (entry: {
           name = entry.name;
-          value = let header = c.commandMetadata entry.agentName entry.name; in {
-            owner = entry.agentName;
+          value = let header = c.commandMetadata entry.name; in {
+            owner = null;
             callerContext = header.compose.caller-context or false;
-            dispatch = m.commandDispatch c.agentDirs entry.name entry.agentName header;
+            dispatch = m.commandDispatch c.agentDirs entry.name header;
             rendered = lib.genAttrs [ "claude" "opencode" "pi" ]
-              (platform: c.composeCommandFromPrompt platform entry.agentName entry.name
+              (platform: c.composeCommandFromPrompt platform entry.name
                 "INVENTORY_TASK_SENTINEL");
             policy = m.commandPolicy header;
           };
@@ -574,7 +571,7 @@ skills = false
           sources = c.commandSources;
           commands = lib.genAttrs [ "claude" "opencode" "pi" ] c.composeCommands;
           metadata = lib.genAttrs [ "make-commit" "make-pr" ]
-            (name: c.commandMetadata "garfield" name);
+            (name: c.commandMetadata name);
           skills = lib.genAttrs [ "claude" "codex" "opencode" "pi" ]
             (platform: (c.composeSkillsFor platform).delegate-task.content);
         }""")
@@ -582,8 +579,8 @@ skills = false
             with self.subTest(command=name):
                 sources = [s for s in result["sources"] if s["name"] == name]
                 self.assertEqual(len(sources), 1)
-                self.assertEqual(sources[0]["agentName"], "garfield")
-                self.assertFalse((ASSISTANTS / "commands" / name).exists())
+                self.assertTrue(sources[0]["source"].endswith("/commands/" + name))
+                self.assertTrue((ASSISTANTS / "commands" / name).exists())
                 metadata = result["metadata"][name]
                 self.assertNotIn("caller-context", metadata["compose"])
                 self.assertNotIn("routing", metadata)
@@ -640,7 +637,7 @@ skills = false
                     self.assertIn("duplicate source", error)
 
     def test_git_bodies_preserve_safety_and_coordinator_inline_reuse(self):
-        garfield = ASSISTANTS / "agents/garfield"
+        garfield = ASSISTANTS
         commit = (garfield / "commands/make-commit/command.md").read_text()
         pr = (garfield / "commands/make-pr/command.md").read_text()
         for text in (
@@ -665,7 +662,7 @@ skills = false
             self.assertIn(text, pr)
         self.assertNotIn("invoke the provider-specific command", pr)
         coordinator_paths = {
-            "agents/donatello/commands/address-code-review": (
+            "commands/address-code-review": (
                 "without generated launch wrappers",
                 "Follow the `make-commit` body and its direct draft phase",
                 "Commit from this context only",
@@ -693,12 +690,12 @@ skills = false
                 files = {"agents/worker/prompt.md": "Check the task.\n"}
                 for switch in ("absent", "true", "false"):
                     directory = (
-                        f"agents/worker/commands/{switch}"
+                        f"commands/{switch}"
                         if selection == "scoped"
                         else f"commands/{switch}"
                     )
                     header = '[common]\ndescription = "Check a task."\n'
-                    if selection == "standalone":
+                    if selection in ("standalone", "scoped"):
                         header += '[compose]\nagent = "worker"\n'
                     if switch != "absent":
                         header += f"[compose.pi]\nspawn-agent = {switch}\n"
@@ -781,9 +778,10 @@ reasoningEffort = "high"
                 "[opencode]\nsubtask = false\n"
             ),
         }.items():
-            directory = f"agents/worker/commands/{name}"
+            directory = f"commands/{name}"
             files[directory + "/command.toml"] = (
-                '[common]\ndescription = "Check a task."\n' + controls
+                '[common]\ndescription = "Check a task."\n[compose]\nagent = "worker"\n'
+                + controls
             )
             files[directory + "/command.md"] = body
         result = self.evaluate(
@@ -1130,13 +1128,13 @@ reasoningEffort = "high"
         ):
             with self.subTest(route=route):
                 error = self.evaluate(
-                    'm.commandDispatch { worker = true; } "review" "worker" '
+                    'm.commandDispatch { worker = true; } "review" '
                     f"{{ routing.codex = {route}; }}",
                     success=False,
                 )
                 self.assertIn("Unsupported codex routing for command review.", error)
         result = self.evaluate(
-            'm.commandDispatch { worker = true; } "inspect" "worker" {}'
+            'm.commandDispatch { worker = true; } "inspect" { compose.agent = "worker"; }'
         )
         self.assertEqual(result["role"], "worker")
         self.assertNotIn("route", result)
@@ -1144,8 +1142,8 @@ reasoningEffort = "high"
     def test_standalone_codex_commands_remain_inline_unless_an_agent_is_selected(self):
         result = self.evaluate(
             """{
-          inline = m.commandDispatch { worker = true; } "plain" null {};
-          delegated = m.commandDispatch { worker = true; } "review" null h;
+          inline = m.commandDispatch { worker = true; } "plain" {};
+          delegated = m.commandDispatch { worker = true; } "review" h;
         }""",
             """
 [compose]
@@ -1170,7 +1168,7 @@ agent = "worker"
         ):
             with self.subTest(agent=agent, header=header):
                 self.evaluate(
-                    f'm.commandDispatch {{ worker = true; }} "review" {agent} h',
+                    'm.commandDispatch { worker = true; } "review" h',
                     header,
                     success=False,
                 )

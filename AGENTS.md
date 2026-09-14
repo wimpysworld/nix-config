@@ -73,8 +73,7 @@ Edit shared assistant sources under `home-manager/_mixins/agentic/assistants/`, 
 | Change | Source |
 | --- | --- |
 | Specialist agent | `agents/<agent>/prompt.md` and `header.toml` |
-| Agent-owned command | `agents/<agent>/commands/<command>/command.md` and `command.toml` |
-| Standalone command | `commands/<command>/command.md` and `command.toml` |
+| Command | `commands/<name>/command.toml` and exactly one `command.md` or `command.sops` |
 | Reusable skill | `skills/<skill>/SKILL.md`, `header.toml`, and supporting files |
 | Global instructions | `instructions/global.md` |
 | Communication Rules | `styles/house-style/house-style.md` |
@@ -86,15 +85,15 @@ Load the matching `write-assistant`, `write-command`, `write-skill`, or `write-a
 
 Keep public Markdown bodies free of frontmatter. Put command metadata in `command.toml` and other live metadata in `header.toml`, not retired `description.txt` files. Agent and command names derive from directories. Skills require `[common] name` to match their directory.
 
-The composer discovers source directories automatically. Keep command names unique across standalone and agent-owned directories. Codex commands must also avoid reusable skill names.
+The composer discovers source directories automatically. Keep all commands under `commands/<name>/`. Codex commands must also avoid reusable skill names.
 
-Read `README.md` for workflow context and provider delivery details. Update its command tables when adding, renaming, or changing a command’s purpose. When documentation differs from implementation, verify `compose.nix`, `metadata.nix`, and `default.nix` before changing behaviour.
+Read `README.md` for workflow context and provider delivery details. Use the generated [command catalogue](home-manager/_mixins/agentic/assistants/commands/README.md) for command metadata, client entry behaviour, and agent routing defaults. After command metadata or agent routing changes, run `just update-assistant-catalogue`, then `just check-assistant-catalogue`. Do not edit catalogue rows manually. When documentation differs from implementation, verify `compose.nix`, `metadata.nix`, and `default.nix` before changing behaviour.
 
 ### Composition and routing
 
 Use `[common]` for shared metadata and provider tables for native non-model fields. Missing provider tables mean no overrides, not disabled output.
 
-Agent-owned commands inherit their directory’s agent unless `[compose] agent` overrides it. Set `[compose] caller-context = true` when execution must retain the caller’s context and persona. This repository switch takes precedence over provider dispatch controls. It grants no coordinator authority. Use the role vocabulary in `instructions/global.md` and the authoring guidance in `skills/write-command/SKILL.md`.
+Select an agent explicitly with `[compose] agent` in `command.toml`. Commands do not inherit an agent from a directory. Maintenance ownership does not select the agent or grant execution authority. Set `[compose] caller-context = true` when execution must retain the caller’s context and persona. This repository switch takes precedence over provider dispatch controls. It grants no coordinator authority. Use the role vocabulary in `instructions/global.md` and the authoring guidance in `skills/write-command/SKILL.md`.
 
 Keep generated launch wrappers out of source prompts. Preserve the composer’s worker contract when changing dispatch.
 

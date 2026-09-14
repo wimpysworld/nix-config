@@ -24,16 +24,12 @@ nothing but capture an argument and load the right skill.
 
 ```text
 agents/rosey/
-  prompt.md                 persona, routing, constraints (≤30 lines)
-  commands/
-    create-skill/           shim → write-skill (create flow)
-    update-skill/           shim → write-skill (update flow)
-    create-assistant/       shim → write-assistant (create flow)
-    update-assistant/       shim → write-assistant (update flow)
-    create-agents-md/       shim → write-agents-md (create flow)
-    update-agents-md/       shim → write-agents-md (update/consolidate)
-    create-command/         shim → write-command (create flow)
-    update-command/         shim → write-command (update flow)
+  prompt.md                 persona, constraints (≤30 lines)
+  header.toml               agent metadata and routing defaults
+
+commands/<name>/
+  command.toml              metadata, explicit compose.agent binding
+  command.md                body, or command.sops marker
 
 skills/
   write-skill/              SKILL.md doctrine for agent skills
@@ -41,6 +37,10 @@ skills/
   write-agents-md/          SKILL.md doctrine for project instruction files
   write-command/            SKILL.md doctrine for slash commands
 ```
+
+Each command has `command.toml` and exactly one `command.md` or `command.sops`. Commands never inherit an agent from a directory. Maintenance ownership is independent of the selected agent and executing caller, with no ownership metadata.
+
+The [generated command catalogue](../../commands/README.md) lists commands, client entry behaviour, source type, and agent routing defaults. The authoring shims select Rosey through explicit `compose.agent` metadata. Caller-context commands retain the caller's role and model.
 
 ### 2.1 Skill responsibilities
 
@@ -57,8 +57,7 @@ generated native frontmatter. The body only loads after the description matches.
 
 ### 2.2 Shim, not monolith
 
-Every Rosey command is a shim of four to six body lines. The structure is
-identical across all eight commands except for the skill name and the verb:
+The eight create and update shims have four to six body lines. Their structure differs only in the skill name and verb:
 
 ```markdown
 ## <Verb> <Artefact>

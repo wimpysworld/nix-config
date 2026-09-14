@@ -6,7 +6,8 @@
 - Worker: a delegated assistant with bounded scope that returns to its parent and never launches agents.
 - Caller: whoever invokes a command or directly follows its body. A caller can be a worker.
 - Parent and child: the immediate delegation relationship, not another name for the coordinator.
-- Command owner: the directory specialist, distinct from the selected agent or executor.
+- Command owner: the maintainer of the workflow, independent of source location, selected agent, and executor. Ownership is not command metadata.
+- Selected agent: the specialist explicitly named by `compose.agent`. Caller-context execution retains the caller instead.
 - Context: instructions and evidence, not a role or authority.
 
 ## Delegation

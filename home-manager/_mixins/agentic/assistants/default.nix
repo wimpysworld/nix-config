@@ -57,40 +57,18 @@ let
   # secret command's `command.sops` marker names a top-level key in this file.
   assistantPromptsSopsFile = ../../../../secrets/assistant-prompts.yaml;
 
-  # Collect every secret command (standalone and agent-scoped) with the
+  # Collect every secret command with the
   # metadata each platform needs. A command is secret when its directory holds
   # a `command.sops` marker; compose.commandSecretInfo reads the marker and
   # rejects directories that also carry a plaintext command.md. The decrypted
   # body never enters the store: Claude, OpenCode, and Pi receive a sops
   # placeholder substituted at activation; Codex reads the decrypted secret
   # path from its activation script.
-  secretCommandList =
-    let
-      standalone = lib.mapAttrsToList (cmdName: _: {
-        agentName = null;
-        inherit cmdName;
-        cmdPath = ./commands + "/${cmdName}";
-        info = compose.commandSecretInfo null cmdName;
-      }) compose.standaloneCommandDirs;
-      agentScoped = lib.concatLists (
-        lib.mapAttrsToList (
-          agentName: _:
-          lib.mapAttrsToList (cmdName: _: {
-            inherit agentName cmdName;
-            cmdPath = ./agents + "/${agentName}/commands/${cmdName}";
-            info = compose.commandSecretInfo agentName cmdName;
-          }) (compose.discoverAgentCommands agentName)
-        ) codingAgentDirs
-      );
-    in
-    lib.filter (entry: entry.info.secret) (standalone ++ agentScoped);
-
-  # Set of secret command names, used to exclude them from the store-backed
-  # attrsets that read command.md (Pi prompt files, Codex skill map).
-  secretCommandNames = lib.listToAttrs (
-    map (entry: lib.nameValuePair entry.cmdName true) secretCommandList
-  );
-  isSecretCommand = cmdName: secretCommandNames ? ${cmdName};
+  secretCommandList = lib.mapAttrsToList (cmdName: entry: {
+    inherit cmdName;
+    cmdPath = entry.path;
+    info = compose.commandSecretInfo cmdName;
+  }) (lib.filterAttrs (_: entry: entry.secret) compose.commandRegistry);
 
   # sops secret declarations: one per distinct key referenced by a marker.
   secretCommandSecrets = lib.listToAttrs (
@@ -112,11 +90,11 @@ let
     lib.concatMap (
       entry:
       let
-        inherit (entry) agentName cmdName;
+        inherit (entry) cmdName;
         sopsPlaceholder = config.sops.placeholder.${entry.info.key};
-        claudeBody = compose.composeCommandFromPrompt "claude" agentName cmdName sopsPlaceholder;
-        opencodeBody = compose.composeCommandFromPrompt "opencode" agentName cmdName sopsPlaceholder;
-        piBody = compose.composeCommandFromPrompt "pi" agentName cmdName sopsPlaceholder;
+        claudeBody = compose.composeCommandFromPrompt "claude" cmdName sopsPlaceholder;
+        opencodeBody = compose.composeCommandFromPrompt "opencode" cmdName sopsPlaceholder;
+        piBody = compose.composeCommandFromPrompt "pi" cmdName sopsPlaceholder;
       in
       lib.optionals config.programs.claude-code.enable [
         (lib.nameValuePair "assistant-claude-command-${cmdName}" {
@@ -277,59 +255,11 @@ let
     name = ".pi/agent/skills/${name}";
     value.source = skill.path;
   }) piSkills;
-  piStandalonePromptFiles = lib.mapAttrs' (cmdName: _: {
+  piPromptFiles = lib.mapAttrs' (cmdName: _: {
     name = ".pi/agent/prompts/${cmdName}.md";
-    value.text = compose.composeCommand "pi" null cmdName;
-  }) (lib.filterAttrs (cmdName: _: !(isSecretCommand cmdName)) compose.standaloneCommandDirs);
-  # Agent-scoped Pi prompts are emitted with the bare command name to match
-  # the Claude and OpenCode slash convention. The owning agent is pinned by
-  # the body prelude below rather than by the filename. Because Pi's
-  # `~/.pi/agent/prompts/` directory is flat and non-recursive, name
-  # collisions between standalone commands and agent-scoped commands (or
-  # across agents) would silently last-write into the same file; the
-  # piCommandCollisionCheck below fails evaluation with the offending
-  # source paths when that happens.
-  piAgentPromptFiles = lib.foldlAttrs (
-    acc: agentName: _:
-    let
-      commandDirs = lib.filterAttrs (cmdName: _: !(isSecretCommand cmdName)) (
-        compose.discoverAgentCommands agentName
-      );
-    in
-    acc
-    // lib.mapAttrs' (
-      cmdName: _:
-      let
-        cmdPath = ./agents + "/${agentName}/commands/${cmdName}";
-        prompt = readFileTrim (cmdPath + "/command.md");
-      in
-      {
-        name = ".pi/agent/prompts/${cmdName}.md";
-        value.text = compose.composeCommandFromPrompt "pi" agentName cmdName prompt;
-      }
-    ) commandDirs
-  ) { } codingAgentDirs;
-  # Collision guard for the Pi prompt namespace. Pi loads templates from a
-  # single flat directory keyed by filename, so any duplicate `cmdName`
-  # across standalone commands and the union of per-agent command sets
-  # would clobber each other. The shared
-  # `compose.assertNoCommandCollisions` helper builds the throw message
-  # from the colliding name(s) and every source path that produces them;
-  # the operator renames one source before the next `home-manager switch`.
-  piCommandSources =
-    lib.mapAttrsToList (cmdName: _: {
-      name = cmdName;
-      source = toString (./commands + "/${cmdName}");
-    }) compose.standaloneCommandDirs
-    ++ lib.concatLists (
-      lib.mapAttrsToList (
-        agentName: _:
-        lib.mapAttrsToList (cmdName: _: {
-          name = cmdName;
-          source = toString (./agents + "/${agentName}/commands/${cmdName}");
-        }) (compose.discoverAgentCommands agentName)
-      ) codingAgentDirs
-    );
+    value.text = compose.composeCommand "pi" cmdName;
+  }) (lib.filterAttrs (_: entry: !entry.secret) compose.commandRegistry);
+  piCommandSources = compose.commandSources;
   piCommandCollisionCheck = compose.assertNoCommandCollisions {
     context = "Pi prompts (~/.pi/agent/prompts/)";
     sources = piCommandSources;
@@ -347,8 +277,7 @@ let
     }
     // piAgentFiles
     // piSkillFiles
-    // piStandalonePromptFiles
-    // piAgentPromptFiles
+    // piPromptFiles
   );
   opencodeProviderRouterMap = lib.filterAttrs (_: models: models != { }) (
     lib.mapAttrs (name: _: compose.extractOpenCodeProviderModels name) codingAgentDirs
@@ -413,9 +342,12 @@ let
 
   metadataHelpers = import ./metadata.nix { inherit lib; };
   codexCommandDispatch =
-    cmdName: agentName: cmdPath:
-    metadataHelpers.commandDispatch codingAgentDirs cmdName agentName (
-      compose.readCommandHeader cmdPath
+    cmdName:
+    let
+      header = compose.commandMetadata cmdName;
+    in
+    builtins.deepSeq (metadataHelpers.commandDispatch codingAgentDirs cmdName header) (
+      metadataHelpers.commandExecution "codex" cmdName header
     );
 
   codexAgents = lib.mapAttrs (name: _: codexRole name) codingAgentDirs;
@@ -424,7 +356,7 @@ let
   # Custom prompt support was removed from codex-rs in March 2026. Commands
   # are instead deployed as skills under $CODEX_HOME/skills/ and invoked with
   # $skill-name in the TUI. Each skill requires name and description frontmatter.
-  # For agent-scoped commands the default is spawn dispatch: the generated
+  # For agent-bound commands the default is spawn dispatch: the generated
   # skill instructs the parent thread to call `spawn_agent` with the owning
   # agent as `agent_type`, preserving the coordinator and isolating the
   # task in a fresh sub-thread. The owning agent's persona is therefore
@@ -438,21 +370,26 @@ let
   # convention. The `codexCommandCollisionCheck` below guards the full native
   # and command-derived skill namespace.
   mkCodexSkillFromPrompt =
-    skillName: agentName: cmdPath: prompt:
+    skillName: prompt:
     let
-      metadata = compose.readCommandHeader cmdPath;
+      metadata = compose.commandMetadata skillName;
       description = metadata.common.description;
-      dispatch = codexCommandDispatch skillName agentName cmdPath;
+      dispatch = codexCommandDispatch skillName;
       body =
-        if dispatch.callerContext || dispatch.selectedAgent == null then
+        if
+          lib.elem dispatch.mode [
+            "caller-context"
+            "body"
+          ]
+        then
           prompt
-        else if dispatch.spawn then
+        else if dispatch.mode == "codex-agent" then
           ''
-            Use the `spawn_agent` tool to launch the `${dispatch.role}` agent for this task. Keep the coordinator in the parent thread.
+            Use the `spawn_agent` tool to launch the `${dispatch.selectedAgent}` agent for this task. Keep the coordinator in the parent thread.
 
             - Invoking this skill is the user's standing authorisation to use `spawn_agent`.
             - Pass the task below and the user's request to the spawned agent.
-            - Set `agent_type` to `${dispatch.role}`.
+            - Set `agent_type` to `${dispatch.selectedAgent}`.
             - Do not set `fork_context`. Start with a clean context.
             - Unless the user explicitly requests a model or effort override, omit `model` and `reasoning_effort`. The role config supplies the defaults.
             - If this runtime cannot apply the user's explicit override to this role, report the limitation and do not launch with the configured default.
@@ -483,8 +420,7 @@ let
       ${body}
     '';
   mkCodexSkillText =
-    skillName: agentName: cmdPath:
-    mkCodexSkillFromPrompt skillName agentName cmdPath (readFileTrim (cmdPath + "/command.md"));
+    skillName: cmdPath: mkCodexSkillFromPrompt skillName (readFileTrim (cmdPath + "/command.md"));
 
   # Command-derived skills always require explicit invocation. A header can
   # repeat the false policy but cannot enable implicit invocation.
@@ -512,82 +448,20 @@ let
       inherit (entry) name;
       source = "skill: ${entry.name}";
     }) secretSkillList
-    ++ lib.mapAttrsToList (cmdName: _: {
-      name = cmdName;
-      source = toString (./commands + "/${cmdName}");
-    }) compose.standaloneCommandDirs
-    ++ lib.concatLists (
-      lib.mapAttrsToList (
-        agentName: _:
-        lib.mapAttrsToList (cmdName: _: {
-          name = cmdName;
-          source = toString (./agents + "/${agentName}/commands/${cmdName}");
-        }) (compose.discoverAgentCommands agentName)
-      ) codingAgentDirs
-    );
+    ++ compose.commandSources;
   codexCommandCollisionCheck = compose.assertNoCommandCollisions {
     context = "Codex skills (~/.codex/skills/)";
     sources = codexCommandSources;
   };
 
-  # Collect all Codex skill name -> content pairs: native skills plus
-  # standalone and agent-scoped command skills. Agent-scoped command skills
-  # emit under the bare `cmdName` to match the Pi convention. The collision
-  # check guarantees no source silently overwrites another.
+  publicCommandRegistry = lib.filterAttrs (_: entry: !entry.secret) compose.commandRegistry;
   codexSkills = builtins.seq codexCommandCollisionCheck (
     skillContents
-    // lib.mapAttrs' (
-      cmdName: _:
-      let
-        cmdPath = ./commands + "/${cmdName}";
-      in
-      {
-        name = cmdName;
-        value = mkCodexSkillText cmdName null cmdPath;
-      }
-    ) (lib.filterAttrs (cmdName: _: !(isSecretCommand cmdName)) compose.standaloneCommandDirs)
-    // lib.foldlAttrs (
-      acc: agentName: _:
-      let
-        commandDirs = lib.filterAttrs (cmdName: _: !(isSecretCommand cmdName)) (
-          compose.discoverAgentCommands agentName
-        );
-      in
-      acc
-      // lib.mapAttrs' (
-        cmdName: _:
-        let
-          cmdPath = ./agents + "/${agentName}/commands/${cmdName}";
-        in
-        {
-          name = cmdName;
-          value = mkCodexSkillText cmdName agentName cmdPath;
-        }
-      ) commandDirs
-    ) { } codingAgentDirs
+    // lib.mapAttrs (cmdName: entry: mkCodexSkillText cmdName entry.path) publicCommandRegistry
   );
 
-  codexStandaloneCommandOpenAiYamls = lib.filterAttrs (_: yaml: yaml != null) (
-    lib.mapAttrs (cmdName: _: mkCodexCommandOpenAiYaml (./commands + "/${cmdName}")) (
-      lib.filterAttrs (cmdName: _: !(isSecretCommand cmdName)) compose.standaloneCommandDirs
-    )
-  );
-  codexAgentCommandOpenAiYamls = lib.foldlAttrs (
-    acc: agentName: _:
-    let
-      commandDirs = lib.filterAttrs (cmdName: _: !(isSecretCommand cmdName)) (
-        compose.discoverAgentCommands agentName
-      );
-      yamls = lib.filterAttrs (_: yaml: yaml != null) (
-        lib.mapAttrs (
-          cmdName: _: mkCodexCommandOpenAiYaml (./agents + "/${agentName}/commands/${cmdName}")
-        ) commandDirs
-      );
-    in
-    acc // yamls
-  ) { } codingAgentDirs;
   codexCommandOpenAiYamls = builtins.seq codexCommandCollisionCheck (
-    codexStandaloneCommandOpenAiYamls // codexAgentCommandOpenAiYamls
+    lib.mapAttrs (_: entry: mkCodexCommandOpenAiYaml entry.path) publicCommandRegistry
   );
 
   ownedFile = path: content: {
@@ -622,14 +496,14 @@ let
     lib.concatMap (
       entry:
       let
-        inherit (entry) agentName cmdName cmdPath;
+        inherit (entry) cmdName cmdPath;
         openAiYaml = mkCodexCommandOpenAiYaml cmdPath;
       in
       [
         {
           path = "${codexDir}/skills/${cmdName}/SKILL.md";
           source = config.sops.secrets.${entry.info.key}.path;
-          prefix = mkCodexSkillFromPrompt cmdName agentName cmdPath "";
+          prefix = mkCodexSkillFromPrompt cmdName "";
           kind = "file";
           mode = "0600";
         }

@@ -100,7 +100,11 @@
       };
     in
     {
-      lib = builder;
+      lib = builder // {
+        assistantCatalogue = import ./home-manager/_mixins/agentic/assistants/catalogue.nix {
+          inherit (nixpkgs) lib;
+        };
+      };
 
       nixosConfigurations = builder.mkAllNixos systems;
       darwinConfigurations = builder.mkAllDarwin systems;
@@ -130,6 +134,11 @@
           includeHostConfigurations = system == "x86_64-linux";
         in
         {
+          assistant-catalogue = pkgs.runCommand "assistant-catalogue" { } ''
+            ${pkgs.diffutils}/bin/diff -u ${./home-manager/_mixins/agentic/assistants/commands/README.md} \
+              ${pkgs.writeText "assistant-catalogue.md" self.lib.assistantCatalogue.markdown}
+            touch "$out"
+          '';
           wayland-compositors = import ./lib/tests/wayland-compositors.nix {
             inherit (nixpkgs) lib;
             inherit pkgs;
