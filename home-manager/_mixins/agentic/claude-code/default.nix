@@ -754,6 +754,37 @@ in
       fi
     '';
 
+    # Disable the diff panel Claude Code 2.1.260 added. In fullscreen rendering
+    # the panel auto-opens beside the conversation at 144 columns or wider (110
+    # once the user has opened it manually) and the open state persists across
+    # sessions. The kill switch is the persisted `diffSidebarOpen` key: when it
+    # is false the auto-open gate returns false before any width, fullscreen,
+    # or git-repository check. The key lives in the mutable runtime file
+    # `~/.claude.json`, not in settings.json (which rejects unknown keys), so
+    # it is merged in idempotently like `lspRecommendationDisabled` above.
+    home.activation.claudeCodeDisableDiffPanel = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      claude_config=${lib.escapeShellArg "${config.home.homeDirectory}/.claude.json"}
+      jq=${lib.getExe pkgs.jq}
+
+      # Start from an empty object when the file does not exist yet.
+      if [[ ! -f "$claude_config" ]]; then
+        ${pkgs.coreutils}/bin/install -m 600 /dev/null "$claude_config"
+        echo '{}' > "$claude_config"
+      fi
+
+      # Skip silently if the file is unreadable as JSON (corrupt or empty).
+      if ! "$jq" -e . "$claude_config" >/dev/null 2>&1; then
+        exit 0
+      fi
+
+      tmp="$(${pkgs.coreutils}/bin/mktemp "$claude_config.XXXXXX")"
+      if "$jq" '.diffSidebarOpen = false' "$claude_config" > "$tmp"; then
+        ${pkgs.coreutils}/bin/mv "$tmp" "$claude_config"
+      else
+        ${pkgs.coreutils}/bin/rm -f "$tmp"
+      fi
+    '';
+
     # Make the managed API key the only credential on personal computers.
     # Claude Code asks "Do you want to use this API key?" the first time it
     # sees a key in `ANTHROPIC_API_KEY`, and it records the answer in
