@@ -11,46 +11,49 @@ cat >"$tmp/bin/gcloud" <<'EOF'
 #!/usr/bin/env bash
 printf 'gcloud %s\n' "$*" >>"$TEST_LOG"
 case "$*" in
-'auth application-default print-access-token') exit "${ADC_EXIT:-0}" ;;
-'auth print-access-token') exit "${USER_EXIT:-0}" ;;
+'auth application-default print-access-token')
+    grep -Fq 'gcloud auth login ' "$TEST_LOG" && exit "${POST_ADC_EXIT:-0}"
+    exit "${ADC_EXIT:-0}" ;;
+'auth print-access-token')
+    [[ "${TOKEN_STATE:-valid}" != timeout ]] || exit 124
+    [[ "${TOKEN_STATE:-valid}" != empty ]] || exit 0
+    printf '%s\n' SECRET_GCLOUD_TOKEN
+    grep -Fq 'gcloud auth login ' "$TEST_LOG" && exit 0
+    exit "${USER_EXIT:-0}" ;;
 'auth list '*) printf '%s\n' 'user@example.com' ;;
 'auth login '*) exit "${GCLOUD_LOGIN_EXIT:-0}" ;;
 esac
 EOF
-cat >"$tmp/bin/gws" <<'EOF'
+cat >"$tmp/bin/curl" <<'EOF'
 #!/usr/bin/env bash
-printf 'gws %s\n' "$*" >>"$TEST_LOG"
+printf 'curl %s\n' "$*" >>"$TEST_LOG"
+[[ "$*" != *SECRET* ]] || exit 90
+input=$(cat)
+[[ "$input" == *SECRET_GCLOUD_TOKEN* ]] || exit 91
+[[ "$*" == *'--connect-timeout 10 --max-time 30 --max-filesize 1048576'* ]] || exit 92
+state=${DRIVE_STATE:-valid}
+if [[ "${DRIVE_REPAIR:-0}" == 1 ]] && grep -Fq 'gcloud auth login ' "$TEST_LOG"; then
+    state=valid
+fi
+printf '%s\n' SECRET_API_ERROR >&2
 case "$*" in
-'auth status')
-    printf '%s\n' SECRET_STATUS_ERROR >&2
-    if [[ "${GWS_REPAIR:-0}" == 1 ]] && grep -Fq 'gws auth login ' "$TEST_LOG"; then
-        GWS_STATE=valid
-    fi
-    [[ "${GWS_STATE:-valid}" != timeout ]] || exit 124
-    if [[ "${GWS_STATE:-valid}" == malformed ]]; then
-        printf '%s\n' 'not json'
-        exit 0
-    fi
-    if [[ "${GWS_STATE:-valid}" == missing ]]; then
-        printf '%s\n' '{"storage":"none"}'
-        exit 0
-    fi
-    jq -n --arg state "${GWS_STATE:-valid}" '
-      {auth_method:"oauth2", storage:"encrypted", encryption_valid:true,
-       has_refresh_token:true, token_valid:true, user:"user@example.com",
-       scopes:(["gmail.readonly","calendar","drive.file","documents","spreadsheets","presentations","userinfo.email","userinfo.profile"] |
-         map("https://www.googleapis.com/auth/" + .)) + ["openid"]} |
-      if $state == "revoked" then .token_valid = false
-      elif $state == "metadata" then del(.token_valid,.user,.scopes)
-      elif $state == "wrong-account" then .user = "other@example.com"
-      elif $state == "scopes" then .scopes = []
-      elif $state == "broad" then .scopes += ["https://www.googleapis.com/auth/gmail.send"]
-      elif $state == "full-drive" then .scopes += ["https://www.googleapis.com/auth/drive"]
-      elif $state == "plaintext" then .storage = "plaintext"
-      elif $state == "corrupt" then .encryption_valid = false
-      else . end'
+*oauth2/v2/tokeninfo*)
+    [[ "$*" == *'--request POST --get --data-urlencode access_token@-'* ]] || exit 93
+    case "$state" in
+    network) exit 6 ;;
+    timeout) exit 28 ;;
+    api) exit 22 ;;
+    malformed) echo 'not json' ;;
+    metadata) echo '{}' ;;
+    missing) echo '{"scope":"https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file"}' ;;
+    *) echo '{"scope":"https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/drive"}' ;;
+    esac ;;
+*drive/v3/about*)
+    [[ "$*" == *'--header @- --output /dev/null'* ]] || exit 94
+    [[ "$input" == 'Authorization: Bearer SECRET_GCLOUD_TOKEN' ]] || exit 95
+    [[ "$state" != drive-api ]] || exit 22
+    [[ "$state" != drive-network ]] || exit 6
     ;;
-'auth login --scopes '*) exit "${GWS_LOGIN_EXIT:-0}" ;;
 *) exit 98 ;;
 esac
 EOF
@@ -117,8 +120,6 @@ export MINT_STAGE_ENV='stage.example'
 export GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$XDG_CONFIG_HOME/gws"
 unset GOOGLE_WORKSPACE_CLI_TOKEN GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE
 unset GOOGLE_WORKSPACE_CLI_CLIENT_ID GOOGLE_WORKSPACE_CLI_CLIENT_SECRET MINT_GWS_ACCOUNT
-mkdir -p "$GOOGLE_WORKSPACE_CLI_CONFIG_DIR"
-printf '%s\n' '{}' >"$GOOGLE_WORKSPACE_CLI_CONFIG_DIR/client_secret.json"
 unset MINT_DEV_AUDIENCES MINT_DEV_ENV
 
 fail() {
@@ -180,7 +181,8 @@ for adc in 0 1; do
         fi
         assert_no_log 'chainctl auth login '
         assert_no_log 'gws auth login '
-        assert_log 'gws auth status'
+        assert_log 'https://www.googleapis.com/oauth2/v2/tokeninfo'
+        assert_log 'https://www.googleapis.com/drive/v3/about?fields=kind'
         [[ $(grep -c '^probe skip-auto-login=true ' "$log") == 4 ]] ||
             fail 'all production and staging audiences were not probed'
         for audience in prod mcp-prod stage mcp-stage; do
@@ -201,13 +203,9 @@ run_success env INVALID_AUDIENCES=stage bash "$script" >"$tmp/stage-invalid-outp
 assert_no_log 'chainctl auth login --audience=prod'
 assert_log 'auth login --audience=stage --audience=mcp-stage'
 
-printf '%s\n' 'OLD_ENCRYPTED_CACHE' >"$GOOGLE_WORKSPACE_CLI_CONFIG_DIR/token_cache.json"
 run_success bash "$script" --force >"$tmp/force-output"
-[[ ! -e "$GOOGLE_WORKSPACE_CLI_CONFIG_DIR/token_cache.json" ]] || fail 'Workspace kept the old active token cache'
-grep -Fq OLD_ENCRYPTED_CACHE "$GOOGLE_WORKSPACE_CLI_CONFIG_DIR"/token-cache-backup.*/token_cache.json ||
-    fail 'Workspace did not preserve the old token cache'
-assert_log 'gcloud auth login --update-adc --force'
-assert_log 'gws auth login --scopes https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/documents,https://www.googleapis.com/auth/spreadsheets,https://www.googleapis.com/auth/presentations'
+assert_log 'gcloud auth login --update-adc --enable-gdrive-access --force'
+assert_no_log 'gws '
 [[ $(grep -c '^gcloud auth login ' "$log") == 1 ]] || fail '--force ran more than one gcloud login'
 assert_log 'chainctl auth login --audience=prod --audience=mcp-prod'
 assert_log 'auth login --audience=stage --audience=mcp-stage'
@@ -225,14 +223,10 @@ assert_development_untouched
 
 for flags in '--force --headless' '--headless --force'; do
     read -r -a args <<<"$flags"
-    : >"$log"
-    if bash "$script" "${args[@]}" >"$tmp/headless-output" 2>&1; then
-        fail 'forced headless Workspace repair returned success'
-    fi
-    assert_log 'gcloud auth login --update-adc --force --no-launch-browser'
-    assert_no_log 'gws auth login '
-    assert_no_log 'chainctl '
-    grep -Fq 'Workspace requires interactive login' "$tmp/headless-output" || fail 'headless error is missing'
+    run_success bash "$script" "${args[@]}" >"$tmp/headless-output" 2>&1
+    assert_log 'gcloud auth login --update-adc --enable-gdrive-access --force --no-launch-browser'
+    assert_no_log 'gws '
+    [[ $(grep -c '^gcloud auth login ' "$log") == 1 ]] || fail 'headless login repeated'
 done
 
 run_success env INVALID_AUDIENCES='prod stage' bash "$script" --headless >/dev/null
@@ -240,50 +234,54 @@ assert_no_log 'gws auth login '
 assert_log 'chainctl auth login --headless --audience=prod --audience=mcp-prod'
 assert_log 'auth login --headless --audience=stage --audience=mcp-stage'
 
-run_success env GWS_STATE=revoked GWS_REPAIR=1 bash "$script" >"$tmp/gws-repair-output"
-assert_log 'gws auth login --scopes '
-[[ $(grep -c '^gws auth status' "$log") == 2 ]] || fail 'Workspace repair did not verify the new login'
+for flags in '' '--headless'; do
+    read -r -a args <<<"$flags"
+    run_success env DRIVE_STATE=missing DRIVE_REPAIR=1 bash "$script" "${args[@]}" >"$tmp/drive-repair-output"
+    assert_log 'gcloud auth login --update-adc --enable-gdrive-access'
+    assert_log '--force'
+    [[ $(grep -c '^gcloud auth login ' "$log") == 1 ]] || fail 'Drive repair repeated login'
+    [[ $(grep -c 'oauth2/v2/tokeninfo' "$log") == 2 ]] || fail 'Drive repair skipped verification'
+done
 
-for state in missing revoked metadata wrong-account scopes broad full-drive plaintext corrupt malformed timeout; do
-    for flags in '' '--headless'; do
+for state in missing network api drive-api drive-network malformed metadata timeout; do
+    for flags in '' '--force'; do
         : >"$log"
         read -r -a args <<<"$flags"
-        if GWS_STATE="$state" bash "$script" "${args[@]}" >"$tmp/gws-output" 2>&1; then
-            fail "invalid Workspace state $state returned success"
+        if DRIVE_STATE="$state" bash "$script" "${args[@]}" >"$tmp/drive-output" 2>&1; then
+            fail "invalid Drive state $state returned success"
         fi
-        if [[ "$flags" == --headless ]]; then
-            assert_no_log 'gws auth login '
+        if [[ "$state" == missing || "$flags" == --force ]]; then
+            [[ $(grep -c '^gcloud auth login ' "$log") == 1 ]] || fail 'repair did not use exactly one login'
+            grep -Fq 'Verification after login failed' "$tmp/drive-output" || fail 'post-login error is missing'
         else
-            assert_log 'gws auth login --scopes '
-            grep -Fq 'Workspace verification failed' "$tmp/gws-output" || fail 'post-login verification is missing'
+            assert_no_log 'gcloud auth login '
+        fi
+        if [[ "$state" == missing ]]; then
+            grep -Fq 'Full Drive consent is missing' "$tmp/drive-output" || fail 'consent error is missing'
         fi
         assert_no_log 'chainctl '
-        ! grep -Fq 'SECRET_STATUS_ERROR' "$tmp/gws-output" || fail 'Workspace probe stderr leaked'
+        ! grep -Fq SECRET "$tmp/drive-output" || fail 'Drive probe leaked output'
     done
 done
 
+for state in empty timeout; do
+    : >"$log"
+    if TOKEN_STATE="$state" bash "$script" >"$tmp/token-output" 2>&1; then
+        fail "gcloud token state $state returned success"
+    fi
+    assert_no_log 'curl '
+    assert_no_log 'chainctl '
+    ! grep -Fq SECRET "$tmp/token-output" || fail 'token probe leaked output'
+done
+
 : >"$log"
-if GWS_LOGIN_EXIT=1 bash "$script" --force >/dev/null 2>&1; then
-    fail 'Workspace login failure returned success'
+if POST_ADC_EXIT=1 bash "$script" --force >/dev/null 2>&1; then
+    fail 'invalid ADC after login returned success'
 fi
 assert_no_log 'chainctl '
-
-: >"$log"
-if GOOGLE_WORKSPACE_CLI_TOKEN=SECRET_TOKEN bash "$script" >"$tmp/override-output" 2>&1; then
-    fail 'Workspace token override returned success'
-fi
+run_success env GOOGLE_WORKSPACE_CLI_TOKEN=SECRET_STALE bash "$script" >"$tmp/override-output" 2>&1
 assert_no_log 'gws '
-! grep -Fq 'SECRET_TOKEN' "$tmp/override-output" || fail 'Workspace override leaked'
-
-mv "$GOOGLE_WORKSPACE_CLI_CONFIG_DIR/client_secret.json" "$tmp/client.json"
-run_success bash "$script" >/dev/null
-: >"$log"
-if GWS_STATE=missing bash "$script" >"$tmp/client-output" 2>&1; then
-    fail 'missing Workspace client returned success'
-fi
-assert_no_log 'gws auth login '
-grep -Fq 'Desktop OAuth client JSON' "$tmp/client-output" || fail 'missing client error is missing'
-mv "$tmp/client.json" "$GOOGLE_WORKSPACE_CLI_CONFIG_DIR/client_secret.json"
+! grep -Fq SECRET "$tmp/override-output" || fail 'Workspace override leaked'
 
 run_success env INVALID_AUDIENCES='prod stage' bash "$script" >/dev/null
 prod_login=$(line_of 'chainctl auth login --audience=prod')
