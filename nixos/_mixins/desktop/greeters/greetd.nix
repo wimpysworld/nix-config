@@ -107,12 +107,14 @@ let
       ''
         sh -c \
                 '${pkgs.kanshi}/bin/kanshi --config /etc/kanshi/regreet & \
-                 ${pkgs.dbus}/bin/dbus-run-session ${pkgs.regreet}/bin/regreet''
+                 ${pkgs.dbus}/bin/dbus-run-session ${pkgs.regreet}/bin/regreet'
+      ''
     else if wlrRandrArgs != "" then
       ''
         sh -c \
                 '${pkgs.wlr-randr}/bin/wlr-randr ${wlrRandrArgs} && \
-                 exec ${pkgs.dbus}/bin/dbus-run-session ${pkgs.regreet}/bin/regreet''
+                 exec ${pkgs.dbus}/bin/dbus-run-session ${pkgs.regreet}/bin/regreet'
+      ''
     else
       "${pkgs.dbus}/bin/dbus-run-session ${pkgs.regreet}/bin/regreet";
 in
