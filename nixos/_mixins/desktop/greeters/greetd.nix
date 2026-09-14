@@ -44,27 +44,20 @@ let
     export XCURSOR_SIZE="32"
     export XDG_DATA_DIRS="${regreetDataDirs}"
 
-    # If there is a kanshi profile for regreet, use it.
-    KANSHI_REGREET="$(${pkgs.coreutils}/bin/head --lines 1 --quiet /etc/kanshi/regreet 2>/dev/null | ${pkgs.gnused}/bin/sed 's/ //g')"
-    if [ -n "$KANSHI_REGREET" ]; then
-      ${pkgs.cage}/bin/cage -d -m last -s -- sh -c \
-        '${pkgs.kanshi}/bin/kanshi --config /etc/kanshi/regreet & \
-         ${pkgs.dbus}/bin/dbus-run-session ${pkgs.regreet}/bin/regreet'
-    else
-      ${pkgs.cage}/bin/cage -d -m last -s -- ${pkgs.dbus}/bin/dbus-run-session ${pkgs.regreet}/bin/regreet
-    fi
+    ${pkgs.cage}/bin/cage -d -m last -s -- ${greeterSession}
   '';
   wallpaperResolution =
     let
       res = host.display.primaryResolution;
     in
     if res != "" then noughtyLib.backgroundResolution res else "1920x1080";
-  # ReFrame needs the greeter and user session to share the registry layout.
-  # Other hosts keep the primary-only greeter layout. Cage -m last uses the
-  # last enabled output, so the primary output remains last in both profiles.
-  # Single-monitor hosts need no kanshi profile; Cage handles one output fine.
+  # ReFrame needs the greeter and user session to share the registry layout,
+  # so every display stays live at the greeter and this profile restores the
+  # registry layout. Cage cannot confine its view to one output of a
+  # multi-output layout: view.c positions the view against the whole layout
+  # bounding box, so the greeter view still spans every live display here.
   kanshiProfile =
-    if !host.display.isMultiMonitor then
+    if !host.display.isMultiMonitor || !(noughtyLib.hostHasTag "reframe") then
       ""
     else
       let
@@ -73,20 +66,55 @@ let
         mkEnableLine =
           display:
           "    output ${display.output} enable mode ${toString display.width}x${toString display.height}@${toString display.refresh}Hz position ${toString display.position.x},${toString display.position.y} scale ${builtins.toJSON display.scale}";
-        profileLines =
-          if noughtyLib.hostHasTag "reframe" then
-            map mkEnableLine nonPrimary ++ [ (mkEnableLine primary) ]
-          else
-            map (d: "    output ${d.output} disable") nonPrimary
-            ++ [
-              "    output ${primary.output} enable mode ${toString primary.width}x${toString primary.height}@${toString primary.refresh}Hz position 0,0 scale 1"
-            ];
+        profileLines = map mkEnableLine nonPrimary ++ [ (mkEnableLine primary) ];
       in
       ''
         profile {
         ${lib.concatStringsSep "\n" profileLines}
         }
       '';
+  # Other multi-monitor hosts keep the primary-only greeter layout. wlr-randr
+  # sends the disable and enable as one atomic wlr-output-management batch and
+  # blocks until Cage confirms it succeeded, so regreet starts on a
+  # single-output layout instead of spanning every display and reflowing later.
+  # Single-monitor hosts need no output configuration; Cage handles one output
+  # fine. See https://github.com/cage-kiosk/cage/issues/257 and
+  # https://github.com/NixOS/nixpkgs/issues/226586.
+  wlrRandrArgs =
+    if !host.display.isMultiMonitor || noughtyLib.hostHasTag "reframe" then
+      ""
+    else
+      let
+        inherit (host.display) primary;
+        nonPrimary = lib.filter (d: d.output != primary.output) host.displays;
+        disableArgs = map (d: "--output ${d.output} disable") nonPrimary;
+        enableArgs = [
+          "--output ${primary.output} enable"
+          "--mode ${toString primary.width}x${toString primary.height}@${toString primary.refresh}Hz"
+          "--pos 0,0"
+          "--scale 1"
+        ];
+      in
+      lib.concatStringsSep " " (disableArgs ++ enableArgs);
+  # The greeter session command inside Cage, in three cases:
+  # - ReFrame hosts: kanshi restores the registry layout with every display
+  #   live while regreet starts.
+  # - Other multi-monitor hosts: wlr-randr configures the primary
+  #   synchronously, so regreet only starts once the layout is final.
+  # - Single-monitor hosts: no output configuration at all.
+  greeterSession =
+    if kanshiProfile != "" then
+      ''
+        sh -c \
+                '${pkgs.kanshi}/bin/kanshi --config /etc/kanshi/regreet & \
+                 ${pkgs.dbus}/bin/dbus-run-session ${pkgs.regreet}/bin/regreet''
+    else if wlrRandrArgs != "" then
+      ''
+        sh -c \
+                '${pkgs.wlr-randr}/bin/wlr-randr ${wlrRandrArgs} && \
+                 exec ${pkgs.dbus}/bin/dbus-run-session ${pkgs.regreet}/bin/regreet''
+    else
+      "${pkgs.dbus}/bin/dbus-run-session ${pkgs.regreet}/bin/regreet";
 in
 lib.mkIf host.is.workstation {
   # Use Cage to run regreet
@@ -98,6 +126,7 @@ lib.mkIf host.is.workstation {
       cursorPackage
       gtkThemePackage
       pkgs.papirus-icon-theme
+      pkgs.wlr-randr
       regreetCage
     ];
   };
