@@ -138,8 +138,8 @@ let
         customMessageText = "text";
         customMessageLabel = "mauve";
         toolPendingBg = "mantle";
-        toolSuccessBg = "surface0";
-        toolErrorBg = "surface0";
+        toolSuccessBg = "mantle";
+        toolErrorBg = "mantle";
         toolTitle = "sapphire";
         toolOutput = "subtext1";
 
