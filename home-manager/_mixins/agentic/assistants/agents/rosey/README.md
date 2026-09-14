@@ -40,7 +40,11 @@ skills/
 
 Each command has `command.toml` and exactly one `command.md` or `command.sops`. Commands never inherit an agent from a directory. Maintenance ownership is independent of the selected agent and executing caller, with no ownership metadata.
 
-The [generated command catalogue](../../commands/README.md) lists commands, client entry behaviour, source type, and agent routing defaults. The authoring shims select Rosey through explicit `compose.agent` metadata. Caller-context commands retain the caller's role and model.
+The generated [command catalogue](../../commands/README.md) lists commands, client entry behaviour, and source types. The [agent catalogue](../README.md) lists descriptions and model defaults. The [skill catalogue](../../skills/README.md) lists reusable and conditional sources. A conditional listing does not imply installation. This document explains authoring workflows, not the full inventory.
+
+After additions, removals, metadata changes, or routing changes, run `just update-assistant-catalogue`, then `just check-assistant-catalogue`. These shared recipes update and check all three catalogues without body decryption. Edit source metadata, not generated rows.
+
+The authoring shims select Rosey through explicit `compose.agent` metadata. Caller-context commands retain the caller's role and model.
 
 ### 2.1 Skill responsibilities
 

@@ -14,7 +14,7 @@ For a secret body, use `command.sops` instead of `command.md`. The marker contai
 
 `compose.nix` discovers commands under `commands/<name>/`. Set `[compose] agent` explicitly to select a specialist. No directory supplies an inherited agent. Maintenance ownership is independent of selection and execution, with no ownership metadata.
 
-After command or routing changes, run `just update-assistant-catalogue`, then `just check-assistant-catalogue`. The tracked `commands/README.md` is generated, not hand-edited.
+After additions, removals, metadata changes, or routing changes, run `just update-assistant-catalogue`, then `just check-assistant-catalogue`. These shared recipes update and check the [command](../../../commands/README.md), [agent](../../../agents/README.md), and [skill](../../README.md) catalogues. Agent model defaults live in the agent catalogue. Edit source metadata, not generated rows. Never decrypt bodies for catalogue generation. Keep workflow explanations in documentation, not duplicate inventories.
 
 ## Claude Code dispatch
 

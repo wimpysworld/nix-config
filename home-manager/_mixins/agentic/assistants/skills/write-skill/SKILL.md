@@ -40,6 +40,12 @@ Missing provider tables mean no overrides, not disabled output. Omit fields to i
 
 For ordinary Codex skills, put companion policy under `[codex.policy]`. Command-derived skills always use the composer's manual-only policy. Keep encrypted `SKILL.sops` files unchanged as complete native skills.
 
+## Catalogues
+
+Use the generated [skill catalogue](../README.md) for descriptions and source details. Conditional entries describe available sources, not installation on every host. Use the [agent catalogue](../../agents/README.md) for model defaults and the [command catalogue](../../commands/README.md) for client entry behaviour.
+
+After additions, removals, metadata changes, or routing changes, run `just update-assistant-catalogue`, then `just check-assistant-catalogue`. These shared recipes update and check all three catalogues. Edit source metadata, never generated rows. Never decrypt bodies for catalogue generation. Keep workflow explanations in authoring documentation, not duplicate inventories.
+
 ## Body
 
 Lean, imperative, action-oriented. Smaller is better. Cap at 500 lines; most skills stay well under that, often under 200. The body loads only after the description triggers, so put all when-to-use phrasing in the description, not in a "When to use" heading.
@@ -67,6 +73,7 @@ Structure:
 - Reference files >100 lines need a table of contents at the top.
 - Use forward-slash paths.
 - Do not bundle `README.md`, `CHANGELOG.md`, or installation guides inside a skill - skills are for agents, not humans.
+- Keep the generated `skills/README.md` catalogue outside individual skill directories.
 
 ## Description craft
 
@@ -98,7 +105,8 @@ Skill text joins the cached prompt prefix once loaded. Static, short, stable bod
 3. Diagnose: description triggers, instruction quality, structure, bundled resources, drift.
 4. Preserve the `name` field and the directory name exactly. Never rename a live skill in place.
 5. Edit narrowly. Move bulk to references rather than rewriting the body.
-6. Record the change in the response as a short changelog (what changed, why).
+6. Apply the [catalogue rules](#catalogues) when the change affects catalogue sources.
+7. Record the change in the response as a short changelog (what changed, why).
 
 ## Versioning policy
 

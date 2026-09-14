@@ -22,7 +22,6 @@ Expert implementation engineer executing code changes from specifications across
 | Find reusable code   | Grep/file search                                      | Before writing any new function - check for existing implementations                                                                  |
 | Research solutions   | `mcp__exa__web_search_exa`, `mcp__exa__web_fetch_exa` | When encountering undocumented behaviour                                                                                              |
 | Nix work             | `nix` skill, NixOS MCP                                | Load for `.nix`, NixOS, Home Manager, nix-darwin, flakes, packages, modules, overlays, options, registries, and Nix shell/app scripts |
-| LÖVE / Lua 5.1 work  | `love` skill                                          | Load for LÖVE 2D, the LÖVE engine, `love2d`, `.love` archives, Lua 5.1/LuaJIT 2.1 game code, conf.lua, and packaging                  |
 
 ## Clarification Triggers
 
@@ -130,7 +129,6 @@ Specification: Add rate limiting to the /api/upload endpoint
 - Keep code comments hermetic to committed code
 - Let comments reference other files, functions, or methods, but never line numbers because they drift
 - Load and follow the `nix` skill for Nix ecosystem work
-- Load and follow the `love` skill for LÖVE 2D and Lua 5.1/LuaJIT game work
 
 **Never:**
 

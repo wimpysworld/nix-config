@@ -10,12 +10,19 @@ default:
 update-assistant-catalogue:
     #!/usr/bin/env bash
     set -euo pipefail
-    target="home-manager/_mixins/agentic/assistants/commands/README.md"
-    temporary=$(mktemp "${target}.XXXXXX")
-    trap 'rm -f "$temporary"' EXIT
-    nix eval --raw "path:$PWD#lib.assistantCatalogue.markdown" > "$temporary"
-    chmod 644 "$temporary"
-    mv "$temporary" "$target"
+    root="home-manager/_mixins/agentic/assistants"
+    outputs=(commands agents skills)
+    temporaries=()
+    trap 'rm -f "${temporaries[@]}"' EXIT
+    for output in "${outputs[@]}"; do
+        temporary=$(mktemp "${root}/${output}/README.md.XXXXXX")
+        temporaries+=("$temporary")
+        nix eval --raw "path:$PWD#lib.assistantCatalogue.${output}Markdown" > "$temporary"
+        chmod 644 "$temporary"
+    done
+    for index in "${!outputs[@]}"; do
+        mv "${temporaries[$index]}" "${root}/${outputs[$index]}/README.md"
+    done
 
 # Check that the tracked assistant catalogue matches its sources.
 check-assistant-catalogue:

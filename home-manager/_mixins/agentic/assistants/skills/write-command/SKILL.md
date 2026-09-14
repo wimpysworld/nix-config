@@ -128,12 +128,12 @@ Manual-only controls command selection, not file access or workflow reuse within
 
 ## Command catalogue
 
-The generated `home-manager/_mixins/agentic/assistants/commands/README.md` lists command metadata and client entry behaviour. A separate agent table lists routing defaults from `header.toml`. The main README links the catalogue and keeps workflow guidance, not duplicate inventories.
+The generated [command catalogue](../../commands/README.md) lists command metadata and client entry behaviour. The [agent catalogue](../../agents/README.md) lists descriptions and model defaults from `header.toml`. The [skill catalogue](../README.md) lists reusable skills, including conditional sources, without implying installation. The main README links these catalogues and keeps workflow guidance, not duplicate inventories.
 
 - Update `command.toml` when a command's description, binding, or entry behaviour changes.
 - Write descriptions that state what the command does for the user, not which skill it loads.
-- After command additions, renames, metadata changes, or agent routing changes, run `just update-assistant-catalogue`.
-- Run `just check-assistant-catalogue` to check the tracked output. Do not edit generated rows manually.
+- After additions, removals, renames, metadata changes, or routing changes, run `just update-assistant-catalogue`.
+- Run `just check-assistant-catalogue` to check all three tracked catalogues. The shared update recipe generates all three. Do not edit generated rows manually.
 - Check the associated agent, per-client entry behaviour, routing defaults, and public/secret source classification. Never decrypt bodies for catalogue generation.
 
 ## Per-provider field matrix

@@ -66,6 +66,12 @@ OpenCode agent and command model metadata support remains unchanged. Current Ope
 
 Missing provider tables mean no overrides, not disabled output. Omit fields to inherit defaults. TOML has no null.
 
+## Catalogues
+
+Use the generated [agent catalogue](../../agents/README.md) for descriptions and model defaults. Use the [command catalogue](../../commands/README.md) for associations and client entry behaviour, and the [skill catalogue](../README.md) for reusable skills.
+
+After additions, removals, metadata changes, or routing changes, run `just update-assistant-catalogue`, then `just check-assistant-catalogue`. These shared recipes update and check all three catalogues. Edit source metadata, never generated rows. Never decrypt bodies for catalogue generation. Keep authoring explanations in documentation, not duplicate inventories.
+
 ## Voice
 
 - Second person, imperative. "You are…", "Use X when Y."
@@ -128,7 +134,8 @@ Keep examples compact. Use `<example_input>` / `<example_output>` tags.
 3. Diagnose: voice, structure, redundancy, missing examples, contradictions.
 4. Flag contradictions explicitly before editing (e.g. "be concise" alongside "be thorough"); pick a default in the rewrite.
 5. Apply surgical edits. Preserve output format templates, few-shot examples, decision criteria, explicit constraints, tool-specific guidance, and numeric limits.
-6. Record the change as a changelog.
+6. Apply the [catalogue rules](#catalogues) when the change affects catalogue sources.
+7. Record the change as a changelog.
 
 ## Output
 

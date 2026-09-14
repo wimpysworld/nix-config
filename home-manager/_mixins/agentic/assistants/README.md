@@ -52,6 +52,8 @@ Every command uses `commands/<name>/command.toml` and exactly one `command.md` o
 - [Global Instructions](#global-instructions)
 - [Task Lifecycle](#task-lifecycle)
 - [Command catalogue](commands/README.md)
+- [Agent catalogue](agents/README.md)
+- [Skill catalogue](skills/README.md)
 - [Agents](#agents)
 - [Model Selection](#model-selection)
 - [Platform Delivery](#platform-delivery)
@@ -129,9 +131,9 @@ The house style owns response discipline, every platform carries it in the syste
 
 ### Command workflows
 
-The generated [command catalogue](commands/README.md) lists descriptions, associated agents, entry behaviour for each client, and public or secret sources. A separate agent table lists model routing defaults from `header.toml`.
+The generated [command catalogue](commands/README.md) lists descriptions, associated agents, client entry behaviour, and public or secret sources. The [agent catalogue](agents/README.md) lists agents and model defaults. The [skill catalogue](skills/README.md) lists reusable skills, including conditional sources. A catalogue entry does not prove installation on a host.
 
-Update command metadata or agent routing at its source, then run `just update-assistant-catalogue`. Run `just check-assistant-catalogue` to check the tracked output. Do not edit catalogue rows manually or decrypt secret bodies to generate the catalogue.
+After additions, removals, metadata changes, or routing changes, run `just update-assistant-catalogue`, then `just check-assistant-catalogue`. These shared recipes update and check all three catalogues. Edit the source metadata, not generated rows. Never decrypt bodies for catalogue generation.
 
 The four commands `review-code-community`, `review-code-colleague`, `review-code-mine`, and `review-code-again` each launch one Donatello worker. Donatello completes the review directly without further agent launches.
 
@@ -177,13 +179,13 @@ Validation is inline. Each task's changed files are checked against the task's `
 
 ## Agents
 
-See the [command catalogue](commands/README.md) for command associations and the separate table of agent routing defaults.
+Use the [agent catalogue](agents/README.md) for agent descriptions and model defaults. Use the [command catalogue](commands/README.md) for command associations and client entry behaviour.
 
-### Rosey - Prompt & Skill Specialist
+### Prompt authoring
 
-Prompt and skill specialist for agent prompts, skills, commands, and instruction files. Rosey edits these artefacts directly, applies context-efficiency constraints, and keeps prompt guidance short enough to hold. She is not the global coordinator; `instructions/global.md` owns default delegation policy. See [`agents/rosey/README.md`](agents/rosey/README.md) for the research that informs Rosey's prompt, skills, and command shims.
+Rosey applies the four `write-*` skills to agent prompts, skills, commands, and project instructions. The skills own authoring guidance, and `instructions/global.md` owns delegation policy. See [`agents/rosey/README.md`](agents/rosey/README.md) for the research behind this approach.
 
-Rosey's prompt engineering rules:
+Prompt engineering rules:
 
 - Imperatives over explanations - "Focus on X" not "You should focus on X"
 - Constraints over descriptions - say what to do and not do
@@ -203,69 +205,9 @@ Compact, stable system prompts preserve Claude prompt-cache hits; bloated or var
 
 ---
 
-### Batfink - Infrastructure Security Auditor
-
-Infrastructure security auditor assessing configuration hardening, defensive resilience, and blast radius across cloud, container, and network infrastructure. Identifies misconfigurations, privilege escalation paths, and lateral movement risks. Every finding is mapped to concrete remediation.
-
----
-
-### Brain - Test Engineer
-
-Pragmatic test engineer identifying high-impact unit tests that catch real bugs. Analyses git history to find frequently-fixed files, searches GitHub issues for bug patterns, and reads existing tests before recommending new ones. Focuses on coverage gaps that matter rather than coverage numbers.
-
----
-
-### Casper - Technical Writer
-
-Ghost writer emulating Martin Wimpress's blog voice: enthusiastic, conversational British English combining Linux expertise with accessible humour. First-person narrative, direct reader address, British colloquialisms integrated naturally. Loads `writing-well` for extended writing.
-
----
-
-### Dibble - Code Security Auditor
-
-Code security auditor methodically patrolling codebases for vulnerabilities, insecure patterns, and dependency risks. Cites CWE and OWASP classifications for every finding. Distinguishes confirmed vulnerabilities from theoretical risks and prioritises by exploitability.
-
----
-
-### Donatello - Implementation Engineer
-
-Precise implementation engineer executing code changes from specifications. Reads related files before any implementation, reuses existing utilities before writing new ones, identifies blockers early. Preserves existing conventions and architectural decisions. Loads the `nix` skill for Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, and `.nix` files. Loads the `love` skill for LÖVE 2D and Lua 5.1/LuaJIT 2.1 game development.
-
----
-
-### Garfield - Git Workflow Specialist
-
-Git workflow specialist enforcing Conventional Commits 1.0.0. Analyses existing commit history for project-specific scope patterns before writing messages. Handles type classification, scope determination, breaking change footers, and authorised commit and PR execution.
-
----
-
-### Gonzales - Performance Specialist
-
-Performance optimisation specialist focused on user-perceivable improvements. Rates optimisations on a 1-10 impact scale. Only recommends changes where the user-perceivable effect justifies the maintainability cost.
-
----
-
-### Penfold - Research Generalist
-
-Research partner for exploring ideas, generating options, and framing problems for downstream specialists. Penfold owns the task lifecycle commands that file session outcomes, fold decisions back into tasks, triage the queue, and judge implementation readiness. Flags uncertainty explicitly (confidence: high/medium/low). Produces handoffs specialists can use without clarification. Loads the `audio-metrics` skill for objective audio analysis from ffmpeg metrics: spectral statistics, loudness (EBU R128, LUFS, true peak), levels, and spectrograms.
-
----
-
-### Penry - Code Reviewer
-
-Maintainability specialist reviewing for simplification, duplication, dead code, and naming clarity. Every suggestion is small, safe, and preserves exact functionality. Uses an impact scale; only flags changes where the maintainability benefit justifies the diff.
-
----
-
-### Velma - Documentation Architect
-
-Documentation architect creating technically precise guides through progressive disclosure. Transforms codebases into accessible documentation. Loads `writing-well` for extended writing tasks.
-
----
-
 ## Model Selection
 
-Agents without routing defaults inherit the model selected in the coding tool. The [command catalogue](commands/README.md) has a separate agent table with current defaults from `header.toml`. Defaults do not guarantee the model for every invocation. Client entry behaviour and explicit overrides determine whether a route applies.
+Agents without routing defaults inherit the model selected in the coding tool. The [agent catalogue](agents/README.md) lists current defaults from `header.toml`. Defaults do not guarantee the model for every invocation. Client entry behaviour and explicit overrides determine whether a route applies.
 
 Agent `header.toml` files are the sole routing default source for Claude Code, Codex, and Pi. Commands and ordinary skills remain model-neutral. Explicit launch-time child model, thinking, or effort overrides remain supported. Caller-context commands never change the caller's model, whether or not they have an agent binding. Direct `make-commit` and `make-pr` launches use Garfield's agent defaults on Claude Code, Codex, and Pi. Explicit coordinator inline reuse retains the caller's model.
 
@@ -343,7 +285,7 @@ OpenCode `permission` headers are not mapped to Pi. Pi supports an explicit `too
 
 ### Provider routing
 
-Pi routes subagents through inference-provider tables in each agent's `header.toml`. See the [command catalogue](commands/README.md) for the current agent routes.
+Pi routes subagents through inference-provider tables in each agent's `header.toml`. See the [agent catalogue](agents/README.md) for the current agent routes.
 
 The inference-provider name must match Pi exactly, including hyphens. The default provider is `openai-codex`, not `openai`.
 
@@ -425,44 +367,7 @@ Old unverified MCP backups and Nix rollback generations remain outside this clea
 
 Shared skills provide background knowledge and reference material. Most are sourced from `skills/*/SKILL.md`. `compose.nix` generates the `delegate-task` body from the agent registry and reads its `header.toml` for metadata, ignoring any static body. The `communication-rules` body is checked in at `skills/communication-rules/SKILL.md`. An equality guard checks that its body matches the house style during evaluation.
 
-**Generated and agent-loaded:**
-
-| Skill                | Loaded by                 | Purpose                                                                                                           |
-| -------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `delegate-task`      | Coordinator or user       | Generated routing, depth, waiting, teardown, packet, response contract, and relay policy                          |
-| `communication-rules` | Every prose-producing path | Checked-in body with a house-style equality guard: concise, plain British English for user-visible prose         |
-| `agentic-repo-capability` | Donatello or user         | Add a repository-local MCP server, skill, or command across supported agent clients                               |
-| `writing-well`       | Casper, Velma             | Composition principles and the AI writing-pattern catalogue                                                       |
-| `write-skill`        | Rosey or user             | Author or update an Agent Skill (`SKILL.md`) - frontmatter, layout, references, progressive disclosure            |
-| `write-agents-md`    | Rosey or user             | Author, update, or consolidate AGENTS.md / CLAUDE.md / .cursorrules project instruction files                     |
-| `write-assistant`    | Rosey or user             | Author or update an agent system prompt - persona, structure, voice, examples, constraints                        |
-| `write-command`      | Rosey or user             | Author or update a slash command - shim or standalone, headers per provider, argument-hint, model                 |
-| `review-report-path` | Review and audit commands | Durable `${XDG_STATE_HOME:-${HOME}/.local/state}/agent-reviews/<project>/<target>/<run-id>/` paths, exclusive runs, and no deletion or overwrite |
-| `sizing`             | Task and review commands  | T-shirt sizing scale, spikes, parent tracking issues, and splitting oversized work                                |
-| `task-tracker`       | Task, PR, and review commands | Resolves Linear, GitHub Projects, or a local file from the input, and maps status, type, priority, estimate, parent, and branch-link roles onto each tracker |
-| `nix`                | Donatello                 | Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, registries                                       |
-| `love`               | Donatello                 | LÖVE 2D, LÖVE engine, `love2d`, `.love` archives, Lua 5.1/LuaJIT 2.1 game work                                    |
-| `audio-metrics`      | Penfold or user           | Objective definitions of ffmpeg audio metrics: aspectralstats, astats, ebur128, loudnorm, plus loudness standards |
-| `self-review`        | Penfold or user           | Structure and checklist for a periodic self-review                                                                |
-| `how-to-contribute`  | Penfold or user           | Assess a project's contribution rules before an issue or pull request                                             |
-
-**User-invocable support skills:**
-
-| Skill                | Purpose                                                                   |
-| -------------------- | ------------------------------------------------------------------------- |
-| `contribution-voice` | Structure rules for text published under the user's name in public        |
-| `deep-research`      | Multi-round research on an open question, synthesised into a cited report |
-| `diagram-design`     | Branded HTML/SVG diagrams, chart layouts, imports, and external brand profiles |
-| `research-task`      | Research an existing tracked task and its linked work into a cited report |
-| `draft-project-description` | Write a Linear project description in the form the quality coach scores   |
-| `draft-comment`      | Read-only drafting for GitHub, Linear, or Slack comments and replies      |
-| `draft-issue`        | Read-only GitHub issue drafting with policy and duplicate checks          |
-| `gh`                 | GitHub CLI reference - PR creation, issue management, releases            |
-| `herdr`              | Control Herdr workspaces, tabs, panes, commands, and coding agents         |
-| `review-code`           | Shared review method: input resolution, fan-out, pressure-test, report    |
-| `review-code-follow-up` | Follow-up review method: prior findings, response delta, restrained report |
-| `semgrep`               | Semgrep CLI usage and custom rule creation reference                      |
-| `slack`              | Slack reference - `slack-post` target forms, channel resolution, threads  |
+Use the generated [skill catalogue](skills/README.md) for descriptions and source details, including conditional skills. Listing a conditional skill does not install it or bypass its delivery gates. See [Workspace skills](gws.md) for their source and refresh procedure.
 
 ### Vendored Diagram Design
 

@@ -97,7 +97,9 @@ Skills come from two generated sets:
 - Shared skills from `assistants/skills/*/SKILL.md`, plus generated shared skills
 - Commands from `assistants/commands/<name>/`, each with `command.toml` and exactly one `command.md` or `command.sops`
 
-The [command catalogue](../assistants/commands/README.md) lists command descriptions, associated agents, client entry behaviour, source types, and a separate table of agent routing defaults.
+The [command catalogue](../assistants/commands/README.md) lists descriptions, associated agents, client entry behaviour, and source types. The [agent catalogue](../assistants/agents/README.md) lists descriptions and model defaults. The [skill catalogue](../assistants/skills/README.md) lists reusable and conditional sources. A conditional listing does not imply installation or bypass host and client gates.
+
+After additions, removals, metadata changes, or routing changes, run `just update-assistant-catalogue`, then `just check-assistant-catalogue`. These shared recipes update and check all three catalogues. Edit source metadata, not generated rows. Never decrypt bodies for catalogue generation.
 
 Every generated skill is explicitly enabled in `config.toml` with `[[skills.config]]`, so root sessions and spawned agents can use the same declarative skill set.
 

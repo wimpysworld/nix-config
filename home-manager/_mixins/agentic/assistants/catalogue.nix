@@ -99,6 +99,110 @@ let
       )
     ) compose.agentDirs
   );
+  select = names: values: lib.getAttrs (lib.intersectLists names (builtins.attrNames values)) values;
+  agentControlKeys = {
+    claude = [
+      "tools"
+      "disallowedTools"
+      "permissionMode"
+    ];
+    opencode = [
+      "mode"
+      "permission"
+    ];
+    codex = [ "sandbox_mode" ];
+    pi = [
+      "tools"
+      "prompt_mode"
+      "extensions"
+      "exclude_extensions"
+      "skills"
+      "isolated"
+    ];
+  };
+  agentRecords = lib.mapAttrsToList (
+    name: _:
+    let
+      header = compose.readHeader (basePath + "/agents/${name}");
+      description = header.common.description or null;
+    in
+    if !builtins.isString description || lib.trim description == "" then
+      throw "Agent ${name} requires a non-empty common.description."
+    else
+      {
+        inherit name description;
+        link = "./${name}/header.toml";
+        availability = if name == "traya" then "Excluded from codingAgentDirs" else "Enabled client";
+        clients = lib.genAttrs clients (
+          client:
+          let
+            projected = metadata.project "agent" client name header;
+          in
+          {
+            description = projected.description or description;
+            controls = select agentControlKeys.${client} projected;
+          }
+        );
+      }
+  ) compose.agentDirs;
+  skillRecords = lib.mapAttrsToList (
+    name: kind:
+    let
+      secret = compose.secretSkillDirs ? ${name};
+      generated = kind == "generated";
+      path = basePath + "/skills/${name}";
+      header = if secret then null else compose.readHeader path;
+      companion = if secret then null else metadata.skillCompanion path;
+    in
+    builtins.deepSeq companion {
+      inherit name;
+      link = if secret then "./${name}/" else "./${name}/header.toml";
+      visibility = if secret then "secret" else "public";
+      sourceType = if generated then "generated" else "directory";
+      description = if secret then null else header.common.description;
+      availability =
+        if lib.hasPrefix "gws-" name then
+          "Enabled client, developer user and cg host"
+        else
+          "Enabled client";
+      clients = lib.genAttrs clients (
+        client:
+        if secret then
+          {
+            description = null;
+            controls = null;
+            invocationPolicy = null;
+          }
+        else
+          let
+            projected = metadata.project "skill" client name header;
+          in
+          {
+            description = projected.description;
+            controls = select [ "allowed-tools" ] projected;
+            invocationPolicy =
+              if client == "claude" then
+                select [ "user-invocable" "disable-model-invocation" ] projected
+              else if client == "codex" then
+                select [ "allow_implicit_invocation" ] (companion.policy or { })
+              else if client == "pi" then
+                select [ "disable-model-invocation" ] projected
+              else
+                { };
+          }
+      );
+    }
+  ) compose.catalogueSkillDirs;
+  controlsText =
+    controls:
+    if controls == null then
+      "Unknown (secret metadata)"
+    else if controls == { } then
+      "No metadata override"
+    else
+      builtins.toJSON controls;
+  generatedNotice = "Generated from validated metadata. Run `just update-assistant-catalogue` to update this file.\n\n";
+  catalogueNotice = "These tables describe repository sources and projected client metadata, not installed resources or runtime authority. Client enablement still applies. No metadata override means that this source sets no listed control, not that all tools are allowed.\n\n";
   collisionCheck = compose.assertNoCommandCollisions {
     context = "Catalogue command and skill names";
     sources =
@@ -106,9 +210,9 @@ let
       ++ lib.mapAttrsToList (name: _: {
         inherit name;
         source = "skill: ${name}";
-      }) (compose.skillDirs // compose.secretSkillDirs);
+      }) compose.catalogueSkillDirs;
   };
-  markdown = builtins.deepSeq commands (
+  commandsMarkdown = builtins.deepSeq commands (
     builtins.deepSeq agents (
       builtins.seq collisionCheck (
         "# Assistant commands\n\nGenerated from validated metadata. Run `just update-assistant-catalogue` to update this file.\n\n"
@@ -170,29 +274,131 @@ let
             ])
           ) clients
         ) commands
-        + "\n## Agent model defaults\n\nThese are declared agent defaults, not command or caller model assignments. Unset values leave runtime fallback unchanged. Provider routes depend on the active inference provider. OpenCode provider routes apply only to direct-root native task children, not direct slash-command bindings. Explicit supported overrides take precedence. Inline personas do not apply agent model defaults.\n\n"
-        + row [
-          "Agent"
-          "Client"
-          "Inference provider"
-          "Model"
-          "Effort / thinking"
-        ]
-        + row (lib.replicate 5 "---")
-        + lib.concatMapStrings (
-          agent:
-          row [
-            agent.agent
-            agent.client
-            agent.provider
-            agent.model
-            agent.effort
-          ]
-        ) agents
+        + "\nSee the [agent catalogue](../agents/README.md) for agent model defaults and projected client controls.\n"
       )
+    )
+  );
+  agentsMarkdown = builtins.deepSeq agentRecords (
+    builtins.deepSeq agents (
+      "# Assistant agents\n\n"
+      + generatedNotice
+      + catalogueNotice
+      + row [
+        "Agent"
+        "Description"
+        "Availability"
+      ]
+      + row (lib.replicate 3 "---")
+      + lib.concatMapStrings (
+        agent:
+        row [
+          "[${agent.name}](${agent.link})"
+          agent.description
+          agent.availability
+        ]
+      ) agentRecords
+      + "\n## Projected client controls\n\nPi defaults come from metadata.project. Descriptions show the client projection, including any override. These controls do not grant authority or list observed runtime tools.\n\n"
+      + row [
+        "Agent"
+        "Client"
+        "Description"
+        "Controls"
+      ]
+      + row (lib.replicate 4 "---")
+      + lib.concatMapStrings (
+        agent:
+        lib.concatMapStrings (
+          client:
+          row [
+            agent.name
+            client
+            agent.clients.${client}.description
+            (controlsText agent.clients.${client}.controls)
+          ]
+        ) clients
+      ) agentRecords
+      + "\n## Agent model defaults\n\nThese are declared agent defaults, not command or caller model assignments. Unset values leave runtime fallback unchanged. Provider routes depend on the active inference provider. OpenCode provider routes apply only to direct-root native task children, not direct slash-command bindings. Explicit supported overrides take precedence. Inline personas do not apply agent model defaults.\n\n"
+      + row [
+        "Agent"
+        "Client"
+        "Inference provider"
+        "Model"
+        "Effort / thinking"
+      ]
+      + row (lib.replicate 5 "---")
+      + lib.concatMapStrings (
+        agent:
+        row [
+          agent.agent
+          agent.client
+          agent.provider
+          agent.model
+          agent.effort
+        ]
+      ) agents
+    )
+  );
+  skillsMarkdown = builtins.deepSeq skillRecords (
+    builtins.seq collisionCheck (
+      "# Assistant skills\n\n"
+      + generatedNotice
+      + catalogueNotice
+      + "Only top-level skills are listed. Nested reference files are not separate entries. Generated delegate-task uses public metadata without reading its body. Secret bodies include their own metadata, so their descriptions and policies are unknown here. Workspace skills require both a developer user and a cg host, in addition to client enablement.\n\n"
+      + row [
+        "Skill"
+        "Description"
+        "Visibility"
+        "Source type"
+        "Availability"
+      ]
+      + row (lib.replicate 5 "---")
+      + lib.concatMapStrings (
+        skill:
+        row [
+          "[${skill.name}](${skill.link})"
+          (if skill.description == null then "Unknown (secret metadata)" else skill.description)
+          skill.visibility
+          skill.sourceType
+          skill.availability
+        ]
+      ) skillRecords
+      + "\n## Native invocation policy and projected controls\n\nClaude Code uses user-invocable and disable-model-invocation. Codex uses companion policy.allow_implicit_invocation. Pi uses disable-model-invocation. OpenCode has no invocation-policy projection here. Absent fields leave client defaults unchanged. Ordinary skills do not inherit the manual-only policy of Codex command-derived skills. Skill loading grants no additional authority.\n\n"
+      + row [
+        "Skill"
+        "Client"
+        "Description"
+        "Invocation policy"
+        "Projected controls"
+      ]
+      + row (lib.replicate 5 "---")
+      + lib.concatMapStrings (
+        skill:
+        lib.concatMapStrings (
+          client:
+          let
+            entry = skill.clients.${client};
+          in
+          row [
+            skill.name
+            client
+            (if entry.description == null then "Unknown (secret metadata)" else entry.description)
+            (controlsText entry.invocationPolicy)
+            (controlsText entry.controls)
+          ]
+        ) clients
+      ) skillRecords
     )
   );
 in
 {
-  inherit commands agents markdown;
+  inherit
+    commands
+    agents
+    agentRecords
+    skillRecords
+    commandsMarkdown
+    agentsMarkdown
+    skillsMarkdown
+    ;
+  markdown = commandsMarkdown;
 }

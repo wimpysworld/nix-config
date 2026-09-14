@@ -434,12 +434,18 @@ let
   # Public skill directories: those holding a plaintext SKILL.md. Stray empty
   # directories under skills/ are ignored so they do not break evaluation, and
   # secret skills are filtered out first so their bodies never enter the store.
-  physicalSkillDirs = lib.filterAttrs (
-    name: _:
-    (!(lib.hasPrefix "gws-" name) || gwsEnabled)
-    && !(secretSkillDirs ? ${name})
-    && builtins.pathExists (basePath + "/skills/${name}/SKILL.md")
+  allPhysicalSkillDirs = lib.filterAttrs (
+    name: _: !(secretSkillDirs ? ${name}) && builtins.pathExists (basePath + "/skills/${name}/SKILL.md")
   ) skillCandidateDirs;
+  physicalSkillDirs = lib.filterAttrs (
+    name: _: !(lib.hasPrefix "gws-" name) || gwsEnabled
+  ) allPhysicalSkillDirs;
+  catalogueSkillDirs =
+    allPhysicalSkillDirs
+    // secretSkillDirs
+    // {
+      delegate-task = "generated";
+    };
 
   delegateTaskSkillContent =
     let
@@ -465,7 +471,6 @@ let
 
       Priority rules:
       - Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, overlays, options, registries, or `.nix` files: donatello with the `nix` skill.
-      - LOVE 2D, the LOVE engine, `love2d`, `.love` archives, or Lua 5.1/LuaJIT 2.1 game development: donatello with the `love` skill.
       - Source-code security: dibble. Infrastructure, cloud, container, or network security: batfink.
       - Non-Nix implementation from a defined plan: donatello.
       - Prompts, skills, commands, or instruction files: rosey.
@@ -791,6 +796,8 @@ in
     agentDirs
     commandDirs
     commandRegistry
+    allPhysicalSkillDirs
+    catalogueSkillDirs
     skillDirs
     ;
 }

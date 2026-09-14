@@ -87,7 +87,9 @@ Keep public Markdown bodies free of frontmatter. Put command metadata in `comman
 
 The composer discovers source directories automatically. Keep all commands under `commands/<name>/`. Codex commands must also avoid reusable skill names.
 
-Read `README.md` for workflow context and provider delivery details. Use the generated [command catalogue](home-manager/_mixins/agentic/assistants/commands/README.md) for command metadata, client entry behaviour, and agent routing defaults. After command metadata or agent routing changes, run `just update-assistant-catalogue`, then `just check-assistant-catalogue`. Do not edit catalogue rows manually. When documentation differs from implementation, verify `compose.nix`, `metadata.nix`, and `default.nix` before changing behaviour.
+Read the [assistant README](home-manager/_mixins/agentic/assistants/README.md) for workflow context and provider delivery details. Use the generated [command catalogue](home-manager/_mixins/agentic/assistants/commands/README.md) for metadata and client entry behaviour. Use the [agent catalogue](home-manager/_mixins/agentic/assistants/agents/README.md) for descriptions and model defaults. Use the [skill catalogue](home-manager/_mixins/agentic/assistants/skills/README.md) for reusable and conditional sources. A conditional listing does not imply installation or change delivery gates.
+
+After additions, removals, metadata changes, or routing changes, run `just update-assistant-catalogue`, then `just check-assistant-catalogue`. These shared recipes update and check all three catalogues. Edit source metadata, not generated rows. Never decrypt bodies for catalogue generation. Keep workflow explanations in documentation, not duplicate inventories. When documentation differs from implementation, verify `compose.nix`, `metadata.nix`, and `default.nix` before changing behaviour.
 
 ### Composition and routing
 

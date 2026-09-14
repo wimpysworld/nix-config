@@ -134,11 +134,21 @@
           includeHostConfigurations = system == "x86_64-linux";
         in
         {
-          assistant-catalogue = pkgs.runCommand "assistant-catalogue" { } ''
-            ${pkgs.diffutils}/bin/diff -u ${./home-manager/_mixins/agentic/assistants/commands/README.md} \
-              ${pkgs.writeText "assistant-catalogue.md" self.lib.assistantCatalogue.markdown}
-            touch "$out"
-          '';
+          assistant-catalogue = pkgs.runCommand "assistant-catalogue" { } (
+            nixpkgs.lib.concatMapStrings
+              (kind: ''
+                ${pkgs.diffutils}/bin/diff -u ${./home-manager/_mixins/agentic/assistants + "/${kind}/README.md"} \
+                  ${pkgs.writeText "assistant-${kind}.md" self.lib.assistantCatalogue."${kind}Markdown"}
+              '')
+              [
+                "commands"
+                "agents"
+                "skills"
+              ]
+            + ''
+              touch "$out"
+            ''
+          );
           wayland-compositors = import ./lib/tests/wayland-compositors.nix {
             inherit (nixpkgs) lib;
             inherit pkgs;
