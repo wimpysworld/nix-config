@@ -3,4 +3,4 @@ description = "Audit Communication Rules 🛡️"
 
 [compose]
 agent = "penry"
-root = true
+caller-context = true

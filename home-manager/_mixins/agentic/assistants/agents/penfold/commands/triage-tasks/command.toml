@@ -3,5 +3,5 @@ description = "Triage Tasks 🗂️"
 argument-hint = "[issue-id ...]"
 
 [compose]
-root = true
+caller-context = true
 agent = "penfold"

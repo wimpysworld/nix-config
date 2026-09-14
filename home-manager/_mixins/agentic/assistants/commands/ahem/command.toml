@@ -2,4 +2,4 @@
 description = "Politely re-issue the Communication Rules 📜"
 
 [compose]
-root = true
+caller-context = true

@@ -17,7 +17,7 @@ ${TMPDIR:-/tmp}/agent-plans/<key>/plan.md
 - `<key>` is the Linear issue key, lowercased (for example `ww-65`). When the task has no issue key, use the current branch name with `/` flattened to `-`.
 - Create the directory if it does not exist.
 
-The path is derived from the task so a fresh sub-agent can find the plan without being handed it.
+The path is derived from the task so a fresh worker can find the plan without being handed it.
 
 The plan is disposable. It lasts for one task's implementation only. Never commit it, never write it inside the repo, and never treat it as a durable record. The task is the durable record.
 

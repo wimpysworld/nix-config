@@ -10,7 +10,7 @@ behind the current design so future edits stay coherent.
 Rosey crafts, refines, and maintains the artefacts that other agents are built
 from: agent system prompts, agent skills, slash commands, and project
 instruction files (`AGENTS.md`, `CLAUDE.md`, and friends). She is a specialist
-sub-agent rather than a generalist; her own prompt stays small and pushes all
+worker rather than a generalist; her own prompt stays small and pushes all
 doctrine into four task-specific skills. The guiding rule is that every token
 in any artefact she touches must earn its place. Tokens spent on persona,
 restatement, hedging, or duplicated rules are tokens stolen from the user's
@@ -284,7 +284,7 @@ existing policies.
 For nested workflows, explicitly load the generated `SKILL.md` from the
 configured Codex skills root. Pass arguments, authority, and the return
 contract explicitly. Specify same-context reuse or dispatch by the top-level
-orchestrator. Bypass a launch wrapper only when the calling workflow explicitly
+coordinator. Bypass a launch wrapper only when the calling workflow explicitly
 requires same-context reuse. Workers must not launch another specialist.
 See [workflow composition](../../../codex/README.md#workflow-composition).
 

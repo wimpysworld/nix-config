@@ -6,7 +6,7 @@ On slash-command clients, use `$ARGUMENTS` as the optional head branch. On Codex
 
 ### Authority and invariants
 
-Invocation authorises stopping this session's `babysit-pr` sub-agents for the same PR, one marked tracker comment per associated issue, forward-only moves to the `done` role, exact-ref fetches, current-worktree switch or detach, a default-branch fast-forward, and verified local and remote head-branch deletion.
+Invocation authorises stopping this session's `babysit-pr` workers for the same PR, one marked tracker comment per associated issue, forward-only moves to the `done` role, exact-ref fetches, current-worktree switch or detach, a default-branch fast-forward, and verified local and remote head-branch deletion.
 
 Do not merge or edit the PR, change other tracker fields, add or rewrite remotes, prune broadly, reset, clean, force the default branch, remove a worktree, or delete any unverified ref. Use bounded calls without retry loops. Keep tracker issues and Git phases independent.
 
@@ -34,7 +34,7 @@ Do not merge or edit the PR, change other tracker fields, add or rewrite remotes
 
 ### Stop the babysitters
 
-`babysit-pr` may still be running in this session with watchers in the background, and it names every sub-agent `babysit-pr-<owner>-<repo>-<number>-<role>`. After the PR is proven merged and before any Git clean-up, list this session's active sub-agents through the platform's own management action, as `delegate-task` describes, and stop every one whose name carries the prefix for this PR. Stop only that prefix, never another PR's babysitters or an unrelated agent. Record each one stopped, or `none running`, in the report. When the platform offers no way to list or stop sub-agents, say so in one line and carry on. The watchers also return on their own once the PR `state` leaves `OPEN`, so a missed stop costs one shift at most.
+`babysit-pr` may still be running in this session with watchers in the background, and it names every worker `babysit-pr-<owner>-<repo>-<number>-<role>`. After the PR is proven merged and before any Git clean-up, list this session's active workers through the platform's own management action, as `delegate-task` describes, and stop every one whose name carries the prefix for this PR. Stop only that prefix, never another PR's babysitters or an unrelated agent. Record each one stopped, or `none running`, in the report. When the platform offers no way to list or stop workers, say so in one line and carry on. The watchers also return on their own once the PR `state` leaves `OPEN`, so a missed stop costs one shift at most.
 
 ### Clean local Git state
 

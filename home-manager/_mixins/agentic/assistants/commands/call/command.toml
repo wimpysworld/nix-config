@@ -3,4 +3,4 @@ description = "Make the call 🎯"
 argument-hint = "[topic]"
 
 [compose]
-root = true
+caller-context = true

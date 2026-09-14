@@ -58,13 +58,13 @@ Keep it cheap. List the directory names under `agents/`, `commands/`, `agents/*/
 
 Report first. Never edit anything before the user chooses.
 
-For each accepted suggestion, delegate to `rosey`, one sub-agent per suggestion. Supply the matching `create-command`, `update-command`, `create-skill`, `update-skill`, `update-agents-md`, or `create-agents-md` workflow body. Resolve it through the available skill catalogue, configured skill roots, or repository command source. Give Rosey the exact paths, accepted change, authority, and return contract. Rosey loads the required authoring skill and applies the body directly, without a generated launch wrapper or further delegation.
+For each accepted suggestion, delegate to `rosey`, one worker per suggestion. Supply the matching `create-command`, `update-command`, `create-skill`, `update-skill`, `update-agents-md`, or `create-agents-md` workflow body. Resolve it through the available skill catalogue, configured skill roots, or repository command source. Give Rosey the exact paths, accepted change, authority, and return contract. Rosey loads the required authoring skill and applies the body directly, without a generated launch wrapper or further delegation.
 
 A Fence policy change is the exception. It is Nix, not a prompt, so delegate that one to `donatello`, under the same report-first gate. Tell it to run `just eval` before it reports.
 
 The edits land in two different repositories. A command, skill, or Fence policy change lands in `~/Zero/nix-config`, which is usually not the repository this session is working in. An `AGENTS.md` change lands in the current repository, which at work may be a file shared with colleagues, so it carries further than a personal command change and needs the same report-first gate as everything else.
 
-Tell every sub-agent to report the paths it changed and never commit. Name the repository beside every changed path in the final report, so uncommitted work is not found days later in the wrong tree.
+Tell every worker to report the paths it changed and never commit. Name the repository beside every changed path in the final report, so uncommitted work is not found days later in the wrong tree.
 
 ### Output
 
@@ -85,7 +85,7 @@ Change: <the new command or skill, or the file to edit>
 - `<repository>` - `<path>` - <what changed>
 ```
 
-With no suggestions, the whole output is the single line `Nothing to suggest.` Keep the `Already there` section only when it has entries. Write the `Changed` section only after the user has picked and the sub-agents have reported.
+With no suggestions, the whole output is the single line `Nothing to suggest.` Keep the `Already there` section only when it has entries. Write the `Changed` section only after the user has picked and the workers have reported.
 
 ### Constraints
 

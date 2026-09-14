@@ -3,4 +3,4 @@ description = "Project Smells Review 🦨"
 
 [compose]
 agent = "penry"
-root = true
+caller-context = true

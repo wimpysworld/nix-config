@@ -120,7 +120,7 @@ policy:
 
 The policy excludes commands from implicit selection while preserving explicit user invocation. It is not an access restriction. Ordinary reusable skills retain their existing policies. The policy belongs in `agents/openai.yaml`, not in `SKILL.md` frontmatter.
 
-Each agent command uses its bare name, such as `$draft-commit-message`, which matches the Pi prompt convention. Agent commands dispatch to their owning specialist through `spawn_agent` by default. The parent remains the orchestrator. A command with `spawn-agent = false` under `[compose.codex]` in `command.toml` embeds the owning persona and task prompt in the caller's context.
+Each agent command uses its bare name, such as `$draft-commit-message`, which matches the Pi prompt convention. Agent commands dispatch to their owning specialist through `spawn_agent` by default. The coordinator remains in the parent thread. A command with `spawn-agent = false` under `[compose.codex]` in `command.toml` embeds the owning persona and task prompt in the caller's context.
 
 ```text
 $draft-commit-message
@@ -143,7 +143,7 @@ The shared composer asserts at evaluation time that no two sources (project skil
 
 `$name` is user input syntax. A `$child` reference inside a loaded command does not recursively invoke another command.
 
-For nested workflows, load the child's generated `SKILL.md` explicitly from the configured skills root. This root follows `home.preferXdgDirectories`: `~/.codex/skills` or `${XDG_CONFIG_HOME}/codex/skills`. Pass arguments, authority, and the return contract explicitly. State whether the current agent runs the task body or the top-level orchestrator dispatches the owning specialist.
+For nested workflows, load the child's generated `SKILL.md` explicitly from the configured skills root. This root follows `home.preferXdgDirectories`: `~/.codex/skills` or `${XDG_CONFIG_HOME}/codex/skills`. Pass arguments, authority, and the return contract explicitly. State whether the current agent runs the task body or the coordinator dispatches the selected specialist.
 
 Keep agent launch wrappers unless the calling workflow explicitly requires same-context reuse. Workers must not launch another specialist. For example, `make-commit` reuses `draft-commit-message` in the current context and retains ownership of the Git index.
 

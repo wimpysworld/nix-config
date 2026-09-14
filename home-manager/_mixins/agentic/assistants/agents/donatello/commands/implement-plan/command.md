@@ -4,16 +4,16 @@ Implement the plan at $1. Scope: $2 - an optional phase. When $2 is given, imple
 
 On Codex, map the user's accompanying text explicitly: $1 is the plan path and $2 is the optional phase. These placeholders are not substituted in a command-derived skill.
 
-The user invokes this command manually. An authorised top-level orchestrator can read and apply this workflow body with explicit plan and phase arguments. It retains all dispatch ownership and ignores any generated launch wrapper. A worker reports the implementation needed and returns, without applying this orchestrating workflow or launching agents.
+The user invokes this command manually. An authorised coordinator can read and apply this workflow body with explicit plan and phase arguments. It retains all dispatch ownership and ignores any generated launch wrapper. A worker reports the implementation needed and returns, without applying this orchestrating workflow or launching agents.
 
 When $1 is omitted, derive the plan path from the task: `${TMPDIR:-/tmp}/agent-plans/<key>/plan.md`, where `<key>` is the lowercased Linear issue key, or the current branch name with `/` flattened to `-` when the task has no key. The plan is disposable: never copy it into the repo and never commit it.
 
 ### Workflow
 
-1. Read `contribution-voice` first unless its complete, current instructions are in this context. Apply it for every phase report and every sub-agent packet. The output tables below fix the layout; the skill governs the prose in each cell. Name the skill in each packet. Require its complete, current instructions in each worker's own context before dependent work
+1. Read `contribution-voice` first unless its complete, current instructions are in this context. Apply it for every phase report and every worker packet. The output tables below fix the layout; the skill governs the prose in each cell. Name the skill in each packet. Require its complete, current instructions in each worker's own context before dependent work
 2. Read the plan and resolve the phase set from $2 (one phase, or every phase when $2 is omitted)
-3. Dispatch one fresh sub-agent per phase, in dependency order. Never give one sub-agent two phases, a whole plan, or a multi-phase sequence. Run independent phases in parallel once their dependencies are satisfied, each in its own fresh sub-agent. Fresh context per phase keeps attention high and implementations small
-4. Each sub-agent reads its phase's Dependencies, Scope, Reuse candidates, Flags, and Success Criteria, then:
+3. Dispatch one fresh worker per phase, in dependency order. Never give one worker two phases, a whole plan, or a multi-phase sequence. Run independent phases in parallel once their dependencies are satisfied, each in its own fresh worker. Fresh context per phase keeps attention high and implementations small
+4. Each worker reads its phase's Dependencies, Scope, Reuse candidates, Flags, and Success Criteria, then:
    - Verifies dependencies are satisfied before starting
    - Checks Reuse candidates exist and are usable before writing new code
    - Implements changes, honouring Success Criteria from the plan
@@ -65,7 +65,7 @@ When $1 is omitted, derive the plan path from the task: `${TMPDIR:-/tmp}/agent-p
 ### Constraints
 
 - Process phases in dependency order; skip blocked phases and report why
-- Give every phase its own fresh sub-agent; never batch phases into one sub-agent
+- Give every phase its own fresh worker; never batch phases into one worker
 - Dispatch independent phases in parallel, but never start a phase before its dependencies complete
 - Always check Reuse candidates before writing new code
 - Report deviations from the plan explicitly; never silently diverge

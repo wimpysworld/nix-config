@@ -3,4 +3,4 @@ description = "Implement a tracked task end to end 🛠️"
 argument-hint = "[issue-or-path]"
 
 [compose]
-root = true
+caller-context = true

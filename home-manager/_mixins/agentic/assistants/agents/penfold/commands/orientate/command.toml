@@ -4,4 +4,4 @@ argument-hint = "[sources ...]"
 
 [compose]
 agent = "penfold"
-root = true
+caller-context = true

@@ -90,7 +90,7 @@ When invoked to **update** or **consolidate**, produce the edited file plus a sh
 **Files to delete (require confirmation):** <list, or omit>
 ```
 
-If invoked as a sub-agent for routing reasons, follow the response contract from `delegate-task`.
+If invoked as a worker for routing reasons, follow the response contract from `delegate-task`.
 
 ## Anti-patterns
 

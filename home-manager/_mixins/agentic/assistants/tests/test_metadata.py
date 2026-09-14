@@ -286,15 +286,72 @@ skills = false
                 )
                 self.assertIn("Composition switches must be booleans.", error)
 
-    def test_root_control_requires_a_boolean_and_overrides_spawn(self):
+    def test_command_owner_is_not_the_selected_executor(self):
+        files = {
+            "agents/owner/prompt.md": "OWNER_PERSONA",
+            "agents/executor/prompt.md": "EXECUTOR_PERSONA",
+            "agents/owner/commands/check/command.md": "BODY",
+            "agents/owner/commands/check/command.toml":
+                '[common]\ndescription = "Check."\n[compose]\nagent = "executor"\n',
+        }
+        result = self.evaluate(
+            f'''let composer = import {ASSISTANTS}/compose.nix {{
+              inherit lib; basePath = fixture;
+            }}; header = composer.commandMetadata "owner" "check";
+            in {{
+              owner = (builtins.head composer.commandSources).agentName;
+              dispatch = m.commandDispatch composer.agentDirs "check" "owner" header;
+              commands = lib.genAttrs [ "claude" "opencode" "pi" ] composer.composeCommands;
+            }}''',
+            files=files,
+        )
+        self.assertEqual(result["owner"], "owner")
+        self.assertEqual(result["dispatch"]["selectedAgent"], "executor")
+        self.assertEqual(result["dispatch"]["role"], "executor")
+        for platform, commands in result["commands"].items():
+            self.assertIn("executor", commands["check"], platform)
+            self.assertNotIn("OWNER_PERSONA", commands["check"])
+
+    def test_canonical_vocabulary_keeps_caller_distinct(self):
+        body = (ASSISTANTS / "instructions/global.md").read_text()
+        for text in (
+            "Coordinator: the top-level assistant",
+            "Worker: a delegated assistant with bounded scope",
+            "A caller can be a worker",
+            "Parent and child: the immediate delegation relationship",
+            "Command owner: the directory specialist",
+            "Context: instructions and evidence, not a role or authority",
+        ):
+            self.assertIn(text, body)
+        guidance = (ASSISTANTS / "skills/write-command/SKILL.md").read_text()
+        for text in (
+            "does not guarantee child execution",
+            "not native Pi",
+            "grants no coordinator authority",
+            "does not make a parent-linked session top-level",
+        ):
+            self.assertIn(text, guidance)
+
+    def test_old_root_key_is_rejected(self):
+        for value in ("true", "false"):
+            with self.subTest(value=value):
+                error = self.evaluate(
+                    "m.readCommandHeader fixture",
+                    files={"command.toml": f"[compose]\nroot = {value}\n"},
+                    success=False,
+                )
+                self.assertIn("/command.toml: Removed compose.root setting", error)
+                self.assertIn("Use compose.caller-context instead", error)
+
+    def test_caller_context_control_requires_a_boolean_and_overrides_spawn(self):
         for value in ('"true"', "0", "[]", "{}"):
             with self.subTest(value=value):
-                self.evaluate("h", f"[compose]\nroot = {value}\n", success=False)
+                self.evaluate("h", f"[compose]\ncaller-context = {value}\n", success=False)
         for value in (None, "false", "true"):
             with self.subTest(value=value):
                 header = '[compose]\nagent = "worker"\n'
                 if value is not None:
-                    header += f"root = {value}\n"
+                    header += f"caller-context = {value}\n"
                 header += "[compose.codex]\nspawn-agent = true\n"
                 result = self.evaluate(
                     'm.commandDispatch { worker = true; } "fixture" null h', header
@@ -302,11 +359,11 @@ skills = false
                 self.assertEqual(result["spawn"], value != "true")
         self.evaluate(
             'm.commandDispatch { worker = true; } "fixture" "worker" h',
-            '[compose]\nroot = true\n[routing.codex]\nmodel = "pinned"\n',
+            '[compose]\ncaller-context = true\n[routing.codex]\nmodel = "pinned"\n',
             success=False,
         )
 
-    def test_root_commands_override_native_bindings_and_preserve_the_task(self):
+    def test_caller_context_commands_override_native_bindings_and_preserve_the_task(self):
         body = "Keep caller context. Delegate independent checks for $ARGUMENTS."
         files = {"agents/worker/prompt.md": "PERSONA_SENTINEL\n"}
         for selection in ("scoped", "bound", "unbound"):
@@ -321,7 +378,7 @@ skills = false
                 if selection == "bound":
                     header += 'agent = "worker"\n'
                 if mode != "absent":
-                    header += f"root = {mode}\n"
+                    header += f"caller-context = {mode}\n"
                 header += (
                     "[compose.claude]\nuse-task = true\n"
                     "[compose.pi]\nspawn-agent = true\n"
@@ -352,6 +409,7 @@ skills = false
                     native = yaml.safe_load(header)
                     self.assertEqual(task.strip(), body)
                     self.assertNotIn("compose", native)
+                    self.assertNotIn("caller-context", native)
                     self.assertNotIn("root", native)
                     self.assertNotIn("agent", native)
                     if platform == "claude":
@@ -359,27 +417,27 @@ skills = false
                     if platform == "opencode":
                         self.assertIs(native["subtask"], False)
                     if selection != "unbound":
-                        leaf = commands[selection + "-false"]
+                        worker = commands[selection + "-false"]
                         if platform == "claude":
                             self.assertIn(
-                                "Use the Task tool to launch the worker agent", leaf
+                                "Use the Task tool to launch the worker agent", worker
                             )
                         elif platform == "pi":
                             self.assertIn(
                                 'Use the Agent tool with `subagent_type: "worker"`',
-                                leaf,
+                                worker,
                             )
                         elif platform == "opencode":
                             self.assertEqual(
-                                yaml.safe_load(leaf.split("---", 2)[1])["agent"],
+                                yaml.safe_load(worker.split("---", 2)[1])["agent"],
                                 "worker",
                             )
 
-    def test_real_command_inventory_keeps_root_orchestrators_and_leaf_specialists(self):
+    def test_inventory_keeps_caller_context_and_specialist_selection(self):
         result = self.evaluate("""lib.listToAttrs (map (entry: {
           name = entry.name;
           value = let header = c.commandMetadata entry.agentName entry.name; in {
-            root = header.compose.root or false;
+            callerContext = header.compose.caller-context or false;
             dispatch = m.commandDispatch c.agentDirs entry.name entry.agentName header;
             rendered = lib.genAttrs [ "claude" "opencode" "pi" ]
               (platform: c.composeCommandFromPrompt platform entry.agentName entry.name
@@ -400,16 +458,16 @@ skills = false
             "gather-review-data",
             "audit-code-security",
         ):
-            with self.subTest(root_command=name):
-                self.assertTrue(result[name]["root"])
-        self.assertFalse(result["create-agents-md"]["root"])
+            with self.subTest(caller_context_command=name):
+                self.assertTrue(result[name]["callerContext"])
+        self.assertFalse(result["create-agents-md"]["callerContext"])
         for name, command in result.items():
             with self.subTest(command=name):
                 self.assertIs(
                     command["policy"]["policy"]["allow_implicit_invocation"], False
                 )
                 self.assertNotIn("route", command["dispatch"])
-                if command["root"]:
+                if command["callerContext"]:
                     self.assertFalse(command["dispatch"]["spawn"])
                     self.assertIsNone(command["dispatch"]["role"])
                     for platform, rendered in command["rendered"].items():
@@ -432,7 +490,7 @@ skills = false
                                 if platform == "opencode"
                                 else task.split("\n## Task\n", 1)[1]
                             )
-                            self.assertIn("You are a leaf worker.", child)
+                            self.assertIn("You are a worker.", child)
                             self.assertTrue(
                                 child.rstrip().endswith("INVENTORY_TASK_SENTINEL")
                             )
@@ -455,7 +513,7 @@ skills = false
                 self.assertEqual(sources[0]["agentName"], "garfield")
                 self.assertFalse((ASSISTANTS / "commands" / name).exists())
                 metadata = result["metadata"][name]
-                self.assertNotIn("root", metadata["compose"])
+                self.assertNotIn("caller-context", metadata["compose"])
                 self.assertNotIn("routing", metadata)
                 self.assertEqual(metadata["common"]["argument-hint"], "[context]")
                 for platform, commands in result["commands"].items():
@@ -477,7 +535,7 @@ skills = false
                             "not the general conversation or transcript", launch
                         )
                         self.assertIn("Launch only one Garfield worker", launch)
-                    self.assertIn("You are a leaf worker.", child)
+                    self.assertIn("You are a worker.", child)
                     self.assertIn("accompanying invocation text", child)
                     self.assertIn(
                         "require explicit context or clarify missing decisions", child
@@ -487,8 +545,8 @@ skills = false
                     self.assertNotIn("Use the Agent tool with", child)
         for skill in result["skills"].values():
             self.assertIn("Directly invoked `make-commit` and `make-pr`", skill)
-            self.assertIn("one garfield leaf worker", skill)
-            self.assertIn("The root retains index ownership", skill)
+            self.assertIn("one garfield worker", skill)
+            self.assertIn("The coordinator retains index ownership", skill)
             self.assertIn("Garfield never launches monitoring", skill)
             self.assertNotIn("staged diff is large", skill)
 
@@ -509,7 +567,7 @@ skills = false
                     self.assertIn(name, error)
                     self.assertIn("duplicate source", error)
 
-    def test_git_bodies_preserve_safety_and_root_inline_reuse(self):
+    def test_git_bodies_preserve_safety_and_coordinator_inline_reuse(self):
         garfield = ASSISTANTS / "agents/garfield"
         commit = (garfield / "commands/make-commit/command.md").read_text()
         pr = (garfield / "commands/make-pr/command.md").read_text()
@@ -529,12 +587,12 @@ skills = false
             "supplied parent evidence supports for the committed changes",
             "A delegated task must restate push, PR creation, review metadata, and tracker mutation authority",
             "Never report success from `gh pr create` alone",
-            "Watch handover: ROOT can offer babysit-pr",
+            "Watch handover: Coordinator can offer babysit-pr",
             "Never invoke `babysit-pr`",
         ):
             self.assertIn(text, pr)
         self.assertNotIn("invoke the provider-specific command", pr)
-        root_paths = {
+        coordinator_paths = {
             "agents/donatello/commands/address-code-review": (
                 "without generated launch wrappers",
                 "Follow the `make-commit` body and its direct draft phase",
@@ -546,9 +604,9 @@ skills = false
                 "Claiming an issue, writing its durable record, staging, and committing happen in this context only",
             ),
         }
-        for path, instructions in root_paths.items():
+        for path, instructions in coordinator_paths.items():
             header = tomllib.loads((ASSISTANTS / path / "command.toml").read_text())
-            self.assertTrue(header["compose"]["root"])
+            self.assertTrue(header["compose"]["caller-context"])
             body = (ASSISTANTS / path / "command.md").read_text()
             for instruction in instructions:
                 self.assertIn(instruction, body)
@@ -640,7 +698,7 @@ reasoningEffort = "high"
             },
         )
 
-    def test_only_child_dispatch_gets_the_leaf_contract(self):
+    def test_only_child_dispatch_gets_the_worker_contract(self):
         body = "Review $ARGUMENTS. Return the report."
         files = {"agents/worker/prompt.md": "PERSONA_SENTINEL\n"}
         for name, controls in {
@@ -676,7 +734,7 @@ reasoningEffort = "high"
                     if platform == "opencode"
                     else delegated.split("\n## Task\n", 1)[1]
                 )
-                self.assertIn("You are a leaf worker.", child)
+                self.assertIn("You are a worker.", child)
                 self.assertTrue(child.rstrip().endswith(body))
 
     def test_native_specialists_keep_routes_and_tools_without_nested_dispatch(self):
@@ -690,7 +748,7 @@ reasoningEffort = "high"
                     body = rendered.split("---", 2)[2].strip()
                     if platform == "pi":
                         self.assertTrue(body.startswith("PERSONA_SENTINEL\n"))
-                        self.assertIn("You are a leaf worker.", body)
+                        self.assertIn("You are a worker.", body)
                         self.assertIn("## Shared safety rules", body)
                         self.assertIn("## Sentences", body)
                     else:
@@ -832,7 +890,7 @@ reasoningEffort = "high"
         ):
             self.assertIn(instruction, skills["review"])
 
-    def test_shared_root_limit_and_leaf_rule_reach_every_client(self):
+    def test_shared_coordinator_limit_and_worker_rule_reach_every_client(self):
         instructions = self.evaluate(
             'lib.genAttrs [ "claude" "codex" "opencode" "pi" ] c.composeInstructions'
         )
@@ -848,7 +906,7 @@ reasoningEffort = "high"
                     body,
                 )
                 self.assertIn(
-                    "Loading a command or skill never changes a worker into an orchestrator",
+                    "Loading a command or skill never changes a worker into a coordinator",
                     body,
                 )
 

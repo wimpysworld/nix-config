@@ -165,7 +165,7 @@ new named children from Pi `Agent` and `SubagentWorkflow` calls through agent
 `header.toml` defaults under `[routing.pi.<inference-provider>]`.
 The provider must match the active provider exactly. Missing routes use native fallback.
 Explicit launch-time child model and thinking overrides remain supported.
-Commands and skills never change the root model or thinking.
+Commands and skills never change the caller's model or thinking.
 `routeInvocation` and `provider-router:invoke` remain no-ops for display compatibility.
 
 `quota-status` lives at `~/.pi/agent/extensions/quota-status/`. It listens to
@@ -310,7 +310,7 @@ Historical logs and sessions remain untouched.
 | --- | --- | --- |
 | `backgroundByDefault` | `true` | Detached `Agent` calls notify the parent on completion. |
 | `maxConcurrent`, `maxConcurrentForeground` | `12` each | Independent background and foreground pools, not a combined cap. |
-| `maxSubagentDepth` | `1` | Only the root launches specialists. |
+| `maxSubagentDepth` | `1` | Only the coordinator launches specialists. |
 | `defaultMaxTurns`, `graceTurns` | `50`, `5` | Bounded turns, not a wall-clock deadline. |
 | `disableDefaultAgents`, `strictAgentFiles` | `true` | Use explicit custom agents and reject malformed headers. |
 | `fallbackSubagent` | `"none"` | Do not substitute a default agent. |
@@ -330,7 +330,7 @@ Scripts use `agent(prompt, { agentType })`, `parallel`, and `pipeline`.
 The router limits each workflow to twelve active calls. The native runtime retains its 1000-call limit per workflow.
 Failed or skipped required results still fail the workflow.
 Each workflow has a separate pool, independent of both direct pools, so twelve is not a global aggregate cap.
-Shared instructions require the root to keep at most twelve workers active across all delegation tools and workflows combined.
+Shared instructions require the coordinator to keep at most twelve workers active across all delegation tools and workflows combined.
 This aggregate rule is guidance, not a shared scheduler.
 Native CPU-based capacity can lower workflow concurrency. Foreground resumes can exceed their pool limit.
 Nested `workflow()` calls are rejected because their source bypasses routing. Launch saved workflows through the tool instead.

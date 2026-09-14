@@ -1,13 +1,13 @@
 
 # Write Assistant
 
-Author and maintain agent system prompts: the always-loaded persona, capabilities, and constraints that define a sub-agent. One artefact, two flows: create from requirements or update in place.
+Author and maintain agent system prompts: the always-loaded persona, capabilities, and constraints that define a worker. One artefact, two flows: create from requirements or update in place.
 
 ## Decide first
 
 - **Create** vs **update** vs **split**. Split an agent when one prompt mixes different tools, guardrails, models, or output styles that diverge in practice.
 - **Examples** vs **no examples**. Add 1-2 examples for subjective style or judgment work; omit for procedural agents.
-- **Triggers** vs **direct invocation**. Sub-agents selected by routing need a trigger-rich `description`; user-invoked agents only need a name.
+- **Triggers** vs **direct invocation**. Workers selected by routing need a trigger-rich `description`; user-invoked agents only need a name.
 
 ## Required native structure
 
@@ -50,13 +50,15 @@ The seven-element template (role, mission, capabilities, process, constraints, o
 
 ## Repository source
 
+Use the coordinator, worker, caller, parent/child, command owner, and context definitions in `instructions/global.md`. A worker never gains dispatch authority from a persona, command, or skill. Keep native client identifiers unchanged.
+
 In this repository, author metadata in `header.toml`, not in the Markdown body. The composer generates native client frontmatter.
 
 Use `[common] description` for the shared description. Agent names derive from directory names. Keep the agent body in `prompt.md` without frontmatter.
 
 Use `[claude]`, `[opencode]`, `[codex]`, and `[pi]` for native non-model fields. Put agent model and effort defaults under `[routing.<provider>]`. Pi defaults use `[routing.pi.<inference-provider>] model` and `thinking`.
 
-Agent headers are the sole routing default source for Claude Code, Codex, and Pi. Their commands and ordinary skills remain model-neutral. Explicit launch-time child model, thinking, or effort overrides remain supported. Root execution never changes the orchestrator model.
+Agent headers are the sole routing default source for Claude Code, Codex, and Pi. Their commands and ordinary skills remain model-neutral. Explicit launch-time child model, thinking, or effort overrides remain supported. Caller-context execution never changes the caller's model.
 
 Pi uses only the exact active provider's agent route. Missing routes use native fallback. Generated Pi headers leave native model and thinking pins unset so launch arguments take effect. Separately installed native agent pins can take precedence over `Agent` arguments.
 
@@ -150,7 +152,7 @@ When invoked to **update**, produce the edited prompt plus this changelog:
 
 Append a word count and a flag for any contradictions surfaced before editing.
 
-If invoked as a sub-agent for routing reasons, follow the response contract from `delegate-task`.
+If invoked as a worker for routing reasons, follow the response contract from `delegate-task`.
 
 ## Anti-patterns
 

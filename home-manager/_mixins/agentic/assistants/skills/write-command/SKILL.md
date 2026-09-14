@@ -5,7 +5,7 @@ Author and maintain commands across Claude Code, OpenCode, Pi prompt templates, 
 
 ## Decide first
 
-- **Root** vs **leaf**. Set `[compose] root = true` for fan-out, direct worker dispatch, caller transcript/state, or same-context Git work. Leaf specialist work keeps the default `root = false`.
+- **Caller context** vs **specialist selection**. Set `[compose] caller-context = true` to preserve the caller's role and suppress generated dispatch and persona insertion. The default is `false`, which does not guarantee child execution. This repository setting is not native Pi. It grants no coordinator authority and does not make a parent-linked session top-level.
 - **Long command choice.** Before editing, when a command is likely to exceed 100 lines, pause and ask one focused question: keep it inline, or use a thin command plus a skill for reusable guidance? Recommend based on reuse, not length alone. Keep command-specific guidance inline; recommend a skill when the guidance has independent reuse. Honour the user's choice.
 - **Shim** vs **standalone** vs **standalone-with-format**. A shim is a 3-8 line body that names the flow and loads a skill. A standalone command carries its own one-verb body. Add an inline output format only when it is non-trivial and not reused.
 - **Single-purpose output-format commands stay standalone.** Do not refactor a working standalone-with-format command into a shim speculatively. Recommend extraction when a sibling command would share ≥30% of the body or the guidance has independent reuse.
@@ -63,6 +63,8 @@ Use `$ARGUMENTS` for a shared command that takes one free-form argument. Claude 
 
 ## Repo composition
 
+Use the global vocabulary: the coordinator owns planning, dispatch, integration, and assigned inline operations. A worker completes bounded work and never launches agents. The caller invokes a command or follows its body and can be a worker. Parent and child name only the immediate delegation relationship. The command owner is the directory specialist, not necessarily the selected agent or executor. Context is instructions and evidence, not role or authority.
+
 This repo reads one `command.toml` and one `command.md` per command. Keep the body free of frontmatter.
 
 ```toml
@@ -78,9 +80,9 @@ Use `[common]` for the description and a hint shared by Claude Code, OpenCode, a
 
 Keep native non-model fields in provider tables. Claude Code, Codex, and Pi reject non-empty command routing. Put their routing defaults only in the owning agent's `header.toml`. OpenCode command model metadata remains supported under `[routing.opencode]`.
 
-Use `[compose] agent` for the repository agent binding. Shared `root = true` takes precedence over provider launch controls and keeps the caller's context and persona. It suppresses Claude agent/Task wrappers, OpenCode agent binding, Pi launches, and Codex persona/spawn wrappers. OpenCode also receives `subtask: false`.
+Use `[compose] agent` for the repository agent binding. Shared `caller-context = true` takes precedence over provider launch controls and keeps the caller's context and persona. It suppresses Claude agent/Task wrappers, OpenCode agent binding, Pi launches, and Codex persona/spawn wrappers. OpenCode also receives `subtask: false`.
 
-Agent-bound leaf commands use Claude's Task wrapper by default. Explicit `[compose.claude] use-task = false` selects the inline `@agent` exception without a child launch. `[compose.codex] spawn-agent = false` embeds the agent persona in the caller's context. Neither exception is shared root execution.
+Agent-bound specialist commands use Claude's Task wrapper by default. Explicit `[compose.claude] use-task = false` selects the inline `@agent` exception without a child launch. `[compose.codex] spawn-agent = false` embeds the agent persona in the caller's context. Neither exception preserves the caller's role through the shared setting.
 
 Names derive from directories. Missing provider tables mean no overrides, not disabled output. TOML has no null. Omit fields to inherit defaults.
 
@@ -96,8 +98,8 @@ Manual-only controls command selection, not file access or workflow reuse within
 - Supply the exact arguments, existing authority, output contract, and return point. A nested read grants no new mutation authority.
 - For same-context work, follow the workflow body without its generated agent-launch wrapper. Keep staging and commits in their declared owning context.
 - Applying a nested workflow inside a worker does not authorise its generated launch wrapper or further delegation.
-- For specialist work, the top-level orchestrator dispatches the workflow body directly with a bounded packet. Workers return directly and launch no agents.
-- Put the leaf contract in the child's task, not the parent's launch instructions. Use native tool names in wrappers and generic delegation terms in shared prose.
+- For specialist work, the coordinator dispatches the workflow body directly with a bounded packet. Workers return directly and launch no agents.
+- Put the worker contract in the child's task, not the parent's launch instructions. Use native tool names in wrappers and generic delegation terms in shared prose.
 - Preserve user-facing `$name` examples on Codex and `/name` examples on slash-command runtimes. Do not use prefix conversion as workflow composition.
 
 ## Command table
@@ -123,14 +125,14 @@ See `references/portability.md` for the full table. Headlines:
 
 OpenCode's slash commands invoke in the caller's session by default. The exception is when `agent:` binds to a subagent: that binding alone triggers a subagent invocation, so the command body runs in a fresh context owned by the named agent. `subtask: true` **forces** subagent invocation even when the bound agent is `mode: primary`, so the body still runs in a fresh subagent context without polluting the caller's session. `subtask: false` explicitly opts out and keeps execution in the caller's session even if the bound agent is a subagent (honoured by spec; some 2026-era builds ignore it - see sst/opencode#10431).
 
-For leaf specialist shims, omit `subtask`. The agent binding already selects a fresh context. For root commands, use shared `root = true`. The composer removes the agent binding and forces `subtask: false`. Reserve `subtask: true` for leaf commands that need a fresh context with a primary agent.
+For specialist shims, omit `subtask`. The agent binding already selects a fresh context. To preserve the caller's role, use shared `caller-context = true`. The composer removes the agent binding and forces `subtask: false`. Reserve `subtask: true` for specialist commands that need a fresh context with a primary agent.
 
 ## Model selection
 
 In this repo:
 
 - Agent headers are the sole routing default source for Claude Code, Codex, and Pi. Commands and ordinary skills stay model-neutral.
-- General and agent-owned root execution never changes the orchestrator model. Preserve `compose.root` and provider launch controls.
+- General and agent-owned caller-context execution never changes the caller's model. Preserve `compose.caller-context` and provider launch controls.
 - Child launches use the owning agent's defaults. Explicit launch-time child model, thinking, or effort overrides remain supported.
 - OpenCode agent and command model metadata support is unchanged. Current OpenCode agents and commands omit model pins.
 - Pi uses the exact active provider's agent route, or native fallback when that route is absent.
@@ -154,7 +156,7 @@ If the body writes files, runs Bash, or hits the network, say so and list paths 
 
 1. Read `command.md` and `command.toml`.
 2. Identify the form band (shim / standalone / standalone-with-format). Enforce the shim and trivial caps; apply the long command choice before editing a standalone-with-format command.
-3. Diagnose: root/leaf ownership, argument substitution (`$ARGUMENTS` vs `$1`), `argument-hint` bracket convention, persona leakage, missing or stale `description`, model mismatch with sibling commands, missing side-effect declaration, missing or stale README row.
+3. Diagnose: caller role, command owner and selected executor, argument substitution (`$ARGUMENTS` vs `$1`), `argument-hint` bracket convention, persona leakage, missing or stale `description`, model mismatch with sibling commands, missing side-effect declaration, missing or stale README row.
 4. Edit narrowly. Preserve `[common] description` and `argument-hint` unless they are wrong. Do not rewrite a working body.
 5. If a shim and an existing skill both grew the same doctrine, cut the shim back to the skill body's surface.
 6. Emit changed files plus a short changelog: `Changed`, `Rationale`.
@@ -165,7 +167,7 @@ When invoked to **create**, produce `command.md` and `command.toml` in fenced bl
 
 When invoked to **update**, produce only the changed files plus the changelog. Preserve unchanged sections verbatim.
 
-If invoked as a sub-agent for routing reasons, follow the response contract from `delegate-task`: start non-artefact work with `Answer:`; return raw artefacts only when the artefact is the deliverable.
+If invoked as a worker for routing reasons, follow the response contract from `delegate-task`: start non-artefact work with `Answer:`; return raw artefacts only when the artefact is the deliverable.
 
 ## References
 

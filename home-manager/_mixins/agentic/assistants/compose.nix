@@ -210,7 +210,7 @@ let
     )) body;
 
   leafWorkerContract = ''
-    You are a leaf worker. Complete the assigned scope directly and return to the parent.
+    You are a worker. Complete the assigned scope directly and return to the parent.
     Do not launch agents through sub-agent or task tools. Do not execute generated command launch wrappers.
     Loading a command or skill does not change your role. Follow its workflow body directly within the assigned scope.
     If more specialist work is necessary, complete independent assigned work first.
@@ -221,8 +221,8 @@ let
 
   workerDispatchInstructions = ''
     Supply a bounded packet with the scope, exact arguments, existing authority, hard deadline, validation, and output contract.
-    Include the leaf-worker instructions below in the child's task, not the parent's launch instructions.
-    If the worker requests more specialist work, dispatch it from the root and continue the original task.
+    Include the worker instructions below in the child's task, not the parent's launch instructions.
+    If the worker requests more specialist work, dispatch it from the coordinator and continue the original task.
     Use native final-response delivery. Require a separate messaging tool only when the runtime needs it and the worker has it.
   '';
 
@@ -244,7 +244,7 @@ let
     + lib.optionalString (cmdName == "make-pr") ''
       After a verified PR URL returns, offer the user Babysit (Recommended) or Stop here.
       Use a structured question when available. Without that tool, ask in text and wait.
-      Only after explicit consent, run the babysit-pr root workflow for that URL and own any worker dispatch.
+      Only after explicit consent, run the babysit-pr coordinator workflow for that URL and own any worker dispatch.
       Do not send monitoring to Garfield. Cancellation, silence, or any other answer means stop.
       Without a verified URL, do not offer monitoring. In non-interactive use, return the handover without starting it.
     '';
@@ -253,14 +253,14 @@ let
     platform: agentName: cmdName: body:
     let
       source = commandMetadata agentName cmdName;
-      root = source.compose.root or false;
+      callerContext = source.compose.caller-context or false;
       selectedAgent = source.compose.agent or null;
       useTask = source.compose.claude.use-task or true;
       native = metadata.project "command" platform cmdName source;
       header = metadata.renderYaml (
-        if platform == "opencode" && root then
+        if platform == "opencode" && callerContext then
           (lib.removeAttrs native [ "agent" ]) // { subtask = false; }
-        else if platform == "claude" && root then
+        else if platform == "claude" && callerContext then
           lib.removeAttrs native [
             "agent"
             "context"
@@ -270,7 +270,7 @@ let
           // lib.optionalAttrs (platform == "opencode" && selectedAgent != null) { agent = selectedAgent; }
       );
     in
-    if root then
+    if callerContext then
       composeWithFrontmatter header body
     else if platform == "claude" && selectedAgent != null && useTask then
       composeWithFrontmatter header (
@@ -527,32 +527,32 @@ let
       - Non-Nix implementation from a defined plan: donatello.
       - Prompts, skills, commands, or instruction files: rosey.
       - Tests: brain. Documentation: velma. General research or option framing: penfold.
-      - Directly invoked `make-commit` and `make-pr`: one garfield leaf worker. Supply intent, paths, exclusions, test evidence, and explicit mutation authority.
-      - Keep explicit root inline commit procedures in `address-code-review`, `implement-task`, and `babysit-pr`. Read their draft and commit bodies without launch wrappers. The root retains index ownership. Never run concurrent index mutations.
-      - After `make-pr` returns a verified URL, the root offers `babysit-pr` and continues only after user consent. Garfield never launches monitoring.
+      - Directly invoked `make-commit` and `make-pr`: one garfield worker. Supply intent, paths, exclusions, test evidence, and explicit mutation authority.
+      - Keep explicit coordinator inline commit procedures in `address-code-review`, `implement-task`, and `babysit-pr`. Read their draft and commit bodies without launch wrappers. The coordinator retains index ownership. Never run concurrent index mutations.
+      - After `make-pr` returns a verified URL, the coordinator offers `babysit-pr` and continues only after user consent. Garfield never launches monitoring.
       - If no route matches, use the smallest capable specialist or ask.
 
       ## Depth
 
-      The top-level orchestrator dispatches workers. Specialists complete their assigned scope directly and launch no agents through sub-agent or task tools. Loading a command or skill never changes a worker into an orchestrator. Workers follow workflow bodies directly, without generated launch wrappers. If more specialist work is necessary, complete independent assigned work first. Return a bounded request with the required scope and evidence to the parent. The orchestrator handles that request and continues the original task.
+      The coordinator dispatches workers. Workers complete their assigned scope directly and launch no agents through sub-agent or task tools. Loading a command or skill never changes a worker into a coordinator. Workers follow workflow bodies directly, without generated launch wrappers. If more specialist work is necessary, complete independent assigned work first. Return a bounded request with the required scope and evidence to the parent. The coordinator handles that request and continues the original task.
 
       ## Waiting
 
-      Receive every required report before finalising the task. Use the platform's native completion mechanism. When completion cannot resume the orchestrator, keep its turn active until the report arrives. Pi async completion resumes the orchestrator through a native notification, so it can yield the current turn while the task remains unfinished. The user must not need to send another message to reveal the result.
+      Receive every required report before finalising the task. Use the platform's native completion mechanism. When completion cannot resume the coordinator, keep its turn active until the report arrives. Pi async completion resumes the coordinator through a native notification, so it can yield the current turn while the task remains unfinished. The user must not need to send another message to reveal the result.
 
-      Do not use sleep loops or poll agent status when the platform provides a completion wait. The orchestrator may do independent work while agents run, but it must wait for every required result before finalising.
+      Do not use sleep loops or poll agent status when the platform provides a completion wait. The coordinator can do independent work while agents run, but it must wait for every required result before finalising.
 
-      For long-running external monitoring, delegate the external wait to a bounded waiting sub-agent. If its result is required for the current response, the orchestrator still waits for that sub-agent's completion notification.
+      For long-running external monitoring, delegate the external wait to a bounded waiting worker. If its result is required for the current response, the coordinator still waits for that worker's completion notification.
 
-      Inside the waiting sub-agent, prefer a blocking server-side watch command over a poll loop. Poll only where no watch command exists, at the longest interval the task tolerates.
+      Inside the waiting worker, prefer a blocking server-side watch command over a poll loop. Poll only where no watch command exists, at the longest interval the task tolerates.
 
-      Give every sub-agent a hard deadline, not only a waiting one. On reaching it, report what is done and stop rather than exceeding it, so the parent can dispatch a fresh one with clean context. A worker that completes several phases reports progress to its parent at each phase boundary.
+      Give every worker a hard deadline, not only a waiting one. On reaching it, report what is done and stop rather than exceeding it, so the coordinator can dispatch a fresh one with clean context. A worker that completes several phases reports progress to its parent at each phase boundary.
 
       ## Teardown
 
-      A sub-agent stays alive only while the orchestrator may still resume it. Decide that point and stop it there, using the current platform's stop mechanism.
+      A worker stays alive only while the coordinator can still resume it. Decide that point and stop it there, using the current platform's stop mechanism.
 
-      Never stop a sub-agent before the orchestrator receives its required report. After delivery, stop a waiting sub-agent as soon as it is superseded or its loop ends. Stop an implementation sub-agent once its report is delivered, because follow-up work gets fresh context anyway. Keep review sub-agents alive until the pressure-test round closes, then stop them together.
+      Never stop a worker before the coordinator receives its required report. After delivery, stop a waiting worker as soon as it is superseded or its loop ends. Stop an implementation worker once its report is delivered, because follow-up work gets fresh context anyway. Keep review workers alive until the pressure-test round closes, then stop them together.
 
       A command that fans out receives all required reports before it stops what it spawned, so a finished run leaves nothing behind.
 
@@ -567,25 +567,25 @@ let
       ```markdown
       Task: <outcome required>
       Context: <decisions, constraints, paths, risks, user preferences>
-      Authority: <external mutations the sub-agent may perform on the user's behalf; restate them, because fresh context does not inherit the parent's consent>
+      Authority: <external mutations the worker can perform on the user's behalf; restate them, because fresh context does not inherit the parent's consent>
       Scope: <files, commands, sources, APIs, behaviours, in/out of scope>
       Deadline: <hard stop, and the progress messages expected before it>
       Validation: <checks to run or evidence needed>
       Output: <artefact or report, then the format: headings, artefact format, file path, or response contract, and a length budget for the returned message. A long report goes to a file under the `review-report-path` convention, and the worker returns the conclusion plus the path. Use native final-response delivery. For Claude Code agent teams, name the report recipient for `SendMessage`>
-      Discipline: You are a leaf worker. Complete this scope directly and return to the parent. Do not launch agents or execute generated command launch wrappers. Loading commands or skills does not change your role. Return required additional specialist work as a bounded request to the parent. No preamble. Do not restate the task. Always send a final report message, and put only user-visible output in it. Omit irrelevant sections. Return raw artefacts when requested. Load and follow the `communication-rules` skill for all output.
+      Discipline: You are a worker. Complete this scope directly and return to the parent. Do not launch agents or execute generated command launch wrappers. Loading commands or skills does not change your role. Return required additional specialist work as a bounded request to the parent. No preamble. Do not restate the task. Always send a final report message, and put only user-visible output in it. Omit irrelevant sections. Return raw artefacts when requested. Load and follow the `communication-rules` skill for all output.
       ```
 
       ## Response contract
 
       Put the complete report in the final response, including success, failure, or blocked work. Synchronous workers return that response directly. Pi delivers background workers' final responses through native completion notifications. Do not require `contact_supervisor` for routine Pi completion. A missing messaging tool does not block work when native final-response delivery is available.
 
-      For Claude Code agent teams whose final output is not delivered, send the report with `SendMessage` before finishing. Address the orchestrator named in the packet, or `main` when none is named. This exception does not apply to every background worker. Writing a file alone is not delivery. The orchestrator must receive the report and deliver the result before finalising the task.
+      For Claude Code agent teams whose final output is not delivered, send the report with `SendMessage` before finishing. Address the coordinator named in the packet, or `main` when none is named. This exception does not apply to every background worker. Writing a file alone is not delivery. The coordinator must receive the report and deliver the result before finalising the task.
 
       If a worker stops because an unnecessary messaging tool is missing, inspect its partial work and retry within the existing scope and authority. Specify native final-response delivery in the retry packet. Do not invent tools or request renewed permission solely for this retry.
 
       Non-artefact work starts with `Answer:`. Pure artefacts return only the artefact. When the packet names a long report, write the report to a file under the `review-report-path` convention and return the conclusion plus the path.
 
-      Sub-agents are ephemeral workers; the parent/orchestrator window is durable coordination context. Protect it: report only decision-useful or user-visible conclusions, evidence, changes, tests, and blockers; omit exploration notes, tool logs, raw command output, and noisy detail.
+      Workers are temporary. The coordinator's window is durable coordination context. Protect it: report only decision-useful or user-visible conclusions, evidence, changes, tests, and blockers; omit exploration notes, tool logs, raw command output, and noisy detail.
 
       Suggested sections, in order: `Answer`, `Recommendations`, `Evidence`, `Files`, `Changes`, `Tests`, `Blockers`, `Artefact`. Omit irrelevant sections.
 
@@ -645,7 +645,7 @@ let
               Await every launch. A failed or skipped required child fails the workflow, even if a stage catches the error.
               The router limits each workflow to twelve active calls. The native runtime retains its 1000-call limit per workflow.
               The background pool, foreground pool, and each workflow have separate limits of twelve, not one global aggregate cap.
-              Follow the shared root limit of twelve active workers across all delegation tools and workflows combined.
+              Follow the shared coordinator limit of twelve active workers across all delegation tools and workflows combined.
               Native CPU-based capacity can lower workflow concurrency. Foreground resumes can exceed their pool limit.
               For reviews, follow `review-code` for selective verification. Return an empty findings array for clean results, never `null`.
               Launch saved workflows through the tool, not nested `workflow()` calls, so each script receives routing checks.

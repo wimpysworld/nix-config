@@ -1,8 +1,8 @@
 ## Triage Tasks
 
-Work Linear issues in bulk: the whole Triage queue by default, or the issues named in the input. This command orchestrates; it never researches an issue and never writes to Linear itself. One fresh sub-agent per issue does both.
+Work Linear issues in bulk: the whole Triage queue by default, or the issues named in the input. The coordinator dispatches this command's work without researching an issue or writing to Linear. One fresh worker per issue does both.
 
-Input: `$ARGUMENTS` is one or more Linear issue keys to triage, separated by spaces or commas. Blank means all: triage the whole queue. This command is Linear-only, because GitHub Projects has no Triage queue. Reject a GitHub issue reference and say so. Each issue worker performs research and update in its own context, without further delegation. Run at most five issue sub-agents at once. The cap is the point. Never exceed it.
+Input: `$ARGUMENTS` is one or more Linear issue keys to triage, separated by spaces or commas. Blank means all: triage the whole queue. This command is Linear-only, because GitHub Projects has no Triage queue. Reject a GitHub issue reference and say so. Each issue worker performs research and update in its own context, without further delegation. Run at most five issue workers at once. The cap is the point. Never exceed it.
 
 Resolve `update-task` through the available skill catalogue, configured skill roots, or repository command source. Give each issue worker its workflow body, exact issue key, batch authority, and return contract. Each worker applies the body in its own research context without a generated launch wrapper and launches no agents.
 
@@ -21,9 +21,9 @@ The two sweeps differ in coverage, so report them apart: the assignee sweep is w
 
 **2. Report the batch.** List every issue in the queue: key, title, team, and age. Then give the total and carry straight on. This command asks the user nothing: a blank `$ARGUMENTS` triages the whole queue, and an empty queue is reported before the run stops.
 
-**3. Group by parent.** `update-task` edits a parent's `Child issues` list, so two children of one parent updated at the same time clobber the parent. Put every child of one parent into one cohort and run its members in sequence. Different cohorts and unparented issues run in parallel, within the cap of five sub-agents at once.
+**3. Group by parent.** `update-task` edits a parent's `Child issues` list, so two children of one parent updated at the same time clobber the parent. Put every child of one parent into one cohort and run its members in sequence. Different cohorts and unparented issues run in parallel, within the cap of five workers at once.
 
-**4. Spawn one fresh sub-agent per issue.** Never research an issue or write to Linear in this context. Never hand two issues to one sub-agent. Give each sub-agent the issue key and this instruction set:
+**4. Spawn one fresh worker per issue.** Never research an issue or write to Linear in this context. Never hand two issues to one worker. Give each worker the issue key and this instruction set:
 
 1. Load and apply the `research-task` skill to the issue key. Perform its research here without its agent fan-out. Preserve its research scope and evidence requirements.
 2. Read and follow the `update-task` workflow body with the exact issue key in this same context. Ignore its generated launch wrapper. `research-task` does not update the task or tracker automatically. Consume this worker's research directly, without requiring an intermediate report file. Complete both phases without launching another agent.
@@ -32,9 +32,9 @@ The two sweeps differ in coverage, so report them apart: the assignee sweep is w
 5. Send one progress message to the parent when research completes and `update-task` starts.
 6. Hard deadline 20 minutes for the issue. On reaching it, report the issue key and what is done, then stop.
 
-Human invocation of this command is consent to research and update the issues in the batch, and nothing else: no cancelling, no closing, no creating issues, no GitHub, no Slack. State that authority in every sub-agent packet, as `delegate-task` requires, and name `research-task` and `update-task` in it.
+Human invocation of this command is consent to research and update the issues in the batch, and nothing else: no cancelling, no closing, no creating issues, no GitHub, no Slack. State that authority in every worker packet, as `delegate-task` requires, and name `research-task` and `update-task` in it.
 
-**5. Report.** Each issue ends in Backlog, because `update-task` promotes a `triage`-type status as part of its work. An issue whose sub-agent failed stays in Triage and is picked up by the next run, so re-running this command is safe.
+**5. Report.** Each issue ends in Backlog, because `update-task` promotes a `triage`-type status as part of its work. An issue whose worker failed stays in Triage and is picked up by the next run, so re-running this command is safe.
 
 ### Output
 
@@ -58,11 +58,11 @@ Omit the two sweep lines when `$ARGUMENTS` named issue keys.
 ### Constraints
 
 - Orchestrate only. Never research an issue or write to Linear in this context.
-- One issue per sub-agent, one sub-agent per issue.
+- One issue per worker, one worker per issue.
 - Members of a parent cohort run in sequence. Never run two children of one parent at once.
-- Never run more than five issue sub-agents at once.
+- Never run more than five issue workers at once.
 - Never cancel, close, or delete an issue. A duplicate, obsolete, or droppable issue is reported as a recommendation, because that call is the user's.
 - Never create an issue, and never touch GitHub or Slack.
-- Restate the authority in every sub-agent packet.
+- Restate the authority in every worker packet.
 - Ask the user nothing. A blank `$ARGUMENTS` triages the whole queue; an empty queue is reported, then the run stops.
 - British spelling. No hedging language.

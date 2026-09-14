@@ -3,4 +3,4 @@ description = "Reflect on the session and suggest tooling changes 💭"
 argument-hint = "[focus]"
 
 [compose]
-root = true
+caller-context = true

@@ -4,13 +4,13 @@ Take an agreed task through to implemented, validated, committed work. This comm
 
 Input: `$ARGUMENTS` is a Linear issue key or URL, a GitHub issue URL or `owner/repo#N`, or a path to a local task file. If blank, stop and ask for one, then wait. Once the task is resolved, ask nothing further and run to completion.
 
-This command is the sole dispatcher. Every planner, phase worker, and specialist it launches must do its own assigned work, return directly here, and never launch another agent or invoke a command that does. Use `delegate-task` for routing, fresh context, packets, waiting, and teardown. Wait for every required return before continuing.
+The coordinator owns this command's dispatch. Every planner, phase worker, and specialist it launches must do its own assigned work, return directly here, and never launch another agent or invoke a command that does. Use `delegate-task` for routing, fresh context, packets, waiting, and teardown. Wait for every required return before continuing.
 
-If a worker loads this body, return a bounded dispatch request with the task, scope, authority, and required output. Do not run this orchestration inside a worker. The root continues the task through direct worker dispatch.
+If a worker loads this body, return a bounded dispatch request with the task, scope, authority, and required output. Do not run this orchestration inside a worker. The coordinator continues the task through direct worker dispatch.
 
 Side effects: this command creates and checks out one Git branch; writes implementation and documentation files; writes and removes its task plan directories beneath `${TMPDIR:-/tmp}/agent-plans/`; updates tracker assignment, status, and comments or appends to a local task file; and stages and commits selected paths. It never pushes or opens a pull request.
 
-Resolve named workflows from the available skill catalogue, configured skill roots, or repository command source. Read their instructions before use. Apply workflow bodies with explicit arguments, this command's authority, and the required return contract. Ignore generated launch wrappers. This context owns every specialist dispatch, and each specialist returns directly without delegation.
+Resolve named workflows from the available skill catalogue, configured skill roots, or repository command source. Read their instructions before use. Apply workflow bodies with explicit arguments, this command's authority, and the required return contract. Ignore generated launch wrappers. The coordinator owns every specialist dispatch, and each specialist returns directly without delegation.
 
 ### Process
 
@@ -44,7 +44,7 @@ Read `contribution-voice` first unless its complete, current instructions are in
 
 ### Constraints
 
-- No per-task coordinator or nested orchestrator exists. Every launched agent reports directly to this command and launches no agent of its own.
+- No per-task or nested coordinator exists. Every launched agent reports directly to this command and launches no agent of its own.
 - The plan never enters the repo and is never committed.
 - Leave every issue in the `started` role after its commit lands. This command stops before the pull request, so nothing is reviewable or done yet. `make-pr` and the merge carry the status forward.
 - Claiming an issue, writing its durable record, staging, and committing happen in this context only.

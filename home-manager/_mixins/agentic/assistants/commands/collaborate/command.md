@@ -2,7 +2,7 @@ Input: `$ARGUMENTS` accepts multiple Linear keys/URLs, GitHub issue/PR URLs, `ow
 Treat any accompanying user text as additional input. When input is blank, use clearly identified conversation references.
 If no references are clear, ask for them.
 
-Run this command in the current context. Do not launch a sub-agent or a Task for any step; the purpose is to prime current context.
+Run this command in the current context. Do not launch a worker or a Task for any step; the purpose is to prime current context.
 
 - Read the supplied sources first.
 - Deduplicate references to the same artefact.

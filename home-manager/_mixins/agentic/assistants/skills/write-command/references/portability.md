@@ -2,7 +2,7 @@
 
 Use the smallest portable set. Add fields only when a target needs them.
 
-Repository `[compose] root = true` keeps execution in the caller's context across all four clients. It overrides provider launch controls. See `SKILL.md` for the root/leaf decision rule and the Codex persona distinction.
+Repository `[compose] caller-context = true` keeps execution in the caller's context across all four clients. It overrides provider launch controls. See `SKILL.md` for the caller-context decision rule and the Codex persona distinction.
 
 ## Current Codex command contract
 
@@ -62,7 +62,7 @@ Default behaviour:
 
 `subtask: true` forces subagent invocation even when the bound agent is `mode: primary`. `subtask: false` keeps execution in the caller's session even when the bound agent is a subagent (spec-honoured; sst/opencode#10431 reports it ignored on some builds).
 
-Claude Code and Pi have no native equivalent field. Their command bodies stay in the caller's session unless a wrapper dispatches to an agent. Loading a skill does not itself launch an agent. Agent-bound Claude leaf commands use a Task wrapper when `[compose.claude] use-task` is omitted or `true`. Explicit `false` selects an inline `@agent` prepend without a child launch. Shared `root = true` suppresses those wrappers and removes OpenCode's agent binding while forcing `subtask: false`.
+Claude Code and Pi have no native equivalent field. Their command bodies stay in the caller's session unless a wrapper dispatches to an agent. Loading a skill does not itself launch an agent. Agent-bound Claude specialist commands use a Task wrapper when `[compose.claude] use-task` is omitted or `true`. Explicit `false` selects an inline `@agent` prepend without a child launch. Shared `caller-context = true` suppresses those wrappers and removes OpenCode's agent binding while forcing `subtask: false`.
 
 ## OpenCode `model:` honouring
 

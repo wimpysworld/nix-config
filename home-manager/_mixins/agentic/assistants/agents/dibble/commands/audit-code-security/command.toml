@@ -3,4 +3,4 @@ description = "Audit Code Security 🔍"
 
 [compose]
 agent = "dibble"
-root = true
+caller-context = true

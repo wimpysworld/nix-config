@@ -94,9 +94,9 @@ Read `README.md` for workflow context and provider delivery details. Update its 
 
 Use `[common]` for shared metadata and provider tables for native non-model fields. Missing provider tables mean no overrides, not disabled output.
 
-Agent-owned commands inherit their directory’s agent unless `[compose] agent` overrides it. Set `[compose] root = true` when execution must retain the caller’s context and persona. This switch takes precedence over provider dispatch controls.
+Agent-owned commands inherit their directory’s agent unless `[compose] agent` overrides it. Set `[compose] caller-context = true` when execution must retain the caller’s context and persona. This repository switch takes precedence over provider dispatch controls. It grants no coordinator authority. Use the role vocabulary in `instructions/global.md` and the authoring guidance in `skills/write-command/SKILL.md`.
 
-Keep generated launch wrappers out of source prompts. Preserve the composer’s leaf-worker contract when changing dispatch.
+Keep generated launch wrappers out of source prompts. Preserve the composer’s worker contract when changing dispatch.
 
 For Claude Code, Codex, and Pi, put model defaults only in agent `header.toml` routing tables. Commands and ordinary skills remain model-neutral. Pi routes use the exact inference-provider name under `[routing.pi.<inference-provider>]`. OpenCode command model routing remains a separate supported case.
 
@@ -114,7 +114,7 @@ The parent `../default.nix` imports agentic mixins. Sibling client modules own r
 
 Preserve client enablement gates, including Pi resources for developer servers. Keep secret bodies behind `.sops` markers and outside the Nix store.
 
-For composition changes, verify all four client outputs, metadata validation, namespace collisions, and root/leaf dispatch. Follow the root validation commands, but do not treat `just eval` as proof that every generated output passes.
+For composition changes, verify all four client outputs, metadata validation, namespace collisions, and caller-context/worker dispatch. Follow the root validation commands, but do not treat `just eval` as proof that every generated output passes.
 
 For deployment changes, use the temporary-home tests documented in `owned-files/README.md`. Do not run the deployer against the real home directory for tests. Do not activate configuration merely to validate prompt changes.
 

@@ -3,4 +3,4 @@ description = "Clarify Plan 💎"
 argument-hint = "[plan]"
 
 [compose]
-root = true
+caller-context = true

@@ -30,25 +30,25 @@ Use `review-report-path` for report storage. The calling command supplies `<revi
 2. Apply `contribution-voice` when wording findings. Read it first unless its complete, current instructions are already in this context. The report itself stays private, but `draft-code-review` lifts these findings into a comment posted under the user's name, so they must already read as the user wrote them.
 3. Resolve the input to a diff and gather context, per **Input Resolution**.
 4. Apply `review-report-path` to the resolved target before any worker starts. Use that run for the report and worker fallbacks.
-5. Fan out to sub-agents, per **Fan-out**. Name each sub-agent's fallback findings file in its packet, `<run-dir>/findings-<concern>-<worker-id>.md`, so no two collide. Never reuse a fallback path.
-6. Re-request once from any sub-agent that went idle without returning findings. The follow-up carries a one-line recap of its scope, the two or three questions that matter most named concretely, and an instruction to reply in text rather than write a file. A sub-agent that fails twice is your own work to finish, to the same standard, not a gap in the report.
+5. Fan out to workers, per **Fan-out**. Name each worker's fallback findings file in its packet, `<run-dir>/findings-<concern>-<worker-id>.md`, so no two collide. Never reuse a fallback path.
+6. Re-request once from any worker that went idle without returning findings. The follow-up carries a one-line recap of its scope, the two or three questions that matter most named concretely, and an instruction to reply in text rather than write a file. A worker that fails twice is your own work to finish, to the same standard, not a gap in the report.
 7. Deduplicate overlapping findings before verification. Pressure-test every qualifying blocking finding, per **Adversarial pressure-test**.
-8. Synthesise one report at the derived path: resolved target, full reviewed head SHA, caller-supplied lens and severity bar, summary of the change, verification performed, deduplicated findings, and conclusion. Put `Target`, `Reviewed SHA`, `Lens`, and `Severity bar` fields before the Summary heading, so follow-up and posting commands can recover the review contract. The sub-agent replies and durable fallback files are the record; read a findings file only as a convenience where one exists. Drop duplicates raised by more than one agent. Every section except Findings is evidence for the user, never material for a comment, so mark none of it for reuse. Write each finding to the three-sentence budget below, because Findings is the only section `draft-code-review` reads.
+8. Synthesise one report at the derived path: resolved target, full reviewed head SHA, caller-supplied lens and severity bar, summary of the change, verification performed, deduplicated findings, and conclusion. Put `Target`, `Reviewed SHA`, `Lens`, and `Severity bar` fields before the Summary heading, so follow-up and posting commands can recover the review contract. The worker replies and durable fallback files are the record; read a findings file only as a convenience where one exists. Drop duplicates raised by more than one agent. Every section except Findings is evidence for the user, never material for a comment, so mark none of it for reuse. Write each finding to the three-sentence budget below, because Findings is the only section `draft-code-review` reads.
 9. Deliver the conclusion and every finding the user must act on, in house style (the `communication-rules` skill). Report the path. The file keeps the full report.
 
 ### Fan-out
 
-Delegate to a wide fan-out of sub-agents, in parallel where possible. Divide the review by concern, or by area or file group when the diff is large: for example correctness and logic, security, and tests and behavioural regressions.
+Delegate to a wide fan-out of workers, in parallel where possible. Divide the review by concern, or by area or file group when the diff is large: for example correctness and logic, security, and tests and behavioural regressions.
 
-The user-invoked review command is the sole orchestrator. Review-lane workers complete their assigned lane and return directly. They never launch agents or invoke orchestrating commands.
+The coordinator alone plans and dispatches this review. Review-lane workers complete their assigned lane and return directly. They never launch agents or invoke orchestrating commands.
 
-Keep each packet's attack list short, around three or four concrete targets. A long multi-target packet correlates with a sub-agent stalling and returning nothing. Split the concern across two sub-agents instead of lengthening one list.
+Keep each packet's attack list short, around three or four concrete targets. A long multi-target packet correlates with a worker stalling and returning nothing. Split the concern across two workers instead of lengthening one list.
 
-Route the security concern to `dibble` sub-agents. Donatello implements; Dibble is the security specialist.
+Route the security concern to `dibble` workers. Donatello implements; Dibble is the security specialist.
 
 Add a topic sweep: search Linear for related issues and Slack for recent conversations on the same domain, not only what the change links. This builds an understanding of the domain and the recent work around it, so the review learns from prior contributions and does not undo them. Read-only, as ever: no comments or posts.
 
-Each sub-agent's delegation packet must instruct it to:
+Each worker's delegation packet must instruct it to:
 
 - Never launch another agent or invoke an orchestrating command. Complete the assigned review lane and return its findings directly to the caller.
 - Read the surrounding code in the working tree to understand the change in context, within its assigned concern or area.
@@ -65,13 +65,13 @@ Each sub-agent's delegation packet must instruct it to:
 Accept clean reports as complete. Do not launch verifiers for reports with no actionable findings.
 Use an independent verifier only for a concrete unresolved question or an explicit user request.
 
-For each finding rated medium or higher that would justify blocking, send one follow-up to the sub-agent that raised it (resume its existing context): adversarially verify the finding's preconditions against deployment reality. Does the threat or failure mode arise in the deployed configuration? Check the actual runtime context (what executes where, isolation, who can read what, what gets logged or persisted), not just the diff. Downgrade findings whose preconditions do not hold. Where the sub-agent cannot be reached, pressure-test the finding yourself to the same standard, rather than letting it through or dropping it.
+For each finding rated medium or higher that would justify blocking, send one follow-up to the worker that raised it (resume its existing context): adversarially verify the finding's preconditions against deployment reality. Does the threat or failure mode arise in the deployed configuration? Check the actual runtime context (what executes where, isolation, who can read what, what gets logged or persisted), not just the diff. Downgrade findings whose preconditions do not hold. Where the worker cannot be reached, pressure-test the finding yourself to the same standard, rather than letting it through or dropping it.
 
 This step stops false positives reaching a human. Do not skip it and do not soften it.
 
 ### Constraints
 
 - British English throughout. Lead with conclusions. No filler.
-- Every sub-agent and the final report must keep feedback succinct and actionable. Name `contribution-voice` in each delegation packet and require its complete, current instructions in that worker's context.
+- Every worker and the final report must keep feedback succinct and actionable. Name `contribution-voice` in each delegation packet and require its complete, current instructions in that worker's context.
 - A finding is three sentences at most: the defect, the proof, the fix. One `file:line` reference is the proof; a second instance of the same defect adds nothing. No headings inside a finding, no restating the diff back at the reader, and no paragraph explaining that the surrounding code is correct. A finding that runs to five paragraphs is over budget, whatever its severity.
 - The report is the only deliverable. Do not draft a review comment and do not state a verdict; `draft-code-review` owns that.

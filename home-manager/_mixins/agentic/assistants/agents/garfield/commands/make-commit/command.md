@@ -8,7 +8,7 @@ Use the supplied intent, paths, exclusions, validation evidence, and mutation au
 
 Read current Git state before mutations. If intent, scope, or authority is missing or conflicts with Git evidence, stop before dependent writes. Ask the user, or return the missing decision to the parent. Do not infer intent or test results from the diff alone. Do not run concurrent index mutations.
 
-Resolve `draft-commit-message` through the available skill catalogue, configured skill roots, or repository command source. Read its body directly and follow the draft phase here, without its generated launch wrapper. Supply the intent and current staged diff, and preserve its fenced message. This body also supports explicit root inline reuse. Reading a body does not invoke its command or change the executor. Never launch another agent.
+Resolve `draft-commit-message` through the available skill catalogue, configured skill roots, or repository command source. Read its body directly and follow the draft phase here, without its generated launch wrapper. Supply the intent and current staged diff, and preserve its fenced message. This body also supports explicit coordinator inline reuse. Reading a body does not invoke its command or change the executor. Never launch another agent.
 
 ### Non-durable working documents
 

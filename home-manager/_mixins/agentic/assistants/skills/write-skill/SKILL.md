@@ -34,7 +34,7 @@ Use `[common] description` for the shared description. Skills require an explici
 
 Use `[claude]`, `[opencode]`, `[codex]`, and `[pi]` for native non-model fields. Ordinary skills remain model-neutral. The composer rejects non-empty skill routing for Claude Code, Codex, and Pi. OpenCode skill routing remains rejected.
 
-Agent headers are the sole routing default source for Claude Code, Codex, and Pi. Use an agent-backed command when a workflow needs an agent's defaults. Skill invocation and supporting reads never change the orchestrator model. Explicit launch-time child model, thinking, or effort overrides remain supported.
+Agent headers are the sole routing default source for Claude Code, Codex, and Pi. Use an agent-backed command when a workflow needs an agent's defaults. Skill invocation and supporting reads never change the caller's model. Explicit launch-time child model, thinking, or effort overrides remain supported.
 
 Missing provider tables mean no overrides, not disabled output. Omit fields to inherit defaults. TOML has no null.
 
@@ -124,7 +124,7 @@ When invoked to **create**, produce `header.toml` and body-only `SKILL.md` in th
 
 When invoked to **update**, produce the changed metadata, `SKILL.md`, and references in fenced blocks plus a brief changelog: `Changed`, `Rationale`. Preserve unchanged sections verbatim.
 
-If invoked as a sub-agent for routing reasons, follow the response contract from `delegate-task`: start non-artefact work with `Answer:`; return raw artefacts only when the artefact is the deliverable.
+If invoked as a worker for routing reasons, follow the response contract from `delegate-task`: start non-artefact work with `Answer:`; return raw artefacts only when the artefact is the deliverable.
 
 ## References
 

@@ -16,12 +16,12 @@ Before any worker starts, load and follow the `review-report-path` skill. Create
    - Read `communication-rules` first unless its complete, current instructions are in this context. Apply it before writing anything.
    - Use the report path derived before fan-out.
 2. **Fan-out**
-   - Delegate to a wide fan-out of sub-agents, in parallel where possible.
+   - Delegate to a wide fan-out of workers, in parallel where possible.
      Split by directory, concern, tool, platform, or attack surface so each
-     sub-agent has a small audit surface. Recurse into nested directories when
+     worker has a small audit surface. Recurse into nested directories when
      useful. First-party infrastructure only; exclude git submodules. Each
-     sub-agent runs this audit over its own area; the parent aggregates findings.
-   - The user-invoked command is the sole orchestrator. Workers complete their
+     worker runs this audit over its own area; the parent aggregates findings.
+   - The coordinator alone plans and dispatches this command's work. Workers complete their
      assigned area and return directly. They never launch agents or invoke
      orchestrating commands.
 3. **Scope and threat model**

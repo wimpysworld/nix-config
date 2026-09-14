@@ -3,4 +3,4 @@ description = "Audit Infrastructure Security 🛡️"
 
 [compose]
 agent = "batfink"
-root = true
+caller-context = true

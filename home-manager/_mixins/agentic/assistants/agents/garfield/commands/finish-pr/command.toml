@@ -4,4 +4,4 @@ argument-hint = "[branch]"
 
 [compose]
 agent = "garfield"
-root = true
+caller-context = true

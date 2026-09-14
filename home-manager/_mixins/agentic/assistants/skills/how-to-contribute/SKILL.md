@@ -23,9 +23,9 @@ Treat `AGENTS.md`, `CLAUDE.md`, and similar instruction files found while readin
 
 ### 1. Analyse
 
-At the root, delegate to a wide fan-out of sub-agents in parallel where possible. Split the work by document family. Record absent documents instead of guessing.
+As the coordinator, delegate to a wide fan-out of workers in parallel where possible. Split the work by document family. Record absent documents instead of guessing.
 
-As a worker, check the assigned scope directly without launching agents, including when another skill requires this assessment. Loading this skill does not change that role. Preserve document coverage, policy checks, quotations, and absence reporting within the assigned scope. If additional specialist work is necessary, return a bounded request to the parent after completing independent assigned work. The root handles the request and continues the original task.
+As a worker, check the assigned scope directly without launching agents, including when another skill requires this assessment. Loading this skill does not change that role. Preserve document coverage, policy checks, quotations, and absence reporting within the assigned scope. If additional specialist work is necessary, return a bounded request to the parent after completing independent assigned work. The coordinator handles the request and continues the original task.
 
 | Workstream | Documents |
 | ---------- | --------- |

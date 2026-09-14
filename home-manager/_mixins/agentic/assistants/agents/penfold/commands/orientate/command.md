@@ -2,7 +2,7 @@
 
 Digest existing, well-researched sources into a compact understanding of the work, without independent research.
 
-### Root dispatch
+### Coordinator dispatch
 
 Input: `$ARGUMENTS` accepts multiple Linear keys/URLs, GitHub issue/PR URLs, `owner/repo#123` references, local file paths, and source URLs.
 Treat any accompanying user text as additional input.
@@ -11,7 +11,7 @@ If no references are clear, ask for them before dispatch.
 
 Load `delegate-task`.
 Delegate the worker contract below to exactly one fresh Penfold worker.
-Do not read sources in the root context before dispatch or repeat the worker's reads.
+Do not read sources in the coordinator's context before dispatch or repeat the worker's reads.
 Send only the current goal, material decisions and constraints, source references, and a compact baseline for mid-conversation runs.
 Label the baseline explicitly, including any previous orientation findings and source versions already known.
 If no baseline exists, state that fact.
@@ -19,7 +19,7 @@ Do not inherit or send the full transcript.
 
 ### Worker contract
 
-Work directly as a leaf worker.
+Work directly as a worker.
 Do not launch agents or execute generated command launch wrappers.
 
 **Authority:** Read local files and fetch the named remote sources and necessary direct links.
@@ -61,7 +61,7 @@ The original artefacts remain authoritative, not the orientation summary.
 Do not recommend next actions.
 Return the findings directly to the parent.
 
-### Root response
+### Coordinator response
 
 Present compact findings with citations and coverage limits, not merely a readiness statement.
 Keep the original source locators available for later work.

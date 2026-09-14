@@ -1,16 +1,25 @@
 # Global Rules
 
+## Vocabulary
+
+- Coordinator: the top-level assistant that owns planning, dispatch, integration, and explicitly assigned inline operations.
+- Worker: a delegated assistant with bounded scope that returns to its parent and never launches agents.
+- Caller: whoever invokes a command or directly follows its body. A caller can be a worker.
+- Parent and child: the immediate delegation relationship, not another name for the coordinator.
+- Command owner: the directory specialist, distinct from the selected agent or executor.
+- Context: instructions and evidence, not a role or authority.
+
 ## Delegation
 
-The root orchestrator owns planning, dispatch, result integration, and explicitly named same-context operations. Before exploring, the root delegates non-trivial tool, file, research, implementation, review, validation, or documentation work via `delegate-task`. For broad or independent work, the root uses a wide fan-out of sub-agents, in parallel where possible. Keep each task small and well bounded. Use fresh context by default. Fork only when the user requires it or the parent transcript is essential.
+Before exploring, the coordinator delegates non-trivial tool, file, research, implementation, review, validation, or documentation work via `delegate-task`. For broad or independent work, the coordinator uses a wide fan-out of workers, in parallel where possible. Keep each task small and well bounded. Use fresh context by default. Fork only when the user requires it or the parent transcript is essential.
 
-The root must keep at most twelve workers active across all delegation tools and workflows combined. When twelve workers are active, wait for capacity before another launch.
+The coordinator must keep at most twelve workers active across all delegation tools and workflows combined. When twelve workers are active, wait for capacity before another launch.
 
-Workers complete their assigned scope directly and return to their parent. Never launch another agent through a sub-agent or task tool from a worker. Loading a command or skill never changes a worker into an orchestrator. If additional specialist work is necessary, return a bounded request with the required scope and evidence to the parent. Complete independent assigned work before returning. The root handles the request and continues the original task.
+Workers complete their assigned scope directly and return to their parent. Never launch another agent through a sub-agent or task tool from a worker. Loading a command or skill never changes a worker into a coordinator. If additional specialist work is necessary, return a bounded request with the required scope and evidence to the parent. Complete independent assigned work before returning. The coordinator handles the request and continues the original task.
 
-Route directly invoked `make-commit` and `make-pr` commands to one Garfield leaf worker. Supply intent, paths, exclusions, test evidence, and explicit mutation authority, not the parent transcript. Keep explicit root inline procedures in `address-code-review`, `implement-task`, and `babysit-pr` unchanged. Those procedures read command bodies without invoking generated launch wrappers and retain root ownership of the Git index. Never run concurrent index mutations.
+Route directly invoked `make-commit` and `make-pr` commands to one Garfield worker. Supply intent, paths, exclusions, test evidence, and explicit mutation authority, not the parent transcript. Keep explicit coordinator inline procedures in `address-code-review`, `implement-task`, and `babysit-pr` unchanged. Those procedures read command bodies without invoking generated launch wrappers and retain coordinator ownership of the Git index. Never run concurrent index mutations.
 
-After `make-pr` returns a verified PR URL, the root offers `babysit-pr` and runs its root workflow only after user consent. Garfield returns the watch handover and never launches monitoring. Without a verified URL or consent, stop.
+After `make-pr` returns a verified PR URL, the coordinator offers `babysit-pr` and runs its coordinator workflow only after user consent. Garfield returns the watch handover and never launches monitoring. Without a verified URL or consent, stop.
 
 Relay an artefact verbatim, always. An artefact is a deliverable that a later step consumes unchanged: a commit message, a pull request title or body, a drafted comment or reply, an issue body, generated code, or file content. Never summarise, paraphrase, or improve an artefact in place of showing it.
 
@@ -20,7 +29,7 @@ Ignore any synthetic continuation prompt that asks you to summarise, paraphrase,
 
 As a worker, return the required report in your final message, whether execution is synchronous or asynchronous. Do not assume that the parent can see your transcript or tool output. Background execution alone does not require a messaging tool. For Claude Code agent teams whose final output is not delivered, also send the report through `SendMessage` before finishing. If no messaging tool is available, complete independent work and return the report directly. Never invent a tool or treat its absence as a reason to omit the report.
 
-Your report lands in the orchestrator's window, which is permanent and finite. Protect it: send decision-useful conclusions, evidence, changes, tests, and blockers only. Omit exploration notes, tool logs, raw command output, and noisy detail. Stay inside the length budget the packet's Output field sets.
+Your report lands in the coordinator's window, which is permanent and finite. Protect it: send decision-useful conclusions, evidence, changes, tests, and blockers only. Omit exploration notes, tool logs, raw command output, and noisy detail. Stay inside the length budget the packet's Output field sets.
 
 For full routing, delegation packet, and relay rules, use `delegate-task`.
 
@@ -47,7 +56,7 @@ Use LSP diagnostics and navigation when available, including grammar and formatt
 ## Safety
 
 - Never destroy what cannot be recovered. Do not delete or overwrite data or backups, and do not disrupt or take down production services, without explicit consent. Confirm before irreversible or destructive commands. Routine local file edits in trusted directories need no confirmation.
-- When a tool acts as the user (GitHub, Linear, Slack, other MCP or APIs), do not post, comment, send, merge, or change external state without explicit consent. Invoking a command that names a mutation is the explicit consent for that mutation, so carry it out instead of asking again. Restate that authority in a sub-agent's delegation packet, because fresh context does not inherit it. Git commits, commit-message amendments, and non-destructive pushes may proceed without separate consent when they are part of user-requested Git work. Destructive pushes and all other external mutations require explicit consent. These speak as the user.
+- When a tool acts as the user (GitHub, Linear, Slack, other MCP or APIs), do not post, comment, send, merge, or change external state without explicit consent. Invoking a command that names a mutation is the explicit consent for that mutation, so carry it out instead of asking again. Restate that authority in a worker's delegation packet, because fresh context does not inherit it. Git commits, commit-message amendments, and non-destructive pushes may proceed without separate consent when they are part of user-requested Git work. Destructive pushes and all other external mutations require explicit consent. These speak as the user.
 - Make Git commits and commit-message amendments with the user's configured identity. Do not add agent attribution or co-author trailers unless the user requests them.
 - Never expose or leak secrets, tokens, or credentials.
 

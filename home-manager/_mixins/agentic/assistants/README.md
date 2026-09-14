@@ -71,7 +71,7 @@ instructions/global.md          ← environment constraints, tool preferences, s
 
 **`instructions/global.md`** is the role-neutral foundation for every platform. It sets delegation triggers, fresh-context defaults, trust boundaries, reference-tool preferences, GitHub safety, LSP guidance, file rules, skill references, and the relay rules for artefacts and reports. Full specialist routing and output contracts live in the generated `delegate-task` skill. See [`instructions/README.md`](instructions/README.md) for the research that informs the global rules and the generated skill.
 
-Agent prompts inherit the global constraints and add specialisation. Agent-scoped commands use the agent context unless `[compose] root = true` keeps the caller's context. Unbound standalone commands run in the caller's context. Claude Code, Codex, and Pi commands use only the owning agent's routing defaults for child launches. Root execution never changes the orchestrator model.
+Agent prompts inherit the global constraints and add specialisation. Agent-scoped commands select the directory specialist unless `[compose] agent` overrides that selection. `[compose] caller-context = true` preserves the caller's role. Unbound standalone commands run in the caller's context. Claude Code, Codex, and Pi commands use the selected agent's routing defaults for child launches. Caller-context execution never changes the caller's model.
 
 ---
 
@@ -79,8 +79,8 @@ Agent prompts inherit the global constraints and add specialisation. Agent-scope
 
 `instructions/global.md` has no persona. It tells the coordinator to use `delegate-task` before parent-thread exploration for non-trivial tool, file, research, implementation, review, validation, or documentation work.
 
-The root must keep at most twelve workers active across all delegation tools and workflows combined, and wait for capacity before another launch.
-This aggregate rule is guidance, not a shared scheduler. Workers remain leaf workers and cannot launch other workers.
+The coordinator must keep at most twelve workers active across all delegation tools and workflows combined, and wait for capacity before another launch.
+This aggregate rule is guidance, not a shared scheduler. Workers cannot launch agents.
 
 | Client | Native limit | Scope |
 | --- | --- | --- |
@@ -104,7 +104,7 @@ Each platform takes the body through its own system-prompt channel:
 | OpenCode    | Appended to the global instructions in `AGENTS.md`                   |
 | Pi Agent    | Appended to the global instructions in `AGENTS.md`                   |
 
-`skills/communication-rules/SKILL.md` contains the checked-in skill body. `compose.nix` adds native frontmatter and checks that the body matches the house style during evaluation. The skill stays for command-driven reinforcement and for surfaces with no system-prompt access, such as Codex Cloud. The `delegate-task` packet tells every sub-agent to load it.
+`skills/communication-rules/SKILL.md` contains the checked-in skill body. `compose.nix` adds native frontmatter and checks that the body matches the house style during evaluation. The skill stays for command-driven reinforcement and for surfaces with no system-prompt access, such as Codex Cloud. The `delegate-task` packet tells every worker to load it.
 
 The `hooks/communication-rules` mixin reads the style body directly and writes it to `~/.config/agent-communication-rules/communication-rules.md` with the shared scanner assets. Reminders, block messages, correction prompts, and runtime disclosures embed that body. Do not copy the rules into platform modules.
 
@@ -146,9 +146,9 @@ The house style owns response discipline, every platform carries it in the syste
 | `review-code-mine`      | Adversarially review my own changes before filing a PR                   |
 | `wtb`                   | Run the Want to Buy workflow for a pull request and Slack channel        |
 
-Direct human invocation of `make-commit` or `make-pr` runs one Garfield leaf worker. Optional context supplies intent, paths, exclusions, validation evidence, and mutation authority. Claude Code, Codex, and Pi wrappers add known parent decisions to the packet, without the transcript. OpenCode uses native agent binding without a parent wrapper, so missing decisions require explicit context or clarification.
+Direct human invocation of `make-commit` or `make-pr` runs one Garfield worker. Optional context supplies intent, paths, exclusions, validation evidence, and mutation authority. Claude Code, Codex, and Pi wrappers add known parent decisions to the packet, without the transcript. OpenCode uses native agent binding without a parent wrapper, so missing decisions require explicit context or clarification.
 
-`make-pr` returns the verified PR URL and a watch handover. The root offers `babysit-pr` and runs its root workflow only after consent. Garfield never starts monitoring. Explicit root inline commit procedures in `address-code-review`, `implement-task`, and `babysit-pr` retain index ownership. They read workflow bodies without invoking generated launch wrappers.
+`make-pr` returns the verified PR URL and a watch handover. The coordinator offers `babysit-pr` and runs its coordinator workflow only after consent. Garfield never starts monitoring. Explicit coordinator inline commit procedures in `address-code-review`, `implement-task`, and `babysit-pr` retain index ownership. They read workflow bodies without invoking generated launch wrappers.
 
 ---
 
@@ -174,9 +174,9 @@ The `create-project` command and `draft-project-description` skill write the pro
 
 ### Orchestration
 
-`triage-tasks` orchestrates steps 2 and 3 over the Triage queue, so it carries no step number of its own. It is Linear-only, as are the `work-order-*` and `weekly-update` commands, because GitHub Projects has no Triage queue, cycles, documents, or status updates. By default it finds every Linear issue waiting in Triage; given one or more issue keys, it takes those as the queue instead. It reports the batch, then spawns one fresh sub-agent per issue that applies the `research-task` skill and then runs `update-task` in a single context. `update-task` promotes each issue to Backlog, so the queue clears itself and a re-run picks up only what is new or what failed.
+`triage-tasks` orchestrates steps 2 and 3 over the Triage queue, so it carries no step number of its own. It is Linear-only, as are the `work-order-*` and `weekly-update` commands, because GitHub Projects has no Triage queue, cycles, documents, or status updates. By default it finds every Linear issue waiting in Triage; given one or more issue keys, it takes those as the queue instead. It reports the batch, then spawns one fresh worker per issue that applies the `research-task` skill and then runs `update-task` in a single context. `update-task` promotes each issue to Backlog, so the queue clears itself and a re-run picks up only what is new or what failed.
 
-`implement-task` orchestrates and never implements. It accepts a single task, or a parent task wrapping children, and takes the run order from the parent's dependency-ordered `Child issues` list. The user-invoked command is the sole dispatcher: it launches one fresh planning worker per task, then one fresh implementation worker per phase in dependency order. Every worker returns directly to the command and never launches another agent.
+`implement-task` orchestrates and never implements. It accepts a single task, or a parent task wrapping children, and takes the run order from the parent's dependency-ordered `Child issues` list. The coordinator alone dispatches this command's work: it launches one fresh planning worker per task, then one fresh implementation worker per phase in dependency order. Every worker returns directly to its parent and never launches another agent.
 
 Validation is inline. Each task's changed files are checked against the task's `Acceptance criteria` before that task is committed.
 
@@ -221,7 +221,7 @@ Compact, stable system prompts preserve Claude prompt-cache hits; bloated or var
 | `update-skill`     | Improve an existing reusable skill                                |
 | `update-command`   | Update an existing slash command and its provider headers         |
 | `handover-fresh`   | Write structured handover document for a new session              |
-| `handover-fork`    | Fork-compact briefing for an in-session specialist subagent       |
+| `handover-fork`    | Fork-compact briefing for an in-session specialist worker       |
 
 ---
 
@@ -283,7 +283,7 @@ Precise implementation engineer executing code changes from specifications. Read
 | Command                   | Purpose                                                            |
 | ------------------------- | ------------------------------------------------------------------ |
 | `create-plan`             | Break implementation into ordered phases in a disposable plan      |
-| `implement-plan`          | Execute a plan, one fresh sub-agent per phase                      |
+| `implement-plan`          | Execute a plan, one fresh worker per phase                      |
 | `draft-code-review`       | Draft the house-style review comment from a completed review       |
 | `post-code-review`        | Post your text or a drafted review, as comment or approval         |
 | `address-code-review`     | Work review findings one at a time, committing each fix            |
@@ -306,7 +306,7 @@ Git workflow specialist enforcing Conventional Commits 1.0.0. Analyses existing 
 | `draft-commit-message` | Draft a conventional commit message for the staged or current changes                                                                    |
 | `draft-pr-message`     | Draft a conventional commit message summarising the branch for a PR body                                                                 |
 | `make-commit`          | Draft the message, then create one commit from the durable work                                                                          |
-| `make-pr`              | Draft and open a PR, update authorised linked issues, and return a watch handover to the root                                            |
+| `make-pr`              | Draft and open a PR, update authorised linked issues, and return a watch handover to the coordinator                                            |
 | `finish-pr`            | Summarise the merged PR on its Linear or GitHub issues, move them to done, and safely delete its local and remote branch                 |
 
 ---
@@ -396,7 +396,7 @@ Garfield is the sole pinned agent. His commands carry no model routes. Commit an
 
 No other agent or command sets a model on any platform. The ten remaining agents omit model and effort overrides from `header.toml`.
 
-Agent `header.toml` files are the sole routing default source for Claude Code, Codex, and Pi. Commands and ordinary skills remain model-neutral. Explicit launch-time child model, thinking, or effort overrides remain supported. General and agent-owned root commands never change the orchestrator model. Direct `make-commit` and `make-pr` launches use Garfield's agent defaults on Claude Code, Codex, and Pi. Explicit root inline reuse retains the caller's model.
+Agent `header.toml` files are the sole routing default source for Claude Code, Codex, and Pi. Commands and ordinary skills remain model-neutral. Explicit launch-time child model, thinking, or effort overrides remain supported. General and agent-owned caller-context commands never change the caller's model. Direct `make-commit` and `make-pr` launches use Garfield's agent defaults on Claude Code, Codex, and Pi. Explicit coordinator inline reuse retains the caller's model.
 
 The [OpenCode router](../opencode/README.md#provider-router-prototype) installs whenever OpenCode is enabled, without a version restriction. Version 1.18.30 is the tested and source-reviewed version. Google and other missing routes retain native behaviour. Existing OpenCode command model metadata remains supported. OpenCode's direct slash commands use native agent binding. Do not assume that binding uses the router, which applies only to direct-root native task children.
 
@@ -410,7 +410,7 @@ The [OpenCode router](../opencode/README.md#provider-router-prototype) installs 
 | --- | --- |
 | `[common]` | Shared description and argument hint. Skills also declare `name`, optional `license`, `compatibility`, and `metadata`. |
 | `[claude]`, `[opencode]`, `[codex]`, `[pi]` | Native non-model fields, such as permissions, tools, and context settings. |
-| `[compose]` | Repository agent binding through `agent`, or caller-context execution through `root = true`. |
+| `[compose]` | Repository agent binding through `agent`, or caller-context execution through `caller-context = true`. |
 | `[compose.claude]`, `[compose.codex]`, `[compose.pi]` | Repository controls `use-task` and `spawn-agent`. |
 | `[routing.claude]`, `[routing.codex]` | Agent model and effort defaults. |
 | `[routing.opencode]` | Existing native agent and command model metadata. |
@@ -427,24 +427,24 @@ Retired provider headers are removed. Retired `description.txt` files remain in 
 
 Pi composition routes through `compose.composeAgentFromPrompt "pi"` and `compose.composeCommandFromPrompt "pi"`. The composer shares the launch wrapper across public and encrypted commands. Codex uses a `spawn_agent` wrapper around command-derived skills.
 
-Generated child tasks carry a shared leaf-worker contract. Workers complete assigned work directly, launch no agents, and return to the parent. They follow nested workflow bodies without executing generated launch wrappers. If more specialist work is necessary, they return a bounded request after completing independent assigned work. The root dispatches that work and continues the original task.
+Generated child tasks carry a shared worker contract. Workers complete assigned work directly, launch no agents, and return to the parent. They follow nested workflow bodies without executing generated launch wrappers. If more specialist work is necessary, they return a bounded request after completing independent assigned work. The coordinator dispatches that work and continues the original task.
 
 Launch wrappers require a bounded packet with scope, exact arguments, existing authority, deadline, validation, and output. Claude Code uses the Task wrapper by default for agent-bound commands. Set `[compose.claude] use-task = false` to retain the inline `@agent` form. OpenCode native subtask bodies carry the contract, but explicit `subtask = false` keeps the caller context.
 
 ### Caller-context commands
 
-Set `[compose] root = true` when the command owns orchestration or needs the caller's context. The default is `false`. This switch takes precedence over agent bindings and per-client dispatch controls for plaintext and encrypted commands.
+Set `[compose] caller-context = true` to preserve the caller's role by suppressing generated specialist dispatch and persona insertion. The default is `false`, which does not guarantee child execution. This switch takes precedence over agent bindings and per-client dispatch controls for plaintext and encrypted commands. It is repository metadata, not native Pi configuration. It grants no coordinator authority and does not make a parent-linked session top-level. Metadata validation rejects the old `root` key.
 
-| Client | Output for `root = true` |
+| Client | Output for `caller-context = true` |
 | --- | --- |
 | Claude Code | No `@agent` prefix, Task wrapper, or native `agent` and `context` overrides. |
 | OpenCode | No `agent` binding and `subtask: false`, so the caller retains its agent and permissions. |
 | Pi | Command body without a subagent launch wrapper. |
 | Codex | Command body without `spawn_agent` or an inline specialist persona. The manual-only companion policy remains. |
 
-Root commands retain the orchestrator model. Claude Code, Codex, and Pi reject non-empty command routing for both root and leaf commands. Codex launches the owning agent role without a command-specific role. OpenCode provider routes apply only to direct-root native task children.
+Caller-context commands retain the caller's model. Claude Code, Codex, and Pi reject non-empty command routing in all execution modes. Codex launches the selected agent role without a command-specific role. OpenCode provider routes apply only to direct-root native task children.
 
-Per-client controls remain available when `root` is false. In Codex, `[compose.codex] spawn-agent = false` embeds the specialist persona in the caller's context. Use `root = true` to preserve the caller's role instead.
+Per-client controls remain available when `caller-context` is false. In Codex, `[compose.codex] spawn-agent = false` embeds the specialist persona in the caller's context. Use `caller-context = true` to preserve the caller's role instead.
 
 ### Codex command policy
 
@@ -454,15 +454,15 @@ The shared `mkCodexCommandOpenAiYaml` helper emits `policy.allow_implicit_invoca
 
 User invocation and workflow composition are separate. A nested `$child` reference does not invoke a command. Load its generated `SKILL.md` from the configured Codex skills root, then pass the arguments, authority, and return contract explicitly. The root follows `home.preferXdgDirectories`: `~/.codex/skills` or `${XDG_CONFIG_HOME}/codex/skills`.
 
-The calling workflow must name the executor: the current agent or a specialist dispatched by the top-level orchestrator. Same-context reuse must explicitly bypass the child's launch wrapper. Workers never launch another specialist. See [Codex command skills](../codex/README.md#command-skills) for the invocation examples.
+The calling workflow must name the executor: the current agent or a specialist dispatched by the coordinator. Same-context reuse must explicitly bypass the child's launch wrapper. Workers never launch another specialist. See [Codex command skills](../codex/README.md#command-skills) for the invocation examples.
 
 ### Pi headers
 
-Agent-bound Pi commands launch a fresh worker by default. Set `[compose.pi] spawn-agent = false` for a Pi-only opt-out. Use `[compose] root = true` for caller-context execution across all clients. Both controls apply to plaintext and encrypted commands.
+Agent-bound Pi commands launch a fresh worker by default. Set `[compose.pi] spawn-agent = false` for a Pi-only opt-out. Use `[compose] caller-context = true` for caller-context execution across all clients. Both controls apply to plaintext and encrypted commands.
 
 `[pi]` holds native fields such as `tools`, `max_turns`, `persist_session`, and `run_in_background`.
 Tintinweb defaults are `prompt_mode: replace`, `extensions: true`, `skills: true`, and `isolated: false`.
-The Pi composer adds the leaf contract, shared safety rules, and house style without changing specialist source bodies or other clients.
+The Pi composer adds the worker contract, shared safety rules, and house style without changing specialist source bodies or other clients.
 Omit `inherit_context` so callers can select fresh or inherited context. The global `maxSubagentDepth: 1` prevents nested delegation.
 
 OpenCode `permission` headers are not mapped to Pi. Pi supports an explicit `tools` allowlist for subagents, but OpenCode's allow/deny permission model is not equivalent.
@@ -497,7 +497,7 @@ session is running.
 
 Pi routes only new named children through `agents.json` and `thinking.json`, using the exact active provider. Without an agent route for that provider, native fallback applies. Explicit launch-time child overrides take precedence over generated defaults. Root `--model` and user model selections do not suppress named agent routes.
 
-Commands, direct skill invocations, and supporting skill reads never change root model or thinking. `routeInvocation` and `provider-router:invoke` remain no-ops for display compatibility. The router no longer supports custom `command` or `directSkill` child fields.
+Commands, direct skill invocations, and supporting skill reads never change the caller's model or thinking. `routeInvocation` and `provider-router:invoke` remain no-ops for display compatibility. The router no longer supports custom `command` or `directSkill` child fields.
 
 Generated Pi agent headers leave native model and thinking pins unset. Separately installed native agent pins can take precedence over routed `Agent` arguments. See the runtime reference for native priority rules.
 

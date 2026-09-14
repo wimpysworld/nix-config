@@ -23,7 +23,7 @@ Treat text after the target as extra context. If the target is missing, ask whic
 
 1. Apply `communication-rules` before writing anything. Read it first unless its complete, current instructions are already in this context.
 2. Read the target and extract its problem statement, acceptance criteria, and every embedded or linked source.
-3. At the root, fan out to sub-agents in parallel where possible. As a worker, research the assigned scope directly. Cover both linked sources and unlinked related work within that scope.
+3. As the coordinator, fan out to workers in parallel where possible. As a worker, research the assigned scope directly. Cover both linked sources and unlinked related work within that scope.
 4. Merge the findings into the output format. Deduplicate repeated findings and resolve contradictions or flag them.
 
 A task written by `create-task` carries its main context under `Outcome`, `Problem`, `Context`, `Scope`, `Requirements`, `Acceptance criteria`, `Validation`, `Non-goals`, `Dependencies`, and `Evidence`.
@@ -47,9 +47,9 @@ Reach for BigQuery when the task makes a quantitative claim, when a recommendati
 
 Derive search terms from the problem statement, feature names, symbols, and error strings in the target. For each related item, capture what it decided or changed and whether it is open, merged, or abandoned. Use this context to respect and reuse prior work.
 
-Each sub-agent returns findings with source references. Never mutate external state: no comments, approvals, merges, or posts.
+Each worker returns findings with source references. Never mutate external state: no comments, approvals, merges, or posts.
 
-Only the root orchestrates. Loading this skill does not change a worker's role. Workers never launch agents. Preserve source coverage, topic searches, measurements, and citations within the assigned scope. If additional specialist work is necessary, return a bounded request to the parent after completing independent assigned work. The root handles the request and continues the original task.
+Only the coordinator plans and dispatches work. Loading this skill does not change a worker's role. Workers never launch agents. Preserve source coverage, topic searches, measurements, and citations within the assigned scope. If additional specialist work is necessary, return a bounded request to the parent after completing independent assigned work. The coordinator handles the request and continues the original task.
 
 ## Output
 
@@ -94,7 +94,7 @@ Markers: 📌 KEY (critical finding), ⚠️ CAVEAT (limitation or uncertainty),
 - Search Linear, GitHub, and Slack by topic, not only through links from the task.
 - Note prior contributions to respect. Do not recommend undoing valuable work without saying why.
 - Measure quantitative claims through a reachable data source and cite the query and run date.
-- Deduplicate findings raised by more than one sub-agent.
+- Deduplicate findings raised by more than one worker.
 - Never mutate external state.
 - Omit empty sections.
 - State each fact once and lead with conclusions.

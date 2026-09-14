@@ -1,10 +1,10 @@
 ## Fork-Compact Briefing
 
-Produce a compact briefing for a single specialist subagent receiving this content as the `Context:` field of a `delegate-task` packet. The reader continues work in a fresh context window but needs the parent transcript's _conclusions_, not its _exploration_.
+Produce a compact briefing for a single specialist worker receiving this content as the `Context:` field of a `delegate-task` packet. The reader continues work in a fresh context window but needs the parent transcript's _conclusions_, not its _exploration_.
 
 Focus: `$ARGUMENTS` (if empty, infer from the most recent parent turn).
 
-**Length:** 200-500 words. Hard ceiling 600. If the material exceeds the ceiling, the parent should fan out, not write a longer briefing.
+**Length:** 200-500 words. Hard ceiling 600. If the material exceeds the ceiling, the coordinator must fan out, not write a longer briefing.
 
 **Markers:** ⚠️ WARNING (non-obvious behaviour), 📌 IMPORTANT (critical info).
 

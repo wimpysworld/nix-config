@@ -4,7 +4,7 @@ File the outcome of this session as a durable task: one tracked issue, several i
 
 Input: $ARGUMENTS is a Linear project name, a GitHub project URL, or a filesystem path for a local task file, optionally followed by a status. If $ARGUMENTS is blank, infer the project from this session: the repository, the task's subject, and any project named in the conversation.
 
-The root preserves session context, decisions, and task structure. At root, delegate missing discovery, research, and substantive validation through `delegate-task` with bounded scope and existing authority. Integrate the returned evidence before writing. If a worker receives this source body, perform only the assigned scope directly, without generated wrappers or further delegation. Return any additional specialist requirement as a bounded dispatch request to the root, which continues the task.
+The coordinator preserves session context, decisions, and task structure. As the coordinator, delegate missing discovery, research, and substantive validation through `delegate-task` with bounded scope and existing authority. Integrate the returned evidence before writing. If a worker receives this source body, perform only the assigned scope directly, without generated wrappers or further delegation. Return any additional specialist requirement as a bounded dispatch request to the parent. The coordinator continues the task.
 
 ### Process
 

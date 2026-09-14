@@ -15,7 +15,7 @@ REPO = ASSISTANTS.parents[3]
 
 
 class SkillFileTests(unittest.TestCase):
-    def test_root_and_leaf_commands_use_the_same_routes_for_public_and_secret_bodies(
+    def test_caller_context_and_worker_commands_use_the_same_routes_for_public_and_secret_bodies(
         self,
     ):
         body = "TASK_SENTINEL: keep caller context and delegate checks for $ARGUMENTS."
@@ -30,7 +30,7 @@ class SkillFileTests(unittest.TestCase):
         }
         cases = {}
         for selection in ("scoped", "bound", "unbound"):
-            for mode in ("root", "leaf", "inline"):
+            for mode in ("caller-context", "worker", "inline"):
                 for secret in (False, True):
                     name = f"{selection}-{mode}-{'secret' if secret else 'public'}"
                     cases[name] = (selection, mode, secret)
@@ -40,7 +40,7 @@ class SkillFileTests(unittest.TestCase):
                         else f"commands/{name}"
                     )
                     header = '[common]\ndescription = "Fixture command."\n[compose]\n'
-                    header += f"root = {str(mode == 'root').lower()}\n"
+                    header += f"caller-context = {str(mode == 'caller-context').lower()}\n"
                     if selection == "bound":
                         header += 'agent = "worker"\n'
                     header += (
@@ -50,7 +50,7 @@ class SkillFileTests(unittest.TestCase):
                         + str(mode != "inline").lower()
                         + "\n"
                     )
-                    if mode == "root":
+                    if mode == "caller-context":
                         header += (
                             '[claude]\ncontext = "fork"\nagent = "worker"\n'
                             '[opencode]\nagent = "worker"\nsubtask = true\n'
@@ -60,7 +60,7 @@ class SkillFileTests(unittest.TestCase):
                         name if secret else body
                     ) + "\n"
         for name in ("make-commit", "make-pr"):
-            cases[name] = ("garfield", "leaf", False)
+            cases[name] = ("garfield", "worker", False)
             for filename in ("command.toml", "command.md"):
                 path = f"agents/garfield/commands/{name}/{filename}"
                 files[path] = (ASSISTANTS / path).read_text()
@@ -160,14 +160,14 @@ class SkillFileTests(unittest.TestCase):
                     frontmatter, task = rendered.split("---", 2)[1:]
                     native = yaml.safe_load(frontmatter)
                     self.assertNotIn("compose", native)
-                    self.assertNotIn("root", native)
-                    if mode == "root" or selection == "unbound":
+                    self.assertNotIn("caller-context", native)
+                    if mode == "caller-context" or selection == "unbound":
                         self.assertEqual(task.strip(), expected_body)
                         self.assertNotIn("PERSONA_SENTINEL", rendered)
                         self.assertNotIn("agent", native)
-                        if mode == "root" and platform == "opencode":
+                        if mode == "caller-context" and platform == "opencode":
                             self.assertIs(native["subtask"], False)
-                        if mode == "root" and platform == "claude":
+                        if mode == "caller-context" and platform == "claude":
                             self.assertNotIn("context", native)
                     elif platform == "codex":
                         if mode == "inline":
@@ -191,7 +191,7 @@ class SkillFileTests(unittest.TestCase):
                         self.assertEqual(native["agent"], agent)
                     child = (
                         selection != "unbound"
-                        and mode != "root"
+                        and mode != "caller-context"
                         and not (platform == "codex" and mode == "inline")
                     )
                     if child:
@@ -201,10 +201,10 @@ class SkillFileTests(unittest.TestCase):
                             child_task = task
                         else:
                             launch, child_task = task.split("\n## Task\n", 1)
-                            self.assertNotIn("You are a leaf worker.", launch)
+                            self.assertNotIn("You are a worker.", launch)
                             if expected_body:
                                 self.assertNotIn(expected_body, launch)
-                        self.assertIn("You are a leaf worker.", child_task)
+                        self.assertIn("You are a worker.", child_task)
                         if selection == "garfield":
                             self.assertNotIn("Before launch, add", child_task)
                             self.assertNotIn("model", native)
@@ -225,7 +225,7 @@ class SkillFileTests(unittest.TestCase):
                                         "Do not send monitoring to Garfield", launch
                                     )
                             if name == "make-pr":
-                                self.assertIn("Watch handover: ROOT", child_task)
+                                self.assertIn("Watch handover: Coordinator", child_task)
                                 self.assertIn("Never invoke `babysit-pr`", child_task)
                         for wrapper in (
                             "Use the `spawn_agent` tool to launch",
@@ -234,7 +234,7 @@ class SkillFileTests(unittest.TestCase):
                         ):
                             self.assertNotIn(wrapper, child_task)
                     else:
-                        self.assertNotIn("You are a leaf worker.", task)
+                        self.assertNotIn("You are a worker.", task)
                     if expected_body:
                         self.assertIn(expected_body, task)
 

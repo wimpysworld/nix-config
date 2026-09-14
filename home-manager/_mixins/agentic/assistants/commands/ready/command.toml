@@ -3,4 +3,4 @@ description = "Get ready 🌱"
 argument-hint = "[topic]"
 
 [compose]
-root = true
+caller-context = true

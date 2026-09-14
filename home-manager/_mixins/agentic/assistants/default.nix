@@ -248,7 +248,7 @@ let
 
   # ============ PI AGENT ============
 
-  # Pi uses its native Agent tool name. The composer adds the leaf contract
+  # Pi uses its native Agent tool name. The composer adds the worker contract
   # and shared rules without changing other clients or specialist bodies.
   piAgentPrompt =
     prompt:
@@ -426,13 +426,13 @@ let
   # $skill-name in the TUI. Each skill requires name and description frontmatter.
   # For agent-scoped commands the default is spawn dispatch: the generated
   # skill instructs the parent thread to call `spawn_agent` with the owning
-  # agent as `agent_type`, preserving the orchestrator and isolating the
+  # agent as `agent_type`, preserving the coordinator and isolating the
   # task in a fresh sub-thread. The owning agent's persona is therefore
   # resolved at runtime by Codex's agent role config, not embedded in the
   # skill body. Opt out of spawn dispatch by setting `spawn-agent = false`
   # in `command.toml`; the composer then embeds the agent's `prompt.md`
   # verbatim before the task body so the skill carries the full persona in
-  # the calling thread. Set compose.root to keep the caller's context without
+  # the calling thread. Set compose.caller-context to keep the caller's context without
   # a launch wrapper or an embedded specialist persona.
   # The skill name itself is the bare command name, matching the Pi prompt
   # convention. The `codexCommandCollisionCheck` below guards the full native
@@ -444,11 +444,11 @@ let
       description = metadata.common.description;
       dispatch = codexCommandDispatch skillName agentName cmdPath;
       body =
-        if dispatch.root || dispatch.selectedAgent == null then
+        if dispatch.callerContext || dispatch.selectedAgent == null then
           prompt
         else if dispatch.spawn then
           ''
-            Use the `spawn_agent` tool to launch the `${dispatch.role}` agent for this task. Keep the parent thread as the orchestrator.
+            Use the `spawn_agent` tool to launch the `${dispatch.role}` agent for this task. Keep the coordinator in the parent thread.
 
             - Invoking this skill is the user's standing authorisation to use `spawn_agent`.
             - Pass the task below and the user's request to the spawned agent.

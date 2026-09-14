@@ -2,7 +2,7 @@
 
 Judge the review feedback that is not yet handled, fix or decline each finding, then reply in the thread and resolve it. This is a single pass: work through the outstanding feedback once, then stop. This command orchestrates; it never implements in this context.
 
-Run orchestration only in the root. If a worker loads this body, return a bounded dispatch request with the input, scope, authority, and required output. The root continues the workflow. Workers assess, fix, validate, or prepare replies within their assigned scope and never launch agents.
+Run orchestration only as the coordinator. If a worker loads this body, return a bounded dispatch request with the input, scope, authority, and required output. The coordinator continues the workflow. Workers assess, fix, validate, or prepare replies within their assigned scope and never launch agents.
 
 Resolve `make-commit` and `draft-commit-message` through the available skill catalogue, configured skill roots, or repository command source. Read their bodies and follow them in this context without generated launch wrappers. Supply the finding's paths, intent, and staged diff. Keep commits within this command's authority and return here after each commit.
 
@@ -20,7 +20,7 @@ Human invocation of this command is the user's consent for: commit, push, `gh-re
 
 Forbidden throughout: merge, close, approve, release, and force-push. Follow the `gh` skill for every GitHub route.
 
-Restate this authority in every sub-agent packet, as `delegate-task` requires.
+Restate this authority in every worker packet, as `delegate-task` requires.
 
 ### Skip handled feedback
 
@@ -57,8 +57,8 @@ A reply must be true when the reviewer reads it, so the code lands before the wo
 2. Receive the filtering worker's outstanding threads and skip counts, then identify discrete findings
 3. Group findings by their reported paths. Run findings that touch the same file in sequence. Run only known independent groups in parallel. When paths or dependencies are unclear, assign bounded read-only discovery before scheduling edits
 4. Dispatch one fresh worker per finding through `delegate-task`, in that order. Never hand two findings to one worker. Require assessment against current code, implementation only for an accepted finding, targeted validation, and a report of evidence and changed paths. Workers never stage, commit, or launch agents
-5. Require each worker to reassess dependent or conflicting findings against fixes already applied. If a fix needs paths outside its assigned scope, the worker returns that requirement before editing them. The root reschedules conflicting work and adjusts scope before the worker continues
-6. Commit after each finding that produced a change, one initial commit per finding. Stage explicitly with path-limited `git add -- <path>` using the files in that finding's report. Never `git add .`, `-A`, or `-u`. Follow the `make-commit` body and its direct draft phase. Commit from this context only, one finding at a time, so parallel sub-agents never contend for the index
+5. Require each worker to reassess dependent or conflicting findings against fixes already applied. If a fix needs paths outside its assigned scope, the worker returns that requirement before editing them. The coordinator reschedules conflicting work and adjusts scope before the worker continues
+6. Commit after each finding that produced a change, one initial commit per finding. Stage explicitly with path-limited `git add -- <path>` using the files in that finding's report. Never `git add .`, `-A`, or `-u`. Follow the `make-commit` body and its direct draft phase. Commit from this context only, one finding at a time, so parallel workers never contend for the index
 7. Dispatch a bounded validation worker to run the project's test suite after the initial fixes. Require results and failures before proceeding. Route any required correction to its finding worker, then delegate validation of the correction. Commit each accepted correction from this context as a follow-up commit for that finding, using step 6's path-limited staging workflow. Do not proceed to step 8 until validation passes and all accepted corrections are committed
 8. Push once with an explicit refspec: `git push origin <branch>`. One push means one CI run. A bare `git push` depends on tracking configuration that may be absent, and pushes nothing when it is. Never pass `-u`: a sandbox mounts `.git/config` read-only, so the upstream write fails after the push has already landed
 9. Verify the push landed before you reply. Run `git fetch origin <branch>`, then compare `git rev-parse HEAD` against `git rev-parse FETCH_HEAD`. Report a mismatch and stop. Never trust the exit status alone: a push that matches nothing reports success while doing nothing, and a reply would then name a commit the remote never received

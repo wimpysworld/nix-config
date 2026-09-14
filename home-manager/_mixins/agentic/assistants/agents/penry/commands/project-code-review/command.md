@@ -11,9 +11,9 @@ Before any worker starts, load and follow the `review-report-path` skill. Create
 ### Process
 
 1. Read `communication-rules` first unless its complete, current instructions are in this context. Apply it before writing anything.
-2. Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by directory, concern, or language so each sub-agent has a small review surface. Recurse into nested directories when useful. First-party code only; exclude git submodules. Each sub-agent runs this review over its own area, writes its findings to the file its packet names, and returns them. Name each file `<run-dir>/findings-<area>.md`, so no two collide.
+2. Delegate to a wide fan-out of workers, in parallel where possible. Split by directory, concern, or language so each worker has a small review surface. Recurse into nested directories when useful. First-party code only; exclude git submodules. Each worker runs this review over its own area, writes its findings to the file its packet names, and returns them. Name each file `<run-dir>/findings-<area>.md`, so no two collide.
 
-   The user-invoked command is the sole orchestrator. Workers complete their assigned area and return directly. They never launch agents or invoke orchestrating commands.
+   The coordinator alone plans and dispatches this command's work. Workers complete their assigned area and return directly. They never launch agents or invoke orchestrating commands.
 
 3. Detect languages and target versions from project manifests and toolchain files, preferring explicit runtime declarations over inference (`go.mod`, `pyproject.toml`, `Cargo.toml`, `.tool-versions`, `.python-version`, `package.json`, etc.).
 4. Hunt first for code that can disappear:
@@ -30,7 +30,7 @@ Before any worker starts, load and follow the `review-report-path` skill. Create
 12. Output per-improvement format from agent definition. For standard-library and native findings, add what was reimplemented, the replacement, the minimum version, and whether the project target permits it.
 13. End the report with an estimated removal summary: lines, files, and dependencies that could be deleted.
 14. Use the report path derived before fan-out.
-15. Aggregate from the findings files, each one the source of record when its sub-agent's reply did not arrive. Write the aggregated report to the derived path, then report that path.
+15. Aggregate from the findings files, each one the source of record when its worker's reply did not arrive. Write the aggregated report to the derived path, then report that path.
 
 ### Restraint
 

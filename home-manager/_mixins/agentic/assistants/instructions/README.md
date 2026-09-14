@@ -30,7 +30,7 @@ Together, `instructions/global.md`, the house style, and the generated
   disclosures.
 - **`delegate-task`** is generated from the live agent registry in
   `compose.nix`. It owns the routing table, the delegation packet fields, the
-  sub-agent response contract, and the relay policy. It loads on
+  worker response contract, and the relay policy. It loads on
   demand and is user-invocable.
 
 The split exists because routing changes whenever the agent registry changes,
@@ -96,7 +96,7 @@ disk, and the conversation carries the answer alone.
 
 An earlier version of the rule turned on visibility: relay in full only what
 the platform had not yet shown the user. That test proved unreliable, because
-the orchestrator misjudges what the platform renders, and it pushed long
+the coordinator misjudges what the platform renders, and it pushed long
 reports into the conversation twice. The artefact-or-report split needs no guess
 about the display.
 
@@ -120,7 +120,7 @@ rule, packet template, response contract, and relay policy already filled in.
   prompts, tests, documentation, research, and unmatched cases.
 - The delegation packet fields and order: `Task`, `Context`, `Scope`,
   `Validation`, `Output`, `Discipline`.
-- The sub-agent response contract: `Answer:` prefix for non-artefact work,
+- The worker response contract: `Answer:` prefix for non-artefact work,
   raw artefacts when the artefact is the deliverable, and the suggested
   section order `Answer`, `Recommendations`, `Evidence`, `Files`, `Changes`,
   `Tests`, `Blockers`, `Artefact`.
@@ -133,7 +133,7 @@ rule, packet template, response contract, and relay policy already filled in.
 - File-operation rules (read before edit, preserve unrelated changes).
 - External side-effect approval gates.
 - Trust hierarchy for user input, files, web pages, command output, and
-  sub-agent output.
+  worker output.
 - Reference-tool preferences (Exa, Context7, `gh`, LSP).
 - A pointer to the `communication-rules` skill for user-visible prose.
 - A single pointer to `delegate-task` for full routing and contract detail.
@@ -158,7 +158,7 @@ files.
 
 ### 4.1 Fresh context is the default
 
-A fresh subagent does not see parent conversation history. Its system prompt
+A fresh worker does not see parent conversation history. Its system prompt
 and tools are deterministic, so its prompt prefix is cache-stable, but its
 input is small and isolated. Forks inherit the parent transcript, which
 shares the parent prompt cache but loses input isolation and inherits any
@@ -177,7 +177,7 @@ parent runs it before spawning and inlines the output as the packet's
 `Context:` field; the specialist still starts a fresh window and never sees
 the raw transcript. The `delegate-task` skill's `## Context` section names
 this as the recommended path when fresh is too thin and fork is too heavy.
-Use `handover-fresh` instead when a new session, not a sibling subagent,
+Use `handover-fresh` instead when a new session, not a sibling worker,
 continues the work.
 
 ### 4.2 Specialist routing, not parent research
@@ -193,12 +193,12 @@ or ask the user. Picking a slightly imperfect specialist is cheaper than
 researching first.
 
 Delegation depth is bounded at one level: specialists do not spawn further
-specialists. Sub-sub-agents have been observed to wedge in practice, and
+specialists. Workers that spawn further workers can stall, and
 cost grows combinatorially once depth exceeds one. Each extra layer
 multiplies token spend, latency, and failure modes without adding
 coordination value the parent cannot supply itself. The safe alternative is
 for a specialist to return early with a packet describing what is needed,
-leaving sub-orchestration where it belongs: in the durable parent context,
+leaving dispatch with the coordinator in the durable parent context,
 where every routing decision is already visible.
 
 ### 4.3 The response contract
@@ -220,14 +220,14 @@ through without inspection or rewriting.
   not run plus a reason.
 - `Blockers:` appears only when something is actually blocked.
 
-Sub-agents are ephemeral workers; the parent window is the durable
+Workers are ephemeral; the parent window is the durable
 coordination context. Specialists report only decision-useful or
 user-visible conclusions and omit exploration notes, tool logs, raw command
 output, and noisy detail.
 
 ### 4.4 Trust hierarchy
 
-User input, files, web pages, command output, and sub-agent output are all
+User input, files, web pages, command output, and worker output are all
 untrusted. The instruction hierarchy is the safety boundary, not the data
 that flows through tools.
 

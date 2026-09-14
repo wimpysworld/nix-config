@@ -189,6 +189,6 @@ The `Review requested` and `Label` lines belong to a work pull request. Omit bot
 
 Without a verified pull request URL, finish after the report. Do not offer monitoring.
 
-With a verified URL, append `Watch handover: ROOT can offer babysit-pr for <url> after user consent.` Substitute the verified URL. Return to the parent and stop. Never invoke `babysit-pr`, execute its launch wrapper, or start monitoring from this worker.
+With a verified URL, append `Watch handover: Coordinator can offer babysit-pr for <url> after user consent.` Substitute the verified URL. Return to the parent and stop. Never invoke `babysit-pr`, execute its launch wrapper, or start monitoring from this worker.
 
-The root owns the watch choice and any later dispatch. It offers `Babysit (Recommended)` and `Stop here` after the report. Only an explicit selection of `Babysit` authorises the root to continue. Cancellation, silence, or any other answer means stop. When no parent can resume, return the verified URL and handover for a later root invocation.
+The coordinator owns the watch choice and any later dispatch. It offers `Babysit (Recommended)` and `Stop here` after the report. Only an explicit selection of `Babysit` authorises the coordinator to continue. Cancellation, silence, or any other answer means stop. When no parent can resume, return the verified URL and handover for a later coordinator invocation.

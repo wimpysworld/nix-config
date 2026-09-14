@@ -1,7 +1,7 @@
 [common]
-description = "Compact handover to a subagent 🔀"
+description = "Compact handover to a worker 🔀"
 argument-hint = "[focus]"
 
 [compose]
-root = true
+caller-context = true
 agent = "rosey"

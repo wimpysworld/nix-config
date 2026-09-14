@@ -19,9 +19,9 @@ Before any worker starts, load and follow the `review-report-path` skill. Create
 
 ### Process
 
-1. Delegate to a wide fan-out of sub-agents, in parallel where possible. Split by subdirectory, recursing into every nested subdirectory, not only top-level ones. First-party code only: exclude git submodules. Each sub-agent runs this same documentation audit over its own directory; the parent aggregates the findings
+1. Delegate to a wide fan-out of workers, in parallel where possible. Split by subdirectory, recursing into every nested subdirectory, not only top-level ones. First-party code only: exclude git submodules. Each worker runs this same documentation audit over its own directory; the parent aggregates the findings
 
-   The user-invoked command is the sole orchestrator. Workers complete their assigned area and return directly. They never launch agents or invoke orchestrating commands.
+   The coordinator alone plans and dispatches this command's work. Workers complete their assigned area and return directly. They never launch agents or invoke orchestrating commands.
 
 2. Inventory the documentation that exists, where it lives, and which paths it covers
 3. Compare each document against the code it describes to find missing and stale content

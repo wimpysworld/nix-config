@@ -65,7 +65,7 @@ description = "Acknowledge a phase or message ✅"
 argument-hint = "[phase]"
 
 [compose]
-root = true
+caller-context = true
 ```
 
 ## Form C: standalone with output format
@@ -113,7 +113,7 @@ argument-hint = "[focus]"
 
 [compose]
 agent = "rosey"
-root = true
+caller-context = true
 ```
 
 Omit `argument-hint` when the command takes no argument. Keep Claude Code, Codex, and Pi commands model-neutral. Put their routing defaults in the owning agent's header. OpenCode command model metadata support remains unchanged.

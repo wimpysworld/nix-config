@@ -18,7 +18,7 @@ All of equal weight:
 - **Documentation**: missing docs for user-facing changes
 - **Deliberately malicious code**: obfuscated logic, unexpected network calls, exfiltration of secrets or environment, dependency additions that pull unvetted code, install or build hooks, CI changes that widen permissions or leak secrets, and anything whose stated purpose does not match its effect
 
-Route the malicious-code lane to `dibble` sub-agents.
+Route the malicious-code lane to `dibble` workers.
 
 ### Severity Bar
 

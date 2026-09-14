@@ -1,6 +1,6 @@
 ## Code Security Audit
 
-Run a full-project code security audit. Take no arguments. Use wide sub-agent fan-out and write only the report at the derived path below.
+Run a full-project code security audit. Take no arguments. Use wide worker fan-out and write only the report at the derived path below.
 
 ### Report Location
 
@@ -10,9 +10,9 @@ Before any worker starts, load and follow the `review-report-path` skill. Create
 
 1. Read `communication-rules` first unless its complete, current instructions are in this context. Apply it before writing anything.
 2. Use the report path derived before fan-out.
-3. Delegate to many sub-agents, in parallel where useful. Split by directory, concern, language, or attack surface. Exclude git submodules. The parent aggregates findings.
+3. Delegate to many workers, in parallel where useful. Split by directory, concern, language, or attack surface. Exclude git submodules. The parent aggregates findings.
 
-   The user-invoked command is the sole orchestrator. Workers complete their assigned area and return directly. They never launch agents or invoke orchestrating commands.
+   The coordinator alone plans and dispatches this command's work. Workers complete their assigned area and return directly. They never launch agents or invoke orchestrating commands.
 
 4. Ask only when the audit scope or threat model is unclear.
 5. This command may read source files, run the Bash checks below, and write the report at the derived path. Do not edit source files or stage changes.

@@ -3,4 +3,4 @@ description = "Read supplied sources and prepare to collaborate 🤝"
 argument-hint = "[references...]"
 
 [compose]
-root = true
+caller-context = true

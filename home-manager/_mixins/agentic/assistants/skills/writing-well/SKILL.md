@@ -5,7 +5,7 @@
 
 Load for prose artefacts: documentation, READMEs, blog posts, technical guides, migration guides, release notes, narrative and video scripts, and long-form explanatory content.
 
-Do not load for routine operational output: sub-agent status, delegation responses, implementation reports, audit findings, code review findings, test summaries, command output relays, or ticket comments unless the user asks to polish prose.
+Do not load for routine operational output: worker status, delegation responses, implementation reports, audit findings, code review findings, test summaries, command output relays, or ticket comments unless the user asks to polish prose.
 
 ## Relationship to the other layers
 

@@ -132,13 +132,13 @@ let
           key:
           lib.elem key [
             "agent"
-            "root"
+            "caller-context"
             "claude"
             "codex"
             "pi"
           ]
         ) (builtins.attrNames controls)
-        && builtins.isBool (controls.root or false)
+        && builtins.isBool (controls.caller-context or false)
         &&
           lib.all
             (
@@ -158,6 +158,8 @@ let
     in
     if unknown != [ ] then
       fail path "Unknown tables: ${lib.concatStringsSep ", " unknown}."
+    else if controls ? root then
+      fail path "Removed compose.root setting. Use compose.caller-context instead."
     else if !noNull header then
       fail path "Null metadata is not supported."
     else if nativeModels != [ ] then
@@ -295,8 +297,8 @@ let
     knownAgents: cmdName: agentName: header:
     let
       selectedAgent = header.compose.agent or agentName;
-      root = header.compose.root or false;
-      spawn = !root && (header.compose.codex.spawn-agent or true);
+      callerContext = header.compose.caller-context or false;
+      spawn = !callerContext && (header.compose.codex.spawn-agent or true);
       route = header.routing.codex or { };
     in
     if selectedAgent != null && !(knownAgents ? ${selectedAgent}) then
@@ -307,10 +309,10 @@ let
       {
         inherit
           selectedAgent
-          root
+          callerContext
           spawn
           ;
-        role = if root then null else selectedAgent;
+        role = if callerContext then null else selectedAgent;
       };
 
   commandPolicy =
