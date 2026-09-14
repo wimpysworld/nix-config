@@ -1,16 +1,19 @@
 """Check old-generation ownership proofs with synthetic scripts and fake secrets."""
 
+import contextlib
 import importlib.util
+import io
 import json
-from pathlib import Path
 import plistlib
 import shlex
 import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
-
-module_spec = importlib.util.spec_from_file_location("owned_bootstrap", Path(__file__).with_name("bootstrap.py"))
+module_spec = importlib.util.spec_from_file_location(
+    "owned_bootstrap", Path(__file__).with_name("bootstrap.py")
+)
 bootstrap = importlib.util.module_from_spec(module_spec)
 module_spec.loader.exec_module(bootstrap)
 
@@ -35,10 +38,16 @@ class BootstrapTests(unittest.TestCase):
         verified = bootstrap.verified_records(expected, [str(self.root)])
         self.assertEqual(set(verified), {str(self.target), str(link)})
         self.target.write_text("User modification.\n")
-        self.assertEqual(set(bootstrap.verified_records(expected, [str(self.root)])), {str(link)})
+        self.assertEqual(
+            set(bootstrap.verified_records(expected, [str(self.root)])), {str(link)}
+        )
 
-    def test_legacy_mkdir_does_not_claim_manual_directories_on_disable_or_migration(self):
-        module_spec = importlib.util.spec_from_file_location("deploy_bootstrap", Path(__file__).with_name("deploy.py"))
+    def test_legacy_mkdir_does_not_claim_manual_directories_on_disable_or_migration(
+        self,
+    ):
+        module_spec = importlib.util.spec_from_file_location(
+            "deploy_bootstrap", Path(__file__).with_name("deploy.py")
+        )
         deploy = importlib.util.module_from_spec(module_spec)
         module_spec.loader.exec_module(deploy)
         source = self.home / ".config/sops-nix/secrets/fake"
@@ -61,21 +70,48 @@ class BootstrapTests(unittest.TestCase):
                         commands = f"if [ -r {source} ]; then\n{commands}cat {source} > {target}\nelse\necho 'Missing fake secret.' >&2\nfi\n"
                     generation = self.home / f"generation-{fixture}"
                     generation.mkdir()
-                    (generation / "activate").write_text(f'_iNote "Activating %s" "{writer}"\n{commands}')
+                    (generation / "activate").write_text(
+                        f'_iNote "Activating %s" "{writer}"\n{commands}'
+                    )
                     state = self.home / f"state-{fixture}"
-                    spec = {"version": 1, "stateDir": str(state), "roots": [str(self.root)], "home": str(self.home), "files": []}
+                    spec = {
+                        "version": 1,
+                        "stateDir": str(state),
+                        "roots": [str(self.root)],
+                        "home": str(self.home),
+                        "files": [],
+                    }
                     desired = self.home / f"spec-{fixture}.json"
                     desired.write_text(json.dumps(spec))
                     captured = state / "bootstrap.json"
                     with mock.patch.object(bootstrap, "store_path", return_value=True):
-                        with mock.patch("sys.argv", ["bootstrap.py", str(desired), "--old-generation", str(generation), "--output", str(captured)]):
+                        with mock.patch(
+                            "sys.argv",
+                            [
+                                "bootstrap.py",
+                                str(desired),
+                                "--old-generation",
+                                str(generation),
+                                "--output",
+                                str(captured),
+                            ],
+                        ):
                             bootstrap.main()
                     records = json.loads(captured.read_text())
                     self.assertEqual(records["directories"], [])
-                    self.assertEqual(records["files"], {str(target): bootstrap.fingerprint(source.read_bytes())})
+                    self.assertEqual(
+                        records["files"],
+                        {str(target): bootstrap.fingerprint(source.read_bytes())},
+                    )
                     replacement = self.root / "skills" / f"new-{fixture}" / "SKILL.md"
                     if migrate:
-                        spec["files"] = [{"kind": "file", "path": str(replacement), "source": str(source)}]
+                        spec["files"] = [
+                            {
+                                "kind": "file",
+                                "path": str(replacement),
+                                "source": str(source),
+                            }
+                        ]
                     deploy.deploy(spec, bootstrap_manifest=str(captured))
                     self.assertFalse(target.exists())
                     self.assertTrue(manual.is_dir())
@@ -97,23 +133,32 @@ class BootstrapTests(unittest.TestCase):
         source.write_text("Fake body.\n")
         self.target.write_text("Prefix\nFake body.\n")
         expected = bootstrap.parse_secrets(self.secret_script(source), str(self.home))
-        self.assertEqual(set(bootstrap.verified_records(expected, [str(self.root)])), {str(self.target)})
+        self.assertEqual(
+            set(bootstrap.verified_records(expected, [str(self.root)])),
+            {str(self.target)},
+        )
         self.target.write_text("Prefix\nUser modification.\n")
         self.assertEqual(bootstrap.verified_records(expected, [str(self.root)]), {})
 
     def test_missing_secret_does_not_prove_the_existing_copy(self):
         source = self.home / ".config/sops-nix/secrets/missing"
         self.target.write_text("Prefix\nExisting content.\n")
-        self.assertEqual(bootstrap.parse_secrets(self.secret_script(source), str(self.home)), {})
+        self.assertEqual(
+            bootstrap.parse_secrets(self.secret_script(source), str(self.home)), {}
+        )
 
     def test_secret_source_outside_runtime_root_is_rejected_before_reading(self):
         with self.assertRaises(bootstrap.Unsupported):
-            bootstrap.parse_secrets(self.secret_script(self.home / "outside"), str(self.home))
+            bootstrap.parse_secrets(
+                self.secret_script(self.home / "outside"), str(self.home)
+            )
 
     def test_unknown_shell_command_is_not_executed_or_partially_adopted(self):
         marker = self.home / "must-not-exist"
         with self.assertRaises(bootstrap.Unsupported):
-            bootstrap.parse_public(f"printf '%s' generated > {self.target}\ntouch {marker}\n")
+            bootstrap.parse_public(
+                f"printf '%s' generated > {self.target}\ntouch {marker}\n"
+            )
         self.assertFalse(marker.exists())
 
     def test_symlink_parent_and_outside_destination_are_not_proof(self):
@@ -124,13 +169,113 @@ class BootstrapTests(unittest.TestCase):
         alias = self.root / "alias"
         alias.symlink_to(outside, target_is_directory=True)
         record = bootstrap.fingerprint(target.read_bytes())
-        self.assertEqual(bootstrap.verified_records({str(alias / "SKILL.md"): record, str(target): record}, [str(self.root)]), {})
+        self.assertEqual(
+            bootstrap.verified_records(
+                {str(alias / "SKILL.md"): record, str(target): record}, [str(self.root)]
+            ),
+            {},
+        )
 
     def test_existing_manifest_prevents_repeated_bootstrap(self):
         state = self.home / "state"
         state.mkdir()
         (state / "manifest.json").write_text("{}")
         self.assertEqual(bootstrap.capture({"stateDir": str(state)}, "/not/read"), {})
+
+    def test_explicit_legacy_generation_recovers_after_missing_root_and_advanced_profile(
+        self,
+    ):
+        self.target.write_text("Old generated content.\n")
+        legacy = self.home / "legacy-generation"
+        legacy.mkdir()
+        (legacy / "activate").write_text(
+            '_iNote "Activating %s" "codexFiles"\n'
+            f"printf '%s' {shlex.quote(self.target.read_text())} > {shlex.quote(str(self.target))}\n"
+        )
+        advanced = self.home / "advanced-generation"
+        advanced.mkdir()
+        (advanced / "activate").write_text(
+            '_iNote "Activating %s" "assistantOwnedFiles"\n'
+        )
+        profile = self.home / "home-manager"
+        profile.symlink_to(advanced, target_is_directory=True)
+        state = self.home / "state"
+        source = self.home / "new-source"
+        source.write_text("New generated content.\n")
+        spec = {
+            "version": 1,
+            "stateDir": str(state),
+            "home": str(self.home),
+            "roots": [str(self.root)],
+            "files": [
+                {"kind": "file", "path": str(self.target), "source": str(source)}
+            ],
+        }
+        spec_path = self.home / "spec.json"
+        spec_path.write_text(json.dumps(spec))
+        captured = state / "bootstrap.json"
+
+        def capture(generation):
+            with mock.patch.object(bootstrap, "store_path", return_value=True):
+                with mock.patch(
+                    "sys.argv",
+                    [
+                        "bootstrap.py",
+                        str(spec_path),
+                        "--old-generation",
+                        str(generation),
+                        "--output",
+                        str(captured),
+                    ],
+                ):
+                    bootstrap.main()
+            return json.loads(captured.read_text())["files"]
+
+        for generation, diagnostic in (
+            ("", "no previous generation reference"),
+            (profile, "that manifest is missing"),
+        ):
+            with self.subTest(generation=generation):
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr):
+                    self.assertEqual(capture(generation), {})
+                self.assertIn(diagnostic, stderr.getvalue())
+                self.assertIn("ASSISTANT_OWNERSHIP_GENERATION", stderr.getvalue())
+
+        expected = {str(self.target): bootstrap.fingerprint(self.target.read_bytes())}
+        self.assertEqual(capture(legacy), expected)
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(capture(profile), expected)
+        self.assertEqual(profile.resolve(), advanced)
+
+        module_spec = importlib.util.spec_from_file_location(
+            "deploy_recovery", Path(__file__).with_name("deploy.py")
+        )
+        deploy = importlib.util.module_from_spec(module_spec)
+        module_spec.loader.exec_module(deploy)
+        deploy.deploy(spec, bootstrap_manifest=str(captured))
+        self.assertEqual(self.target.read_bytes(), source.read_bytes())
+        self.assertEqual(
+            json.loads((state / "manifest.json").read_text())["files"],
+            {str(self.target): bootstrap.fingerprint(source.read_bytes())},
+        )
+
+    def test_explicit_legacy_generation_does_not_adopt_modified_files(self):
+        self.target.write_text("Local changes.\n")
+        generation = self.home / "legacy-generation"
+        generation.mkdir()
+        (generation / "activate").write_text(
+            '_iNote "Activating %s" "codexFiles"\n'
+            f"printf '%s' 'Old generated content.' > {shlex.quote(str(self.target))}\n"
+        )
+        spec = {
+            "stateDir": str(self.home / "state"),
+            "home": str(self.home),
+            "roots": [str(self.root)],
+        }
+        with mock.patch.object(bootstrap, "store_path", return_value=True):
+            self.assertEqual(bootstrap.capture(spec, str(generation)), {})
+        self.assertEqual(self.target.read_text(), "Local changes.\n")
 
     def test_old_sops_template_link_is_proved_and_replaced_after_refresh(self):
         generation = self.home / "old-generation"
@@ -144,16 +289,30 @@ class BootstrapTests(unittest.TestCase):
         source.write_text("Fake old template.\n")
         destination = self.root / "skills/fixture/template.md"
         destination.symlink_to(source)
-        manifest.write_text(json.dumps({
-            "symlinkPath": str(old_runtime), "secrets": [],
-            "templates": [{"name": "assistant-codex-skill-fixture", "path": str(destination)}],
-        }))
-        runner.write_text(f"/nix/store/fake/bin/sops-install-secrets -ignore-passwd {manifest}\n")
+        manifest.write_text(
+            json.dumps(
+                {
+                    "symlinkPath": str(old_runtime),
+                    "secrets": [],
+                    "templates": [
+                        {
+                            "name": "assistant-codex-skill-fixture",
+                            "path": str(destination),
+                        }
+                    ],
+                }
+            )
+        )
+        runner.write_text(
+            f"/nix/store/fake/bin/sops-install-secrets -ignore-passwd {manifest}\n"
+        )
         service.write_text(f"[Service]\nExecStart={runner}\n")
         with mock.patch.object(bootstrap, "store_path", return_value=True):
             records = bootstrap.old_secret_links(generation, [str(self.root)])
         verified = bootstrap.verified_records(records, [str(self.root)])
-        self.assertEqual(verified, {str(destination): {"kind": "symlink", "target": str(source)}})
+        self.assertEqual(
+            verified, {str(destination): {"kind": "symlink", "target": str(source)}}
+        )
         state = self.home / "state"
         state.mkdir(mode=0o700)
         captured = state / "bootstrap.json"
@@ -161,12 +320,23 @@ class BootstrapTests(unittest.TestCase):
         captured.chmod(0o600)
         new_source = self.home / "new-rendered-template"
         new_source.write_text("Fake new template.\n")
-        module_spec = importlib.util.spec_from_file_location("deploy_template", Path(__file__).with_name("deploy.py"))
+        module_spec = importlib.util.spec_from_file_location(
+            "deploy_template", Path(__file__).with_name("deploy.py")
+        )
         deploy = importlib.util.module_from_spec(module_spec)
         module_spec.loader.exec_module(deploy)
-        spec = {"version": 1, "stateDir": str(state), "roots": [str(self.root)], "files": [
-            {"kind": "symlink", "path": str(destination), "source": str(new_source)},
-        ]}
+        spec = {
+            "version": 1,
+            "stateDir": str(state),
+            "roots": [str(self.root)],
+            "files": [
+                {
+                    "kind": "symlink",
+                    "path": str(destination),
+                    "source": str(new_source),
+                },
+            ],
+        }
         with self.assertRaises(deploy.Conflict):
             deploy.deploy(spec)
         deploy.deploy(spec, bootstrap_manifest=str(captured))
@@ -180,19 +350,49 @@ class BootstrapTests(unittest.TestCase):
         captured = state / "bootstrap.json"
         manual = self.root / "skills/manual"
         manual.mkdir()
-        captured.write_text(json.dumps({"version": 1, "files": {str(self.target): record}, "directories": [str(manual), str(self.target.parent)]}))
+        captured.write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "files": {str(self.target): record},
+                    "directories": [str(manual), str(self.target.parent)],
+                }
+            )
+        )
         captured.chmod(0o600)
         spec = self.home / "spec.json"
-        spec.write_text(json.dumps({"stateDir": str(state), "roots": [str(self.root)], "home": str(self.home)}))
+        spec.write_text(
+            json.dumps(
+                {
+                    "stateDir": str(state),
+                    "roots": [str(self.root)],
+                    "home": str(self.home),
+                }
+            )
+        )
         with mock.patch.object(bootstrap, "capture", return_value={}):
-            with mock.patch("sys.argv", ["bootstrap.py", str(spec), "--output", str(captured)]):
+            with mock.patch(
+                "sys.argv", ["bootstrap.py", str(spec), "--output", str(captured)]
+            ):
                 bootstrap.main()
-        self.assertEqual(json.loads(captured.read_text())["files"], {str(self.target): record})
+        self.assertEqual(
+            json.loads(captured.read_text())["files"], {str(self.target): record}
+        )
         self.assertEqual(json.loads(captured.read_text())["directories"], [])
-        module_spec = importlib.util.spec_from_file_location("deploy_retry", Path(__file__).with_name("deploy.py"))
+        module_spec = importlib.util.spec_from_file_location(
+            "deploy_retry", Path(__file__).with_name("deploy.py")
+        )
         deploy = importlib.util.module_from_spec(module_spec)
         module_spec.loader.exec_module(deploy)
-        deploy.deploy({"version": 1, "stateDir": str(state), "roots": [str(self.root)], "files": []}, bootstrap_manifest=str(captured))
+        deploy.deploy(
+            {
+                "version": 1,
+                "stateDir": str(state),
+                "roots": [str(self.root)],
+                "files": [],
+            },
+            bootstrap_manifest=str(captured),
+        )
         self.assertFalse(self.target.exists())
         self.assertTrue(self.target.parent.is_dir())
         self.assertTrue(manual.is_dir())
@@ -202,15 +402,28 @@ class BootstrapTests(unittest.TestCase):
         state.mkdir(mode=0o700)
         captured = state / "bootstrap.json"
         spec = self.home / "spec.json"
-        spec.write_text(json.dumps({"stateDir": str(state), "roots": [str(self.root)], "home": str(self.home)}))
+        spec.write_text(
+            json.dumps(
+                {
+                    "stateDir": str(state),
+                    "roots": [str(self.root)],
+                    "home": str(self.home),
+                }
+            )
+        )
         for data in ([], None, "invalid", 1, True):
             with self.subTest(data=data):
                 captured.write_text(json.dumps(data))
                 captured.chmod(0o600)
                 before = captured.read_bytes()
                 with mock.patch.object(bootstrap, "capture") as capture:
-                    with mock.patch("sys.argv", ["bootstrap.py", str(spec), "--output", str(captured)]):
-                        with self.assertRaisesRegex(ValueError, "Invalid existing bootstrap manifest"):
+                    with mock.patch(
+                        "sys.argv",
+                        ["bootstrap.py", str(spec), "--output", str(captured)],
+                    ):
+                        with self.assertRaisesRegex(
+                            ValueError, "Invalid existing bootstrap manifest"
+                        ):
                             bootstrap.main()
                     capture.assert_not_called()
                 self.assertEqual(captured.read_bytes(), before)
@@ -223,34 +436,56 @@ class BootstrapTests(unittest.TestCase):
         manifest = self.home / "darwin-sops-manifest.json"
         runtime = self.home / ".config/sops-nix/secrets"
         target = self.root / "skills/fixture/template.md"
-        manifest.write_text(json.dumps({
-            "symlinkPath": str(runtime), "secrets": [],
-            "templates": [{"name": "assistant-codex-skill-fixture", "path": str(target)}],
-        }))
+        manifest.write_text(
+            json.dumps(
+                {
+                    "symlinkPath": str(runtime),
+                    "secrets": [],
+                    "templates": [
+                        {"name": "assistant-codex-skill-fixture", "path": str(target)}
+                    ],
+                }
+            )
+        )
         script = self.home / "sops install script"
-        script.write_text(f"/nix/store/fake/bin/sops-install-secrets -ignore-passwd {shlex.quote(str(manifest))}\n")
+        script.write_text(
+            f"/nix/store/fake/bin/sops-install-secrets -ignore-passwd {shlex.quote(str(manifest))}\n"
+        )
         if direct_launcher:
             launcher = self.home / "launcher/bin/sops-nix"
             launcher.parent.mkdir(parents=True)
             launcher.write_text(f"#!/bin/sh\nexec {shlex.quote(str(script))}\n")
             arguments = [str(launcher)]
         else:
-            arguments = ["/bin/sh", "-c", f"/bin/wait4path /nix/store && exec {shlex.quote(str(script))}"]
+            arguments = [
+                "/bin/sh",
+                "-c",
+                f"/bin/wait4path /nix/store && exec {shlex.quote(str(script))}",
+            ]
         plist.write_bytes(plistlib.dumps({"ProgramArguments": arguments}))
-        return generation, plist, target, runtime / "rendered/assistant-codex-skill-fixture"
+        return (
+            generation,
+            plist,
+            target,
+            runtime / "rendered/assistant-codex-skill-fixture",
+        )
 
     def test_darwin_wait4path_plist_recovers_template_link_without_execution(self):
         generation, _, target, source = self.darwin_fixture()
         with mock.patch.object(bootstrap, "store_path", return_value=True):
             records = bootstrap.old_secret_links(generation, [str(self.root)])
-        self.assertEqual(records, {str(target): {"kind": "symlink", "target": str(source)}})
+        self.assertEqual(
+            records, {str(target): {"kind": "symlink", "target": str(source)}}
+        )
         self.assertFalse(target.exists())
 
     def test_darwin_direct_launcher_recovers_template_link_without_execution(self):
         generation, _, target, source = self.darwin_fixture(direct_launcher=True)
         with mock.patch.object(bootstrap, "store_path", return_value=True):
             records = bootstrap.old_secret_links(generation, [str(self.root)])
-        self.assertEqual(records, {str(target): {"kind": "symlink", "target": str(source)}})
+        self.assertEqual(
+            records, {str(target): {"kind": "symlink", "target": str(source)}}
+        )
         self.assertFalse(target.exists())
 
     def test_darwin_plist_rejects_extra_shell_commands(self):

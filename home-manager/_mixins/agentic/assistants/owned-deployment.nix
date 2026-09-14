@@ -33,7 +33,7 @@ in
       lib.hm.dag.entryBetween [ "sops-nix" "linkGeneration" ] [ "writeBoundary" ]
         ''
           run ${pkgs.python3}/bin/python ${./owned-files/bootstrap.py} ${specFile} \
-            --old-generation "''${oldGenPath:-}" \
+            --old-generation "''${ASSISTANT_OWNERSHIP_GENERATION:-''${oldGenPath:-}}" \
             --output ${lib.escapeShellArg "${stateDir}/bootstrap.json"}
         '';
     assistantOwnedFiles =

@@ -65,9 +65,9 @@ let
     runtimeInputs = [
       pkgs.chainctl
       pkgs.coreutils
+      pkgs.curl
       pkgs.google-cloud-sdk
       pkgs.gnugrep
-      pkgs.gws
       pkgs.jq
     ];
     text = ''

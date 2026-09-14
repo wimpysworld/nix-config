@@ -32,15 +32,15 @@ The waves are strictly parallel. Every issue in a wave runs in parallel with eve
 ## Issue bullets
 
 ```markdown
-* <issue key> <issue title> - <size on the `sizing` scale>. <One-line reason it is in this wave.>
+* [<issue key>](https://linear.app/<workspace>/issue/<issue key>) <issue title> - <size on the `sizing` scale>. <One-line reason it is in this wave.>
 ```
 
-Write the issue key plain. Linear renders a plain key as a rich link with an automatic status indicator, so the document tracks no completion state of its own.
+Write every issue key as a markdown link, in a bullet and in `## Sequencing` and `## Timing` prose. The commands write the document through the Linear API, which stores a plain key as plain text, so a plain key is not clickable. Linear adds an automatic status indicator only to a key typed in the editor, so the document tracks no completion state of its own.
 
 ## Deferred entries
 
 ```markdown
-* <issue key> - <date> - <one-line reason it was deferred>
+* [<issue key>](https://linear.app/<workspace>/issue/<issue key>) - <date> - <one-line reason it was deferred>
 ```
 
 ## Stable numbering

@@ -89,7 +89,21 @@ class GwsTests(unittest.TestCase):
             }};
             gcloud = import {REPO}/home-manager/_mixins/development/gcloud/default.nix {{
               inherit lib noughtyLib;
-              pkgs = {{ google-cloud-sdk = "gcloud"; gws = "gws"; jq = "jq"; }};
+              pkgs = {{
+                google-cloud-sdk = {{
+                  type = "derivation";
+                  outPath = "gcloud";
+                  meta.mainProgram = "gcloud";
+                }};
+                gws = {{
+                  type = "derivation";
+                  outPath = "gws";
+                  meta.mainProgram = "gws";
+                }};
+                coreutils = "coreutils";
+                jq = "jq";
+                writeShellApplication = args: builtins.deepSeq args args.name;
+              }};
               config.xdg.configHome = "/fixture/.config";
             }};
             fence = import {REPO}/home-manager/_mixins/agentic/fence/default.nix {{

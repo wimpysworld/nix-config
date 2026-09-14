@@ -355,6 +355,18 @@ Cleanup still runs when a client is disabled. It removes only unchanged recorded
 
 On the first migration, activation reads the previous immutable generation and sops records to establish ownership. It never executes an old activation script. Unverified files remain outside ownership.
 
+If the Home Manager `current-home` link is missing, migration cannot locate the previous generation. A failed activation can also advance the profile to a generation that no longer contains the legacy writers. Neither case proves that existing files are user changes.
+
+Select the previous legacy generation from the retained Home Manager profiles. Set `ASSISTANT_OWNERSHIP_GENERATION` to its absolute path for one activation. This variable overrides the automatic previous-generation reference. It does not change Home Manager's profile or rollback selection. Migration still requires exact file contents or link targets. Existing ownership records take precedence.
+
+For example, if generation 90 is the verified legacy generation, use:
+
+```console
+ASSISTANT_OWNERSHIP_GENERATION="$HOME/.local/state/nix/profiles/home-manager-90-link" just switch-home
+```
+
+Use a configuration that includes this recovery variable. Do not select an arbitrary generation or remove the ownership manifest. Recovery preserves verified bootstrap records across activation retries.
+
 Activation preserves unmanaged files, including `~/.pi/agent/agents/traya.md`. The Tintinweb migration removes the former one-off retirement request.
 
 Activation captures migration evidence before the final secret refresh. The helper then checks every required source and stages regular-file content before it changes client destinations. A caught apply failure restores the helper's previous files and links. The manifest changes only after successful application.

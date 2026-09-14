@@ -11,11 +11,10 @@ Refresh Google Cloud, Workspace, Chainguard, MCP, and Docker credentials.
   --headless  Use non-browser login where supported.
   -h, --help  Show this help and exit without checking credentials.
 
-Workspace needs a manually configured client_secret.json and interactive login.
-Gmail is read-only. Calendar, Docs, Sheets, and Slides are read-write.
-Drive uses drive.file, limited to files created or authorised through the app.
-MINT_GWS_ACCOUNT selects the Workspace account (default: active gcloud account).
-With --headless, Workspace repair fails without starting a browser login.
+Workspace uses the active gcloud account with full Drive access for Docs,
+Sheets, and Slides. Gmail and Calendar access are not requested.
+One gcloud login repairs user credentials, ADC, and missing Drive consent.
+With --headless, gcloud login uses --no-launch-browser.
 EOF
 }
 
@@ -65,7 +64,7 @@ trap 'handle_signal 143' TERM
 read -r -a prod_audiences <<<"$MINT_PROD_AUDIENCES"
 read -r -a stage_audiences <<<"$MINT_STAGE_AUDIENCES"
 
-gcloud_login_flags=(--update-adc)
+gcloud_login_flags=(--update-adc --enable-gdrive-access)
 chainctl_login_flags=()
 if ((force)); then
     gcloud_login_flags+=(--force)
@@ -90,65 +89,70 @@ if gcloud auth print-access-token >/dev/null 2>&1; then
 else
     echo "◍ gcloud user credentials expired or missing."
 fi
-if ((force || adc_valid == 0 || user_valid == 0)); then
-    echo "◍ Repairing gcloud user credentials and Application Default Credentials with one login..."
-    gcloud auth login "${gcloud_login_flags[@]}"
-    echo "✔ gcloud user credentials and Application Default Credentials renewed."
-fi
-
-gws_scopes='https://www.googleapis.com/auth/gmail.readonly,https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/documents,https://www.googleapis.com/auth/spreadsheets,https://www.googleapis.com/auth/presentations'
-export GOOGLE_WORKSPACE_CLI_CONFIG_DIR="${GOOGLE_WORKSPACE_CLI_CONFIG_DIR:-${XDG_CONFIG_HOME:-${HOME}/.config}/gws}"
-for override in GOOGLE_WORKSPACE_CLI_TOKEN GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE GOOGLE_WORKSPACE_CLI_CLIENT_ID GOOGLE_WORKSPACE_CLI_CLIENT_SECRET; do
-    if [[ -v "$override" ]]; then
-        echo "✘ ERROR! Unset ${override} before mint-tokens. Workspace requires its own encrypted desktop login." >&2
-        exit 1
-    fi
-done
-gws_account=${MINT_GWS_ACCOUNT:-$(gcloud auth list --filter=status:ACTIVE --format='value(account)' 2>/dev/null || true)}
-if [[ -z "$gws_account" || "$gws_account" == *$'\n'* ]]; then
-    echo '✘ ERROR! Select one active gcloud account or set MINT_GWS_ACCOUNT before Workspace login.' >&2
-    exit 1
-fi
+drive_error=
 workspace_credentials_usable() {
-    local status
-    status=$(timeout --signal=TERM --kill-after=1s 30s gws auth status </dev/null 2>/dev/null) || return 1
-    jq -e --arg account "$gws_account" --arg scopes "$gws_scopes" '
-        ($scopes | split(",")) as $required |
-        ["openid", "https://www.googleapis.com/auth/userinfo.email",
-         "https://www.googleapis.com/auth/userinfo.profile"] as $identity |
-        .auth_method == "oauth2" and .storage == "encrypted" and
-        .encryption_valid == true and .has_refresh_token == true and
-        .token_valid == true and .user == $account and
-        (.scopes | type) == "array" and
-        (($required - .scopes) | length) == 0 and
-        ((.scopes - ($required + $identity)) | length) == 0
-    ' <<<"$status" >/dev/null 2>&1
+    local token response
+    drive_error='Could not obtain a nonempty gcloud token within 30 seconds. Check gcloud credentials and connectivity.'
+    token=$(timeout --signal=TERM --kill-after=1s 30s gcloud auth print-access-token </dev/null 2>/dev/null) || return 2
+    [[ -n "${token//[[:space:]]/}" ]] || return 2
+    drive_error='Google tokeninfo failed. Check network access and Google API availability before retrying.'
+    # Google's OAuth2 v2 discovery specifies POST with a query parameter.
+    response=$(printf '%s' "$token" | curl --disable --silent --fail \
+        --connect-timeout 10 --max-time 30 --max-filesize 1048576 \
+        --request POST --get --data-urlencode access_token@- \
+        https://www.googleapis.com/oauth2/v2/tokeninfo 2>/dev/null) || return 2
+    if ! jq -e '.scope | type == "string"' <<<"$response" >/dev/null 2>&1; then
+        drive_error='Google tokeninfo returned no valid scope list. Check Google API availability before retrying.'
+        return 2
+    fi
+    if ! jq -e '.scope | split(" ") | index("https://www.googleapis.com/auth/drive") != null' \
+        <<<"$response" >/dev/null 2>&1; then
+        drive_error='Full Drive consent is missing. Accept Drive access during gcloud login, or ask your administrator about consent policy.'
+        return 1
+    fi
+    drive_error='Drive API verification failed. Check network access, Drive API availability, and organisation policy before retrying.'
+    printf 'Authorization: Bearer %s\n' "$token" | curl --disable --silent --fail \
+        --connect-timeout 10 --max-time 30 --max-filesize 1048576 \
+        --header @- --output /dev/null \
+        'https://www.googleapis.com/drive/v3/about?fields=kind' 2>/dev/null || return 2
 }
 
-echo '◍ Checking Workspace credentials, account, and scopes...'
-if ((force)) || ! workspace_credentials_usable; then
-    if ((headless)); then
-        echo '✘ ERROR! Workspace requires interactive login. Run mint-tokens without --headless on a browser-capable host.' >&2
+repair=$force
+if ((adc_valid == 0 || user_valid == 0)); then
+    repair=1
+    if ((!force)); then
+        gcloud_login_flags+=(--force)
+    fi
+elif ((!force)); then
+    drive_status=0
+    workspace_credentials_usable || drive_status=$?
+    case "$drive_status" in
+    1)
+        repair=1
+        gcloud_login_flags+=(--force)
+        ;;
+    2)
+        echo "✘ ERROR! $drive_error" >&2
+        exit 1
+        ;;
+    esac
+fi
+if ((repair)); then
+    echo '◍ Repairing gcloud credentials, ADC, and Drive consent with one login...'
+    if ! gcloud auth login "${gcloud_login_flags[@]}"; then
+        echo '✘ ERROR! gcloud login failed. Complete login and Drive consent before retrying.' >&2
         exit 1
     fi
-    if [[ ! -r "$GOOGLE_WORKSPACE_CLI_CONFIG_DIR/client_secret.json" ]]; then
-        echo "✘ ERROR! Save the Desktop OAuth client JSON as ${GOOGLE_WORKSPACE_CLI_CONFIG_DIR}/client_secret.json, then run mint-tokens again." >&2
+    if ! gcloud auth application-default print-access-token >/dev/null 2>&1; then
+        echo '✘ ERROR! gcloud Application Default Credentials remain unavailable after login.' >&2
         exit 1
-    fi
-    echo '◍ Workspace login requires the selected account and all requested scopes (five-minute limit).'
-    timeout --signal=TERM --kill-after=1s 300s gws auth login --scopes "$gws_scopes"
-    # gws 0.22.5 login keeps tokens cached for the previous account and scopes.
-    if [[ -e "$GOOGLE_WORKSPACE_CLI_CONFIG_DIR/token_cache.json" ]]; then
-        cache_backup=$(mktemp -d "$GOOGLE_WORKSPACE_CLI_CONFIG_DIR/token-cache-backup.XXXXXXXX")
-        mv -- "$GOOGLE_WORKSPACE_CLI_CONFIG_DIR/token_cache.json" "$cache_backup/token_cache.json"
     fi
     if ! workspace_credentials_usable; then
-        echo '✘ ERROR! Workspace verification failed. Check the account, scopes, consent, and network before retrying.' >&2
-        echo 'Remove any older, broader app grant in your Google Account before retrying with these scopes.' >&2
+        echo "✘ ERROR! Verification after login failed. $drive_error" >&2
         exit 1
     fi
 fi
-echo '✔ Workspace credentials match the selected account and scopes.'
+echo '✔ gcloud credentials include full Drive access for Docs, Sheets, and Slides.'
 
 audience_flags() {
     local audience
