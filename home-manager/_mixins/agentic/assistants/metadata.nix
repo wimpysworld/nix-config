@@ -179,6 +179,7 @@ let
       defaults = lib.optionalAttrs (kind == "agent" && platform == "pi") {
         prompt_mode = "replace";
         extensions = true;
+        exclude_extensions = "pi-cc-header";
         skills = true;
         isolated = false;
       };
