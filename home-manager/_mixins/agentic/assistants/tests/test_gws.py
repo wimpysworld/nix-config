@@ -3,12 +3,11 @@
 import json
 import re
 import subprocess
-import tomllib
 import unittest
 from pathlib import Path
 
+import tomllib
 import yaml
-
 
 ASSISTANTS = Path(__file__).resolve().parents[1]
 REPO = ASSISTANTS.parents[3]
