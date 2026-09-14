@@ -49,7 +49,7 @@ function harness(selected = model("openai")) {
 			notify: (text) => notifications.push(text),
 		},
 	};
-	const emit = (name, event = {}) => hooks.get(name)(event, ctx);
+	const emit = (name, event = {}) => hooks.get(name)?.(event, ctx);
 	return {
 		ctx,
 		emit,
@@ -70,6 +70,8 @@ for (const provider of Object.keys(definitions)) {
 		const h = harness(model(provider));
 		const original = h.ctx.model;
 		h.emit("session_start", { reason: "startup" });
+		assert.equal(h.status(), "Fast off");
+		let on = false;
 		for (const command of [
 			"",
 			"status",
@@ -81,9 +83,8 @@ for (const provider of Object.keys(definitions)) {
 			"off",
 		]) {
 			await h.command(command);
-			const on =
-				h.status().startsWith("Requested priority") ||
-				h.status().startsWith("Requested fast;");
+			if (command === "on" || command === "off") on = command === "on";
+			assert.equal(h.status(), on ? "Fast on" : "Fast off");
 			const result = h.request({
 				service_tier: "flex",
 				speed: "fast",
@@ -101,6 +102,33 @@ for (const provider of Object.keys(definitions)) {
 			assert.deepEqual(result.reasoning, { effort: "high" });
 			assert.equal(h.ctx.model, original);
 			assert.equal(h.ctx.thinkingLevel, "high");
+		}
+	});
+}
+for (const provider of Object.keys(definitions)) {
+	test(`${provider}: response tiers do not change the requested Fast display`, async () => {
+		const h = harness(model(provider));
+		for (const command of ["off", "on"]) {
+			await h.command(command);
+			const request = h.request();
+			for (const tier of [
+				undefined,
+				"default",
+				"priority",
+				"standard",
+				"fast",
+				"flex",
+			]) {
+				h.emit("after_provider_response", { status: 200, headers: {} });
+				h.emit("message_end", {
+					message: {
+						role: "assistant",
+						usage: tier === undefined ? {} : { serviceTier: tier },
+					},
+				});
+				assert.equal(h.status(), command === "on" ? "Fast on" : "Fast off");
+				assert.deepEqual(h.request(), request);
+			}
 		}
 	});
 }
@@ -154,7 +182,7 @@ test("model, provider, endpoint, and unannounced changes reset Fast", async () =
 	await h.command("on");
 	h.ctx.model = { ...h.ctx.model, baseUrl: "https://example.com" };
 	assert.deepEqual(h.request(), {});
-	assert.match(h.status(), /standard not enforced/);
+	assert.equal(h.status(), "Fast off");
 });
 test("Anthropic pairs header/body controls and preserves unrelated values", async () => {
 	const h = harness(model("anthropic"));
@@ -199,7 +227,11 @@ test("unknown providers and APIs remain untouched and unavailable", async () => 
 		await h.command("on");
 		const input = { service_tier: "flex" };
 		assert.equal(h.request(input), input);
-		assert.match(h.status(), /Fast unavailable; standard not enforced/);
+		assert.equal(h.status(), "Fast off");
+		assert.match(
+			h.notifications.at(-1),
+			/Fast unavailable; standard not enforced/,
+		);
 	}
 });
 test("unsupported and unregistered models cannot enable Fast", async () => {
@@ -216,7 +248,8 @@ test("unsupported and unregistered models cannot enable Fast", async () => {
 	]) {
 		const h = harness(selected);
 		await h.command("on");
-		assert.match(h.status(), /Fast unavailable/);
+		assert.equal(h.status(), "Fast off");
+		assert.match(h.notifications.at(-1), /Fast unavailable/);
 		assert.notEqual(h.request().service_tier, "priority");
 		assert.equal(h.request().speed, undefined);
 		assert.equal(
@@ -227,7 +260,8 @@ test("unsupported and unregistered models cannot enable Fast", async () => {
 	const h = harness();
 	h.ctx.modelRegistry.find = () => undefined;
 	await h.command("on");
-	assert.match(h.status(), /Fast unavailable/);
+	assert.equal(h.status(), "Fast off");
+	assert.match(h.notifications.at(-1), /Fast unavailable/);
 });
 test("Anthropic header removals precede additions for either key order", async () => {
 	const h = harness(model("anthropic"));

@@ -133,13 +133,13 @@ let
 
         selectedBg = "surface0";
         userMessageBg = "mantle";
-        userMessageText = "text";
+        userMessageText = "yellow";
         customMessageBg = "surface0";
         customMessageText = "text";
         customMessageLabel = "mauve";
         toolPendingBg = "mantle";
-        toolSuccessBg = "mantle";
-        toolErrorBg = "mantle";
+        toolSuccessBg = "#282839";
+        toolErrorBg = "#282839";
         toolTitle = "sapphire";
         toolOutput = "subtext1";
 

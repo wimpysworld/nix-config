@@ -135,7 +135,7 @@ The footer uses the same Catppuccin colour roles as `ccstatusline`: model and th
 `quota-status` uses stable window labels where possible and displays remaining quota, not used quota, so Anthropic usually appears as:
 
 ```text
- claude-opus-5 high · Requested standard; tier standard_only · project · 5h 93% · weekly 96% · 1.0M window · Context 3.1% used
+ claude-opus-5 high · Fast off · project · 5h 93% · weekly 96% · 1.0M window · Context 3.1% used
 ```
 
 Home Manager also owns `~/.pi/agent/pi-sub-core-settings.json` to refresh quota data every five seconds and on turn start. `sub-core` renders cached state first, so the quota segment can appear a few seconds after the footer itself. If Anthropic returns only the 5h window, `quota-status` mirrors the Claude Code statusline helper by treating the missing weekly bucket as 100% remaining. Other providers show only the usable windows they return. `quota-status` keeps the last valid value for the active provider when `sub-core` emits a transient empty update.
@@ -154,7 +154,7 @@ Fast starts off in every session, including children, resume, fork, and `/reload
 
 Fast requires a registered model and an exact verified ID. OpenAI supports `gpt-6-astra`, `gpt-5.6-sol`, `gpt-5.6-terra`, and `gpt-5.6-luna`. Anthropic supports `claude-opus-5` and `claude-opus-4-8`. Pi's catalogue has no speed capability field, so other IDs stay unavailable until verified. Custom endpoints and other providers stay unavailable without a claim that standard speed is enforced.
 
-The footer reports **requested** speed and tier, not server usage or account entitlement. Codex tier omission follows its native off behaviour, not a verified server guarantee. `auto`, `flex`, and Anthropic service priority are not Fast speed. See the [OpenAI Fast mode contract](https://developers.openai.com/api/docs/guides/fast-mode) and [Anthropic Fast mode contract](https://platform.claude.com/docs/en/build-with-claude/fast-mode).
+The footer shows `Fast on` for a requested priority tier or Fast mode, and `Fast off` otherwise. It reports the session selection, not the server response or account entitlement. Unsupported models show `Fast off`. `/fast` notifications retain availability details. Codex tier omission follows its native off behaviour, not a verified server guarantee. `auto`, `flex`, and Anthropic service priority are not Fast speed. See the [OpenAI Fast mode contract](https://developers.openai.com/api/docs/guides/fast-mode) and [Anthropic Fast mode contract](https://platform.claude.com/docs/en/build-with-claude/fast-mode).
 
 ## Local extensions
 

@@ -89,7 +89,7 @@ export default function registerServiceTierStatus(pi: ExtensionAPI): void {
 
 	function publish(ctx: ExtensionContext): string {
 		const text = status(ctx);
-		if (ctx.hasUI) ctx.ui.setStatus(STATUS_KEY, text);
+		if (ctx.hasUI) ctx.ui.setStatus(STATUS_KEY, fast ? "Fast on" : "Fast off");
 		return text;
 	}
 
