@@ -10,7 +10,6 @@ Claude Code, OpenCode, and Pi use `/name`. Codex uses manual-only `$name` skills
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | [ack](./ack/command.toml) | Acknowledge feedback 👂 | Unset | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
 | [add-agentic-repo-capability](./add-agentic-repo-capability/command.toml) | Add Agentic Repo Capability 🧰 | donatello | public | Task worker: donatello | Native subtask: donatello | spawn_agent: donatello | Agent worker: donatello |
-| [add-enricher-capability](./add-enricher-capability/command.toml) | Add manifest-gen enricher capability 🧬 | donatello | secret | Caller context | Caller context, subtask: false | Caller context | Caller context |
 | [address-code-review](./address-code-review/command.toml) | Address Code Review 👀 | donatello | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
 | [ahem](./ahem/command.toml) | Politely re-issue the Communication Rules 📜 | Unset | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
 | [align-documentation](./align-documentation/command.toml) | Align Documentation 📚 | velma | public | Task worker: velma | Native subtask: velma | spawn_agent: velma | Agent worker: velma |
@@ -91,10 +90,6 @@ Only description overrides and nonempty argument hints are shown. When any clien
 | [add-agentic-repo-capability](./add-agentic-repo-capability/command.toml) | opencode | Same as common | [capability] |
 | [add-agentic-repo-capability](./add-agentic-repo-capability/command.toml) | codex | Same as common | Unset |
 | [add-agentic-repo-capability](./add-agentic-repo-capability/command.toml) | pi | Same as common | [capability] |
-| [add-enricher-capability](./add-enricher-capability/command.toml) | claude | Same as common | [capability] |
-| [add-enricher-capability](./add-enricher-capability/command.toml) | opencode | Same as common | Unset |
-| [add-enricher-capability](./add-enricher-capability/command.toml) | codex | Same as common | Unset |
-| [add-enricher-capability](./add-enricher-capability/command.toml) | pi | Same as common | [capability] |
 | [address-code-review](./address-code-review/command.toml) | claude | Same as common | [pr\|file\|text] |
 | [address-code-review](./address-code-review/command.toml) | opencode | Same as common | Unset |
 | [address-code-review](./address-code-review/command.toml) | codex | Same as common | Unset |
