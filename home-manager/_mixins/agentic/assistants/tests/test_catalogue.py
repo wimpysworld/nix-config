@@ -20,16 +20,17 @@ class CatalogueTests(unittest.TestCase):
                 path = base / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(content)
-            expression = f'''let
+            expression = f"""let
               flake = builtins.getFlake {json.dumps(str(REPO))};
               catalogue = import {ASSISTANTS}/catalogue.nix {{
                 inherit (flake.inputs.nixpkgs) lib;
                 basePath = builtins.toPath {json.dumps(str(base))};
               }};
-            in catalogue'''
+            in catalogue"""
             result = subprocess.run(
                 ["nix", "eval", "--impure", "--json", "--expr", expression],
-                capture_output=True, text=True,
+                capture_output=True,
+                text=True,
             )
         if success:
             self.assertEqual(result.returncode, 0, result.stderr)
@@ -62,7 +63,16 @@ class CatalogueTests(unittest.TestCase):
             self.assertTrue(client["behaviour"].startswith("Caller context"))
         self.assertEqual(zulu["clients"]["opencode"]["model"], "command-model")
         self.assertIsNone(zulu["clients"]["pi"]["model"])
-        self.assertIn({"agent": "worker", "client": "pi", "provider": "provider", "model": "agent-model", "effort": "high"}, data["agents"])
+        self.assertIn(
+            {
+                "agent": "worker",
+                "client": "pi",
+                "provider": "provider",
+                "model": "agent-model",
+                "effort": "high",
+            },
+            data["agents"],
+        )
 
     def test_client_metadata_differences_and_absent_hints(self):
         files = self.fixture()
@@ -78,10 +88,12 @@ class CatalogueTests(unittest.TestCase):
         link = "[alpha](./alpha/command.toml)"
         self.assertIn(
             f"| {link} | claude | CLIENT_DESCRIPTION \\| &lt;text&gt; next | "
-            "CLIENT_HINT \\| &lt;arg&gt; next |", table,
+            "CLIENT_HINT \\| &lt;arg&gt; next |",
+            table,
         )
         self.assertIn(
-            f"| {link} | pi | Same as common | CLIENT_HINT \\| &lt;arg&gt; next |", table,
+            f"| {link} | pi | Same as common | CLIENT_HINT \\| &lt;arg&gt; next |",
+            table,
         )
         for client in ("opencode", "codex"):
             self.assertIn(f"| {link} | {client} | Same as common | Unset |", table)
@@ -99,7 +111,8 @@ class CatalogueTests(unittest.TestCase):
             "## Agent model defaults\n", 1
         )[0]
         self.assertIn(
-            "| [alpha](./alpha/command.toml) | claude | CLIENT_DESCRIPTION | Unset |", table,
+            "| [alpha](./alpha/command.toml) | claude | CLIENT_DESCRIPTION | Unset |",
+            table,
         )
         self.assertEqual(table.count("[alpha]"), 1)
         self.assertNotIn("Alpha.", table)
@@ -109,13 +122,14 @@ class CatalogueTests(unittest.TestCase):
         legend = markdown.split("## Agent model defaults\n", 1)[1]
         self.assertIn(
             "OpenCode provider routes apply only to direct-root native task children, "
-            "not direct slash-command bindings.", legend,
+            "not direct slash-command bindings.",
+            legend,
         )
 
     def test_invalid_metadata_and_sources_fail(self):
         for suffix in (
             '[common]\ndescription = ""\n',
-            '[common]\ndescription = 2\n',
+            "[common]\ndescription = 2\n",
             '[common]\ndescription = "Check."\nargument-hint = false\n',
             '[common]\ndescription = "Check."\n[compose]\nagent = "missing"\n',
             '[common]\ndescription = "Check."\n[routing.pi.provider]\nmodel = "forbidden"\n',
@@ -128,7 +142,10 @@ class CatalogueTests(unittest.TestCase):
         for addition in (
             {"commands/alpha/command.sops": "PRIVATE_KEY"},
             {"agents/worker/commands/old/command.md": "OLD"},
-            {"commands/delegate-task/command.toml": '[common]\ndescription = "Collision."\n', "commands/delegate-task/command.md": "BODY"},
+            {
+                "commands/delegate-task/command.toml": '[common]\ndescription = "Collision."\n',
+                "commands/delegate-task/command.md": "BODY",
+            },
         ):
             self.evaluate(self.fixture() | addition, success=False)
         files = self.fixture()
@@ -147,10 +164,17 @@ class CatalogueTests(unittest.TestCase):
             recipe = root / "justfile"
             recipe.write_text((REPO / "justfile").read_text())
             result = subprocess.run(
-                ["just", "--justfile", str(recipe), "--working-directory", directory,
-                 "update-assistant-catalogue"],
+                [
+                    "just",
+                    "--justfile",
+                    str(recipe),
+                    "--working-directory",
+                    directory,
+                    "update-assistant-catalogue",
+                ],
                 env=os.environ | {"PATH": directory + os.pathsep + os.environ["PATH"]},
-                capture_output=True, text=True,
+                capture_output=True,
+                text=True,
             )
             self.assertNotEqual(result.returncode, 0)
             self.assertEqual(target.read_text(), "Keep the existing catalogue.\n")
@@ -158,7 +182,9 @@ class CatalogueTests(unittest.TestCase):
 
     def test_tracked_readme_has_no_drift(self):
         data = self.evaluate()
-        self.assertEqual((ASSISTANTS / "commands/README.md").read_text(), data["markdown"])
+        self.assertEqual(
+            (ASSISTANTS / "commands/README.md").read_text(), data["markdown"]
+        )
         self.assertEqual(len(data["commands"]), 68)
 
 
