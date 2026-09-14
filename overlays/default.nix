@@ -127,6 +127,8 @@ in
       inherit (final.unstable) apko;
       inherit (final.unstable) bun;
       inherit (final.unstable) cosign;
+      inherit (final.unstable) framework-tool;
+      inherit (final.unstable) framework-tool-tui;
       inherit (final.unstable) hyprland;
       inherit (final.unstable) zed-editor;
       inherit (final.unstable) lima;
