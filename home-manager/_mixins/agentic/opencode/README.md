@@ -36,7 +36,7 @@ There is no OpenCode command, flag, environment variable, allow rule, or prompt 
 
 ## Provider router prototype
 
-Home Manager installs `plugins/provider-router.ts` only when OpenCode is enabled and its package version is exactly `1.18.30`. Other versions retain native behaviour. Review the upstream hooks before extending that version gate.
+Home Manager installs `plugins/provider-router.ts` when OpenCode is enabled, without a version restriction.
 
 The shared agent header owns the routes. Garfield alone declares:
 
@@ -60,7 +60,7 @@ An in-process guard rejects overlapping child hooks and further prompts while th
 
 ### Version evidence and tests
 
-The implementation depends on OpenCode v1.18.30 source order:
+OpenCode v1.18.30 is the tested and source-reviewed version, not a supported-version limit. The source review covers:
 
 - [Public `chat.message` hook](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/plugin/src/index.ts#L234-L243).
 - [Task metadata before the child prompt](https://github.com/anomalyco/opencode/blob/v1.18.30/packages/opencode/src/tool/task.ts#L150-L256).

@@ -396,7 +396,7 @@ No other agent or command sets a model on any platform. The ten remaining agents
 
 Agent `header.toml` files are the sole routing default source for Claude Code, Codex, and Pi. Commands and ordinary skills remain model-neutral. Explicit launch-time child model, thinking, or effort overrides remain supported. General and agent-owned root commands never change the orchestrator model. The standalone `make-commit` and `make-pr` commands retain the caller's model.
 
-The [OpenCode router](../opencode/README.md#provider-router-prototype) supports version 1.18.30 only. Google and other missing routes retain native behaviour. Existing OpenCode command model metadata remains supported.
+The [OpenCode router](../opencode/README.md#provider-router-prototype) installs whenever OpenCode is enabled, without a version restriction. Version 1.18.30 is the tested and source-reviewed version. Google and other missing routes retain native behaviour. Existing OpenCode command model metadata remains supported.
 
 ---
 

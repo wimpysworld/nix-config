@@ -288,23 +288,17 @@ test("an unavailable provider cannot use the same model from another provider", 
   await assert.rejects(send(f), /unavailable exact model openai/);
 });
 
-test(
-  "the generated Home Manager plugin loads its map",
-  {
-    skip: !process.env.OPENCODE_ROUTER_PLUGIN,
-  },
-  async () => {
-    const { default: plugin } = await import(
-      process.env.OPENCODE_ROUTER_PLUGIN
-    );
-    const f = fixture();
-    const hooks = await plugin({ client: f.client });
-    assert.equal(
-      (await send(f, draft(), hooks)).message.model.modelID,
-      "gpt-5.6-terra",
-    );
-  },
-);
+test("the generated Home Manager plugin loads its map", {
+  skip: !process.env.OPENCODE_ROUTER_PLUGIN,
+}, async () => {
+  const { default: plugin } = await import(process.env.OPENCODE_ROUTER_PLUGIN);
+  const f = fixture();
+  const hooks = await plugin({ client: f.client });
+  assert.equal(
+    (await send(f, draft(), hooks)).message.model.modelID,
+    "gpt-5.6-terra",
+  );
+});
 
 test("task completion releases the in-process guard without changing the event", async () => {
   const f = fixture();

@@ -211,7 +211,7 @@ in
   ) opencodeFencedPackage;
 
   xdg.configFile = lib.mkMerge [
-    (lib.mkIf (config.programs.opencode.enable && opencodeUpstreamPackage.version == "1.18.30") {
+    (lib.mkIf config.programs.opencode.enable {
       "opencode/plugins/provider-router.ts".text = providerRouterPlugin;
     })
     (lib.mkIf (config.programs.opencode.enable && communicationRules.enable) {
