@@ -134,7 +134,7 @@ Standalone commands sit in the same namespace under the same form:
 $ready
 $orientate
 $collaborate
-$grill-me
+$clarify-plan
 ```
 
 The shared composer asserts at evaluation time that no two sources (project skill, standalone command, or agent-scoped command) produce the same skill name. Renaming the offending source is the fix; the throw message names both the duplicate and every source path that produces it.
