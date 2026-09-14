@@ -16,12 +16,14 @@ in
 lib.mkIf (host.is.workstation || host.is.server) {
   services.tailscale = {
     # OAuth client secret is used directly as the auth key value
-    authKeyFile = lib.mkIf (!host.is.iso) config.sops.secrets.tailscale-client-secret.path;
+    authKeyFile = lib.mkIf (
+      !host.is.iso && !(noughtyLib.hostHasTag "cg")
+    ) config.sops.secrets.tailscale-client-secret.path;
     authKeyParameters = {
       ephemeral = false; # Persistent nodes, not removed when offline
       preauthorized = true; # Skip manual device approval
     };
-    disableUpstreamLogging = true;
+    disableUpstreamLogging = !(noughtyLib.hostHasTag "cg");
     enable = true;
     extraUpFlags = [
       "--operator=${username}"
