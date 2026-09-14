@@ -3,6 +3,8 @@
 
 Verify the author's response to a completed review. Keep GitHub access read-only and keep the report private.
 
+In direct worker mode, complete this method yourself without delegation. Do not launch agents or execute generated launch wrappers. A worker assigned the complete follow-up owns the new report run, unless the parent supplies one. A review-lane worker reuses the parent's paths and returns only its assigned findings. Loading this skill grants no coordinator authority.
+
 ## Resolve the target and prior report
 
 1. Apply `communication-rules`, `contribution-voice`, and `review-report-path`. Read each first unless its complete, current instructions are already in this context.
@@ -57,7 +59,7 @@ Do not restart the full review, inspect unchanged areas for general defects, add
 
 ## Write the report
 
-Create a new exclusive run directory for the same target with `review-report-path`. Write `code-review-again.md` there with this structure:
+Use the supplied new run for the same target, or create one exclusive run with `review-report-path` when none is supplied. Write `code-review-again.md` there with this structure:
 
 ```markdown
 # Follow-up Code Review

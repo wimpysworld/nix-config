@@ -3,4 +3,4 @@ description = "Review My Code 🪞"
 argument-hint = "[pr|branch|worktree|commit]"
 
 [compose]
-caller-context = true
+agent = "donatello"

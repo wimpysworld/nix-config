@@ -10,19 +10,21 @@ Read `contribution-voice` first unless its complete, current instructions are in
 
 ### Process
 
+Steps 1-6 prepare a read-only proposal. Do not call mutation tools before approval at step 7.
+
 **1. Locate the document.** Call `list_documents` filtered to the team and match on the title from the `work-order-format` skill. When the document does not exist, stop and tell the user to run `work-order-create`.
 
 **2. Read the state.** Read the document and the user's cycle issues. Read the full description of every issue the instructions add. A `Dependencies` section stated in prose counts as a blocker even when no relation records it.
 
-**3. Plan the additions.** When an added issue is not in the cycle, set its cycle. Insert the issue into an active wave - one with at least one issue not Done - only when every blocker sits in an earlier wave and no wave-mate touches the same package or files. Otherwise append a new wave at the end with its dependency line. Give each added issue a size and a one-line reason. Wire it like `work-order-create` does: `save_issue` with `links` set to one entry pointing at the document, and one comment naming its wave and constraint, upserted by `id` on a re-run.
+**3. Plan the additions.** When an added issue is not in the cycle, propose its cycle change. In the draft, insert the issue into an active wave - one with at least one issue not Done - only when every blocker sits in an earlier wave and no wave-mate touches the same package or files. Otherwise append a new wave at the end with its dependency line. Give each added issue a size and a one-line reason. Prepare its link and comment as in `work-order-create`, without executing mutation calls. Prepare `save_issue` with `links` set to one entry pointing at the document. Draft one comment naming its wave and constraint. Read existing work-order comments to prepare an update by `id` on a re-run.
 
-**4. Plan the deprioritisations.** Remove the issue from its wave and append it to `## Deferred` with the date and a one-line reason. Update that issue's existing work-order comment to state the deferral. Clear the issue's cycle only when the instruction says to drop it from the cycle.
+**4. Plan the deprioritisations.** In the draft, move the issue from its wave to `## Deferred` with the date and a one-line reason. Draft an update to that issue's existing work-order comment to state the deferral. Propose clearing the issue's cycle only when the instruction says to drop it from the cycle.
 
-**5. Patch, never resend.** Edit the document only with `save_document` using `id` and `patch`. Never resend the full body. Never renumber an existing wave. When a wave empties, remove its section and never reuse its number.
+**5. Prepare patches, never resend.** Prepare document changes only as `save_document` calls with `id` and `patch`, without executing them. Never resend the full body. Never renumber an existing wave. When a wave empties, remove its section and never reuse its number.
 
-**6. Summarise on the document.** Draft one comment on the document that summarises this update: the additions, the deferrals, and the cycle changes, each with its one-line reason. Post it with `save_comment` and `documentId`. Each run posts a new comment; never edit an earlier run's summary. Skip the comment when the run changes nothing.
+**6. Summarise on the document.** Draft one comment on the document that summarises this update: the additions, the deferrals, and the cycle changes, each with its one-line reason. Prepare `save_comment` with `documentId`, without executing it. Each approved run posts a new comment. Never edit an earlier run's summary. Skip the comment when the run changes nothing.
 
-**7. Ask once.** Show every document patch, every comment, and every cycle change. Ask for approval, then act. This is the only question the command asks.
+**7. Ask once.** Show every document patch, every comment, and every cycle change. Ask for approval. Only after approval, apply the approved cycle changes. Then save the approved document patches, issue links, issue comments, and document summary comment. This is the only question the command asks.
 
 **8. Check drift, report only.** Compare both directions: issues assigned to the user in the current cycle that the document does not mention, and issues in the document that left the cycle or the user's assignment. List them in the final report under `Drift`. Propose nothing and change nothing: drift feeds the user's next instruction.
 

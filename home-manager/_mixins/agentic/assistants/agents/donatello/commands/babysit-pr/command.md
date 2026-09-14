@@ -77,7 +77,7 @@ State the evidence for each call.
 
 ### Fix what the PR caused
 
-One fresh worker per distinct failure, in parallel where the fixes do not overlap, one error each. Each worker makes the smallest fix, verifies locally where practical, and returns the files changed and why. The coordinator then follows the loaded `make-commit` body and pushes with an explicit refspec: `git push origin <branch>`. A bare `git push` depends on tracking configuration that may be absent, and pushes nothing when it is. Never pass `-u`: a sandbox mounts `.git/config` read-only, so the upstream write fails after the push has already landed.
+Dispatch one fresh fix worker per distinct failure, one error each. Run fix workers serially, even when their fixes do not overlap. Read-only watchers can run in parallel. Each worker makes the smallest fix, verifies locally where practical, and returns the files changed and why. The coordinator then follows the loaded `make-commit` body and pushes with an explicit refspec: `git push origin <branch>`. A bare `git push` depends on tracking configuration that may be absent, and pushes nothing when it is. Never pass `-u`: a sandbox mounts `.git/config` read-only, so the upstream write fails after the push has already landed.
 
 Verify the push landed before you watch, reply, or report the fix. Run `git fetch origin <branch>`, then compare `git rev-parse HEAD` against `git rev-parse FETCH_HEAD`. Report a mismatch and stop. Never trust the exit status alone: a push that matches nothing reports success while doing nothing, so CI never runs and the pull request sits on stale code.
 

@@ -54,7 +54,7 @@ class SkillFileTests(unittest.TestCase):
                     ):
                         header += f"[compose.{provider}]\n{key} = {str(mode != 'inline').lower()}\n"
                     header += (
-                        '[compose.coordinator]\n'
+                        "[compose.coordinator]\n"
                         'before-launch = """\nBEFORE_SENTINEL\nPrepare the packet.\n"""\n'
                         'after-return = """\nAFTER_SENTINEL\nWait for consent.\n"""\n'
                     )
@@ -72,9 +72,16 @@ class SkillFileTests(unittest.TestCase):
             for filename in ("command.toml", "command.md"):
                 path = f"agents/garfield/commands/{name}/{filename}"
                 files[path] = (ASSISTANTS / path).read_text()
-        for filename in ("header.toml", "prompt.md"):
-            path = f"agents/garfield/{filename}"
-            files[path] = (ASSISTANTS / path).read_text()
+        for suffix in ("community", "colleague", "mine", "again"):
+            name = f"review-code-{suffix}"
+            cases[name] = ("donatello", "worker", False)
+            for filename in ("command.toml", "command.md"):
+                path = f"commands/{name}/{filename}"
+                files[path] = (ASSISTANTS / path).read_text()
+        for agent in ("garfield", "donatello"):
+            for filename in ("header.toml", "prompt.md"):
+                path = f"agents/{agent}/{filename}"
+                files[path] = (ASSISTANTS / path).read_text()
         with tempfile.TemporaryDirectory(
             prefix="assistant-command-routes-"
         ) as directory:
@@ -136,8 +143,14 @@ class SkillFileTests(unittest.TestCase):
             for platform in ("claude", "opencode", "pi", "codex"):
                 with self.subTest(command=name, platform=platform):
                     expected_body = "PLACEHOLDER_" + name if secret else body
-                    agent = "garfield" if selection == "garfield" else "worker"
-                    if selection == "garfield":
+                    agent = (
+                        selection
+                        if selection in ("garfield", "donatello")
+                        else "worker"
+                    )
+                    if selection == "donatello":
+                        expected_body = files[f"commands/{name}/command.md"].strip()
+                    elif selection == "garfield":
                         expected_body = files[
                             f"agents/garfield/commands/{name}/command.md"
                         ].strip()
@@ -177,14 +190,19 @@ class SkillFileTests(unittest.TestCase):
                         and mode == "worker"
                         and platform != "opencode"
                     )
-                    if selection != "garfield":
+                    if selection not in ("garfield", "donatello"):
                         for marker in ("BEFORE_SENTINEL", "AFTER_SENTINEL"):
                             self.assertEqual(rendered.count(marker), int(wrapped))
                         if wrapped:
                             launch, child_task = task.split("\n## Task\n", 1)
-                            self.assertIn("BEFORE_SENTINEL\nPrepare the packet.", launch)
+                            self.assertIn(
+                                "BEFORE_SENTINEL\nPrepare the packet.", launch
+                            )
                             self.assertIn("AFTER_SENTINEL\nWait for consent.", launch)
-                            self.assertLess(launch.index("BEFORE_SENTINEL"), launch.index("AFTER_SENTINEL"))
+                            self.assertLess(
+                                launch.index("BEFORE_SENTINEL"),
+                                launch.index("AFTER_SENTINEL"),
+                            )
                             self.assertNotIn("BEFORE_SENTINEL", child_task)
                             self.assertNotIn("AFTER_SENTINEL", child_task)
                     if mode == "caller-context" or selection == "unbound":
@@ -210,11 +228,14 @@ class SkillFileTests(unittest.TestCase):
                             self.assertEqual(task.strip(), expected_body)
                         else:
                             self.assertIn(
-                                f'Use the Agent tool with `subagent_type: "{agent}"`', task
+                                f'Use the Agent tool with `subagent_type: "{agent}"`',
+                                task,
                             )
                     elif platform == "claude":
                         if mode == "inline":
-                            self.assertEqual(task.strip(), f"@{agent}\n\n{expected_body}".strip())
+                            self.assertEqual(
+                                task.strip(), f"@{agent}\n\n{expected_body}".strip()
+                            )
                         else:
                             self.assertIn(
                                 f"Use the Task tool to launch the {agent} agent", task
@@ -237,6 +258,28 @@ class SkillFileTests(unittest.TestCase):
                             if expected_body:
                                 self.assertNotIn(expected_body, launch)
                         self.assertIn("You are a worker.", child_task)
+                        if selection == "donatello":
+                            skill = (
+                                "review-code-follow-up"
+                                if name == "review-code-again"
+                                else "review-code"
+                            )
+                            self.assertIn(
+                                f"Load the `{skill}` skill in direct worker mode.",
+                                child_task,
+                            )
+                            self.assertIn(
+                                "Do not launch agents or execute generated launch wrappers.",
+                                child_task,
+                            )
+                            self.assertNotIn("model", native)
+                            if platform != "codex":
+                                hint = (
+                                    "[target|report]"
+                                    if name == "review-code-again"
+                                    else "[pr|branch|worktree|commit]"
+                                )
+                                self.assertEqual(native["argument-hint"], hint)
                         if selection == "garfield":
                             self.assertNotIn("Before launch, add", child_task)
                             self.assertNotIn("model", native)
@@ -269,6 +312,106 @@ class SkillFileTests(unittest.TestCase):
                         self.assertNotIn("You are a worker.", task)
                     if expected_body:
                         self.assertIn(expected_body, task)
+
+    def test_review_modes_keep_coverage_and_coordinator_boundaries(self):
+        review = (ASSISTANTS / "skills/review-code/SKILL.md").read_text()
+        execution, process = review.split("### Process", 1)
+        fanout = review.split("### Fan-out", 1)[1].split(
+            "### Adversarial pressure-test", 1
+        )[0]
+        for instruction in (
+            "Direct worker mode applies when the caller selects it",
+            "Complete all assigned concerns directly, including security",
+            "Do not launch agents or execute generated launch wrappers",
+            "read surrounding source, verify evidence, deduplicate findings",
+            "build and run relevant tests",
+            "distinguish environmental failures from change-caused failures",
+            "Coordinator mode applies only to a coordinator",
+            "Loading this skill grants no coordinator authority",
+            "For a complete review in either mode, add a topic sweep",
+            "Search Linear for related issues and Slack for recent conversations",
+            "Keep the sweep read-only, with no comments or posts",
+        ):
+            self.assertIn(instruction, execution)
+        for instruction in (
+            "The parent owns the final report for those lanes",
+            "In coordinator mode only, fan out to workers",
+            "In coordinator mode only, re-request once",
+            "In direct worker mode, use your own verified evidence",
+            "Deduplicate overlapping findings before verification",
+            "In direct worker mode, perform this check yourself without delegation",
+            "In coordinator mode only, send one follow-up",
+            "In coordinator mode only, use an independent verifier",
+            "`Target`, `Reviewed SHA`, `Lens`, and `Severity bar`",
+            "A finding is three sentences at most",
+            "Do not draft a review comment and do not state a verdict",
+        ):
+            self.assertIn(instruction, process)
+        for instruction in (
+            "This section applies only in coordinator mode",
+            "Route the security concern to `dibble` workers",
+            "Each worker's delegation packet",
+            "Copy the findings to the file its packet names as a fallback",
+            "Never launch another agent",
+        ):
+            self.assertIn(instruction, fanout)
+        community = (
+            ASSISTANTS / "commands/review-code-community/command.md"
+        ).read_text()
+        for threat in (
+            "All of equal weight",
+            "obfuscated logic",
+            "unexpected network calls",
+            "exfiltration of secrets or environment",
+            "dependency additions that pull unvetted code",
+            "install or build hooks",
+            "CI changes that widen permissions or leak secrets",
+            "anything whose stated purpose does not match its effect",
+            "Inspect the code directly for every listed malicious-code threat",
+        ):
+            self.assertIn(threat, community)
+        self.assertNotIn("dibble", community)
+
+    def test_follow_up_keeps_direct_execution_and_delta_only_contract(self):
+        follow_up = (ASSISTANTS / "skills/review-code-follow-up/SKILL.md").read_text()
+        for instruction in (
+            "In direct worker mode, complete this method yourself without delegation",
+            "Do not launch agents or execute generated launch wrappers",
+            "A review-lane worker reuses the parent's paths",
+            "use the sole report in the latest timestamped run",
+            "Follow its `Source report` chain only to validate the chain",
+            "Reject a missing, unsafe, or cyclic source path",
+            "do not run the wide fan-out or topic sweep",
+            "| `resolved` |",
+            "| `partly resolved` |",
+            "| `unresolved` |",
+            "| `withdrawn` |",
+            "Review changed lines and directly affected callers or tests only",
+            "serious security, data-loss, outage, or production-correctness risk",
+            "Adversarially verify the preconditions and deployment impact",
+            "Do not restart the full review",
+            "Use the supplied new run for the same target",
+            "Source report: <exact direct source path>",
+            "Previous reviewed SHA: <sha or unavailable>",
+            "Current reviewed SHA: <sha>",
+            "Keep resolved and withdrawn items only in `Prior Findings`",
+            "Do not draft or post a GitHub comment",
+        ):
+            self.assertIn(instruction, follow_up)
+
+    def test_report_run_ownership_distinguishes_complete_and_lane_workers(self):
+        report = (ASSISTANTS / "skills/review-report-path/SKILL.md").read_text()
+        for instruction in (
+            "Lookup creates no directories or files",
+            "A worker assigned a complete review is that owner",
+            "allocates one exclusive run when none is supplied",
+            "When the parent supplies a run, the complete-review worker reuses it",
+            "A review-lane worker always uses the parent's supplied run and fallback paths, never a new run",
+            "`mktemp -d` creates the run directory exclusively",
+            "Never overwrite an existing report or findings file",
+            "never select the newest report when several reports match",
+        ):
+            self.assertIn(instruction, report)
 
     def test_pi_secret_skills_preserve_output_without_agent_routes(self):
         files = {

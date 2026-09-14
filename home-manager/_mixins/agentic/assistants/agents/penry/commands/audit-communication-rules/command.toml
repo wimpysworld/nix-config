@@ -1,6 +1,0 @@
-[common]
-description = "Audit Communication Rules 🛡️"
-
-[compose]
-agent = "penry"
-caller-context = true

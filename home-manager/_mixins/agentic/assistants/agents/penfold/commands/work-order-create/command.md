@@ -10,9 +10,11 @@ Read `contribution-voice` first unless its complete, current instructions are in
 
 ### Process
 
-**1. Schedule first, when asked.** When the user names issues to pull into the cycle, set the cycle on each one before ordering anything, and set the state to Todo only when the user asks for it. Change no other field. An issue scheduled here joins the gather in step 2.
+Steps 1-6 prepare a read-only proposal. Do not call mutation tools before approval at step 7.
 
-**2. Gather the work.** Call `list_issues` with the resolved team, `assignee: "me"`, and the cycle. Request `title`, `url`, `status`, `estimate`, `priority`, `project`, and `description`. Read every description in full. The ordering evidence lives in the issue bodies, not in the fields.
+**1. Plan scheduling, when asked.** When the user names issues to pull into the cycle, propose the cycle change for each issue. Propose Todo only when the user asks for that state. Propose no other field changes. Include these proposed additions in step 2 without changing their cycles.
+
+**2. Gather the work.** Call `list_issues` with the resolved team, `assignee: "me"`, and the cycle. Request `title`, `url`, `status`, `estimate`, `priority`, `project`, and `description`. Also read the proposed additions from step 1. Combine additions assigned to the user in the resolved team with the cycle issues, without duplicates. Read every description in full. The ordering evidence lives in the issue bodies, not in the fields.
 
 **3. Order the issues into waves.** A wave holds only issues that run in parallel: every issue in a wave runs at the same time as every other issue in that wave. A sequential dependency forces the issue into a later wave, and issue-level constraints go under `## Sequencing`, never into a bullet. Give each wave its dependency line per the `work-order-format` skill. Derive the order from four sources:
 
@@ -21,18 +23,20 @@ Read `contribution-voice` first unless its complete, current instructions are in
 - File overlap named in the descriptions. Two issues that edit the same package or files never share a wave, and they stay separate pull requests. Never merge them into one.
 - The user's stated priority theme for the cycle, for example "CI fixes first". Ask for the theme when the user gave none.
 
-**4. Write the document.** Follow the `work-order-format` skill for the title, the parent, the wave headings, and the section order. Never a bare team-wide title: the document orders one person's work, and a team-wide title misleads every other reader.
+**4. Draft the document.** Follow the `work-order-format` skill for the title, the parent, the wave headings, and the section order. Never a bare team-wide title: the document orders one person's work, and a team-wide title misleads every other reader.
 
 The body lists each wave with its dependency line, the issues in it with a size and a one-line reason, the hard sequencing constraints under `## Sequencing`, and any timing caveat under `## Timing`.
 
-**5. Upsert, never duplicate.** Before creating anything, call `list_documents` filtered to the team and find this cycle's work order. `list_documents` has no cycle filter, so match on the title. When the document exists, patch it: `save_document` with `id` and `patch`. When it does not, create it. Never create a second document for one cycle. The document slug ID is durable and survives a retitle, so the links already on the issues keep working.
+**5. Prepare an upsert, never a duplicate.** Call `list_documents` filtered to the team and find this cycle's work order. `list_documents` has no cycle filter, so match on the title. When the document exists, prepare `save_document` with `id` and `patch`. Otherwise prepare its creation. Never create a second document for one cycle. The document slug ID is durable and survives a retitle, so the links already on the issues keep working.
 
-**6. Wire the document to every ordered issue.** For each issue in the order:
+**6. Prepare links and comments for every ordered issue.** Read existing work-order comments to find their IDs. For each issue in the order, prepare these calls without executing them:
 
 - `save_issue` with `links` set to one entry pointing at the document. `links` is append-only and upserts by URL, so a re-run adds no duplicate.
-- `save_comment` with one comment naming the issue's wave and its constraint, ending with a link to the document. One comment per issue. On a re-run, update that comment by passing its `id`; never add a second.
+- `save_comment` with one comment naming the issue's wave and its constraint, ending with a link to the document. One comment per issue. On a re-run, prepare an update with its `id`, not a second comment.
 
-**7. Ask once.** Show the full document body, every per-issue comment, and every scheduling change from step 1. Ask for approval, then act. This publishes under the user's name across the whole cycle's issues, and there is no cheap undo. This is the only question the command asks.
+For a new document, mark its pending URL in the proposal. Use the returned URL in approved links and comments after creation.
+
+**7. Ask once.** Show the full document body, every per-issue comment, and every scheduling change from step 1. Ask for approval. Only after approval, apply the approved scheduling changes. Then save the approved document. Finally, save the approved issue links and comments. This publishes under the user's name across the whole cycle's issues, and there is no cheap undo. This is the only question the command asks.
 
 **8. Report** the document URL, the waves and their issues, and the issues that changed cycle or state.
 

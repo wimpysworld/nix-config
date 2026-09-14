@@ -2,7 +2,7 @@
 
 Review target: $ARGUMENTS. Accepts a pull request, a branch, a worktree, or a commit. Defaults to the current worktree when blank.
 
-Load the `review-code` skill and follow its method. Pass `code-review-community` as the `<review-name>` for the report filename.
+Load the `review-code` skill in direct worker mode. Do not launch agents or execute generated launch wrappers. Pass `code-review-community` as the `<review-name>` for the report filename.
 
 ### Context
 
@@ -18,7 +18,7 @@ All of equal weight:
 - **Documentation**: missing docs for user-facing changes
 - **Deliberately malicious code**: obfuscated logic, unexpected network calls, exfiltration of secrets or environment, dependency additions that pull unvetted code, install or build hooks, CI changes that widen permissions or leak secrets, and anything whose stated purpose does not match its effect
 
-Route the malicious-code lane to `dibble` workers.
+Inspect the code directly for every listed malicious-code threat.
 
 ### Severity Bar
 

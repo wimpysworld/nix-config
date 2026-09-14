@@ -3,4 +3,4 @@ description = "Review Code Again 🔁"
 argument-hint = "[target|report]"
 
 [compose]
-caller-context = true
+agent = "donatello"

@@ -13,6 +13,8 @@
 
 Before exploring, the coordinator delegates non-trivial tool, file, research, implementation, review, validation, or documentation work via `delegate-task`. For broad or independent work, the coordinator uses a wide fan-out of workers, in parallel where possible. Keep each task small and well bounded. Use fresh context by default. Fork only when the user requires it or the parent transcript is essential.
 
+Exception: `collaborate` reads supplied sources inline to prepare the caller's context, even when those reads are non-trivial. Keep that exception within the command's bounded read-only scope. It grants no mutation or worker dispatch authority.
+
 The coordinator must keep at most twelve workers active across all delegation tools and workflows combined. When twelve workers are active, wait for capacity before another launch.
 
 Workers complete their assigned scope directly and return to their parent. Never launch another agent through a sub-agent or task tool from a worker. Loading a command or skill never changes a worker into a coordinator. If additional specialist work is necessary, return a bounded request with the required scope and evidence to the parent. Complete independent assigned work before returning. The coordinator handles the request and continues the original task.

@@ -146,6 +146,10 @@ The house style owns response discipline, every platform carries it in the syste
 | `review-code-mine`      | Adversarially review my own changes before filing a PR                   |
 | `wtb`                   | Run the Want to Buy workflow for a pull request and Slack channel        |
 
+The four standalone commands `review-code-community`, `review-code-colleague`, `review-code-mine`, and `review-code-again` each launch one Donatello worker. Their source directories remain under `commands/`. Donatello completes the review directly without further agent launches.
+
+The shared `review-code` skill supports direct worker mode and coordinator mode. Coordinator mode retains fan-out and selective verification. The `review-code-follow-up` skill keeps its prior-report and response-delta scope in direct worker mode. A complete-review worker allocates one exclusive report run when none is supplied. Review-lane workers reuse their parent's paths.
+
 Direct human invocation of `make-commit` or `make-pr` runs one Garfield worker. Optional context supplies intent, paths, exclusions, validation evidence, and mutation authority. Claude Code, Codex, and Pi wrappers add known parent decisions to the packet, without the transcript. OpenCode uses native agent binding without a parent wrapper, so missing decisions require explicit context or clarification.
 
 `make-pr` returns the verified PR URL and a watch handover. The coordinator offers `babysit-pr` and runs its coordinator workflow only after consent. Garfield never starts monitoring. Explicit coordinator inline commit procedures in `address-code-review`, `implement-task`, and `babysit-pr` retain index ownership. They read workflow bodies without invoking generated launch wrappers.
@@ -360,7 +364,6 @@ Maintainability specialist reviewing for simplification, duplication, dead code,
 | --------------------------- | ------------------------------------------------------------- |
 | `project-code-review`       | Maintainability review: deletion, replacement, simplification |
 | `project-smells-review`     | Hunt for genuine code smells: god objects, feature envy, etc. |
-| `audit-communication-rules` | Validate the Communication Rules tripwire hooks end to end    |
 
 ---
 

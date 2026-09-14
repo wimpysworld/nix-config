@@ -78,28 +78,33 @@ class MetadataTests(unittest.TestCase):
             ('[compose.coordinator]\nafter-return = """\n' + after + '"""\n', after),
             (
                 '[compose.coordinator]\nbefore-launch = """\n'
-                + before + '"""\nafter-return = """\n' + after + '"""\n',
+                + before
+                + '"""\nafter-return = """\n'
+                + after
+                + '"""\n',
                 before + "\n" + after,
             ),
         ):
             with self.subTest(fields=fields):
                 result = self.evaluate(
-                    '''let source = m.readCommandHeader fixture; in {
+                    """let source = m.readCommandHeader fixture; in {
                       instructions = c.commandContextInstructions source;
                       native = lib.genAttrs [ "claude" "opencode" "pi" "codex" ]
                         (platform: m.project "command" platform "fixture" source);
-                    }''',
-                    files={"command.toml": '[common]\ndescription = "Fixture."\n' + fields},
+                    }""",
+                    files={
+                        "command.toml": '[common]\ndescription = "Fixture."\n' + fields
+                    },
                 )
                 self.assertEqual(result["instructions"], expected)
                 for native in result["native"].values():
                     self.assertEqual(native, {"description": "Fixture."})
         invalid = [
-            '[compose]\ncoordinator = ' + value + "\n"
+            "[compose]\ncoordinator = " + value + "\n"
             for value in ('"text"', "true", "0", "[]")
         ]
         invalid += [
-            '[compose.coordinator]\n' + key + " = " + value + "\n"
+            "[compose.coordinator]\n" + key + " = " + value + "\n"
             for key in ("before-launch", "after-return")
             for value in ("true", "0", "[]", "{}")
         ]
@@ -495,6 +500,7 @@ skills = false
         result = self.evaluate("""lib.listToAttrs (map (entry: {
           name = entry.name;
           value = let header = c.commandMetadata entry.agentName entry.name; in {
+            owner = entry.agentName;
             callerContext = header.compose.caller-context or false;
             dispatch = m.commandDispatch c.agentDirs entry.name entry.agentName header;
             rendered = lib.genAttrs [ "claude" "opencode" "pi" ]
@@ -511,7 +517,6 @@ skills = false
             "babysit-pr",
             "handover-fresh",
             "handover-fork",
-            "review-code-mine",
             "project-tests-review",
             "gather-review-data",
             "audit-code-security",
@@ -519,6 +524,15 @@ skills = false
             with self.subTest(caller_context_command=name):
                 self.assertTrue(result[name]["callerContext"])
         self.assertFalse(result["create-agents-md"]["callerContext"])
+        for suffix in ("community", "colleague", "mine", "again"):
+            name = f"review-code-{suffix}"
+            with self.subTest(review_command=name):
+                command = result[name]
+                self.assertIsNone(command["owner"])
+                self.assertFalse(command["callerContext"])
+                self.assertEqual(command["dispatch"]["selectedAgent"], "donatello")
+                self.assertEqual(command["dispatch"]["role"], "donatello")
+                self.assertTrue(command["dispatch"]["spawn"])
         for name, command in result.items():
             with self.subTest(command=name):
                 self.assertIs(

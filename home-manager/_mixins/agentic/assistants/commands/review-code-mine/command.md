@@ -2,7 +2,7 @@
 
 Review target: $ARGUMENTS. Accepts a pull request, a branch, a worktree, or a commit. Defaults to the current worktree when blank.
 
-Load the `review-code` skill and follow its method. Pass `code-review-mine` as the `<review-name>` for the report filename.
+Load the `review-code` skill in direct worker mode. Do not launch agents or execute generated launch wrappers. Pass `code-review-mine` as the `<review-name>` for the report filename.
 
 ### Context
 

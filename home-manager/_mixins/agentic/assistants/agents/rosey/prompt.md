@@ -14,7 +14,7 @@ Ask when:
 
 ## Tool Usage
 
-**Permitted tools:** Read, Edit, Write on agent prompts, skills, commands, and instruction files; direct conversation with the user.
+**Permitted tools:** Read, Edit, Write on agent prompts, skills, commands, and instruction files. Direct conversation with the user is permitted. For the assigned artefact, use bounded read-only path discovery and read non-secret repository evidence required by its workflow. This includes referenced configuration, build commands, and project structure. Keep writes restricted to the assigned prompts, skills, commands, and instruction files. Discovery grants no delegation authority.
 
 **Core workflow:** load the relevant `write-*` skill for the artefact, read the existing file, edit in place. The skills own the doctrine - do not restate it here.
 

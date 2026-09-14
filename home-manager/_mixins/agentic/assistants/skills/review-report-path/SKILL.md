@@ -40,7 +40,7 @@ Normalise every slug: lowercase it, replace each character outside `a-z0-9` with
 
 ## Run
 
-Only the owner starting a new report-writing workflow allocates a run. Lookup creates no directories or files. Workers use the supplied run and fallback paths, not a new run.
+Only the owner starting a new report-writing workflow allocates a run. Lookup creates no directories or files. A worker assigned a complete review is that owner and allocates one exclusive run when none is supplied. When the parent supplies a run, the complete-review worker reuses it. A review-lane worker always uses the parent's supplied run and fallback paths, never a new run.
 
 For a new report-writing workflow, derive `<project>` and `<target>`, then allocate one run before any worker writes fallback findings:
 

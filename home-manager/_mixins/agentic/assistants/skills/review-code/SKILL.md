@@ -5,6 +5,16 @@ Run a substantive review of a change and write a findings report. The caller sup
 
 Keep GitHub access read-only. For PR metadata, diffs, comments, reviews, threads, and status, follow the global GitHub read rule: prefer dedicated `gh` reads, then `gh-api-safe`; otherwise use only documented, clearly read-only GitHub MCP operations. Never use a GitHub MCP mutation or a tool whose effect is unclear. Posting is a separate step.
 
+### Execution mode
+
+Direct worker mode applies when the caller selects it or this skill runs inside a worker. Complete all assigned concerns directly, including security. Do not launch agents or execute generated launch wrappers. A complete-review worker owns the full review and final report. A review-lane worker completes only its assigned lane and returns directly to its parent.
+
+In direct worker mode, read surrounding source, verify evidence, deduplicate findings, and pressure-test blocking findings yourself. Where practical, build and run relevant tests, restore repository state afterwards, and distinguish environmental failures from change-caused failures. Keep the caller's lens, severity bar, and coverage.
+
+Coordinator mode applies only to a coordinator that does not select direct worker mode. It retains the fan-out, delegation packets, fallback files, retries, resumed workers, and selective independent verification below. Loading this skill grants no coordinator authority.
+
+For a complete review in either mode, add a topic sweep. Search Linear for related issues and Slack for recent conversations on the same domain, not only what the change links. Use that context to understand prior contributions and avoid undoing them. Keep the sweep read-only, with no comments or posts.
+
 ### Input Resolution
 
 Resolve the target to a diff before anything else:
@@ -26,27 +36,27 @@ Use `review-report-path` for report storage. The calling command supplies `<revi
 
 ### Process
 
+For a complete review, follow every step below that applies to your mode. Review-lane workers perform only their assigned checks and return findings. The parent owns the final report for those lanes.
+
 1. Apply `communication-rules` before writing anything. Read it first unless its complete, current instructions are already in this context.
 2. Apply `contribution-voice` when wording findings. Read it first unless its complete, current instructions are already in this context. The report itself stays private, but `draft-code-review` lifts these findings into a comment posted under the user's name, so they must already read as the user wrote them.
 3. Resolve the input to a diff and gather context, per **Input Resolution**.
-4. Apply `review-report-path` to the resolved target before any worker starts. Use that run for the report and worker fallbacks.
-5. Fan out to workers, per **Fan-out**. Name each worker's fallback findings file in its packet, `<run-dir>/findings-<concern>-<worker-id>.md`, so no two collide. Never reuse a fallback path.
-6. Re-request once from any worker that went idle without returning findings. The follow-up carries a one-line recap of its scope, the two or three questions that matter most named concretely, and an instruction to reply in text rather than write a file. A worker that fails twice is your own work to finish, to the same standard, not a gap in the report.
+4. Apply `review-report-path` to the resolved target before writing the report or, in coordinator mode, starting workers. Reuse supplied paths. A complete-review worker allocates one exclusive run only when none is supplied.
+5. In direct worker mode, inspect all assigned concerns yourself. In coordinator mode only, fan out to workers, per **Fan-out**. Name each worker's fallback findings file in its packet, `<run-dir>/findings-<concern>-<worker-id>.md`, so no two collide. Never reuse a fallback path.
+6. In coordinator mode only, re-request once from any worker that went idle without returning findings. The follow-up carries a one-line recap of its scope, the two or three questions that matter most named concretely, and an instruction to reply in text rather than write a file. A worker that fails twice is your own work to finish, to the same standard, not a gap in the report.
 7. Deduplicate overlapping findings before verification. Pressure-test every qualifying blocking finding, per **Adversarial pressure-test**.
-8. Synthesise one report at the derived path: resolved target, full reviewed head SHA, caller-supplied lens and severity bar, summary of the change, verification performed, deduplicated findings, and conclusion. Put `Target`, `Reviewed SHA`, `Lens`, and `Severity bar` fields before the Summary heading, so follow-up and posting commands can recover the review contract. The worker replies and durable fallback files are the record; read a findings file only as a convenience where one exists. Drop duplicates raised by more than one agent. Every section except Findings is evidence for the user, never material for a comment, so mark none of it for reuse. Write each finding to the three-sentence budget below, because Findings is the only section `draft-code-review` reads.
+8. Synthesise one report at the derived path: resolved target, full reviewed head SHA, caller-supplied lens and severity bar, summary of the change, verification performed, deduplicated findings, and conclusion. Put `Target`, `Reviewed SHA`, `Lens`, and `Severity bar` fields before the Summary heading, so follow-up and posting commands can recover the review contract. In coordinator mode, worker replies and durable fallback files are the record. Read a findings file only as a convenience where one exists. In direct worker mode, use your own verified evidence. Drop duplicate findings in either mode. Every section except Findings is evidence for the user, never material for a comment, so mark none of it for reuse. Write each finding to the three-sentence budget below, because Findings is the only section `draft-code-review` reads.
 9. Deliver the conclusion and every finding the user must act on, in house style (the `communication-rules` skill). Report the path. The file keeps the full report.
 
 ### Fan-out
 
-Delegate to a wide fan-out of workers, in parallel where possible. Divide the review by concern, or by area or file group when the diff is large: for example correctness and logic, security, and tests and behavioural regressions.
+This section applies only in coordinator mode. Delegate to a wide fan-out of workers, in parallel where possible. Divide the review by concern, or by area or file group when the diff is large: for example correctness and logic, security, and tests and behavioural regressions.
 
 The coordinator alone plans and dispatches this review. Review-lane workers complete their assigned lane and return directly. They never launch agents or invoke orchestrating commands.
 
 Keep each packet's attack list short, around three or four concrete targets. A long multi-target packet correlates with a worker stalling and returning nothing. Split the concern across two workers instead of lengthening one list.
 
 Route the security concern to `dibble` workers. Donatello implements; Dibble is the security specialist.
-
-Add a topic sweep: search Linear for related issues and Slack for recent conversations on the same domain, not only what the change links. This builds an understanding of the domain and the recent work around it, so the review learns from prior contributions and does not undo them. Read-only, as ever: no comments or posts.
 
 Each worker's delegation packet must instruct it to:
 
@@ -63,15 +73,15 @@ Each worker's delegation packet must instruct it to:
 ### Adversarial pressure-test
 
 Accept clean reports as complete. Do not launch verifiers for reports with no actionable findings.
-Use an independent verifier only for a concrete unresolved question or an explicit user request.
+In coordinator mode only, use an independent verifier for a concrete unresolved question or an explicit user request.
 
-For each finding rated medium or higher that would justify blocking, send one follow-up to the worker that raised it (resume its existing context): adversarially verify the finding's preconditions against deployment reality. Does the threat or failure mode arise in the deployed configuration? Check the actual runtime context (what executes where, isolation, who can read what, what gets logged or persisted), not just the diff. Downgrade findings whose preconditions do not hold. Where the worker cannot be reached, pressure-test the finding yourself to the same standard, rather than letting it through or dropping it.
+For each finding rated medium or higher that would justify blocking, adversarially verify its preconditions against deployment reality. In direct worker mode, perform this check yourself without delegation. In coordinator mode only, send one follow-up to the worker that raised it (resume its existing context). Does the threat or failure mode arise in the deployed configuration? Check the actual runtime context (what executes where, isolation, who can read what, what gets logged or persisted), not just the diff. Downgrade findings whose preconditions do not hold. Where the worker cannot be reached, pressure-test the finding yourself to the same standard, rather than letting it through or dropping it.
 
 This step stops false positives reaching a human. Do not skip it and do not soften it.
 
 ### Constraints
 
 - British English throughout. Lead with conclusions. No filler.
-- Every worker and the final report must keep feedback succinct and actionable. Name `contribution-voice` in each delegation packet and require its complete, current instructions in that worker's context.
+- Every worker and the final report must keep feedback succinct and actionable. In coordinator mode only, name `contribution-voice` in each delegation packet and require its complete, current instructions in that worker's context.
 - A finding is three sentences at most: the defect, the proof, the fix. One `file:line` reference is the proof; a second instance of the same defect adds nothing. No headings inside a finding, no restating the diff back at the reader, and no paragraph explaining that the surrounding code is correct. A finding that runs to five paragraphs is over budget, whatever its severity.
 - The report is the only deliverable. Do not draft a review comment and do not state a verdict; `draft-code-review` owns that.
