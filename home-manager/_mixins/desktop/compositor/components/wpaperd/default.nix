@@ -2,7 +2,6 @@
   config,
   lib,
   noughtyLib,
-  pkgs,
   ...
 }:
 let
@@ -26,40 +25,6 @@ let
   );
 in
 lib.mkIf (host.is.linux && host.is.workstation) {
-  home.activation.removeObsoleteWpaperdDependency =
-    lib.mkIf
-      (
-        config.services.wpaperd.enable
-        && config.wayland.systemd.target != "graphical-session.target"
-        && lib.hasPrefix "${config.home.homeDirectory}/" config.xdg.configHome
-      )
-      (
-        lib.hm.dag.entryBetween [ "linkGeneration" ] [ "writeBoundary" ] ''
-          (
-            configHome=${lib.escapeShellArg config.xdg.configHome}
-            relativePath=${
-              lib.escapeShellArg (
-                lib.removePrefix "${config.home.homeDirectory}/" config.xdg.configHome
-                + "/systemd/user/graphical-session.target.wants/wpaperd.service"
-              )
-            }
-            obsoleteLink="$configHome/systemd/user/graphical-session.target.wants/wpaperd.service"
-            # A collected generation can leave a dependency outside the old generation's file list.
-            if [[ ! -L "$configHome" && ! -L "$configHome/systemd" \
-                && ! -L "$configHome/systemd/user" \
-                && ! -L "$configHome/systemd/user/graphical-session.target.wants" \
-                && -L "$obsoleteLink" && ! -e "$obsoleteLink" \
-                && ! -e "$newGenPath/home-files/$relativePath" \
-                && ! -L "$newGenPath/home-files/$relativePath" ]]; then
-              destination="$(${pkgs.coreutils}/bin/readlink -- "$obsoleteLink")"
-              if [[ "$destination" =~ ^${lib.escapeShellArg builtins.storeDir}/[0-9abcdfghijklmnpqrsvwxyz]{32}-home-manager-files/"$relativePath"$ ]]; then
-                run ${pkgs.coreutils}/bin/rm -- "$obsoleteLink"
-              fi
-            fi
-          )
-        ''
-      );
-
   # wpaperd is a generic wlroots wallpaper daemon, portable across Wayland
   # compositors. Each top-level key is a per-output section written to
   # ~/.config/wpaperd/wallpaper.toml; "default" applies to every output and
