@@ -123,7 +123,7 @@ if ((adc_valid == 0 || user_valid == 0)); then
     if ((!force)); then
         gcloud_login_flags+=(--force)
     fi
-elif (( !force )); then
+elif ((!force)); then
     drive_status=0
     workspace_credentials_usable || drive_status=$?
     case "$drive_status" in

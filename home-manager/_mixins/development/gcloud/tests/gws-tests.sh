@@ -39,7 +39,10 @@ done
 chmod +x "$tmp/bin/"*
 export PATH="$tmp/bin:$PATH"
 sed -e "s|@gcloud@|$tmp/bin/cloud-absolute|g" -e "s|@gws@|$tmp/bin/workspace-absolute|g" "$script" >"$tmp/wrapper"
-fail() { echo "FAIL: $*" >&2; exit 1; }
+fail() {
+    echo "FAIL: $*" >&2
+    exit 1
+}
 : >"$TEST_LOG"
 for _ in 1 2; do
     GOOGLE_WORKSPACE_CLI_TOKEN=SECRET_STALE bash "$tmp/wrapper" docs documents get --params '{"documentId":"a b"}' '' '*' >"$tmp/output" 2>&1
