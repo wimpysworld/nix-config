@@ -487,7 +487,7 @@ in
         mode = "0400";
       };
 
-      BASETEN_API_KEY = {
+      OPENCODE_ZEN_API_KEY = {
         sopsFile = aiSopsFile;
         owner = "root";
         group = "root";
@@ -588,14 +588,14 @@ in
         WEBHOOK_ENABLED=true
         WEBHOOK_PORT=8644
         WEBHOOK_SECRET=${config.sops.placeholder.WEBHOOK_SECRET}
-        BASETEN_API_KEY=${config.sops.placeholder.BASETEN_API_KEY}
+        OPENCODE_ZEN_API_KEY=${config.sops.placeholder.OPENCODE_ZEN_API_KEY}
         CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
         JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
         LINEAR_API_KEY=${config.sops.placeholder.LINEAR_API_KEY}
         GH_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
         GITHUB_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
         _HERMES_FORCE_TELEGRAM_BOT_TOKEN=${config.sops.placeholder.TELEGRAM_BOT_TOKEN}
-        _HERMES_FORCE_BASETEN_API_KEY=${config.sops.placeholder.BASETEN_API_KEY}
+        _HERMES_FORCE_OPENCODE_ZEN_API_KEY=${config.sops.placeholder.OPENCODE_ZEN_API_KEY}
         _HERMES_FORCE_CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
         _HERMES_FORCE_JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
         _HERMES_FORCE_GH_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
@@ -755,32 +755,22 @@ in
         };
 
         model = {
-          default = "zai-org/GLM-5.3-Flash";
-          provider = "custom:baseten";
-        };
-
-        providers.baseten = {
-          name = "baseten";
-          api = "https://inference.baseten.co/v1";
-          key_env = "BASETEN_API_KEY";
-          default_model = "zai-org/GLM-5.3-Flash";
-          discover_models = true;
+          default = "glm-5.3-flash";
+          provider = "opencode-zen";
         };
 
         agent.reasoning_effort = "medium";
 
-        # Baseten's 429 responses carry no Retry-After header, so the retry
-        # loop falls back to the short default backoff (2s doubling to 60s).
-        # Three retries — the upstream default — exhaust in ~20 seconds, well
-        # inside a rate-limit window, which let sessions die on 429 storms.
-        # Eight retries stretch the same schedule to roughly three minutes
-        # before the fallback chain takes over.
+        # The primary provider's 429 responses carry no Retry-After header, so
+        # the retry loop falls back to the short default backoff (2s doubling
+        # to 60s). The default three retries exhaust in about 20 seconds,
+        # which lets sessions die during a rate-limit window. Eight retries
+        # extend the schedule to about three minutes before fallback.
         agent.api_max_retries = 8;
 
-        # Cross-provider failover once the primary model's retries exhaust.
-        # Codex is already authenticated on this host, so a Baseten 429 storm
-        # hands off to it seamlessly; the primary is restored automatically
-        # after its escalating 60s-to-4h cooldown clears.
+        # Cross-provider failover starts after the primary model retries.
+        # Codex is already authenticated on this host, so a primary provider
+        # 429 storm hands off to Codex. The primary returns after cooldown.
         fallback_providers = [
           {
             provider = "openai-codex";
