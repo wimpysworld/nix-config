@@ -1,6 +1,8 @@
 """Check old-generation ownership proofs with synthetic scripts and fake secrets."""
 
 import importlib.util
+import contextlib
+import io
 import json
 from pathlib import Path
 import plistlib
@@ -131,6 +133,72 @@ class BootstrapTests(unittest.TestCase):
         state.mkdir()
         (state / "manifest.json").write_text("{}")
         self.assertEqual(bootstrap.capture({"stateDir": str(state)}, "/not/read"), {})
+
+    def test_explicit_legacy_generation_recovers_after_missing_root_and_advanced_profile(self):
+        self.target.write_text("Old generated content.\n")
+        legacy = self.home / "legacy-generation"
+        legacy.mkdir()
+        (legacy / "activate").write_text(
+            '_iNote "Activating %s" "codexFiles"\n'
+            f"printf '%s' {shlex.quote(self.target.read_text())} > {shlex.quote(str(self.target))}\n"
+        )
+        advanced = self.home / "advanced-generation"
+        advanced.mkdir()
+        (advanced / "activate").write_text('_iNote "Activating %s" "assistantOwnedFiles"\n')
+        profile = self.home / "home-manager"
+        profile.symlink_to(advanced, target_is_directory=True)
+        state = self.home / "state"
+        source = self.home / "new-source"
+        source.write_text("New generated content.\n")
+        spec = {
+            "version": 1, "stateDir": str(state), "home": str(self.home), "roots": [str(self.root)],
+            "files": [{"kind": "file", "path": str(self.target), "source": str(source)}],
+        }
+        spec_path = self.home / "spec.json"
+        spec_path.write_text(json.dumps(spec))
+        captured = state / "bootstrap.json"
+
+        def capture(generation):
+            with mock.patch.object(bootstrap, "store_path", return_value=True):
+                with mock.patch("sys.argv", ["bootstrap.py", str(spec_path), "--old-generation", str(generation), "--output", str(captured)]):
+                    bootstrap.main()
+            return json.loads(captured.read_text())["files"]
+
+        for generation, diagnostic in (("", "no previous generation reference"),
+                                       (profile, "that manifest is missing")):
+            with self.subTest(generation=generation):
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr):
+                    self.assertEqual(capture(generation), {})
+                self.assertIn(diagnostic, stderr.getvalue())
+                self.assertIn("ASSISTANT_OWNERSHIP_GENERATION", stderr.getvalue())
+
+        expected = {str(self.target): bootstrap.fingerprint(self.target.read_bytes())}
+        self.assertEqual(capture(legacy), expected)
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(capture(profile), expected)
+        self.assertEqual(profile.resolve(), advanced)
+
+        module_spec = importlib.util.spec_from_file_location("deploy_recovery", Path(__file__).with_name("deploy.py"))
+        deploy = importlib.util.module_from_spec(module_spec)
+        module_spec.loader.exec_module(deploy)
+        deploy.deploy(spec, bootstrap_manifest=str(captured))
+        self.assertEqual(self.target.read_bytes(), source.read_bytes())
+        self.assertEqual(json.loads((state / "manifest.json").read_text())["files"],
+                         {str(self.target): bootstrap.fingerprint(source.read_bytes())})
+
+    def test_explicit_legacy_generation_does_not_adopt_modified_files(self):
+        self.target.write_text("Local changes.\n")
+        generation = self.home / "legacy-generation"
+        generation.mkdir()
+        (generation / "activate").write_text(
+            '_iNote "Activating %s" "codexFiles"\n'
+            f"printf '%s' 'Old generated content.' > {shlex.quote(str(self.target))}\n"
+        )
+        spec = {"stateDir": str(self.home / "state"), "home": str(self.home), "roots": [str(self.root)]}
+        with mock.patch.object(bootstrap, "store_path", return_value=True):
+            self.assertEqual(bootstrap.capture(spec, str(generation)), {})
+        self.assertEqual(self.target.read_text(), "Local changes.\n")
 
     def test_old_sops_template_link_is_proved_and_replaced_after_refresh(self):
         generation = self.home / "old-generation"

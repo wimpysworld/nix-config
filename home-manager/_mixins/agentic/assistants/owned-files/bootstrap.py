@@ -252,13 +252,24 @@ def old_secret_links(generation, roots, config_relative=Path(".config"), manifes
 
 
 def capture(spec, old_generation):
-    if (Path(spec["stateDir"]) / "manifest.json").exists() or not old_generation:
+    if (Path(spec["stateDir"]) / "manifest.json").exists():
+        return {}
+    if not old_generation:
+        if any(Path(entry["path"]).exists() or Path(entry["path"]).is_symlink()
+               for entry in spec.get("files", [])):
+            print("Owned-file bootstrap: no previous generation reference. "
+                  "Set ASSISTANT_OWNERSHIP_GENERATION to the previous legacy generation for recovery. "
+                  "Existing files still require an exact ownership match.", file=sys.stderr)
         return {}
     generation = Path(old_generation).resolve()
     if not store_path(str(generation)) or not (generation / "activate").is_file():
         print("Owned-file bootstrap: no immutable previous generation, leaving existing files unchanged.", file=sys.stderr)
         return {}
     script_sections = sections(immutable_text(generation / "activate"))
+    if "assistantOwnedFiles" in script_sections:
+        print("Owned-file bootstrap: the selected generation uses the ownership manifest, but that manifest is missing. "
+              "Restore the manifest or set ASSISTANT_OWNERSHIP_GENERATION to the previous legacy generation. "
+              "Existing files still require an exact ownership match.", file=sys.stderr)
     expected = {}
     manifest = {}
     try:
