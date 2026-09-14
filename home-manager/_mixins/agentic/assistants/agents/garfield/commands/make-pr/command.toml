@@ -1,3 +1,20 @@
 [common]
 description = "Draft and open a PR 🐙"
 argument-hint = "[context]"
+
+[compose.coordinator]
+before-launch = """
+Before launch, add the known intent, exact paths, exclusions, and validation evidence to the child's packet.
+Include each check's command, result, and tested revision or files. Mark missing evidence as unknown.
+Carry the user's optional context and explicit mutation authority, including any limits, into that packet.
+For make-commit, name staging and commit authority. For make-pr, name push, PR, review metadata, and tracker authority.
+Pass these decisions as text, not the general conversation or transcript. Ask for missing decisions before dependent writes.
+Launch only one Garfield worker. Keep other index mutations stopped until it returns.
+"""
+after-return = """
+After a verified PR URL returns, offer the user Babysit (Recommended) or Stop here.
+Use a structured question when available. Without that tool, ask in text and wait.
+Only after explicit consent, run the babysit-pr coordinator workflow for that URL and own any worker dispatch.
+Do not send monitoring to Garfield. Cancellation, silence, or any other answer means stop.
+Without a verified URL, do not offer monitoring. In non-interactive use, return the handover without starting it.
+"""

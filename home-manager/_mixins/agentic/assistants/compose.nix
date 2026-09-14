@@ -227,27 +227,13 @@ let
   '';
 
   commandContextInstructions =
-    cmdName:
-    lib.optionalString
-      (builtins.elem cmdName [
-        "make-commit"
-        "make-pr"
-      ])
-      ''
-        Before launch, add the known intent, exact paths, exclusions, and validation evidence to the child's packet.
-        Include each check's command, result, and tested revision or files. Mark missing evidence as unknown.
-        Carry the user's optional context and explicit mutation authority, including any limits, into that packet.
-        For make-commit, name staging and commit authority. For make-pr, name push, PR, review metadata, and tracker authority.
-        Pass these decisions as text, not the general conversation or transcript. Ask for missing decisions before dependent writes.
-        Launch only one Garfield worker. Keep other index mutations stopped until it returns.
-      ''
-    + lib.optionalString (cmdName == "make-pr") ''
-      After a verified PR URL returns, offer the user Babysit (Recommended) or Stop here.
-      Use a structured question when available. Without that tool, ask in text and wait.
-      Only after explicit consent, run the babysit-pr coordinator workflow for that URL and own any worker dispatch.
-      Do not send monitoring to Garfield. Cancellation, silence, or any other answer means stop.
-      Without a verified URL, do not offer monitoring. In non-interactive use, return the handover without starting it.
-    '';
+    source:
+    lib.concatStringsSep "\n" (
+      lib.filter (text: text != "") [
+        (source.compose.coordinator.before-launch or "")
+        (source.compose.coordinator.after-return or "")
+      ]
+    );
 
   composeCommandFromPrompt =
     platform: agentName: cmdName: body:
@@ -278,7 +264,7 @@ let
           Use the Task tool to launch the ${selectedAgent} agent for the following task:
 
           ${workerDispatchInstructions}
-          ${commandContextInstructions cmdName}
+          ${commandContextInstructions source}
           ## Task
 
           ${leafWorkerContract}
@@ -295,7 +281,7 @@ let
           Set `inherit_context` to `false` and `run_in_background` to `true`.
           Supply a short `description` and put the task in `prompt`.
           ${workerDispatchInstructions}
-          ${commandContextInstructions cmdName}
+          ${commandContextInstructions source}
           ## Task
 
           ${leafWorkerContract}

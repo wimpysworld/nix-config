@@ -84,6 +84,28 @@ Use `[compose] agent` for the repository agent binding. Shared `caller-context =
 
 Agent-bound specialist commands use Claude's Task wrapper by default. Explicit `[compose.claude] use-task = false` selects the inline `@agent` exception without a child launch. `[compose.codex] spawn-agent = false` embeds the agent persona in the caller's context. Neither exception preserves the caller's role through the shared setting.
 
+### Coordinator guidance
+
+Put command-specific packet preparation and continuation instructions in `command.toml`, not in the worker body:
+
+```toml
+[compose.coordinator]
+before-launch = """
+Add the user's exact paths and existing authority to the worker packet.
+"""
+after-return = """
+Ask for consent before the next workflow.
+"""
+```
+
+Only `before-launch` and `after-return` are valid keys. Both accept strings, including multiline strings. Omitted keys or an omitted table add no guidance. Empty strings are valid. Unknown keys and other value types fail validation.
+
+The composer reads these fields from the command source, even when `[compose] agent` selects a different specialist. Claude Code, Pi, and Codex launch wrappers place both instructions before `## Task`, outside the worker body and native metadata. `after-return` describes what the coordinator does after the worker returns. These fields are prose, not executable hooks or role grants.
+
+Caller-context execution and per-provider inline modes bypass both fields. Direct workflow body reuse is unchanged. OpenCode native binding cannot run coordinator preparation or continuation steps. Keep required explicit-context checks and watch handover instructions in its shared worker body. Do not add a simulated wrapper.
+
+### Discovery and defaults
+
 Names derive from directories. Missing provider tables mean no overrides, not disabled output. TOML has no null. Omit fields to inherit defaults.
 
 The composer discovers commands by directory. Retired provider headers are removed. Retired `description.txt` files are not inputs. Keep them until the user authorises removal.

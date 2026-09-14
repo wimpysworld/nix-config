@@ -67,6 +67,53 @@ class MetadataTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, "Invalid metadata was accepted")
         return result.stderr
 
+    def test_coordinator_metadata_strings_defaults_and_validation(self):
+        before = "BEFORE_SENTINEL\nCarry the user's context.\n"
+        after = "AFTER_SENTINEL\nWait for consent.\n"
+        for fields, expected in (
+            ("", ""),
+            ("[compose.coordinator]\n", ""),
+            ('[compose.coordinator]\nbefore-launch = ""\nafter-return = ""\n', ""),
+            ('[compose.coordinator]\nbefore-launch = """\n' + before + '"""\n', before),
+            ('[compose.coordinator]\nafter-return = """\n' + after + '"""\n', after),
+            (
+                '[compose.coordinator]\nbefore-launch = """\n'
+                + before + '"""\nafter-return = """\n' + after + '"""\n',
+                before + "\n" + after,
+            ),
+        ):
+            with self.subTest(fields=fields):
+                result = self.evaluate(
+                    '''let source = m.readCommandHeader fixture; in {
+                      instructions = c.commandContextInstructions source;
+                      native = lib.genAttrs [ "claude" "opencode" "pi" "codex" ]
+                        (platform: m.project "command" platform "fixture" source);
+                    }''',
+                    files={"command.toml": '[common]\ndescription = "Fixture."\n' + fields},
+                )
+                self.assertEqual(result["instructions"], expected)
+                for native in result["native"].values():
+                    self.assertEqual(native, {"description": "Fixture."})
+        invalid = [
+            '[compose]\ncoordinator = ' + value + "\n"
+            for value in ('"text"', "true", "0", "[]")
+        ]
+        invalid += [
+            '[compose.coordinator]\n' + key + " = " + value + "\n"
+            for key in ("before-launch", "after-return")
+            for value in ("true", "0", "[]", "{}")
+        ]
+        invalid.append('[compose.coordinator]\nbefore_launch = "text"\n')
+        for fields in invalid:
+            with self.subTest(invalid=fields):
+                error = self.evaluate(
+                    "m.readCommandHeader fixture",
+                    files={"command.toml": fields},
+                    success=False,
+                )
+                self.assertIn("compose.coordinator accepts only", error)
+                self.assertIn("command.toml", error)
+
     def test_source_names_are_specific_to_commands(self):
         header = '[common]\ndescription = "Fixture."\n'
         files = {
@@ -79,18 +126,23 @@ class MetadataTests(unittest.TestCase):
             "skills/fixture/header.toml": header + 'name = "fixture"\n',
             "skills/fixture/SKILL.md": "SKILL_BODY\n",
         }
-        composer = f"import {ASSISTANTS}/compose.nix {{ inherit lib; basePath = fixture; }}"
-        expression = f'''let composer = {composer}; in {{
+        composer = (
+            f"import {ASSISTANTS}/compose.nix {{ inherit lib; basePath = fixture; }}"
+        )
+        expression = f"""let composer = {composer}; in {{
           commands = composer.composeCommands "claude";
           agents = composer.composeAgents "claude";
           skill = composer.headerFor "skill" "claude" "fixture" (fixture + "/skills/fixture");
-        }}'''
+        }}"""
         result = self.evaluate(expression, files=files)
         self.assertEqual(set(result["commands"]), {"standalone", "owned"})
         self.assertIn("AGENT_BODY", result["agents"]["worker"])
         self.assertEqual(result["skill"]["name"], "fixture")
         for source in ("commands/standalone", "agents/worker/commands/owned"):
-            for new, old in (("command.toml", "header.toml"), ("command.md", "prompt.md")):
+            for new, old in (
+                ("command.toml", "header.toml"),
+                ("command.md", "prompt.md"),
+            ):
                 with self.subTest(source=source, missing=new):
                     legacy = dict(files)
                     legacy[f"{source}/{old}"] = legacy.pop(f"{source}/{new}")
@@ -119,7 +171,10 @@ class MetadataTests(unittest.TestCase):
             names.append(directory.name)
             with self.subTest(directory=directory):
                 self.assertTrue((directory / "command.toml").is_file())
-                self.assertTrue((directory / "command.md").is_file() or (directory / "command.sops").is_file())
+                self.assertTrue(
+                    (directory / "command.md").is_file()
+                    or (directory / "command.sops").is_file()
+                )
                 self.assertFalse((directory / "prompt.md").exists())
                 self.assertFalse((directory / "header.toml").exists())
         self.assertEqual(len(names), len(set(names)))
@@ -291,18 +346,17 @@ skills = false
             "agents/owner/prompt.md": "OWNER_PERSONA",
             "agents/executor/prompt.md": "EXECUTOR_PERSONA",
             "agents/owner/commands/check/command.md": "BODY",
-            "agents/owner/commands/check/command.toml":
-                '[common]\ndescription = "Check."\n[compose]\nagent = "executor"\n',
+            "agents/owner/commands/check/command.toml": '[common]\ndescription = "Check."\n[compose]\nagent = "executor"\n',
         }
         result = self.evaluate(
-            f'''let composer = import {ASSISTANTS}/compose.nix {{
+            f"""let composer = import {ASSISTANTS}/compose.nix {{
               inherit lib; basePath = fixture;
             }}; header = composer.commandMetadata "owner" "check";
             in {{
               owner = (builtins.head composer.commandSources).agentName;
               dispatch = m.commandDispatch composer.agentDirs "check" "owner" header;
               commands = lib.genAttrs [ "claude" "opencode" "pi" ] composer.composeCommands;
-            }}''',
+            }}""",
             files=files,
         )
         self.assertEqual(result["owner"], "owner")
@@ -346,7 +400,9 @@ skills = false
     def test_caller_context_control_requires_a_boolean_and_overrides_spawn(self):
         for value in ('"true"', "0", "[]", "{}"):
             with self.subTest(value=value):
-                self.evaluate("h", f"[compose]\ncaller-context = {value}\n", success=False)
+                self.evaluate(
+                    "h", f"[compose]\ncaller-context = {value}\n", success=False
+                )
         for value in (None, "false", "true"):
             with self.subTest(value=value):
                 header = '[compose]\nagent = "worker"\n'
@@ -363,7 +419,9 @@ skills = false
             success=False,
         )
 
-    def test_caller_context_commands_override_native_bindings_and_preserve_the_task(self):
+    def test_caller_context_commands_override_native_bindings_and_preserve_the_task(
+        self,
+    ):
         body = "Keep caller context. Delegate independent checks for $ARGUMENTS."
         files = {"agents/worker/prompt.md": "PERSONA_SENTINEL\n"}
         for selection in ("scoped", "bound", "unbound"):

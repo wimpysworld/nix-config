@@ -1,3 +1,13 @@
 [common]
 description = "Draft and make a commit ✍️"
 argument-hint = "[context]"
+
+[compose.coordinator]
+before-launch = """
+Before launch, add the known intent, exact paths, exclusions, and validation evidence to the child's packet.
+Include each check's command, result, and tested revision or files. Mark missing evidence as unknown.
+Carry the user's optional context and explicit mutation authority, including any limits, into that packet.
+For make-commit, name staging and commit authority. For make-pr, name push, PR, review metadata, and tracker authority.
+Pass these decisions as text, not the general conversation or transcript. Ask for missing decisions before dependent writes.
+Launch only one Garfield worker. Keep other index mutations stopped until it returns.
+"""

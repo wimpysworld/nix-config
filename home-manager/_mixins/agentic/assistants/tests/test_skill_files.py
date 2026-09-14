@@ -25,30 +25,38 @@ class SkillFileTests(unittest.TestCase):
             "skills/communication-rules/SKILL.md": "Use plain language.\n",
             "skills/communication-rules/header.toml": '[common]\nname = "communication-rules"\ndescription = "Use plain language."\n',
             "skills/delegate-task/header.toml": '[common]\nname = "delegate-task"\ndescription = "Delegate a task."\n',
+            "agents/owner/prompt.md": "OWNER_PERSONA_SENTINEL\n",
+            "agents/owner/header.toml": '[common]\ndescription = "Command owner."\n',
             "agents/worker/prompt.md": "PERSONA_SENTINEL\n",
             "agents/worker/header.toml": '[common]\ndescription = "Fixture worker."\n',
         }
         cases = {}
-        for selection in ("scoped", "bound", "unbound"):
+        for selection in ("scoped", "bound", "unbound", "override"):
             for mode in ("caller-context", "worker", "inline"):
                 for secret in (False, True):
                     name = f"{selection}-{mode}-{'secret' if secret else 'public'}"
                     cases[name] = (selection, mode, secret)
                     directory = (
-                        f"agents/worker/commands/{name}"
-                        if selection == "scoped"
+                        f"agents/{'owner' if selection == 'override' else 'worker'}/commands/{name}"
+                        if selection in ("scoped", "override")
                         else f"commands/{name}"
                     )
                     header = '[common]\ndescription = "Fixture command."\n[compose]\n'
-                    header += f"caller-context = {str(mode == 'caller-context').lower()}\n"
-                    if selection == "bound":
-                        header += 'agent = "worker"\n'
                     header += (
-                        "[compose.claude]\nuse-task = true\n"
-                        "[compose.pi]\nspawn-agent = true\n"
-                        "[compose.codex]\nspawn-agent = "
-                        + str(mode != "inline").lower()
-                        + "\n"
+                        f"caller-context = {str(mode == 'caller-context').lower()}\n"
+                    )
+                    if selection in ("bound", "override"):
+                        header += 'agent = "worker"\n'
+                    for provider, key in (
+                        ("claude", "use-task"),
+                        ("pi", "spawn-agent"),
+                        ("codex", "spawn-agent"),
+                    ):
+                        header += f"[compose.{provider}]\n{key} = {str(mode != 'inline').lower()}\n"
+                    header += (
+                        '[compose.coordinator]\n'
+                        'before-launch = """\nBEFORE_SENTINEL\nPrepare the packet.\n"""\n'
+                        'after-return = """\nAFTER_SENTINEL\nWait for consent.\n"""\n'
                     )
                     if mode == "caller-context":
                         header += (
@@ -56,9 +64,9 @@ class SkillFileTests(unittest.TestCase):
                             '[opencode]\nagent = "worker"\nsubtask = true\n'
                         )
                     files[directory + "/command.toml"] = header
-                    files[directory + ("/command.sops" if secret else "/command.md")] = (
-                        name if secret else body
-                    ) + "\n"
+                    files[
+                        directory + ("/command.sops" if secret else "/command.md")
+                    ] = (name if secret else body) + "\n"
         for name in ("make-commit", "make-pr"):
             cases[name] = ("garfield", "worker", False)
             for filename in ("command.toml", "command.md"):
@@ -161,6 +169,24 @@ class SkillFileTests(unittest.TestCase):
                     native = yaml.safe_load(frontmatter)
                     self.assertNotIn("compose", native)
                     self.assertNotIn("caller-context", native)
+                    self.assertNotIn("coordinator", native)
+                    self.assertNotIn("before-launch", native)
+                    self.assertNotIn("after-return", native)
+                    wrapped = (
+                        selection != "unbound"
+                        and mode == "worker"
+                        and platform != "opencode"
+                    )
+                    if selection != "garfield":
+                        for marker in ("BEFORE_SENTINEL", "AFTER_SENTINEL"):
+                            self.assertEqual(rendered.count(marker), int(wrapped))
+                        if wrapped:
+                            launch, child_task = task.split("\n## Task\n", 1)
+                            self.assertIn("BEFORE_SENTINEL\nPrepare the packet.", launch)
+                            self.assertIn("AFTER_SENTINEL\nWait for consent.", launch)
+                            self.assertLess(launch.index("BEFORE_SENTINEL"), launch.index("AFTER_SENTINEL"))
+                            self.assertNotIn("BEFORE_SENTINEL", child_task)
+                            self.assertNotIn("AFTER_SENTINEL", child_task)
                     if mode == "caller-context" or selection == "unbound":
                         self.assertEqual(task.strip(), expected_body)
                         self.assertNotIn("PERSONA_SENTINEL", rendered)
@@ -180,19 +206,25 @@ class SkillFileTests(unittest.TestCase):
                             )
                             self.assertNotIn("PERSONA_SENTINEL", task)
                     elif platform == "pi":
-                        self.assertIn(
-                            f'Use the Agent tool with `subagent_type: "{agent}"`', task
-                        )
+                        if mode == "inline":
+                            self.assertEqual(task.strip(), expected_body)
+                        else:
+                            self.assertIn(
+                                f'Use the Agent tool with `subagent_type: "{agent}"`', task
+                            )
                     elif platform == "claude":
-                        self.assertIn(
-                            f"Use the Task tool to launch the {agent} agent", task
-                        )
+                        if mode == "inline":
+                            self.assertEqual(task.strip(), f"@{agent}\n\n{expected_body}".strip())
+                        else:
+                            self.assertIn(
+                                f"Use the Task tool to launch the {agent} agent", task
+                            )
                     else:
                         self.assertEqual(native["agent"], agent)
                     child = (
                         selection != "unbound"
                         and mode != "caller-context"
-                        and not (platform == "codex" and mode == "inline")
+                        and not (platform != "opencode" and mode == "inline")
                     )
                     if child:
                         launch = ""

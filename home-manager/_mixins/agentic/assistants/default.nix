@@ -459,7 +459,7 @@ let
             - Wait for the spawned agent when its result is needed, then relay the final answer.
 
             ${compose.workerDispatchInstructions}
-            ${compose.commandContextInstructions skillName}
+            ${compose.commandContextInstructions metadata}
             ## Task
 
             ${compose.leafWorkerContract}

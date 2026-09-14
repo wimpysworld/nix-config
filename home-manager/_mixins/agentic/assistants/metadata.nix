@@ -127,12 +127,24 @@ let
         )
       ) (builtins.attrNames routing);
       controls = header.compose or { };
+      coordinator = controls.coordinator or { };
+      coordinatorValid =
+        builtins.isAttrs coordinator
+        && lib.all (
+          key:
+          lib.elem key [
+            "before-launch"
+            "after-return"
+          ]
+          && builtins.isString coordinator.${key}
+        ) (builtins.attrNames coordinator);
       controlValid =
         lib.all (
           key:
           lib.elem key [
             "agent"
             "caller-context"
+            "coordinator"
             "claude"
             "codex"
             "pi"
@@ -168,6 +180,8 @@ let
       fail path "Codex and OpenCode skill routing has no supported native execution boundary."
     else if !routesValid then
       fail path "Invalid routing provider, field, or value."
+    else if !coordinatorValid then
+      fail path "compose.coordinator accepts only before-launch and after-return strings."
     else if !controlValid then
       fail path "Composition switches must be booleans."
     else if controls ? agent && !nonEmptyString controls.agent then

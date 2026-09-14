@@ -412,6 +412,7 @@ The [OpenCode router](../opencode/README.md#provider-router-prototype) installs 
 | `[claude]`, `[opencode]`, `[codex]`, `[pi]` | Native non-model fields, such as permissions, tools, and context settings. |
 | `[compose]` | Repository agent binding through `agent`, or caller-context execution through `caller-context = true`. |
 | `[compose.claude]`, `[compose.codex]`, `[compose.pi]` | Repository controls `use-task` and `spawn-agent`. |
+| `[compose.coordinator]` | Optional `before-launch` and `after-return` prose for launch wrappers, not native metadata. |
 | `[routing.claude]`, `[routing.codex]` | Agent model and effort defaults. |
 | `[routing.opencode]` | Existing native agent and command model metadata. |
 | `[routing.opencode.providers.<inference-provider>]` | Agent-only exact model routes for the local OpenCode plugin. These fields never enter native headers. |
@@ -430,6 +431,8 @@ Pi composition routes through `compose.composeAgentFromPrompt "pi"` and `compose
 Generated child tasks carry a shared worker contract. Workers complete assigned work directly, launch no agents, and return to the parent. They follow nested workflow bodies without executing generated launch wrappers. If more specialist work is necessary, they return a bounded request after completing independent assigned work. The coordinator dispatches that work and continues the original task.
 
 Launch wrappers require a bounded packet with scope, exact arguments, existing authority, deadline, validation, and output. Claude Code uses the Task wrapper by default for agent-bound commands. Set `[compose.claude] use-task = false` to retain the inline `@agent` form. OpenCode native subtask bodies carry the contract, but explicit `subtask = false` keeps the caller context.
+
+Command-specific coordinator guidance lives in `command.toml`. `make-commit` supplies packet preparation, and `make-pr` also supplies the consent-based watch continuation. See [Coordinator guidance](skills/write-command/SKILL.md#coordinator-guidance) for the schema, wrapper placement, bypass rules, and OpenCode limits.
 
 ### Caller-context commands
 
