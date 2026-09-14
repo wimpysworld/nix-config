@@ -64,6 +64,60 @@ Run `just eval` before finishing Nix changes. Run `just lint-registry` after edi
 
 Use `home.packages` in Home Manager and `environment.systemPackages` in NixOS.
 
+## Agentic configuration
+
+Edit shared assistant sources under `home-manager/_mixins/agentic/assistants/`, not installed client files. Paths below are relative to that directory unless stated otherwise.
+
+### Source files
+
+| Change | Source |
+| --- | --- |
+| Specialist agent | `agents/<agent>/prompt.md` and `header.toml` |
+| Agent-owned command | `agents/<agent>/commands/<command>/prompt.md` and `header.toml` |
+| Standalone command | `commands/<command>/prompt.md` and `header.toml` |
+| Reusable skill | `skills/<skill>/SKILL.md`, `header.toml`, and supporting files |
+| Global instructions | `instructions/global.md` |
+| Communication Rules | `styles/house-style/house-style.md` |
+| Metadata validation and projection | `metadata.nix` |
+| Discovery and shared composition | `compose.nix` |
+| Client delivery and Codex command composition | `default.nix` |
+
+Load the matching `write-assistant`, `write-command`, `write-skill`, or `write-agents-md` skill before changing those artefacts. Keep authoring guidance in those skills, not copied into agent prompts.
+
+Keep public Markdown bodies free of frontmatter. Put live metadata in `header.toml`, not retired `description.txt` files. Agent and command names derive from directories. Skills require `[common] name` to match their directory.
+
+The composer discovers source directories automatically. Keep command names unique across standalone and agent-owned directories. Codex commands must also avoid reusable skill names.
+
+Read `README.md` for workflow context and provider delivery details. Update its command tables when adding, renaming, or changing a command’s purpose. When documentation differs from implementation, verify `compose.nix`, `metadata.nix`, and `default.nix` before changing behaviour.
+
+### Composition and routing
+
+Use `[common]` for shared metadata and provider tables for native non-model fields. Missing provider tables mean no overrides, not disabled output.
+
+Agent-owned commands inherit their directory’s agent unless `[compose] agent` overrides it. Set `[compose] root = true` when execution must retain the caller’s context and persona. This switch takes precedence over provider dispatch controls.
+
+Keep generated launch wrappers out of source prompts. Preserve the composer’s leaf-worker contract when changing dispatch.
+
+For Claude Code, Codex, and Pi, put model defaults only in agent `header.toml` routing tables. Commands and ordinary skills remain model-neutral. Pi routes use the exact inference-provider name under `[routing.pi.<inference-provider>]`. OpenCode command model routing remains a separate supported case.
+
+`delegate-task` has generated content in `compose.nix` and metadata in `skills/delegate-task/header.toml`. Do not add a static body as its source.
+
+Keep `skills/communication-rules/SKILL.md` synchronised with the house-style body. The composer checks this equality during evaluation.
+
+### Delivery and validation
+
+Claude Code and OpenCode receive native agents and commands. Pi receives agents and prompt templates. Codex receives TOML agents and manual-only command-derived skills, invoked with `$name`.
+
+Treat installed resources as generated outputs, even when they are regular files rather than symlinks. Codex paths follow `home.preferXdgDirectories`.
+
+The parent `../default.nix` imports agentic mixins. Sibling client modules own runtime configuration. `../pi/default.nix` consumes `agentic.assistants.pi` resources and owns Pi packages, settings, wrappers, and extensions.
+
+Preserve client enablement gates, including Pi resources for developer servers. Keep secret bodies behind `.sops` markers and outside the Nix store.
+
+For composition changes, verify all four client outputs, metadata validation, namespace collisions, and root/leaf dispatch. Follow the root validation commands, but do not treat `just eval` as proof that every generated output passes.
+
+For deployment changes, use the temporary-home tests documented in `owned-files/README.md`. Do not run the deployer against the real home directory for tests. Do not activate configuration merely to validate prompt changes.
+
 ## Registries and noughty
 
 All systems live in `lib/registry-systems.toml`; users live in `lib/registry-users.toml`. Schemas are `lib/registry-systems-schema.json` and `lib/registry-users-schema.json`.

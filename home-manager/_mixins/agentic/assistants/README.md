@@ -104,7 +104,7 @@ Each platform takes the body through its own system-prompt channel:
 | OpenCode    | Appended to the global instructions in `AGENTS.md`                   |
 | Pi Agent    | Appended to the global instructions in `AGENTS.md`                   |
 
-`compose.nix` also generates the `communication-rules` skill from the same body, adding only the frontmatter that makes it discoverable. The skill stays for command-driven reinforcement and for surfaces with no system-prompt access, such as Codex Cloud. The `delegate-task` packet tells every sub-agent to load it.
+`skills/communication-rules/SKILL.md` contains the checked-in skill body. `compose.nix` adds native frontmatter and checks that the body matches the house style during evaluation. The skill stays for command-driven reinforcement and for surfaces with no system-prompt access, such as Codex Cloud. The `delegate-task` packet tells every sub-agent to load it.
 
 The `hooks/communication-rules` mixin reads the style body directly and writes it to `~/.config/agent-communication-rules/communication-rules.md` with the shared scanner assets. Reminders, block messages, correction prompts, and runtime disclosures embed that body. Do not copy the rules into platform modules.
 
@@ -556,14 +556,14 @@ Old unverified MCP backups and Nix rollback generations remain outside this clea
 
 ### Skills
 
-Shared skills provide background knowledge and reference material. Most are sourced from `skills/*/SKILL.md`. Two are generated, so their content cannot drift from its source: `delegate-task` from the agent registry, and `communication-rules` from the house style body. A static skill directory with either name is ignored.
+Shared skills provide background knowledge and reference material. Most are sourced from `skills/*/SKILL.md`. `compose.nix` generates the `delegate-task` body from the agent registry and reads its `header.toml` for metadata, ignoring any static body. The `communication-rules` body is checked in at `skills/communication-rules/SKILL.md`. An equality guard checks that its body matches the house style during evaluation.
 
 **Generated and agent-loaded:**
 
 | Skill                | Loaded by                 | Purpose                                                                                                           |
 | -------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `delegate-task`      | Coordinator or user       | Generated routing, depth, waiting, teardown, packet, response contract, and relay policy                          |
-| `communication-rules` | Every prose-producing path | Generated from the house style: concise, plain British English for user-visible prose                             |
+| `communication-rules` | Every prose-producing path | Checked-in body with a house-style equality guard: concise, plain British English for user-visible prose         |
 | `agentic-repo-capability` | Donatello or user         | Add a repository-local MCP server, skill, or command across supported agent clients                               |
 | `writing-well`       | Casper, Velma             | Composition principles and the AI writing-pattern catalogue                                                       |
 | `write-skill`        | Rosey or user             | Author or update an Agent Skill (`SKILL.md`) - frontmatter, layout, references, progressive disclosure            |
