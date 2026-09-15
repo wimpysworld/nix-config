@@ -55,6 +55,17 @@ Match validation cost to the change. Start with the cheapest option that can fai
 
 Never run `just eval`, `just check`, or `just build` for an iterative change unless the change spans many configs or CI will run those gates anyway. Both recipes deep-evaluate every configuration and take substantially longer.
 
+## Tests
+
+Add a test only when it catches a class of defect that evaluation, builds, and linting do not already catch. Every test needs a maintainer forever, so do not add tests for show.
+
+- Test a boundary, not a value. Assert behaviour, ordering, wiring, and structural properties, not derived constants. Constant pins (exact versions, formatted numbers, store paths, message strings) turn every routine bump into test churn.
+- Prefer eval-time assertions for pure Nix. runCommand-based checks under `lib/tests/` and module `assert` statements catch silent fallbacks and contract violations at zero activation cost. Reserve VM tests for service behaviour that static evaluation cannot reach.
+- A test that no gate runs is a liability. Wire every new or changed test into a `checks.*` attribute, a `just` recipe, or CI, and state which gate runs it in the test's header comment. If no gate fits, justify that in the change.
+- Gate checks that import real host configurations to `x86_64-linux` instead of re-running identical asserts on every system.
+- When a test fails after an intended behaviour change, update the test in the same change, and say so in the commit message. Do not delete a failing test without user confirmation.
+- Remove a test with the module it guards. A test that outlives its subject is a defect.
+
 ## Nix style
 
 - British English spelling; comments use full sentences with proper punctuation.
