@@ -858,7 +858,9 @@ in
             model = "glm-5.3-flash";
             enabled = true;
             timeout = 120;
-            max_input_tokens = 600000;
+            # Aggregate replay budget: the upstream default already is
+            # 600000, restating it buys nothing; omit so future upstream
+            # retuning of the default applies without a config bump.
           };
           # Goal contract drafting and satisfaction judging. Small JSON
           # verdicts after goal-driven turns; GLM's documented JSON
