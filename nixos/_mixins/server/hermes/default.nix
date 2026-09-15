@@ -907,10 +907,15 @@ in
         # after two hours idle, so it never interrupts live work.
         curator.consolidate = true;
 
+        # The dispatcher own output is small, but the decomposition and
+        # verification it writes govern every child it spawns, so it runs
+        # at the same medium effort as the main agent rather than a
+        # budget-starved tier. Flash out-performs the flagship on
+        # vendor tool-use benchmarks at roughly 9x lower token cost.
         delegation = {
           provider = "opencode-go";
           model = "glm-5.3-flash";
-          reasoning_effort = "low";
+          reasoning_effort = "medium";
         };
 
         stt = {
