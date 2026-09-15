@@ -787,50 +787,130 @@ in
           ];
         };
 
-        delegation = {
-          provider = "openai-codex";
-          model = "gpt-5.6-sol";
-          reasoning_effort = "high";
+        # Auxiliary model routing. The subscription Go relay absorbs fast
+        # classification and high-volume calls so they never touch the
+        # pay-as-you-go Zen balance; heavier reasoning and long-context
+        # work runs on the Zen relay. Default is GLM 5.3 Flash: it is the
+        # primary model's relay, cheap, and adequate for classifier-shaped
+        # work. GLM 5.3 handles quality-sensitive reasoning slots and
+        # MiniMax M3 handles long-context summarisation, with its
+        # zero-fee passive prefix caching and 1M-context prefill speed.
+        # The removed web_extract and session_search blocks no longer use
+        # an auxiliary LLM (Hermes 0.21.x PR #27590) and are dropped.
+        auxiliary = {
+          # Classifier. Fast/cheap model recommended upstream.
+          approval = {
+            provider = "opencode-go";
+            model = "glm-5.3-flash";
+            timeout = 30;
+          };
+          # Session titles. One short call per new session.
+          title_generation = {
+            provider = "opencode-go";
+            model = "glm-5.3-flash";
+            prefer_fast_model = true;
+            timeout = 30;
+          };
+          # Proxy monitor scorer (important-mail). One call per non-empty
+          # scheduled batch; an empty batch makes no call.
+          monitor = {
+            provider = "opencode-go";
+            model = "glm-5.3-flash";
+            timeout = 60;
+          };
+          # Memory retrieval query rewriting. Wired only when a memory
+          # provider uses a query rewriter; holographic memory does not,
+          # so this slot is provisioned for future use.
+          memory_query_rewrite = {
+            provider = "opencode-go";
+            model = "glm-5.3-flash";
+            timeout = 8;
+          };
+          # Kanban Triage card expansion. One call per requested task.
+          triage_specifier = {
+            provider = "opencode-go";
+            model = "glm-5.3-flash";
+            timeout = 120;
+          };
+          # Kanban child-task dependency graphs. Up to three queued
+          # cards per dispatcher minute; JSON graph output.
+          kanban_decomposer = {
+            provider = "opencode-go";
+            model = "glm-5.3-flash";
+            timeout = 180;
+          };
+          # Profile routing blurbs. On demand only.
+          profile_describer = {
+            provider = "opencode-go";
+            model = "glm-5.3-flash";
+            timeout = 60;
+          };
+          # Legacy MCP sampling requests. Rare and rate-limited.
+          mcp = {
+            provider = "opencode-go";
+            model = "glm-5.3-flash";
+            timeout = 30;
+          };
+          # Post-turn self-improvement fork. Digest replay on a model
+          # other than the main agent is 3-5x cheaper than full replay.
+          background_review = {
+            provider = "opencode-go";
+            model = "glm-5.3-flash";
+            enabled = true;
+            timeout = 120;
+            max_input_tokens = 600000;
+          };
+          # Goal contract drafting and satisfaction judging. Small JSON
+          # verdicts after goal-driven turns; GLM's documented JSON
+          # object mode plus host-side validation handles structure.
+          goal_judge = {
+            provider = "opencode-go";
+            model = "glm-5.3-flash";
+            timeout = 60;
+          };
+          # Vision captions when the main model cannot read images
+          # natively. GLM 5.3 Flash is natively multimodal (images and
+          # video in), so the fleet keeps one provider.
+          vision = {
+            provider = "opencode-go";
+            model = "glm-5.3-flash";
+            timeout = 120;
+          };
+          # Mid-session context compaction. Long input, episodic;
+          # MiniMax M3 has 1M context, fast prefill and no cache-write
+          # fee. Batch manifests stay below its 512K price cliff.
+          compression = {
+            provider = "opencode-zen";
+            model = "minimax-m3";
+            timeout = 120;
+          };
+          # Skill consolidation. Only called when curator consolidation
+          # is enabled (see below); 50-100 calls over hundreds of
+          # skills favour M3's long horizon and caching.
+          curator = {
+            provider = "opencode-zen";
+            model = "minimax-m3";
+            timeout = 600;
+          };
+          # /review spawns a full reviewer subagent; manual only. The
+          # flagship tier earns its price for review quality.
+          review = {
+            provider = "opencode-zen";
+            model = "glm-5.3";
+            timeout = 30;
+          };
         };
 
-        auxiliary = {
-          approval = {
-            provider = "openai-codex";
-            model = "gpt-5.6-luna";
-            reasoning_effort = "xhigh";
-            timeout = 30;
-          };
-          session_search = {
-            provider = "openai-codex";
-            model = "gpt-5.6-luna";
-            reasoning_effort = "xhigh";
-            timeout = 30;
-            max_concurrency = 2;
-          };
-          skills_hub = {
-            provider = "openai-codex";
-            model = "gpt-5.6-luna";
-            reasoning_effort = "xhigh";
-            timeout = 30;
-          };
-          mcp = {
-            provider = "openai-codex";
-            model = "gpt-5.6-terra";
-            reasoning_effort = "high";
-            timeout = 30;
-          };
-          web_extract = {
-            provider = "openai-codex";
-            model = "gpt-5.6-luna";
-            reasoning_effort = "xhigh";
-            timeout = 30;
-          };
-          title_generation = {
-            provider = "openai-codex";
-            model = "gpt-5.6-luna";
-            reasoning_effort = "xhigh";
-            timeout = 30;
-          };
+        # Curator maintenance of agent-created skills. Deterministic
+        # stale/archive transitions always run; consolidation enables
+        # the LLM pass served by auxiliary.curator above. Runs weekly
+        # after two hours idle, so it never interrupts live work.
+        curator.consolidate = true;
+
+        delegation = {
+          provider = "opencode-go";
+          model = "glm-5.3-flash";
+          reasoning_effort = "low";
         };
 
         stt = {
