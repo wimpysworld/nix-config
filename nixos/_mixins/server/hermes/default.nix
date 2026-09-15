@@ -765,13 +765,6 @@ in
 
         agent.reasoning_effort = "medium";
 
-        # The primary provider's 429 responses carry no Retry-After header, so
-        # the retry loop falls back to the short default backoff (2s doubling
-        # to 60s). The default three retries exhaust in about 20 seconds,
-        # which lets sessions die during a rate-limit window. Eight retries
-        # extend the schedule to about three minutes before fallback.
-        agent.api_max_retries = 8;
-
         # Cross-provider failover starts after the primary model retries.
         # The subscription Go relay carries the primary load; a 429 storm
         # hands off to the pay-as-you-go Zen relay on the same model. The
