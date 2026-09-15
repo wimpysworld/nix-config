@@ -60,6 +60,12 @@ let
     if [ -r "${config.sops.secrets.OPENCODE_ZEN_API_KEY.path}" ]; then
       OPENCODE_ZEN_API_KEY="$(cat "${config.sops.secrets.OPENCODE_ZEN_API_KEY.path}")"
       export OPENCODE_ZEN_API_KEY
+      # OpenCode's built-in opencode and opencode-go providers both resolve
+      # their credential from OPENCODE_API_KEY (env: ["OPENCODE_API_KEY"] in
+      # the bundled provider table); the per-provider options.apiKey mapping
+      # is not consulted for them. Export the standard name too.
+      OPENCODE_API_KEY="$OPENCODE_ZEN_API_KEY"
+      export OPENCODE_API_KEY
     fi
   '';
   communicationRules = config.agentic.communicationRules;
@@ -293,22 +299,75 @@ in
             websearch = "deny";
           };
 
-          # Default to GPT 5.5 via the OpenAI provider with high reasoning effort.
-          # The per-model option goes under provider.openai.models so OpenCode
-          # forwards `reasoning.effort` on the Responses API call.
-          model = "openai/gpt-5.5";
+          # Restrict the /models picker to an explicit whitelist.
+          # enabled_providers keeps only these providers; the per-provider
+          # whitelist then hides every model except the listed ones. The
+          # default model must appear in its provider's whitelist.
+          enabled_providers = [
+            "anthropic"
+            "google"
+            "openai"
+            "opencode"
+            "opencode-go"
+          ];
+          model = "opencode-go/glm-5.3-flash";
           provider = {
+            # One Zen API key authenticates both OpenCode relays: the Zen
+            # gateway (provider "opencode") and the Go gateway (provider
+            # "opencode-go").
             opencode = lib.mkIf zenEnabled {
               options.apiKey = "{env:OPENCODE_ZEN_API_KEY}";
+              whitelist = [
+                "deepseek-v4-pro"
+                "glm-5.3"
+                "glm-5.3-flash"
+                "grok-4.6"
+                "kimi-k3"
+                "minimax-m3"
+              ];
+            };
+            opencode-go = lib.mkIf zenEnabled {
+              options.apiKey = "{env:OPENCODE_ZEN_API_KEY}";
+              whitelist = [
+                "deepseek-v4-pro"
+                "deepseek-v4.1-flash"
+                "glm-5.3"
+                "glm-5.3-flash"
+                "grok-4.6"
+                "kimi-k3"
+                "minimax-m3"
+                "qwen3.8-flash"
+                "qwen3.8-max"
+              ];
+            };
+            anthropic = {
+              whitelist = [
+                "claude-fable-5-1"
+                "claude-haiku-4-5"
+                "claude-opus-4-8"
+                "claude-opus-4-8-fast"
+                "claude-opus-5"
+                "claude-opus-5-fast"
+                "claude-sonnet-5"
+              ];
+            };
+            google = {
+              whitelist = [
+                "gemini-3.8-flash"
+              ];
             };
             openai = {
-              models = {
-                "gpt-5.5" = {
-                  options = {
-                    reasoningEffort = "high";
-                  };
-                };
-              };
+              whitelist = [
+                "gpt-5.3-codex-spark"
+                "gpt-5.6-luna"
+                "gpt-5.6-luna-fast"
+                "gpt-5.6-sol"
+                "gpt-5.6-sol-fast"
+                "gpt-5.6-terra"
+                "gpt-5.6-terra-fast"
+                "gpt-6-astra"
+                "gpt-6-astra-fast"
+              ];
             };
           };
 

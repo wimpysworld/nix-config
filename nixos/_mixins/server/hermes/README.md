@@ -12,8 +12,8 @@ The current deployment is:
 - **Agent framework**: Hermes Agent
 - **Chat interface**: Telegram
 - **Hermes host**: `revan`
-- **Inference path**: OpenCode Zen plus OAuth-backed cloud providers managed by Hermes
-- **Primary model**: `glm-5.3-flash` via the `opencode-zen` provider
+- **Inference path**: OpenCode Go and Zen plus OAuth-backed cloud providers managed by Hermes
+- **Primary model**: `glm-5.3-flash` via the `opencode-go` provider
 - **Delegation model**: `gpt-5.6-sol` at high reasoning via the `openai-codex` provider
 - **Auxiliary model**: `gpt-5.6-luna` at extra-high (`xhigh`) reasoning via the `openai-codex` provider
 - **Memory provider**: Holographic
@@ -66,7 +66,7 @@ The key current settings are:
 services.hermes-agent.settings = {
   model = {
     default = "glm-5.3-flash";
-    provider = "opencode-zen";
+    provider = "opencode-go";
   };
 
   agent.reasoning_effort = "medium";
@@ -93,12 +93,13 @@ services.hermes-agent.settings = {
 };
 ```
 
-This means the live default is `glm-5.3-flash` through OpenCode Zen.
+This means the live default is `glm-5.3-flash` through OpenCode Go.
 Delegated work uses `gpt-5.6-sol` at high reasoning, and the configured
 auxiliary roles use `gpt-5.6-luna` at extra-high (`xhigh`) reasoning, both
 through `openai-codex`.
 
-At runtime, the OpenCode Zen model is reachable as `opencode-zen`.
+At runtime, the OpenCode Go model is reachable as `opencode-go`, with
+OpenCode Zen configured as the fallback provider on the same model.
 
 ## Local Piper TTS
 
@@ -442,13 +443,15 @@ integrations rather than the local llama-server path.
 Current source of truth:
 
 - the Hermes module selects the primary and role providers
-- `opencode-zen` handles the primary `glm-5.3-flash` route
+- `opencode-go` handles the primary `glm-5.3-flash` route
 - `openai-codex` handles delegated work with `gpt-5.6-sol` at high reasoning
 - `openai-codex` handles configured auxiliary roles with `gpt-5.6-luna` at extra-high (`xhigh`) reasoning
-- there is no cloud fallback provider configured
+- `opencode-zen` is the fallback provider with `glm-5.3-flash`
 
-The OpenCode Zen provider supplies the `glm-5.3-flash` model. Authentication
-uses `OPENCODE_ZEN_API_KEY` from the managed env file. Hermes sends
+The OpenCode Go provider supplies the `glm-5.3-flash` model. Authentication
+uses `OPENCODE_GO_API_KEY` from the managed env file, which the template fills
+from the same sops secret as `OPENCODE_ZEN_API_KEY` because one Zen API key
+authenticates both relays. Hermes sends
 `reasoning_effort` at the top level for the primary provider.
 
 The local llama-server stack remains available in the repo, but it is not the
@@ -459,7 +462,7 @@ The important current routing values are:
 - primary model: `glm-5.3-flash` at medium reasoning
 - delegation model: `gpt-5.6-sol` at high reasoning
 - auxiliary model: `gpt-5.6-luna` at extra-high (`xhigh`) reasoning
-- OpenCode Zen model: reachable through the `opencode-zen` provider
+- OpenCode Go model: reachable through the `opencode-go` provider
 - Holographic memory enabled
 
 For local backend and model policy detail, use the llama-server docs:
@@ -501,7 +504,7 @@ The following are in place now:
 - managed `.env` rendering through sops-nix
 - auth seeding through `authFile`
 - Telegram token and allowlist injection
-- `opencode-zen` primary with `glm-5.3-flash`
+- `opencode-go` primary with `glm-5.3-flash`
 - `openai-codex` delegation with `gpt-5.6-sol` at high reasoning
 - `openai-codex` auxiliary roles with `gpt-5.6-luna` at extra-high (`xhigh`) reasoning
 - Holographic memory

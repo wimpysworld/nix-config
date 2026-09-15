@@ -589,6 +589,9 @@ in
         WEBHOOK_PORT=8644
         WEBHOOK_SECRET=${config.sops.placeholder.WEBHOOK_SECRET}
         OPENCODE_ZEN_API_KEY=${config.sops.placeholder.OPENCODE_ZEN_API_KEY}
+        # One Zen API key authenticates both relays; hermes names the Go
+        # credential separately.
+        OPENCODE_GO_API_KEY=${config.sops.placeholder.OPENCODE_ZEN_API_KEY}
         CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
         JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
         LINEAR_API_KEY=${config.sops.placeholder.LINEAR_API_KEY}
@@ -596,6 +599,7 @@ in
         GITHUB_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
         _HERMES_FORCE_TELEGRAM_BOT_TOKEN=${config.sops.placeholder.TELEGRAM_BOT_TOKEN}
         _HERMES_FORCE_OPENCODE_ZEN_API_KEY=${config.sops.placeholder.OPENCODE_ZEN_API_KEY}
+        _HERMES_FORCE_OPENCODE_GO_API_KEY=${config.sops.placeholder.OPENCODE_ZEN_API_KEY}
         _HERMES_FORCE_CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
         _HERMES_FORCE_JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
         _HERMES_FORCE_GH_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
@@ -756,7 +760,7 @@ in
 
         model = {
           default = "glm-5.3-flash";
-          provider = "opencode-zen";
+          provider = "opencode-go";
         };
 
         agent.reasoning_effort = "medium";
@@ -769,12 +773,13 @@ in
         agent.api_max_retries = 8;
 
         # Cross-provider failover starts after the primary model retries.
-        # Codex is already authenticated on this host, so a primary provider
-        # 429 storm hands off to Codex. The primary returns after cooldown.
+        # The subscription Go relay carries the primary load; a 429 storm
+        # hands off to the pay-as-you-go Zen relay on the same model. The
+        # primary returns after cooldown.
         fallback_providers = [
           {
-            provider = "openai-codex";
-            model = "gpt-5.6-sol";
+            provider = "opencode-zen";
+            model = "glm-5.3-flash";
           }
         ];
 

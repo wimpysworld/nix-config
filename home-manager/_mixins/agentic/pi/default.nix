@@ -802,9 +802,13 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
     ]
     ++ lib.optional fencedEnabled piFencedPackage;
     file = {
+      # One Zen API key authenticates both OpenCode relays: the Zen gateway
+      # (Pi provider "opencode") and the Go gateway (Pi provider
+      # "opencode-go"). The wrapper exports the key on non-cg hosts.
       ".pi/agent/models.json" = lib.mkIf zenEnabled {
         text = builtins.toJSON {
           providers.opencode.apiKey = "$OPENCODE_ZEN_API_KEY";
+          providers."opencode-go".apiKey = "$OPENCODE_ZEN_API_KEY";
         };
       };
       ".pi/agent/settings.json".text = builtins.toJSON piSettings;
