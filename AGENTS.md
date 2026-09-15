@@ -33,12 +33,27 @@ Run `just --list --unsorted` before inventing commands.
 | Build all configs             | `just build`                                                                                                                             |
 | Build one host or Home config | `just build-host hostname=<host>`; `just build-home username=<user> hostname=<host>`                                                     |
 | Build a package               | `just build-pkg pkg=<pkg> hostname=<host>`                                                                                               |
-| Switch or apply configs       | `just switch`; `just apply`; `just apply-home`; `just apply-host`                                                                        |
+| Switch OS and Home configs    | `just switch`; `just switch-host`; `just switch-home`                                                                                    |
+| Build OS and Home configs     | `just host`; `just home`                                                                                                                 |
 | Push configs to a remote host | `just push <host> [target]`; `just push-host <host> [target]`; `just push-host-boot <host> [target]`; `just push-home <host> [target]`   |
 | Update flake inputs           | `just update`                                                                                                                            |
 | ISO and install               | `just iso`; `just inject-tokens remote=<host> user=nixos`; `just install host=<host> remote=<target> keep_disks="false" vm_test="false"` |
 
+`apply`, `apply-home`, and `apply-host` activate configurations published to FlakeHub Cache from a CI release. They ignore the local working tree. Do not use them during local iteration; use `build-` and `switch-` commands instead.
+
 Run `just eval` before finishing Nix changes. Run `just lint-registry` after editing registry TOML.
+
+## Validation economy
+
+Match validation cost to the change. Start with the cheapest option that can fail, and escalate only when that passes or the options below it cannot catch the defect.
+
+- Formatting or a lint-style fix: run `just format` on the touched files.
+- One module or a Nix value: run a targeted `nix eval` against the specific attribute, not a whole-flake eval.
+- Generated file content: use `nix repl :lf .` with `:p` on the file's `.text`.
+- Local iteration on NixOS or Home Manager: build and switch only the current host with `just build-home`, `just build-host`, `just switch-home`, or `just switch-host`; a remote or non-current host needs `just build-host hostname=<host>`, only when its config actually changed.
+- New packages or overlays: build the one package with `just build-pkg pkg=<pkg> <host>` before any host build.
+
+Never run `just eval`, `just check`, or `just build` for an iterative change unless the change spans many configs or CI will run those gates anyway. Both recipes deep-evaluate every configuration and take substantially longer.
 
 ## Nix style
 
@@ -199,6 +214,8 @@ Catppuccin Mocha is available through `catppuccinPalette`: `getColor "base"` inc
 
 Overlays apply in this order: `localPackages`, `modifiedPackages`, `unstablePackages`.
 
+Using overlays to patch Nixpkgs software is a last resort for debugging or adding a feature, because it invalidates cached output and triggers a from-source rebuild of the package and its dependents. Heavy compiler toolchains such as Rust make those rebuilds slow locally and expensive in CI. Resolve the problem with configuration, options, modules, environment, or version selection first. When patching is genuinely the only route, present the need and the proposed patch to the user, and apply it only after the user approves.
+
 ## CI
 
 Read `.github/workflows/` before changing CI assumptions. Auto-merge of update PRs requires every build job to pass.
@@ -221,6 +238,7 @@ Read `.github/workflows/` before changing CI assumptions. Auto-merge of update P
 - For compositor changes, stop agent validation after static evaluation and builds.
 - Leave graphical runtime checks to the user.
 - Never edit `flake.lock` directly; use `just update`.
+- Never patch Nixpkgs packages through overlays without explicit user approval; present the need and the proposed patch first.
 - Never change `stateVersion` on existing systems.
 - Never commit unencrypted secrets outside `secrets/`.
 - Never use `environment.systemPackages` in Home Manager; use `home.packages`.
