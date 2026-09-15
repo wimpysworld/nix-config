@@ -10,16 +10,16 @@
 
 rustPlatform.buildRustPackage {
   pname = "herdr-pc-ram-and-cpu-usage-overlay";
-  version = "1.11.2-unstable-2026-08-27";
+  version = "1.12.0-unstable-2026-09-13";
 
   src = fetchFromGitHub {
     owner = "ezcorp-org";
     repo = "herdr-pc-ram-and-cpu-usage-overlay";
-    rev = "94a2ea3bf21ec35c6da51b9657c97167e68034ce";
-    hash = "sha256-WN8AnkybU57ZfN+Qd86ajBHgxMGScOeu6BUD7ARlMRg=";
+    rev = "9872a499181b5a52472da3f74b9c567d3898069f";
+    hash = "sha256-c09LCIeKv95kSvbVtDZ2MfAoLMxVesuQD4jK5HVhzS8=";
   };
 
-  cargoHash = "sha256-+hm0h/VXXZzSt8jpIjK3Ygm86yIXEEo4DcULCMDRc+M=";
+  cargoHash = "sha256-ISYzG9Tc53KMcIsrzAWshWgs8jBugy34SVT5Nqmcz/s=";
 
   nativeBuildInputs = [ makeWrapper ];
 
