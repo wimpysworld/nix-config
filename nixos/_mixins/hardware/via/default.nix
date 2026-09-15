@@ -1,6 +1,8 @@
 {
   config,
+  inputs,
   lib,
+  pkgs,
   ...
 }:
 let
@@ -8,6 +10,7 @@ let
   username = config.noughty.user.name;
 in
 lib.mkIf (!host.is.iso && !host.is.server) {
+  environment.systemPackages = [ inputs.nix-packages.packages.${pkgs.system}.wonkey ];
   services = {
     # Provides users with access to VIA
     # https://get.vial.today/manual/linux-udev.html
@@ -20,6 +23,8 @@ lib.mkIf (!host.is.iso && !host.is.server) {
       KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="359b", ATTRS{idProduct}=="0004", TAG+="uaccess", TAG+="udev-acl", GROUP="input", MODE="0660", SYMLINK+="CSTM80"
       #0x36b0 0x300e Evoworks EVO80
       KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="36b0", ATTRS{idProduct}=="300e", TAG+="uaccess", TAG+="udev-acl", GROUP="input", MODE="0660", SYMLINK+="evo80"
+      #0xaf88 0x6688 XFKey One Key Max
+      KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="af88", ATTRS{idProduct}=="6688", TAG+="uaccess", TAG+="udev-acl", GROUP="input", MODE="0660", SYMLINK+="xfkey"
     '';
   };
   users.users.${username} = {
