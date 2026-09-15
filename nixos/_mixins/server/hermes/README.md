@@ -12,8 +12,8 @@ The current deployment is:
 - **Agent framework**: Hermes Agent
 - **Chat interface**: Telegram
 - **Hermes host**: `revan`
-- **Inference path**: Baseten Model APIs plus OAuth-backed cloud providers managed by Hermes
-- **Primary model**: `zai-org/GLM-5.3-Flash` via the `custom:baseten` provider
+- **Inference path**: OpenCode Zen plus OAuth-backed cloud providers managed by Hermes
+- **Primary model**: `glm-5.3-flash` via the `opencode-zen` provider
 - **Delegation model**: `gpt-5.6-sol` at high reasoning via the `openai-codex` provider
 - **Auxiliary model**: `gpt-5.6-luna` at extra-high (`xhigh`) reasoning via the `openai-codex` provider
 - **Memory provider**: Holographic
@@ -65,16 +65,8 @@ The key current settings are:
 ```nix
 services.hermes-agent.settings = {
   model = {
-    default = "zai-org/GLM-5.3-Flash";
-    provider = "custom:baseten";
-  };
-
-  providers.baseten = {
-    name = "baseten";
-    api = "https://inference.baseten.co/v1";
-    key_env = "BASETEN_API_KEY";
-    default_model = "zai-org/GLM-5.3-Flash";
-    discover_models = true;
+    default = "glm-5.3-flash";
+    provider = "opencode-zen";
   };
 
   agent.reasoning_effort = "medium";
@@ -101,15 +93,12 @@ services.hermes-agent.settings = {
 };
 ```
 
-This means the live default is `zai-org/GLM-5.3-Flash` through the Baseten
-Model APIs endpoint. Baseten is configured as a named custom provider with
-model discovery enabled, so Hermes fetches the full multi-model catalogue
-from `/v1/models` at runtime. Delegated work uses `gpt-5.6-sol` at high
-reasoning, and the configured auxiliary roles use `gpt-5.6-luna` at
-extra-high (`xhigh`) reasoning, both through `openai-codex`.
+This means the live default is `glm-5.3-flash` through OpenCode Zen.
+Delegated work uses `gpt-5.6-sol` at high reasoning, and the configured
+auxiliary roles use `gpt-5.6-luna` at extra-high (`xhigh`) reasoning, both
+through `openai-codex`.
 
-At runtime, any Baseten model is reachable with the triple syntax
-`custom:baseten:<model-id>`, for example `custom:baseten:zai-org/GLM-5.2`.
+At runtime, the OpenCode Zen model is reachable as `opencode-zen`.
 
 ## Local Piper TTS
 
@@ -234,7 +223,7 @@ currently exports:
 - `WEBHOOK_ENABLED`
 - `WEBHOOK_PORT`
 - `WEBHOOK_SECRET`
-- `BASETEN_API_KEY`
+- `OPENCODE_ZEN_API_KEY`
 - `CONTEXT7_API_KEY`
 - `JINA_API_KEY`
 - `LINEAR_API_KEY`
@@ -256,7 +245,7 @@ Operationally:
 - `auth.json` is seeded from `secrets/hermes-auth.json`
 - OpenAI device auth for `openai-codex` comes from `auth.json`, not from an
   `OPENAI_API_KEY` env var
-- `BASETEN_API_KEY` authenticates the Baseten custom provider and comes from
+- `OPENCODE_ZEN_API_KEY` authenticates the OpenCode Zen provider and comes from
   `secrets/ai.yaml`
 - `LINEAR_API_KEY` comes from the `wimpysworld` key in `secrets/linear.yaml`
 - `traya@darth.cc` Fastmail access is rendered to the Himalaya config from
@@ -453,27 +442,24 @@ integrations rather than the local llama-server path.
 Current source of truth:
 
 - the Hermes module selects the primary and role providers
-- `custom:baseten` handles the primary `zai-org/GLM-5.3-Flash` route
+- `opencode-zen` handles the primary `glm-5.3-flash` route
 - `openai-codex` handles delegated work with `gpt-5.6-sol` at high reasoning
 - `openai-codex` handles configured auxiliary roles with `gpt-5.6-luna` at extra-high (`xhigh`) reasoning
 - there is no cloud fallback provider configured
 
-The Baseten provider points at the OpenAI-compatible Model APIs endpoint
-`https://inference.baseten.co/v1`. Authentication uses `BASETEN_API_KEY` from
-the managed env file, and `discover_models = true` keeps the model picker
-populated from the live catalogue. Baseten honours top-level
-`reasoning_effort`, which matches how Hermes sends effort for custom
-providers.
+The OpenCode Zen provider supplies the `glm-5.3-flash` model. Authentication
+uses `OPENCODE_ZEN_API_KEY` from the managed env file. Hermes sends
+`reasoning_effort` at the top level for the primary provider.
 
 The local llama-server stack remains available in the repo, but it is not the
 active primary route in the current deployment.
 
 The important current routing values are:
 
-- primary model: `zai-org/GLM-5.3-Flash` at medium reasoning
+- primary model: `glm-5.3-flash` at medium reasoning
 - delegation model: `gpt-5.6-sol` at high reasoning
 - auxiliary model: `gpt-5.6-luna` at extra-high (`xhigh`) reasoning
-- Baseten multi-model catalogue: reachable as `custom:baseten:<model-id>`
+- OpenCode Zen model: reachable through the `opencode-zen` provider
 - Holographic memory enabled
 
 For local backend and model policy detail, use the llama-server docs:
@@ -515,7 +501,7 @@ The following are in place now:
 - managed `.env` rendering through sops-nix
 - auth seeding through `authFile`
 - Telegram token and allowlist injection
-- `custom:baseten` primary with `zai-org/GLM-5.3-Flash` and multi-model discovery
+- `opencode-zen` primary with `glm-5.3-flash`
 - `openai-codex` delegation with `gpt-5.6-sol` at high reasoning
 - `openai-codex` auxiliary roles with `gpt-5.6-luna` at extra-high (`xhigh`) reasoning
 - Holographic memory

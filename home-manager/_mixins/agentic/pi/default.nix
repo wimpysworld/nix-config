@@ -252,10 +252,12 @@ let
         export BASETEN_API_KEY
       fi
 
-      opencode_zen_api_key_path="${if zenEnabled then config.sops.secrets.OPENCODE_API_KEY.path else ""}"
+      opencode_zen_api_key_path="${
+        if zenEnabled then config.sops.secrets.OPENCODE_ZEN_API_KEY.path else ""
+      }"
       if [ -n "$opencode_zen_api_key_path" ] && [ -r "$opencode_zen_api_key_path" ]; then
-        OPENCODE_API_KEY="$(cat "$opencode_zen_api_key_path")"
-        export OPENCODE_API_KEY
+        OPENCODE_ZEN_API_KEY="$(cat "$opencode_zen_api_key_path")"
+        export OPENCODE_ZEN_API_KEY
       fi
 
       if [ "''${NOUGHTY_AGENT_LAUNCH_COMMAND:-pi}" = "pi-fenced" ]; then
@@ -352,8 +354,8 @@ let
       "openai-codex/gpt-5.6-terra"
       "openai-codex/gpt-5.6-luna"
       "openai-codex/gpt-5.3-codex-spark"
-      # OpenCode Zen gateway. The OPENCODE_API_KEY credential arrives through
-      # the wrapper on non-cg hosts; Pi's built-in opencode provider reads it.
+      # The wrapper exports OPENCODE_ZEN_API_KEY on non-cg hosts.
+      # models.json maps the credential to Pi's built-in opencode provider.
       "opencode/glm-5.3-flash"
     ];
 
@@ -772,7 +774,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
     mode = "0400";
   };
 
-  sops.secrets.OPENCODE_API_KEY = lib.mkIf zenEnabled {
+  sops.secrets.OPENCODE_ZEN_API_KEY = lib.mkIf zenEnabled {
     sopsFile = aiSopsFile;
     mode = "0400";
   };
@@ -800,6 +802,11 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
     ]
     ++ lib.optional fencedEnabled piFencedPackage;
     file = {
+      ".pi/agent/models.json" = lib.mkIf zenEnabled {
+        text = builtins.toJSON {
+          providers.opencode.apiKey = "$OPENCODE_ZEN_API_KEY";
+        };
+      };
       ".pi/agent/settings.json".text = builtins.toJSON piSettings;
       ".pi/agent/keybindings.json".text = builtins.toJSON piKeybindings;
       ".pi/agent/extensions/pi-footer.json".text = builtins.toJSON piFooterConfig;

@@ -11,10 +11,12 @@ The upstream package comes from `inputs.llm-agents.packages.${system}.pi`, match
 - Gates installation with `noughtyLib.userHasTag "developer"`
 - Exports `ANTHROPIC_API_KEY` from the sops-nix runtime secret path only on personal physical computers
 - Exports `GEMINI_API_KEY` (and `GOOGLE_GENERATIVE_AI_API_KEY`) and `BASETEN_API_KEY` from sops-nix runtime secret paths when present
+- Exports `OPENCODE_ZEN_API_KEY` from its sops-nix runtime secret path on hosts without the `cg` tag
 - Exports `ANTHROPIC_OAUTH_TOKEN` from Claude Code's local OAuth credentials when available, so quota extensions can query Anthropic plan windows
 - Adds a `pi-npm` wrapper backed by Nixpkgs `nodejs`, with npm's global prefix redirected to `~/.pi/agent/npm-global` and routine npm advisory output disabled
 - Owns Pi config and resource files through Home Manager:
   - `~/.pi/agent/settings.json`
+  - `~/.pi/agent/models.json` on hosts without the `cg` tag
   - `~/.pi/agent/mcp.json`
   - `~/.pi/agent/extensions/pi-footer.json`
   - `~/.pi/agent/pi-sub-core-settings.json`
@@ -257,7 +259,9 @@ This module writes `~/.pi/agent/themes/catppuccin-mocha.json` from the repositor
 
 ## Authentication
 
-`secrets/ai.yaml` provides `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, and `BASETEN_API_KEY`.
+`secrets/ai.yaml` provides `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `BASETEN_API_KEY`, and `OPENCODE_ZEN_API_KEY`.
+
+On hosts without the `cg` tag, Home Manager owns `~/.pi/agent/models.json`. Its `providers.opencode.apiKey` value is `$OPENCODE_ZEN_API_KEY`. Pi resolves that reference from the wrapper's environment and keeps its built-in models. See Pi's [provider overrides and value resolution](https://github.com/badlogic/pi-mono/blob/v0.85.1/packages/coding-agent/docs/models.md). The configuration contains no secret value.
 
 On personal physical computers, the `pi` wrapper reads `config.sops.secrets.ANTHROPIC_API_KEY.path` at runtime and exports the key only for the Pi process. On other hosts, the evaluated wrapper contains neither that secret path nor the `ANTHROPIC_API_KEY` export. When Claude Code OAuth credentials exist locally, every host still exports `ANTHROPIC_OAUTH_TOKEN` for Pi's quota extensions. The managed `settings.json` and all managed Pi resource files contain no literal secret values.
 

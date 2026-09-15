@@ -53,13 +53,13 @@ let
       export ANTHROPIC_API_KEY
     fi
   ''
-  # The OpenCode Zen gateway (provider "opencode") reads OPENCODE_API_KEY.
+  # The OpenCode Zen provider maps OPENCODE_ZEN_API_KEY through its options.
   # The secret is declared only on non-cg hosts, so the read skips silently
   # wherever the key is not rendered.
   + lib.optionalString zenEnabled ''
-    if [ -r "${config.sops.secrets.OPENCODE_API_KEY.path}" ]; then
-      OPENCODE_API_KEY="$(cat "${config.sops.secrets.OPENCODE_API_KEY.path}")"
-      export OPENCODE_API_KEY
+    if [ -r "${config.sops.secrets.OPENCODE_ZEN_API_KEY.path}" ]; then
+      OPENCODE_ZEN_API_KEY="$(cat "${config.sops.secrets.OPENCODE_ZEN_API_KEY.path}")"
+      export OPENCODE_ZEN_API_KEY
     fi
   '';
   communicationRules = config.agentic.communicationRules;
@@ -217,7 +217,7 @@ in
     mode = "0400";
   };
 
-  sops.secrets.OPENCODE_API_KEY = lib.mkIf (config.programs.opencode.enable && zenEnabled) {
+  sops.secrets.OPENCODE_ZEN_API_KEY = lib.mkIf (config.programs.opencode.enable && zenEnabled) {
     sopsFile = aiSopsFile;
     mode = "0400";
   };
@@ -298,6 +298,9 @@ in
           # forwards `reasoning.effort` on the Responses API call.
           model = "openai/gpt-5.5";
           provider = {
+            opencode = lib.mkIf zenEnabled {
+              options.apiKey = "{env:OPENCODE_ZEN_API_KEY}";
+            };
             openai = {
               models = {
                 "gpt-5.5" = {
