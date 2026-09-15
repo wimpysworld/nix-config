@@ -24,12 +24,6 @@ let
       monitorY = 0;
       defaultWidth = 2560;
       defaultHeight = 2880;
-      greetdLayout = ''
-        profile {
-            output DP-4 enable mode 2560x2880@60Hz position 2560,0 scale 1.0
-            output DP-1 enable mode 2560x2880@60Hz position 0,0 scale 1.0
-        }
-      '';
     };
     zannah = {
       connector = "DP-1";
@@ -39,7 +33,6 @@ let
       monitorY = 0;
       defaultWidth = 3440;
       defaultHeight = 1440;
-      greetdLayout = "";
     };
   };
 
@@ -132,7 +125,62 @@ let
       (indexOf "respond @notTailscale 403" caddyConfig < indexOf "redir /syncthing " caddyConfig)
       (indexOf "redir /novnc " caddyConfig < indexOf "handle /novnc/websockify" caddyConfig)
       (indexOf "handle /novnc/websockify" caddyConfig < indexOf "handle_path /novnc/*" caddyConfig)
-      (config.environment.etc."kanshi/regreet".text == expected.greetdLayout)
+    ];
+
+  expectedGreeters = {
+    skrye = [
+      "DP-1"
+      "2560"
+      "2880"
+      "60"
+    ];
+    zannah = null;
+    ravi = [
+      "eDP-1"
+      "2880"
+      "1920"
+      "120"
+    ];
+    bane = [
+      "eDP-1"
+      "2560"
+      "1600"
+      "165.000000"
+    ];
+  };
+
+  greeterPasses =
+    name: primaryArgs:
+    let
+      config = configFor name;
+      pkgs = flake.nixosConfigurations.${name}.pkgs;
+      wrappers = lib.filter (
+        package: (package.name or "") == "regreet-cage"
+      ) config.environment.systemPackages;
+      wrapper = (builtins.head wrappers).text;
+      helper = import ../../../desktop/greeters/regreet-output-setup { inherit pkgs; };
+      session = [
+        "${pkgs.dbus}/bin/dbus-run-session"
+        "${pkgs.regreet}/bin/regreet"
+      ];
+      command =
+        if primaryArgs == null then
+          lib.concatStringsSep " " session
+        else
+          lib.escapeShellArgs ([ "${helper}/bin/regreet-output-setup" ] ++ primaryArgs ++ session);
+    in
+    lib.all (value: value) [
+      (lib.length wrappers == 1)
+      (config.services.greetd.settings.default_session.command == "regreet-cage")
+      (config.services.greetd.settings.default_session.user == "greeter")
+      (builtins.elem "d /var/cache/regreet 0700 greeter greeter - -" config.systemd.tmpfiles.rules)
+      (hasLine ''export XDG_CACHE_HOME="/var/cache/regreet"'' wrapper)
+      (indexOf ''export XDG_CACHE_HOME="/var/cache/regreet"'' wrapper < indexOf "/bin/cage -d" wrapper)
+      (config.noughty.host.display.isMultiMonitor == (primaryArgs != null))
+      (hasLine "${pkgs.cage}/bin/cage -d -m last -s -- ${command}" wrapper)
+      (!(config.environment.etc ? "kanshi/regreet"))
+      (!(lib.hasInfix "kanshi" wrapper))
+      (primaryArgs != null || !(lib.hasInfix "regreet-output-setup" wrapper))
     ];
 
   homePasses =
@@ -179,6 +227,7 @@ let
   '';
 in
 assert lib.all targetPasses targetNames;
+assert lib.all (value: value) (lib.mapAttrsToList greeterPasses expectedGreeters);
 assert lib.all homePasses (targetNames ++ untaggedNames);
 assert lib.all sessionPasses targetNames;
 assert lib.all untaggedPasses untaggedNames;

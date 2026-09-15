@@ -94,6 +94,10 @@ in
         stdenv = hermesStdenv;
       };
 
+      cage = prev.cage.overrideAttrs (oldAttrs: {
+        patches = (oldAttrs.patches or [ ]) ++ [ ./patches/cage/teardown-order.patch ];
+      });
+
       fresh = final.unstable.fresh-editor;
 
       herdr = inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}.herdr.overrideAttrs (

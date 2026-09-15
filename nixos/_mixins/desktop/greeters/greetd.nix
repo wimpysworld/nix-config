@@ -34,15 +34,11 @@ let
   # preferred compositor. See https://gitlab.gnome.org/GNOME/gtk/-/blob/4.22.4/gdk/wayland/gdkcursor-wayland.c
   regreetCage = pkgs.writeShellScriptBin "regreet-cage" ''
     # Start regreet in a Wayland kiosk using Cage
-    function cleanup() {
-      ${pkgs.procps}/bin/pkill kanshi || true
-    }
-    trap cleanup EXIT
-
     export GTK_THEME="catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-standard"
     export XCURSOR_THEME="catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors"
     export XCURSOR_SIZE="32"
     export XDG_DATA_DIRS="${regreetDataDirs}"
+    export XDG_CACHE_HOME="/var/cache/regreet"
 
     ${pkgs.cage}/bin/cage -d -m last -s -- ${greeterSession}
   '';
@@ -51,79 +47,24 @@ let
       res = host.display.primaryResolution;
     in
     if res != "" then noughtyLib.backgroundResolution res else "1920x1080";
-  # ReFrame needs the greeter and user session to share the registry layout,
-  # so every display stays live at the greeter and this profile restores the
-  # registry layout. Cage cannot confine its view to one output of a
-  # multi-output layout: view.c positions the view against the whole layout
-  # bounding box, so the greeter view still spans every live display here.
-  kanshiProfile =
-    if !host.display.isMultiMonitor || !(noughtyLib.hostHasTag "reframe") then
-      ""
-    else
-      let
-        inherit (host.display) primary;
-        nonPrimary = lib.filter (d: d.output != primary.output) host.displays;
-        mkEnableLine =
-          display:
-          "    output ${display.output} enable mode ${toString display.width}x${toString display.height}@${toString display.refresh}Hz position ${toString display.position.x},${toString display.position.y} scale ${builtins.toJSON display.scale}";
-        profileLines = map mkEnableLine nonPrimary ++ [ (mkEnableLine primary) ];
-      in
-      ''
-        profile {
-        ${lib.concatStringsSep "\n" profileLines}
-        }
-      '';
-  # Other multi-monitor hosts keep the primary-only greeter layout. wlr-randr
-  # sends the disable and enable as one atomic wlr-output-management batch and
-  # blocks until Cage confirms it succeeded, so regreet starts on a
-  # single-output layout instead of spanning every display and reflowing later.
-  # Single-monitor hosts need no output configuration; Cage handles one output
-  # fine. See https://github.com/cage-kiosk/cage/issues/257 and
-  # https://github.com/NixOS/nixpkgs/issues/226586.
-  wlrRandrArgs =
-    if !host.display.isMultiMonitor || noughtyLib.hostHasTag "reframe" then
-      ""
-    else
-      let
-        inherit (host.display) primary;
-        nonPrimary = lib.filter (d: d.output != primary.output) host.displays;
-        disableArgs = map (d: "--output ${d.output} disable") nonPrimary;
-        enableArgs = [
-          "--output ${primary.output} enable"
-          "--mode ${toString primary.width}x${toString primary.height}@${toString primary.refresh}Hz"
-          "--pos 0,0"
-          "--scale 1"
-        ];
-      in
-      lib.concatStringsSep " " (disableArgs ++ enableArgs);
-  # The greeter session command inside Cage, in three cases:
-  # - ReFrame hosts: kanshi restores the registry layout with every display
-  #   live while regreet starts.
-  # - Other multi-monitor hosts: wlr-randr configures the primary
-  #   synchronously, so regreet only starts once the layout is final.
-  # - Single-monitor hosts: no output configuration at all.
+  regreetOutputSetup = import ./regreet-output-setup { inherit pkgs; };
   greeterSession =
-    if kanshiProfile != "" then
-      ''
-        sh -c \
-                '${pkgs.kanshi}/bin/kanshi --config /etc/kanshi/regreet & \
-                 ${pkgs.dbus}/bin/dbus-run-session ${pkgs.regreet}/bin/regreet'
-      ''
-    else if wlrRandrArgs != "" then
-      ''
-        sh -c \
-                '${pkgs.wlr-randr}/bin/wlr-randr ${wlrRandrArgs} && \
-                 exec ${pkgs.dbus}/bin/dbus-run-session ${pkgs.regreet}/bin/regreet'
-      ''
+    if host.display.isMultiMonitor then
+      lib.escapeShellArgs [
+        "${regreetOutputSetup}/bin/regreet-output-setup"
+        host.display.primary.output
+        (toString host.display.primary.width)
+        (toString host.display.primary.height)
+        (toString host.display.primary.refresh)
+        "${pkgs.dbus}/bin/dbus-run-session"
+        "${pkgs.regreet}/bin/regreet"
+      ]
     else
       "${pkgs.dbus}/bin/dbus-run-session ${pkgs.regreet}/bin/regreet";
 in
 lib.mkIf host.is.workstation {
   # Use Cage to run regreet
   environment = {
-    etc = {
-      "kanshi/regreet".text = kanshiProfile;
-    };
     systemPackages = [
       cursorPackage
       gtkThemePackage
@@ -168,6 +109,9 @@ lib.mkIf host.is.workstation {
       };
     };
   };
+  systemd.tmpfiles.rules = [
+    "d /var/cache/regreet 0700 greeter greeter - -"
+  ];
   security.pam.services.greetd.enableGnomeKeyring = true;
   services.greetd = {
     enable = true;
