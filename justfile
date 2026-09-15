@@ -240,7 +240,10 @@ check:
 
 # Run the declarative ReFrame module regression test
 test-reframe:
-    nix build --no-link --impure --expr 'let root = toString ./.; flake = builtins.getFlake root; homeFlake = builtins.getFlake ("git+file://" + root); in import ./nixos/_mixins/server/reframe/tests/module-test.nix { inherit flake homeFlake; inherit (flake.inputs.nixpkgs) lib; }'
+    #!/usr/bin/env bash
+    set -euo pipefail
+    system=$(nix eval --impure --raw --expr builtins.currentSystem)
+    nix build --no-link ".#checks.${system}.reframe"
 
 # Evaluate configurations without building
 eval:

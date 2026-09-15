@@ -133,7 +133,23 @@
           pkgs = nixpkgs.legacyPackages.${system};
           includeHostConfigurations = system == "x86_64-linux";
         in
-        {
+        nixpkgs.lib.optionalAttrs includeHostConfigurations {
+          # The module test evaluates its assertions while forcing the
+          # returned autostart derivation, so building this check runs it.
+          reframe = import ./nixos/_mixins/server/reframe/tests/module-test.nix {
+            flake = self;
+            homeFlake = self;
+            inherit (nixpkgs) lib;
+          };
+          wayland-compositors = import ./lib/tests/wayland-compositors.nix {
+            inherit (nixpkgs) lib;
+            inherit pkgs;
+            enableHostIntegration = true;
+            inherit (self) nixosConfigurations;
+            inherit (self) homeConfigurations;
+          };
+        }
+        // {
           assistant-catalogue = pkgs.runCommand "assistant-catalogue" { } (
             nixpkgs.lib.concatMapStrings
               (kind: ''
@@ -149,13 +165,6 @@
               touch "$out"
             ''
           );
-          wayland-compositors = import ./lib/tests/wayland-compositors.nix {
-            inherit (nixpkgs) lib;
-            inherit pkgs;
-            enableHostIntegration = includeHostConfigurations;
-            nixosConfigurations = if includeHostConfigurations then self.nixosConfigurations else { };
-            homeConfigurations = if includeHostConfigurations then self.homeConfigurations else { };
-          };
           wayland-session-lifecycle = import ./lib/tests/wayland-session-lifecycle.nix {
             inherit pkgs;
           };

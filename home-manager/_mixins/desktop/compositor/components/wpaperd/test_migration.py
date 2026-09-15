@@ -1,5 +1,6 @@
 """Run the graphical-session dependency cleanup only in temporary homes."""
 
+import hashlib
 import json
 import os
 import subprocess
@@ -19,7 +20,15 @@ SERVICES = (
     "veila-idle.service",
 )
 DEPENDENCIES = Path("systemd/user/graphical-session.target.wants")
-STORE_FILES = "/nix/store/ljih5kpjd0al1jm5ylc1zhfdqry1lyd3-home-manager-files/"
+# The migration script matches a 32-character Nix base-32 store hash in the
+# link destination, but the fixture links must stay dangling so the script
+# removes them. A deterministic synthetic hash derived from this file, in the
+# base-32 alphabet the script accepts, never collides with a real generation.
+STORE_HASH = "".join(
+    "0123456789abcdfghijklmnpqrsvwxyz"[byte % 32]
+    for byte in hashlib.sha256(str(MODULE).encode()).digest()
+)
+STORE_FILES = f"/nix/store/{STORE_HASH}-home-manager-files/"
 
 
 class MigrationTests(unittest.TestCase):
@@ -145,8 +154,12 @@ class MigrationTests(unittest.TestCase):
                 str(self.home / ("user-" + link.name)),
                 owned.replace("home-manager-files", "user-files"),
                 STORE_FILES + "different/" + link.name,
-                owned.replace("ljih5kpjd0al1jm5ylc1zhfdqry1lyd3", "not-a-store-hash"),
-                owned.replace("ljih5kpjd0al1jm5ylc1zhfdqry1lyd3", "e" * 32),
+                owned.replace(
+                    STORE_FILES, "/nix/store/not-a-store-hash-home-manager-files/"
+                ),
+                owned.replace(
+                    STORE_FILES, f"/nix/store/{'e' * 32}-home-manager-files/"
+                ),
                 "/foreign" + owned,
                 owned + ".extra",
                 owned + "/extra",

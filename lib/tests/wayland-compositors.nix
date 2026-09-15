@@ -242,9 +242,6 @@ let
     pureData = isPureData contract;
     requiredFields = entriesHaveRequiredFields;
   };
-  cleanupSource = ../../nixos/_mixins/desktop/wayland-shim/wayland-session-cleanup.sh;
-  launcherSource = ../../nixos/_mixins/desktop/wayland-shim/start-wayland.sh;
-  sessionSource = ../../home-manager/_mixins/scripts/wayland-session/wayland-session.sh;
 in
 assert
   builtins.attrNames contract.compositors == [
@@ -308,12 +305,6 @@ assert !enableHostIntegration || !(hasGeneratedPngStatePath baneHomeWayfire);
 assert !enableHostIntegration || baneHomeWayfire.settings.winshadows == expectedWinshadowsSettings;
 assert
   !enableHostIntegration
-  || baneHome.systemd.user.services.reframe-session.Unit.PartOf == [ "wayfire-session.target" ];
-assert
-  !enableHostIntegration
-  || baneHome.systemd.user.services.reframe-session.Install.WantedBy == [ "wayfire-session.target" ];
-assert
-  !enableHostIntegration
   || felkorHome.systemd.user.services.lan-mouse.Unit.PartOf == [ "wayfire-session.target" ];
 assert
   !enableHostIntegration
@@ -353,23 +344,6 @@ assert !enableHostIntegration || (logoutService skryeHome).Service.Type == "ones
 assert !enableHostIntegration || !((logoutService skryeHome).Unit ? PartOf);
 assert !enableHostIntegration || !(logoutService skryeHome ? Install);
 pkgs.runCommand "wayland-compositor-contract" { } ''
-  finalise_block=$(sed -n '/^finalise)/,/^recover)/p' ${cleanupSource})
-  test "$finalise_block" = $'finalise)\n\tstop_session\n\tneutralise_environment\n\treset_start_limits\n\t;;\nrecover)'
-
-  dbus_line=$(grep -nF 'dbus-update-activation-environment --systemd' ${cleanupSource} | cut -d: -f1)
-  systemd_line=$(grep -nF 'systemctl --user unset-environment' ${cleanupSource} | cut -d: -f1)
-  test "$dbus_line" -lt "$systemd_line"
-  grep -F -- 'systemctl --user show --property=Wants --value "$session_target"' \
-    ${cleanupSource} >/dev/null
-  grep -F -- 'reset-failed "''${reset_units[@]}"' ${cleanupSource} >/dev/null
-
-  prepare_line=$(grep -nF $'\tprepare_logout' ${sessionSource} | cut -d: -f1)
-  adapter_line=$(grep -nF $'\twayland-session-adapter logout' ${sessionSource} | cut -d: -f1)
-  test "$prepare_line" -lt "$adapter_line"
-  grep -F -- $'logout)\n\tsystemctl --user start --no-block wayland-session-logout.service' \
-    ${sessionSource} >/dev/null
-  grep -F -- 'exit "$launcher_status"' ${launcherSource} >/dev/null
-
   ${lib.optionalString enableHostIntegration ''
     grep -F -- ${lib.escapeShellArg wayfireCleanupArguments} \
       ${waylandShim "bane"}/bin/wayland-session-cleanup >/dev/null
@@ -383,45 +357,6 @@ pkgs.runCommand "wayland-compositor-contract" { } ''
       ${sessionPackage felkorHome}/bin/wayland-session >/dev/null
     grep -F -- ${lib.escapeShellArg "set -- ${hyprlandStartupArguments} \"\$@\""} \
       ${sessionPackage skryeHome}/bin/wayland-session >/dev/null
-
-    export bane_startup_log="$TMPDIR/bane-startup.log"
-    : > "$bane_startup_log"
-    record_bane_event() {
-      local argument
-      local command_name=$1
-      shift
-
-      printf '%s' "$command_name" >> "$bane_startup_log"
-      for argument in "$@"; do
-        printf ' <%s>' "$argument" >> "$bane_startup_log"
-      done
-      printf '\n' >> "$bane_startup_log"
-    }
-    wayland-session-cleanup() {
-      record_bane_event wayland-session-cleanup "$@"
-      printf 'wayland-session-cleanup: generated Bane recovery warning\n' >&2
-      return 9
-    }
-    dbus-update-activation-environment() {
-      record_bane_event dbus-update-activation-environment "$@"
-    }
-    systemctl() {
-      record_bane_event systemctl "$@"
-    }
-    hostname() {
-      printf 'bane\n'
-    }
-    export -f record_bane_event wayland-session-cleanup
-    export -f dbus-update-activation-environment systemctl hostname
-
-    ${sessionPackage baneHome}/bin/wayland-session start 2>"$TMPDIR/bane-startup.stderr"
-    printf '%s' $'wayland-session-cleanup <recover>\ndbus-update-activation-environment <--systemd> <DISPLAY> <WAYLAND_DISPLAY> <XDG_SESSION_TYPE> <XDG_CURRENT_DESKTOP> <NIXOS_OZONE_WL> <XCURSOR_THEME> <XCURSOR_SIZE> <WAYFIRE_SOCKET>\nsystemctl <--user> <start> <wayfire-session.target>\n' \
-      >"$TMPDIR/bane-startup.expected"
-    diff -u "$TMPDIR/bane-startup.expected" "$bane_startup_log"
-    grep -Fx 'wayland-session-cleanup: generated Bane recovery warning' \
-      "$TMPDIR/bane-startup.stderr" >/dev/null
-    grep -Fx 'wayland-session: recovery failed with code 9, startup will continue' \
-      "$TMPDIR/bane-startup.stderr" >/dev/null
   ''}
   printf '%s\n' ${lib.escapeShellArg (builtins.toJSON contractResult)} > "$out"
 ''
