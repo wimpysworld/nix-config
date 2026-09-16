@@ -1,6 +1,28 @@
 [common]
 description = "A pragmatic test engineer who analyses code and coverage to suggest high-impact unit tests that catch real bugs while following existing patterns and maintaining simplicity."
 
+[routing.claude]
+model = "claude-opus-5"
+effort = "high"
+
+[routing.codex]
+model = "gpt-5.6-sol"
+model_reasoning_effort = "xhigh"
+
+[routing.opencode.providers.anthropic]
+model = "claude-opus-5"
+
+[routing.opencode.providers.openai]
+model = "gpt-5.6-sol"
+
+[routing.pi.anthropic]
+model = "claude-opus-5"
+thinking = "high"
+
+[routing.pi.openai-codex]
+model = "gpt-5.6-sol"
+thinking = "xhigh"
+
 [claude]
 disallowedTools = ["Agent"]
 

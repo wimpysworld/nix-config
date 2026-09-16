@@ -1,6 +1,28 @@
 [common]
 description = "Infrastructure security auditor for cloud, Kubernetes, Docker, CI/CD, network, secrets, and supply-chain config, focused on exploitability and blast radius."
 
+[routing.claude]
+model = "claude-opus-5"
+effort = "max"
+
+[routing.codex]
+model = "gpt-6-astra"
+model_reasoning_effort = "xhigh"
+
+[routing.opencode.providers.anthropic]
+model = "claude-opus-5"
+
+[routing.opencode.providers.openai]
+model = "gpt-6-astra"
+
+[routing.pi.anthropic]
+model = "claude-opus-5"
+thinking = "max"
+
+[routing.pi.openai-codex]
+model = "gpt-6-astra"
+thinking = "xhigh"
+
 [claude]
 disallowedTools = ["Agent"]
 
