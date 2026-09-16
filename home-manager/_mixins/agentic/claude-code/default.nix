@@ -471,7 +471,7 @@ let
       claudePackageWithLsp;
 
   # Launch defaults shared by the plain and fenced `claude` wrappers. Builds a
-  # `claude_defaults` bash array holding the Opus model, high effort, and, when
+  # `claude_defaults` bash array holding Fable 5.1, low effort, and, when
   # a prior session exists for the current directory, a resume of the newest
   # transcript. The defaults are dropped for subcommands (e.g. `claude mcp
   # list`) and headless `-p` runs, where resume flags would break the command or
@@ -512,7 +512,7 @@ let
       printf '%s\n' "$session_id"
     }
 
-    claude_defaults=(--model opus --effort high)
+    claude_defaults=(--model claude-fable-5-1 --effort low)
     case "''${1:-}" in
       -h | --help | -v | --version | -p | --print | agents | auth | auto-mode | config | doctor | install | mcp | migrate-installer | plugin | plugins | project | setup-token | ultrareview | update | upgrade)
         claude_defaults=()
@@ -1033,6 +1033,7 @@ in
           {
             fastMode = false;
             fastModePerSessionOptIn = true;
+            switchModelsOnFlag = false;
 
             # MCP servers are selected by the shared MCP mixin. Project
             # MCP servers remain opt-in instead of being silently trusted.

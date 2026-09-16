@@ -346,7 +346,7 @@ let
   piSettings = {
     defaultProvider = "openai-codex";
     defaultModel = "gpt-6-astra";
-    defaultThinkingLevel = "medium";
+    defaultThinkingLevel = "low";
     thinkingBudgets = {
       minimal = 1024;
       low = 4096;
@@ -356,7 +356,7 @@ let
     };
     hideThinkingBlock = true;
     enabledModels = [
-      "anthropic/claude-fable-5"
+      "anthropic/claude-fable-5-1:low"
       "anthropic/claude-opus-5"
       "anthropic/claude-sonnet-5"
       "openai-codex/gpt-6-astra"

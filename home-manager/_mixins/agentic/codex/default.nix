@@ -440,7 +440,7 @@ let
     web_search = "disabled";
 
     model = "gpt-6-astra";
-    model_reasoning_effort = "medium";
+    model_reasoning_effort = "low";
     service_tier = "default";
 
     # Bound Codex subagent fan-out.
