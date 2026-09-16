@@ -99,10 +99,12 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | dibble | codex | Unset | gpt-6-astra | xhigh |
 | dibble | pi | anthropic | claude-opus-5 | max |
 | dibble | pi | openai-codex | gpt-6-astra | xhigh |
-| donatello | claude | Unset | Unset | Unset |
-| donatello | opencode | Unset | Unset | Unset |
-| donatello | codex | Unset | Unset | Unset |
-| donatello | pi | Unset | Unset | Unset |
+| donatello | claude | Unset | claude-opus-5 | high |
+| donatello | opencode | anthropic | claude-opus-5 | Unset |
+| donatello | opencode | openai | gpt-5.6-sol | Unset |
+| donatello | codex | Unset | gpt-5.6-sol | xhigh |
+| donatello | pi | anthropic | claude-opus-5 | high |
+| donatello | pi | openai-codex | gpt-5.6-sol | xhigh |
 | garfield | claude | Unset | haiku | Unset |
 | garfield | opencode | anthropic | claude-haiku-4-5 | Unset |
 | garfield | opencode | openai | gpt-5.6-luna | Unset |
