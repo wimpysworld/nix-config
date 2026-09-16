@@ -33,43 +33,6 @@ let
   hermesAgentsviewMachine = "${host.name}-hermes";
   hermesDashboardHost = "127.0.0.1";
   hermesDashboardPort = 9119;
-  piperVoiceRevision = "7a6c333ec560f0e688371adc2fbb7bbe105028c6";
-  piperVctkMediumModel = pkgs.fetchurl {
-    url = "https://huggingface.co/rhasspy/piper-voices/resolve/${piperVoiceRevision}/en/en_GB/vctk/medium/en_GB-vctk-medium.onnx";
-    hash = "sha256-Tp/IWrkAk4Uxn8a65/VVd/ii1+53/ZFZpVAOtlMfQeY=";
-  };
-  piperVctkMediumConfig = pkgs.fetchurl {
-    url = "https://huggingface.co/rhasspy/piper-voices/resolve/${piperVoiceRevision}/en/en_GB/vctk/medium/en_GB-vctk-medium.onnx.json";
-    hash = "sha256-f4XmOR7Q9/RuSr0ZNFkpoWvpMaDJlFCG+WaS3OIIf6g=";
-  };
-  piperVctkMediumVoice = pkgs.runCommand "piper-en_GB-vctk-medium-voice" { } ''
-    mkdir -p "$out"
-    ln -s ${piperVctkMediumModel} "$out/en_GB-vctk-medium.onnx"
-    ln -s ${piperVctkMediumConfig} "$out/en_GB-vctk-medium.onnx.json"
-  '';
-  patchedOnnxruntimePythonPackage =
-    pkgs.runCommand "python312-onnxruntime-execstack-cleared"
-      {
-        nativeBuildInputs = [ pkgs.pax-utils ];
-      }
-      ''
-        cp -a --no-preserve=mode,ownership ${pkgs.python312Packages.onnxruntime} "$out"
-        chmod -R u+w "$out"
-        find "$out/${pkgs.python312.sitePackages}/onnxruntime/capi" -name "*.so" -print0 \
-          | xargs -0 -r scanelf -X -e
-      '';
-  piperTtsPythonPackage = pkgs.python312Packages.toPythonModule (
-    pkgs.callPackage "${inputs.nixpkgs}/pkgs/by-name/pi/piper-tts/package.nix" {
-      python3Packages = pkgs.python312Packages;
-      withAlignment = false;
-      withHTTP = false;
-      withTrain = false;
-    }
-  );
-  piperPythonPath = lib.makeSearchPath pkgs.python312.sitePackages (
-    [ patchedOnnxruntimePythonPackage ]
-    ++ pkgs.python312Packages.requiredPythonModules [ piperTtsPythonPackage ]
-  );
   managedHermesConfig =
     (pkgs.formats.yaml { }).generate "hermes-managed-config.yaml"
       config.services.hermes-agent.settings;
@@ -83,7 +46,7 @@ let
   # service account and the interactive host user intentionally share one
   # managed HERMES_HOME via the hermes group.
   hermesManagedPythonPath = pkgs.writeTextDir "sitecustomize.py" ''
-    """Keep managed Hermes state group-accessible, patch Piper speaker selection, and patch doctor checks."""
+    """Keep managed Hermes state group-accessible and patch doctor checks."""
 
     import builtins
     import os
@@ -149,47 +112,6 @@ let
                 **kwargs,
             )
 
-        def _managed_piper_speaker_id() -> int | None:
-            value = os.environ.get("HERMES_PIPER_SPEAKER_ID", "").strip()
-            if not value:
-                return None
-
-            try:
-                return int(value)
-            except ValueError:
-                return None
-
-        def _patch_piper_module(module) -> None:
-            if getattr(module, "_noughty_piper_patch_applied", False):
-                return
-
-            speaker_id = _managed_piper_speaker_id()
-            if speaker_id is None:
-                return
-
-            original_synthesis_config = getattr(module, "SynthesisConfig", None)
-            if original_synthesis_config is None:
-                return
-
-            class ManagedSynthesisConfig(original_synthesis_config):
-                def __init__(self, *args, **kwargs):
-                    if kwargs.get("speaker_id") in (None, ""):
-                        kwargs["speaker_id"] = speaker_id
-                    super().__init__(*args, **kwargs)
-
-            module.SynthesisConfig = ManagedSynthesisConfig
-            try:
-                module.config.SynthesisConfig = ManagedSynthesisConfig
-            except AttributeError:
-                pass
-
-            try:
-                module.voice._DEFAULT_SYNTHESIS_CONFIG.speaker_id = speaker_id
-            except AttributeError:
-                pass
-
-            module._noughty_piper_patch_applied = True
-
         def _patch_doctor_module(module) -> None:
             if getattr(module, "_noughty_doctor_patch_applied", False):
                 return
@@ -223,9 +145,7 @@ let
         def _managed_import(name, globals=None, locals=None, fromlist=(), level=0):
             module = _original_import(name, globals, locals, fromlist, level)
 
-            if name == "piper":
-                _patch_piper_module(module)
-            elif name == "hermes_cli.doctor":
+            if name == "hermes_cli.doctor":
                 _patch_doctor_module(module)
                 builtins.__import__ = _original_import
             elif name == "hermes_cli" and fromlist and "doctor" in fromlist:
@@ -274,9 +194,8 @@ let
             --set-default TRAYA_SANCTUARY_DIR "/var/lib/hermes/workspace/trayas-sanctuary" \
             --set-default TRAYA_SANCTUARY_REPO "the-cauldron/trayas-sanctuary" \
             --prefix PATH : "${lib.makeBinPath hermesExtraPackages}" \
-            --set PYTHONPATH "${hermesManagedPythonPath}:${piperPythonPath}" \
-            --set-default HERMES_MANAGED "true" \
-            --set-default HERMES_PIPER_SPEAKER_ID "11"
+            --set PYTHONPATH "${hermesManagedPythonPath}" \
+            --set-default HERMES_MANAGED "true"
         fi
       done
     '';
@@ -336,7 +255,6 @@ let
     openhue-cli
     openssh
     poppler-utils
-    piperTtsPythonPackage
     procps
     python3
     rclone
@@ -371,7 +289,7 @@ let
     # No trailing \''${PYTHONPATH-}: inherit the caller's PYTHONPATH and the
     # wrapped shell reintroduces the shadowing problem the wrapper exists to
     # prevent. Managed paths are authoritative here too.
-    export PYTHONPATH="${hermesManagedPythonPath}:${piperPythonPath}"
+    export PYTHONPATH="${hermesManagedPythonPath}"
 
     # Interactive CLI sandboxing: systemd hardening does not apply to host
     # shells, so we reuse bubblewrap to hide the same paths the gateway
@@ -704,8 +622,7 @@ in
       package = hermesAgentPackage;
       environment = {
         GNUPGHOME = hermesGnupgHome;
-        HERMES_PIPER_SPEAKER_ID = "11";
-        PYTHONPATH = "${hermesManagedPythonPath}:${piperPythonPath}";
+        PYTHONPATH = "${hermesManagedPythonPath}";
         TELEGRAM_HOME_CHANNEL = "-1003933927882";
       };
       extraPackages = [
@@ -928,17 +845,13 @@ in
           };
         };
 
+        # Voice output via Microsoft's free Edge Read-Aloud service. The
+        # Irish English neural voice suits the agent's persona; delivery
+        # speed runs at the provider default.
         tts = {
-          provider = "piper";
-          piper = {
-            voice = "${piperVctkMediumVoice}/en_GB-vctk-medium.onnx";
-            voices_dir = "${piperVctkMediumVoice}";
-            speaker_id = 11;
-            length_scale = 1.1315;
-            noise_scale = 0.435;
-            noise_w_scale = 0.815;
-            use_cuda = false;
-            normalize_audio = true;
+          provider = "edge";
+          edge = {
+            voice = "en-IE-EmilyNeural";
           };
         };
 
