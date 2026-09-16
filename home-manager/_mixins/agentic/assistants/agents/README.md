@@ -130,10 +130,12 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | penry | codex | Unset | gpt-5.6-sol | xhigh |
 | penry | pi | anthropic | claude-opus-5 | high |
 | penry | pi | openai-codex | gpt-5.6-sol | xhigh |
-| rosey | claude | Unset | Unset | Unset |
-| rosey | opencode | Unset | Unset | Unset |
-| rosey | codex | Unset | Unset | Unset |
-| rosey | pi | Unset | Unset | Unset |
+| rosey | claude | Unset | claude-fable-5-1 | medium |
+| rosey | opencode | anthropic | claude-fable-5-1 | Unset |
+| rosey | opencode | openai | gpt-6-astra | Unset |
+| rosey | codex | Unset | gpt-6-astra | medium |
+| rosey | pi | anthropic | claude-fable-5-1 | medium |
+| rosey | pi | openai-codex | gpt-6-astra | medium |
 | velma | claude | Unset | sonnet | high |
 | velma | opencode | anthropic | claude-sonnet-5 | Unset |
 | velma | opencode | openai | gpt-5.6-sol | Unset |
