@@ -275,6 +275,16 @@ host gate and runtime secret read. Fence receives no secret value in its
 arguments. Fence still provides the managed filesystem, network, and command
 policy.
 
+On Linux, each `pi-fenced` launch outside an existing Fence sandbox mounts a
+private, mode-0700 tmpfs at `$HOME/.pi/agent/pi-pretty/fff` before Fence starts.
+Fence exposes that mount as writable. Descendants share it, but separate
+launches do not share FFF databases. This prevents LMDB lock collisions between
+processes with the same PID in separate PID namespaces. FFF indexes and frecency
+history last only for that launch and its descendants. The existing host
+database stays unchanged beneath the mount. `HOME` and other shared Pi state
+stay unchanged. macOS behaviour is unchanged, and servers do not install
+`pi-fenced`.
+
 ## MCP
 
 Pi MCP support is provided by [pi-mcp-adapter](https://github.com/nicobailon/pi-mcp-adapter), installed through the pinned package setting.

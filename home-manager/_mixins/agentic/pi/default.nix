@@ -322,6 +322,16 @@ let
       fence_log_agent="pi"
       ${fenceLogging.setupShell}
 
+      fence_mount=()
+      ${lib.optionalString host.is.linux ''
+        pi_fff_dir="$HOME/.pi/agent/pi-pretty/fff"
+        mkdir -p -- "$pi_fff_dir"
+        fence_mount=(
+          ${lib.getExe pkgs.bubblewrap} --bind / / --dev-bind /dev /dev --perms 0700 --tmpfs "$pi_fff_dir" --
+        )
+        fence_args+=(--expose-host-path-rw "$pi_fff_dir")
+      ''}
+
       # herdr identifies a pane's agent from the foreground process group
       # environ. Export the hint host-side so fence and the whole wrapper chain
       # inherit it; an inline post-`--` token would land only inside the sandbox
@@ -329,7 +339,7 @@ let
       export HERDR_AGENT=pi
 
       export NOUGHTY_AGENT_LAUNCH_COMMAND="pi-fenced"
-      fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" ${lib.getExe' piWrapperPackage "pi"} "$@"
+      "''${fence_mount[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" ${lib.getExe' piWrapperPackage "pi"} "$@"
     '';
   };
 
