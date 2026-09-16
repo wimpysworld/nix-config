@@ -14,7 +14,8 @@ pkgs: {
   herdr-agent-usage = pkgs.callPackage ./herdr-agent-usage { };
   herdr-integrations = pkgs.callPackage ./herdr-integrations { };
   herdr-pc-ram-and-cpu-usage-overlay = pkgs.callPackage ./herdr-pc-ram-and-cpu-usage-overlay { };
-  herdr-work-layout = pkgs.callPackage ./herdr-work-layout { };
+  herdr-home-layout = pkgs.callPackage ./herdr-layout { };
+  herdr-work-layout = pkgs.callPackage ./herdr-layout { work = true; };
   linear-term = pkgs.callPackage ./linear-term { };
   linear-tui = pkgs.callPackage ./linear-tui { };
   manuscript = pkgs.callPackage ./manuscript { };

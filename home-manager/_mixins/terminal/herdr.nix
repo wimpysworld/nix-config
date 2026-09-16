@@ -18,6 +18,9 @@ let
       "${config.home.homeDirectory}/Chainguard/_worktrees"
     else
       "${config.home.homeDirectory}/Development/_worktrees";
+  # Work hosts get the Chainguard pane set and Claude and Codex autostart;
+  # home hosts get the OpenCode pane set for personal development.
+  herdrLayout = if noughtyLib.hostHasTag "cg" then pkgs.herdr-work-layout else pkgs.herdr-home-layout;
   settings = {
     # Herdr shows the onboarding screen until it writes `onboarding = false`
     # back to the configuration file. Nix renders that file as a read-only
@@ -298,7 +301,7 @@ in
       pkgs.herdr
       pkgs.herdr-agent-usage
       pkgs.herdr-pc-ram-and-cpu-usage-overlay
-      pkgs.herdr-work-layout
+      herdrLayout
     ];
 
     home.activation.herdrAgentUsagePlugin = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
@@ -313,14 +316,24 @@ in
             ${pkgs.herdr-pc-ram-and-cpu-usage-overlay}/share/herdr/plugins/space-usage --enabled
         '';
 
-    home.activation.herdrWorkLayoutPlugin =
-      lib.hm.dag.entryAfter [ "herdrPcRamAndCpuUsageOverlayPlugin" ]
-        ''
-          ${pkgs.herdr}/bin/herdr plugin link \
-            ${pkgs.herdr-work-layout}/share/herdr/plugins/work-layout --enabled
-        '';
+    # Unlink layout plugin variants that a previous host configuration may
+    # have left linked, so exactly one `workspace.created` handler remains.
+    home.activation.herdrLayoutPrune = lib.hm.dag.entryAfter [ "herdrPcRamAndCpuUsageOverlayPlugin" ] ''
+      for herdr_layout_id in ${
+        lib.escapeShellArgs (
+          if noughtyLib.hostHasTag "cg" then [ "local.home-layout" ] else [ "local.work-layout" ]
+        )
+      }; do
+        ${pkgs.herdr}/bin/herdr plugin unlink "$herdr_layout_id" || true
+      done
+    '';
 
-    home.activation.herdrReloadConfig = lib.hm.dag.entryAfter [ "herdrWorkLayoutPlugin" ] ''
+    home.activation.herdrLayoutPlugin = lib.hm.dag.entryAfter [ "herdrLayoutPrune" ] ''
+      ${pkgs.herdr}/bin/herdr plugin link \
+        ${herdrLayout}/share/herdr/plugins/${herdrLayout.passthru.pluginDir} --enabled
+    '';
+
+    home.activation.herdrReloadConfig = lib.hm.dag.entryAfter [ "herdrLayoutPlugin" ] ''
       herdr_reload_status=0
       herdr_reload_output="$(${pkgs.herdr}/bin/herdr server reload-config 2>&1)" \
         || herdr_reload_status=$?
