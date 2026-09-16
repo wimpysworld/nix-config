@@ -108,10 +108,12 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | gonzales | opencode | Unset | Unset | Unset |
 | gonzales | codex | Unset | Unset | Unset |
 | gonzales | pi | Unset | Unset | Unset |
-| penfold | claude | Unset | Unset | Unset |
-| penfold | opencode | Unset | Unset | Unset |
-| penfold | codex | Unset | Unset | Unset |
-| penfold | pi | Unset | Unset | Unset |
+| penfold | claude | Unset | claude-fable-5-1 | high |
+| penfold | opencode | anthropic | claude-fable-5-1 | Unset |
+| penfold | opencode | openai | gpt-6-astra | Unset |
+| penfold | codex | Unset | gpt-6-astra | medium |
+| penfold | pi | anthropic | claude-fable-5-1 | high |
+| penfold | pi | openai-codex | gpt-6-astra | medium |
 | penry | claude | Unset | Unset | Unset |
 | penry | opencode | Unset | Unset | Unset |
 | penry | codex | Unset | Unset | Unset |
