@@ -852,6 +852,7 @@ in
           provider = "edge";
           edge = {
             voice = "en-IE-EmilyNeural";
+            speed = 1.25;
           };
         };
 
