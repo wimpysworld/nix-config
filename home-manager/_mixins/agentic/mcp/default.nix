@@ -2,6 +2,7 @@
   config,
   inputs,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
@@ -22,6 +23,8 @@ let
   codexMcpEnabled = config.programs.codex.enable;
   opencodeMcpEnabled = config.programs.opencode.enable;
   zedMcpEnabled = config.programs.zed-editor.enable;
+  # Same tag gate that `moltis/default.nix` uses to install the binary.
+  moltisMcpEnabled = noughtyLib.hostHasTag "moltis";
   mcpClientEnabled =
     claudeMcpEnabled || codexMcpEnabled || opencodeMcpEnabled || piMcpEnabled || zedMcpEnabled;
   mcporterEnabled = mcpClientEnabled && !host.is.server;
@@ -31,7 +34,8 @@ let
     ++ lib.optionals codexMcpEnabled [ "codex" ]
     ++ lib.optionals opencodeMcpEnabled [ "opencode" ]
     ++ lib.optionals piMcpEnabled [ "pi" ]
-    ++ lib.optionals zedMcpEnabled [ "zed" ];
+    ++ lib.optionals zedMcpEnabled [ "zed" ]
+    ++ lib.optionals moltisMcpEnabled [ "moltis" ];
 
   # Shell-only agent workflow secrets that do not appear in server definitions.
   workflowShellSecrets = lib.optionals (codexMcpEnabled || piMcpEnabled) [

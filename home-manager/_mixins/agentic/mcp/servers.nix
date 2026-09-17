@@ -445,6 +445,63 @@ rec {
     in
     lib.mapAttrs render (lib.filterAttrs keep servers);
 
+  # moltisServers: entries for Moltis' `moltis.toml` `[mcp.servers.<name>]`
+  # tables, rendered to the upstream schema of tag 20260913.02
+  # (docs/src/mcp.md): transport = "stdio" | "sse" | "streamable-http", plus
+  # url, headers, command, args, env, and request_timeout_secs.
+  #
+  # Bearer auth follows Moltis' placeholder protocol rather than an injected
+  # secret: the emitted `headers.Authorization` keeps the literal `${NAME}`
+  # placeholder so Moltis resolves it from environment overrides at runtime.
+  # This matches the openapi/pi posture of never baking a secret value into
+  # generated config while staying schema-valid for Moltis.
+  #
+  # Moltis' `[mcp.servers.<name>]` schema has no `enabled` toggle for
+  # managed entries, so `consumers.moltis.enabled = false` hard-omits the
+  # server entirely, mirroring how claudeServers omits Claude-disabled
+  # servers because Claude's schema also has no toggle field. A future
+  # `transport = "sse"` branch is kept ready for servers that declare it.
+  moltisServers =
+    let
+      keep = _: s: (s.enabled or true) && (s.consumers.moltis.enabled or true);
+      remoteHeaders =
+        s:
+        lib.optionalAttrs (s.auth or null != null && s.auth.kind == "bearer") {
+          headers.Authorization = "Bearer \${${s.auth.envVar}}";
+        };
+      remoteCommon =
+        s:
+        remoteHeaders s
+        // lib.optionalAttrs (s ? startupTimeoutSec) {
+          request_timeout_secs = s.startupTimeoutSec;
+        };
+      render =
+        _: s:
+        if s.transport == "http" then
+          {
+            transport = "streamable-http";
+            inherit (s) url;
+          }
+          // remoteCommon s
+        else if s.transport == "sse" then
+          {
+            transport = "sse";
+            inherit (s) url;
+          }
+          // remoteCommon s
+        else
+          {
+            transport = "stdio";
+            inherit (s) command;
+            args = s.args or [ ];
+          }
+          // lib.optionalAttrs ((s.env or { }) != { }) { inherit (s) env; }
+          // lib.optionalAttrs (s ? startupTimeoutSec) {
+            request_timeout_secs = s.startupTimeoutSec;
+          };
+    in
+    lib.mapAttrs render (lib.filterAttrs keep servers);
+
   codexOAuthCallbackPort = if isWorkHost then servers.slack.oauth.callbackPort else null;
   codexOAuthCallbackUrl = if isWorkHost then servers.slack.oauth.redirectUri else null;
 
@@ -550,6 +607,8 @@ rec {
             !(s.consumers.pi.omit or false)
           else if consumer == "zed" then
             true
+          else if consumer == "moltis" then
+            true
           else
             false
         );
@@ -569,5 +628,6 @@ rec {
     "opencode"
     "pi"
     "zed"
+    "moltis"
   ];
 }
