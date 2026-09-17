@@ -23,8 +23,9 @@ let
   codexMcpEnabled = config.programs.codex.enable;
   opencodeMcpEnabled = config.programs.opencode.enable;
   zedMcpEnabled = config.programs.zed-editor.enable;
-  # Same tag gate that `moltis/default.nix` uses to install the binary.
-  moltisMcpEnabled = noughtyLib.hostHasTag "moltis";
+  # Same host gate that `moltis/default.nix` uses to install the binary.
+  isMartin = noughtyLib.isUser [ "martin" ];
+  moltisMcpEnabled = isMartin && host.is.linux && noughtyLib.hostHasTag "moltis";
   mcpClientEnabled =
     claudeMcpEnabled || codexMcpEnabled || opencodeMcpEnabled || piMcpEnabled || zedMcpEnabled;
   mcporterEnabled = mcpClientEnabled && !host.is.server;
