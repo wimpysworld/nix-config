@@ -1,5 +1,6 @@
 {
   config,
+  inputs,
   lib,
   noughtyLib,
   pkgs,
@@ -10,6 +11,9 @@ let
 
   isMartin = noughtyLib.isUser [ "martin" ];
   moltisEnabled = isMartin && host.is.linux && noughtyLib.hostHasTag "moltis";
+
+  username = config.noughty.user.name;
+  homeDir = config.home.homeDirectory;
 
   hermesSopsFile = ../../../../secrets/hermes.yaml;
   aiSopsFile = ../../../../secrets/ai.yaml;
@@ -63,6 +67,46 @@ let
         placeholder = config.sops.placeholder.OPENCODE_ZEN_API_KEY;
       }
     ];
+
+  # PATH entries for the systemd user unit, mirroring `paseo/default.nix`.
+  moltisPath = lib.concatStringsSep ":" [
+    "${homeDir}/.nix-profile/bin"
+    "${homeDir}/.local/state/nix/profile/bin"
+    "/etc/profiles/per-user/${username}/bin"
+    "/run/current-system/sw/bin"
+    "/run/wrappers/bin"
+    "/nix/var/nix/profiles/default/bin"
+  ];
+
+  # Fence plumbing for the daemon wrapper: only the fence binary and the
+  # logging helper. The shared agent-share, wayland-bridge, git, and
+  # chromium setups target interactive TUI agents; a headless daemon needs
+  # none of direnv capture, Wayland bridging, git setup, or Chromium.
+  fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
+  fenceLogging = import ../fence/logging.nix { inherit pkgs; };
+
+  moltisFencedPackage = pkgs.writeShellApplication {
+    name = "moltis-fenced";
+    runtimeInputs = [
+      fencePackage
+    ]
+    ++ fenceLogging.runtimeInputs;
+    text = ''
+      fence_args=()
+      fence_env=()
+
+      fence_log_agent="moltis"
+      ${fenceLogging.setupShell}
+
+      # The rendered `[env]` table already carries the real secret values at
+      # sops render time, so unlike `opencode-fenced` no key-read prologue is
+      # needed here. The gateway is a foreground daemon, so `fence -- moltis`
+      # satisfies the unit's `Type = "simple"` contract. The `fence_direnv`
+      # launcher is inert here: the unit runs at $HOME, away from any
+      # project `.envrc`.
+      exec fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" ${lib.getExe pkgs.moltis} "$@"
+    '';
+  };
 in
 {
   options.agentic.moltis.envPlumbing = lib.mkOption {
@@ -125,7 +169,27 @@ in
         };
     in
     {
-      home.packages = [ pkgs.moltis ];
+      home.packages = [
+        pkgs.moltis
+        moltisFencedPackage
+      ];
+
+      home.shellAliases.moltis-log = "journalctl --user -u moltis.service";
+
+      systemd.user.services.moltis = {
+        Unit.Description = "Moltis - secure persistent personal agent server";
+        Service = {
+          Type = "simple";
+          ExecStart = "${moltisFencedPackage}/bin/moltis-fenced";
+          # Only PATH. The rendered `[env]` table already holds real secrets
+          # at sops render time; moltis resolves `${VAR}` placeholders
+          # against the process env first, then `[env]`.
+          Environment = [ "PATH=${moltisPath}" ];
+          Restart = "on-failure";
+          RestartSec = 10;
+        };
+        Install.WantedBy = [ "default.target" ];
+      };
 
       sops.secrets = lib.genAttrs (lib.attrNames moltisSecretSopsFiles) secretConfig;
 
@@ -134,6 +198,18 @@ in
       sops.templates."moltis.toml" = {
         content = builtins.readFile (
           (pkgs.formats.toml { }).generate "moltis.toml" {
+            # Pin the gateway server address. `ServerConfig::default().port`
+            # is 0, and a port of 0 on disk makes `initialize_config()`
+            # generate a random port and write it back to the config file it
+            # loaded, which against this layout means writing through the
+            # sops-rendered symlink on every restart (crates/config/src/
+            # schema/system.rs and crates/config/src/loader/config_io.rs,
+            # tag 20260913.02). A non-zero port on loopback prevents both.
+            server = {
+              port = 13131;
+              bind = "127.0.0.1";
+            };
+
             # Moltis resolves `${VAR}` placeholders against the process
             # environment, and the config loader's second pass treats the
             # `[env]` table as an overrides map (crates/config/src/loader.rs,
