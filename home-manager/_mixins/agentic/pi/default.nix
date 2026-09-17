@@ -386,7 +386,12 @@ let
 
     compaction = {
       enabled = true;
-      reserveTokens = 16384;
+      # The trigger fires when context tokens exceed the model's context
+      # window minus this reserve. The GPT-5.6 family and GPT-6 Astra carry a
+      # 384,000-token window via models.json modelOverrides below, so a
+      # 38,400 reserve starts compaction at 345,600 tokens for them, matching
+      # Codex's 90%-of-window trigger. keepRecentTokens stays at its 20,000.
+      reserveTokens = 38400;
       keepRecentTokens = 20000;
     };
     retry = {
@@ -812,14 +817,38 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
     ]
     ++ lib.optional fencedEnabled piFencedPackage;
     file = {
-      # One Zen API key authenticates both OpenCode relays: the Zen gateway
+      # models.json exists on every developer host so the openai-codex
+      # overrides below always apply. They raise the built-in openai-codex
+      # provider's context window for the four subscription models above the
+      # smaller built-in registry value. Subscription auth must accept the
+      # window, so this declaration must stay within what the provider
+      # entitlement accepts. Unknown model ids are silently ignored by Pi.
+      # The Zen API key authenticates the OpenCode relays: the Zen gateway
       # (Pi provider "opencode") and the Go gateway (Pi provider
       # "opencode-go"). The wrapper exports the key on non-cg hosts.
-      ".pi/agent/models.json" = lib.mkIf zenEnabled {
-        text = builtins.toJSON {
-          providers.opencode.apiKey = "$OPENCODE_ZEN_API_KEY";
-          providers."opencode-go".apiKey = "$OPENCODE_ZEN_API_KEY";
-        };
+      ".pi/agent/models.json" = {
+        text = builtins.toJSON (
+          lib.recursiveUpdate
+            {
+              providers."openai-codex".modelOverrides =
+                lib.genAttrs
+                  [
+                    "gpt-5.6-sol"
+                    "gpt-5.6-terra"
+                    "gpt-5.6-luna"
+                    "gpt-6-astra"
+                  ]
+                  (_: {
+                    contextWindow = 384000;
+                  });
+            }
+            (
+              lib.optionalAttrs zenEnabled {
+                providers.opencode.apiKey = "$OPENCODE_ZEN_API_KEY";
+                providers."opencode-go".apiKey = "$OPENCODE_ZEN_API_KEY";
+              }
+            )
+        );
       };
       ".pi/agent/settings.json".text = builtins.toJSON piSettings;
       ".pi/agent/keybindings.json".text = builtins.toJSON piKeybindings;

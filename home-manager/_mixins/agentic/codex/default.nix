@@ -443,6 +443,16 @@ let
     model_reasoning_effort = "low";
     service_tier = "default";
 
+    # Override the model registry window for the GPT-5.6 family and GPT-6
+    # Astra. Codex 0.154.0 (rust-v0.149.0 and later) honours this override on
+    # subscription auth up to the entitlement ceiling, and rejects above it
+    # with an explicit error rather than truncating silently. Automatic
+    # compaction is expressed as min(auto_compact_token_limit, 90% of this
+    # window) with a 95% effective stop, so leaving those defaults unset
+    # compacts at 345,600 tokens here. See
+    # https://developers.openai.com/codex/config-reference.
+    model_context_window = 384000;
+
     # Bound Codex subagent fan-out.
     agents = {
       max_concurrent_threads_per_session = 12;

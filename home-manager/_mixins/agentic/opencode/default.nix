@@ -368,14 +368,43 @@ in
                 "gpt-6-astra"
                 "gpt-6-astra-fast"
               ];
+              # Declare the real context window for the four subscription
+              # models, overriding the bundled models.dev snapshot, which
+              # reports a smaller window. Output is declared as 38,400 so
+              # automatic compaction starts when estimated tokens reach the
+              # context limit minus max(output reserve, buffer) = 384,000 -
+              # 38,400 = 345,600, matching Codex's 90%-of-window trigger.
+              # OPENCODE_DISABLE_MODELS_FETCH=1 keeps the bundled catalogue,
+              # so these limits are the authoritative source.
+              models = {
+                "gpt-5.6-sol".limit = {
+                  context = 384000;
+                  output = 38400;
+                };
+                "gpt-5.6-terra".limit = {
+                  context = 384000;
+                  output = 38400;
+                };
+                "gpt-5.6-luna".limit = {
+                  context = 384000;
+                  output = 38400;
+                };
+                "gpt-6-astra".limit = {
+                  context = 384000;
+                  output = 38400;
+                };
+              };
             };
           };
 
-          # Context compaction - manual control
-          # Use /compact slash command when context gets full
-          # OpenCode displays token usage in the interface to help monitor
+          # Automatic compaction. The trigger is the model's context limit
+          # minus max(output reserve, buffer); with the per-model limits above
+          # and the 20,000-token default buffer, OpenCode compacts at 345,600
+          # estimated tokens. keep.tokens stays at the 15,000-token default.
+          # OpenCode also recognises provider context-overflow errors and
+          # compacts once to retry when auto is true.
           compaction = {
-            auto = false; # Disable automatic compaction
+            auto = true; # Compact automatically at the trigger above
             prune = true; # Keep pruning old tool outputs to save tokens
           };
 
