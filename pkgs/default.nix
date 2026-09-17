@@ -20,6 +20,7 @@ pkgs: {
   linear-term = pkgs.callPackage ./linear-term { };
   linear-tui = pkgs.callPackage ./linear-tui { };
   manuscript = pkgs.callPackage ./manuscript { };
+  moltis = pkgs.callPackage ./moltis { };
   openhue-cli = pkgs.callPackage ./openhue-cli { };
   perch = pkgs.callPackage ./perch { };
   slk = pkgs.callPackage ./slk { };
