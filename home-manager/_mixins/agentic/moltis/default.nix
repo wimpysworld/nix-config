@@ -212,7 +212,7 @@ in
                 # exactly one username or user id: upstream does not split
                 # comma-joined values here.
                 allowlist = [ "\${TELEGRAM_ALLOWED_USERS}" ];
-                group_policy = "open";
+                group_policy = "allowlist";
                 group_allowlist = [ "-1003933927882" ];
                 # Channel-level model defaults mirror Hermes' `model.default`
                 # and `model.provider` (NixOS Hermes module): glm-5.3-flash
