@@ -128,6 +128,17 @@ let
         "${config.xdg.configHome}/gws"
         "${config.xdg.configHome}/gws/**"
       ]
+      # The moltis daemon writes its data dir (SQLite database, workspace
+      # markdowns, Managed Files) and its config dir (regenerated
+      # defaults.toml and TLS certs, which moltis renews near expiry) beside
+      # the sops-rendered moltis.toml symlink. Fenced runtimes that shell out
+      # to moltis need the same trees writable.
+      ++ lib.optionals (noughtyLib.hostHasTag "moltis") [
+        "~/.moltis"
+        "~/.moltis/**"
+        "${config.xdg.configHome}/moltis"
+        "${config.xdg.configHome}/moltis/**"
+      ]
       ++ lib.optionals host.is.darwin [
         darwinSigstoreCacheHome
         "${darwinSigstoreCacheHome}/**"
