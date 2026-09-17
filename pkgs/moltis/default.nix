@@ -7,6 +7,7 @@
   stdenv,
   fetchurl,
   autoPatchelfHook,
+  makeWrapper,
   zlib,
   gcc-unwrapped,
 }:
@@ -23,7 +24,10 @@ stdenv.mkDerivation (finalAttrs: {
   # The archive holds the binary and share/ as siblings; keep the checkout root.
   sourceRoot = ".";
 
-  nativeBuildInputs = [ autoPatchelfHook ];
+  nativeBuildInputs = [
+    autoPatchelfHook
+    makeWrapper
+  ];
 
   buildInputs = [
     zlib
@@ -35,6 +39,14 @@ stdenv.mkDerivation (finalAttrs: {
     install -Dm0755 moltis "$out/bin/moltis"
     cp -r share "$out/share"
     runHook postInstall
+  '';
+
+  # The binary resolves web assets from MOLTIS_SHARE_DIR. Without the
+  # wrapper it only looks in the working directory, its siblings, and
+  # /usr/share/moltis, so it must point at the packaged assets. --set-default
+  # lets a caller override the value with an explicit MOLTIS_SHARE_DIR.
+  postInstall = ''
+    wrapProgram "$out/bin/moltis" --set-default MOLTIS_SHARE_DIR "$out/share/moltis"
   '';
 
   meta = {
