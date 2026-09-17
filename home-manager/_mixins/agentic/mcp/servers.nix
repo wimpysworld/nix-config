@@ -589,7 +589,9 @@ rec {
 
   # requiredSecretsForConsumers: sorted list of distinct env var names needed
   # by enabled consumers. Per-consumer disabled entries still count for clients
-  # that render them as visible but disabled. Hard-omitted consumers do not.
+  # that render them as visible but disabled. Consumers the renderer hard-omits,
+  # such as Moltis and Claude Code, do not, so their disabled servers drop both
+  # the config entry and the secret the entry would use.
   requiredSecretsForConsumers =
     consumers:
     let
@@ -608,7 +610,7 @@ rec {
           else if consumer == "zed" then
             true
           else if consumer == "moltis" then
-            true
+            s.consumers.moltis.enabled or true
           else
             false
         );
