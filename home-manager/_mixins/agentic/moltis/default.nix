@@ -113,9 +113,16 @@ in
       # substitutes `${VAR}` against `[env]` values), but a direct duplicate
       # avoids one expansion hop and works even if `[env]`-to-`[env]`
       # references regress upstream.
-      envBlock = lib.listToAttrs (
-        lib.map (entry: lib.nameValuePair entry.name entry.placeholder) config.agentic.moltis.envPlumbing
-      );
+      envBlock =
+        lib.listToAttrs (
+          lib.map (entry: lib.nameValuePair entry.name entry.placeholder) config.agentic.moltis.envPlumbing
+        )
+        // {
+          # Not a sops secret: Hermes ships the channel id as a plain service
+          # environment value. Kept as a Nix literal here; WW-274 may inject it
+          # from its own environment instead, making this the fallback.
+          TELEGRAM_HOME_CHANNEL = "-1003933927882";
+        };
     in
     {
       home.packages = [ pkgs.moltis ];
@@ -213,7 +220,10 @@ in
                 # comma-joined values here.
                 allowlist = [ "\${TELEGRAM_ALLOWED_USERS}" ];
                 group_policy = "allowlist";
-                group_allowlist = [ "-1003933927882" ];
+                # Whole-file substitution resolves this from `[env]`, so the
+                # channel id lives exactly once (loader second pass,
+                # crates/config/src/loader/config_io.rs, tag 20260913.02).
+                group_allowlist = [ "\${TELEGRAM_HOME_CHANNEL}" ];
                 # Channel-level model defaults mirror Hermes' `model.default`
                 # and `model.provider` (NixOS Hermes module): glm-5.3-flash
                 # on the Go relay steers chat sessions.
