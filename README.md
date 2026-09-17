@@ -11,7 +11,7 @@
 A [Nix Flake](https://zero-to-nix.com/concepts/flakes) managing NixOS, macOS, and Home Manager across all my systems from a single repo.
 The interesting bit is the architecture: every module is imported everywhere, and each module decides for itself whether to activate based on host metadata.
 No import lists to maintain, no per-host module selections - just drop a self-gating module in a directory and every relevant host picks it up automatically.
-If you're starting your own Nix configuration, I'd recommend https://github.com/Misterio77/nix-starter-configs as a foundation. 👍️
+If you're starting your own Nix configuration, I'd recommend <https://github.com/Misterio77/nix-starter-configs> as a foundation. 👍️
 This repo is the deep end.
 
 These computers are managed by this Nix flake ❄️
@@ -28,7 +28,7 @@ These computers are managed by this Nix flake ❄️
 |  `felkor`   |     [ThinkPad X13 Gen 2]      |    [AMD Ryzen 5 PRO 5650U]     | 16GB  |      AMD Radeon Vega 7      |                          |  💻️   | ❄️  |  🚧   |
 |   `shaa`    |     [ThinkPad T14s Gen 1]     |    [AMD Ryzen 5 PRO 4650U]     | 16GB  |    AMD Radeon RX Vega 6     |                          |  💻️   | ❄️  |  ✅   |
 |  `atrius`   |       [ThinkPad T495s]        |      [AMD Ryzen 7 3700U]       | 16GB  |     AMD Radeon Vega 10      |                          |  💻️   | ❄️  |  🚧   |
-|   `momin`   |         [MacBook M3 Pro]      |         11-core Apple M3 Pro chip          | 36GB  |         14-core GPU         |                          |  💻️    | 🍏  |  ✅   |
+|   `momin`   | [Mac Mini M2 Pro]     |       Apple M2 Pro chip        | 32GB  |      Apple M2 Pro GPU       |                          |   🖥️  | 🍏  |  ✅   |
 | `steamdeck` |     [Steam Deck 64GB LCD]     |          Zen 2 4c/8t           | 16GB  |        8 RDNA 2 CUs         |                          |  🎮️   | 🐧  |  ✅   |
 |  `crawler`  |            [QEMU]             |               -                |   -   |           [VirGL]           |                          |   🐄   | ❄️  |  ✅   |
 |  `dagger`   |            [QEMU]             |               -                |   -   |           [VirGL]           |                          |   🐄   | ❄️  |  ✅   |
@@ -63,7 +63,7 @@ Dual boot systems have the NixOS install named a Sith Lord and the _"other"_ OS 
 
 Most NixOS configurations use **selective imports** - each host cherry-picks which modules to include. This flake does the opposite.
 
-**Every module is imported by every host.** Modules decide *internally* whether to activate, based on typed host metadata. I call this the "broadcast-and-gate" pattern, and it changes how you think about composing NixOS configurations.
+**Every module is imported by every host.** Modules decide _internally_ whether to activate, based on typed host metadata. I call this the "broadcast-and-gate" pattern, and it changes how you think about composing NixOS configurations.
 
 ### Self-gating modules
 
@@ -91,7 +91,7 @@ Every host is registered in the system registry (`lib/registry-systems.toml`, re
 
 **Adding a new host** = add a registry entry to `lib/registry-systems.toml` and create a hardware config. That's it. The new host automatically gets the right desktop, GPU drivers, services, shell, everything - because the modules gate themselves based on the host's properties, not its name.
 
-**Host-specific directories** (`nixos/skrye/`, `nixos/sidious/`, etc.) contain *only* hardware: disk layouts and kernel modules. All behaviour lives in the self-gating modules reacting to host properties.
+**Host-specific directories** (`nixos/skrye/`, `nixos/sidious/`, etc.) contain _only_ hardware: disk layouts and kernel modules. All behaviour lives in the self-gating modules reacting to host properties.
 
 The full noughty option reference, helper functions, and usage patterns are documented in [`lib/noughty/README.md`](./lib/noughty/README.md).
 
@@ -211,16 +211,20 @@ The usual creature comforts you'd expect to find in a Linux Desktop are integrat
 - Put the .iso image on a USB drive, I use [USBImager](https://bztsrc.gitlab.io/usbimager/)
 - Boot the target computer from the USB drive
 - From a trusted workstation, inject tokens to the ISO host:
+
   ```bash
   just inject-tokens <ip-address>
   ```
+
   This sends the SOPS age keys to the live environment. Both age keys are hard requirements - the install will abort without them. FlakeHub authentication is handled interactively during install via `determinate-nixd login`.
   If `determinate-nixd` is authenticated, the installer uses FlakeHub Cache for a faster install; otherwise it builds locally.
 - SSH into the ISO host and run the installer:
+
   ```bash
   ssh nixos@<ip-address>
   install-system <hostname> [username]
   ```
+
   The install script uses [Disko] to partition and format the disks, installs NixOS via `nixos-install`, copies the flake to `~/Zero/nix-config`, and chroots into the new system to activate the Home Manager configuration.
 - Make a cuppa 🫖
 - Reboot 🥾
@@ -395,12 +399,6 @@ Some applications require manual configuration to apply the correct theme.
 [Framework Desktop Mainboard]: https://frame.work/gb/en/products/framework-desktop-mainboard-amd-ryzen-ai-max-300-series
 [TRX40-DESIGNARE]: https://www.gigabyte.com/Motherboard/TRX40-DESIGNARE-rev-10
 [Z390-DESIGNARE]: https://www.gigabyte.com/Motherboard/Z390-DESIGNARE-rev-10#kf
-[MEG-X570-UNIFY]: https://www.msi.com/Motherboard/MEG-X570-UNIFY
-[MEG-X570-ACE]: https://www.msi.com/Motherboard/MEG-X570-ACE
-[NUC5i7RYH]: https://www.intel.co.uk/content/www/uk/en/products/sku/87570/intel-nuc-kit-nuc5i7ryh/specifications.html
-[NUC6i7KYK]: https://ark.intel.com/content/www/us/en/ark/products/89187/intel-nuc-kit-nuc6i7kyk.html
-[TRX40-DESIGNARE]: https://www.gigabyte.com/Motherboard/TRX40-DESIGNARE-rev-10#kf
-[ROG Crosshair VIII Impact]: https://rog.asus.com/uk/motherboards/rog-crosshair/rog-crosshair-viii-impact-model/
 [B360 HD3P-LM]: https://www.gigabyte.com/Motherboard/B360-HD3P-rev-10
 [Framework 13]: https://frame.work/gb/en/laptop13
 [Framework 16]: https://frame.work/gb/en/laptop16
@@ -409,51 +407,26 @@ Some applications require manual configuration to apply the correct theme.
 [ThinkPad X13 Gen 2]: https://www.lenovo.com/us/en/p/coming-soon/x13-amd-g2/22tpx13x3a1
 [ThinkPad T14s Gen 1]: https://www.lenovo.com/gb/en/p/laptops/thinkpad/thinkpadt/t14s-amd-g1/22tpt144sa2
 [ThinkPad T495s]: https://www.lenovo.com/us/en/p/laptops/thinkpad/thinkpadt/t495s/22tp2tt495s
-[MacBook M3 Pro]: https://support.apple.com/en-gb/117736
-[MacBook M2 Air]: https://support.apple.com/en-gb/111346
-[MacBook Pro 2015]: https://support.apple.com/en-gb/111955
+[Mac Mini M2 Pro]: https://support.apple.com/en-gb/111837
 [Steam Deck 64GB LCD]: https://store.steampowered.com/steamdeck
-[GB-BXCEH-2955]: https://www.gigabyte.com/uk/Mini-PcBarebone/GB-BXCEH-2955-rev-10
-[GB-BXCEH-2955 Review]: https://nucblog.net/2014/11/gigabyte-brix-2955u-review/
 [QEMU]: https://www.qemu.org/
 [Lima]: https://lima-vm.io/
 [Intel Core i9-9900K]: https://www.intel.com/content/www/us/en/products/sku/186605/intel-core-i99900k-processor-16m-cache-up-to-5-00-ghz/specifications.html
 [Intel Core i7-8700]: https://www.intel.com/content/www/us/en/products/sku/126686/intel-core-i78700-processor-12m-cache-up-to-4-60-ghz/specifications.html
 [Intel Xeon E-2176M]: https://ark.intel.com/content/www/us/en/ark/products/134867/intel-xeon-e-2176m-processor-12m-cache-up-to-4-40-ghz.html
-[Intel Core i7-5557U]: https://www.intel.com/content/www/us/en/products/sku/84993/intel-core-i75557u-processor-4m-cache-up-to-3-40-ghz/specifications.html
-[Intel Core i7-6770HQ]: https://ark.intel.com/content/www/us/en/ark/products/93341/intel-core-i7-6770hq-processor-6m-cache-up-to-3-50-ghz.html
-[Intel Celeron 2955U]: https://www.intel.com/content/www/us/en/products/sku/75608/intel-celeron-processor-2955u-2m-cache-1-40-ghz/specifications.html
 [AMD Ryzen Threadripper 3970X]: https://www.amd.com/en/newsroom/press-releases/2019-11-7-amd-introduces-world-s-fastest-high-end-desktop-pr.html
 [AMD Ryzen AI Max+ 395]: https://www.amd.com/en/products/processors/laptop/ryzen/ai-300-series/amd-ryzen-ai-max-plus-395.html
-[AMD Ryzen 9 5950X]: https://www.amd.com/en/products/cpu/amd-ryzen-9-5950x
-[AMD Ryzen 9 5900X]: https://www.amd.com/en/products/cpu/amd-ryzen-9-5900x
 [AMD Ryzen 7 7940HS]: https://www.amd.com/en/products/processors/laptop/ryzen/7000-series/amd-ryzen-9-7940hs.html
 [AMD Ryzen AI 9 HX 370]: https://www.amd.com/en/products/processors/laptop/ryzen/ai-300-series/amd-ryzen-ai-9-hx-370.html
 [AMD Ryzen 5 PRO 6650U]: https://www.amd.com/en/products/apu/amd-ryzen-5-pro-6650u
 [AMD Ryzen 5 PRO 5650U]: https://www.techpowerup.com/cpu-specs/ryzen-5-pro-5650u.c2773
 [AMD Ryzen 5 PRO 4650U]: https://www.amd.com/en/support/downloads/drivers.html/processors/ryzen-pro/ryzen-pro-4000-series/amd-ryzen-5-pro-4650u.html
 [AMD Ryzen 7 3700U]: https://www.amd.com/en/support/downloads/drivers.html/processors/ryzen/ryzen-3000-series/amd-ryzen-7-3700u.html#amd_support_product_spec
-[AMD Ryzen Threadripper 3970X]: https://www.amd.com/en/support/cpu/amd-ryzen-processors/amd-ryzen-threadripper-processors/amd-ryzen-threadripper-3970x
 [AMD Radeon 8060S]: https://www.techpowerup.com/gpu-specs/radeon-8060s.c4270
-[Intel Arc A770 16GB]: https://www.intel.com/content/www/us/en/products/sku/229151/intel-arc-a770-graphics-16gb/specifications.html
-[Fighter RX 6800]: https://www.powercolor.com/product?id=1606212415
-[Fighter RX 6700 XT]: https://www.powercolor.com/product?id=1612512944
-[Fighter RX 7900 GRE]: https://www.powercolor.com/product-detail186.htm
-[RTX 2000E Ada Generation]: https://www.pny.com/rtx-2000e-ada-generation
-[GeForce RTX 3090 GAMING OC]: https://www.gigabyte.com/uk/Graphics-Card/GV-N3090GAMING-OC-24GD#kf
 [NVIDIA Quadro P2000 Max-Q]: https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/productspage/quadro/quadro-desktop/quadro-pascal-p2000-data-sheet-us-nvidia-704443-r2-web.pdf
 [NVIDIA T1000]: https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/productspage/quadro/quadro-desktop/proviz-print-nvidia-T1000-datasheet-us-nvidia-1670054-r4-web.pdf
-[NVIDIA T600]: https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/productspage/quadro/quadro-desktop/proviz-print-nvidia-T600-datasheet-us-nvidia-1670029-r5-web.pdf
-[NVIDIA T400]: https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/productspage/quadro/quadro-desktop/nvidia-t400-datasheet-1987150-r3.pdf
 [VirGL]: https://docs.mesa3d.org/drivers/virgl.html
 [.github]: ./.github/workflows
-[common]: ./common
-[darwin]: ./darwin
-[home-manager]: ./home-manager
-[nixos]: ./nixos
-[nixos/_mixins]: ./nixos/_mixins
-[home-manager/_mixins]: ./home-manager/_mixins
-[flake.nix]: ./flake.nix
 [Modern Unix]: ./home-manager/default.nix
 [OpenSSH]: ./nixos/_mixins/network/ssh/default.nix
 [Fresh]: https://github.com/sinelaw/fresh
