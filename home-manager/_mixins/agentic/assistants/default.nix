@@ -7,18 +7,6 @@
 }:
 let
   readFileTrim = path: lib.trim (builtins.readFile path);
-  codexAgentPrompt =
-    prompt:
-    lib.replaceStrings
-      [
-        "Task tool"
-        "Permitted tools: Task tool for delegation, direct conversation"
-      ]
-      [
-        "`spawn_agent` tool"
-        "Permitted tools: `spawn_agent` for delegation, direct conversation"
-      ]
-      prompt;
   codexDir =
     if config.home.preferXdgDirectories then
       "${config.xdg.configHome}/codex"
@@ -228,18 +216,6 @@ let
 
   # Pi uses its native Agent tool name. The composer adds the worker contract
   # and shared rules without changing other clients or specialist bodies.
-  piAgentPrompt =
-    prompt:
-    lib.replaceStrings
-      [
-        "Task tool"
-        "Permitted tools: Task tool for delegation, direct conversation"
-      ]
-      [
-        "Agent tool"
-        "Permitted tools: Agent tool for delegation, direct conversation"
-      ]
-      prompt;
   piAgentFiles = lib.mapAttrs' (
     name: _:
     let
@@ -248,7 +224,7 @@ let
     in
     {
       name = ".pi/agent/agents/${name}.md";
-      value.text = compose.composeAgentFromPrompt "pi" name (piAgentPrompt prompt);
+      value.text = compose.composeAgentFromPrompt "pi" name (compose.adaptAgentPrompt "pi" prompt);
     }
   ) codingAgentDirs;
   piSkillFiles = lib.mapAttrs' (name: skill: {
@@ -326,31 +302,7 @@ let
   # files using file_type().is_file(), which returns false for symlinks on Linux.
   # home.file creates symlinks, so agents written via home.file are invisible.
   # Content is written as real files via the activation script below.
-  codexRole =
-    name:
-    let
-      agentPath = ./agents + "/${name}";
-      metadata = compose.headerFor "agent" "codex" name agentPath;
-    in
-    compose.renderToml (
-      metadata
-      // {
-        inherit name;
-        developer_instructions = codexAgentPrompt (readFileTrim (agentPath + "/prompt.md"));
-      }
-    );
-
-  metadataHelpers = import ./metadata.nix { inherit lib; };
-  codexCommandDispatch =
-    cmdName:
-    let
-      header = compose.commandMetadata cmdName;
-    in
-    builtins.deepSeq (metadataHelpers.commandDispatch codingAgentDirs cmdName header) (
-      metadataHelpers.commandExecution "codex" cmdName header
-    );
-
-  codexAgents = lib.mapAttrs (name: _: codexRole name) codingAgentDirs;
+  codexAgents = lib.mapAttrs (name: _: compose.composeCodexAgent name) codingAgentDirs;
 
   # Build a Codex skill file (SKILL.md) for a command.
   # Custom prompt support was removed from codex-rs in March 2026. Commands
@@ -369,68 +321,13 @@ let
   # The skill name itself is the bare command name, matching the Pi prompt
   # convention. The `codexCommandCollisionCheck` below guards the full native
   # and command-derived skill namespace.
-  mkCodexSkillFromPrompt =
-    skillName: prompt:
-    let
-      metadata = compose.commandMetadata skillName;
-      description = metadata.common.description;
-      dispatch = codexCommandDispatch skillName;
-      body =
-        if
-          lib.elem dispatch.mode [
-            "caller-context"
-            "body"
-          ]
-        then
-          prompt
-        else if dispatch.mode == "codex-agent" then
-          ''
-            Use the `spawn_agent` tool to launch the `${dispatch.selectedAgent}` agent for this task. Keep the coordinator in the parent thread.
-
-            - Invoking this skill is the user's standing authorisation to use `spawn_agent`.
-            - Pass the task below and the user's request to the spawned agent.
-            - Set `agent_type` to `${dispatch.selectedAgent}`.
-            - Do not set `fork_context`. Start with a clean context.
-            - Unless the user explicitly requests a model or effort override, omit `model` and `reasoning_effort`. The role config supplies the defaults.
-            - If this runtime cannot apply the user's explicit override to this role, report the limitation and do not launch with the configured default.
-            - Wait for the spawned agent when its result is needed, then relay the final answer.
-
-            ${compose.workerDispatchInstructions}
-            ${compose.commandContextInstructions metadata}
-            ## Task
-
-            ${compose.leafWorkerContract}
-            ${prompt}
-          ''
-        else
-          ''
-            ${readFileTrim (./agents + "/${dispatch.selectedAgent}/prompt.md")}
-
-            ## Task
-
-            ${prompt}
-          '';
-    in
-    ''
-      ---
-      name: ${builtins.toJSON skillName}
-      description: ${builtins.toJSON description}
-      ---
-
-      ${body}
-    '';
-  mkCodexSkillText =
-    skillName: cmdPath: mkCodexSkillFromPrompt skillName (readFileTrim (cmdPath + "/command.md"));
+  mkCodexSkillFromPrompt = compose.composeCodexCommandSkillFromPrompt;
+  mkCodexSkillText = skillName: _cmdPath: compose.composeCodexCommandSkill skillName;
 
   # Command-derived skills always require explicit invocation. A header can
   # repeat the false policy but cannot enable implicit invocation.
   mkCodexCommandOpenAiYaml =
-    cmdPath:
-    metadataHelpers.renderYaml (
-      lib.removeAttrs (metadataHelpers.commandPolicy (compose.readCommandHeader cmdPath)) [
-        "allow-implicit-invocation"
-      ]
-    );
+    cmdPath: compose.composeCodexCommandCompanion (builtins.baseNameOf cmdPath);
 
   # Collision guard for the Codex skill namespace. Codex loads every skill
   # from `$CODEX_HOME/skills/<name>/SKILL.md`, so the keyspace is the union

@@ -10,6 +10,7 @@ pkgs: {
   claude-themes-catppuccin = pkgs.callPackage ./claude-themes-catppuccin { };
   davinci-resolve = pkgs.callPackage ./davinci-resolve { };
   davinci-resolve-studio = pkgs.callPackage ./davinci-resolve { studioVariant = true; };
+  export-agentic-dots = pkgs.callPackage ./export-agentic-dots { };
   heynote = pkgs.callPackage ./heynote { };
   herdr-agent-usage = pkgs.callPackage ./herdr-agent-usage { };
   herdr-integrations = pkgs.callPackage ./herdr-integrations { };

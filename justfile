@@ -31,6 +31,24 @@ check-assistant-catalogue:
     system=$(nix eval --impure --raw --expr builtins.currentSystem)
     nix build --no-link "path:$PWD#checks.${system}.assistant-catalogue"
 
+# Export public assistant resources to a review tree.
+export-agentic-dots destination="~/Zero/agentic-dots":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    revision=$(git rev-parse HEAD)
+    if [[ -n "$(git status --porcelain=v1 --untracked-files=normal)" ]]; then
+        revision="${revision}-dirty"
+    fi
+    nix run "path:$PWD#export-agentic-dots" -- \
+        {{ quote(destination) }} --source-revision "${revision}"
+
+# Run the agentic-dots exporter boundary and portability tests.
+test-export-agentic-dots:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    system=$(nix eval --impure --raw --expr builtins.currentSystem)
+    nix build --no-link "path:$PWD#checks.${system}.export-agentic-dots"
+
 # Check FlakeHub token freshness and warn if expiry is approaching
 token-check:
     #!/usr/bin/env bash

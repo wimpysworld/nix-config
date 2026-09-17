@@ -165,6 +165,7 @@
               touch "$out"
             ''
           );
+          export-agentic-dots = self.packages.${system}.export-agentic-dots.tests;
           wayland-session-lifecycle = import ./lib/tests/wayland-session-lifecycle.nix {
             inherit pkgs;
           };

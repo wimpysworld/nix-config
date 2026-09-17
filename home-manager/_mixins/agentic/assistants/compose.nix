@@ -103,6 +103,47 @@ let
     in
     composeAgentFromPrompt platform agentName prompt;
 
+  adaptAgentPrompt =
+    platform: prompt:
+    if platform == "codex" then
+      lib.replaceStrings
+        [
+          "Task tool"
+          "Permitted tools: Task tool for delegation, direct conversation"
+        ]
+        [
+          "`spawn_agent` tool"
+          "Permitted tools: `spawn_agent` for delegation, direct conversation"
+        ]
+        prompt
+    else if platform == "pi" then
+      lib.replaceStrings
+        [
+          "Task tool"
+          "Permitted tools: Task tool for delegation, direct conversation"
+        ]
+        [
+          "Agent tool"
+          "Permitted tools: Agent tool for delegation, direct conversation"
+        ]
+        prompt
+    else
+      prompt;
+
+  composeCodexAgent =
+    agentName:
+    let
+      agentPath = basePath + "/agents/${agentName}";
+      projected = headerFor "agent" "codex" agentName agentPath;
+    in
+    metadata.renderToml (
+      projected
+      // {
+        name = agentName;
+        developer_instructions = adaptAgentPrompt "codex" (readFile (agentPath + "/prompt.md"));
+      }
+    );
+
   # Generate all agents for a platform
   # Returns attrset: { agentName = "composed content"; ... }
   composeAgents = platform: lib.mapAttrs (name: _: composeAgent platform name) agentDirs;
@@ -737,6 +778,71 @@ let
     in
     composeWithFrontmatter header body;
 
+  composeCodexCommandSkillFromPrompt =
+    skillName: prompt:
+    let
+      source = commandMetadata skillName;
+      description = source.common.description;
+      dispatch = builtins.deepSeq (metadata.commandDispatch agentDirs skillName source) (
+        metadata.commandExecution "codex" skillName source
+      );
+      body =
+        if
+          lib.elem dispatch.mode [
+            "caller-context"
+            "body"
+          ]
+        then
+          prompt
+        else if dispatch.mode == "codex-agent" then
+          ''
+            Use the `spawn_agent` tool to launch the `${dispatch.selectedAgent}` agent for this task. Keep the coordinator in the parent thread.
+
+            - Invoking this skill is the user's standing authorisation to use `spawn_agent`.
+            - Pass the task below and the user's request to the spawned agent.
+            - Set `agent_type` to `${dispatch.selectedAgent}`.
+            - Do not set `fork_context`. Start with a clean context.
+            - Unless the user explicitly requests a model or effort override, omit `model` and `reasoning_effort`. The role config supplies the defaults.
+            - If this runtime cannot apply the user's explicit override to this role, report the limitation and do not launch with the configured default.
+            - Wait for the spawned agent when its result is needed, then relay the final answer.
+
+            ${workerDispatchInstructions}
+            ${commandContextInstructions source}
+            ## Task
+
+            ${leafWorkerContract}
+            ${prompt}
+          ''
+        else
+          ''
+            ${readFile (basePath + "/agents/${dispatch.selectedAgent}/prompt.md")}
+
+            ## Task
+
+            ${prompt}
+          '';
+    in
+    ''
+      ---
+      name: ${builtins.toJSON skillName}
+      description: ${builtins.toJSON description}
+      ---
+
+      ${body}
+    '';
+
+  composeCodexCommandSkill =
+    skillName:
+    composeCodexCommandSkillFromPrompt skillName (readFile (commandPath skillName + "/command.md"));
+
+  composeCodexCommandCompanion =
+    skillName:
+    metadata.renderYaml (
+      lib.removeAttrs (metadata.commandPolicy (readCommandHeader (commandPath skillName))) [
+        "allow-implicit-invocation"
+      ]
+    );
+
 in
 {
   inherit
@@ -754,6 +860,8 @@ in
     composeAgents
     composeAgent
     composeAgentFromPrompt
+    composeCodexAgent
+    adaptAgentPrompt
     extractAgentProviderModels
     extractOpenCodeProviderModels
     extractAgentProviderThinking
@@ -769,6 +877,9 @@ in
     workerDispatchInstructions
     commandContextInstructions
     commandSecretInfo
+    composeCodexCommandSkill
+    composeCodexCommandSkillFromPrompt
+    composeCodexCommandCompanion
     ;
 
   # Collision guards.
