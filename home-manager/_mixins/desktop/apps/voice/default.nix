@@ -142,7 +142,7 @@ let
     post_process_prompts = [ ];
     post_process_selected_prompt_id = null;
     mute_while_recording = false;
-    append_trailing_space = false;
+    append_trailing_space = true;
     app_language = "en";
     theme = "dark";
     experimental_enabled = false;
@@ -197,7 +197,7 @@ let
       trap 'rm -f -- "$temporary_file"' EXIT
 
       jq --compact-output --argjson existing "$existing_store" \
-        '. * $existing' \
+        '.settings.append_trailing_space as $append | . * $existing | .settings.append_trailing_space = $append' \
         ${handySettingsStore} > "$temporary_file"
       chmod 0600 "$temporary_file"
       mv -T -- "$temporary_file" "$settings_file"
