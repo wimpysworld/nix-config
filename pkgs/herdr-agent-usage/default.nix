@@ -11,16 +11,16 @@ let
 in
 buildGo125Module (finalAttrs: {
   pname = "herdr-agent-usage";
-  version = "0.5.13";
+  version = "0.5.14";
 
   src = fetchFromGitHub {
     owner = "senna-lang";
     repo = "herdr-agent-usage";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-oYtdBTHrA6jCzmhoI8sz/flvReaKiYOdAFovg4J+5YU=";
+    hash = "sha256-u+OVAABDh8emsOJ4M7IuexO7/l6/gLPIpDDnYokhYPk=";
   };
 
-  vendorHash = "sha256-PG1aBfMkmrt+Vb0P+4my2nQ9sqshoqGWhQM9BzDvj48=";
+  vendorHash = "sha256-T6kN5tgei+snzhxKZipFC4b4LVcH9Bpmkm+NPUQlQsY=";
 
   subPackages = [ "cmd/usagebar" ];
 
