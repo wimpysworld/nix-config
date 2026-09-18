@@ -4,6 +4,7 @@
   pkgs,
   ownedFiles,
   requiresSecrets,
+  extraRoots ? [ ],
 }:
 let
   home = config.home.homeDirectory;
@@ -13,13 +14,16 @@ let
     version = 1;
     inherit home stateDir;
     configHome = config.xdg.configHome;
-    roots = lib.unique [
-      "${home}/.codex"
-      "${config.xdg.configHome}/codex"
-      "${home}/.claude"
-      "${config.xdg.configHome}/opencode"
-      "${home}/.pi/agent"
-    ];
+    roots = lib.unique (
+      [
+        "${home}/.codex"
+        "${config.xdg.configHome}/codex"
+        "${home}/.claude"
+        "${config.xdg.configHome}/opencode"
+        "${home}/.pi/agent"
+      ]
+      ++ extraRoots
+    );
     files = ownedFiles;
     # Preserve unmanaged agents, including the separately migrated Traya file.
     retire = [ ];
