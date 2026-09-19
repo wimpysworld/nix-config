@@ -12,9 +12,7 @@ pkgs: {
   davinci-resolve-studio = pkgs.callPackage ./davinci-resolve { studioVariant = true; };
   export-agentic-dots = pkgs.callPackage ./export-agentic-dots { };
   heynote = pkgs.callPackage ./heynote { };
-  herdr-agent-usage = pkgs.callPackage ./herdr-agent-usage { };
   herdr-integrations = pkgs.callPackage ./herdr-integrations { };
-  herdr-pc-ram-and-cpu-usage-overlay = pkgs.callPackage ./herdr-pc-ram-and-cpu-usage-overlay { };
   herdr-home-layout = pkgs.callPackage ./herdr-layout { };
   herdr-work-layout = pkgs.callPackage ./herdr-layout { work = true; };
   linear-term = pkgs.callPackage ./linear-term { };

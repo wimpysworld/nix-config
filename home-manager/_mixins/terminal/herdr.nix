@@ -41,21 +41,7 @@ let
     # previous conversation sessions. The restarted agents cost more attention
     # than they save, so panes come back as plain shells instead.
     session.resume_agents_on_restore = false;
-    keys.command = [
-      {
-        key = "prefix+u";
-        type = "plugin_action";
-        command = "usagebar.open-limits";
-        description = "Agent Usage: open limits pane";
-      }
-      {
-        key = "prefix+m";
-        type = "plugin_action";
-        command = "usagebar.refresh";
-        description = "Agent Usage: refresh sidebar meters";
-      }
-    ];
-    ui.agent_panel_sort = "priority";
+    ui.agent_panel_sort = "spaces";
     ui.sidebar.agents = {
       row_gap = 0;
       rows = [
@@ -95,7 +81,6 @@ let
         "branch"
         "git_status"
       ]
-      [ "$usage" ]
     ];
     ui.status_indicators = "symbols";
     ui.show_agent_labels_on_pane_borders = true;
@@ -299,29 +284,20 @@ in
     home.packages = [
       herdrWorktree
       pkgs.herdr
-      pkgs.herdr-agent-usage
-      pkgs.herdr-pc-ram-and-cpu-usage-overlay
       herdrLayout
     ];
 
-    home.activation.herdrAgentUsagePlugin = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-      ${pkgs.herdr}/bin/herdr plugin link \
-        ${pkgs.herdr-agent-usage}/share/herdr/plugins/usagebar --enabled
-    '';
-
-    home.activation.herdrPcRamAndCpuUsageOverlayPlugin =
-      lib.hm.dag.entryAfter [ "herdrAgentUsagePlugin" ]
-        ''
-          ${pkgs.herdr}/bin/herdr plugin link \
-            ${pkgs.herdr-pc-ram-and-cpu-usage-overlay}/share/herdr/plugins/space-usage --enabled
-        '';
-
     # Unlink layout plugin variants that a previous host configuration may
     # have left linked, so exactly one `workspace.created` handler remains.
-    home.activation.herdrLayoutPrune = lib.hm.dag.entryAfter [ "herdrPcRamAndCpuUsageOverlayPlugin" ] ''
+    # Also unlink the retired usage plugins so no stale plugin state remains.
+    home.activation.herdrLayoutPrune = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
       for herdr_layout_id in ${
         lib.escapeShellArgs (
-          if noughtyLib.hostHasTag "cg" then [ "local.home-layout" ] else [ "local.work-layout" ]
+          [
+            "usagebar"
+            "space-usage"
+          ]
+          ++ (if noughtyLib.hostHasTag "cg" then [ "local.home-layout" ] else [ "local.work-layout" ])
         )
       }; do
         ${pkgs.herdr}/bin/herdr plugin unlink "$herdr_layout_id" || true

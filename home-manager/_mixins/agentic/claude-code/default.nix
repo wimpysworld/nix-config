@@ -63,7 +63,6 @@ let
   ccstatuslinePackage = inputs.llm-agents.packages.${system}.ccstatusline;
   claudeStatusLinePackage = import ./claude-statusline {
     inherit ccstatuslinePackage pkgs;
-    herdrAgentUsagePackage = pkgs.herdr-agent-usage;
   };
   usageRemainingPackage = pkgs.writeTextFile {
     name = "ccstatusline-usage-remaining";
