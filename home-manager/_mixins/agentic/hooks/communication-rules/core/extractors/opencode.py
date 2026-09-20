@@ -316,8 +316,8 @@ def is_external_surface(name: str, args: Any, config: Config) -> bool:
     # gh CLI command. Everything else is local (B1). Mirrors the old OpenCode
     # plugin's isExternalSurface. SURFACE-CHOICE signal only; the command body is
     # scanned by scan_bash.
-    normalised = name.lower()
-    if normalised in GH_POST_COMMANDS or normalised == "github":
+    normalised = normalise_name(name)
+    if normalised in GH_POST_COMMANDS_NORMALISED or normalised == "github":
         return True
     if is_post_capable_mcp_tool(name, config.post_tool_terms):
         return True
