@@ -59,7 +59,7 @@ let
   piPrettyVersion = "0.6.27";
   rpivAskUserQuestionVersion = "2.9.0";
   rpivBtwVersion = "2.9.0";
-  rpivTodoVersion = "2.9.0";
+  piTasksVersion = "0.9.0";
   piMcpAdapterSource = "npm:pi-mcp-adapter@${piMcpAdapterVersion}";
   piSubagentsSource = "npm:@tintinweb/pi-subagents@${piSubagentsVersion}";
   piLensSource = "npm:pi-lens@${piLensVersion}";
@@ -70,7 +70,7 @@ let
   piPrettySource = "npm:@heyhuynhgiabuu/pi-pretty@${piPrettyVersion}";
   rpivAskUserQuestionSource = "npm:@juicesharp/rpiv-ask-user-question@${rpivAskUserQuestionVersion}";
   rpivBtwSource = "npm:@juicesharp/rpiv-btw@${rpivBtwVersion}";
-  rpivTodoSource = "npm:@juicesharp/rpiv-todo@${rpivTodoVersion}";
+  piTasksSource = "npm:@tintinweb/pi-tasks@${piTasksVersion}";
   piAssistant = config.agentic.assistants.pi;
   communicationRules = config.agentic.communicationRules;
   mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
@@ -434,7 +434,7 @@ let
       piPrettySource
       rpivAskUserQuestionSource
       rpivBtwSource
-      rpivTodoSource
+      piTasksSource
     ];
 
     extensions = [ ];

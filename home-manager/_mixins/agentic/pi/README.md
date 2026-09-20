@@ -101,7 +101,7 @@ Pi packages are installed through the Home Manager-owned package setting:
     "npm:@heyhuynhgiabuu/pi-pretty@0.6.27",
     "npm:@juicesharp/rpiv-ask-user-question@2.9.0",
     "npm:@juicesharp/rpiv-btw@2.9.0",
-    "npm:@juicesharp/rpiv-todo@2.9.0"
+    "npm:@tintinweb/pi-tasks@0.9.0"
   ]
 }
 ```
@@ -116,7 +116,8 @@ The `juicesharp/rpiv-mono` extensions add native Pi behaviour:
 
 - `rpiv-ask-user-question` gives the model a structured questionnaire with typed options
 - `rpiv-btw` performs an explicit side model call using current conversation context
-- `rpiv-todo` adds a model-visible todo tool and `/todos` UI
+
+[`pi-tasks`](https://github.com/tintinweb/pi-tasks) adds Claude Code-style task tracking: `TaskCreate`, `TaskList`, `TaskGet`, `TaskUpdate`, `TaskOutput`, `TaskStop`, and `TaskExecute` tools, a persistent widget above the editor, reminder injection, dependency tracking, and file-backed shared task lists. `TaskExecute` can run tasks with an `agentType` as subagents through the pinned `pi-subagents` package. The `/tasks` command configures widget display, saved as project overrides in `.pi/tasks-config.json`, which stays user-owned.
 
 `@juicesharp/rpiv-args` and `@juicesharp/rpiv-i18n` are not installed. Pi natively substitutes `$1`/`$@`/`$ARGUMENTS` inside prompt templates and appends trailing arguments as a follow-up `User:` message after skill bodies. `rpiv-args` extended placeholder substitution into skill bodies as well, which silently rewrites incidental `$1` and `$NNNN` matches inside reference content (for example SQL placeholder syntax and currency strings in the security skills); the Pi-native split is preferred.
 
