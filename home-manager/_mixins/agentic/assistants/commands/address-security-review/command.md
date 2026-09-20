@@ -40,9 +40,9 @@ Read their bodies before reuse. Never execute generated launch wrappers inside w
 5. Delegate independent security verification to Dibble or Batfink, according to the affected domain.
 6. Require verification of the attack path and any claimed mitigation, not merely a passing test.
 7. Resolve `make-commit` and `draft-commit-message` and read their workflow bodies in the coordinator context without launch wrappers.
-8. Commit each verified fix from this context only. Supply its paths, intent, evidence, and staged diff to those workflows.
+8. If a path contains unrelated changes, stop before staging it. Do not include existing unrelated staged content in a commit.
 9. Stage only reported paths with `git add -- <path>`. Never use `git add .`, `-A`, or `-u`.
-10. If a path contains unrelated changes, stop before staging it. Do not include existing unrelated staged content in a commit.
+10. Commit each verified fix from this context only. Supply its paths, intent, evidence, and staged diff to those workflows.
 11. Delegate project-appropriate validation after the fixes. Route corrections to Donatello, then verify and commit each correction separately.
 12. If validation fails, report the failure and stop before pushing.
 13. When changes exist and validation passes, push once with `git push origin <branch>`. Never use a bare push or `-u`.
