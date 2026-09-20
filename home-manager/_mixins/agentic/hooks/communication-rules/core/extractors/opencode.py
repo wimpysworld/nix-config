@@ -63,7 +63,6 @@ from core.dispatch import (
 )
 from core.types import ExtractorRecord
 
-
 # Body-bearing field names by tool kind, lifted verbatim from the opencode.sh
 # embedded Python. The first matching key wins.
 WRITE_FIELDS = ("content", "text", "body", "value", "newContent", "fileContent")
