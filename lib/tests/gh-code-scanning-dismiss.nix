@@ -2,7 +2,10 @@
 let
   stubBackend = pkgs.writeShellApplication {
     name = "gh-code-scanning-dismiss-gh";
-    runtimeInputs = [ pkgs.coreutils ];
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.findutils
+    ];
     text = ''
       : "''${GH_CODE_SCANNING_DISMISS_STUB_DIR:?}"
       if [[ $# -eq 4 && $1 == auth && $2 == token && $3 == --hostname && $4 == github.com ]]; then
