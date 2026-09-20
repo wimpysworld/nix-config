@@ -189,6 +189,7 @@ in
   nixpkgs = {
     overlays = [
       # Overlays defined via overlays/default.nix and pkgs/default.nix
+      outputs.overlays.toolchains
       outputs.overlays.localPackages
       outputs.overlays.modifiedPackages
       outputs.overlays.unstablePackages

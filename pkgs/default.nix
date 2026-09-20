@@ -12,6 +12,7 @@ pkgs: {
   davinci-resolve-studio = pkgs.callPackage ./davinci-resolve { studioVariant = true; };
   export-agentic-dots = pkgs.callPackage ./export-agentic-dots { };
   heynote = pkgs.callPackage ./heynote { };
+  herdr-agent-quota = pkgs.callPackage ./herdr-agent-quota { };
   herdr-integrations = pkgs.callPackage ./herdr-integrations { };
   herdr-home-layout = pkgs.callPackage ./herdr-layout { };
   herdr-work-layout = pkgs.callPackage ./herdr-layout { work = true; };

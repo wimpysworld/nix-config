@@ -34,6 +34,11 @@ let
     }).packages;
 in
 {
+  # Rust toolchains from the oxalica overlay. Local packages that pin the
+  # Rust version their upstream `rust-toolchain.toml` requires build against
+  # this, ahead of nixpkgs stable catching up.
+  toolchains = inputs.rust-overlay.overlays.default;
+
   # This one brings our custom packages from the 'pkgs' directory
   localPackages = final: _prev: import ../pkgs final;
 
