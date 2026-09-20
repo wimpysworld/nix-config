@@ -1,0 +1,6 @@
+[common]
+description = "Draft Security Review ✍️"
+argument-hint = "[alerts|report]"
+
+[compose]
+agent = "donatello"

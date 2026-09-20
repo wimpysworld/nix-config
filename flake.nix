@@ -166,6 +166,9 @@
             ''
           );
           export-agentic-dots = self.packages.${system}.export-agentic-dots.tests;
+          gh-code-scanning-dismiss = import ./lib/tests/gh-code-scanning-dismiss.nix {
+            inherit pkgs;
+          };
           wayland-session-lifecycle = import ./lib/tests/wayland-session-lifecycle.nix {
             inherit pkgs;
           };

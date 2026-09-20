@@ -12,7 +12,6 @@ from pathlib import Path
 
 from skill_source import materialised_rules_path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "fixtures"
 SCANNER = ROOT / "scanner.py"
@@ -95,6 +94,10 @@ BASH_CASES = {
     "gh-post-unresolved-variable-fails-closed.sh": BLOCK,
     "gh-review-reply-readable-body-file-blocks.sh": BLOCK,
     "gh-review-reply-readable-body-file-passes.sh": PASS,
+    "gh-code-scanning-dismiss-readable-comment-file-blocks.sh": BLOCK,
+    "gh-code-scanning-dismiss-readable-comment-file-passes.sh": PASS,
+    "gh-code-scanning-dismiss-unreadable-comment-file-fails-closed.sh": BLOCK,
+    "gh-code-scanning-dismiss-missing-comment-file-value-fails-closed.sh": BLOCK,
 }
 
 
@@ -214,9 +217,7 @@ def scan_policy_disclosure_cases() -> int:
 CLAUDE_CODE_FX = FIXTURES / "claude-code"
 
 FACING_NOTICE = "Communication Rules breach seen, correcting next reply."
-UNDELIVERED_NOTICE = (
-    "Sub-agent finished without SendMessage delivery, so its report never reached the orchestrator."
-)
+UNDELIVERED_NOTICE = "Sub-agent finished without SendMessage delivery, so its report never reached the orchestrator."
 
 
 def _expect(
@@ -785,6 +786,32 @@ def run_claude_code_agent_cases(
         _expect("pass", "B2", level="warning"),
     )
     run_case("pre-tool-use-mcp-post-block.json", "PreToolUse", _b2_block())
+
+    # The code-scanning helper is a B2 Bash post, and its comment file receives
+    # the same prose scan as other external post bodies.
+    reset_strikes()
+    run_case(
+        "gh-code-scanning-dismiss comment block",
+        "PreToolUse",
+        _b2_block(),
+        payload={
+            "session_id": "session-code-scanning-dismiss",
+            "transcript_path": str(CLAUDE_CODE_FX / "stop-transcript-pass.jsonl"),
+            "cwd": str(FIXTURES),
+            "permission_mode": "default",
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Bash",
+            "tool_use_id": "toolu-code-scanning-dismiss",
+            "tool_input": {
+                "command": (
+                    "gh-code-scanning-dismiss "
+                    "https://github.com/wimpysworld/nix-config/security/code-scanning/42 "
+                    '--reason "false positive" --comment-file '
+                    f"{FIXTURES / 'post-body-blocks.txt'}"
+                )
+            },
+        },
+    )
 
     # B2 gh-via-Bash: a gh post run through Bash walks the five-strike cap with a
     # notice naming the gh subcommand. The body routes through scan_bash. Full

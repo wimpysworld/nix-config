@@ -23,6 +23,7 @@ let
     mkdir -p "$out/bin"
     ln -s ${pkgs.gh}/bin/.gh-wrapped "$out/bin/gh-review-resolve-gh"
   '';
+  gh-code-scanning-dismiss = pkgs.callPackage ./gh-code-scanning-dismiss { };
   ghDashPackage = pkgs.symlinkJoin rec {
     pname = "gh-dash";
     version = pkgs.gh-dash.version;
@@ -286,6 +287,7 @@ lib.mkMerge [
     home = {
       packages = [
         gh-api-safe
+        gh-code-scanning-dismiss
         gh-review-reply
         gh-review-resolve
         ghCredentialSync
