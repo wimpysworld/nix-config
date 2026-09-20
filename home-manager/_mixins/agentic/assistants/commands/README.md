@@ -11,6 +11,7 @@ Claude Code, OpenCode, and Pi use `/name`. Codex uses manual-only `$name` skills
 | [ack](./ack/command.toml) | Acknowledge feedback 👂 | Unset | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
 | [add-agentic-repo-capability](./add-agentic-repo-capability/command.toml) | Add Agentic Repo Capability 🧰 | donatello | public | Task worker: donatello | Native subtask: donatello | spawn_agent: donatello | Agent worker: donatello |
 | [address-code-review](./address-code-review/command.toml) | Address Code Review 👀 | donatello | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
+| [address-security-review](./address-security-review/command.toml) | Address Security Review 🛡️ | donatello | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
 | [ahem](./ahem/command.toml) | Politely re-issue the Communication Rules 📜 | Unset | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
 | [align-documentation](./align-documentation/command.toml) | Align Documentation 📚 | velma | public | Task worker: velma | Native subtask: velma | spawn_agent: velma | Agent worker: velma |
 | [ask](./ask/command.toml) | Answer a question 💬 | Unset | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
@@ -32,6 +33,7 @@ Claude Code, OpenCode, and Pi use `/name`. Codex uses manual-only `$name` skills
 | [draft-commit-message](./draft-commit-message/command.toml) | Draft Commit Message ✍️ | garfield | public | Task worker: garfield | Native subtask: garfield, subtask: true | spawn_agent: garfield | Agent worker: garfield |
 | [draft-pr-message](./draft-pr-message/command.toml) | Draft PR Message 🐙 | garfield | public | Task worker: garfield | Native subtask: garfield, subtask: true | spawn_agent: garfield | Agent worker: garfield |
 | [draft-readme](./draft-readme/command.toml) | Draft README 📄 | velma | public | Task worker: velma | Native subtask: velma | spawn_agent: velma | Agent worker: velma |
+| [draft-security-review](./draft-security-review/command.toml) | Draft Security Review ✍️ | donatello | public | Task worker: donatello | Native subtask: donatello | spawn_agent: donatello | Agent worker: donatello |
 | [draft-self-review](./draft-self-review/command.toml) | Draft Self-Review 🪞 | penfold | secret | Task worker: penfold | Native subtask: penfold | spawn_agent: penfold | Agent worker: penfold |
 | [draft-video-script](./draft-video-script/command.toml) | Draft Video Script 🎬 | casper | public | Task worker: casper | Native subtask: casper | spawn_agent: casper | Agent worker: casper |
 | [finish-pr](./finish-pr/command.toml) | Wrap up a finished PR 🧹 | garfield | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
@@ -48,6 +50,7 @@ Claude Code, OpenCode, and Pi use `/name`. Codex uses manual-only `$name` skills
 | [post-code-review](./post-code-review/command.toml) | Post Code Review 📮 | donatello | public | Task worker: donatello | Native subtask: donatello | spawn_agent: donatello | Agent worker: donatello |
 | [post-comment](./post-comment/command.toml) | Post Comment 📤 | penfold | public | Task worker: penfold | Native subtask: penfold | spawn_agent: penfold | Agent worker: penfold |
 | [post-issue](./post-issue/command.toml) | Post Issue 📮 | penfold | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
+| [post-security-review](./post-security-review/command.toml) | Post Security Review 📮 | donatello | public | Task worker: donatello | Native subtask: donatello | spawn_agent: donatello | Agent worker: donatello |
 | [project-code-review](./project-code-review/command.toml) | Project Code Review 🔍 | penry | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
 | [project-documentation-review](./project-documentation-review/command.toml) | Project Documentation Review 📋 | velma | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
 | [project-peer-review](./project-peer-review/command.toml) | Project Peer Review 👁️ | donatello | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
@@ -94,6 +97,10 @@ Only description overrides and nonempty argument hints are shown. When any clien
 | [address-code-review](./address-code-review/command.toml) | opencode | Same as common | Unset |
 | [address-code-review](./address-code-review/command.toml) | codex | Same as common | Unset |
 | [address-code-review](./address-code-review/command.toml) | pi | Same as common | [pr\|file\|text] |
+| [address-security-review](./address-security-review/command.toml) | claude | Same as common | [alerts\|repo\|file] |
+| [address-security-review](./address-security-review/command.toml) | opencode | Same as common | [alerts\|repo\|file] |
+| [address-security-review](./address-security-review/command.toml) | codex | Same as common | Unset |
+| [address-security-review](./address-security-review/command.toml) | pi | Same as common | [alerts\|repo\|file] |
 | [align-documentation](./align-documentation/command.toml) | claude | Same as common | [scope] |
 | [align-documentation](./align-documentation/command.toml) | opencode | Same as common | Unset |
 | [align-documentation](./align-documentation/command.toml) | codex | Same as common | Unset |
@@ -154,6 +161,10 @@ Only description overrides and nonempty argument hints are shown. When any clien
 | [draft-code-review](./draft-code-review/command.toml) | opencode | Same as common | [pr\|branch\|worktree\|commit] |
 | [draft-code-review](./draft-code-review/command.toml) | codex | Same as common | Unset |
 | [draft-code-review](./draft-code-review/command.toml) | pi | Same as common | Unset |
+| [draft-security-review](./draft-security-review/command.toml) | claude | Same as common | [alerts\|report] |
+| [draft-security-review](./draft-security-review/command.toml) | opencode | Same as common | [alerts\|report] |
+| [draft-security-review](./draft-security-review/command.toml) | codex | Same as common | Unset |
+| [draft-security-review](./draft-security-review/command.toml) | pi | Same as common | [alerts\|report] |
 | [draft-self-review](./draft-self-review/command.toml) | claude | Same as common | &lt;cycle&gt; [activity-file] |
 | [draft-self-review](./draft-self-review/command.toml) | opencode | Same as common | &lt;cycle&gt; [activity-file] |
 | [draft-self-review](./draft-self-review/command.toml) | codex | Same as common | Unset |
@@ -210,6 +221,10 @@ Only description overrides and nonempty argument hints are shown. When any clien
 | [post-issue](./post-issue/command.toml) | opencode | Same as common | &lt;repo&gt; |
 | [post-issue](./post-issue/command.toml) | codex | Same as common | Unset |
 | [post-issue](./post-issue/command.toml) | pi | Same as common | &lt;repo&gt; |
+| [post-security-review](./post-security-review/command.toml) | claude | Same as common | [reviewed-draft] |
+| [post-security-review](./post-security-review/command.toml) | opencode | Same as common | [reviewed-draft] |
+| [post-security-review](./post-security-review/command.toml) | codex | Same as common | Unset |
+| [post-security-review](./post-security-review/command.toml) | pi | Same as common | [reviewed-draft] |
 | [project-polish-comments](./project-polish-comments/command.toml) | claude | Same as common | [paths] [scope] |
 | [project-polish-comments](./project-polish-comments/command.toml) | opencode | Same as common | Unset |
 | [project-polish-comments](./project-polish-comments/command.toml) | codex | Same as common | Unset |

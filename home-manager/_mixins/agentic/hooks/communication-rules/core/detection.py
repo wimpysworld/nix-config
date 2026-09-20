@@ -18,14 +18,17 @@ if TYPE_CHECKING:
 
 
 # The gh CLI command names whose calls can put prose on an external surface
-# (Tier B2). ``gh-review-reply`` posts a reply inside a review comment thread and
-# carries its prose in a ``--body-file`` path. The extractors import this set so
-# the names live in one place.
-GH_POST_COMMANDS = frozenset({"gh", "gh-api-safe", "gh-review-reply"})
+# (Tier B2). The helpers carry prose in a file path. The extractors import this
+# set so the names live in one place.
+GH_POST_COMMANDS = frozenset(
+    {"gh", "gh-api-safe", "gh-code-scanning-dismiss", "gh-review-reply"}
+)
 
 # The same names in the normalised tool-name form the OpenCode extractor matches
 # on: hyphens and dots become underscores.
-GH_POST_COMMANDS_NORMALISED = frozenset(name.replace("-", "_").replace(".", "_") for name in GH_POST_COMMANDS)
+GH_POST_COMMANDS_NORMALISED = frozenset(
+    name.replace("-", "_").replace(".", "_") for name in GH_POST_COMMANDS
+)
 
 BODY_FLAGS = {
     "--body",
@@ -40,6 +43,9 @@ BODY_FLAGS = {
 BODY_FILE_FLAGS = {
     "--body-file",
     "--notes-file",
+}
+COMMENT_FILE_FLAGS = {
+    "--comment-file",
 }
 API_FIELD_FLAGS = {
     "-f",
@@ -117,7 +123,9 @@ def strip_fenced_code_blocks(text: str) -> str:
             output.append(line)
             continue
 
-        close_pattern = r"^[ \t]{0,3}" + re.escape(fence_char) + "{" + str(fence_len) + r",}[ \t]*$"
+        close_pattern = (
+            r"^[ \t]{0,3}" + re.escape(fence_char) + "{" + str(fence_len) + r",}[ \t]*$"
+        )
         if re.match(close_pattern, line.rstrip("\n\r")):
             in_fence = False
             fence_char = ""
@@ -474,6 +482,8 @@ def is_known_post_command(argv: list[str]) -> bool:
         # the body flag is the whole post test. No method or field flag exists to
         # look for: the helper exits 64 on either.
         return any(has_body_flag(argv, index) for index in range(len(argv)))
+    if name == "gh-code-scanning-dismiss":
+        return any(has_comment_file_flag(argv, index) for index in range(len(argv)))
     return False
 
 
@@ -499,6 +509,13 @@ def has_body_flag(argv: list[str], index: int) -> bool:
     return False
 
 
+def has_comment_file_flag(argv: list[str], index: int) -> bool:
+    argument = argv[index]
+    return argument in COMMENT_FILE_FLAGS or any(
+        argument.startswith(flag + "=") for flag in COMMENT_FILE_FLAGS
+    )
+
+
 def has_api_post_signal(argv: list[str]) -> bool:
     index = 0
     while index < len(argv):
@@ -511,9 +528,13 @@ def has_api_post_signal(argv: list[str]) -> bool:
         elif token.startswith("--method="):
             if token.split("=", 1)[1].upper() in {"POST", "PATCH", "PUT"}:
                 return True
-        elif token in API_FIELD_FLAGS or token.startswith("--field=") or token.startswith("--raw-field="):
-            return True
-        elif token == "--input" or token.startswith("--input="):
+        elif (
+            token in API_FIELD_FLAGS
+            or token.startswith("--field=")
+            or token.startswith("--raw-field=")
+            or token == "--input"
+            or token.startswith("--input=")
+        ):
             return True
         index += 1
     return False
@@ -526,6 +547,8 @@ def _argv_is_gh_post(argv: list[str]) -> bool:
     # the body scan can never drift on which flags count.
     if not argv or argv[0] not in GH_POST_COMMANDS:
         return False
+    if argv[0] == "gh-code-scanning-dismiss":
+        return any(has_comment_file_flag(argv, index) for index in range(len(argv)))
     if any(has_body_flag(argv, index) for index in range(len(argv))):
         return True
     return has_api_post_signal(argv)
@@ -549,12 +572,16 @@ def is_bash_gh_post(command: Any) -> bool:
         inner = shell_c_inner_script(strip_env_assignments(argv))
         if inner is not None:
             inner_argv = parse_command_line(inner)
-            if inner_argv is not None and _argv_is_gh_post(strip_env_assignments(inner_argv)):
+            if inner_argv is not None and _argv_is_gh_post(
+                strip_env_assignments(inner_argv)
+            ):
                 return True
     return False
 
 
-def read_post_body_file(value: str, heredoc_files: dict[str, str]) -> tuple[str | None, bool]:
+def read_post_body_file(
+    value: str, heredoc_files: dict[str, str]
+) -> tuple[str | None, bool]:
     cleaned = clean_literal_path(value)
     if cleaned is None or cleaned == "-":
         return None, True
@@ -563,21 +590,34 @@ def read_post_body_file(value: str, heredoc_files: dict[str, str]) -> tuple[str 
     return read_body_file(cleaned)
 
 
-def extract_post_texts(argv: list[str], heredoc_files: dict[str, str]) -> tuple[list[str], bool]:
+def extract_post_texts(
+    argv: list[str], heredoc_files: dict[str, str]
+) -> tuple[list[str], bool]:
     texts: list[str] = []
     unresolved = False
+    reads_comment_file = command_name(argv) == "gh-code-scanning-dismiss"
     index = 0
 
     while index < len(argv):
         token = argv[index]
 
-        if token in BODY_FLAGS or any(token.startswith(flag + "=") for flag in BODY_FLAGS if flag.startswith("--")):
+        if token in BODY_FLAGS or any(
+            token.startswith(flag + "=") for flag in BODY_FLAGS if flag.startswith("--")
+        ):
             value, index = option_value(argv, index)
             if value is None or has_dynamic_value(value):
                 unresolved = True
             else:
                 texts.append(value)
-        elif token in BODY_FILE_FLAGS or any(token.startswith(flag + "=") for flag in BODY_FILE_FLAGS if flag.startswith("--")):
+        elif (
+            token in BODY_FILE_FLAGS
+            or any(
+                token.startswith(flag + "=")
+                for flag in BODY_FILE_FLAGS
+                if flag.startswith("--")
+            )
+            or (reads_comment_file and has_comment_file_flag(argv, index))
+        ):
             value, index = option_value(argv, index)
             if value is None:
                 unresolved = True
@@ -586,7 +626,11 @@ def extract_post_texts(argv: list[str], heredoc_files: dict[str, str]) -> tuple[
                 unresolved = unresolved or failed
                 if text is not None:
                     texts.append(text)
-        elif token in API_FIELD_FLAGS or token.startswith("--field=") or token.startswith("--raw-field="):
+        elif (
+            token in API_FIELD_FLAGS
+            or token.startswith("--field=")
+            or token.startswith("--raw-field=")
+        ):
             value, index = option_value(argv, index)
             text, failed = extract_api_field_text(value, heredoc_files)
             unresolved = unresolved or failed
@@ -607,7 +651,9 @@ def extract_post_texts(argv: list[str], heredoc_files: dict[str, str]) -> tuple[
     return texts, unresolved
 
 
-def extract_api_field_text(value: str | None, heredoc_files: dict[str, str]) -> tuple[str | None, bool]:
+def extract_api_field_text(
+    value: str | None, heredoc_files: dict[str, str]
+) -> tuple[str | None, bool]:
     if value is None or "=" not in value:
         return None, True
     key, raw_value = value.split("=", 1)
@@ -641,7 +687,10 @@ def field_names_prose(value: str | None) -> bool:
     if key in API_BODY_KEYS:
         return True
     if key == "query":
-        return has_dynamic_value(raw_value) or GRAPHQL_MUTATION.search(raw_value) is not None
+        return (
+            has_dynamic_value(raw_value)
+            or GRAPHQL_MUTATION.search(raw_value) is not None
+        )
     return False
 
 
@@ -659,15 +708,28 @@ def has_prose_sink(argv: list[str]) -> bool:
     resolve, and a sink it cannot resolve fails closed.
     """
     index = 0
+    reads_comment_file = command_name(argv) == "gh-code-scanning-dismiss"
     while index < len(argv):
         token = argv[index]
-        if token in BODY_FLAGS or any(token.startswith(flag + "=") for flag in BODY_FLAGS if flag.startswith("--")):
+        if token in BODY_FLAGS or any(
+            token.startswith(flag + "=") for flag in BODY_FLAGS if flag.startswith("--")
+        ):
             return True
-        if token in BODY_FILE_FLAGS or any(token.startswith(flag + "=") for flag in BODY_FILE_FLAGS if flag.startswith("--")):
+        if token in BODY_FILE_FLAGS or any(
+            token.startswith(flag + "=")
+            for flag in BODY_FILE_FLAGS
+            if flag.startswith("--")
+        ):
+            return True
+        if reads_comment_file and has_comment_file_flag(argv, index):
             return True
         if token == "--input" or token.startswith("--input="):
             return True
-        if token in API_FIELD_FLAGS or token.startswith("--field=") or token.startswith("--raw-field="):
+        if (
+            token in API_FIELD_FLAGS
+            or token.startswith("--field=")
+            or token.startswith("--raw-field=")
+        ):
             value, index = option_value(argv, index)
             if field_names_prose(value):
                 return True
@@ -791,7 +853,9 @@ def apply_patch_target(patch_text: str) -> str | None:
     return None
 
 
-def extract_redirect_texts(argv: list[str], heredocs: list[str]) -> tuple[list[str], bool]:
+def extract_redirect_texts(
+    argv: list[str], heredocs: list[str]
+) -> tuple[list[str], bool]:
     targets = [target for target in redirect_targets(argv) if prose_target(target)]
     if not targets:
         return [], False

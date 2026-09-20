@@ -7,8 +7,12 @@ Coding agents run fenced. Fence permits the everyday mutations:
 `git push`, `gh pr comment`, `gh-review-reply`, `gh issue create`,
 `gh issue edit`, `gh issue comment`, `gh issue develop`, `gh project item-add`,
 `gh project item-edit`, `gh run rerun`, `gh run cancel`, `gh pr update-branch`,
-and `gh pr review --approve`. Invoking a command that names a mutation
-is the consent for that mutation, so run it rather than asking again.
+and `gh pr review --approve`. The source policy also permits
+`gh-code-scanning-dismiss` for authorised alert dismissals.
+This documents source capability, not installation in the current environment.
+Invoking a command that names a mutation is consent for that mutation,
+so run it rather than asking again. Adding a helper does not authorise
+changes to existing alerts.
 
 Fence denies raw `gh api`, `gh pr merge`, `gh workflow run`, the
 `gh release` mutations, `gh repo create` and `gh repo edit`, `gh config`,
@@ -18,14 +22,16 @@ those for the operator to run in an unfenced shell. Raw reads go through
 
 ## Body text policy
 
-Every command below that carries a `--body` or `--body-file` publishes
-under the user's name. Apply `contribution-voice` before writing that text.
+Every command below that carries `--body`, `--body-file`, or `--comment-file`
+publishes under the user's name. Apply `contribution-voice` and
+`communication-rules` before writing that text.
 Read it first unless its complete, current instructions are already in this context.
 It governs the structure: length, layout,
 sign-offs, and the cut pass.
 
 This covers `gh pr create`, `gh pr comment`, `gh pr review`,
-`gh issue create`, `gh issue comment`, and `gh-review-reply`.
+`gh issue create`, `gh issue comment`, `gh-review-reply`, and
+`gh-code-scanning-dismiss`.
 
 Prefer the dedicated commands where one fits, because each already loads
 the skill: `make-pr`, `post-comment`, `post-issue`, and
@@ -216,6 +222,7 @@ command for the operator to run in an unfenced shell.
 | GraphQL read (queries only)            | `gh-api-safe graphql -f query='…'`                   |
 | Dedicated subcommand exists            | that subcommand (`gh pr edit`, `gh issue edit`, ...) |
 | Reply inside a review comment thread   | `gh-review-reply <review-comment-url>`               |
+| Dismiss an authorised alert            | `gh-code-scanning-dismiss`                           |
 | Other mutation (POST/PATCH/PUT/DELETE) | `gh api -X ...` in unfenced shell                    |
 | Field input from file (`-F x=@file`)   | raw `gh api` in unfenced shell                       |
 
@@ -255,9 +262,9 @@ gh-api-safe graphql -f query=@query.graphql
 gh-api-safe notifications --jq '.[] | {reason, subject: .subject.title}'
 ```
 
-`gh-review-reply` is the only write path through the raw API surface
-allowed under Fence; every other permitted mutation runs as a dedicated
-`gh` subcommand. It takes the review comment URL and a body file,
+`gh-review-reply` and `gh-code-scanning-dismiss` are narrow write helpers
+through the raw API surface. Raw `gh api` remains denied under Fence.
+`gh-review-reply` takes the review comment URL and a body file,
 nothing else. Owner, repository, pull request number, and comment id are
 parsed out of the URL, and one endpoint is built from them,
 `POST repos/{owner}/{repo}/pulls/{n}/comments/{id}/replies`. The reply
@@ -280,6 +287,25 @@ gh-api-safe repos/{owner}/{repo}/pulls/123/comments \
 gh-review-reply https://github.com/owner/repo/pull/123#discussion_r2109876543 \
   --body-file reply.md
 ```
+
+`gh-code-scanning-dismiss` dismisses one open code scanning alert.
+The user must authorise the actual alert mutation before execution.
+Use exactly this argument order, with the real alert URL:
+
+```bash
+gh-code-scanning-dismiss https://github.com/OWNER/REPO/security/code-scanning/NUMBER --reason 'false positive' --comment-file comment.md
+```
+
+The accepted reasons are `false positive`, `won't fix`, `used in tests`,
+and `mitigated`. The comment file must contain nonempty UTF-8 text of
+at most 280 characters. Apply the body text policy above to the comment.
+
+The helper validates the target with GET, confirms that the alert is open,
+then sends PATCH to dismiss it. The GET and PATCH are not atomic.
+The alert can change between requests. Do not retry, reopen alerts,
+assign alerts, or request dismissal approval through this helper.
+If the helper is unavailable, stop and report that limit.
+Do not replace it with raw `gh api`.
 
 See `home-manager/_mixins/agentic/fence/default.nix` for the
 authoritative `command.allow` / `command.deny` lists,

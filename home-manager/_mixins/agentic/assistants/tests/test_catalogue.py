@@ -356,7 +356,13 @@ class CatalogueTests(unittest.TestCase):
             self.assertEqual(
                 (ASSISTANTS / kind / "README.md").read_text(), data[f"{kind}Markdown"]
             )
-        self.assertEqual(len(data["commands"]), 68)
+        self.assertEqual(
+            [row["name"] for row in data["commands"]],
+            sorted(
+                path.parent.name
+                for path in (ASSISTANTS / "commands").glob("*/command.toml")
+            ),
+        )
 
 
 if __name__ == "__main__":

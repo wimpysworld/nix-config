@@ -298,8 +298,13 @@ let
         "gh api rate_limit"
         "gh api meta"
         "gh api octocat"
-        # gh-review-reply is the only GitHub write path allowed under
-        # Fence. It reaches exactly one endpoint,
+        # gh-code-scanning-dismiss is a fixed GitHub write path under Fence.
+        # The helper accepts one alert URL, reason, and comment file. It reads
+        # the alert before one PATCH, and it rejects all other argument forms.
+        # The family-wide `gh api` deny below remains unchanged.
+        "gh-code-scanning-dismiss"
+        # gh-review-reply is a fixed GitHub write path allowed under Fence.
+        # It reaches exactly one endpoint,
         # `POST /repos/{owner}/{repo}/pulls/{n}/comments/{id}/replies`,
         # so an agent can answer a review comment inside its own thread
         # instead of posting a top-level comment. The helper builds that
@@ -310,8 +315,8 @@ let
         # field flag itself and exits 64. The family-wide `gh api` deny
         # below is unaffected, and `gh-api-safe` stays read-only.
         "gh-review-reply"
-        # gh-review-resolve is the other GitHub write path allowed under
-        # Fence. It reaches exactly one GraphQL mutation,
+        # gh-review-resolve is a fixed GitHub write path allowed under Fence.
+        # It reaches exactly one GraphQL mutation,
         # `resolveReviewThread`, so an agent can close a review thread it has
         # answered instead of leaving it open. The helper builds the request
         # itself from a review comment URL and takes no query, mutation, or

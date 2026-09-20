@@ -309,14 +309,38 @@ changes match the permitted issue and comment workflows. Outside Fence, it
 starts the backend without policy checks. The
 Fence policy keeps literal allowances for `gh api rate_limit`,
 `gh api meta`, and `gh api octocat` so those initial commands can reach the
-dispatcher. Other raw reads must start inside the fenced agent. One write
-path is allowed by name: `gh-review-reply`
-posts a threaded reply to a pull request review comment and reaches only
-`POST /repos/{owner}/{repo}/pulls/{n}/comments/{id}/replies`. It builds
-that path itself from validated arguments, refuses every endpoint,
-method, and field flag, and exits 64 on a policy violation. The
-family-wide `gh api` deny is unaffected and `gh-api-safe` stays
-read-only. The wider `gh` policy follows the same family-wide deny
+dispatcher. Other raw reads must start inside the fenced agent.
+The source policy permits narrow write helpers by name.
+This describes source capability, not installation in the current environment.
+
+`gh-review-reply` posts a threaded reply to a pull request review comment
+and reaches only `POST /repos/{owner}/{repo}/pulls/{n}/comments/{id}/replies`.
+It builds that path from validated arguments, refuses every endpoint,
+method, and field flag, and exits 64 on a policy violation.
+
+`gh-code-scanning-dismiss` dismisses one open code scanning alert.
+Use exactly this argument order:
+
+```console
+gh-code-scanning-dismiss https://github.com/OWNER/REPO/security/code-scanning/NUMBER --reason 'false positive' --comment-file comment.md
+```
+
+The accepted reasons are `false positive`, `won't fix`, `used in tests`,
+and `mitigated`. The comment file must contain nonempty UTF-8 text of
+at most 280 characters. Apply `contribution-voice` and `communication-rules`
+to the comment text. The helper validates the target with GET, confirms
+that the alert is open, then sends PATCH to dismiss it.
+The requests are not atomic, so the alert can change between GET and PATCH.
+Do not retry, reopen alerts, assign alerts, or request dismissal approval
+through this helper.
+
+The user must authorise the actual alert mutation before execution.
+Adding this helper does not authorise changes to existing alerts.
+If the helper is unavailable, stop and report that limit.
+The family-wide `gh api` deny is unchanged, and `gh-api-safe` stays read-only.
+Do not use raw `gh api` as a replacement.
+
+The wider `gh` policy follows the same family-wide deny
 plus longer-prefix allow pattern: list-like discovery reads under
 `gh extension`, `gh release`, `gh project`, `gh codespace`, `gh label`,
 `gh secret`, `gh variable`, `gh gpg-key`, `gh ssh-key`, and
