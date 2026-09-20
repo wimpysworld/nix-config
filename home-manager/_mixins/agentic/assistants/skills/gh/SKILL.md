@@ -297,8 +297,9 @@ gh-code-scanning-dismiss https://github.com/OWNER/REPO/security/code-scanning/NU
 ```
 
 The accepted reasons are `false positive`, `won't fix`, `used in tests`,
-and `mitigated`. The comment file must contain nonempty UTF-8 text of
-at most 280 characters. Apply the body text policy above to the comment.
+and `mitigated`. The comment must be a readable regular UTF-8 file.
+It must contain at least one non-whitespace character and at most 280 Unicode
+characters, including newlines. Apply the body text policy above to the comment.
 
 The helper validates the target with GET, confirms that the alert is open,
 then sends PATCH to dismiss it. The GET and PATCH are not atomic.
