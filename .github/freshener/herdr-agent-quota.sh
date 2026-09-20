@@ -4,7 +4,7 @@ set -euo pipefail
 
 PKG_NIX="pkgs/herdr-agent-quota/default.nix"
 
-current=$(awk '/^  version = "/ { match($0, /version = "([^"]+)"/, arr); print arr[1]; exit }' "$PKG_NIX")
+current=$(awk '/^  version = "/ { sub(/^  version = "/, ""); sub(/".*/, ""); print; exit }' "$PKG_NIX")
 latest=$(curl -fsSL "https://api.github.com/repos/levi-qiao/herdr-agent-quota/releases/latest" |
 	jq -r '.tag_name' |
 	sed 's/^v//')
