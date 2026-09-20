@@ -56,6 +56,9 @@ jobs:
           - id: hermes-agent
             name: Hermes Agent
             changelog: https://github.com/NousResearch/hermes-agent/releases
+          - id: herdr-agent-quota
+            name: Herdr Agent Quota
+            changelog: https://github.com/levi-qiao/herdr-agent-quota/releases
           - id: slk
             name: slk
             changelog: https://github.com/gammons/slk/releases

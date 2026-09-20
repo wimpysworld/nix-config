@@ -68,6 +68,15 @@ lib.mkIf
         cursor_trail_decay 0.175 0.425
         cursor_trail_start_threshold 2
 
+        # BEGIN herdr-agent-quota font
+        # Herdr plugin icon fonts use Private Use Area glyphs, which do not
+        # fall back like ordinary characters. Herdr Agent Icons Max is
+        # installed to the user font directory by herdr-agent-quota's
+        # configure action.
+        symbol_map U+E1A0-U+E1B6 Herdr Agent Icons Max
+        symbol_map U+E1C0-U+E1C5 Herdr Agent Icons Max
+        # END herdr-agent-quota font
+
         # Send proper escape sequences for Enter key modifiers in OpenCode.
         map shift+enter send_text all \x1b[13;2u
         map ctrl+enter send_text all \x1b[13;5u
