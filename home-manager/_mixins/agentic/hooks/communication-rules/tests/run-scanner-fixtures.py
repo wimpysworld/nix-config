@@ -1962,9 +1962,28 @@ def run_opencode_agent_cases(env: dict, strike_dir: str) -> int:
         run_case(name, "tool.execute.before", _B1_BLOCK)
 
     # B2 external post: a gh-api-safe post is external, so its breach is a B2
-    # block.
+    # block. OpenCode can normalise direct tool names by replacing hyphens or
+    # dots with `_`. Each form must keep the same B2 surface.
     reset_strikes()
     run_case("tool-post-blocked.json", "tool.execute.before", _B2_BLOCK)
+    blocked_direct_post = "del" + "ve"
+    for direct_tool_name in (
+        "gh_code_scanning_dismiss",
+        "gh_review_reply",
+        "gh.review.reply",
+    ):
+        reset_strikes()
+        run_case(
+            f"direct {direct_tool_name}",
+            "tool.execute.before",
+            _B2_BLOCK,
+            payload={
+                "session_id": f"oc-direct-{direct_tool_name}",
+                "event": "tool.execute.before",
+                "tool": {"name": direct_tool_name},
+                "args": {"comment": f"We should {blocked_direct_post} this."},
+            },
+        )
 
     # B1 hybrid on a shared session+tool+path key (write): block on strike 1,
     # then allow-revise on strike 2+ carrying the raw target (here "notes.md")
