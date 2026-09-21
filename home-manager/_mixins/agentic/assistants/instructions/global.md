@@ -36,6 +36,14 @@ Your report lands in the coordinator's window, which is permanent and finite. Pr
 
 For full routing, delegation packet, and relay rules, use `delegate-task`.
 
+## Waiting
+
+For agent tasks, background shell jobs, and external monitoring, use native completion notifications or blocking wait/watch mechanisms. Do not use sleep polling when those mechanisms are available. Sleep polling means inserting delays between repeated status checks, including shell `sleep` and equivalent timers. Native completion notifications and blocking wait/watch mechanisms are not sleep polling.
+
+If sleep polling is unavoidable, allow at most 30 seconds of cumulative sleep-polling wait per task. Count all delays across iterations, tool calls, retries, and replacement workers for the same task. Repeated short sleeps must not bypass the cap. Do not replace sleep polling with a busy loop of status checks.
+
+When the budget ends, stop polling and report the pending state, task or job identifier, and next action. Do not claim completion or cancel useful work merely because this budget ends. Native waits still follow the task deadline. This limit is prompt guidance, not a runtime timer.
+
 ## Skill availability
 
 Apply required skills throughout the task. Before dependent work, ensure that their complete, current instructions and required references are in this agent's context. Read missing or incomplete content, including after compaction. Read again after known source changes or an explicit refresh request. Full native expansion or embedded canonical instructions count as available. A name, metadata, summary, or past-use marker does not.

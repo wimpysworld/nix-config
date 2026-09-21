@@ -48,7 +48,7 @@ The merge is the user's. Reaching the finish line ends the loop with the report 
 
 Every shift starts with the finish-line read, then a synchronous review scan. Fetch the PR's current reviews and review threads through `gh-api-safe`. Apply the filter under **Answer reviews**, then follow the `address-code-review` body here for anything that remains. Wait for that workflow to complete. This scan is a coordinator action, not a watcher. Never report a head as finished until its scan has completed.
 
-Then dispatch watchers with `delegate-task`, each with fresh context, read-only, and a 30 minute deadline stated in the packet. A watcher stops at the deadline and reports rather than exceeding it, and a watcher that reports "still running" is replaced with a fresh one. Which watchers run depends on what is outstanding:
+Then dispatch watchers with `delegate-task`, each with fresh context, read-only, and a 30 minute deadline stated in the packet. A watcher stops at the deadline and reports rather than exceeding it. Replace a watcher that reports "still running" only when a native notification or blocking watch can continue the wait. Never replace a watcher to reset the cumulative 30 second sleep-polling budget. Which watchers run depends on what is outstanding:
 
 | Outstanding | Watchers for this shift |
 | ----------- | ----------------------- |
@@ -56,11 +56,11 @@ Then dispatch watchers with `delegate-task`, each with fresh context, read-only,
 | Checks green, threads or approvals outstanding | Review watcher only |
 
 - **CI watcher**: run `gh pr checks <url> --watch --fail-fast` in bounded calls. Claude Code and Codex cap one tool call at a few minutes, so a 30 minute blocking call is cut: wrap it as `timeout 8m gh pr checks ...`, and when it is cut, read `gh pr checks <url>` once and call again. Never sleep between calls. Return as soon as the checks conclude, with the failed checks named.
-- **Review watcher**: poll new reviews, review comments, `reviewDecision`, `reviewRequests`, and the PR `state` through `gh-api-safe` at about 90 second intervals, because GitHub has no watch command for reviews. Return on the first change.
+- **Review watcher**: use an available native notification or blocking watch for review changes. Return on the first change. If neither exists, read reviews, review comments, `reviewDecision`, `reviewRequests`, and the PR `state` once through `gh-api-safe`. Return pending status when unchanged. Do not create a sleep-polling loop.
 
 Both watchers return at once when the PR `state` is no longer `OPEN`, so a merged or closed PR ends the loop on the next return even when nobody stops the watchers. Name every watcher and follow-up worker `babysit-pr-<owner>-<repo>-<number>-<role>`, for example `babysit-pr-noughtylinux-development-42-ci`. `finish-pr` run in the same session finds them by that prefix and stops them before it deletes the branch, and the user can do the same by hand.
 
-The coordinator never sleeps and never polls; it acts when a watcher returns. Watchers never edit files. Dispatch every follow-up to a fresh worker, and serialise everything that touches the working tree so two workers never edit at once.
+The coordinator never sleeps and never polls. It acts when a watcher returns. When reviews remain pending without a notification or blocking watch, finish any active CI watch and authorised fixes. Then report the pending reviews and end with `Resume:` rather than dispatching another review watcher solely to check again. Watchers never edit files. Dispatch every follow-up to a fresh worker, and serialise everything that touches the working tree so two workers never edit at once.
 
 Budget: 16 shifts or 8 hours, whichever comes first. The loop also ends when the PR merges or closes, when the finish line is reached, or when a `DIRTY` state or a third failure of one check stops it. On the budget, report and end with a `Resume:` line. Re-running is safe because every shift starts from the live PR state.
 

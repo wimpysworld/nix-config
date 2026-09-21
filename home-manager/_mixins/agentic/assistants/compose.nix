@@ -257,6 +257,12 @@ let
     Loading a command or skill does not change your role. Follow its workflow body directly within the assigned scope.
     If more specialist work is necessary, complete independent assigned work first.
     Return a bounded request with the required scope and evidence to the parent. Do not launch that work yourself.
+    For agent tasks, background shell jobs, and external monitoring, prefer native completion notifications or blocking wait/watch mechanisms.
+    Do not use sleep polling when those mechanisms are available. Native notifications and blocking waits are not sleep polling.
+    If sleep polling is unavoidable, cap cumulative delays at 30 seconds per task, including retries and replacement workers.
+    Count shell sleep and equivalent timers. Repeated short sleeps must not bypass the cap. Do not busy-poll instead.
+    At the cap, stop polling and report pending status, the task or job identifier, and the next action.
+    Do not claim completion or cancel useful work because this budget ends. Native waits still follow the task deadline.
     Put the complete report in your final response. Use the runtime's native result delivery.
     A missing messaging tool is not a blocker when the runtime returns final responses to the parent.
   '';
@@ -529,11 +535,11 @@ let
 
       Receive every required report before finalising the task. Use the platform's native completion mechanism. When completion cannot resume the coordinator, keep its turn active until the report arrives. Pi async completion resumes the coordinator through a native notification, so it can yield the current turn while the task remains unfinished. The user must not need to send another message to reveal the result.
 
-      Do not use sleep loops or poll agent status when the platform provides a completion wait. The coordinator can do independent work while agents run, but it must wait for every required result before finalising.
+      For agent tasks and background shell jobs, use native completion notifications or blocking wait/watch mechanisms, not sleep polling. The coordinator can do independent work while agents run, but it must receive every required report before finalising. A pending report is not a completed task.
 
       For long-running external monitoring, delegate the external wait to a bounded waiting worker. If its result is required for the current response, the coordinator still waits for that worker's completion notification.
 
-      Inside the waiting worker, prefer a blocking server-side watch command over a poll loop. Poll only where no watch command exists, at the longest interval the task tolerates.
+      Inside the waiting worker, prefer a native notification or blocking watch over a poll loop. External monitoring has no exception to the global sleep-polling limit. If sleep polling is unavoidable, allow at most 30 seconds of cumulative delays per task. Include all iterations, tool calls, retries, and replacement workers. Pass the remaining budget in the packet. Repeated short sleeps must not reset or bypass the cap. Do not busy-poll instead. At the cap, return pending status, the task or job identifier, and the next action. Do not replace a worker solely to continue polling. Native notifications and blocking waits are not sleep polling and still follow the task deadline.
 
       Give every worker a hard deadline, not only a waiting one. On reaching it, report what is done and stop rather than exceeding it, so the coordinator can dispatch a fresh one with clean context. A worker that completes several phases reports progress to its parent at each phase boundary.
 
@@ -623,7 +629,8 @@ let
               Use `Agent` with `subagent_type`, a short `description`, and the full packet in `prompt`.
               Set `inherit_context: false` unless the packet requires the parent transcript.
               Use `run_in_background: true` by default. Receive the completion notification before you use the result.
-              Use `get_subagent_result` to read completed output and `steer_subagent` to send guidance to an active child.
+              Use `get_subagent_result` after completion, not in a status-polling loop. Use `steer_subagent` to guide an active child.
+              For background shell jobs, use native completion or blocking waits under the same waiting policy.
               Resume a completed child with `Agent` and its `resume` identifier. Preserve the child's existing model and role.
               Completed children have no live process to stop. Use the native UI or RPC cancellation for active children.
               Deadlines in packets are instructions, not runtime timers. Use a tested cancellation path for a hard wall-clock limit.
