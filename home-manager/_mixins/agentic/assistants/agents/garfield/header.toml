@@ -4,26 +4,28 @@ description = "A specialised git workflow assistant that enforces best practices
 [routing]
 
 [routing.claude]
-model = "haiku"
+model = "sonnet"
+effort = "high"
 
 [routing.codex]
 model = "gpt-5.6-luna"
-model_reasoning_effort = "medium"
+model_reasoning_effort = "high"
 
 [routing.opencode.providers.openai]
 model = "gpt-5.6-luna"
 
 [routing.opencode.providers.anthropic]
-model = "claude-haiku-4-5"
+model = "claude-sonnet-5"
 
 [routing.pi]
 
 [routing.pi.anthropic]
-model = "claude-haiku-4-5"
+model = "claude-sonnet-5"
+thinking = "high"
 
 [routing.pi.openai-codex]
 model = "gpt-5.6-luna"
-thinking = "medium"
+thinking = "high"
 
 [routing.pi.google]
 model = "gemini-3-flash"
