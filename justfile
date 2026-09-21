@@ -515,9 +515,15 @@ gc:
     nh clean all --keep 5
 
 # Update flake.lock
-update:
-    @echo "flake.lock 󰈡 Updating "
-    nix flake update
+update input="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "flake.lock 󰈡 Updating"
+    if [[ -n {{ quote(input) }} ]]; then
+      nix flake update {{ quote(input) }}
+    else
+      nix flake update
+    fi
 
 # Build a specific package
 build-pkg pkg hostname=current_hostname:
