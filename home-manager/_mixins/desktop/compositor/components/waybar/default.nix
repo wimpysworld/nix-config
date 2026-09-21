@@ -393,7 +393,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
             on-scroll-down = "${pkgs.avizo}/bin/volumectl -d -m down 2";
             tooltip-format = "  {source_volume}󰏰\n󰒓  {desc}";
             ignored-sinks = [
-              "Easy Effects Sink"
               "INZONE Buds Analog Stereo"
             ];
           };

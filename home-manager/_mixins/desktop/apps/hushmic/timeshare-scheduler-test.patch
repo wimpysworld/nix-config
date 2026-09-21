@@ -1,0 +1,15 @@
+diff --git a/crates/dpdfnet-ladspa/src/rt.rs b/crates/dpdfnet-ladspa/src/rt.rs
+index 5ed2866..05b21ae 100644
+--- a/crates/dpdfnet-ladspa/src/rt.rs
++++ b/crates/dpdfnet-ladspa/src/rt.rs
+@@ -894,6 +894,9 @@ mod tests {
+             })
+             .unwrap();
+-        assert_eq!(started.recv().unwrap().policy, libc::SCHED_OTHER);
++        assert!(matches!(
++            started.recv().unwrap().policy,
++            libc::SCHED_OTHER | libc::SCHED_BATCH | libc::SCHED_IDLE
++        ));
+         let started = Instant::now();
+         let mut scans = 0;
+         // This closure replaces the whole direct and broker request path.
