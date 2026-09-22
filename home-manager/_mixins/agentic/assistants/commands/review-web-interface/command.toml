@@ -1,0 +1,6 @@
+[common]
+description = "Review web interface code"
+argument-hint = "[files|patterns]"
+
+[compose]
+agent = "morph"

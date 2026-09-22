@@ -66,6 +66,7 @@ Claude Code, OpenCode, and Pi use `/name`. Codex uses manual-only `$name` skills
 | [review-code-mine](./review-code-mine/command.toml) | Review My Code 🪞 | donatello | public | Task worker: donatello | Native subtask: donatello | spawn_agent: donatello | Agent worker: donatello |
 | [review-open-source-attestation](./review-open-source-attestation/command.toml) | Open Source Attestation Review 🧾 | penfold | secret | Task worker: penfold | Native subtask: penfold | spawn_agent: penfold | Agent worker: penfold |
 | [review-task](./review-task/command.toml) | Review Task 🔬 | penfold | public | Task worker: penfold | Native subtask: penfold | spawn_agent: penfold | Agent worker: penfold |
+| [review-web-interface](./review-web-interface/command.toml) | Review web interface code | morph | public | Task worker: morph | Native subtask: morph | spawn_agent: morph | Agent worker: morph |
 | [triage-tasks](./triage-tasks/command.toml) | Triage Tasks 🗂️ | penfold | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
 | [update-agents-md](./update-agents-md/command.toml) | Update AGENTS.md 🧠 | rosey | public | Task worker: rosey | Native subtask: rosey | spawn_agent: rosey | Agent worker: rosey |
 | [update-assistant](./update-assistant/command.toml) | Update AI Assistant ⚡ | rosey | public | Task worker: rosey | Native subtask: rosey | spawn_agent: rosey | Agent worker: rosey |
@@ -261,6 +262,10 @@ Only description overrides and nonempty argument hints are shown. When any clien
 | [review-task](./review-task/command.toml) | opencode | Same as common | Unset |
 | [review-task](./review-task/command.toml) | codex | Same as common | Unset |
 | [review-task](./review-task/command.toml) | pi | Same as common | [issue-or-file] |
+| [review-web-interface](./review-web-interface/command.toml) | claude | Same as common | [files\|patterns] |
+| [review-web-interface](./review-web-interface/command.toml) | opencode | Same as common | [files\|patterns] |
+| [review-web-interface](./review-web-interface/command.toml) | codex | Same as common | Unset |
+| [review-web-interface](./review-web-interface/command.toml) | pi | Same as common | [files\|patterns] |
 | [triage-tasks](./triage-tasks/command.toml) | claude | Same as common | [issue-id ...] |
 | [triage-tasks](./triage-tasks/command.toml) | opencode | Same as common | [issue-id ...] |
 | [triage-tasks](./triage-tasks/command.toml) | codex | Same as common | Unset |

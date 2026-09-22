@@ -1,0 +1,11 @@
+[common]
+name = "web-interface-guidelines"
+description = "Guides implementation and review of browser and web interfaces across frameworks. Use for HTML/CSS, web accessibility, forms, focus, responsive layouts, motion, media, localisation, and interface performance. Also use for requests to review web UI or check web interface guidelines. Excludes diagram creation, logos, terminal interfaces, native applications, and general non-web design."
+license = "MIT"
+
+[common.metadata]
+upstream = "https://github.com/vercel-labs/web-interface-guidelines"
+revision = "e3d624baaf29dc1fc645aff3e38f03e564d2d6b1"
+source = "command.md"
+license-source = "LICENSE"
+local-changes = "Adapted the pinned command into a reusable, framework-neutral skill with a separate read-only review command. Replaced React contracts and tooling with native HTML and browser behaviour. Made performance, state, interaction, and styling advice context-dependent. Corrected content-visibility guidance. Removed Vercel copy rules and grammar-sacrifice instructions. Added evidence limits and runtime checks. Retained the MIT licence notice. No runtime upstream fetch."
