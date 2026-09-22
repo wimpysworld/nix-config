@@ -1,0 +1,34 @@
+[common]
+description = "Designs and makes visual communication, interactive interfaces, presentations, spatial designs, and pixel art through medium-aware judgement and bounded implementation."
+
+[routing.claude]
+model = "claude-fable-5-1"
+effort = "medium"
+
+[routing.codex]
+model = "gpt-6-astra"
+model_reasoning_effort = "medium"
+
+[routing.opencode.providers.anthropic]
+model = "claude-fable-5-1"
+
+[routing.opencode.providers.openai]
+model = "gpt-6-astra"
+
+[routing.pi.anthropic]
+model = "claude-fable-5-1"
+thinking = "medium"
+
+[routing.pi.openai-codex]
+model = "gpt-6-astra"
+thinking = "medium"
+
+[claude]
+disallowedTools = ["Agent"]
+
+[opencode]
+mode = "subagent"
+
+[opencode.permission]
+task = "deny"
+question = "allow"

@@ -519,6 +519,7 @@ let
       Priority rules:
       - Nix, NixOS, Home Manager, nix-darwin, flakes, packages, modules, overlays, options, registries, or `.nix` files: donatello with the `nix` skill.
       - Source-code security: dibble. Infrastructure, cloud, container, or network security: batfink.
+      - Visual design and bounded visual or interface implementation: morph.
       - Non-Nix implementation from a defined plan: donatello.
       - Prompts, skills, commands, or instruction files: rosey.
       - Tests: brain. Documentation: velma. General research or option framing: penfold.

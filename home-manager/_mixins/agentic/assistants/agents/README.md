@@ -13,6 +13,7 @@ These tables describe repository sources and projected client metadata, not inst
 | [donatello](./donatello/header.toml) | A methodical implementation engineer who precisely executes code changes from improvement plans while maintaining existing style, verifying tests pass, and seeking clarification when obstacles arise. | Enabled client |
 | [garfield](./garfield/header.toml) | A specialised git workflow assistant that enforces best practices for commit messages, pull requests, and code explanations while strictly adhering to Conventional Commits standards. | Enabled client |
 | [gonzales](./gonzales/header.toml) | A pragmatic performance specialist who identifies high-impact optimisations in bottlenecks and hotspots while preserving code simplicity and focusing on user-perceivable improvements. | Enabled client |
+| [morph](./morph/header.toml) | Designs and makes visual communication, interactive interfaces, presentations, spatial designs, and pixel art through medium-aware judgement and bounded implementation. | Enabled client |
 | [penfold](./penfold/header.toml) | A thoughtful research generalist who explores ideas through dialogue, synthesises findings into context-efficient overviews, and frames problems clearly for downstream specialists. | Enabled client |
 | [penry](./penry/header.toml) | A meticulous code reviewer who identifies practical maintainability improvements through simplification, deduplication, and naming clarity while ensuring all changes are small, safe, and preserve exact functionality. | Enabled client |
 | [rosey](./rosey/header.toml) | A prompt and skill specialist who crafts, refines, and maintains agent prompts, skills, commands, and instruction files with ruthless token efficiency. | Enabled client |
@@ -52,6 +53,10 @@ Pi defaults come from metadata.project. Descriptions show the client projection,
 | gonzales | opencode | A pragmatic performance specialist who identifies high-impact optimisations in bottlenecks and hotspots while preserving code simplicity and focusing on user-perceivable improvements. | {"mode":"subagent","permission":{"question":"allow","task":"deny"}} |
 | gonzales | codex | A pragmatic performance specialist who identifies high-impact optimisations in bottlenecks and hotspots while preserving code simplicity and focusing on user-perceivable improvements. | No metadata override |
 | gonzales | pi | A pragmatic performance specialist who identifies high-impact optimisations in bottlenecks and hotspots while preserving code simplicity and focusing on user-perceivable improvements. | {"exclude_extensions":"pi-cc-header","extensions":true,"isolated":false,"prompt_mode":"replace","skills":true} |
+| morph | claude | Designs and makes visual communication, interactive interfaces, presentations, spatial designs, and pixel art through medium-aware judgement and bounded implementation. | {"disallowedTools":["Agent"]} |
+| morph | opencode | Designs and makes visual communication, interactive interfaces, presentations, spatial designs, and pixel art through medium-aware judgement and bounded implementation. | {"mode":"subagent","permission":{"question":"allow","task":"deny"}} |
+| morph | codex | Designs and makes visual communication, interactive interfaces, presentations, spatial designs, and pixel art through medium-aware judgement and bounded implementation. | No metadata override |
+| morph | pi | Designs and makes visual communication, interactive interfaces, presentations, spatial designs, and pixel art through medium-aware judgement and bounded implementation. | {"exclude_extensions":"pi-cc-header","extensions":true,"isolated":false,"prompt_mode":"replace","skills":true} |
 | penfold | claude | A thoughtful research generalist who explores ideas through dialogue, synthesises findings into context-efficient overviews, and frames problems clearly for downstream specialists. | {"disallowedTools":["Agent"]} |
 | penfold | opencode | A thoughtful research generalist who explores ideas through dialogue, synthesises findings into context-efficient overviews, and frames problems clearly for downstream specialists. | {"mode":"subagent","permission":{"question":"allow","task":"deny"}} |
 | penfold | codex | A thoughtful research generalist who explores ideas through dialogue, synthesises findings into context-efficient overviews, and frames problems clearly for downstream specialists. | No metadata override |
@@ -118,6 +123,12 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | gonzales | codex | Unset | gpt-5.6-sol | xhigh |
 | gonzales | pi | anthropic | claude-opus-5 | high |
 | gonzales | pi | openai-codex | gpt-5.6-sol | xhigh |
+| morph | claude | Unset | claude-fable-5-1 | medium |
+| morph | opencode | anthropic | claude-fable-5-1 | Unset |
+| morph | opencode | openai | gpt-6-astra | Unset |
+| morph | codex | Unset | gpt-6-astra | medium |
+| morph | pi | anthropic | claude-fable-5-1 | medium |
+| morph | pi | openai-codex | gpt-6-astra | medium |
 | penfold | claude | Unset | claude-fable-5-1 | high |
 | penfold | opencode | anthropic | claude-fable-5-1 | Unset |
 | penfold | opencode | openai | gpt-6-astra | Unset |
