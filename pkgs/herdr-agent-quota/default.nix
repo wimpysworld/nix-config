@@ -17,16 +17,16 @@ in
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "herdr-agent-quota";
 
-  version = "1.6.1";
+  version = "1.6.2";
 
   src = fetchFromGitHub {
     owner = "levi-qiao";
     repo = "herdr-agent-quota";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-NRqnMzBTzkUOn6/z1Z5XDciJ6Z10N6eejJVLAGEFLXc=";
+    hash = "sha256-RvbfJIVcxGCpsQMUqRkHKbUGyGu8VXanBmY5LyHnbjU=";
   };
 
-  cargoHash = "sha256-Y3UtptQyI21kgDchjj07HSYUPb1TScAHqsIHbj9KXW0=";
+  cargoHash = "sha256-v3C+ajqgYzkeyWQLHFv0xZlOC5RL3awc5XDWIBpLDzE=";
 
   # Upstream unit tests reach CLIs and the network; skip them in the sandbox.
   doCheck = false;
