@@ -44,6 +44,51 @@ diff --git a/src-tauri/src/overlay.rs b/src-tauri/src/overlay.rs
              #[cfg(target_os = "linux")]
              {
                  // Try to initialize GTK layer shell, ignore errors if compositor doesn't support it
+diff --git a/src/App.css b/src/App.css
+--- a/src/App.css
++++ b/src/App.css
+@@ -102,3 +102,3 @@
+ .logo-primary {
+-  fill: var(--color-logo-primary);
++  fill: #faa2ca;
+ }
+@@ -106,5 +106,34 @@
+ .logo-stroke {
+-  fill: var(--color-logo-stroke);
+-  stroke: var(--color-logo-stroke);
++  fill: #382731;
++  stroke: #382731;
+   stroke-width: 1;
+ }
++
++@media (prefers-color-scheme: dark) {
++  .logo-primary {
++    fill: #f28cbb;
++  }
++
++  .logo-stroke {
++    fill: #fad1ed;
++    stroke: #fad1ed;
++  }
++}
++
++:root[data-theme="light"] .logo-primary {
++  fill: #faa2ca;
++}
++
++:root[data-theme="light"] .logo-stroke {
++  fill: #382731;
++  stroke: #382731;
++}
++
++:root[data-theme="dark"] .logo-primary {
++  fill: #f28cbb;
++}
++
++:root[data-theme="dark"] .logo-stroke {
++  fill: #fad1ed;
++  stroke: #fad1ed;
++}
 diff --git a/src/overlay/RecordingOverlay.css b/src/overlay/RecordingOverlay.css
 --- a/src/overlay/RecordingOverlay.css
 +++ b/src/overlay/RecordingOverlay.css
