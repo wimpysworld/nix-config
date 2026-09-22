@@ -1,0 +1,16 @@
+[common]
+name = "tui-design"
+description = "Designs, builds, refactors, and reviews terminal interfaces, including full-screen TUIs, interactive prompts, and command-line tools. Use for terminal layout, UX, CLI behaviour, ncurses tools, dashboards, REPLs, fzf-like pickers, Bubble Tea, Ratatui, Textual, Ink, and OpenTUI. Also use when a request names lazygit, k9s, btop, helix, or yazi instead of TUI. Excludes browser and web UI, native GUI, editor or font configuration, and backend or shell work without a terminal interface."
+license = "MIT"
+
+[common.metadata]
+version = "1.7.2"
+upstream = "https://github.com/gfargo/tui-design-skill"
+revision = "f8eab1afba9f545fbb3969d01ba54e8f6aceac4d"
+source = "plugins/tui-design/skills/tui-design"
+local-changes = "Mapped upstream frontmatter to common metadata and Codex interface fields to codex.interface. Adapted the description, body, and all eight references to house style. Kept technical sections, examples, and identifiers. Added reference contents lists and skill-root paths. Made vhs-cli-demos optional. Kept the MIT LICENSE unchanged."
+
+[codex.interface]
+display_name = "TUI Design"
+short_description = "Design and review polished terminal interfaces"
+default_prompt = "Use $tui-design to design or review a polished terminal interface."

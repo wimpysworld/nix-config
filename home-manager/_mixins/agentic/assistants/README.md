@@ -381,6 +381,37 @@ Shared skills provide background knowledge and reference material. Most are sour
 
 Use the generated [skill catalogue](skills/README.md) for descriptions and source details, including conditional skills. Listing a conditional skill does not install it or bypass its delivery gates. See [Workspace skills](gws.md) for their source and refresh procedure.
 
+### TUI Design import and refresh
+
+The approved source for `skills/tui-design/` is
+[`gfargo/tui-design-skill` v1.7.2](https://github.com/gfargo/tui-design-skill/tree/f8eab1afba9f545fbb3969d01ba54e8f6aceac4d/plugins/tui-design/skills/tui-design).
+Keep the upstream guidance and all eight references. Copy the root `LICENSE` without changes.
+Do not import installers, npm packaging, plugin manifests, or evaluation tools.
+
+Local adaptations cover composer metadata and house-style prose in the description, body, and all eight references.
+They also include contents lists, optional `vhs-cli-demos` guidance, and reference paths relative to the skill root.
+Keep technical sections, code examples, identifiers, and reference links during prose changes.
+Move upstream `name` into `[common]` in `header.toml`, with `license = "MIT"`.
+Record prose adaptations in the provenance.
+Record `version`, `upstream`, `revision`, `source`, and `local-changes` under `[common.metadata]`.
+Move the upstream `agents/openai.yaml` interface fields into `[codex.interface]`. Do not copy that YAML file.
+Keep `SKILL.md` body-only. The absent `vhs-cli-demos` skill must not block design work or trigger installation.
+Preserve automatic discovery and all client gates, including the Moltis gate. No package or registration change is required.
+
+For each manual refresh:
+
+1. Select a full upstream commit and verify the release tag against that commit.
+2. Fetch the skill files and root licence through `gh-api-safe`, with `?ref=<commit>` on each contents request.
+3. Compare the fetched files with the local import before replacement. Never execute upstream scripts.
+4. Import the body and eight references, then reapply the local prose and metadata adaptations above.
+5. Update the provenance fields and check every local file reference from the skill root.
+6. Compare the licence byte-for-byte with the pinned source. Check technical sections, code examples, and identifiers against upstream.
+7. Run `just update-assistant-catalogue`, then `just check-assistant-catalogue` and `git diff --check`.
+8. Check the generated skills for Claude Code, Codex, OpenCode, Pi, and gated Moltis without activation.
+
+Description checks: a Ratatui dashboard request loads this skill. A browser UI request does not.
+An architecture diagram request uses `diagram-design` instead.
+
 ### Vendored Diagram Design
 
 `skills/diagram-design/` contains the complete upstream skill from
