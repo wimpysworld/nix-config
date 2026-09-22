@@ -1,0 +1,9 @@
+[common]
+name = "mucss"
+description = "Builds and updates static open-source project landing pages with Digicreon µCSS (@digicreon/mucss). Use when the user explicitly requests µCSS, muCSS, or mucss, or when the target page already uses that framework. Does not select a framework for an unrelated static page or cover similarly named libraries."
+
+[common.metadata]
+authorship = "Original guidance and independently constructed examples; no upstream skill or framework assets are vendored."
+reference-source = "https://github.com/Digicreon/muCSS"
+reference-revision = "f42cabdda91353d782bca0ed78d33e2a62396b88"
+reference-version = "1.4.9"
