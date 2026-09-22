@@ -4,7 +4,7 @@ diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
 @@ -48,0 +49,2 @@
 +pub(crate) const UI_SCALE: f64 = 1.5;
 +
-@@ -899,8 +901,8 @@ pub fn run(cli_args: CliArgs) {
+@@ -943,8 +945,8 @@ pub fn run(cli_args: CliArgs) {
              let mut win_builder =
                  tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("/".into()))
                      .title("Handy")
@@ -15,31 +15,35 @@ diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
                      .resizable(true)
                      .maximizable(true)
                      .visible(false);
-@@ -912 +914,2 @@ pub fn run(cli_args: CliArgs) {
--            win_builder.build()?;
-+            let main_window = win_builder.build()?;
+@@ -957,2 +959,3 @@ pub fn run(cli_args: CliArgs) {
+             #[cfg_attr(not(target_os = "windows"), allow(unused_variables))]
+             let main_window = win_builder.build()?;
 +            main_window.set_zoom(UI_SCALE)?;
 diff --git a/src-tauri/src/overlay.rs b/src-tauri/src/overlay.rs
 --- a/src-tauri/src/overlay.rs
 +++ b/src-tauri/src/overlay.rs
-@@ -46,2 +46,2 @@
+@@ -49,2 +49,2 @@
 -const OVERLAY_WIDTH: f64 = 256.0;
--const OVERLAY_HEIGHT: f64 = 46.0;
+-const OVERLAY_HEIGHT: f64 = 50.0;
 +const OVERLAY_WIDTH: f64 = 384.0;
-+const OVERLAY_HEIGHT: f64 = 69.0;
-@@ -49,3 +49,2 @@
++const OVERLAY_HEIGHT: f64 = 75.0;
+@@ -52,3 +52,2 @@
 -// Actual is 394x118, just a little extra
 -const OVERLAY_STREAM_WIDTH: f64 = 400.0;
 -const OVERLAY_STREAM_HEIGHT: f64 = 120.0;
 +const OVERLAY_STREAM_WIDTH: f64 = 600.0;
 +const OVERLAY_STREAM_HEIGHT: f64 = 180.0;
-@@ -423,2 +423,6 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
+@@ -429,6 +428,10 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
+     #[allow(unused_variables)]
      match builder.build() {
          Ok(window) => {
 +            if let Err(error) = window.set_zoom(crate::UI_SCALE) {
 +                debug!("Failed to set recording overlay zoom: {}", error);
 +            }
 +
+             #[cfg(target_os = "linux")]
+             {
+                 // Try to initialize GTK layer shell, ignore errors if compositor doesn't support it
 diff --git a/src/overlay/RecordingOverlay.css b/src/overlay/RecordingOverlay.css
 --- a/src/overlay/RecordingOverlay.css
 +++ b/src/overlay/RecordingOverlay.css
