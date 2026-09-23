@@ -56,6 +56,8 @@ stdenvNoCC.mkDerivation {
       "$CODEX_HOME/config.toml"
       "$CODEX_HOME/herdr-agent-state.sh"
       "$CODEX_HOME/hooks.json"
+      "$XDG_CONFIG_HOME/opencode/cli.json"
+      "$XDG_CONFIG_HOME/opencode/herdr-opencode/tui.js"
       "$XDG_CONFIG_HOME/opencode/herdr-tui-session.js"
       "$XDG_CONFIG_HOME/opencode/plugins/herdr-agent-state.js"
       "$XDG_CONFIG_HOME/opencode/tui.jsonc"

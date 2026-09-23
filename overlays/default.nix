@@ -105,28 +105,7 @@ in
 
       fresh = final.unstable.fresh-editor;
 
-      herdr =
-        (inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}.herdr.override {
-          zig = final.unstable.zig_0_15;
-        }).overrideAttrs
-          (
-            finalAttrs: _oldAttrs: {
-              version = "0.9.0";
-              src = final.fetchFromGitHub {
-                owner = "herdrdev";
-                repo = "herdr";
-                tag = "v${finalAttrs.version}";
-                hash = "sha256-SUYF4bbaYwNgoe498VoCUzuLPcjBLQXR0o0DWjjoSnI=";
-              };
-              cargoDeps = final.rustPlatform.fetchCargoVendor {
-                inherit (finalAttrs) pname version src;
-                hash = "sha256-CW/SF/cAPDv47gS5B7XbVZEE6LC9F1a2I1TLTJ4AWdw=";
-              };
-              zigDeps = _oldAttrs.zigDeps.overrideAttrs {
-                outputHash = "sha256-PnM+hZIlLyQwK8vJgd/Bhjt1lNIz06T8FahwliRmMrY=";
-              };
-            }
-          );
+      inherit (inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}) herdr;
 
       inherit (final.unstable) ollama;
       inherit (final.unstable) ollama-cuda;

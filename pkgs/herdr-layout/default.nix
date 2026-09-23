@@ -89,7 +89,8 @@ in
 assert lib.assertMsg (builtins.elem herdr.version [
   "0.8.2"
   "0.9.0"
-]) "herdr-layout requires the Herdr v0.8.2 or v0.9.0 event schema";
+  "0.9.1"
+]) "herdr-layout requires the Herdr v0.8.2, v0.9.0, or v0.9.1 event schema";
 stdenvNoCC.mkDerivation {
   pname = "herdr-${layoutName}";
   version = "0.4.0";

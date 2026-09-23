@@ -252,6 +252,13 @@ in
       "opencode/tui.jsonc".text = builtins.toJSON {
         plugin = [ "./herdr-tui-session.js" ];
       };
+      # OpenCode V2 loads the TUI plugin from a directory named in cli.json.
+      # The directory entrypoint re-exports herdr-tui-session.js.
+      "opencode/herdr-opencode/tui.js".source =
+        "${herdrIntegrations}/home/.config/opencode/herdr-opencode/tui.js";
+      "opencode/cli.json".text = builtins.toJSON {
+        plugins = [ "./herdr-opencode" ];
+      };
     })
   ];
 
