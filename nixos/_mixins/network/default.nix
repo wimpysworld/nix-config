@@ -14,6 +14,17 @@ let
     else
       "true";
   useNetworkManager = if (host.is.iso || !host.is.server) then true else false;
+  # Provision iwd network files on hosts where NetworkManager drives iwd.
+  useIwdNetworks = config.networking.networkmanager.enable && host.network.wifi;
+  iwdSopsFile = ../../../secrets/iwd.yaml;
+  # Personal (PSK) Wi-Fi networks. Each SSID maps to its passphrase key in
+  # secrets/iwd.yaml.
+  iwdPskNetworks = {
+    "Automation Grid" = "grid-passphrase";
+    "SoroSuub Centroplex" = "centroplex-passphrase";
+    "SoroSuub Field Unit" = "fieldunit-passphrase";
+    "Sublevel Guest Access" = "guestaccess-passphrase";
+  };
   unmanagedInterfaces =
     lib.optionals config.services.tailscale.enable [ "tailscale0" ]
     ++ lib.optionals config.virtualisation.docker.enable [ "docker0" ]
@@ -130,6 +141,11 @@ in
       unmanaged = unmanagedInterfaces;
       wifi.backend = lib.mkIf host.network.wifi "iwd";
       wifi.powersave = lib.mkIf host.network.wifi (!host.is.laptop);
+      # sops-nix owns the iwd network files. Stop NetworkManager from copying
+      # its profiles into /var/lib/iwd. When iwd stops, NetworkManager drops
+      # the profiles that it made from iwd networks, and it then deletes the
+      # matching iwd files. A restart of iwd thus removed every network.
+      settings.main.iwd-config-path = lib.mkIf useIwdNetworks "";
     };
     # https://wiki.nixos.org/wiki/Incus
     nftables.enable = lib.mkIf config.virtualisation.incus.enable true;
@@ -162,13 +178,62 @@ in
   };
 
   sops = lib.mkIf (!host.is.iso) {
-    secrets = {
-      psk = lib.mkIf (config.networking.networkmanager.enable && host.network.wifi) {
-        mode = "0600";
-        path = "/var/lib/iwd/SoroSuub Centroplex.psk";
-        sopsFile = ../../../secrets/iwd.yaml;
-      };
-    };
+    secrets = lib.mkIf useIwdNetworks (
+      lib.genAttrs
+        (
+          lib.attrValues iwdPskNetworks
+          ++ [
+            "bizspace-identity"
+            "bizspace-password-hash"
+          ]
+        )
+        (_: {
+          sopsFile = iwdSopsFile;
+        })
+    );
+    templates =
+      let
+        # iwd reads a network file when the file appears, and it does not read
+        # it again if the read fails while sops replaces the file. Restart iwd
+        # when a file changes, so that it loads the new content. The restart
+        # drops Wi-Fi for a few seconds.
+        restartUnits = [ "iwd.service" ];
+      in
+      lib.mkIf useIwdNetworks (
+        lib.mapAttrs' (
+          ssid: key:
+          lib.nameValuePair "iwd-${key}" {
+            mode = "0600";
+            path = "/var/lib/iwd/${ssid}.psk";
+            inherit restartUnits;
+            # iwd derives the pre-shared key from the passphrase. A passphrase
+            # also works for WPA3 (SAE), where a derived key alone does not.
+            content = ''
+              [Security]
+              Passphrase=${config.sops.placeholder.${key}}
+            '';
+          }
+        ) iwdPskNetworks
+        // {
+          # NetworkManager's iwd backend accepts an 802.1X network only when
+          # iwd already has a provisioning file for it.
+          # TODO: Add EAP-PEAP-ServerDomainMask and a CA check when the RADIUS
+          # server certificate details are known.
+          "iwd-bizspace-8021x" = {
+            mode = "0600";
+            path = "/var/lib/iwd/Bizspace Basingstoke Customer.8021x";
+            inherit restartUnits;
+            content = ''
+              [Security]
+              EAP-Method=PEAP
+              EAP-Identity=${config.sops.placeholder.bizspace-identity}
+              EAP-PEAP-Phase2-Method=MSCHAPV2
+              EAP-PEAP-Phase2-Identity=${config.sops.placeholder.bizspace-identity}
+              EAP-PEAP-Phase2-Password-Hash=${config.sops.placeholder.bizspace-password-hash}
+            '';
+          };
+        }
+      );
   };
 
   # Workaround https://github.com/NixOS/nixpkgs/issues/180175

@@ -163,6 +163,11 @@ in
           # https://nixos.wiki/wiki/Bluetooth#Using_Bluetooth_headsets_with_PulseAudio
           enable = true;
         };
+        # NetworkManager is enabled on every workstation. The service waits for
+        # tray.target, which Waybar provides.
+        network-manager-applet = {
+          enable = true;
+        };
         polkit-gnome = {
           enable = true;
         };
@@ -173,6 +178,10 @@ in
           notify = true;
         };
       };
+
+      # Start tray applets such as nm-applet with --indicator, because the
+      # Waybar tray shows only StatusNotifierItem icons.
+      xsession.preferStatusNotifierItems = lib.mkIf host.is.linux true;
 
       xdg = lib.mkIf host.is.linux {
         autostart = {

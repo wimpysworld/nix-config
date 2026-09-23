@@ -42,7 +42,6 @@ let
         cpu-x
         gnome-disk-utility
         gnome-firmware
-        iwgtk
         networkmanagerapplet
         overskride
         piper
