@@ -356,17 +356,16 @@ let
     };
     hideThinkingBlock = true;
     enabledModels = [
-      "anthropic/claude-fable-5-1:low"
-      "anthropic/claude-opus-5"
+      "anthropic/claude-fable-5-1"
+      "anthropic/claude-opus-5-5"
       "anthropic/claude-sonnet-5"
       "openai-codex/gpt-6-astra"
-      "openai-codex/gpt-5.6-sol"
-      "openai-codex/gpt-5.6-terra"
-      "openai-codex/gpt-5.6-luna"
-      "openai-codex/gpt-5.3-codex-spark"
+      "openai-codex/gpt-6-sol"
+      "openai-codex/gpt-6-luna"
       # The wrapper exports OPENCODE_ZEN_API_KEY on non-cg hosts.
       # models.json maps the credential to Pi's built-in opencode provider.
       "opencode/glm-5.3-flash"
+      "opencode/glm-5.3"
     ];
 
     theme = piThemeName;
