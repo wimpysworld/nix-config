@@ -439,12 +439,12 @@ let
     # built-in fetch tool. MCP servers are independent, so Exa is unaffected.
     web_search = "disabled";
 
-    model = "gpt-6-astra";
-    model_reasoning_effort = "low";
+    model = "gpt-6-sol";
+    model_reasoning_effort = "high";
     service_tier = "default";
 
-    # Override the model registry window for the GPT-5.6 family and GPT-6
-    # Astra. Codex 0.154.0 (rust-v0.149.0 and later) honours this override on
+    # Override the model registry window for the GPT-5.6 and GPT-6 families.
+    # Codex 0.154.0 (rust-v0.149.0 and later) honours this override on
     # subscription auth up to the entitlement ceiling, and rejects above it
     # with an explicit error rather than truncating silently. Automatic
     # compaction is expressed as min(auto_compact_token_limit, 90% of this

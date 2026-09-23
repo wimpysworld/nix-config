@@ -2,26 +2,26 @@
 description = "Use for explicit code security audits of application source, dependencies, secrets, and LLM app risks when present."
 
 [routing.claude]
-model = "claude-opus-5"
-effort = "max"
+model = "claude-opus-5-5"
+effort = "medium"
 
 [routing.codex]
 model = "gpt-6-astra"
-model_reasoning_effort = "xhigh"
+model_reasoning_effort = "high"
 
 [routing.opencode.providers.anthropic]
-model = "claude-opus-5"
+model = "claude-opus-5-5"
 
 [routing.opencode.providers.openai]
 model = "gpt-6-astra"
 
 [routing.pi.anthropic]
-model = "claude-opus-5"
-thinking = "max"
+model = "claude-opus-5-5"
+thinking = "medium"
 
 [routing.pi.openai-codex]
 model = "gpt-6-astra"
-thinking = "xhigh"
+thinking = "high"
 
 [claude]
 disallowedTools = ["Agent"]

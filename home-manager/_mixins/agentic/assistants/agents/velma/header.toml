@@ -2,25 +2,25 @@
 description = "A documentation architect who creates engaging, well-organised technical documentation by translating code into clear explanations, crafting compelling READMEs, and structuring information for optimal reader comprehension."
 
 [routing.claude]
-model = "sonnet"
+model = "claude-sonnet-5"
 effort = "high"
 
 [routing.codex]
-model = "gpt-5.6-sol"
+model = "gpt-6-sol"
 model_reasoning_effort = "medium"
 
 [routing.opencode.providers.anthropic]
 model = "claude-sonnet-5"
 
 [routing.opencode.providers.openai]
-model = "gpt-5.6-sol"
+model = "gpt-6-sol"
 
 [routing.pi.anthropic]
 model = "claude-sonnet-5"
 thinking = "high"
 
 [routing.pi.openai-codex]
-model = "gpt-5.6-sol"
+model = "gpt-6-sol"
 thinking = "medium"
 
 [claude]

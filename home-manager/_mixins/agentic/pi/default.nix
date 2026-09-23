@@ -345,8 +345,8 @@ let
 
   piSettings = {
     defaultProvider = "openai-codex";
-    defaultModel = "gpt-6-astra";
-    defaultThinkingLevel = "low";
+    defaultModel = "gpt-6-sol";
+    defaultThinkingLevel = "high";
     thinkingBudgets = {
       minimal = 1024;
       low = 4096;

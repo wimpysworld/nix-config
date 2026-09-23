@@ -7,7 +7,7 @@ effort = "high"
 
 [routing.codex]
 model = "gpt-6-astra"
-model_reasoning_effort = "medium"
+model_reasoning_effort = "high"
 
 [routing.opencode.providers.anthropic]
 model = "claude-fable-5-1"
@@ -21,7 +21,7 @@ thinking = "high"
 
 [routing.pi.openai-codex]
 model = "gpt-6-astra"
-thinking = "medium"
+thinking = "high"
 
 [claude]
 disallowedTools = ["Agent"]
