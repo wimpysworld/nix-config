@@ -816,7 +816,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
     file = {
       # models.json exists on every developer host so the openai-codex
       # overrides below always apply. They raise the built-in openai-codex
-      # provider's context window for the four subscription models above the
+      # provider's context window for the listed subscription models above the
       # smaller built-in registry value. Subscription auth must accept the
       # window, so this declaration must stay within what the provider
       # entitlement accepts. Unknown model ids are silently ignored by Pi.
@@ -834,6 +834,8 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
                     "gpt-5.6-terra"
                     "gpt-5.6-luna"
                     "gpt-6-astra"
+                    "gpt-6-sol"
+                    "gpt-6-luna"
                   ]
                   (_: {
                     contextWindow = 384000;
