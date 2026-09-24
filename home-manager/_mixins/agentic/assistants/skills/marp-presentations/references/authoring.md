@@ -35,7 +35,7 @@ Use local directives for slide-specific changes, so that styles do not affect la
 For example, `<!-- _paginate: false -->` hides pagination only on the current slide.
 Copy palette and layout class syntax from the starter and layout guide.
 Preserve both the palette class and layout class when assigning slide classes.
-Do not override the theme's blue accent with unrelated colours.
+Keep Blue as the brand anchor. Use at most one secondary accent from the theme's layout roles on a slide.
 
 Use Markdown headings, lists, images, tables, and fenced code blocks before custom HTML.
 If a layout requires HTML, inspect the markup and enable HTML only for trusted deck content.
@@ -43,7 +43,21 @@ Keep essential content out of CSS pseudo-elements and decorative backgrounds.
 
 ## Speaker notes
 
-Write speaker notes as ordinary HTML comments on the relevant slide:
+Write the words that the presenter will say as ordinary HTML comments on the relevant slide.
+Use complete, sayable sentences that add an explanation, example, or meaning beyond the visible bullets.
+Do not repeat the slide text as a script.
+Use natural spoken transitions, not stage directions such as "Point out" or "Transition:".
+Omit file paths unless the audience needs to hear them.
+
+Use selective `**bold**` phrases to help the presenter scan the script, roughly one per sentence or every other sentence.
+Emphasise key phrases, not whole sentences or labels.
+Keep the script understandable without rendered emphasis.
+Text exports can retain literal Markdown markers instead of bold styling.
+
+Apply the Communication Rules and `writing-well`.
+Use `contribution-voice` for its cut pass and plain brevity only.
+Do not apply its public-post budgets or no-bold-label format rule to private speaker notes.
+Cut repetition and unnecessary examples without removing qualifications that change the claim.
 
 ```markdown
 # Recommend the smaller pilot
@@ -51,13 +65,19 @@ Write speaker notes as ordinary HTML comments on the relevant slide:
 Test the change with one team before wider adoption.
 
 <!--
-Explain the pilot's success criteria and name the decision needed today.
-Allow two minutes for questions.
+A **small pilot** lets us test the change without asking every team to adopt it.
+We need to agree what success means before we start.
+Then we can use the result to decide whether to **continue, revise, or stop**.
 -->
 ```
 
 Keep Marp directive comments separate from notes.
-Include transitions, timing, pronunciation, and evidence that the speaker needs but the audience does not need on screen.
+Keep timing budgets, pronunciation guidance, and evidence or source records in the deck plan or a separate evidence appendix.
+Retain necessary factual qualifications in the speech, including sample limits and illustrative rather than measured results.
+Keep required visible citations on slides, but do not read source records aloud unless the audience needs them.
+Use a provisional rate of **120 spoken words per minute**, with pauses, questions, and transitions reserved in the plan.
+Count the spoken words without Markdown markers, then rehearse and adjust the budget to the presenter.
+Do not fill the entire slot with uninterrupted speech.
 Do not put secrets in notes. Exported HTML and PowerPoint can expose notes to recipients.
 Keep a separate notes text export when notes are a deliverable.
 

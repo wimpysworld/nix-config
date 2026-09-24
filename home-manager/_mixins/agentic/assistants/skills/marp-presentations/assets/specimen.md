@@ -96,6 +96,12 @@ Use one repeatable check before review.
 
 <!-- _class: latte evidence -->
 
+<!--
+These figures are **illustrative**, so they do not prove that the change works.
+A lower median tells us about the middle result, not every review.
+Before we recommend wider use, we need **measured results** from comparable work.
+-->
+
 # Review time fell in the pilot
 
 <div class="columns">

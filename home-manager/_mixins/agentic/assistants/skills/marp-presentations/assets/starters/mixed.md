@@ -16,7 +16,11 @@ footer: 'Presenter name · Event date'
 
 <p class="lede">Use Mocha for transitions and Latte for detailed evidence.</p>
 
-<!-- Speaker note: explain the purpose before you show the evidence. -->
+<!--
+We need enough evidence to choose a **useful next step**, even if some questions remain open.
+I will separate what we know from what we still need to test.
+Let us start with the **question behind the decision**.
+-->
 
 ---
 

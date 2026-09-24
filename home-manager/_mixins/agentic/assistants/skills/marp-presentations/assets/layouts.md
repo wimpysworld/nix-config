@@ -46,6 +46,38 @@ Use `Work Sans` for body text and `FiraCode Nerd Font Mono` for code. The theme 
 | Quote | Present a verified voice | About 30 words and attribution |
 | Closing / appendix | Request action or support detail | One next action, or four reference items |
 
+## Colour roles
+
+Keep Blue as the common brand colour: the top mark, link underline and key action.
+Use one secondary accent per slide. Do not recolour every heading or add rainbow decoration.
+Header, footer and source text stay neutral, with a short decorative metadata mark.
+Page numbers use Latte Mauve or Mocha Lavender on Base, independently of the layout accent.
+
+| Layout family | Secondary accent | Treatment |
+| --- | --- | --- |
+| Opening | None | Blue brand mark, neutral title |
+| Agenda | Mauve in Latte, Lavender in Mocha | Large list numbers |
+| Section | Mauve in Latte, Lavender in Mocha | Section eyebrow |
+| Statement | None | Blue emphasis in the large claim only |
+| Two-column | Teal | Divider rule |
+| Comparison | Teal | Table header rule, neutral labels |
+| Evidence | Teal | Large measure and divider rule |
+| Visual | Peach | Decorative caption edge, neutral caption |
+| Metrics | Teal | Table header rule, neutral values |
+| Process / timeline | Mauve | Step rules, neutral numbers and labels |
+| Code | Mauve | Block edge, neutral syntax with weight |
+| Architecture | Mauve | Top borders, neutral labels and arrows |
+| Quote | Peach | Decorative quotation edge, neutral attribution |
+| Closing / appendix | None | Blue action rule for closing, quiet appendix variant |
+
+The palette tokens are `--blue`, `--mauve`, `--lavender`, `--teal`, `--peach`, `--green`, `--yellow` and `--red`.
+The theme maps them to `--brand`, `--navigation`, `--layout-accent`, `--metadata-mark`, `--page-count` and labelled status roles.
+Keep palette values unchanged. Override a semantic role on the relevant slide only, after the theme's layout rules.
+For example, `section.my-section { --layout-accent: var(--mauve); }` selects Mauve when the slide also has `my-section`.
+Use existing theme roles rather than arbitrary colours. Recheck contrast after each override.
+Reserve `--status-success`, `--status-warning` and `--status-danger` for labelled status, not decoration.
+An embedded diagram must use the slide's secondary accent, while Blue remains its focal colour.
+
 ## Opening
 
 ```markdown
@@ -304,9 +336,18 @@ Use a local SVG with a visible description for a more complex architecture. Do n
 
 The canvas is 1280 × 720. Main text is 30px, with 72px side margins. Keep content above the footer.
 
-Blue marks rules, large figures and large emphasis. Small labels, sources, links and code use Text or Subtext 1.
+Small labels, sources, links and code use Text or Subtext 1. Link underlines stay Blue.
+Require at least 4.5:1 for small text and 3:1 for large text or meaning-carrying marks.
 
-Latte Blue on Base is 4.34:1. It does not meet 4.5:1 for ordinary small text. Do not use Blue for small labels.
+| Latte colour | Contrast on Base | Safe use |
+| --- | --- | --- |
+| Blue | 4.34:1 | Large emphasis, brand marks and link underlines |
+| Teal | 3.31:1 | Large measures and rules, not small text |
+| Peach | 2.64:1 | Decorative edges only, never meaning-carrying marks or text |
+| Mauve | 4.79:1 | Page numbers on Base and section marks |
+
+Latte Mauve falls to about 4.45:1 on Mantle. Keep small panel labels neutral.
+Do not use colour alone for status or chart meaning. Add labels and contrasting outlines where required.
 
 Panel backgrounds use Mantle, not an arbitrary tint. Check contrast again if a panel colour changes.
 

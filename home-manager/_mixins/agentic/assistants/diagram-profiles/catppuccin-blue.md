@@ -4,7 +4,7 @@ slug: catppuccin-blue
 source-url: https://catppuccin.com/palette/
 created: 2026-09-13
 updated: 2026-09-13
-notes: Home Manager managed. Latte light and Mocha dark, blue accent.
+notes: Home Manager managed. Latte light and Mocha dark, Blue focal colour with bounded secondary accents.
 -->
 # Style Guide
 
@@ -37,7 +37,14 @@ Use the exact paired colours. Do not invert colours.
 | `accent-tint` | Blue fill over opaque paper | `rgba(30,102,245,0.08)` | `rgba(137,180,250,0.10)` |
 | `link` | Links and external arrows, Blue | `@latte.blue@` | `@mocha.blue@` |
 | `card` | Cards and backend nodes, Base | `@latte.base@` | `@mocha.base@` |
-| `on-accent` | Text on solid blue, Base | `@latte.base@` | `@mocha.base@` |
+| `on-accent` | Large text on solid Blue, Base | `@latte.base@` | `@mocha.base@` |
+| `navigation` | Section marks, Mauve / Lavender | `@latte.mauve@` | `@mocha.lavender@` |
+| `comparison` | Comparison rules and large measures, Teal | `@latte.teal@` | `@mocha.teal@` |
+| `structure` | Process rules and code edges, Mauve | `@latte.mauve@` | `@mocha.mauve@` |
+| `decoration` | Decorative edges only, Peach | `@latte.peach@` | `@mocha.peach@` |
+| `status-success` | Labelled success, Green | `@latte.green@` | `@mocha.green@` |
+| `status-warning` | Labelled warning, Yellow | `@latte.yellow@` | `@mocha.yellow@` |
+| `status-danger` | Labelled failure, Red | `@latte.red@` | `@mocha.red@` |
 
 The palette follows the [Catppuccin style guide](https://github.com/catppuccin/catppuccin/blob/main/docs/style-guide.md).
 Home Manager uses `lib/catppuccin-palette.json` for both flavours. Tint opacity is a local design choice.
@@ -49,22 +56,34 @@ In Latte, use `ink` text on `accent-tint` instead of normal text on solid blue.
 Underline text links. Use labels or weight to distinguish focal arrows from links.
 Interpret upstream coral references as `accent`, not orange.
 
+Keep Blue for focal nodes, links and the key action. Keep the two-element focal limit, including any secondary focal emphasis.
+Choose at most one secondary role per diagram: `navigation`, `comparison`, `structure` or `decoration`.
+Use that role for incidental rules or section marks, not every heading, node or connector.
+Keep node labels, captions, sources and footer text neutral. A short metadata rule can use the selected secondary role.
+Quiet diagrams need no secondary accent. Green, Yellow and Red are for labelled status, never decoration or unrelated series.
+In a slide, match its secondary accent. Do not add a second accent inside the diagram.
+
+Latte Blue, Teal and Peach contrast against Base is approximately 4.34:1, 3.31:1 and 2.64:1 respectively.
+Do not use these colours for small text. Add a contrasting outline when Peach identifies an essential mark.
+Latte Mauve is approximately 4.79:1 on Base but 4.45:1 on Mantle. Keep small panel labels neutral.
+Use the selected roles as aliases for official palette values, not replacement hues. Check overrides against each actual surface.
+
 ### Series palette
 
 Use these colours only for charts with distinct series. Reserve blue for the focal series.
 
 | Token | Light | Dark | Notes |
 |---|---|---|---|
-| `series-1` | `@latte.green@` | `@mocha.green@` | Green |
+| `series-1` | `@latte.lavender@` | `@mocha.lavender@` | Lavender |
 | `series-2` | `@latte.mauve@` | `@mocha.mauve@` | Mauve |
 | `series-3` | `@latte.peach@` | `@mocha.peach@` | Peach |
 | `series-4` | `@latte.teal@` | `@mocha.teal@` | Teal |
-| `series-5` | `@latte.red@` | `@mocha.red@` | Red |
+| `series-5` | `@latte.sapphire@` | `@mocha.sapphire@` | Sapphire |
 
 Use fills at 0.18 opacity in light and 0.22 in dark. Keep outlines opaque and labels in `ink`.
 Add labels, marker shapes, or dash patterns so that colour is not the only distinction.
 When a series lacks 3:1 contrast, add an `ink` outline. Preserve official colours and the chart's series limit.
-Series colours identify categories, not success or failure.
+Series colours identify categories, not success or failure. Multiple colours are for necessary data distinctions, never decorative accents.
 
 ## Typography
 

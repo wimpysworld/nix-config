@@ -16,7 +16,11 @@ footer: 'Presenter name · Event date'
 
 <p class="lede">Explain why the audience needs to act.</p>
 
-<!-- Speaker note: name the decision owner and the purpose of the talk. -->
+<!--
+Today we need to choose a **first step**, not settle every detail.
+We will compare what the evidence supports with what we still need to test.
+That distinction will help us make a **decision that we can review**.
+-->
 
 ---
 

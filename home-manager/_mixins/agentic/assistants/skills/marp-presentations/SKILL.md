@@ -26,7 +26,9 @@ Resolve bundled paths from this skill directory, not the working directory.
 - Use `assets/theme/catppuccin.css`, whose theme id is `catppuccin-slides`.
 - Use `assets/specimen.md` to check theme coverage, not as the narrative for a finished deck.
 - Copy required resources into the approved project directory. Never modify the installed skill.
-- Keep each slide focused on one takeaway. Put supporting detail and delivery cues in speaker notes.
+- Keep each slide focused on one takeaway. Write a concise spoken script for each slide, not slide text or delivery instructions.
+- Follow the speaker-note contract in [authoring](references/authoring.md), including selective bold phrases and separate timing and evidence records.
+- Load `communication-rules` and `writing-well` for notes. Load `contribution-voice` for its cut pass only, not public-post budgets or format restrictions.
 
 ## Render, inspect, revise
 

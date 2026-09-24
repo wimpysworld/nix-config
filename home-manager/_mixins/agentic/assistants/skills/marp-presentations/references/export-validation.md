@@ -1,5 +1,13 @@
 # Export and validation
 
+## Contents
+
+- [Preflight](#preflight)
+- [Bundled helper](#bundled-helper)
+- [Marp formats](#marp-formats)
+- [Self-contained offline HTML](#self-contained-offline-html)
+- [Acceptance](#acceptance)
+
 ## Preflight
 
 Read the bundled `scripts/export.py` before use to confirm its outputs, prerequisites, and overwrite behaviour.
@@ -51,7 +59,7 @@ Specify distinct output paths with `-o` to avoid replacing another export.
 | PNG, every slide | `--images png -o deck.png` | Produces numbered files. Check that the count matches the deck. |
 | JPEG, every slide | `--images jpeg -o deck.jpg` | Produces numbered files. Check compression on text and charts. |
 | Cover image | `--image png -o cover.png` or `--image jpeg -o cover.jpg` | Exports only the first slide. An image extension alone also exports only the first slide. |
-| Notes text | `--notes -o notes.txt` | Keep slide order and check note content against the Markdown. |
+| Notes text | `--notes -o notes.txt` | Plain text, not rendered Markdown. Check markers, slide order, and empty slide positions. |
 
 For example, run this from the approved project directory after inspecting the deck and its assets:
 
@@ -68,7 +76,10 @@ Prefer ordinary PowerPoint when appearance matters more than object editing.
 Keep editable PowerPoint separate and inspect it in the recipient's application before claiming fidelity.
 Deliver notes separately with editable PowerPoint.
 PDF note annotations and HTML presenter notes also need checks in the intended viewer.
-Do not promise that a notes export preserves rich formatting or every viewer's presentation behaviour.
+Marp CLI 4.4.0 with Marp Core 4.3.0 preserves literal `**` markers in `--notes` output, without bold styling.
+The starter test also preserves empty slide positions between `---` separators and excludes Marp directive comments.
+Repeat this check after a version change.
+Do not promise that text exports or presenter views render Markdown emphasis.
 
 ## Self-contained offline HTML
 
@@ -95,6 +106,20 @@ Inspect every rendered slide at presentation size, not only a contact sheet or t
 Check clipping, line breaks, hierarchy, spacing, image crops, chart labels, code, and footers.
 Check both palettes when the deck uses both.
 Verify page order, count, notes, and metadata in each requested format.
+
+For speaker notes:
+
+- Read each script aloud. Check complete sentences, natural transitions, and an explanation beyond the slide text.
+- Reject stage directions, repeated bullets, unnecessary spoken file paths, timing budgets, and source records in note comments.
+- Preserve factual qualifications in speech. Check sources and timing against the deck plan or separate evidence appendix.
+- Check the provisional 120-word-per-minute budget, reserved pauses, and actual rehearsal time.
+- Check selective `**bold**` phrases, roughly one per sentence or every other sentence, without whole-sentence emphasis.
+- Export with `--notes`. Compare each note with its source slide, including empty positions and order.
+- Check emphasis in the intended HTML presenter view. Record whether phrases appear bold, plain, or with literal markers.
+- For ordinary PPTX, inspect the notes for each slide in the target application, including order, content, and emphasis behaviour.
+- For experimental editable PPTX, deliver a separate notes export and verify its slide mapping. Do not promise embedded presenter notes.
+
+Record text conversion separately from viewer checks. An untested presenter view or PowerPoint application remains untested.
 Revise the source and repeat conversion after a defect fix.
 Record the actual command, tool versions, export paths, and passed or untested checks.
 
