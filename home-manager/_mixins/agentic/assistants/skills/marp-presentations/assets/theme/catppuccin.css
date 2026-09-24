@@ -19,6 +19,10 @@ section.latte {
   --red: #d20f39;
   --navigation: var(--mauve);
   --page-count: var(--mauve);
+  --heading-primary: var(--blue);
+  /* Peach with 30% black; Green with 45% black. Keep palette tokens intact. */
+  --heading-secondary: #b24608;
+  --heading-tertiary: #235818;
   color-scheme: light;
 }
 
@@ -38,6 +42,9 @@ section.mocha {
   --red: #f38ba8;
   --navigation: var(--lavender);
   --page-count: var(--lavender);
+  --heading-primary: var(--blue);
+  --heading-secondary: var(--peach);
+  --heading-tertiary: var(--green);
   color-scheme: dark;
 }
 
@@ -100,15 +107,18 @@ h3 {
   text-wrap: balance;
 }
 h1 {
+  color: var(--heading-primary);
   font-size: 54px;
   letter-spacing: -0.045em;
   margin-bottom: 30px;
 }
 h2 {
+  color: var(--heading-secondary);
   font-size: 34px;
   margin-bottom: 18px;
 }
 h3 {
+  color: var(--heading-tertiary);
   font-size: 30px;
   margin-bottom: 14px;
 }
@@ -223,7 +233,7 @@ section::after {
   content: attr(data-marpit-pagination);
 }
 
-/* One secondary accent per layout. Pagination keeps its own readable role. */
+/* Layout marks complement heading roles. Pagination keeps its readable role. */
 section.agenda,
 section.section {
   --layout-accent: var(--navigation);
@@ -243,7 +253,7 @@ section.quote,
 section.visual {
   --layout-accent: var(--peach);
 }
-/* Blue and Teal text is large only. Peach marks are decorative, never text. */
+/* Blue and Teal text is large only. Raw Latte Peach is decorative only. */
 section.opening,
 section.section,
 section.statement,
@@ -487,21 +497,83 @@ pre code {
   background: transparent;
   white-space: pre;
 }
-/* Do not inherit a syntax palette with unknown contrast. Weight marks syntax. */
-pre code,
-pre code span {
-  color: var(--text);
+/* A fixed Mocha Mantle surface keeps syntax readable in both slide palettes.
+   Unlabelled, unknown and plain-text fences stay neutral. No language guessing.
+   Mapping: https://github.com/catppuccin/highlightjs/blob/main/sass/_theme.scss
+   All foregrounds meet 4.5:1 on #181825, including Overlay 2 comments. */
+section pre {
+  background: #181825;
+  color: #cdd6f4;
+  color-scheme: dark;
 }
-pre .hljs-keyword,
-pre .hljs-title,
-pre .hljs-built_in,
-pre .hljs-attr {
-  font-weight: 700;
+section pre code {
+  color: #cdd6f4;
 }
-pre .hljs-comment {
-  color: var(--muted);
-  font-style: italic;
+section pre code span {
+  color: inherit;
 }
+section pre code .hljs-keyword,
+section pre code .hljs-variable,
+section pre code .hljs-name,
+section pre code .hljs-selector-attr {
+  color: #cba6f7;
+}
+section pre code .hljs-built_in,
+section pre code .hljs-doctag,
+section pre code .hljs-emphasis,
+section pre code .hljs-strong,
+section pre code .hljs-deletion {
+  color: #f38ba8;
+}
+section pre code .hljs-type,
+section pre code .hljs-title.class_,
+section pre code .hljs-selector-tag {
+  color: #f9e2af;
+}
+section pre code .hljs-literal,
+section pre code .hljs-number,
+section pre code .hljs-meta,
+section pre code .hljs-variable.constant_ {
+  color: #fab387;
+}
+section pre code .hljs-operator { color: #89dceb; }
+section pre code .hljs-punctuation { color: #bac2de; }
+section pre code .hljs-property,
+section pre code .hljs-tag,
+section pre code .hljs-bullet,
+section pre code .hljs-formula,
+section pre code .hljs-selector-class,
+section pre code .hljs-selector-pseudo {
+  color: #94e2d5;
+}
+section pre code .hljs-regexp { color: #f5c2e7; }
+section pre code .hljs-string,
+section pre code .hljs-char.escape_,
+section pre code .hljs-attribute,
+section pre code .hljs-code,
+section pre code .hljs-quote,
+section pre code .hljs-addition {
+  color: #a6e3a1;
+}
+section pre code .hljs-subst { color: #a6adc8; }
+section pre code .hljs-symbol,
+section pre code .hljs-template-tag,
+section pre code .hljs-template-variable {
+  color: #f2cdcd;
+}
+section pre code .hljs-title,
+section pre code .hljs-title.function_,
+section pre code .hljs-section,
+section pre code .hljs-attr,
+section pre code .hljs-selector-id {
+  color: #89b4fa;
+}
+section pre code .hljs-params { color: #cdd6f4; }
+section pre code .hljs-comment { color: #9399b2; font-style: italic; }
+section pre code .hljs-link { color: #74c7ec; text-decoration: underline; }
+section pre code .hljs-emphasis,
+section pre code .hljs-quote { font-style: italic; }
+section pre code .hljs-strong { font-weight: 700; }
 section.code .source {
   margin-top: 24px;
 }
@@ -691,6 +763,12 @@ section.visual > .visual-copy {
   align-items: flex-start;
 }
 section.visual .visual-copy > * { max-width: 800px; }
+/* Neutral headings retain contrast over the checked image scrim. */
+section.visual .visual-copy h1,
+section.visual .visual-copy h2,
+section.visual .visual-copy h3 {
+  color: var(--text);
+}
 section.visual.visual-opening .visual-copy h1 { font-size: 72px; }
 section.visual.visual-statement .visual-copy h1 { font-size: 68px; }
 section.visual .visual-copy.copy-top { justify-content: flex-start; }

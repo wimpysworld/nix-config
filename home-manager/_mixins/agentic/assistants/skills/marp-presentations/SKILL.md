@@ -11,7 +11,7 @@ Create an editable Markdown deck, then verify its rendered exports against the a
 5. Preserve existing decks and exports unless replacement is authorised.
 6. Write a deck plan before slides: sequence, takeaway, evidence, layout, and speaking time for each slide.
 
-Default to 16:9 Catppuccin Latte with a blue accent. Use Mocha for an explicit dark request.
+Default to 16:9 Catppuccin Latte with Blue, Peach, and Green heading roles. Use Mocha for an explicit dark request.
 Use both palettes only when the brief needs a deliberate section contrast.
 Keep Markdown as the source of truth, including when the user requests PowerPoint.
 

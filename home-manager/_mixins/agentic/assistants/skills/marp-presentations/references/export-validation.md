@@ -88,6 +88,7 @@ Do not promise that text exports or presenter views render Markdown emphasis.
 ## Self-contained offline HTML
 
 A single `.html` file is not proof that a deck is self-contained.
+The helper's offline HTML contains embedded CSS, including heading and syntax styles.
 Marp output can still refer to local files, remote images, web fonts, imported CSS, scripts, or nested SVG resources.
 
 1. Inspect resource references in HTML, CSS, SVG, and any embedded media.
@@ -114,6 +115,16 @@ Check clipping, line breaks, hierarchy, spacing, image crops, chart labels, code
 Check both palettes when the deck uses both.
 Verify page order, count, notes, and metadata in each requested format.
 
+For headings and code:
+
+- Check that ordinary slides show distinct Blue `h1`, Peach `h2`, and Green `h3`, including Base and Mantle split panels.
+- Apply the colour pairs, contrast thresholds, and review examples in the accessibility reference.
+- Check recognised language fences for visible token colours in both palettes, on full-width code slides and inside split panels.
+- Check all `section pre code` blocks, not only slides with the `code` layout.
+- Check that unknown, unlabelled, `text`, and `plaintext` fences retain readable neutral text.
+- Inspect keywords, strings, numbers, comments, and plain text where the chosen language emits those tokens.
+- Check that heading and syntax colours survive in isolated offline HTML without external stylesheets.
+
 For split panels and image-led slides:
 
 - Check panel bounds, text safe areas, narrow-panel wrapping, and separation between the body and local sources.
@@ -127,8 +138,9 @@ For split panels and image-led slides:
 - Verify every used local image in the isolated offline HTML, including nested resource checks.
 
 Compare PDF and ordinary PPTX visually with the inspected HTML, slide by slide, in the intended viewers.
-Check panel positions, overlays, crops, fonts, chart labels, and sources for parity.
-Inspect experimental editable PPTX separately for layout changes or missing content.
+Check panel positions, overlays, crops, fonts, heading colours, syntax colours, chart labels, and sources for parity.
+Ordinary PPTX preserves syntax appearance as raster images, not editable code.
+Inspect experimental editable PPTX separately for layout changes, missing content, or altered syntax colours in the target application.
 If a format or viewer was not tested, report that limit rather than extending HTML approval to PDF or PPTX.
 
 For speaker notes:

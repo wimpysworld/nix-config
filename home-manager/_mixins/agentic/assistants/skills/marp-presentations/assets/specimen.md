@@ -539,9 +539,12 @@ A short example beside its purpose.
 ## A repeatable check
 
 ```python
+# Add the sample values.
+def total(values):
+    return sum(values)
+
 samples = [2, 4, 6]
-total = sum(samples)
-print(total)
+print("Total:", total(samples))
 ```
 
 </div>
@@ -762,9 +765,12 @@ A short example beside its purpose.
 ## A repeatable check
 
 ```python
+# Add the sample values.
+def total(values):
+    return sum(values)
+
 samples = [2, 4, 6]
-total = sum(samples)
-print(total)
+print("Total:", total(samples))
 ```
 
 </div>
@@ -907,4 +913,94 @@ Only the illustrative review value changes.
 <!--
 The icons help us scan, but **the words carry the meaning**.
 The strip shows that containment preserves the full image while a crop fills its cell.
+-->
+
+---
+
+<!-- _class: latte -->
+
+# Make the hierarchy visible
+
+## Group the evidence
+
+### Define the sample
+
+The title is Blue, the group is Peach, and the detail is Green.
+Size and weight preserve the order without colour.
+
+<p class="source">Latte · Semantic h1, h2 and h3 · Accessible heading roles derived from the official palette</p>
+
+<!--
+Each heading level has a **different purpose**, not only a different colour.
+The smaller headings divide the evidence into groups and details.
+Their size and weight keep the order clear in a monochrome copy.
+-->
+
+---
+
+<!-- _class: mocha -->
+
+# Make the hierarchy visible
+
+## Group the evidence
+
+### Define the sample
+
+The title is Blue, the group is Peach, and the detail is Green.
+Size and weight preserve the order without colour.
+
+<p class="source">Mocha · Semantic h1, h2 and h3 · Official palette colours on Base</p>
+
+<!--
+The **same heading roles** apply to the dark palette.
+The colours change with the surface, but the reading order stays the same.
+-->
+
+---
+
+<!-- _class: latte code -->
+
+# Read the tokens, then the result
+
+```python
+# An illustrative threshold, not a policy.
+class Review:
+    def summary(self, count=3):
+        if count > 0:
+            return f"Ready: {count} changes"
+        return "No changes"
+
+print(Review().summary())
+```
+
+<p class="source">Latte · Python · Keywords, strings, numbers, comments and titles on a fixed Mocha code surface</p>
+
+<!--
+A **recognised language label** enables syntax colour without guessing.
+The dark code surface keeps every token readable on either slide palette.
+Inline code stays separate from this block style.
+-->
+
+---
+
+<!-- _class: mocha code -->
+
+# Read the tokens, then the result
+
+```python
+# An illustrative threshold, not a policy.
+class Review:
+    def summary(self, count=3):
+        if count > 0:
+            return f"Ready: {count} changes"
+        return "No changes"
+
+print(Review().summary())
+```
+
+<p class="source">Mocha · Python · The same token colours and code surface as Latte</p>
+
+<!--
+The **fixed code palette** makes examples consistent across light and dark slides.
+Comments and punctuation remain readable, even though they attract less attention than strings and keywords.
 -->

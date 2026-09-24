@@ -2,7 +2,7 @@
   <title>Illustrated hills</title>
   <desc>Original Catppuccin illustration for crop tests, not a photograph. A pale sky sits above layered hills. The focal peak is on the right.</desc>
   <rect width="1280" height="720" fill="#eff1f5"/>
-  <circle cx="980" cy="172" r="62" fill="#89b4fa"/>
+  <circle cx="980" cy="172" r="62" fill="#fab387"/>
   <path d="M0 510L220 318L430 458L850 204L1280 470V720H0Z" fill="#89b4fa"/>
   <path d="M0 620L360 445L600 560L890 340L1280 550V720H0Z" fill="#1e66f5"/>
   <path d="M0 670L270 592L590 650L980 505L1280 610V720H0Z" fill="#1e1e2e"/>

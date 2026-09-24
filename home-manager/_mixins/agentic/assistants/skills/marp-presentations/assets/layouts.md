@@ -2,6 +2,30 @@
 
 Use one layout and one palette on each slide. The theme name is `catppuccin-slides` throughout the deck.
 
+## Contents
+
+- [Setup](#setup)
+- [Layout selection](#layout-selection)
+- [Colour roles](#colour-roles)
+- [Opening](#opening)
+- [Agenda](#agenda)
+- [Section](#section)
+- [Statement](#statement)
+- [Two-column](#two-column)
+- [Comparison](#comparison)
+- [Evidence](#evidence)
+- [Visual](#visual)
+- [Split panels](#split-independent-full-height-panels)
+- [Full-bleed media copy](#visual-optional-text-over-full-bleed-media)
+- [Composable figures, lists and media](#composable-figures-lists-and-media)
+- [Metrics](#metrics)
+- [Process / timeline](#process--timeline)
+- [Code](#code)
+- [Architecture](#architecture)
+- [Quote](#quote)
+- [Closing / appendix](#closing--appendix)
+- [Readability checks](#readability-checks)
+
 ## Setup
 
 Start with `starters/latte.md`, `starters/mocha.md` or `starters/mixed.md`. Keep this frontmatter once, at the start:
@@ -50,16 +74,17 @@ Use `Work Sans` for body text and `FiraCode Nerd Font Mono` for code. The theme 
 ## Colour roles
 
 Keep Blue as the common brand colour: the top mark, link underline and key action.
-Use one secondary accent per slide. Do not recolour every heading or add rainbow decoration.
+Use one secondary layout accent per slide, separate from the Blue `h1`, Peach `h2`, and Green `h3` hierarchy.
+Keep full-bleed media copy neutral until checked against each image. The skill's accessibility reference defines heading colours and contrast checks.
 Header, footer and source text stay neutral, with a short decorative metadata mark.
 Page numbers use Latte Mauve or Mocha Lavender on Base, independently of the layout accent.
 
 | Layout family | Secondary accent | Treatment |
 | --- | --- | --- |
-| Opening | None | Blue brand mark, neutral title |
+| Opening | None | Blue brand mark and title |
 | Agenda | Mauve in Latte, Lavender in Mocha | Large list numbers |
 | Section | Mauve in Latte, Lavender in Mocha | Section eyebrow |
-| Statement | None | Blue emphasis in the large claim only |
+| Statement | None | Blue claim, with weight for emphasis |
 | Two-column | Teal | Divider rule |
 | Split | Teal | Code edge, neutral Base and Mantle panels |
 | Comparison | Teal | Table header rule, neutral labels |
@@ -67,7 +92,7 @@ Page numbers use Latte Mauve or Mocha Lavender on Base, independently of the lay
 | Visual | Peach | Decorative caption edge, neutral caption |
 | Metrics | Teal | Table header rule, neutral values |
 | Process / timeline | Mauve | Step rules, neutral numbers and labels |
-| Code | Mauve | Block edge, neutral syntax with weight |
+| Code | Mauve | Block edge, language-aware syntax on a dark panel |
 | Architecture | Mauve | Top borders, neutral labels and arrows |
 | Quote | Peach | Decorative quotation edge, neutral attribution |
 | Closing / appendix | None | Blue action rule for closing, quiet appendix variant |
@@ -466,7 +491,9 @@ print(median(samples))
 <p class="source">Python · Example only · Explain inputs and output.</p>
 ````
 
-Syntax uses weight and readable text colours. Do not apply an external syntax theme without a contrast check.
+Keep the recognised language label on each code fence, including fences inside split panels.
+Use `text` or `plaintext` for intentional neutral output. The authoring reference defines language handling and fallback behaviour.
+Do not apply an external syntax theme without a contrast check.
 
 ## Architecture
 
@@ -527,20 +554,22 @@ Use a local SVG with a visible description for a more complex architecture. Do n
 
 The canvas is 1280 × 720. Main text is 30px, with 72px side margins. Keep content above the footer.
 
-Small labels, sources, links and code use Text or Subtext 1. Link underlines stay Blue.
+Small labels, sources and links use Text or Subtext 1. Link underlines stay Blue.
+Code tokens and neutral fallback text need separate checks against the dark code panel.
 Require at least 4.5:1 for small text and 3:1 for large text or meaning-carrying marks.
 
 | Latte colour | Contrast on Base | Safe use |
 | --- | --- | --- |
 | Blue | 4.34:1 | Large emphasis, brand marks and link underlines |
 | Teal | 3.31:1 | Large measures and rules, not small text |
-| Peach | 2.64:1 | Decorative edges only, never meaning-carrying marks or text |
+| Raw Peach | 2.64:1 | Decorative edges only. Headings use derived dark Peach instead. |
 | Mauve | 4.79:1 | Page numbers on Base and section marks |
 
 Latte Mauve falls to about 4.45:1 on Mantle. Keep small panel labels neutral.
 Do not use colour alone for status or chart meaning. Add labels and contrasting outlines where required.
 
-Panel backgrounds use Mantle, not an arbitrary tint. Check contrast again if a panel colour changes.
+Split panel backgrounds use Base or Mantle, not an arbitrary tint. Code blocks use a separate dark panel.
+Check contrast again if a panel colour changes.
 
 Shorten or split content when it does not fit. Do not reduce the whole slide's type size to fit extra text.
 

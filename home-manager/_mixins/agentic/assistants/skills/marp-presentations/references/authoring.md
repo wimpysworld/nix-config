@@ -90,9 +90,17 @@ Use local directives for slide-specific changes, so that styles do not affect la
 For example, `<!-- _paginate: false -->` hides pagination only on the current slide.
 Copy palette and layout class syntax from the starter and layout guide.
 Preserve both the palette class and layout class when assigning slide classes.
-Keep Blue as the brand anchor. Use at most one secondary accent from the theme's layout roles on a slide.
+Keep Blue as the brand anchor. Use at most one secondary layout accent, separate from heading and syntax colours.
+Use `h1` Blue, `h2` Peach, and `h3` Green on ordinary slides, including split panels.
+Keep all three heading levels visibly distinct through size, weight, and spacing as well as colour.
+Keep full-bleed media copy neutral until contrast passes for each image.
 
 Use Markdown headings, lists, images, tables, and fenced code blocks before custom HTML.
+Label code fences with a recognised language, such as `python`, `bash`, `nix`, `javascript`, or `yaml`.
+Marp Core uses highlight.js for labelled fences, not automatic language detection or complete semantic colouring.
+Unknown labels, unlabelled fences, `text`, and `plaintext` remain neutral.
+Use `text` or `plaintext` deliberately for output, pseudocode, or examples that need no syntax colours.
+Syntax colours identify token types, not success, warning, or failure. Explain those states with words instead.
 If a layout requires HTML, inspect the markup and enable HTML only for trusted deck content.
 Keep essential content out of CSS pseudo-elements and decorative backgrounds.
 
