@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <title>Blue geometry study</title>
+  <desc>Overlapping blue circles and lines on a dark Catppuccin background. Decorative sample art, not data.</desc>
+  <rect width="1280" height="720" fill="#1e1e2e"/>
+  <path d="M0 144H1280M0 288H1280M0 432H1280M0 576H1280M160 0V720M320 0V720M480 0V720M640 0V720M800 0V720M960 0V720M1120 0V720" fill="none" stroke="#313244" stroke-width="2"/>
+  <circle cx="1070" cy="218" r="352" fill="#1e66f5"/>
+  <circle cx="1070" cy="218" r="238" fill="#89b4fa"/>
+  <circle cx="1070" cy="218" r="126" fill="#1e1e2e"/>
+  <path d="M-80 625L618 -73M110 720L830 0M494 720L1214 0" fill="none" stroke="#cdd6f4" stroke-width="2"/>
+  <path d="M100 154H432M100 178H270" stroke="#89b4fa" stroke-width="8"/>
+</svg>

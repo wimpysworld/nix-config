@@ -1,0 +1,3 @@
+[common]
+name = "marp-presentations"
+description = "Creates, revises, and exports Marp presentations from editable Markdown. Use for slide decks, talks, pitch decks, speaker notes, Catppuccin slides, or Marp HTML, PDF, PowerPoint, PNG, and JPEG exports. Includes self-contained offline HTML and experimental editable PPTX. Excludes native PowerPoint editing, standalone diagrams, and general web pages."

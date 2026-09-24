@@ -1,0 +1,9 @@
+[common]
+description = "Design and export a Marp presentation"
+argument-hint = "[brief|deck]"
+
+[compose]
+agent = "morph"
+
+[claude]
+allowed-tools = ["Read", "Write", "Edit", "Bash(marp:*)", "Bash(python3 */scripts/export.py *)"]

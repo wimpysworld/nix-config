@@ -28,6 +28,7 @@ Claude Code, OpenCode, and Pi use `/name`. Codex uses manual-only `$name` skills
 | [create-project](./create-project/command.toml) | Create Project 🗂️ | penfold | public | Task worker: penfold | Native subtask: penfold | spawn_agent: penfold | Agent worker: penfold |
 | [create-skill](./create-skill/command.toml) | Create Skill 🧩 | rosey | public | Task worker: rosey | Native subtask: rosey | spawn_agent: rosey | Agent worker: rosey |
 | [create-task](./create-task/command.toml) | Create Task 📝 | penfold | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
+| [design-presentation](./design-presentation/command.toml) | Design and export a Marp presentation | morph | public | Task worker: morph | Native subtask: morph | spawn_agent: morph | Agent worker: morph |
 | [draft-blog-post](./draft-blog-post/command.toml) | Draft Blog Post ✍️ | casper | public | Task worker: casper | Native subtask: casper | spawn_agent: casper | Agent worker: casper |
 | [draft-code-review](./draft-code-review/command.toml) | Draft Code Review ✍️ | donatello | public | Task worker: donatello | Native subtask: donatello | spawn_agent: donatello | Agent worker: donatello |
 | [draft-commit-message](./draft-commit-message/command.toml) | Draft Commit Message ✍️ | garfield | public | Task worker: garfield | Native subtask: garfield, subtask: true | spawn_agent: garfield | Agent worker: garfield |
@@ -154,6 +155,10 @@ Only description overrides and nonempty argument hints are shown. When any clien
 | [create-task](./create-task/command.toml) | opencode | Same as common | Unset |
 | [create-task](./create-task/command.toml) | codex | Same as common | Unset |
 | [create-task](./create-task/command.toml) | pi | Same as common | &lt;project\|path&gt; |
+| [design-presentation](./design-presentation/command.toml) | claude | Same as common | [brief\|deck] |
+| [design-presentation](./design-presentation/command.toml) | opencode | Same as common | [brief\|deck] |
+| [design-presentation](./design-presentation/command.toml) | codex | Same as common | Unset |
+| [design-presentation](./design-presentation/command.toml) | pi | Same as common | [brief\|deck] |
 | [draft-blog-post](./draft-blog-post/command.toml) | claude | Same as common | [topic] |
 | [draft-blog-post](./draft-blog-post/command.toml) | opencode | Same as common | Unset |
 | [draft-blog-post](./draft-blog-post/command.toml) | codex | Same as common | Unset |

@@ -1,0 +1,514 @@
+/* @theme catppuccin-slides */
+/* @size 16:9 1280px 720px */
+/* Original layout system. Palette: https://catppuccin.com/palette/ */
+
+section,
+section.latte {
+  --base: #eff1f5;
+  --text: #4c4f69;
+  --muted: #5c5f77;
+  --panel: #e6e9ef;
+  --line: #acb0be;
+  --blue: #1e66f5;
+  color-scheme: light;
+}
+
+section.mocha {
+  --base: #1e1e2e;
+  --text: #cdd6f4;
+  --muted: #bac2de;
+  --panel: #181825;
+  --line: #585b70;
+  --blue: #89b4fa;
+  color-scheme: dark;
+}
+
+section {
+  box-sizing: border-box;
+  width: 1280px;
+  height: 720px;
+  padding: 88px 72px 76px;
+  background: var(--base);
+  color: var(--text);
+  font-family: "Work Sans", sans-serif;
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: -0.025em;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+section::before {
+  content: "";
+  position: absolute;
+  top: 48px;
+  left: 72px;
+  width: 56px;
+  height: 6px;
+  background: var(--blue);
+}
+
+section *,
+section *::before,
+section *::after {
+  box-sizing: border-box;
+}
+h1,
+h2,
+h3,
+p,
+ul,
+ol,
+blockquote,
+pre,
+table,
+figure {
+  margin: 0;
+}
+h1,
+h2,
+h3 {
+  font-weight: 650;
+  line-height: 1.13;
+  text-wrap: balance;
+}
+h1 {
+  font-size: 54px;
+  letter-spacing: -0.045em;
+  margin-bottom: 30px;
+}
+h2 {
+  font-size: 34px;
+  margin-bottom: 18px;
+}
+h3 {
+  font-size: 30px;
+  margin-bottom: 14px;
+}
+p + p,
+p + ul,
+p + ol,
+ul + p,
+ol + p {
+  margin-top: 22px;
+}
+li + li {
+  margin-top: 14px;
+}
+ul,
+ol {
+  padding-left: 1.15em;
+}
+li {
+  padding-left: 0.15em;
+}
+strong {
+  font-weight: 700;
+}
+em {
+  font-style: italic;
+}
+a {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--blue);
+  text-underline-offset: 0.16em;
+}
+a:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 5px;
+}
+small,
+.source {
+  font-size: 20px;
+  color: var(--muted);
+  letter-spacing: 0;
+}
+.source {
+  margin-top: 24px;
+  line-height: 1.4;
+}
+.eyebrow {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  margin-bottom: 22px;
+}
+.lede {
+  font-size: 34px;
+  max-width: 950px;
+}
+img {
+  max-width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+}
+hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  width: 100%;
+  margin: 24px 0;
+}
+header,
+footer,
+section::after {
+  position: absolute;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.25;
+  color: var(--muted);
+  letter-spacing: 0;
+}
+header {
+  top: 33px;
+  right: 72px;
+  max-width: 800px;
+  text-align: right;
+}
+footer {
+  left: 72px;
+  bottom: 26px;
+  max-width: 1000px;
+}
+section::after {
+  right: 72px;
+  bottom: 26px;
+  padding: 0;
+  content: attr(data-marpit-pagination);
+}
+
+/* Blue text is large only. Small links, labels and code use Text or Subtext 1. */
+section.opening,
+section.section,
+section.statement,
+section.quote,
+section.closing {
+  justify-content: center;
+}
+section.opening h1 {
+  font-size: 76px;
+  max-width: 1000px;
+  margin-bottom: 28px;
+}
+section.opening .eyebrow {
+  margin-bottom: 28px;
+}
+section.opening .source {
+  margin-top: 40px;
+}
+section.section h1 {
+  font-size: 80px;
+  max-width: 1000px;
+}
+section.section .eyebrow {
+  font-size: 36px;
+  color: var(--blue);
+  letter-spacing: 0;
+}
+section.statement h1 {
+  font-size: 68px;
+  max-width: 1080px;
+}
+section.statement strong {
+  color: var(--blue);
+}
+section.statement p {
+  max-width: 940px;
+}
+
+section.agenda ol {
+  list-style: none;
+  padding: 0;
+  counter-reset: agenda;
+}
+section.agenda li {
+  counter-increment: agenda;
+  display: grid;
+  grid-template-columns: 78px 1fr;
+  align-items: baseline;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+section.agenda li + li {
+  margin-top: 0;
+}
+section.agenda li::before {
+  content: counter(agenda, decimal-leading-zero);
+  color: var(--blue);
+  font-size: 32px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 56px;
+  align-items: start;
+}
+.columns > * {
+  min-width: 0;
+}
+.columns > :last-child {
+  border-left: 1px solid var(--line);
+  padding-left: 40px;
+}
+.columns p,
+.columns li {
+  font-size: 28px;
+}
+.columns ul {
+  padding-left: 1em;
+}
+section.two-column .columns {
+  margin-top: 8px;
+}
+
+/* Tables compare values without decorative containers. */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 26px;
+  letter-spacing: -0.015em;
+}
+th,
+td {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+th {
+  font-weight: 650;
+  background: var(--panel);
+  border-bottom: 3px solid var(--blue);
+}
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+section.comparison th:first-child,
+section.comparison td:first-child {
+  width: 26%;
+}
+section.comparison td {
+  padding-top: 24px;
+  padding-bottom: 24px;
+}
+section.metrics td:not(:first-child),
+section.metrics th:not(:first-child) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+section.evidence .columns {
+  grid-template-columns: 0.9fr 1.1fr;
+  align-items: center;
+  margin-top: 20px;
+}
+.metric,
+.columns .metric {
+  font-size: 112px;
+  line-height: 1.05;
+  font-weight: 650;
+  letter-spacing: -0.065em;
+  color: var(--blue);
+  font-variant-numeric: tabular-nums;
+}
+.metric + p {
+  margin-top: 14px;
+  max-width: 390px;
+}
+section.evidence h2 {
+  font-size: 36px;
+}
+section.evidence .source {
+  margin-top: auto;
+  padding-top: 24px;
+}
+
+/* Native Marp background images cover the slide. The caption stays opaque. */
+section.visual {
+  justify-content: flex-end;
+  padding-bottom: 64px;
+}
+section.visual::before,
+section.visual::after,
+section.visual header,
+section.visual footer {
+  display: none;
+}
+section.visual .caption {
+  position: relative;
+  width: 820px;
+  padding: 28px 34px;
+  background: var(--base);
+  border-left: 6px solid var(--blue);
+}
+section.visual h1 {
+  font-size: 46px;
+  margin-bottom: 12px;
+}
+section.visual p {
+  font-size: 26px;
+}
+section.visual .source {
+  font-size: 18px;
+  margin-top: 16px;
+}
+
+section.process ol {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 30px;
+  padding: 0;
+  margin-top: 36px;
+  list-style: none;
+  counter-reset: steps;
+}
+section.process li {
+  position: relative;
+  counter-increment: steps;
+  padding: 24px 0 0;
+  margin: 0;
+  border-top: 3px solid var(--blue);
+  font-size: 26px;
+}
+section.process li::before {
+  content: counter(steps, decimal-leading-zero);
+  display: block;
+  color: var(--blue);
+  font-size: 36px;
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+section.process li strong {
+  display: block;
+  margin-bottom: 12px;
+}
+section.process .source {
+  margin-top: 38px;
+}
+
+code,
+pre {
+  font-family: "FiraCode Nerd Font Mono", monospace;
+  font-variant-ligatures: none;
+  letter-spacing: 0;
+}
+code {
+  font-size: 0.83em;
+  background: var(--panel);
+  padding: 0.12em 0.24em;
+  border-radius: 3px;
+}
+pre {
+  padding: 26px 30px;
+  background: var(--panel);
+  border-left: 4px solid var(--blue);
+  line-height: 1.5;
+  font-size: 24px;
+  tab-size: 2;
+  margin-top: 8px;
+}
+pre code {
+  font-size: inherit;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  white-space: pre;
+}
+/* Do not inherit a syntax palette with unknown contrast. Weight marks syntax. */
+pre code,
+pre code span {
+  color: var(--text);
+}
+pre .hljs-keyword,
+pre .hljs-title,
+pre .hljs-built_in,
+pre .hljs-attr {
+  font-weight: 700;
+}
+pre .hljs-comment {
+  color: var(--muted);
+  font-style: italic;
+}
+section.code .source {
+  margin-top: 24px;
+}
+
+/* Reading order follows the request flow. Arrows supplement numbered labels. */
+section.architecture ol {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 44px;
+  list-style: none;
+  padding: 0;
+  margin-top: 36px;
+}
+section.architecture li {
+  position: relative;
+  padding: 28px 24px;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--blue);
+  background: var(--panel);
+  font-size: 26px;
+}
+section.architecture li strong {
+  display: block;
+  font-size: 30px;
+  margin-bottom: 16px;
+}
+section.architecture li:not(:last-child)::after {
+  content: "→";
+  position: absolute;
+  right: -36px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 32px;
+  color: var(--blue);
+}
+section.architecture .boundary {
+  margin-top: 28px;
+  border-top: 1px dashed var(--line);
+  padding-top: 20px;
+  font-size: 24px;
+}
+
+blockquote {
+  border-left: 6px solid var(--blue);
+  padding: 8px 0 8px 34px;
+}
+section.quote blockquote {
+  font-size: 48px;
+  line-height: 1.25;
+  letter-spacing: -0.035em;
+  max-width: 1080px;
+}
+section.quote .source {
+  margin-left: 40px;
+  margin-top: 32px;
+  font-size: 24px;
+}
+section.closing h1 {
+  font-size: 72px;
+  max-width: 1000px;
+}
+section.closing .next {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 3px solid var(--blue);
+  max-width: 960px;
+}
+section.appendix {
+  justify-content: flex-start;
+}
+section.appendix h1 {
+  font-size: 54px;
+}
+section.appendix li {
+  font-size: 28px;
+}
