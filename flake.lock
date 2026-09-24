@@ -1059,16 +1059,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1789035428,
-        "narHash": "sha256-zYUj7CGz+i+w0elysbU+Sup+NACsBoIEqCu8WHA24PE=",
+        "lastModified": 1790102053,
+        "narHash": "sha256-5pjFV28DmKsptnAajWEWeOAvkur3QkJAHSJZyfiqRh4=",
         "owner": "getpaseo",
         "repo": "paseo",
-        "rev": "b8e24677e12b226c7c38c1c3a40649daa9f1152f",
+        "rev": "81865852011df86aa0ad0ae411cb2f5e4078153f",
         "type": "github"
       },
       "original": {
         "owner": "getpaseo",
-        "ref": "v0.8.0",
+        "ref": "v0.9.1",
         "repo": "paseo",
         "type": "github"
       }
