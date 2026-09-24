@@ -90,9 +90,12 @@ Use local directives for slide-specific changes, so that styles do not affect la
 For example, `<!-- _paginate: false -->` hides pagination only on the current slide.
 Copy palette and layout class syntax from the starter and layout guide.
 Preserve both the palette class and layout class when assigning slide classes.
-Keep Blue as the brand anchor. Use at most one secondary layout accent, separate from heading and syntax colours.
 Use `h1` Blue, `h2` Peach, and `h3` Green on ordinary slides, including split panels.
 Keep all three heading levels visibly distinct through size, weight, and spacing as well as colour.
+Keep these heading colour families out of decorative lines, dashes, dividers, and markers.
+Use the layout guide's structural roles, separately from heading, labelled status, chart data, and syntax roles.
+Preserve the theme's accessible Latte derivatives, not raw palette Yellow or Pink, for structural roles.
+Use the accessibility reference for exact values and contrast checks.
 Keep full-bleed media copy neutral until contrast passes for each image.
 
 Use Markdown headings, lists, images, tables, and fenced code blocks before custom HTML.

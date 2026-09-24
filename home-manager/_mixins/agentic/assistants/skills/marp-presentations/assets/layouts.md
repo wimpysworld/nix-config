@@ -73,37 +73,41 @@ Use `Work Sans` for body text and `FiraCode Nerd Font Mono` for code. The theme 
 
 ## Colour roles
 
-Keep Blue as the common brand colour: the top mark, link underline and key action.
-Use one secondary layout accent per slide, separate from the Blue `h1`, Peach `h2`, and Green `h3` hierarchy.
+Keep Blue `h1`, Peach `h2`, and Green `h3` separate from structural accents.
+Do not use these heading colour families for decorative lines, dashes, dividers, or markers.
+The top dash follows `--layout-accent`, not the heading colour.
 Keep full-bleed media copy neutral until checked against each image. The skill's accessibility reference defines heading colours and contrast checks.
-Header, footer and source text stay neutral, with a short decorative metadata mark.
-Page numbers use Latte Mauve or Mocha Lavender on Base, independently of the layout accent.
+Header, footer and source text stay neutral, with Pink metadata dashes.
+Links use neutral text with Pink underlines and focus outlines. General list markers and icons use Pink.
+Page numbers use Yellow on Base in both palettes, independently of the layout accent.
 
-| Layout family | Secondary accent | Treatment |
+| Layout family | Layout accent | Treatment |
 | --- | --- | --- |
-| Opening | None | Blue brand mark and title |
-| Agenda | Mauve in Latte, Lavender in Mocha | Large list numbers |
-| Section | Mauve in Latte, Lavender in Mocha | Section eyebrow |
-| Statement | None | Blue claim, with weight for emphasis |
+| Opening | Pink | Structural mark, separate Blue title |
+| Agenda | Yellow | Large list numbers and row rules |
+| Section | Yellow | Section eyebrow |
+| Statement | Pink | Structural mark, Blue claim and bold emphasis |
 | Two-column | Teal | Divider rule |
-| Split | Teal | Code edge, neutral Base and Mantle panels |
+| Split | Teal | Layout rules where present, no default panel divider. Code edges stay Mauve. |
 | Comparison | Teal | Table header rule, neutral labels |
-| Evidence | Teal | Large measure and divider rule |
-| Visual | Peach | Decorative caption edge, neutral caption |
+| Evidence | Teal | Divider rule. Large measures use the separate Teal data role. |
+| Visual | Pink | Caption edge, neutral overlay copy |
 | Metrics | Teal | Table header rule, neutral values |
-| Process / timeline | Mauve | Step rules, neutral numbers and labels |
+| Process / timeline | Mauve | Step rules, Yellow numbers, neutral labels |
 | Code | Mauve | Block edge, language-aware syntax on a dark panel |
-| Architecture | Mauve | Top borders, neutral labels and arrows |
-| Quote | Peach | Decorative quotation edge, neutral attribution |
-| Closing / appendix | None | Blue action rule for closing, quiet appendix variant |
+| Architecture | Mauve | Top borders and boundary rule, Yellow arrows, neutral labels |
+| Quote | Pink | Quotation edge, neutral attribution |
+| Closing / appendix | Pink | Closing action rule, quiet appendix variant |
 
-The palette tokens are `--blue`, `--mauve`, `--lavender`, `--teal`, `--peach`, `--green`, `--yellow` and `--red`.
-The theme maps them to `--brand`, `--navigation`, `--layout-accent`, `--metadata-mark`, `--page-count` and labelled status roles.
-Keep palette values unchanged. Override a semantic role on the relevant slide only, after the theme's layout rules.
+`--brand` means the Pink structural accent, not the Blue heading role.
+`--navigation` supplies Yellow to navigation and `--page-count`. `--code-rule` supplies Mauve to code borders, including split panels.
+Both palettes use the same structural families. Latte uses contrast-adjusted Yellow and Pink, as the accessibility reference specifies.
+Keep palette values unchanged. Override a role on the relevant slide only, after the theme's layout rules.
 For example, `section.my-section { --layout-accent: var(--mauve); }` selects Mauve when the slide also has `my-section`.
 Use existing theme roles rather than arbitrary colours. Recheck contrast after each override.
 Reserve `--status-success`, `--status-warning` and `--status-danger` for labelled status, not decoration.
-An embedded diagram must use the slide's secondary accent, while Blue remains its focal colour.
+Keep chart data and syntax colours independent of structural accents.
+For embedded diagrams, use structural accents for boundaries and connectors, with labelled semantic roles for data or status.
 
 ## Opening
 
@@ -554,17 +558,19 @@ Use a local SVG with a visible description for a more complex architecture. Do n
 
 The canvas is 1280 × 720. Main text is 30px, with 72px side margins. Keep content above the footer.
 
-Small labels, sources and links use Text or Subtext 1. Link underlines stay Blue.
+Small labels, sources and link text use Text or Subtext 1, except Yellow navigation labels and page numbers.
 Code tokens and neutral fallback text need separate checks against the dark code panel.
 Require at least 4.5:1 for small text and 3:1 for large text or meaning-carrying marks.
 
-| Latte colour | Contrast on Base | Safe use |
+| Latte role | Contrast on Base | Safe use |
 | --- | --- | --- |
-| Blue | 4.34:1 | Large emphasis, brand marks and link underlines |
-| Teal | 3.31:1 | Large measures and rules, not small text |
-| Raw Peach | 2.64:1 | Decorative edges only. Headings use derived dark Peach instead. |
-| Mauve | 4.79:1 | Page numbers on Base and section marks |
+| Blue heading | 4.34:1 | Large `h1`, not small text or structural marks |
+| Derived Yellow navigation | 5.59:1 | Agenda numbers, section eyebrows, pagination and process numbers |
+| Derived Pink structure | 4.98:1 | Metadata dashes, link underlines, focus outlines, list markers and decorative edges |
+| Teal comparison / data | 3.31:1 | Large measures and rules, not small text |
+| Mauve technical structure | 4.79:1 | Code borders and technical boundaries |
 
+These ratios apply to Base only. Check each actual background, including Mantle and the dark code panel.
 Latte Mauve falls to about 4.45:1 on Mantle. Keep small panel labels neutral.
 Do not use colour alone for status or chart meaning. Add labels and contrasting outlines where required.
 

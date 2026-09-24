@@ -16,9 +16,13 @@ section.latte {
   --peach: #fe640b;
   --green: #40a02b;
   --yellow: #df8e1d;
+  --pink: #ea76cb;
   --red: #d20f39;
-  --navigation: var(--mauve);
-  --page-count: var(--mauve);
+  /* Derived Yellow and Pink meet 4.5:1 on Base and Mantle. */
+  --accent-yellow: #865511;
+  --accent-pink: #984d84;
+  --navigation: var(--accent-yellow);
+  --page-count: var(--navigation);
   --heading-primary: var(--blue);
   /* Peach with 30% black; Green with 45% black. Keep palette tokens intact. */
   --heading-secondary: #b24608;
@@ -39,9 +43,12 @@ section.mocha {
   --peach: #fab387;
   --green: #a6e3a1;
   --yellow: #f9e2af;
+  --pink: #f5c2e7;
   --red: #f38ba8;
-  --navigation: var(--lavender);
-  --page-count: var(--lavender);
+  --accent-yellow: var(--yellow);
+  --accent-pink: var(--pink);
+  --navigation: var(--accent-yellow);
+  --page-count: var(--navigation);
   --heading-primary: var(--blue);
   --heading-secondary: var(--peach);
   --heading-tertiary: var(--green);
@@ -50,9 +57,11 @@ section.mocha {
 
 /* Palette tokens stay independent of roles. Override roles on the slide. */
 section {
-  --brand: var(--blue);
+  --brand: var(--accent-pink);
   --layout-accent: var(--brand);
-  --metadata-mark: var(--layout-accent);
+  --metadata-mark: var(--brand);
+  --code-rule: var(--mauve);
+  --data-accent: var(--teal);
   --status-success: var(--green);
   --status-warning: var(--yellow);
   --status-danger: var(--red);
@@ -79,7 +88,7 @@ section::before {
   left: 72px;
   width: 56px;
   height: 6px;
-  background: var(--brand);
+  background: var(--layout-accent);
 }
 
 section *,
@@ -139,6 +148,9 @@ ol {
 li {
   padding-left: 0.15em;
 }
+li::marker {
+  color: var(--brand);
+}
 strong {
   font-weight: 700;
 }
@@ -183,7 +195,7 @@ img {
 }
 hr {
   border: 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--layout-accent);
   width: 100%;
   margin: 24px 0;
 }
@@ -233,7 +245,9 @@ section::after {
   content: attr(data-marpit-pagination);
 }
 
-/* Layout marks complement heading roles. Pagination keeps its readable role. */
+/* Yellow guides navigation; Pink marks general structure and quotations.
+   Teal separates comparisons; Mauve marks technical structure.
+   None of these structural roles uses a heading colour family. */
 section.agenda,
 section.section {
   --layout-accent: var(--navigation);
@@ -251,9 +265,9 @@ section.code {
 }
 section.quote,
 section.visual {
-  --layout-accent: var(--peach);
+  --layout-accent: var(--accent-pink);
 }
-/* Blue and Teal text is large only. Raw Latte Peach is decorative only. */
+/* Data, status and syntax colours stay independent of structural roles. */
 section.opening,
 section.section,
 section.statement,
@@ -286,7 +300,7 @@ section.statement h1 {
   max-width: 1080px;
 }
 section.statement h1 strong {
-  color: var(--brand);
+  color: var(--heading-primary);
 }
 section.statement p {
   max-width: 940px;
@@ -303,7 +317,7 @@ section.agenda li {
   grid-template-columns: 78px 1fr;
   align-items: baseline;
   padding: 14px 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--layout-accent);
 }
 section.agenda li + li {
   margin-top: 0;
@@ -326,7 +340,7 @@ section.agenda li::before {
   min-width: 0;
 }
 .columns > :last-child {
-  border-left: 1px solid var(--line);
+  border-left: 1px solid var(--layout-accent);
   padding-left: 40px;
 }
 .columns p,
@@ -391,7 +405,7 @@ section.evidence .columns {
   line-height: 1.05;
   font-weight: 650;
   letter-spacing: -0.065em;
-  color: var(--layout-accent);
+  color: var(--data-accent);
   font-variant-numeric: tabular-nums;
 }
 .metric + p {
@@ -456,7 +470,7 @@ section.process li {
 section.process li::before {
   content: counter(steps, decimal-leading-zero);
   display: block;
-  color: var(--text);
+  color: var(--navigation);
   font-size: 36px;
   font-weight: 600;
   margin-bottom: 24px;
@@ -484,7 +498,7 @@ code {
 pre {
   padding: 26px 30px;
   background: var(--panel);
-  border-left: 4px solid var(--layout-accent);
+  border-left: 4px solid var(--code-rule);
   line-height: 1.5;
   font-size: 24px;
   tab-size: 2;
@@ -608,11 +622,11 @@ section.architecture li:not(:last-child)::after {
   top: 50%;
   transform: translateY(-50%);
   font-size: 32px;
-  color: var(--muted);
+  color: var(--navigation);
 }
 section.architecture .boundary {
   margin-top: 28px;
-  border-top: 1px dashed var(--line);
+  border-top: 1px dashed var(--layout-accent);
   padding-top: 20px;
   font-size: 24px;
 }
@@ -814,7 +828,7 @@ section.figure-pair > .media-figure { height: 414px; }
   padding: 0;
 }
 .icon-list .list-icon {
-  color: var(--text);
+  color: var(--brand);
   text-align: center;
   font-weight: 650;
 }

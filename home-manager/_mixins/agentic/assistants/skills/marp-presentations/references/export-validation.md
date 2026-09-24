@@ -113,6 +113,8 @@ Distinguish optional source links from embedded assets. A local source link does
 Inspect every rendered slide at presentation size, not only a contact sheet or the source text.
 Check clipping, line breaks, hierarchy, spacing, image crops, chart labels, code, and footers.
 Check both palettes when the deck uses both.
+For structural palette changes, compare paired Latte/Mocha agenda and section slides using the accessibility reference's review cases.
+Confirm that Yellow numbers and eyebrows remain distinct from Blue headings, and that structural marks avoid all heading colour families.
 Verify page order, count, notes, and metadata in each requested format.
 
 For headings and code:
