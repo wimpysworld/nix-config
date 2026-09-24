@@ -462,3 +462,449 @@ print(f"Review time fell by {reduction:.0%}")
 - Keep detailed data outside the main narrative.
 
 <p class="source">Appendix is a modifier for the closing family. This slide also checks the standard content layout.</p>
+
+---
+
+<!-- _class: latte split -->
+
+<div class="split-panel panel-centre">
+<div class="panel-body">
+
+# Two independent panels
+
+Equal widths, separate alignment.
+
+</div>
+<p class="panel-source">Latte · Split · Illustrative text</p>
+</div>
+<div class="split-panel panel-muted panel-top">
+<div class="panel-body">
+
+## Keep the scope clear
+
+- Name the owner.
+- Define the check.
+- Record the result.
+
+</div>
+<p class="panel-source">Local source: example only.</p>
+</div>
+
+<!--
+The title and the list have **separate positions**.
+The source stays below its own content, so the audience knows which claim it supports.
+-->
+
+---
+
+<!-- _class: latte split split-wide-left -->
+
+<div class="split-panel">
+<div class="panel-body">
+
+# Keep the image whole
+
+Containment preserves the complete composition.
+
+</div>
+<p class="panel-source">Latte · 5:3 split · Original sample art</p>
+</div>
+<div class="split-panel panel-muted">
+<img class="panel-media" src="images/panel-study.svg" alt="Illustrative application window with three labelled rows: Input, Check and Result. All window edges remain visible.">
+<p class="panel-source">Contained image, not data.</p>
+</div>
+
+<!--
+A logo or screenshot needs **all its edges**.
+The image can use the panel height without losing information to a crop.
+-->
+
+---
+
+<!-- _class: latte split -->
+
+<div class="split-panel panel-bottom">
+<div class="panel-body">
+
+# Explain one operation
+
+A short example beside its purpose.
+
+</div>
+<p class="panel-source">Latte · Bottom-aligned text</p>
+</div>
+<div class="split-panel panel-muted">
+<div class="panel-body">
+
+## A repeatable check
+
+```python
+samples = [2, 4, 6]
+total = sum(samples)
+print(total)
+```
+
+</div>
+<p class="panel-source">Python · Illustrative input</p>
+</div>
+
+<!--
+The code shows **one operation** with inputs that we can read at a glance.
+Longer examples need another slide, not smaller type.
+-->
+
+---
+
+<!-- _class: latte split split-wide-right split-reverse -->
+
+<div class="split-panel">
+<div class="panel-body">
+
+# Give the subject room
+
+The image fills the narrow panel. The words keep their safe area.
+
+</div>
+<p class="panel-source">Latte · Reversed 3:5 split · Original illustration</p>
+</div>
+<div class="split-panel panel-cover">
+<img class="panel-media" style="--media-position: 65% 50%" src="images/landscape-study.svg" alt="Illustrated hills, cropped around the peak on the right. Photograph placeholder.">
+</div>
+
+<!--
+This illustration stands in for an approved photograph.
+A **deliberate crop** keeps the subject visible while the text remains separate.
+-->
+
+---
+
+<!-- _class: latte visual visual-image -->
+<!-- _paginate: false -->
+
+<img class="visual-media" src="images/landscape-study.svg" alt="Original illustration of layered blue hills beneath a pale sky. Image-only example, not data.">
+
+<!--
+An **image-only pause** gives the audience time to look.
+Here, layered blue hills demonstrate the full frame without extra text.
+-->
+
+---
+
+<!-- _class: latte visual visual-opening -->
+<!-- _paginate: false -->
+
+<img class="visual-media" src="images/landscape-study.svg" alt="Illustrated hills beneath a pale sky, a photograph placeholder.">
+<div class="visual-scrim" aria-hidden="true"></div>
+<div class="visual-copy copy-top">
+<p class="eyebrow">Latte / Photograph-backed opening</p>
+
+# A clear place to begin
+
+One promise, with space around the title.
+
+<p class="source">Original illustration · Replace with an approved photograph</p>
+</div>
+
+<!--
+The image supplies context, but the **title comes first**.
+The pale contrast layer makes the dark text readable without an opaque caption box.
+-->
+
+---
+
+<!-- _class: latte visual visual-statement -->
+<!-- _paginate: false -->
+
+<img class="visual-media" src="images/landscape-study.svg" alt="Illustrative hills form a quiet background for a statement.">
+<div class="visual-scrim" aria-hidden="true"></div>
+<div class="visual-copy copy-centre">
+
+# One idea deserves<br>the whole frame
+
+Illustrative statement over media.
+
+<p class="source">Latte · Original illustration, not evidence</p>
+</div>
+
+<!--
+The statement carries **one idea** rather than a list of details.
+If the image contains evidence, we must leave that evidence unobscured.
+-->
+
+---
+
+<!-- _class: latte figure-pair -->
+
+# Before: a longer review queue
+
+<figure class="media-figure">
+<img src="images/queue-before.svg" alt="Illustrative minutes: review 6, checks 4. The horizontal scale runs from 0 to 8.">
+<figcaption>Latte · Before · Illustrative values, not measured results.</figcaption>
+</figure>
+
+<!--
+These are **illustrative values**, not evidence of an improvement.
+Keep the scale in mind as we move to the next image.
+-->
+
+---
+
+<!-- _class: latte figure-pair -->
+
+# After: the same scale
+
+<figure class="media-figure">
+<img src="images/queue-after.svg" alt="Illustrative minutes: review 3, checks 4. The horizontal scale remains 0 to 8.">
+<figcaption>Latte · After · Illustrative values, not measured results.</figcaption>
+</figure>
+
+<!--
+The **fixed scale** lets us compare the two images without adjusting for a new frame.
+Only the illustrative review value changes.
+-->
+
+---
+
+<!-- _class: latte -->
+
+# Keep words aligned with their icons
+
+<ul class="icon-list">
+<li><span class="list-icon" aria-hidden="true">+</span><span><strong>Add a check.</strong> Keep its result with the change.</span></li>
+<li><span class="list-icon" aria-hidden="true">→</span><span><strong>Review the result.</strong> Explain each exception before the next decision.</span></li>
+<li><span class="list-icon" aria-hidden="true">✓</span><span><strong>Record the decision.</strong> Name the owner.</span></li>
+</ul>
+<div class="media-strip">
+<img src="images/blue-study.svg" alt="Contained blue geometry study.">
+<img class="media-cover" style="--media-position: 65% 50%" src="images/landscape-study.svg" alt="Cropped illustration of hills.">
+<img src="images/landscape-study.svg" alt="The complete hill illustration, contained in the cell.">
+</div>
+<p class="source">Latte · Original illustrations · Optional strip with explicit contain and cover choices</p>
+
+<!--
+The icons help us scan, but **the words carry the meaning**.
+The strip shows that containment preserves the full image while a crop fills its cell.
+-->
+
+---
+
+<!-- _class: mocha split -->
+
+<div class="split-panel panel-centre">
+<div class="panel-body">
+
+# Two independent panels
+
+Equal widths, separate alignment.
+
+</div>
+<p class="panel-source">Mocha · Split · Illustrative text</p>
+</div>
+<div class="split-panel panel-muted panel-top">
+<div class="panel-body">
+
+## Keep the scope clear
+
+- Name the owner.
+- Define the check.
+- Record the result.
+
+</div>
+<p class="panel-source">Local source: example only.</p>
+</div>
+
+<!--
+The title and the list have **separate positions**.
+The source stays below its own content, so the audience knows which claim it supports.
+-->
+
+---
+
+<!-- _class: mocha split split-wide-left -->
+
+<div class="split-panel">
+<div class="panel-body">
+
+# Keep the image whole
+
+Containment preserves the complete composition.
+
+</div>
+<p class="panel-source">Mocha · 5:3 split · Original sample art</p>
+</div>
+<div class="split-panel panel-muted">
+<img class="panel-media" src="images/panel-study.svg" alt="Illustrative application window with three labelled rows: Input, Check and Result. All window edges remain visible.">
+<p class="panel-source">Contained image, not data.</p>
+</div>
+
+<!--
+A logo or screenshot needs **all its edges**.
+The image can use the panel height without losing information to a crop.
+-->
+
+---
+
+<!-- _class: mocha split -->
+
+<div class="split-panel panel-bottom">
+<div class="panel-body">
+
+# Explain one operation
+
+A short example beside its purpose.
+
+</div>
+<p class="panel-source">Mocha · Bottom-aligned text</p>
+</div>
+<div class="split-panel panel-muted">
+<div class="panel-body">
+
+## A repeatable check
+
+```python
+samples = [2, 4, 6]
+total = sum(samples)
+print(total)
+```
+
+</div>
+<p class="panel-source">Python · Illustrative input</p>
+</div>
+
+<!--
+The code shows **one operation** with inputs that we can read at a glance.
+Longer examples need another slide, not smaller type.
+-->
+
+---
+
+<!-- _class: mocha split split-wide-right split-reverse -->
+
+<div class="split-panel">
+<div class="panel-body">
+
+# Give the subject room
+
+The image fills the narrow panel. The words keep their safe area.
+
+</div>
+<p class="panel-source">Mocha · Reversed 3:5 split · Original illustration</p>
+</div>
+<div class="split-panel panel-cover">
+<img class="panel-media" style="--media-position: 65% 50%" src="images/landscape-study.svg" alt="Illustrated hills, cropped around the peak on the right. Photograph placeholder.">
+</div>
+
+<!--
+This illustration stands in for an approved photograph.
+A **deliberate crop** keeps the subject visible while the text remains separate.
+-->
+
+---
+
+<!-- _class: mocha visual visual-image -->
+<!-- _paginate: false -->
+
+<img class="visual-media" src="images/landscape-study.svg" alt="Original illustration of layered blue hills beneath a pale sky. Image-only example, not data.">
+
+<!--
+An **image-only pause** gives the audience time to look.
+Here, layered blue hills demonstrate the full frame without extra text.
+-->
+
+---
+
+<!-- _class: mocha visual visual-opening -->
+<!-- _paginate: false -->
+
+<img class="visual-media" src="images/landscape-study.svg" alt="Illustrated hills beneath a pale sky, a photograph placeholder.">
+<div class="visual-scrim" aria-hidden="true"></div>
+<div class="visual-copy copy-bottom copy-right">
+<p class="eyebrow">Mocha / Photograph-backed opening</p>
+
+# A clear place to begin
+
+One promise, with space around the title.
+
+<p class="source">Original illustration · Replace with an approved photograph</p>
+</div>
+
+<!--
+The image supplies context, but the **title comes first**.
+The dark contrast layer makes the pale text readable without an opaque caption box.
+-->
+
+---
+
+<!-- _class: mocha visual visual-statement -->
+<!-- _paginate: false -->
+
+<img class="visual-media" src="images/landscape-study.svg" alt="Illustrative hills form a quiet background for a statement.">
+<div class="visual-scrim" aria-hidden="true"></div>
+<div class="visual-copy copy-centre">
+
+# One idea deserves<br>the whole frame
+
+Illustrative statement over media.
+
+<p class="source">Mocha · Original illustration, not evidence</p>
+</div>
+
+<!--
+The statement carries **one idea** rather than a list of details.
+If the image contains evidence, we must leave that evidence unobscured.
+-->
+
+---
+
+<!-- _class: mocha figure-pair -->
+
+# Before: a longer review queue
+
+<figure class="media-figure">
+<img src="images/queue-before.svg" alt="Illustrative minutes: review 6, checks 4. The horizontal scale runs from 0 to 8.">
+<figcaption>Mocha · Before · Illustrative values, not measured results.</figcaption>
+</figure>
+
+<!--
+These are **illustrative values**, not evidence of an improvement.
+Keep the scale in mind as we move to the next image.
+-->
+
+---
+
+<!-- _class: mocha figure-pair -->
+
+# After: the same scale
+
+<figure class="media-figure">
+<img src="images/queue-after.svg" alt="Illustrative minutes: review 3, checks 4. The horizontal scale remains 0 to 8.">
+<figcaption>Mocha · After · Illustrative values, not measured results.</figcaption>
+</figure>
+
+<!--
+The **fixed scale** lets us compare the two images without adjusting for a new frame.
+Only the illustrative review value changes.
+-->
+
+---
+
+<!-- _class: mocha -->
+
+# Keep words aligned with their icons
+
+<ul class="icon-list">
+<li><span class="list-icon" aria-hidden="true">+</span><span><strong>Add a check.</strong> Keep its result with the change.</span></li>
+<li><span class="list-icon" aria-hidden="true">→</span><span><strong>Review the result.</strong> Explain each exception before the next decision.</span></li>
+<li><span class="list-icon" aria-hidden="true">✓</span><span><strong>Record the decision.</strong> Name the owner.</span></li>
+</ul>
+<div class="media-strip">
+<img src="images/blue-study.svg" alt="Contained blue geometry study.">
+<img class="media-cover" style="--media-position: 65% 50%" src="images/landscape-study.svg" alt="Cropped illustration of hills.">
+<img src="images/landscape-study.svg" alt="The complete hill illustration, contained in the cell.">
+</div>
+<p class="source">Mocha · Original illustrations · Optional strip with explicit contain and cover choices</p>
+
+<!--
+The icons help us scan, but **the words carry the meaning**.
+The strip shows that containment preserves the full image while a crop fills its cell.
+-->

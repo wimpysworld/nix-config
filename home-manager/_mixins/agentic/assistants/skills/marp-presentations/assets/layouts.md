@@ -35,10 +35,11 @@ Use `Work Sans` for body text and `FiraCode Nerd Font Mono` for code. The theme 
 | Agenda | Set the route | Three or four items |
 | Section | Mark a transition | One short title |
 | Statement | Make one claim | One claim, one qualifier |
-| Two-column | Explain related ideas | Two short groups |
+| Two-column | Explain related ideas below a shared heading | Two short groups |
+| Split | Separate full-height text or media panels | One title and three short items per panel |
 | Comparison | Compare equal criteria | Three rows |
 | Evidence | Explain one result | One measure, its limits, its source |
-| Visual | Show an image at full size | One caption |
+| Visual | Show full-bleed media | One caption, opening, statement, or image only |
 | Metrics | Show exact values | Four rows |
 | Process | Explain order or time | Four steps |
 | Code | Explain a small example | Ten lines, about 70 characters per line |
@@ -60,6 +61,7 @@ Page numbers use Latte Mauve or Mocha Lavender on Base, independently of the lay
 | Section | Mauve in Latte, Lavender in Mocha | Section eyebrow |
 | Statement | None | Blue emphasis in the large claim only |
 | Two-column | Teal | Divider rule |
+| Split | Teal | Code edge, neutral Base and Mantle panels |
 | Comparison | Teal | Table header rule, neutral labels |
 | Evidence | Teal | Large measure and divider rule |
 | Visual | Peach | Decorative caption edge, neutral caption |
@@ -226,6 +228,195 @@ Describe the meaning, not only the appearance.
 The opaque caption preserves text contrast. `cover` crops the image. Use `bg contain` when the whole image must remain visible.
 
 Marp backgrounds are decorative. Put essential image information in visible text and speaker notes. Do not use this layout for dense charts.
+
+## Split: independent full-height panels
+
+Use `split` instead of `two-column` when each half needs its own heading, alignment, or full-height image.
+The default widths are equal. There is no gutter, shared heading, or divider.
+Global headers, footers and pagination are hidden. Put necessary credits inside their associated panel.
+
+```markdown
+<!-- _class: latte split -->
+
+<div class="split-panel panel-centre">
+<div class="panel-body">
+
+# Explain the choice
+
+One short qualifier.
+
+</div>
+<p class="panel-source">Source: example only.</p>
+</div>
+<div class="split-panel panel-muted panel-top">
+<div class="panel-body">
+
+## Keep the scope clear
+
+- Name the owner.
+- Define the check.
+- Record the result.
+
+</div>
+<p class="panel-source">Optional local source or URL.</p>
+</div>
+```
+
+| Class | Place on | Effect |
+| --- | --- | --- |
+| `split-wide-left` | Slide, with `split` | Left:right widths of 5:3 |
+| `split-wide-right` | Slide, with `split` | Left:right widths of 3:5 |
+| `split-reverse` | Slide, with `split` | Swap the two panels, without changing physical widths |
+| `panel-top` / `panel-bottom` | `.split-panel` | Align the body at the top or bottom, default is middle |
+| `panel-centre` | `.split-panel` | Centre text horizontally |
+| `panel-muted` | `.split-panel` | Use Mantle instead of Base |
+| `panel-source` | Last paragraph in a panel | Reserve a separate bottom row for a source or link |
+
+Keep exactly two `.split-panel` wrappers. Reversal changes visual order, not reading order.
+Keep source order meaningful, or reorder the markup instead when sequence matters.
+Each text panel has a 56px horizontal and 64px vertical safe area.
+Use one short heading, at most three short items, and no more than two source lines.
+Use the narrower panel for a short title or image, not a long list.
+
+For code, put a fenced block inside `.panel-body`, with blank lines around the fence.
+Keep code to eight lines and approximately 32 characters per line in an equal panel.
+For longer code, use the existing full-width `code` family rather than smaller text.
+
+Replace either panel with this contained image panel:
+
+```html
+<div class="split-panel panel-muted">
+<img class="panel-media" src="images/blue-study.svg"
+     alt="Blue rings crossed by diagonal lines, an illustrative composition.">
+<p class="panel-source">Original sample artwork, not data.</p>
+</div>
+```
+
+For an edge-to-edge photograph, use the following panel instead:
+
+```html
+<div class="split-panel panel-cover">
+<img class="panel-media" src="images/landscape-study.svg"
+     style="--media-position: 65% 50%"
+     alt="Illustrated hills below a pale sky, a photograph placeholder.">
+</div>
+```
+
+Replace the placeholder with an approved local photograph. Put its credit in the text panel or evidence record.
+`panel-cover` is image-only. Do not put text over its image.
+Contain screenshots, diagrams and logos. Cover photographs only when the crop preserves the subject and its context.
+`--media-position` controls the focal point. Check the crop at the actual panel width, especially after reversal.
+
+## Visual: optional text over full-bleed media
+
+The original `visual` with `.caption` remains unchanged.
+The following variants use a foreground `<img>` so that informative media keeps its alternative text.
+Do not combine these variants with Marp `bg` syntax or the `opening` and `statement` families.
+
+```markdown
+<!-- _class: mocha visual visual-opening -->
+<!-- _paginate: false -->
+
+<img class="visual-media" src="images/landscape-study.svg"
+     style="--media-position: 65% 50%"
+     alt="Illustrated hills below a pale sky, a photograph placeholder.">
+<div class="visual-scrim" aria-hidden="true"></div>
+<div class="visual-copy copy-top">
+
+<p class="eyebrow">Topic / Audience</p>
+
+# A title over a photograph
+
+One short promise to the audience.
+
+<p class="source">Presenter · Event · Image credit</p>
+</div>
+```
+
+| Variant or utility | Use | Limit |
+| --- | --- | --- |
+| `visual-image` | Image only, omit scrim and copy wrappers | Give meaningful media descriptive `alt` text |
+| `visual-opening` | Photograph-backed opening | One short title, qualifier and identity line |
+| `visual-statement` | Statement over media | One short claim and optional qualifier |
+| `copy-top` / `copy-bottom` | Vertical position on `.visual-copy` | Default is middle |
+| `copy-right` / `copy-centre` | Horizontal position on `.visual-copy` | Default is left |
+| `media-contain` | Class on `.visual-media` | Preserve the whole image instead of cover cropping |
+| `visual-scrim` | Optional contrast layer before `.visual-copy` | Base colour at 90% opacity by default |
+
+For image-only slides, retain the image element from the example and change the slide class to `latte visual visual-image`.
+For statements, change the class to `latte visual visual-statement` and use `visual-copy copy-centre`.
+The copy area stays 72px from the sides and 64px from the top and bottom, with an 800px text limit.
+Put the title in quiet image space. Never obscure chart labels, faces, embedded text, or other essential information.
+The optional scrim uses the active palette's Base colour. Set `style="--scrim-opacity: 0.9"` on that element to adjust it.
+Recheck contrast over every part of the text after any opacity, crop, position, or image change.
+Omit the scrim only when the actual image gives sufficient contrast. No transparent overlay guarantees contrast for arbitrary images.
+If a scrim hides essential detail, use `split` instead.
+Keep essential image meaning in alternative text, visible text, and the spoken explanation where needed.
+
+## Composable figures, lists and media
+
+These utilities do not add layout families. Combine them with a normal heading or an existing family as appropriate.
+
+### Heading above a contained figure
+
+```markdown
+<!-- _class: latte -->
+
+# Compare the queue lengths
+
+<figure class="media-figure">
+<img src="images/queue-before.svg"
+     alt="Illustrative queue: review takes 6 minutes and checks take 4 minutes.">
+<figcaption>Illustrative minutes, not measured results. Both stages use the same scale.</figcaption>
+</figure>
+```
+
+Use one heading line and one caption line. The figure reserves 438px, including its caption.
+Keep screenshots and diagrams contained. Crop unnecessary application chrome in the source asset, not essential labels in CSS.
+Internal labels need to remain readable at 1280 × 720. Use a simpler figure if they do not.
+
+### Matched figures across consecutive slides
+
+Add `figure-pair` to both slides from the preceding example.
+Use `images/queue-before.svg` on the first and `images/queue-after.svg` on the second.
+Update each alternative text and caption to match its values.
+This modifier reserves two heading lines and a 414px figure area on each slide.
+Keep both images' dimensions, axes, scale and caption line count identical.
+Place state labels in the heading or caption, never across the plotted data.
+
+### Icon-led list with hanging alignment
+
+```html
+<ul class="icon-list">
+<li><span class="list-icon" aria-hidden="true">+</span><span><strong>Add a check.</strong> Keep the result with the change.</span></li>
+<li><span class="list-icon" aria-hidden="true">→</span><span><strong>Review the result.</strong> Explain each exception.</span></li>
+<li><span class="list-icon" aria-hidden="true">✓</span><span><strong>Record the decision.</strong> Name its owner.</span></li>
+</ul>
+```
+
+Keep three or four short rows. The 40px icon column leaves wrapped text aligned with the first line.
+Icons supplement the words. Hide decorative icons from assistive technology and do not rely on emoji colour or font availability.
+
+### Optional gallery or portrait strip
+
+```html
+<div class="media-strip">
+<img src="images/blue-study.svg" alt="Blue geometry, full composition.">
+<img class="media-cover" src="images/landscape-study.svg"
+     style="--media-position: 65% 50%" alt="Illustrated hills, cropped detail.">
+<img src="images/queue-before.svg" alt="Illustrative queue chart thumbnail.">
+</div>
+```
+
+The strip has three equal cells, 180px high, with 16px gaps. Use `media-cover` only for intentional photographic crops.
+For portraits, preserve faces and give each person an appropriate name or description. Do not add circular masks by default.
+Use one strip below a short list, or inside a split panel with enough space.
+Thumbnails are supporting images, not the only readable version of a chart or screenshot.
+
+All bundled SVGs are original illustrative assets. No artwork comes from the reviewed talks.
+Keep approved local assets beside the deck and copy each used file into its `images/` directory.
+Export reviewed markup with `scripts/export.py --trusted-local-assets --formats html notes` and the required input/output paths.
+The helper embeds assets and fonts for offline HTML. Check the isolated HTML with network access blocked before delivery.
 
 ## Metrics
 

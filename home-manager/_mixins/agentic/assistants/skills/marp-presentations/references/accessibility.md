@@ -5,6 +5,8 @@
 Check the actual foreground and background pair, including text over images and tinted panels.
 Use at least 4.5:1 contrast for normal text and 3:1 for large text.
 Large text means at least 18 pt, or 14 pt bold, under WCAG definitions.
+For image overlays, require at least 4.5:1 for all text, including large titles, against the actual image and scrim.
+Check every text area after each change to the image, crop, text position, palette, or scrim opacity.
 Aim for stronger contrast and larger type for projected slides.
 Use at least 3:1 contrast for essential chart marks and interface indicators against adjacent colours.
 
@@ -22,6 +24,10 @@ Keep heading levels and reading order meaningful in the Markdown source.
 
 Give each informative image useful alternative text.
 Describe a chart's conclusion, axes, units, and important values in nearby text or an accompanying transcript.
+Label chart comparisons with words such as Before and After, not colour alone.
+Keep state labels outside the plotted data and use consistent axes and units.
+For image-only slides, require meaningful alternative text and a transcript that explains the image's meaning and conclusion.
+Use a foreground image for informative media, not only a decorative background.
 Avoid essential information that exists only in a background image.
 Provide captions and a transcript for speech in media.
 Avoid autoplay, flashing effects, and motion that is necessary to understand a slide.

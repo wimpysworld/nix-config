@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600">
+  <title>Illustrative application window</title>
+  <desc>Original interface sketch with three labelled rows: Input, Check, and Result. This is not a screenshot of a real product.</desc>
+  <rect x="2" y="2" width="396" height="596" rx="12" fill="#eff1f5" stroke="#4c4f69" stroke-width="4"/>
+  <path d="M4 72H396" stroke="#4c4f69" stroke-width="3"/>
+  <g fill="#e6e9ef" stroke="#4c4f69" stroke-width="2">
+    <rect x="28" y="114" width="344" height="112" rx="6"/>
+    <rect x="28" y="254" width="344" height="112" rx="6"/>
+    <rect x="28" y="394" width="344" height="112" rx="6"/>
+  </g>
+  <g fill="#4c4f69" font-family="sans-serif" font-size="32">
+    <text x="28" y="48">Example panel</text>
+    <text x="50" y="158">1. Input</text>
+    <text x="50" y="298">2. Check</text>
+    <text x="50" y="438">3. Result</text>
+    <text x="28" y="564">Illustrative interface</text>
+  </g>
+  <g stroke="#1e66f5" stroke-width="8"><path d="M50 192H294M50 332H230M50 472H320"/></g>
+</svg>

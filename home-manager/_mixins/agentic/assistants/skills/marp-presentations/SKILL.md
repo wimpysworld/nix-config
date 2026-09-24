@@ -22,7 +22,8 @@ Read [accessibility](references/accessibility.md) before choosing colour, type, 
 Resolve bundled paths from this skill directory, not the working directory.
 
 - Start from `assets/starters/latte.md`, `assets/starters/mocha.md`, or `assets/starters/mixed.md`.
-- Read `assets/layouts.md` before assigning layouts. Use its actual classes, not invented class names.
+- Choose image-led slides and full-height split panels explicitly when the content needs them, not only text-led starter forms.
+- Read the [layout guide](assets/layouts.md) for selection rules, copyable markup, and content limits. Use its actual classes.
 - Use `assets/theme/catppuccin.css`, whose theme id is `catppuccin-slides`.
 - Use `assets/specimen.md` to check theme coverage, not as the narrative for a finished deck.
 - Copy required resources into the approved project directory. Never modify the installed skill.
@@ -34,7 +35,7 @@ Resolve bundled paths from this skill directory, not the working directory.
 
 Read [export and validation](references/export-validation.md) before rendering.
 Use `scripts/export.py` with `--input` and `--out` as that reference describes.
-For the reviewed starter layouts, pass `--trusted-local-assets` so that Marp renders their HTML wrappers.
+For reviewed layouts from the starters or layout guide, pass `--trusted-local-assets` to render their HTML wrappers and local images.
 Do not use that flag for unreviewed Markdown or assets.
 Do not assume that a successful conversion proves visual quality, offline operation, accessibility, or editable PowerPoint fidelity.
 

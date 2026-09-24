@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="360" viewBox="0 0 1040 360">
+  <title>Illustrative queue before a change</title>
+  <desc>Horizontal bars on a scale from zero to eight minutes. Review is six minutes. Checks are four minutes. These values are not measured results.</desc>
+  <rect width="1040" height="360" fill="#eff1f5"/>
+  <g stroke="#acb0be" stroke-width="2"><path d="M240 60V270M410 60V270M580 60V270M750 60V270M920 60V270"/></g>
+  <g fill="#1e66f5"><rect x="240" y="90" width="510" height="54"/><rect x="240" y="190" width="340" height="54"/></g>
+  <g fill="#4c4f69" font-family="sans-serif" font-size="30">
+    <text x="40" y="128">Review</text><text x="40" y="228">Checks</text>
+    <text x="770" y="128">6</text><text x="600" y="228">4</text>
+    <text x="240" y="312" text-anchor="middle">0</text><text x="410" y="312" text-anchor="middle">2</text><text x="580" y="312" text-anchor="middle">4</text><text x="750" y="312" text-anchor="middle">6</text><text x="920" y="312" text-anchor="middle">8</text>
+    <text x="580" y="350" text-anchor="middle">Minutes · illustrative values</text>
+  </g>
+</svg>

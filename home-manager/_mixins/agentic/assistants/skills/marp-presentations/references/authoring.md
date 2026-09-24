@@ -1,5 +1,14 @@
 # Authoring
 
+## Contents
+
+- [Narrative and layout](#narrative-and-layout)
+- [Split panels and image-led slides](#split-panels-and-image-led-slides)
+- [Figures and supporting media](#figures-and-supporting-media)
+- [Markdown source](#markdown-source)
+- [Speaker notes](#speaker-notes)
+- [Assets and fonts](#assets-and-fonts)
+
 ## Narrative and layout
 
 Make the opening explain why the audience needs the talk.
@@ -23,6 +32,52 @@ Read the bundled `assets/layouts.md` from the skill root for the supported synta
 Vary layouts when the content changes. Keep repeated content types visually consistent.
 Remove detail or split the slide before reducing type size.
 Use diagrams as editable assets where possible, with a static fallback for each export.
+Preserve the presenter's voice and the Catppuccin colour roles when adapting a reusable slide form.
+Do not copy reference talks' wording, artwork, or colours without separate authority.
+
+## Split panels and image-led slides
+
+Use inset `two-column` content when two related groups need a shared heading, gutter, and ordinary slide metadata.
+Use full-height `split` when two panels need independent headings, alignment, or an image beside text.
+Keep exactly two panels and follow the layout guide's safe areas and limits.
+Use the narrow panel for a short title or image, not dense content.
+When panels change position, check both the crop and source reading order.
+
+Split slides hide global headers, footers, and pagination.
+Put optional local source labels or links in `panel-source` below the associated content, within the two-line limit.
+Put credits for an image-only `panel-cover` in the text panel or evidence record.
+Keep required visible citations on the slide, even when other source details stay in the evidence record.
+
+Prefer the original `visual` caption when the image is busy or the explanation needs a solid background.
+Use a visual overlay for a short opening or statement when quiet image space leaves the subject visible.
+Place text within the documented safe area, clear of faces, chart labels, and essential image details.
+Use the optional scrim only when it preserves essential detail and gives sufficient text contrast.
+If the scrim conceals evidence, choose `split` instead.
+Never place text over a `panel-cover` image.
+
+Use `visual-image` for an image-only slide when the visual itself supports the takeaway.
+Use its foreground image element, not decorative Marp background syntax, for meaningful media.
+Give the image useful alternative text and explain its meaning in the spoken notes and accompanying transcript.
+If attribution must be visible, choose a caption or split rather than an image-only form.
+Copy exact markup from the layout guide and inspect the specimen for examples in both palettes.
+
+## Figures and supporting media
+
+Compose these tools within existing layouts, not a new family for each content type.
+
+| Need | Tool | Authoring rule |
+| --- | --- | --- |
+| Heading above a chart, diagram, or screenshot | `media-figure` | Use one heading line, a contained figure, and one caption line. |
+| Before/after across consecutive slides | `figure-pair` on both slides | Keep fixed bounds, image dimensions, crop, scale, axes, and caption line count identical. |
+| Short list with aligned icons | `icon-list` and `list-icon` | Use three or four short rows whose words carry the meaning without icons. |
+| Supporting gallery or portraits | Optional `media-strip` | Use three images, preserve faces, and keep essential evidence readable outside thumbnails. |
+
+Treat charts and diagrams as meaningful content, not decoration.
+Give each useful alternative text and a nearby conclusion in the heading, caption, or adjacent text.
+Keep units, baseline, state labels, and sources explicit.
+For paired visuals, update each image's alternative text and label its state outside the data.
+Contain charts, diagrams, logos, and screenshots so that all essential edges and labels remain visible.
+Use cover crops only for photographs whose subject and context survive the crop.
 
 ## Markdown source
 
@@ -84,6 +139,9 @@ Keep a separate notes text export when notes are a deliverable.
 ## Assets and fonts
 
 Store deck assets beside the Markdown with stable relative paths.
+When copying layout examples, copy each used file from `assets/images/` into the deck's `images/` directory.
+Copy `assets/theme/catppuccin.css` into the deck's `theme/` directory for direct Marp commands.
+Check every relative path from the copied deck, not from the skill directory.
 Record image provenance, licences, attribution, and any authorised edits.
 Crop deliberately without removing context that changes the meaning.
 Use descriptive alternative text for meaningful images and a written explanation for complex charts.

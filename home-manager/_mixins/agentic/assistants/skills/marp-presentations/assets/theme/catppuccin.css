@@ -579,3 +579,179 @@ section.appendix h1 {
 section.appendix li {
   font-size: 28px;
 }
+
+/* Full-height panels are independent of the inset .columns grid. */
+section.split {
+  --layout-accent: var(--teal);
+  --split-first: 1fr;
+  --split-second: 1fr;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, var(--split-first)) minmax(0, var(--split-second));
+  grid-template-rows: 720px;
+}
+section.split.split-wide-left {
+  --split-first: 5fr;
+  --split-second: 3fr;
+}
+section.split.split-wide-right {
+  --split-first: 3fr;
+  --split-second: 5fr;
+}
+section.split::before,
+section.split::after,
+section.split > header,
+section.split > footer {
+  display: none;
+}
+section.split > .split-panel {
+  position: relative;
+  grid-row: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 64px 56px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 24px;
+  background: var(--base);
+}
+section.split > .split-panel:first-of-type { grid-column: 1; }
+section.split > .split-panel:last-of-type { grid-column: 2; }
+section.split.split-reverse > .split-panel:first-of-type { grid-column: 2; }
+section.split.split-reverse > .split-panel:last-of-type { grid-column: 1; }
+section.split > .split-panel.panel-muted { background: var(--panel); }
+section.split .panel-body {
+  min-width: 0;
+  min-height: 0;
+  align-self: center;
+}
+section.split .panel-top .panel-body { align-self: start; }
+section.split .panel-bottom .panel-body { align-self: end; }
+section.split .panel-centre { text-align: center; }
+section.split h1 { font-size: 54px; }
+section.split h2 { font-size: 34px; }
+section.split p,
+section.split li { font-size: 28px; }
+section.split .panel-source {
+  margin: 0;
+  font-size: 20px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  letter-spacing: 0;
+}
+section.split pre {
+  padding: 20px;
+  font-size: 22px;
+}
+section.split .panel-media {
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+  object-position: var(--media-position, 50% 50%);
+  max-height: none;
+  display: block;
+  min-height: 0;
+}
+section.split > .split-panel.panel-cover {
+  padding: 0;
+  display: block;
+}
+section.split .panel-cover > .panel-media { object-fit: cover; }
+
+/* Opt-in foreground media keeps informative images in the accessible tree. */
+section.visual.visual-image,
+section.visual.visual-opening,
+section.visual.visual-statement {
+  padding: 0;
+  display: block;
+}
+section.visual > .visual-media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: cover;
+  object-position: var(--media-position, 50% 50%);
+}
+section.visual > .visual-media.media-contain { object-fit: contain; }
+section.visual > .visual-scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--base);
+  opacity: var(--scrim-opacity, 0.9);
+  pointer-events: none;
+}
+section.visual > .visual-copy {
+  position: absolute;
+  inset: 64px 72px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+}
+section.visual .visual-copy > * { max-width: 800px; }
+section.visual.visual-opening .visual-copy h1 { font-size: 72px; }
+section.visual.visual-statement .visual-copy h1 { font-size: 68px; }
+section.visual .visual-copy.copy-top { justify-content: flex-start; }
+section.visual .visual-copy.copy-bottom { justify-content: flex-end; }
+section.visual .visual-copy.copy-right { align-items: flex-end; text-align: right; }
+section.visual .visual-copy.copy-centre { align-items: center; text-align: center; }
+section.visual .visual-copy .source { font-size: 20px; margin-top: 28px; }
+
+/* Composable media utilities. Keep identical bounds for sequential figures. */
+.media-figure {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 16px;
+  height: 438px;
+  min-height: 0;
+  margin: 0;
+}
+.media-figure > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  object-fit: contain;
+  object-position: var(--media-position, 50% 50%);
+}
+.media-figure > figcaption {
+  font-size: 22px;
+  color: var(--muted);
+  line-height: 1.3;
+}
+/* Reserve two heading lines even when one state has a shorter title. */
+section.figure-pair > h1 { height: 122px; flex-shrink: 0; margin-bottom: 20px; }
+section.figure-pair > .media-figure { height: 414px; }
+.icon-list {
+  list-style: none;
+  padding: 0;
+}
+.icon-list > li {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 18px;
+  padding: 0;
+}
+.icon-list .list-icon {
+  color: var(--text);
+  text-align: center;
+  font-weight: 650;
+}
+.media-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  height: 180px;
+  margin-top: 28px;
+}
+.media-strip > img {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+  object-position: var(--media-position, 50% 50%);
+}
+.media-strip > img.media-cover { object-fit: cover; }

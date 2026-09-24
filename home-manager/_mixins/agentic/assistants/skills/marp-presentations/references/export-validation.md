@@ -46,6 +46,10 @@ Use direct Marp CLI conversion for requested options that the helper does not pr
 
 ## Marp formats
 
+The renderer's supported formats do not establish fidelity for every template or layout combination.
+Starters demonstrate selected forms, while the layout guide and specimen cover additional forms.
+Record checks for the actual deck and each requested format, not inferred approval from an HTML specimen render.
+
 Use these native Marp CLI options, not helper options.
 Keep the copied theme active with `--theme /approved/deck/theme/catppuccin.css` on direct render commands.
 Specify distinct output paths with `-o` to avoid replacing another export.
@@ -99,6 +103,9 @@ Do not call a folder-dependent deck self-contained.
 Do not call a cached online render an offline test.
 If presenter view fails under `file://`, report that limit separately from basic offline slide viewing.
 Keep Markdown and original assets editable, even when the HTML embeds copies.
+Verify embedded foreground images in split panels, visual variants, figures, and strips, not only Marp backgrounds.
+The helper rejects SVGs with nested external resources rather than flattening them automatically.
+Distinguish optional source links from embedded assets. A local source link does not embed or distribute its target.
 
 ## Acceptance
 
@@ -106,6 +113,23 @@ Inspect every rendered slide at presentation size, not only a contact sheet or t
 Check clipping, line breaks, hierarchy, spacing, image crops, chart labels, code, and footers.
 Check both palettes when the deck uses both.
 Verify page order, count, notes, and metadata in each requested format.
+
+For split panels and image-led slides:
+
+- Check panel bounds, text safe areas, narrow-panel wrapping, and separation between the body and local sources.
+- Check reversed panels for meaningful reading order and the intended physical widths.
+- Check overlay text against the actual image and scrim at 4.5:1 or stronger, including titles and credits.
+- Check that overlays and scrims leave faces, chart labels, and essential image details visible.
+- Check cover crops at the final dimensions and focal position. Check contained images for complete edges and legible labels.
+- Compare before/after slides consecutively for stable figure bounds, crop, scale, axes, and caption height.
+- Check that paired visuals use non-colour state labels and alternative text that matches each state.
+- Check image-only slides for useful alternative text and a matching explanation in notes and the accompanying transcript.
+- Verify every used local image in the isolated offline HTML, including nested resource checks.
+
+Compare PDF and ordinary PPTX visually with the inspected HTML, slide by slide, in the intended viewers.
+Check panel positions, overlays, crops, fonts, chart labels, and sources for parity.
+Inspect experimental editable PPTX separately for layout changes or missing content.
+If a format or viewer was not tested, report that limit rather than extending HTML approval to PDF or PPTX.
 
 For speaker notes:
 
