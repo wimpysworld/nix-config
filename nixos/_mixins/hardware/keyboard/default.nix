@@ -1,3 +1,5 @@
+# HID input device support for workstations. Consolidates USB keyboard
+# udev access rules and keyd event remapping in one module.
 {
   config,
   inputs,
@@ -5,12 +7,9 @@
   pkgs,
   ...
 }:
-let
-  inherit (config.noughty) host;
-  username = config.noughty.user.name;
-in
-lib.mkIf (!host.is.iso && !host.is.server) {
+lib.mkIf config.noughty.host.is.workstation {
   environment.systemPackages = [ inputs.nix-packages.packages.${pkgs.system}.wonkey ];
+
   services = {
     # Provides users with access to VIA
     # https://get.vial.today/manual/linux-udev.html
@@ -26,8 +25,25 @@ lib.mkIf (!host.is.iso && !host.is.server) {
       #0xaf88 0x6688 XFKey One Key Max
       KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="af88", ATTRS{idProduct}=="6688", TAG+="uaccess", TAG+="udev-acl", GROUP="input", MODE="0660", SYMLINK+="xfkey"
     '';
+
+    keyd = {
+      enable = true;
+      keyboards = {
+        # Kensington SlimBlade Pro Trackball, scoped by VID:PID.
+        slimbladeProTrackball = {
+          ids = [
+            "m:047d:80d6"
+            "m:047d:80d7"
+          ];
+          settings.main = {
+            leftmouse = "rightmouse";
+            rightmouse = "leftmouse";
+            mouse1 = "middlemouse";
+          };
+        };
+      };
+    };
   };
-  users.users.${username} = {
-    extraGroups = [ "input" ];
-  };
+
+  users.users.${config.noughty.user.name}.extraGroups = [ "input" ];
 }

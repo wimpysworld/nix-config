@@ -338,7 +338,7 @@ Set `repeatRate` under `[martin.keyboard]` in `lib/registry-users.toml` to chang
 Tags are freeform `listOf str`. The canonical vocabulary is documented in a comment block in `lib/registry-systems.toml`:
 
 - **Host tags:**
-  - `studio`, `davinci`, `gamedev`, `keyd`, `streamdeck`
+  - `studio`, `davinci`, `gamedev`, `streamdeck`
   - `pci-hdmi-capture`, `thinkpad`, `cg`, `steamdeck`, `lima`, `wsl`
   - `iso`, `reframe`, `inference`, `scrutiny`, `dropbox`
   - `borgbackup`, `fprintd`, `strix-halo`, `gatus`, `irc-bouncer`, `handy`
@@ -564,7 +564,7 @@ The `noughty` command is a shell script wrapped via `writeShellApplication` that
   Desktop      hyprland
   GPU          amd, nvidia
   Compute      nvidia (16GB) [cuda]
-  Tags         studio, keyd, streamdeck, pci-hdmi-capture, inference
+  Tags         studio, streamdeck, pci-hdmi-capture, inference
 
   User         martin
   Tailnet      drongo-gamma.ts.net
