@@ -7,8 +7,8 @@ The assistant resources are plain Markdown unless a skill states another require
 | Claude Code tree | Claude Code |
 | Codex tree | Codex with agent roles and skills |
 | OpenCode tree | OpenCode with JavaScript plugin support. The router was tested with OpenCode 1.18.30 |
-| Pi tree | Pi 0.85.1 with TypeScript extension support |
-| Pi MCP integration | `npm:pi-mcp-adapter@2.32.1` |
+| Pi tree | Pi 0.87.1 with TypeScript extension support |
+| Pi MCP integration | `npm:pi-mcp-adapter@2.37.0` |
 | Pi delegation | `npm:@tintinweb/pi-subagents@0.19.0` |
 | Communication Rules scanner | Python 3 standard library |
 | `diagram-design` skill | Python 3, with a browser and Playwright optional |

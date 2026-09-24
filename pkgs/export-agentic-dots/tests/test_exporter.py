@@ -332,12 +332,6 @@ class GeneratedExportTests(unittest.TestCase):
 
         entries = {entry["path"]: entry for entry in manifest["files"]}
         pi_settings = json.loads(entries["pi/.pi/agent/settings.json"]["content"])
-        expected_packages = {
-            "npm:pi-mcp-adapter@2.32.1",
-            "npm:@tintinweb/pi-subagents@0.19.0",
-        }
-        self.assertEqual(set(pi_settings["packages"]), expected_packages)
-
         canonical_pi_path = os.environ.get("AGENTIC_DOTS_TEST_CANONICAL_PI")
         assert canonical_pi_path is not None
         canonical_pi = Path(canonical_pi_path).read_text(encoding="utf-8")
@@ -349,7 +343,7 @@ class GeneratedExportTests(unittest.TestCase):
             )
         }
         self.assertEqual(
-            expected_packages,
+            set(pi_settings["packages"]),
             {
                 f"npm:pi-mcp-adapter@{canonical_versions['piMcpAdapterVersion']}",
                 "npm:@tintinweb/pi-subagents@"

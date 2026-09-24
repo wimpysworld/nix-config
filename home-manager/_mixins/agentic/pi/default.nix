@@ -34,15 +34,13 @@ let
     else
       import ../fence/chromium.nix { inherit pkgs; };
   fenceLogging = import ../fence/logging.nix { inherit pkgs; };
-  # pi-mcp-adapter 2.32.1 requires pi-ai ^0.84.1, which the pinned Pi 0.85.1
-  # runtime satisfies.
-  piMcpAdapterVersion = "2.32.1";
+  piMcpAdapterVersion = "2.37.0";
   # Verify Agent, SubagentWorkflow, and native header compatibility on updates.
   # The provider router uses separate model and thinking fields for Agent,
   # and model and effort fields for workflow children.
   piSubagentsVersion = "0.19.0";
-  piLensVersion = "4.1.5";
-  # pi-lens imports the compiler API at runtime, but 4.1.5 omits TypeScript
+  piLensVersion = "4.2.1";
+  # pi-lens imports the compiler API at runtime, but 4.2.1 omits TypeScript
   # from its runtime dependencies. Keep it as a direct Pi npm dependency until the
   # upstream package restores TypeScript to dependencies.
   piLensTypescriptVersion = "7.0.2";
@@ -56,9 +54,9 @@ let
   # pi-pretty re-renders built-in tool output (read, bash, ls, find, grep) and
   # replaces find/grep with its bundled FFF frecency search. Do not install
   # pi-fff alongside it: both would claim the same built-in tool names.
-  piPrettyVersion = "0.6.27";
-  rpivAskUserQuestionVersion = "2.9.0";
-  rpivBtwVersion = "2.9.0";
+  piPrettyVersion = "0.6.29";
+  rpivAskUserQuestionVersion = "2.11.0";
+  rpivBtwVersion = "2.11.0";
   piTasksVersion = "0.9.0";
   piMcpAdapterSource = "npm:pi-mcp-adapter@${piMcpAdapterVersion}";
   piSubagentsSource = "npm:@tintinweb/pi-subagents@${piSubagentsVersion}";

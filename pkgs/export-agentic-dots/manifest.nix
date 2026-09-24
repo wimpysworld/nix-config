@@ -534,7 +534,7 @@ let
 
   # Keep these package specs equal to the canonical pins in
   # home-manager/_mixins/agentic/pi/default.nix. The package test checks drift.
-  piMcpAdapterSource = "npm:pi-mcp-adapter@2.32.1";
+  piMcpAdapterSource = "npm:pi-mcp-adapter@2.37.0";
   piSubagentsSource = "npm:@tintinweb/pi-subagents@0.19.0";
 
   piSubagentsConfig = {

@@ -85,9 +85,9 @@ Pi packages are installed through the Home Manager-owned package setting:
 ```json
 {
   "packages": [
-    "npm:pi-mcp-adapter@2.32.1",
+    "npm:pi-mcp-adapter@2.37.0",
     "npm:@tintinweb/pi-subagents@0.19.0",
-    "npm:pi-lens@4.1.5",
+    "npm:pi-lens@4.2.1",
     {
       "source": "npm:typescript@7.0.2",
       "extensions": [],
@@ -98,15 +98,17 @@ Pi packages are installed through the Home Manager-owned package setting:
     "npm:pi-footer@0.5.1",
     "npm:@marckrenn/pi-sub-core@1.5.0",
     "npm:pi-cc-header@1.1.1",
-    "npm:@heyhuynhgiabuu/pi-pretty@0.6.27",
-    "npm:@juicesharp/rpiv-ask-user-question@2.9.0",
-    "npm:@juicesharp/rpiv-btw@2.9.0",
+    "npm:@heyhuynhgiabuu/pi-pretty@0.6.29",
+    "npm:@juicesharp/rpiv-ask-user-question@2.11.0",
+    "npm:@juicesharp/rpiv-btw@2.11.0",
     "npm:@tintinweb/pi-tasks@0.9.0"
   ]
 }
 ```
 
 Versioned Pi package specs are pinned and skipped by `pi update`. These packages are user-level JavaScript extensions installed by Pi's npm integration under the user-owned npm prefix. `typescript` supplies the compiler API that `pi-lens` imports at runtime but omits from its runtime dependencies. Its Pi resources are disabled because it is a runtime dependency, not an extension.
+
+`pi-lens` 4.2.1 declares an optional `@earendil-works/pi-tui` peer range of `^0.84.1 || ^0.85.0`, which excludes the selected Pi 0.87.1. Full runtime compatibility remains unverified. Since 4.1.6, use `lens_diagnostics` with `source: "lsp"` instead of `lsp_diagnostics`, and `ast_grep_search` with `dump: true` instead of `ast_grep_dump`.
 
 `pi-cc-header` loads from its npm package with `ccHeader.readOnlyConfig` set in the Home Manager-owned `settings.json`. That upstream read-only mode (added in 1.1.1 for declarative setups) stops the extension writing `settings.json`, so header commands such as `/htg` apply for the current session only. It replaces the local writable-state patch that earlier releases needed.
 
