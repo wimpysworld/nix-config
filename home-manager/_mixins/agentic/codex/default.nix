@@ -552,7 +552,25 @@ let
       "${config.home.homeDirectory}/Chainguard" = {
         trust_level = "trusted";
       };
+      "${config.home.homeDirectory}/Chainguard/_worktrees" = {
+        trust_level = "trusted";
+      };
+      "${config.home.homeDirectory}/Chainguard/mono" = {
+        trust_level = "trusted";
+      };
+      "${config.home.homeDirectory}/Chainguard/stereo" = {
+        trust_level = "trusted";
+      };
+      "${config.home.homeDirectory}/Chainguard/cg-github" = {
+        trust_level = "trusted";
+      };
+      "${config.home.homeDirectory}/Chainguard/infra" = {
+        trust_level = "trusted";
+      };
       "${config.home.homeDirectory}/Development" = {
+        trust_level = "trusted";
+      };
+      "${config.home.homeDirectory}/Development/_worktrees" = {
         trust_level = "trusted";
       };
       "${config.home.homeDirectory}/Volatile" = {
