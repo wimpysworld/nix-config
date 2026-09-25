@@ -1,0 +1,7 @@
+[common]
+description = "Audit Linear project tasks before approved updates"
+argument-hint = "<project-name|URL>"
+
+[compose]
+caller-context = true
+agent = "penfold"

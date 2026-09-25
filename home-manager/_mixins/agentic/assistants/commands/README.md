@@ -17,6 +17,7 @@ Claude Code, OpenCode, and Pi use `/name`. Codex uses manual-only `$name` skills
 | [ask](./ask/command.toml) | Answer a question 💬 | Unset | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
 | [audit-code-security](./audit-code-security/command.toml) | Audit Code Security 🔍 | dibble | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
 | [audit-infra-security](./audit-infra-security/command.toml) | Audit Infrastructure Security 🛡️ | batfink | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
+| [audit-tasks](./audit-tasks/command.toml) | Audit Linear project tasks before approved updates | penfold | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
 | [babysit-pr](./babysit-pr/command.toml) | Babysit a PR to the finish line 🍼 | donatello | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
 | [call](./call/command.toml) | Make the call 🎯 | Unset | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
 | [clarify-plan](./clarify-plan/command.toml) | Clarify Plan 💎 | Unset | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
@@ -111,6 +112,10 @@ Only description overrides and nonempty argument hints are shown. When any clien
 | [ask](./ask/command.toml) | opencode | Same as common | &lt;question&gt; |
 | [ask](./ask/command.toml) | codex | Same as common | Unset |
 | [ask](./ask/command.toml) | pi | Same as common | &lt;question&gt; |
+| [audit-tasks](./audit-tasks/command.toml) | claude | Same as common | &lt;project-name\|URL&gt; |
+| [audit-tasks](./audit-tasks/command.toml) | opencode | Same as common | &lt;project-name\|URL&gt; |
+| [audit-tasks](./audit-tasks/command.toml) | codex | Same as common | Unset |
+| [audit-tasks](./audit-tasks/command.toml) | pi | Same as common | &lt;project-name\|URL&gt; |
 | [babysit-pr](./babysit-pr/command.toml) | claude | Same as common | [pr-url] |
 | [babysit-pr](./babysit-pr/command.toml) | opencode | Same as common | [pr-url] |
 | [babysit-pr](./babysit-pr/command.toml) | codex | Same as common | Unset |
