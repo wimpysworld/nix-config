@@ -117,6 +117,14 @@ For structural palette changes, compare paired Latte/Mocha agenda and section sl
 Confirm that Yellow numbers and eyebrows remain distinct from Blue headings, and that structural marks avoid all heading colour families.
 Verify page order, count, notes, and metadata in each requested format.
 
+For a title-only review:
+
+- Read titles in slide order without body text or speaker notes.
+- Check that the opening title explicitly names the deck's subject in plain words.
+- Check that each content title identifies what its slide covers.
+  Reject titles that depend on a previous slide or obscure phrases.
+- Check that each section marker names the next concept.
+
 For headings and code:
 
 - Check that ordinary slides show distinct Blue `h1`, Peach `h2`, and Green `h3`, including Base and Mantle split panels.

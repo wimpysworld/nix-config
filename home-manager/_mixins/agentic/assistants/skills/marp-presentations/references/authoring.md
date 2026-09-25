@@ -11,6 +11,12 @@
 
 ## Narrative and layout
 
+Before writing slides, mark major concept boundaries in the deck plan.
+Decide whether section markers help the audience navigate those boundaries, rather than adding them to every deck.
+Record palette roles for slides, embedded diagrams, and other meaningful assets in the plan.
+If a palette is reserved for section markers, check that embedded diagrams and meaningful assets also respect that restriction.
+A slide palette change does not automatically change an embedded asset's colours.
+
 Make the opening explain why the audience needs the talk.
 Order evidence so that each slide supports the next decision.
 End with a specific action, decision, or retained lesson.
