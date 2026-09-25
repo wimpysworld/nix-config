@@ -14,8 +14,10 @@ Load the `sizing` skill for the size scale; never estimate in days or weeks.
 
 **1. Calculate the capacity target, live, on every run.**
 
-- The window is the four most recent complete Monday weeks, starting Monday 00:00 local time. Show the current partial week separately and exclude it from the average.
-- Fetch the user's completed `FUL` issues in the window with `list_issues`: `assignee: "me"`, `state: "completed"`, and an `updatedAt` filter wide enough to cover the whole window. Request `estimate` and `completedAt`. Bucket the issues by `completedAt` into Monday weeks.
+- Use the executing user's timezone as local time. Set the window end to the current week's Monday at 00:00 local, exclusive. Set the window start to four Mondays before that boundary at 00:00 local, inclusive.
+- Fetch the user's completed issues with `list_issues`: `team: "FUL"`, `assignee: "me"`, and `state: "completed"`. Use `updatedAt` only as a broad lower-bound retrieval filter earlier than the window start, never as an upper bound. Request `estimate` and `completedAt`. Follow pagination until no results remain.
+- Initialise all four complete Monday weeks to zero. Select and bucket completions by `completedAt`, with each week's start inclusive and end exclusive.
+- Calculate the current partial week from the same fetched results, from the current Monday inclusive to now. Show it separately and exclude it from the mean.
 - Sum the estimate points per week. A completion with no estimate counts zero and goes in the data note: these are legacy issues from before sizing was adopted, and they age out of the window.
 - The weekly target is the mean of the four weekly sums multiplied by 0.6.
 - Read the next cycle's start and end dates from Linear with `list_cycles`, and derive the cycle length in weeks from the dates. The cycle target is the weekly target multiplied by the cycle weeks, rounded to the nearest whole point.
