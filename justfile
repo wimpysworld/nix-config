@@ -263,6 +263,14 @@ test-reframe:
     system=$(nix eval --impure --raw --expr builtins.currentSystem)
     nix build --no-link ".#checks.${system}.reframe"
 
+# Test Codex launcher arguments and Herdr layouts without live agent sessions
+test-codex-launchers:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    python3 home-manager/_mixins/agentic/codex/service-tier.test.py
+    system=$(nix eval --impure --raw --expr builtins.currentSystem)
+    nix build --no-link ".#packages.${system}.herdr-work-layout.tests.work-layout" ".#packages.${system}.herdr-home-layout.tests.home-layout"
+
 # Evaluate configurations without building
 eval:
     @just eval-flake

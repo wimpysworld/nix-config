@@ -18,7 +18,7 @@ let
     if work then
       {
         Claude = "claude-fenced";
-        Codex = "codex-fenced";
+        Codex = "codex-fenced --noughty-fresh";
         Git = "lg";
         Code = "fresh .";
         Shell = "clear";

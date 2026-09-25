@@ -193,7 +193,7 @@ run_in_pane() {
 }
 
 if [[ $initial_label == Codex ]]; then
-	run_in_pane "$initial_pane_id" "codex-fenced"
+	run_in_pane "$initial_pane_id" "${agent_commands[Codex]}"
 	printf 'herdr-layout: prepared Codex review worktree workspace %s.\n' "$workspace_id"
 	exit 0
 fi

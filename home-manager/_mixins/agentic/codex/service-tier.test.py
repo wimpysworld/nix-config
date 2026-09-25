@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline launcher contract tests, not tests of native Codex internals."""
+"""Offline launcher contracts. Gate: just test-codex-launchers."""
 
 import json
 import os
@@ -80,7 +80,100 @@ class ServiceTierTests(unittest.TestCase):
         self.assertIn('    service_tier = "default";', settings)
 
     def test_automatic_resume_for_bare_prompt_and_flags(self):
-        for args in ([], ["a prompt with spaces"], ["--model", "example"]):
+        for args in ([], [""], ["a prompt with spaces"], ["--model", "example"]):
+            with self.subTest(args=args):
+                self.assertEqual(
+                    self.launch(args), DEFAULT_ARGS + ["resume", "--last"] + args
+                )
+
+    def test_fresh_prefix_preserves_arguments_and_fence_bypass(self):
+        for args in (
+            [],
+            [""],
+            ["a prompt with spaces"],
+            ["--model", "example", ""],
+            ["--", "--noughty-fresh"],
+            ["resume", "session-id", "a prompt"],
+            ["resume", "--last"],
+            ["fork", "session-id"],
+            ["fork", "--last"],
+            ["exec", "a request"],
+            ["--help"],
+            ["--version"],
+        ):
+            for bypass in (False, True):
+                with self.subTest(args=args, bypass=bypass):
+                    expected = (
+                        DEFAULT_ARGS
+                        + (["--dangerously-bypass-approvals-and-sandbox"] if bypass else [])
+                        + args
+                    )
+                    self.assertEqual(
+                        self.launch(["--noughty-fresh", *args], bypass=bypass), expected
+                    )
+
+    def test_fenced_entry_forwards_fresh_mode_through_both_paths(self):
+        package = MODULE.read_text().split(
+            "  codexFencedPackage = pkgs.writeShellApplication {", 1
+        )[1]
+        shell = package.split("    text = ''\n", 1)[1].split("\n    '';", 1)[0]
+        for helper in (
+            "fenceAgentShare.captureShell",
+            "fenceWaylandBridge.setupShell",
+            "fenceAgentShare.setupShell",
+            "fenceGit.setupShell",
+            "fenceChromium.setupShell",
+            "fenceLogging.setupShell",
+        ):
+            shell = shell.replace("${" + helper + "}", ":")
+        shell = shell.replace(
+            '${lib.getExe\' codexLauncherPackage "codex"}',
+            "bash " + shlex.quote(str(self.launcher)),
+        )
+        if "${" in shell.replace("''${", ""):
+            self.fail("Unresolved Nix interpolation in fenced fixture")
+        fixture = self.home / "fenced.sh"
+        fixture.write_text(
+            "set -euo pipefail\n"
+            "fence_args=(--fixture)\n"
+            "fence_env=(FENCE_SANDBOX=1)\n"
+            "fence_direnv=(env)\n"
+            "fence() {\n"
+            "  [[ ${NOUGHTY_CODEX_BYPASS:-0} == 0 && $HERDR_AGENT == codex ]]\n"
+            "  [[ $1 == --fixture && $2 == -- ]]\n"
+            "  printf 'fence\\n' >&2\n"
+            "  shift 2\n"
+            '  env "$@"\n'
+            "}\n"
+            + textwrap.dedent(shell.replace("''${", "${"))
+        )
+        for sandbox in ("0", "1"):
+            for args in (
+                [], [""], ["--model", "example"], ["resume", "id"], ["fork", "id"]
+            ):
+                with self.subTest(sandbox=sandbox, args=args):
+                    result = subprocess.run(
+                        ["bash", str(fixture), "--noughty-fresh", *args],
+                        env={"PATH": os.defpath, "FENCE_SANDBOX": sandbox},
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                        timeout=5,
+                    )
+                    self.assertEqual(result.stderr, "fence\n" if sandbox == "0" else "")
+                    self.assertEqual(
+                        json.loads(result.stdout)["args"],
+                        DEFAULT_ARGS
+                        + ["--dangerously-bypass-approvals-and-sandbox"]
+                        + args,
+                    )
+
+    def test_fresh_mode_does_not_affect_the_next_launch(self):
+        self.launch(["--noughty-fresh"])
+        self.assertEqual(self.launch([]), DEFAULT_ARGS + ["resume", "--last"])
+
+    def test_fresh_prefix_is_not_consumed_from_prompt_arguments(self):
+        for args in (["--", "--noughty-fresh"], ["", "--noughty-fresh"]):
             with self.subTest(args=args):
                 self.assertEqual(
                     self.launch(args), DEFAULT_ARGS + ["resume", "--last"] + args

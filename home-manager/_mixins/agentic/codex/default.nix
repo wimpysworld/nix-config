@@ -116,6 +116,12 @@ let
       # subcommands (mcp, exec, login, ...) and help/version, which must not be
       # wrapped in `resume`.
       codex_resume=(resume --last)
+      # Herdr passes this local prefix through Fence. Consume it before Codex
+      # sees the arguments, without changing explicit resume or fork commands.
+      if [ "''${1:-}" = "--noughty-fresh" ]; then
+        codex_resume=()
+        shift
+      fi
       case "''${1:-}" in
         exec | e | review | login | logout | mcp | plugin | mcp-server | app-server | remote-control | completion | update | doctor | sandbox | debug | apply | a | resume | archive | unarchive | fork | cloud | exec-server | features | help | -h | --help | -V | --version)
           codex_resume=()
@@ -397,9 +403,6 @@ let
       # See https://developers.openai.com/codex/config-reference
       apps = false;
       code_mode_host = true;
-      # Let command-derived skills use the structured question picker while
-      # they run in the default interactive mode.
-      default_mode_request_user_input = true;
       hooks = true;
       # Disable Codex memories, the cross-session note system that summarises
       # past rollouts and injects them into later sessions. A centralised memory

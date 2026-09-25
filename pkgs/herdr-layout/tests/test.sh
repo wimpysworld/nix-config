@@ -1,3 +1,4 @@
+# Gate: just test-codex-launchers.
 set -euo pipefail
 
 fail() {
@@ -34,7 +35,7 @@ if [[ $variant == work ]]; then
 	initial_label=Claude
 	initial_command=claude-fenced
 	pane_ids[Codex]=$codex_pane_id
-	pane_commands[Codex]=codex-fenced
+	pane_commands[Codex]='codex-fenced --noughty-fresh'
 	extra_pane_labels=(Codex Git Code Shell)
 else
 	initial_label=OpenCode
@@ -168,7 +169,7 @@ run_review_case() {
 	run_layout >"$TMPDIR/review-$name.out"
 	{
 		printf 'tab\trename\ttab-claude\tCodex\n'
-		printf 'pane\trun\tpane-claude\tcodex-fenced\n'
+		printf 'pane\trun\tpane-claude\tcodex-fenced --noughty-fresh\n'
 	} >"$expected_file"
 	cmp "$expected_file" "$log_file"
 }
@@ -199,7 +200,7 @@ if [[ $variant == work ]]; then
 	run_layout >"$TMPDIR/review-unlinked.out"
 	expected_shell_tabs "$review_development_path" >"$expected_file"
 	printf 'pane\trun\tpane-claude\tclaude-fenced\n' >>"$expected_file"
-	printf 'pane\trun\t%s\tcodex-fenced\n' "$codex_pane_id" >>"$expected_file"
+	printf 'pane\trun\t%s\tcodex-fenced --noughty-fresh\n' "$codex_pane_id" >>"$expected_file"
 	printf 'pane\trun\t%s\tlg\n' "$git_pane_id" >>"$expected_file"
 	printf 'pane\trun\t%s\tfresh .\n' "$code_pane_id" >>"$expected_file"
 	printf 'pane\trun\t%s\tclear\n' "$shell_pane_id" >>"$expected_file"
