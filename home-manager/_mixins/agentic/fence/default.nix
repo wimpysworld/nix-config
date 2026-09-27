@@ -21,7 +21,11 @@ let
       allowLocalBinding = true;
       allowLocalOutbound = true;
     };
-    devices.mode = "minimal";
+    devices = {
+      mode = "minimal";
+      # Hardware-accelerated OpenGL and Vulkan for games and GPU tools.
+      allow = [ "/dev/dri" ];
+    };
     filesystem = {
       defaultDenyRead = false;
       allowRead = [

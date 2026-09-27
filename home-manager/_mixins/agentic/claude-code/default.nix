@@ -45,6 +45,7 @@ let
   fenceAgentShare = import ../fence/agent-share.nix { inherit config pkgs; };
   fenceGit = import ../fence/git.nix { inherit config pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
+  fenceMemoryCap = import ../fence/memory-cap.nix { inherit lib pkgs; };
   fenceChromium =
     if !(host.is.linux && fencedEnabled) then
       {
@@ -615,6 +616,7 @@ let
       fi
 
       ${fenceAgentShare.captureShell}
+      ${fenceMemoryCap.captureShell}
       ${fenceWaylandBridge.setupShell}
       ${fenceAgentShare.setupShell}
       ${fenceGit.setupShell}
@@ -660,20 +662,22 @@ let
 
       ${claudeLaunchDefaults}
 
+      ${fenceMemoryCap.setupShell}
+
       width="$(tput cols 2>/dev/null || true)"
       case "$width" in
         "" | *[!0-9]*)
           if [[ -n "$tmp_mcp_config" ]]; then
-            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithCredentials "claude"} "''${claude_plugin_args[@]}" "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
+            "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithCredentials "claude"} "''${claude_plugin_args[@]}" "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
           else
-            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithCredentials "claude"} "''${claude_plugin_args[@]}" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
+            "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithCredentials "claude"} "''${claude_plugin_args[@]}" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
           fi
           ;;
         *)
           if [[ -n "$tmp_mcp_config" ]]; then
-            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithCredentials "claude"} "''${claude_plugin_args[@]}" "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
+            "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithCredentials "claude"} "''${claude_plugin_args[@]}" "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
           else
-            fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithCredentials "claude"} "''${claude_plugin_args[@]}" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
+            "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithCredentials "claude"} "''${claude_plugin_args[@]}" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
           fi
           ;;
       esac

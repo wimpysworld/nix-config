@@ -162,6 +162,7 @@ let
   fenceAgentShare = import ../fence/agent-share.nix { inherit config pkgs; };
   fenceGit = import ../fence/git.nix { inherit config pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
+  fenceMemoryCap = import ../fence/memory-cap.nix { inherit lib pkgs; };
   fenceChromium =
     if !(host.is.linux && fencedEnabled) then
       {
@@ -192,6 +193,7 @@ let
       fi
 
       ${fenceAgentShare.captureShell}
+      ${fenceMemoryCap.captureShell}
       ${fenceWaylandBridge.setupShell}
       ${fenceAgentShare.setupShell}
       ${fenceGit.setupShell}
@@ -211,7 +213,8 @@ let
       # Exa MCP server. The env var wins on conflicting keys, so the denies are
       # named here explicitly.
       export OPENCODE_PERMISSION='{"*":"allow","webfetch":"deny","websearch":"deny"}'
-      fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" ${lib.getExe' opencodeLauncherPackage "opencode"} "$@"
+      ${fenceMemoryCap.setupShell}
+      "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" ${lib.getExe' opencodeLauncherPackage "opencode"} "$@"
     '';
   };
 

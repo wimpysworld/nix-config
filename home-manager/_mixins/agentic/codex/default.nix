@@ -26,6 +26,7 @@ let
   fenceAgentShare = import ../fence/agent-share.nix { inherit config pkgs; };
   fenceGit = import ../fence/git.nix { inherit config pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
+  fenceMemoryCap = import ../fence/memory-cap.nix { inherit lib pkgs; };
   fenceChromium =
     if !(host.is.linux && fencedEnabled) then
       {
@@ -148,6 +149,7 @@ let
       fi
 
       ${fenceAgentShare.captureShell}
+      ${fenceMemoryCap.captureShell}
       ${fenceWaylandBridge.setupShell}
       ${fenceAgentShare.setupShell}
       ${fenceGit.setupShell}
@@ -164,7 +166,8 @@ let
 
       # Pass the bypass through as an env token so the launcher sees the real
       # first user argument and resumes the most recent session by default.
-      fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_CODEX_BYPASS=1" ${lib.getExe' codexLauncherPackage "codex"} "$@"
+      ${fenceMemoryCap.setupShell}
+      "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_CODEX_BYPASS=1" ${lib.getExe' codexLauncherPackage "codex"} "$@"
     '';
   };
   # Codex writes one rollout transcript per session under

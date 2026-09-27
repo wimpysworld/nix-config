@@ -25,6 +25,7 @@ let
   fenceAgentShare = import ../fence/agent-share.nix { inherit config pkgs; };
   fenceGit = import ../fence/git.nix { inherit config pkgs; };
   fenceWaylandBridge = import ../fence/wayland-bridge.nix { inherit pkgs; };
+  fenceMemoryCap = import ../fence/memory-cap.nix { inherit lib pkgs; };
   fenceChromium =
     if !(host.is.linux && fencedEnabled) then
       {
@@ -312,6 +313,7 @@ let
       fi
 
       ${fenceAgentShare.captureShell}
+      ${fenceMemoryCap.captureShell}
       ${fenceWaylandBridge.setupShell}
       ${fenceAgentShare.setupShell}
       ${fenceGit.setupShell}
@@ -337,7 +339,8 @@ let
       export HERDR_AGENT=pi
 
       export NOUGHTY_AGENT_LAUNCH_COMMAND="pi-fenced"
-      "''${fence_mount[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" ${lib.getExe' piWrapperPackage "pi"} "$@"
+      ${fenceMemoryCap.setupShell}
+      "''${fence_launch[@]}" "''${fence_mount[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" ${lib.getExe' piWrapperPackage "pi"} "$@"
     '';
   };
 

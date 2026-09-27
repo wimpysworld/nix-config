@@ -83,6 +83,13 @@
         "XDG_RUNTIME_DIR=$fence_wayland_runtime_dir"
         "WAYLAND_DISPLAY=$wayland_display_name"
       )
+      # The private runtime directory hides the audio sockets from clients.
+      if [[ -S "$host_runtime_dir/pulse/native" ]]; then
+        fence_env+=("PULSE_SERVER=unix:$host_runtime_dir/pulse/native")
+      fi
+      if [[ -S "$host_runtime_dir/pipewire-0" ]]; then
+        fence_env+=("PIPEWIRE_RUNTIME_DIR=$host_runtime_dir")
+      fi
       add_fence_exit_cleanup_hook cleanup_fence_wayland_bridge
     }
 
