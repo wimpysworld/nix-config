@@ -13,16 +13,16 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "manuscript";
-  version = "1.5.1";
+  version = "1.5.2";
 
   src = fetchFromGitLab {
     owner = "ilshat-apps";
     repo = "manuscript";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-Cuw+1+uzsPV1JRdm+9z920NZEFJqzPDEnDoLULUGvOw=";
+    hash = "sha256-qKHn7BVbrWAltzX6FxiYXu5oO6wri0AzxiLAi3Ti0WM=";
   };
 
-  cargoHash = "sha256-zxodggCbIHwyzmlTKxQqn1/tyxLiXa3ojj1Qxx1apPU=";
+  cargoHash = "sha256-3A0L098IdQN+3M0+jBW6dbsRuBkf7rTOti9r7Ow6HYU=";
 
   nativeBuildInputs = [
     pkg-config
