@@ -13,7 +13,7 @@ const definitions = {
 	anthropic: [
 		"anthropic-messages",
 		"https://api.anthropic.com",
-		"claude-opus-5",
+		"claude-opus-5-5",
 	],
 };
 function model(provider, id = definitions[provider]?.[2]) {
@@ -242,7 +242,7 @@ test("unsupported and unregistered models cannot enable Fast", async () => {
 			"claude-opus-4-6",
 			"claude-opus-4-7",
 			"claude-fable-5-1",
-			"claude-sonnet-5",
+			"claude-sonnet-5-5",
 			"claude-haiku-4-5-20251001",
 		].map((id) => model("anthropic", id)),
 	]) {
@@ -313,7 +313,7 @@ test("all verified exact IDs enable Fast", async () => {
 			assert.equal(h.request().service_tier, "priority");
 		}
 	}
-	for (const id of ["claude-opus-5", "claude-opus-4-8"]) {
+	for (const id of ["claude-opus-5-5", "claude-opus-4-8"]) {
 		const h = harness(model("anthropic", id));
 		await h.command("on");
 		assert.equal(h.request().speed, "fast");

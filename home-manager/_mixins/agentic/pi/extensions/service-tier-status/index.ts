@@ -13,7 +13,7 @@ const OPENAI_FAST_MODELS = new Set([
 	"gpt-5.6-terra",
 	"gpt-5.6-luna",
 ]);
-const ANTHROPIC_FAST_MODELS = new Set(["claude-opus-5", "claude-opus-4-8"]);
+const ANTHROPIC_FAST_MODELS = new Set(["claude-opus-5-5", "claude-opus-4-8"]);
 type Adapter = "openai" | "openai-codex" | "anthropic";
 
 function adapterFor(model: ExtensionContext["model"]): Adapter | undefined {

@@ -1086,13 +1086,13 @@ reasoningEffort = "high"
                 )
         self.assertEqual(
             self.evaluate('c.extractOpenCodeProviderModels "garfield"'),
-            {"openai": "gpt-5.6-terra", "anthropic": "claude-sonnet-5"},
+            {"openai": "gpt-5.6-terra", "anthropic": "claude-sonnet-5-5"},
         )
 
     def test_invalid_opencode_provider_routes_fail_schema_validation(self):
         for header in (
             '[routing.opencode.providers.openai]\nmodel = ""\n',
-            '[routing.opencode.providers.openai]\nmodel = "anthropic/claude-sonnet-5"\n',
+            '[routing.opencode.providers.openai]\nmodel = "anthropic/claude-sonnet-5-5"\n',
             '[routing.opencode.providers.openai]\nmodel = "with space"\n',
             "[routing.opencode.providers.openai]\nmodel = 42\n",
             '[routing.opencode.providers.openai]\nthinking = "high"\n',
@@ -1113,7 +1113,7 @@ reasoningEffort = "high"
             result,
             {
                 "models": {
-                    "anthropic": "claude-sonnet-5",
+                    "anthropic": "claude-sonnet-5-5",
                     "google": "gemini-3-flash",
                     "openai-codex": "gpt-5.6-terra",
                 },

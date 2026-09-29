@@ -512,7 +512,7 @@ let
       printf '%s\n' "$session_id"
     }
 
-    claude_defaults=(--model claude-opus-5-5 --effort medium)
+    claude_defaults=(--model claude-sonnet-5-5 --effort high)
     case "''${1:-}" in
       -h | --help | -v | --version | -p | --print | agents | auth | auto-mode | config | doctor | install | mcp | migrate-installer | plugin | plugins | project | setup-token | ultrareview | update | upgrade)
         claude_defaults=()

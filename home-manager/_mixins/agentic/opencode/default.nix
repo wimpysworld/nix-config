@@ -356,9 +356,9 @@ in
                 "claude-haiku-4-5"
                 "claude-opus-4-8"
                 "claude-opus-4-8-fast"
-                "claude-opus-5"
-                "claude-opus-5-fast"
-                "claude-sonnet-5"
+                "claude-opus-5-5"
+                "claude-opus-5-5-fast"
+                "claude-sonnet-5-5"
               ];
             };
             google = {
