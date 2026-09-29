@@ -17,10 +17,13 @@ in
 lib.mkIf
   (
     host.is.workstation
-    && noughtyLib.isHost [
-      "skrye"
-      "zannah"
-    ]
+    && (
+      noughtyLib.isHost [
+        "skrye"
+        "zannah"
+      ]
+      || noughtyLib.hostHasTag "cg"
+    )
   )
   {
     catppuccin.kitty.enable = config.programs.kitty.enable;

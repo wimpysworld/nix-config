@@ -7,7 +7,8 @@
 }:
 let
   inherit (config.noughty) host;
-  blenderEnabled = host.is.workstation && noughtyLib.hostHasTag "gamedev";
+  blenderEnabled =
+    host.is.workstation && (noughtyLib.hostHasTag "gamedev" || noughtyLib.hostHasTag "cg");
   blenderConfigHome =
     if host.is.darwin then
       "${config.home.homeDirectory}/Library/Application Support/Blender"
