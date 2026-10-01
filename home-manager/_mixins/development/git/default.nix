@@ -112,6 +112,10 @@ in
     };
     git = {
       enable = true;
+      # Git LFS stores large binary assets, such as game models, outside the
+      # Git history. This installs git-lfs and its filters in the global
+      # config. Each repository still needs `git lfs install` for its hooks.
+      lfs.enable = true;
       settings = {
         alias = {
           ci = "commit";
