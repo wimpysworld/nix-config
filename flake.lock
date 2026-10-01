@@ -142,16 +142,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1790076519,
-        "narHash": "sha256-5Zsznpg7kMPEl8Dpk9+al9J03eCKtfHbS9sYZOvJpjI=",
+        "lastModified": 1790696084,
+        "narHash": "sha256-aNoU83FE/+nu9OUF2oIDmGzMAxPqhmuJn9HtpWd9NhA=",
         "owner": "chojs23",
         "repo": "concord",
-        "rev": "72814de8eace05f16562872b7cde1ed3a9c17e0e",
+        "rev": "a7e79c51820f0f4a99feb9c57264e2e4f45a1b69",
         "type": "github"
       },
       "original": {
         "owner": "chojs23",
-        "ref": "v2.6.0",
+        "ref": "v2.6.1",
         "repo": "concord",
         "type": "github"
       }
