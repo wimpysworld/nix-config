@@ -8,16 +8,16 @@
 
 buildGoModule (finalAttrs: {
   pname = "yam";
-  version = "0.2.65";
+  version = "0.2.67";
 
   src = fetchFromGitHub {
     owner = "chainguard-dev";
     repo = "yam";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-QqOauP/9lkaR7sf4r8yZj86spFdzy26QQATxcHVBji4=";
+    hash = "sha256-dDhsSNZfLkRiWdcFN872+UShQtq5qqR6fAmSOjhwbZc=";
   };
 
-  vendorHash = "sha256-5rf4RykeJELane+hRTiZHI6T/kczwpS51iSHVzDYNIo=";
+  vendorHash = "sha256-hh6vsOjIo4Ph6awTMUlBdDlv5e8kAPRL3Eyb6U9Agl0=";
 
   meta = {
     description = "Sweet little formatter for YAML";
