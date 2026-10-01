@@ -185,9 +185,9 @@ in
       settings = lib.mkDefault {
         version = "1.3.6";
         endpoints.anthropic = {
-          models = [ "claude-sonnet-5-5" ];
+          models = [ "claude-sonnet-5" ];
           titleConvo = true;
-          titleModel = "claude-sonnet-5-5";
+          titleModel = "claude-sonnet-5";
         };
       };
     };

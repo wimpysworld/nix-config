@@ -358,7 +358,7 @@ in
                 "claude-opus-4-8-fast"
                 "claude-opus-5-5"
                 "claude-opus-5-5-fast"
-                "claude-sonnet-5-5"
+                "claude-sonnet-5"
               ];
             };
             google = {
@@ -377,8 +377,10 @@ in
                 "gpt-5.6-terra-fast"
                 "gpt-6-astra"
                 "gpt-6-astra-fast"
+                "gpt-6-luna"
+                "gpt-6.1-sol"
               ];
-              # Declare the real context window for the four subscription
+              # Declare the real context window for the six subscription
               # models, overriding the bundled models.dev snapshot, which
               # reports a smaller window. Output is declared as 38,400 so
               # automatic compaction starts when estimated tokens reach the
@@ -400,6 +402,14 @@ in
                   output = 38400;
                 };
                 "gpt-6-astra".limit = {
+                  context = 384000;
+                  output = 38400;
+                };
+                "gpt-6-luna".limit = {
+                  context = 384000;
+                  output = 38400;
+                };
+                "gpt-6.1-sol".limit = {
                   context = 384000;
                   output = 38400;
                 };

@@ -359,9 +359,9 @@ let
     enabledModels = [
       "anthropic/claude-fable-5-1"
       "anthropic/claude-opus-5-5"
-      "anthropic/claude-sonnet-5-5"
+      "anthropic/claude-sonnet-5"
       "openai-codex/gpt-6-astra"
-      "openai-codex/gpt-6-sol"
+      "openai-codex/gpt-6.1-sol"
       "openai-codex/gpt-6-luna"
       # The wrapper exports OPENCODE_ZEN_API_KEY on non-cg hosts.
       # models.json maps the credential to Pi's built-in opencode provider.
@@ -837,7 +837,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
                     "gpt-5.6-terra"
                     "gpt-5.6-luna"
                     "gpt-6-astra"
-                    "gpt-6-sol"
+                    "gpt-6.1-sol"
                     "gpt-6-luna"
                   ]
                   (_: {

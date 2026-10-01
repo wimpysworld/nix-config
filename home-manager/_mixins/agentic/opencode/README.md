@@ -45,7 +45,7 @@ The shared agent header owns the routes. Garfield alone declares:
 model = "gpt-5.6-terra"
 
 [routing.opencode.providers.anthropic]
-model = "claude-sonnet-5-5"
+model = "claude-sonnet-5"
 ```
 
 `assistants/metadata.nix` validates these tables. `compose.nix` extracts the map, and the OpenCode module supplies it to `provider-router/index.mjs`. Provider routes cannot coexist with native agent model or effort pins. Commands and skills cannot declare provider routes. No provider-route fields enter native headers.

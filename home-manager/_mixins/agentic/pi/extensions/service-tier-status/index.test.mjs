@@ -242,7 +242,7 @@ test("unsupported and unregistered models cannot enable Fast", async () => {
 			"claude-opus-4-6",
 			"claude-opus-4-7",
 			"claude-fable-5-1",
-			"claude-sonnet-5-5",
+			"claude-sonnet-5",
 			"claude-haiku-4-5-20251001",
 		].map((id) => model("anthropic", id)),
 	]) {

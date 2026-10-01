@@ -46,7 +46,7 @@ The managed settings use OpenAI Codex by default:
   "hideThinkingBlock": true,
   "enabledModels": [
     "anthropic/claude-opus-5-5",
-    "anthropic/claude-sonnet-5-5",
+    "anthropic/claude-sonnet-5",
     "openai-codex/gpt-5.6-sol",
     "openai-codex/gpt-5.6-terra",
     "openai-codex/gpt-5.5",
