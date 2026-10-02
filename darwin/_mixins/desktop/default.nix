@@ -9,14 +9,11 @@
   environment.systemPackages =
     with pkgs;
     [
-      grandperspective
-      keka
       maestral # CLI
     ]
     ++ lib.optionals (noughtyLib.isUser [ "martin" ]) [
       brave
       stats
-      utm
     ];
 
   homebrew = {
@@ -29,12 +26,7 @@
     ++ lib.optionals config.noughty.host.is.workstation [ "ghostty" ]
     ++ lib.optionals (noughtyLib.isUser [ "martin" ]) [
       "beyond-compare"
-      "docker-desktop"
-      "keybase"
-      "mullvad-browser"
-      "obs"
       "orion"
-      "tailscale-app"
     ];
   };
 }

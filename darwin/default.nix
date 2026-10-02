@@ -185,7 +185,6 @@ in
           "/Applications/Nix Apps/Brave Browser.app"
           "/Users/${username}/Applications/Home Manager Apps/Telegram.app"
           "/Users/${username}/Applications/Home Manager Apps/Discord.app"
-          "/Users/${username}/Applications/Home Manager Apps/Halloy.app"
           "/Applications/Zed.app"
           "/Applications/Ghostty.app"
           "/System/Applications/Music.app"
@@ -208,7 +207,6 @@ in
         FXEnableExtensionChangeWarning = false;
         FXPreferredViewStyle = "Nlsv";
         AppleShowAllExtensions = true;
-        AppleShowAllFiles = true;
         QuitMenuItem = true;
         ShowPathbar = true;
         ShowStatusBar = true;
