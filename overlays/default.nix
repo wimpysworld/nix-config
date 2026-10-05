@@ -245,6 +245,24 @@ in
         ];
       });
 
+      # Determinate Nix 3.23 emits activity type 10113, which nom 2.2.0 rejects
+      # with a ParseNixJSONMessageError. Apply the upstream fix that maps
+      # unknown activity types to Unknown. Remove this override once a nom
+      # release that includes the fix reaches nixpkgs.
+      # https://github.com/maralorn/nix-output-monitor/issues/320
+      # https://github.com/maralorn/nix-output-monitor/pull/321
+      nix-output-monitor = prev.nix-output-monitor.override {
+        extraComposeFunctions = [
+          (prev.haskell.lib.compose.appendPatch (
+            prev.fetchpatch2 {
+              url = "https://github.com/maralorn/nix-output-monitor/commit/3c2ae037013e840046ed9785c4da82aa1c628872.patch";
+              relative = "nix-output-monitor";
+              hash = "sha256-kwmbXQZI+UyOVCAngr6cYpwqIbbG48MJgHzFpCt138o=";
+            }
+          ))
+        ];
+      };
+
       # Override rofi-unwrapped to remove desktop entries (this is where they come from!)
       rofi-unwrapped = prev.rofi-unwrapped.overrideAttrs (oldAttrs: {
         postInstall = (oldAttrs.postInstall or "") + ''
