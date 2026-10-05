@@ -7,8 +7,7 @@
       "env": {
         "FASTMCP_CHECK_FOR_UPDATES": "off"
       },
-      "enabled": true,
-      "directTools": true
+      "enabled": true
     }
   }
 }
