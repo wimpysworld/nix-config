@@ -3,7 +3,7 @@
 {
   # The Wayland bridge replaces XDG_RUNTIME_DIR, and systemd-run finds the
   # user manager through it, so keep the host value. Run before the bridge.
-  captureShell = ''
+  captureShell = lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
     fence_host_runtime_dir="''${XDG_RUNTIME_DIR:-}"
   '';
 

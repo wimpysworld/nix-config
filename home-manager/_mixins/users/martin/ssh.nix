@@ -58,9 +58,7 @@ lib.mkIf (noughtyLib.isUser [ "martin" ]) {
       includes = [
         "${config.home.homeDirectory}/.ssh/local_config"
       ];
-      matchBlocks."*" = {
-        addKeysToAgent = "yes";
-      };
+      settings."*".AddKeysToAgent = "yes";
       package = pkgs.openssh;
     };
   };

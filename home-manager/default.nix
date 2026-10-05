@@ -217,6 +217,7 @@ in
     };
     info.enable = !host.is.server;
     man.enable = !host.is.server;
+    man.generateCaches = lib.mkIf host.is.darwin false;
     nh = {
       enable = true;
       clean = {
