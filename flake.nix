@@ -55,8 +55,8 @@
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
     nix-flatpak.url = "https://flakehub.com/f/gmodena/nix-flatpak/0.7.0.tar.gz";
     mac-app-util.url = "github:hraban/mac-app-util";
-    mac-app-util.inputs.nixpkgs.follows = "nixpkgs";
-    mac-app-util.inputs.cl-nix-lite.inputs.nixpkgs.follows = "nixpkgs";
+    mac-app-util.inputs.nixpkgs.follows = "nixpkgs-unstable";
+    mac-app-util.inputs.cl-nix-lite.inputs.nixpkgs.follows = "nixpkgs-unstable";
     mac-app-util.inputs.cl-nix-lite.inputs.systems.follows = "systems";
     mac-app-util.inputs.cl-nix-lite.inputs.flake-parts.follows = "flake-parts";
     mac-app-util.inputs.cl-nix-lite.inputs.treefmt-nix.follows = "mac-app-util/treefmt-nix";
