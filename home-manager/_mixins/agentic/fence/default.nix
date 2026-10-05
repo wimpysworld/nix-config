@@ -627,7 +627,7 @@ in
 
     xdg.configFile."fence/fence.jsonc".text = builtins.toJSON fenceConfig;
 
-    systemd.user.tmpfiles.rules = [
+    systemd.user.tmpfiles.rules = lib.mkIf host.is.linux [
       # Shared launch directory for fenced agents, used as TMPDIR inside the
       # sandbox. It sits under ~/.cache rather than $XDG_RUNTIME_DIR so Fence
       # never has to cross the /run mount boundary. See the allowWrite note

@@ -68,7 +68,7 @@ let
     version = "0.4.0"
     min_herdr_version = "0.8.2"
     description = "Prepare workspace tabs and agent panes with a fixed pane set"
-    platforms = ["linux"]
+    platforms = ["linux", "macos"]
 
     [[events]]
     on = "workspace.created"
@@ -121,6 +121,6 @@ stdenvNoCC.mkDerivation {
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [ flexiondotorg ];
     mainProgram = "herdr-${layoutName}";
-    platforms = lib.platforms.linux;
+    platforms = lib.platforms.linux ++ [ "aarch64-darwin" ];
   };
 }

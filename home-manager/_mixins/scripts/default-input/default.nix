@@ -1,4 +1,5 @@
 {
+  config,
   inputs,
   lib,
   pkgs,
@@ -20,6 +21,6 @@ let
     text = builtins.readFile ./${name}.sh;
   };
 in
-{
+lib.mkIf config.noughty.host.is.linux {
   home.packages = [ shellApplication ];
 }
