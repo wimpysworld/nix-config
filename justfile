@@ -578,7 +578,11 @@ build-host hostname=current_hostname: prefetch
       nh os build . --hostname "{{ hostname }}"
     elif [ "$(uname)" = "Darwin" ]; then
       echo "nix-darwin 󰀵 Building: {{ hostname }}"
-      nh darwin build . --hostname "{{ hostname }}"
+      if [ -e /run/current-system ]; then
+        nh darwin build . --hostname "{{ hostname }}"
+      else
+        nh darwin build . --hostname "{{ hostname }}" --diff never
+      fi
     else
       echo "Unsupported OS: $(uname)"
     fi
