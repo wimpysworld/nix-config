@@ -17,7 +17,11 @@ OpenCode and Codex read `CONTEXT7_API_KEY` and `LINEAR_API_KEY` from the recipie
 
 Pi and Claude Code include only the unauthenticated Exa MCP server. Add authenticated servers with each client's supported command after the recipient authenticates.
 
-Pi installs the pinned `pi-mcp-adapter` and `pi-subagents` packages from `settings.json` at client start. Review npm package installation policy before first use.
+Pi installs the pinned `pi-mcp-adapter` Git revision and `pi-subagents` npm version from `settings.json` at client start. Review both sources and npm installation scripts before first use. Git updates reconcile the exact configured commit rather than advancing it.
+
+Keep `"extensions": ["-builtin:mcp"]` when you merge Pi settings. This prevents duplicate native MCP support and adapter writes to read-only settings. The export puts servers and adapter settings in `~/.pi/agent/mcp-adapter.json`. It enables `mcpScript` with `scriptMode: true` and exposes its skill with `scriptSkill: "model"`.
+
+Use `.pi/mcp-adapter.json` for project adapter settings and full server overrides. Native `.pi/mcp.json` servers remain readable on Pi 1.0, but adapter-only fields there are ignored. Use `/mcp-adapter` inside Pi for adapter management. Shell-level `pi mcp` commands still use native MCP.
 
 Provider route files contain exact model identifiers from the source setup. The recipient must have access to those models or customise the route files.
 

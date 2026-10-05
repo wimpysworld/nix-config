@@ -382,7 +382,7 @@ rec {
     in
     lib.listToAttrs rendered;
 
-  # piServers: Pi adapter server entries for `~/.pi/agent/mcp.json`.
+  # piServers: Pi adapter server entries for `~/.pi/agent/mcp-adapter.json`.
   # `pi-mcp-adapter` supports per-server `enabled` flags, so
   # `consumers.pi.enabled = false` keeps the server visible but disabled by
   # default for runtime toggling in Pi's MCP TUI. `consumers.pi.omit = true`

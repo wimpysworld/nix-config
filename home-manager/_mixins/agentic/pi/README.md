@@ -17,7 +17,7 @@ The upstream package comes from `inputs.llm-agents.packages.${system}.pi`, match
 - Owns Pi config and resource files through Home Manager:
   - `~/.pi/agent/settings.json`
   - `~/.pi/agent/models.json` on hosts without the `cg` tag
-  - `~/.pi/agent/mcp.json`
+  - `~/.pi/agent/mcp-adapter.json`
   - `~/.pi/agent/extensions/pi-footer.json`
   - `~/.pi/agent/pi-sub-core-settings.json`
   - `~/.pi/agent/subagents.json`
@@ -85,9 +85,9 @@ Pi packages are installed through the Home Manager-owned package setting:
 ```json
 {
   "packages": [
-    "npm:pi-mcp-adapter@2.37.0",
+    "git:github.com/nicobailon/pi-mcp-adapter@85db03d87cd0f7461b55eab8d25c10bce473b801",
     "npm:@tintinweb/pi-subagents@0.19.0",
-    "npm:pi-lens@4.2.1",
+    "npm:pi-lens@4.3.0",
     {
       "source": "npm:typescript@7.0.2",
       "extensions": [],
@@ -98,17 +98,19 @@ Pi packages are installed through the Home Manager-owned package setting:
     "npm:pi-footer@0.5.1",
     "npm:@marckrenn/pi-sub-core@1.5.0",
     "npm:pi-cc-header@1.1.1",
-    "npm:@heyhuynhgiabuu/pi-pretty@0.6.29",
-    "npm:@juicesharp/rpiv-ask-user-question@2.11.0",
-    "npm:@juicesharp/rpiv-btw@2.11.0",
+    "npm:@heyhuynhgiabuu/pi-pretty@0.6.30",
+    "npm:@juicesharp/rpiv-ask-user-question@2.12.0",
+    "npm:@juicesharp/rpiv-btw@2.12.0",
     "npm:@tintinweb/pi-tasks@0.9.0"
   ]
 }
 ```
 
-Versioned Pi package specs are pinned and skipped by `pi update`. These packages are user-level JavaScript extensions installed by Pi's npm integration under the user-owned npm prefix. `typescript` supplies the compiler API that `pi-lens` imports at runtime but omits from its runtime dependencies. Its Pi resources are disabled because it is a runtime dependency, not an extension.
+Exact npm versions and Git commits keep package updates pinned. Pi reconciles a Git checkout to the configured revision rather than advancing it. The adapter uses an exact Git commit with Pi 1.0 support and the host peer dependency fix. Pi clones it under `~/.pi/agent/git/` and installs its runtime dependencies. Review Git sources and npm installation scripts before changing a pin.
 
-`pi-lens` 4.2.1 declares an optional `@earendil-works/pi-tui` peer range of `^0.84.1 || ^0.85.0`, which excludes the selected Pi 0.87.1. Full runtime compatibility remains unverified. Since 4.1.6, use `lens_diagnostics` with `source: "lsp"` instead of `lsp_diagnostics`, and `ast_grep_search` with `dump: true` instead of `ast_grep_dump`.
+The other packages use Pi's npm integration. `typescript` supplies the compiler API that `pi-lens` imports at runtime but omits from its runtime dependencies. Its Pi resources stay disabled because it is a runtime dependency, not an extension.
+
+`pi-lens` 4.3.0 has an optional `@earendil-works/pi-tui` peer range that excludes Pi 1.0.1. An isolated extension-load check passed on Pi 1.0.1, but this does not verify every terminal interaction or language server. Since 4.1.6, use `lens_diagnostics` with `source: "lsp"` instead of `lsp_diagnostics`, and `ast_grep_search` with `dump: true` instead of `ast_grep_dump`.
 
 `pi-cc-header` loads from its npm package with `ccHeader.readOnlyConfig` set in the Home Manager-owned `settings.json`. That upstream read-only mode (added in 1.1.1 for declarative setups) stops the extension writing `settings.json`, so header commands such as `/htg` apply for the current session only. It replaces the local writable-state patch that earlier releases needed.
 
@@ -292,17 +294,23 @@ stay unchanged. macOS behaviour is unchanged, and servers do not install
 
 Pi MCP support is provided by [pi-mcp-adapter](https://github.com/nicobailon/pi-mcp-adapter), installed through the pinned package setting.
 
-Pi imports the canonical server definitions from `../mcp/servers.nix`, then renders a self-contained `~/.pi/agent/mcp.json`. Default servers do not need the Claude Code `~/.config/mcp/mcp.json` template for Pi.
+Pi imports the canonical server definitions from `../mcp/servers.nix`, then renders a self-contained `~/.pi/agent/mcp-adapter.json`. Default servers do not need the Claude Code `~/.config/mcp/mcp.json` template for Pi.
 
-`~/.pi/agent/mcp.json` is Pi-specific and is rendered through sops-nix because some server entries include auth headers. It carries conservative global adapter settings:
+Home Manager sets `extensions = [ "-builtin:mcp" ]` in Pi's settings. This disables native MCP explicitly, so the adapter does not need to change the read-only settings file. Shell-level `pi mcp` commands still use native MCP, not the adapter. Use the adapter's `/mcp-adapter` command inside Pi.
+
+`~/.pi/agent/mcp-adapter.json` is rendered through sops-nix because some server entries include auth headers. It carries conservative global adapter settings:
 
 - `directTools = false`
 - `disableProxyTool = false`
+- `scriptMode = true`
+- `scriptSkill = "model"`
 - `autoAuth = false`
 - `sampling = false`
 - `samplingAutoApprove = false`
 
-That keeps the adapter's proxy tool enabled, disables direct tools by default, and prevents MCP servers from sampling through Pi. Project-level `.pi/mcp.json` files can override these settings deliberately.
+These settings keep the proxy and `mcpScript` available to agents and workers, expose the scripting skill to the model, and prevent MCP sampling. Direct tools stay disabled globally, with the existing per-server exceptions.
+
+Use `.pi/mcp-adapter.json` for project adapter settings and full server overrides. On Pi 1.0, the adapter translates native `.pi/mcp.json` servers but ignores adapter-only fields such as `directTools` and top-level `settings`. This repository keeps its native file and adds a complete NixOS entry in `.pi/mcp-adapter.json` to preserve direct tools. Project trust and adapter approval still apply.
 
 Pi's adapter supports per-server `enabled` flags. Disabled servers remain visible in Pi's MCP TUI and can be toggled on without a Home Manager rebuild.
 

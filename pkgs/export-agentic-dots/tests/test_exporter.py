@@ -295,6 +295,7 @@ class GeneratedExportTests(unittest.TestCase):
             "codex/.codex/config.toml",
             "opencode/.config/opencode/opencode.json",
             "pi/.pi/agent/settings.json",
+            "pi/.pi/agent/mcp-adapter.json",
             "pi/.pi/agent/subagents.json",
             "integrations/communication-rules/scanner.py",
         ):
@@ -338,18 +339,29 @@ class GeneratedExportTests(unittest.TestCase):
         canonical_versions = {
             match.group(1): match.group(2)
             for match in re.finditer(
-                r'(piMcpAdapterVersion|piSubagentsVersion) = "([^"]+)";',
+                r'(piMcpAdapterRevision|piSubagentsVersion) = "([^"]+)";',
                 canonical_pi,
             )
         }
         self.assertEqual(
             set(pi_settings["packages"]),
             {
-                f"npm:pi-mcp-adapter@{canonical_versions['piMcpAdapterVersion']}",
+                "git:github.com/nicobailon/pi-mcp-adapter@"
+                f"{canonical_versions['piMcpAdapterRevision']}",
                 "npm:@tintinweb/pi-subagents@"
                 f"{canonical_versions['piSubagentsVersion']}",
             },
         )
+
+        self.assertIn("-builtin:mcp", pi_settings["extensions"])
+        self.assertNotIn("pi/.pi/agent/mcp.json", entries)
+        mcp = json.loads(entries["pi/.pi/agent/mcp-adapter.json"]["content"])
+        self.assertTrue(mcp["settings"]["scriptMode"])
+        self.assertEqual(mcp["settings"]["scriptSkill"], "model")
+        for setting in ("disableProxyTool", "autoAuth", "sampling", "samplingAutoApprove"):
+            self.assertFalse(mcp["settings"][setting])
+        self.assertTrue(mcp["mcpServers"]["exa"]["enabled"])
+        self.assertTrue(mcp["mcpServers"]["exa"]["directTools"])
 
         subagents = json.loads(entries["pi/.pi/agent/subagents.json"]["content"])
         self.assertEqual(subagents["maxConcurrent"], 12)

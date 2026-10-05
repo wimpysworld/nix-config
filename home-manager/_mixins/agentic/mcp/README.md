@@ -158,7 +158,7 @@ After applying Home Manager, sign in once per client and work computer:
 | OpenCode    | Run `opencode mcp auth slack`.                                                                  |
 | Pi          | Run `pi`, enter `/mcp`, select `slack`, then press `Ctrl+A` to authenticate.                  |
 
-Each step opens Slack in a browser. Complete the organisation's Okta sign-in and approve the workspace. Claude Code stores credentials in the macOS keychain or its credentials file. Codex's default `auto` MCP OAuth store uses the OS credential store when available and falls back to a local file. OpenCode stores tokens in `~/.local/share/opencode/mcp-auth.json`. Pi stores them in `~/.pi/agent/mcp-oauth/` with mode `0600` on each token file.
+Each step opens Slack in a browser. Complete the organisation's Okta sign-in and approve the workspace. Claude Code stores credentials in the macOS keychain or its credentials file. Codex's default `auto` MCP OAuth store uses the OS credential store when available and falls back to a local file. OpenCode stores tokens in `~/.local/share/opencode/mcp-auth.json`. Pi's adapter stores new credentials in the OS credential store by default. It treats `~/.pi/agent/mcp-oauth/` as a legacy import location.
 
 No Slack token, environment variable, or secret is declared in this repository.
 
@@ -168,12 +168,12 @@ No Slack token, environment variable, or secret is declared in this repository.
 
 `mcp/default.nix` consumes the renderer outputs for enabled clients. Zed and OpenCode are wired here directly when their programs are enabled. Claude Code receives the shared `~/.config/mcp/mcp.json` template only when Claude Code is enabled. Codex and Pi import `servers.nix` directly from their own mixins.
 
-Pi Agent is installed by `../pi` with `pi-mcp-adapter` pinned in the Home Manager-owned `~/.pi/agent/settings.json`. Pi's Home Manager-owned `~/.pi/agent/mcp.json` is self-contained, so default servers do not need the Claude Code `~/.config/mcp/mcp.json` template. The adapter shallow-merges project files by server name, so `piServers` emits full server definitions with Pi-specific `directTools` values rather than partial overrides.
+Pi Agent is installed by `../pi` with `pi-mcp-adapter` pinned in the Home Manager-owned `~/.pi/agent/settings.json`. Pi's Home Manager-owned `~/.pi/agent/mcp-adapter.json` is self-contained, so default servers do not need the Claude Code `~/.config/mcp/mcp.json` template. The adapter shallow-merges project files by server name, so `piServers` emits full server definitions with Pi-specific `directTools` values rather than partial overrides.
 
 | Platform    | Config path                                                                        | Source                               |
 | ----------- | ---------------------------------------------------------------------------------- | ------------------------------------ |
 | Claude Code | `~/.config/mcp/mcp.json`                                                           | `claudeServers`                      |
-| Pi Agent    | `~/.pi/agent/mcp.json` settings and server definitions                             | `piServers`                          |
+| Pi Agent    | `~/.pi/agent/mcp-adapter.json` settings and server definitions                             | `piServers`                          |
 | OpenCode    | `~/.config/opencode/settings.json` `mcp` and `permission` blocks                    | `opencodeServers`, `opencodeToolPermissions` |
 | Zed         | `~/.config/zed/settings.json` `context_servers` and `extensions`                   | `zedContextServers`, `zedExtensions` |
 | Codex       | `~/.config/codex/config.toml` `[mcp_servers.*]`                                    | `codexServers`                       |

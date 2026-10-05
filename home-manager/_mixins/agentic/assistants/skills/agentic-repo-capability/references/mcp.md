@@ -92,7 +92,7 @@ OpenCode uses `mcp`, calls a local process `type: "local"`, places the executabl
 
 ### Pi
 
-Pi core has no MCP support. Use the native Pi project override `.pi/mcp.json` only when `pi-mcp-adapter` is installed. Do not claim `.agents/mcp` support.
+Pi 1.0 includes native MCP support. When the repository uses `pi-mcp-adapter`, put adapter settings and server overrides in `.pi/mcp-adapter.json`. Keep `"-builtin:mcp"` in Pi's `extensions` setting to disable native MCP. Do not migrate between implementations without approval.
 
 ```json
 {
@@ -114,7 +114,9 @@ Pi core has no MCP support. Use the native Pi project override `.pi/mcp.json` on
 }
 ```
 
-The adapter uses top-level `mcpServers` and accepts optional top-level `settings`. `.pi/mcp.json` is its native Pi-specific project path and overrides global MCP configuration. The adapter shallow-merges servers by name, so a project server replaces the global entry with the same name. Include the complete server definition in every project override, including its command or URL, arguments, environment, enable state, and Pi-specific fields. Do not write a partial entry that only sets `directTools`.
+The adapter uses top-level `mcpServers` and accepts optional top-level `settings`. `.pi/mcp-adapter.json` overrides global adapter configuration. On Pi 1.0, the adapter also translates native `.pi/mcp.json` servers, but ignores adapter-only fields there, including `directTools` and top-level `settings`. Preserve existing native files.
+
+The adapter replaces server entries by name, so include the complete server definition in every project override. Preserve its command or URL, arguments, environment, enable state, and adapter fields. Do not write a partial entry that only sets `directTools`. Put `scriptMode: true` and `scriptSkill: "model"` in adapter settings when the workflow needs model-visible `mcpScript` support.
 
 ### Other clients
 
@@ -132,7 +134,7 @@ Inspect repository instructions and current client documentation. Configure a cl
 1. Parse JSON and TOML with the repository's formatter, linter, or a standard parser already available in its environment.
 2. Confirm the executable resolves inside the native development environment.
 3. Run a bounded server help, version, or protocol probe that cannot remain resident.
-4. Use each installed client's MCP list or diagnostic command to confirm project discovery. For Pi, confirm `pi-mcp-adapter` is installed and loads `.pi/mcp.json`. Account for trust prompts without changing trust policy.
+4. Use each installed client's MCP list or diagnostic command to confirm project discovery. For adapter-based Pi setups, confirm that `pi-mcp-adapter` loads `.pi/mcp-adapter.json`. Account for trust prompts without changing trust policy.
 5. Compare names, executable, ordered arguments, transport, enable state, and non-secret environment semantics across clients.
 6. Run repository evaluation and checks required by its instructions.
 

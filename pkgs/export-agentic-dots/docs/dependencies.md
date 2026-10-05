@@ -7,14 +7,16 @@ The assistant resources are plain Markdown unless a skill states another require
 | Claude Code tree | Claude Code |
 | Codex tree | Codex with agent roles and skills |
 | OpenCode tree | OpenCode with JavaScript plugin support. The router was tested with OpenCode 1.18.30 |
-| Pi tree | Pi 0.87.1 with TypeScript extension support |
-| Pi MCP integration | `npm:pi-mcp-adapter@2.37.0` |
+| Pi tree | Pi 1.0.1 with TypeScript extension support |
+| Pi MCP integration | `git:github.com/nicobailon/pi-mcp-adapter@85db03d87cd0f7461b55eab8d25c10bce473b801`, Git, and npm |
 | Pi delegation | `npm:@tintinweb/pi-subagents@0.19.0` |
 | Communication Rules scanner | Python 3 standard library |
 | `diagram-design` skill | Python 3, with a browser and Playwright optional |
 | `nix` skill | Nix |
 | `gh` skill | GitHub CLI |
 | `semgrep` skill | Semgrep |
+
+The adapter uses an exact Git commit with Pi 1.0 support and the host peer dependency fix. Pi installs its runtime dependencies and keeps the checkout at that revision during updates. The export disables `builtin:mcp` and uses `mcp-adapter.json` for adapter settings, including `scriptMode: true` and `scriptSkill: "model"`.
 
 Context7 needs `CONTEXT7_API_KEY`. Linear needs `LINEAR_API_KEY`. No credential value is included.
 

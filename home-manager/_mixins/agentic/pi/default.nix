@@ -35,13 +35,13 @@ let
     else
       import ../fence/chromium.nix { inherit pkgs; };
   fenceLogging = import ../fence/logging.nix { inherit pkgs; };
-  piMcpAdapterVersion = "2.37.0";
+  piMcpAdapterRevision = "85db03d87cd0f7461b55eab8d25c10bce473b801";
   # Verify Agent, SubagentWorkflow, and native header compatibility on updates.
   # The provider router uses separate model and thinking fields for Agent,
   # and model and effort fields for workflow children.
   piSubagentsVersion = "0.19.0";
-  piLensVersion = "4.2.1";
-  # pi-lens imports the compiler API at runtime, but 4.2.1 omits TypeScript
+  piLensVersion = "4.3.0";
+  # pi-lens imports the compiler API at runtime, but 4.3.0 omits TypeScript
   # from its runtime dependencies. Keep it as a direct Pi npm dependency until the
   # upstream package restores TypeScript to dependencies.
   piLensTypescriptVersion = "7.0.2";
@@ -55,11 +55,11 @@ let
   # pi-pretty re-renders built-in tool output (read, bash, ls, find, grep) and
   # replaces find/grep with its bundled FFF frecency search. Do not install
   # pi-fff alongside it: both would claim the same built-in tool names.
-  piPrettyVersion = "0.6.29";
-  rpivAskUserQuestionVersion = "2.11.0";
-  rpivBtwVersion = "2.11.0";
+  piPrettyVersion = "0.6.30";
+  rpivAskUserQuestionVersion = "2.12.0";
+  rpivBtwVersion = "2.12.0";
   piTasksVersion = "0.9.0";
-  piMcpAdapterSource = "npm:pi-mcp-adapter@${piMcpAdapterVersion}";
+  piMcpAdapterSource = "git:github.com/nicobailon/pi-mcp-adapter@${piMcpAdapterRevision}";
   piSubagentsSource = "npm:@tintinweb/pi-subagents@${piSubagentsVersion}";
   piLensSource = "npm:pi-lens@${piLensVersion}";
   piLensTypescriptSource = "npm:typescript@${piLensTypescriptVersion}";
@@ -416,7 +416,7 @@ let
       slogan = "May Pi serve you well";
     };
 
-    # Versioned Pi package specs are pinned and skipped by `pi update`.
+    # Exact npm versions and Git revisions stay pinned during package updates.
     packages = [
       piMcpAdapterSource
       piSubagentsSource
@@ -437,7 +437,7 @@ let
       piTasksSource
     ];
 
-    extensions = [ ];
+    extensions = [ "-builtin:mcp" ];
     skills = [
       "skills"
     ];
@@ -454,11 +454,12 @@ let
 
   piMcpConfig = {
     settings = {
-      # Keep Pi's MCP surface to the adapter proxy tool. Project-level
-      # `.pi/mcp.json` can override these settings when a project needs a
-      # deliberately wider tool surface.
+      # Keep direct tools opt-in per server. Project-level
+      # `.pi/mcp-adapter.json` can override these settings.
       directTools = false;
       disableProxyTool = false;
+      scriptMode = true;
+      scriptSkill = "model";
       # Silence the advisory shown when 75 or more direct tools resolve. The
       # work hosts intentionally register the full Chainguard tool set, so
       # the count is a requirement, not an accident.
@@ -796,7 +797,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
 
   sops.templates."pi-mcp-config" = {
     content = builtins.toJSON piMcpConfig;
-    path = "${config.home.homeDirectory}/.pi/agent/mcp.json";
+    path = "${config.home.homeDirectory}/.pi/agent/mcp-adapter.json";
     mode = "0600";
   };
 

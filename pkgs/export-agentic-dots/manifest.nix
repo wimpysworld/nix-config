@@ -534,7 +534,8 @@ let
 
   # Keep these package specs equal to the canonical pins in
   # home-manager/_mixins/agentic/pi/default.nix. The package test checks drift.
-  piMcpAdapterSource = "npm:pi-mcp-adapter@2.37.0";
+  piMcpAdapterRevision = "85db03d87cd0f7461b55eab8d25c10bce473b801";
+  piMcpAdapterSource = "git:github.com/nicobailon/pi-mcp-adapter@${piMcpAdapterRevision}";
   piSubagentsSource = "npm:@tintinweb/pi-subagents@0.19.0";
 
   piSubagentsConfig = {
@@ -604,6 +605,8 @@ let
     settings = {
       directTools = false;
       disableProxyTool = false;
+      scriptMode = true;
+      scriptSkill = "model";
       autoAuth = false;
       sampling = false;
       samplingAutoApprove = false;
@@ -831,6 +834,7 @@ let
             piMcpAdapterSource
             piSubagentsSource
           ];
+          extensions = [ "-builtin:mcp" ];
           skills = [ "skills" ];
           prompts = [ "prompts/*.md" ];
           themes = [ "themes/*.json" ];
@@ -839,7 +843,7 @@ let
         + "\n";
     })
     (mkFile {
-      path = "${roots.pi}/mcp.json";
+      path = "${roots.pi}/mcp-adapter.json";
       content = builtins.toJSON piMcp + "\n";
     })
     (mkFile {
