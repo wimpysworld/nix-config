@@ -3,6 +3,7 @@
 result/
 __pycache__/
 .pi-subagents/
+.pi/tasks/
 
 .env
 .env.local
