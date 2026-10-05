@@ -77,7 +77,7 @@ After additions, removals, metadata changes, or routing changes, run `just updat
 - Second person, imperative. "You are…", "Use X when Y."
 - No first person ("I will…" reduces adherence).
 - No "you should" - use the bare imperative.
-- No hedging or filler. Skip "IMPORTANT" / "YOU MUST" caps; Opus 4.5+ and Sonnet 4.6 over-trigger on aggressive language.
+- No hedging or filler. Skip "IMPORTANT" / "YOU MUST" caps; Opus 5 and Sonnet 5 over-trigger on aggressive language, and the 5.5 releases improve on this.
 - One default per decision. Mention alternatives only if behaviour diverges.
 
 See `references/voice.md` for imperative-vs-descriptive rewrites.
