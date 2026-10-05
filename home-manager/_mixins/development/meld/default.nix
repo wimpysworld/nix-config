@@ -8,7 +8,7 @@
 let
   inherit (config.noughty) host;
 in
-lib.mkIf host.is.workstation {
+lib.mkIf (host.is.workstation && host.is.linux) {
   # User specific dconf settings; only intended as override for NixOS dconf profile user database
   dconf.settings =
     with lib.hm.gvariant;

@@ -26,7 +26,6 @@
     ++ lib.optionals config.noughty.host.is.workstation [ "ghostty" ]
     ++ lib.optionals (noughtyLib.isUser [ "martin" ]) [
       "beyond-compare"
-      "orion"
     ];
   };
 }

@@ -95,14 +95,13 @@ lib.mkIf host.is.workstation {
       with pkgs;
       [
         telegram-desktop
-        zoom-us
       ]
+      ++ lib.optionals host.is.linux [ zoom-us ]
       ++ lib.optionals (noughtyLib.isUser [ "martin" ]) [
         (discord.override { withOpenASAR = true; })
-        halloy
       ]
-      # Halloy is installed via homebrew on Darwin
       ++ lib.optionals (noughtyLib.isUser [ "martin" ] && host.is.linux) [
+        halloy
         fractal
       ];
   };
