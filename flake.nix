@@ -36,7 +36,7 @@
     lan-mouse.url = "github:feschber/lan-mouse/v0.11.0";
     lan-mouse.inputs.nixpkgs.follows = "nixpkgs";
     lan-mouse.inputs.rust-overlay.follows = "rust-overlay";
-    handy.url = "github:cjpais/Handy/v0.9.7";
+    handy.url = "github:cjpais/Handy/v0.9.8";
     handy.inputs.nixpkgs.follows = "nixpkgs";
     hushmic.url = "github:Fovty/hushmic-nix/2a0aa41ab73dbbcd16de392fa94617af411fcdf4";
     catppuccin.url = "github:catppuccin/nix/release-26.05";
