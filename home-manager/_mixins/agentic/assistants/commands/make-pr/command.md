@@ -62,9 +62,9 @@ Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
 7. Insert the bold why line at the top of that temporary file and append the reviewer orientation block to its end, following **Reviewer orientation** below. When a template applies, put both inside its summary or description section instead, as `contribution-templates` describes. Both are part of the pull request from the moment it exists, so never add either later by editing the pull request.
 8. Push with an explicit refspec: `git push origin <branch>`. A bare `git push` depends on tracking configuration that may be absent, and pushes nothing when it is. Never pass `-u`: a sandbox mounts `.git/config` read-only, so the upstream write fails after the push has already landed. Stop if the push requires force, deletion, tags, or a non-fast-forward update.
 9. Verify the push landed. Run `git fetch origin <branch>`, then compare `git rev-parse HEAD` against `git rev-parse FETCH_HEAD`. Report a mismatch and stop rather than creating the pull request. Never trust the exit status alone: a push that matches nothing reports success while doing nothing.
-10. Look for an existing pull request, following **Pull request lookup and verification** below.
+10. Resolve `<base>`, `<default branch>`, and `<head>`, following **Base and head** below. Then look for an existing pull request, following **Pull request lookup and verification** below.
 11. On a work repository, resolve the owner with `gh repo view --json owner` and build the team handle, following **Work review metadata** below. Do this before the pull request is created or existing work metadata is repaired.
-12. If no pull request exists, create one with the dedicated GitHub CLI command: `gh pr create --base main --head <branch> --title <title> --body-file <temp-file>`. On a work repository, add `--reviewer <owner>/fulfillment-automation-team-write` and `--label ai-review`.
+12. If no pull request exists, create one with the dedicated GitHub CLI command: `gh pr create --repo <base> --base <default branch> --head <head> --title <title> --body-file <temp-file>`. On a work repository, add `--reviewer <owner>/fulfillment-automation-team-write` and `--label ai-review`.
 13. Verify the pull request URL and title on every repository. On a work repository, also verify and repair the review metadata, following **Work review metadata** below. Never report success from `gh pr create` alone.
 14. Move each linked issue to the `in review` role, following **Tracker transition** below. A tracker failure never stops this command.
 15. Report the verified pull request URL, title, the template used, whether the why line and the orientation block were included, the review metadata outcome on a work repository, each tracker outcome, and any uncommitted files left out.
@@ -110,13 +110,22 @@ Filling it in:
 - Omit an empty bullet. Never stub one with "N/A" or "None".
 - Omit the why line when it would only restate the pull request title. Skip the details block when no bullet adds anything; noise trains reviewers to collapse it unread. Say in the report what was skipped, and why.
 
+### Base and head
+
+Resolve these values once, after the push, and reuse them for every lookup and for creation:
+
+- Run `gh repo view --json nameWithOwner,isFork,parent,owner` on the origin.
+- `<base>` is `nameWithOwner`. When `isFork` is true, `<base>` is `<parent.owner.login>/<parent.name>`, the repository that receives the pull request.
+- `<default branch>` comes from `gh repo view <base> --json defaultBranchRef`. Never assume `main`.
+- `<head>` is `<owner.login>:<branch>`, so that a fork branch resolves against the base repository.
+
 ### Pull request lookup and verification
 
 These rules apply to work, personal, and community repositories.
 
-- Before creation, run `gh pr view <branch> --json url,title`. If it returns a pull request, do not run `gh pr create`; use that object and continue with work metadata only on a work repository.
+- Before creation, run `gh pr view <head> --repo <base> --json url,title`. If it returns a pull request, do not run `gh pr create`; use that object and continue with work metadata only on a work repository.
 - Create a pull request only when the lookup unambiguously says that none exists. If authentication, network access, or another lookup failure makes the outcome unclear, report the failure and stop before creation.
-- If `gh pr create` reports a failure, run `gh pr view <branch> --json url,title` before deciding what happened. If the pull request exists, never create it again. If none exists, stop on a personal or community repository; on a work repository, apply the bounded metadata retry below only when one reviewer or label argument caused the failure.
+- If `gh pr create` reports a failure, run `gh pr view <head> --repo <base> --json url,title` before deciding what happened. If the pull request exists, never create it again. If none exists, stop on a personal or community repository; on a work repository, apply the bounded metadata retry below only when one reviewer or label argument caused the failure.
 - After creation, discovery, and any work metadata repair, fetch the final object by URL. Run `gh pr view <url> --json url,title` on a personal or community repository. Add `labels,reviewRequests` to the fields on a work repository.
 - Verify that the returned URL matches the created or discovered URL and that the title is present. For a newly created pull request, also verify that the returned title exactly matches the draft title. For an existing pull request, report its verified title unchanged, even when it differs from the new draft.
 - If the URL or title cannot be verified, report the mismatch or lookup failure and do not report a successful pull request.
@@ -134,15 +143,15 @@ Resolving the team handle:
 
 Creating and checking work metadata:
 
-- Create with `gh pr create --base main --head <branch> --title <title> --body-file <temp-file> --reviewer <owner>/fulfillment-automation-team-write --label ai-review`.
-- Where `gh pr create` fails on the reviewer or the label, look for the pull request first with `gh pr view <branch> --json url,title`. Where one exists, the failure came after creation, so repair the field instead, following the repair rules below. Where none exists, retry `gh pr create` once with only the failing argument removed, then report the dropped argument and the reason. Never retry on a failure whose outcome is unclear until that lookup answers it.
+- Create with `gh pr create --repo <base> --base <default branch> --head <head> --title <title> --body-file <temp-file> --reviewer <owner>/fulfillment-automation-team-write --label ai-review`.
+- Where `gh pr create` fails on the reviewer or the label, look for the pull request first with `gh pr view <head> --repo <base> --json url,title`. Where one exists, the failure came after creation, so repair the field instead, following the repair rules below. Where none exists, retry `gh pr create` once with only the failing argument removed, then report the dropped argument and the reason. Never retry on a failure whose outcome is unclear until that lookup answers it.
 - Verify the work metadata with the universal final lookup in **Pull request lookup and verification**. Never report success from `gh pr create` alone.
 - The label matches when `ai-review` appears in `labels`. The review request matches when a `Team` entry in `reviewRequests` carries the `slug` `fulfillment-automation-team-write`. A team carries `name` and `slug` and never a `login`, so a match on `login` finds nothing and reports a false failure.
 - Use dedicated `gh` subcommands only. Never call `gh api`.
 
 Repairing one missing field:
 
-- Where the pull request exists and a field is missing, discover the existing pull request with `gh pr view <branch> --json url,title`. Never run `gh pr create` again. A duplicate pull request is never created after an ambiguous partial success.
+- Where the pull request exists and a field is missing, discover the existing pull request with `gh pr view <head> --repo <base> --json url,title`. Never run `gh pr create` again. A duplicate pull request is never created after an ambiguous partial success.
 - Make one focused attempt for the missing field only, with `gh pr edit <url> --add-reviewer <owner>/fulfillment-automation-team-write` or `gh pr edit <url> --add-label ai-review`.
 - Fetch the final object by URL with the fields in **Pull request lookup and verification**, then report the exact field that is still missing. Stop after that one attempt.
 - A reviewer or label failure never rewrites the branch, force-pushes, closes the pull request, or rolls a Linear issue back. The pull request is the deliverable and it stays open.
