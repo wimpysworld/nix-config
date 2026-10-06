@@ -247,6 +247,12 @@ in
 
   # https://dl.thalheim.io/
   sops = {
+    package = lib.mkIf host.is.darwin (
+      pkgs.callPackage ./sops-install-secrets-locked {
+        upstream = (pkgs.callPackage inputs.sops-nix { }).sops-install-secrets;
+        lockDir = "${config.xdg.stateHome}/sops-nix";
+      }
+    );
     age = {
       keyFile = "${config.xdg.configHome}/sops/age/keys.txt";
       generateKey = false;
