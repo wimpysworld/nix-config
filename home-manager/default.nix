@@ -48,6 +48,14 @@ in
   home = {
     inherit stateVersion;
     username = config.noughty.user.name;
+    # Install LaunchAgents before sops-nix starts on the first activation.
+    # Default empty bodies preserve the upstream activation scripts.
+    activation.setupLaunchAgents = lib.mkIf host.is.darwin (
+      lib.hm.dag.entryAfter [ "linkGeneration" ] (lib.mkDefault "")
+    );
+    activation.sops-nix = lib.mkIf host.is.darwin (
+      lib.hm.dag.entryAfter [ "setupLaunchAgents" ] (lib.mkDefault "")
+    );
     # Force a user daemon reload and a sops-nix rerun after every switch.
     # sd-switch is enabled below, but it restarted a stale in-memory
     # sops-nix.service twice on ravi (the unit is a store symlink placed
