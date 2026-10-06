@@ -8,13 +8,13 @@
 
 buildGoModule (finalAttrs: {
   pname = "yam";
-  version = "0.2.67";
+  version = "0.2.68";
 
   src = fetchFromGitHub {
     owner = "chainguard-dev";
     repo = "yam";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-dDhsSNZfLkRiWdcFN872+UShQtq5qqR6fAmSOjhwbZc=";
+    hash = "sha256-3AetgFuyudphgjcz987cTi6KucUaRN/iZXivCXrhP1M=";
   };
 
   vendorHash = "sha256-hh6vsOjIo4Ph6awTMUlBdDlv5e8kAPRL3Eyb6U9Agl0=";
