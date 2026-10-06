@@ -379,9 +379,8 @@ eval-configs:
 
 # Switch OS and Home configurations
 switch:
-    @NOUGHTY_SKIP_MAS_PROMPT=1 just switch-home
-    @NOUGHTY_SKIP_MAS_PROMPT=1 just switch-host
-    @just _prompt-mas {{ quote(current_hostname) }} || echo "Warning: App Store prompt failed. Retry: just switch-mas {{ current_hostname }}"
+    @just switch-home
+    @just switch-host
 
 # Resolve FlakeHub Cache store paths for host and home configurations
 resolve username=current_username hostname=current_hostname:
@@ -569,56 +568,6 @@ build-home username=current_username hostname=current_hostname: prefetch
 switch-home username=current_username hostname=current_hostname: prefetch
     @echo "Home Manager  Switching: {{ username }}@{{ hostname }}"
     @nh home switch . --configuration "{{ username }}@{{ hostname }}" --backup-extension {{ backup_ext }}
-    @just _prompt-mas {{ quote(hostname) }} {{ quote(username) }} || echo "Warning: App Store prompt failed. Retry: just switch-mas {{ hostname }}"
-
-# Build the separate Mac App Store installer without installing apps.
-build-mas hostname=current_hostname:
-    @nix build --no-link {{ quote('.#darwinConfigurations.' + hostname + '.config.system.build.mas') }}
-
-# Install only the configured free Mac App Store apps.
-switch-mas hostname=current_hostname:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    artifact=$(nix build --no-link --print-out-paths {{ quote('.#darwinConfigurations.' + hostname + '.config.system.build.mas') }})
-    "${artifact}/bin/switch-mas"
-
-[private]
-_prompt-mas hostname username=current_username:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    [[ "$(uname -s)" == Darwin ]] || exit 0
-    [[ "${NOUGHTY_SKIP_MAS_PROMPT:-}" != 1 ]] || exit 0
-    hostname={{ quote(hostname) }}
-    username={{ quote(username) }}
-    printf -v retry 'just switch-mas %q' "$hostname"
-    skip() { printf 'Mac App Store installation skipped. Run: %s\n' "$retry"; }
-    if [[ ! -t 0 || ! -t 1 || -n "${CI:-}" || -n "${SSH_CONNECTION:-}${SSH_CLIENT:-}${SSH_TTY:-}" ]]; then
-      skip
-      exit 0
-    fi
-    if ! primary_user=$(nix eval --raw ".#darwinConfigurations.${hostname}.config.system.primaryUser"); then
-      printf 'Warning: Cannot read the Mac App Store user. Retry: %s\n' "$retry" >&2
-      exit 0
-    fi
-    if [[ "$username" != "$primary_user" || "$(id -un)" != "$primary_user" || "$(id -u)" == 0 ]]; then
-      skip
-      exit 0
-    fi
-    reply=""
-    printf 'Install the configured Mac App Store apps now? [y/N] '
-    if ! read -r reply; then
-      printf '\n'
-      skip
-      exit 0
-    fi
-    case "$reply" in
-      y|Y)
-        if ! just switch-mas "$hostname"; then
-          printf 'Warning: Mac App Store installation failed. Retry: %s\n' "$retry" >&2
-        fi
-        ;;
-      *) skip ;;
-    esac
 
 # Build OS configuration
 build-host hostname=current_hostname: prefetch
@@ -712,7 +661,6 @@ switch-host hostname=current_hostname: prefetch
     elif [ "$(uname)" = "Darwin" ]; then
       echo "nix-darwin 󰀵 Switching: {{ hostname }}"
       nh darwin switch . --hostname "{{ hostname }}"
-      just _prompt-mas {{ quote(hostname) }} || echo "Warning: App Store prompt failed. Retry: just switch-mas {{ hostname }}"
     else
       echo "Unsupported OS: $(uname)"
     fi
