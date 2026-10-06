@@ -29,11 +29,17 @@ Derive the scope from the repository's existing commit convention and the affect
 
 Write the title as `<type>(<scope>): <imperative description>`, or `<type>: <imperative description>` when the scope is omitted. Use imperative mood, keep the title to 72 characters or fewer, and describe the branch's main effect.
 
-Write a focused pull request body as prose, with one paragraph for what changes and why, followed by one validation sentence when validation was run. State only checks that you ran or that the supplied parent evidence supports for the committed changes. Omit validation when none is evidenced. Use headings only when several independent concerns or a long commit series need navigation. Do not restate a single commit title, use bullet scaffolding, or hard-wrap body paragraphs.
+When **Pull request template** below finds a template, fill it instead of the prose body in this paragraph. When no template exists, write a focused pull request body as prose, with one paragraph for what changes and why, followed by one validation sentence when validation was run. State only checks that you ran or that the supplied parent evidence supports for the committed changes. Omit validation when none is evidenced. Use headings only when several independent concerns or a long commit series need navigation. Do not restate a single commit title, use bullet scaffolding, or hard-wrap body paragraphs.
 
-Put each supported issue reference or `Refs:` footer on its own line at the end, in the form the **Tracker transition** section below resolves. For a GitHub Project task, the last body lines are one `Closes #<n>` line per linked issue, so the merge closes it. Include a breaking-change footer when the branch contains a breaking change. Do not invent or infer a reference that the branch does not support.
+Put each supported issue reference or `Refs:` footer on its own line at the end, or in the template's linked-issue section, in the form the **Tracker transition** section below resolves. For a GitHub Project task, the last body lines are one `Closes #<n>` line per linked issue, so the merge closes it. Include a breaking-change footer when the branch contains a breaking change. Do not invent or infer a reference that the branch does not support.
 
 Produce the title, a blank line, the body, and any footers inside one fenced Markdown code block. The fenced block is the draft artefact. Preserve its content verbatim for the creation steps below, with no preamble or trailing commentary.
+
+### Pull request template
+
+Load `contribution-templates` and apply it to the base repository before drafting. It resolves the base repository, reads its pull request templates, selects one, and owns the fill rules. When it finds a template, that template replaces the prose body above. Prose inside each section still follows `communication-rules` and `contribution-voice`. When it reports a trap or an open question, stop before creation and return the question to the user or the parent.
+
+On a personal or community repository whose base repository owner is not the authenticated user, load `how-to-contribute` and apply it before drafting. When it reports a pre-approval gate, a required prior discussion, an AI-assisted contribution ban, or a trap, report the policy and stop before any push.
 
 ### Working tree handling
 
@@ -50,10 +56,10 @@ Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
 1. Inspect branch state with `git status --short --branch`, `git rev-parse --abbrev-ref HEAD`, `git log main..HEAD --oneline`, `git log main..HEAD --format=full`, `git log -20 main --oneline`, and `git diff main..HEAD --stat`.
 2. Stop if the current branch is `main`, or if there are no commits in `main..HEAD`.
 3. If staged files or unstaged files exist, leave them unchanged. Note that they are excluded because only committed branch changes are used.
-4. Classify the repository once, following **Work repository classification** below. Reuse that one result for the reviewer orientation, the review metadata, and the Linear workspace guard. Then resolve the linked issues and their tracker, following **Tracker transition** below, so the draft can carry the right footers.
+4. Classify the repository once, following **Work repository classification** below. Reuse that one result for the reviewer orientation, the review metadata, and the Linear workspace guard. Then resolve the linked issues and their tracker, following **Tracker transition** below, so the draft can carry the right footers. Then apply **Pull request template** below.
 5. Apply **Pull request draft** above. Preserve its fenced pull request message verbatim as the pull request source.
 6. Strip only the Markdown fence lines. Use the first remaining line as the pull request title. Write the remaining body text unchanged to a temporary file.
-7. Insert the bold why line at the top of that temporary file and append the reviewer orientation block to its end, following **Reviewer orientation** below. Both are part of the pull request from the moment it exists, so never add either later by editing the pull request.
+7. Insert the bold why line at the top of that temporary file and append the reviewer orientation block to its end, following **Reviewer orientation** below. When a template applies, put both inside its summary or description section instead, as `contribution-templates` describes. Both are part of the pull request from the moment it exists, so never add either later by editing the pull request.
 8. Push with an explicit refspec: `git push origin <branch>`. A bare `git push` depends on tracking configuration that may be absent, and pushes nothing when it is. Never pass `-u`: a sandbox mounts `.git/config` read-only, so the upstream write fails after the push has already landed. Stop if the push requires force, deletion, tags, or a non-fast-forward update.
 9. Verify the push landed. Run `git fetch origin <branch>`, then compare `git rev-parse HEAD` against `git rev-parse FETCH_HEAD`. Report a mismatch and stop rather than creating the pull request. Never trust the exit status alone: a push that matches nothing reports success while doing nothing.
 10. Look for an existing pull request, following **Pull request lookup and verification** below.
@@ -61,7 +67,7 @@ Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
 12. If no pull request exists, create one with the dedicated GitHub CLI command: `gh pr create --base main --head <branch> --title <title> --body-file <temp-file>`. On a work repository, add `--reviewer <owner>/fulfillment-automation-team-write` and `--label ai-review`.
 13. Verify the pull request URL and title on every repository. On a work repository, also verify and repair the review metadata, following **Work review metadata** below. Never report success from `gh pr create` alone.
 14. Move each linked issue to the `in review` role, following **Tracker transition** below. A tracker failure never stops this command.
-15. Report the verified pull request URL, title, whether the why line and the orientation block were included, the review metadata outcome on a work repository, each tracker outcome, and any uncommitted files left out.
+15. Report the verified pull request URL, title, the template used, whether the why line and the orientation block were included, the review metadata outcome on a work repository, each tracker outcome, and any uncommitted files left out.
 
 ### Work repository classification
 
@@ -174,6 +180,7 @@ Return this report to the parent, or directly to the user when no parent receive
 ````markdown
 Pull request: <url>
 Title: <title>
+Template: <base repository and template file name, or none>
 Reviewer orientation: <why line and block included, or what was skipped and the reason>
 Review requested: fulfillment-automation-team-write, applied or failed with reason
 Label: ai-review, applied or failed with reason

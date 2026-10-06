@@ -30,8 +30,9 @@ NEVER execute while drafting:
 1. Read `communication-rules` first unless its complete, current instructions are in this context. Apply it before drafting
 2. Read `contribution-voice` first unless its complete, current instructions are in this context. Apply it before drafting anything. It governs the structure of text published under the user's name. If the platform cannot load a skill, continue with the rules restated below
 3. Run allowed commands one at a time to gather branch context
-4. Apply type selection from the agent definition, based on the dominant change intent across commits
-5. Output the PR message in a fenced code block. This block is the deliverable and must reach the caller unchanged
+4. Load `contribution-templates` and apply it to the base repository. Its read-only `gh repo view` reads are allowed while drafting. When it finds a template, fill that template instead of the prose body below
+5. Apply type selection from the agent definition, based on the dominant change intent across commits
+6. Output the PR message in a fenced code block. This block is the deliverable and must reach the caller unchanged
 
 The PR message itself must follow the Communication Rules: concise (each fact once), British English spelling, active voice, lead with the conclusion, no banned words (filler, pleasantries, hedges, LLM tells), and no em or en dashes.
 
@@ -43,7 +44,8 @@ Type from the dominant change intent across commits. Scope from the affected com
 
 ### Body Decision
 
-- Prose is the default. Write paragraphs, not headings
+- When `contribution-templates` finds a template, its structure replaces the prose default. Write prose inside each section
+- When no template exists, prose is the default. Write paragraphs, not headings
 - Put validation in a sentence: what you verified and how, or nothing if there was nothing to verify. Never emit a heading with "Tested locally" under it
 - Use headings only when a reviewer needs to navigate the pull request: several independent concerns, or a long commit series that no single narrative covers. Reaching for headings on a focused change is the fault the skill names
 - One commit: do not restate its message. Say what a reviewer needs beyond it, or reuse the commit body directly

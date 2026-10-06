@@ -125,7 +125,7 @@ IMPACT: <practical effects>
 
 **Pull Request:**
 
-Prose is the default. Write paragraphs, not headings.
+Prose is the default. Write paragraphs, not headings. A repository pull request template replaces this default, as `contribution-templates` describes.
 
 ```
 <type>(<scope>): <description>

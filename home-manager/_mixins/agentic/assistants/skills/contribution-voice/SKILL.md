@@ -16,13 +16,14 @@ The Communication Rules govern vocabulary and grammar, and every agent already c
 | Review, whole body | the findings and nothing else |
 | Slack message | 1 to 2 sentences |
 | Pull request description | 1 paragraph, plus 1 sentence of validation |
+| Pull request from a template | the template's sections, each one prose of 1 to 3 sentences |
 | Commit message | subject, plus a short paragraph or up to 5 bullets |
 | Task or issue body | the template's sections, each one prose and not an essay |
 | Handover or briefing | the word range its command states |
 
 Over budget is a defect, not a style preference. Cut until it fits. If it will not fit, the draft is carrying content that does not belong to this artefact.
 
-**No scaffolding.** Write prose. No headings, no bullet lists, no bold labels, no tables. Structure on a small point is the clearest sign of generated text, and it does not stop being one because the point got longer. The exception is a template that fixes the headings, such as a task body: there the template owns the layout and this skill governs the prose inside it.
+**No scaffolding.** Write prose. No headings, no bullet lists, no bold labels, no tables. Structure on a small point is the clearest sign of generated text, and it does not stop being one because the point got longer. The exception is a template that fixes the headings, such as a task body or a repository's pull request or issue template: there the template owns the layout and this skill governs the prose inside it.
 
 **Answer only what was asked.** Do not pre-empt questions nobody asked. Do not attach adjacent advice.
 

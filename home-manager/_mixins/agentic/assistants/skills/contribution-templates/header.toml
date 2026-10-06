@@ -1,0 +1,3 @@
+[common]
+name = "contribution-templates"
+description = "Use when drafting a GitHub pull request body or issue for a repository that may have a pull request template or issue template, including `pull_request_template.md`, `PULL_REQUEST_TEMPLATE/`, `ISSUE_TEMPLATE/`, issue forms, or organisation defaults in a `.github` repository. Resolves the base repository of a fork, reads its templates read-only, selects one, and fills it: comment instructions, checkboxes, empty sections, and trap reporting. Use even if the user only says 'use the template', 'fill in the PR template', or 'follow the issue template'."

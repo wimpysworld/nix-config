@@ -21,7 +21,7 @@ Never run `gh issue create`, `comment`, `edit`, `close`, `delete`, `lock`, `unlo
 2. Apply `contribution-voice`. Read it first unless its complete, current instructions are already in this context. It owns the common structure and cut pass for text published under the user's name.
 3. Load `how-to-contribute` and apply it to the repository. If the project requires prior discussion, bans AI-assisted contributions, or contains an AI trap, report the policy and stop.
 4. Search existing issues for duplicates. If a likely duplicate exists, link it, say so plainly, and stop.
-5. Read the issue templates under `.github/` and follow the matching template.
+5. Apply `contribution-templates` to the base repository. It reads, selects, and fills the issue template or issue form. When it reports a trap or an open question, stop and return it.
 6. Draft the issue, then run the `contribution-voice` cut pass.
 7. Return one fenced Markdown block. Put the title on the first line and the body on the remaining lines.
 
