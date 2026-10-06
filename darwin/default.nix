@@ -111,6 +111,15 @@ in
   security.pam.services.sudo_local.touchIdAuth = true;
 
   system = {
+    # Change only the shell of the existing, unmanaged admin account.
+    activationScripts.postActivation.text = lib.mkAfter ''
+      userRecord=${lib.escapeShellArg "/Users/${username}"}
+      currentShell=$(/usr/bin/dscl . -read "$userRecord" UserShell)
+      currentShell="''${currentShell#UserShell: }"
+      if [ "$currentShell" != "/run/current-system/sw/bin/fish" ]; then
+        /usr/bin/dscl . -change "$userRecord" UserShell "$currentShell" /run/current-system/sw/bin/fish
+      fi
+    '';
     primaryUser = "${username}";
     inherit stateVersion;
     defaults = {
