@@ -11,6 +11,7 @@ let
     "uBlock Origin Lite" = 6745342698;
     "Consent-O-Matic" = 1606897889;
     "Kagi for Safari" = 1622835804;
+    "Xcode" = 497799835;
   };
   manifest = pkgs.writeTextDir "share/mas/manifest.tsv" (
     lib.concatStrings (lib.mapAttrsToList (name: id: "${toString id}\t${name}\n") apps)
