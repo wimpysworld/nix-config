@@ -136,6 +136,7 @@ in
       inherit (final.unstable) zed-editor;
       inherit (final.unstable) lima;
       inherit (final.unstable) markless;
+      inherit (final.unstable) mas;
       inherit (final.unstable) melange;
       inherit (final.unstable) tmux;
 
