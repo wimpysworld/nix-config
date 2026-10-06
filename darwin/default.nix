@@ -26,6 +26,8 @@ in
     inputs.nix-index-database.darwinModules.nix-index
     ./_mixins/desktop
     ./_mixins/features
+    ./_mixins/mas
+    ./_mixins/rosetta
   ];
 
   environment = {
