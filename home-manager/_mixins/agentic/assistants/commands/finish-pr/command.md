@@ -40,7 +40,7 @@ Do not merge or edit the PR, change other tracker fields, add or rewrite remotes
 
 1. Read `git worktree list --porcelain`, identify the current worktree, and map ownership of the head and default branches. Ambiguity blocks destructive clean-up. Never change or remove another worktree.
 2. If another worktree owns the head branch, report its path and skip local deletion. Remote deletion can continue only when that worktree is clean and its tip equals the PR head SHA.
-3. Before destructive clean-up, require every listed worktree to have empty `git status --porcelain --untracked-files=normal` output. A stash entry that names the head branch also blocks clean-up.
+3. Before destructive clean-up, require empty `git status --porcelain --untracked-files=normal` output in the current worktree, any worktree that owns the head branch, and the worktree that owns the default branch. A stash entry that names the head branch also blocks clean-up. A worktree on an unrelated branch never blocks clean-up. Do not read its status or change it.
 4. If the local head branch exists, require its tip to equal the PR head SHA, with no local commit outside that pushed boundary. If absent, record local clean-up as already complete and do not recreate it.
 5. Only change the current worktree when it owns the head branch. If no other worktree owns the default branch, switch to it and pull from the verified base remote with `--ff-only`. If it does not exist, create it with normal tracking at the recorded remote default commit. Stop deletion on failure.
 6. If another worktree owns the default branch, fetch its exact remote ref again, detach the current worktree at the recorded remote default commit, and confirm `HEAD` equals that commit.
