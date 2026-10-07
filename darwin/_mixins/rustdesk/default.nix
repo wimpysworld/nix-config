@@ -89,7 +89,17 @@ in
 
     environment.systemPackages = [ configure ];
     # Install this system-wide agent without nix-darwin's root-domain legacy load.
-    environment.launchAgents.${agentName}.enable = false;
+    environment.launchAgents.${agentName} = {
+      enable = false;
+      text = lib.mkForce (
+        lib.generators.toPlist { escape = true; } (
+          config.launchd.agents.rustdesk-server.serviceConfig
+          // {
+            AssociatedBundleIdentifiers = "com.carriez.rustdesk";
+          }
+        )
+      );
+    };
 
     # Homebrew installs the app after launchd loads the service definitions.
     system.activationScripts.postActivation.text = lib.mkOrder 1600 ''
