@@ -27,6 +27,7 @@ in
     ./_mixins/desktop
     ./_mixins/features
     ./_mixins/rosetta
+    ./_mixins/rustdesk
   ];
 
   environment = {

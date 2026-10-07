@@ -60,6 +60,7 @@ in
     ./music
     ./notes
     ./office
+    ./rustdesk
     ./streaming
     ./terminal
     ./utilities
