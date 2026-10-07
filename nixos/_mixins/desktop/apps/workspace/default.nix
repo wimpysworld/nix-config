@@ -49,6 +49,7 @@ let
     "cfpdompphcacgpjfbonkdokgjhgabpij" # Glean
     "idefohglmnkliiadgfofeokcpjobdeik" # Ramp
     "mfmabgokainekahncfnijjpcfhjendmb" # Meet Linky
+    "incpcifganmpehaiplhjlfphaflbkdoj" # Sigstore Close Post-Auth
   ];
 
   # Global xdg-open proxy to route specific URLs to Chrome
