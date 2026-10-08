@@ -13,6 +13,7 @@ lib.mkIf host.is.workstation {
       delve
       go
       go-licenses
+      go-tools
       golangci-lint
       golangci-lint-langserver
       gopls
