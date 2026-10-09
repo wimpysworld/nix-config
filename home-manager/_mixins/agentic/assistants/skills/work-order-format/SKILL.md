@@ -12,7 +12,8 @@ Title the document `<user first name>'s Cycle <n> work order`. Parent the docume
 1. The wave sections, in wave number order.
 2. `## Sequencing`.
 3. `## Timing` - omit when empty.
-4. `## Deferred` - omit when empty.
+4. `## Impact` - optional, see [Impact](#impact).
+5. `## Deferred` - omit when empty.
 
 ## Waves
 
@@ -36,6 +37,23 @@ The waves are strictly parallel. Every issue in a wave runs in parallel with eve
 ```
 
 Write every issue key as a markdown link, in a bullet and in `## Sequencing` and `## Timing` prose. The commands write the document through the Linear API, which stores a plain key as plain text, so a plain key is not clickable. Linear adds an automatic status indicator only to a key typed in the editor, so the document tracks no completion state of its own.
+
+## Impact
+
+Include the section only when an evidence review measured the issues. Never stub it, estimate, or rate an issue without evidence. An issue with no measurement gets no bullet, and a deferred issue keeps none.
+
+Open with one line that names the evidence date and the data window. Then add one bullet per measured issue, in wave order:
+
+```markdown
+* [<issue key>](https://linear.app/<workspace>/issue/<issue key>) - <rating>. <Measured evidence in one or two sentences, with the figure and its denominator.>
+```
+
+Ratings:
+
+- `High` - a measured, direct effect on the outcome the work order targets.
+- `Medium` - a measured, partial effect on that outcome.
+- `Low` - a measured effect that is small or off that outcome.
+- `Enabling` - no direct effect, but other ordered work or measurement depends on it.
 
 ## Deferred entries
 

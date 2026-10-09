@@ -16,15 +16,17 @@ Steps 1-6 prepare a read-only proposal. Do not call mutation tools before approv
 
 **2. Read the state.** Read the document and the user's cycle issues. Read the full description of every issue the instructions add. A `Dependencies` section stated in prose counts as a blocker even when no relation records it.
 
-**3. Plan the additions.** When an added issue is not in the cycle, propose its cycle change. In the draft, insert the issue into an active wave - one with at least one issue not Done - only when every blocker sits in an earlier wave and no wave-mate touches the same package or files. Otherwise append a new wave at the end with its dependency line. Give each added issue a size and a one-line reason. Prepare its link and comment as in `work-order-create`, without executing mutation calls. Prepare `save_issue` with `links` set to one entry pointing at the document. Draft one comment naming its wave and constraint. Read existing work-order comments to prepare an update by `id` on a re-run.
+**3. Plan the additions.** When an added issue is not in the cycle, propose its cycle change. In the draft, insert the issue into an active wave - one with at least one issue not Done - only when every blocker sits in an earlier wave and no wave-mate touches the same package or files. Otherwise append a new wave at the end with its dependency line. Give each added issue a size and a one-line reason. Prepare its link and comment as in `work-order-create`, without executing mutation calls. Prepare `save_issue` with `links` set to one entry pointing at the document. Draft one comment naming its wave and constraint. Read existing work-order comments to prepare an update by `id` on a re-run. When evidence exists for an added issue, draft its `## Impact` bullet.
 
-**4. Plan the deprioritisations.** In the draft, move the issue from its wave to `## Deferred` with the date and a one-line reason. Draft an update to that issue's existing work-order comment to state the deferral. Propose clearing the issue's cycle only when the instruction says to drop it from the cycle.
+**4. Plan the deprioritisations.** In the draft, move the issue from its wave to `## Deferred` with the date and a one-line reason, and remove its `## Impact` bullet. Draft an update to that issue's existing work-order comment to state the deferral. Propose clearing the issue's cycle only when the instruction says to drop it from the cycle.
+
+**4a. Plan the impact.** Only when the instructions include impact or evidence findings, draft the `## Impact` section per `work-order-format`. A refresh replaces the opening line and the affected bullets. When the instructions ask for it, draft one evidence-summary comment on each reviewed issue, separate from its work-order comment. On a re-run, prepare an update to the existing evidence comment by `id`.
 
 **5. Prepare patches, never resend.** Prepare document changes only as `save_document` calls with `id` and `patch`, without executing them. Never resend the full body. Never renumber an existing wave. When a wave empties, remove its section and never reuse its number.
 
-**6. Summarise on the document.** Draft one comment on the document that summarises this update: the additions, the deferrals, and the cycle changes, each with its one-line reason. Prepare `save_comment` with `documentId`, without executing it. Each approved run posts a new comment. Never edit an earlier run's summary. Skip the comment when the run changes nothing.
+**6. Summarise on the document.** Draft one comment on the document that summarises this update: the additions, the deferrals, the cycle changes, and any Impact change, each with its one-line reason. Prepare `save_comment` with `documentId`, without executing it. Each approved run posts a new comment. Never edit an earlier run's summary. Skip the comment when the run changes nothing.
 
-**7. Ask once.** Show every document patch, every comment, and every cycle change. Ask for approval. Only after approval, apply the approved cycle changes. Then save the approved document patches, issue links, issue comments, and document summary comment. This is the only question the command asks.
+**7. Ask once.** Show every document patch, every comment, and every cycle change. Ask for approval. Only after approval, apply the approved cycle changes. Then save the approved document patches, issue links, issue comments, evidence comments, and document summary comment. This is the only question the command asks.
 
 **8. Check drift, report only.** Compare both directions: issues assigned to the user in the current cycle that the document does not mention, and issues in the document that left the cycle or the user's assignment. List them in the final report under `Drift`. Propose nothing and change nothing: drift feeds the user's next instruction.
 
@@ -32,7 +34,7 @@ Steps 1-6 prepare a read-only proposal. Do not call mutation tools before approv
 
 ### Authority
 
-Human invocation of this command is consent to patch the one cycle work order document, to post one summary comment on that document, to add or update the link attachment and the comment on the issues the instructions name, and to set or clear the cycle on the issues the instructions add or drop. Nothing else. Never close an issue, never cancel an issue, never edit any other issue field, and never touch GitHub or Slack.
+Human invocation of this command is consent to patch the one cycle work order document, to post one summary comment on that document, to add or update the link attachment and the comment on the issues the instructions name, and to set or clear the cycle on the issues the instructions add or drop. When the instructions include impact or evidence findings, it is also consent to add or refresh the `## Impact` section by patch and, when asked, to post or update one evidence-summary comment on each reviewed issue. Nothing else. Never close an issue, never cancel an issue, never edit any other issue field, and never touch GitHub or Slack.
 
 ### Output
 
@@ -46,6 +48,8 @@ Changes:
 * Added: <issue key> to Wave <n>, or none
 * Deferred: <issue key>, or none
 * Cycle: <issue key> set or cleared, or none
+* Impact: <issue keys> added, refreshed or removed, or none
+* Evidence comments: <issue keys>, or none
 * Comment: posted on the document, or none
 
 Drift:
@@ -59,7 +63,7 @@ Drift:
 - Edit the document only by patch. Never resend the full body.
 - Never renumber an existing wave, and never reuse a removed wave's number.
 - Every issue in a wave runs in parallel with every other. Sequencing prose never enters a bullet.
-- One comment per issue. An update edits that comment by `id`.
+- One work-order comment per issue, and at most one evidence comment. An update edits each by `id`.
 - One summary comment on the document per run. Never edit an earlier run's summary.
 - Drift is report-only. It changes nothing without a new instruction.
 - Never explain the sizing scale in the document or in a comment.
