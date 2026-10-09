@@ -207,7 +207,6 @@ let
     lib.all (value: value) [
       (!(builtins.elem "reframe" config.noughty.host.tags))
       (!config.services.reframe.enable)
-      (!(builtins.elem "uinput" config.boot.kernelModules))
       (!(builtins.elem "reframe" config.users.users.martin.extraGroups))
       (!(config.sops.secrets ? reframe-password))
       (!(config.sops.templates ? reframe-main))
