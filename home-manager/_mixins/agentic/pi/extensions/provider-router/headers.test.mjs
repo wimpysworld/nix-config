@@ -45,7 +45,7 @@ in c.composeAgents "pi"`;
 			symlinkSync(target, join(agentsDir, `${name}.md`));
 		}
 		const loaded = loadCustomAgents(fixture, true);
-		assert.equal(loaded.size, 11);
+		assert.deepEqual([...loaded.keys()].sort(), Object.keys(generated).sort());
 		for (const [name, agent] of loaded) {
 			assert.equal(agent.promptMode, "replace", name);
 			assert.equal(agent.extensions, true, name);
@@ -61,7 +61,7 @@ in c.composeAgents "pi"`;
 				),
 				name,
 			);
-			assert.match(agent.systemPrompt, /You are a leaf worker\./);
+			assert.match(agent.systemPrompt, /You are a worker\./);
 			assert.match(agent.systemPrompt, /## Shared safety rules/);
 		}
 	} finally {
