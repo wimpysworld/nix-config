@@ -22,6 +22,9 @@ source file holds no literal banned term (that would block its own write under
 the tripwire); it reads the canonical term from the loaded policy at runtime.
 
 Stdlib only. British English in comments.
+
+Gate: ``checks.<system>.communication-rules-hooks``, defined in
+``lib/tests/communication-rules-hooks.nix``, runs this file.
 """
 
 from __future__ import annotations

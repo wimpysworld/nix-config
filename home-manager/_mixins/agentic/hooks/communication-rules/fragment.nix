@@ -156,7 +156,11 @@ in
     # the policy file is absent, such as in the fixture harnesses.
     postDetection = {
       # Verb fragments that mark an MCP tool leaf as able to post or mutate
-      # external state. Matched against the leaf after the final "__".
+      # external state. Matched as substrings of the leaf after the final "__".
+      # Linear's "save_" verb is listed per object, not as a bare "save",
+      # because a matched tool with no text key fails closed, and
+      # save_customer carries no text. The issue, project, and initiative
+      # entries also match their "_label" tools, whose description is text.
       postToolTerms = [
         "comment"
         "create"
@@ -165,6 +169,13 @@ in
         "publish"
         "reply"
         "review"
+        "save_customer_need"
+        "save_document"
+        "save_initiative"
+        "save_issue"
+        "save_milestone"
+        "save_project"
+        "save_release"
         "send"
         "submit"
         "update"

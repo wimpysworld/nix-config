@@ -1,0 +1,10 @@
+{
+  "type": "tool_call",
+  "toolName": "mcp__linear__save_issue",
+  "toolCallId": "call-mcp-save-issue",
+  "input": {
+    "team": "ENG",
+    "title": "Build status",
+    "description": "This is a robust update."
+  }
+}

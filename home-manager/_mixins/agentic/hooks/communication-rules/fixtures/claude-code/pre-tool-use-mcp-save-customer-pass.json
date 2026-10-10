@@ -1,0 +1,15 @@
+{
+  "session_id": "session-fixture",
+  "transcript_path": "/tmp/claude-transcript.jsonl",
+  "cwd": "/tmp",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "mcp__linear__save_customer",
+  "tool_use_id": "toolu-mcp-save-customer",
+  "tool_input": {
+    "name": "Acme",
+    "domains": [
+      "acme.example"
+    ]
+  }
+}

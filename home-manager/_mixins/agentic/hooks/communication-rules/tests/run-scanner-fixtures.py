@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Run focused Communication Rules scanner fixtures."""
+"""Run focused Communication Rules scanner fixtures.
+
+Gate: ``checks.<system>.communication-rules-hooks``, defined in
+``lib/tests/communication-rules-hooks.nix``, runs this file.
+"""
 
 from __future__ import annotations
 
@@ -741,6 +745,13 @@ def run_claude_code_agent_cases(
         _expect("pass", "B2", level="warning"),
     )
     run_case("pre-tool-use-mcp-post-block.json", "PreToolUse", _B2_BLOCK)
+
+    # Linear's save_issue creates or updates an issue, so its prose is checked.
+    # save_customer carries no text key and is not a post term, so it passes
+    # rather than failing closed on an empty body.
+    reset_strikes()
+    run_case("pre-tool-use-mcp-save-issue-block.json", "PreToolUse", _B2_BLOCK)
+    run_case("pre-tool-use-mcp-save-customer-pass.json", "PreToolUse", _PASS_TIERA)
 
     # A clean pass on the SAME key resets the counter, so the next breach is
     # strike 1 (deny) again, never a lingering allow-revise. The block then
@@ -1685,6 +1696,9 @@ def run_pi_agent_cases(env: dict, strike_dir: str) -> int:
     # unresolvable body fails closed to a B2 block.
     reset_strikes()
     run_case("tool-call-mcp-post-blocked.json", "tool_call", _B2_BLOCK)
+    reset_strikes()
+    run_case("tool-call-mcp-save-issue-blocked.json", "tool_call", _B2_BLOCK)
+    run_case("tool-call-mcp-save-customer-pass.json", "tool_call", _PASS_TIERA)
     reset_strikes()
     run_case("tool-call-bash-post-blocked.json", "tool_call", _B2_BLOCK)
     reset_strikes()

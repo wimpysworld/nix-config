@@ -41,6 +41,9 @@ raw-gate property, so it calls ``core.state.gate`` directly.
 The banned breach terms never sit in this file as literals; they are assembled
 from fragments, as the sibling tests do. Stdlib only. British English in
 comments.
+
+Gate: ``checks.<system>.communication-rules-hooks``, defined in
+``lib/tests/communication-rules-hooks.nix``, runs this file.
 """
 
 from __future__ import annotations

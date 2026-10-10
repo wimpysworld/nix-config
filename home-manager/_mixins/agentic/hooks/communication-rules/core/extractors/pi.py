@@ -32,9 +32,12 @@ guarantee is enforced in ``core.state``.
 
 from __future__ import annotations
 
+import json
 import os
+import re
 import shlex
-from typing import Any, TypeGuard
+from pathlib import Path
+from typing import Any, NamedTuple, TypeGuard
 
 from core.config import Config
 from core.detection import (
@@ -195,11 +198,129 @@ def patch_text(input_value: dict[str, Any]) -> str | None:
     return None
 
 
-def is_post_capable_mcp_tool(name: str, post_tool_terms: tuple[str, ...]) -> bool:
-    if not name.startswith("mcp__"):
-        return False
-    leaf = name.rsplit("__", 1)[-1].lower()
-    return any(term in leaf for term in post_tool_terms)
+# pi-mcp-adapter call surfaces. Direct tools are named `<server>_<tool>`, with
+# the server written in full, without a trailing `mcp`, or as `mcp__<server>`.
+# The `mcp` gateway and the per-server `mcp__<server>` namespace proxy take
+# `{tool, args}`, where `args` is an object or a JSON string. `mcpScript` runs
+# JavaScript `code` whose MCP calls never reach a Pi tool_call event.
+MCP_GATEWAY_TOOL = "mcp"
+MCP_SCRIPT_TOOL = "mcpScript"
+
+
+class McpCall(NamedTuple):
+    tool: str
+    leaf: str
+    body: Any
+
+
+def _agent_dir() -> Path:
+    configured = os.environ.get("PI_CODING_AGENT_DIR", "").strip()
+    if configured:
+        return Path(os.path.expanduser(configured))
+    return Path.home() / ".pi" / "agent"
+
+
+def adapter_server_names() -> frozenset[str]:
+    # The adapter's own config and metadata cache name every server it can
+    # register, whatever source configured it, so a new server needs no edit
+    # here. Only the server keys are read.
+    names: set[str] = set()
+    for file_name, key in (
+        ("mcp-adapter.json", "mcpServers"),
+        ("mcp-cache.json", "servers"),
+    ):
+        try:
+            data = json.loads((_agent_dir() / file_name).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        node = data.get(key) if is_record(data) else None
+        if is_record(node):
+            names.update(
+                name.lower() for name in node if isinstance(name, str) and name
+            )
+    return frozenset(names)
+
+
+def _server_prefixes(server: str) -> set[str]:
+    short = re.sub(r"-?mcp$", "", server) or "mcp"
+    forms = {server, short, server.replace("-", "_"), short.replace("-", "_")}
+    return {prefix for form in forms for prefix in (f"{form}_", f"mcp__{form}_")}
+
+
+def _strip_server_prefix(name: str, servers: frozenset[str]) -> str | None:
+    # Longest prefix wins, so `a-mcp-stage_x` is not read as server `a-mcp`.
+    lowered = name.lower()
+    matches = [
+        prefix
+        for server in servers
+        for prefix in _server_prefixes(server)
+        if lowered.startswith(prefix) and len(lowered) > len(prefix)
+    ]
+    return name[len(max(matches, key=len)) :] if matches else None
+
+
+def _is_namespace_proxy(
+    name: str, input_value: dict[str, Any], servers: frozenset[str]
+) -> bool:
+    rest = name[len("mcp__") :]
+    if rest.lower() in {server.replace("-", "_") for server in servers}:
+        return True
+    return (
+        "__" not in rest
+        and isinstance(input_value.get("tool"), str)
+        and _strip_server_prefix(name, servers) is None
+    )
+
+
+def mcp_call(
+    name: str, input_value: dict[str, Any], servers: frozenset[str]
+) -> McpCall | None:
+    """Return the MCP tool a Pi tool call reaches, or None for a non-MCP tool.
+
+    Covers the Claude Code and Pi built-in `mcp__<server>__<tool>` form and
+    every pi-mcp-adapter form except `mcpScript`. The leaf is the tool name
+    without its server, so a server name cannot mark a call as a post.
+    """
+    is_gateway = name == MCP_GATEWAY_TOOL
+    if is_gateway or (
+        name.startswith("mcp__") and _is_namespace_proxy(name, input_value, servers)
+    ):
+        inner = input_value.get("tool")
+        if not isinstance(inner, str) or not inner:
+            return None
+        leaf = _strip_server_prefix(inner, servers) or inner.rsplit("__", 1)[-1]
+        return McpCall(tool=f"{name} {inner}", leaf=leaf, body=input_value.get("args"))
+    if name.startswith("mcp__"):
+        leaf = _strip_server_prefix(name, servers) or name.rsplit("__", 1)[-1]
+        return McpCall(tool=name, leaf=leaf, body=input_value)
+    leaf = _strip_server_prefix(name, servers)
+    return McpCall(tool=name, leaf=leaf, body=input_value) if leaf else None
+
+
+def _has_post_term(text: str, post_tool_terms: tuple[str, ...]) -> bool:
+    lowered = text.lower()
+    return any(term in lowered for term in post_tool_terms)
+
+
+def post_capable_mcp_call(event: dict[str, Any], config: Config) -> McpCall | None:
+    input_value = tool_input(event)
+    if not is_record(input_value):
+        return None
+    call = mcp_call(tool_name(event), input_value, adapter_server_names())
+    if call is None or not _has_post_term(call.leaf, config.post_tool_terms):
+        return None
+    return call
+
+
+def mcp_call_body(body: Any) -> dict[str, Any] | None:
+    # The gateway accepts `args` as a JSON string; an unparsable or non-object
+    # body leaves nothing to scan, so the caller fails closed.
+    if isinstance(body, str):
+        try:
+            body = json.loads(body)
+        except ValueError:
+            return None
+    return body if is_record(body) else None
 
 
 def collect_post_texts(
@@ -229,7 +350,7 @@ def is_external_surface(event: dict[str, Any], config: Config) -> bool:
     name = tool_name(event).lower()
     if name in GH_POST_COMMANDS or name == "github":
         return True
-    if is_post_capable_mcp_tool(tool_name(event), config.post_tool_terms):
+    if tool_name(event) == MCP_SCRIPT_TOOL or post_capable_mcp_call(event, config):
         return True
     input_value = tool_input(event)
     if is_record(input_value):
@@ -272,6 +393,10 @@ def external_target(event: dict[str, Any], config: Config) -> str:
     # Pi extension's externalTarget.
     label = tool_name(event) or "post"
     input_value = tool_input(event)
+    call = post_capable_mcp_call(event, config)
+    if call is not None:
+        label = call.tool
+        input_value = mcp_call_body(call.body)
     if is_record(input_value):
         for key in config.external_target_keys:
             value = input_value.get(key)
@@ -326,8 +451,22 @@ def tool_call_payload(event: dict[str, Any], config: Config) -> tuple[str, str |
         text = patch_text(input_value)
         return ("text", text) if text is not None else ("fail", None)
 
-    if is_post_capable_mcp_tool(name, config.post_tool_terms):
-        texts = collect_post_texts(input_value, frozenset(config.post_text_keys))
+    if name == MCP_SCRIPT_TOOL:
+        # The script's MCP calls cannot be inspected safely, so a script that
+        # names any post term fails closed like any other unresolvable body.
+        code = string_value(input_value.get("code"))
+        if code is None or _has_post_term(code, config.post_tool_terms):
+            return ("fail", None)
+        return "pass", None
+
+    call = post_capable_mcp_call(event, config)
+    if call is not None:
+        body = mcp_call_body(call.body)
+        texts = (
+            collect_post_texts(body, frozenset(config.post_text_keys))
+            if body is not None
+            else []
+        )
         return ("text", "\n\n".join(texts)) if texts else ("fail", None)
 
     return "pass", None

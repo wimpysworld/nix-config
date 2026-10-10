@@ -1,0 +1,11 @@
+{
+  "type": "tool_call",
+  "toolName": "mcp__linear__save_customer",
+  "toolCallId": "call-mcp-save-customer",
+  "input": {
+    "name": "Acme",
+    "domains": [
+      "acme.example"
+    ]
+  }
+}

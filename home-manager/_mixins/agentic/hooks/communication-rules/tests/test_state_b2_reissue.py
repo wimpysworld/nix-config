@@ -29,6 +29,9 @@ their shims). Both are real code over separate processes with shared temp dirs;
 only the entry differs.
 
 Stdlib only. British English in comments.
+
+Gate: ``checks.<system>.communication-rules-hooks``, defined in
+``lib/tests/communication-rules-hooks.nix``, runs this file.
 """
 
 from __future__ import annotations

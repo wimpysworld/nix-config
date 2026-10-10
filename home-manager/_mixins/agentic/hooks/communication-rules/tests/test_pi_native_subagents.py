@@ -1,4 +1,8 @@
-"""Check the native Pi delegation result names without changing report text."""
+"""Check the native Pi delegation result names without changing report text.
+
+Gate: ``checks.<system>.communication-rules-hooks``, defined in
+``lib/tests/communication-rules-hooks.nix``, runs this file.
+"""
 
 import sys
 import unittest

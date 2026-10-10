@@ -166,6 +166,10 @@
               touch "$out"
             ''
           );
+          communication-rules-hooks = import ./lib/tests/communication-rules-hooks.nix {
+            inherit (nixpkgs) lib;
+            inherit pkgs;
+          };
           export-agentic-dots = self.packages.${system}.export-agentic-dots.tests;
           gh-code-scanning-dismiss = import ./lib/tests/gh-code-scanning-dismiss.nix {
             inherit pkgs;
