@@ -3,6 +3,7 @@ import { test } from "node:test";
 import register from "./index.ts";
 
 const beta = "fast-mode-2026-02-01";
+const piBeta = "mid-conversation-output-config-2026-07-01";
 const definitions = {
 	openai: ["openai-responses", "https://api.openai.com/v1", "gpt-6-astra"],
 	"openai-codex": [
@@ -58,10 +59,6 @@ function harness(selected = model("openai")) {
 		status: () => statuses.get("noughty-service-tier:status"),
 		request: (payload = {}) =>
 			emit("before_provider_request", { payload }) ?? payload,
-		headers: (headers) => {
-			emit("before_provider_headers", { headers });
-			return headers;
-		},
 	};
 }
 
@@ -184,37 +181,45 @@ test("model, provider, endpoint, and unannounced changes reset Fast", async () =
 	assert.deepEqual(h.request(), {});
 	assert.equal(h.status(), "Fast off");
 });
-test("Anthropic pairs header/body controls and preserves unrelated values", async () => {
+test("Anthropic pairs beta/body controls and preserves unrelated values", async () => {
 	const h = harness(model("anthropic"));
 	for (const command of ["off", "on", "off"]) {
 		await h.command(command);
-		const headers = h.headers({
-			"Anthropic-Beta": `other-beta, ${beta},${beta}-extra`,
-			"anthropic-beta": `another-beta,${beta}`,
-			"x-test": "keep",
-		});
-		assert.equal(headers["Anthropic-Beta"], null);
-		assert.equal(headers["x-test"], "keep");
-		assert.deepEqual(headers["anthropic-beta"].split(","), [
-			"other-beta",
-			`${beta}-extra`,
-			"another-beta",
-			...(command === "on" ? [beta] : []),
-		]);
 		const input = Object.freeze({
+			betas: Object.freeze(["other-beta", beta, `${beta}-extra`, piBeta]),
 			speed: "fast",
 			service_tier: "auto",
 			messages: [{ role: "user", content: "test" }],
 			thinking: { type: "adaptive" },
 		});
 		const output = h.request(input);
+		assert.deepEqual(output.betas, [
+			"other-beta",
+			`${beta}-extra`,
+			piBeta,
+			...(command === "on" ? [beta] : []),
+		]);
 		assert.equal(output.speed, command === "on" ? "fast" : undefined);
 		assert.equal(output.service_tier, "standard_only");
 		assert.equal(output.messages, input.messages);
 		assert.equal(output.thinking, input.thinking);
 	}
-	assert.equal(h.headers({ "anthropic-beta": beta })["anthropic-beta"], null);
-	assert.equal(h.headers({})["anthropic-beta"], null);
+	assert.equal("betas" in h.request({ betas: [beta] }), false);
+	assert.equal("betas" in h.request({}), false);
+});
+test("Anthropic requests keep Pi's betas without a beta header hook", async () => {
+	// Pi rebuilds betas from any anthropic-beta header, so a header hook drops
+	// the betas that its per-message output_config needs.
+	for (const id of ["claude-haiku-5-5", "claude-opus-5-5"]) {
+		const h = harness(model("anthropic", id));
+		for (const command of ["off", "on"]) {
+			await h.command(command);
+			assert.ok(h.request({ betas: [piBeta] }).betas.includes(piBeta));
+			const headers = { "x-test": "keep" };
+			h.emit("before_provider_headers", { headers });
+			assert.deepEqual(headers, { "x-test": "keep" });
+		}
+	}
 });
 test("unknown providers and APIs remain untouched and unavailable", async () => {
 	for (const selected of [
@@ -251,38 +256,14 @@ test("unsupported and unregistered models cannot enable Fast", async () => {
 		assert.match(h.notifications.at(-1), /Fast unavailable/);
 		assert.notEqual(h.request().service_tier, "priority");
 		assert.equal(h.request().speed, undefined);
-		assert.equal(
-			h.headers({ "anthropic-beta": beta })["anthropic-beta"],
-			selected.provider === "anthropic" ? null : beta,
-		);
+		if (selected.provider === "anthropic")
+			assert.deepEqual(h.request({ betas: [piBeta, beta] }).betas, [piBeta]);
 	}
 	const h = harness();
 	h.ctx.modelRegistry.find = () => undefined;
 	await h.command("on");
 	assert.equal(h.status(), "Fast off");
 	assert.match(h.notifications.at(-1), /Fast unavailable/);
-});
-test("Anthropic header removals precede additions for either key order", async () => {
-	const h = harness(model("anthropic"));
-	await h.command("on");
-	for (const entries of [
-		[
-			["anthropic-beta", "keep"],
-			["Anthropic-Beta", beta],
-		],
-		[
-			["Anthropic-Beta", beta],
-			["anthropic-beta", "keep"],
-		],
-	]) {
-		const headers = h.headers(Object.fromEntries(entries));
-		const applied = new Headers();
-		for (const [key, value] of Object.entries(headers)) {
-			if (value === null) applied.delete(key);
-			else applied.set(key, value);
-		}
-		assert.equal(applied.get("anthropic-beta"), `keep,${beta}`);
-	}
 });
 test("Fast changes wait until paired request hooks finish", async () => {
 	const h = harness(model("anthropic"));
@@ -292,11 +273,11 @@ test("Fast changes wait until paired request hooks finish", async () => {
 			finish = resolve;
 		});
 	const pending = h.command("on");
-	assert.equal(h.headers({})["anthropic-beta"], null);
+	assert.equal(h.request().betas, undefined);
 	assert.equal(h.request().speed, undefined);
 	finish();
 	await pending;
-	assert.equal(h.headers({})["anthropic-beta"], beta);
+	assert.deepEqual(h.request().betas, [beta]);
 	assert.equal(h.request().speed, "fast");
 });
 test("all verified exact IDs enable Fast", async () => {
@@ -316,7 +297,7 @@ test("all verified exact IDs enable Fast", async () => {
 		const h = harness(model("anthropic", id));
 		await h.command("on");
 		assert.equal(h.request().speed, "fast");
-		assert.equal(h.headers({})["anthropic-beta"], beta);
+		assert.deepEqual(h.request().betas, [beta]);
 	}
 });
 test("malformed payloads are unchanged and no-UI operation is safe", () => {

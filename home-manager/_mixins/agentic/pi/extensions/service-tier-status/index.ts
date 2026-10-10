@@ -103,7 +103,7 @@ export default function registerServiceTierStatus(pi: ExtensionAPI): void {
 					ctx.ui.notify("Usage: /fast on|off|status. No change.", "warning");
 				return;
 			}
-			// Apply changes between requests so Anthropic headers and body agree.
+			// Apply changes between requests so Anthropic betas and body agree.
 			if (command === "on" || command === "off") await ctx.waitForIdle();
 			const adapter = sync(ctx);
 			if (command === "on") fast = supportsFast(ctx, adapter);
@@ -126,29 +126,6 @@ export default function registerServiceTierStatus(pi: ExtensionAPI): void {
 		if (ctx.hasUI) ctx.ui.setStatus(STATUS_KEY, undefined);
 	});
 
-	pi.on("before_provider_headers", (event, ctx) => {
-		if (sync(ctx) !== "anthropic") return;
-		const tokens: string[] = [];
-		for (const key of Object.keys(event.headers)) {
-			if (key.toLowerCase() !== "anthropic-beta") continue;
-			const value = event.headers[key];
-			if (typeof value === "string")
-				tokens.push(
-					...value
-						.split(",")
-						.map((token) => token.trim())
-						.filter((token) => token && token !== FAST_BETA),
-				);
-			event.headers[key] = null;
-		}
-		if (fast) tokens.push(FAST_BETA);
-		// Apply the canonical value after removals with other letter cases.
-		delete event.headers["anthropic-beta"];
-		event.headers["anthropic-beta"] = tokens.length
-			? [...new Set(tokens)].join(",")
-			: null;
-	});
-
 	pi.on("before_provider_request", (event, ctx) => {
 		const adapter = sync(ctx);
 		publish(ctx);
@@ -161,6 +138,14 @@ export default function registerServiceTierStatus(pi: ExtensionAPI): void {
 			return;
 		const payload = { ...event.payload } as Record<string, unknown>;
 		if (adapter === "anthropic") {
+			// Edit Pi's computed betas in the body. An anthropic-beta header
+			// replaces them all, including those that Pi's request fields need.
+			const betas = (Array.isArray(payload.betas) ? payload.betas : []).filter(
+				(token) => token !== FAST_BETA,
+			);
+			if (fast) betas.push(FAST_BETA);
+			if (betas.length) payload.betas = betas;
+			else delete payload.betas;
 			payload.service_tier = "standard_only";
 			delete payload.speed;
 			if (fast) payload.speed = "fast";

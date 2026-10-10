@@ -149,7 +149,7 @@ Home Manager also owns `~/.pi/agent/pi-sub-core-settings.json` to refresh quota 
 
 Anthropic quota data requires an OAuth token, not the `ANTHROPIC_API_KEY` used for model calls. The `pi` wrapper reads `~/.claude/.credentials.json` or `$CLAUDE_CONFIG_DIR/.credentials.json` and exports `ANTHROPIC_OAUTH_TOKEN` when the Claude Code login token has the `user:profile` scope. Without that local login, the Anthropic quota segment stays hidden. OpenAI Codex quota data comes from Pi's `auth.json`, Codex environment variables, or the legacy Codex auth file as supported by `sub-core`.
 
-The local `service-tier-status` extension owns `/fast on`, `/fast off`, and `/fast status`. Bare `/fast` shows status. Repeated `on` or `off` commands are safe. Invalid arguments do not change the selection. Changes wait for idle so request headers and bodies agree.
+The local `service-tier-status` extension owns `/fast on`, `/fast off`, and `/fast status`. Bare `/fast` shows status. Repeated `on` or `off` commands are safe. Invalid arguments do not change the selection. Changes wait for idle so request betas and bodies agree. The extension edits the request body's `betas` list, not the `anthropic-beta` header, because a header replaces every beta that Pi computes, including `mid-conversation-output-config-2026-07-01` for per-message effort.
 
 Fast starts off in every session, including children, resume, fork, and `/reload`. Model or provider changes reset Fast off. The selection stays in memory only. The extension does not read or change legacy `~/.pi/agent/service-tier.json`, model selection, or thinking levels. `pi-service-tier` is no longer installed through this configuration. Do not load it separately because its request hooks and commands conflict with this policy.
 
