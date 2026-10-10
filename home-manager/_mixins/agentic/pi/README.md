@@ -85,9 +85,9 @@ Pi packages are installed through the Home Manager-owned package setting:
 ```json
 {
   "packages": [
-    "git:github.com/nicobailon/pi-mcp-adapter@85db03d87cd0f7461b55eab8d25c10bce473b801",
-    "npm:@tintinweb/pi-subagents@0.19.0",
-    "npm:pi-lens@4.3.0",
+    "git:github.com/nicobailon/pi-mcp-adapter@80fcdef8d9f6958751f1e225f88b272440caa542",
+    "npm:@tintinweb/pi-subagents@0.20.0",
+    "npm:pi-lens@4.4.1",
     {
       "source": "npm:typescript@7.0.2",
       "extensions": [],
@@ -98,7 +98,7 @@ Pi packages are installed through the Home Manager-owned package setting:
     "npm:pi-footer@0.5.1",
     "npm:@marckrenn/pi-sub-core@1.5.0",
     "npm:pi-cc-header@1.1.1",
-    "npm:@heyhuynhgiabuu/pi-pretty@0.6.30",
+    "npm:@heyhuynhgiabuu/pi-pretty@0.6.31",
     "npm:@juicesharp/rpiv-ask-user-question@2.12.0",
     "npm:@juicesharp/rpiv-btw@2.12.0",
     "npm:@tintinweb/pi-tasks@0.9.0"
@@ -106,11 +106,11 @@ Pi packages are installed through the Home Manager-owned package setting:
 }
 ```
 
-Exact npm versions and Git commits keep package updates pinned. Pi reconciles a Git checkout to the configured revision rather than advancing it. The adapter uses an exact Git commit with Pi 1.0 support and the host peer dependency fix. Pi clones it under `~/.pi/agent/git/` and installs its runtime dependencies. Review Git sources and npm installation scripts before changing a pin.
+Exact npm versions and Git commits keep package updates pinned. Pi reconciles a Git checkout to the configured revision rather than advancing it. The adapter uses the exact v5.2.0 release commit, which includes the fix for GHSA-6qxp-vccf-f47h. Pi clones it under `~/.pi/agent/git/` and installs its runtime dependencies. Review Git sources and npm installation scripts before changing a pin.
 
 The other packages use Pi's npm integration. `typescript` supplies the compiler API that `pi-lens` imports at runtime but omits from its runtime dependencies. Its Pi resources stay disabled because it is a runtime dependency, not an extension.
 
-`pi-lens` 4.3.0 has an optional `@earendil-works/pi-tui` peer range that excludes Pi 1.0.1. An isolated extension-load check passed on Pi 1.0.1, but this does not verify every terminal interaction or language server. Since 4.1.6, use `lens_diagnostics` with `source: "lsp"` instead of `lsp_diagnostics`, and `ast_grep_search` with `dump: true` instead of `ast_grep_dump`.
+`pi-lens` 4.4.1 accepts any `@earendil-works/pi-tui` version, and upstream verifies it on Pi 1.0 and 1.1. Since 4.1.6, use `lens_diagnostics` with `source: "lsp"` instead of `lsp_diagnostics`, and `ast_grep_search` with `dump: true` instead of `ast_grep_dump`.
 
 `pi-cc-header` loads from its npm package with `ccHeader.readOnlyConfig` set in the Home Manager-owned `settings.json`. That upstream read-only mode (added in 1.1.1 for declarative setups) stops the extension writing `settings.json`, so header commands such as `/htg` apply for the current session only. It replaces the local writable-state patch that earlier releases needed.
 
@@ -326,7 +326,7 @@ The Pi-specific file emits full server entries, not partial overrides, because `
 
 ## Subagents
 
-[Tintinweb pi-subagents](https://github.com/tintinweb/pi-subagents) is pinned to `npm:@tintinweb/pi-subagents@0.19.0`.
+[Tintinweb pi-subagents](https://github.com/tintinweb/pi-subagents) is pinned to `npm:@tintinweb/pi-subagents@0.20.0`, which requires Pi 1.1.0 or later.
 Home Manager writes its settings to `~/.pi/agent/subagents.json`.
 The former package, configuration output, and `subagents.disableBuiltins` setting are no longer configured.
 Historical logs and sessions remain untouched.

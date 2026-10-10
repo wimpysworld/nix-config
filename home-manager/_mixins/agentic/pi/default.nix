@@ -35,13 +35,13 @@ let
     else
       import ../fence/chromium.nix { inherit pkgs; };
   fenceLogging = import ../fence/logging.nix { inherit pkgs; };
-  piMcpAdapterRevision = "85db03d87cd0f7461b55eab8d25c10bce473b801";
+  piMcpAdapterRevision = "80fcdef8d9f6958751f1e225f88b272440caa542";
   # Verify Agent, SubagentWorkflow, and native header compatibility on updates.
   # The provider router uses separate model and thinking fields for Agent,
   # and model and effort fields for workflow children.
-  piSubagentsVersion = "0.19.0";
-  piLensVersion = "4.3.0";
-  # pi-lens imports the compiler API at runtime, but 4.3.0 omits TypeScript
+  piSubagentsVersion = "0.20.0";
+  piLensVersion = "4.4.1";
+  # pi-lens imports the compiler API at runtime, but 4.4.1 omits TypeScript
   # from its runtime dependencies. Keep it as a direct Pi npm dependency until the
   # upstream package restores TypeScript to dependencies.
   piLensTypescriptVersion = "7.0.2";
@@ -55,7 +55,7 @@ let
   # pi-pretty re-renders built-in tool output (read, bash, ls, find, grep) and
   # replaces find/grep with its bundled FFF frecency search. Do not install
   # pi-fff alongside it: both would claim the same built-in tool names.
-  piPrettyVersion = "0.6.30";
+  piPrettyVersion = "0.6.31";
   rpivAskUserQuestionVersion = "2.12.0";
   rpivBtwVersion = "2.12.0";
   piTasksVersion = "0.9.0";
@@ -645,7 +645,7 @@ let
   };
 
   piIsolationStatusExtension = ''
-    import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+    import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
     declare const process: {
       env: Record<string, string | undefined>;
@@ -768,7 +768,7 @@ let
     # Use the routed tool entry points, not independent launch paths.
     agentMentions = "off";
     schedulingEnabled = false;
-    # Upstream 0.19.0 force-removes worktrees after preservation errors.
+    # Upstream 0.20.0 force-removes worktrees after preservation errors.
     # The router rejects isolation requests rather than silently downgrading them.
     worktreeIsolation = false;
   };

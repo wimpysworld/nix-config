@@ -99,7 +99,7 @@ export function resolveNativeTask(
 	const native = { ...task };
 	if (native.isolation && native.isolation !== "off")
 		throw new Error(
-			"provider-router: automatic worktrees are unsafe in upstream 0.19.0; use a separate checkout session",
+			"provider-router: automatic worktrees are unsafe in upstream 0.20.0; use a separate checkout session",
 		);
 	if (native.isolated === true || native.extensions === false)
 		throw new Error(

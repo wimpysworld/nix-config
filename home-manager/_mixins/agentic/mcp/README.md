@@ -1,6 +1,6 @@
 # MCP Servers
 
-Five unconditional MCP servers provide reference material and agent delegation. Slack is emitted only on hosts tagged `cg`. Definitions live once in `servers.nix` and are distributed to each enabled Claude Code, OpenCode, Zed, Codex, and Pi Agent client via per-consumer renderers.
+Three unconditional MCP servers provide reference material and Linear access. Slack and six Chainguard servers are emitted only on hosts tagged `cg`. Definitions live once in `servers.nix` and are distributed to each enabled Claude Code, OpenCode, Zed, Codex, and Pi Agent client via per-consumer renderers.
 
 The Nix composition is the delivery mechanism, not the strategy. Most servers here are information retrieval tools: documentation search, web reading, and package lookup. The practical reason: a language model with a training cutoff hallucinates library APIs that changed after the cutoff. A model that fetches live documentation does not need to guess.
 
@@ -86,32 +86,21 @@ The same pattern applies to Zed: `servers.context7.consumers.zed.enabled = false
 
 ## Servers
 
-Five unconditional servers and one conditional server. `On` means enabled by default. `Off` means rendered as disabled where the client supports that state. `Omitted` means the client receives no entry.
+Three unconditional servers and seven conditional servers. `On` means enabled by default. `Off` means rendered as disabled where the client supports that state. `Omitted` means the client receives no entry.
 
 | Server       | Transport | Auth   | Claude Code | Codex | OpenCode | Pi      | Zed       | Purpose                                      |
 | ------------ | --------- | ------ | ----------- | ----- | -------- | ------- | --------- | -------------------------------------------- |
-| `claude`     | stdio     | login  | Omitted     | On    | Off      | Omitted | Off       | Claude Code tools and agent delegation       |
-| `codex`      | stdio     | login  | On          | Off   | Off      | Omitted | Off       | Codex tools and agent delegation              |
 | `context7`   | HTTP      | bearer | On          | On    | On       | On      | Extension | Live library documentation                   |
 | `exa`        | HTTP      | -      | On          | On    | On       | On      | On        | Web search and URL content extraction        |
 | `linear`     | HTTP      | bearer | On          | On    | On       | On      | On        | Linear issues, projects, and comments        |
 | `slack`      | HTTP      | OAuth  | On          | On    | On       | On      | Off       | Conditional workspace Slack access           |
+| `cg-*`, `agent-trace-mcp*` | stdio | chainctl | Omitted | On | On | On | On | Conditional Chainguard servers through `cg-mcp-proxy` |
 
-`claude` and `codex` run as local binaries. The other unconditional servers use remote HTTP. `slack` is a conditional addition.
+The unconditional servers use remote HTTP. `slack` and the Chainguard servers are conditional additions. The Chainguard servers are `cg-apk`, `cg-oci`, `cg-versions`, `cg-build-logs`, `agent-trace-mcp`, and `agent-trace-mcp-stage`. Each runs `cg-mcp-proxy <url>`, which gets the token from chainctl. Claude Code omits them because Chainguard repositories define them at project scope.
 
 NixOS MCP is project-owned rather than part of this Home Manager registry. Projects that use it provide the package in their development shell and define their own client configuration.
 
 ### Active servers
-
-#### claude
-
-The Claude MCP runs `claude --strict-mcp-config mcp serve` from the direct `pkgs.claude-code` package. It does not use the interactive Claude wrapper. The strict MCP flag prevents the child Claude process from loading configured MCP servers.
-
-Only Codex enables this server. Claude Code omits it to prevent recursive Claude calls. OpenCode and Zed keep disabled entries, while Pi omits it. Codex uses `default_tools_approval_mode = "prompt"`, so every Claude MCP tool call requires approval.
-
-The raw server currently exposes 25 tools, including `Agent`. Claude Code does not provide a server-side tool allowlist for this mode, so the registry cannot expose only `Agent`.
-
-The server uses Claude Code's existing authentication and normal account quota. It adds no repository secret or separate quota. Calls fail when the local login is unavailable or its usage limit is exhausted.
 
 #### context7
 

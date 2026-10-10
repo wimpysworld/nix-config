@@ -58,7 +58,7 @@ Use the routed tools for delegation. Nested `workflow()` calls are rejected beca
 Launch saved workflows through `SubagentWorkflow` instead.
 Agent mentions and scheduling are disabled. Do not use slash-command launch shortcuts or event-bus launches, which bypass routing.
 
-Automatic worktrees are disabled because upstream 0.19.0 cleanup can discard changes after a preservation error.
+Automatic worktrees are disabled because upstream 0.20.0 cleanup can discard changes after a preservation error.
 The router rejects isolation requests rather than silently using the shared checkout.
 Use separate Pi sessions in separate checkouts for concurrent writers.
 Children must retain policy extensions. `isolated: true` and `extensions: false` requests fail.
