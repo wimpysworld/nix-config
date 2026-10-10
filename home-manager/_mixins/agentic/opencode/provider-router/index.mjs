@@ -45,6 +45,8 @@ function savedRoute(history, parentID, agent, references) {
         marker.parentID !== parentID ||
         marker.providerID !== info.model.providerID ||
         marker.modelID !== info.model.modelID ||
+        (marker.variant !== undefined &&
+          marker.variant !== info.model.variant) ||
         origin.length !== 1 ||
         origin[0].info.providerID !== marker.providerID ||
         origin[0].part.state.input.subagent_type !== agent
@@ -59,6 +61,7 @@ function savedRoute(history, parentID, agent, references) {
       (route) =>
         route.providerID !== saved[0].providerID ||
         route.modelID !== saved[0].modelID ||
+        route.variant !== saved[0].variant ||
         route.taskID !== saved[0].taskID,
     )
   ) {
@@ -80,9 +83,17 @@ async function validateModel(client, route) {
       `Provider router: unavailable exact model ${route.providerID}/${route.modelID}.`,
     );
   }
+  if (
+    route.variant !== undefined &&
+    !Object.hasOwn(provider.models[route.modelID].variants ?? {}, route.variant)
+  ) {
+    throw new Error(
+      `Provider router: unavailable variant ${route.variant} for ${route.providerID}/${route.modelID}.`,
+    );
+  }
 }
 
-export default function createRouter(client, routes) {
+export default function createRouter(client, routes, variants = {}) {
   const entering = new Set();
   const active = new Map();
 
@@ -153,12 +164,20 @@ export default function createRouter(client, routes) {
           if (typeof modelID !== "string" || !/^[^\s/]+$/.test(modelID)) {
             throw new Error("Provider router: invalid exact model route.");
           }
+          const variant = variants[agent]?.[info.providerID];
+          if (
+            variant !== undefined &&
+            (typeof variant !== "string" || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(variant))
+          ) {
+            throw new Error("Provider router: invalid variant route.");
+          }
           route = {
             parentID: parent.id,
             taskID: task.id,
             agent,
             providerID: info.providerID,
             modelID,
+            ...(variant === undefined ? {} : { variant }),
           };
         }
         const text = output.parts.find((part) => part.type === "text");
@@ -168,6 +187,7 @@ export default function createRouter(client, routes) {
         Object.assign(output.message.model, {
           providerID: route.providerID,
           modelID: route.modelID,
+          ...(route.variant === undefined ? {} : { variant: route.variant }),
         });
         text.metadata = {
           ...text.metadata,

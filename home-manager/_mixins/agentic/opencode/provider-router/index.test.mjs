@@ -46,7 +46,7 @@ function draft(sessionID = "child", providerID = "openai", agent = "garfield") {
   };
 }
 
-function fixture(provider = "openai", map = routes) {
+function fixture(provider = "openai", map = routes, variants = {}) {
   const state = {
     sessions: {
       root: {
@@ -60,7 +60,7 @@ function fixture(provider = "openai", map = routes) {
       connected: ["openai", "anthropic"],
       all: Object.entries(routes.garfield).map(([id, model]) => ({
         id,
-        models: { [model]: { id: model } },
+        models: { [model]: { id: model, variants: { low: {}, max: {} } } },
       })),
     },
   };
@@ -83,7 +83,7 @@ function fixture(provider = "openai", map = routes) {
       },
     },
   };
-  return { state, client, reads, hooks: createRouter(client, map) };
+  return { state, client, reads, hooks: createRouter(client, map, variants) };
 }
 
 async function send(f, output = draft(), hooks = f.hooks) {
@@ -145,6 +145,25 @@ test("invalid exact model, qualified model, and disconnected provider reject wit
   const f = fixture();
   f.state.catalogue.connected = ["anthropic"];
   await assert.rejects(send(f), /unavailable exact model openai/);
+});
+
+test("a variant route sets and restores the variant, and an unavailable variant rejects", async () => {
+  const variants = { garfield: { anthropic: "max" } };
+  const f = fixture("anthropic", routes, variants);
+  const first = await send(f, draft("child", "anthropic"));
+  assert.equal(first.message.model.modelID, "claude-sonnet-5");
+  assert.equal(first.message.model.variant, "max");
+  persist(f, first);
+  resume(f, "openai");
+  const resumed = await send(f, draft("child", "openai"));
+  assert.equal(resumed.message.model.providerID, "anthropic");
+  assert.equal(resumed.message.model.variant, "max");
+  for (const variant of ["missing", "Bad Variant", 42]) {
+    const g = fixture("anthropic", routes, { garfield: { anthropic: variant } });
+    const output = draft("child", "anthropic");
+    await assert.rejects(send(g, output), /variant/);
+    assert.equal(output.message.model.variant, "high");
+  }
 });
 
 test("new child follows its containing assistant, not the latest parent message", async () => {

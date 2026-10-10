@@ -228,7 +228,7 @@ The [OpenCode router](../opencode/README.md#provider-router-prototype) installs 
 | `[compose.coordinator]` | Optional `before-launch` and `after-return` prose for launch wrappers, not native metadata. |
 | `[routing.claude]`, `[routing.codex]` | Agent model and effort defaults. |
 | `[routing.opencode]` | Existing native agent and command model metadata. |
-| `[routing.opencode.providers.<inference-provider>]` | Agent-only exact model routes for the local OpenCode plugin. These fields never enter native headers. |
+| `[routing.opencode.providers.<inference-provider>]` | Agent-only exact model routes, with an optional model `variant`, for the local OpenCode plugin. These fields never enter native headers. |
 | `[routing.pi.<inference-provider>]` | Agent model and thinking defaults for the exact inference provider. |
 
 Common hints apply to Claude Code, OpenCode, and Pi. Provider-specific hints preserve differences in presence or value. Missing tables mean no overrides, not disabled output. Omit unset values because TOML has no null.

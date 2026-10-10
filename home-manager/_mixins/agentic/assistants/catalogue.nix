@@ -76,8 +76,9 @@ let
           inherit client provider;
           model = route.model or null;
           effort =
-            route.effort
-              or (route.model_reasoning_effort or (route.reasoningEffort or (route.thinking or null)));
+            route.effort or (route.model_reasoning_effort
+              or (route.reasoningEffort or (route.thinking or (route.variant or null)))
+            );
         };
       in
       builtins.deepSeq validated (

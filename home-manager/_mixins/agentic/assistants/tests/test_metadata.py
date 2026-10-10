@@ -1086,7 +1086,15 @@ reasoningEffort = "high"
                 )
         self.assertEqual(
             self.evaluate('c.extractOpenCodeProviderModels "garfield"'),
-            {"openai": "gpt-6-luna", "anthropic": "claude-sonnet-5"},
+            {"openai": "gpt-6-luna", "anthropic": "claude-haiku-5-5"},
+        )
+        self.assertEqual(
+            self.evaluate('c.extractOpenCodeProviderVariants "garfield"'),
+            {"anthropic": "high"},
+        )
+        self.evaluate(
+            "h",
+            '[routing.opencode.providers.openai]\nmodel = "ok"\nvariant = "high"\n',
         )
 
     def test_invalid_opencode_provider_routes_fail_schema_validation(self):
@@ -1096,7 +1104,9 @@ reasoningEffort = "high"
             '[routing.opencode.providers.openai]\nmodel = "with space"\n',
             "[routing.opencode.providers.openai]\nmodel = 42\n",
             '[routing.opencode.providers.openai]\nthinking = "high"\n',
-            '[routing.opencode.providers.openai]\nmodel = "ok"\nvariant = "high"\n',
+            '[routing.opencode.providers.openai]\nmodel = "ok"\nvariant = "Bad Variant"\n',
+            "[routing.opencode.providers.openai]\nmodel = \"ok\"\nvariant = 42\n",
+            '[routing.opencode.providers.openai]\nvariant = "high"\n',
             '[routing.opencode.providers."bad/provider"]\nmodel = "ok"\n',
             '[routing.opencode]\nproviders = "openai"\n',
             '[routing.opencode]\nmodel = "pin"\n[routing.opencode.providers.openai]\nmodel = "ok"\n',
@@ -1113,7 +1123,7 @@ reasoningEffort = "high"
             result,
             {
                 "models": {
-                    "anthropic": "claude-sonnet-5",
+                    "anthropic": "claude-haiku-5-5",
                     "google": "gemini-3-flash",
                     "openai-codex": "gpt-6-luna",
                 },

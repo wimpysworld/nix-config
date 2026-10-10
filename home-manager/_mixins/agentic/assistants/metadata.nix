@@ -109,9 +109,22 @@ let
           provider:
           builtins.match "[a-z0-9]+(-[a-z0-9]+)*" provider != null
           && builtins.isAttrs opencodeProviders.${provider}
-          && builtins.attrNames opencodeProviders.${provider} == [ "model" ]
+          && lib.elem (builtins.attrNames opencodeProviders.${provider}) [
+            [ "model" ]
+            [
+              "model"
+              "variant"
+            ]
+          ]
           && nonEmptyString opencodeProviders.${provider}.model
           && builtins.match "[^[:space:]/]+" opencodeProviders.${provider}.model != null
+          && (
+            !(opencodeProviders.${provider} ? variant)
+            || (
+              builtins.isString opencodeProviders.${provider}.variant
+              && builtins.match "[a-z0-9]+(-[a-z0-9]+)*" opencodeProviders.${provider}.variant != null
+            )
+          )
         ) (builtins.attrNames opencodeProviders)
         && (opencodeProviders == { } || !(routing.opencode ? model || routing.opencode ? reasoningEffort));
       routesValid = lib.all (

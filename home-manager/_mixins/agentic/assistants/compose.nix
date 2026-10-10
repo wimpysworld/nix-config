@@ -76,10 +76,14 @@ let
           prompt
       );
 
+  openCodeProviderRoutes =
+    agentName: (readHeader (basePath + "/agents/${agentName}")).routing.opencode.providers or { };
   extractOpenCodeProviderModels =
+    agentName: lib.mapAttrs (_: route: route.model) (openCodeProviderRoutes agentName);
+  extractOpenCodeProviderVariants =
     agentName:
-    lib.mapAttrs (_: route: route.model) (
-      (readHeader (basePath + "/agents/${agentName}")).routing.opencode.providers or { }
+    lib.mapAttrs (_: route: route.variant) (
+      lib.filterAttrs (_: route: route ? variant) (openCodeProviderRoutes agentName)
     );
 
   agentProviderRoutes = agentName: (readHeader (basePath + "/agents/${agentName}")).routing.pi or { };
@@ -872,6 +876,7 @@ in
     adaptAgentPrompt
     extractAgentProviderModels
     extractOpenCodeProviderModels
+    extractOpenCodeProviderVariants
     extractAgentProviderThinking
     ;
 

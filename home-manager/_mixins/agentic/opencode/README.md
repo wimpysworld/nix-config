@@ -45,14 +45,15 @@ The shared agent header owns the routes. Garfield alone declares:
 model = "gpt-5.6-terra"
 
 [routing.opencode.providers.anthropic]
-model = "claude-sonnet-5-5"
+model = "claude-haiku-5-5"
+variant = "high"
 ```
 
-`assistants/metadata.nix` validates these tables. `compose.nix` extracts the map, and the OpenCode module supplies it to `provider-router/index.mjs`. Provider routes cannot coexist with native agent model or effort pins. Commands and skills cannot declare provider routes. No provider-route fields enter native headers.
+`assistants/metadata.nix` validates these tables. `compose.nix` extracts the model map and the optional variant map, and the OpenCode module supplies both to `provider-router/index.mjs`. Provider routes cannot coexist with native agent model or effort pins. Commands and skills cannot declare provider routes. No provider-route fields enter native headers.
 
 The plugin changes only `chat.message` output for a direct child of a root session. It matches one running native `task` part by `state.metadata.sessionId`. The containing assistant message supplies the provider, not the latest parent message or the session model. Simultaneous siblings remain independent. Missing or ambiguous matches, root sessions, nested sessions, and missing routes retain native behaviour. Google has no route and no preview-model substitution.
 
-An unavailable exact provider or model rejects the prompt. The plugin never searches another provider. It leaves native task arguments, permissions, cancellation, and model variants unchanged. Per-call overrides and thinking controls are outside this prototype.
+An unavailable exact provider, model, or variant rejects the prompt. The plugin never searches another provider. A route with `variant` sets the model variant of the user message, which selects the effort for an Anthropic adaptive model. A route without `variant` leaves the native variant unchanged. The plugin leaves native task arguments, permissions, and cancellation unchanged. Per-call overrides are outside this prototype.
 
 The plugin saves its route in supported text-part metadata, alongside the routed user message. Resume restores that saved model, even after the parent changes provider. Existing children without route metadata retain native behaviour. Invalid saved metadata rejects the prompt. Keep child and originating parent history together. Removing or importing partial history can prevent safe restoration.
 

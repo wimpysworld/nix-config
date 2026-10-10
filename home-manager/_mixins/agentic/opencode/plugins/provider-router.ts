@@ -8,7 +8,8 @@ export default async function ProviderRouter({
 }) {
   try {
     const routes = JSON.parse(readFileSync("@routerMap@", "utf8"));
-    return createRouter(client, routes);
+    const variants = JSON.parse(readFileSync("@routerVariants@", "utf8"));
+    return createRouter(client, routes, variants);
   } catch (cause) {
     throw new Error("Provider router: cannot load the generated route map.", {
       cause,

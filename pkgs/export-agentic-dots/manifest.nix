@@ -694,7 +694,10 @@ let
       const routes = JSON.parse(
         readFileSync(new URL("./provider-router/routes.json", import.meta.url), "utf8"),
       );
-      return createRouter(client, routes);
+      const variants = JSON.parse(
+        readFileSync(new URL("./provider-router/variants.json", import.meta.url), "utf8"),
+      );
+      return createRouter(client, routes, variants);
     }
   '';
 
@@ -770,6 +773,16 @@ let
         builtins.toJSON (
           lib.filterAttrs (_: routes: routes != { }) (
             lib.genAttrs publicAgents compose.extractOpenCodeProviderModels
+          )
+        )
+        + "\n";
+    })
+    (mkFile {
+      path = "${roots.opencode}/plugins/provider-router/variants.json";
+      content =
+        builtins.toJSON (
+          lib.filterAttrs (_: variants: variants != { }) (
+            lib.genAttrs publicAgents compose.extractOpenCodeProviderVariants
           )
         )
         + "\n";

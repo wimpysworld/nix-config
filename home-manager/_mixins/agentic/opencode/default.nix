@@ -33,10 +33,13 @@ let
   providerRouterMap = pkgs.writeText "opencode-provider-routes.json" (
     builtins.toJSON config.agentic.assistants.opencode.providerRouterMap
   );
+  providerRouterVariantMap = pkgs.writeText "opencode-provider-variants.json" (
+    builtins.toJSON config.agentic.assistants.opencode.providerRouterVariantMap
+  );
   providerRouterPlugin =
     builtins.replaceStrings
-      [ "@routerModule@" "@routerMap@" ]
-      [ "${./provider-router/index.mjs}" "${providerRouterMap}" ]
+      [ "@routerModule@" "@routerMap@" "@routerVariants@" ]
+      [ "${./provider-router/index.mjs}" "${providerRouterMap}" "${providerRouterVariantMap}" ]
       (builtins.readFile ./plugins/provider-router.ts);
   geminiKeyPath = config.sops.secrets.GEMINI_API_KEY.path;
   opencodeApiKeyShell = ''
@@ -353,13 +356,35 @@ in
             anthropic = {
               whitelist = [
                 "claude-fable-5-1"
-                "claude-haiku-4-5"
+                "claude-haiku-5-5"
                 "claude-opus-4-8"
                 "claude-opus-4-8-fast"
                 "claude-opus-5-5"
                 "claude-opus-5-5-fast"
                 "claude-sonnet-5-5"
               ];
+              # The bundled models.dev catalogue in OpenCode 1.18.35 predates
+              # Claude Haiku 5.5. Remove this entry when OpenCode includes the
+              # model. Reasoning enables the built-in adaptive effort variants.
+              models."claude-haiku-5-5" = {
+                name = "Claude Haiku 5.5";
+                attachment = true;
+                reasoning = true;
+                temperature = false;
+                tool_call = true;
+                release_date = "2026-10-07";
+                modalities = {
+                  input = [
+                    "text"
+                    "image"
+                  ];
+                  output = [ "text" ];
+                };
+                limit = {
+                  context = 1000000;
+                  output = 128000;
+                };
+              };
             };
             google = {
               whitelist = [
