@@ -257,7 +257,7 @@ test("unavailable models and unsupported thinking block launches", () => {
 		{ model: "" },
 		{ model: null },
 		{ thinking: true },
-		{ model: "anthropic/claude-sonnet-5" },
+		{ model: "anthropic/claude-sonnet-5-5" },
 		{ thinking: "max" },
 	])
 		assert.throws(

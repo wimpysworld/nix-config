@@ -1100,7 +1100,7 @@ reasoningEffort = "high"
     def test_invalid_opencode_provider_routes_fail_schema_validation(self):
         for header in (
             '[routing.opencode.providers.openai]\nmodel = ""\n',
-            '[routing.opencode.providers.openai]\nmodel = "anthropic/claude-sonnet-5"\n',
+            '[routing.opencode.providers.openai]\nmodel = "anthropic/claude-sonnet-5-5"\n',
             '[routing.opencode.providers.openai]\nmodel = "with space"\n',
             "[routing.opencode.providers.openai]\nmodel = 42\n",
             '[routing.opencode.providers.openai]\nthinking = "high"\n',

@@ -4,7 +4,7 @@ import { test } from "node:test";
 import createRouter from "./index.mjs";
 
 const routes = {
-  garfield: { openai: "gpt-5.6-terra", anthropic: "claude-sonnet-5" },
+  garfield: { openai: "gpt-5.6-terra", anthropic: "claude-haiku-5-5" },
 };
 
 function task(provider = "openai", child = "child", id = "task-1") {
@@ -136,7 +136,7 @@ for (const [name, provider, agent] of [
 }
 
 test("invalid exact model, qualified model, and disconnected provider reject without fallback", async () => {
-  for (const model of ["missing", "anthropic/claude-sonnet-5", "", 42]) {
+  for (const model of ["missing", "anthropic/claude-sonnet-5-5", "", 42]) {
     const f = fixture("openai", { garfield: { openai: model } });
     const output = draft();
     await assert.rejects(send(f, output), /exact model/);
@@ -151,7 +151,7 @@ test("a variant route sets and restores the variant, and an unavailable variant 
   const variants = { garfield: { anthropic: "max" } };
   const f = fixture("anthropic", routes, variants);
   const first = await send(f, draft("child", "anthropic"));
-  assert.equal(first.message.model.modelID, "claude-sonnet-5");
+  assert.equal(first.message.model.modelID, "claude-haiku-5-5");
   assert.equal(first.message.model.variant, "max");
   persist(f, first);
   resume(f, "openai");
@@ -171,7 +171,7 @@ test("new child follows its containing assistant, not the latest parent message"
   f.state.messages.root.push(task("openai", "sibling", "task-2"));
   const result = await send(f);
   assert.equal(result.message.model.providerID, "anthropic");
-  assert.equal(result.message.model.modelID, "claude-sonnet-5");
+  assert.equal(result.message.model.modelID, "claude-haiku-5-5");
 });
 
 test("root and nested sessions remain unchanged, including concurrent root hooks", async () => {
@@ -195,7 +195,7 @@ test("simultaneous siblings correlate independently", async () => {
     send(f, draft("sibling")),
   ]);
   assert.equal(first.message.model.modelID, "gpt-5.6-terra");
-  assert.equal(second.message.model.modelID, "claude-sonnet-5");
+  assert.equal(second.message.model.modelID, "claude-haiku-5-5");
 });
 
 test("ambiguous, missing, or wrong-agent task correlation retains native behaviour", async () => {

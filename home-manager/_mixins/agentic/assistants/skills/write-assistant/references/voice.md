@@ -32,7 +32,7 @@ Replace "if needed", "as required", "when relevant" with explicit triggers.
 
 ## Aggressive language
 
-Anthropic Opus 5 and Sonnet 5 over-trigger on caps. Opus 5.5 and Sonnet 5.5 improve on this. Plain imperatives stay the default. Dial back:
+Anthropic Opus 5.5 and Sonnet 5.5 can still over-trigger on caps. Plain imperatives stay the default. Dial back:
 
 | Don't                        | Do                                 |
 | ---------------------------- | ---------------------------------- |

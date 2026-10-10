@@ -239,8 +239,7 @@ test("unsupported and unregistered models cannot enable Fast", async () => {
 		model("openai", "gpt-future"),
 		model("openai-codex", "gpt-future"),
 		...[
-			"claude-opus-4-6",
-			"claude-opus-4-7",
+			"claude-opus-5-5-fast",
 			"claude-fable-5-1",
 			"claude-sonnet-5-5",
 			"claude-haiku-5-5",
@@ -313,7 +312,7 @@ test("all verified exact IDs enable Fast", async () => {
 			assert.equal(h.request().service_tier, "priority");
 		}
 	}
-	for (const id of ["claude-opus-5-5", "claude-opus-4-8"]) {
+	for (const id of ["claude-opus-5-5"]) {
 		const h = harness(model("anthropic", id));
 		await h.command("on");
 		assert.equal(h.request().speed, "fast");

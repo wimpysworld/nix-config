@@ -141,9 +141,9 @@ compliance.
 
 ### 3.3 No hedging, no filler, no aggressive caps
 
-"IMPORTANT" and "YOU MUST" worked on older Claude models but Opus 5 and
-Sonnet 5 over-trigger on aggressive language. Opus 5.5 and Sonnet 5.5 improve
-on this. Default to plain imperatives.
+"IMPORTANT" and "YOU MUST" worked on older Claude models, but Opus 5.5 and
+Sonnet 5.5 can still over-trigger on aggressive language. Default to plain
+imperatives.
 Cut "the fact that", "in order to", "it should be noted that", and the LLM
 tells listed in `writing-well` (pivotal, crucial, seamless,
 robust, leverage, foster, and the rest).
