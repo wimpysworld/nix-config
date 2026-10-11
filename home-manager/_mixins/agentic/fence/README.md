@@ -212,6 +212,12 @@ are protected via on-disk file permissions. The user-facing sops-nix render
 directory at `~/.config/sops-nix` is intentionally read-allowed so API keys are
 exposed inside the sandbox.
 
+The Herdr Mobile Relay directory at `~/.config/herdr-mobile-relay` is denied.
+It holds the relay key, which redeems a setup link with controller access to
+every Herdr pane, and the device store. The relay keeps it outside the writable
+`~/.config/herdr` tree. See the
+[Herdr Mobile Relay README](../../../../nixos/_mixins/server/herdr-mobile-app/README.md).
+
 ## Never name a path under `/run` in this policy
 
 Fence rebuilds any mount boundary it has to cross. For each `allowExecute`,

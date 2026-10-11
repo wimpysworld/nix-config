@@ -59,6 +59,12 @@ jobs:
           - id: hermes-agent
             name: Hermes Agent
             changelog: https://github.com/NousResearch/hermes-agent/releases
+          # The relay can type into every Herdr pane, so a person reviews
+          # the upstream diff before each upgrade merges.
+          - id: herdr-mobile-relay
+            name: Herdr Mobile Relay
+            changelog: https://github.com/0cv/herdr-mobile-relay/releases
+            automerge: false
           - id: slk
             name: slk
             changelog: https://github.com/gammons/slk/releases
@@ -99,6 +105,7 @@ jobs:
           PKG_ID: ${{ matrix.id }}
           PKG_NAME: ${{ matrix.name }}
           CHANGELOG: ${{ matrix.changelog }}
+          AUTOMERGE: ${{ matrix.automerge }}
           VERSION: ${{ steps.update.outputs.version }}
           FILES: ${{ steps.update.outputs.files }}
         run: .github/freshener/open-pr.sh

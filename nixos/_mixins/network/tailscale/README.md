@@ -113,6 +113,8 @@ tsExitNodes = [
 
 When `services.caddy.enable` is true, `permitCertUid` grants Caddy access to acquire TLS certificates from the Tailscale daemon.
 
+skrye and zannah also serve the Herdr Mobile Relay phone app at `https://<host>.drongo-gamma.ts.net:8443`. See the [Herdr Mobile Relay README](../../server/herdr-mobile-app/README.md).
+
 ### Operator
 
 The `--operator` flag is set to the noughty username, granting that user non-root control of Tailscale. `tailscaled-set.service` applies `extraSetFlags` when that unit runs, not on every profile switch. Set the operator during manual work enrolment as shown above.

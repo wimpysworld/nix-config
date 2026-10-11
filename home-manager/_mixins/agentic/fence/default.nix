@@ -185,6 +185,10 @@ let
         "${config.xdg.configHome}/sops/**"
         "/var/lib/private/sops/**"
 
+        # Herdr Mobile Relay key, device store, and push keys. The relay key
+        # redeems a setup link with controller access to every Herdr pane.
+        "${config.xdg.configHome}/herdr-mobile-relay/**"
+
         # History
         "${homeDirectory}/.bash_history"
         "${homeDirectory}/.zsh_history"

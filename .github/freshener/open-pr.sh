@@ -7,6 +7,8 @@
 #   CHANGELOG  upstream changelog or release URL
 #   VERSION    version or short revision the update moved to
 #   FILES      space-separated list of files to stage
+#   AUTOMERGE  "false" leaves the pull request for manual review; anything
+#              else enables auto-merge
 #   GH_TOKEN   token with permission to push and open pull requests
 set -euo pipefail
 
@@ -48,6 +50,11 @@ Changelog: ${CHANGELOG}" \
   --label "dependencies,automated")
 
 echo "📋 Created PR: ${PR_URL}"
+
+if [[ "${AUTOMERGE:-}" == "false" ]]; then
+  echo "⏸️  Auto-merge is off for ${PKG_ID}; review the pull request manually"
+  exit 0
+fi
 
 PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
 if ! gh pr merge --auto --squash "$PR_NUMBER"; then
