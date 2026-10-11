@@ -25,7 +25,7 @@ access for autonomous development:
 | Filesystem reads | The filesystem root is readable, except for explicit `denyRead` masks and normal Unix permissions. |
 | Network | Outbound domains, local outbound connections, and local listeners are unrestricted. |
 | MCP secrets | The process receives required MCP API keys through its inherited environment and can read required client credentials and state. |
-| Herdr | The Herdr control socket is writable, so agents can report their identity and state. |
+| Herdr | Agents can connect to the Herdr control socket, so they can report their identity and state. The rest of `~/.config/herdr` is masked and read-only. |
 | Temporary files | All fenced agents share a host directory through `TMPDIR`, at `~/.cache/fence-share`. |
 | Writes | The launch directory, the main workspace trees, agent state, and broad XDG cache, data, and state trees are writable. Selected XDG configuration trees are also writable. |
 
@@ -214,9 +214,24 @@ exposed inside the sandbox.
 
 The Herdr Mobile Relay directory at `~/.config/herdr-mobile-relay` is denied.
 It holds the relay key, which redeems a setup link with controller access to
-every Herdr pane, and the device store. The relay keeps it outside the writable
-`~/.config/herdr` tree. See the
+every Herdr pane, and the device store. The relay keeps it outside
+`~/.config/herdr`. See the
 [Herdr Mobile Relay README](../../../../nixos/_mixins/server/herdr-mobile-app/README.md).
+
+Fenced agents can connect to `~/.config/herdr/herdr.sock` only. Herdr runs
+plugin programs from `~/.config/herdr/plugins` outside Fence, so write access
+there is a sandbox escape. No `allowWrite` entry covers `~/.config/herdr`, so
+writes fail. A `denyRead` mask hides every child except two names:
+
+- `herdr.sock`, which the `herdr` CLI and the agent-state hooks for Claude
+  Code, Codex, OpenCode and Pi use through `HERDR_SOCKET_PATH`.
+- `herdr.sock.agent`, the SSH agent symlink that Herdr exports as
+  `SSH_AUTH_SOCK`. Fence masks a symlink at its resolved target, under `/run`,
+  so a mask here breaks the sandbox (see the next section).
+
+On Linux, `connect()` to a Unix socket needs only a visible path, so the mask
+is the whole rule. On macOS, `network.allowUnixSockets` lists the same two
+paths. Linux masks only the names that exist when the sandbox starts.
 
 ## Never name a path under `/run` in this policy
 

@@ -277,8 +277,8 @@ let
     '';
   };
 
-  # The relay key lives outside `~/.config/herdr`, which fenced agents can
-  # write, and Fence denies reads of this directory. The relay keeps its device
+  # The relay key lives outside `~/.config/herdr`, and Fence denies reads of
+  # this directory. The relay keeps its device
   # store, push keys, and pid file beside `relay.env`.
   herdrMobileRelay = pkgs.herdr-mobile-relay;
   herdrMobileRelayRoot = herdrMobileRelay.passthru.pluginRoot;

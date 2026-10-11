@@ -13,6 +13,9 @@ let
 
   darwinSigstoreCacheHome = "${homeDirectory}/Library/Caches/sigstore";
 
+  herdrDir = "${config.xdg.configHome}/herdr";
+  herdrSocket = "${herdrDir}/herdr.sock";
+
   fenceConfig = {
     allowPty = true;
     network = {
@@ -20,6 +23,14 @@ let
       deniedDomains = [ ];
       allowLocalBinding = true;
       allowLocalOutbound = true;
+      # Herdr control socket and the SSH agent symlink that Herdr exports as
+      # SSH_AUTH_SOCK. macOS enforces this list once network restriction is
+      # active. Linux has no socket rule: connect() needs only a visible path,
+      # so the denyRead mask below keeps these two names visible.
+      allowUnixSockets = [
+        herdrSocket
+        "${herdrSocket}.agent"
+      ];
     };
     devices = {
       mode = "minimal";
@@ -107,11 +118,6 @@ let
         "${homeDirectory}/.pi-lens"
         "${homeDirectory}/.pi-lens/**"
 
-        # Herdr control socket, so fenced agents can report identity and state
-        # to the multiplexer over ~/.config/herdr/herdr.sock.
-        "${config.xdg.configHome}/herdr"
-        "${config.xdg.configHome}/herdr/**"
-
         # Package manager caches
         "~/.bun/**"
 
@@ -188,6 +194,18 @@ let
         # Herdr Mobile Relay key, device store, and push keys. The relay key
         # redeems a setup link with controller access to every Herdr pane.
         "${config.xdg.configHome}/herdr-mobile-relay/**"
+
+        # Herdr runs plugin programs from ~/.config/herdr/plugins outside the
+        # sandbox, and the directory also holds plugin secrets, session state,
+        # and logs. Writes are already denied because no allowWrite entry
+        # covers it. Mask every child except herdr.sock, which the herdr CLI and
+        # the agent-state hooks connect to, and herdr.sock.agent, the SSH agent
+        # symlink. Fence masks a symlink at its resolved target, so masking
+        # herdr.sock.agent would plant a mount under /run and blank that tree.
+        # The pattern follows the ~/.ssh mask: exact proper prefixes of the two
+        # kept names, then every name that diverges from them. Linux masks only
+        # names that exist when the sandbox starts.
+        "${herdrDir}/{h,he,her,herd,herdr,herdr.,herdr.s,herdr.so,herdr.soc,herdr.sock.,herdr.sock.a,herdr.sock.ag,herdr.sock.age,herdr.sock.agen,[^h]*,h[^e]*,he[^r]*,her[^d]*,herd[^r]*,herdr[^.]*,herdr.[^s]*,herdr.s[^o]*,herdr.so[^c]*,herdr.soc[^k]*,herdr.sock[^.]*,herdr.sock.[^a]*,herdr.sock.a[^g]*,herdr.sock.ag[^e]*,herdr.sock.age[^n]*,herdr.sock.agen[^t]*,herdr.sock.agent?*}"
 
         # History
         "${homeDirectory}/.bash_history"
