@@ -542,7 +542,7 @@ in
         lib.escapeShellArgs (
           [
             "usagebar"
-            "space-usage"
+            "ez-corp.space-usage"
             "herdr-agent-quota"
           ]
           ++ (if noughtyLib.hostHasTag "cg" then [ "local.home-layout" ] else [ "local.work-layout" ])
