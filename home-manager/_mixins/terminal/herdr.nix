@@ -333,6 +333,155 @@ let
       exec ${herdrMobileRelayRoot}/herdr-mobile-relay serve
     '';
   };
+
+  # Telegram Agents needs one bot per host, because a second poller on the same
+  # token makes the daemon exit. The token and chat ID keys name values in
+  # `secrets/herdr.yaml`; all hosts share `TELEGRAM_OPERATOR_IDS`.
+  herdrTelegramAgentsHosts = {
+    skrye = {
+      tokenKey = "TELEGRAM_BOT_SKRYE";
+      chatIdKey = "TELEGRAM_CHAT_ID_SKRYE";
+      botUsername = "SkryeSithbot";
+    };
+    zannah = {
+      tokenKey = "TELEGRAM_BOT_ZANNAH";
+      chatIdKey = "TELEGRAM_CHAT_ID_ZANNAH";
+      botUsername = "ZannahSithbot";
+    };
+  };
+  herdrTelegramAgentsEnabled = noughtyLib.isHost (builtins.attrNames herdrTelegramAgentsHosts);
+  herdrTelegramAgentsHost = herdrTelegramAgentsHosts.${host.name} or { };
+  herdrTelegramAgents = pkgs.herdr-telegram-agents;
+  inherit (herdrTelegramAgents.passthru) pluginId;
+  # Herdr passes these as HERDR_PLUGIN_CONFIG_DIR and HERDR_PLUGIN_STATE_DIR.
+  herdrTelegramAgentsConfigDir = "${config.xdg.configHome}/herdr/plugins/config/${pluginId}";
+  herdrTelegramAgentsStateDir = "${config.xdg.stateHome}/herdr/plugins/${pluginId}";
+
+  # Non-secret `config.json` fields. The daemon refuses a file whose `version`
+  # differs from its schema version, 1. `chat_title` and `configured_at` are
+  # display values only. Observers are declared here, so a `/observers`
+  # change lasts only until the next activation.
+  herdrTelegramAgentsSettings = {
+    version = 1;
+    bot_username = herdrTelegramAgentsHost.botUsername or "";
+    chat_title = host.name;
+    observer_ids = [ ];
+    log_level = "info";
+    configured_at = "1970-01-01T00:00:00Z";
+  };
+
+  # The plugin reads its bot token only from `config.json`, and the daemon
+  # rewrites that file, so a sops template cannot own it. This decrypts the
+  # host's token, chat ID, and operator IDs from `secrets/herdr.yaml` with the
+  # user's age key and writes the whole file from them and the Nix settings,
+  # so the plugin needs no setup wizard. sops-nix does not render the values,
+  # because Fence keeps `~/.config/sops-nix` readable. The decrypted values
+  # stay in shell variables and reach jq through process substitution, so
+  # they are never in argv, the environment, the Nix store, or a log.
+  herdrTelegramAgentsConfig = pkgs.writeShellApplication {
+    name = "herdr-telegram-agents-config";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.jq
+      pkgs.sops
+    ];
+    text = ''
+      config_dir="$1"
+      state_dir="$2"
+      sops_file="$3"
+      age_key_file="$4"
+      settings="$5"
+      token_key="$6"
+      chat_id_key="$7"
+      operator_ids_key="$8"
+
+      # On Linux, Fence masks a denyRead path only when the path exists as
+      # the sandbox starts, so both directories exist before the daemon runs.
+      install -d -m 700 "$config_dir" "$state_dir"
+
+      # sops errors are discarded so that nothing it prints reaches the log.
+      decrypt() {
+        [[ -r "$age_key_file" ]] \
+          && SOPS_AGE_KEY_FILE="$age_key_file" sops -d --extract "[\"$1\"]" "$sops_file" 2>/dev/null
+      }
+
+      write_config() {
+        local target="$config_dir/config.json" token chat_id operator_ids tmp
+        token="$(decrypt "$token_key")" || token=""
+        chat_id="$(decrypt "$chat_id_key")" || chat_id=""
+        operator_ids="$(decrypt "$operator_ids_key")" || operator_ids=""
+        if [[ -z "$token" || -z "$chat_id" || -z "$operator_ids" ]]; then
+          echo "herdr-telegram-agents: could not decrypt $token_key, $chat_id_key, or $operator_ids_key, leaving config.json unchanged" >&2
+          return 0
+        fi
+
+        # The daemon decodes `chat_id` and `operator_ids` as 64-bit integers
+        # and needs a negative supergroup ID and at least one operator. Up to
+        # 15 digits stay exact in jq. jq errors are discarded, because they
+        # can quote a decrypted value.
+        tmp="$(mktemp "$target.XXXXXX")"
+        # shellcheck disable=SC2016 # jq variables, not shell expansions.
+        if ! jq -n \
+          --argjson settings "$settings" \
+          --rawfile token <(printf '%s' "$token") \
+          --rawfile chat_id <(printf '%s' "$chat_id") \
+          --rawfile operator_ids <(printf '%s' "$operator_ids") '
+            def trim: gsub("^\\s+|\\s+$"; "");
+            ($token | trim) as $token
+            | ($chat_id | trim) as $chat_id
+            | ($operator_ids | split(",") | map(trim) | map(select(. != ""))) as $ops
+            | if $token == "" then error("token")
+              elif ($chat_id | test("^-[0-9]{1,15}$") | not) then error("chat_id")
+              elif ($ops | length) == 0 or any($ops[]; test("^[0-9]{1,15}$") | not) then error("operator_ids")
+              else . end
+            | {
+                version: $settings.version,
+                bot_token: $token,
+                bot_username: $settings.bot_username,
+                chat_id: ($chat_id | tonumber),
+                chat_title: $settings.chat_title,
+                operator_ids: ($ops | map(tonumber)),
+                observer_ids: $settings.observer_ids,
+                log_level: $settings.log_level,
+                configured_at: $settings.configured_at
+              }
+          ' >"$tmp" 2>/dev/null; then
+          rm -f "$tmp"
+          echo "herdr-telegram-agents: the decrypted values are not valid, leaving config.json unchanged" >&2
+          return 0
+        fi
+        chmod 600 "$tmp"
+        mv -f "$tmp" "$target"
+      }
+
+      merge_json() {
+        local target="$1" filter="$2" tmp
+        shift 2
+        if [[ -e "$target" ]] && ! jq -e 'type == "object"' "$target" >/dev/null 2>&1; then
+          echo "herdr-telegram-agents: $target is not a JSON object, leaving it unchanged" >&2
+          return 0
+        fi
+        tmp="$(mktemp "$target.XXXXXX")"
+        if [[ -e "$target" ]]; then
+          jq "$@" "$filter" "$target" >"$tmp" || { rm -f "$tmp"; return 1; }
+        else
+          jq -n "$@" "{} | $filter" >"$tmp" || { rm -f "$tmp"; return 1; }
+        fi
+        chmod 600 "$tmp"
+        mv -f "$tmp" "$target"
+      }
+
+      write_config
+
+      # Secret redaction is on by default. Set it again on every activation,
+      # so that a change from the Telegram options panel does not persist.
+      merge_json "$config_dir/options.json" '
+        .version = (.version // 1)
+        | .values = ((.values // {}) + { "privacy.redact": true })
+      '
+    '';
+  };
+
   # Prints a setup link and QR for one phone app, then restores the default app
   # that the Herdr `setup-link` action uses.
   herdrMobileRelayLink = pkgs.writeShellApplication {
@@ -397,6 +546,7 @@ in
             "herdr-agent-quota"
           ]
           ++ (if noughtyLib.hostHasTag "cg" then [ "local.home-layout" ] else [ "local.work-layout" ])
+          ++ lib.optional (!herdrTelegramAgentsEnabled) pluginId
         )
       }; do
         ${pkgs.herdr}/bin/herdr plugin unlink "$herdr_layout_id" || true
@@ -425,18 +575,46 @@ in
           fi
         '';
 
-    home.activation.herdrReloadConfig = lib.hm.dag.entryAfter [ "herdrMobileRelayPlugin" ] ''
-      herdr_reload_status=0
-      herdr_reload_output="$(${pkgs.herdr}/bin/herdr server reload-config 2>&1)" \
-        || herdr_reload_status=$?
+    home.activation.herdrTelegramAgentsPlugin = lib.mkIf herdrTelegramAgentsEnabled (
+      lib.hm.dag.entryAfter [ "herdrMobileRelayPlugin" ] ''
+        ${pkgs.herdr}/bin/herdr plugin link ${herdrTelegramAgents.passthru.pluginRoot} --enabled
+      ''
+    );
 
-      if ((herdr_reload_status != 0)) \
-        && ! printf '%s\n' "$herdr_reload_output" \
-          | ${pkgs.jq}/bin/jq -e '.error.code == "server_not_running"' >/dev/null 2>&1; then
-        printf '%s\n' "$herdr_reload_output" >&2
-        exit "$herdr_reload_status"
-      fi
-    '';
+    # The age key is a user file that activation does not create, so the step
+    # needs only `writeBoundary`.
+    home.activation.herdrTelegramAgentsConfig = lib.mkIf herdrTelegramAgentsEnabled (
+      lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+        run ${lib.getExe herdrTelegramAgentsConfig} \
+          ${lib.escapeShellArg herdrTelegramAgentsConfigDir} \
+          ${lib.escapeShellArg herdrTelegramAgentsStateDir} \
+          ${../../../secrets/herdr.yaml} \
+          ${lib.escapeShellArg config.sops.age.keyFile} \
+          ${lib.escapeShellArg (builtins.toJSON herdrTelegramAgentsSettings)} \
+          ${lib.escapeShellArg herdrTelegramAgentsHost.tokenKey} \
+          ${lib.escapeShellArg herdrTelegramAgentsHost.chatIdKey} \
+          TELEGRAM_OPERATOR_IDS
+      ''
+    );
+
+    home.activation.herdrReloadConfig =
+      lib.hm.dag.entryAfter
+        [
+          "herdrMobileRelayPlugin"
+          "herdrTelegramAgentsPlugin"
+        ]
+        ''
+          herdr_reload_status=0
+          herdr_reload_output="$(${pkgs.herdr}/bin/herdr server reload-config 2>&1)" \
+            || herdr_reload_status=$?
+
+          if ((herdr_reload_status != 0)) \
+            && ! printf '%s\n' "$herdr_reload_output" \
+              | ${pkgs.jq}/bin/jq -e '.error.code == "server_not_running"' >/dev/null 2>&1; then
+            printf '%s\n' "$herdr_reload_output" >&2
+            exit "$herdr_reload_status"
+          fi
+        '';
 
     # The unit name and the launchd label are the ones that the upstream
     # scripts read to find `HERDR_RELAY_ENV` and to restart the relay. No unit

@@ -233,6 +233,15 @@ On Linux, `connect()` to a Unix socket needs only a visible path, so the mask
 is the whole rule. On macOS, `network.allowUnixSockets` lists the same two
 paths. Linux masks only the names that exist when the sandbox starts.
 
+On skrye and zannah, Fence also denies reads and writes of the Herdr Telegram
+Agents config and state directories. They hold the bot token, the operator
+list, sharing grants, and the inbox. Activation creates both directories, so
+the Linux masks apply before the daemon first runs. The token is not a sops-nix
+secret, because `~/.config/sops-nix` stays readable. Activation decrypts it
+from `secrets/herdr.yaml` with the user's age key and writes it only to the
+masked config directory. See the
+[Herdr Mobile Relay README](../../../../nixos/_mixins/server/herdr-mobile-app/README.md#herdr-telegram-agents).
+
 ## Never name a path under `/run` in this policy
 
 Fence rebuilds any mount boundary it has to cross. For each `allowExecute`,

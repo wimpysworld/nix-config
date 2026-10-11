@@ -65,6 +65,12 @@ jobs:
             name: Herdr Mobile Relay
             changelog: https://github.com/0cv/herdr-mobile-relay/releases
             automerge: false
+          # The Telegram bot can type into every Herdr agent pane, so a person
+          # reviews the upstream diff before each upgrade merges.
+          - id: herdr-telegram-agents
+            name: Herdr Telegram Agents
+            changelog: https://github.com/permgps/herdr-telegram-agents/releases
+            automerge: false
           - id: slk
             name: slk
             changelog: https://github.com/gammons/slk/releases
