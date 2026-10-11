@@ -368,6 +368,20 @@ let
     observer_ids = [ ];
     log_level = "info";
     configured_at = "1970-01-01T00:00:00Z";
+    # Values merged into `options.json`, not `config.json`. The daemon ignores
+    # a value of the wrong type, so every option except a bool is a string.
+    # An icon must be in Telegram's free topic-icon pack, or the daemon uses
+    # the default icon.
+    options = {
+      "privacy.redact" = true;
+      "topics.delete_after_days" = "1";
+      "icons.working" = "🧠";
+      "icons.idle" = "☕️";
+      "icons.blocked" = "‼️";
+      "icons.done" = "⭐️";
+      "icons.unknown" = "❓";
+      "icons.exited" = "🏴‍☠️";
+    };
   };
 
   # The plugin reads its bot token only from `config.json`, and the daemon
@@ -473,12 +487,58 @@ let
 
       write_config
 
-      # Secret redaction is on by default. Set it again on every activation,
-      # so that a change from the Telegram options panel does not persist.
+      # Set the declared options again on every activation, so that a change
+      # from the Telegram options panel does not persist.
+      # shellcheck disable=SC2016 # jq variables, not shell expansions.
       merge_json "$config_dir/options.json" '
         .version = (.version // 1)
-        | .values = ((.values // {}) + { "privacy.redact": true })
-      '
+        | .values = ((.values // {}) + $settings.options)
+      ' --argjson settings "$settings"
+    '';
+  };
+
+  # Herdr runs the plugin startup hook only when the server starts, so a switch
+  # does not start or restart the daemon. Herdr runs an invoked action in the
+  # background, so this waits for the action's log entry and returns its
+  # output and exit code.
+  herdrTgAgent = pkgs.writeShellApplication {
+    name = "herdr-tg-agent";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.herdr
+      pkgs.jq
+    ];
+    text = ''
+      case "''${1:-}" in
+        start | stop | restart | status) action="$1" ;;
+        *)
+          echo "Usage: herdr-tg-agent start|stop|restart|status" >&2
+          exit 2
+          ;;
+      esac
+
+      plugin=${lib.escapeShellArg pluginId}
+      invoked="$(herdr plugin action invoke "$action" --plugin "$plugin")"
+      log_id="$(jq -r '.result.log.log_id // empty' <<<"$invoked")"
+      if [[ -z "$log_id" ]]; then
+        echo "herdr-tg-agent: the invoke response has no log ID" >&2
+        exit 1
+      fi
+
+      # Poll every half second for up to 15 seconds.
+      for _ in {1..30}; do
+        entry="$(herdr plugin log list --plugin "$plugin" --limit 20 \
+          | jq -c --arg id "$log_id" '.result.logs[] | select(.log_id == $id)')"
+        if [[ -n "$entry" ]] && [[ "$(jq -r '.status' <<<"$entry")" != running ]]; then
+          jq -j '.stdout // ""' <<<"$entry"
+          jq -j '(.stderr // "") + (if .error then .error + "\n" else "" end)' <<<"$entry" >&2
+          exit "$(jq -r '.exit_code // 1' <<<"$entry")"
+        fi
+        sleep 0.5
+      done
+
+      echo "herdr-tg-agent: the $action action did not finish within 15 seconds (log $log_id)" >&2
+      exit 1
     '';
   };
 
@@ -524,7 +584,8 @@ in
       herdrLayout
       herdrMobileRelay
       herdrMobileRelayLink
-    ];
+    ]
+    ++ lib.optional herdrTelegramAgentsEnabled herdrTgAgent;
 
     # Herdr panes inherit the server environment, so plugin actions use the
     # relay environment of the service and the default phone app.
