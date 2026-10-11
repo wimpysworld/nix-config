@@ -1095,8 +1095,9 @@ in
 
     # Create a dedicated remotely-managed Hermes tunnel in Cloudflare, then
     # encrypt its connector token into secrets/cloudflare.yaml as
-    # CLOUDFLARE_TUNNEL_TOKEN_HERMES. Configure the published application in
-    # Cloudflare to route the chosen webhook hostname to http://127.0.0.1:8644.
+    # CLOUDFLARE_TUNNEL_TOKEN_HERMES_WEBHOOK. Configure the published
+    # application in Cloudflare to route the chosen webhook hostname to
+    # http://127.0.0.1:8644.
 
     systemd.tmpfiles.rules = lib.mkAfter [
       "d ${config.services.hermes-agent.stateDir}/.config 2750 ${hermesUser} ${hermesGroup} - -"

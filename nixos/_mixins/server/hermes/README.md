@@ -254,7 +254,7 @@ Operationally:
 - `EMAIL_PASSWORD` must be a Fastmail app password, not the regular web login
   password
 - `WEBHOOK_SECRET` must be a dedicated HMAC secret in `secrets/hermes.yaml`
-- `CLOUDFLARE_TUNNEL_TOKEN_HERMES` must be a dedicated Cloudflare Tunnel
+- `CLOUDFLARE_TUNNEL_TOKEN_HERMES_WEBHOOK` must be a dedicated Cloudflare Tunnel
   connector token in `secrets/cloudflare.yaml`
 - live token refresh remains in Hermes state after startup
 
@@ -293,7 +293,7 @@ services.hermes-agent.settings.platforms.webhook = {
 
 The public endpoint is exposed through a dedicated remotely-managed Cloudflare
 Tunnel connector, not by opening port `8644` directly. The connector service is
-`cloudflared-hermes` and uses `CLOUDFLARE_TUNNEL_TOKEN_HERMES` from
+`cloudflared-hermes` and uses `CLOUDFLARE_TUNNEL_TOKEN_HERMES_WEBHOOK` from
 `secrets/cloudflare.yaml`.
 
 The LibreChat tunnel configuration is the reusable pattern, but the LibreChat
