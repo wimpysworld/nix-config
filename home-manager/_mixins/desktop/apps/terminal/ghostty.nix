@@ -48,15 +48,6 @@ lib.mkIf host.is.workstation {
       window-decoration = if hideWindowDecorations then "none" else "auto";
       window-inherit-working-directory = false;
       working-directory = "home";
-
-      # Herdr plugin icon fonts use Private Use Area glyphs, which do not fall
-      # back like ordinary characters. Herdr Agent Icons Max is installed to
-      # the user font directory by herdr-agent-quota's configure action.
-      # Ghostty accepts repeated keys, so the two range mappings ride a list.
-      font-codepoint-map = [
-        "U+E1A0-U+E1B6=\"Herdr Agent Icons Max\""
-        "U+E1C0-U+E1C5=\"Herdr Agent Icons Max\""
-      ];
     }
     // lib.optionalAttrs useMochiShader {
       # Hide the native cursor because the shader draws its replacement.
