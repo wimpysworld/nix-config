@@ -24,20 +24,20 @@ Use the NixOS MCP server as the primary reference for NixOS, Home Manager, nix-d
 
 Run `just --list --unsorted` before inventing commands.
 
-| Task                          | Command                                                                                                                                  |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Format and lint Nix files     | `just format [paths]` or `nix fmt`                                                                                                       |
-| Validate registries           | `just lint-registry`                                                                                                                     |
-| Evaluate flake and configs    | `just eval`                                                                                                                              |
-| Run flake checks              | `just check`                                                                                                                             |
-| Build all configs             | `just build`                                                                                                                             |
-| Build one host or Home config | `just build-host hostname=<host>`; `just build-home username=<user> hostname=<host>`                                                     |
-| Build a package               | `just build-pkg pkg=<pkg> hostname=<host>`                                                                                               |
-| Switch OS and Home configs    | `just switch`; `just switch-host`; `just switch-home`                                                                                    |
-| Build OS and Home configs     | `just host`; `just home`                                                                                                                 |
-| Push configs to a remote host | `just push <host> [target]`; `just push-host <host> [target]`; `just push-host-boot <host> [target]`; `just push-home <host> [target]`   |
-| Update flake inputs           | `just update`                                                                                                                            |
-| ISO and install               | `just iso`; `just inject-tokens remote=<host> user=nixos`; `just install host=<host> remote=<target> keep_disks="false" vm_test="false"` |
+| Task                          | Command                                                                                                                                |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Format and lint Nix files     | `just format [paths]` or `nix fmt`                                                                                                     |
+| Validate registries           | `just lint-registry`                                                                                                                   |
+| Evaluate flake and configs    | `just eval`                                                                                                                            |
+| Run flake checks              | `just check`                                                                                                                           |
+| Build all configs             | `just build`                                                                                                                           |
+| Build one host or Home config | `just build-host <host>`; `just build-home <user> <host>`                                                                              |
+| Build a package               | `just build-pkg <pkg> [host]`                                                                                                          |
+| Switch OS and Home configs    | `just switch`; `just switch-host`; `just switch-home`                                                                                  |
+| Build OS and Home configs     | `just host`; `just home`                                                                                                               |
+| Push configs to a remote host | `just push <host> [target]`; `just push-host <host> [target]`; `just push-host-boot <host> [target]`; `just push-home <host> [target]` |
+| Update flake inputs           | `just update`                                                                                                                          |
+| ISO and install               | `just iso`; `just inject-tokens <host> [user]`; `just install <host> <target> [keep_disks] [vm_test]`                                  |
 
 `apply`, `apply-home`, and `apply-host` activate configurations published to FlakeHub Cache from a CI release. They ignore the local working tree. Do not use them during local iteration; use `build-` and `switch-` commands instead.
 
@@ -50,8 +50,8 @@ Match validation cost to the change. Start with the cheapest option that can fai
 - Formatting or a lint-style fix: run `just format` on the touched files.
 - One module or a Nix value: run a targeted `nix eval` against the specific attribute, not a whole-flake eval.
 - Generated file content: use `nix repl :lf .` with `:p` on the file's `.text`.
-- Local iteration on NixOS or Home Manager: build and switch only the current host with `just build-home`, `just build-host`, `just switch-home`, or `just switch-host`; a remote or non-current host needs `just build-host hostname=<host>`, only when its config actually changed.
-- New packages or overlays: build the one package with `just build-pkg pkg=<pkg> <host>` before any host build.
+- Local iteration on NixOS or Home Manager: build and switch only the current host with `just build-home`, `just build-host`, `just switch-home`, or `just switch-host`; a remote or non-current host needs `just build-host <host>`, only when its config actually changed.
+- New packages or overlays: build the one package with `just build-pkg <pkg> [host]` before any host build.
 
 Never run `just eval`, `just check`, or `just build` for an iterative change unless the change spans many configs or CI will run those gates anyway. Both recipes deep-evaluate every configuration and take substantially longer.
 
