@@ -277,62 +277,82 @@ let
     '';
   };
 
-  # The relay key lives outside `~/.config/herdr`, and Fence denies reads of
-  # this directory. The relay keeps its device
-  # store, push keys, and pid file beside `relay.env`.
-  herdrMobileRelay = pkgs.herdr-mobile-relay;
-  herdrMobileRelayRoot = herdrMobileRelay.passthru.pluginRoot;
-  herdrMobileRelayDir = "${config.xdg.configHome}/herdr-mobile-relay";
-  herdrMobileRelayEnv = "${herdrMobileRelayDir}/relay.env";
-  herdrMobileApp = import ../../../lib/herdr-mobile-app.nix {
-    inherit (config.noughty.network) tailNet;
+  # Herdr Web runs on skrye and zannah only. The token key names a value in
+  # `secrets/herdr.yaml`. All hosts share `HERDR_WEB_TAILSCALE_OWNER`, the
+  # Tailscale login that gets in through Tailscale Serve without pairing.
+  herdrWebUiHosts = {
+    skrye.tokenKey = "HERDR_WEB_TOKEN_SKRYE";
+    zannah.tokenKey = "HERDR_WEB_TOKEN_ZANNAH";
   };
+  herdrWebUiEnabled = noughtyLib.isHost (builtins.attrNames herdrWebUiHosts);
+  herdrWebUiHost = herdrWebUiHosts.${host.name} or { };
+  # Herdr Web keeps devices, push keys, and bridge tokens here, and the bridge
+  # path is fixed to `~/.config/herdr-web-ui/bridges`. Fence denies reads and
+  # writes of the whole directory.
+  herdrWebUiDir = "${config.xdg.configHome}/herdr-web-ui";
+  herdrWebUiEnv = "${herdrWebUiDir}/service.env";
+  herdrWebUiPasteDir = "${herdrWebUiDir}/paste";
+
+  # The token is not a sops-nix secret, because Fence keeps
+  # `~/.config/sops-nix` readable. This decrypts the token and the owner login
+  # with the user's age key and writes them to an env file with mode 0600.
+  # The decrypted values stay in shell variables, so they are never in argv,
+  # the environment, the Nix store, or a log. On any failure the old file
+  # stays.
+  herdrWebUiEnvWriter = pkgs.writeShellApplication {
+    name = "herdr-web-ui-env";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.sops
+    ];
+    text = ''
+      state_dir="$1"
+      paste_dir="$2"
+      env_file="$3"
+      sops_file="$4"
+      age_key_file="$5"
+      token_key="$6"
+      owner_key="$7"
+
+      # On Linux, Fence masks a denyRead path only when the path exists as
+      # the sandbox starts, so the directories exist before the service runs.
+      install -d -m 700 "$state_dir" "$paste_dir"
+
+      # sops errors are discarded so that nothing it prints reaches the log.
+      decrypt() {
+        [[ -r "$age_key_file" ]] \
+          && SOPS_AGE_KEY_FILE="$age_key_file" sops -d --extract "[\"$1\"]" "$sops_file" 2>/dev/null
+      }
+
+      token="$(decrypt "$token_key")" || token=""
+      owner="$(decrypt "$owner_key")" || owner=""
+      if [[ -z "$token" || -z "$owner" ]]; then
+        echo "herdr-web-ui: could not decrypt $token_key or $owner_key, leaving $env_file unchanged" >&2
+        exit 0
+      fi
+      # systemd reads the file without a shell, so only plain values pass.
+      safe='^[A-Za-z0-9._~+/=:@-]+$'
+      if [[ ! "$token" =~ $safe || ! "$owner" =~ $safe ]]; then
+        echo "herdr-web-ui: the decrypted values are not valid, leaving $env_file unchanged" >&2
+        exit 0
+      fi
+
+      tmp="$(mktemp "$env_file.XXXXXX")"
+      printf 'HERDR_WEB_TOKEN=%s\nHERDR_WEB_TAILSCALE_OWNER=%s\n' "$token" "$owner" >"$tmp"
+      chmod 600 "$tmp"
+      mv -f "$tmp" "$env_file"
+    '';
+  };
+
   # Agent CLIs live in the user profile, which a user service does not put on
   # PATH by default.
-  herdrMobileRelayPath = lib.concatStringsSep ":" [
+  herdrWebUiPath = lib.concatStringsSep ":" [
     "${config.home.homeDirectory}/.nix-profile/bin"
     "${config.home.homeDirectory}/.local/state/nix/profile/bin"
     "/etc/profiles/per-user/${config.home.username}/bin"
     "/run/current-system/sw/bin"
     "/run/wrappers/bin"
-    "/nix/var/nix/profiles/default/bin"
-    "/usr/bin"
-    "/bin"
   ];
-  herdrMobileRelayService = pkgs.writeShellApplication {
-    name = "herdr-mobile-relay-service";
-    runtimeInputs = with pkgs; [
-      coreutils
-      gnugrep
-      openssl
-    ];
-    text = ''
-      export HERDR_RELAY_ENV=${lib.escapeShellArg herdrMobileRelayEnv}
-      install -d -m 700 ${lib.escapeShellArg herdrMobileRelayDir}
-
-      # shellcheck source=/dev/null
-      . ${herdrMobileRelayRoot}/relay/common.sh
-
-      # Upstream creates the relay key and instance ID only when they are
-      # missing. The gateway list must be in the file, because setup links
-      # read it from there.
-      ensure_relay_env "$HERDR_RELAY_ENV"
-      set_env_value_atomic "$HERDR_RELAY_ENV" HERDR_GATEWAY_URL \
-        "wss://gw1.herdr-mobile.dev,wss://gw2.herdr-mobile.dev"
-      set_env_value_atomic "$HERDR_RELAY_ENV" HERDR_REACHABILITY_PORT_MAPPING 0
-      # A phone app URL in the file would override the one that
-      # herdr-mobile-relay-link passes for each run. App Deployment stays off.
-      remove_env_value_atomic "$HERDR_RELAY_ENV" HERDR_PHONE_APP_URL
-      remove_env_value_atomic "$HERDR_RELAY_ENV" HERDR_APP_DEPLOY_ORIGIN
-      record_phone_app_origin ${lib.escapeShellArg herdrMobileApp.defaultAppUrl} "$HERDR_RELAY_ENV"
-      load_relay_env "$HERDR_RELAY_ENV"
-
-      export HERDR_BIN=${pkgs.herdr}/bin/herdr
-      export HERDR_WEB_ROOT=${herdrMobileRelay.passthru.webRoot}
-      export PATH=${lib.escapeShellArg herdrMobileRelayPath}:"$PATH"
-      exec ${herdrMobileRelayRoot}/herdr-mobile-relay serve
-    '';
-  };
 
   # Telegram Agents needs one bot per host, because a second poller on the same
   # token makes the daemon exit. The token and chat ID keys name values in
@@ -542,37 +562,6 @@ let
     '';
   };
 
-  # Prints a setup link and QR for one phone app, then restores the default app
-  # that the Herdr `setup-link` action uses.
-  herdrMobileRelayLink = pkgs.writeShellApplication {
-    name = "herdr-mobile-relay-link";
-    runtimeInputs = with pkgs; [ coreutils ] ++ lib.optionals host.is.linux [ pkgs.hostname ];
-    text = ''
-      app="''${1:-${herdrMobileApp.defaultApp}}"
-      case "$app" in
-      ${lib.concatStrings (
-        lib.mapAttrsToList (name: url: ''
-          ${name}) app_url=${lib.escapeShellArg url} ;;
-        '') herdrMobileApp.appUrls
-      )}
-        *)
-          printf 'Usage: herdr-mobile-relay-link [%s]\n' ${lib.escapeShellArg (lib.concatStringsSep "|" (lib.attrNames herdrMobileApp.appUrls))} >&2
-          exit 2
-          ;;
-      esac
-
-      export HERDR_RELAY_ENV=${lib.escapeShellArg herdrMobileRelayEnv}
-      status=0
-      HERDR_PHONE_APP_URL="$app_url" ${herdrMobileRelayRoot}/relay/setup-link.sh || status=$?
-
-      if [[ -d ${lib.escapeShellArg herdrMobileRelayDir} ]]; then
-        # shellcheck source=/dev/null
-        . ${herdrMobileRelayRoot}/relay/common.sh
-        record_phone_app_origin ${lib.escapeShellArg herdrMobileApp.defaultAppUrl} "$HERDR_RELAY_ENV"
-      fi
-      exit "$status"
-    '';
-  };
 in
 {
   config = lib.mkIf (!host.is.iso) {
@@ -582,22 +571,13 @@ in
       herdrWorktree
       pkgs.herdr
       herdrLayout
-      herdrMobileRelay
-      herdrMobileRelayLink
     ]
     ++ lib.optional herdrTelegramAgentsEnabled herdrTgAgent;
 
-    # Herdr panes inherit the server environment, so plugin actions use the
-    # relay environment of the service and the default phone app.
-    home.sessionVariables = {
-      HERDR_RELAY_ENV = herdrMobileRelayEnv;
-      HERDR_PHONE_APP_URL = herdrMobileApp.defaultAppUrl;
-    };
-
     # Unlink layout plugin variants that a previous host configuration may
     # have left linked, so exactly one `workspace.created` handler remains.
-    # Also unlink the retired usage and quota plugins so no stale plugin state
-    # remains on hosts that missed an earlier activation.
+    # Also unlink the retired usage, quota, and mobile relay plugins so no
+    # stale plugin state remains on hosts that missed an earlier activation.
     home.activation.herdrLayoutPrune = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
       for herdr_layout_id in ${
         lib.escapeShellArgs (
@@ -605,6 +585,7 @@ in
             "usagebar"
             "ez-corp.space-usage"
             "herdr-agent-quota"
+            "herdr-mobile-relay.events"
           ]
           ++ (if noughtyLib.hostHasTag "cg" then [ "local.home-layout" ] else [ "local.work-layout" ])
           ++ lib.optional (!herdrTelegramAgentsEnabled) pluginId
@@ -619,25 +600,22 @@ in
         ${herdrLayout}/share/herdr/plugins/${herdrLayout.passthru.pluginDir} --enabled
     '';
 
-    home.activation.herdrMobileRelayPlugin = lib.hm.dag.entryAfter [ "herdrLayoutPlugin" ] ''
-      ${pkgs.herdr}/bin/herdr plugin link ${herdrMobileRelayRoot} --enabled
-    '';
-
-    # On Linux, Fence masks a denyRead path only when the path exists as the
-    # sandbox starts. The private directory and an empty `relay.env` exist
-    # before the relay first runs, so an agent never sees the relay key. The
-    # relay accepts an empty file and adds its key on first start.
-    home.activation.herdrMobileRelayEnv =
-      lib.hm.dag.entryBetween [ "reloadSystemd" "setupLaunchAgents" ] [ "writeBoundary" ]
-        ''
-          run install -d -m 700 ${lib.escapeShellArg herdrMobileRelayDir}
-          if [[ ! -e ${lib.escapeShellArg herdrMobileRelayEnv} ]]; then
-            run install -m 600 /dev/null ${lib.escapeShellArg herdrMobileRelayEnv}
-          fi
-        '';
+    # The env file must exist before sd-switch starts the service.
+    home.activation.herdrWebUiEnv = lib.mkIf herdrWebUiEnabled (
+      lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "writeBoundary" ] ''
+        run ${lib.getExe herdrWebUiEnvWriter} \
+          ${lib.escapeShellArg herdrWebUiDir} \
+          ${lib.escapeShellArg herdrWebUiPasteDir} \
+          ${lib.escapeShellArg herdrWebUiEnv} \
+          ${../../../secrets/herdr.yaml} \
+          ${lib.escapeShellArg config.sops.age.keyFile} \
+          ${lib.escapeShellArg herdrWebUiHost.tokenKey} \
+          HERDR_WEB_TAILSCALE_OWNER
+      ''
+    );
 
     home.activation.herdrTelegramAgentsPlugin = lib.mkIf herdrTelegramAgentsEnabled (
-      lib.hm.dag.entryAfter [ "herdrMobileRelayPlugin" ] ''
+      lib.hm.dag.entryAfter [ "herdrLayoutPlugin" ] ''
         ${pkgs.herdr}/bin/herdr plugin link ${herdrTelegramAgents.passthru.pluginRoot} --enabled
       ''
     );
@@ -661,7 +639,7 @@ in
     home.activation.herdrReloadConfig =
       lib.hm.dag.entryAfter
         [
-          "herdrMobileRelayPlugin"
+          "herdrLayoutPlugin"
           "herdrTelegramAgentsPlugin"
         ]
         ''
@@ -677,33 +655,33 @@ in
           fi
         '';
 
-    # The unit name and the launchd label are the ones that the upstream
-    # scripts read to find `HERDR_RELAY_ENV` and to restart the relay. No unit
-    # starts the Herdr server, so the relay polls for its socket instead of
-    # ordering after it.
-    systemd.user.services.herdr-mobile-relay = lib.mkIf host.is.linux {
-      Unit.Description = "Herdr Mobile Relay";
+    # Herdr Web runs as a user service, not as a Herdr plugin, so systemd
+    # restarts it and Herdr does not start a second copy. It runs without the
+    # upstream supervisor, so the self-updater is off. The env file holds
+    # `HERDR_WEB_TOKEN` and `HERDR_WEB_TAILSCALE_OWNER`. Without it the unit
+    # fails, so the server never runs without a token.
+    systemd.user.services.herdr-web-ui = lib.mkIf (herdrWebUiEnabled && host.is.linux) {
+      Unit.Description = "Herdr Web";
       Service = {
         Type = "simple";
-        ExecStart = lib.getExe herdrMobileRelayService;
-        Environment = [ "HERDR_RELAY_ENV=${herdrMobileRelayEnv}" ];
+        ExecStart = lib.getExe pkgs.herdr-web-ui;
+        EnvironmentFile = herdrWebUiEnv;
+        Environment = [
+          # Keep `HOST` and `PORT` in sync with the Tailscale Serve target in
+          # nixos/_mixins/server/herdr-web-ui/default.nix.
+          "HOST=127.0.0.1"
+          "PORT=7317"
+          "HERDR_WEB_TELEMETRY=0"
+          "HERDR_WEB_APP_NAME=${host.name}"
+          "HERDR_WEB_HERDR_BIN=${lib.getExe pkgs.herdr}"
+          "HERDR_WEB_STATE_DIR=${herdrWebUiDir}"
+          "HERDR_WEB_PASTE_DIR=${herdrWebUiPasteDir}"
+          "PATH=${herdrWebUiPath}"
+        ];
         Restart = "on-failure";
         RestartSec = 10;
       };
       Install.WantedBy = [ "default.target" ];
-    };
-
-    launchd.agents.herdr-mobile-relay = lib.mkIf host.is.darwin {
-      enable = true;
-      config = {
-        Label = "com.herdr-mobile-relay.service";
-        ProgramArguments = [ (lib.getExe herdrMobileRelayService) ];
-        EnvironmentVariables.HERDR_RELAY_ENV = herdrMobileRelayEnv;
-        RunAtLoad = true;
-        KeepAlive = true;
-        StandardOutPath = "${config.home.homeDirectory}/Library/Logs/herdr-mobile-relay.log";
-        StandardErrorPath = "${config.home.homeDirectory}/Library/Logs/herdr-mobile-relay.log";
-      };
     };
 
     xdg.configFile."herdr/config.toml".source = lib.mkDefault (

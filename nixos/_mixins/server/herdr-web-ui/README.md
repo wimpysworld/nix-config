@@ -1,48 +1,59 @@
-# Herdr Mobile Relay
+# Herdr Web
 
-[Herdr Mobile Relay](https://github.com/0cv/herdr-mobile-relay) lets a phone monitor and control Herdr agents. Every Home Manager configuration that installs Herdr runs the relay. Caddy on skrye and zannah serves the phone app over the tailnet.
+[Herdr Web](https://github.com/devswha/herdr-web-ui) shows every Herdr workspace, tab, and pane in a browser or a phone app, as a chat and a live terminal. It can type into every pane and read any file of the user. skrye and zannah run it, and Tailscale Serve publishes it on the tailnet. No other host runs it.
 
-## Phone app URLs
+## URLs
 
-| App | URL |
+| Host | URL |
 | --- | --- |
-| skrye (default) | `https://skrye.drongo-gamma.ts.net:8443` |
+| skrye | `https://skrye.drongo-gamma.ts.net:8443` |
 | zannah | `https://zannah.drongo-gamma.ts.net:8443` |
 
-[lib/herdr-mobile-app.nix](../../../../lib/herdr-mobile-app.nix) holds one base URL for each host, and the default app. Caddy and the setup links both read that file. To move an app, change its URL there.
-
-The app has its own port because browser storage is per origin, and that storage holds every relay key and device credential. Caddy refuses clients from outside the tailnet. The phone must have Tailscale connected each time it opens the app.
+Each host is its own origin, so pair and install each app separately. The phone must have Tailscale connected each time it opens the app. Funnel stays off, so the app is not on the internet.
 
 ## Parts
 
 | Part | Source |
 | --- | --- |
-| Package: Go relay, committed `web/` app, and Herdr plugin tree | [pkgs/herdr-mobile-relay/default.nix](../../../../pkgs/herdr-mobile-relay/default.nix) |
-| Plugin link, relay service, `herdr-mobile-relay-link` | [home-manager/_mixins/terminal/herdr.nix](../../../../home-manager/_mixins/terminal/herdr.nix) |
-| Caddy site on port 8443 | [default.nix](default.nix) |
-| Fence read denial | [home-manager/_mixins/agentic/fence/default.nix](../../../../home-manager/_mixins/agentic/fence/default.nix) |
-| Freshener job, with auto-merge off | [.github/freshener/herdr-mobile-relay.sh](../../../../.github/freshener/herdr-mobile-relay.sh) |
+| Package: built from source, with a fixed-output `node_modules` | [pkgs/herdr-web-ui/default.nix](../../../../pkgs/herdr-web-ui/default.nix) |
+| User service, sops decryption, and the env file | [home-manager/_mixins/terminal/herdr.nix](../../../../home-manager/_mixins/terminal/herdr.nix) |
+| Tailscale Serve unit on port 8443 | [default.nix](default.nix) |
+| Fence read and write denial | [home-manager/_mixins/agentic/fence/default.nix](../../../../home-manager/_mixins/agentic/fence/default.nix) |
+| Freshener job, with auto-merge off | [.github/freshener/herdr-web-ui.sh](../../../../.github/freshener/herdr-web-ui.sh) |
 
-The relay runs outside Fence, as the `herdr-mobile-relay.service` systemd user service on Linux and as the `com.herdr-mobile-relay.service` launchd agent on Darwin. It uses the community WebRTC gateways, with port mapping off and App Deployment off.
+The server runs outside Fence as the `herdr-web-ui.service` systemd user service, on `127.0.0.1:7317`, with `Restart=on-failure`. It is not a Herdr plugin, so Herdr does not start a second copy. It runs without the upstream supervisor, so the self-updater is off and the Settings update control does nothing. Telemetry is off with `HERDR_WEB_TELEMETRY=0`.
 
-The relay key, device store, and push keys are in `~/.config/herdr-mobile-relay/`. The service sets `HERDR_RELAY_ENV` to `~/.config/herdr-mobile-relay/relay.env`, and the relay keeps its runtime files in that directory. Fence denies reads of the directory to fenced agents.
+The `herdr-web-ui-serve.service` system unit runs `tailscale serve --bg --yes --https=8443 http://127.0.0.1:7317` after `tailscaled` is up. The mapping persists in the tailscaled state, and a stop of the unit removes it. Do not put Caddy in front of the server. Tailscale Serve sets and strips the `Tailscale-User-Login` header, but Caddy passes a forged header through, and the server trusts that header from a loopback client.
+
+State is in `~/.config/herdr-web-ui/`: paired devices, push keys, bridge tokens, and the env file `service.env`. Pasted files go to `~/.config/herdr-web-ui/paste/`. Fence denies reads and writes of the whole directory, because a bridge token opens every route of the server, including reads of any file.
+
+## Token and owner login
+
+Each activation decrypts two keys from `secrets/herdr.yaml` with `sops` and the user's age key, and writes `~/.config/herdr-web-ui/service.env` with mode 0600. sops-nix does not render the values, because Fence keeps `~/.config/sops-nix` readable.
+
+| Key | Value |
+| --- | --- |
+| `HERDR_WEB_TOKEN_SKRYE`, `HERDR_WEB_TOKEN_ZANNAH` | The access token for the host, as `HERDR_WEB_TOKEN`. A long random string, for example from `openssl rand -base64 32`. |
+| `HERDR_WEB_TAILSCALE_OWNER` | The Tailscale login of the owner, `martin@wimpress.org`. |
+
+If decryption fails or a value has a character outside `A-Za-z0-9._~+/=:@-`, activation prints a warning and leaves the old file. Without the file the service does not start, so the server never runs without a token.
+
+With a token set, the server refuses every request that has no token cookie, Bearer token, or paired-device cookie, from loopback too. The token check comes before the `Tailscale-User-Login` check in `server/access.ts`, so the owner login alone does not let a device in. The NixOS hosts have the tag `tag:nixos` and no owner login, so `HERDR_WEB_TAILSCALE_OWNER` names the owner for the server.
 
 ## Pairing
 
-1. Run `just switch-host` on skrye and on zannah.
-2. Run `just switch-home` on each host, then log in again so that new shells and the Herdr server get `HERDR_RELAY_ENV` and `HERDR_PHONE_APP_URL`.
-3. On the phone, connect Tailscale, open each app URL, and add it to the Home Screen.
-4. On each host, run `herdr-mobile-relay-link skrye` and scan the QR code in the skrye app.
-5. On each host, run `herdr-mobile-relay-link zannah` and scan the QR code in the zannah app.
-6. Clear the terminal after each scan, because the link holds the relay key.
+1. Put the token for each host and the owner login in `secrets/herdr.yaml` with `sops`.
+2. Run `just switch-host` on skrye and on zannah.
+3. Run `just switch-home` on each host.
+4. On a trusted device, open the host URL and sign in with the token for that host.
+5. In Settings, Devices, create a pairing code. Enter the six-digit code on the phone within 10 minutes. Choose `watch` for a device that only observes.
+6. Add the app to the Home Screen on the phone, so that web push works.
 
-`herdr-mobile-relay-link` with no argument prints the skrye link. The Herdr action **Herdr Mobile Relay: Show Phone Setup QR** also prints the skrye link. Each link pairs one more phone and revokes no device.
-
-Do not rotate the relay key as a routine step. A rotation disconnects every paired app on that host until it pairs again. Revoke unused devices in the app, because device credentials do not expire.
+Device cookies last one year. Revoke a lost device in Settings, Devices. To rotate a token, change it in `secrets/herdr.yaml`, run `just switch-home`, then run `systemctl --user restart herdr-web-ui`.
 
 ## Upgrades
 
-The freshener opens a pull request for each upstream release and does not enable auto-merge. Review the upstream diff, including the `web/` bundle, before you merge. A new `go` line in `go.mod` can need a newer `buildGo*Module`.
+The freshener opens a pull request for each upstream `vX.Y.Z` release and does not enable auto-merge. Review the upstream diff before you merge. The install check fails when the server imports a package outside the pruned `node_modules`. Add that package to the `prune-node-modules.ts` call in the package.
 
 ## Herdr Telegram Agents
 

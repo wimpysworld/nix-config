@@ -212,11 +212,13 @@ are protected via on-disk file permissions. The user-facing sops-nix render
 directory at `~/.config/sops-nix` is intentionally read-allowed so API keys are
 exposed inside the sandbox.
 
-The Herdr Mobile Relay directory at `~/.config/herdr-mobile-relay` is denied.
-It holds the relay key, which redeems a setup link with controller access to
-every Herdr pane, and the device store. The relay keeps it outside
-`~/.config/herdr`. See the
-[Herdr Mobile Relay README](../../../../nixos/_mixins/server/herdr-mobile-app/README.md).
+On skrye and zannah, Fence denies reads and writes of the Herdr Web directory
+at `~/.config/herdr-web-ui`. It holds the token env file, paired devices, push
+keys, pasted files, and the bridge tokens. A bridge token opens every route of
+the local server outside Fence, including reads of any file, so a readable
+token bypasses `denyRead`. Activation creates the directory, so the Linux mask
+applies before the service first runs. See the
+[Herdr Web README](../../../../nixos/_mixins/server/herdr-web-ui/README.md).
 
 Fenced agents can connect to `~/.config/herdr/herdr.sock` only. Herdr runs
 plugin programs from `~/.config/herdr/plugins` outside Fence, so write access
@@ -240,7 +242,7 @@ the Linux masks apply before the daemon first runs. The token is not a sops-nix
 secret, because `~/.config/sops-nix` stays readable. Activation decrypts it
 from `secrets/herdr.yaml` with the user's age key and writes it only to the
 masked config directory. See the
-[Herdr Mobile Relay README](../../../../nixos/_mixins/server/herdr-mobile-app/README.md#herdr-telegram-agents).
+[Herdr Web README](../../../../nixos/_mixins/server/herdr-web-ui/README.md#herdr-telegram-agents).
 
 ## Never name a path under `/run` in this policy
 

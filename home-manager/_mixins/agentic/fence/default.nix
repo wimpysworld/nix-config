@@ -29,6 +29,20 @@ let
         "${config.xdg.stateHome}/herdr/plugins/${pluginId}/**"
       ];
 
+  # Herdr Web state: bridge tokens that open every route of the local server,
+  # including reads of any file, plus the token env file, paired devices, push
+  # keys, and pasted files. Activation creates the directory, so the Linux
+  # masks apply before the service first runs.
+  herdrWebUiPaths =
+    lib.optionals
+      (noughtyLib.isHost [
+        "skrye"
+        "zannah"
+      ])
+      [
+        "${config.xdg.configHome}/herdr-web-ui/**"
+      ];
+
   darwinSigstoreCacheHome = "${homeDirectory}/Library/Caches/sigstore";
 
   herdrDir = "${config.xdg.configHome}/herdr";
@@ -209,10 +223,6 @@ let
         "${config.xdg.configHome}/sops/**"
         "/var/lib/private/sops/**"
 
-        # Herdr Mobile Relay key, device store, and push keys. The relay key
-        # redeems a setup link with controller access to every Herdr pane.
-        "${config.xdg.configHome}/herdr-mobile-relay/**"
-
         # Herdr runs plugin programs from ~/.config/herdr/plugins outside the
         # sandbox, and the directory also holds plugin secrets, session state,
         # and logs. Writes are already denied because no allowWrite entry
@@ -231,9 +241,10 @@ let
         "${homeDirectory}/.fish_history"
         "${config.xdg.dataHome}/fish/fish_history"
       ]
-      ++ herdrTelegramAgentsPaths;
+      ++ herdrTelegramAgentsPaths
+      ++ herdrWebUiPaths;
 
-      denyWrite = herdrTelegramAgentsPaths;
+      denyWrite = herdrTelegramAgentsPaths ++ herdrWebUiPaths;
     };
     command = {
       useDefaults = true;

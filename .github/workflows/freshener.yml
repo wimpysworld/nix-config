@@ -59,11 +59,12 @@ jobs:
           - id: hermes-agent
             name: Hermes Agent
             changelog: https://github.com/NousResearch/hermes-agent/releases
-          # The relay can type into every Herdr pane, so a person reviews
-          # the upstream diff before each upgrade merges.
-          - id: herdr-mobile-relay
-            name: Herdr Mobile Relay
-            changelog: https://github.com/0cv/herdr-mobile-relay/releases
+          # Herdr Web can type into every Herdr pane and read any file of the
+          # user, so a person reviews the upstream diff before each upgrade
+          # merges.
+          - id: herdr-web-ui
+            name: Herdr Web
+            changelog: https://github.com/devswha/herdr-web-ui/releases
             automerge: false
           # The Telegram bot can type into every Herdr agent pane, so a person
           # reviews the upstream diff before each upgrade merges.

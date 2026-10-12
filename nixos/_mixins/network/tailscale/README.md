@@ -113,7 +113,7 @@ tsExitNodes = [
 
 When `services.caddy.enable` is true, `permitCertUid` grants Caddy access to acquire TLS certificates from the Tailscale daemon.
 
-skrye and zannah also serve the Herdr Mobile Relay phone app at `https://<host>.drongo-gamma.ts.net:8443`. See the [Herdr Mobile Relay README](../../server/herdr-mobile-app/README.md).
+skrye and zannah also publish Herdr Web at `https://<host>.drongo-gamma.ts.net:8443` with Tailscale Serve, not Caddy. See the [Herdr Web README](../../server/herdr-web-ui/README.md).
 
 ### Operator
 
