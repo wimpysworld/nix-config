@@ -124,7 +124,7 @@ stdenv.mkDerivation (finalAttrs: {
     cp web/public/manifest.json "$root/web/public/"
     # The server imports only these packages. The install check fails when a
     # new release imports another one.
-    bun ${../herdr-web-ui/prune-node-modules.ts} "$root" \
+    bun ${./prune-node-modules.ts} "$root" \
       @earendil-works/chord \
       @earendil-works/pi-ai \
       @earendil-works/pi-coding-agent \

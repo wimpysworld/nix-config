@@ -29,20 +29,6 @@ let
         "${config.xdg.stateHome}/herdr/plugins/${pluginId}/**"
       ];
 
-  # Herdr Web state: bridge tokens that open every route of the local server,
-  # including reads of any file, plus the token env file, paired devices, push
-  # keys, and pasted files. Activation creates the directory, so the Linux
-  # masks apply before the service first runs.
-  herdrWebUiPaths =
-    lib.optionals
-      (noughtyLib.isHost [
-        "skrye"
-        "zannah"
-      ])
-      [
-        "${config.xdg.configHome}/herdr-web-ui/**"
-      ];
-
   # Roamgate state: the password env file, the session secret, settings,
   # connection profiles, push keys, and uploads, plus the legacy
   # `herdr-gui` directory that Roamgate migrates from. The session secret
@@ -253,10 +239,9 @@ let
         "${config.xdg.dataHome}/fish/fish_history"
       ]
       ++ herdrTelegramAgentsPaths
-      ++ herdrWebUiPaths
       ++ roamgatePaths;
 
-      denyWrite = herdrTelegramAgentsPaths ++ herdrWebUiPaths ++ roamgatePaths;
+      denyWrite = herdrTelegramAgentsPaths ++ roamgatePaths;
     };
     command = {
       useDefaults = true;

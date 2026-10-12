@@ -277,23 +277,7 @@ let
     '';
   };
 
-  # Herdr Web runs on skrye and zannah only. The token key names a value in
-  # `secrets/herdr.yaml`. All hosts share `HERDR_WEB_TAILSCALE_OWNER`, the
-  # Tailscale login that gets in through Tailscale Serve without pairing.
-  herdrWebUiHosts = {
-    skrye.tokenKey = "HERDR_WEB_TOKEN_SKRYE";
-    zannah.tokenKey = "HERDR_WEB_TOKEN_ZANNAH";
-  };
-  herdrWebUiEnabled = noughtyLib.isHost (builtins.attrNames herdrWebUiHosts);
-  herdrWebUiHost = herdrWebUiHosts.${host.name} or { };
-  # Herdr Web keeps devices, push keys, and bridge tokens here, and the bridge
-  # path is fixed to `~/.config/herdr-web-ui/bridges`. Fence denies reads and
-  # writes of the whole directory.
-  herdrWebUiDir = "${config.xdg.configHome}/herdr-web-ui";
-  herdrWebUiEnv = "${herdrWebUiDir}/service.env";
-  herdrWebUiPasteDir = "${herdrWebUiDir}/paste";
-
-  # The Herdr Web and Roamgate secrets are not sops-nix secrets, because Fence
+  # The Roamgate secrets are not sops-nix secrets, because Fence
   # keeps `~/.config/sops-nix` readable. This decrypts each sops key with the
   # user's age key and writes `VAR="value"` lines to an env file with mode
   # 0600. Each entry is five arguments: the variable, the sops file, the key,
@@ -423,7 +407,7 @@ let
 
   # Agent CLIs live in the user profile, which a user service does not put on
   # PATH by default.
-  herdrWebUiPath = lib.concatStringsSep ":" [
+  agentPath = lib.concatStringsSep ":" [
     "${config.home.homeDirectory}/.nix-profile/bin"
     "${config.home.homeDirectory}/.local/state/nix/profile/bin"
     "/etc/profiles/per-user/${config.home.username}/bin"
@@ -822,27 +806,6 @@ in
         ${herdrLayout}/share/herdr/plugins/${herdrLayout.passthru.pluginDir} --enabled
     '';
 
-    # The env file must exist before sd-switch starts the service.
-    home.activation.herdrWebUiEnv = lib.mkIf herdrWebUiEnabled (mkEnvFileStep {
-      step = "herdrWebUiEnv";
-      unit = "herdr-web-ui.service";
-      dirs = [
-        herdrWebUiDir
-        herdrWebUiPasteDir
-      ];
-      envFile = herdrWebUiEnv;
-      entries = [
-        {
-          var = "HERDR_WEB_TOKEN";
-          key = herdrWebUiHost.tokenKey;
-        }
-        {
-          var = "HERDR_WEB_TAILSCALE_OWNER";
-          key = "HERDR_WEB_TAILSCALE_OWNER";
-        }
-      ];
-    });
-
     # The env file must exist before sd-switch starts the service. Roamgate
     # exits at start when the PIN is not 6 to 12 ASCII digits. Ranger's
     # `opencode-go` provider reads its key from `OPENCODE_API_KEY`. The
@@ -970,43 +933,6 @@ in
       end
     '';
 
-    # Herdr Web runs as a user service, not as a Herdr plugin, so systemd
-    # restarts it and Herdr does not start a second copy. It runs without the
-    # upstream supervisor, so the self-updater is off. It starts after the
-    # Herdr server and retries the Herdr socket, so a socket that appears
-    # late does no harm. `Wants`, not `BindsTo`, keeps it up across a
-    # deliberate `herdr server stop`. The env file holds `HERDR_WEB_TOKEN`
-    # and `HERDR_WEB_TAILSCALE_OWNER`. Without it the pre-start check fails,
-    # so the server never runs without a token.
-    systemd.user.services.herdr-web-ui = lib.mkIf (herdrWebUiEnabled && host.is.linux) {
-      Unit = {
-        Description = "Herdr Web";
-        After = [ "herdr.service" ];
-        Wants = [ "herdr.service" ];
-      };
-      Service = {
-        Type = "simple";
-        ExecStart = lib.getExe pkgs.herdr-web-ui;
-        ExecStartPre = mkEnvFileCheck herdrWebUiEnv;
-        EnvironmentFile = "-${herdrWebUiEnv}";
-        Environment = [
-          # Keep `HOST` and `PORT` in sync with the Tailscale Serve target of
-          # `herdr-web-ui-serve`.
-          "HOST=127.0.0.1"
-          "PORT=7317"
-          "HERDR_WEB_TELEMETRY=0"
-          "HERDR_WEB_APP_NAME=${host.name}"
-          "HERDR_WEB_HERDR_BIN=${lib.getExe pkgs.herdr}"
-          "HERDR_WEB_STATE_DIR=${herdrWebUiDir}"
-          "HERDR_WEB_PASTE_DIR=${herdrWebUiPasteDir}"
-          "PATH=${herdrWebUiPath}"
-        ];
-        Restart = "on-failure";
-        RestartSec = 10;
-      };
-      Install.WantedBy = [ "default.target" ];
-    };
-
     # Roamgate runs as a user service from the Nix store, not as its Herdr
     # plugin, which downloads a prebuilt binary. It runs from source on Bun,
     # so the self-updater cannot replace it. The env file holds
@@ -1046,25 +972,13 @@ in
           # settings is a browser `localStorage` value, so it still shows
           # "Enabled" until it is turned off in each browser.
           "ROAMGATE_DISABLE_UPDATE_CHECK=1"
-          "PATH=${herdrWebUiPath}"
+          "PATH=${agentPath}"
         ];
         Restart = "on-failure";
         RestartSec = 10;
       };
       Install.WantedBy = [ "default.target" ];
     };
-
-    # Tailscale Serve, not Caddy, fronts Herdr Web. Serve sets and strips the
-    # `Tailscale-User-Login` header that Herdr Web trusts from a loopback
-    # client.
-    systemd.user.services.herdr-web-ui-serve =
-      lib.mkIf (herdrWebUiEnabled && host.is.linux)
-        (mkTailscaleServe {
-          description = "Publish Herdr Web on the tailnet with Tailscale Serve";
-          app = "herdr-web-ui";
-          httpsPort = "8443";
-          target = "http://127.0.0.1:7317";
-        });
 
     # Roamgate needs its own origin, because its web app uses absolute paths,
     # so it gets its own HTTPS port. It trusts no proxy header, so Serve adds

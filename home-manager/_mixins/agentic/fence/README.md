@@ -212,15 +212,7 @@ are protected via on-disk file permissions. The user-facing sops-nix render
 directory at `~/.config/sops-nix` is intentionally read-allowed so API keys are
 exposed inside the sandbox.
 
-On skrye and zannah, Fence denies reads and writes of the Herdr Web directory
-at `~/.config/herdr-web-ui`. It holds the token env file, paired devices, push
-keys, pasted files, and the bridge tokens. A bridge token opens every route of
-the local server outside Fence, including reads of any file, so a readable
-token bypasses `denyRead`. Activation creates the directory, so the Linux mask
-applies before the service first runs. See the
-[Herdr Web README](../../terminal/herdr/herdr-web-ui.md).
-
-On skrye and zannah, Fence also denies reads and writes of the Roamgate
+On hosts with the `roamgate` tag, Fence denies reads and writes of the Roamgate
 directory at `~/.config/roamgate` and its legacy directory at
 `~/.config/herdr-gui`. They hold the password env file, the session secret,
 settings, connection profiles, and uploads. The session secret signs a cookie
@@ -254,7 +246,7 @@ the Linux masks apply before the daemon first runs. The token is not a sops-nix
 secret, because `~/.config/sops-nix` stays readable. Activation decrypts it
 from `secrets/herdr.yaml` with the user's age key and writes it only to the
 masked config directory. See the
-[Herdr Web README](../../terminal/herdr/herdr-web-ui.md#herdr-telegram-agents).
+[Herdr README](../../terminal/herdr/README.md#herdr-telegram-agents).
 
 ## Never name a path under `/run` in this policy
 

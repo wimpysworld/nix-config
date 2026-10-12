@@ -14,7 +14,6 @@ pkgs: {
   heynote = pkgs.callPackage ./heynote { };
   herdr-integrations = pkgs.callPackage ./herdr-integrations { };
   herdr-telegram-agents = pkgs.callPackage ./herdr-telegram-agents { };
-  herdr-web-ui = pkgs.callPackage ./herdr-web-ui { };
   herdr-home-layout = pkgs.callPackage ./herdr-layout { };
   herdr-work-layout = pkgs.callPackage ./herdr-layout { work = true; };
   linear-term = pkgs.callPackage ./linear-term { };

@@ -1,6 +1,6 @@
 # Roamgate
 
-[Roamgate](https://github.com/powerfooI/roamgate) is a browser and phone client for Herdr workspaces, panes, agents, files, diffs, and Git worktrees. It can type into every pane and read any file of the user. skrye and zannah run it next to [Herdr Web](herdr-web-ui.md) for a side-by-side test, and Tailscale Serve publishes it on the tailnet. No other host runs it.
+[Roamgate](https://github.com/powerfooI/roamgate) is a browser and phone client for Herdr workspaces, panes, agents, files, diffs, and Git worktrees. It can type into every pane and read any file of the user. Hosts with the `roamgate` tag in `lib/registry-systems.toml` run it, which are skrye and zannah, and Tailscale Serve publishes it on the tailnet. No other host runs it. The [Herdr README](README.md) documents the Herdr server.
 
 ## URLs
 
@@ -24,7 +24,7 @@ Never open Roamgate at `http://localhost:8787` or `http://127.0.0.1:8787`, even 
 
 The server runs outside Fence as the `roamgate.service` systemd user service, on `127.0.0.1:8787`, with `Restart=on-failure`. It starts after `herdr.service` and connects to the Herdr sockets directly. It is not the Roamgate Herdr plugin, which downloads a prebuilt binary, so do not run `herdr plugin install` or `herdr plugin link` for it. It runs from source on Bun, so the self-updater cannot replace it, and `ROAMGATE_DISABLE_UPDATE_CHECK=1` turns off update checks (see [Browser settings](#browser-settings)). The unit does not set `NODE_ENV`, because `NODE_ENV=development` on a loopback bind turns login off.
 
-The `roamgate-serve.service` user unit starts after `roamgate.service`, waits for `tailscaled` to log in, then runs `tailscale serve --bg --yes --https=10000 http://127.0.0.1:8787`. The user is the Tailscale operator, so the unit needs no root. The mapping persists in the tailscaled state, each start sets the same mapping again, and a stop of the unit removes it. Herdr Web keeps port 8443.
+The `roamgate-serve.service` user unit starts after `roamgate.service`, waits for `tailscaled` to log in, then runs `tailscale serve --bg --yes --https=10000 http://127.0.0.1:8787`. The user is the Tailscale operator, so the unit needs no root. The mapping persists in the tailscaled state, each start sets the same mapping again, and a stop of the unit removes it.
 
 State is in `~/.config/roamgate/`: the env file `roamgate.env`, the generated login token, the session secret, settings, connection profiles, push keys, Ranger data, and uploads. Roamgate refuses a symlink in that path, so Home Manager links no file into it. Fence denies reads and writes of this directory and of the legacy `~/.config/herdr-gui/`, because the session secret signs a cookie that opens every route of the server.
 
@@ -47,7 +47,7 @@ A PIN is much weaker than a password or the token, and Roamgate itself warns to 
 
 ## Shared hostname and cookies
 
-Roamgate, Herdr Web on port 8443, and the Caddy apps on port 443 use the same hostname. Browsers ignore the port for cookies, so each app receives the cookies of the others. The cookie names differ, so the apps do not overwrite each other. All `*.drongo-gamma.ts.net` hosts are one site, so a script on any tailnet origin can open the Roamgate WebSocket with the cookie. Keep untrusted HTML off the tailnet origins.
+Roamgate and the Caddy apps on port 443 use the same hostname. Browsers ignore the port for cookies, so each app receives the cookies of the others. The cookie names differ, so the apps do not overwrite each other. All `*.drongo-gamma.ts.net` hosts are one site, so a script on any tailnet origin can open the Roamgate WebSocket with the cookie. Keep untrusted HTML off the tailnet origins.
 
 ## Worktree hooks
 
@@ -82,15 +82,6 @@ The **Behavior** tab of the Roamgate settings applies to the browser only. Roamg
 | **Task needs attention**, **Task completed** | On, when task notifications are on | None. |
 
 Task alerts follow Herdr's own notifications, because `ROAMGATE_NOTIFICATION_SOURCE` defaults to `herdr` and Herdr is 0.9 or later. `[ui.notifications] external_agents` in the Herdr configuration also controls the Roamgate alerts.
-
-## What to compare with Herdr Web
-
-- Type in a pane while Herdr Web has the same tab open. Both clients share pane focus and terminal size.
-- Resize the browser and check the terminal size in the other client and in the TUI.
-- Install the app on the phone over the tailnet URL, then check web push.
-- Open a diff and the file explorer on a repository.
-- Copy from a pane with OSC 52.
-- Compare agent status and session history for each agent.
 
 ## Upgrades
 
