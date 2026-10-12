@@ -56,6 +56,12 @@ jobs:
           - id: hermes-agent
             name: Hermes Agent
             changelog: https://github.com/NousResearch/hermes-agent/releases
+          # Context Bar reads every agent transcript and runs outside Fence, so
+          # a person reviews the upstream diff before each upgrade merges.
+          - id: herdr-ctx-bar
+            name: Herdr Context Bar
+            changelog: https://github.com/pdalinis/herdr-ctx-bar/releases
+            automerge: false
           # The Telegram bot can type into every Herdr agent pane, so a person
           # reviews the upstream diff before each upgrade merges.
           - id: herdr-telegram-agents

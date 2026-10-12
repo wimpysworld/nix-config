@@ -29,6 +29,15 @@ let
         "${config.xdg.stateHome}/herdr/plugins/${pluginId}/**"
       ];
 
+  # Context Bar keeps its daemon lock and preview overrides in its state
+  # directory. The lock holds the PID that the `restart` action signals, so a
+  # writable lock would let a sandboxed process have any user process killed.
+  # Linking the plugin at activation creates the directory, so the Linux masks
+  # apply.
+  herdrCtxBarPaths = [
+    "${config.xdg.stateHome}/herdr/plugins/${pkgs.herdr-ctx-bar.passthru.pluginId}/**"
+  ];
+
   # Roamgate state: the password env file, the session secret, settings,
   # connection profiles, push keys, and uploads, plus the legacy
   # `herdr-gui` directory that Roamgate migrates from. The session secret
@@ -239,9 +248,10 @@ let
         "${config.xdg.dataHome}/fish/fish_history"
       ]
       ++ herdrTelegramAgentsPaths
+      ++ herdrCtxBarPaths
       ++ roamgatePaths;
 
-      denyWrite = herdrTelegramAgentsPaths ++ roamgatePaths;
+      denyWrite = herdrTelegramAgentsPaths ++ herdrCtxBarPaths ++ roamgatePaths;
     };
     command = {
       useDefaults = true;

@@ -42,32 +42,32 @@ let
     # than they save, so panes come back as plain shells instead.
     session.resume_agents_on_restore = false;
     ui.agent_panel_sort = "spaces";
+    # Herdr's default Agent rows, plus the Context Bar row. The plugin reports
+    # exactly one of the three tokens for each supported agent pane, so the
+    # bar takes the colour of its band: below 50%, 50% to 79%, and 80% and
+    # above.
     ui.sidebar.agents = {
       row_gap = 0;
       rows = [
         [
           "state_icon"
-          {
-            token = "$title";
-            fg = catppuccinPalette.getColor "text";
-            bold = true;
-            dim = false;
-          }
+          "machine"
+          "workspace"
+          "tab"
         ]
+        [ "agent" ]
         [
           {
-            token = "$provider";
-            dim = false;
+            token = "$ctx_green";
+            fg = catppuccinPalette.getColor "green";
           }
           {
-            token = "$limit";
-            dim = false;
+            token = "$ctx_yellow";
+            fg = catppuccinPalette.getColor "yellow";
           }
-        ]
-        [
           {
-            token = "$context";
-            dim = false;
+            token = "$ctx_red";
+            fg = catppuccinPalette.getColor "red";
           }
         ]
       ];
@@ -551,6 +551,7 @@ let
   };
   herdrTelegramAgentsEnabled = noughtyLib.isHost (builtins.attrNames herdrTelegramAgentsHosts);
   herdrTelegramAgentsHost = herdrTelegramAgentsHosts.${host.name} or { };
+  herdrCtxBar = pkgs.herdr-ctx-bar;
   herdrTelegramAgents = pkgs.herdr-telegram-agents;
   inherit (herdrTelegramAgents.passthru) pluginId;
   # Herdr passes these as HERDR_PLUGIN_CONFIG_DIR and HERDR_PLUGIN_STATE_DIR.
@@ -806,6 +807,10 @@ in
         ${herdrLayout}/share/herdr/plugins/${herdrLayout.passthru.pluginDir} --enabled
     '';
 
+    home.activation.herdrCtxBarPlugin = lib.hm.dag.entryAfter [ "herdrLayoutPlugin" ] ''
+      ${pkgs.herdr}/bin/herdr plugin link ${herdrCtxBar.passthru.pluginRoot} --enabled
+    '';
+
     # The env file must exist before sd-switch starts the service. Roamgate
     # exits at start when the PIN is not 6 to 12 ASCII digits. Ranger's
     # `opencode-go` provider reads its key from `OPENCODE_API_KEY`. The
@@ -860,6 +865,7 @@ in
       lib.hm.dag.entryAfter
         [
           "herdrLayoutPlugin"
+          "herdrCtxBarPlugin"
           "herdrTelegramAgentsPlugin"
         ]
         ''
@@ -874,6 +880,27 @@ in
             exit "$herdr_reload_status"
           fi
         '';
+
+    # Herdr runs the Context Bar startup hook only when the server starts, not
+    # when a plugin is linked, so a running server would show no bar until a
+    # new pane opens and would keep a daemon from an older store path. The
+    # `restart` action stops the old daemon and starts one from the linked
+    # path. Herdr runs the action in the background, so the step does not
+    # wait for it. With no server running, the startup hook starts the daemon
+    # later, so the step succeeds quietly. Any other failure prints a warning
+    # and does not stop the activation, because the bar is only a display.
+    home.activation.herdrCtxBarRestart = lib.hm.dag.entryAfter [ "herdrReloadConfig" ] ''
+      herdr_ctx_bar_status=0
+      herdr_ctx_bar_output="$(${pkgs.herdr}/bin/herdr plugin action invoke restart \
+        --plugin ${lib.escapeShellArg herdrCtxBar.passthru.pluginId} 2>&1)" \
+        || herdr_ctx_bar_status=$?
+
+      if ((herdr_ctx_bar_status != 0)) \
+        && ! printf '%s\n' "$herdr_ctx_bar_output" \
+          | ${pkgs.jq}/bin/jq -e '.error.code == "server_not_running"' >/dev/null 2>&1; then
+        warnEcho "herdrCtxBarRestart: the Context Bar restart action failed: $herdr_ctx_bar_output"
+      fi
+    '';
 
     # The Herdr server starts with the user manager, which linger starts at
     # boot on NixOS. `keep-old` stops a switch from restarting a running
