@@ -58,6 +58,7 @@ let
     name = "waybar-ai-usage";
     runtimeInputs = with pkgs; [
       ai-usagebar
+      jq
       libnotify
     ];
     text = ''
@@ -418,6 +419,10 @@ lib.mkIf (host.is.linux && host.is.workstation) {
             exec = "${lib.getExe aiUsage}";
             return-type = "json";
             interval = 300;
+            # The bar shows a glyph. A left click toggles to the widget text,
+            # which is the usage percentage and the time to the next reset.
+            format = "󰚩";
+            format-alt = "{text}";
             # Scrolling cycles through the enabled vendors. The widget then
             # sends this signal so that Waybar runs the module again.
             signal = 13;

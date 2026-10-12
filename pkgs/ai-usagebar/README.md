@@ -9,11 +9,11 @@
 | `cg` tag | Subscription usage | Subscription usage | Off | Claude |
 | No `cg` tag | Off | Subscription usage | Usage from `OPENCODE_ZEN_API_KEY` | Codex |
 
-Scroll on the module to cycle through the enabled vendors. All other vendors, the Anthropic Admin key (`anthropic_api`), and OpenAI admin access are off. Home Manager writes the settings to `~/.config/ai-usagebar/config.toml`. That file is read-only, so the TUI cannot save its Settings.
+The module shows only the `󰚩` glyph (Nerd Font `nf-md-robot`, U+F06A9). Left-click the module to show the usage percentage and the time to the next reset. Left-click again to show only the glyph. The tooltip uses `FiraCode Nerd Font Mono`, the font of the Waybar bar, so that its box drawing lines up. Other tooltips keep their font. Scroll on the module to cycle through the enabled vendors. All other vendors, the Anthropic Admin key (`anthropic_api`), and OpenAI admin access are off. Home Manager writes the settings to `~/.config/ai-usagebar/config.toml`. That file is read-only, so the TUI cannot save its Settings.
 
 Hosts without the `cg` tag use an Anthropic API key, which the widget cannot show. Their switch also deletes the Claude login, so Claude stays off there.
 
-The `waybar-ai-usage` wrapper reads the sops-nix secret into `OPENCODE_GO_API_KEY` and then runs the widget. When the secret file is missing or empty, OpenCode Go shows no key error until the next refresh. The wrapper puts `notify-send` on `PATH`, so the upstream quota notifications (97 % by default) work.
+The `waybar-ai-usage` wrapper reads the sops-nix secret into `OPENCODE_GO_API_KEY` and then runs the widget. It uses `jq` to wrap the widget's Pango tooltip in a span with the monospace font. When the secret file is missing or empty, OpenCode Go shows no key error until the next refresh. The wrapper puts `notify-send` on `PATH`, so the upstream quota notifications (97 % by default) work.
 
 ## Accepted risk: forced logout
 
