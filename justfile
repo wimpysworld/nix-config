@@ -567,7 +567,7 @@ build-home username=current_username hostname=current_hostname: prefetch
 # Switch Home configuration
 switch-home username=current_username hostname=current_hostname: prefetch
     @echo "Home Manager  Switching: {{ username }}@{{ hostname }}"
-    @nh home switch . --configuration "{{ username }}@{{ hostname }}" --backup-extension {{ backup_ext }}
+    @nh home switch . --configuration "{{ username }}@{{ hostname }}" --backup-extension {{ backup_ext }} --show-activation-logs
 
 # Build OS configuration
 build-host hostname=current_hostname: prefetch
