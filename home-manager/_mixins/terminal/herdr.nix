@@ -354,6 +354,69 @@ let
     "/run/wrappers/bin"
   ];
 
+  # Roamgate runs next to Herdr Web on skrye and zannah for a side-by-side
+  # test. The password key names a value in `secrets/herdr.yaml`.
+  roamgateHosts = {
+    skrye.passwordKey = "ROAMGATE_PASSWORD_SKRYE";
+    zannah.passwordKey = "ROAMGATE_PASSWORD_ZANNAH";
+  };
+  roamgateEnabled = noughtyLib.isHost (builtins.attrNames roamgateHosts);
+  roamgateHost = roamgateHosts.${host.name} or { };
+  # Roamgate fixes its data directory to `~/.config/roamgate`, refuses a
+  # symlink in that path, and can migrate files from the legacy
+  # `~/.config/herdr-gui`. Fence denies reads and writes of both.
+  roamgateDir = "${config.xdg.configHome}/roamgate";
+  roamgateLegacyDir = "${config.xdg.configHome}/herdr-gui";
+  roamgateEnv = "${roamgateDir}/roamgate.env";
+
+  # The same method as `herdrWebUiEnvWriter`: decrypt the password with the
+  # user's age key and write it to an env file with mode 0600. The value
+  # stays in a shell variable, so it is never in argv, the environment, the
+  # Nix store, or a log. On any failure the old file stays.
+  roamgateEnvWriter = pkgs.writeShellApplication {
+    name = "roamgate-env";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.sops
+    ];
+    text = ''
+      state_dir="$1"
+      legacy_dir="$2"
+      env_file="$3"
+      sops_file="$4"
+      age_key_file="$5"
+      password_key="$6"
+
+      # On Linux, Fence masks a denyRead path only when the path exists as
+      # the sandbox starts, so the directories exist before the service runs.
+      install -d -m 700 "$state_dir" "$legacy_dir"
+
+      # sops errors are discarded so that nothing it prints reaches the log.
+      password=""
+      if [[ -r "$age_key_file" ]]; then
+        password="$(SOPS_AGE_KEY_FILE="$age_key_file" sops -d --extract "[\"$password_key\"]" "$sops_file" 2>/dev/null)" \
+          || password=""
+      fi
+      if [[ -z "$password" ]]; then
+        echo "roamgate: could not decrypt $password_key, leaving $env_file unchanged" >&2
+        exit 0
+      fi
+      # systemd reads the file without a shell, so only plain values pass.
+      # Roamgate refuses to start with a password outside 15 to 1024
+      # characters.
+      safe='^[A-Za-z0-9._~+/=:@-]{15,1024}$'
+      if [[ ! "$password" =~ $safe ]]; then
+        echo "roamgate: the decrypted password is not valid, leaving $env_file unchanged" >&2
+        exit 0
+      fi
+
+      tmp="$(mktemp "$env_file.XXXXXX")"
+      printf 'ROAMGATE_PASSWORD=%s\n' "$password" >"$tmp"
+      chmod 600 "$tmp"
+      mv -f "$tmp" "$env_file"
+    '';
+  };
+
   # Telegram Agents needs one bot per host, because a second poller on the same
   # token makes the daemon exit. The token and chat ID keys name values in
   # `secrets/herdr.yaml`; all hosts share `TELEGRAM_OPERATOR_IDS`.
@@ -640,6 +703,19 @@ in
       ''
     );
 
+    # The env file must exist before sd-switch starts the service.
+    home.activation.roamgateEnv = lib.mkIf roamgateEnabled (
+      lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "writeBoundary" ] ''
+        run ${lib.getExe roamgateEnvWriter} \
+          ${lib.escapeShellArg roamgateDir} \
+          ${lib.escapeShellArg roamgateLegacyDir} \
+          ${lib.escapeShellArg roamgateEnv} \
+          ${../../../secrets/herdr.yaml} \
+          ${lib.escapeShellArg config.sops.age.keyFile} \
+          ${lib.escapeShellArg roamgateHost.passwordKey}
+      ''
+    );
+
     home.activation.herdrTelegramAgentsPlugin = lib.mkIf herdrTelegramAgentsEnabled (
       lib.hm.dag.entryAfter [ "herdrLayoutPlugin" ] ''
         ${pkgs.herdr}/bin/herdr plugin link ${herdrTelegramAgents.passthru.pluginRoot} --enabled
@@ -767,6 +843,37 @@ in
           "HERDR_WEB_HERDR_BIN=${lib.getExe pkgs.herdr}"
           "HERDR_WEB_STATE_DIR=${herdrWebUiDir}"
           "HERDR_WEB_PASTE_DIR=${herdrWebUiPasteDir}"
+          "PATH=${herdrWebUiPath}"
+        ];
+        Restart = "on-failure";
+        RestartSec = 10;
+      };
+      Install.WantedBy = [ "default.target" ];
+    };
+
+    # Roamgate runs as a user service from the Nix store, not as its Herdr
+    # plugin, which downloads a prebuilt binary. It runs from source on Bun,
+    # so the self-updater cannot replace it. The env file holds
+    # `ROAMGATE_PASSWORD`. Without it the unit fails, so the server never
+    # falls back to a generated token. `NODE_ENV` stays unset, because
+    # `development` on a loopback bind turns login off. The package turns
+    # worktree hooks off by default for every repository.
+    systemd.user.services.roamgate = lib.mkIf (roamgateEnabled && host.is.linux) {
+      Unit = {
+        Description = "Roamgate";
+        After = [ "herdr.service" ];
+        Wants = [ "herdr.service" ];
+      };
+      Service = {
+        Type = "simple";
+        ExecStart = lib.getExe pkgs.roamgate;
+        EnvironmentFile = roamgateEnv;
+        Environment = [
+          # Keep `HOST` and `PORT` in sync with the Tailscale Serve target in
+          # nixos/_mixins/server/roamgate/default.nix.
+          "HOST=127.0.0.1"
+          "PORT=8787"
+          "ROAMGATE_DISABLE_UPDATE_CHECK=1"
           "PATH=${herdrWebUiPath}"
         ];
         Restart = "on-failure";

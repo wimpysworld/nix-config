@@ -72,6 +72,13 @@ jobs:
             name: Herdr Telegram Agents
             changelog: https://github.com/permgps/herdr-telegram-agents/releases
             automerge: false
+          # Roamgate can type into every Herdr pane and read any file of the
+          # user, so a person reviews the upstream diff before each upgrade
+          # merges.
+          - id: roamgate
+            name: Roamgate
+            changelog: https://github.com/powerfooI/roamgate/releases
+            automerge: false
           - id: slk
             name: slk
             changelog: https://github.com/gammons/slk/releases

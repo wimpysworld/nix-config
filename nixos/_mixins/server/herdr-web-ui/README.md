@@ -11,6 +11,8 @@
 
 Each host is its own origin, so pair and install each app separately. The phone must have Tailscale connected each time it opens the app. Funnel stays off, so the app is not on the internet.
 
+skrye and zannah also run [Roamgate](../roamgate/README.md) on port 10000 for a side-by-side test.
+
 ## Parts
 
 | Part | Source |

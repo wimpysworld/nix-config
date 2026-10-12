@@ -43,6 +43,23 @@ let
         "${config.xdg.configHome}/herdr-web-ui/**"
       ];
 
+  # Roamgate state: the password env file, the session secret, settings,
+  # connection profiles, push keys, and uploads, plus the legacy
+  # `herdr-gui` directory that Roamgate migrates from. The session secret
+  # signs a cookie that opens every route of the local server, including
+  # reads of any file. Activation creates both directories, so the Linux
+  # masks apply before the service first runs.
+  roamgatePaths =
+    lib.optionals
+      (noughtyLib.isHost [
+        "skrye"
+        "zannah"
+      ])
+      [
+        "${config.xdg.configHome}/roamgate/**"
+        "${config.xdg.configHome}/herdr-gui/**"
+      ];
+
   darwinSigstoreCacheHome = "${homeDirectory}/Library/Caches/sigstore";
 
   herdrDir = "${config.xdg.configHome}/herdr";
@@ -242,9 +259,10 @@ let
         "${config.xdg.dataHome}/fish/fish_history"
       ]
       ++ herdrTelegramAgentsPaths
-      ++ herdrWebUiPaths;
+      ++ herdrWebUiPaths
+      ++ roamgatePaths;
 
-      denyWrite = herdrTelegramAgentsPaths ++ herdrWebUiPaths;
+      denyWrite = herdrTelegramAgentsPaths ++ herdrWebUiPaths ++ roamgatePaths;
     };
     command = {
       useDefaults = true;

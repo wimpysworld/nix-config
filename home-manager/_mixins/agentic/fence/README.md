@@ -220,6 +220,18 @@ token bypasses `denyRead`. Activation creates the directory, so the Linux mask
 applies before the service first runs. See the
 [Herdr Web README](../../../../nixos/_mixins/server/herdr-web-ui/README.md).
 
+On skrye and zannah, Fence also denies reads and writes of the Roamgate
+directory at `~/.config/roamgate` and its legacy directory at
+`~/.config/herdr-gui`. They hold the password env file, the session secret,
+settings, connection profiles, and uploads. The session secret signs a cookie
+that opens every route of the local server outside Fence, so a readable secret
+bypasses `denyRead`. Activation creates both directories. Fence has no
+`denyWrite` rule for repository `roamgate.json` and `paseo.json` hook files,
+because on Linux a `**/` glob covers only files that exist under the sandbox
+working directory when the sandbox starts. The Roamgate package turns worktree
+hooks off instead. See the
+[Roamgate README](../../../../nixos/_mixins/server/roamgate/README.md).
+
 Fenced agents can connect to `~/.config/herdr/herdr.sock` only. Herdr runs
 plugin programs from `~/.config/herdr/plugins` outside Fence, so write access
 there is a sandbox escape. No `allowWrite` entry covers `~/.config/herdr`, so
