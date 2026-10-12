@@ -1044,6 +1044,10 @@ in
           # `roamgate-serve`.
           "HOST=127.0.0.1"
           "PORT=8787"
+          # The server answers every update check with no update and makes no
+          # network request. The "Automatic update checks" toggle in the
+          # settings is a browser `localStorage` value, so it still shows
+          # "Enabled" until it is turned off in each browser.
           "ROAMGATE_DISABLE_UPDATE_CHECK=1"
           "PATH=${herdrWebUiPath}"
         ];

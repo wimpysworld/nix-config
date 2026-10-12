@@ -22,7 +22,7 @@ Never open Roamgate at `http://localhost:8787` or `http://127.0.0.1:8787`, even 
 | Fence read and write denial | [home-manager/_mixins/agentic/fence/default.nix](../../../../home-manager/_mixins/agentic/fence/default.nix) |
 | Freshener job, with auto-merge off | [.github/freshener/roamgate.sh](../../../../.github/freshener/roamgate.sh) |
 
-The server runs outside Fence as the `roamgate.service` systemd user service, on `127.0.0.1:8787`, with `Restart=on-failure`. It starts after `herdr.service` and connects to the Herdr sockets directly. It is not the Roamgate Herdr plugin, which downloads a prebuilt binary, so do not run `herdr plugin install` or `herdr plugin link` for it. It runs from source on Bun, so the self-updater cannot replace it, and `ROAMGATE_DISABLE_UPDATE_CHECK=1` turns off update checks. The unit does not set `NODE_ENV`, because `NODE_ENV=development` on a loopback bind turns login off.
+The server runs outside Fence as the `roamgate.service` systemd user service, on `127.0.0.1:8787`, with `Restart=on-failure`. It starts after `herdr.service` and connects to the Herdr sockets directly. It is not the Roamgate Herdr plugin, which downloads a prebuilt binary, so do not run `herdr plugin install` or `herdr plugin link` for it. It runs from source on Bun, so the self-updater cannot replace it, and `ROAMGATE_DISABLE_UPDATE_CHECK=1` turns off update checks (see [Browser settings](#browser-settings)). The unit does not set `NODE_ENV`, because `NODE_ENV=development` on a loopback bind turns login off.
 
 The `roamgate-serve.service` user unit starts after `roamgate.service`, waits for `tailscaled` to log in, then runs `tailscale serve --bg --yes --https=10000 http://127.0.0.1:8787`. The user is the Tailscale operator, so the unit needs no root. The mapping persists in the tailscaled state, each start sets the same mapping again, and a stop of the unit removes it. Herdr Web keeps port 8443.
 
@@ -71,6 +71,18 @@ Roamgate rewrites `state.json` from memory while it runs, so the `roamgate-range
 
 Ranger reads workspace status, pane history, and terminal output only in the workspaces that you allow for a turn. It cannot run shell commands or read files. It can propose workspace, worktree, tab, pane, and agent operations, prompts to agents, scheduled tasks, and notifications, and it runs them only after you confirm them. Each turn sends your messages, the system prompt, and the tool results, including the pane and terminal text that it reads, to OpenCode at `opencode.ai`. Keep secrets out of panes in an allowed workspace.
 
+## Browser settings
+
+The **Behavior** tab of the Roamgate settings applies to the browser only. Roamgate keeps these values in the browser's `localStorage`, not in `~/.config/roamgate/settings.json`, and no environment variable sets their defaults. Set them once in each browser and on each device.
+
+| Setting | Default | Server side |
+| --- | --- | --- |
+| **Automatic update checks** | Enabled | The unit sets `ROAMGATE_DISABLE_UPDATE_CHECK=1`. The server then answers every check with no update and makes no network request, but the toggle still shows **Enabled**. Turn it off to stop the check every 30 minutes. |
+| **Task notifications** | Off | The browser must grant the notification permission, and only a click in the page can ask for it. Server push is on by default, with a VAPID key in `~/.config/roamgate/web-push.json`. An empty `ROAMGATE_WEB_PUSH_SUBJECT` turns push off, so the unit does not set it. |
+| **Task needs attention**, **Task completed** | On, when task notifications are on | None. |
+
+Task alerts follow Herdr's own notifications, because `ROAMGATE_NOTIFICATION_SOURCE` defaults to `herdr` and Herdr is 0.9 or later. `[ui.notifications] external_agents` in the Herdr configuration also controls the Roamgate alerts.
+
 ## What to compare with Herdr Web
 
 - Type in a pane while Herdr Web has the same tab open. Both clients share pane focus and terminal size.
@@ -93,3 +105,5 @@ Upstream declares Bun 1.4.3. The flake has Bun 1.4.2, and the build and a short 
 3. Run `just switch-home` on skrye and on zannah.
 4. Open the host URL and log in with the PIN.
 5. Add the app to the Home Screen on the phone, so that web push works.
+6. In each browser and in the phone app, open the settings, then the **Behavior** tab. Turn off **Automatic update checks**.
+7. On the same tab, turn on **Task notifications** and allow notifications when the browser asks. Wait until the status shows **On · Background push**.
