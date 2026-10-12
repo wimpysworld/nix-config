@@ -717,6 +717,9 @@ let
   piHerdrFiles = lib.optionalAttrs host.is.linux {
     ".pi/agent/extensions/herdr-agent-state.ts".source =
       "${herdrIntegrations}/home/.pi/agent/extensions/herdr-agent-state.ts";
+    # Herdr Model Display shows the model and thinking level in the Herdr
+    # Agents sidebar. This is the file that its `setup-pi` action copies.
+    ".pi/agent/extensions/herdr-model-display.ts".source = pkgs.herdr-disp-model.passthru.piExtension;
   };
 
   # Hide the pi-lens diagnostics widget shown above the editor. It renders a

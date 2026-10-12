@@ -390,6 +390,28 @@ let
       }
     ];
   };
+  # Herdr Model Display shows the model and effort in the Herdr Agents
+  # sidebar. These are the events that its `setup-claude` action registers.
+  # The hook skips subagents and does nothing outside a Herdr pane.
+  claudeHerdrDispModelHooks =
+    lib.genAttrs
+      [
+        "SessionStart"
+        "UserPromptSubmit"
+        "PostModelSwitch"
+        "SessionEnd"
+      ]
+      (_event: [
+        {
+          hooks = [
+            {
+              type = "command";
+              command = "${pkgs.herdr-disp-model.passthru.hookCommand} claude-hook";
+              timeout = 5;
+            }
+          ];
+        }
+      ]);
   claudeCodeTripwireHooks = {
     SessionStart = lib.mkAfter [
       {
@@ -1142,6 +1164,9 @@ in
           })
           {
             hooks = claudeHerdrHooks;
+          }
+          {
+            hooks = claudeHerdrDispModelHooks;
           }
           {
             hooks = claudeLeafHooks;

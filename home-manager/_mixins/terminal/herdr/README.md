@@ -1,6 +1,6 @@
 # Herdr
 
-This directory documents the Herdr server, the Context Bar plugin, the Herdr Telegram Agents plugin, and [Roamgate](roamgate.md), the browser and phone client.
+This directory documents the Herdr server, the Context Bar and Model Display plugins, the Herdr Telegram Agents plugin, and [Roamgate](roamgate.md), the browser and phone client.
 
 ## Herdr server
 
@@ -36,6 +36,25 @@ Upstream asks for two first-use steps, and neither is needed here:
 Herdr runs the plugin startup hook only when the server starts. Each activation invokes the `restart` action after the config reload, so a running server starts the daemon from the new store path. With no server running, the step does nothing. To check the daemon, run `herdr plugin action invoke status --plugin herdr-ctx-bar`, then `herdr plugin log list --plugin herdr-ctx-bar`.
 
 The state directory `~/.local/state/herdr/plugins/herdr-ctx-bar/` holds the daemon lock, which records the PID that `restart` signals. Fence denies reads and writes of it, so a sandboxed process cannot plant a PID.
+
+## Model Display
+
+[Model Display](https://github.com/pdalinis/herdr-disp-model) shows the model and reasoning effort of each Claude Code, Codex, and Pi session in the Agents sidebar. Each hook renames the agent row to a label such as `claude - claude-opus-5-5 - high`. Every non-ISO host links it. The sidebar is 36 columns wide, not the default 26, so the label fits on one row.
+
+| Part | Source |
+| --- | --- |
+| Package: the plugin tree at a pinned commit, with the manifest pinned to the store Python | [pkgs/herdr-disp-model/default.nix](../../../../pkgs/herdr-disp-model/default.nix) |
+| Plugin link and the sidebar width | [home-manager/_mixins/terminal/herdr.nix](../herdr.nix) |
+| Claude Code hooks | [home-manager/_mixins/agentic/claude-code/default.nix](../../agentic/claude-code/default.nix) |
+| Codex hooks | [home-manager/_mixins/agentic/codex/default.nix](../../agentic/codex/default.nix) |
+| Pi extension, Linux only, like the Herdr Pi extension | [home-manager/_mixins/agentic/pi/default.nix](../../agentic/pi/default.nix) |
+| Freshener job, with auto-merge off | [.github/freshener/herdr-disp-model.sh](../../../../.github/freshener/herdr-disp-model.sh) |
+
+The plugin has no daemon and no state. The hooks run inside each agent session, and inside Fence when the agent is fenced. Each hook reads the model and effort from the hook input, and the Codex hook can also read the tail of the session transcript and `models_cache.json`. It sends them to Herdr with `herdr pane report-metadata`. It makes no network request.
+
+Upstream asks for a `setup-all` action, which writes the hooks into `~/.claude/settings.json` and `~/.codex/hooks.json` and copies the Pi and Hermes adapters. The agent modules declare the same hooks and the Pi extension instead, so do not run `setup-all` or `remove-all`. Hermes Agent runs here as a system service, not in a Herdr pane, so it gets no adapter.
+
+The plugin also reports `$model` and `$effort` tokens. The sidebar rows do not use them, because the `agent` label already shows both values.
 
 ## Herdr Telegram Agents
 

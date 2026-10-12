@@ -62,6 +62,13 @@ jobs:
             name: Herdr Context Bar
             changelog: https://github.com/pdalinis/herdr-ctx-bar/releases
             automerge: false
+          # Model Display hooks run inside every Claude Code, Codex, and Pi
+          # session, so a person reviews the upstream diff before each upgrade
+          # merges.
+          - id: herdr-disp-model
+            name: Herdr Model Display
+            changelog: https://github.com/pdalinis/herdr-disp-model/commits/main
+            automerge: false
           # The Telegram bot can type into every Herdr agent pane, so a person
           # reviews the upstream diff before each upgrade merges.
           - id: herdr-telegram-agents

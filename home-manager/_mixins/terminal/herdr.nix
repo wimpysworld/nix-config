@@ -42,10 +42,16 @@ let
     # than they save, so panes come back as plain shells instead.
     session.resume_agents_on_restore = false;
     ui.agent_panel_sort = "spaces";
+    # Herdr 0.9.3 defaults to 26 columns, and the Agents rows lose 5 columns
+    # to the margins. Model Display renames each agent row to a label such as
+    # `claude - claude-opus-5-5 - high`, which needs 36 columns. 36 is also
+    # the default `ui.sidebar_max_width`, so a wider value needs that too.
+    ui.sidebar_width = 36;
     # Herdr's default Agent rows, plus the Context Bar row. The plugin reports
     # exactly one of the three tokens for each supported agent pane, so the
     # bar takes the colour of its band: below 50%, 50% to 79%, and 80% and
-    # above.
+    # above. Model Display puts the model and effort in the `agent` label, so
+    # its `$model` and `$effort` tokens would only repeat them.
     ui.sidebar.agents = {
       row_gap = 0;
       rows = [
@@ -53,7 +59,6 @@ let
           "state_icon"
           "machine"
           "workspace"
-          "tab"
         ]
         [ "agent" ]
         [
@@ -552,6 +557,7 @@ let
   herdrTelegramAgentsEnabled = noughtyLib.isHost (builtins.attrNames herdrTelegramAgentsHosts);
   herdrTelegramAgentsHost = herdrTelegramAgentsHosts.${host.name} or { };
   herdrCtxBar = pkgs.herdr-ctx-bar;
+  herdrDispModel = pkgs.herdr-disp-model;
   herdrTelegramAgents = pkgs.herdr-telegram-agents;
   inherit (herdrTelegramAgents.passthru) pluginId;
   # Herdr passes these as HERDR_PLUGIN_CONFIG_DIR and HERDR_PLUGIN_STATE_DIR.
@@ -811,6 +817,12 @@ in
       ${pkgs.herdr}/bin/herdr plugin link ${herdrCtxBar.passthru.pluginRoot} --enabled
     '';
 
+    # Model Display has no daemon. The agent modules install its hooks, so its
+    # `setup-all` action is not needed.
+    home.activation.herdrDispModelPlugin = lib.hm.dag.entryAfter [ "herdrLayoutPlugin" ] ''
+      ${pkgs.herdr}/bin/herdr plugin link ${herdrDispModel.passthru.pluginRoot} --enabled
+    '';
+
     # The env file must exist before sd-switch starts the service. Roamgate
     # exits at start when the PIN is not 6 to 12 ASCII digits. Ranger's
     # `opencode-go` provider reads its key from `OPENCODE_API_KEY`. The
@@ -866,6 +878,7 @@ in
         [
           "herdrLayoutPlugin"
           "herdrCtxBarPlugin"
+          "herdrDispModelPlugin"
           "herdrTelegramAgentsPlugin"
         ]
         ''

@@ -237,6 +237,7 @@ let
   };
   codexHookEventLabels = {
     PreToolUse = "pre_tool_use";
+    SessionEnd = "session_end";
     SessionStart = "session_start";
     Stop = "stop";
     SubagentStart = "subagent_start";
@@ -310,8 +311,28 @@ let
       }
     ];
   };
-  codexHookEvents =
-    (lib.optionalAttrs communicationRules.enable codexTripwireHookEvents) // codexHerdrHookEvents;
+  # Herdr Model Display shows the model and effort in the Herdr Agents
+  # sidebar. These are the events and timeouts that its `setup-codex` action
+  # registers. The hook does nothing outside a Herdr pane.
+  codexHerdrDispModelHookEvents =
+    lib.genAttrs [ "SessionStart" "UserPromptSubmit" "SessionEnd" ]
+      (event: [
+        {
+          hooks = [
+            {
+              type = "command";
+              command = "${pkgs.herdr-disp-model.passthru.hookCommand} codex-hook";
+              timeout = if event == "SessionEnd" then 3 else 5;
+            }
+          ];
+        }
+      ]);
+  # Several sources register the same events, so their groups concatenate.
+  codexHookEvents = lib.zipAttrsWith (_event: lib.concatLists) [
+    (lib.optionalAttrs communicationRules.enable codexTripwireHookEvents)
+    codexHerdrHookEvents
+    codexHerdrDispModelHookEvents
+  ];
   codexHookStateEntriesForConfigPath =
     configPath:
     lib.flatten (

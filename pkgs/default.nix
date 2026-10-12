@@ -13,6 +13,7 @@ pkgs: {
   export-agentic-dots = pkgs.callPackage ./export-agentic-dots { };
   heynote = pkgs.callPackage ./heynote { };
   herdr-ctx-bar = pkgs.callPackage ./herdr-ctx-bar { };
+  herdr-disp-model = pkgs.callPackage ./herdr-disp-model { };
   herdr-integrations = pkgs.callPackage ./herdr-integrations { };
   herdr-telegram-agents = pkgs.callPackage ./herdr-telegram-agents { };
   herdr-home-layout = pkgs.callPackage ./herdr-layout { };
