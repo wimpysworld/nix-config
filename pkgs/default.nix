@@ -2,6 +2,7 @@
 # You can build them using 'nix build .#example'
 pkgs: {
   # Local packages
+  ai-usagebar = pkgs.callPackage ./ai-usagebar { };
   blender-agent-bridge = pkgs.callPackage ./blender-agent-bridge { };
   brow6el = pkgs.callPackage ./brow6el { };
   casty = pkgs.callPackage ./casty { };

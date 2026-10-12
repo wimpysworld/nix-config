@@ -29,6 +29,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # The Waybar widget refreshes and rewrites the Claude and Codex OAuth
+          # tokens, so a person reviews the upstream diff before each upgrade
+          # merges.
+          - id: ai-usagebar
+            name: ai-usagebar
+            changelog: https://github.com/akitaonrails/ai-usagebar/releases
+            automerge: false
           - id: defold
             name: Defold
             changelog: https://github.com/defold/defold/releases

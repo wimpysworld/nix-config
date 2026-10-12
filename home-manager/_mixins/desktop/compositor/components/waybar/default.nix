@@ -38,6 +38,35 @@ let
     ];
     text = builtins.readFile ./virtualcam-toggle.sh;
   };
+  # Work hosts ("cg") sign in to Claude Code with a subscription and keep the
+  # OpenCode Zen key out of sops-nix. Other hosts use an Anthropic API key,
+  # which ai-usagebar cannot show, and their switch deletes the Claude login.
+  isWorkHost = noughtyLib.hostHasTag "cg";
+  aiUsageConfig = (pkgs.formats.toml { }).generate "ai-usagebar-config.toml" {
+    ui.primary = if isWorkHost then "anthropic" else "openai";
+    anthropic.enabled = isWorkHost;
+    anthropic_api.enabled = false;
+    openai.enabled = true;
+    zai.enabled = false;
+    openrouter.enabled = false;
+    opencode-go = {
+      enabled = !isWorkHost;
+      api_key_env = "OPENCODE_GO_API_KEY";
+    };
+  };
+  aiUsage = pkgs.writeShellApplication {
+    name = "waybar-ai-usage";
+    runtimeInputs = with pkgs; [
+      ai-usagebar
+      libnotify
+    ];
+    text = ''
+      opencode_key_file=${
+        lib.escapeShellArg (lib.optionalString (!isWorkHost) config.sops.secrets.OPENCODE_ZEN_API_KEY.path)
+      }
+    ''
+    + builtins.readFile ./ai-usage.sh;
+  };
   compositor =
     if host.is.linux && host.is.workstation then
       lib.attrByPath [
@@ -52,6 +81,14 @@ lib.mkIf (host.is.linux && host.is.workstation) {
   catppuccin = {
     waybar.enable = config.programs.waybar.enable;
   };
+
+  # This definition matches the OpenCode and Pi declarations of the same key.
+  sops.secrets.OPENCODE_ZEN_API_KEY = lib.mkIf (!isWorkHost) {
+    sopsFile = ../../../../../../secrets/ai.yaml;
+    mode = "0400";
+  };
+
+  xdg.configFile."ai-usagebar/config.toml".source = aiUsageConfig;
 
   programs = {
     waybar = {
@@ -165,6 +202,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         }
 
         #tray,
+        #custom-ai-usage,
         #custom-virtualcam,
         #wireplumber,
         #pulseaudio.input,
@@ -182,6 +220,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           opacity: 0.9;
         }
 
+        #custom-ai-usage:hover,
         #custom-virtualcam:hover,
         #wireplumber:hover,
         #pulseaudio.input:hover,
@@ -197,10 +236,19 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         }
 
 
-        #wireplumber {
-          color: @mauve;
+        #custom-ai-usage {
+          color: @pink;
           border-radius: 0.75rem 0 0 0.75rem;
           margin-left: 1rem;
+        }
+
+        #custom-ai-usage.critical {
+          color: @red;
+        }
+
+        #wireplumber {
+          border-radius: 0;
+          color: @mauve;
         }
 
         #pulseaudio.input {
@@ -286,6 +334,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           ];
           modules-right = [
             "tray"
+            "custom/ai-usage"
             "wireplumber"
             "pulseaudio#input"
           ]
@@ -364,6 +413,16 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           tray = {
             icon-size = 22;
             spacing = 12;
+          };
+          "custom/ai-usage" = {
+            exec = "${lib.getExe aiUsage}";
+            return-type = "json";
+            interval = 300;
+            # Scrolling cycles through the enabled vendors. The widget then
+            # sends this signal so that Waybar runs the module again.
+            signal = 13;
+            on-scroll-up = "${lib.getExe aiUsage} --cycle-next";
+            on-scroll-down = "${lib.getExe aiUsage} --cycle-prev";
           };
           wireplumber = {
             scroll-step = 5;
