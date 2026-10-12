@@ -55,6 +55,20 @@ Device cookies last one year. Revoke a lost device in Settings, Devices. To rota
 
 The freshener opens a pull request for each upstream `vX.Y.Z` release and does not enable auto-merge. Review the upstream diff before you merge. The install check fails when the server imports a package outside the pruned `node_modules`. Add that package to the `prune-node-modules.ts` call in the package.
 
+## Herdr server
+
+Every non-ISO host runs the Herdr server as a service from [home-manager/_mixins/terminal/herdr.nix](../../../../home-manager/_mixins/terminal/herdr.nix). Linux uses the `herdr.service` systemd user service, and momin uses the `org.nix-community.home.herdr` launchd agent. Both run `~/.nix-profile/bin/herdr server`, the profile path and not a store path, so a Herdr update does not change the unit or the plist.
+
+- On NixOS, [nixos/_mixins/users/default.nix](../../users/default.nix) sets `linger`, so the user manager and the server start at boot, before any login. On momin the server starts at login. Lima and WSL hosts start it with their user manager.
+- The unit sets `X-SwitchMethod=keep-old`, so `just switch-home` never restarts a running server or its panes. It sets `Restart=on-failure`, so a crash restarts it, but `herdr server stop` leaves it stopped.
+- On NixOS the unit sets `SSH_AUTH_SOCK` to the `ssh-agent.service` socket. It sets no display variables. On a workstation, a fish shell in a Herdr pane copies `WAYLAND_DISPLAY`, `DISPLAY`, and the other compositor variables from `systemctl --user show-environment` when it has no display.
+- `herdr-web-ui.service` starts after `herdr.service` and retries the socket.
+- If a server already owns the socket, the service skips its start instead of failing in a loop.
+
+To load a new Herdr version, which ends every pane process, run `systemctl --user restart herdr` on Linux, or `launchctl kickstart -k gui/$(id -u)/org.nix-community.home.herdr` on momin.
+
+The first switch that adds the service finds a server started by hand, so the service does not start. To hand over, detach the clients, run `herdr server stop`, then run `systemctl --user start herdr` on Linux, or `launchctl kickstart gui/$(id -u)/org.nix-community.home.herdr` on momin. On NixOS, `just switch-host` sets linger, and the next boot also starts the service.
+
 ## Herdr Telegram Agents
 
 [Herdr Telegram Agents](https://github.com/permgps/herdr-telegram-agents) mirrors each Herdr agent into a topic of a Telegram forum group. The bot can type into every agent pane, and Telegram can read all posts, because bot chats have no end-to-end encryption. Only skrye and zannah enable it, with one bot and one group for each host. A second poller on the same token makes the daemon exit.
@@ -97,4 +111,4 @@ Every value except a bool must be a JSON string, or the daemon ignores it. A top
 6. Run `just switch-home` on the host. If decryption fails or a value is not valid, activation prints a warning and leaves `config.json` unchanged.
 7. Run `herdr-tg-agent start` on the host. After a plugin update or a change to `config.json`, run `herdr-tg-agent restart` instead.
 
-Herdr starts the daemon only when the Herdr server starts, so a switch does not start or restart it. The daemon reads `config.json` only at start. `herdr-tg-agent start|stop|restart|status` runs the plugin action, waits up to 15 seconds for it to finish, prints its output, and exits with its exit code. Only skrye and zannah install the command.
+Herdr starts the daemon only when the Herdr server starts. After a reboot the daemon starts by itself, because the Herdr server starts at boot. A switch leaves the running server in place, so it does not start or restart the daemon; run `herdr-tg-agent start` or `herdr-tg-agent restart` after a switch. The daemon reads `config.json` only at start. `herdr-tg-agent start|stop|restart|status` runs the plugin action, waits up to 15 seconds for it to finish, prints its output, and exits with its exit code. Only skrye and zannah install the command.

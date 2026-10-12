@@ -562,6 +562,32 @@ let
     '';
   };
 
+  # The service runs the profile copy of Herdr, not a store path, so a Herdr
+  # update does not change the unit or the plist and does not restart the
+  # server.
+  herdrProfileBin = "${config.home.profileDirectory}/bin/herdr";
+  herdrSocket = "${config.xdg.configHome}/herdr/herdr.sock";
+  # NixOS runs `ssh-agent.service` in the user manager. Lima and WSL hosts are
+  # Home Manager only, so they have no such unit.
+  hostHasSshAgentUnit =
+    host.is.linux && !(noughtyLib.hostHasTag "lima" || noughtyLib.hostHasTag "wsl");
+  # Panes of a server that starts at boot have no display. These are the
+  # variables the compositor imports into the user manager, with a generic
+  # fallback for a desktop outside the compositor contract.
+  compositor = lib.attrByPath [
+    host.desktop
+  ] null (import ../../../lib/wayland-compositors.nix).compositors;
+  paneDisplayVariables =
+    if compositor != null then
+      compositor.ephemeralEnvironment
+    else
+      [
+        "DISPLAY"
+        "WAYLAND_DISPLAY"
+        "XDG_SESSION_TYPE"
+        "XDG_CURRENT_DESKTOP"
+      ];
+
 in
 {
   config = lib.mkIf (!host.is.iso) {
@@ -655,13 +681,78 @@ in
           fi
         '';
 
+    # The Herdr server starts with the user manager, which linger starts at
+    # boot on NixOS. `keep-old` stops a switch from restarting a running
+    # server and its panes. A server started by hand owns the socket, so the
+    # condition skips the start instead of failing in a restart loop.
+    systemd.user.services.herdr = lib.mkIf host.is.linux {
+      Unit = {
+        Description = "Herdr server";
+        X-SwitchMethod = "keep-old";
+        After = lib.optional hostHasSshAgentUnit "ssh-agent.service";
+        Wants = lib.optional hostHasSshAgentUnit "ssh-agent.service";
+      };
+      Service = {
+        Type = "simple";
+        ExecCondition = "${pkgs.bash}/bin/bash -c '! ${lib.getExe pkgs.socat} -u OPEN:/dev/null UNIX-CONNECT:${herdrSocket} 2>/dev/null'";
+        ExecStart = "${herdrProfileBin} server";
+        Environment = lib.optional hostHasSshAgentUnit "SSH_AUTH_SOCK=%t/ssh-agent";
+        Restart = "on-failure";
+        RestartSec = 30;
+        # Herdr saves the session as it stops.
+        TimeoutStopSec = 60;
+      };
+      Install.WantedBy = [ "default.target" ];
+    };
+
+    # launchd starts the agent at login. The shell exits 0 when a server
+    # started by hand owns the socket, and `KeepAlive` restarts only after a
+    # failure, so neither case loops. The plist text holds no store path.
+    launchd.agents.herdr = lib.mkIf host.is.darwin {
+      enable = true;
+      config = {
+        ProgramArguments = [
+          "/bin/sh"
+          "-c"
+          "/usr/bin/nc -U -z '${herdrSocket}' 2>/dev/null && exit 0; exec '${herdrProfileBin}' server"
+        ];
+        RunAtLoad = true;
+        KeepAlive.SuccessfulExit = false;
+        ThrottleInterval = 30;
+        StandardOutPath = "${config.home.homeDirectory}/Library/Logs/herdr.log";
+        StandardErrorPath = "${config.home.homeDirectory}/Library/Logs/herdr.log";
+      };
+    };
+
+    # A pane of a server that started before the graphical login has no
+    # display variables. This copies them from the user manager into a new
+    # pane shell, once, and only when the pane has no Wayland or X11 display.
+    programs.fish.interactiveShellInit = lib.mkIf (host.is.workstation && host.is.linux) ''
+      if test "$HERDR_ENV" = 1; and not set -q WAYLAND_DISPLAY; and not set -q DISPLAY; and command -q systemctl
+          for __herdr_line in (systemctl --user show-environment 2>/dev/null)
+              set -l __herdr_kv (string split -m 1 = -- $__herdr_line)
+              if contains -- $__herdr_kv[1] ${lib.escapeShellArgs paneDisplayVariables}; and not set -q $__herdr_kv[1]
+                  set -gx $__herdr_kv[1] $__herdr_kv[2]
+              end
+          end
+          set -e __herdr_line
+      end
+    '';
+
     # Herdr Web runs as a user service, not as a Herdr plugin, so systemd
     # restarts it and Herdr does not start a second copy. It runs without the
-    # upstream supervisor, so the self-updater is off. The env file holds
-    # `HERDR_WEB_TOKEN` and `HERDR_WEB_TAILSCALE_OWNER`. Without it the unit
-    # fails, so the server never runs without a token.
+    # upstream supervisor, so the self-updater is off. It starts after the
+    # Herdr server and retries the Herdr socket, so a socket that appears
+    # late does no harm. `Wants`, not `BindsTo`, keeps it up across a
+    # deliberate `herdr server stop`. The env file holds `HERDR_WEB_TOKEN`
+    # and `HERDR_WEB_TAILSCALE_OWNER`. Without it the unit fails, so the
+    # server never runs without a token.
     systemd.user.services.herdr-web-ui = lib.mkIf (herdrWebUiEnabled && host.is.linux) {
-      Unit.Description = "Herdr Web";
+      Unit = {
+        Description = "Herdr Web";
+        After = [ "herdr.service" ];
+        Wants = [ "herdr.service" ];
+      };
       Service = {
         Type = "simple";
         ExecStart = lib.getExe pkgs.herdr-web-ui;
