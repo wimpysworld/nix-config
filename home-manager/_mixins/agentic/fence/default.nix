@@ -49,16 +49,10 @@ let
   # signs a cookie that opens every route of the local server, including
   # reads of any file. Activation creates both directories, so the Linux
   # masks apply before the service first runs.
-  roamgatePaths =
-    lib.optionals
-      (noughtyLib.isHost [
-        "skrye"
-        "zannah"
-      ])
-      [
-        "${config.xdg.configHome}/roamgate/**"
-        "${config.xdg.configHome}/herdr-gui/**"
-      ];
+  roamgatePaths = lib.optionals (noughtyLib.hostHasTag "roamgate") [
+    "${config.xdg.configHome}/roamgate/**"
+    "${config.xdg.configHome}/herdr-gui/**"
+  ];
 
   darwinSigstoreCacheHome = "${homeDirectory}/Library/Caches/sigstore";
 

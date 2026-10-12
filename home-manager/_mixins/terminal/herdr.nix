@@ -431,12 +431,9 @@ let
     "/run/wrappers/bin"
   ];
 
-  # Roamgate runs next to Herdr Web on skrye and zannah for a side-by-side
-  # test. Both hosts share the `ROAMGATE_PIN` value in `secrets/herdr.yaml`.
-  roamgateEnabled = noughtyLib.isHost [
-    "skrye"
-    "zannah"
-  ];
+  # Roamgate runs on hosts with the `roamgate` tag. All of them share the
+  # `ROAMGATE_PIN` value in `secrets/herdr.yaml`.
+  roamgateEnabled = noughtyLib.hostHasTag "roamgate";
   # Roamgate fixes its data directory to `~/.config/roamgate`, refuses a
   # symlink in that path, and can migrate files from the legacy
   # `~/.config/herdr-gui`. Fence denies reads and writes of both.
