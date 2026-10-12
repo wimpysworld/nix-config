@@ -63,7 +63,30 @@ let
           "state_icon"
           "machine"
           "workspace"
-          "agent"
+          # Colour each harness near its brand: peach for Claude's orange,
+          # teal for OpenAI's green, and free accents for OpenCode and Pi.
+          # Green, yellow and red stay free for the Context Bar bands.
+          {
+            token = "agent";
+            rules = map (rule: rule // { ignore_case = true; }) [
+              {
+                equals = "claude";
+                fg = catppuccinPalette.getColor "peach";
+              }
+              {
+                equals = "codex";
+                fg = catppuccinPalette.getColor "teal";
+              }
+              {
+                equals = "opencode";
+                fg = catppuccinPalette.getColor "sapphire";
+              }
+              {
+                equals = "pi";
+                fg = catppuccinPalette.getColor "mauve";
+              }
+            ];
+          }
         ]
         [
           { token = "$model"; }
