@@ -1,7 +1,7 @@
 # System registry - central definition of all systems and their properties
 #
 # Canonical tag vocabulary:
-#   Host tags: studio, davinci, gamedev, streamdeck, pci-hdmi-capture, thinkpad, framework, cg, steamdeck, wsl, iso, reframe, inference, scrutiny, dropbox, borgbackup, fprintd, strix-halo, gatus, irc-bouncer, paseo, handy, kmscon, lima, moltis, openstack
+#   Host tags: studio, davinci, gamedev, streamdeck, pci-hdmi-capture, thinkpad, framework, cg, steamdeck, wsl, iso, reframe, inference, scrutiny, dropbox, borgbackup, fprintd, strix-halo, gatus, irc-bouncer, handy, kmscon, lima, moltis, openstack
 #   User tags: developer, admin, family
 #
 # Registry fields:
@@ -35,7 +35,6 @@ tags = [
   "dropbox",
   "fprintd",
   "handy",
-  "paseo",
 ]
 
 [bane.gpu]
@@ -77,7 +76,6 @@ tags = [
   "dropbox",
   "fprintd",
   "handy",
-  "paseo",
 ]
 
 [ravi.gpu]
@@ -224,7 +222,6 @@ tags = [
   "borgbackup",
   "strix-halo",
   "handy",
-  "paseo",
   "moltis",
 ]
 
@@ -272,7 +269,6 @@ tags = [
   "borgbackup",
   "strix-halo",
   "handy",
-  "paseo",
 ]
 
 [zannah.gpu]

@@ -43,21 +43,6 @@ in
   modifiedPackages =
     final: prev:
     let
-      paseoPackages = inputs.paseo.packages.${prev.stdenv.hostPlatform.system} or { };
-      # Paseo packages come from the upstream Paseo flake; the desktop client
-      # reuses the patched daemon npm closure below.
-      #
-      # The v0.11.1 tag ships a wrong npm-deps fixed-output hash, which breaks
-      # the build with a hash mismatch. Correct the hash here until the next
-      # upstream release carries a good one.
-      fixPaseoNpmDeps =
-        pkg:
-        pkg.override {
-          npmDepsHash = "sha256-aoYgGgEkqeeZJR7OOcSHuZEhBELkpyOGqHo4oEx7W88=";
-        };
-      paseoAttrs = prev.lib.optionalAttrs ((paseoPackages ? paseo) || (paseoPackages ? default)) {
-        paseo = fixPaseoNpmDeps (paseoPackages.paseo or paseoPackages.default);
-      };
       catppuccinPalette = builtins.fromJSON (builtins.readFile ../lib/catppuccin-palette.json);
       handyAttrs = prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
         handy = handyPackages.${prev.stdenv.hostPlatform.system}.handy.overrideAttrs (oldAttrs: {
@@ -154,17 +139,6 @@ in
           inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}.claude-desktop
         else
           throw "claude-desktop is only available on Linux";
-
-      # The upstream desktop client reuses the patched paseo npm closure above.
-      # The llm-agents package builds a separate large npm-deps derivation that
-      # is brittle against registry fetch failures.
-      paseo-desktop =
-        if final.stdenv.hostPlatform.isLinux then
-          inputs.paseo.packages.${final.stdenv.hostPlatform.system}.desktop.override {
-            inherit (final) paseo;
-          }
-        else
-          throw "paseo-desktop is only available on Linux";
 
       linuxPackages_6_12 = prev.linuxPackages_6_12.extend (
         _lpself: lpsuper: {
@@ -267,7 +241,6 @@ in
         '';
       });
     }
-    // paseoAttrs
     // handyAttrs;
 
   # When applied, the unstable nixpkgs set (declared in the flake inputs) will

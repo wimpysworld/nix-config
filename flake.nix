@@ -31,8 +31,6 @@
     concord.inputs.nixpkgs.follows = "nixpkgs-unstable";
     concord.inputs.rust-overlay.follows = "rust-overlay";
     concord.inputs.flake-utils.follows = "flake-utils";
-    paseo.url = "github:getpaseo/paseo/v0.11.1";
-    paseo.inputs.nixpkgs.follows = "nixpkgs-unstable";
     lan-mouse.url = "github:feschber/lan-mouse/v0.11.0";
     lan-mouse.inputs.nixpkgs.follows = "nixpkgs";
     lan-mouse.inputs.rust-overlay.follows = "rust-overlay";
@@ -122,10 +120,6 @@
             sidra
             ;
         };
-        linuxOnlyOverlaidPackages = [
-          "paseo"
-          "paseo-desktop"
-        ];
       };
 
       checks = builder.forAllSystems (

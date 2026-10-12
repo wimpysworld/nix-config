@@ -68,7 +68,7 @@ let
       }
     ];
 
-  # PATH entries for the systemd user unit, mirroring `paseo/default.nix`.
+  # PATH entries for the systemd user unit, so it can find user profile tools.
   moltisPath = lib.concatStringsSep ":" [
     "${homeDir}/.nix-profile/bin"
     "${homeDir}/.local/state/nix/profile/bin"
