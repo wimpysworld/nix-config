@@ -18,8 +18,9 @@ let
       "${config.home.homeDirectory}/Chainguard/_worktrees"
     else
       "${config.home.homeDirectory}/Development/_worktrees";
-  # Work hosts get the Chainguard pane set and Claude and Codex autostart;
-  # home hosts get the OpenCode pane set for personal development.
+  # Every host opens a new space as one Shell pane. In linked worktree
+  # spaces, work hosts get the Chainguard pane set and Claude and Codex
+  # autostart, and home hosts get the OpenCode pane set.
   herdrLayout = if noughtyLib.hostHasTag "cg" then pkgs.herdr-work-layout else pkgs.herdr-home-layout;
   settings = {
     # Herdr shows the onboarding screen until it writes `onboarding = false`

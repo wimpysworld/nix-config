@@ -65,9 +65,9 @@ let
   pluginManifest = writeText "herdr-plugin-${layoutName}.toml" ''
     id = "local.${layoutName}"
     name = "${pluginTitle}"
-    version = "0.4.0"
+    version = "0.5.0"
     min_herdr_version = "0.8.2"
-    description = "Prepare workspace tabs and agent panes with a fixed pane set"
+    description = "Open new spaces as one Shell pane and linked worktrees with a fixed pane set"
     platforms = ["linux", "macos"]
 
     [[events]]
@@ -94,7 +94,7 @@ assert lib.assertMsg (builtins.elem herdr.version [
 ]) "herdr-layout requires the Herdr v0.8.2, v0.9.0, v0.9.1, or v0.9.3 event schema";
 stdenvNoCC.mkDerivation {
   pname = "herdr-${layoutName}";
-  version = "0.4.0";
+  version = "0.5.0";
 
   dontUnpack = true;
 
@@ -117,7 +117,7 @@ stdenvNoCC.mkDerivation {
   };
 
   meta = {
-    description = "Fixed pane sets and agent autostart for Herdr workspaces";
+    description = "Shell spaces and fixed worktree pane sets with agent autostart for Herdr";
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [ flexiondotorg ];
     mainProgram = "herdr-${layoutName}";

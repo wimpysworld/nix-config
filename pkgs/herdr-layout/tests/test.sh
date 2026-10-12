@@ -76,6 +76,7 @@ write_invocation() {
 	jq -cn \
 		--arg cwd "$cwd" \
 		--argjson focused "$focused" \
+		--argjson linked "$linked" \
 		--argjson with_worktree "$([[ -n $worktree_path ]] && printf true || printf false)" '
       {
         event: "workspace_created",
@@ -99,13 +100,14 @@ write_invocation() {
             repo_name: "project",
             repo_root: $cwd,
             checkout_path: $cwd,
-            is_linked_worktree: true
+            is_linked_worktree: $linked
           }
         else . end
     ' >"$event_file"
 
 	jq -cn \
 		--arg cwd "$cwd" \
+		--argjson linked "$linked" \
 		--argjson with_worktree "$([[ -n $worktree_path ]] && printf true || printf false)" '
       {
         workspace_id: "workspace-1",
@@ -124,7 +126,7 @@ write_invocation() {
             repo_name: "project",
             repo_root: $cwd,
             checkout_path: $cwd,
-            is_linked_worktree: true
+            is_linked_worktree: $linked
           }
         else . end
     ' >"$context_file"
@@ -144,7 +146,7 @@ run_standard_case() {
 	local cwd=$2
 	local focused=$3
 
-	write_invocation "" "$focused" "$cwd"
+	write_invocation "$cwd" "$focused"
 	: >"$log_file"
 	run_layout >"$TMPDIR/$name.out"
 	expected_shell_tabs "$cwd" >"$expected_file"
@@ -158,6 +160,32 @@ run_standard_case() {
 	cmp "$expected_file" "$log_file"
 	[[ $(tail -n 1 "$log_file") == $'tab\tfocus\ttab-claude' ]] ||
 		fail "the focus was not the final Herdr command in the $name case"
+}
+
+# A space that is not a linked worktree keeps one pane, labelled Shell, with
+# no new tab, no split, and no agent command.
+run_shell_case() {
+	local name=$1
+	local worktree_path=$2
+	local cwd=$3
+	local linked=${4:-true}
+	local agent_command
+
+	write_invocation "$worktree_path" true "$cwd" "$linked"
+	: >"$log_file"
+	run_layout >"$TMPDIR/shell-$name.out"
+	[[ $(grep -c $'^tab\trename\t' "$log_file") -eq 1 ]] &&
+		grep -qx $'tab\trename\ttab-claude\tShell' "$log_file" ||
+		fail "the $name case did not label the initial tab Shell"
+	! grep -qE $'^(tab\tcreate|pane\tsplit|agent\t)' "$log_file" ||
+		fail "the $name case created a second pane or started an agent"
+	! grep -qvE $'^(tab\trename|pane\trun\tpane-claude)\t' "$log_file" ||
+		fail "the $name case ran an unexpected Herdr command"
+	for agent_command in "$initial_command" "${pane_commands[@]}"; do
+		[[ $agent_command == "${pane_commands[Shell]}" ]] && continue
+		! grep -qxF $'pane\trun\tpane-claude\t'"$agent_command" "$log_file" ||
+			fail "the $name case started '$agent_command'"
+	done
 }
 
 run_review_case() {
@@ -176,7 +204,13 @@ run_review_case() {
 
 [[ -f $fakeHerdr ]] || fail "the fake Herdr is missing"
 
-# Shell-only spaces and worktree spaces take the same layout in every variant.
+# A new space outside a linked worktree is one Shell pane in every variant.
+run_shell_case ordinary "" "$outside_path"
+run_shell_case root "" "$chainguard_root"
+run_shell_case review-named "" "$review_path"
+run_shell_case unlinked "$review_development_path" "$review_development_path" false
+
+# Linked worktree spaces keep the full layout in every variant.
 run_standard_case ordinary "$outside_path" true
 run_standard_case root "$chainguard_root" true
 run_standard_case inside "$inside_path" false
@@ -184,28 +218,10 @@ run_standard_case missing "$missing_path" true
 
 if [[ $variant == work ]]; then
 	# A `review-*` named linked worktree switches the workspace to Codex only.
-	run_standard_case review-ordinary "$review_path" false
 	run_review_case linked "$review_path"
 	run_review_case middle "$chainguard_root/project/topic-review-123"
 	run_review_case trailing-slash "$review_path/"
 	run_review_case development "$review_development_path"
-
-	# An unlinked worktree keeps the standard layout instead of review mode.
-	write_invocation "$review_development_path" false
-	jq '.data.workspace.worktree.is_linked_worktree = false' "$event_file" >"$TMPDIR/staged.json"
-	mv "$TMPDIR/staged.json" "$event_file"
-	jq '.worktree.is_linked_worktree = false' "$context_file" >"$TMPDIR/staged.json"
-	mv "$TMPDIR/staged.json" "$context_file"
-	: >"$log_file"
-	run_layout >"$TMPDIR/review-unlinked.out"
-	expected_shell_tabs "$review_development_path" >"$expected_file"
-	printf 'pane\trun\tpane-claude\tclaude-fenced\n' >>"$expected_file"
-	printf 'pane\trun\t%s\tcodex-fenced --noughty-fresh\n' "$codex_pane_id" >>"$expected_file"
-	printf 'pane\trun\t%s\tlg\n' "$git_pane_id" >>"$expected_file"
-	printf 'pane\trun\t%s\tfresh .\n' "$code_pane_id" >>"$expected_file"
-	printf 'pane\trun\t%s\tclear\n' "$shell_pane_id" >>"$expected_file"
-	printf 'tab\tfocus\ttab-claude\n' >>"$expected_file"
-	cmp "$expected_file" "$log_file"
 fi
 
 # The plugin rejects unexpected events without calling Herdr.
@@ -233,7 +249,7 @@ fi
 
 # A tab creation failure stops before further tab creation.
 first_pane_label=${extra_pane_labels[0]}
-write_invocation "" true
+write_invocation "$outside_path" true
 : >"$log_file"
 export FAKE_HERDR_FAIL_COMMAND="tab create --workspace workspace-1 --cwd $outside_path --label $first_pane_label --no-focus"
 if output=$(run_layout 2>&1); then
@@ -245,7 +261,7 @@ unset FAKE_HERDR_FAIL_COMMAND
 [[ $(wc -l <"$log_file") -eq 2 ]] || fail "the layout continued after a tab creation failure"
 
 # A pane run failure stops the remaining pane commands and keeps guidance.
-write_invocation "" true
+write_invocation "$outside_path" true
 : >"$log_file"
 export FAKE_HERDR_FAIL_COMMAND="pane run $git_pane_id lg"
 if output=$(run_layout 2>&1); then
@@ -259,7 +275,7 @@ unset FAKE_HERDR_FAIL_COMMAND
 	fail "the layout continued after a pane run failure"
 
 # A focus response that reports an unfocused tab stops the layout.
-write_invocation "" true
+write_invocation "$outside_path" true
 : >"$log_file"
 export FAKE_HERDR_MISMATCH_COMMAND="tab focus tab-claude"
 if output=$(run_layout 2>&1); then

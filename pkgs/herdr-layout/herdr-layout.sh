@@ -163,6 +163,15 @@ create_tab() {
 	created_pane_id=$(jq -er '.result.root_pane.pane_id' <<<"$response")
 }
 
+run_in_pane() {
+	local pane_id=$1
+	local command_text=$2
+	local response
+
+	herdr_call response "running '$command_text' in pane $pane_id" \
+		pane run "$pane_id" "$command_text"
+}
+
 # Variant: @INITIAL_LABEL@ layout. Labels without a command keep plain shells.
 initial_label=@INITIAL_LABEL@
 review_enabled=@REVIEW_ENABLED@
@@ -172,9 +181,16 @@ declare -A agent_commands=(
 
 worktree_checkout=$(jq -r '.data.workspace.worktree.checkout_path // empty' <<<"$event_json")
 
-if ((review_enabled)) && [[ -n $worktree_checkout ]] &&
-	[[ $(basename -- "$worktree_checkout") == *review-* ]] &&
-	jq -e '.data.workspace.worktree.is_linked_worktree == true' >/dev/null <<<"$event_json"; then
+# A space that is not a linked worktree keeps its one pane as a plain shell.
+if ! jq -e '.data.workspace.worktree.is_linked_worktree == true' >/dev/null <<<"$event_json"; then
+	herdr_call response "renaming the initial tab" tab rename "$initial_tab_id" Shell
+	validate_tab_info "$response" "$initial_tab_id" Shell "renaming the initial tab"
+	run_in_pane "$initial_pane_id" "${agent_commands[Shell]}"
+	printf 'herdr-layout: prepared shell workspace %s.\n' "$workspace_id"
+	exit 0
+fi
+
+if ((review_enabled)) && [[ $(basename -- "$worktree_checkout") == *review-* ]]; then
 	initial_label=Codex
 fi
 
@@ -182,15 +198,6 @@ herdr_call response "renaming the initial tab" tab rename "$initial_tab_id" "$in
 validate_tab_info "$response" "$initial_tab_id" "$initial_label" "renaming the initial tab"
 
 declare -A pane_ids=(["$initial_label"]="$initial_pane_id")
-
-run_in_pane() {
-	local pane_id=$1
-	local command_text=$2
-	local response
-
-	herdr_call response "running '$command_text' in pane $pane_id" \
-		pane run "$pane_id" "$command_text"
-}
 
 if [[ $initial_label == Codex ]]; then
 	run_in_pane "$initial_pane_id" "${agent_commands[Codex]}"
