@@ -294,9 +294,11 @@ let
   herdrWebUiPasteDir = "${herdrWebUiDir}/paste";
 
   # The Herdr Web and Roamgate secrets are not sops-nix secrets, because Fence
-  # keeps `~/.config/sops-nix` readable. This decrypts each `VAR=KEY` pair
-  # from `secrets/herdr.yaml` with the user's age key and writes `VAR="value"`
-  # lines to an env file with mode 0600. The decrypted values stay in shell
+  # keeps `~/.config/sops-nix` readable. This decrypts each sops key with the
+  # user's age key and writes `VAR="value"` lines to an env file with mode
+  # 0600. Each entry is five arguments: the variable, the sops file, the key,
+  # a regular expression that the value must match, and the rule that a
+  # warning names when it does not match. The decrypted values stay in shell
   # variables and pipes, so they are never in argv, the environment, the Nix
   # store, or a log. Every failure prints a warning that names the activation
   # step and the reason, never a value, and keeps the old file. It exits 0, so
@@ -311,12 +313,8 @@ let
     text = ''
       step="$1"
       env_file="$2"
-      sops_file="$3"
-      age_key_file="$4"
-      # An empty pattern accepts every value that the checks below accept.
-      pattern="$5"
-      rule="$6"
-      shift 6
+      age_key_file="$3"
+      shift 3
       # A pattern such as `[0-9]` must match ASCII only, as in the apps.
       export LC_ALL=C
 
@@ -327,19 +325,25 @@ let
       trap 'warn "an unexpected error stopped the step"' ERR
 
       [[ -r "$age_key_file" ]] || warn "cannot read the age key $age_key_file"
-      [[ -r "$sops_file" ]] || warn "cannot read $sops_file"
+      (($# > 0 && $# % 5 == 0)) || warn "the entries are not groups of five arguments"
 
       # One UTF-32 code point per line, in hexadecimal: U+FDD0 to U+FDEF, and
       # U+FFFE and U+FFFF in every plane.
       noncharacter=$'(^|\n)(0000fd[de][0-9a-f]|00[01][0-9a-f]fff[ef])(\n|$)'
       lines=""
-      for pair in "$@"; do
-        var="''${pair%%=*}"
-        key="''${pair#*=}"
+      while (($# > 0)); do
+        var="$1"
+        sops_file="$2"
+        key="$3"
+        # An empty pattern accepts every value that the checks below accept.
+        pattern="$4"
+        rule="$5"
+        shift 5
+        [[ -r "$sops_file" ]] || warn "cannot read $sops_file"
         # sops errors are discarded, because they can quote the file. A NUL
         # becomes the byte 0xff, so the UTF-8 check below refuses it.
         value="$(SOPS_AGE_KEY_FILE="$age_key_file" sops -d --extract "[\"$key\"]" "$sops_file" 2>/dev/null | tr '\0' '\377')" \
-          || warn "cannot decrypt $key: the key is missing, or the age key cannot decrypt the file"
+          || warn "cannot decrypt $key from $sops_file: the key is missing, or the age key cannot decrypt the file"
         [[ -n "$value" ]] || warn "$key is empty"
         [[ "$value" != *$'\n'* ]] || warn "$key has a line break"
         # systemd ignores the whole file when a value is not valid UTF-8 or
@@ -369,16 +373,15 @@ let
   # The activation step creates the state directories, runs the writer, and
   # warns when the unit still has no env file. On Linux, Fence masks a
   # denyRead path only when the path exists as the sandbox starts, so the
-  # directories exist before the service runs.
+  # directories exist before the service runs. Each entry names `var` and
+  # `key`, and can set `sopsFile`, `pattern`, and `rule`.
   mkEnvFileStep =
     {
       step,
       unit,
       dirs,
       envFile,
-      pattern ? "",
-      rule ? "",
-      pairs,
+      entries,
     }:
     lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "writeBoundary" ] ''
       run install -d -m 700 ${lib.escapeShellArgs dirs}
@@ -387,17 +390,25 @@ let
           lib.escapeShellArgs [
             step
             envFile
-          ]
-        } \
-        ${../../../secrets/herdr.yaml} \
-        ${
-          lib.escapeShellArgs [
             config.sops.age.keyFile
-            pattern
-            rule
           ]
         } \
-        ${lib.escapeShellArgs pairs}
+        ${lib.concatMapStringsSep " " (
+          {
+            var,
+            key,
+            sopsFile ? ../../../secrets/herdr.yaml,
+            pattern ? "",
+            rule ? "",
+          }:
+          "${lib.escapeShellArg var} ${sopsFile} ${
+            lib.escapeShellArgs [
+              key
+              pattern
+              rule
+            ]
+          }"
+        ) entries}
       if [[ ! -v DRY_RUN && ! -s ${lib.escapeShellArg envFile} ]]; then
         warnEcho ${lib.escapeShellArg "${step}: ${envFile} is missing, so ${unit} cannot start"}
       fi
@@ -432,6 +443,67 @@ let
   roamgateDir = "${config.xdg.configHome}/roamgate";
   roamgateLegacyDir = "${config.xdg.configHome}/herdr-gui";
   roamgateEnv = "${roamgateDir}/roamgate.env";
+  roamgateAssistantDir = "${roamgateDir}/assistant";
+
+  # Ranger, the Roamgate assistant, uses the OpenCode Go subscription through
+  # the `opencode-go` provider of its Pi SDK. Pick another model ID from that
+  # provider's model list in the Ranger settings.
+  roamgateRangerModel = "glm-5.3-flash";
+
+  # Ranger reads its provider and model from `config` in `state.json`, not
+  # from the environment or `settings.json`. It counts a provider as
+  # configured only when `auth.json` has a key for it, or when `models.json`
+  # names the key's environment variable. Roamgate rewrites `state.json` from
+  # memory while it runs, so this merge runs before each start. It keeps the
+  # conversations and every other key, and drops the thinking effort only
+  # when the model changes, because Ranger refuses an effort that the model
+  # does not support. A file that is not a JSON object stays unchanged with a
+  # warning, and no failure stops the start.
+  roamgateRangerConfig = pkgs.writeShellApplication {
+    name = "roamgate-ranger-config";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.jq
+    ];
+    text = ''
+      state_dir="$1"
+      provider="$2"
+      model="$3"
+      key_var="$4"
+      trap 'echo "WARNING: roamgate-ranger-config: an unexpected error stopped the step" >&2; exit 0' ERR
+
+      # Every file starts from `initial` when it is missing.
+      merge_json() {
+        local target="$state_dir/$1" initial="$2" filter="$3" tmp
+        shift 3
+        if [[ -e "$target" ]] && ! jq -e 'type == "object"' "$target" >/dev/null 2>&1; then
+          echo "WARNING: roamgate-ranger-config: $target is not a JSON object, so it is unchanged" >&2
+          return 0
+        fi
+        tmp="$(mktemp "$target.XXXXXX")"
+        if [[ -e "$target" ]]; then
+          jq "$@" "$filter" "$target" >"$tmp" || { rm -f "$tmp"; return 1; }
+        else
+          jq -n "$@" "$initial | $filter" >"$tmp" || { rm -f "$tmp"; return 1; }
+        fi
+        chmod 600 "$tmp"
+        mv -f "$tmp" "$target"
+      }
+
+      install -d -m 700 "$state_dir"
+      # shellcheck disable=SC2016 # jq variables, not shell expansions.
+      merge_json state.json '{messages: [], entries: [], requests: []}' '
+        .config = (.config // {allowed_workspaces: []})
+        | if .config.provider != $provider or .config.model != $model
+          then .config |= del(.thinking_level) else . end
+        | .config += {provider: $provider, model: $model, credential_source: "assistant"}
+      ' --arg provider "$provider" --arg model "$model"
+      # shellcheck disable=SC2016 # jq variables, not shell expansions.
+      merge_json models.json '{}' '
+        .providers[$provider].apiKey = ("$" + $key_var)
+      ' --arg provider "$provider" --arg key_var "$key_var"
+    '';
+  };
 
   # Tailscale Serve publishes each app on the tailnet from a user unit. The
   # user is the Tailscale operator, so `tailscale serve` needs no root. The
@@ -762,25 +834,44 @@ in
         herdrWebUiPasteDir
       ];
       envFile = herdrWebUiEnv;
-      pairs = [
-        "HERDR_WEB_TOKEN=${herdrWebUiHost.tokenKey}"
-        "HERDR_WEB_TAILSCALE_OWNER=HERDR_WEB_TAILSCALE_OWNER"
+      entries = [
+        {
+          var = "HERDR_WEB_TOKEN";
+          key = herdrWebUiHost.tokenKey;
+        }
+        {
+          var = "HERDR_WEB_TAILSCALE_OWNER";
+          key = "HERDR_WEB_TAILSCALE_OWNER";
+        }
       ];
     });
 
     # The env file must exist before sd-switch starts the service. Roamgate
-    # exits at start when the PIN is not 6 to 12 ASCII digits.
+    # exits at start when the PIN is not 6 to 12 ASCII digits. Ranger's
+    # `opencode-go` provider reads its key from `OPENCODE_API_KEY`. The
+    # OpenCode Zen key of the OpenCode Go subscription is that key.
     home.activation.roamgateEnv = lib.mkIf roamgateEnabled (mkEnvFileStep {
       step = "roamgateEnv";
       unit = "roamgate.service";
       dirs = [
         roamgateDir
         roamgateLegacyDir
+        roamgateAssistantDir
       ];
       envFile = roamgateEnv;
-      pattern = "^[0-9]{6,12}$";
-      rule = "use 6 to 12 ASCII digits";
-      pairs = [ "ROAMGATE_PIN=ROAMGATE_PIN" ];
+      entries = [
+        {
+          var = "ROAMGATE_PIN";
+          key = "ROAMGATE_PIN";
+          pattern = "^[0-9]{6,12}$";
+          rule = "use 6 to 12 ASCII digits";
+        }
+        {
+          var = "OPENCODE_API_KEY";
+          key = "OPENCODE_ZEN_API_KEY";
+          sopsFile = ../../../secrets/ai.yaml;
+        }
+      ];
     });
 
     home.activation.herdrTelegramAgentsPlugin = lib.mkIf herdrTelegramAgentsEnabled (
@@ -922,8 +1013,8 @@ in
     # Roamgate runs as a user service from the Nix store, not as its Herdr
     # plugin, which downloads a prebuilt binary. It runs from source on Bun,
     # so the self-updater cannot replace it. The env file holds
-    # `ROAMGATE_PIN`. Without it the pre-start check fails, so the server
-    # never runs without the PIN. With no password set, Roamgate also
+    # `ROAMGATE_PIN` and Ranger's `OPENCODE_API_KEY`. Without it the pre-start
+    # check fails, so the server never runs without the PIN. With no password set, Roamgate also
     # generates a login token in `~/.config/roamgate`. `NODE_ENV` stays unset,
     # because `development` on a loopback bind turns login off. The package
     # turns worktree hooks off by default for every repository.
@@ -936,7 +1027,17 @@ in
       Service = {
         Type = "simple";
         ExecStart = lib.getExe pkgs.roamgate;
-        ExecStartPre = mkEnvFileCheck roamgateEnv;
+        ExecStartPre = [
+          (mkEnvFileCheck roamgateEnv)
+          "${lib.getExe roamgateRangerConfig} ${
+            lib.escapeShellArgs [
+              roamgateAssistantDir
+              "opencode-go"
+              roamgateRangerModel
+              "OPENCODE_API_KEY"
+            ]
+          }"
+        ];
         EnvironmentFile = "-${roamgateEnv}";
         Environment = [
           # Keep `HOST` and `PORT` in sync with the Tailscale Serve target of
