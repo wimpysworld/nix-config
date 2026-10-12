@@ -293,56 +293,102 @@ let
   herdrWebUiEnv = "${herdrWebUiDir}/service.env";
   herdrWebUiPasteDir = "${herdrWebUiDir}/paste";
 
-  # The token is not a sops-nix secret, because Fence keeps
-  # `~/.config/sops-nix` readable. This decrypts the token and the owner login
-  # with the user's age key and writes them to an env file with mode 0600.
-  # The decrypted values stay in shell variables, so they are never in argv,
-  # the environment, the Nix store, or a log. On any failure the old file
-  # stays.
-  herdrWebUiEnvWriter = pkgs.writeShellApplication {
-    name = "herdr-web-ui-env";
+  # The Herdr Web and Roamgate secrets are not sops-nix secrets, because Fence
+  # keeps `~/.config/sops-nix` readable. This decrypts each `VAR=KEY` pair
+  # from `secrets/herdr.yaml` with the user's age key and writes `VAR=value`
+  # lines to an env file with mode 0600. The decrypted values stay in shell
+  # variables, so they are never in argv, the environment, the Nix store, or
+  # a log. Every failure prints a warning that names the activation step and
+  # the reason, never a value, and keeps the old file. It exits 0, so a bad
+  # secret does not stop the rest of the activation.
+  herdrEnvFileWriter = pkgs.writeShellApplication {
+    name = "herdr-env-file";
     runtimeInputs = [
       pkgs.coreutils
       pkgs.sops
     ];
     text = ''
-      state_dir="$1"
-      paste_dir="$2"
-      env_file="$3"
-      sops_file="$4"
-      age_key_file="$5"
-      token_key="$6"
-      owner_key="$7"
+      step="$1"
+      env_file="$2"
+      sops_file="$3"
+      age_key_file="$4"
+      pattern="$5"
+      rule="$6"
+      shift 6
 
-      # On Linux, Fence masks a denyRead path only when the path exists as
-      # the sandbox starts, so the directories exist before the service runs.
-      install -d -m 700 "$state_dir" "$paste_dir"
-
-      # sops errors are discarded so that nothing it prints reaches the log.
-      decrypt() {
-        [[ -r "$age_key_file" ]] \
-          && SOPS_AGE_KEY_FILE="$age_key_file" sops -d --extract "[\"$1\"]" "$sops_file" 2>/dev/null
+      warn() {
+        printf 'WARNING: %s: %s, so %s is unchanged\n' "$step" "$1" "$env_file" >&2
+        exit 0
       }
+      trap 'warn "an unexpected error stopped the step"' ERR
 
-      token="$(decrypt "$token_key")" || token=""
-      owner="$(decrypt "$owner_key")" || owner=""
-      if [[ -z "$token" || -z "$owner" ]]; then
-        echo "herdr-web-ui: could not decrypt $token_key or $owner_key, leaving $env_file unchanged" >&2
-        exit 0
-      fi
-      # systemd reads the file without a shell, so only plain values pass.
-      safe='^[A-Za-z0-9._~+/=:@-]+$'
-      if [[ ! "$token" =~ $safe || ! "$owner" =~ $safe ]]; then
-        echo "herdr-web-ui: the decrypted values are not valid, leaving $env_file unchanged" >&2
-        exit 0
-      fi
+      [[ -r "$age_key_file" ]] || warn "cannot read the age key $age_key_file"
+      [[ -r "$sops_file" ]] || warn "cannot read $sops_file"
 
-      tmp="$(mktemp "$env_file.XXXXXX")"
-      printf 'HERDR_WEB_TOKEN=%s\nHERDR_WEB_TAILSCALE_OWNER=%s\n' "$token" "$owner" >"$tmp"
-      chmod 600 "$tmp"
-      mv -f "$tmp" "$env_file"
+      lines=""
+      for pair in "$@"; do
+        var="''${pair%%=*}"
+        key="''${pair#*=}"
+        # sops errors are discarded, because they can quote the file.
+        value="$(SOPS_AGE_KEY_FILE="$age_key_file" sops -d --extract "[\"$key\"]" "$sops_file" 2>/dev/null)" \
+          || warn "cannot decrypt $key: the key is missing, or the age key cannot decrypt the file"
+        [[ -n "$value" ]] || warn "$key is empty"
+        # systemd reads the file without a shell, so only plain values pass.
+        [[ "$value" =~ $pattern ]] || warn "$key is not valid: $rule"
+        lines+="$var=$value"$'\n'
+      done
+
+      tmp="$(mktemp "$env_file.XXXXXX")" || warn "cannot create a file next to $env_file"
+      if ! { printf '%s' "$lines" >"$tmp" && chmod 600 "$tmp" && mv -f "$tmp" "$env_file"; }; then
+        rm -f "$tmp"
+        warn "cannot write $env_file"
+      fi
     '';
   };
+
+  # The activation step creates the state directories, runs the writer, and
+  # warns when the unit still has no env file. On Linux, Fence masks a
+  # denyRead path only when the path exists as the sandbox starts, so the
+  # directories exist before the service runs.
+  mkEnvFileStep =
+    {
+      step,
+      unit,
+      dirs,
+      envFile,
+      pattern,
+      rule,
+      pairs,
+    }:
+    lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "writeBoundary" ] ''
+      run install -d -m 700 ${lib.escapeShellArgs dirs}
+      run ${lib.getExe herdrEnvFileWriter} \
+        ${
+          lib.escapeShellArgs [
+            step
+            envFile
+          ]
+        } \
+        ${../../../secrets/herdr.yaml} \
+        ${
+          lib.escapeShellArgs [
+            config.sops.age.keyFile
+            pattern
+            rule
+          ]
+        } \
+        ${lib.escapeShellArgs pairs}
+      if [[ ! -v DRY_RUN && ! -s ${lib.escapeShellArg envFile} ]]; then
+        warnEcho ${lib.escapeShellArg "${step}: ${envFile} is missing, so ${unit} cannot start"}
+      fi
+    '';
+
+  # Each start checks for the env file first, so a missing file logs a clear
+  # reason. The `-` prefix on `EnvironmentFile` stops systemd from failing
+  # earlier with only `Result: resources`.
+  mkEnvFileCheck =
+    envFile:
+    "${pkgs.bash}/bin/bash -c ${lib.escapeShellArg "[[ -s ${lib.escapeShellArg envFile} ]] || { echo \"missing ${envFile}: run just switch-home and check the activation warnings\" >&2; exit 1; }"}";
 
   # Agent CLIs live in the user profile, which a user service does not put on
   # PATH by default.
@@ -369,53 +415,53 @@ let
   roamgateLegacyDir = "${config.xdg.configHome}/herdr-gui";
   roamgateEnv = "${roamgateDir}/roamgate.env";
 
-  # The same method as `herdrWebUiEnvWriter`: decrypt the password with the
-  # user's age key and write it to an env file with mode 0600. The value
-  # stays in a shell variable, so it is never in argv, the environment, the
-  # Nix store, or a log. On any failure the old file stays.
-  roamgateEnvWriter = pkgs.writeShellApplication {
-    name = "roamgate-env";
-    runtimeInputs = [
-      pkgs.coreutils
-      pkgs.sops
-    ];
-    text = ''
-      state_dir="$1"
-      legacy_dir="$2"
-      env_file="$3"
-      sops_file="$4"
-      age_key_file="$5"
-      password_key="$6"
-
-      # On Linux, Fence masks a denyRead path only when the path exists as
-      # the sandbox starts, so the directories exist before the service runs.
-      install -d -m 700 "$state_dir" "$legacy_dir"
-
-      # sops errors are discarded so that nothing it prints reaches the log.
-      password=""
-      if [[ -r "$age_key_file" ]]; then
-        password="$(SOPS_AGE_KEY_FILE="$age_key_file" sops -d --extract "[\"$password_key\"]" "$sops_file" 2>/dev/null)" \
-          || password=""
-      fi
-      if [[ -z "$password" ]]; then
-        echo "roamgate: could not decrypt $password_key, leaving $env_file unchanged" >&2
-        exit 0
-      fi
-      # systemd reads the file without a shell, so only plain values pass.
-      # Roamgate refuses to start with a password outside 15 to 1024
-      # characters.
-      safe='^[A-Za-z0-9._~+/=:@-]{15,1024}$'
-      if [[ ! "$password" =~ $safe ]]; then
-        echo "roamgate: the decrypted password is not valid, leaving $env_file unchanged" >&2
-        exit 0
-      fi
-
-      tmp="$(mktemp "$env_file.XXXXXX")"
-      printf 'ROAMGATE_PASSWORD=%s\n' "$password" >"$tmp"
-      chmod 600 "$tmp"
-      mv -f "$tmp" "$env_file"
-    '';
-  };
+  # Tailscale Serve publishes each app on the tailnet from a user unit. The
+  # user is the Tailscale operator, so `tailscale serve` needs no root. The
+  # system CLI matches the running tailscaled. The serve configuration
+  # persists in the tailscaled state, and each start sets the same mapping
+  # again, so the unit is idempotent. A stop removes the mapping.
+  tailscale = "/run/current-system/sw/bin/tailscale";
+  mkTailscaleServe =
+    {
+      description,
+      app,
+      httpsPort,
+      target,
+    }:
+    let
+      serve = pkgs.writeShellApplication {
+        name = "${app}-serve";
+        runtimeInputs = [ pkgs.jq ];
+        # Serve needs the node to be logged in, so wait up to 60 seconds for
+        # it. If serve still fails, systemd tries again after `RestartSec`.
+        text = ''
+          for _ in {1..120}; do
+            if ${tailscale} status --peers=false --json \
+              | jq -e '.BackendState == "Running"' >/dev/null 2>&1; then
+              break
+            fi
+            sleep 0.5
+          done
+          exec ${tailscale} serve --bg --yes --https=${httpsPort} ${target}
+        '';
+      };
+    in
+    {
+      Unit = {
+        Description = description;
+        After = [ "${app}.service" ];
+        Wants = [ "${app}.service" ];
+      };
+      Service = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        ExecStart = lib.getExe serve;
+        ExecStop = "${tailscale} serve --https=${httpsPort} off";
+        Restart = "on-failure";
+        RestartSec = 30;
+      };
+      Install.WantedBy = [ "default.target" ];
+    };
 
   # Telegram Agents needs one bot per host, because a second poller on the same
   # token makes the daemon exit. The token and chat ID keys name values in
@@ -690,31 +736,36 @@ in
     '';
 
     # The env file must exist before sd-switch starts the service.
-    home.activation.herdrWebUiEnv = lib.mkIf herdrWebUiEnabled (
-      lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "writeBoundary" ] ''
-        run ${lib.getExe herdrWebUiEnvWriter} \
-          ${lib.escapeShellArg herdrWebUiDir} \
-          ${lib.escapeShellArg herdrWebUiPasteDir} \
-          ${lib.escapeShellArg herdrWebUiEnv} \
-          ${../../../secrets/herdr.yaml} \
-          ${lib.escapeShellArg config.sops.age.keyFile} \
-          ${lib.escapeShellArg herdrWebUiHost.tokenKey} \
-          HERDR_WEB_TAILSCALE_OWNER
-      ''
-    );
+    home.activation.herdrWebUiEnv = lib.mkIf herdrWebUiEnabled (mkEnvFileStep {
+      step = "herdrWebUiEnv";
+      unit = "herdr-web-ui.service";
+      dirs = [
+        herdrWebUiDir
+        herdrWebUiPasteDir
+      ];
+      envFile = herdrWebUiEnv;
+      pattern = "^[A-Za-z0-9._~+/=:@-]+$";
+      rule = "use only A-Za-z0-9._~+/=:@-";
+      pairs = [
+        "HERDR_WEB_TOKEN=${herdrWebUiHost.tokenKey}"
+        "HERDR_WEB_TAILSCALE_OWNER=HERDR_WEB_TAILSCALE_OWNER"
+      ];
+    });
 
-    # The env file must exist before sd-switch starts the service.
-    home.activation.roamgateEnv = lib.mkIf roamgateEnabled (
-      lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "writeBoundary" ] ''
-        run ${lib.getExe roamgateEnvWriter} \
-          ${lib.escapeShellArg roamgateDir} \
-          ${lib.escapeShellArg roamgateLegacyDir} \
-          ${lib.escapeShellArg roamgateEnv} \
-          ${../../../secrets/herdr.yaml} \
-          ${lib.escapeShellArg config.sops.age.keyFile} \
-          ${lib.escapeShellArg roamgateHost.passwordKey}
-      ''
-    );
+    # The env file must exist before sd-switch starts the service. Roamgate
+    # refuses to start with a password outside 15 to 1024 characters.
+    home.activation.roamgateEnv = lib.mkIf roamgateEnabled (mkEnvFileStep {
+      step = "roamgateEnv";
+      unit = "roamgate.service";
+      dirs = [
+        roamgateDir
+        roamgateLegacyDir
+      ];
+      envFile = roamgateEnv;
+      pattern = "^[A-Za-z0-9._~+/=:@-]{15,1024}$";
+      rule = "use 15 to 1024 characters from A-Za-z0-9._~+/=:@-";
+      pairs = [ "ROAMGATE_PASSWORD=${roamgateHost.passwordKey}" ];
+    });
 
     home.activation.herdrTelegramAgentsPlugin = lib.mkIf herdrTelegramAgentsEnabled (
       lib.hm.dag.entryAfter [ "herdrLayoutPlugin" ] ''
@@ -821,8 +872,8 @@ in
     # Herdr server and retries the Herdr socket, so a socket that appears
     # late does no harm. `Wants`, not `BindsTo`, keeps it up across a
     # deliberate `herdr server stop`. The env file holds `HERDR_WEB_TOKEN`
-    # and `HERDR_WEB_TAILSCALE_OWNER`. Without it the unit fails, so the
-    # server never runs without a token.
+    # and `HERDR_WEB_TAILSCALE_OWNER`. Without it the pre-start check fails,
+    # so the server never runs without a token.
     systemd.user.services.herdr-web-ui = lib.mkIf (herdrWebUiEnabled && host.is.linux) {
       Unit = {
         Description = "Herdr Web";
@@ -832,10 +883,11 @@ in
       Service = {
         Type = "simple";
         ExecStart = lib.getExe pkgs.herdr-web-ui;
-        EnvironmentFile = herdrWebUiEnv;
+        ExecStartPre = mkEnvFileCheck herdrWebUiEnv;
+        EnvironmentFile = "-${herdrWebUiEnv}";
         Environment = [
-          # Keep `HOST` and `PORT` in sync with the Tailscale Serve target in
-          # nixos/_mixins/server/herdr-web-ui/default.nix.
+          # Keep `HOST` and `PORT` in sync with the Tailscale Serve target of
+          # `herdr-web-ui-serve`.
           "HOST=127.0.0.1"
           "PORT=7317"
           "HERDR_WEB_TELEMETRY=0"
@@ -854,10 +906,10 @@ in
     # Roamgate runs as a user service from the Nix store, not as its Herdr
     # plugin, which downloads a prebuilt binary. It runs from source on Bun,
     # so the self-updater cannot replace it. The env file holds
-    # `ROAMGATE_PASSWORD`. Without it the unit fails, so the server never
-    # falls back to a generated token. `NODE_ENV` stays unset, because
-    # `development` on a loopback bind turns login off. The package turns
-    # worktree hooks off by default for every repository.
+    # `ROAMGATE_PASSWORD`. Without it the pre-start check fails, so the
+    # server never falls back to a generated token. `NODE_ENV` stays unset,
+    # because `development` on a loopback bind turns login off. The package
+    # turns worktree hooks off by default for every repository.
     systemd.user.services.roamgate = lib.mkIf (roamgateEnabled && host.is.linux) {
       Unit = {
         Description = "Roamgate";
@@ -867,10 +919,11 @@ in
       Service = {
         Type = "simple";
         ExecStart = lib.getExe pkgs.roamgate;
-        EnvironmentFile = roamgateEnv;
+        ExecStartPre = mkEnvFileCheck roamgateEnv;
+        EnvironmentFile = "-${roamgateEnv}";
         Environment = [
-          # Keep `HOST` and `PORT` in sync with the Tailscale Serve target in
-          # nixos/_mixins/server/roamgate/default.nix.
+          # Keep `HOST` and `PORT` in sync with the Tailscale Serve target of
+          # `roamgate-serve`.
           "HOST=127.0.0.1"
           "PORT=8787"
           "ROAMGATE_DISABLE_UPDATE_CHECK=1"
@@ -881,6 +934,30 @@ in
       };
       Install.WantedBy = [ "default.target" ];
     };
+
+    # Tailscale Serve, not Caddy, fronts Herdr Web. Serve sets and strips the
+    # `Tailscale-User-Login` header that Herdr Web trusts from a loopback
+    # client.
+    systemd.user.services.herdr-web-ui-serve =
+      lib.mkIf (herdrWebUiEnabled && host.is.linux)
+        (mkTailscaleServe {
+          description = "Publish Herdr Web on the tailnet with Tailscale Serve";
+          app = "herdr-web-ui";
+          httpsPort = "8443";
+          target = "http://127.0.0.1:7317";
+        });
+
+    # Roamgate needs its own origin, because its web app uses absolute paths,
+    # so it gets its own HTTPS port. It trusts no proxy header, so Serve adds
+    # no login.
+    systemd.user.services.roamgate-serve =
+      lib.mkIf (roamgateEnabled && host.is.linux)
+        (mkTailscaleServe {
+          description = "Publish Roamgate on the tailnet with Tailscale Serve";
+          app = "roamgate";
+          httpsPort = "10000";
+          target = "http://127.0.0.1:8787";
+        });
 
     xdg.configFile."herdr/config.toml".source = lib.mkDefault (
       tomlFormat.generate "herdr-config.toml" settings

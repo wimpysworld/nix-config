@@ -1,6 +1,6 @@
 # Roamgate
 
-[Roamgate](https://github.com/powerfooI/roamgate) is a browser and phone client for Herdr workspaces, panes, agents, files, diffs, and Git worktrees. It can type into every pane and read any file of the user. skrye and zannah run it next to [Herdr Web](../herdr-web-ui/README.md) for a side-by-side test, and Tailscale Serve publishes it on the tailnet. No other host runs it.
+[Roamgate](https://github.com/powerfooI/roamgate) is a browser and phone client for Herdr workspaces, panes, agents, files, diffs, and Git worktrees. It can type into every pane and read any file of the user. skrye and zannah run it next to [Herdr Web](herdr-web-ui.md) for a side-by-side test, and Tailscale Serve publishes it on the tailnet. No other host runs it.
 
 ## URLs
 
@@ -18,14 +18,13 @@ Never open Roamgate at `http://localhost:8787` or `http://127.0.0.1:8787`, even 
 | Part | Source |
 | --- | --- |
 | Package: built from source, with a fixed-output `node_modules` | [pkgs/roamgate/default.nix](../../../../pkgs/roamgate/default.nix) |
-| User service, sops decryption, and the env file | [home-manager/_mixins/terminal/herdr.nix](../../../../home-manager/_mixins/terminal/herdr.nix) |
-| Tailscale Serve unit on port 10000 | [default.nix](default.nix) |
+| User services, sops decryption, the env file, and the Tailscale Serve unit on port 10000 | [home-manager/_mixins/terminal/herdr.nix](../herdr.nix) |
 | Fence read and write denial | [home-manager/_mixins/agentic/fence/default.nix](../../../../home-manager/_mixins/agentic/fence/default.nix) |
 | Freshener job, with auto-merge off | [.github/freshener/roamgate.sh](../../../../.github/freshener/roamgate.sh) |
 
 The server runs outside Fence as the `roamgate.service` systemd user service, on `127.0.0.1:8787`, with `Restart=on-failure`. It starts after `herdr.service` and connects to the Herdr sockets directly. It is not the Roamgate Herdr plugin, which downloads a prebuilt binary, so do not run `herdr plugin install` or `herdr plugin link` for it. It runs from source on Bun, so the self-updater cannot replace it, and `ROAMGATE_DISABLE_UPDATE_CHECK=1` turns off update checks. The unit does not set `NODE_ENV`, because `NODE_ENV=development` on a loopback bind turns login off.
 
-The `roamgate-serve.service` system unit runs `tailscale serve --bg --yes --https=10000 http://127.0.0.1:8787` after `tailscaled` is up. The mapping persists in the tailscaled state, and a stop of the unit removes it. Herdr Web keeps port 8443.
+The `roamgate-serve.service` user unit starts after `roamgate.service`, waits for `tailscaled` to log in, then runs `tailscale serve --bg --yes --https=10000 http://127.0.0.1:8787`. The user is the Tailscale operator, so the unit needs no root. The mapping persists in the tailscaled state, each start sets the same mapping again, and a stop of the unit removes it. Herdr Web keeps port 8443.
 
 State is in `~/.config/roamgate/`: the env file `roamgate.env`, the session secret, settings, connection profiles, push keys, Ranger data, and uploads. Roamgate refuses a symlink in that path, so Home Manager links no file into it. Fence denies reads and writes of this directory and of the legacy `~/.config/herdr-gui/`, because the session secret signs a cookie that opens every route of the server.
 
@@ -37,7 +36,7 @@ Each activation decrypts one key from `secrets/herdr.yaml` with `sops` and the u
 | --- | --- |
 | `ROAMGATE_PASSWORD_SKRYE`, `ROAMGATE_PASSWORD_ZANNAH` | The login password for the host, as `ROAMGATE_PASSWORD`. 15 to 1024 characters from `A-Za-z0-9._~+/=:@-`, for example from `openssl rand -base64 32`. |
 
-If decryption fails or the value is not valid, activation prints a warning and leaves the old file. Without the file the service does not start, so the server never falls back to a generated token. No PIN is set.
+If the age key is missing, decryption fails, the value is empty, or the value is not valid, activation prints a `roamgateEnv` warning with the reason and leaves the old file. Activation also warns when the file is still missing. Without the file the pre-start check fails and logs `missing ~/.config/roamgate/roamgate.env`, so the server never falls back to a generated token. No PIN is set.
 
 Log in with the password for the host. The login cookie `herdr_auth` lasts 30 days, and logout does not revoke a copied cookie. To rotate the password, change it in `secrets/herdr.yaml`, run `just switch-home`, then run `systemctl --user restart roamgate`.
 
@@ -73,7 +72,6 @@ Upstream declares Bun 1.4.3. The flake has Bun 1.4.2, and the build and a short 
 ## Set up
 
 1. Put the password for each host in `secrets/herdr.yaml` with `sops`.
-2. Run `just switch-host` on skrye and on zannah.
-3. Run `just switch-home` on each host.
-4. Open the host URL and log in with the password for that host.
-5. Add the app to the Home Screen on the phone, so that web push works.
+2. Run `just switch-home` on skrye and on zannah.
+3. Open the host URL and log in with the password for that host.
+4. Add the app to the Home Screen on the phone, so that web push works.

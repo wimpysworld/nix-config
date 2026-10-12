@@ -218,7 +218,7 @@ keys, pasted files, and the bridge tokens. A bridge token opens every route of
 the local server outside Fence, including reads of any file, so a readable
 token bypasses `denyRead`. Activation creates the directory, so the Linux mask
 applies before the service first runs. See the
-[Herdr Web README](../../../../nixos/_mixins/server/herdr-web-ui/README.md).
+[Herdr Web README](../../terminal/herdr/herdr-web-ui.md).
 
 On skrye and zannah, Fence also denies reads and writes of the Roamgate
 directory at `~/.config/roamgate` and its legacy directory at
@@ -230,7 +230,7 @@ bypasses `denyRead`. Activation creates both directories. Fence has no
 because on Linux a `**/` glob covers only files that exist under the sandbox
 working directory when the sandbox starts. The Roamgate package turns worktree
 hooks off instead. See the
-[Roamgate README](../../../../nixos/_mixins/server/roamgate/README.md).
+[Roamgate README](../../terminal/herdr/roamgate.md).
 
 Fenced agents can connect to `~/.config/herdr/herdr.sock` only. Herdr runs
 plugin programs from `~/.config/herdr/plugins` outside Fence, so write access
@@ -254,7 +254,7 @@ the Linux masks apply before the daemon first runs. The token is not a sops-nix
 secret, because `~/.config/sops-nix` stays readable. Activation decrypts it
 from `secrets/herdr.yaml` with the user's age key and writes it only to the
 masked config directory. See the
-[Herdr Web README](../../../../nixos/_mixins/server/herdr-web-ui/README.md#herdr-telegram-agents).
+[Herdr Web README](../../terminal/herdr/herdr-web-ui.md#herdr-telegram-agents).
 
 ## Never name a path under `/run` in this policy
 

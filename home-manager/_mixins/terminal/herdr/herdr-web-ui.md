@@ -11,21 +11,20 @@
 
 Each host is its own origin, so pair and install each app separately. The phone must have Tailscale connected each time it opens the app. Funnel stays off, so the app is not on the internet.
 
-skrye and zannah also run [Roamgate](../roamgate/README.md) on port 10000 for a side-by-side test.
+skrye and zannah also run [Roamgate](roamgate.md) on port 10000 for a side-by-side test.
 
 ## Parts
 
 | Part | Source |
 | --- | --- |
 | Package: built from source, with a fixed-output `node_modules` | [pkgs/herdr-web-ui/default.nix](../../../../pkgs/herdr-web-ui/default.nix) |
-| User service, sops decryption, and the env file | [home-manager/_mixins/terminal/herdr.nix](../../../../home-manager/_mixins/terminal/herdr.nix) |
-| Tailscale Serve unit on port 8443 | [default.nix](default.nix) |
+| User services, sops decryption, the env file, and the Tailscale Serve unit on port 8443 | [home-manager/_mixins/terminal/herdr.nix](../herdr.nix) |
 | Fence read and write denial | [home-manager/_mixins/agentic/fence/default.nix](../../../../home-manager/_mixins/agentic/fence/default.nix) |
 | Freshener job, with auto-merge off | [.github/freshener/herdr-web-ui.sh](../../../../.github/freshener/herdr-web-ui.sh) |
 
 The server runs outside Fence as the `herdr-web-ui.service` systemd user service, on `127.0.0.1:7317`, with `Restart=on-failure`. It is not a Herdr plugin, so Herdr does not start a second copy. It runs without the upstream supervisor, so the self-updater is off and the Settings update control does nothing. Telemetry is off with `HERDR_WEB_TELEMETRY=0`.
 
-The `herdr-web-ui-serve.service` system unit runs `tailscale serve --bg --yes --https=8443 http://127.0.0.1:7317` after `tailscaled` is up. The mapping persists in the tailscaled state, and a stop of the unit removes it. Do not put Caddy in front of the server. Tailscale Serve sets and strips the `Tailscale-User-Login` header, but Caddy passes a forged header through, and the server trusts that header from a loopback client.
+The `herdr-web-ui-serve.service` user unit starts after `herdr-web-ui.service`, waits for `tailscaled` to log in, then runs `tailscale serve --bg --yes --https=8443 http://127.0.0.1:7317`. The user is the Tailscale operator, so the unit needs no root. The mapping persists in the tailscaled state, each start sets the same mapping again, and a stop of the unit removes it. Do not put Caddy in front of the server. Tailscale Serve sets and strips the `Tailscale-User-Login` header, but Caddy passes a forged header through, and the server trusts that header from a loopback client.
 
 State is in `~/.config/herdr-web-ui/`: paired devices, push keys, bridge tokens, and the env file `service.env`. Pasted files go to `~/.config/herdr-web-ui/paste/`. Fence denies reads and writes of the whole directory, because a bridge token opens every route of the server, including reads of any file.
 
@@ -38,18 +37,17 @@ Each activation decrypts two keys from `secrets/herdr.yaml` with `sops` and the 
 | `HERDR_WEB_TOKEN_SKRYE`, `HERDR_WEB_TOKEN_ZANNAH` | The access token for the host, as `HERDR_WEB_TOKEN`. A long random string, for example from `openssl rand -base64 32`. |
 | `HERDR_WEB_TAILSCALE_OWNER` | The Tailscale login of the owner, `martin@wimpress.org`. |
 
-If decryption fails or a value has a character outside `A-Za-z0-9._~+/=:@-`, activation prints a warning and leaves the old file. Without the file the service does not start, so the server never runs without a token.
+If the age key is missing, decryption fails, a value is empty, or a value has a character outside `A-Za-z0-9._~+/=:@-`, activation prints a `herdrWebUiEnv` warning with the reason and leaves the old file. Activation also warns when the file is still missing. Without the file the pre-start check fails and logs `missing ~/.config/herdr-web-ui/service.env`, so the server never runs without a token.
 
 With a token set, the server refuses every request that has no token cookie, Bearer token, or paired-device cookie, from loopback too. The token check comes before the `Tailscale-User-Login` check in `server/access.ts`, so the owner login alone does not let a device in. The NixOS hosts have the tag `tag:nixos` and no owner login, so `HERDR_WEB_TAILSCALE_OWNER` names the owner for the server.
 
 ## Pairing
 
 1. Put the token for each host and the owner login in `secrets/herdr.yaml` with `sops`.
-2. Run `just switch-host` on skrye and on zannah.
-3. Run `just switch-home` on each host.
-4. On a trusted device, open the host URL and sign in with the token for that host.
-5. In Settings, Devices, create a pairing code. Enter the six-digit code on the phone within 10 minutes. Choose `watch` for a device that only observes.
-6. Add the app to the Home Screen on the phone, so that web push works.
+2. Run `just switch-home` on skrye and on zannah.
+3. On a trusted device, open the host URL and sign in with the token for that host.
+4. In Settings, Devices, create a pairing code. Enter the six-digit code on the phone within 10 minutes. Choose `watch` for a device that only observes.
+5. Add the app to the Home Screen on the phone, so that web push works.
 
 Device cookies last one year. Revoke a lost device in Settings, Devices. To rotate a token, change it in `secrets/herdr.yaml`, run `just switch-home`, then run `systemctl --user restart herdr-web-ui`.
 
@@ -59,9 +57,9 @@ The freshener opens a pull request for each upstream `vX.Y.Z` release and does n
 
 ## Herdr server
 
-Every non-ISO host runs the Herdr server as a service from [home-manager/_mixins/terminal/herdr.nix](../../../../home-manager/_mixins/terminal/herdr.nix). Linux uses the `herdr.service` systemd user service, and momin uses the `org.nix-community.home.herdr` launchd agent. Both run `~/.nix-profile/bin/herdr server`, the profile path and not a store path, so a Herdr update does not change the unit or the plist.
+Every non-ISO host runs the Herdr server as a service from [home-manager/_mixins/terminal/herdr.nix](../herdr.nix). Linux uses the `herdr.service` systemd user service, and momin uses the `org.nix-community.home.herdr` launchd agent. Both run `~/.nix-profile/bin/herdr server`, the profile path and not a store path, so a Herdr update does not change the unit or the plist.
 
-- On NixOS, [nixos/_mixins/users/default.nix](../../users/default.nix) sets `linger`, so the user manager and the server start at boot, before any login. On momin the server starts at login. Lima and WSL hosts start it with their user manager.
+- On NixOS, [nixos/_mixins/users/default.nix](../../../../nixos/_mixins/users/default.nix) sets `linger`, so the user manager and the server start at boot, before any login. On momin the server starts at login. Lima and WSL hosts start it with their user manager.
 - The unit sets `X-SwitchMethod=keep-old`, so `just switch-home` never restarts a running server or its panes. It sets `Restart=on-failure`, so a crash restarts it, but `herdr server stop` leaves it stopped.
 - On NixOS the unit sets `SSH_AUTH_SOCK` to the `ssh-agent.service` socket. It sets no display variables. On a workstation, a fish shell in a Herdr pane copies `WAYLAND_DISPLAY`, `DISPLAY`, and the other compositor variables from `systemctl --user show-environment` when it has no display.
 - `herdr-web-ui.service` starts after `herdr.service` and retries the socket.
@@ -78,7 +76,7 @@ The first switch that adds the service finds a server started by hand, so the se
 | Part | Source |
 | --- | --- |
 | Package: `herdr-tg` built from source, and the Herdr plugin tree | [pkgs/herdr-telegram-agents/default.nix](../../../../pkgs/herdr-telegram-agents/default.nix) |
-| Plugin link, sops decryption, and the `config.json` write | [home-manager/_mixins/terminal/herdr.nix](../../../../home-manager/_mixins/terminal/herdr.nix) |
+| Plugin link, sops decryption, and the `config.json` write | [home-manager/_mixins/terminal/herdr.nix](../herdr.nix) |
 | Fence read and write denial | [home-manager/_mixins/agentic/fence/default.nix](../../../../home-manager/_mixins/agentic/fence/default.nix) |
 | Freshener job, with auto-merge off | [.github/freshener/herdr-telegram-agents.sh](../../../../.github/freshener/herdr-telegram-agents.sh) |
 
