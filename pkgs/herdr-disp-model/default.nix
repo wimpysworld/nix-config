@@ -20,6 +20,27 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     hash = "sha256-6kscnaioPfxexi1Mdz3ySJnw0P3ICAJRI4k1rU5HAWc=";
   };
 
+  # Upstream replaces Herdr's `agent` sidebar name with a label such as
+  # `claude - claude-opus-5-5 - high`. This drops `--display-agent` and
+  # `--clear-display-agent` from the hook script and the Pi adapter, so `agent`
+  # keeps the plain name and the sidebar rows place the `$model` and `$effort`
+  # tokens instead. `--agent` stays, because Herdr uses it only as a guard and
+  # it does not change the name. The upstream test that asserted the label now
+  # asserts that no label is sent. Each replacement fails the build if
+  # upstream changes the line.
+  postPatch = ''
+    substituteInPlace src/model_display.py \
+      --replace-fail '        "--display-agent",' "" \
+      --replace-fail '        label,' "" \
+      --replace-fail '        "--clear-display-agent",' ""
+    substituteInPlace adapters/pi-model-display.ts \
+      --replace-fail '    "--display-agent", `pi - ''${value}''${compactEffort ? ` - ''${compactEffort}` : ""}`,' "" \
+      --replace-fail '    "--clear-display-agent",' ""
+    substituteInPlace tests/test_model_display.py \
+      --replace-fail 'self.assertIn("codex - gpt-5.6 - med", command)' \
+        'self.assertNotIn("--display-agent", command)'
+  '';
+
   dontConfigure = true;
   dontBuild = true;
 

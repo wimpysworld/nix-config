@@ -39,7 +39,7 @@ The state directory `~/.local/state/herdr/plugins/herdr-ctx-bar/` holds the daem
 
 ## Model Display
 
-[Model Display](https://github.com/pdalinis/herdr-disp-model) shows the model and reasoning effort of each Claude Code, Codex, and Pi session in the Agents sidebar. Each hook renames the agent row to a label such as `claude - claude-opus-5-5 - high`. Every non-ISO host links it. The sidebar is 36 columns wide, not the default 26, so the label fits on one row.
+[Model Display](https://github.com/pdalinis/herdr-disp-model) shows the model and reasoning effort of each Claude Code, Codex, and Pi session in the Agents sidebar. Each hook reports `$model` and `$effort` tokens. The first Agents row ends with the plain `agent` name, and the second row shows the model and effort, as `claude-opus-5-5 · high`. Every non-ISO host links it. The sidebar is 36 columns wide, not the default 26, so the rows fit.
 
 | Part | Source |
 | --- | --- |
@@ -54,7 +54,7 @@ The plugin has no daemon and no state. The hooks run inside each agent session, 
 
 Upstream asks for a `setup-all` action, which writes the hooks into `~/.claude/settings.json` and `~/.codex/hooks.json` and copies the Pi and Hermes adapters. The agent modules declare the same hooks and the Pi extension instead, so do not run `setup-all` or `remove-all`. Hermes Agent runs here as a system service, not in a Herdr pane, so it gets no adapter.
 
-The plugin also reports `$model` and `$effort` tokens. The sidebar rows do not use them, because the `agent` label already shows both values.
+Upstream also replaces the `agent` name with a `claude - claude-opus-5-5 - high` label. The package patches out `--display-agent` and `--clear-display-agent`, so `agent` shows the plain name and `$model` and `$effort` are the tokens to use in sidebar rows. A label from an unpatched hook stays until the agent's next model report from the new hook, or until the agent exits or the pane closes.
 
 ## Herdr Telegram Agents
 

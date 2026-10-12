@@ -44,15 +44,18 @@ let
     session.resume_agents_on_restore = false;
     ui.agent_panel_sort = "spaces";
     # Herdr 0.9.3 defaults to 26 columns, and the Agents rows lose 5 columns
-    # to the margins. Model Display renames each agent row to a label such as
-    # `claude - claude-opus-5-5 - high`, which needs 36 columns. 36 is also
+    # to the margins. The first Agents row ends with the agent name, and the
+    # second row shows the model and effort, such as `claude-opus-5-5 · high`.
+    # They need 36 columns. 36 is also
     # the default `ui.sidebar_max_width`, so a wider value needs that too.
     ui.sidebar_width = 36;
     # Herdr's default Agent rows, plus the Context Bar row. The plugin reports
     # exactly one of the three tokens for each supported agent pane, so the
     # bar takes the colour of its band: below 50%, 50% to 79%, and 80% and
-    # above. Model Display puts the model and effort in the `agent` label, so
-    # its `$model` and `$effort` tokens would only repeat them.
+    # above. The first row ends with the plain agent name, and the second row
+    # holds the Model Display `$model` and `$effort` tokens. Herdr drops
+    # `$effort` when the plugin clears it, and drops the row when both are
+    # empty.
     ui.sidebar.agents = {
       row_gap = 0;
       rows = [
@@ -60,8 +63,12 @@ let
           "state_icon"
           "machine"
           "workspace"
+          "agent"
         ]
-        [ "agent" ]
+        [
+          { token = "$model"; }
+          { token = "$effort"; }
+        ]
         [
           {
             token = "$ctx_green";
