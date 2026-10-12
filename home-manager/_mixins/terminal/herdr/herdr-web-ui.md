@@ -37,7 +37,7 @@ Each activation decrypts two keys from `secrets/herdr.yaml` with `sops` and the 
 | `HERDR_WEB_TOKEN_SKRYE`, `HERDR_WEB_TOKEN_ZANNAH` | The access token for the host, as `HERDR_WEB_TOKEN`. A long random string, for example from `openssl rand -base64 32`. |
 | `HERDR_WEB_TAILSCALE_OWNER` | The Tailscale login of the owner, `martin@wimpress.org`. |
 
-If the age key is missing, decryption fails, a value is empty, or a value has a character outside `A-Za-z0-9._~+/=:@-`, activation prints a `herdrWebUiEnv` warning with the reason and leaves the old file. Activation also warns when the file is still missing. Without the file the pre-start check fails and logs `missing ~/.config/herdr-web-ui/service.env`, so the server never runs without a token.
+If the age key is missing, decryption fails, a value is empty, or a value cannot go in a systemd env file (a line break, a NUL, invalid UTF-8, or a Unicode noncharacter), activation prints a `herdrWebUiEnv` warning with the reason and leaves the old file. Activation also warns when the file is still missing. Without the file the pre-start check fails and logs `missing ~/.config/herdr-web-ui/service.env`, so the server never runs without a token.
 
 With a token set, the server refuses every request that has no token cookie, Bearer token, or paired-device cookie, from loopback too. The token check comes before the `Tailscale-User-Login` check in `server/access.ts`, so the owner login alone does not let a device in. The NixOS hosts have the tag `tag:nixos` and no owner login, so `HERDR_WEB_TAILSCALE_OWNER` names the owner for the server.
 

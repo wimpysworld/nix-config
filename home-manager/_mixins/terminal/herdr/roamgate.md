@@ -26,7 +26,7 @@ The server runs outside Fence as the `roamgate.service` systemd user service, on
 
 The `roamgate-serve.service` user unit starts after `roamgate.service`, waits for `tailscaled` to log in, then runs `tailscale serve --bg --yes --https=10000 http://127.0.0.1:8787`. The user is the Tailscale operator, so the unit needs no root. The mapping persists in the tailscaled state, each start sets the same mapping again, and a stop of the unit removes it. Herdr Web keeps port 8443.
 
-State is in `~/.config/roamgate/`: the env file `roamgate.env`, the session secret, settings, connection profiles, push keys, Ranger data, and uploads. Roamgate refuses a symlink in that path, so Home Manager links no file into it. Fence denies reads and writes of this directory and of the legacy `~/.config/herdr-gui/`, because the session secret signs a cookie that opens every route of the server.
+State is in `~/.config/roamgate/`: the env file `roamgate.env`, the generated login token, the session secret, settings, connection profiles, push keys, Ranger data, and uploads. Roamgate refuses a symlink in that path, so Home Manager links no file into it. Fence denies reads and writes of this directory and of the legacy `~/.config/herdr-gui/`, because the session secret signs a cookie that opens every route of the server.
 
 ## Login
 
@@ -34,13 +34,15 @@ Each activation decrypts one key from `secrets/herdr.yaml` with `sops` and the u
 
 | Key | Value |
 | --- | --- |
-| `ROAMGATE_PASSWORD_SKRYE`, `ROAMGATE_PASSWORD_ZANNAH` | The login password for the host, as `ROAMGATE_PASSWORD`. 15 to 1024 characters from `A-Za-z0-9._~+/=:@-`, for example from `openssl rand -base64 32`. |
+| `ROAMGATE_PIN` | The login PIN for skrye and zannah, as `ROAMGATE_PIN`. 6 to 12 ASCII digits. |
 
-If the age key is missing, decryption fails, the value is empty, or the value is not valid, activation prints a `roamgateEnv` warning with the reason and leaves the old file. Activation also warns when the file is still missing. Without the file the pre-start check fails and logs `missing ~/.config/roamgate/roamgate.env`, so the server never falls back to a generated token. No PIN is set.
+If the age key is missing, decryption fails, the value is empty, or the value is not 6 to 12 digits, activation prints a `roamgateEnv` warning with the reason and leaves the old file. Roamgate exits at start with a PIN outside that rule. Activation also warns when the file is still missing. Without the file the pre-start check fails and logs `missing ~/.config/roamgate/roamgate.env`, so the server never runs without the PIN.
 
-Log in with the password for the host. The login cookie `herdr_auth` lasts 30 days, and logout does not revoke a copied cookie. To rotate the password, change it in `secrets/herdr.yaml`, run `just switch-home`, then run `systemctl --user restart roamgate`.
+No password is set, so Roamgate generates a 64-character login token in `~/.config/roamgate/auth-token` at its first start. The PIN login is an addition to the token login, not a replacement. Keep the token for recovery: read it from that file outside Fence, and log in with it as the password.
 
-All proxied clients arrive from `127.0.0.1`, so they share one login rate limit. Five failed logins from any tailnet device lock password login for five minutes.
+Log in with the PIN. The login cookie `herdr_auth` lasts 30 days, and logout does not revoke a copied cookie. To rotate the PIN, change it in `secrets/herdr.yaml`, run `just switch-home`, then run `systemctl --user restart roamgate`.
+
+A PIN is much weaker than a password or the token, and Roamgate itself warns to use it only behind a trusted private network or VPN. Keep Funnel off. All proxied clients arrive from `127.0.0.1`, so they share one login rate limit. Five failed PIN logins from any tailnet device lock PIN login for five minutes. Ten failed PIN logins in a row lock PIN login for one hour for every client. A PIN lock does not lock the token login.
 
 ## Shared hostname and cookies
 
@@ -71,7 +73,7 @@ Upstream declares Bun 1.4.3. The flake has Bun 1.4.2, and the build and a short 
 
 ## Set up
 
-1. Put the password for each host in `secrets/herdr.yaml` with `sops`.
+1. Put the PIN in `secrets/herdr.yaml` as `ROAMGATE_PIN` with `sops`.
 2. Run `just switch-home` on skrye and on zannah.
-3. Open the host URL and log in with the password for that host.
+3. Open the host URL and log in with the PIN.
 4. Add the app to the Home Screen on the phone, so that web push works.

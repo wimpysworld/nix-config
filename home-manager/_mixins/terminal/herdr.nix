@@ -295,16 +295,17 @@ let
 
   # The Herdr Web and Roamgate secrets are not sops-nix secrets, because Fence
   # keeps `~/.config/sops-nix` readable. This decrypts each `VAR=KEY` pair
-  # from `secrets/herdr.yaml` with the user's age key and writes `VAR=value`
+  # from `secrets/herdr.yaml` with the user's age key and writes `VAR="value"`
   # lines to an env file with mode 0600. The decrypted values stay in shell
-  # variables, so they are never in argv, the environment, the Nix store, or
-  # a log. Every failure prints a warning that names the activation step and
-  # the reason, never a value, and keeps the old file. It exits 0, so a bad
-  # secret does not stop the rest of the activation.
+  # variables and pipes, so they are never in argv, the environment, the Nix
+  # store, or a log. Every failure prints a warning that names the activation
+  # step and the reason, never a value, and keeps the old file. It exits 0, so
+  # a bad secret does not stop the rest of the activation.
   herdrEnvFileWriter = pkgs.writeShellApplication {
     name = "herdr-env-file";
     runtimeInputs = [
       pkgs.coreutils
+      pkgs.iconv
       pkgs.sops
     ];
     text = ''
@@ -312,9 +313,12 @@ let
       env_file="$2"
       sops_file="$3"
       age_key_file="$4"
+      # An empty pattern accepts every value that the checks below accept.
       pattern="$5"
       rule="$6"
       shift 6
+      # A pattern such as `[0-9]` must match ASCII only, as in the apps.
+      export LC_ALL=C
 
       warn() {
         printf 'WARNING: %s: %s, so %s is unchanged\n' "$step" "$1" "$env_file" >&2
@@ -325,17 +329,33 @@ let
       [[ -r "$age_key_file" ]] || warn "cannot read the age key $age_key_file"
       [[ -r "$sops_file" ]] || warn "cannot read $sops_file"
 
+      # One UTF-32 code point per line, in hexadecimal: U+FDD0 to U+FDEF, and
+      # U+FFFE and U+FFFF in every plane.
+      noncharacter=$'(^|\n)(0000fd[de][0-9a-f]|00[01][0-9a-f]fff[ef])(\n|$)'
       lines=""
       for pair in "$@"; do
         var="''${pair%%=*}"
         key="''${pair#*=}"
-        # sops errors are discarded, because they can quote the file.
-        value="$(SOPS_AGE_KEY_FILE="$age_key_file" sops -d --extract "[\"$key\"]" "$sops_file" 2>/dev/null)" \
+        # sops errors are discarded, because they can quote the file. A NUL
+        # becomes the byte 0xff, so the UTF-8 check below refuses it.
+        value="$(SOPS_AGE_KEY_FILE="$age_key_file" sops -d --extract "[\"$key\"]" "$sops_file" 2>/dev/null | tr '\0' '\377')" \
           || warn "cannot decrypt $key: the key is missing, or the age key cannot decrypt the file"
         [[ -n "$value" ]] || warn "$key is empty"
-        # systemd reads the file without a shell, so only plain values pass.
-        [[ "$value" =~ $pattern ]] || warn "$key is not valid: $rule"
-        lines+="$var=$value"$'\n'
+        [[ "$value" != *$'\n'* ]] || warn "$key has a line break"
+        # systemd ignores the whole file when a value is not valid UTF-8 or
+        # has a Unicode noncharacter, so the unit would start without it.
+        codepoints="$(printf '%s' "$value" | iconv -f UTF-8 -t UTF-32BE 2>/dev/null | od -An -v -tx1 -w4 | tr -d ' ')" \
+          || warn "$key is not valid UTF-8 or has a NUL"
+        [[ ! "$codepoints" =~ $noncharacter ]] || warn "$key has a Unicode noncharacter"
+        [[ -z "$pattern" || "$value" =~ $pattern ]] || warn "$key is not valid: $rule"
+        # In a double-quoted systemd value, a backslash keeps the next `"`,
+        # `\`, backtick, or `$` literally, and every other character is
+        # literal. systemd expands no variables in an env file.
+        value="''${value//\\/\\\\}"
+        value="''${value//\"/\\\"}"
+        value="''${value//\`/\\\`}"
+        value="''${value//\$/\\\$}"
+        lines+="$var=\"$value\""$'\n'
       done
 
       tmp="$(mktemp "$env_file.XXXXXX")" || warn "cannot create a file next to $env_file"
@@ -356,8 +376,8 @@ let
       unit,
       dirs,
       envFile,
-      pattern,
-      rule,
+      pattern ? "",
+      rule ? "",
       pairs,
     }:
     lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "writeBoundary" ] ''
@@ -401,13 +421,11 @@ let
   ];
 
   # Roamgate runs next to Herdr Web on skrye and zannah for a side-by-side
-  # test. The password key names a value in `secrets/herdr.yaml`.
-  roamgateHosts = {
-    skrye.passwordKey = "ROAMGATE_PASSWORD_SKRYE";
-    zannah.passwordKey = "ROAMGATE_PASSWORD_ZANNAH";
-  };
-  roamgateEnabled = noughtyLib.isHost (builtins.attrNames roamgateHosts);
-  roamgateHost = roamgateHosts.${host.name} or { };
+  # test. Both hosts share the `ROAMGATE_PIN` value in `secrets/herdr.yaml`.
+  roamgateEnabled = noughtyLib.isHost [
+    "skrye"
+    "zannah"
+  ];
   # Roamgate fixes its data directory to `~/.config/roamgate`, refuses a
   # symlink in that path, and can migrate files from the legacy
   # `~/.config/herdr-gui`. Fence denies reads and writes of both.
@@ -744,8 +762,6 @@ in
         herdrWebUiPasteDir
       ];
       envFile = herdrWebUiEnv;
-      pattern = "^[A-Za-z0-9._~+/=:@-]+$";
-      rule = "use only A-Za-z0-9._~+/=:@-";
       pairs = [
         "HERDR_WEB_TOKEN=${herdrWebUiHost.tokenKey}"
         "HERDR_WEB_TAILSCALE_OWNER=HERDR_WEB_TAILSCALE_OWNER"
@@ -753,7 +769,7 @@ in
     });
 
     # The env file must exist before sd-switch starts the service. Roamgate
-    # refuses to start with a password outside 15 to 1024 characters.
+    # exits at start when the PIN is not 6 to 12 ASCII digits.
     home.activation.roamgateEnv = lib.mkIf roamgateEnabled (mkEnvFileStep {
       step = "roamgateEnv";
       unit = "roamgate.service";
@@ -762,9 +778,9 @@ in
         roamgateLegacyDir
       ];
       envFile = roamgateEnv;
-      pattern = "^[A-Za-z0-9._~+/=:@-]{15,1024}$";
-      rule = "use 15 to 1024 characters from A-Za-z0-9._~+/=:@-";
-      pairs = [ "ROAMGATE_PASSWORD=${roamgateHost.passwordKey}" ];
+      pattern = "^[0-9]{6,12}$";
+      rule = "use 6 to 12 ASCII digits";
+      pairs = [ "ROAMGATE_PIN=ROAMGATE_PIN" ];
     });
 
     home.activation.herdrTelegramAgentsPlugin = lib.mkIf herdrTelegramAgentsEnabled (
@@ -906,8 +922,9 @@ in
     # Roamgate runs as a user service from the Nix store, not as its Herdr
     # plugin, which downloads a prebuilt binary. It runs from source on Bun,
     # so the self-updater cannot replace it. The env file holds
-    # `ROAMGATE_PASSWORD`. Without it the pre-start check fails, so the
-    # server never falls back to a generated token. `NODE_ENV` stays unset,
+    # `ROAMGATE_PIN`. Without it the pre-start check fails, so the server
+    # never runs without the PIN. With no password set, Roamgate also
+    # generates a login token in `~/.config/roamgate`. `NODE_ENV` stays unset,
     # because `development` on a loopback bind turns login off. The package
     # turns worktree hooks off by default for every repository.
     systemd.user.services.roamgate = lib.mkIf (roamgateEnabled && host.is.linux) {
