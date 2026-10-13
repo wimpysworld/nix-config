@@ -10,11 +10,11 @@
 }:
 stdenv.mkDerivation rec {
   pname = "defold-bob";
-  version = "1.13.2";
+  version = "1.14.0";
 
   src = fetchurl {
     url = "https://github.com/defold/defold/releases/download/${version}/bob.jar";
-    hash = "sha256-efYAIqgMUru4ih7HrUTXdxpwzsZY45UMjwE0VUB46dA=";
+    hash = "sha256-kNqDQWfCG+lWryvloqZLLuHhatmA36mfNaayZRaVjQ8=";
   };
 
   nativeBuildInputs = [ makeWrapper ];
