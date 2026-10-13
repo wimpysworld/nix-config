@@ -6,16 +6,16 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "weave";
-  version = "0.2.2";
+  version = "0.3.0";
 
   src = fetchFromGitHub {
     owner = "matze";
     repo = "weave";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-RPNfjuZtWidCFmlJIvy0Lnb9Oi/lQoDurlAM+fMq8po=";
+    hash = "sha256-H3XdxlBGR1CrecMQQ8vaHr752vylNFFvAcF2HjAlgxA=";
   };
 
-  cargoHash = "sha256-ZwqLIGFPmsOpR4JqIfQXMI/TO2XgHggwRhWqLsXhHmk=";
+  cargoHash = "sha256-BvU/xL389+OFZkImbe/7Oe9fkGgjUGF0Uf12lHi2vFo=";
 
   meta = {
     description = "Self-hosted web frontend to view and edit zk notes";
