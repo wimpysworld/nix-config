@@ -36,7 +36,7 @@
     lan-mouse.inputs.rust-overlay.follows = "rust-overlay";
     handy.url = "github:cjpais/Handy/v0.9.8";
     handy.inputs.nixpkgs.follows = "nixpkgs";
-    hushmic.url = "github:Fovty/hushmic-nix/cd9cab670a5365fa16eaf96f22663b47395f89ca";
+    hushmic.url = "github:Fovty/hushmic-nix/b2af2236e162a1d3454bc479125b6cb2a31fc029";
     catppuccin.url = "github:catppuccin/nix/release-26.05";
     catppuccin.inputs.nixpkgs.follows = "nixpkgs";
     direnv-instant.url = "github:Mic92/direnv-instant";
