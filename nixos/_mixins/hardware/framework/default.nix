@@ -8,9 +8,44 @@
   ...
 }:
 lib.mkIf (noughtyLib.hostHasTag "framework") {
-  # Fan curve control for Framework laptops. The default "lazy" strategy
-  # suits both the Framework 13 and Framework 16.
+  # Fan curve control for Framework laptops.
   hardware.fw-fanctrl.enable = true;
+  # The default "lazy" curve reaches 100% at 85 °C. This quieter curve
+  # reaches 100% only at 95 °C.
+  hardware.fw-fanctrl.config = {
+    defaultStrategy = lib.mkDefault "quiet";
+    strategyOnDischarging = lib.mkDefault "quiet";
+    strategies.quiet = {
+      fanSpeedUpdateFrequency = 5;
+      movingAverageInterval = 30;
+      speedCurve = [
+        {
+          temp = 0;
+          speed = 15;
+        }
+        {
+          temp = 50;
+          speed = 15;
+        }
+        {
+          temp = 65;
+          speed = 25;
+        }
+        {
+          temp = 75;
+          speed = 40;
+        }
+        {
+          temp = 85;
+          speed = 60;
+        }
+        {
+          temp = 95;
+          speed = 100;
+        }
+      ];
+    };
+  };
 
   environment.systemPackages = with pkgs; [
     framework-tool
