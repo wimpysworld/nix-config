@@ -1,7 +1,6 @@
 {
   config,
   lib,
-  noughtyLib,
   pkgs,
   ...
 }:
@@ -13,13 +12,11 @@ let
     else
       null;
   hideWindowDecorations = compositor != null && !compositor.capabilities.clientSideDecorations;
-  # The mochi shader draws its own cursor, so only Strix Halo hosts load it.
-  useMochiShader = noughtyLib.hostHasTag "strix-halo";
 in
 lib.mkIf host.is.workstation {
   catppuccin.ghostty.enable = config.programs.ghostty.enable;
 
-  xdg.configFile."ghostty/shaders/mochi-ghostty.glsl" = lib.mkIf useMochiShader {
+  xdg.configFile."ghostty/shaders/mochi-ghostty.glsl" = {
     source =
       if host.is.linux then
         pkgs.writeText "mochi-ghostty.glsl" (
@@ -48,9 +45,8 @@ lib.mkIf host.is.workstation {
       window-decoration = if hideWindowDecorations then "none" else "auto";
       window-inherit-working-directory = false;
       working-directory = "home";
-    }
-    // lib.optionalAttrs useMochiShader {
-      # Hide the native cursor because the shader draws its replacement.
+
+      # Hide the native cursor because the mochi shader draws its replacement.
       custom-shader = "shaders/mochi-ghostty.glsl";
       custom-shader-animation = true;
       cursor-opacity = 0.0;
