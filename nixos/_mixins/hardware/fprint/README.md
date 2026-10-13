@@ -1,7 +1,7 @@
 # Fingerprint Unlock
 
-Enables fprintd and configures Veila fingerprint unlock for Hyprland and
-Wayfire. Veila authenticates fingerprints through fprintd's D-Bus API. Login,
+Enables fprintd and configures Veila fingerprint unlock for Hyprland, Wayfire,
+and MangoWM. Veila authenticates fingerprints through fprintd's D-Bus API. Login,
 sudo, and polkit require a password.
 
 ## Enabling
@@ -59,7 +59,7 @@ Three modules collaborate:
 - Runs `veilad.service` and `veila-idle.service` under the selected compositor
   session target. The idle service locks after 300 seconds and before sleep
 - Binds `veila lock` to <kbd>Super</kbd>+<kbd>L</kbd> and
-  <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>L</kbd> in Hyprland and Wayfire.
+  <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>L</kbd> in Hyprland, Wayfire, and MangoWM.
   `wayland-session lock` uses the same command
 
 The PAM lockdown on `veila` is required. Without it, both Veila's D-Bus path

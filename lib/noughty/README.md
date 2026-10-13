@@ -259,7 +259,7 @@ Keyboard layout is set once in the registry and derived into the formats each su
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `keyboard.layout` | `str` | `"gb"` | XKB keyboard layout code. Used by `services.xserver.xkb.layout`, Hyprland `kb_layout`, Wayfire `xkb_layout`, and kmscon. |
+| `keyboard.layout` | `str` | `"gb"` | XKB keyboard layout code. Used by `services.xserver.xkb.layout`, Hyprland `kb_layout`, Wayfire `xkb_layout`, MangoWM `xkb_rules_layout`, and kmscon. |
 | `keyboard.variant` | `str` | `""` | XKB variant (e.g. `"dvorak"`, `"colemak"`). Empty string means the default variant. |
 | `keyboard.consoleKeymap` | `str` | *(read-only, derived)* | Linux console keymap name, derived from `layout`. Used by `console.keyMap`. `"gb"` maps to `"uk"`; most other codes are identical in both namespaces. |
 | `keyboard.locale` | `str` | *(derived, overridable)* | POSIX locale string derived from `layout` (e.g. `"gb"` -> `"en_GB.UTF-8"`). Used by `i18n.defaultLocale` and all `LC_*` settings. Override explicitly when locale and layout diverge. |
@@ -270,7 +270,7 @@ The Linux virtual console and the XKB subsystem use different naming conventions
 
 | Subsystem | Option | Value |
 |-----------|--------|-------|
-| XKB (xserver, Hyprland, Wayfire, kmscon) | `keyboard.layout` | `"gb"` |
+| XKB (xserver, Hyprland, Wayfire, MangoWM, kmscon) | `keyboard.layout` | `"gb"` |
 | Linux console | `keyboard.consoleKeymap` | `"uk"` |
 | POSIX locale | `keyboard.locale` | `"en_GB.UTF-8"` |
 | macOS NSGlobalDomain | derived | `"en_GB"` / `"en-GB"` |

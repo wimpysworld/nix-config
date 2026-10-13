@@ -190,7 +190,7 @@ Useful shell scripts I used to keep in muddle of git repos are now migrated to [
 
 ### The Desktop 🖥️
 
-Hyprland 💧 and Wayfire 🔥 desktop options are available.
+Hyprland 💧, Wayfire 🔥, and MangoWM 🥭 desktop options are available.
 The font configuration is common for all desktops using [Work Sans](https://fonts.google.com/specimen/Work+Sans) and [Fira Code](https://fonts.google.com/specimen/Fira+Code).
 The usual creature comforts you'd expect to find in a Linux Desktop are integrated such as Pipewire, Bluetooth, Avahi, CUPS, SANE and NetworkManager.
 
@@ -198,6 +198,7 @@ The usual creature comforts you'd expect to find in a Linux Desktop are integrat
 | :---------: | :--------------: | :---------------------: | :--------------: |
 | 💧 Hyprland | [Hyprland NixOS] | [Hyprland Home Manager] | Catppuccin Mocha |
 | 🔥 Wayfire  | [Wayfire NixOS]  | [Wayfire Home Manager]  | Catppuccin Mocha |
+| 🥭 MangoWM  | [MangoWM NixOS]  | [MangoWM Home Manager]  | Catppuccin Mocha |
 
 ## Eye Candy 👀🍬
 
@@ -433,5 +434,7 @@ Some applications require manual configuration to apply the correct theme.
 [Tailscale]: https://tailscale.com/
 [Hyprland NixOS]: ./nixos/_mixins/desktop/hyprland/default.nix
 [Wayfire NixOS]: ./nixos/_mixins/desktop/wayfire/default.nix
+[MangoWM NixOS]: ./nixos/_mixins/desktop/mango/default.nix
 [Hyprland Home Manager]: ./home-manager/_mixins/desktop/compositor/hyprland/default.nix
 [Wayfire Home Manager]: ./home-manager/_mixins/desktop/compositor/wayfire/default.nix
+[MangoWM Home Manager]: ./home-manager/_mixins/desktop/compositor/mango/default.nix

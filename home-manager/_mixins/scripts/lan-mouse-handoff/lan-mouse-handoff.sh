@@ -11,6 +11,9 @@ function compositor_cursor() {
 	hyprland)
 		hyprctl -j cursorpos | jq -r '"\(.x) \(.y)"'
 		;;
+	mango)
+		mmsg get cursorpos | jq -r '"\(.x) \(.y)"'
+		;;
 	wayfire)
 		lan-mouse-wayfire-ipc cursor | jq -r '"\(.pos.x) \(.pos.y)"'
 		;;

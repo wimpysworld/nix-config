@@ -6,8 +6,8 @@ let
 in
 pkgs.writeShellApplication {
   name = "lan-mouse-warp";
-  # hyprctl resolves from the session PATH so it always matches the
-  # running Hyprland instance.
+  # hyprctl and mmsg resolve from the session PATH, so each always
+  # matches the running Hyprland or MangoWM instance.
   runtimeInputs = [
     wayfireIpc
   ]
@@ -15,6 +15,7 @@ pkgs.writeShellApplication {
     coreutils
     findutils
     jq
+    wlrctl
   ]);
   text =
     builtins.readFile ./compositor-query.sh

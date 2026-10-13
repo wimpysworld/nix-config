@@ -69,6 +69,72 @@
       };
     };
 
+    mango = {
+      launcher = {
+        name = "MangoWM";
+        comment = "A dwl-based tiling Wayland compositor with scenefx effects";
+        desktopNames = "mango";
+        command = "/run/current-system/sw/bin/mango";
+        prefixArgs = [ ];
+        logName = "mango";
+        nativeSessionsPath = [
+          "programs"
+          "mangowc"
+          "package"
+          "providedSessions"
+        ];
+      };
+      sessionTarget = "mangowm-session.target";
+      startupEnvironment = [
+        "DISPLAY"
+        "WAYLAND_DISPLAY"
+        "XDG_SESSION_TYPE"
+        "XDG_CURRENT_DESKTOP"
+        "NIXOS_OZONE_WL"
+        "XCURSOR_THEME"
+        "XCURSOR_SIZE"
+        "MANGO_INSTANCE_SIGNATURE"
+      ];
+      ephemeralEnvironment = [
+        "DISPLAY"
+        "MANGO_INSTANCE_SIGNATURE"
+        "WAYLAND_DISPLAY"
+        "XDG_SESSION_TYPE"
+        "XDG_CURRENT_DESKTOP"
+      ];
+      portal = {
+        backend = "wlr";
+        packageAttr = "xdg-desktop-portal-wlr";
+        service = "xdg-desktop-portal-wlr";
+      };
+      capabilities = {
+        clientSideDecorations = false;
+        picker = true;
+      };
+      waybar = {
+        workspaceModule = "ext/workspaces";
+        workspaceSettings = {
+          active-only = false;
+          all-outputs = false;
+          format = "<big>{icon}</big>";
+          format-icons = {
+            "1" = "󰎤";
+            "2" = "󰎧";
+            "3" = "󰎪";
+            "4" = "󰎭";
+            "5" = "󰎱";
+            "6" = "󰎳";
+            "7" = "󰎶";
+            "8" = "󰎹";
+            default = "󱢍";
+          };
+          ignore-hidden = true;
+          on-click = "activate";
+          sort-by-number = true;
+        };
+      };
+    };
+
     wayfire = {
       launcher = {
         name = "Wayfire";

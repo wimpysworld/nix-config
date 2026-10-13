@@ -8,7 +8,8 @@ let
   inherit (config.noughty) host;
   isIntelCPU = config.hardware.cpu.intel.updateMicrocode;
   isThinkpad = noughtyLib.hostHasTag "thinkpad";
-  usePowerProfiles = config.programs.hyprland.enable || config.programs.wayfire.enable;
+  usePowerProfiles =
+    config.programs.hyprland.enable || config.programs.wayfire.enable || config.programs.mangowc.enable;
 in
 lib.mkIf (!host.is.iso) {
   # Power Management strategy:

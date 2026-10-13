@@ -111,6 +111,14 @@ let
     "XDG_SESSION_TYPE"
     "XDG_CURRENT_DESKTOP"
   ];
+  mangoStartupEnvironment = sharedStartupEnvironment ++ [ "MANGO_INSTANCE_SIGNATURE" ];
+  mangoEphemeralEnvironment = [
+    "DISPLAY"
+    "MANGO_INSTANCE_SIGNATURE"
+    "WAYLAND_DISPLAY"
+    "XDG_SESSION_TYPE"
+    "XDG_CURRENT_DESKTOP"
+  ];
   wayfireStartupEnvironment = sharedStartupEnvironment ++ [ "WAYFIRE_SOCKET" ];
   wayfireEphemeralEnvironment = [
     "DISPLAY"
@@ -123,12 +131,15 @@ let
   requiredHostConfigurationsExist =
     nixosConfigurations ? bane
     && nixosConfigurations ? felkor
+    && nixosConfigurations ? ravi
     && nixosConfigurations ? skrye
     && homeConfigurations ? "martin@bane"
     && homeConfigurations ? "martin@felkor"
+    && homeConfigurations ? "martin@ravi"
     && homeConfigurations ? "martin@skrye";
   baneHome = homeConfigurations."martin@bane".config;
   felkorHome = homeConfigurations."martin@felkor".config;
+  raviHome = homeConfigurations."martin@ravi".config;
   skryeHome = homeConfigurations."martin@skrye".config;
   baneNixosWayfirePlugins = nixosConfigurations.bane.config.programs.wayfire.plugins;
   felkorNixosWayfirePlugins = nixosConfigurations.felkor.config.programs.wayfire.plugins;
@@ -221,6 +232,21 @@ let
     ]
     ++ hyprlandEphemeralEnvironment
   );
+  mangoCleanupArguments = lib.escapeShellArgs (
+    [
+      "mangowm-session.target"
+      "xdg-desktop-portal-wlr"
+      "5"
+    ]
+    ++ mangoEphemeralEnvironment
+  );
+  mangoStartupArguments = lib.escapeShellArgs (
+    [
+      "mangowm-session.target"
+      "8"
+    ]
+    ++ mangoStartupEnvironment
+  );
   wayfireStartupArguments = lib.escapeShellArgs (
     [
       "wayfire-session.target"
@@ -246,6 +272,7 @@ in
 assert
   builtins.attrNames contract.compositors == [
     "hyprland"
+    "mango"
     "wayfire"
   ];
 assert entriesHaveRequiredFields;
@@ -255,6 +282,13 @@ assert contract.compositors.hyprland.sessionTarget == "hyprland-session.target";
 assert contract.compositors.hyprland.startupEnvironment == hyprlandStartupEnvironment;
 assert contract.compositors.hyprland.ephemeralEnvironment == hyprlandEphemeralEnvironment;
 assert contract.compositors.hyprland.portal.service == "xdg-desktop-portal-hyprland";
+assert contract.compositors.mango.sessionTarget == "mangowm-session.target";
+assert contract.compositors.mango.startupEnvironment == mangoStartupEnvironment;
+assert contract.compositors.mango.ephemeralEnvironment == mangoEphemeralEnvironment;
+assert contract.compositors.mango.portal.service == "xdg-desktop-portal-wlr";
+assert contract.compositors.mango.waybar.workspaceModule == "ext/workspaces";
+assert contract.compositors.mango.waybar.workspaceSettings.on-click == "activate";
+assert !contract.compositors.mango.capabilities.clientSideDecorations;
 assert contract.compositors.wayfire.sessionTarget == "wayfire-session.target";
 assert contract.compositors.wayfire.startupEnvironment == wayfireStartupEnvironment;
 assert contract.compositors.wayfire.ephemeralEnvironment == wayfireEphemeralEnvironment;
@@ -276,6 +310,14 @@ assert
 assert !enableHostIntegration || baneHome.wayland.systemd.target == "wayfire-session.target";
 assert !enableHostIntegration || felkorHome.wayland.systemd.target == "wayfire-session.target";
 assert !enableHostIntegration || skryeHome.wayland.systemd.target == "hyprland-session.target";
+assert !enableHostIntegration || raviHome.wayland.systemd.target == "mangowm-session.target";
+assert
+  !enableHostIntegration
+  || raviHome.systemd.user.targets.mangowm-session.Unit.BindsTo == [ "graphical-session.target" ];
+assert !enableHostIntegration || nixosConfigurations.ravi.config.programs.mangowc.enable;
+assert
+  !enableHostIntegration
+  || lib.versions.majorMinor raviHome.wayland.windowManager.mango.package.version == "0.18";
 assert !enableHostIntegration || lib.getName felkorNixosVecdecor == "vecdecor";
 assert !enableHostIntegration || lib.getName felkorHomeVecdecor == "vecdecor";
 assert
@@ -343,6 +385,15 @@ assert
 assert !enableHostIntegration || (logoutService skryeHome).Service.Type == "oneshot";
 assert !enableHostIntegration || !((logoutService skryeHome).Unit ? PartOf);
 assert !enableHostIntegration || !(logoutService skryeHome ? Install);
+assert
+  !enableHostIntegration
+  ||
+    (logoutService raviHome).Service.ExecStart == [
+      "${sessionPackage raviHome}/bin/wayland-session logout-action"
+    ];
+assert !enableHostIntegration || (logoutService raviHome).Service.Type == "oneshot";
+assert !enableHostIntegration || !((logoutService raviHome).Unit ? PartOf);
+assert !enableHostIntegration || !(logoutService raviHome ? Install);
 pkgs.runCommand "wayland-compositor-contract" { } ''
   ${lib.optionalString enableHostIntegration ''
     grep -F -- ${lib.escapeShellArg wayfireCleanupArguments} \
@@ -351,12 +402,16 @@ pkgs.runCommand "wayland-compositor-contract" { } ''
       ${waylandShim "felkor"}/bin/wayland-session-cleanup >/dev/null
     grep -F -- ${lib.escapeShellArg hyprlandCleanupArguments} \
       ${waylandShim "skrye"}/bin/wayland-session-cleanup >/dev/null
+    grep -F -- ${lib.escapeShellArg mangoCleanupArguments} \
+      ${waylandShim "ravi"}/bin/wayland-session-cleanup >/dev/null
     grep -F -- ${lib.escapeShellArg "set -- ${wayfireStartupArguments} \"\$@\""} \
       ${sessionPackage baneHome}/bin/wayland-session >/dev/null
     grep -F -- ${lib.escapeShellArg "set -- ${wayfireStartupArguments} \"\$@\""} \
       ${sessionPackage felkorHome}/bin/wayland-session >/dev/null
     grep -F -- ${lib.escapeShellArg "set -- ${hyprlandStartupArguments} \"\$@\""} \
       ${sessionPackage skryeHome}/bin/wayland-session >/dev/null
+    grep -F -- ${lib.escapeShellArg "set -- ${mangoStartupArguments} \"\$@\""} \
+      ${sessionPackage raviHome}/bin/wayland-session >/dev/null
   ''}
   printf '%s\n' ${lib.escapeShellArg (builtins.toJSON contractResult)} > "$out"
 ''

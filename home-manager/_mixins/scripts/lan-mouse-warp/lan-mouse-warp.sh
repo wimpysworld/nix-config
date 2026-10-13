@@ -20,6 +20,9 @@ function compositor_cursor() {
 	hyprland)
 		hyprctl -j cursorpos | jq -r '"\(.x) \(.y)"'
 		;;
+	mango)
+		mmsg get cursorpos | jq -r '"\(.x) \(.y)"'
+		;;
 	wayfire)
 		lan-mouse-wayfire-ipc cursor | jq -r '"\(.pos.x) \(.pos.y)"'
 		;;
@@ -31,6 +34,15 @@ function compositor_warp() {
 	case "$COMPOSITOR" in
 	hyprland)
 		hyprctl dispatch movecursor "$1" "$2" > /dev/null
+		;;
+	mango)
+		# Mango has no warp dispatcher, so move by the delta from the
+		# current cursor position through wlr-virtual-pointer.
+		local cursor_x cursor_y
+		read -r cursor_x cursor_y < <(compositor_cursor) || return 1
+		wlrctl pointer move \
+			"$(jq -n --argjson t "$1" --argjson c "$cursor_x" '($t - $c) | round')" \
+			"$(jq -n --argjson t "$2" --argjson c "$cursor_y" '($t - $c) | round')"
 		;;
 	wayfire)
 		# The stipc do_motion handler subtracts the global cursor

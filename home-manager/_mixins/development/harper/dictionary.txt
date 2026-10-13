@@ -332,6 +332,7 @@ MTEB
 Maestral
 MainTex
 Makefile
+MangoWM
 Marp
 Metavariable
 Metavariables
@@ -950,6 +951,8 @@ lz4
 m43s
 mTLS
 macos
+mangonag
+mangowc
 markdown
 mat4
 mbedTLS
@@ -969,6 +972,7 @@ mixins
 mixwithsystem
 mktemp
 mmap
+mmsg
 mnt
 moe
 monomorphic
@@ -1119,6 +1123,7 @@ scancode
 scancodes
 scanf
 scannability
+scenefx
 screencopy
 scrollback
 scrypt
@@ -1282,6 +1287,7 @@ wheelmoved
 wifi
 win32
 wireframe
+wlrctl
 workstreams
 worktree
 xclbins

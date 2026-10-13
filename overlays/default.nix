@@ -113,6 +113,7 @@ in
       inherit (final.unstable) framework-tool;
       inherit (final.unstable) framework-tool-tui;
       inherit (final.unstable) hyprland;
+      inherit (final.unstable) mango;
       inherit (final.unstable) zed-editor;
       inherit (final.unstable) lima;
       inherit (final.unstable) markless;

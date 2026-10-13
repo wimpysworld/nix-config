@@ -46,9 +46,10 @@ measurement.
 
 - `lan-mouse-warp.sh` - the warp and report logic.
 - `compositor-query.sh` - shared compositor detection and monitor
-  queries for Hyprland and Wayfire, sourced by this script and by
-  `lan-mouse-handoff`. Detection works from the runtime directory
-  alone, because SSH sessions carry no compositor environment.
+  queries for Hyprland, Wayfire, and MangoWM, sourced by this script
+  and by `lan-mouse-handoff`. Detection works from the runtime
+  directory alone, because SSH sessions carry no compositor
+  environment.
 - `lan-mouse-wayfire-ipc.py` - stdlib-only Python client for Wayfire's
   length-prefixed JSON IPC. Every Wayfire method name lives in its
   `METHODS` table, because the `stipc` plugin is a test interface and
@@ -60,3 +61,13 @@ measurement.
 
 Wayfire needs the `ipc`, `ipc-rules`, and `stipc` plugins enabled;
 `stipc/move_cursor` takes global layout coordinates.
+
+MangoWM detection checks first, because Mango removes its
+`$XDG_RUNTIME_DIR/mango-*.sock` socket on exit. The newest socket sets
+`MANGO_INSTANCE_SIGNATURE`, and the newest `wayland-*` socket sets
+`WAYLAND_DISPLAY` when the environment does not supply it. `mmsg`
+reads the monitors and the cursor in logical layout coordinates.
+Mango has no warp dispatcher, so the warp reads the cursor and sends
+the difference as a relative `wlrctl pointer move <dx> <dy>` through
+wlr-virtual-pointer. It does not retry, so the result can land off
+target.

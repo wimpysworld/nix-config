@@ -5,6 +5,23 @@
 function detect_compositor() {
 	local runtime signature candidate
 	runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+	# Mango unlinks its socket on exit, so a match is a live instance.
+	# Check it first, because a Hyprland signature directory can
+	# outlive its instance.
+	signature="${MANGO_INSTANCE_SIGNATURE:-}"
+	if [ ! -S "$signature" ]; then
+		signature=$(find "$runtime" -mindepth 1 -maxdepth 1 -name 'mango-*.sock' -type s -printf '%T@ %p\n' 2> /dev/null | sort -rn | head -n 1 | cut -d ' ' -f 2-)
+	fi
+	if [ -S "$signature" ]; then
+		COMPOSITOR="mango"
+		export MANGO_INSTANCE_SIGNATURE="$signature"
+		# wlrctl needs the Wayland display, which SSH sessions lack.
+		if [ -z "${WAYLAND_DISPLAY:-}" ]; then
+			WAYLAND_DISPLAY=$(find "$runtime" -mindepth 1 -maxdepth 1 -name 'wayland-*' ! -name '*.lock' -type s -printf '%T@ %f\n' 2> /dev/null | sort -rn | head -n 1 | cut -d ' ' -f 2-)
+			export WAYLAND_DISPLAY
+		fi
+		return 0
+	fi
 	signature=$(find "$runtime/hypr" -mindepth 1 -maxdepth 1 -printf '%T@ %f\n' 2> /dev/null | sort -rn | head -n 1 | cut -d ' ' -f 2-)
 	if [ -n "$signature" ]; then
 		COMPOSITOR="hyprland"
@@ -37,6 +54,11 @@ function compositor_monitors() {
 			width: (if (.transform % 2) == 1 then (.height / .scale) else (.width / .scale) end),
 			height: (if (.transform % 2) == 1 then (.width / .scale) else (.height / .scale) end)
 		}]'
+		;;
+	mango)
+		# mmsg reports the output layout box, already in logical
+		# layout coordinates.
+		mmsg get all-monitors | jq -c '[.monitors[] | {x, y, width, height}]'
 		;;
 	wayfire)
 		# The ipc-rules list-outputs geometry is the layout geometry,

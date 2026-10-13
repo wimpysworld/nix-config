@@ -15,6 +15,7 @@ in
     ./backgrounds
     ./greeters/greetd.nix
     ./hyprland
+    ./mango
     ./wayfire
     ./wayland-shim
   ];

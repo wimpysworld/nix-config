@@ -25,7 +25,7 @@ let
       "${config.home.file.".face".source}"
     else
       "${config.home.homeDirectory}/.face";
-  passEnvironment = "WAYLAND_DISPLAY XDG_SESSION_ID XDG_SESSION_TYPE XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE SWAYSOCK NIRI_SOCKET";
+  passEnvironment = "WAYLAND_DISPLAY XDG_SESSION_ID XDG_SESSION_TYPE XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE SWAYSOCK NIRI_SOCKET MANGO_INSTANCE_SIGNATURE";
   # Mirror the wpaperd per-display mapping exactly: index 0 is the primary and
   # gets a Catppuccin wallpaper; subsequent displays get Colorway. Resolution and
   # output name come from the same noughty display fields wpaperd reads.

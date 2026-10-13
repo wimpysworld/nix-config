@@ -26,7 +26,7 @@ fraction along the matching edge.
   the peer (an earlier version queried the daemon and paid a full
   second per crossing).
 - It reads the local cursor and monitor layout from the running
-  compositor (Hyprland or Wayfire, detected at runtime) and computes
+  compositor (Hyprland, Wayfire, or MangoWM, detected at runtime) and computes
   the fraction along the exit edge of the monitor the cursor is on.
 - It writes one `warp <entry-edge> <fraction>` line to the persistent
   warp channel that `lan-mouse-hookd` keeps open to the peer

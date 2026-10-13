@@ -162,6 +162,10 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           background-color: @mantle;
         }
 
+        #workspaces button.urgent {
+          color: @red;
+        }
+
         #idle_inhibitor {
           border-radius: 0.75rem 0 0 0.75rem;
           color: @flamingo;

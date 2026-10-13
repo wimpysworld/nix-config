@@ -170,7 +170,7 @@ Key gates:
 
 - Treat `lib/wayland-compositors.nix` as the canonical pure-data contract selected by `config.noughty.host.desktop`.
 - Route compositor configuration through the shared Home Manager compositor hub.
-- Keep Hyprland as the default. Support Wayfire as the second compositor.
+- Keep Hyprland as the default. Support Wayfire as the second compositor and MangoWM as the third.
 - Put generic packages, configuration, scripts, styles, and services in shared components.
 - Keep bindings, native settings, portals, workspace modules, session adapters, and other compositor syntax in compositor-owned modules.
 - Never write `wayland.windowManager.hyprland` or `wayland.windowManager.wayfire` from shared components.

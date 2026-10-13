@@ -26,6 +26,7 @@ in
     ./components/wleave
     ./components/wpaperd
     ./hyprland
+    ./mango
     ./wayfire
   ];
 

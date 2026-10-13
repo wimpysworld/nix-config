@@ -70,6 +70,7 @@ position = { x = 0, y = 0 }
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "laptop"
+desktop = "mango"
 tags = [
   "framework",
   "cg",
