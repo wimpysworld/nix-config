@@ -131,18 +131,14 @@ let
   requiredHostConfigurationsExist =
     nixosConfigurations ? bane
     && nixosConfigurations ? felkor
-    && nixosConfigurations ? ravi
     && nixosConfigurations ? skrye
     && homeConfigurations ? "martin@bane"
     && homeConfigurations ? "martin@felkor"
-    && homeConfigurations ? "martin@ravi"
     && homeConfigurations ? "martin@skrye";
   baneHome = homeConfigurations."martin@bane".config;
   felkorHome = homeConfigurations."martin@felkor".config;
-  raviHome = homeConfigurations."martin@ravi".config;
   skryeHome = homeConfigurations."martin@skrye".config;
   baneNixosWayfirePlugins = nixosConfigurations.bane.config.programs.wayfire.plugins;
-  felkorNixosWayfirePlugins = nixosConfigurations.felkor.config.programs.wayfire.plugins;
   packageNamed =
     name: packages:
     let
@@ -151,15 +147,10 @@ let
     assert builtins.length matches == 1;
     builtins.head matches;
   baneHomeWayfire = baneHome.wayland.windowManager.wayfire;
-  felkorHomeWayfire = felkorHome.wayland.windowManager.wayfire;
   baneNixosVecdecor = packageNamed "vecdecor" baneNixosWayfirePlugins;
   baneHomeVecdecor = packageNamed "vecdecor" baneHomeWayfire.plugins;
-  felkorNixosVecdecor = packageNamed "vecdecor" felkorNixosWayfirePlugins;
-  felkorHomeVecdecor = packageNamed "vecdecor" felkorHomeWayfire.plugins;
   baneNixosExtraPlugins = packageNamed "wayfire-plugins-extra" baneNixosWayfirePlugins;
   baneHomeExtraPlugins = packageNamed "wayfire-plugins-extra" baneHomeWayfire.plugins;
-  felkorNixosExtraPlugins = packageNamed "wayfire-plugins-extra" felkorNixosWayfirePlugins;
-  felkorHomeExtraPlugins = packageNamed "wayfire-plugins-extra" felkorHomeWayfire.plugins;
   coreHasPlugin =
     wayfire: plugin: builtins.elem plugin (lib.splitString " " wayfire.settings.core.plugins);
   vecdecorSettings = wayfire: wayfire.settings.vecdecor or { };
@@ -303,35 +294,17 @@ assert
   || baneHome.wayland.windowManager.wayfire.systemd.variables == wayfireStartupEnvironment;
 assert
   !enableHostIntegration
-  || felkorHome.wayland.windowManager.wayfire.systemd.variables == wayfireStartupEnvironment;
-assert
-  !enableHostIntegration
   || skryeHome.wayland.windowManager.hyprland.systemd.variables == hyprlandStartupEnvironment;
 assert !enableHostIntegration || baneHome.wayland.systemd.target == "wayfire-session.target";
-assert !enableHostIntegration || felkorHome.wayland.systemd.target == "wayfire-session.target";
 assert !enableHostIntegration || skryeHome.wayland.systemd.target == "hyprland-session.target";
-assert !enableHostIntegration || raviHome.wayland.systemd.target == "mangowm-session.target";
+assert !enableHostIntegration || felkorHome.wayland.systemd.target == "mangowm-session.target";
 assert
   !enableHostIntegration
-  || raviHome.systemd.user.targets.mangowm-session.Unit.BindsTo == [ "graphical-session.target" ];
-assert !enableHostIntegration || nixosConfigurations.ravi.config.programs.mangowc.enable;
+  || felkorHome.systemd.user.targets.mangowm-session.Unit.BindsTo == [ "graphical-session.target" ];
+assert !enableHostIntegration || nixosConfigurations.felkor.config.programs.mangowc.enable;
 assert
   !enableHostIntegration
-  || lib.versions.majorMinor raviHome.wayland.windowManager.mango.package.version == "0.18";
-assert !enableHostIntegration || lib.getName felkorNixosVecdecor == "vecdecor";
-assert !enableHostIntegration || lib.getName felkorHomeVecdecor == "vecdecor";
-assert
-  !enableHostIntegration || builtins.elem "-Denable_pixdecor=true" felkorNixosExtraPlugins.mesonFlags;
-assert
-  !enableHostIntegration || builtins.elem "-Denable_pixdecor=true" felkorHomeExtraPlugins.mesonFlags;
-assert !enableHostIntegration || coreHasPlugin felkorHomeWayfire "vecdecor";
-assert !enableHostIntegration || !(coreHasPlugin felkorHomeWayfire "pixdecor");
-assert !enableHostIntegration || felkorHomeWayfire.settings ? vecdecor;
-assert !enableHostIntegration || !(felkorHomeWayfire.settings ? pixdecor);
-assert !enableHostIntegration || matchesVecdecorSettings felkorHomeWayfire;
-assert !enableHostIntegration || !(hasGeneratedPngStatePath felkorHomeWayfire);
-assert
-  !enableHostIntegration || felkorHomeWayfire.settings.winshadows == expectedWinshadowsSettings;
+  || lib.versions.majorMinor felkorHome.wayland.windowManager.mango.package.version == "0.18";
 assert !enableHostIntegration || lib.getName baneNixosVecdecor == "vecdecor";
 assert !enableHostIntegration || lib.getName baneHomeVecdecor == "vecdecor";
 assert
@@ -347,10 +320,10 @@ assert !enableHostIntegration || !(hasGeneratedPngStatePath baneHomeWayfire);
 assert !enableHostIntegration || baneHomeWayfire.settings.winshadows == expectedWinshadowsSettings;
 assert
   !enableHostIntegration
-  || felkorHome.systemd.user.services.lan-mouse.Unit.PartOf == [ "wayfire-session.target" ];
+  || felkorHome.systemd.user.services.lan-mouse.Unit.PartOf == [ "mangowm-session.target" ];
 assert
   !enableHostIntegration
-  || felkorHome.systemd.user.services.lan-mouse.Install.WantedBy == [ "wayfire-session.target" ];
+  || felkorHome.systemd.user.services.lan-mouse.Install.WantedBy == [ "mangowm-session.target" ];
 assert
   !enableHostIntegration
   || skryeHome.systemd.user.services.reframe-session.Unit.PartOf == [ "hyprland-session.target" ];
@@ -370,15 +343,6 @@ assert !enableHostIntegration || !(logoutService baneHome ? Install);
 assert
   !enableHostIntegration
   ||
-    (logoutService felkorHome).Service.ExecStart == [
-      "${sessionPackage felkorHome}/bin/wayland-session logout-action"
-    ];
-assert !enableHostIntegration || (logoutService felkorHome).Service.Type == "oneshot";
-assert !enableHostIntegration || !((logoutService felkorHome).Unit ? PartOf);
-assert !enableHostIntegration || !(logoutService felkorHome ? Install);
-assert
-  !enableHostIntegration
-  ||
     (logoutService skryeHome).Service.ExecStart == [
       "${sessionPackage skryeHome}/bin/wayland-session logout-action"
     ];
@@ -388,30 +352,26 @@ assert !enableHostIntegration || !(logoutService skryeHome ? Install);
 assert
   !enableHostIntegration
   ||
-    (logoutService raviHome).Service.ExecStart == [
-      "${sessionPackage raviHome}/bin/wayland-session logout-action"
+    (logoutService felkorHome).Service.ExecStart == [
+      "${sessionPackage felkorHome}/bin/wayland-session logout-action"
     ];
-assert !enableHostIntegration || (logoutService raviHome).Service.Type == "oneshot";
-assert !enableHostIntegration || !((logoutService raviHome).Unit ? PartOf);
-assert !enableHostIntegration || !(logoutService raviHome ? Install);
+assert !enableHostIntegration || (logoutService felkorHome).Service.Type == "oneshot";
+assert !enableHostIntegration || !((logoutService felkorHome).Unit ? PartOf);
+assert !enableHostIntegration || !(logoutService felkorHome ? Install);
 pkgs.runCommand "wayland-compositor-contract" { } ''
   ${lib.optionalString enableHostIntegration ''
     grep -F -- ${lib.escapeShellArg wayfireCleanupArguments} \
       ${waylandShim "bane"}/bin/wayland-session-cleanup >/dev/null
-    grep -F -- ${lib.escapeShellArg wayfireCleanupArguments} \
-      ${waylandShim "felkor"}/bin/wayland-session-cleanup >/dev/null
     grep -F -- ${lib.escapeShellArg hyprlandCleanupArguments} \
       ${waylandShim "skrye"}/bin/wayland-session-cleanup >/dev/null
     grep -F -- ${lib.escapeShellArg mangoCleanupArguments} \
-      ${waylandShim "ravi"}/bin/wayland-session-cleanup >/dev/null
+      ${waylandShim "felkor"}/bin/wayland-session-cleanup >/dev/null
     grep -F -- ${lib.escapeShellArg "set -- ${wayfireStartupArguments} \"\$@\""} \
       ${sessionPackage baneHome}/bin/wayland-session >/dev/null
-    grep -F -- ${lib.escapeShellArg "set -- ${wayfireStartupArguments} \"\$@\""} \
-      ${sessionPackage felkorHome}/bin/wayland-session >/dev/null
     grep -F -- ${lib.escapeShellArg "set -- ${hyprlandStartupArguments} \"\$@\""} \
       ${sessionPackage skryeHome}/bin/wayland-session >/dev/null
     grep -F -- ${lib.escapeShellArg "set -- ${mangoStartupArguments} \"\$@\""} \
-      ${sessionPackage raviHome}/bin/wayland-session >/dev/null
+      ${sessionPackage felkorHome}/bin/wayland-session >/dev/null
   ''}
   printf '%s\n' ${lib.escapeShellArg (builtins.toJSON contractResult)} > "$out"
 ''
