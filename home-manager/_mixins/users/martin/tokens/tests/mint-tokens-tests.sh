@@ -120,7 +120,8 @@ export MINT_STAGE_ENV='stage.example'
 export GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$XDG_CONFIG_HOME/gws"
 unset GOOGLE_WORKSPACE_CLI_TOKEN GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE
 unset GOOGLE_WORKSPACE_CLI_CLIENT_ID GOOGLE_WORKSPACE_CLI_CLIENT_SECRET MINT_GWS_ACCOUNT
-unset MINT_DEV_AUDIENCES MINT_DEV_ENV
+unset MINT_DEV_AUDIENCES
+export MINT_DEV_ENV=
 
 fail() {
     echo "FAIL: $*" >&2
@@ -137,10 +138,10 @@ assert_no_log() {
 line_of() {
     grep -n -F -- "$1" "$log" | head -1 | cut -d: -f1
 }
-dev_config="$XDG_CONFIG_HOME/chainctl/devenv-wimpress.guardenv.dev.yaml"
+dev_config="$XDG_CONFIG_HOME/chainctl/wimpress.yaml"
 assert_development_untouched() {
     assert_no_log 'development'
-    assert_no_log 'devenv-'
+    assert_no_log 'wimpress'
     assert_no_log 'guardenv.dev'
     assert_no_log 'xdg-open '
     [[ $(cat "$dev_config") == 'existing development config' ]] ||
@@ -188,8 +189,6 @@ for adc in 0 1; do
         for audience in prod mcp-prod stage mcp-stage; do
             assert_log "audience=$audience"
         done
-        grep -Fq 'development authentication is disabled pending issuer callback repair' "$tmp/matrix-output" ||
-            fail 'development disabled notice is missing'
         ! grep -Fq 'SECRET_TOKEN' "$tmp/matrix-output" || fail 'a probe token appeared in output'
         assert_log 'mcp-private '
     done
@@ -366,5 +365,32 @@ fi
 assert_no_log 'chainctl auth login '
 assert_no_log 'mcp-private '
 assert_development_untouched
+
+: >"$log"
+rm -rf "$XDG_CONFIG_HOME/chainctl"
+env -u MINT_DEV_ENV bash "$script" >"$tmp/dev-default-output"
+assert_log 'probe skip-auto-login=true audience=https://console-api.wimpress.guardenv.dev'
+assert_log "--config $dev_config auth token"
+assert_no_log 'auth login '
+grep -Fq 'issuer: https://issuer.wimpress.guardenv.dev' "$dev_config" || fail 'default dev config is wrong'
+[[ $(stat -c %a "$dev_config") == 600 ]] || fail 'dev config is not mode 600'
+! grep -Fq SECRET_TOKEN "$tmp/dev-default-output" || fail 'a dev probe token appeared in output'
+
+: >"$log"
+if ! MINT_DEV_ENV=dev.example MINT_DEV_AUDIENCES='dev' INVALID_AUDIENCES='prod dev' \
+    CHAIN_FAIL_MATCH='auth login --audience=dev' bash "$script" >/dev/null 2>"$tmp/dev-fail-output"; then
+    fail 'a dev login failure stopped the run'
+fi
+grep -Fq 'development login for dev.example failed' "$tmp/dev-fail-output" || fail 'dev failure was not reported'
+assert_log "--config $XDG_CONFIG_HOME/chainctl/dev.yaml auth login --audience=dev"
+prod_login=$(line_of 'chainctl auth login --audience=prod')
+dev_login=$(line_of 'auth login --audience=dev')
+mcp_copy=$(line_of 'mcp-private ')
+((prod_login < dev_login && dev_login < mcp_copy)) || fail 'dev login ordering is wrong'
+assert_log 'docker-credential-cgr'
+
+: >"$log"
+MINT_DEV_ENV=dev.example MINT_DEV_AUDIENCES='dev' bash "$script" --force --headless >/dev/null 2>&1
+assert_log "--config $XDG_CONFIG_HOME/chainctl/dev.yaml auth login --headless --audience=dev"
 
 echo 'mint-tokens tests passed'

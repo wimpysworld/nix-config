@@ -15,6 +15,8 @@ Workspace uses the active gcloud account with full Drive access for Docs,
 Sheets, and Slides. Gmail and Calendar access are not requested.
 One gcloud login repairs user credentials, ADC, and missing Drive consent.
 With --headless, gcloud login uses --no-launch-browser.
+A failed Chainguard development login is reported and does not stop the run.
+Set MINT_DEV_ENV to an empty value to skip the development environment.
 EOF
 }
 
@@ -221,7 +223,36 @@ if ((force || !stage_usable)); then
 fi
 
 chmod 600 "$stage_config"
-echo "◍ Chainguard development authentication is disabled pending issuer callback repair."
+
+# A dev env login fails with "Identity not found" until the env's
+# 201-bootstrap-iam stage is applied, so a failure here is reported and the
+# run continues.
+dev_env=${MINT_DEV_ENV-wimpress.guardenv.dev}
+if [[ -n "$dev_env" ]]; then
+    read -r -a dev_audiences <<<"${MINT_DEV_AUDIENCES-https://console-api.${dev_env}}"
+    dev_config="${config_dir}/${dev_env%%.*}.yaml"
+    cat >"$dev_config" <<EOF
+default:
+    social-login: google-oauth2
+    use-refresh-token: true
+platform:
+    api: https://console-api.${dev_env}
+    audience: https://console-api.${dev_env}
+    console: https://console.${dev_env}
+    issuer: https://issuer.${dev_env}
+EOF
+    mapfile -t dev_flags < <(audience_flags "${dev_audiences[@]}")
+    echo "◍ Checking Chainguard development credentials for ${dev_env}..."
+    dev_usable=0
+    if environment_tokens_usable "$dev_config" "${dev_audiences[@]}"; then
+        dev_usable=1
+    fi
+    if ((force || !dev_usable)) &&
+        ! chainctl --config "$dev_config" auth login "${chainctl_login_flags[@]}" "${dev_flags[@]}"; then
+        echo "✘ ERROR! Chainguard development login for ${dev_env} failed. Continuing without development tokens." >&2
+    fi
+    chmod 600 "$dev_config"
+fi
 
 "$MINT_MCP_TOKENS"
 
