@@ -15,8 +15,9 @@ Workspace uses the active gcloud account with full Drive access for Docs,
 Sheets, and Slides. Gmail and Calendar access are not requested.
 One gcloud login repairs user credentials, ADC, and missing Drive consent.
 With --headless, gcloud login uses --no-launch-browser.
+The Chainguard development environment is skipped unless MINT_DEV_ENV names
+one, for example MINT_DEV_ENV=wimpress.guardenv.dev mint-tokens.
 A failed Chainguard development login is reported and does not stop the run.
-Set MINT_DEV_ENV to an empty value to skip the development environment.
 EOF
 }
 
@@ -227,7 +228,7 @@ chmod 600 "$stage_config"
 # A dev env login fails with "Identity not found" until the env's
 # 201-bootstrap-iam stage is applied, so a failure here is reported and the
 # run continues.
-dev_env=${MINT_DEV_ENV-wimpress.guardenv.dev}
+dev_env=${MINT_DEV_ENV:-}
 if [[ -n "$dev_env" ]]; then
     read -r -a dev_audiences <<<"${MINT_DEV_AUDIENCES-https://console-api.${dev_env}}"
     dev_config="${config_dir}/${dev_env%%.*}.yaml"

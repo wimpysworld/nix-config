@@ -160,6 +160,7 @@ run_success() {
 env -u MINT_PROD_AUDIENCES bash "$script" --help >"$tmp/help"
 assert_no_log 'gcloud '
 grep -Fq 'Usage: mint-tokens' "$tmp/help" || fail 'help is missing usage'
+grep -Fq 'MINT_DEV_ENV=wimpress.guardenv.dev mint-tokens' "$tmp/help" || fail 'help is missing the dev opt-in'
 
 for unsupported in '--bogus' '--force unexpected'; do
     : >"$log"
@@ -366,13 +367,24 @@ assert_no_log 'chainctl auth login '
 assert_no_log 'mcp-private '
 assert_development_untouched
 
+for flags in '' '--force'; do
+    read -r -a args <<<"$flags"
+    : >"$log"
+    rm -rf "$XDG_CONFIG_HOME/chainctl"
+    env -u MINT_DEV_ENV bash "$script" "${args[@]}" >"$tmp/dev-default-output" 2>&1
+    assert_no_log 'development'
+    assert_no_log 'guardenv.dev'
+    [[ ! -e "$dev_config" ]] || fail 'the default run wrote a dev config'
+    ! grep -Fq 'development' "$tmp/dev-default-output" || fail 'the default run checked the dev env'
+done
+
 : >"$log"
 rm -rf "$XDG_CONFIG_HOME/chainctl"
-env -u MINT_DEV_ENV bash "$script" >"$tmp/dev-default-output"
+MINT_DEV_ENV=wimpress.guardenv.dev bash "$script" >"$tmp/dev-default-output"
 assert_log 'probe skip-auto-login=true audience=https://console-api.wimpress.guardenv.dev'
 assert_log "--config $dev_config auth token"
 assert_no_log 'auth login '
-grep -Fq 'issuer: https://issuer.wimpress.guardenv.dev' "$dev_config" || fail 'default dev config is wrong'
+grep -Fq 'issuer: https://issuer.wimpress.guardenv.dev' "$dev_config" || fail 'opt-in dev config is wrong'
 [[ $(stat -c %a "$dev_config") == 600 ]] || fail 'dev config is not mode 600'
 ! grep -Fq SECRET_TOKEN "$tmp/dev-default-output" || fail 'a dev probe token appeared in output'
 
