@@ -8,13 +8,13 @@ let
 in
 buildGoModule (finalAttrs: {
   pname = "herdr-telegram-agents";
-  version = "0.17.1";
+  version = "0.17.2";
 
   src = fetchFromGitHub {
     owner = "permgps";
     repo = "herdr-telegram-agents";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-56jhfgVj+Vqd+ZGMRndaKECvrOsgSrcX/UPhjsCuQvg=";
+    hash = "sha256-HGShGs5I3sAJD0GF3lb8ggs/46CAW5QpRF+/IrAZD+s=";
   };
 
   vendorHash = "sha256-BHHQlARGtvZiZ5BQqZYrz4gD3E0Xr/TybAD5LpSvX0M=";
