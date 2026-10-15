@@ -83,7 +83,10 @@ in
         trackpad_click_method = 2;
         trackpad_disable_while_typing = true;
         mouse_natural_scrolling = false;
-        sloppy_focus = true;
+        # Focus changes on a click, as Hyprland's follow_mouse = 2 does.
+        # Focus that follows the pointer would take focus away from the
+        # window that ALT+Tab selects, because the pointer stays put.
+        sloppy_focus = false;
         focus_on_activate = true;
         warp_cursor = false;
         drag_warp_cursor = true;

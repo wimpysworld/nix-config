@@ -63,15 +63,19 @@ in
 
       # Shadows. Tiled windows get none, as in Hyprland, because the
       # narrow gaps would let a shadow fall onto the neighbour window.
-      # Layer surfaces get none either, as in Hyprland.
+      # Floating windows and fuzzel get a soft centred glow, like the
+      # Wayfire winshadows glow. MangoWM moves each shadow shadows_size
+      # pixels right and down, so the negative positions centre it.
+      # MangoWM gives no layer shadow to rofi, wleave or Waybar, and the
+      # layer rules turn it off for SwayNC and the others.
       shadows = true;
-      layer_shadows = false;
+      layer_shadows = true;
       shadow_only_floating = true;
-      shadows_size = 18;
-      shadows_blur = 28;
-      shadows_position_x = 0;
-      shadows_position_y = 6;
-      shadows_color = toMangoColor "crust" 0.8;
+      shadows_size = 24;
+      shadows_blur = 24;
+      shadows_position_x = -24;
+      shadows_position_y = -20;
+      shadows_color = toMangoColor "crust" 0.55;
 
       # Opacity and dimming. The dim matches the Hyprland strength of
       # 2.5 percent, in crust rather than black.
