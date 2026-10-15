@@ -47,9 +47,11 @@ in
         (opaqueBy "title" "^QEMU")
       ];
       layer_rule = [
-        (layerAnimations "launcher" "zoom" "fade")
-        (layerAnimations "rofi" "zoom" "fade")
-        (layerAnimations "wleave" "fade" "fade")
+        # Blur would show the cached wallpaper, not the windows below,
+        # because blur_optimized blurs only the background layer.
+        "${layerAnimations "launcher" "zoom" "fade"},no_blur:1"
+        "${layerAnimations "rofi" "zoom" "fade"},no_blur:1"
+        "${layerAnimations "wleave" "fade" "fade"},no_blur:1"
         # SwayNC draws its shadow in a transparent margin. MangoWM has no
         # alpha threshold such as Hyprland's ignore_alpha, so blur would
         # fill that margin with the wallpaper. A compositor shadow would

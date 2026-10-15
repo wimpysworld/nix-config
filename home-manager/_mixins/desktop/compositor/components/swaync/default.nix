@@ -17,9 +17,9 @@ let
       null;
   # Without blur behind them, translucent surfaces show the windows below
   # in sharp focus, so they need more opacity to stay readable.
-  blurredNotifications = compositor == null || compositor.capabilities.blurredNotifications;
-  notificationAlpha = if blurredNotifications then "0.9" else "0.96";
-  controlCenterAlpha = if blurredNotifications then "0.72" else "0.92";
+  opaqueLayers = compositor != null && compositor.capabilities.opaqueLayers;
+  notificationAlpha = if opaqueLayers then "0.96" else "0.9";
+  controlCenterAlpha = if opaqueLayers then "0.92" else "0.72";
 in
 lib.mkIf (host.is.linux && host.is.workstation) {
   # GTK's symbolic icon node parser ignores SVG group transforms in Papirus icons.

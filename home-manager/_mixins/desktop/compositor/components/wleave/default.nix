@@ -10,6 +10,17 @@ let
   inherit (host) display;
   palette = catppuccinPalette;
   icons = "${pkgs.wleave}/share/wleave/icons";
+  compositor =
+    if host.is.linux && host.is.workstation then
+      lib.attrByPath [
+        host.desktop
+      ] null (import ../../../../../../lib/wayland-compositors.nix).compositors
+    else
+      null;
+  # Without blur behind it, the translucent menu shows the windows below
+  # in sharp focus, so it needs more opacity to stay readable.
+  opaqueLayers = compositor != null && compositor.capabilities.opaqueLayers;
+  backgroundAlpha = if opaqueLayers then "0.85" else "0.5";
   # Centre the menu on the primary output: a vertical band on portrait
   # displays, a horizontal band on ultrawide.
   wleaveMargins =
@@ -103,7 +114,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
            tint on the background-image layer above the blur. */
         window.background {
             background-color: transparent;
-            background-image: linear-gradient(${palette.mkRgba "base" "0.5"}, ${palette.mkRgba "base" "0.5"});
+            background-image: linear-gradient(${palette.mkRgba "base" backgroundAlpha}, ${palette.mkRgba "base" backgroundAlpha});
         }
 
         button {

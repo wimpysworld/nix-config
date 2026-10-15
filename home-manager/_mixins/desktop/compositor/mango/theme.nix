@@ -61,8 +61,9 @@ in
 
       # Shadows. Tiled windows get none, as in Hyprland, because the
       # narrow gaps would let a shadow fall onto the neighbour window.
+      # Layer surfaces get none either, as in Hyprland.
       shadows = true;
-      layer_shadows = true;
+      layer_shadows = false;
       shadow_only_floating = true;
       shadows_size = 18;
       shadows_blur = 28;
@@ -89,8 +90,7 @@ in
       gap_outer_vertical = 5;
       smart_gaps = false;
 
-      # Colours by window state. The thumbnail switcher draws the selected
-      # tile with focus_color and the other tiles with border_color.
+      # Colours by window state
       root_color = toMangoColor "base" 1.0;
       focus_color = toMangoColor "mauve" 1.0;
       border_color = toMangoColor "surface1" 1.0;

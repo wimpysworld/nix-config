@@ -50,9 +50,9 @@ in
       settings = {
         bind = [
           "SUPER,q,killclient"
-          # The thumbnail switcher commits the selection when ALT is released.
-          "ALT,Tab,switcher,next"
-          "ALT+SHIFT,Tab,switcher,prev"
+          # The overview commits the focused window when ALT is released.
+          "ALT,Tab,overcircle,current_next"
+          "ALT+SHIFT,Tab,overcircle,current_prev"
         ]
         ++ map (d: "ALT,${d},focusdir,${lib.toLower d}") directions
         ++ map (d: "SUPER+ALT,${d},exchange_client,${lib.toLower d}") directions

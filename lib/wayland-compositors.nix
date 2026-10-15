@@ -43,7 +43,7 @@
       capabilities = {
         clientSideDecorations = false;
         picker = true;
-        blurredNotifications = true;
+        opaqueLayers = false;
       };
       waybar = {
         workspaceModule = "hyprland/workspaces";
@@ -111,8 +111,8 @@
       capabilities = {
         clientSideDecorations = false;
         picker = true;
-        # SwayNC gets no blur, so its surfaces need more opacity.
-        blurredNotifications = false;
+        # Layer surfaces get no blur behind them, so they need more opacity.
+        opaqueLayers = true;
       };
       waybar = {
         workspaceModule = "ext/workspaces";
@@ -179,7 +179,7 @@
       capabilities = {
         clientSideDecorations = true;
         picker = true;
-        blurredNotifications = true;
+        opaqueLayers = false;
       };
       waybar = {
         workspaceModule = "wayfire/workspaces";

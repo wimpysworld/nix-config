@@ -1,4 +1,5 @@
 {
+  catppuccinPalette,
   config,
   inputs,
   lib,
@@ -93,6 +94,17 @@ let
     else
       null;
   sessionTarget = if compositor == null then "graphical-session.target" else compositor.sessionTarget;
+  # Without blur behind it, the translucent panel shows the windows below
+  # in sharp focus, so it needs more opacity to stay readable.
+  opaqueLayers = compositor != null && compositor.capabilities.opaqueLayers;
+  # Fuzzel reads an include where it occurs, and the Catppuccin include sits
+  # in [main] after the sorted [colors] section, so a [colors] override must
+  # come from a wrapper file that loads the Catppuccin theme first.
+  fuzzelTheme = pkgs.writeText "fuzzel-theme.ini" ''
+    include=${config.catppuccin.sources.fuzzel}/catppuccin-${config.catppuccin.fuzzel.flavor}/${config.catppuccin.fuzzel.accent}.ini
+    [colors]
+    background=${catppuccinPalette.getHyprlandColor "base"}f5
+  '';
 in
 lib.mkIf (host.is.linux && host.is.workstation) {
   catppuccin = {
@@ -133,6 +145,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           horizontal-pad = 32;
           vertical-pad = 32;
           inner-pad = 32;
+          include = lib.mkIf opaqueLayers (lib.mkForce "${fuzzelTheme}");
         };
         border = {
           width = 2;
