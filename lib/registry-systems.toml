@@ -69,6 +69,7 @@ position = { x = 0, y = 0 }
 [ravi]
 kind = "computer"
 platform = "x86_64-linux"
+desktop = "mango"
 formFactor = "laptop"
 tags = [
   "framework",
