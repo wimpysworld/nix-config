@@ -8,6 +8,18 @@
 let
   inherit (config.noughty) host;
   palette = catppuccinPalette;
+  compositor =
+    if host.is.linux && host.is.workstation then
+      lib.attrByPath [
+        host.desktop
+      ] null (import ../../../../../../lib/wayland-compositors.nix).compositors
+    else
+      null;
+  # Without blur behind them, translucent surfaces show the windows below
+  # in sharp focus, so they need more opacity to stay readable.
+  blurredNotifications = compositor == null || compositor.capabilities.blurredNotifications;
+  notificationAlpha = if blurredNotifications then "0.9" else "0.96";
+  controlCenterAlpha = if blurredNotifications then "0.72" else "0.92";
 in
 lib.mkIf (host.is.linux && host.is.workstation) {
   # GTK's symbolic icon node parser ignores SVG group transforms in Papirus icons.
@@ -82,7 +94,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           box-shadow: 0 0 10px 0 rgba(17, 17, 17, 0.8), inset 0 0 0 1px ${palette.getColor "surface0"};
           border-radius: 12.6px;
           margin: 18px;
-          background-color: ${palette.mkRgba "base" "0.9"};
+          background-color: ${palette.mkRgba "base" notificationAlpha};
           color: ${palette.getColor "text"};
           padding: 0;
           opacity: 1;
@@ -141,7 +153,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           box-shadow: 0 0 25px 0 rgba(17, 17, 17, 0.6), inset 0 0 0 1px ${palette.getColor "surface0"};
           border-radius: 12.6px;
           margin: 18px;
-          background-color: ${palette.mkRgba "base" "0.72"};
+          background-color: ${palette.mkRgba "base" controlCenterAlpha};
           color: ${palette.getColor "text"};
           padding: 14px;
           opacity: 1;

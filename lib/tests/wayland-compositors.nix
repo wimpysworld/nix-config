@@ -60,6 +60,10 @@ let
       "picker"
     ]
     [
+      "capabilities"
+      "blurredNotifications"
+    ]
+    [
       "waybar"
       "workspaceModule"
     ]
@@ -280,6 +284,7 @@ assert contract.compositors.mango.portal.service == "xdg-desktop-portal-wlr";
 assert contract.compositors.mango.waybar.workspaceModule == "ext/workspaces";
 assert contract.compositors.mango.waybar.workspaceSettings.on-click == "activate";
 assert !contract.compositors.mango.capabilities.clientSideDecorations;
+assert !contract.compositors.mango.capabilities.blurredNotifications;
 assert contract.compositors.wayfire.sessionTarget == "wayfire-session.target";
 assert contract.compositors.wayfire.startupEnvironment == wayfireStartupEnvironment;
 assert contract.compositors.wayfire.ephemeralEnvironment == wayfireEphemeralEnvironment;
