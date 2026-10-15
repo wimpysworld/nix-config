@@ -59,32 +59,34 @@ in
       blur_params_contrast = 1.0;
       blur_params_saturation = 1.0;
 
-      # Shadows
+      # Shadows. Tiled windows get none, as in Hyprland, because the
+      # narrow gaps would let a shadow fall onto the neighbour window.
       shadows = true;
       layer_shadows = true;
-      shadow_only_floating = false;
+      shadow_only_floating = true;
       shadows_size = 18;
       shadows_blur = 28;
       shadows_position_x = 0;
       shadows_position_y = 6;
       shadows_color = toMangoColor "crust" 0.8;
 
-      # Opacity and dimming
+      # Opacity and dimming. The dim matches the Hyprland strength of
+      # 2.5 percent, in crust rather than black.
       focused_opacity = 1.0;
-      unfocused_opacity = 0.92;
+      unfocused_opacity = 1.0;
       dim_enable = true;
       dim_focused_color = "0x00000000";
-      dim_unfocused_color = toMangoColor "base" 0.2;
+      dim_unfocused_color = toMangoColor "crust" 0.025;
 
-      # Geometry
-      border_radius = 12;
+      # Geometry, matching the Hyprland radius, border and gaps.
+      border_radius = 8;
       no_radius_when_single = false;
       no_border_when_single = false;
-      border_px = 3;
-      gap_inner_horizontal = 6;
-      gap_inner_vertical = 6;
-      gap_outer_horizontal = 12;
-      gap_outer_vertical = 12;
+      border_px = 2;
+      gap_inner_horizontal = 5;
+      gap_inner_vertical = 5;
+      gap_outer_horizontal = 5;
+      gap_outer_vertical = 5;
       smart_gaps = false;
 
       # Colours by window state. The thumbnail switcher draws the selected
