@@ -11,16 +11,16 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "ai-usagebar";
-  version = "1.36.0";
+  version = "1.38.0";
 
   src = fetchFromGitHub {
     owner = "akitaonrails";
     repo = "ai-usagebar";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-rJNlqIJs8Iq6guU6blhgtyAx8HMlreGQIjtP1o+DeA4=";
+    hash = "sha256-BRwOwGcWfvu+/8dA0oHeJq43Gao40iF89yjeIJ3iEEA=";
   };
 
-  cargoHash = "sha256-+nXp5iJZbf/aoQiynrZGyZBWBeS7GabivkwkqWCHSFc=";
+  cargoHash = "sha256-wFt3rYhMOUtMPChkSeDN+p9G0NtoYEAHXM/YEG+qg10=";
 
   # `claude_desktop::app` runs `/usr/bin/tar`, which the build sandbox does not
   # have. Upstream `nix/package.nix` skips the same tests.
