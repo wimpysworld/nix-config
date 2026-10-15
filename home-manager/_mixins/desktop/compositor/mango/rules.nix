@@ -50,8 +50,13 @@ in
         (layerAnimations "launcher" "zoom" "fade")
         (layerAnimations "rofi" "zoom" "fade")
         (layerAnimations "wleave" "fade" "fade")
-        (layerAnimations "swaync-notification-window" "slide" "fade")
-        (layerAnimations "swaync-control-center" "slide" "fade")
+        # SwayNC draws its shadow in a transparent margin. MangoWM has no
+        # alpha threshold such as Hyprland's ignore_alpha, so blur would
+        # fill that margin with the wallpaper. A compositor shadow would
+        # also sit outside the margin. Both fields stay in the same rule,
+        # because a later matching rule resets no_blur.
+        "${layerAnimations "swaync-notification-window" "slide" "fade"},no_blur:1,no_shadow:1"
+        "${layerAnimations "swaync-control-center" "slide" "fade"},no_blur:1,no_shadow:1"
         "layer_name:^selection$,no_animation:1,no_blur:1,no_shadow:1"
         "layer_name:^avizo$,no_animation:1,no_shadow:1"
         "layer_name:^wpaperd$,no_animation:1,no_blur:1,no_shadow:1"
