@@ -9,16 +9,6 @@ let
   inherit (config.noughty) host;
   inherit (host) display;
   palette = catppuccinPalette;
-  compositor =
-    if host.is.linux && host.is.workstation then
-      lib.attrByPath [
-        host.desktop
-      ] null (import ../../../../../../lib/wayland-compositors.nix).compositors
-    else
-      null;
-  # Without blur behind it, the translucent grid shows the windows below
-  # in sharp focus, so it needs more opacity to stay readable.
-  opaqueLayers = compositor != null && compositor.capabilities.opaqueLayers;
   desktopLayout = {
     columns = "6";
     lines = "4";
@@ -95,7 +85,7 @@ let
       ]
       [
         "${palette.getColor "text"}FF" # text with full opacity
-        "${palette.getColor "base"}${if opaqueLayers then "eb" else "af"}" # base background with transparency
+        "${palette.getColor "base"}af" # base background with transparency
         "${palette.getColor "${palette.accent}"}" # user's selected accent colour
         "${palette.getColor "overlay0"}af" # surface with transparency
         "${palette.getColor "${palette.accent}"}af" # accent colour with transparency

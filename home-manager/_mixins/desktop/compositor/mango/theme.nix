@@ -48,10 +48,12 @@ in
       animation_curve_opacity_fade_in = curves.wind;
       animation_curve_opacity_fade_out = curves.exit;
 
-      # Blur, with neutral colour parameters because the defaults tint it
+      # Blur, with neutral colour parameters because the defaults tint it.
+      # The optimised blur draws an opaque cached copy of the wallpaper,
+      # which hides the windows below a layer surface, so it stays off.
       blur = true;
       blur_layer = true;
-      blur_optimized = true;
+      blur_optimized = false;
       blur_params_num_passes = 3;
       blur_params_radius = 8;
       blur_params_noise = 0.02;

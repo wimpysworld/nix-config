@@ -111,7 +111,7 @@
       capabilities = {
         clientSideDecorations = false;
         picker = true;
-        # Layer surfaces get no blur behind them, so they need more opacity.
+        # SwayNC gets no blur behind it, so its surfaces need more opacity.
         opaqueLayers = true;
       };
       waybar = {
