@@ -42,7 +42,7 @@ For agent tasks, background shell jobs, and external monitoring, use native comp
 
 If sleep polling is unavoidable, allow at most 30 seconds of cumulative sleep-polling wait per task. Count all delays across iterations, tool calls, retries, and replacement workers for the same task. Repeated short sleeps must not bypass the cap. Do not replace sleep polling with a busy loop of status checks.
 
-When the budget ends, stop polling and report the pending state, task or job identifier, and next action. Do not claim completion or cancel useful work merely because this budget ends. Native waits still follow the task deadline. This limit is prompt guidance, not a runtime timer.
+When the budget ends, stop polling and report the pending state, task or job identifier, and next action. Do not claim completion or cancel useful work merely because this budget ends. Native waits still follow any time limit that the packet or command states. This limit is prompt guidance, not a runtime timer.
 
 ## Skill availability
 

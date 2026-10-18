@@ -26,7 +26,7 @@ Shared `caller-context = true` suppresses this prepend and all provider launch w
 
 The composer owns launch instructions and the worker contract. Keep these out of command source bodies. Generated wrappers name the native tool: Claude `Task`, Pi `subagent`, or Codex `spawn_agent`.
 
-The parent supplies a bounded packet with scope, exact arguments, existing authority, deadline, validation, and output contract. The child's task includes the worker contract and workflow body, without a generated launch wrapper. The child works directly, launches no agents, and returns to the parent. The coordinator handles requests for further specialist work and continues the original task.
+The parent supplies a bounded packet with scope, exact arguments, existing authority, stop condition, validation, and output contract. The child's task includes the worker contract and workflow body, without a generated launch wrapper. The child works directly, launches no agents, and returns to the parent. The coordinator handles requests for further specialist work and continues the original task.
 
 ## OpenCode `/init` override
 

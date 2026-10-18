@@ -243,7 +243,7 @@ Pi composition routes through `compose.composeAgentFromPrompt "pi"` and `compose
 
 Generated child tasks carry a shared worker contract. Workers complete assigned work directly, launch no agents, and return to the parent. They follow nested workflow bodies without executing generated launch wrappers. If more specialist work is necessary, they return a bounded request after completing independent assigned work. The coordinator dispatches that work and continues the original task.
 
-Launch wrappers require a bounded packet with scope, exact arguments, existing authority, deadline, validation, and output. Claude Code uses the Task wrapper by default for agent-bound commands. Set `[compose.claude] use-task = false` to retain the inline `@agent` form. OpenCode native subtask bodies carry the contract, but explicit `subtask = false` keeps the caller context.
+Launch wrappers require a bounded packet with scope, exact arguments, existing authority, stop condition, validation, and output. Claude Code uses the Task wrapper by default for agent-bound commands. Set `[compose.claude] use-task = false` to retain the inline `@agent` form. OpenCode native subtask bodies carry the contract, but explicit `subtask = false` keeps the caller context.
 
 Command-specific coordinator guidance lives in `command.toml`. `make-commit` supplies packet preparation, and `make-pr` also supplies the consent-based watch continuation. See [Coordinator guidance](skills/write-command/SKILL.md#coordinator-guidance) for the schema, wrapper placement, bypass rules, and OpenCode limits.
 

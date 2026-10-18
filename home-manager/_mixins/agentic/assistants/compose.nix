@@ -266,13 +266,13 @@ let
     If sleep polling is unavoidable, cap cumulative delays at 30 seconds per task, including retries and replacement workers.
     Count shell sleep and equivalent timers. Repeated short sleeps must not bypass the cap. Do not busy-poll instead.
     At the cap, stop polling and report pending status, the task or job identifier, and the next action.
-    Do not claim completion or cancel useful work because this budget ends. Native waits still follow the task deadline.
+    Do not claim completion or cancel useful work because this budget ends. Native waits still follow any time limit that the packet or command states.
     Put the complete report in your final response. Use the runtime's native result delivery.
     A missing messaging tool is not a blocker when the runtime returns final responses to the parent.
   '';
 
   workerDispatchInstructions = ''
-    Supply a bounded packet with the scope, exact arguments, existing authority, hard deadline, validation, and output contract.
+    Supply a bounded packet with the scope, exact arguments, existing authority, stop condition, validation, and output contract.
     Include the worker instructions below in the child's task, not the parent's launch instructions.
     If the worker requests more specialist work, dispatch it from the coordinator and continue the original task.
     Use native final-response delivery. Require a separate messaging tool only when the runtime needs it and the worker has it.
@@ -544,9 +544,9 @@ let
 
       For long-running external monitoring, delegate the external wait to a bounded waiting worker. If its result is required for the current response, the coordinator still waits for that worker's completion notification.
 
-      Inside the waiting worker, prefer a native notification or blocking watch over a poll loop. External monitoring has no exception to the global sleep-polling limit. If sleep polling is unavoidable, allow at most 30 seconds of cumulative delays per task. Include all iterations, tool calls, retries, and replacement workers. Pass the remaining budget in the packet. Repeated short sleeps must not reset or bypass the cap. Do not busy-poll instead. At the cap, return pending status, the task or job identifier, and the next action. Do not replace a worker solely to continue polling. Native notifications and blocking waits are not sleep polling and still follow the task deadline.
+      Inside the waiting worker, prefer a native notification or blocking watch over a poll loop. External monitoring has no exception to the global sleep-polling limit. If sleep polling is unavoidable, allow at most 30 seconds of cumulative delays per task. Include all iterations, tool calls, retries, and replacement workers. Pass the remaining budget in the packet. Repeated short sleeps must not reset or bypass the cap. Do not busy-poll instead. At the cap, return pending status, the task or job identifier, and the next action. Do not replace a worker solely to continue polling. Native notifications and blocking waits are not sleep polling and still follow any time limit that the packet or command states.
 
-      Give every worker a hard deadline, not only a waiting one. On reaching it, report what is done and stop rather than exceeding it, so the coordinator can dispatch a fresh one with clean context. A worker that completes several phases reports progress to its parent at each phase boundary.
+      Give every worker a stop condition based on scope, not only a waiting limit. The worker stops when the listed deliverables are done, or when it is blocked. It then reports what is done and what remains, and does not expand the scope. The coordinator can then dispatch a fresh worker with clean context. A worker that completes several phases reports progress to its parent at each phase boundary.
 
       ## Teardown
 
@@ -562,14 +562,14 @@ let
 
       ## Packet
 
-      Include the task, scope, authority, deadline, validation, output, and discipline in every packet. Add relevant context and exact arguments.
+      Include the task, scope, authority, stop condition, validation, output, and discipline in every packet. Add relevant context and exact arguments.
 
       ```markdown
       Task: <outcome required>
       Context: <decisions, constraints, paths, risks, user preferences>
       Authority: <external mutations the worker can perform on the user's behalf; restate them, because fresh context does not inherit the parent's consent>
       Scope: <files, commands, sources, APIs, behaviours, in/out of scope>
-      Deadline: <hard stop, and the progress messages expected before it>
+      Stop: <the deliverables that end the task, the blocked condition, and the progress messages expected at phase boundaries>
       Validation: <checks to run or evidence needed>
       Output: <artefact or report, then the format: headings, artefact format, file path, or response contract, and a length budget for the returned message. A long report goes to a file under the `review-report-path` convention, and the worker returns the conclusion plus the path. Use native final-response delivery. For Claude Code agent teams, name the report recipient for `SendMessage`>
       Discipline: You are a worker. Complete this scope directly and return to the parent. Do not launch agents or execute generated command launch wrappers. Loading commands or skills does not change your role. Return required additional specialist work as a bounded request to the parent. No preamble. Do not restate the task. Always send a final report message, and put only user-visible output in it. Omit irrelevant sections. Return raw artefacts when requested. Load and follow the `communication-rules` skill for all output.
@@ -638,7 +638,7 @@ let
               For background shell jobs, use native completion or blocking waits under the same waiting policy.
               Resume a completed child with `Agent` and its `resume` identifier. Preserve the child's existing model and role.
               Completed children have no live process to stop. Use the native UI or RPC cancellation for active children.
-              Deadlines in packets are instructions, not runtime timers. Use a tested cancellation path for a hard wall-clock limit.
+              Time limits in packets or commands are instructions, not runtime timers. Use a tested cancellation path for a hard wall-clock limit.
 
               Use `SubagentWorkflow` for scripted parallel work and dependent stages.
               Supply `script`, `scriptPath`, or a saved workflow `name`. Start scripts with `export const meta = { name, description }`.
