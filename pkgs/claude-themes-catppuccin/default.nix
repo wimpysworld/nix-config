@@ -11,8 +11,8 @@ stdenvNoCC.mkDerivation {
   src = fetchFromGitHub {
     owner = "matcra587";
     repo = "claude-themes";
-    rev = "bc389c57ab9c00211c79f83fdff15a9345e26e08";
-    hash = "sha256-HdFF078JMRB1PySq+cv3I6j6EnvlMSP+4Cy1mbsVmwQ=";
+    rev = "335b7713136662d8538b04dcde3369563bd620a6";
+    hash = "sha256-ky7dgCpKVlIIxSXC9WO1TQv6Ue3/aVWTZHVsVWp3z2M=";
     sparseCheckout = [ "plugins/catppuccin" ];
   };
 
