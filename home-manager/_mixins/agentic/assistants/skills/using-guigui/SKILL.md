@@ -285,11 +285,9 @@ This skill is a primer. It does not list every widget method, and it can drift f
 - **Prefer a headless run.** A headless run is the better default even when a display is available.
   It opens no window, never takes the keyboard focus, and the same script runs again identically.
   - A Guigui app is an `ebiten.Game`, because `guigui.Run` gives the root tree to `ebiten.RunGameWithOptions`.
-    So the **`run-ebitengine-app-headless`** skill applies to it unchanged, if that skill is available.
-  - That skill builds the app with `-tags ebitenginevmguest` and runs it as an `exp/vmhost` guest.
+    So the headless run in the **`using-ebitengine`** skill applies to it unchanged. Read `references/headless-run.md` in that skill.
+  - That procedure builds the app with `-tags ebitenginevmguest` and runs it as an `exp/vmhost` guest.
     It steps ticks, injects pointer and keyboard input, and reads rendered frames back as pixels or PNG files.
-  - That skill is in the Ebitengine repository (`skills/run-ebitengine-app-headless/`), and it is not part of this import.
-    If it is not installed, do not install it. Use another authorised method, or tell the user that the capability is not available.
   - Use it for screenshots, golden-image comparisons of a rendering change, and deterministic repros across many ticks.
   - Guigui details to script around (`doc.go` documents every environment variable):
     - Pin the values that the host platform otherwise selects, so that two runs are comparable:

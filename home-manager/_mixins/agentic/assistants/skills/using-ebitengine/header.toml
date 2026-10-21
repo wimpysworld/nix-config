@@ -1,0 +1,11 @@
+[common]
+name = "using-ebitengine"
+description = "Guides Go game and app work with Ebitengine (github.com/hajimehoshi/ebiten/v2). Use when writing or changing Ebitengine drawing, layout, text, or image code. Use when writing, reviewing, debugging, or porting a Kage shader, including ports from GLSL, Shadertoy, HLSL, Godot, or Unity to Kage. Use when rendering looks blurry, soft, or wrong on a high-DPI display, and for pixel-art presentation and sampling filters. Use when investigating rendering performance, draw batching, texture atlases, or GPU command counts. Use when running an Ebitengine or Guigui app headless, with no display or visible window, for example for screenshots, golden-image tests, input injection, or audio checks. Covers display-resolution rendering, automatic batching, the Kage coordinate model, premultiplied alpha, and the exp/vmhost headless driver."
+license = "Apache-2.0"
+
+[common.metadata]
+upstream = "https://github.com/hajimehoshi/ebiten"
+revision = "345100b0e4b75ed7e06d2a1cd84571814a5e6140"
+source = "skills/avoiding-blurry-ebitengine-rendering/SKILL.md, skills/efficient-ebitengine-rendering/SKILL.md, skills/run-ebitengine-app-headless/SKILL.md, skills/run-ebitengine-app-headless/_driver/main.go, skills/writing-kage-shaders/SKILL.md, skills/writing-kage-shaders/reference/porting-to-kage.md, skills/writing-kage-shaders/reference/recipes.md"
+license-source = "LICENSE"
+local-changes = "Merged four upstream skills into one skill with a short SKILL.md and six references. Mapped upstream frontmatter to common metadata and dropped allowed-tools. Adapted the description and all prose to house style. Kept technical sections, code, API names, identifiers, and examples. Copied the driver unchanged to scripts/headless-driver/main.go and changed the _driver instructions and shell commands to copy it from that path. Changed links to Ebitengine source files into URLs pinned to the upstream revision, and links between upstream skills into reference paths. Changed the driver update note to report drift to the user. Kept the Apache-2.0 LICENSE unchanged. Upstream has no NOTICE file."
