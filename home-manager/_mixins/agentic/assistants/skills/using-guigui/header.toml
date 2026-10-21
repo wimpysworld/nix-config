@@ -1,0 +1,11 @@
+[common]
+name = "using-guigui"
+description = "Guides writing and changing Go GUI code with the Guigui framework (github.com/guigui-gui/guigui) on Ebitengine. Use when creating or editing a Guigui widget, composing a layout, wiring buttons, text inputs, or lists, passing shared state down the widget tree, handling pointer or keyboard input, or finding why a field change does not show on screen. Covers the widget lifecycle (Build, Layout, Measure, Draw, input), LinearLayout sizing, Env dependency injection, the event-key callback pattern, dynamic child lists, and rebuild triggers. Excludes general Ebitengine rendering without Guigui widgets."
+license = "Apache-2.0"
+
+[common.metadata]
+upstream = "https://github.com/guigui-gui/guigui"
+revision = "1f9d43545da33012fcedce44ccf81bb3da3770ba"
+source = "skills/using-guigui/SKILL.md"
+license-source = "LICENSE"
+local-changes = "Mapped upstream frontmatter to common metadata. Adapted the description and all prose to house style. Split the body into SKILL.md and three references to keep the body under 500 lines. Kept technical sections, code, API names, identifiers, and examples. Removed the instruction to edit the installed skill on drift. Made the run-ebitengine-app-headless skill optional, with no installation. Kept the Apache-2.0 LICENSE unchanged."
