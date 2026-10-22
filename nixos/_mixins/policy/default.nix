@@ -3,6 +3,8 @@
 #   https://github.com/kolide/nix-agent
 # - CrowdStrike Falcon: security monitoring and intrusion detection
 #   See NixOS-Falcon-Sensor.md for bootstrap instructions.
+# - Swif.ai: mobile device management (MDM), imported from swif.nix
+#   See NixOS-Swif.md.
 {
   config,
   lib,
@@ -70,75 +72,79 @@ let
     text = builtins.readFile ./falcon-sensor-check.sh;
   };
 in
-lib.mkIf (noughtyLib.hostHasTag "cg") {
+{
+  imports = [ ./swif.nix ];
 
-  environment.systemPackages = [
-    falconSensorCheck
-    falconSensorInstall
-  ];
+  config = lib.mkIf (noughtyLib.hostHasTag "cg") {
 
-  # Kolide launcher agent for device trust and compliance monitoring.
-  # The NixOS module (imported via inputs.kolide-launcher.nixosModules.kolide-launcher
-  # in nixos/default.nix) handles the package, systemd service, and tmpfiles rules.
-  # The enrollment secret is deployed via sops-nix below.
-  services.kolide-launcher = {
-    enable = true;
-  };
-
-  # The launcher spawns the per-user "launcher desktop" process with a
-  # fresh environment and copies only PATH from this unit (desktopCommand
-  # in ee/desktop/runner/runner.go), so setting any other variable here
-  # has no effect. Everything the AppIndicator needs must therefore
-  # resolve via PATH: the logging xdg-open wrapper comes first, then the
-  # system profiles, then the per-user Home Manager profiles so browsers
-  # referenced by .desktop Exec entries are found, then the unit's own
-  # path list (xdg-utils and glib).
-  systemd.services.kolide-launcher = {
-    path = [
-      pkgs.xdg-utils
-      pkgs.glib
+    environment.systemPackages = [
+      falconSensorCheck
+      falconSensorInstall
     ];
-    serviceConfig = {
-      Environment = lib.mkForce "PATH=${kolideXdgOpen}/bin:/run/wrappers/bin:/bin:/sbin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin:/etc/profiles/per-user/${username}/bin:/home/${username}/.nix-profile/bin:${config.systemd.services.kolide-launcher.environment.PATH}";
-      # Give Kolide longer to flush osquery state on shutdown. The default
-      # TimeoutStopSec of 90 seconds is occasionally insufficient for
-      # long-running launcher processes on busy workstations and results
-      # in a SIGKILL of launcher and osqueryd, leaving event-store writes
-      # half-flushed. 180 seconds gives generous headroom without
-      # delaying shutdown meaningfully.
-      TimeoutStopSec = lib.mkDefault 180;
+
+    # Kolide launcher agent for device trust and compliance monitoring.
+    # The NixOS module (imported via inputs.kolide-launcher.nixosModules.kolide-launcher
+    # in nixos/default.nix) handles the package, systemd service, and tmpfiles rules.
+    # The enrollment secret is deployed via sops-nix below.
+    services.kolide-launcher = {
+      enable = true;
     };
-  };
 
-  # CrowdStrike Falcon sensor for security monitoring and intrusion detection.
-  # The NixOS module (modules/nixos/falcon-sensor.nix) manages the systemd service
-  # and CID/BPF configuration. The sensor binaries are bootstrapped to
-  # /opt/CrowdStrike/ using falcon-sensor-install. See NixOS-Falcon-Sensor.md.
-  services.falcon-sensor = {
-    enable = true;
-    cidFile = config.sops.secrets.falcon-cid.path;
-    traceLevel = "err";
-    # Silence repeated "Could not retrieve DisableProxy value: c0000225"
-    # log noise on hosts with no proxy in use.
-    disableAutoProxyDetection = true;
-  };
+    # The launcher spawns the per-user "launcher desktop" process with a
+    # fresh environment and copies only PATH from this unit (desktopCommand
+    # in ee/desktop/runner/runner.go), so setting any other variable here
+    # has no effect. Everything the AppIndicator needs must therefore
+    # resolve via PATH: the logging xdg-open wrapper comes first, then the
+    # system profiles, then the per-user Home Manager profiles so browsers
+    # referenced by .desktop Exec entries are found, then the unit's own
+    # path list (xdg-utils and glib).
+    systemd.services.kolide-launcher = {
+      path = [
+        pkgs.xdg-utils
+        pkgs.glib
+      ];
+      serviceConfig = {
+        Environment = lib.mkForce "PATH=${kolideXdgOpen}/bin:/run/wrappers/bin:/bin:/sbin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin:/etc/profiles/per-user/${username}/bin:/home/${username}/.nix-profile/bin:${config.systemd.services.kolide-launcher.environment.PATH}";
+        # Give Kolide longer to flush osquery state on shutdown. The default
+        # TimeoutStopSec of 90 seconds is occasionally insufficient for
+        # long-running launcher processes on busy workstations and results
+        # in a SIGKILL of launcher and osqueryd, leaving event-store writes
+        # half-flushed. 180 seconds gives generous headroom without
+        # delaying shutdown meaningfully.
+        TimeoutStopSec = lib.mkDefault 180;
+      };
+    };
 
-  # Deploy secrets for policy/compliance agents via sops-nix.
-  # See NixOS-Kolide.md and NixOS-Falcon-Sensor.md for obtaining these secrets.
-  sops = {
-    secrets = {
-      kolide = {
-        mode = "0600";
-        path = "/etc/kolide-k2/secret";
-        sopsFile = ../../../secrets/policy.yaml;
-      };
-      falcon-cid = {
-        mode = "0600";
-        sopsFile = ../../../secrets/policy.yaml;
-      };
-      falcon-repo = {
-        mode = "0600";
-        sopsFile = ../../../secrets/policy.yaml;
+    # CrowdStrike Falcon sensor for security monitoring and intrusion detection.
+    # The NixOS module (modules/nixos/falcon-sensor.nix) manages the systemd service
+    # and CID/BPF configuration. The sensor binaries are bootstrapped to
+    # /opt/CrowdStrike/ using falcon-sensor-install. See NixOS-Falcon-Sensor.md.
+    services.falcon-sensor = {
+      enable = true;
+      cidFile = config.sops.secrets.falcon-cid.path;
+      traceLevel = "err";
+      # Silence repeated "Could not retrieve DisableProxy value: c0000225"
+      # log noise on hosts with no proxy in use.
+      disableAutoProxyDetection = true;
+    };
+
+    # Deploy secrets for policy/compliance agents via sops-nix.
+    # See NixOS-Kolide.md and NixOS-Falcon-Sensor.md for obtaining these secrets.
+    sops = {
+      secrets = {
+        kolide = {
+          mode = "0600";
+          path = "/etc/kolide-k2/secret";
+          sopsFile = ../../../secrets/policy.yaml;
+        };
+        falcon-cid = {
+          mode = "0600";
+          sopsFile = ../../../secrets/policy.yaml;
+        };
+        falcon-repo = {
+          mode = "0600";
+          sopsFile = ../../../secrets/policy.yaml;
+        };
       };
     };
   };

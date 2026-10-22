@@ -13,8 +13,7 @@ This is unofficial and unsupported by CrowdStrike.
 - The target host must carry the `cg` tag in
   `lib/registry-systems.toml`. The mixin gates itself with
   `noughtyLib.hostHasTag "cg"`.
-- The host must have sops-nix configured with age keys at
-  `/var/lib/private/sops/age/keys.txt`.
+- The host must have sops-nix configured.
 - The CrowdStrike CID must be encrypted in `secrets/policy.yaml` (see below).
 - Access to the private GitHub repository containing Falcon sensor RPMs
   (configured via the `falcon-repo` sops secret; requires `gh` CLI
@@ -440,9 +439,8 @@ Check the sops secret is being decrypted:
 sudo cat /run/secrets/falcon-cid
 ```
 
-If the file is missing, verify sops age keys exist at
-`/var/lib/private/sops/age/keys.txt` and that the host's public key is listed
-as a recipient in `.sops.yaml`.
+If the file is missing, verify that sops-nix is configured on the host and
+that the host is a recipient in `.sops.yaml`.
 
 ## Important notes
 

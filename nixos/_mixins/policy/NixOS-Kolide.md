@@ -11,8 +11,7 @@ manually before the first deployment.
 - The target host must carry the `cg` tag in
   `lib/registry-systems.toml`. The mixin gates itself with
   `noughtyLib.hostHasTag "cg"`.
-- The host must have sops-nix configured with age keys at
-  `/var/lib/private/sops/age/keys.txt`.
+- The host must have sops-nix configured.
 
 ## Obtaining the enrollment secret
 
@@ -147,7 +146,7 @@ just switch
 ### Service fails to start
 
 - Check the enrollment secret is present: `sudo cat /etc/kolide-k2/secret`
-- Verify sops age keys exist: `sudo ls -la /var/lib/private/sops/age/keys.txt`
+- Verify that sops-nix is configured on the host.
 - Check the journal: `journalctl -u kolide-launcher -e`
 
 ### Device not appearing in Kolide dashboard

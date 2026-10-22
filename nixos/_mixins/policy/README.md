@@ -27,10 +27,19 @@ and patching the sensor binaries.
 
 This is unofficial and unsupported by CrowdStrike.
 
+### Swif.ai
+
+Mobile device management (MDM). Uses the vendor
+NixOS module from the `swifteam` flake input. `swif.nix` gates the vendor
+files so that no other host changes, and passes the enrolment identity from
+sops through systemd credentials, so that no value enters the Nix store. The
+agent writes generated policy modules to `/etc/swif/swifteam/`, and nothing
+imports them. Check the agent with `swif-agent-check`.
+
 ## Requirements
 
 - Host must be listed in the `installOn` list in `default.nix`
-- [sops-nix](https://github.com/Mic92/sops-nix) configured with age keys at `/var/lib/private/sops/age/keys.txt`
+- [sops-nix](https://github.com/Mic92/sops-nix) configured on the host
 - Secrets encrypted in `secrets/policy.yaml`
 
 For CrowdStrike Falcon, the sensor binaries must also be bootstrapped to
@@ -42,6 +51,8 @@ For CrowdStrike Falcon, the sensor binaries must also be bootstrapped to
   troubleshooting for the Kolide launcher
 - [NixOS-Falcon-Sensor.md](NixOS-Falcon-Sensor.md) - bootstrap, installation,
   updating, and troubleshooting for the CrowdStrike Falcon sensor
+- [NixOS-Swif.md](NixOS-Swif.md) - architecture, secrets, generated policy
+  files, enrolment, accepted risks, and removal for the Swif.ai agent
 
 ## Quick Reference
 
