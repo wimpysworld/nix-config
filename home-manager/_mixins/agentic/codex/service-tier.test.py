@@ -119,6 +119,7 @@ class ServiceTierTests(unittest.TestCase):
         shell = package.split("    text = ''\n", 1)[1].split("\n    '';", 1)[0]
         for helper in (
             "fenceAgentShare.captureShell",
+            "fenceMemoryCap.captureShell",
             "fenceWaylandBridge.setupShell",
             "fenceAgentShare.setupShell",
             "fenceGit.setupShell",
@@ -126,6 +127,7 @@ class ServiceTierTests(unittest.TestCase):
             "fenceLogging.setupShell",
         ):
             shell = shell.replace("${" + helper + "}", ":")
+        shell = shell.replace("${fenceMemoryCap.setupShell}", "fence_launch=()")
         shell = shell.replace(
             '${lib.getExe\' codexLauncherPackage "codex"}',
             "bash " + shlex.quote(str(self.launcher)),

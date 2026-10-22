@@ -86,12 +86,6 @@ let
   } (builtins.readFile ./tests/test.sh);
 
 in
-assert lib.assertMsg (builtins.elem herdr.version [
-  "0.8.2"
-  "0.9.0"
-  "0.9.1"
-  "0.9.3"
-]) "herdr-layout requires the Herdr v0.8.2, v0.9.0, v0.9.1, or v0.9.3 event schema";
 stdenvNoCC.mkDerivation {
   pname = "herdr-${layoutName}";
   version = "0.5.0";

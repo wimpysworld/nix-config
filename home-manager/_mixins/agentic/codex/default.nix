@@ -729,7 +729,17 @@ let
 in
 lib.mkMerge [
   (lib.mkIf host.is.workstation {
-    home.packages = [ inputs.llm-agents.packages.${system}.chatgpt ];
+    home.packages =
+      let
+        chatgpt = inputs.llm-agents.packages.${system}.chatgpt;
+      in
+      [
+        (chatgpt.override {
+          chatgpt-unwrapped = chatgpt.unwrapped.overrideAttrs (old: {
+            buildInputs = old.buildInputs ++ lib.optional pkgs.stdenv.hostPlatform.isLinux pkgs.tpm2-tss;
+          });
+        })
+      ];
   })
   (lib.mkIf (isDeveloper && !host.is.server) {
     # Report whether Codex carries the house style in its system prompt. The
