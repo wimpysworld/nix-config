@@ -24,9 +24,7 @@ pkgs: {
   manuscript = pkgs.callPackage ./manuscript { };
   moltis = pkgs.callPackage ./moltis { };
   openhue-cli = pkgs.callPackage ./openhue-cli { };
-  perch = pkgs.callPackage ./perch { };
   roamgate = pkgs.callPackage ./roamgate { };
-  slk = pkgs.callPackage ./slk { };
   tcount = pkgs.callPackage ./tcount { };
   vecdecor = pkgs.callPackage ./vecdecor { };
   weave = pkgs.callPackage ./weave { };

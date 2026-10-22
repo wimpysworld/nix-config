@@ -88,7 +88,6 @@ lib.mkIf (noughtyLib.hostHasTag "cg") {
     pkgs._1password-gui
     googleChrome
     slackChrome
-    pkgs.slk
     chromeXdgOpen
   ];
 

@@ -42,9 +42,6 @@ jobs:
           - id: chainctl
             name: chainctl
             changelog: https://edu.chainguard.dev/chainguard/chainctl/
-          - id: concord
-            name: Concord
-            changelog: https://github.com/chojs23/concord/releases
           - id: claude-themes-catppuccin
             name: Claude Themes Catppuccin
             changelog: https://github.com/matcra587/claude-themes/commits/main/plugins/catppuccin
@@ -86,9 +83,6 @@ jobs:
             name: Roamgate
             changelog: https://github.com/powerfooI/roamgate/releases
             automerge: false
-          - id: slk
-            name: slk
-            changelog: https://github.com/gammons/slk/releases
           - id: weave
             name: Weave
             changelog: https://github.com/matze/weave/releases

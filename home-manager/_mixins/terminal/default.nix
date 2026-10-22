@@ -42,7 +42,6 @@ in
     ./bottom.nix # Modern Unix `top`
     ./btop.nix # Modern Unix `htop`
     ./cava.nix # Terminal audio visualizer
-    ./concord.nix # Terminal Discord client
     ./dircolors.nix # Terminal colors
     ./eza.nix # Modern Unix `ls`
     ./fastfetch.nix # Modern Unix `neofetch`
@@ -51,7 +50,6 @@ in
     ./fzf.nix # Terminal fuzzy finder
     ./gpg.nix # Terminal GPG
     ./herdr.nix # Terminal workspace manager for AI coding agents
-    ./iamb.nix # Terminal Matrix client
     ./mpv.nix # Terminal media player
     ./pueue.nix # Terminal task manager
     ./rclone.nix # Terminal cloud storage sync
@@ -108,7 +106,6 @@ in
         mprocs # Terminal parallel process runner
         netdiscover # Modern Unix `arp`
         optipng # Terminal PNG optimizer
-        perch # Terminal social client
         rustmission # Terminal Transmission Torrent client
         sd # Modern Unix `sed`
         timer # Terminal timer
