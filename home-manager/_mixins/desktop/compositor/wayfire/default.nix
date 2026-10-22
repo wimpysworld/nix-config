@@ -43,6 +43,8 @@ in
 
     programs.ghostty.settings.window-decoration = lib.mkForce "server";
 
+    systemd.user.targets.wayfire-session.Unit.Wants = [ "xdg-desktop-autostart.target" ];
+
     wayland.windowManager.wayfire = {
       enable = true;
       plugins = with pkgs.wayfirePlugins; [

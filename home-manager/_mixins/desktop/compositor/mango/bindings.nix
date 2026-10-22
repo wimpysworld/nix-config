@@ -2,6 +2,7 @@
   config,
   inputs,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
@@ -10,7 +11,7 @@ let
   inherit (host) display;
   veila = inputs.veila.packages.${pkgs.stdenv.hostPlatform.system}.default;
   veilaBin = lib.getExe' veila "veila";
-  handyBin = lib.getExe config.services.handy.package;
+  handyBin = lib.getExe pkgs.handy;
   avizoBin = "${pkgs.avizo}/bin";
   playerctlBin = lib.getExe pkgs.playerctl;
 
@@ -71,7 +72,7 @@ in
           "SUPER,t,spawn,${lib.getExe pkgs.xdg-terminal-exec}"
         ]
         # Bind Pause by keycode (xkb 127 = evdev KEY_PAUSE 119 + 8).
-        ++ lib.optionals config.services.handy.enable (
+        ++ lib.optionals (host.is.linux && host.is.workstation && noughtyLib.hostHasTag "handy") (
           [ "SUPER,v,spawn,${handyBin} --toggle-transcription" ]
           ++ lib.optional (!host.is.laptop) "NONE,code:127,spawn,${handyBin} --toggle-transcription"
         )

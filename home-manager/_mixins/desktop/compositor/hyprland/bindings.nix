@@ -2,6 +2,7 @@
   config,
   inputs,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
@@ -37,11 +38,11 @@ in
       ]
       # Bind the Pause key by keycode (xkb 127 = evdev KEY_PAUSE 119 + 8) because
       # Hyprland does not reliably match the Pause keysym by name.
-      ++ lib.optionals config.services.handy.enable (
-        [ "$mod, V, exec, ${lib.getExe config.services.handy.package} --toggle-transcription" ]
+      ++ lib.optionals (host.is.linux && host.is.workstation && noughtyLib.hostHasTag "handy") (
+        [ "$mod, V, exec, ${lib.getExe pkgs.handy} --toggle-transcription" ]
         ++ lib.optional (
           !host.is.laptop
-        ) ", code:127, exec, ${lib.getExe config.services.handy.package} --toggle-transcription"
+        ) ", code:127, exec, ${lib.getExe pkgs.handy} --toggle-transcription"
       )
       ++ [
         "$mod, L, exec, ${veilaBin} lock"

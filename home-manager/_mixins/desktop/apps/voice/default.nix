@@ -8,10 +8,6 @@
 let
   inherit (config.noughty) host;
   isHandyHost = host.is.linux && host.is.workstation && noughtyLib.hostHasTag "handy";
-  waylandCompositors = (import ../../../../../lib/wayland-compositors.nix).compositors;
-  desktopName = if builtins.isString host.desktop then host.desktop else "";
-  compositor = lib.attrByPath [ desktopName ] null waylandCompositors;
-  sessionTarget = if compositor == null then "graphical-session.target" else compositor.sessionTarget;
   providers = [
     {
       id = "openai";
@@ -168,8 +164,8 @@ let
       settings = handySettings;
     }
   );
-  prepareHandySettings = pkgs.writeShellApplication {
-    name = "prepare-handy-settings";
+  startHandy = pkgs.writeShellApplication {
+    name = "start-handy";
     runtimeInputs = [
       pkgs.coreutils
       pkgs.jq
@@ -197,35 +193,29 @@ let
       trap 'rm -f -- "$temporary_file"' EXIT
 
       jq --compact-output --argjson existing "$existing_store" \
-        '.settings.append_trailing_space as $append | . * $existing | .settings.append_trailing_space = $append' \
+        '(.settings | {append_trailing_space, start_hidden, autostart_enabled, show_tray_icon}) as $managed | . * $existing | .settings += $managed' \
         ${handySettingsStore} > "$temporary_file"
       chmod 0600 "$temporary_file"
       mv -T -- "$temporary_file" "$settings_file"
       trap - EXIT
+
+      exec ${lib.getExe pkgs.handy} --start-hidden
     '';
   };
 in
 lib.mkIf isHandyHost {
-  services.handy = {
-    enable = true;
-    package = pkgs.handy;
-  };
-
   home.packages = [
     pkgs.handy
     pkgs.wtype
   ];
 
-  systemd.user.services.handy = {
-    Unit = {
-      After = lib.mkForce [ sessionTarget ];
-      PartOf = lib.mkForce [ sessionTarget ];
-      ConditionEnvironment = [ "WAYLAND_DISPLAY" ];
-    };
-    Service = {
-      ExecStart = lib.mkForce "${lib.getExe config.services.handy.package} --start-hidden";
-      ExecStartPre = lib.getExe prepareHandySettings;
-    };
-    Install.WantedBy = lib.mkForce [ sessionTarget ];
-  };
+  xdg.autostart.entries = [
+    (pkgs.writeText "handy-session.desktop" ''
+      [Desktop Entry]
+      Type=Application
+      Name=Handy
+      Exec=${lib.getExe startHandy}
+      Terminal=false
+    '')
+  ];
 }

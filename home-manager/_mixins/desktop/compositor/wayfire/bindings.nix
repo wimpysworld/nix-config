@@ -2,12 +2,14 @@
   config,
   inputs,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
 let
   inherit (config.noughty) host;
   inherit (host) display;
+  isHandyHost = host.is.linux && host.is.workstation && noughtyLib.hostHasTag "handy";
   veila = inputs.veila.packages.${pkgs.stdenv.hostPlatform.system}.default;
   veilaBin = lib.getExe' veila "veila";
 in
@@ -77,13 +79,13 @@ in
         binding_terminal = "<super> KEY_T";
         command_terminal = lib.getExe pkgs.xdg-terminal-exec;
       }
-      // lib.optionalAttrs config.services.handy.enable {
+      // lib.optionalAttrs isHandyHost {
         binding_handy = "<super> KEY_V";
-        command_handy = "${lib.getExe config.services.handy.package} --toggle-transcription";
+        command_handy = "${lib.getExe pkgs.handy} --toggle-transcription";
       }
-      // lib.optionalAttrs (config.services.handy.enable && !host.is.laptop) {
+      // lib.optionalAttrs (isHandyHost && !host.is.laptop) {
         binding_handy_pause = "KEY_PAUSE";
-        command_handy_pause = "${lib.getExe config.services.handy.package} --toggle-transcription";
+        command_handy_pause = "${lib.getExe pkgs.handy} --toggle-transcription";
       };
     };
   };
