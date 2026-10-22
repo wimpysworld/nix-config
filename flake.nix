@@ -47,7 +47,7 @@
     kolide-launcher.url = "github:/kolide/nix-agent/main";
     kolide-launcher.inputs.flake-compat.follows = "determinate/nix/git-hooks-nix/flake-compat";
     kolide-launcher.inputs.nixpkgs.follows = "nixpkgs";
-    swifteam.url = "https://cdn.swifteam.com/st-agent-linux/v1.402.0/nixos/swifteam.tar.gz";
+    swifteam.url = "https://cdn.swifteam.com/st-agent-linux/v1.421.0/nixos/swifteam.tar.gz";
     swifteam.flake = false;
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";

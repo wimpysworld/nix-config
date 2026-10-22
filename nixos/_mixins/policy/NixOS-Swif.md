@@ -20,7 +20,7 @@ way that the Swif documentation describes. The differences are in
 ### Source pin
 
 The vendor module is the flake input `swifteam`, a `flake = false` tarball from
-`https://cdn.swifteam.com/st-agent-linux/v1.402.0/nixos/swifteam.tar.gz`.
+`https://cdn.swifteam.com/st-agent-linux/v1.421.0/nixos/swifteam.tar.gz`.
 The tarball holds no tenant values, so the public URL and its hash are safe in
 this public repository. The module downloads four closed-source binaries with
 `pkgs.fetchurl` and pinned hashes: `SwifInstaller`, the `swifteam` agent, the
@@ -104,6 +104,17 @@ Read the generated files after IT assigns policies, then decide with IT. Copy
 accepted settings by hand into this repository's own modules after review.
 Never commit the generated files to this public repository.
 
+### Applying policy changes
+
+1. Run `swif-agent-check`. It shows when the generated files last changed.
+2. When `/etc/swif/swifteam/` changes, review the changed files.
+3. Copy the accepted changes by hand into this repository. Packages go into
+   `swif.nix`. New URL and hash values go through
+   [Updating the agent](#updating-the-agent).
+4. Run `just build-host`, then `just switch-host`.
+
+Never import `/etc/swif/swifteam/`.
+
 ## Enrolling and verifying
 
 Before the switch, on the host:
@@ -145,7 +156,12 @@ Console > Device Inventory.
 3. Diff the old and new vendor trees. Look for new files in `default.nix`,
    changed flags in `installer.nix`, and changes in `users/`, `security/` and
    any `mkForce`.
-4. Run `just build-host`, then `just switch-host`, then reboot.
+4. Compare the URL and hash values in the new vendor `version.nix` with the
+   generated `version.nix`. When they differ, set the matching
+   `services.swifteam` options in `swif.nix`.
+5. When the desktop version changes, ask IT to update the `SwifApp` Falcon
+   exclusion.
+6. Run `just build-host`, then `just switch-host`, then reboot.
 
 ## Device lock and hidden admin user
 
@@ -167,10 +183,15 @@ Console > Device Inventory.
   switch.
 - Any local user can create the device lock file in `/tmp` and lock the
   console at the next boot.
-- The behaviour of the `syscheck` self-updater on NixOS is unknown. The
-  binaries are store paths and cannot be replaced in place.
+- The binaries are store paths and cannot be replaced in place. Swif updates
+  the agent when it writes new URL and hash values to the generated
+  `version.nix`. Those values apply only after a person copies them into
+  this repository.
 - The identity values are visible in the process list during the one-shot
   install.
+- The vendor installer runs the agent through `sudo`, and `sudo` logs the
+  full command line. The team ID is therefore in the system journal once, at
+  enrolment.
 - The vendor hashes are trust on first use. Swif publishes no signature.
 
 ## Dependencies on IT
@@ -179,7 +200,7 @@ Console > Device Inventory.
   - `/nix/store/*-swifAgent/bin/swifteam`
   - `/nix/store/*-syscheck/bin/systemcheck`
   - `/nix/store/*-swif-installer/bin/SwifInstaller`
-  - `/nix/store/*-SwifApp-171/opt/swifapp/SwifApp`
+  - `/nix/store/*-SwifApp-181/opt/swifapp/SwifApp`
   - `osquery` from nixpkgs
   - The Live Terminal IOA exclusion from the Swif Falcon exclusions article.
 - Agreement that generated policies are not applied yet.

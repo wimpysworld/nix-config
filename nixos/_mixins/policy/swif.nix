@@ -101,7 +101,17 @@ in
   ) vendorImports;
 
   config = lib.mkIf enableSwif {
-    environment.systemPackages = [ swifAgentCheck ];
+    # The last four packages mirror the Swif policy, which asks for them in
+    # the generated files. whois provides mkpasswd. The vendor
+    # configuration.nix also installs three of them, and the duplicates are
+    # harmless.
+    environment.systemPackages = [
+      swifAgentCheck
+      pkgs.osquery
+      pkgs.cracklib
+      pkgs.libpwquality
+      pkgs.whois
+    ];
 
     # The four identity options stay at their empty defaults. The vendor
     # installer script bakes them into the Nix store, so swif-install

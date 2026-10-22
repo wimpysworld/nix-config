@@ -1235,14 +1235,14 @@
     "swifteam": {
       "flake": false,
       "locked": {
-        "lastModified": 1791943053,
-        "narHash": "sha256-ontxHifhp5fsEAmtZVx2typr1taRCYp1zhCdl8l396Y=",
+        "lastModified": 1792130277,
+        "narHash": "sha256-KPdk/KfltsFojoNbaRxfEOTyC5EP29knsyjczLbH3cg=",
         "type": "tarball",
-        "url": "https://cdn.swifteam.com/st-agent-linux/v1.402.0/nixos/swifteam.tar.gz"
+        "url": "https://cdn.swifteam.com/st-agent-linux/v1.421.0/nixos/swifteam.tar.gz"
       },
       "original": {
         "type": "tarball",
-        "url": "https://cdn.swifteam.com/st-agent-linux/v1.402.0/nixos/swifteam.tar.gz"
+        "url": "https://cdn.swifteam.com/st-agent-linux/v1.421.0/nixos/swifteam.tar.gz"
       }
     },
     "systems": {
