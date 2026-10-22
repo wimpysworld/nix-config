@@ -625,25 +625,6 @@
         "type": "github"
       }
     },
-    "hushmic": {
-      "inputs": {
-        "nixpkgs": "nixpkgs_4"
-      },
-      "locked": {
-        "lastModified": 1791679988,
-        "narHash": "sha256-KTSfAa/FyiyzULyMobGj7ZYM39drp/lB0o6HrNNit8c=",
-        "owner": "Fovty",
-        "repo": "hushmic-nix",
-        "rev": "b2af2236e162a1d3454bc479125b6cb2a31fc029",
-        "type": "github"
-      },
-      "original": {
-        "owner": "Fovty",
-        "repo": "hushmic-nix",
-        "rev": "b2af2236e162a1d3454bc479125b6cb2a31fc029",
-        "type": "github"
-      }
-    },
     "import-tree": {
       "locked": {
         "lastModified": 1763762820,
@@ -882,7 +863,7 @@
     },
     "nixos-hardware": {
       "inputs": {
-        "nixpkgs": "nixpkgs_5"
+        "nixpkgs": "nixpkgs_4"
       },
       "locked": {
         "lastModified": 1792491056,
@@ -1006,22 +987,6 @@
     },
     "nixpkgs_4": {
       "locked": {
-        "lastModified": 1791594108,
-        "narHash": "sha256-XK4KceonkwD8LuMAt/vNrz982mXJM5jeHAxMwsUXXAQ=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "6510408d147d8c5e6d76043e899e9251756f6a75",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "ref": "nixos-unstable",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
-    "nixpkgs_5": {
-      "locked": {
         "lastModified": 1789546076,
         "narHash": "sha256-vWkSk5bbfTqdtMoSgD9FshACO8JCvXTFi+3cqEp0mH0=",
         "rev": "b1b875982b17dabde9b4a37f3e229e74913e6db3",
@@ -1033,7 +998,7 @@
         "url": "https://channels.nixos.org/nixos-unstable/nixexprs.tar.xz"
       }
     },
-    "nixpkgs_6": {
+    "nixpkgs_5": {
       "locked": {
         "lastModified": 1792615934,
         "narHash": "sha256-MlvRfa1O5Cqc2/a+gG+l9TSuowEoCKCmrJ1d9oAVm0I=",
@@ -1133,7 +1098,6 @@
         "handy": "handy",
         "hermes-agent": "hermes-agent",
         "home-manager": "home-manager_2",
-        "hushmic": "hushmic",
         "kolide-launcher": "kolide-launcher",
         "lan-mouse": "lan-mouse",
         "llm-agents": "llm-agents",
@@ -1144,7 +1108,7 @@
         "nix-index-database": "nix-index-database",
         "nix-packages": "nix-packages",
         "nixos-hardware": "nixos-hardware",
-        "nixpkgs": "nixpkgs_6",
+        "nixpkgs": "nixpkgs_5",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "rust-overlay": "rust-overlay",
         "sidra": "sidra",

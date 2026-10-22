@@ -55,7 +55,6 @@ in
   imports = [
     ./browsers
     ./chat
-    ./hushmic
     ./media-production
     ./music
     ./notes

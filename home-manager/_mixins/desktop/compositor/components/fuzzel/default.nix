@@ -1,6 +1,5 @@
 {
   config,
-  inputs,
   lib,
   pkgs,
   ...
@@ -34,24 +33,21 @@ let
     name = "fuzzel-clipboard";
     text = "cliphist list | fuzzel --dmenu --prompt '󱘢 ' --width 56 | cliphist decode | wl-copy --primary --trim-newline";
   };
-  hushmicPackage = import ../../../apps/hushmic/package.nix { inherit inputs lib pkgs; };
   fuzzelControlCenter = pkgs.writeShellApplication {
     name = "fuzzel-control-center";
-    runtimeInputs =
-      (with pkgs; [
-        cpu-x
-        gnome-disk-utility
-        gnome-firmware
-        networkmanagerapplet
-        overskride
-        piper
-        pwvucontrol
-        system-config-printer
-        usbimager
-        util-linux
-        wdisplays
-      ])
-      ++ lib.optional (hushmicPackage != null) hushmicPackage;
+    runtimeInputs = with pkgs; [
+      cpu-x
+      gnome-disk-utility
+      gnome-firmware
+      networkmanagerapplet
+      overskride
+      piper
+      pwvucontrol
+      system-config-printer
+      usbimager
+      util-linux
+      wdisplays
+    ];
     text = builtins.readFile ./fuzzel-control-center.sh;
   };
   # Workaround Nix failing to evaluate the DATA in fuzzel-emoji

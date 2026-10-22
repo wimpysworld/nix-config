@@ -5,28 +5,11 @@ set +u          # Disable nounset
 set +o pipefail # Disable pipefail
 
 function get_default_source() {
-  SOURCE="$(pactl info | grep "Default Source" | cut -d':' -f2 | sed 's/ //g')"
-  if [ "${SOURCE}" = "hushmic_source" ] && command -v hushmic >/dev/null 2>&1; then
-    hushmic config get mic
-  else
-    echo "${SOURCE}"
-  fi
+  pactl info | grep "Default Source" | cut -d':' -f2 | sed 's/ //g'
 }
 
 function set_default_source() {
   SOURCE="$(pactl list short sources | grep "${1}" | grep -v monitor | cut -f 2)"
-  HOST="$(hostnamectl hostname)"
-
-  case "${HOST}" in
-  skrye | zannah)
-    if command -v hushmic >/dev/null 2>&1 &&
-      hushmic config set mic "${SOURCE}" &&
-      hushmic config set set_default true; then
-      return
-    fi
-    ;;
-  esac
-
   pactl set-default-source "${SOURCE}"
 }
 

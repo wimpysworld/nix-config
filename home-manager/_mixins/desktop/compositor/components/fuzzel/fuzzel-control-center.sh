@@ -3,7 +3,6 @@
 
 # Applications
 volume="󰕾 Volume"
-hushmic="󰍬 HushMic"
 bluetooth="󰂯 Bluetooth"
 network="󰈀 Network"
 printers="󱁗 Printers"
@@ -14,13 +13,12 @@ usb_imager="󱊞 USB Imager"
 system=" System"
 firmware="󰉁 Firmware"
 
-menu="$volume\n$hushmic\n$bluetooth\n$network\n$printers\n$displays\n$mouse\n$disks\n$usb_imager\n$system\n$firmware"
+menu="$volume\n$bluetooth\n$network\n$printers\n$displays\n$mouse\n$disks\n$usb_imager\n$system\n$firmware"
 
-selected=$(echo -e "$menu" | fuzzel --dmenu --prompt "󰒓 " --lines=11 --width=21) || exit 0
+selected=$(echo -e "$menu" | fuzzel --dmenu --prompt "󰒓 " --lines=10 --width=21) || exit 0
 
 case $selected in
 "$volume") app="pwvucontrol" ;;
-"$hushmic") app="hushmic" ;;
 "$bluetooth") app="overskride" ;;
 "$network") app="nm-connection-editor" ;;
 "$printers") app="system-config-printer" ;;
