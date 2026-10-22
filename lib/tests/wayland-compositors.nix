@@ -286,8 +286,10 @@ assert contract.compositors.mango.sessionTarget == "mangowm-session.target";
 assert contract.compositors.mango.startupEnvironment == mangoStartupEnvironment;
 assert contract.compositors.mango.ephemeralEnvironment == mangoEphemeralEnvironment;
 assert contract.compositors.mango.portal.service == "xdg-desktop-portal-wlr";
-assert contract.compositors.mango.waybar.workspaceModule == "ext/workspaces";
-assert contract.compositors.mango.waybar.workspaceSettings.on-click == "activate";
+assert contract.compositors.mango.waybar.workspaceModule == "group/workspaces";
+assert
+  map (n: "custom/tag${n}") (builtins.attrNames contract.compositors.mango.waybar.tagIcons)
+  == contract.compositors.mango.waybar.workspaceSettings.modules;
 assert !contract.compositors.mango.capabilities.clientSideDecorations;
 assert contract.compositors.mango.capabilities.opaqueLayers;
 assert contract.compositors.wayfire.sessionTarget == "wayfire-session.target";

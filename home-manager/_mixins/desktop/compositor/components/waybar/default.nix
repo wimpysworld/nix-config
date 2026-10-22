@@ -141,7 +141,8 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           opacity: 0.9;
         }
 
-        #workspaces button {
+        #workspaces button,
+        #workspaces label.module {
           border-radius: 0.75rem;
           color: @mauve;
           padding: 0.25rem 0.75rem;
@@ -154,15 +155,18 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         ''}
 
         #workspaces button.active,
-        #workspaces button.focused {
+        #workspaces button.focused,
+        #workspaces label.module.active {
           color: @peach;
         }
 
-        #workspaces button:hover {
+        #workspaces button:hover,
+        #workspaces label.module:hover {
           background-color: @mantle;
         }
 
-        #workspaces button.urgent {
+        #workspaces button.urgent,
+        #workspaces label.module.urgent {
           color: @red;
         }
 
@@ -322,286 +326,289 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         }
       '';
       settings = [
-        {
-          exclusive = true;
-          margin-bottom = lib.mkIf (host.desktop == "wayfire") 5;
-          output = outputDisplay;
-          layer = "bottom";
-          position = "top";
-          modules-left = [
-            "custom/launcher"
-          ]
-          ++ lib.optional (compositor != null) workspaceModule;
-          modules-center = [
-            "idle_inhibitor"
-            "clock"
-            "custom/swaync"
-          ];
-          modules-right = [
-            "tray"
-            "custom/ai-usage"
-            "wireplumber"
-            "pulseaudio#input"
-          ]
-          ++ lib.optional (noughtyLib.hostHasTag "pci-hdmi-capture") "custom/virtualcam"
-          ++ [
-            "bluetooth"
-            "network"
-            "battery"
-            "backlight"
-            "cpu"
-            "temperature"
-            "power-profiles-daemon"
-            "custom/session"
-          ];
-          "custom/launcher" = {
-            format = "<big>󱄅</big>";
-            on-click = "${pkgs.rofi}/bin/rofi -theme ${config.xdg.configHome}/rofi/launchers/rofi-appgrid/style.rasi -show drun";
-            on-click-right = "fuzzel-session-menu";
-            tooltip-format = "  Applications Menu";
-          };
-          "${workspaceModule}" = lib.mkIf (compositor != null) compositor.waybar.workspaceSettings;
-          idle_inhibitor = {
-            format = "<big>{icon}</big>";
-            format-icons = {
-              activated = "<span foreground='${palette.getColor "pink"}'>󰅶</span>";
-              deactivated = "󰾪";
+        (
+          {
+            exclusive = true;
+            margin-bottom = lib.mkIf (host.desktop == "wayfire") 5;
+            output = outputDisplay;
+            layer = "bottom";
+            position = "top";
+            modules-left = [
+              "custom/launcher"
+            ]
+            ++ lib.optional (compositor != null) workspaceModule;
+            modules-center = [
+              "idle_inhibitor"
+              "clock"
+              "custom/swaync"
+            ];
+            modules-right = [
+              "tray"
+              "custom/ai-usage"
+              "wireplumber"
+              "pulseaudio#input"
+            ]
+            ++ lib.optional (noughtyLib.hostHasTag "pci-hdmi-capture") "custom/virtualcam"
+            ++ [
+              "bluetooth"
+              "network"
+              "battery"
+              "backlight"
+              "cpu"
+              "temperature"
+              "power-profiles-daemon"
+              "custom/session"
+            ];
+            "custom/launcher" = {
+              format = "<big>󱄅</big>";
+              on-click = "${pkgs.rofi}/bin/rofi -theme ${config.xdg.configHome}/rofi/launchers/rofi-appgrid/style.rasi -show drun";
+              on-click-right = "fuzzel-session-menu";
+              tooltip-format = "  Applications Menu";
             };
-            start-activated = false;
-            tooltip-format-activated = "󰅶  Caffeination {status}";
-            tooltip-format-deactivated = "󰾪  Caffeination {status}";
-          };
-          clock = {
-            actions = {
-              on-click = "shift_down";
-              on-click-right = "shift_up";
-            };
-            calendar = {
-              mode = "year";
-              mode-mon-col = 3;
-              on-scroll = 1;
-              weeks-pos = "right";
-              format = {
-                days = "<span color='${palette.getColor "text"}'><b>{}</b></span>";
-                months = "<span color='${palette.getColor "blue"}'><b>{}</b></span>";
-                weeks = "<span color='${palette.getColor "sapphire"}'><b>󱦰{}</b></span>";
-                weekdays = "<span color='${palette.getColor "peach"}'><b>{}</b></span>";
-                today = "<span color='${palette.getColor "red"}'><b>{}</b></span>";
+            "${workspaceModule}" = lib.mkIf (compositor != null) compositor.waybar.workspaceSettings;
+            idle_inhibitor = {
+              format = "<big>{icon}</big>";
+              format-icons = {
+                activated = "<span foreground='${palette.getColor "pink"}'>󰅶</span>";
+                deactivated = "󰾪";
               };
+              start-activated = false;
+              tooltip-format-activated = "󰅶  Caffeination {status}";
+              tooltip-format-deactivated = "󰾪  Caffeination {status}";
             };
-            on-click-middle = "${pkgs.gnome-clocks}/bin/gnome-clocks";
-            format = "{:%b/%d %H:%M}";
-            interval = 60;
-            tooltip-format = "<tt><small>{calendar}</small></tt>";
-          };
-          #https://haseebmajid.dev/posts/2024-03-15-til-how-to-get-swaync-to-play-nice-with-waybar/
-          "custom/swaync" = {
-            format = "<big>{icon}</big>";
-            format-icons = {
-              none = "";
-              notification = "<span foreground='${palette.getColor "pink"}'>󱅫</span>";
-              dnd-none = "󰂠";
-              dnd-notification = "󱅫";
-              inhibited-none = "";
-              inhibited-notification = "<span foreground='${palette.getColor "pink"}'>󰅸</span>";
-              dnd-inhibited-none = "󰪓";
-              dnd-inhibited-notification = "󰅸";
+            clock = {
+              actions = {
+                on-click = "shift_down";
+                on-click-right = "shift_up";
+              };
+              calendar = {
+                mode = "year";
+                mode-mon-col = 3;
+                on-scroll = 1;
+                weeks-pos = "right";
+                format = {
+                  days = "<span color='${palette.getColor "text"}'><b>{}</b></span>";
+                  months = "<span color='${palette.getColor "blue"}'><b>{}</b></span>";
+                  weeks = "<span color='${palette.getColor "sapphire"}'><b>󱦰{}</b></span>";
+                  weekdays = "<span color='${palette.getColor "peach"}'><b>{}</b></span>";
+                  today = "<span color='${palette.getColor "red"}'><b>{}</b></span>";
+                };
+              };
+              on-click-middle = "${pkgs.gnome-clocks}/bin/gnome-clocks";
+              format = "{:%b/%d %H:%M}";
+              interval = 60;
+              tooltip-format = "<tt><small>{calendar}</small></tt>";
             };
-            max-length = 3;
-            return-type = "json";
-            escape = true;
-            exec-if = "which ${pkgs.swaynotificationcenter}/bin/swaync-client";
-            exec = "${pkgs.swaynotificationcenter}/bin/swaync-client --subscribe-waybar";
-            on-click = "${pkgs.swaynotificationcenter}/bin/swaync-client --toggle-panel --skip-wait";
-            tooltip-format = "󰵚  {} notification(s)";
-          };
-          tray = {
-            icon-size = 22;
-            spacing = 12;
-          };
-          "custom/ai-usage" = {
-            exec = "${lib.getExe aiUsage}";
-            return-type = "json";
-            interval = 300;
-            # The bar shows a glyph. A left click toggles to the widget text,
-            # which is the usage percentage and the time to the next reset. The
-            # big glyph and small text match the other modules in the section.
-            format = "<big>󰚩</big>";
-            format-alt = "<big>󰚩</big> <small>{text}</small>";
-            # Scrolling cycles through the enabled vendors. The widget then
-            # sends this signal so that Waybar runs the module again.
-            signal = 13;
-            on-scroll-up = "${lib.getExe aiUsage} --cycle-next";
-            on-scroll-down = "${lib.getExe aiUsage} --cycle-prev";
-          };
-          wireplumber = {
-            scroll-step = 5;
-            format = "<big>{icon}</big>";
-            format-alt = "<big>{icon}</big> <small>{volume}󰏰</small>";
-            format-muted = "󰖁";
-            format-icons = {
-              default = [
-                "󰕿"
-                "󰖀"
-                "󰕾"
+            #https://haseebmajid.dev/posts/2024-03-15-til-how-to-get-swaync-to-play-nice-with-waybar/
+            "custom/swaync" = {
+              format = "<big>{icon}</big>";
+              format-icons = {
+                none = "";
+                notification = "<span foreground='${palette.getColor "pink"}'>󱅫</span>";
+                dnd-none = "󰂠";
+                dnd-notification = "󱅫";
+                inhibited-none = "";
+                inhibited-notification = "<span foreground='${palette.getColor "pink"}'>󰅸</span>";
+                dnd-inhibited-none = "󰪓";
+                dnd-inhibited-notification = "󰅸";
+              };
+              max-length = 3;
+              return-type = "json";
+              escape = true;
+              exec-if = "which ${pkgs.swaynotificationcenter}/bin/swaync-client";
+              exec = "${pkgs.swaynotificationcenter}/bin/swaync-client --subscribe-waybar";
+              on-click = "${pkgs.swaynotificationcenter}/bin/swaync-client --toggle-panel --skip-wait";
+              tooltip-format = "󰵚  {} notification(s)";
+            };
+            tray = {
+              icon-size = 22;
+              spacing = 12;
+            };
+            "custom/ai-usage" = {
+              exec = "${lib.getExe aiUsage}";
+              return-type = "json";
+              interval = 300;
+              # The bar shows a glyph. A left click toggles to the widget text,
+              # which is the usage percentage and the time to the next reset. The
+              # big glyph and small text match the other modules in the section.
+              format = "<big>󰚩</big>";
+              format-alt = "<big>󰚩</big> <small>{text}</small>";
+              # Scrolling cycles through the enabled vendors. The widget then
+              # sends this signal so that Waybar runs the module again.
+              signal = 13;
+              on-scroll-up = "${lib.getExe aiUsage} --cycle-next";
+              on-scroll-down = "${lib.getExe aiUsage} --cycle-prev";
+            };
+            wireplumber = {
+              scroll-step = 5;
+              format = "<big>{icon}</big>";
+              format-alt = "<big>{icon}</big> <small>{volume}󰏰</small>";
+              format-muted = "󰖁";
+              format-icons = {
+                default = [
+                  "󰕿"
+                  "󰖀"
+                  "󰕾"
+                ];
+              };
+              max-volume = 100;
+              on-click-middle = "${pkgs.avizo}/bin/volumectl -d -u toggle-mute";
+              on-scroll-up = "${pkgs.avizo}/bin/volumectl -d -u up 2";
+              on-scroll-down = "${pkgs.avizo}/bin/volumectl -d -u down 2";
+              tooltip-format = "󰓃  {volume}󰏰\n󰒓  {node_name}";
+            };
+            "pulseaudio#input" = {
+              format = "<big>{format_source}</big>";
+              format-alt = "<big>{format_source}</big> <small>{source_volume}󰏰</small>";
+              format-source = "󰍬";
+              format-source-muted = "󰍭";
+              on-click-middle = "${pkgs.avizo}/bin/volumectl -d -m toggle-mute";
+              on-scroll-up = "${pkgs.avizo}/bin/volumectl -d -m up 2";
+              on-scroll-down = "${pkgs.avizo}/bin/volumectl -d -m down 2";
+              tooltip-format = "  {source_volume}󰏰\n󰒓  {desc}";
+              ignored-sinks = [
+                "INZONE Buds Analog Stereo"
               ];
             };
-            max-volume = 100;
-            on-click-middle = "${pkgs.avizo}/bin/volumectl -d -u toggle-mute";
-            on-scroll-up = "${pkgs.avizo}/bin/volumectl -d -u up 2";
-            on-scroll-down = "${pkgs.avizo}/bin/volumectl -d -u down 2";
-            tooltip-format = "󰓃  {volume}󰏰\n󰒓  {node_name}";
-          };
-          "pulseaudio#input" = {
-            format = "<big>{format_source}</big>";
-            format-alt = "<big>{format_source}</big> <small>{source_volume}󰏰</small>";
-            format-source = "󰍬";
-            format-source-muted = "󰍭";
-            on-click-middle = "${pkgs.avizo}/bin/volumectl -d -m toggle-mute";
-            on-scroll-up = "${pkgs.avizo}/bin/volumectl -d -m up 2";
-            on-scroll-down = "${pkgs.avizo}/bin/volumectl -d -m down 2";
-            tooltip-format = "  {source_volume}󰏰\n󰒓  {desc}";
-            ignored-sinks = [
-              "INZONE Buds Analog Stereo"
-            ];
-          };
-          "custom/virtualcam" = {
-            format = "<big>{}</big>";
-            exec = "${lib.getExe virtualcamCheck}";
-            on-click-middle = "${lib.getExe virtualcamToggle}";
-            interval = 1;
-            max-length = 2;
-          };
-          bluetooth = {
-            format = "<big>{icon}</big>";
-            format-connected = "󰂱";
-            format-disabled = "󰂲";
-            format-on = "󰂯";
-            format-off = "󰂲";
-            on-click-middle = "${lib.getExe bluetoothToggle}";
-            tooltip-format = "  {controller_alias}\t󰿀  {controller_address}\n󰂴  {num_connections} connected";
-            tooltip-format-connected = "  {controller_alias}\t󰿀  {controller_address}\n󰂴  {num_connections} connected\n{device_enumerate}";
-            tooltip-format-disabled = "󰂲  {controller_alias}\t󰿀  {controller_address}\n󰂳  {status}";
-            tooltip-format-enumerate-connected = "󰂱  {device_alias}\t󰿀  {device_address}";
-            tooltip-format-enumerate-connected-battery = "󰂱  {device_alias}\t󰿀  {device_address} (󰥉  {device_battery_percentage}󰏰)";
-            tooltip-format-off = "󰂲  {controller_alias}\t󰿀  {controller_address}\n󰂳  {status}";
-          };
-          network = {
-            format = "<big>{icon}</big>";
-            format-alt = " <small>{bandwidthDownBits}</small>  <small>{bandwidthUpBits}</small>";
-            format-ethernet = "󰈀";
-            format-disconnected = "󰲜";
-            format-linked = "";
-            format-wifi = "󰖩";
-            interval = 2;
-            tooltip-format = "  {ifname}\n󰩠  {ipaddr} via {gwaddr}\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
-            tooltip-format-wifi = "󱛁  {essid} \n󰒢  {signalStrength}󰏰\n󰩠  {ipaddr} via {gwaddr}\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
-            tooltip-format-ethernet = "󰈀  {ifname}\n󰩠  {ipaddr} via {gwaddr})\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
-            tooltip-format-disconnected = "󰲜  disconnected";
-          };
-          backlight = {
-            # TODO: configure this to use the correct device
-            device = "thinkpad_acpi";
-            format = "<big>{icon}</big>";
-            format-alt = "<big>{icon}</big> <small>{percent}󰏰</small>";
-            format-icons = [
-              ""
-              ""
-              ""
-              ""
-              ""
-              ""
-              ""
-              ""
-              ""
-            ];
-            on-click-middle = "${pkgs.avizo}/bin/lightctl -d set 50";
-            on-scroll-up = "${pkgs.avizo}/bin/lightctl -d up 2";
-            on-scroll-down = "${pkgs.avizo}/bin/lightctl -d down 2";
-            tooltip-format = "󰃠  {percent}󰏰";
-          };
-          cpu = {
-            interval = 2;
-            format = "<big>{icon}</big>";
-            format-alt = "<big></big> <small>{usage}󱉸</small>";
-            format-icons = [
-              "󰫃"
-              "󰫄"
-              "󰫅"
-              "󰫆"
-              "󰫇"
-              "󰫈"
-            ];
-            on-click-middle = "${pkgs.resources}/bin/resources --open-tab-id cpu";
-          };
-          temperature = {
-            hwmon-path-abs = [
-              "/sys/devices/platform/coretemp.0/hwmon"
-              "/sys/devices/pci0000:00/0000:00:18.3/hwmon"
-            ];
-            input-filename = "temp1_input";
-            critical-threshold = 90;
-            format = "<big>{icon}</big>";
-            format-alt = "<big>{icon}</big> <small>{temperatureC}󰔄</small>";
-            format-critical = "<big></big> <small>{temperatureC}󰔄</small>";
-            format-icons = [
-              ""
-              ""
-              ""
-              ""
-              ""
-              ""
-              ""
-              ""
-              ""
-              ""
-            ];
-            tooltip-format = "󰔐  CPU {temperatureC}󰔄";
-          };
-          power-profiles-daemon = {
-            format = "<big>{icon}</big>";
-            format-icons = {
-              default = "󱐋";
-              performance = "󰤇";
-              balanced = "󰗑";
-              power-saver = "󰴻";
+            "custom/virtualcam" = {
+              format = "<big>{}</big>";
+              exec = "${lib.getExe virtualcamCheck}";
+              on-click-middle = "${lib.getExe virtualcamToggle}";
+              interval = 1;
+              max-length = 2;
             };
-            tooltip-format = "󱐋  Power profile: {profile}\n󰒓  Driver: {driver}";
-            #TODO: add power profile menu on middle click
-          };
-          battery = {
-            states = {
-              good = 80;
-              warning = 20;
-              critical = 5;
+            bluetooth = {
+              format = "<big>{icon}</big>";
+              format-connected = "󰂱";
+              format-disabled = "󰂲";
+              format-on = "󰂯";
+              format-off = "󰂲";
+              on-click-middle = "${lib.getExe bluetoothToggle}";
+              tooltip-format = "  {controller_alias}\t󰿀  {controller_address}\n󰂴  {num_connections} connected";
+              tooltip-format-connected = "  {controller_alias}\t󰿀  {controller_address}\n󰂴  {num_connections} connected\n{device_enumerate}";
+              tooltip-format-disabled = "󰂲  {controller_alias}\t󰿀  {controller_address}\n󰂳  {status}";
+              tooltip-format-enumerate-connected = "󰂱  {device_alias}\t󰿀  {device_address}";
+              tooltip-format-enumerate-connected-battery = "󰂱  {device_alias}\t󰿀  {device_address} (󰥉  {device_battery_percentage}󰏰)";
+              tooltip-format-off = "󰂲  {controller_alias}\t󰿀  {controller_address}\n󰂳  {status}";
             };
-            format = "<big>{icon}</big>";
-            format-alt = "<big>{icon}</big> <small>{capacity}󰏰</small>";
-            format-charging = "󰂄";
-            format-full = "󰁹";
-            format-plugged = "󰚥";
-            format-icons = [
-              "󰂃"
-              "󰁺"
-              "󰁻"
-              "󰁼"
-              "󰁽"
-              "󰁾"
-              "󰁿"
-              "󰂀"
-              "󰂁"
-              "󰂂"
-              "󰁹"
-            ];
-            tooltip-format = "󱊣  {time} ({capacity}󰏰)";
-            on-click-middle = "${pkgs.powersupply}/bin/powersupply";
-          };
-          "custom/session" = {
-            format = "<big>󰐥</big>";
-            on-click = "wleave-session";
-            tooltip-format = "󰐥  Session Menu";
-          };
-        }
+            network = {
+              format = "<big>{icon}</big>";
+              format-alt = " <small>{bandwidthDownBits}</small>  <small>{bandwidthUpBits}</small>";
+              format-ethernet = "󰈀";
+              format-disconnected = "󰲜";
+              format-linked = "";
+              format-wifi = "󰖩";
+              interval = 2;
+              tooltip-format = "  {ifname}\n󰩠  {ipaddr} via {gwaddr}\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
+              tooltip-format-wifi = "󱛁  {essid} \n󰒢  {signalStrength}󰏰\n󰩠  {ipaddr} via {gwaddr}\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
+              tooltip-format-ethernet = "󰈀  {ifname}\n󰩠  {ipaddr} via {gwaddr})\n  {bandwidthDownBits}\t  {bandwidthUpBits}";
+              tooltip-format-disconnected = "󰲜  disconnected";
+            };
+            backlight = {
+              # TODO: configure this to use the correct device
+              device = "thinkpad_acpi";
+              format = "<big>{icon}</big>";
+              format-alt = "<big>{icon}</big> <small>{percent}󰏰</small>";
+              format-icons = [
+                ""
+                ""
+                ""
+                ""
+                ""
+                ""
+                ""
+                ""
+                ""
+              ];
+              on-click-middle = "${pkgs.avizo}/bin/lightctl -d set 50";
+              on-scroll-up = "${pkgs.avizo}/bin/lightctl -d up 2";
+              on-scroll-down = "${pkgs.avizo}/bin/lightctl -d down 2";
+              tooltip-format = "󰃠  {percent}󰏰";
+            };
+            cpu = {
+              interval = 2;
+              format = "<big>{icon}</big>";
+              format-alt = "<big></big> <small>{usage}󱉸</small>";
+              format-icons = [
+                "󰫃"
+                "󰫄"
+                "󰫅"
+                "󰫆"
+                "󰫇"
+                "󰫈"
+              ];
+              on-click-middle = "${pkgs.resources}/bin/resources --open-tab-id cpu";
+            };
+            temperature = {
+              hwmon-path-abs = [
+                "/sys/devices/platform/coretemp.0/hwmon"
+                "/sys/devices/pci0000:00/0000:00:18.3/hwmon"
+              ];
+              input-filename = "temp1_input";
+              critical-threshold = 90;
+              format = "<big>{icon}</big>";
+              format-alt = "<big>{icon}</big> <small>{temperatureC}󰔄</small>";
+              format-critical = "<big></big> <small>{temperatureC}󰔄</small>";
+              format-icons = [
+                ""
+                ""
+                ""
+                ""
+                ""
+                ""
+                ""
+                ""
+                ""
+                ""
+              ];
+              tooltip-format = "󰔐  CPU {temperatureC}󰔄";
+            };
+            power-profiles-daemon = {
+              format = "<big>{icon}</big>";
+              format-icons = {
+                default = "󱐋";
+                performance = "󰤇";
+                balanced = "󰗑";
+                power-saver = "󰴻";
+              };
+              tooltip-format = "󱐋  Power profile: {profile}\n󰒓  Driver: {driver}";
+              #TODO: add power profile menu on middle click
+            };
+            battery = {
+              states = {
+                good = 80;
+                warning = 20;
+                critical = 5;
+              };
+              format = "<big>{icon}</big>";
+              format-alt = "<big>{icon}</big> <small>{capacity}󰏰</small>";
+              format-charging = "󰂄";
+              format-full = "󰁹";
+              format-plugged = "󰚥";
+              format-icons = [
+                "󰂃"
+                "󰁺"
+                "󰁻"
+                "󰁼"
+                "󰁽"
+                "󰁾"
+                "󰁿"
+                "󰂀"
+                "󰂁"
+                "󰂂"
+                "󰁹"
+              ];
+              tooltip-format = "󱊣  {time} ({capacity}󰏰)";
+              on-click-middle = "${pkgs.powersupply}/bin/powersupply";
+            };
+            "custom/session" = {
+              format = "<big>󰐥</big>";
+              on-click = "wleave-session";
+              tooltip-format = "󰐥  Session Menu";
+            };
+          }
+          // config.compositor.waybar.modules
+        )
       ];
       systemd = {
         enable = compositor != null;

@@ -10,9 +10,6 @@ let
   cfg = config.wayland.windowManager.mango;
   inherit (import ./config-format.nix { inherit catppuccinPalette lib; }) floatStr toMangoConf;
 
-  # Persistent tags per display, so Waybar shows empty registry tags.
-  mkTagRules = d: map (n: "id:${toString n},monitor_name:^${d.output}$,no_hide:1") d.workspaces;
-
   mkMonitorRule =
     d:
     "name:^${d.output}$,width:${toString d.width},height:${toString d.height},refresh:${toString d.refresh},x:${toString d.position.x},y:${toString d.position.y},scale:${floatStr d.scale}"
@@ -38,6 +35,7 @@ in
     ./options.nix
     ./rules.nix
     ./theme.nix
+    ./waybar.nix
   ];
 
   config = lib.mkIf (host.desktop == "mango") {
@@ -107,7 +105,7 @@ in
         new_is_master = true;
         dwindle_preserve_split = true;
         dwindle_smart_split = false;
-        tag_rule = [ "id:*,layout_name:dwindle" ] ++ lib.concatMap mkTagRules host.displays;
+        tag_rule = [ "id:*,layout_name:dwindle" ];
         monitor_rule = map mkMonitorRule host.displays;
         exec_once = [ "wayland-session start" ];
       };

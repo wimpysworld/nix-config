@@ -30,6 +30,16 @@ in
     ./wayfire
   ];
 
+  # The selected compositor's module defines the Waybar modules that its
+  # contract workspace module refers to, for example the members of a group.
+  # The shared Waybar component adds them to the bar.
+  options.compositor.waybar.modules = lib.mkOption {
+    type = lib.types.attrsOf (pkgs.formats.json { }).type;
+    default = { };
+    internal = true;
+    description = "Waybar module definitions from the selected compositor's module.";
+  };
+
   config = lib.mkIf (compositor != null) {
     home.activation.removeObsoleteGraphicalSessionDependencies =
       lib.mkIf

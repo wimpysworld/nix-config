@@ -114,26 +114,24 @@
         # SwayNC gets no blur behind it, so its surfaces need more opacity.
         opaqueLayers = true;
       };
+      # The Mango Home Manager module defines the custom/tagN modules, because
+      # their commands need store paths. Waybar's ext/workspaces cannot sync
+      # Mango tags across monitors.
       waybar = {
-        workspaceModule = "ext/workspaces";
+        workspaceModule = "group/workspaces";
         workspaceSettings = {
-          active-only = false;
-          all-outputs = false;
-          format = "<big>{icon}</big>";
-          format-icons = {
-            "1" = "󰎤";
-            "2" = "󰎧";
-            "3" = "󰎪";
-            "4" = "󰎭";
-            "5" = "󰎱";
-            "6" = "󰎳";
-            "7" = "󰎶";
-            "8" = "󰎹";
-            default = "󱢍";
-          };
-          ignore-hidden = true;
-          on-click = "activate";
-          sort-by-number = true;
+          orientation = "inherit";
+          modules = builtins.genList (i: "custom/tag${toString (i + 1)}") 8;
+        };
+        tagIcons = {
+          "1" = "󰎤";
+          "2" = "󰎧";
+          "3" = "󰎪";
+          "4" = "󰎭";
+          "5" = "󰎱";
+          "6" = "󰎳";
+          "7" = "󰎶";
+          "8" = "󰎹";
         };
       };
     };

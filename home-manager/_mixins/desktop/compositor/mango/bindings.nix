@@ -15,23 +15,19 @@ let
   avizoBin = "${pkgs.avizo}/bin";
   playerctlBin = lib.getExe pkgs.playerctl;
 
-  # On a multi-monitor host, a registry tag goes to the display that lists it.
-  outputForTag =
-    n:
-    let
-      owners = builtins.filter (d: builtins.elem n d.workspaces) host.displays;
-    in
-    if display.isMultiMonitor && owners != [ ] then (builtins.head owners).output else null;
+  tags = import ./tags.nix { inherit host; };
+  # A trailing 1 is the Mango synctag argument, which views the tag on every monitor.
+  sync = lib.optionalString tags.synced ",1";
   mkTagBindings =
     n:
     let
       tag = toString n;
-      output = outputForTag n;
+      output = tags.outputForTag n;
     in
     if output == null then
       [
-        "CTRL+ALT,${tag},view,${tag}"
-        "SUPER+ALT,${tag},tag,${tag}"
+        "CTRL+ALT,${tag},view,${tag}${sync}"
+        "SUPER+ALT,${tag},tag,${tag}${sync}"
       ]
     else
       [
@@ -60,8 +56,8 @@ in
         ++ [
           "SUPER,Up,togglemaximizescreen"
           "SUPER,Down,togglefloating"
-          "CTRL+ALT,Left,viewtoleft"
-          "CTRL+ALT,Right,viewtoright"
+          "CTRL+ALT,Left,viewtoleft${sync}"
+          "CTRL+ALT,Right,viewtoright${sync}"
         ]
         ++ lib.concatMap mkTagBindings (lib.range 1 8)
         ++ [
@@ -112,8 +108,8 @@ in
           "SUPER,btn_right,moveresize,curresize"
         ];
         gesturebind = [
-          "none,left,3,viewtoright"
-          "none,right,3,viewtoleft"
+          "none,left,3,viewtoright${sync}"
+          "none,right,3,viewtoleft${sync}"
         ];
       };
       keymodes.resize = [
