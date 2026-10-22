@@ -27,13 +27,11 @@ let
   };
   unmanagedInterfaces =
     lib.optionals config.services.tailscale.enable [ "tailscale0" ]
-    ++ lib.optionals config.virtualisation.docker.enable [ "docker0" ]
     ++ lib.optionals config.virtualisation.incus.enable [ "incusbr0" ];
   # Trust the incus bridge interface, if incus is enabled
   # Trust the tailscale interface, if tailscale is enabled
   trustedInterfaces =
     lib.optionals config.services.tailscale.enable [ "tailscale0" ]
-    ++ lib.optionals config.virtualisation.docker.enable [ "docker0" ]
     ++ lib.optionals config.virtualisation.incus.enable [ "incusbr0" ];
 
   # Define DNS settings for specific users

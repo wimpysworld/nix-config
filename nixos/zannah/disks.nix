@@ -161,10 +161,6 @@ in
                       mountpoint = "/nix";
                       mountOptions = defaultBtrfsOpts;
                     };
-                    "@docker" = {
-                      mountpoint = "/var/lib/docker";
-                      mountOptions = nodatacowBtrfsOpts;
-                    };
                     "@containers" = {
                       mountpoint = "/var/lib/containers";
                       mountOptions = nodatacowBtrfsOpts;
