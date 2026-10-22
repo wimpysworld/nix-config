@@ -17,11 +17,11 @@
 #
 # Omitted optional fields use their defaults (as resolved by resolveEntry):
 #   username defaults to "martin"
-#   desktop defaults to "hyprland" for computer+linux, "aqua" for computer+darwin
+#   desktop defaults to "mango" for computer+linux, "aqua" for computer+darwin
 #   scale defaults to 1.0 per display
 
 # Linux workstations
-# desktop defaults to "hyprland" (kind = "computer", linux platform)
+# desktop defaults to "mango" (kind = "computer", linux platform)
 # username defaults to "martin"
 
 [bane]
@@ -69,7 +69,6 @@ position = { x = 0, y = 0 }
 [ravi]
 kind = "computer"
 platform = "x86_64-linux"
-desktop = "mango"
 formFactor = "laptop"
 tags = [
   "framework",
@@ -192,7 +191,6 @@ position = { x = 0, y = 0 }
 kind = "computer"
 platform = "x86_64-linux"
 formFactor = "laptop"
-desktop = "mango"
 tags = ["thinkpad"]
 
 [felkor.gpu]

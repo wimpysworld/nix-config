@@ -88,7 +88,7 @@ lib/registry-systems.toml (system registry, read by flake.nix via builtins.fromT
 Each registry entry is resolved by merging four layers, where later layers win:
 
 1. Baseline username (`"martin"`)
-2. Kind + OS derived desktop (e.g. `computer` on Linux defaults to `"hyprland"`)
+2. Kind + OS derived desktop (for example, `computer` on Linux defaults to `"mango"`)
 3. ISO implicit defaults (`desktop = null`, `username = "nixos"`)
 4. Explicit entry values from the registry
 
@@ -561,7 +561,7 @@ The `noughty` command is a shell script wrapped via `writeShellApplication` that
   Kind         computer
   OS           linux (x86_64-linux)
   Form         desktop
-  Desktop      hyprland
+  Desktop      mango
   GPU          amd, nvidia
   Compute      nvidia (16GB) [cuda]
   Tags         studio, streamdeck, pci-hdmi-capture, inference
@@ -620,7 +620,7 @@ primary    = true
 workspaces = [1, 2, 3, 4, 5]
 position   = { x = 0, y = 0 }
 
-# desktop defaults to "hyprland" for computer+linux
+# The desktop defaults to "mango" for computer+linux.
 # username defaults to "martin"
 # keyboard defaults to "gb" (UK); set keyboard.layout = "us" for non-UK hosts
 ```
@@ -655,7 +655,7 @@ No other files need updating. The registry entry flows through `resolveEntry` ->
 When you add a new host, `resolveEntry` in `lib/flake-builders.nix` merges defaults in this order:
 
 1. `username = "martin"` (baseline)
-2. `desktop` derived from `kind` + platform (e.g. `computer` on Linux -> `"hyprland"`)
+2. `desktop` derived from `kind` + platform (for example, `computer` on Linux -> `"mango"`)
 3. If `iso = true`: `desktop = null`, `username = "nixos"`
 4. Explicit values from your registry entry (always win)
 

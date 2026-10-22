@@ -1,5 +1,5 @@
 {
-  default = "hyprland";
+  default = "mango";
 
   compositors = {
     hyprland = {

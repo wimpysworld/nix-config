@@ -124,6 +124,7 @@
         let
           pkgs = nixpkgs.legacyPackages.${system};
           includeHostConfigurations = system == "x86_64-linux";
+          hyprlandConfig = builder.mkSystemConfig "skrye" (systems.skrye // { desktop = "hyprland"; });
         in
         nixpkgs.lib.optionalAttrs includeHostConfigurations {
           # The module test evaluates its assertions while forcing the
@@ -139,6 +140,8 @@
             enableHostIntegration = true;
             inherit (self) nixosConfigurations;
             inherit (self) homeConfigurations;
+            hyprlandNixos = builder.mkNixos hyprlandConfig;
+            hyprlandHome = builder.mkHome hyprlandConfig;
           };
         }
         // {
