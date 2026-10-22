@@ -85,9 +85,9 @@ Pi packages are installed through the Home Manager-owned package setting:
 ```json
 {
   "packages": [
-    "git:github.com/nicobailon/pi-mcp-adapter@80fcdef8d9f6958751f1e225f88b272440caa542",
-    "npm:@tintinweb/pi-subagents@0.20.0",
-    "npm:pi-lens@4.4.1",
+    "git:github.com/nicobailon/pi-mcp-adapter@1c7a84d489c18c69fde3d6a6503cd051133dd9a9",
+    "npm:@tintinweb/pi-subagents@0.22.0",
+    "npm:pi-lens@4.4.4",
     {
       "source": "npm:typescript@7.0.2",
       "extensions": [],
@@ -98,19 +98,19 @@ Pi packages are installed through the Home Manager-owned package setting:
     "npm:pi-footer@0.5.1",
     "npm:@marckrenn/pi-sub-core@1.5.0",
     "npm:pi-cc-header@1.1.1",
-    "npm:@heyhuynhgiabuu/pi-pretty@0.6.31",
-    "npm:@juicesharp/rpiv-ask-user-question@2.12.0",
-    "npm:@juicesharp/rpiv-btw@2.12.0",
-    "npm:@tintinweb/pi-tasks@0.9.0"
+    "npm:@heyhuynhgiabuu/pi-pretty@0.8.0",
+    "npm:@juicesharp/rpiv-ask-user-question@2.13.9",
+    "npm:@juicesharp/rpiv-btw@2.13.9",
+    "npm:@tintinweb/pi-tasks@0.9.1"
   ]
 }
 ```
 
-Exact npm versions and Git commits keep package updates pinned. Pi reconciles a Git checkout to the configured revision rather than advancing it. The adapter uses the exact v5.2.0 release commit, which includes the fix for GHSA-6qxp-vccf-f47h. Pi clones it under `~/.pi/agent/git/` and installs its runtime dependencies. Review Git sources and npm installation scripts before changing a pin.
+Exact npm versions and Git commits keep package updates pinned. Pi reconciles a Git checkout to the configured revision rather than advancing it. The adapter uses the exact v5.4.0 release commit. Pi clones it under `~/.pi/agent/git/` and installs its runtime dependencies. Review Git sources and npm installation scripts before changing a pin.
 
 The other packages use Pi's npm integration. `typescript` supplies the compiler API that `pi-lens` imports at runtime but omits from its runtime dependencies. Its Pi resources stay disabled because it is a runtime dependency, not an extension.
 
-`pi-lens` 4.4.1 accepts any `@earendil-works/pi-tui` version, and upstream verifies it on Pi 1.0 and 1.1. Since 4.1.6, use `lens_diagnostics` with `source: "lsp"` instead of `lsp_diagnostics`, and `ast_grep_search` with `dump: true` instead of `ast_grep_dump`.
+`pi-lens` 4.4.4 accepts any `@earendil-works/pi-tui` version, but its documented verified host range is `>=0.80.10 <1.4.0`. Pi 1.4.0 therefore needs local compatibility checks. Since 4.1.6, use `lens_diagnostics` with `source: "lsp"` instead of `lsp_diagnostics`, and `ast_grep_search` with `dump: true` instead of `ast_grep_dump`.
 
 `pi-cc-header` loads from its npm package with `ccHeader.readOnlyConfig` set in the Home Manager-owned `settings.json`. That upstream read-only mode (added in 1.1.1 for declarative setups) stops the extension writing `settings.json`, so header commands such as `/htg` apply for the current session only. It replaces the local writable-state patch that earlier releases needed.
 
@@ -326,7 +326,7 @@ The Pi-specific file emits full server entries, not partial overrides, because `
 
 ## Subagents
 
-[Tintinweb pi-subagents](https://github.com/tintinweb/pi-subagents) is pinned to `npm:@tintinweb/pi-subagents@0.20.0`, which requires Pi 1.1.0 or later.
+[Tintinweb pi-subagents](https://github.com/tintinweb/pi-subagents) is pinned to `npm:@tintinweb/pi-subagents@0.22.0`, which requires Pi 1.1.0 or later.
 Home Manager writes its settings to `~/.pi/agent/subagents.json`.
 The former package, configuration output, and `subagents.disableBuiltins` setting are no longer configured.
 Historical logs and sessions remain untouched.
@@ -338,6 +338,7 @@ Historical logs and sessions remain untouched.
 | `maxSubagentDepth` | `1` | Only the coordinator launches specialists. |
 | `defaultMaxTurns`, `graceTurns` | `50`, `5` | Bounded turns, not a wall-clock deadline. |
 | `disableDefaultAgents`, `strictAgentFiles` | `true` | Use explicit custom agents and reject malformed headers. |
+| `packageAgents`, `packageWorkflows` | `false` | Disable package discovery to preserve generated agent and workflow routing boundaries. |
 | `fallbackSubagent` | `"none"` | Do not substitute a default agent. |
 | `defaultJoinMode` | `"async"` | Use native completion delivery. |
 | `rememberAgents`, `outputTranscript` | `true` | Preserve sessions and transcripts for inspection and continuation. |

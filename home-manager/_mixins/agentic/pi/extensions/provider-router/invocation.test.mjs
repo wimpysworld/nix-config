@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { findPackageJSON } from "node:module";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { after, test } from "node:test";
@@ -117,6 +118,7 @@ function harness(display = false) {
 	registerRouter({ on: pi.on, events: pi.events });
 	return {
 		emit,
+		hasHandlers: (name) => (handlers.get(name)?.length ?? 0) > 0,
 		pi,
 		ctx,
 		notifications,
@@ -216,8 +218,21 @@ test("native Pi keeps root settings through preflight, retries, and settlement",
 		!nativeDirectory &&
 		"Set PI_CODING_AGENT_DIR to test the installed Pi runtime",
 }, async () => {
+	const aiPackage = findPackageJSON(
+		"@earendil-works/pi-ai",
+		pathToFileURL(join(nativeDirectory, "package.json")),
+	);
+	const { getCurrentSystemPrompt } = await import(
+		pathToFileURL(join(aiPackage, "../dist/utils/transcript.js"))
+	);
 	const { AgentSession } = await import(
 		pathToFileURL(join(nativeDirectory, "dist/core/agent-session.js"))
+	);
+	const { normalizeBuildSystemPromptOptions } = await import(
+		pathToFileURL(join(nativeDirectory, "dist/core/system-prompt.js"))
+	);
+	const { SessionManager } = await import(
+		pathToFileURL(join(nativeDirectory, "dist/core/session-manager.js"))
 	);
 	const { Agent } = await import(
 		pathToFileURL(
@@ -247,7 +262,10 @@ test("native Pi keeps root settings through preflight, retries, and settlement",
 			streamFn: (model, context, options) => {
 				requests.push({
 					model: model.id,
-					context,
+					context: {
+						...context,
+						systemPrompt: getCurrentSystemPrompt(context.messages),
+					},
 					reasoning: options.reasoning,
 				});
 				if (outcome === "throw") throw new Error("synthetic transport failure");
@@ -298,7 +316,15 @@ test("native Pi keeps root settings through preflight, retries, and settlement",
 			agent,
 			_retryAttempt: 0,
 			_pendingNextTurnMessages: [],
-			_baseSystemPrompt: "base",
+			_pendingToolNames: new Set(),
+			_deferredSettledActions: [],
+			_entryIdsByMessage: new WeakMap(),
+			sessionManager: SessionManager.inMemory(home),
+			_baseSystemPromptOptions: normalizeBuildSystemPromptOptions({
+				cwd: home,
+				forceSystemPrompt: "base",
+				selectedTools: [],
+			}),
 			settingsManager: {
 				getRetrySettings: () => ({
 					enabled: true,
@@ -323,17 +349,30 @@ test("native Pi keeps root settings through preflight, retries, and settlement",
 				return true;
 			},
 			_extensionRunner: {
-				hasHandlers: () => true,
+				hasHandlers: h.hasHandlers,
 				emitInput: async (text) =>
 					(await h.emit("input", { text })) ?? { action: "continue" },
-				emitBeforeAgentStart: async () => h.emit("before_agent_start", {}),
+				emitBeforeAgentStart: async (trigger, systemPromptOptions) => {
+					const options = normalizeBuildSystemPromptOptions(systemPromptOptions);
+					await h.emit("before_agent_start", {
+						...trigger,
+						type: "before_agent_start",
+						systemPromptOptions: options,
+					});
+					return { messages: [], systemPromptOptions: options };
+				},
 				emit: (event) => h.emit(event.type, event),
 			},
 		});
 		session._installAgentNextTurnRefresh();
+		session._installAgentForcedPromptProjection();
 		agent.subscribe(async (event) => {
-			if (event.type === "message_end" && event.message.role === "assistant")
-				session._lastAssistantMessage = event.message;
+			if (event.type === "message_end") {
+				const entryId = session.sessionManager.appendMessage(event.message);
+				session._entryIdsByMessage.set(event.message, entryId);
+				if (event.message.role === "assistant")
+					session._lastAssistantMessage = event.message;
+			}
 			await h.emit(event.type, event);
 		});
 		if (outcome === "preflight") {
