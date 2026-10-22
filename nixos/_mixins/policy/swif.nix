@@ -8,11 +8,16 @@
   ...
 }:
 let
+  # Swif is disabled because IT does not permit NixOS with Swif. The module
+  # and NixOS-Swif.md stay in place. Set this to true to enable it again.
+  swifPermitted = false;
+
   # Swif does not support NixOS on ARM. The platform comes from noughty, not
   # pkgs, because the gated vendor files set nixpkgs.config and reading pkgs
   # here would recurse.
   enableSwif =
-    noughtyLib.hostHasTag "cg"
+    swifPermitted
+    && noughtyLib.hostHasTag "cg"
     && noughtyLib.isHost [ "ravi" ]
     && config.noughty.host.platform == "x86_64-linux";
 
