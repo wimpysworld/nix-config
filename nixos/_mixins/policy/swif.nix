@@ -111,6 +111,12 @@ in
       inherit nixRootPath;
     };
 
+    # The vendor fixes the hidden admin user at UID 991 with mkDefault, which
+    # collides with system users that NixOS allocates dynamically, such as
+    # nullmailer. Let NixOS allocate a free UID instead. The vendor module
+    # refers to the user by name only.
+    users.users.swifteam.uid = null;
+
     systemd = {
       services.swif-agent-installer.serviceConfig = {
         ExecStart = lib.mkForce (lib.getExe swifInstall);

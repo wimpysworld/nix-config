@@ -109,7 +109,6 @@ Never commit the generated files to this public repository.
 Before the switch, on the host:
 
 ```bash
-getent passwd 991    # Must print nothing.
 getent group swifteam # Must print nothing.
 ```
 
@@ -152,7 +151,9 @@ Console > Device Inventory.
 
 - Device lock: when `/tmp/swif-device-lock-pin-code.txt` exists, the next boot
   switches to tty2 and asks for the PIN before the greeter starts.
-- Hidden admin user: `swifteam`, UID 991, member of `wheel`. The agent writes
+- Hidden admin user: `swifteam`, a system user with a UID that NixOS
+  allocates, member of `wheel`. The vendor fixes UID 991, which collides with
+  dynamically allocated system users such as nullmailer. The agent writes
   its password hash. It has full `sudo` access.
 
 ## Accepted risks
