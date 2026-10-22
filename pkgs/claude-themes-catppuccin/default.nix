@@ -6,13 +6,13 @@
 
 stdenvNoCC.mkDerivation {
   pname = "claude-themes-catppuccin";
-  version = "0.2.1";
+  version = "0.2.2";
 
   src = fetchFromGitHub {
     owner = "matcra587";
     repo = "claude-themes";
-    rev = "335b7713136662d8538b04dcde3369563bd620a6";
-    hash = "sha256-ky7dgCpKVlIIxSXC9WO1TQv6Ue3/aVWTZHVsVWp3z2M=";
+    rev = "d9de2d4e12ba27dde79979552e002566bf9194f1";
+    hash = "sha256-c4IzT4g5WuGX1+7i4KTopEd/u21fJIiDNYSTciTnEOU=";
     sparseCheckout = [ "plugins/catppuccin" ];
   };
 
