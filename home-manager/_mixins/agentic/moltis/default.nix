@@ -177,9 +177,7 @@ in
       home.shellAliases.moltis-log = "journalctl --user -u moltis.service";
 
       systemd.user.services.moltis = {
-        # Same ordering `agentsview-pg-push` uses for its sops-rendered
-        # `EnvironmentFile`: start only after sops-nix materialised the
-        # rendered `moltis.toml` symlink.
+        # Start only after sops-nix creates the rendered `moltis.toml` symlink.
         Unit = {
           Description = "Moltis - secure persistent personal agent server";
           After = [

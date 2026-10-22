@@ -344,8 +344,6 @@ tags = [
   "inference",
   "hermes",
   "gatus",
-  "postgres",
-  "agentsview",
   "irc-bouncer",
   "kmscon",
 ]

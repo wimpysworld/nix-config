@@ -17,7 +17,6 @@ AVOption
 ActionController
 Actionlint
 Aetf
-AgentsView
 Aider
 Aider's
 Allowlist
@@ -608,7 +607,6 @@ addLayer
 additionalDirectories
 adversarially
 agenix
-agentsview
 allowExecute
 allowlist
 allowlisting

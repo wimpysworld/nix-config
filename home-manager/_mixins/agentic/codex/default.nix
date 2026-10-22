@@ -769,8 +769,7 @@ lib.mkMerge [
     };
 
     # Enforce the rollout retention window on a daily schedule. macOS gets the
-    # `codex-prune-rollouts` command but no timer, matching the agentsview mixin,
-    # which also schedules on Linux only.
+    # `codex-prune-rollouts` command but no timer.
     systemd.user.services.codex-prune-rollouts = lib.mkIf host.is.linux {
       Unit.Description = "Prune Codex session rollouts older than ${toString rolloutRetentionDays} days";
 
