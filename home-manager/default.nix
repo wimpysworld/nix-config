@@ -3,7 +3,6 @@
   config,
   inputs,
   lib,
-  noughtyLib,
   outputs,
   pkgs,
   stateVersion,
@@ -86,13 +85,7 @@ in
         ''
       ))
     ];
-    homeDirectory =
-      if host.is.darwin then
-        "/Users/${username}"
-      else if noughtyLib.hostHasTag "lima" then
-        "/home/${username}.linux"
-      else
-        "/home/${username}";
+    homeDirectory = if host.is.darwin then "/Users/${username}" else "/home/${username}";
     file = lib.mkIf host.is.workstation {
       ".config/fontconfig/fonts.conf".text = ''
         <?xml version="1.0"?>
@@ -302,8 +295,7 @@ in
       };
     };
     userDirs = {
-      # Do not create XDG directories for LIMA; it is confusing
-      enable = host.is.linux && !(noughtyLib.hostHasTag "lima");
+      enable = host.is.linux;
       createDirectories = lib.mkDefault true;
       # The default flips to false for stateVersion >= 26.05; pin true to keep
       # exporting XDG_*_DIR session variables as before.

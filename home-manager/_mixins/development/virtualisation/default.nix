@@ -1,7 +1,6 @@
 {
   config,
   lib,
-  noughtyLib,
   pkgs,
   ...
 }:
@@ -16,10 +15,10 @@ lib.mkIf virtualisationEnabled {
       ".distroboxrc" = lib.mkIf config.programs.distrobox.enable {
         text = "${pkgs.xhost}/bin/xhost +si:localuser:$USER";
       };
-      "Quickemu/nihilus/.keep" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) {
+      "Quickemu/nihilus/.keep" = {
         text = "";
       };
-      "Quickemu/nihilus.conf" = lib.mkIf (!(noughtyLib.hostHasTag "lima")) {
+      "Quickemu/nihilus.conf" = {
         text = ''
           #!/run/current-system/sw/bin/quickemu --vm
           guest_os="linux"

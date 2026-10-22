@@ -30,10 +30,6 @@ These computers are managed by this Nix flake ❄️
 |  `atrius`   |       [ThinkPad T495s]        |      [AMD Ryzen 7 3700U]       | 16GB  |     AMD Radeon Vega 10      |                          |  💻️   | ❄️  |  🚧   |
 |   `momin`   | [Mac Mini M2 Pro]     |       Apple M2 Pro chip        | 32GB  |      Apple M2 Pro GPU       |                          |   🖥️  | 🍏  |  ✅   |
 | `steamdeck` |     [Steam Deck 64GB LCD]     |          Zen 2 4c/8t           | 16GB  |        8 RDNA 2 CUs         |                          |  🎮️   | 🐧  |  ✅   |
-|  `crawler`  |            [QEMU]             |               -                |   -   |           [VirGL]           |                          |   🐄   | ❄️  |  ✅   |
-|  `dagger`   |            [QEMU]             |               -                |   -   |           [VirGL]           |                          |   🐄   | ❄️  |  ✅   |
-| `defender`  |            [Lima]             |               -                |   -   |              -              |                          |   🐄   | 🐧  |  ✅   |
-|  `fighter`  |            [Lima]             |               -                |   -   |              -              |                          |   🐄   | 🐧  |  ✅   |
 |   `revan`   |       [Z390-DESIGNARE]        |     [Intel Core i9-9900K]      | 64GB  |   Intel UHD Graphics 630    |      [NVIDIA T1000]      |   ☁️   | ❄️  |  🚧   |
 |   `malak`   |        [B360 HD3P-LM]         |      [Intel Core i7-8700]      | 128GB |   Intel UHD Graphics 630    |            -             |   ☁️   | ❄️  |  ✅   |
 |   `maul`    |       [TRX40-DESIGNARE]       | [AMD Ryzen Threadripper 3970X] | 256GB |       NVIDIA RTX 3090       | NVIDIA RTX 2080Ti (22GB) |   ☁️   | ❄️  |  🚧   |
@@ -141,8 +137,6 @@ The full noughty option reference, helper functions, and usage patterns are docu
 │  │  └── virtualisation
 │  ├── atrius
 │  ├── bane
-│  ├── crawler -> dagger
-│  ├── dagger
 │  ├── felkor
 │  ├── malak
 │  ├── nihilus
@@ -369,11 +363,6 @@ Things I currently need to do manually after installation.
 
 ### System
 
-`defender` and `fighter` are Ubuntu virtual machines run under [Lima] for Ubuntu development and testing.
-
-- [ ] On Linux run (optional)
-  - `create-defender`
-  - `create-fighter`
 - [ ] On macOS run (optional)
   - Run Docker Desktop to complete the setup.
 
@@ -410,8 +399,6 @@ Some applications require manual configuration to apply the correct theme.
 [ThinkPad T495s]: https://www.lenovo.com/us/en/p/laptops/thinkpad/thinkpadt/t495s/22tp2tt495s
 [Mac Mini M2 Pro]: https://support.apple.com/en-gb/111837
 [Steam Deck 64GB LCD]: https://store.steampowered.com/steamdeck
-[QEMU]: https://www.qemu.org/
-[Lima]: https://lima-vm.io/
 [Intel Core i9-9900K]: https://www.intel.com/content/www/us/en/products/sku/186605/intel-core-i99900k-processor-16m-cache-up-to-5-00-ghz/specifications.html
 [Intel Core i7-8700]: https://www.intel.com/content/www/us/en/products/sku/126686/intel-core-i78700-processor-12m-cache-up-to-4-60-ghz/specifications.html
 [Intel Xeon E-2176M]: https://ark.intel.com/content/www/us/en/ark/products/134867/intel-xeon-e-2176m-processor-12m-cache-up-to-4-40-ghz.html
@@ -426,7 +413,6 @@ Some applications require manual configuration to apply the correct theme.
 [AMD Radeon 8060S]: https://www.techpowerup.com/gpu-specs/radeon-8060s.c4270
 [NVIDIA Quadro P2000 Max-Q]: https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/productspage/quadro/quadro-desktop/quadro-pascal-p2000-data-sheet-us-nvidia-704443-r2-web.pdf
 [NVIDIA T1000]: https://www.nvidia.com/content/dam/en-zz/Solutions/design-visualization/productspage/quadro/quadro-desktop/proviz-print-nvidia-T1000-datasheet-us-nvidia-1670054-r4-web.pdf
-[VirGL]: https://docs.mesa3d.org/drivers/virgl.html
 [.github]: ./.github/workflows
 [Modern Unix]: ./home-manager/default.nix
 [OpenSSH]: ./nixos/_mixins/network/ssh/default.nix

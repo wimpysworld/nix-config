@@ -1,7 +1,7 @@
 # System registry - central definition of all systems and their properties
 #
 # Canonical tag vocabulary:
-#   Host tags: studio, davinci, gamedev, streamdeck, pci-hdmi-capture, thinkpad, framework, cg, steamdeck, wsl, iso, reframe, inference, scrutiny, dropbox, borgbackup, fprintd, strix-halo, gatus, irc-bouncer, handy, kmscon, lima, moltis, openstack, roamgate
+#   Host tags: studio, davinci, gamedev, streamdeck, pci-hdmi-capture, thinkpad, framework, cg, steamdeck, wsl, iso, reframe, inference, scrutiny, dropbox, borgbackup, fprintd, strix-halo, gatus, irc-bouncer, handy, kmscon, moltis, openstack, roamgate
 #   User tags: developer, admin, family
 #
 # Registry fields:
@@ -365,34 +365,6 @@ tags = ["openstack"]
 [cognus.hardware]
 thunderbolt = false
 smart = false
-
-# Linux VMs
-
-[crawler]
-kind = "vm"
-platform = "x86_64-linux"
-
-[dagger]
-kind = "vm"
-platform = "x86_64-linux"
-desktop = "hyprland"
-
-# Lima VMs (Home Manager only; tag drives module selection)
-
-[blackace]
-kind = "vm"
-platform = "x86_64-linux"
-tags = ["lima"]
-
-[defender]
-kind = "vm"
-platform = "x86_64-linux"
-tags = ["lima"]
-
-[fighter]
-kind = "vm"
-platform = "x86_64-linux"
-tags = ["lima"]
 
 # WSL (Home Manager only; tag drives module selection)
 

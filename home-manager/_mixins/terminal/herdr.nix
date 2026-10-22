@@ -785,10 +785,9 @@ let
   # server.
   herdrProfileBin = "${config.home.profileDirectory}/bin/herdr";
   herdrSocket = "${config.xdg.configHome}/herdr/herdr.sock";
-  # NixOS runs `ssh-agent.service` in the user manager. Lima and WSL hosts are
+  # NixOS runs `ssh-agent.service` in the user manager. WSL hosts are
   # Home Manager only, so they have no such unit.
-  hostHasSshAgentUnit =
-    host.is.linux && !(noughtyLib.hostHasTag "lima" || noughtyLib.hostHasTag "wsl");
+  hostHasSshAgentUnit = host.is.linux && !(noughtyLib.hostHasTag "wsl");
   # Panes of a server that starts at boot have no display. These are the
   # variables the compositor imports into the user manager, with a generic
   # fallback for a desktop outside the compositor contract.

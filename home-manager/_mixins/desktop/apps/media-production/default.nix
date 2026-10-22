@@ -53,10 +53,10 @@ in
 
   home.packages =
     with pkgs;
-    lib.optionals (host.is.workstation && !(noughtyLib.hostHasTag "lima")) [
+    lib.optionals host.is.workstation [
       audacity
     ]
-    ++ lib.optionals (host.is.workstation && !(noughtyLib.hostHasTag "lima") && host.is.linux) [
+    ++ lib.optionals (host.is.workstation && host.is.linux) [
       gimp3
       inkscape
     ]

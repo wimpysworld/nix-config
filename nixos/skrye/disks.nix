@@ -173,10 +173,6 @@ in
                       mountpoint = "/home/${username}/.cache";
                       mountOptions = cacheBtrfsOpts;
                     };
-                    "@lima" = {
-                      mountpoint = "/home/${username}/.lima";
-                      mountOptions = nodatacowBtrfsOpts;
-                    };
                     "@quickemu" = {
                       mountpoint = "/home/${username}/Quickemu";
                       mountOptions = nodatacowBtrfsOpts;

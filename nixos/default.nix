@@ -297,7 +297,6 @@ in
   };
 
   # Create symlink to /bin/bash
-  # - https://github.com/lima-vm/lima/issues/2110
   systemd = {
     settings.Manager = {
       DefaultTimeoutStopSec = "10s";

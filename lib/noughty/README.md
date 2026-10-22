@@ -126,7 +126,7 @@ A specialArg-based approach was analysed and rejected: specialArgs are static an
 | `gaming` / `steamdeck` | `computer` | Use-case, not a system class; use tags |
 | `darwin` | `computer` | OS, not a system class; `host.os` captures this |
 | `server` | `server` | Unchanged |
-| `vm` / `lima` / `wsl` | `vm` | Implementation details use tags (`"lima"`, `"wsl"`) |
+| `vm` / `wsl` | `vm` | Implementation details use tags (`"wsl"`) |
 | `iso` | *(not applicable)* | Deployment medium, not a system class; `is.iso` boolean |
 
 ### `noughty.host.is` - Derived boolean flags
@@ -339,7 +339,7 @@ Tags are freeform `listOf str`. The canonical vocabulary is documented in a comm
 
 - **Host tags:**
   - `studio`, `davinci`, `gamedev`, `streamdeck`
-  - `pci-hdmi-capture`, `thinkpad`, `cg`, `steamdeck`, `lima`, `wsl`
+  - `pci-hdmi-capture`, `thinkpad`, `cg`, `steamdeck`, `wsl`
   - `iso`, `reframe`, `inference`, `scrutiny`, `dropbox`
   - `borgbackup`, `fprintd`, `strix-halo`, `gatus`, `irc-bouncer`, `handy`
 - **User tags:** `developer`, `admin`, `family`

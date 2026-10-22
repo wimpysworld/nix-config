@@ -35,7 +35,7 @@ let
     pkgs.keybase-gui
   ];
 in
-lib.mkIf (noughtyLib.isUser [ "martin" ] && !(noughtyLib.hostHasTag "lima")) {
+lib.mkIf (noughtyLib.isUser [ "martin" ]) {
   home = {
     file = lib.mkIf (host.is.linux && isKeybaseHost) {
       "${config.xdg.configHome}/keybase/autostart_created".text = ''

@@ -115,7 +115,6 @@ in
       inherit (final.unstable) hyprland;
       inherit (final.unstable) mango;
       inherit (final.unstable) zed-editor;
-      inherit (final.unstable) lima;
       inherit (final.unstable) markless;
       inherit (final.unstable) mas;
       inherit (final.unstable) melange;

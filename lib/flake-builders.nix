@@ -60,7 +60,7 @@ let
     let
       tags = e.tags or [ ];
     in
-    builtins.elem "wsl" tags || builtins.elem "lima" tags || builtins.elem "steamdeck" tags;
+    builtins.elem "wsl" tags || builtins.elem "steamdeck" tags;
 
   # Single source of truth for nixpkgs instantiation.
   mkPkgs =
