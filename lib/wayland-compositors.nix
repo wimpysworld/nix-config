@@ -41,8 +41,6 @@
       capabilities = {
         clientSideDecorations = false;
         picker = true;
-        # SwayNC gets no blur behind it, so its surfaces need more opacity.
-        opaqueLayers = true;
       };
       # The Mango Home Manager module defines the custom/tagN modules, because
       # their commands need store paths. Waybar's ext/workspaces cannot sync
@@ -103,7 +101,6 @@
       capabilities = {
         clientSideDecorations = true;
         picker = true;
-        opaqueLayers = false;
       };
       waybar = {
         workspaceModule = "wayfire/workspaces";

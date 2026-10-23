@@ -8,18 +8,10 @@
 let
   inherit (config.noughty) host;
   palette = catppuccinPalette;
-  compositor =
-    if host.is.linux && host.is.workstation then
-      lib.attrByPath [
-        host.desktop
-      ] null (import ../../../../../../lib/wayland-compositors.nix).compositors
-    else
-      null;
-  # Without blur behind them, translucent surfaces show the windows below
-  # in sharp focus, so they need more opacity to stay readable.
-  opaqueLayers = compositor != null && compositor.capabilities.opaqueLayers;
-  notificationAlpha = if opaqueLayers then "0.96" else "0.9";
-  controlCenterAlpha = if opaqueLayers then "0.92" else "0.72";
+  # Neither compositor blurs behind SwayNC, because its shadow margin would
+  # blur into a halo, so its translucent surfaces need high opacity.
+  notificationAlpha = "0.96";
+  controlCenterAlpha = "0.92";
 in
 lib.mkIf (host.is.linux && host.is.workstation) {
   # GTK's symbolic icon node parser ignores SVG group transforms in Papirus icons.

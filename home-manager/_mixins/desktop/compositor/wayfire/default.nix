@@ -39,6 +39,16 @@ let
       outputsToInstall = [ "out" ];
     };
   };
+  launcherLayers = [
+    "launcher"
+    "rofi"
+  ];
+  blurredLayers = launcherLayers ++ [
+    "avizo"
+    "waybar"
+    "wleave"
+  ];
+  matchLayers = namespaces: lib.concatMapStringsSep " | " (n: ''app_id is "${n}"'') namespaces;
   sessionAdapter = pkgs.writeShellApplication {
     name = "wayland-session-adapter";
     runtimeInputs = with pkgs; [
@@ -79,18 +89,38 @@ in
         extraCommands = [ "wayland-session start" ];
       };
       settings = {
-        # Window animations
+        # Window animations. The launchers zoom like they do on Mango, and
+        # other overlay surfaces, including wleave, keep the default fade.
+        # Wayfire checks fade before zoom, so fade excludes the launchers.
         animate = {
           open_animation = "zap";
           close_animation = "spin";
           duration = 300;
+          fade_enabled_for = ''type is "overlay" & !(${matchLayers launcherLayers})'';
+          zoom_enabled_for = ''!(type is "toplevel") & (${matchLayers launcherLayers})'';
+          zoom_duration = "300ms circle";
         };
         autostart = {
           # Disable wf-shell autostart, we're using waybar et al instead
           autostart_wf_shell = false;
         };
+        # Wayfire blurs only toplevels by default. Keep that, as Mango also
+        # blurs behind windows, and add the translucent desktop shell layer
+        # surfaces that Mango blurs; they match by app_id, which is their
+        # layer-shell namespace. Blur only shows behind pixels that are
+        # already translucent, so opaque windows look the same. SwayNC stays
+        # unblurred, because its transparent shadow margin would blur into a
+        # halo.
+        blur = {
+          blur_by_default = ''type is "toplevel" | (${matchLayers blurredLayers})'';
+          method = "kawase";
+          kawase_offset = 1.7;
+          kawase_degrade = 3;
+          kawase_iterations = 2;
+          saturation = 1.0;
+        };
         core = {
-          plugins = "animate autostart blur command cube expo foreign-toplevel grid gtk-shell idle ipc ipc-rules move vecdecor place resize session-lock shortcuts-inhibit stipc switcher vswipe vswitch winshadows wm-actions wobbly xdg-activation";
+          plugins = "animate blur command cube expo foreign-toplevel grid gtk-shell idle ipc ipc-rules move vecdecor place resize session-lock shortcuts-inhibit stipc switcher vswipe vswitch winshadows wm-actions wobbly xdg-activation";
           preferred_decoration_mode = "server";
           vwidth = 8;
           vheight = 1;
