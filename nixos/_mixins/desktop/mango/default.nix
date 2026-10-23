@@ -3,7 +3,6 @@
   config,
   lib,
   noughtyLib,
-  pkgs,
   ...
 }:
 let
@@ -51,23 +50,9 @@ in
           };
         }
       ];
-      # The stable module only installs the package, registers its session and
-      # writes the portal configuration, so it works with the 0.18 package from
-      # the unstable channel.
-      mangowc = {
-        enable = true;
-        package = pkgs.mango;
-      };
       udevil.enable = true;
-      xwayland.enable = lib.mkDefault true;
     };
 
-    services = {
-      devmon.enable = true;
-      graphical-desktop.enable = true;
-      xserver.desktopManager.runXdgAutostartIfNone = lib.mkDefault true;
-    };
-
-    xdg.portal.wlr.enable = true;
+    services.devmon.enable = true;
   };
 }

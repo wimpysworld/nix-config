@@ -8,7 +8,9 @@ let
   inherit (config.noughty) host;
   isIntelCPU = config.hardware.cpu.intel.updateMicrocode;
   isThinkpad = noughtyLib.hostHasTag "thinkpad";
-  usePowerProfiles = config.programs.wayfire.enable || config.programs.mangowc.enable;
+  desktopName = if builtins.isString host.desktop then host.desktop else "";
+  waylandCompositors = (import ../../../../lib/wayland-compositors.nix).compositors;
+  usePowerProfiles = builtins.hasAttr desktopName waylandCompositors;
 in
 lib.mkIf (!host.is.iso) {
   # Power Management strategy:

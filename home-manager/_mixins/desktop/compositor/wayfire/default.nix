@@ -18,6 +18,27 @@ let
       toFloat = hexString: toString (builtins.div (builtins.fromTOML "value=0x${hexString}").value 255.0);
     in
     "${toFloat red} ${toFloat green} ${toFloat blue} ${toString alpha}";
+  # Wayfire and the clients it starts find the desktop GSettings schemas
+  # through XDG_DATA_DIRS.
+  wayfireWithGSettingsSchemas = pkgs.symlinkJoin {
+    inherit (pkgs.wayfire) version;
+    pname = "wayfire-with-gsettings-schemas";
+    paths = [ pkgs.wayfire ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+
+    postBuild = ''
+      wrapProgram $out/bin/wayfire \
+        --prefix XDG_DATA_DIRS : ${pkgs.glib.makeSchemaDataDirPath pkgs.gsettings-desktop-schemas pkgs.gsettings-desktop-schemas.name}
+    '';
+
+    passthru = pkgs.wayfire.passthru // {
+      unwrapped = pkgs.wayfire;
+    };
+
+    meta = pkgs.wayfire.meta // {
+      outputsToInstall = [ "out" ];
+    };
+  };
   sessionAdapter = pkgs.writeShellApplication {
     name = "wayland-session-adapter";
     runtimeInputs = with pkgs; [
@@ -47,6 +68,7 @@ in
 
     wayland.windowManager.wayfire = {
       enable = true;
+      package = wayfireWithGSettingsSchemas;
       plugins = with pkgs.wayfirePlugins; [
         wcm
         wayfire-plugins-extra
@@ -211,17 +233,6 @@ in
         };
       };
       xwayland.enable = true;
-    };
-    xdg = {
-      portal = {
-        config = {
-          common = {
-            "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
-            "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
-          };
-        };
-        configPackages = [ config.wayland.windowManager.wayfire.package ];
-      };
     };
   };
 }

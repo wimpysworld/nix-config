@@ -35,7 +35,7 @@ let
     ]
     [
       "launcher"
-      "nativeSessionsPath"
+      "nativeSessions"
     ]
     [ "sessionTarget" ]
     [ "startupEnvironment" ]
@@ -135,7 +135,6 @@ let
   baneHome = homeConfigurations."martin@bane".config;
   felkorHome = homeConfigurations."martin@felkor".config;
   skryeHome = homeConfigurations."martin@skrye".config;
-  baneNixosWayfirePlugins = nixosConfigurations.bane.config.programs.wayfire.plugins;
   packageNamed =
     name: packages:
     let
@@ -144,9 +143,7 @@ let
     assert builtins.length matches == 1;
     builtins.head matches;
   baneHomeWayfire = baneHome.wayland.windowManager.wayfire;
-  baneNixosVecdecor = packageNamed "vecdecor" baneNixosWayfirePlugins;
   baneHomeVecdecor = packageNamed "vecdecor" baneHomeWayfire.plugins;
-  baneNixosExtraPlugins = packageNamed "wayfire-plugins-extra" baneNixosWayfirePlugins;
   baneHomeExtraPlugins = packageNamed "wayfire-plugins-extra" baneHomeWayfire.plugins;
   coreHasPlugin =
     wayfire: plugin: builtins.elem plugin (lib.splitString " " wayfire.settings.core.plugins);
@@ -234,6 +231,40 @@ let
     ++ wayfireStartupEnvironment
   );
 
+  # Home Manager issue 7124: the Home Manager portal directory hides every
+  # backend that only NixOS installs, so Home Manager must list them all.
+  portalNames = packages: map lib.getName packages;
+  homeCoversNixosPortals =
+    host:
+    lib.all (
+      name:
+      builtins.elem name (portalNames homeConfigurations."martin@${host}".config.xdg.portal.extraPortals)
+    ) (portalNames nixosConfigurations.${host}.config.xdg.portal.extraPortals);
+  # Only hosts without NixOS register the portals with the user manager.
+  skryeGenericHome =
+    (homeConfigurations."martin@skrye".extendModules {
+      modules = [ { targets.genericLinux.enable = true; } ];
+    }).config;
+  registersPortals =
+    home:
+    builtins.elem "xdg-desktop-portal" (portalNames home.systemd.user.packages)
+    && builtins.elem "xdg-desktop-portal" (portalNames home.dbus.packages)
+    && home.xdg.dataFile ? "xdg-desktop-portal/portals/wlr.portal"
+    && home.xdg.dataFile ? "xdg-desktop-portal/portals/gtk.portal";
+
+  # The shim must start the compositor by bare name, so that the login PATH
+  # resolves the Home Manager binary.
+  mangoLauncherArguments = lib.escapeShellArgs [
+    "mango"
+    "Mango"
+    "mango"
+  ];
+  wayfireLauncherArguments = lib.escapeShellArgs [
+    "wayfire"
+    "Wayfire"
+    "wayfire"
+  ];
+
   contractResult = {
     compositorNames = builtins.attrNames contract.compositors;
     inherit (contract) default;
@@ -272,19 +303,26 @@ assert
 assert !enableHostIntegration || baneHome.wayland.systemd.target == "wayfire-session.target";
 assert !enableHostIntegration || skryeHome.wayland.systemd.target == "mangowm-session.target";
 assert !enableHostIntegration || skryeHome.wayland.windowManager.mango.enable;
-assert !enableHostIntegration || nixosConfigurations.skrye.config.programs.mangowc.enable;
+assert !enableHostIntegration || !nixosConfigurations.skrye.config.programs.mangowc.enable;
+assert
+  !enableHostIntegration
+  || builtins.elem skryeHome.wayland.windowManager.mango.package skryeHome.home.packages;
 assert !enableHostIntegration || felkorHome.wayland.systemd.target == "mangowm-session.target";
 assert
   !enableHostIntegration
   || felkorHome.systemd.user.targets.mangowm-session.Unit.BindsTo == [ "graphical-session.target" ];
-assert !enableHostIntegration || nixosConfigurations.felkor.config.programs.mangowc.enable;
+assert !enableHostIntegration || !nixosConfigurations.felkor.config.programs.mangowc.enable;
 assert
   !enableHostIntegration
   || lib.versions.majorMinor felkorHome.wayland.windowManager.mango.package.version == "0.18";
-assert !enableHostIntegration || lib.getName baneNixosVecdecor == "vecdecor";
-assert !enableHostIntegration || lib.getName baneHomeVecdecor == "vecdecor";
+assert !enableHostIntegration || !nixosConfigurations.bane.config.programs.wayfire.enable;
 assert
-  !enableHostIntegration || builtins.elem "-Denable_pixdecor=true" baneNixosExtraPlugins.mesonFlags;
+  !enableHostIntegration || lib.getName baneHomeWayfire.package == "wayfire-with-gsettings-schemas";
+assert !enableHostIntegration || lib.getName baneHomeVecdecor == "vecdecor";
+assert !enableHostIntegration || homeCoversNixosPortals "bane";
+assert !enableHostIntegration || homeCoversNixosPortals "skrye";
+assert !enableHostIntegration || !(registersPortals skryeHome);
+assert !enableHostIntegration || registersPortals skryeGenericHome;
 assert
   !enableHostIntegration || builtins.elem "-Denable_pixdecor=true" baneHomeExtraPlugins.mesonFlags;
 assert !enableHostIntegration || coreHasPlugin baneHomeWayfire "vecdecor";
@@ -341,6 +379,10 @@ pkgs.runCommand "wayland-compositor-contract" { } ''
       ${waylandShim nixosConfigurations.felkor}/bin/wayland-session-cleanup >/dev/null
     grep -F -- ${lib.escapeShellArg mangoCleanupArguments} \
       ${waylandShim nixosConfigurations.skrye}/bin/wayland-session-cleanup >/dev/null
+    grep -F -- ${lib.escapeShellArg "start-wayland.sh ${wayfireLauncherArguments} "} \
+      ${waylandShim nixosConfigurations.bane}/bin/start-wayland >/dev/null
+    grep -F -- ${lib.escapeShellArg "start-wayland.sh ${mangoLauncherArguments} "} \
+      ${waylandShim nixosConfigurations.skrye}/bin/start-wayland >/dev/null
     grep -F -- ${lib.escapeShellArg "set -- ${wayfireStartupArguments} \"\$@\""} \
       ${sessionPackage baneHome}/bin/wayland-session >/dev/null
     grep -F -- ${lib.escapeShellArg "set -- ${mangoStartupArguments} \"\$@\""} \

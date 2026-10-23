@@ -16,10 +16,12 @@ let
       desktopNames
       logName
       name
+      nativeSessions
       ;
+    # Home Manager installs the compositor, so the launcher is a bare command
+    # that resolves through the login PATH to the user profile.
     launcher = compositor.launcher.command;
     launcherPrefixArgs = compositor.launcher.prefixArgs;
-    nativeSessions = lib.attrByPath compositor.launcher.nativeSessionsPath [ ] config;
     inherit (compositor) ephemeralEnvironment sessionTarget;
     portalService = compositor.portal.service;
   };

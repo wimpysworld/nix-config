@@ -46,7 +46,10 @@ in
       }
     ];
 
-    home.packages = [ sessionAdapter ];
+    home.packages = [
+      cfg.package
+      sessionAdapter
+    ];
 
     # Mango starts graphical-session.target before `wayland-session start`
     # imports the contract environment, so set this one early.
@@ -123,15 +126,6 @@ in
             cp "$textPath" "$out"
             XDG_RUNTIME_DIR="$TMPDIR" mango -p -c "$out"
           '';
-      portal = {
-        config = {
-          common = {
-            "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
-            "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
-          };
-        };
-        configPackages = [ cfg.package ];
-      };
     };
   };
 }

@@ -7,6 +7,10 @@
 }:
 let
   inherit (config.noughty) host;
+  desktopName = if builtins.isString host.desktop then host.desktop else "";
+  compositor = lib.attrByPath [
+    desktopName
+  ] null (import ../../../lib/wayland-compositors.nix).compositors;
 in
 {
   imports = [
@@ -89,6 +93,27 @@ in
     })
     (lib.mkIf (host.is.linux && host.is.workstation && !host.is.iso) {
       programs.veila.enable = true;
+    })
+    # Home Manager installs and configures the compositor. NixOS keeps only
+    # the system services that a user profile cannot provide.
+    (lib.mkIf (host.is.linux && host.is.workstation && compositor != null) {
+      programs.xwayland.enable = lib.mkDefault true;
+      services = {
+        graphical-desktop.enable = true;
+        xserver.desktopManager.runXdgAutostartIfNone = lib.mkDefault true;
+      };
+    })
+    # Flatpak requires xdg.portal.enable. Home Manager owns the portal
+    # backends and their routing, so this stub only registers the frontend
+    # with one backend. The GTK backend ships no portals.conf, so listing it
+    # in configPackages adds no routing and only silences the NixOS warning
+    # about a missing portal configuration.
+    (lib.mkIf (host.is.linux && host.is.workstation && host.desktop != null) {
+      xdg.portal = {
+        enable = true;
+        configPackages = [ pkgs.xdg-desktop-portal-gtk ];
+        extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
+      };
     })
   ];
 }

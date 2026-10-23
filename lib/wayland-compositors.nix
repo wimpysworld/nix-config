@@ -7,15 +7,10 @@
         name = "Mango";
         comment = "A dwl-based tiling Wayland compositor with scenefx effects";
         desktopNames = "mango";
-        command = "/run/current-system/sw/bin/mango";
+        command = "mango";
         prefixArgs = [ ];
         logName = "mango";
-        nativeSessionsPath = [
-          "programs"
-          "mangowc"
-          "package"
-          "providedSessions"
-        ];
+        nativeSessions = [ "mango" ];
       };
       sessionTarget = "mangowm-session.target";
       startupEnvironment = [
@@ -73,15 +68,10 @@
         name = "Wayfire";
         comment = "A modular and extensible Wayland compositor";
         desktopNames = "Wayfire";
-        command = "/run/current-system/sw/bin/wayfire";
+        command = "wayfire";
         prefixArgs = [ ];
         logName = "wayfire";
-        nativeSessionsPath = [
-          "programs"
-          "wayfire"
-          "package"
-          "providedSessions"
-        ];
+        nativeSessions = [ "wayfire" ];
       };
       sessionTarget = "wayfire-session.target";
       startupEnvironment = [

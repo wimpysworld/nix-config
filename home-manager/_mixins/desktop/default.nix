@@ -27,6 +27,38 @@ in
       clockFormat = "24h";
       cursorSize = 32;
       gtkCatppuccinThemeName = "catppuccin-${config.catppuccin.flavor}-${config.catppuccin.accent}-standard";
+      # Home Manager issue 7124: until nixpkgs 26.11, the Home Manager portal
+      # directory hides every backend that only NixOS installs. Keep GTK here
+      # always, because the NixOS portal stub lists it.
+      portalBackends = {
+        gtk = pkgs.xdg-desktop-portal-gtk;
+      }
+      // lib.optionalAttrs (compositor != null) {
+        ${compositor.portal.backend} = pkgs.${compositor.portal.packageAttr};
+      };
+      portalRouting = {
+        default = lib.optional (compositor != null) compositor.portal.backend ++ [ "gtk" ];
+        # For "Open With" dialogs. GTK portal provides the familiar GNOME-style app chooser.
+        "org.freedesktop.impl.portal.AppChooser" = [ "gtk" ];
+        "org.freedesktop.impl.portal.FileChooser" = [ "gtk" ];
+        # Inhibit is useful for preventing sleep during media playback
+        "org.freedesktop.impl.portal.Inhibit" = [ "gtk" ];
+        # GTK portal gives you proper print dialogs.
+        "org.freedesktop.impl.portal.Print" = [ "gtk" ];
+        # Security/credentials
+        "org.freedesktop.impl.portal.Secret" = [ "gnome-keyring" ];
+        # GTK portal provides desktop settings that GTK apps query (fonts, themes, colour schemes).
+        "org.freedesktop.impl.portal.Settings" = [ "gtk" ];
+      }
+      // lib.optionalAttrs (compositor != null) {
+        "org.freedesktop.impl.portal.ScreenCast" = [ compositor.portal.backend ];
+        "org.freedesktop.impl.portal.Screenshot" = [ compositor.portal.backend ];
+      };
+      # Without NixOS, nothing else registers the portal units and D-Bus
+      # services with the user manager and the session bus.
+      portalPackages = lib.optionals config.targets.genericLinux.enable (
+        [ pkgs.xdg-desktop-portal ] ++ builtins.attrValues portalBackends
+      );
       gtkCatppuccinThemePackage = pkgs.catppuccin-gtk.override {
         accents = [ "${config.catppuccin.accent}" ];
         size = "standard";
@@ -179,6 +211,9 @@ in
         };
       };
 
+      dbus.packages = portalPackages;
+      systemd.user.packages = portalPackages;
+
       # Start tray applets such as nm-applet with --indicator, because the
       # Waybar tray shows only StatusNotifierItem icons.
       xsession.preferStatusNotifierItems = lib.mkIf host.is.linux true;
@@ -205,33 +240,36 @@ in
             noDisplay = true;
           };
         };
+        configFile = lib.mkIf (compositor != null && compositor.portal.backend == "wlr") {
+          # NixOS passed an empty settings file to xdg-desktop-portal-wlr
+          # through --config. The backend reads this file by default, which
+          # keeps those defaults without a NixOS service override.
+          "xdg-desktop-portal-wlr/config".text = lib.generators.toINI { } { };
+        };
+        # On hosts without NixOS, the frontend searches this directory for
+        # backends first. Each portal name matches its .portal file name.
+        dataFile = lib.mkIf config.targets.genericLinux.enable (
+          lib.mapAttrs' (
+            name: package:
+            lib.nameValuePair "xdg-desktop-portal/portals/${name}.portal" {
+              source = "${package}/share/xdg-desktop-portal/portals/${name}.portal";
+            }
+          ) portalBackends
+        );
         portal = {
           config = {
-            common = {
-              default = lib.optional (compositor != null) compositor.portal.backend ++ [ "gtk" ];
-              # For "Open With" dialogs. GTK portal provides the familiar GNOME-style app chooser.
-              "org.freedesktop.impl.portal.AppChooser" = [ "gtk" ];
-              "org.freedesktop.impl.portal.FileChooser" = [ "gtk" ];
-              # Inhibit is useful for preventing sleep during media playback
-              "org.freedesktop.impl.portal.Inhibit" = [ "gtk" ];
-              # GTK portal gives you proper print dialogs.
-              "org.freedesktop.impl.portal.Print" = [ "gtk" ];
-              # Security/credentials
-              "org.freedesktop.impl.portal.Secret" = [ "gnome-keyring" ];
-              # GTK portal provides desktop settings that GTK apps query (fonts, themes, colour schemes).
-              "org.freedesktop.impl.portal.Settings" = [ "gtk" ];
-            };
+            common = portalRouting;
+          }
+          // lib.optionalAttrs (compositor != null) {
+            # The frontend matches the lower-case XDG_CURRENT_DESKTOP value.
+            ${lib.toLower compositor.launcher.desktopNames} = portalRouting;
           };
           # Add xset to satisfy xdg-screensaver requirements
           configPackages = [
             pkgs.xset
           ];
           enable = true;
-          extraPortals = [
-            pkgs.xdg-desktop-portal
-            pkgs.xdg-desktop-portal-gtk
-          ]
-          ++ lib.optional (compositor != null) pkgs.${compositor.portal.packageAttr};
+          extraPortals = builtins.attrValues portalBackends;
           xdgOpenUsePortal = true;
         };
       };
