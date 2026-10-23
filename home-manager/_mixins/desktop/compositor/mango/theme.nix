@@ -121,6 +121,24 @@ in
       jump_label_decorate_padding_y = 6;
       # Hide the title label under the Alt-Tab switcher and overcircle view.
       title_message_bar_height = 0;
+
+      # Tab bar, which monocle, deck and vertical_deck draw above stacked
+      # windows. Each tab uses the window radius and border width. The bar
+      # has one border colour for every tab, so the focused tab shows
+      # mauve through its background, with crust text as on the jump
+      # labels. Mango has no urgent tab colour, no gap between tabs, and no
+      # gap between the bar and its window.
+      tab_bar_height = 32;
+      tab_bar_decorate_font_desc = "FiraCode Nerd Font Mono Bold 12";
+      tab_bar_decorate_fg_color = toMangoColor "subtext0" 1.0;
+      tab_bar_decorate_bg_color = toMangoColor "mantle" 0.9;
+      tab_bar_decorate_focus_fg_color = toMangoColor "crust" 1.0;
+      tab_bar_decorate_focus_bg_color = toMangoColor "mauve" 1.0;
+      tab_bar_decorate_border_color = toMangoColor "surface1" 1.0;
+      tab_bar_decorate_border_width = 2;
+      tab_bar_decorate_corner_radius = 8;
+      tab_bar_decorate_padding_x = 12;
+      tab_bar_decorate_padding_y = 0;
     };
   };
 }

@@ -11,20 +11,20 @@
 
 # Mango layout name, Mango layout symbol, and the menu label.
 layouts="\
-tile|T|󰕴 Tile
-right_tile|RT|󰛽 Right Tile
+tile|T| Leftside
+right_tile|RT| Rightside
 center_tile|CT|󰜨 Centre Tile
-vertical_tile|VT|󰛼 Vertical Tile
-scroller|S|󰕬 Scroller
+vertical_tile|VT|󱢈 Vertical Tile
+scroller|S|󰕬 Side Scroller
 vertical_scroller|VS|󰕯 Vertical Scroller
-grid|G|󰕰 Grid
-vertical_grid|VG|󰹪 Vertical Grid
+grid|G|󰕰 Grid Top
+vertical_grid|VG|󰕳 Grid Left
 monocle|M|󰖯 Monocle
-deck|K|󱟱 Deck
-vertical_deck|VK|󰛇 Vertical Deck
+deck|K| Deck Right
+vertical_deck|VK| Deck Bottom
 dwindle|DW|󰕮 Dwindle
-fair|F|󰕶 Fair
-vertical_fair|VF|󰕵 Vertical Fair"
+fair|F|󰕶 Fair Left
+vertical_fair|VF|󰕵 Fair Top"
 
 names=()
 symbols=()
