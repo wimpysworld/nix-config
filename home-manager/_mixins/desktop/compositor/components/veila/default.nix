@@ -14,6 +14,28 @@ let
   veila = inputs.veila.packages.${pkgs.stdenv.hostPlatform.system}.default;
   veilaBin = lib.getExe' veila "veila";
   veiladBin = lib.getExe' veila "veilad";
+  # Seconds of idle before Veila locks the session. The fade starts earlier so
+  # that it ends at the lock; veila-idle locks a little later as a backstop.
+  idleLockAfter = 300;
+  fadeSeconds = 10;
+  backstopLockAfter = idleLockAfter + 5;
+  veilaFadeLock = pkgs.writeShellApplication {
+    name = "veila-fade-lock";
+    runtimeInputs = [
+      pkgs.chayang
+      veila
+    ];
+    text = ''
+      # chayang exits 0 when the fade completes, 2 when input cancels it and 1
+      # on error. Lock on 0 and 1 so that a fault never leaves the session
+      # unlocked; do nothing on 2.
+      status=0
+      chayang -d ${toString fadeSeconds} || status=$?
+      if [ "$status" -ne 2 ]; then
+        veila lock
+      fi
+    '';
+  };
   fprintdEnabled = noughtyLib.hostHasTag "fprintd";
   # The placeholder glyph is a fingerprint on fprintd hosts, otherwise a key.
   unlockGlyph = if fprintdEnabled then "󰈷" else "󰌋";
@@ -346,9 +368,22 @@ lib.mkIf (host.is.linux && host.is.workstation) {
 
   # Tune the packaged idle monitor without editing the unit file.
   xdg.configFile."veila/idle.env".text = ''
-    VEILA_IDLE_LOCK_AFTER=300
+    VEILA_IDLE_LOCK_AFTER=${toString backstopLockAfter}
     VEILA_IDLE_SLEEP_FLAG=--lock-before-sleep
   '';
+
+  # Fade the outputs to black before the idle lock; input during the fade
+  # cancels it. Veila keeps the sleep lock, so swayidle handles no events.
+  services.swayidle = {
+    enable = true;
+    systemdTargets = [ sessionTarget ];
+    timeouts = [
+      {
+        timeout = idleLockAfter - fadeSeconds;
+        command = lib.getExe veilaFadeLock;
+      }
+    ];
+  };
 
   # Run the locker daemon and idle monitor as user services. The package ships
   # these as templates under share/veila/systemd with Debian paths, so define
@@ -388,7 +423,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
       Service = {
         Type = "simple";
         Environment = [
-          "VEILA_IDLE_LOCK_AFTER=300"
+          "VEILA_IDLE_LOCK_AFTER=${toString backstopLockAfter}"
           "VEILA_IDLE_SLEEP_FLAG=--lock-before-sleep"
         ];
         EnvironmentFile = "-%h/.config/veila/idle.env";

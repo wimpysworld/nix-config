@@ -200,7 +200,8 @@ in
         };
         idle = {
           toggle = "<super> KEY_Z";
-          screensaver_timeout = 300;
+          # Disable the cube screensaver; Veila owns the idle fade and lock.
+          screensaver_timeout = -1;
           dpms_timeout = 600;
         };
         input = {
