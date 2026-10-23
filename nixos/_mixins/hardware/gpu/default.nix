@@ -36,6 +36,19 @@ let
       pkgs.nvtopPackages.intel
     else
       pkgs.nvtopPackages.amd;
+  # Hide the TUI desktop entry from application launchers and drop the
+  # "(GUI)" suffix from the GUI entry; all other packaged keys are kept.
+  amdgpuTop = pkgs.symlinkJoin {
+    name = "amdgpu_top-launcher";
+    paths = [ pkgs.amdgpu_top ];
+    postBuild = ''
+      apps="$out/share/applications"
+      src="${pkgs.amdgpu_top}/share/applications"
+      rm -f "$apps/amdgpu_top.desktop" "$apps/amdgpu_top-tui.desktop"
+      sed 's/^Name=AMDGPU TOP (GUI)$/Name=AMDGPU TOP/' "$src/amdgpu_top.desktop" > "$apps/amdgpu_top.desktop"
+      sed '0,/^Type=Application$/s//Type=Application\nNoDisplay=true/' "$src/amdgpu_top-tui.desktop" > "$apps/amdgpu_top-tui.desktop"
+    '';
+  };
 in
 lib.mkIf (!host.is.iso && (host.is.workstation || host.gpu.hasAny)) {
 
@@ -64,24 +77,12 @@ lib.mkIf (!host.is.iso && (host.is.workstation || host.gpu.hasAny)) {
         cudaPackages.cudatoolkit
         nvitop
       ]
-      ++ lib.optionals (host.gpu.hasAmd && host.is.workstation) [ amdgpu_top ]
+      ++ lib.optionals (host.gpu.hasAmd && host.is.workstation) [ amdgpuTop ]
       ++ lib.optionals config.hardware.amdgpu.opencl.enable [
         rocmPackages.rocminfo
         rocmPackages.rocm-smi
       ]
       ++ lib.optionals host.gpu.hasIntel [ intel-gpu-tools ];
-    # Hide amdgpu_top desktop entries from application launchers; both the GUI
-    # and TUI variants are invoked from a terminal or script, not a launcher.
-    etc."xdg/applications/amdgpu_top.desktop".text = ''
-      [Desktop Entry]
-      Name=AMDGPU TOP (GUI)
-      NoDisplay=true
-    '';
-    etc."xdg/applications/amdgpu_top-tui.desktop".text = ''
-      [Desktop Entry]
-      Name=AMDGPU TOP (TUI)
-      NoDisplay=true
-    '';
   };
   hardware = {
     amdgpu = lib.mkIf host.gpu.hasAmd { opencl.enable = true; };

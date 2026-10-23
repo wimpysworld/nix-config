@@ -26,5 +26,10 @@
             ];
           };
         };
+
+        xdg.desktopEntries.senpai = {
+          name = "senpai";
+          noDisplay = true;
+        };
       };
 }
