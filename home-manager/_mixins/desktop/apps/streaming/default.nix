@@ -17,11 +17,8 @@ lib.mkIf (host.is.workstation && noughtyLib.hostHasTag "studio") {
   home = {
     file = {
       "/Studio/OBS/config/obs-studio/.keep".text = "";
-      "${config.xdg.dataHome}/chatterino/Themes/mocha-blue.json".text =
-        builtins.readFile ./chatterino-mocha-blue.json;
     };
     packages = with pkgs; [
-      chatterino2
       obs-cli
       obs-cmd
     ];

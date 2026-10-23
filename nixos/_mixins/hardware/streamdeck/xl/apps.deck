@@ -71,15 +71,6 @@
     exec = "fractal"
 
 [[keys]]
-  index = 12
-  [keys.widget]
-    id = "button"
-    [keys.widget.config]
-      icon = "~/Studio/StreamDeck/Icons/Chatterino.png"
-  [keys.action]
-    exec = "chatterino"
-
-[[keys]]
   index = 16
   [keys.widget]
     id = "button"

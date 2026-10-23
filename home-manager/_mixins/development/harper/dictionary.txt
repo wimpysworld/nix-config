@@ -100,7 +100,6 @@ Centered
 ChainShape
 ChainShapes
 Chainguard
-Chatterino
 CircleShape
 ClaudeAI
 ClaudeCode
