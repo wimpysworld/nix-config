@@ -123,19 +123,21 @@ in
       title_message_bar_height = 0;
 
       # Tab bar, which monocle, deck and vertical_deck draw above stacked
-      # windows. Each tab uses the window radius and border width. The bar
-      # has one border colour for every tab, so the focused tab shows
-      # blue through its background, with crust text as on the jump
-      # labels. Mango has no urgent tab colour, no gap between tabs, and no
-      # gap between the bar and its window.
-      tab_bar_height = 32;
+      # windows. Mango has no gap between tabs or between the bar and its
+      # window, and it fills each tab inside its border. A transparent
+      # border therefore gives each tab a 3 pixel margin, so the tabs show
+      # as separate pills: 6 pixels apart and 3 pixels above the window.
+      # The bar is 6 pixels taller to keep the text area. Mango has one
+      # border colour for every tab and no urgent tab colour, so the
+      # focused tab is a lighter pill with the accent in its text.
+      tab_bar_height = 38;
       tab_bar_decorate_font_desc = "FiraCode Nerd Font Mono Bold 12";
-      tab_bar_decorate_fg_color = toMangoColor "subtext0" 1.0;
+      tab_bar_decorate_fg_color = toMangoColor "overlay1" 1.0;
       tab_bar_decorate_bg_color = toMangoColor "mantle" 0.9;
-      tab_bar_decorate_focus_fg_color = toMangoColor "crust" 1.0;
-      tab_bar_decorate_focus_bg_color = toMangoColor "blue" 1.0;
-      tab_bar_decorate_border_color = toMangoColor "surface1" 1.0;
-      tab_bar_decorate_border_width = 2;
+      tab_bar_decorate_focus_fg_color = toMangoColor "blue" 1.0;
+      tab_bar_decorate_focus_bg_color = toMangoColor "surface0" 0.9;
+      tab_bar_decorate_border_color = toMangoColor "base" 0.0;
+      tab_bar_decorate_border_width = 3;
       tab_bar_decorate_corner_radius = 8;
       tab_bar_decorate_padding_x = 12;
       tab_bar_decorate_padding_y = 0;

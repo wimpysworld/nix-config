@@ -26,10 +26,11 @@ menu="$menu$bluetooth\n$audio\n$screenshot"
 if command -v fuzzel-picker >/dev/null 2>&1; then
 	menu="$menu\n$picker"
 fi
+menu="$menu\n"
 if command -v fuzzel-layout >/dev/null 2>&1; then
 	menu="$menu\n$window_layout"
 fi
-menu="$menu\n\n$control_center\n$session"
+menu="$menu\n$control_center\n$session"
 
 selected=$(echo -e "$menu" |
 	fuzzel --dmenu --prompt "󱑞 " --lines=9 --width=21)
