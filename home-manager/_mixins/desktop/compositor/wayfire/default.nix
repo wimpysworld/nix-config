@@ -113,10 +113,16 @@ in
         # halo.
         blur = {
           blur_by_default = ''type is "toplevel" | (${matchLayers blurredLayers})'';
+          # Dual kawase, tuned to reach about as far as Mango's scenefx blur
+          # (3 passes at radius 8, about 112 px): 1.5 * offset * degrade *
+          # (2^iterations - 1) = 112.5 px. Extra iterations run at a quarter
+          # of the previous resolution, so they are the cheap way to widen
+          # the blur. Degrade 2 keeps thin text strokes from turning to grain,
+          # because Wayfire degrades with a nearest-pixel copy.
           method = "kawase";
-          kawase_offset = 1.7;
-          kawase_degrade = 3;
-          kawase_iterations = 2;
+          kawase_offset = 2.5;
+          kawase_degrade = 2;
+          kawase_iterations = 4;
           saturation = 1.0;
         };
         core = {
