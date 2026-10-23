@@ -42,7 +42,7 @@ class MigrationTests(unittest.TestCase):
               hm = import (flake.inputs.home-manager + "/modules/lib") { lib = baseLib; };
             });
             evaluate = {
-              desktop ? "hyprland",
+              desktop ? "mango",
               target ? "${desktop}-session.target",
               linux ? true,
               workstation ? true,
@@ -66,7 +66,7 @@ class MigrationTests(unittest.TestCase):
                 entry = module.config.content.home.activation.removeObsoleteGraphicalSessionDependencies;
               in if module.config.condition && entry.condition then entry.content else null;
           in {
-            hyprland = evaluate {};
+            mango = evaluate {};
             wayfire = evaluate { desktop = "wayfire"; };
             graphical = evaluate { target = "graphical-session.target"; };
             outside = evaluate { configHome = "/outside-home/.config"; };
@@ -109,7 +109,7 @@ class MigrationTests(unittest.TestCase):
         for link in self.links():
             self.assertEqual(os.readlink(link), self.owned(link))
 
-    def activate(self, target="hyprland", dry_run=False):
+    def activate(self, target="mango", dry_run=False):
         entry = self.entries[target]
         if entry is None:
             return ""
@@ -131,7 +131,7 @@ class MigrationTests(unittest.TestCase):
         return result.stdout
 
     def test_stale_owned_links_removed_and_repeat_safe(self):
-        for target in ("hyprland", "wayfire"):
+        for target in ("mango", "wayfire"):
             with self.subTest(target=target):
                 self.stale_links()
                 self.activate(target)
@@ -188,7 +188,7 @@ class MigrationTests(unittest.TestCase):
             self.assertEqual(os.readlink(link), str(self.home / ("user-" + link.name)))
 
     def test_selected_dependencies_preserved(self):
-        for target in ("hyprland", "wayfire"):
+        for target in ("mango", "wayfire"):
             with self.subTest(target=target):
                 self.stale_links()
                 selected = []

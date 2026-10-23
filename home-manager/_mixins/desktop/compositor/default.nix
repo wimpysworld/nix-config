@@ -25,7 +25,6 @@ in
     ./components/waybar
     ./components/wleave
     ./components/wpaperd
-    ./hyprland
     ./mango
     ./wayfire
   ];

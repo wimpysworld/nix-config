@@ -8,9 +8,6 @@
 # Print the cursor position in logical layout coordinates.
 function compositor_cursor() {
 	case "$COMPOSITOR" in
-	hyprland)
-		hyprctl -j cursorpos | jq -r '"\(.x) \(.y)"'
-		;;
 	mango)
 		mmsg get cursorpos | jq -r '"\(.x) \(.y)"'
 		;;

@@ -20,9 +20,8 @@ session.
 
 **Return push.** lan-mouse runs no hook on a return crossing (the
 controlling host releases its capture when the emulated cursor hits
-the peer's screen edge), and Hyprland does not honour the capture's
-pointer lock, so the hidden local cursor drifts during a remote
-session and reappeared in a surprising place. The peer's
+the peer's screen edge), and the hidden local cursor drifts during a
+remote session, so it reappeared in a surprising place. The peer's
 `lan-mouse-warp serve` watcher knows about the return first: its own
 cursor touches the session's entry edge, and it pushes one
 `return <edge> <fraction>` line over the warp channel. The channel

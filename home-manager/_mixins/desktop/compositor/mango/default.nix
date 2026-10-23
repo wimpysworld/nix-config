@@ -42,7 +42,7 @@ in
     assertions = [
       {
         assertion = lib.versions.majorMinor cfg.package.version == "0.18";
-        message = "MangoWM ${cfg.package.version} is not 0.18. Review the renamed configuration keys in home-manager/_mixins/desktop/compositor/mango before you accept this version, then update this assertion.";
+        message = "Mango ${cfg.package.version} is not 0.18. Review the renamed configuration keys in home-manager/_mixins/desktop/compositor/mango before you accept this version, then update this assertion.";
       }
     ];
 
@@ -54,7 +54,7 @@ in
 
     systemd.user.targets.mangowm-session = {
       Unit = {
-        Description = "MangoWM compositor session";
+        Description = "Mango compositor session";
         Documentation = [ "man:systemd.special(7)" ];
         BindsTo = [ "graphical-session.target" ];
         Wants = [
@@ -81,7 +81,7 @@ in
         trackpad_click_method = 2;
         trackpad_disable_while_typing = true;
         mouse_natural_scrolling = false;
-        # Focus changes on a click, as Hyprland's follow_mouse = 2 does.
+        # Focus changes on a click.
         # Focus that follows the pointer would take focus away from the
         # window that ALT+Tab selects, because the pointer stays put.
         sloppy_focus = false;

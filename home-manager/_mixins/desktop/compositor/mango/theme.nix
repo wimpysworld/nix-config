@@ -61,12 +61,12 @@ in
       blur_params_contrast = 1.0;
       blur_params_saturation = 1.0;
 
-      # Shadows. Tiled windows get none, as in Hyprland, because the
+      # Shadows. Tiled windows get none, because the
       # narrow gaps would let a shadow fall onto the neighbour window.
       # Floating windows and fuzzel get a soft centred glow, like the
-      # Wayfire winshadows glow. MangoWM moves each shadow shadows_size
+      # Wayfire winshadows glow. Mango moves each shadow shadows_size
       # pixels right and down, so the negative positions centre it.
-      # MangoWM gives no layer shadow to rofi, wleave or Waybar, and the
+      # Mango gives no layer shadow to rofi, wleave or Waybar, and the
       # layer rules turn it off for SwayNC and the others.
       shadows = true;
       layer_shadows = true;
@@ -77,15 +77,15 @@ in
       shadows_position_y = -20;
       shadows_color = toMangoColor "crust" 0.55;
 
-      # Opacity and dimming. The dim matches the Hyprland strength of
-      # 2.5 percent, in crust rather than black.
+      # Opacity and dimming. The dim strength is 2.5 percent, in crust
+      # rather than black.
       focused_opacity = 1.0;
       unfocused_opacity = 1.0;
       dim_enable = true;
       dim_focused_color = "0x00000000";
       dim_unfocused_color = toMangoColor "crust" 0.025;
 
-      # Geometry, matching the Hyprland radius, border and gaps.
+      # Geometry: radius, border and gaps.
       border_radius = 8;
       no_radius_when_single = false;
       no_border_when_single = false;

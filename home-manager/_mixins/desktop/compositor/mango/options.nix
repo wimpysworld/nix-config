@@ -1,7 +1,7 @@
 { lib, pkgs, ... }:
 {
   options.wayland.windowManager.mango = {
-    enable = lib.mkEnableOption "MangoWM";
+    enable = lib.mkEnableOption "Mango";
     package = lib.mkPackageOption pkgs "mango" { };
     settings = lib.mkOption {
       type =
@@ -15,7 +15,7 @@
           ]) (listOf str)
         );
       default = { };
-      description = "MangoWM configuration keys. A list renders one line per element, for repeated keys such as `bind` and `window_rule`.";
+      description = "Mango configuration keys. A list renders one line per element, for repeated keys such as `bind` and `window_rule`.";
     };
     keymodes = lib.mkOption {
       type = with lib.types; attrsOf (listOf str);
@@ -34,7 +34,7 @@
     extraConfig = lib.mkOption {
       type = lib.types.lines;
       default = "";
-      description = "Lines appended to the end of the MangoWM configuration.";
+      description = "Lines appended to the end of the Mango configuration.";
     };
   };
 }

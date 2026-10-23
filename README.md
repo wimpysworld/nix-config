@@ -184,21 +184,18 @@ Useful shell scripts I used to keep in muddle of git repos are now migrated to [
 
 ### The Desktop 🖥️
 
-Hyprland 💧, Wayfire 🔥, and MangoWM 🥭 desktop options are available.
+Wayfire 🔥 and Mango 🥭 desktop options are available.
 The font configuration is common for all desktops using [Work Sans](https://fonts.google.com/specimen/Work+Sans) and [Fira Code](https://fonts.google.com/specimen/Fira+Code).
 The usual creature comforts you'd expect to find in a Linux Desktop are integrated such as Pipewire, Bluetooth, Avahi, CUPS, SANE and NetworkManager.
 
 |  Desktops   |      NixOS       |      Home Manager       |      Theme       |
 | :---------: | :--------------: | :---------------------: | :--------------: |
-| 💧 Hyprland | [Hyprland NixOS] | [Hyprland Home Manager] | Catppuccin Mocha |
 | 🔥 Wayfire  | [Wayfire NixOS]  | [Wayfire Home Manager]  | Catppuccin Mocha |
-| 🥭 MangoWM  | [MangoWM NixOS]  | [MangoWM Home Manager]  | Catppuccin Mocha |
+| 🥭 Mango   |  [Mango NixOS]   |  [Mango Home Manager]   | Catppuccin Mocha |
 
 ## Eye Candy 👀🍬
 
-![Hyprland on Skrye](assets/hyprland.png)
-
-<div align="center"><small>Hyprland on Shaa; <i>a work in progress; soon to be daily driver</i></small></div>
+A Mango screenshot will follow.
 
 ## Installing 💾
 
@@ -418,9 +415,7 @@ Some applications require manual configuration to apply the correct theme.
 [OpenSSH]: ./nixos/_mixins/network/ssh/default.nix
 [Fresh]: https://github.com/sinelaw/fresh
 [Tailscale]: https://tailscale.com/
-[Hyprland NixOS]: ./nixos/_mixins/desktop/hyprland/default.nix
 [Wayfire NixOS]: ./nixos/_mixins/desktop/wayfire/default.nix
-[MangoWM NixOS]: ./nixos/_mixins/desktop/mango/default.nix
-[Hyprland Home Manager]: ./home-manager/_mixins/desktop/compositor/hyprland/default.nix
+[Mango NixOS]: ./nixos/_mixins/desktop/mango/default.nix
 [Wayfire Home Manager]: ./home-manager/_mixins/desktop/compositor/wayfire/default.nix
-[MangoWM Home Manager]: ./home-manager/_mixins/desktop/compositor/mango/default.nix
+[Mango Home Manager]: ./home-manager/_mixins/desktop/compositor/mango/default.nix

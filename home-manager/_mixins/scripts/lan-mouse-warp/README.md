@@ -46,7 +46,7 @@ measurement.
 
 - `lan-mouse-warp.sh` - the warp and report logic.
 - `compositor-query.sh` - shared compositor detection and monitor
-  queries for Hyprland, Wayfire, and MangoWM, sourced by this script
+  queries for Wayfire and Mango, sourced by this script
   and by `lan-mouse-handoff`. Detection works from the runtime
   directory alone, because SSH sessions carry no compositor
   environment.
@@ -62,7 +62,7 @@ measurement.
 Wayfire needs the `ipc`, `ipc-rules`, and `stipc` plugins enabled;
 `stipc/move_cursor` takes global layout coordinates.
 
-MangoWM detection checks first, because Mango removes its
+Mango detection checks first, because Mango removes its
 `$XDG_RUNTIME_DIR/mango-*.sock` socket on exit. The newest socket sets
 `MANGO_INSTANCE_SIGNATURE`, and the newest `wayland-*` socket sets
 `WAYLAND_DISPLAY` when the environment does not supply it. `mmsg`

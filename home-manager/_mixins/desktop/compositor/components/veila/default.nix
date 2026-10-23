@@ -15,8 +15,7 @@ let
   veilaBin = lib.getExe' veila "veila";
   veiladBin = lib.getExe' veila "veilad";
   fprintdEnabled = noughtyLib.hostHasTag "fprintd";
-  # Match the old hyprlock placeholder glyph: a fingerprint on fprintd hosts,
-  # otherwise a key.
+  # The placeholder glyph is a fingerprint on fprintd hosts, otherwise a key.
   unlockGlyph = if fprintdEnabled then "󰈷" else "󰌋";
   # Use the avatar's source store path. Fall back to ~/.face for users without
   # a configured avatar.
@@ -25,7 +24,7 @@ let
       "${config.home.file.".face".source}"
     else
       "${config.home.homeDirectory}/.face";
-  passEnvironment = "WAYLAND_DISPLAY XDG_SESSION_ID XDG_SESSION_TYPE XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE SWAYSOCK NIRI_SOCKET MANGO_INSTANCE_SIGNATURE";
+  passEnvironment = "WAYLAND_DISPLAY XDG_SESSION_ID XDG_SESSION_TYPE XDG_CURRENT_DESKTOP SWAYSOCK NIRI_SOCKET MANGO_INSTANCE_SIGNATURE";
   # Mirror the wpaperd per-display mapping exactly: index 0 is the primary and
   # gets a Catppuccin wallpaper; subsequent displays get Colorway. Resolution and
   # output name come from the same noughty display fields wpaperd reads.
@@ -72,7 +71,7 @@ let
     hide_cursor = false
     # Submit Enter-on-empty to PAM so the fingerprint flow can proceed.
     allow_empty_password = true
-    # Power displays off while locked (replaces hypridle's dpms listener).
+    # Power displays off while locked.
     screen_off_seconds = 305
     # suspend_seconds left unset: suspend stays with logind, not Veila.
 
@@ -113,7 +112,7 @@ let
 
     [visuals.date]
     # Veila's date format is a fixed enum (long/short/iso/mdy-slash/dmy-slash),
-    # not a custom strftime, so "short" is the closest preset to hyprlock's
+    # not a custom strftime, so "short" is the closest preset to
     # "%a, %d %b".
     format = "short"
     font_family = "Work Sans"
@@ -126,7 +125,7 @@ let
     font_family = "Work Sans"
 
     [visuals.input]
-    # Stylised entry like the old hyprlock: a centred unlock glyph when empty
+    # Stylised entry: a centred unlock glyph when empty
     # and centred mask symbols while typing, no "Password" label. Position and
     # size are inherited from the theme; only the styling changes here.
     placeholder = "${unlockGlyph}"
@@ -139,7 +138,7 @@ let
     radius = 8
 
     [visuals.placeholder]
-    # Colour the unlock glyph yellow, as hyprlock did.
+    # Colour the unlock glyph yellow.
     color = "${palette.getColor "yellow"}"
 
     [visuals.avatar]
@@ -340,7 +339,7 @@ let
   sessionTarget = if compositor == null then "graphical-session.target" else compositor.sessionTarget;
 in
 lib.mkIf (host.is.linux && host.is.workstation) {
-  # Veila is a Wayland-native screen locker that replaces hyprlock. The package
+  # Veila is a Wayland-native screen locker. The package
   # and the `veila` PAM service are provided by the NixOS module; this mixin
   # writes the user config, runs the daemon and idle monitor, and binds locking.
   xdg.configFile."veila/config.toml".text = veilaConfig;

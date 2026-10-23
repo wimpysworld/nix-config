@@ -6,8 +6,6 @@ function detect_compositor() {
 	local runtime signature candidate
 	runtime="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 	# Mango unlinks its socket on exit, so a match is a live instance.
-	# Check it first, because a Hyprland signature directory can
-	# outlive its instance.
 	signature="${MANGO_INSTANCE_SIGNATURE:-}"
 	if [ ! -S "$signature" ]; then
 		signature=$(find "$runtime" -mindepth 1 -maxdepth 1 -name 'mango-*.sock' -type s -printf '%T@ %p\n' 2> /dev/null | sort -rn | head -n 1 | cut -d ' ' -f 2-)
@@ -20,12 +18,6 @@ function detect_compositor() {
 			WAYLAND_DISPLAY=$(find "$runtime" -mindepth 1 -maxdepth 1 -name 'wayland-*' ! -name '*.lock' -type s -printf '%T@ %f\n' 2> /dev/null | sort -rn | head -n 1 | cut -d ' ' -f 2-)
 			export WAYLAND_DISPLAY
 		fi
-		return 0
-	fi
-	signature=$(find "$runtime/hypr" -mindepth 1 -maxdepth 1 -printf '%T@ %f\n' 2> /dev/null | sort -rn | head -n 1 | cut -d ' ' -f 2-)
-	if [ -n "$signature" ]; then
-		COMPOSITOR="hyprland"
-		export HYPRLAND_INSTANCE_SIGNATURE="${HYPRLAND_INSTANCE_SIGNATURE:-$signature}"
 		return 0
 	fi
 	for candidate in "${WAYFIRE_SOCKET:-}" "$runtime"/wayfire-*.socket /tmp/wayfire-*.socket; do
@@ -43,18 +35,6 @@ function detect_compositor() {
 # layout coordinates.
 function compositor_monitors() {
 	case "$COMPOSITOR" in
-	hyprland)
-		# Hyprland reports the physical pixel size plus scale and
-		# transform.  The logical extent is the size divided by the
-		# scale, with the axes swapped for the 90 and 270 degree
-		# transforms (odd values).  Verify against ravi at scale 1.5.
-		hyprctl -j monitors | jq -c '[.[] | {
-			x,
-			y,
-			width: (if (.transform % 2) == 1 then (.height / .scale) else (.width / .scale) end),
-			height: (if (.transform % 2) == 1 then (.width / .scale) else (.height / .scale) end)
-		}]'
-		;;
 	mango)
 		# mmsg reports the output layout box, already in logical
 		# layout coordinates.

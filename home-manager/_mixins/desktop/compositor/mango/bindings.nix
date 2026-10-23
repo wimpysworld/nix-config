@@ -87,7 +87,7 @@ in
           "CTRL+ALT,Print,spawn,fuzzel-capture output ${display.primaryOutput}"
         ];
         # Work while an input inhibitor is active. Mango repeats every held
-        # binding, so volume and brightness repeat as Hyprland bindle does.
+        # binding, so volume and brightness repeat while the key is held.
         bindl = [
           "NONE,XF86AudioPlay,spawn,${playerctlBin} play-pause"
           "NONE,XF86AudioPrev,spawn,${playerctlBin} previous"

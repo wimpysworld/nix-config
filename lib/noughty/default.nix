@@ -529,7 +529,7 @@ in
           default = "gb";
           description = ''
             XKB keyboard layout code (e.g. "gb", "us", "de").
-            Used by services.xserver.xkb.layout, Hyprland kb_layout, Wayfire xkb_layout, and MangoWM xkb_rules_layout.
+            Used by services.xserver.xkb.layout, Wayfire xkb_layout, and Mango xkb_rules_layout.
             Defaults to "gb" (United Kingdom) so most hosts need not set this.
           '';
         };

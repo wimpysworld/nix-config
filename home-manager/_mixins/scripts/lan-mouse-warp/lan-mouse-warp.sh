@@ -17,9 +17,6 @@
 # compositor-query.sh as unused there, so each script keeps its own.
 function compositor_cursor() {
 	case "$COMPOSITOR" in
-	hyprland)
-		hyprctl -j cursorpos | jq -r '"\(.x) \(.y)"'
-		;;
 	mango)
 		mmsg get cursorpos | jq -r '"\(.x) \(.y)"'
 		;;
@@ -32,9 +29,6 @@ function compositor_cursor() {
 # Warp the cursor to a point in global layout coordinates.
 function compositor_warp() {
 	case "$COMPOSITOR" in
-	hyprland)
-		hyprctl dispatch movecursor "$1" "$2" > /dev/null
-		;;
 	mango)
 		# Mango has no warp dispatcher, so move by the delta from the
 		# current cursor position through wlr-virtual-pointer.

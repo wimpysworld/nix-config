@@ -46,7 +46,7 @@ let
     else
       null;
   sessionTarget = if compositor == null then "graphical-session.target" else compositor.sessionTarget;
-  workspaceModule = compositor.waybar.workspaceModule or "hyprland/workspaces";
+  workspaceModule = compositor.waybar.workspaceModule or null;
 in
 lib.mkIf (host.is.linux && host.is.workstation) {
   catppuccin = {
@@ -287,7 +287,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
             modules-left = [
               "custom/launcher"
             ]
-            ++ lib.optional (compositor != null) workspaceModule;
+            ++ lib.optional (workspaceModule != null) workspaceModule;
             modules-center = [
               "idle_inhibitor"
               "clock"
@@ -315,7 +315,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
               on-click-right = "fuzzel-session-menu";
               tooltip-format = "  Applications Menu";
             };
-            "${workspaceModule}" = lib.mkIf (compositor != null) compositor.waybar.workspaceSettings;
             idle_inhibitor = {
               format = "<big>{icon}</big>";
               format-icons = {
@@ -541,6 +540,9 @@ lib.mkIf (host.is.linux && host.is.workstation) {
               on-click = "wleave-session";
               tooltip-format = "󰐥  Session Menu";
             };
+          }
+          // lib.optionalAttrs (workspaceModule != null) {
+            ${workspaceModule} = compositor.waybar.workspaceSettings;
           }
           // config.compositor.waybar.modules
         )

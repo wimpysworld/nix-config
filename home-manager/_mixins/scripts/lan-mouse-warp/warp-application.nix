@@ -6,8 +6,8 @@ let
 in
 pkgs.writeShellApplication {
   name = "lan-mouse-warp";
-  # hyprctl and mmsg resolve from the session PATH, so each always
-  # matches the running Hyprland or MangoWM instance.
+  # mmsg resolves from the session PATH, so it always matches the
+  # running Mango instance.
   runtimeInputs = [
     wayfireIpc
   ]

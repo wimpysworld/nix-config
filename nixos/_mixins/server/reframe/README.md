@@ -1,6 +1,6 @@
 # ReFrame remote desktop
 
-ReFrame provides browser-based remote access to the four tagged Hyprland hosts. The supported entry point is `https://<host>.<tailnet>/novnc` from a Tailscale peer.
+ReFrame provides browser-based remote access to the Mango hosts tagged `reframe`. The supported entry point is `https://<host>.<tailnet>/novnc` from a Tailscale peer.
 
 > [!WARNING]
 > This stack is deployed and verified on `zannah`. Complete the per-host acceptance checklist on the remaining hosts before relying on it there. Keep a local or out-of-band recovery path throughout the rollout.
@@ -33,7 +33,7 @@ The `reframe` tag enables the NixOS ReFrame, websockify, and Caddy configuration
 
 ReFrame captures and maps input over the primary display alone. The compositor maps ReFrame's absolute pointer across the bounding box of the live output layout, and secondary monitors drop off DRM in deep standby, which is the normal state when connecting remotely. With the primary-only desktop the pointer mapping is exact in that state. While a secondary display is awake and in the layout, the pointer skews until it sleeps again.
 
-ReFrame starts as a system service, so the design supports capture before login and after Hyprland starts. This behaviour still needs live verification on every target.
+ReFrame starts as a system service, so the design supports capture before login and after Mango starts. This behaviour still needs live verification on every target.
 
 ## Capture and input
 
@@ -145,7 +145,7 @@ Repeat this checklist on `bane`, `ravi`, `skrye`, and `zannah`. Stop and roll ba
 - [ ] `/etc/reframe` and `/etc/reframe/main.conf` have the expected owner, group, and mode.
 - [ ] Service arguments and logs contain no password or decrypted config content.
 - [ ] The greetd screen is visible before login with correct pointer mapping on the primary display.
-- [ ] Capture continues after login to Hyprland with the same geometry.
+- [ ] Capture continues after login to Mango with the same geometry.
 - [ ] Keyboard and pointer input work through `uinput` without affecting local input, and keysym translation matches the host keyboard layout.
 - [ ] The remote cursor is visible and tracks the pointer.
 - [ ] Client resizing works and preserves pointer mapping.

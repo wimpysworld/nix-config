@@ -11,8 +11,8 @@ let
   wayfireIpc = import ../lan-mouse-warp/wayfire-ipc.nix pkgs;
   shellApplication = pkgs.writeShellApplication {
     inherit name;
-    # hyprctl and mmsg resolve from the session PATH, so each always
-    # matches the running Hyprland or MangoWM instance.
+    # mmsg resolves from the session PATH, so it always matches the
+    # running Mango instance.
     runtimeInputs = [
       wayfireIpc
     ]

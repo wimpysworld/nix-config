@@ -170,10 +170,10 @@ Key gates:
 
 - Treat `lib/wayland-compositors.nix` as the canonical pure-data contract selected by `config.noughty.host.desktop`.
 - Route compositor configuration through the shared Home Manager compositor hub.
-- Keep MangoWM as the default. Support Hyprland and Wayfire as explicit alternatives.
+- Keep Mango as the default. Support Wayfire as an explicit alternative.
 - Put generic packages, configuration, scripts, styles, and services in shared components.
 - Keep bindings, native settings, portals, workspace modules, session adapters, and other compositor syntax in compositor-owned modules.
-- Never write `wayland.windowManager.hyprland` or `wayland.windowManager.wayfire` from shared components.
+- Never write `wayland.windowManager.mango` or `wayland.windowManager.wayfire` from shared components.
 - When adding a compositor, add its contract entry, NixOS and Home Manager modules, bindings, and session adapter.
 - Add its portal and service metadata, capability gates, and forced evaluation when no registry host selects it.
 - Derive session targets and lifecycle environments from `lib/wayland-compositors.nix`.
@@ -221,7 +221,7 @@ Secrets are encrypted with sops-nix using age keys: user key `~/.config/sops/age
 
 ## Catppuccin and overlays
 
-Catppuccin Mocha is available through `catppuccinPalette`: `getColor "base"` includes `#`; `getHyprlandColor "blue"` omits `#`; `colors` is the raw palette; `isDark = true`; `preferShade = "prefer-dark"`.
+Catppuccin Mocha is available through `catppuccinPalette`: `getColor "base"` includes `#`; `colors` is the raw palette; `isDark = true`; `preferShade = "prefer-dark"`.
 
 Overlays apply in this order: `localPackages`, `modifiedPackages`, `unstablePackages`.
 

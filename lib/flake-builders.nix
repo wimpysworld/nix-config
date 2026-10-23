@@ -99,9 +99,6 @@ rec {
       getRGB = colorName: palette.${colorName}.rgb;
       getHSL = colorName: palette.${colorName}.hsl;
 
-      # Hyprland-specific helper that removes # from hex colors
-      getHyprlandColor = colorName: builtins.substring 1 (-1) palette.${colorName}.hex;
-
       # CSS rgba() helper for use in GTK CSS, avizo, wleave, etc.
       mkRgba =
         colorName: alpha:
@@ -143,7 +140,6 @@ rec {
         getColor
         getRGB
         getHSL
-        getHyprlandColor
         mkRgba
         isDark
         isDarkAsIntString

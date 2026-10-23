@@ -32,7 +32,7 @@ let
     key: value:
     assert lib.assertMsg (
       builtins.stringLength value <= maxValueLength
-    ) "MangoWM ${key} value is longer than ${toString maxValueLength} bytes: ${value}";
+    ) "Mango ${key} value is longer than ${toString maxValueLength} bytes: ${value}";
     "${key}=${value}";
 
   # An empty value is a parse error in Mango, so keys and list elements that
@@ -50,7 +50,7 @@ let
     let
       parts = builtins.match "([^=]+)=(.*)" line;
     in
-    assert lib.assertMsg (parts != null) "MangoWM key mode line has no '=': ${line}";
+    assert lib.assertMsg (parts != null) "Mango key mode line has no '=': ${line}";
     checkedLine (builtins.elemAt parts 0) (builtins.elemAt parts 1);
 in
 {
@@ -84,5 +84,7 @@ in
     let
       alphaHex = lib.toLower (lib.toHexString (builtins.floor (alpha * 255 + 0.5)));
     in
-    "0x${catppuccinPalette.getHyprlandColor name}${lib.fixedWidthString 2 "0" alphaHex}";
+    "0x${builtins.substring 1 (-1) (catppuccinPalette.getColor name)}${
+      lib.fixedWidthString 2 "0" alphaHex
+    }";
 }
