@@ -59,6 +59,9 @@ in
         "layer_name:^selection$,no_animation:1,no_blur:1,no_shadow:1"
         "layer_name:^avizo$,no_animation:1,no_shadow:1"
         "layer_name:^wpaperd$,no_animation:1,no_blur:1,no_shadow:1"
+        # The Waybar pills are small and already 85 per cent opaque, so blur
+        # behind them is hard to see and not worth the work.
+        "layer_name:^waybar$,no_blur:1"
       ];
     };
   };

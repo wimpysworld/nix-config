@@ -251,7 +251,7 @@ Render colours with `mkHexA name alpha` (`#rrggbbaa`) or `mkRgba` (CSS `rgba()`)
 - Fade a surface with an alpha background, not widget-level CSS `opacity`, because `opacity` also fades the text.
 - Keep translucent blurred surfaces at 0.25 or above, because Wayfire 0.10 scales blur strength with `clamp(4 * alpha)`.
 - Shadows are not a shared level. Each renderer keeps its own tuned value so they look alike: Wayfire `winshadows` glow black at 0.45 on the focused window, Mango scenefx `crust` at 0.55 with its current geometry, SwayNC CSS `0 4px 24px` in `crust` at 0.55. Change them together and compare the compositors side by side.
-- Both compositors blur the translucent shell layer surfaces (Fuzzel `launcher`, `rofi`, `avizo`, `waybar`, `wleave`). Keep SwayNC, slurp `selection` and wpaperd unblurred, because a transparent shadow margin blurs into a halo. Wayfire lists layer namespaces in `blur_by_default`; Mango uses `layer_rule` `no_blur`. Keep the two lists in step.
+- Both compositors blur the translucent shell layer surfaces (Fuzzel `launcher`, `rofi`, `avizo`, `wleave`). Keep SwayNC, slurp `selection` and wpaperd unblurred, because a transparent shadow margin blurs into a halo. Keep Waybar unblurred too, because its pills are small and 85 per cent opaque. Wayfire lists the blurred layer namespaces in `blur_by_default`. Mango blurs every layer that has no `layer_rule` with `no_blur`. Keep the two lists in step.
 
 ## CI
 

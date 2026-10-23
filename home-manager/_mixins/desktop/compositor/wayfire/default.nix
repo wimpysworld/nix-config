@@ -45,7 +45,6 @@ let
   ];
   blurredLayers = launcherLayers ++ [
     "avizo"
-    "waybar"
     "wleave"
   ];
   matchLayers = namespaces: lib.concatMapStringsSep " | " (n: ''app_id is "${n}"'') namespaces;
