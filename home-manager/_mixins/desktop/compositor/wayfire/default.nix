@@ -162,7 +162,10 @@ in
           glow_emissivity = 0.0;
           glow_enabled = true;
           glow_intensity = 0.45;
-          # The glow has no offset, so 35 pixels is the midpoint between GTK4's 30-pixel side and 40-pixel lower extents.
+          # A soft, centred black glow with no offset. The intensity and
+          # radius are tuned by eye to look like the Mango crust shadow
+          # (shadows_color in mango/theme.nix), so they are Wayfire settings
+          # and not a shared alpha level.
           glow_radius_limit = 35;
           glow_spread = 5.0;
           glow_threshold = 0.09;

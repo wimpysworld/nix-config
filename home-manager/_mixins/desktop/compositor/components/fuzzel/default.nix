@@ -1,4 +1,5 @@
 {
+  catppuccinPalette,
   config,
   lib,
   pkgs,
@@ -6,6 +7,17 @@
 }:
 let
   inherit (config.noughty) host;
+  palette = catppuccinPalette;
+  catppuccinFuzzel = config.catppuccin.fuzzel;
+  # Home Manager writes [colors] before [main], so the Catppuccin include in
+  # [main] overrides any colour set in settings. This file includes the
+  # Catppuccin theme first, then sets the background at the surface alpha.
+  fuzzelTheme = pkgs.writeText "fuzzel-theme.ini" ''
+    include=${config.catppuccin.sources.fuzzel}/catppuccin-${catppuccinFuzzel.flavor}/${catppuccinFuzzel.accent}.ini
+
+    [colors]
+    background=${lib.removePrefix "#" (palette.mkHexA "base" palette.alpha.surface)}
+  '';
   fuzzelActions = pkgs.writeShellApplication {
     name = "fuzzel-actions";
     text = "fuzzel --prompt '󰌧 ' --show-actions";
@@ -115,6 +127,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
       package = pkgs.fuzzel.override { svgBackend = "librsvg"; };
       settings = {
         main = {
+          include = lib.mkForce "${fuzzelTheme}";
           filter-desktop = true;
           # One size everywhere. With dpi-aware=no, Fuzzel multiplies the point
           # size by the output's scale factor, so each display's chosen scale

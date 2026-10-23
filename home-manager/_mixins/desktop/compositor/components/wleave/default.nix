@@ -102,7 +102,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
            tint on the background-image layer above the blur. */
         window.background {
             background-color: transparent;
-            background-image: linear-gradient(${palette.mkRgba "base" "0.5"}, ${palette.mkRgba "base" "0.5"});
+            background-image: linear-gradient(${palette.mkRgba "base" palette.alpha.scrim}, ${palette.mkRgba "base" palette.alpha.scrim});
         }
 
         button {
@@ -119,7 +119,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         }
 
         button:hover {
-            background-color: ${palette.mkRgba "crust" "0.5"};
+            background-color: ${palette.mkRgba "crust" palette.alpha.scrim};
         }
 
         button:focus {

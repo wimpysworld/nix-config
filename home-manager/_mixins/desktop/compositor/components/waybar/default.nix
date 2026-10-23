@@ -9,6 +9,10 @@
 let
   inherit (config.noughty) host;
   palette = catppuccinPalette;
+  # The pills carry the alpha on the background colour, so text stays opaque.
+  pillColor = "alpha(@base, ${toString palette.alpha.surface})";
+  # Every module hovers to mantle, the clearest change against the base pills.
+  hoverColor = "alpha(@mantle, ${toString palette.alpha.surface})";
   inherit (host) display;
   outputDisplay = display.primaryOutput;
   bluetoothToggle = pkgs.writeShellApplication {
@@ -64,8 +68,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         }
 
         tooltip {
-          background: @mantle;
-          opacity: 0.95;
+          background: alpha(@mantle, ${toString palette.alpha.surfaceStrong});
           border: 1px solid @blue;
         }
 
@@ -82,25 +85,23 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         }
 
         #custom-launcher {
-          background-color: @base;
+          background-color: ${pillColor};
           border-radius: 0.75rem;
           color: @sapphire;
           margin: 5px 0 0 0;
           margin-left: 0.5rem;
-          opacity: 0.9;
           padding: 0.25rem 0.75rem;
         }
 
         #custom-launcher:hover {
-          background-color: #242536;
+          background-color: ${hoverColor};
         }
 
         #workspaces {
           border-radius: 0.75rem;
-          background-color: @base;
+          background-color: ${pillColor};
           margin: 5px 0 0 0.5rem;
           margin-left: 1rem;
-          opacity: 0.9;
         }
 
         #workspaces button,
@@ -124,7 +125,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
 
         #workspaces button:hover,
         #workspaces label.module:hover {
-          background-color: @mantle;
+          background-color: ${hoverColor};
         }
 
         #workspaces button.urgent,
@@ -150,16 +151,15 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         #idle_inhibitor,
         #clock,
         #custom-swaync {
-          background-color: @base;
+          background-color: ${pillColor};
           margin: 5px 0 0 0;
           padding: 0.25rem 0.75rem;
-          opacity: 0.9;
         }
 
         #idle_inhibitor:hover,
         #clock:hover,
         #custom-swaync:hover {
-          background-color: #242536;
+          background-color: ${hoverColor};
         }
 
         #tray {
@@ -184,10 +184,9 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         #temperature,
         #power-profiles-daemon,
         #custom-session {
-          background-color: @base;
+          background-color: ${pillColor};
           margin: 5px 0 0 0;
           padding: 0.25rem 0.75rem;
-          opacity: 0.9;
         }
 
         #custom-virtualcam:hover,
@@ -201,7 +200,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         #temperature:hover,
         #power-profiles-daemon:hover,
         #custom-session:hover {
-          background-color: #242536;
+          background-color: ${hoverColor};
         }
 
 

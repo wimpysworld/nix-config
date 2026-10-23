@@ -9,9 +9,11 @@ let
   inherit (config.noughty) host;
   palette = catppuccinPalette;
   # Neither compositor blurs behind SwayNC, because its shadow margin would
-  # blur into a halo, so its translucent surfaces need high opacity.
-  notificationAlpha = "0.96";
-  controlCenterAlpha = "0.92";
+  # blur into a halo, so its surfaces use the unblurred surface level.
+  surfaceColor = palette.mkRgba "base" palette.alpha.surfaceStrong;
+  # One soft layer with the Mango shadow geometry and colour, tuned to look
+  # like the compositor shadows. It is not a shared alpha level.
+  shadow = "0 4px 24px 0 ${palette.mkRgba "crust" 0.55}";
 in
 lib.mkIf (host.is.linux && host.is.workstation) {
   # GTK's symbolic icon node parser ignores SVG group transforms in Papirus icons.
@@ -83,10 +85,10 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         }
 
         .floating-notifications.background .notification-row .notification-background {
-          box-shadow: 0 0 10px 0 rgba(17, 17, 17, 0.8), inset 0 0 0 1px ${palette.getColor "surface0"};
+          box-shadow: ${shadow}, inset 0 0 0 1px ${palette.getColor "surface0"};
           border-radius: 12.6px;
           margin: 18px;
-          background-color: ${palette.mkRgba "base" notificationAlpha};
+          background-color: ${surfaceColor};
           color: ${palette.getColor "text"};
           padding: 0;
           opacity: 1;
@@ -142,10 +144,10 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         }
 
         .control-center {
-          box-shadow: 0 0 25px 0 rgba(17, 17, 17, 0.6), inset 0 0 0 1px ${palette.getColor "surface0"};
+          box-shadow: ${shadow}, inset 0 0 0 1px ${palette.getColor "surface0"};
           border-radius: 12.6px;
           margin: 18px;
-          background-color: ${palette.mkRgba "base" controlCenterAlpha};
+          background-color: ${surfaceColor};
           color: ${palette.getColor "text"};
           padding: 14px;
           opacity: 1;

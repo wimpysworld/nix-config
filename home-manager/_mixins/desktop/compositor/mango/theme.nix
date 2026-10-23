@@ -7,6 +7,7 @@
 let
   inherit (config.noughty) host;
   inherit (import ./config-format.nix { inherit catppuccinPalette lib; }) toMangoColor;
+  inherit (catppuccinPalette) alpha;
 
   # Each animation curve is a cubic bezier with four control values.
   curves = {
@@ -67,7 +68,9 @@ in
       # Wayfire winshadows glow. Mango moves each shadow shadows_size
       # pixels right and down, so the negative positions centre it.
       # Mango gives no layer shadow to rofi, wleave or Waybar, and the
-      # layer rules turn it off for SwayNC and the others.
+      # layer rules turn it off for SwayNC and the others. The colour is
+      # tuned by eye to look like the Wayfire winshadows glow, so it is a
+      # Mango setting and not a shared alpha level.
       shadows = true;
       layer_shadows = true;
       shadow_only_floating = true;
@@ -83,7 +86,7 @@ in
       unfocused_opacity = 1.0;
       dim_enable = true;
       dim_focused_color = "0x00000000";
-      dim_unfocused_color = toMangoColor "crust" 0.025;
+      dim_unfocused_color = toMangoColor "crust" alpha.dim;
 
       # Geometry: radius, border and gaps.
       border_radius = 8;
@@ -102,7 +105,7 @@ in
       border_color = toMangoColor "surface1" 1.0;
       urgent_color = toMangoColor "red" 1.0;
       maximized_screen_color = toMangoColor "green" 1.0;
-      drop_color = toMangoColor "blue" 0.33;
+      drop_color = toMangoColor "blue" alpha.tint;
       split_color = toMangoColor "peach" 1.0;
 
       # Overview and jump labels
@@ -134,10 +137,10 @@ in
       # text, so they recede.
       tab_bar_height = 38;
       tab_bar_decorate_font_desc = "FiraCode Nerd Font Mono Bold 12";
-      tab_bar_decorate_fg_color = toMangoColor "blue" 0.55;
-      tab_bar_decorate_bg_color = toMangoColor "crust" 0.6;
-      tab_bar_decorate_focus_fg_color = toMangoColor "blue" 1.0;
-      tab_bar_decorate_focus_bg_color = toMangoColor "mantle" 0.9;
+      tab_bar_decorate_fg_color = toMangoColor "blue" alpha.muted;
+      tab_bar_decorate_bg_color = toMangoColor "crust" alpha.scrim;
+      tab_bar_decorate_focus_fg_color = toMangoColor "blue" alpha.opaque;
+      tab_bar_decorate_focus_bg_color = toMangoColor "mantle" alpha.surface;
       tab_bar_decorate_border_color = toMangoColor "base" 0.0;
       tab_bar_decorate_border_width = 3;
       tab_bar_decorate_corner_radius = 8;

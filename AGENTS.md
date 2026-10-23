@@ -230,6 +230,29 @@ Overlays apply in this order: `localPackages`, `modifiedPackages`, `unstablePack
 
 Using overlays to patch Nixpkgs software is a last resort for debugging or adding a feature, because it invalidates cached output and triggers a from-source rebuild of the package and its dependents. Heavy compiler toolchains such as Rust make those rebuilds slow locally and expensive in CI. Resolve the problem with configuration, options, modules, environment, or version selection first. When patching is genuinely the only route, present the need and the proposed patch to the user, and apply it only after the user approves.
 
+## Transparency, shadows and blur
+
+`catppuccinPalette.alpha` holds the shared transparency levels:
+
+| Level           | Value | Use                                                                            |
+| --------------- | ----- | ------------------------------------------------------------------------------ |
+| `scrim`         | 0.6   | Full-screen backgrounds behind modal menus, such as wleave and the Rofi window |
+| `surface`       | 0.85  | Blurred menus, launchers, bar pills and OSDs                                   |
+| `surfaceStrong` | 0.95  | Unblurred surfaces and tooltips, such as SwayNC                                |
+| `opaque`        | 1.0   | Lock screen, greeter, terminals, selections and all text                       |
+| `muted`         | 0.55  | De-emphasised accent text only: the Mango inactive tab text                    |
+| `tint`          | 0.33  | Drop target                                                                    |
+| `dim`           | 0.025 | Unfocused window dim                                                           |
+
+Render colours with `mkHexA name alpha` (`#rrggbbaa`) or `mkRgba` (CSS `rgba()`). Mango's `toMangoColor` renders `0xrrggbbaa` and stays in the Mango module.
+
+- Read alpha from `catppuccinPalette.alpha`. Never write literal alpha values in components or compositor modules.
+- Keep text at `opaque`. For secondary text, use a Catppuccin text colour such as `overlay1` or `subtext0`; keep `muted` for the existing accent case.
+- Fade a surface with an alpha background, not widget-level CSS `opacity`, because `opacity` also fades the text.
+- Keep translucent blurred surfaces at 0.25 or above, because Wayfire 0.10 scales blur strength with `clamp(4 * alpha)`.
+- Shadows are not a shared level. Each renderer keeps its own tuned value so they look alike: Wayfire `winshadows` glow black at 0.45 on the focused window, Mango scenefx `crust` at 0.55 with its current geometry, SwayNC CSS `0 4px 24px` in `crust` at 0.55. Change them together and compare the compositors side by side.
+- Both compositors blur the translucent shell layer surfaces (Fuzzel `launcher`, `rofi`, `avizo`, `waybar`, `wleave`). Keep SwayNC, slurp `selection` and wpaperd unblurred, because a transparent shadow margin blurs into a halo. Wayfire lists layer namespaces in `blur_by_default`; Mango uses `layer_rule` `no_blur`. Keep the two lists in step.
+
 ## CI
 
 Read `.github/workflows/` before changing CI assumptions. Auto-merge of update PRs requires every build job to pass.

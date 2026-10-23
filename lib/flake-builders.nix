@@ -99,13 +99,56 @@ rec {
       getRGB = colorName: palette.${colorName}.rgb;
       getHSL = colorName: palette.${colorName}.hsl;
 
-      # CSS rgba() helper for use in GTK CSS, avizo, wleave, etc.
+      # Shared alpha levels, so that surfaces in the same role match on
+      # every component and compositor. Shadows are not a level, because
+      # each renderer draws them differently and keeps its own tuned value.
+      alpha = {
+        # Full-screen backgrounds behind modal menus.
+        scrim = 0.6;
+        # Blurred menus, launchers, bar pills and OSDs.
+        surface = 0.85;
+        # Unblurred surfaces and tooltips.
+        surfaceStrong = 0.95;
+        # Lock screen, greeter, terminals, selections and all text.
+        opaque = 1.0;
+        # De-emphasised accent text only: the Mango inactive tab text.
+        muted = 0.55;
+        # Drop target.
+        tint = 0.33;
+        # Unfocused window dim.
+        dim = 0.025;
+      };
+
+      # Render an alpha as a string. Numbers lose the trailing zeros that
+      # toString adds, so 0.85 renders as "0.85" and 1.0 as "1".
+      formatAlpha =
+        value:
+        if builtins.isString value then
+          value
+        else
+          let
+            parts = builtins.match "([0-9]+)(\\.[0-9]*[1-9])?\\.?0*" (toString value);
+          in
+          "${builtins.elemAt parts 0}${
+            lib.optionalString (builtins.elemAt parts 1 != null) (builtins.elemAt parts 1)
+          }";
+
+      # CSS rgba() helper for use in GTK CSS, avizo, wleave, etc. The alpha
+      # is a number, such as a level from alpha, or a string.
       mkRgba =
         colorName: alpha:
         let
           inherit (palette.${colorName}) rgb;
         in
-        "rgba(${toString rgb.r}, ${toString rgb.g}, ${toString rgb.b}, ${alpha})";
+        "rgba(${toString rgb.r}, ${toString rgb.g}, ${toString rgb.b}, ${formatAlpha alpha})";
+
+      # Convert a colour name and an alpha between 0 and 1 to #rrggbbaa.
+      mkHexA =
+        colorName: alpha:
+        let
+          alphaHex = lib.toLower (lib.toHexString (builtins.floor (alpha * 255 + 0.5)));
+        in
+        "${getColor colorName}${lib.fixedWidthString 2 "0" alphaHex}";
 
       # Determine if this is a dark theme
       isDark = flavor != "latte";
@@ -137,9 +180,11 @@ rec {
     in
     {
       inherit
+        alpha
         getColor
         getRGB
         getHSL
+        mkHexA
         mkRgba
         isDark
         isDarkAsIntString

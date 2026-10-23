@@ -77,12 +77,5 @@ in
     lib.concatStringsSep "\n" lines + "\n" + extraConfig;
 
   # Convert a Catppuccin colour name and an alpha between 0 and 1 to 0xRRGGBBAA.
-  toMangoColor =
-    name: alpha:
-    let
-      alphaHex = lib.toLower (lib.toHexString (builtins.floor (alpha * 255 + 0.5)));
-    in
-    "0x${builtins.substring 1 (-1) (catppuccinPalette.getColor name)}${
-      lib.fixedWidthString 2 "0" alphaHex
-    }";
+  toMangoColor = name: alpha: "0x${builtins.substring 1 (-1) (catppuccinPalette.mkHexA name alpha)}";
 }

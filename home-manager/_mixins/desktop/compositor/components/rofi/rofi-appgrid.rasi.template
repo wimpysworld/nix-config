@@ -65,7 +65,7 @@ textbox-counter-wrapper {
 
 num-filtered-rows {
   expand:            false;
-  text-color:        @accent_color_alpha@;
+  text-color:        @counter_color@;
   background-color:  transparent;
   vertical-align:    0.5;
 }
@@ -73,14 +73,14 @@ num-filtered-rows {
 textbox-sep {
   expand:            false;
   str:               "/";
-  text-color:        @accent_color_alpha@;
+  text-color:        @counter_color@;
   background-color:  transparent;
   vertical-align:    0.5;
 }
 
 num-rows {
   expand:            false;
-  text-color:        @accent_color_alpha@;
+  text-color:        @counter_color@;
   background-color:  transparent;
   vertical-align:    0.5;
 }
@@ -156,7 +156,7 @@ element normal.normal {
 }
 
 element selected.normal {
-  background-color:  @accent_color_alpha@;
+  background-color:  @selection_color@;
 }
 
 element-icon {

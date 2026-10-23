@@ -45,6 +45,8 @@ let
         "@accent_color@"
         "@surface_color@"
         "@accent_color_alpha@"
+        "@selection_color@"
+        "@counter_color@"
         "@listview_columns@"
         "@listview_lines@"
         "@listview_spacing@"
@@ -56,11 +58,13 @@ let
         "@element_icon_size@"
       ]
       [
-        "${palette.getColor "text"}FF" # text with full opacity
-        "${palette.getColor "base"}af" # base background with transparency
+        (palette.mkHexA "text" palette.alpha.opaque) # text with full opacity
+        (palette.mkHexA "base" palette.alpha.scrim) # full-screen scrim
         "${palette.getColor "${palette.accent}"}" # user's selected accent colour
-        "${palette.getColor "overlay0"}af" # surface with transparency
-        "${palette.getColor "${palette.accent}"}af" # accent colour with transparency
+        (palette.mkHexA "overlay0" palette.alpha.surface) # search bar surface
+        (palette.mkHexA palette.accent palette.alpha.surface) # scrollbar handle
+        (palette.mkHexA "surface2" palette.alpha.surface) # selected element
+        (palette.mkHexA "overlay1" palette.alpha.opaque) # match counter text
         columns
         lines
         listviewSpacing
