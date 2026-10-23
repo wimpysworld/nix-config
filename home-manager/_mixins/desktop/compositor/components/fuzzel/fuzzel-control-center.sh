@@ -9,13 +9,14 @@ printers="󱁗 Printers"
 displays="󱋆 Displays"
 mouse=" Mouse"
 disks="󰋊 Disks"
+formatter="󰉉 USB Formatter"
 usb_imager="󱊞 USB Imager"
-system=" System"
+cpu=" CPU"
 firmware="󰉁 Firmware"
 
-menu="$volume\n$bluetooth\n$network\n$printers\n$displays\n$mouse\n$disks\n$usb_imager\n$system\n$firmware"
+menu="$volume\n$bluetooth\n$network\n$printers\n$displays\n$mouse\n$disks\n$formatter\n$usb_imager\n$cpu\n$firmware"
 
-selected=$(echo -e "$menu" | fuzzel --dmenu --prompt "󰒓 " --lines=10 --width=21) || exit 0
+selected=$(echo -e "$menu" | fuzzel --dmenu --prompt "󰒓 " --lines=11 --width=21) || exit 0
 
 case $selected in
 "$volume") app="pwvucontrol" ;;
@@ -25,8 +26,9 @@ case $selected in
 "$displays") app="wdisplays" ;;
 "$mouse") app="piper" ;;
 "$disks") app="gnome-disk-utility" ;;
+"$formatter") app="com.github.djaler.formatter" ;;
 "$usb_imager") app="usbimager" ;;
-"$system") app="cpu-x" ;;
+"$cpu") app="cpu-x" ;;
 "$firmware") app="gnome-firmware" ;;
 *) exit 0 ;;
 esac

@@ -37,6 +37,7 @@ let
     name = "fuzzel-control-center";
     runtimeInputs = with pkgs; [
       cpu-x
+      formatter
       gnome-disk-utility
       gnome-firmware
       networkmanagerapplet
@@ -97,23 +98,27 @@ lib.mkIf (host.is.linux && host.is.workstation) {
 
   # Fuzzel menus for app launcher, emoji picker, wifi manager, clipboard manager, etc
   home = {
-    packages = with pkgs; [
-      bzmenu
-      fuzzelActions
-      fuzzelAudio
-      fuzzelBluetooth
-      fuzzelClipboard
-      fuzzelControlCenter
-      fuzzelEmoji
-      fuzzelHistory
-      fuzzelLauncher
-      fuzzelNotes
-      fuzzelWifi
-      iwmenu
-      pwmenu
-      wl-clipboard
-      wtype
-    ];
+    packages =
+      with pkgs;
+      [
+        bzmenu
+        fuzzelActions
+        fuzzelAudio
+        fuzzelBluetooth
+        fuzzelClipboard
+        fuzzelControlCenter
+        fuzzelEmoji
+        fuzzelHistory
+        fuzzelLauncher
+        fuzzelNotes
+        pwmenu
+        wl-clipboard
+        wtype
+      ]
+      ++ lib.optionals host.network.wifi [
+        fuzzelWifi
+        iwmenu
+      ];
   };
   programs = {
     fuzzel = {
