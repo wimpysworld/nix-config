@@ -67,26 +67,16 @@ let
     username_format = "short"
 
     [buffer.channel.nicklist]
-    visible = true
     position = "right"
-    color = "unique"
 
     [buffer.channel.topic]
     enabled = true
 
-    [sidebar]
-    default_action = "replace-pane"
-    width = 210
-
-    [sidebar.buttons]
-    file_transfer = true
-    command_bar = true
-
-    [notifications.connected]
-    enabled = false
+    [actions.sidebar]
+    buffer = "replace-pane"
 
     [notifications.highlight]
-    enabled = true
+    show_toast = true
   '';
 in
 lib.mkIf host.is.workstation {
