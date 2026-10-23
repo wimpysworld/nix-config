@@ -6,8 +6,8 @@
 #   default_layout  the Mango layout that applies without an override.
 #
 # A choice writes one tag_rule line to the override file, and Mango reloads
-# its configuration when the file changes. The "Default" row removes the file.
-# Each choice also sets the layout of the focused tag at once.
+# its configuration. The "Default" row removes the file. Each choice also sets
+# the layout of the focused tag at once.
 
 # Mango layout name, Mango layout symbol, and the menu label.
 layouts="\
@@ -55,24 +55,26 @@ choice=$(echo -e "$menu" |
 
 layouts_dir=$(dirname "$layouts_file")
 
+# A Mango reload re-enables an output that kanshi disabled, so kanshi
+# reapplies its profile after the reload. A stopped kanshi is not an error.
+reload() {
+	mmsg dispatch reload_config
+	kanshictl reload >/dev/null 2>&1 || true
+}
+
 if [ "$choice" = "$default_index" ]; then
 	rm -f "$layouts_file"
+	reload
 	mmsg dispatch "setlayout,$default_layout"
 elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -lt "$default_index" ]; then
 	name="${names[$choice]}"
-	# Mango watches the directory of each included file only if that
-	# directory exists when it loads the configuration, so a new directory
-	# needs an explicit reload.
-	reload=false
-	if [ ! -d "$layouts_dir" ]; then
-		mkdir -p "$layouts_dir"
-		reload=true
-	fi
+	mkdir -p "$layouts_dir"
 	temporary=$(mktemp "$layouts_dir/.layouts.conf.XXXXXX")
 	echo "tag_rule=id:*,layout_name:$name" >"$temporary"
 	mv -f "$temporary" "$layouts_file"
-	if [ "$reload" = true ]; then
-		mmsg dispatch reload_config
-	fi
+	# The explicit reload also covers a new directory, which Mango does not
+	# watch until it loads the configuration again. Each reload resets the
+	# file watcher, so the automatic reload does not follow it.
+	reload
 	mmsg dispatch "setlayout,$name"
 fi

@@ -54,8 +54,6 @@ let
     checkedLine (builtins.elemAt parts 0) (builtins.elemAt parts 1);
 in
 {
-  inherit floatStr;
-
   # Render settings as Mango `key=value` lines. Scalar keys come first, then
   # repeated keys with one line per list element in list order, then
   # `exec_once`. Each key mode follows as a `key_mode` block, because a binding

@@ -47,7 +47,7 @@ let
       system-config-printer
       usbimager
       util-linux
-      wdisplays
+      (import ../kanshi/wdisplays.nix { inherit config pkgs; }).package
     ];
     text = builtins.readFile ./fuzzel-control-center.sh;
   };

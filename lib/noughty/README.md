@@ -195,6 +195,8 @@ A bare `hostHasTag "gpu"` cannot distinguish vendors. Hosts like vader have both
 
 A list of display submodules. Set in the system registry (`lib/registry-systems.toml`) alongside other host properties. This ensures display data flows to both NixOS and standalone Home Manager contexts.
 
+The registry does not arrange displays. In a Wayland session, kanshi applies the layouts that wdisplays saves to `~/.local/state/kanshi/wdisplays.conf`. Without a saved layout, the compositor enables each output at its preferred mode and scale 1.
+
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `output` | `str` | *(required)* | Output connector name (e.g. `"DP-1"`, `"eDP-1"`). |
@@ -202,7 +204,6 @@ A list of display submodules. Set in the system registry (`lib/registry-systems.
 | `height` | `int` | *(required)* | Vertical resolution in pixels. |
 | `refresh` | `int` | `60` | Refresh rate in Hz. |
 | `scale` | `float` | `1.0` | Display scale factor. |
-| `position` | `submodule { x : int; y : int }` | `{ x = 0; y = 0; }` | Display position offset in pixels. |
 | `primary` | `bool` | `false` | Whether this is the primary display. |
 | `workspaces` | `listOf int` | `[]` | Workspace numbers assigned to this display. |
 
@@ -216,21 +217,18 @@ width      = 2560
 height     = 2880
 primary    = true
 workspaces = [1, 2, 7, 8, 9]
-position   = { x = 0, y = 0 }
 
 [[vader.displays]]
 output     = "DP-2"
 width      = 2560
 height     = 2880
 workspaces = [3, 4, 5, 6]
-position   = { x = 2560, y = 0 }
 
 [[vader.displays]]
 output     = "DP-3"
 width      = 1920
 height     = 1080
 workspaces = [10]
-position   = { x = 320, y = 2880 }
 ```
 
 ### `noughty.host.display` - Derived display shortcuts (read-only)
@@ -348,7 +346,7 @@ Tags centralise classification that was previously scattered as hostname compari
 
 Because `tags` is `listOf str`, values from the registry and host-specific modules merge automatically via the module system. Tags are for *classification* ("this host is a studio"), not *configuration* ("this host uses DP-1").
 
-The `reframe` tag enables the NixOS remote desktop stack and the full registry display layout at greetd. Keep card, connector, scale, and position data in the relevant module or `host.displays`; the tag only selects the feature.
+The `reframe` tag enables the NixOS remote desktop stack and the full registry display layout at greetd. Keep card, connector, and scale data in the relevant module or `host.displays`; the tag only selects the feature.
 
 Start simple; add enum validation only if typos become a real problem.
 
@@ -618,7 +616,6 @@ height     = 1440
 refresh    = 144
 primary    = true
 workspaces = [1, 2, 3, 4, 5]
-position   = { x = 0, y = 0 }
 
 # The desktop defaults to "mango" for computer+linux.
 # username defaults to "martin"

@@ -71,7 +71,7 @@ in
           ''
         );
 
-    home.packages = [ pkgs.wdisplays ];
+    home.packages = [ (import ./components/kanshi/wdisplays.nix { inherit config pkgs; }).package ];
     wayland.systemd.target = compositor.sessionTarget;
   };
 }

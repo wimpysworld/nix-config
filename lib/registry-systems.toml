@@ -54,17 +54,13 @@ refresh = 165.0
 scale = 1.25
 primary = true
 workspaces = [1, 2, 3, 4, 5, 6, 7, 8]
-position = { x = 696, y = 1440 }
 
 [[bane.displays]]
 output = "DP-4"
-match = "Philips Consumer Electronics Company PHL 345B1C 0x00000251"
 width = 3440
 height = 1440
 refresh = 99.982
 scale = 1.0
-hotplug = true
-position = { x = 0, y = 0 }
 
 [ravi]
 kind = "computer"
@@ -95,18 +91,14 @@ refresh = 120
 scale = 1.5
 primary = true
 workspaces = [1, 2, 3, 4, 5, 6, 7]
-position = { x = 2048, y = 0 }
 
 [[ravi.displays]]
 output = "DP-3"
-match = "CYS J560J07 0x00000054"
 width = 2560
 height = 1600
 refresh = 120
 scale = 1.25
-hotplug = true
 workspaces = [8]
-position = { x = 0, y = 0 }
 
 [tanis]
 kind = "computer"
@@ -129,7 +121,6 @@ width = 1920
 height = 1200
 primary = true
 workspaces = [1, 2, 3, 4, 5, 6, 7, 8]
-position = { x = 0, y = 0 }
 
 [shaa]
 kind = "computer"
@@ -146,7 +137,6 @@ width = 1920
 height = 1080
 primary = true
 workspaces = [1, 2, 3, 4, 5, 6, 7, 8]
-position = { x = 0, y = 0 }
 
 [atrius]
 kind = "computer"
@@ -163,7 +153,6 @@ width = 1920
 height = 1080
 primary = true
 workspaces = [1, 2, 3, 4, 5, 6, 7, 8]
-position = { x = 0, y = 0 }
 
 [sidious]
 kind = "computer"
@@ -185,7 +174,6 @@ height = 2160
 scale = 2.0
 primary = true
 workspaces = [1, 2, 3, 4, 5, 6, 7, 8]
-position = { x = 0, y = 0 }
 
 [felkor]
 kind = "computer"
@@ -202,7 +190,6 @@ width = 1920
 height = 1200
 primary = true
 workspaces = [1, 2, 3, 4, 5, 6, 7, 8]
-position = { x = 0, y = 0 }
 
 [skrye]
 kind = "computer"
@@ -242,13 +229,11 @@ output = "DP-1"
 width = 2560
 height = 2880
 primary = true
-position = { x = 0, y = 0 }
 
 [[skrye.displays]]
 output = "DP-4"
 width = 2560
 height = 2880
-position = { x = 2560, y = 0 }
 
 [zannah]
 kind = "computer"
@@ -289,7 +274,6 @@ height = 1440
 refresh = 100
 primary = true
 workspaces = [1, 2, 3, 4, 5, 6, 7, 8]
-position = { x = 0, y = 0 }
 
 # Gaming - non-standard username and desktop, so both explicit
 

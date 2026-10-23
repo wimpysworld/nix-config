@@ -8,12 +8,7 @@
 let
   inherit (config.noughty) host;
   cfg = config.wayland.windowManager.mango;
-  inherit (import ./config-format.nix { inherit catppuccinPalette lib; }) floatStr toMangoConf;
-
-  mkMonitorRule =
-    d:
-    "name:^${d.output}$,width:${toString d.width},height:${toString d.height},refresh:${toString d.refresh},x:${toString d.position.x},y:${toString d.position.y},scale:${floatStr d.scale}"
-    + lib.optionalString d.primary ",primary:1";
+  inherit (import ./config-format.nix { inherit catppuccinPalette lib; }) toMangoConf;
 
   sessionAdapter = pkgs.writeShellApplication {
     name = "wayland-session-adapter";
@@ -38,6 +33,7 @@ let
     name = "fuzzel-layout";
     runtimeInputs = [
       cfg.package
+      config.services.kanshi.package
     ]
     ++ (with pkgs; [
       coreutils
@@ -119,7 +115,6 @@ in
         new_is_master = true;
         dwindle_preserve_split = true;
         dwindle_smart_split = false;
-        monitor_rule = map mkMonitorRule host.displays;
         exec_once = [ "wayland-session start" ];
       };
       # fuzzel-layout writes this file. Without it, tags use the default layout.
