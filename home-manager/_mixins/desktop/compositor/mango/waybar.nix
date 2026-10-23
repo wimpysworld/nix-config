@@ -44,6 +44,32 @@ let
     + builtins.readFile ./mango-tags-watch.sh;
   };
 
+  pinnedWatcher = pkgs.writeShellApplication {
+    name = "mango-pinned-watch";
+    runtimeInputs = [
+      cfg.package
+      pkgs.jq
+    ];
+    text = ''
+      owners=${lib.escapeShellArg (builtins.toJSON owners)}
+    ''
+    + builtins.readFile ./mango-pinned-watch.sh;
+  };
+
+  mkUserService = description: package: {
+    Unit = {
+      Description = description;
+      After = [ contract.sessionTarget ];
+      PartOf = [ contract.sessionTarget ];
+    };
+    Service = {
+      ExecStart = lib.getExe package;
+      Restart = "on-failure";
+      RestartSec = 2;
+    };
+    Install.WantedBy = [ contract.sessionTarget ];
+  };
+
   mkTagModule =
     n:
     let
@@ -69,17 +95,11 @@ in
 lib.mkIf (host.desktop == "mango") {
   compositor.waybar.modules = lib.listToAttrs (map mkTagModule tagNumbers);
 
-  systemd.user.services.mango-tags-watch = {
-    Unit = {
-      Description = "Mango tag state for Waybar";
-      After = [ contract.sessionTarget ];
-      PartOf = [ contract.sessionTarget ];
-    };
-    Service = {
-      ExecStart = lib.getExe watcher;
-      Restart = "on-failure";
-      RestartSec = 2;
-    };
-    Install.WantedBy = [ contract.sessionTarget ];
+  systemd.user.services = {
+    mango-tags-watch = mkUserService "Mango tag state for Waybar" watcher;
+    # Only pinned tags need their windows returned to the owning display.
+    mango-pinned-watch = lib.mkIf tags.pinned (
+      mkUserService "Mango pinned tags on their owning displays" pinnedWatcher
+    );
   };
 }

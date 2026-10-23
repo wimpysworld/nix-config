@@ -165,6 +165,9 @@
           gh-code-scanning-dismiss = import ./lib/tests/gh-code-scanning-dismiss.nix {
             inherit pkgs;
           };
+          mango-pinned-watch = import ./lib/tests/mango-pinned-watch.nix {
+            inherit pkgs;
+          };
           wayland-session-lifecycle = import ./lib/tests/wayland-session-lifecycle.nix {
             inherit pkgs;
           };

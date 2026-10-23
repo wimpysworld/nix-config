@@ -119,6 +119,8 @@ in
       jump_label_decorate_corner_radius = 8;
       jump_label_decorate_padding_x = 12;
       jump_label_decorate_padding_y = 6;
+      # Hide the title label under the Alt-Tab switcher and overcircle view.
+      title_message_bar_height = 0;
     };
   };
 }
