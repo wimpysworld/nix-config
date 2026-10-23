@@ -98,11 +98,11 @@ in
 
       # Colours by window state
       root_color = toMangoColor "base" 1.0;
-      focus_color = toMangoColor "mauve" 1.0;
+      focus_color = toMangoColor "blue" 1.0;
       border_color = toMangoColor "surface1" 1.0;
       urgent_color = toMangoColor "red" 1.0;
       maximized_screen_color = toMangoColor "green" 1.0;
-      drop_color = toMangoColor "mauve" 0.33;
+      drop_color = toMangoColor "blue" 0.33;
       split_color = toMangoColor "peach" 1.0;
 
       # Overview and jump labels
@@ -111,7 +111,7 @@ in
       jump_labels = "HJKLASDFGQWERTYUIOPZXCVBNM";
       jump_label_decorate_font_desc = "FiraCode Nerd Font Mono Bold 18";
       jump_label_decorate_fg_color = toMangoColor "crust" 1.0;
-      jump_label_decorate_bg_color = toMangoColor "mauve" 1.0;
+      jump_label_decorate_bg_color = toMangoColor "blue" 1.0;
       jump_label_decorate_focus_fg_color = toMangoColor "crust" 1.0;
       jump_label_decorate_focus_bg_color = toMangoColor "pink" 1.0;
       jump_label_decorate_border_color = toMangoColor "surface2" 1.0;
@@ -125,7 +125,7 @@ in
       # Tab bar, which monocle, deck and vertical_deck draw above stacked
       # windows. Each tab uses the window radius and border width. The bar
       # has one border colour for every tab, so the focused tab shows
-      # mauve through its background, with crust text as on the jump
+      # blue through its background, with crust text as on the jump
       # labels. Mango has no urgent tab colour, no gap between tabs, and no
       # gap between the bar and its window.
       tab_bar_height = 32;
@@ -133,7 +133,7 @@ in
       tab_bar_decorate_fg_color = toMangoColor "subtext0" 1.0;
       tab_bar_decorate_bg_color = toMangoColor "mantle" 0.9;
       tab_bar_decorate_focus_fg_color = toMangoColor "crust" 1.0;
-      tab_bar_decorate_focus_bg_color = toMangoColor "mauve" 1.0;
+      tab_bar_decorate_focus_bg_color = toMangoColor "blue" 1.0;
       tab_bar_decorate_border_color = toMangoColor "surface1" 1.0;
       tab_bar_decorate_border_width = 2;
       tab_bar_decorate_corner_radius = 8;
