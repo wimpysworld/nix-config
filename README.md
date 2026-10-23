@@ -22,16 +22,14 @@ These computers are managed by this Nix flake ❄️
 |  `zannah`   | [Framework Desktop Mainboard] |    [AMD Ryzen AI Max+ 395]     | 128GB |     [AMD Radeon 8060S]      |                          |   🖥️   | ❄️  | ✅   |
 |   `ravi`    |        [Framework 13]         |    [AMD Ryzen AI 9 HX 370]     | 96GB  |       AMD Radeon 890M       |                          |  💻️   | ❄️  |  ✅   |
 |   `bane`    |        [Framework 16]         |      [AMD Ryzen 7 7940HS]      | 96GB  |       AMD Radeon 780M       |                          |  💻️   | ❄️  |  ✅   |
-|  `sidious`  |      [ThinkPad P1 Gen 1]      |      [Intel Xeon E-2176M]      | 64GB  | [NVIDIA Quadro P2000 Max-Q] | Intel UHD Graphics P630  | 💻️🎭️  | ❄️  |  ✅   |
-| `palpatine` |              ⤴️               |               ⤴️               |  ⤴️   |             ⤴️              |            ⤴️            | 💻️🎭️  | 🪟  |  ✅   |
 |   `tanis`   |     [ThinkPad Z13 Gen 1]      |    [AMD Ryzen 5 PRO 6650U]     | 32GB  |       AMD Radeon 660M       |                          |  💻️   | ❄️  |  ✅   |
 |  `felkor`   |     [ThinkPad X13 Gen 2]      |    [AMD Ryzen 5 PRO 5650U]     | 16GB  |      AMD Radeon Vega 7      |                          |  💻️   | ❄️  |  🚧   |
 |   `shaa`    |     [ThinkPad T14s Gen 1]     |    [AMD Ryzen 5 PRO 4650U]     | 16GB  |    AMD Radeon RX Vega 6     |                          |  💻️   | ❄️  |  ✅   |
-|  `atrius`   |       [ThinkPad T495s]        |      [AMD Ryzen 7 3700U]       | 16GB  |     AMD Radeon Vega 10      |                          |  💻️   | ❄️  |  🚧   |
+|  `nihilus`  |               -               |               -                |   -   |              -              |            -             |   💿   | ❄️  |  ✅   |
 |   `momin`   | [Mac Mini M2 Pro]     |       Apple M2 Pro chip        | 32GB  |      Apple M2 Pro GPU       |                          |   🖥️  | 🍏  |  ✅   |
-| `steamdeck` |     [Steam Deck 64GB LCD]     |          Zen 2 4c/8t           | 16GB  |        8 RDNA 2 CUs         |                          |  🎮️   | 🐧  |  ✅   |
 |   `revan`   |       [Z390-DESIGNARE]        |     [Intel Core i9-9900K]      | 64GB  |   Intel UHD Graphics 630    |      [NVIDIA T1000]      |   ☁️   | ❄️  |  🚧   |
 |   `malak`   |        [B360 HD3P-LM]         |      [Intel Core i7-8700]      | 128GB |   Intel UHD Graphics 630    |            -             |   ☁️   | ❄️  |  ✅   |
+|  `cognus`   |          GandiCloud           |               -                |   -   |              -              |            -             |  🐄☁️  | ❄️  |  ✅   |
 |   `maul`    |       [TRX40-DESIGNARE]       | [AMD Ryzen Threadripper 3970X] | 256GB |       NVIDIA RTX 3090       | NVIDIA RTX 2080Ti (22GB) |   ☁️   | ❄️  |  🚧   |
 
 Workstation and server host names are Sith Lords and the virtual machines are named after TIE fighter series.
@@ -44,6 +42,7 @@ Dual boot systems have the NixOS install named a Sith Lord and the _"other"_ OS 
 - 💻️ : Laptop
 - 🎮️ : Games Machine
 - 🐄 : Virtual Machine
+- 💿 : ISO image
 - ☁️ : Server
 - 🧟 : Not in service
 
@@ -87,7 +86,7 @@ Every host is registered in the system registry (`lib/registry-systems.toml`, re
 
 **Adding a new host** = add a registry entry to `lib/registry-systems.toml` and create a hardware config. That's it. The new host automatically gets the right desktop, GPU drivers, services, shell, everything - because the modules gate themselves based on the host's properties, not its name.
 
-**Host-specific directories** (`nixos/skrye/`, `nixos/sidious/`, etc.) contain _only_ hardware: disk layouts and kernel modules. All behaviour lives in the self-gating modules reacting to host properties.
+**Host-specific directories** (`nixos/skrye/`, `nixos/malak/`, etc.) contain _only_ hardware: disk layouts and kernel modules. All behaviour lives in the self-gating modules reacting to host properties.
 
 The full noughty option reference, helper functions, and usage patterns are documented in [`lib/noughty/README.md`](./lib/noughty/README.md).
 
@@ -137,8 +136,10 @@ The full noughty option reference, helper functions, and usage patterns are docu
 │  │  └── virtualisation
 │  ├── atrius
 │  ├── bane
+│  ├── cognus
 │  ├── felkor
 │  ├── malak
+│  ├── maul
 │  ├── nihilus
 │  ├── ravi
 │  ├── revan
