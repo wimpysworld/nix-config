@@ -394,20 +394,6 @@ in
           readOnly = true;
         };
 
-        primaryWidth = lib.mkOption {
-          type = lib.types.int;
-          default = if primaryDisplay != null then primaryDisplay.width else 0;
-          description = "Horizontal resolution of the primary display in pixels.";
-          readOnly = true;
-        };
-
-        primaryHeight = lib.mkOption {
-          type = lib.types.int;
-          default = if primaryDisplay != null then primaryDisplay.height else 0;
-          description = "Vertical resolution of the primary display in pixels.";
-          readOnly = true;
-        };
-
         primaryResolution = lib.mkOption {
           type = lib.types.str;
           default =
@@ -417,20 +403,6 @@ in
               "";
           description = "Formatted resolution of the primary display (e.g. \"3440x1440\").";
           readOnly = true;
-        };
-
-        primaryOrientation = lib.mkOption {
-          type = lib.types.enum [
-            "landscape"
-            "portrait"
-          ];
-          default =
-            if primaryDisplay != null && primaryDisplay.height > primaryDisplay.width then
-              "portrait"
-            else
-              "landscape";
-          readOnly = true;
-          description = "Orientation of the primary display: landscape or portrait.";
         };
 
         primaryIsPortrait = lib.mkOption {
@@ -452,20 +424,6 @@ in
           default = if primaryDisplay != null then primaryDisplay.scale else 1.0;
           readOnly = true;
           description = "Scale factor of the primary display.";
-        };
-
-        primaryIsHighDpi = lib.mkOption {
-          type = lib.types.bool;
-          default = primaryDisplay != null && primaryDisplay.scale >= 2.0;
-          readOnly = true;
-          description = "Whether the primary display is high-DPI (scale >= 2.0).";
-        };
-
-        primaryIsHighRes = lib.mkOption {
-          type = lib.types.bool;
-          default = primaryDisplay != null && primaryDisplay.width * primaryDisplay.height >= 3686400;
-          readOnly = true;
-          description = "Whether the primary display has high resolution (pixel count >= ~QHD+).";
         };
 
         isMultiMonitor = lib.mkOption {

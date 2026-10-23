@@ -239,15 +239,10 @@ All derived from `noughty.host.displays`. Primary is the first display where `pr
 |--------|------|-------------|
 | `display.primary` | `nullOr attrs` | The primary display attrset. |
 | `display.primaryOutput` | `str` | Output connector name of the primary display. `""` if none. |
-| `display.primaryWidth` | `int` | Horizontal resolution. `0` if none. |
-| `display.primaryHeight` | `int` | Vertical resolution. `0` if none. |
 | `display.primaryResolution` | `str` | Formatted `"WIDTHxHEIGHT"`. `""` if none. |
-| `display.primaryOrientation` | `enum ["landscape" "portrait"]` | Derived from width vs height. |
 | `display.primaryIsPortrait` | `bool` | `height > width`. |
 | `display.primaryIsUltrawide` | `bool` | Aspect ratio >= 21:10. |
 | `display.primaryScale` | `float` | Scale factor of the primary display. `1.0` if none. |
-| `display.primaryIsHighDpi` | `bool` | `scale >= 2.0`. |
-| `display.primaryIsHighRes` | `bool` | Pixel count >= ~QHD+ (3,686,400 pixels). |
 | `display.isMultiMonitor` | `bool` | `length displays > 1`. |
 | `display.outputs` | `listOf str` | All output connector names. |
 

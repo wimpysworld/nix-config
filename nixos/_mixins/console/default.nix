@@ -29,49 +29,36 @@ let
     "tty7"
     "tty8"
   ];
-  kmsconFontSize = {
-    sidious = "24";
-    tanis = "18";
-    felkor = "18";
-    skrye = "20";
-  };
-  kmsconExtraConfig =
-    (
-      if (builtins.hasAttr host.name kmsconFontSize) then
-        ''
-          font-size=${kmsconFontSize.${host.name}}
-        ''
-      else
-        ''
-          font-size=16
-        ''
-    )
-    + ''
-      no-drm
-      no-switchvt
-      grab-scroll-up=
-      grab-scroll-down=
-      palette=custom
-      palette-black=${rgbToKmscon "surface1"}
-      palette-red=${rgbToKmscon "red"}
-      palette-green=${rgbToKmscon "green"}
-      palette-yellow=${rgbToKmscon "yellow"}
-      palette-blue=${rgbToKmscon "blue"}
-      palette-magenta=${rgbToKmscon "pink"}
-      palette-cyan=${rgbToKmscon "teal"}
-      palette-light-grey=${rgbToKmscon "subtext0"}
-      palette-dark-grey=${rgbToKmscon "surface2"}
-      palette-light-red=${rgbToKmscon "red"}
-      palette-light-green=${rgbToKmscon "green"}
-      palette-light-yellow=${rgbToKmscon "yellow"}
-      palette-light-blue=${rgbToKmscon "blue"}
-      palette-light-magenta=${rgbToKmscon "pink"}
-      palette-light-cyan=${rgbToKmscon "teal"}
-      palette-white=${rgbToKmscon "text"}
-      palette-foreground=${rgbToKmscon "subtext1"}
-      palette-background=${rgbToKmscon "base"}
-      sb-size=16384
-    '';
+  # kmscon sizes its font in device pixels and has no scale option, so
+  # follow the Wayland scale of the primary display from the registry.
+  kmsconFontSize = builtins.floor (20 * host.display.primaryScale + 0.5);
+  kmsconExtraConfig = ''
+    font-size=${toString kmsconFontSize}
+    no-drm
+    no-switchvt
+    grab-scroll-up=
+    grab-scroll-down=
+    palette=custom
+    palette-black=${rgbToKmscon "surface1"}
+    palette-red=${rgbToKmscon "red"}
+    palette-green=${rgbToKmscon "green"}
+    palette-yellow=${rgbToKmscon "yellow"}
+    palette-blue=${rgbToKmscon "blue"}
+    palette-magenta=${rgbToKmscon "pink"}
+    palette-cyan=${rgbToKmscon "teal"}
+    palette-light-grey=${rgbToKmscon "subtext0"}
+    palette-dark-grey=${rgbToKmscon "surface2"}
+    palette-light-red=${rgbToKmscon "red"}
+    palette-light-green=${rgbToKmscon "green"}
+    palette-light-yellow=${rgbToKmscon "yellow"}
+    palette-light-blue=${rgbToKmscon "blue"}
+    palette-light-magenta=${rgbToKmscon "pink"}
+    palette-light-cyan=${rgbToKmscon "teal"}
+    palette-white=${rgbToKmscon "text"}
+    palette-foreground=${rgbToKmscon "subtext1"}
+    palette-background=${rgbToKmscon "base"}
+    sb-size=16384
+  '';
   useGeoclue = !host.is.server && !host.is.iso;
 in
 {

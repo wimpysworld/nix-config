@@ -7,36 +7,26 @@
 }:
 let
   inherit (config.noughty) host;
-  inherit (host) display;
   palette = catppuccinPalette;
   icons = ./icons;
-  # Centre the menu on the primary output: a vertical band on portrait
-  # displays, a horizontal band on ultrawide.
-  wleaveMargins =
-    if display.primaryIsPortrait then
-      "--margin-top 960 --margin-bottom 960"
-    else if display.primaryIsUltrawide then
-      "--margin-left 540 --margin-right 540"
-    else
-      "";
+  compositorQuery = import ../../../../scripts/lan-mouse-warp/compositor-query.nix { inherit pkgs; };
   # One wrapper so the waybar button and the fuzzel session menu share a single
   # invocation. Redirecting XDG_CONFIG_HOME to an empty directory drops the
   # catppuccin gtk.css `@import` (loaded at PRIORITY_USER, which would otherwise
   # force an opaque window) out of wleave's cascade, so its own
   # Catppuccin-coloured CSS wins and the background stays transparent. wleave
   # also discovers its config via XDG_CONFIG_HOME, so the layout and CSS are
-  # passed explicitly.
+  # passed explicitly. wleave-session.sh sizes the menu from the focused output.
   sessionMenu = pkgs.writeShellApplication {
     name = "wleave-session";
-    runtimeInputs = [ pkgs.wleave ];
+    runtimeInputs = [ compositorQuery ];
     text = ''
-      exec env XDG_CONFIG_HOME=${pkgs.emptyDirectory} wleave \
-        --no-version-info \
-        --buttons-per-row 6 \
-        ${wleaveMargins} \
-        --layout ${config.xdg.configHome}/wleave/layout.json \
-        --css ${config.xdg.configHome}/wleave/style.css "$@"
-    '';
+      wleave=${lib.getExe pkgs.wleave}
+      config_home=${pkgs.emptyDirectory}
+      layout=${config.xdg.configHome}/wleave/layout.json
+      css=${config.xdg.configHome}/wleave/style.css
+    ''
+    + lib.removePrefix "#!/usr/bin/env bash\n" (builtins.readFile ./wleave-session.sh);
   };
 in
 lib.mkIf (host.is.linux && host.is.workstation) {
@@ -93,8 +83,9 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         }
       ];
       # Match the original wlogout geometry. The launcher passes
-      # `--buttons-per-row 6`, so all six buttons sit in one row, and the same
-      # per-edge margins. The button margin below is unchanged from wlogout.
+      # `--buttons-per-row 6`, so all six buttons sit in one row, and margins
+      # that centre a fixed band on the focused output. The button margin below
+      # is unchanged from wlogout.
       # GTK4 and Libadwaita add button padding, a minimum size and chrome that GTK3 wlogout never imposed, so reset those
       # and let the grid plus margins size the buttons exactly as before.
       style = ''

@@ -54,6 +54,12 @@ measurement.
   length-prefixed JSON IPC. Every Wayfire method name lives in its
   `METHODS` table, because the `stipc` plugin is a test interface and
   a rename upstream should be a single edit here.
+- `compositor-query.nix` and `compositor-query-command.sh` - the
+  `compositor-query` command, which exposes the same queries plus the
+  focused output and an output scale to session tools: `wleave-session`
+  and the Mango `xwayland-dpi` service. Wayfire IPC reports no output
+  scale, so the Wayfire scale comes from `wlr-randr`. The flake check
+  `checks.<system>.compositor-query` tests it with fake compositor tools.
 - `warp-application.nix` - the shared derivation, imported by this
   module and by `lan-mouse-hookd`.
 - `wayfire-ipc.nix` - the helper derivation, shared with

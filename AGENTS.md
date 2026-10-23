@@ -188,7 +188,7 @@ Key gates:
 
 When adding a compositor, also extend the lan-mouse cursor tooling in `home-manager/_mixins/scripts/lan-mouse-warp/` (READMEs there explain the design):
 
-- Add detection and monitor queries to `compositor-query.sh`. Detection must work from the runtime directory alone, with no session environment, because the scripts run over SSH.
+- Add detection, monitor, focused-output and output-scale queries to `compositor-query.sh`. Detection must work from the runtime directory alone, with no session environment, because the scripts run over SSH. `wleave-session` and the Mango `xwayland-dpi` service use these queries through the `compositor-query` command.
 - Add a cursor read to `lan-mouse-handoff` and a cursor warp to `lan-mouse-warp`, in global logical layout coordinates.
 - Monitor queries must return logical layout geometry; divide physical sizes by scale and swap axes for 90 and 270 degree transforms where the compositor reports physical pixels.
 - Isolate unstable or compositor-specific IPC behind one function or helper, as `lan-mouse-wayfire-ipc.py` does for `stipc`.

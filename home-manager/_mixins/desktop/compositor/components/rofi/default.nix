@@ -7,9 +7,10 @@
 }:
 let
   inherit (config.noughty) host;
-  inherit (host) display;
   palette = catppuccinPalette;
-  desktopLayout = {
+  # One layout in logical pixels on every host. Rofi scales it by the
+  # output scale, so the grid looks the same relative to other clients.
+  appGridLayout = {
     columns = "6";
     lines = "4";
     elementIconSize = "80px";
@@ -20,35 +21,6 @@ let
     mainboxPadding = "100px 225px";
     inputbarMargin = "0% 25%";
   };
-  laptopLayout = {
-    columns = "5";
-    lines = "4";
-    elementIconSize = "76px";
-    elementPadding = "24px 10px";
-    elementSpacing = "10px";
-    listviewSpacing = "8px";
-    mainboxSpacing = "82px";
-    mainboxPadding = "92px 200px";
-    inputbarMargin = "0% 22%";
-  };
-  compactLaptopLayout = {
-    columns = "5";
-    lines = "3";
-    elementIconSize = "72px";
-    elementPadding = "24px 10px";
-    elementSpacing = "10px";
-    listviewSpacing = "8px";
-    mainboxSpacing = "76px";
-    mainboxPadding = "88px 190px";
-    inputbarMargin = "0% 22%";
-  };
-  appGridLayout =
-    if host.is.laptop && (display.primaryHeight <= 1080 || display.primaryIsHighDpi) then
-      compactLaptopLayout
-    else if host.is.laptop then
-      laptopLayout
-    else
-      desktopLayout;
   inherit (appGridLayout)
     columns
     elementIconSize

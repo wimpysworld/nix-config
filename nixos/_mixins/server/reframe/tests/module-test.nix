@@ -133,19 +133,35 @@ let
       "2560"
       "2880"
       "60"
+      "1.000000"
     ];
-    zannah = null;
+    zannah = [
+      "DP-1"
+      "3440"
+      "1440"
+      "100"
+      "1.000000"
+    ];
     ravi = [
       "eDP-1"
       "2880"
       "1920"
       "120"
+      "1.500000"
+    ];
+    tanis = [
+      "eDP-1"
+      "1920"
+      "1200"
+      "60"
+      "1.000000"
     ];
     bane = [
       "eDP-1"
       "2560"
       "1600"
       "165.000000"
+      "1.250000"
     ];
   };
 
@@ -176,7 +192,7 @@ let
       (builtins.elem "d /var/cache/regreet 0700 greeter greeter - -" config.systemd.tmpfiles.rules)
       (hasLine ''export XDG_CACHE_HOME="/var/cache/regreet"'' wrapper)
       (indexOf ''export XDG_CACHE_HOME="/var/cache/regreet"'' wrapper < indexOf "/bin/cage -d" wrapper)
-      (config.noughty.host.display.isMultiMonitor == (primaryArgs != null))
+      ((config.noughty.host.display.primary != null) == (primaryArgs != null))
       (hasLine "${pkgs.cage}/bin/cage -d -m last -s -- ${command}" wrapper)
       (!(config.environment.etc ? "kanshi/regreet"))
       (!(lib.hasInfix "kanshi" wrapper))

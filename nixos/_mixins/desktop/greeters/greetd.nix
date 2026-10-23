@@ -48,14 +48,17 @@ let
     in
     if res != "" then noughtyLib.backgroundResolution res else "1920x1080";
   regreetOutputSetup = import ./regreet-output-setup { inherit pkgs; };
+  # Cage has no scale option, so the helper applies the registry mode and
+  # scale of the primary display before ReGreet starts.
   greeterSession =
-    if host.display.isMultiMonitor then
+    if host.display.primary != null then
       lib.escapeShellArgs [
         "${regreetOutputSetup}/bin/regreet-output-setup"
         host.display.primary.output
         (toString host.display.primary.width)
         (toString host.display.primary.height)
         (toString host.display.primary.refresh)
+        (toString host.display.primaryScale)
         "${pkgs.dbus}/bin/dbus-run-session"
         "${pkgs.regreet}/bin/regreet"
       ]

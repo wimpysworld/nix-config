@@ -6,12 +6,16 @@ fail() {
   exit 1
 }
 
-[[ $# -ge 5 ]] || fail 'Expected primary output, width, height, refresh and session command.'
+[[ $# -ge 6 ]] || fail 'Expected primary output, width, height, refresh, scale and session command.'
 primary=$1
 width=$2
 height=$3
 refresh=$4
-shift 4
+scale=$5
+shift 5
+if [[ ! $scale =~ ^[0-9]+([.][0-9]+)?$ ]] || ! jq -en --argjson scale "$scale" '$scale > 0' >/dev/null; then
+  fail "Invalid scale $scale."
+fi
 
 query_outputs() {
   local outputs
@@ -50,19 +54,21 @@ mode=$(jq -er --arg selected "$selected" --arg primary "$primary" \
     (if .refresh > 0 then "@\(.refresh * 1000 | round / 1000)Hz" else "" end)
   end
 ' <<<"$outputs") || fail "No usable mode for $selected."
-printf 'regreet-output-setup: Using %s mode %s at 0,0, scale 1.\n' "$selected" "$mode" >&2
+printf 'regreet-output-setup: Using %s mode %s at 0,0, scale %s.\n' "$selected" "$mode" "$scale" >&2
 
-args=(--output "$selected" --on --mode "$mode" --pos "0,0" --scale 1)
+args=(--output "$selected" --on --mode "$mode" --pos "0,0" --scale "$scale")
 while IFS= read -r output; do
   [[ $output == "$selected" ]] || args+=(--output "$output" --off)
 done < <(jq -r '.[].name' <<<"$outputs")
 
 timeout --kill-after=1s 5s wlr-randr "${args[@]}" || fail 'Could not apply the single-output layout.'
 outputs=$(query_outputs) || fail 'Could not verify outputs.'
-jq -e --arg selected "$selected" '
+# The protocol carries the scale as a fixed-point number, so allow rounding.
+jq -e --arg selected "$selected" --argjson scale "$scale" '
   map(select(.enabled)) |
   length == 1 and .[0].name == $selected and
-  .[0].position == {x: 0, y: 0} and .[0].scale == 1
+  .[0].position == {x: 0, y: 0} and
+  ((.[0].scale - $scale) | fabs) < 0.01
 ' <<<"$outputs" >/dev/null || fail 'The single-output layout was not confirmed.'
 
 exec "$@"

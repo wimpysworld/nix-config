@@ -54,6 +54,7 @@ in
     ./rules.nix
     ./theme.nix
     ./waybar.nix
+    ./xwayland-dpi.nix
   ];
 
   config = lib.mkIf (host.desktop == "mango") {

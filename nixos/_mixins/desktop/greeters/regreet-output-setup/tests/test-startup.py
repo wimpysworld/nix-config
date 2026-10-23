@@ -61,8 +61,7 @@ while index < len(args):
         output["position"] = {"x": 0, "y": 0}
     elif arg == "--scale":
         index += 1
-        assert args[index] == "1"
-        output["scale"] = 1
+        output["scale"] = float(args[index])
     else:
         raise AssertionError(f"Unexpected argument: {arg}")
     index += 1
@@ -77,6 +76,12 @@ elif behaviour == "verify-empty":
 elif behaviour == "verify-position":
     for output in outputs:
         output["position"] = {"x": 50, "y": 0}
+elif behaviour == "verify-scale":
+    for output in outputs:
+        output["scale"] = 1
+elif behaviour == "fixed-point-scale":
+    for output in outputs:
+        output["scale"] = round(output["scale"] * 256) / 256
 (root / "after.json").write_text(json.dumps(outputs))
 (root / "applied").touch()
 """
@@ -96,7 +101,12 @@ def output(name, enabled=False, modes=None):
 
 class StartupTests(unittest.TestCase):
     def run_startup(
-        self, outputs, behaviour="", success=True, primary=("eDP-1", 1920, 1080, 60)
+        self,
+        outputs,
+        behaviour="",
+        success=True,
+        primary=("eDP-1", 1920, 1080, 60, 1.0),
+        expect_calls=True,
     ):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -125,6 +135,9 @@ class StartupTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode == 0, success, result.stderr)
             self.assertEqual((root / "started").exists(), success, result.stderr)
+            if not expect_calls:
+                self.assertFalse((root / "calls").exists())
+                return result.stderr
             calls = [
                 json.loads(line) for line in (root / "calls").read_text().splitlines()
             ]
@@ -148,7 +161,7 @@ class StartupTests(unittest.TestCase):
                     "--pos",
                     "0,0",
                     "--scale",
-                    "1",
+                    "1.0",
                     "--output",
                     "DP-3",
                     "--off",
@@ -177,6 +190,7 @@ class StartupTests(unittest.TestCase):
                 primary["width"],
                 primary["height"],
                 primary.get("refresh", 60),
+                primary.get("scale", 1.0),
             )
             outputs = [
                 output(
@@ -206,7 +220,9 @@ class StartupTests(unittest.TestCase):
                     self.assertEqual(calls[0], ["--json"])
                     self.assertEqual(calls[-1], ["--json"])
                     self.assertEqual(calls[1][1], selected)
-                    self.assertEqual(calls[1][5:9], ["--pos", "0,0", "--scale", "1"])
+                    self.assertEqual(
+                        calls[1][5:9], ["--pos", "0,0", "--scale", str(settings[4])]
+                    )
                     self.assertEqual(
                         calls[1][9:],
                         [
@@ -216,6 +232,42 @@ class StartupTests(unittest.TestCase):
                             for arg in ("--output", other, "--off")
                         ],
                     )
+
+    def test_registry_scale_applied(self):
+        calls, log = self.run_startup(
+            [output("eDP-1", True, [mode(2880, 1920, 120)])],
+            primary=("eDP-1", 2880, 1920, 120, "1.500000"),
+        )
+        self.assertEqual(calls[1][7:9], ["--scale", "1.500000"])
+        self.assertIn("scale 1.500000.", log)
+
+    def test_fixed_point_scale_confirmed(self):
+        self.run_startup(
+            [output("eDP-1", True)],
+            "fixed-point-scale",
+            primary=("eDP-1", 1920, 1080, 60, "1.33"),
+        )
+
+    def test_unconfirmed_scale(self):
+        calls, log = self.run_startup(
+            [output("eDP-1", True)],
+            "verify-scale",
+            success=False,
+            primary=("eDP-1", 1920, 1080, 60, "1.5"),
+        )
+        self.assertEqual(len(calls), 3)
+        self.assertIn("was not confirmed", log)
+
+    def test_invalid_scale(self):
+        for scale in ["0", "-1", "abc", ""]:
+            with self.subTest(scale=scale):
+                result = self.run_startup(
+                    [output("eDP-1")],
+                    success=False,
+                    primary=("eDP-1", 1920, 1080, 60, scale),
+                    expect_calls=False,
+                )
+                self.assertIn("Invalid scale", result)
 
     def test_enabled_fallback_sorted(self):
         calls, log = self.run_startup(

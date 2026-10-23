@@ -157,6 +157,9 @@
               touch "$out"
             ''
           );
+          compositor-query = import ./lib/tests/compositor-query.nix {
+            inherit pkgs;
+          };
           communication-rules-hooks = import ./lib/tests/communication-rules-hooks.nix {
             inherit (nixpkgs) lib;
             inherit pkgs;
@@ -168,6 +171,29 @@
           mango-pinned-watch = import ./lib/tests/mango-pinned-watch.nix {
             inherit pkgs;
           };
+          # Runs the ReGreet output setup fixture tests against fake
+          # wlr-randr and ReGreet programs. The tests read the registry.
+          regreet-output-setup =
+            let
+              source = nixpkgs.lib.fileset.toSource {
+                root = ./.;
+                fileset = nixpkgs.lib.fileset.unions [
+                  ./lib/registry-systems.toml
+                  ./nixos/_mixins/desktop/greeters/regreet-output-setup
+                ];
+              };
+            in
+            pkgs.runCommand "regreet-output-setup" { } ''
+              export PATH=${
+                nixpkgs.lib.makeBinPath [
+                  pkgs.bash
+                  pkgs.coreutils
+                  pkgs.jq
+                ]
+              }
+              ${pkgs.python3}/bin/python3 ${source}/nixos/_mixins/desktop/greeters/regreet-output-setup/tests/test-startup.py -v
+              touch "$out"
+            '';
           wayland-session-lifecycle = import ./lib/tests/wayland-session-lifecycle.nix {
             inherit pkgs;
           };

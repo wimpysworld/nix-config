@@ -47,3 +47,38 @@ function compositor_monitors() {
 		;;
 	esac
 }
+
+# Print the focused output as one line: name, logical width, logical
+# height and scale.  lan-mouse does not call this, so shellcheck sees
+# it as unused there.
+# shellcheck disable=SC2329
+function compositor_focused_output() {
+	case "$COMPOSITOR" in
+	mango)
+		# mmsg marks the selected monitor active, and reports the
+		# output layout box in logical layout coordinates.
+		mmsg get all-monitors | jq -er 'first(.monitors[] | select(.active)) | "\(.name) \(.width) \(.height) \(.scale)"'
+		;;
+	wayfire)
+		# Wayfire IPC reports no scale, so wlr-randr supplies it.
+		local output scale
+		output=$(lan-mouse-wayfire-ipc focused-output | jq -er '.info | select(. != null) | "\(.name) \(.geometry.width) \(.geometry.height)"') || return 1
+		scale=$(compositor_output_scale "${output%% *}") || return 1
+		echo "$output $scale"
+		;;
+	esac
+}
+
+# Print the scale of the named output.  lan-mouse does not call this,
+# so shellcheck sees it as unused there.
+# shellcheck disable=SC2329
+function compositor_output_scale() {
+	case "$COMPOSITOR" in
+	mango)
+		mmsg get all-monitors | jq -er --arg name "$1" 'first(.monitors[] | select(.name == $name)) | .scale'
+		;;
+	wayfire)
+		wlr-randr --json | jq -er --arg name "$1" 'first(.[] | select(.name == $name and .enabled)) | .scale'
+		;;
+	esac
+}

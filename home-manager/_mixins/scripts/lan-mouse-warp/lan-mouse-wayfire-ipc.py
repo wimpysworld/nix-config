@@ -17,6 +17,7 @@ import sys
 METHODS = {
     "cursor": "window-rules/get_cursor_position",
     "outputs": "window-rules/list-outputs",
+    "focused-output": "window-rules/get-focused-output",
     "move-cursor": "stipc/move_cursor",
 }
 
