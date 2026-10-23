@@ -6,17 +6,6 @@
 }:
 let
   inherit (config.noughty) host;
-  inherit (host) display;
-  # Fuzzel defaults to dpi-aware=auto, so on a scaled output the configured
-  # point size is multiplied by the compositor scale factor. The size boost
-  # exists to compensate for high-resolution panels running at scale 1.0, so
-  # it is skipped when the scale already compensates, otherwise the boost
-  # would double-apply. High-DPI panels keep the boost for their sizing.
-  fontSize =
-    if (display.primaryIsHighRes && display.primaryScale == 1.0) || display.primaryIsHighDpi then
-      "30"
-    else
-      "18";
   fuzzelActions = pkgs.writeShellApplication {
     name = "fuzzel-actions";
     text = "fuzzel --prompt '󰌧 ' --show-actions";
@@ -127,7 +116,13 @@ lib.mkIf (host.is.linux && host.is.workstation) {
       settings = {
         main = {
           filter-desktop = true;
-          font = "FiraCode Nerd Font Mono:size=${fontSize}";
+          # One size everywhere. With dpi-aware=no, Fuzzel multiplies the point
+          # size by the output's scale factor, so each display's chosen scale
+          # sets the apparent size, including scales that wdisplays changes.
+          # The default, auto, switches to physical DPI when every output is
+          # at scale 1, which makes the size differ between hosts.
+          dpi-aware = "no";
+          font = "FiraCode Nerd Font Mono:size=38";
           lines = 16;
           tabs = 2;
           width = 32;
