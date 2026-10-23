@@ -10,7 +10,7 @@ let
   contract = (import ../../../../../lib/wayland-compositors.nix).compositors.mango;
   tags = import ./tags.nix { inherit host; };
   tagNumbers = lib.range 1 8;
-  # SIGRTMIN+8 refreshes the custom/tagN modules. custom/ai-usage uses 13.
+  # SIGRTMIN+8 refreshes the custom/tagN modules.
   signal = 8;
   sync = lib.optionalString tags.synced ",1";
   owners = lib.listToAttrs (

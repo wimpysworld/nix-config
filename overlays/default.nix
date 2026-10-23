@@ -119,6 +119,7 @@ in
       inherit (final.unstable) mas;
       inherit (final.unstable) melange;
       inherit (final.unstable) tmux;
+      inherit (final.unstable) wezterm;
 
       # Claude Code tracks the llm-agents flake on Linux (pinned alongside the
       # other agent tooling there) and unstable nixpkgs elsewhere.

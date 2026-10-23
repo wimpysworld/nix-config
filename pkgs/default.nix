@@ -2,25 +2,19 @@
 # You can build them using 'nix build .#example'
 pkgs: {
   # Local packages
-  ai-usagebar = pkgs.callPackage ./ai-usagebar { };
   blender-agent-bridge = pkgs.callPackage ./blender-agent-bridge { };
-  brow6el = pkgs.callPackage ./brow6el { };
-  casty = pkgs.callPackage ./casty { };
   cg-mcp-proxy = pkgs.callPackage ./cg-mcp-proxy { };
   chainctl = pkgs.callPackage ./chainctl { };
   claude-themes-catppuccin = pkgs.callPackage ./claude-themes-catppuccin { };
   davinci-resolve = pkgs.callPackage ./davinci-resolve { };
   davinci-resolve-studio = pkgs.callPackage ./davinci-resolve { studioVariant = true; };
   export-agentic-dots = pkgs.callPackage ./export-agentic-dots { };
-  heynote = pkgs.callPackage ./heynote { };
   herdr-ctx-bar = pkgs.callPackage ./herdr-ctx-bar { };
   herdr-disp-model = pkgs.callPackage ./herdr-disp-model { };
   herdr-integrations = pkgs.callPackage ./herdr-integrations { };
   herdr-telegram-agents = pkgs.callPackage ./herdr-telegram-agents { };
   herdr-home-layout = pkgs.callPackage ./herdr-layout { };
   herdr-work-layout = pkgs.callPackage ./herdr-layout { work = true; };
-  linear-term = pkgs.callPackage ./linear-term { };
-  linear-tui = pkgs.callPackage ./linear-tui { };
   manuscript = pkgs.callPackage ./manuscript { };
   moltis = pkgs.callPackage ./moltis { };
   openhue-cli = pkgs.callPackage ./openhue-cli { };
@@ -38,7 +32,6 @@ pkgs: {
 
   # Local package overrides
   catppuccin-gtk = pkgs.callPackage ./catppuccin-gtk { };
-  wezterm = pkgs.callPackage ./wezterm { };
   wolfictl = pkgs.callPackage ./wolfictl { };
 
   # Local fonts
@@ -60,7 +53,4 @@ pkgs: {
   poppins-font = pkgs.callPackage ./fonts/poppins-font { };
   spaceport-2006-font = pkgs.callPackage ./fonts/spaceport-2006-font { };
   zx-spectrum-7-font = pkgs.callPackage ./fonts/zx-spectrum-7-font { };
-
-  # Non-redistributable packages
-  pico8 = pkgs.callPackage ./pico8 { };
 }

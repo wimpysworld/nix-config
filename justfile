@@ -122,58 +122,6 @@ detsys-login:
     sudo determinate-nixd auth login token --token-file "${TOKEN_FILE}"
     echo "FlakeHub 󰸞 Logged in"
 
-# Prefetch proprietary packages into the Nix store
-prefetch: token-check
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    SECRETS_FILE="secrets/secrets.yaml"
-
-    if ! command -v sops &>/dev/null; then
-        echo "Prefetch   sops not found; skipping proprietary package prefetch"
-        exit 0
-    fi
-
-    if [[ ! -f "${SECRETS_FILE}" ]]; then
-        echo "Prefetch   ${SECRETS_FILE} not found; skipping proprietary package prefetch"
-        exit 0
-    fi
-
-    echo "Prefetch 󰏓 Proprietary packages"
-
-    # Each entry: "secret_key filename expected_nix32 store_path"
-    PACKAGES=(
-        "pico8_download_url pico-8_0.2.7_amd64.zip 1alyii0bc9r9j2519q3jhxn8xazrcffy0kl8k07mnn208y2wxwpd /nix/store/6wlgkm92i70rflc5ijavv6nd1ys9pkn6-pico-8_0.2.7_amd64.zip"
-    )
-
-    for entry in "${PACKAGES[@]}"; do
-        read -r secret_key filename expected_hash store_path <<< "${entry}"
-
-        # Skip if already in the Nix store
-        if nix-store --check-validity "${store_path}" 2>/dev/null; then
-            echo "  󰸞 ${filename} (already in store)"
-            continue
-        fi
-
-        # Decrypt the URL from sops
-        url=$(sops decrypt --extract "[\"${secret_key}\"]" "${SECRETS_FILE}" 2>/dev/null) || {
-            echo "    ${filename}: could not decrypt ${secret_key}; skipping"
-            continue
-        }
-
-        echo "  ⬇️  ${filename}"
-        actual_hash=$(nix-prefetch-url --name "${filename}" "${url}" 2>/dev/null) || {
-            echo "   ${filename}: download failed"
-            continue
-        }
-
-        if [[ "${actual_hash}" == "${expected_hash}" ]]; then
-            echo "  󰸞 ${filename} (fetched and verified)"
-        else
-            echo "    ${filename}: hash mismatch (expected ${expected_hash}, got ${actual_hash})"
-        fi
-    done
-
 # Build OS and Home configurations
 build:
     @just build-home
@@ -560,17 +508,17 @@ build-pkg pkg hostname=current_hostname:
     nom build .#"${platform}"Configurations."{{ hostname }}".pkgs."{{ pkg }}"
 
 # Build Home configuration
-build-home username=current_username hostname=current_hostname: prefetch
+build-home username=current_username hostname=current_hostname: token-check
     @echo "Home Manager  Building: {{ username }}@{{ hostname }}"
     @nh home build . --configuration "{{ username }}@{{ hostname }}"
 
 # Switch Home configuration
-switch-home username=current_username hostname=current_hostname: prefetch
+switch-home username=current_username hostname=current_hostname: token-check
     @echo "Home Manager  Switching: {{ username }}@{{ hostname }}"
     @nh home switch . --configuration "{{ username }}@{{ hostname }}" --backup-extension {{ backup_ext }} --show-activation-logs
 
 # Build OS configuration
-build-host hostname=current_hostname: prefetch
+build-host hostname=current_hostname: token-check
     #!/usr/bin/env bash
     set -euo pipefail
     if [ "$(uname)" = "Linux" ]; then
@@ -648,7 +596,7 @@ push-home hostname target=("root@" + hostname):
     printf '%s\n' "${remote_command}" | ssh -- "${target}" bash
 
 # Switch OS configuration
-switch-host hostname=current_hostname: prefetch
+switch-host hostname=current_hostname: token-check
     #!/usr/bin/env bash
     set -euo pipefail
     if [ "$(uname)" = "Linux" ]; then
