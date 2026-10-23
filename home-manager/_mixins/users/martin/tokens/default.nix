@@ -60,6 +60,18 @@ let
     '';
   };
 
+  # Google skips its account chooser when the OAuth URL carries login_hint,
+  # which gcloud never sends. Chrome comes from the system PATH so host
+  # browser flags still apply.
+  loginBrowser = pkgs.writeShellApplication {
+    name = "mint-tokens-login-browser";
+    runtimeInputs = [
+      pkgs.jq
+      pkgs.xdg-utils
+    ];
+    text = builtins.readFile ./login-browser.sh;
+  };
+
   mintTokens = pkgs.writeShellApplication {
     name = "mint-tokens";
     runtimeInputs = [
@@ -77,6 +89,7 @@ let
       export MINT_STAGE_AUDIENCES=${lib.escapeShellArg (lib.concatStringsSep " " stageAudiences)}
       export MINT_MCP_TOKENS=${lib.escapeShellArg (lib.getExe mcpTokens)}
       export MINT_STAGE_ENV=${lib.escapeShellArg stageEnvironment}
+      export MINT_LOGIN_BROWSER=${lib.escapeShellArg (lib.getExe loginBrowser)}
       exec bash "${./mint-tokens.sh}" "$@"
     '';
   };

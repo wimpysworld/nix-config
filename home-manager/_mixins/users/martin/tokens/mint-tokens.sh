@@ -44,6 +44,7 @@ done
 : "${MINT_STAGE_AUDIENCES:?}"
 : "${MINT_MCP_TOKENS:?}"
 : "${MINT_STAGE_ENV:?}"
+: "${MINT_LOGIN_BROWSER:?}"
 
 probe_pid=
 stop_probe() {
@@ -76,86 +77,6 @@ if ((headless)); then
     gcloud_login_flags+=(--no-launch-browser)
     chainctl_login_flags+=(--headless)
 fi
-
-adc_valid=0
-if gcloud auth application-default print-access-token >/dev/null 2>&1; then
-    adc_valid=1
-    echo "✔ gcloud Application Default Credentials are valid."
-else
-    echo "◍ gcloud Application Default Credentials expired or missing."
-fi
-user_valid=0
-if gcloud auth print-access-token >/dev/null 2>&1; then
-    user_valid=1
-    account=$(gcloud auth list --filter=status:ACTIVE --format='value(account)' 2>/dev/null || true)
-    echo "✔ gcloud account active: ${account}"
-else
-    echo "◍ gcloud user credentials expired or missing."
-fi
-drive_error=
-workspace_credentials_usable() {
-    local token response
-    drive_error='Could not obtain a nonempty gcloud token within 30 seconds. Check gcloud credentials and connectivity.'
-    token=$(timeout --signal=TERM --kill-after=1s 30s gcloud auth print-access-token </dev/null 2>/dev/null) || return 2
-    [[ -n "${token//[[:space:]]/}" ]] || return 2
-    drive_error='Google tokeninfo failed. Check network access and Google API availability before retrying.'
-    # Google's OAuth2 v2 discovery specifies POST with a query parameter.
-    response=$(printf '%s' "$token" | curl --disable --silent --fail \
-        --connect-timeout 10 --max-time 30 --max-filesize 1048576 \
-        --request POST --get --data-urlencode access_token@- \
-        https://www.googleapis.com/oauth2/v2/tokeninfo 2>/dev/null) || return 2
-    if ! jq -e '.scope | type == "string"' <<<"$response" >/dev/null 2>&1; then
-        drive_error='Google tokeninfo returned no valid scope list. Check Google API availability before retrying.'
-        return 2
-    fi
-    if ! jq -e '.scope | split(" ") | index("https://www.googleapis.com/auth/drive") != null' \
-        <<<"$response" >/dev/null 2>&1; then
-        drive_error='Full Drive consent is missing. Accept Drive access during gcloud login, or ask your administrator about consent policy.'
-        return 1
-    fi
-    drive_error='Drive API verification failed. Check network access, Drive API availability, and organisation policy before retrying.'
-    printf 'Authorization: Bearer %s\n' "$token" | curl --disable --silent --fail \
-        --connect-timeout 10 --max-time 30 --max-filesize 1048576 \
-        --header @- --output /dev/null \
-        'https://www.googleapis.com/drive/v3/about?fields=kind' 2>/dev/null || return 2
-}
-
-repair=$force
-if ((adc_valid == 0 || user_valid == 0)); then
-    repair=1
-    if ((!force)); then
-        gcloud_login_flags+=(--force)
-    fi
-elif ((!force)); then
-    drive_status=0
-    workspace_credentials_usable || drive_status=$?
-    case "$drive_status" in
-    1)
-        repair=1
-        gcloud_login_flags+=(--force)
-        ;;
-    2)
-        echo "✘ ERROR! $drive_error" >&2
-        exit 1
-        ;;
-    esac
-fi
-if ((repair)); then
-    echo '◍ Repairing gcloud credentials, ADC, and Drive consent with one login...'
-    if ! gcloud auth login "${gcloud_login_flags[@]}"; then
-        echo '✘ ERROR! gcloud login failed. Complete login and Drive consent before retrying.' >&2
-        exit 1
-    fi
-    if ! gcloud auth application-default print-access-token >/dev/null 2>&1; then
-        echo '✘ ERROR! gcloud Application Default Credentials remain unavailable after login.' >&2
-        exit 1
-    fi
-    if ! workspace_credentials_usable; then
-        echo "✘ ERROR! Verification after login failed. $drive_error" >&2
-        exit 1
-    fi
-fi
-echo '✔ gcloud credentials include full Drive access for Docs, Sheets, and Slides.'
 
 audience_flags() {
     local audience
@@ -275,5 +196,95 @@ ensure_docker_helper() {
     echo "✔ Docker credentials working for ${registry}."
 }
 
-ensure_docker_helper gcr.io docker-credential-gcloud gcloud auth configure-docker gcr.io --quiet
 ensure_docker_helper cgr.dev docker-credential-cgr chainctl auth configure-docker
+
+# Google Cloud runs last so its browser consent comes after every chainctl
+# login. Only the gcr.io Docker helper needs gcloud credentials.
+adc_valid=0
+if gcloud auth application-default print-access-token >/dev/null 2>&1; then
+    adc_valid=1
+    echo "✔ gcloud Application Default Credentials are valid."
+else
+    echo "◍ gcloud Application Default Credentials expired or missing."
+fi
+user_valid=0
+if gcloud auth print-access-token >/dev/null 2>&1; then
+    user_valid=1
+    account=$(gcloud auth list --filter=status:ACTIVE --format='value(account)' 2>/dev/null || true)
+    echo "✔ gcloud account active: ${account}"
+else
+    echo "◍ gcloud user credentials expired or missing."
+fi
+drive_error=
+workspace_credentials_usable() {
+    local token response
+    drive_error='Could not obtain a nonempty gcloud token within 30 seconds. Check gcloud credentials and connectivity.'
+    token=$(timeout --signal=TERM --kill-after=1s 30s gcloud auth print-access-token </dev/null 2>/dev/null) || return 2
+    [[ -n "${token//[[:space:]]/}" ]] || return 2
+    drive_error='Google tokeninfo failed. Check network access and Google API availability before retrying.'
+    # Google's OAuth2 v2 discovery specifies POST with a query parameter.
+    response=$(printf '%s' "$token" | curl --disable --silent --fail \
+        --connect-timeout 10 --max-time 30 --max-filesize 1048576 \
+        --request POST --get --data-urlencode access_token@- \
+        https://www.googleapis.com/oauth2/v2/tokeninfo 2>/dev/null) || return 2
+    if ! jq -e '.scope | type == "string"' <<<"$response" >/dev/null 2>&1; then
+        drive_error='Google tokeninfo returned no valid scope list. Check Google API availability before retrying.'
+        return 2
+    fi
+    if ! jq -e '.scope | split(" ") | index("https://www.googleapis.com/auth/drive") != null' \
+        <<<"$response" >/dev/null 2>&1; then
+        drive_error='Full Drive consent is missing. Accept Drive access during gcloud login, or ask your administrator about consent policy.'
+        return 1
+    fi
+    drive_error='Drive API verification failed. Check network access, Drive API availability, and organisation policy before retrying.'
+    printf 'Authorization: Bearer %s\n' "$token" | curl --disable --silent --fail \
+        --connect-timeout 10 --max-time 30 --max-filesize 1048576 \
+        --header @- --output /dev/null \
+        'https://www.googleapis.com/drive/v3/about?fields=kind' 2>/dev/null || return 2
+}
+
+repair=$force
+if ((adc_valid == 0 || user_valid == 0)); then
+    repair=1
+    if ((!force)); then
+        gcloud_login_flags+=(--force)
+    fi
+elif ((!force)); then
+    drive_status=0
+    workspace_credentials_usable || drive_status=$?
+    case "$drive_status" in
+    1)
+        repair=1
+        gcloud_login_flags+=(--force)
+        ;;
+    2)
+        echo "✘ ERROR! $drive_error" >&2
+        exit 1
+        ;;
+    esac
+fi
+if ((repair)); then
+    echo '◍ Repairing gcloud credentials, ADC, and Drive consent with one login...'
+    # gcloud opens its OAuth URL through Python webbrowser, which honours
+    # BROWSER. The wrapper adds the active account as login_hint.
+    login_env=()
+    if ((!headless)); then
+        login_hint=$(gcloud auth list --filter=status:ACTIVE --format='value(account)' 2>/dev/null || true)
+        login_env=(BROWSER="${MINT_LOGIN_BROWSER} %s" MINT_LOGIN_HINT="$login_hint")
+    fi
+    if ! env "${login_env[@]}" gcloud auth login "${gcloud_login_flags[@]}"; then
+        echo '✘ ERROR! gcloud login failed. Complete login and Drive consent before retrying.' >&2
+        exit 1
+    fi
+    if ! gcloud auth application-default print-access-token >/dev/null 2>&1; then
+        echo '✘ ERROR! gcloud Application Default Credentials remain unavailable after login.' >&2
+        exit 1
+    fi
+    if ! workspace_credentials_usable; then
+        echo "✘ ERROR! Verification after login failed. $drive_error" >&2
+        exit 1
+    fi
+fi
+echo '✔ gcloud credentials include full Drive access for Docs, Sheets, and Slides.'
+
+ensure_docker_helper gcr.io docker-credential-gcloud gcloud auth configure-docker gcr.io --quiet

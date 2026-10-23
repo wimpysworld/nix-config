@@ -18,6 +18,8 @@ When repair is necessary, it runs at most one login:
 gcloud auth login --update-adc --enable-gdrive-access --force
 ```
 
+For a browser login, the helper sets `BROWSER` to `mint-tokens-login-browser` for the gcloud call only.
+That wrapper adds the active account as `login_hint`, so Google can skip the account chooser.
 Accept the requested Drive access for the intended account.
 `--force` requests consent even when the existing gcloud token remains valid.
 `mint-tokens --headless` adds `--no-launch-browser` to gcloud login.
@@ -35,7 +37,8 @@ The about check alone does not prove full Drive consent.
 Both HTTP checks have connection and total time limits. The helper suppresses response bodies and tokens.
 
 A missing Drive scope triggers consent repair. Network failures, API failures, and malformed scope responses stop the flow without automatic login retries.
-After login, the helper verifies ADC and Drive access again before it continues to Chainguard, MCP, and Docker.
+The helper runs these gcloud checks after the Chainguard, MCP, and cgr.dev Docker steps.
+After login, the helper verifies ADC and Drive access again, then configures the gcr.io Docker helper.
 If consent remains absent, check organisation policy with your administrator.
 If an API check fails, check connectivity and API availability before you retry.
 These checks do not prove that every Docs, Sheets, or Slides API is enabled, or that a particular file permits access.

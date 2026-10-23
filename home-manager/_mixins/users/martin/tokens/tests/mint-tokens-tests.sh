@@ -10,6 +10,11 @@ log="$tmp/log"
 cat >"$tmp/bin/gcloud" <<'EOF'
 #!/usr/bin/env bash
 printf 'gcloud %s\n' "$*" >>"$TEST_LOG"
+if [[ "$*" == 'auth login '* ]]; then
+    printf 'login-env browser=%s hint=%s\n' "${BROWSER-unset}" "${MINT_LOGIN_HINT-unset}" >>"$TEST_LOG"
+elif [[ -n "${BROWSER+set}" ]]; then
+    printf 'browser leaked to gcloud %s\n' "$*" >>"$TEST_LOG"
+fi
 case "$*" in
 'auth application-default print-access-token')
     grep -Fq 'gcloud auth login ' "$TEST_LOG" && exit "${POST_ADC_EXIT:-0}"
@@ -101,6 +106,10 @@ cat >/dev/null
 exit "\${DOCKER_EXIT:-0}"
 EOF
 done
+cat >"$tmp/bin/google-chrome-stable" <<'EOF'
+#!/usr/bin/env bash
+printf 'chrome %s\n' "$*" >>"$TEST_LOG"
+EOF
 cat >"$tmp/bin/mcp-private" <<'EOF'
 #!/usr/bin/env bash
 printf 'mcp-private %s\n' "$*" >>"$TEST_LOG"
@@ -117,6 +126,7 @@ export MINT_PROD_AUDIENCES='prod mcp-prod'
 export MINT_STAGE_AUDIENCES='stage mcp-stage'
 export MINT_MCP_TOKENS="$tmp/bin/mcp-private"
 export MINT_STAGE_ENV='stage.example'
+export MINT_LOGIN_BROWSER="$tmp/bin/login-browser"
 export GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$XDG_CONFIG_HOME/gws"
 unset GOOGLE_WORKSPACE_CLI_TOKEN GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE
 unset GOOGLE_WORKSPACE_CLI_CLIENT_ID GOOGLE_WORKSPACE_CLI_CLIENT_SECRET MINT_GWS_ACCOUNT
@@ -226,6 +236,7 @@ for flags in '--force --headless' '--headless --force'; do
     run_success bash "$script" "${args[@]}" >"$tmp/headless-output" 2>&1
     assert_log 'gcloud auth login --update-adc --enable-gdrive-access --force --no-launch-browser'
     assert_no_log 'gws '
+    assert_log 'login-env browser=unset hint=unset'
     [[ $(grep -c '^gcloud auth login ' "$log") == 1 ]] || fail 'headless login repeated'
 done
 
@@ -259,7 +270,8 @@ for state in missing network api drive-api drive-network malformed metadata time
         if [[ "$state" == missing ]]; then
             grep -Fq 'Full Drive consent is missing' "$tmp/drive-output" || fail 'consent error is missing'
         fi
-        assert_no_log 'chainctl '
+        assert_log 'mcp-private '
+        assert_no_log 'docker-credential-gcloud'
         ! grep -Fq SECRET "$tmp/drive-output" || fail 'Drive probe leaked output'
     done
 done
@@ -270,7 +282,8 @@ for state in empty timeout; do
         fail "gcloud token state $state returned success"
     fi
     assert_no_log 'curl '
-    assert_no_log 'chainctl '
+    assert_log 'mcp-private '
+    assert_no_log 'docker-credential-gcloud'
     ! grep -Fq SECRET "$tmp/token-output" || fail 'token probe leaked output'
 done
 
@@ -278,39 +291,47 @@ done
 if POST_ADC_EXIT=1 bash "$script" --force >/dev/null 2>&1; then
     fail 'invalid ADC after login returned success'
 fi
-assert_no_log 'chainctl '
+assert_no_log 'docker-credential-gcloud'
 run_success env GOOGLE_WORKSPACE_CLI_TOKEN=SECRET_STALE bash "$script" >"$tmp/override-output" 2>&1
 assert_no_log 'gws '
 ! grep -Fq SECRET "$tmp/override-output" || fail 'Workspace override leaked'
 
-run_success env INVALID_AUDIENCES='prod stage' bash "$script" >/dev/null
+run_success env ADC_EXIT=1 INVALID_AUDIENCES='prod stage' bash "$script" >/dev/null
 prod_login=$(line_of 'chainctl auth login --audience=prod')
 stage_login=$(line_of 'auth login --audience=stage')
 mcp_copy=$(line_of 'mcp-private ')
-gcloud_docker=$(line_of 'docker-credential-gcloud')
 cgr_docker=$(line_of 'docker-credential-cgr')
-((prod_login < stage_login && stage_login < mcp_copy && mcp_copy < gcloud_docker && gcloud_docker < cgr_docker)) ||
+first_gcloud=$(line_of 'gcloud ')
+gcloud_login=$(line_of 'gcloud auth login ')
+gcloud_docker=$(line_of 'docker-credential-gcloud')
+last_chainctl=$(grep -n '^chainctl ' "$log" | tail -1 | cut -d: -f1)
+((prod_login < stage_login && stage_login < mcp_copy && mcp_copy < cgr_docker)) ||
     fail 'Chainguard, MCP, and Docker ordering is wrong'
+((last_chainctl < first_gcloud && cgr_docker < first_gcloud && gcloud_login < gcloud_docker)) ||
+    fail 'Google Cloud authentication did not run last'
+assert_log "login-env browser=$MINT_LOGIN_BROWSER %s hint=user@example.com"
+assert_no_log 'browser leaked'
 
 : >"$log"
 if INVALID_AUDIENCES=stage CHAIN_FAIL_MATCH='auth login --audience=stage' bash "$script" >/dev/null 2>&1; then
     fail 'chainctl repair failure returned success'
 fi
 assert_no_log 'mcp-private'
-assert_no_log 'docker-credential-gcloud'
+assert_no_log 'gcloud '
 assert_development_untouched
 
 : >"$log"
 if GCLOUD_LOGIN_EXIT=1 ADC_EXIT=1 bash "$script" >/dev/null 2>&1; then
     fail 'gcloud login failure returned success'
 fi
-assert_no_log 'chainctl '
+assert_log 'mcp-private '
+assert_no_log 'docker-credential-gcloud'
 
 : >"$log"
 if MCP_EXIT=1 bash "$script" >/dev/null 2>&1; then
     fail 'MCP failure returned success'
 fi
-assert_no_log 'docker-credential-gcloud'
+assert_no_log 'gcloud '
 assert_development_untouched
 
 : >"$log"
@@ -404,5 +425,17 @@ assert_log 'docker-credential-cgr'
 : >"$log"
 MINT_DEV_ENV=dev.example MINT_DEV_AUDIENCES='dev' bash "$script" --force --headless >/dev/null 2>&1
 assert_log "--config $XDG_CONFIG_HOME/chainctl/dev.yaml auth login --headless --audience=dev"
+
+login_browser="${script%/*}/login-browser.sh"
+for case in \
+    'https://accounts.example/auth?a=1|https://accounts.example/auth?a=1&login_hint=me%2Bx%40example.com' \
+    'https://accounts.example/auth|https://accounts.example/auth?login_hint=me%2Bx%40example.com'; do
+    : >"$log"
+    MINT_LOGIN_HINT='me+x@example.com' bash "$login_browser" "${case%%|*}"
+    assert_log "chrome ${case#*|}"
+done
+: >"$log"
+env -u MINT_LOGIN_HINT bash "$login_browser" 'https://accounts.example/auth?a=1'
+[[ $(cat "$log") == 'chrome https://accounts.example/auth?a=1' ]] || fail 'login browser changed a URL without a hint'
 
 echo 'mint-tokens tests passed'
