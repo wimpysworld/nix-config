@@ -9,7 +9,7 @@ let
   inherit (config.noughty) host;
   inherit (host) display;
   palette = catppuccinPalette;
-  icons = "${pkgs.wleave}/share/wleave/icons";
+  icons = ./icons;
   # Centre the menu on the primary output: a vertical band on portrait
   # displays, a horizontal band on ultrawide.
   wleaveMargins =
@@ -32,7 +32,7 @@ let
     text = ''
       exec env XDG_CONFIG_HOME=${pkgs.emptyDirectory} wleave \
         --no-version-info \
-        --buttons-per-row 5 \
+        --buttons-per-row 6 \
         ${wleaveMargins} \
         --layout ${config.xdg.configHome}/wleave/layout.json \
         --css ${config.xdg.configHome}/wleave/style.css "$@"
@@ -45,9 +45,17 @@ lib.mkIf (host.is.linux && host.is.workstation) {
   programs = {
     wleave = {
       enable = true;
-      # wleave's bundled SVG icons, tinted to Catppuccin through the `color`
-      # property (the icons use `currentColor`), with the original wlogout labels.
+      # Font Awesome Free icons (CC BY 4.0, attribution in each SVG), tinted
+      # to Catppuccin through the `color` property (the icons use
+      # `currentColor`), with the original wlogout labels.
       settings.buttons = [
+        {
+          label = "obliterate";
+          action = "wayland-session obliterate";
+          text = "Obliterate";
+          keybind = "o";
+          icon = "${icons}/obliterate.svg";
+        }
         {
           label = "lock";
           action = "wayland-session lock";
@@ -84,10 +92,10 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           icon = "${icons}/shutdown.svg";
         }
       ];
-      # Match the original wlogout geometry. The launcher passes the same
-      # `--buttons-per-row 5` and per-edge margins, and the button margin below
-      # is unchanged from wlogout. GTK4 and Libadwaita add button padding, a
-      # minimum size and chrome that GTK3 wlogout never imposed, so reset those
+      # Match the original wlogout geometry. The launcher passes
+      # `--buttons-per-row 6`, so all six buttons sit in one row, and the same
+      # per-edge margins. The button margin below is unchanged from wlogout.
+      # GTK4 and Libadwaita add button padding, a minimum size and chrome that GTK3 wlogout never imposed, so reset those
       # and let the grid plus margins size the buttons exactly as before.
       style = ''
         window {
@@ -131,6 +139,10 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         /* Per-button Catppuccin accent on the icon and label for a bit of
            flair. Icons inherit `color` via `currentColor`. `:not(:focus)` keeps
            the focused button flipping to crust-on-blue for contrast. */
+        button#obliterate:not(:focus) {
+            color: ${palette.getColor "mauve"};
+        }
+
         button#lock:not(:focus) {
             color: ${palette.getColor "blue"};
         }
