@@ -6,7 +6,7 @@
 }:
 let
   inherit (config.noughty) host;
-  inherit (import ./config-format.nix { inherit catppuccinPalette lib; }) mixMangoColor toMangoColor;
+  inherit (import ./config-format.nix { inherit catppuccinPalette lib; }) toMangoColor;
 
   # Each animation curve is a cubic bezier with four control values.
   curves = {
@@ -129,15 +129,15 @@ in
       # as separate pills: 6 pixels apart and 3 pixels above the window.
       # The bar is 6 pixels taller to keep the text area. Mango has one
       # border colour for every tab and no urgent tab colour, so the tabs
-      # differ by fill and text. The focused tab is a solid dark navy, a
-      # little blue mixed into crust, with blue text. Other tabs are a
-      # translucent crust with dimmed blue text, so they recede.
+      # differ by fill and text. The focused tab is a mantle pill with blue
+      # text. Other tabs are a more translucent crust with dimmed blue
+      # text, so they recede.
       tab_bar_height = 38;
       tab_bar_decorate_font_desc = "FiraCode Nerd Font Mono Bold 12";
       tab_bar_decorate_fg_color = toMangoColor "blue" 0.55;
       tab_bar_decorate_bg_color = toMangoColor "crust" 0.6;
       tab_bar_decorate_focus_fg_color = toMangoColor "blue" 1.0;
-      tab_bar_decorate_focus_bg_color = mixMangoColor "blue" "crust" 0.18 0.95;
+      tab_bar_decorate_focus_bg_color = toMangoColor "mantle" 0.9;
       tab_bar_decorate_border_color = toMangoColor "base" 0.0;
       tab_bar_decorate_border_width = 3;
       tab_bar_decorate_corner_radius = 8;

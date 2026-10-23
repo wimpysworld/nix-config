@@ -87,19 +87,4 @@ in
     "0x${builtins.substring 1 (-1) (catppuccinPalette.getColor name)}${
       lib.fixedWidthString 2 "0" alphaHex
     }";
-
-  # Mix two Catppuccin colours into one opaque-looking 0xRRGGBBAA value.
-  # The weight is the share of the first colour, between 0 and 1. A solid
-  # mix avoids the muddy result of a translucent accent over the windows.
-  mixMangoColor =
-    first: second: weight: alpha:
-    let
-      channel =
-        name: offset: lib.fromHexString (builtins.substring offset 2 (catppuccinPalette.getColor name));
-      hex2 = n: lib.fixedWidthString 2 "0" (lib.toLower (lib.toHexString n));
-      mixChannel =
-        offset:
-        hex2 (builtins.floor (weight * channel first offset + (1 - weight) * channel second offset + 0.5));
-    in
-    "0x${mixChannel 1}${mixChannel 3}${mixChannel 5}${hex2 (builtins.floor (alpha * 255 + 0.5))}";
 }
