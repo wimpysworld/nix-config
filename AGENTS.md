@@ -179,6 +179,8 @@ Key gates:
 - Derive session targets and lifecycle environments from `lib/wayland-compositors.nix`.
 - Attach session services to the selected compositor target with both `WantedBy` and `PartOf`.
 - Keep recovery best-effort. Fail session startup when environment import or target startup fails.
+- Run recovery in the launch wrapper before the compositor starts. A future non-NixOS launch path must do the same.
+- When a compositor starts its own session target, set `compositorStartsSessionTarget`. The compositor owns that start, so startup failure handling is best-effort. Add drop-ins to its packaged target; never define the full unit.
 - Run logout orchestration outside the compositor target so target shutdown cannot terminate logout orchestration early.
 - Preserve valid upstream names exactly, such as `hyprpicker`.
 - Keep generic fallbacks for unsupported compositors. Gamescope must use the generic fallback.

@@ -51,22 +51,10 @@ in
       sessionAdapter
     ];
 
-    # Mango starts graphical-session.target before `wayland-session start`
-    # imports the contract environment, so set this one early.
+    # Mango imports its own seven variables, then starts mango-session.target,
+    # which binds graphical-session.target, before `wayland-session start` runs.
+    # NIXOS_OZONE_WL is not in Mango's list, so set it early here.
     systemd.user.sessionVariables.NIXOS_OZONE_WL = "1";
-
-    systemd.user.targets.mangowm-session = {
-      Unit = {
-        Description = "Mango compositor session";
-        Documentation = [ "man:systemd.special(7)" ];
-        BindsTo = [ "graphical-session.target" ];
-        Wants = [
-          "graphical-session-pre.target"
-          "xdg-desktop-autostart.target"
-        ];
-        After = [ "graphical-session-pre.target" ];
-      };
-    };
 
     wayland.windowManager.mango = {
       enable = true;
@@ -115,6 +103,12 @@ in
     };
 
     xdg = {
+      # The Mango package ships mango-session.target. A full unit here would
+      # replace it, so a drop-in adds only the autostart dependency.
+      configFile."systemd/user/mango-session.target.d/autostart.conf".text = ''
+        [Unit]
+        Wants=xdg-desktop-autostart.target
+      '';
       configFile."mango/config.conf".source =
         pkgs.runCommand "mango-config.conf"
           {

@@ -38,6 +38,7 @@ let
       "nativeSessions"
     ]
     [ "sessionTarget" ]
+    [ "compositorStartsSessionTarget" ]
     [ "startupEnvironment" ]
     [ "ephemeralEnvironment" ]
     [
@@ -210,7 +211,7 @@ let
   );
   mangoCleanupArguments = lib.escapeShellArgs (
     [
-      "mangowm-session.target"
+      "mango-session.target"
       "xdg-desktop-portal-wlr"
       "5"
     ]
@@ -218,7 +219,8 @@ let
   );
   mangoStartupArguments = lib.escapeShellArgs (
     [
-      "mangowm-session.target"
+      "mango-session.target"
+      "compositor"
       "8"
     ]
     ++ mangoStartupEnvironment
@@ -226,6 +228,7 @@ let
   wayfireStartupArguments = lib.escapeShellArgs (
     [
       "wayfire-session.target"
+      "session"
       "8"
     ]
     ++ wayfireStartupEnvironment
@@ -280,7 +283,8 @@ assert
 assert entriesHaveRequiredFields;
 assert isPureData contract;
 assert contract.default == "mango";
-assert contract.compositors.mango.sessionTarget == "mangowm-session.target";
+assert contract.compositors.mango.sessionTarget == "mango-session.target";
+assert contract.compositors.mango.compositorStartsSessionTarget;
 assert contract.compositors.mango.startupEnvironment == mangoStartupEnvironment;
 assert contract.compositors.mango.ephemeralEnvironment == mangoEphemeralEnvironment;
 assert contract.compositors.mango.portal.service == "xdg-desktop-portal-wlr";
@@ -291,6 +295,7 @@ assert
 assert !contract.compositors.mango.capabilities.clientSideDecorations;
 assert contract.compositors.mango.capabilities.opaqueLayers;
 assert contract.compositors.wayfire.sessionTarget == "wayfire-session.target";
+assert !contract.compositors.wayfire.compositorStartsSessionTarget;
 assert contract.compositors.wayfire.startupEnvironment == wayfireStartupEnvironment;
 assert contract.compositors.wayfire.ephemeralEnvironment == wayfireEphemeralEnvironment;
 assert contract.compositors.wayfire.portal.service == "xdg-desktop-portal-wlr";
@@ -301,16 +306,20 @@ assert
   !enableHostIntegration
   || baneHome.wayland.windowManager.wayfire.systemd.variables == wayfireStartupEnvironment;
 assert !enableHostIntegration || baneHome.wayland.systemd.target == "wayfire-session.target";
-assert !enableHostIntegration || skryeHome.wayland.systemd.target == "mangowm-session.target";
+assert !enableHostIntegration || skryeHome.wayland.systemd.target == "mango-session.target";
 assert !enableHostIntegration || skryeHome.wayland.windowManager.mango.enable;
 assert !enableHostIntegration || !nixosConfigurations.skrye.config.programs.mangowc.enable;
 assert
   !enableHostIntegration
   || builtins.elem skryeHome.wayland.windowManager.mango.package skryeHome.home.packages;
-assert !enableHostIntegration || felkorHome.wayland.systemd.target == "mangowm-session.target";
+assert !enableHostIntegration || felkorHome.wayland.systemd.target == "mango-session.target";
+# The package unit must stay in charge, so Home Manager adds only a drop-in.
+assert !enableHostIntegration || !(felkorHome.systemd.user.targets ? mango-session);
 assert
   !enableHostIntegration
-  || felkorHome.systemd.user.targets.mangowm-session.Unit.BindsTo == [ "graphical-session.target" ];
+  ||
+    lib.hasInfix "Wants=xdg-desktop-autostart.target"
+      felkorHome.xdg.configFile."systemd/user/mango-session.target.d/autostart.conf".text;
 assert !enableHostIntegration || !nixosConfigurations.felkor.config.programs.mangowc.enable;
 assert
   !enableHostIntegration
@@ -334,16 +343,16 @@ assert !enableHostIntegration || !(hasGeneratedPngStatePath baneHomeWayfire);
 assert !enableHostIntegration || baneHomeWayfire.settings.winshadows == expectedWinshadowsSettings;
 assert
   !enableHostIntegration
-  || felkorHome.systemd.user.services.lan-mouse.Unit.PartOf == [ "mangowm-session.target" ];
+  || felkorHome.systemd.user.services.lan-mouse.Unit.PartOf == [ "mango-session.target" ];
 assert
   !enableHostIntegration
-  || felkorHome.systemd.user.services.lan-mouse.Install.WantedBy == [ "mangowm-session.target" ];
+  || felkorHome.systemd.user.services.lan-mouse.Install.WantedBy == [ "mango-session.target" ];
 assert
   !enableHostIntegration
-  || skryeHome.systemd.user.services.reframe-session.Unit.PartOf == [ "mangowm-session.target" ];
+  || skryeHome.systemd.user.services.reframe-session.Unit.PartOf == [ "mango-session.target" ];
 assert
   !enableHostIntegration
-  || skryeHome.systemd.user.services.reframe-session.Install.WantedBy == [ "mangowm-session.target" ];
+  || skryeHome.systemd.user.services.reframe-session.Install.WantedBy == [ "mango-session.target" ];
 assert
   !enableHostIntegration
   ||

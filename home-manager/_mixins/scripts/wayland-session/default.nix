@@ -15,11 +15,13 @@ let
     if compositor == null then
       [
         ""
+        "session"
         "0"
       ]
     else
       [
         compositor.sessionTarget
+        (if compositor.compositorStartsSessionTarget then "compositor" else "session")
         (toString (builtins.length compositor.startupEnvironment))
       ]
       ++ compositor.startupEnvironment;

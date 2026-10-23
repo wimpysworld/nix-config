@@ -12,7 +12,10 @@
         logName = "mango";
         nativeSessions = [ "mango" ];
       };
-      sessionTarget = "mangowm-session.target";
+      # Mango ships mango-session.target and starts it itself, so the
+      # repository only joins that start and treats its failure as best-effort.
+      sessionTarget = "mango-session.target";
+      compositorStartsSessionTarget = true;
       startupEnvironment = [
         "DISPLAY"
         "WAYLAND_DISPLAY"
@@ -74,6 +77,7 @@
         nativeSessions = [ "wayfire" ];
       };
       sessionTarget = "wayfire-session.target";
+      compositorStartsSessionTarget = false;
       startupEnvironment = [
         "DISPLAY"
         "WAYLAND_DISPLAY"

@@ -3,14 +3,20 @@
 set +e
 set +u
 
-if (( $# < 3 )); then
+if (( $# < 4 )); then
 	echo "wayland-session: invalid lifecycle configuration" >&2
 	exit 2
 fi
 
 session_target=$1
-environment_count=$2
-shift 2
+target_owner=$2
+environment_count=$3
+shift 3
+
+if [[ $target_owner != "compositor" && $target_owner != "session" ]]; then
+	echo "wayland-session: invalid session target owner" >&2
+	exit 2
+fi
 
 if [[ ! $environment_count =~ ^[0-9]+$ ]] || (( $# < environment_count + 1 )); then
 	echo "wayland-session: invalid environment configuration" >&2
@@ -36,20 +42,25 @@ function prepare_exit() {
 	playerctl --all-players pause
 }
 
+# The launch wrapper runs recovery before the compositor starts. A compositor
+# that starts its own target owns that start, so a failure here only warns.
 function start_session() {
-	local recovery_status=0
+	local status=0
 
 	if [ -z "$session_target" ]; then
 		return 0
 	fi
 
-	wayland-session-cleanup recover || recovery_status=$?
-	if [ "$recovery_status" -ne 0 ]; then
-		printf 'wayland-session: recovery failed with code %d, startup will continue\n' \
-			"$recovery_status" >&2
+	dbus-update-activation-environment --systemd "${session_environment[@]}" || status=$?
+	if [ "$status" -eq 0 ]; then
+		systemctl --user start "$session_target" || status=$?
 	fi
-	dbus-update-activation-environment --systemd "${session_environment[@]}" || return
-	systemctl --user start "$session_target"
+	if [ "$status" -ne 0 ] && [ "$target_owner" == "compositor" ]; then
+		printf 'wayland-session: startup failed with code %d, the compositor owns %s\n' \
+			"$status" "$session_target" >&2
+		return 0
+	fi
+	return "$status"
 }
 
 function prepare_logout() {

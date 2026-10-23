@@ -37,6 +37,15 @@ if [[ -f $log_file ]]; then
 fi
 
 set +e
+# Recovery runs before the compositor starts, so it cannot stop a session
+# target that the compositor starts itself. Its failure does not stop the login.
+"$cleanup_command" recover 2>&1 | tee -a "$log_file" >/dev/null
+recovery_status=${PIPESTATUS[0]}
+if (( recovery_status != 0 )); then
+	printf '[%s] Session recovery failed with code %d, startup will continue\n' \
+		"$(date '+%Y-%m-%d %H:%M:%S')" "$recovery_status" | tee -a "$log_file" >/dev/null
+fi
+
 unbuffer "$native_launcher" "${launcher_prefix_args[@]}" "$@" 2>&1 | tee -a "$log_file" >/dev/null
 launcher_status=${PIPESTATUS[0]}
 
