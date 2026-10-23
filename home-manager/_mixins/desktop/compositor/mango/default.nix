@@ -28,6 +28,28 @@ let
     ]);
     text = builtins.readFile ./wayland-session-adapter.sh;
   };
+
+  # Mango expands `~` but not environment variables, so the path is absolute.
+  layoutsFile = "${config.xdg.stateHome}/mango/layouts.conf";
+  # Upstream Mango's first layout, which applies to a tag without a tag rule.
+  defaultLayout = "tile";
+
+  fuzzelLayout = pkgs.writeShellApplication {
+    name = "fuzzel-layout";
+    runtimeInputs = [
+      cfg.package
+    ]
+    ++ (with pkgs; [
+      coreutils
+      fuzzel
+      jq
+    ]);
+    text = ''
+      layouts_file=${lib.escapeShellArg layoutsFile}
+      default_layout=${defaultLayout}
+    ''
+    + builtins.readFile ./fuzzel-layout.sh;
+  };
 in
 {
   imports = [
@@ -48,6 +70,7 @@ in
 
     home.packages = [
       cfg.package
+      fuzzelLayout
       sessionAdapter
     ];
 
@@ -96,10 +119,13 @@ in
         new_is_master = true;
         dwindle_preserve_split = true;
         dwindle_smart_split = false;
-        tag_rule = [ "id:*,layout_name:dwindle" ];
         monitor_rule = map mkMonitorRule host.displays;
         exec_once = [ "wayland-session start" ];
       };
+      # fuzzel-layout writes this file. Without it, tags use the default layout.
+      extraConfig = ''
+        source_optional=${layoutsFile}
+      '';
     };
 
     xdg = {

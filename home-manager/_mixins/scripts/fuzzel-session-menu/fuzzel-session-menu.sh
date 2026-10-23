@@ -13,6 +13,7 @@ bluetooth="󰂯 Bluetooth"
 audio="󰕾 Audio"
 screenshot="󰹑 Screenshot"
 picker="󰏘 Colour Picker"
+window_layout="󰹫 Window Layout"
 
 # Power
 session="󰐦 Session"
@@ -25,10 +26,13 @@ menu="$menu$bluetooth\n$audio\n$screenshot"
 if command -v fuzzel-picker >/dev/null 2>&1; then
 	menu="$menu\n$picker"
 fi
+if command -v fuzzel-layout >/dev/null 2>&1; then
+	menu="$menu\n$window_layout"
+fi
 menu="$menu\n\n$control_center\n$session"
 
 selected=$(echo -e "$menu" |
-	fuzzel --dmenu --prompt "󱑞 " --lines=8 --width=21)
+	fuzzel --dmenu --prompt "󱑞 " --lines=9 --width=21)
 
 case $selected in
 "$control_center")
@@ -48,6 +52,9 @@ case $selected in
 	;;
 "$picker")
 	fuzzel-picker
+	;;
+"$window_layout")
+	fuzzel-layout
 	;;
 "$session")
 	wleave-session
