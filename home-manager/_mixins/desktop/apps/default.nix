@@ -29,6 +29,9 @@ let
     "x-scheme-handler/unknown"
   ] (_: webBrowser);
   documentViewer = [ "org.gnome.Papers.desktop" ];
+  # kitty and Zed also claim inode/directory, so folders need an explicit
+  # default or xdg-open can pick a terminal.
+  fileManager = [ "org.gnome.Nautilus.desktop" ];
   imageViewer = [ "org.gnome.Loupe.desktop" ];
   videoPlayer = [ "io.github.celluloid_player.Celluloid.desktop" ];
   # Packages whose D-Bus configuration files should be included in the
@@ -274,6 +277,7 @@ in
         "x-scheme-handler/icyx" = videoPlayer;
       };
       defaultApplications = browserMimeTypes // {
+        "inode/directory" = fileManager;
         "audio/*" = audioPlayer;
         "application/pdf" = documentViewer;
         "image/*" = imageViewer;

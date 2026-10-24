@@ -18,6 +18,8 @@ METHODS = {
     "cursor": "window-rules/get_cursor_position",
     "outputs": "window-rules/list-outputs",
     "focused-output": "window-rules/get-focused-output",
+    "views": "window-rules/list-views",
+    "focus-view": "window-rules/focus-view",
     "move-cursor": "stipc/move_cursor",
 }
 

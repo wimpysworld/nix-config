@@ -69,6 +69,74 @@ function compositor_focused_output() {
 	esac
 }
 
+# Print the toplevel windows as a JSON array of objects with id, title,
+# app-id, output, x, y, width, height and visible.  The geometry is in
+# global logical layout coordinates, and visible is true when the window
+# shows on the current tag or workspace of its output.  lan-mouse does
+# not call this, so shellcheck sees it as unused there.
+# shellcheck disable=SC2329
+function compositor_windows() {
+	case "$COMPOSITOR" in
+	mango)
+		# mmsg reports the client geometry, including the border, in
+		# logical layout coordinates.
+		mmsg get all-clients | jq -c '[
+			.clients[]
+			| select(.monitor != "")
+			| {id, title, "app-id": .appid, output: .monitor, x, y, width, height, visible: .is_visible}
+		]'
+		;;
+	wayfire)
+		# list-views reports the toplevel geometry relative to the
+		# current workspace of its output, so add the output layout
+		# position.  A view on another workspace lies outside the
+		# output box.
+		local outputs
+		outputs=$(lan-mouse-wayfire-ipc outputs) || return 1
+		lan-mouse-wayfire-ipc views | jq -c --argjson outputs "$outputs" '
+			($outputs | map({key: .name, value: .geometry}) | from_entries) as $boxes
+			| [
+				.[]
+				| select(.role == "toplevel" and .type == "toplevel" and .mapped)
+				| select($boxes[."output-name"] != null)
+				| $boxes[."output-name"] as $box
+				| .geometry as $g
+				| {
+					id,
+					title,
+					"app-id": ."app-id",
+					output: ."output-name",
+					x: ($box.x + $g.x),
+					y: ($box.y + $g.y),
+					width: $g.width,
+					height: $g.height,
+					visible: ((.minimized | not)
+						and $g.x < $box.width and $g.x + $g.width > 0
+						and $g.y < $box.height and $g.y + $g.height > 0)
+				}
+			]'
+		;;
+	esac
+}
+
+# Focus and raise the window with the given compositor id, switching its
+# output to the tag or workspace that shows it.  lan-mouse does not call
+# this, so shellcheck sees it as unused there.
+# shellcheck disable=SC2329
+function compositor_focus_window() {
+	case "$COMPOSITOR" in
+	mango)
+		# focusid views the first tag of the client on its monitor.
+		mmsg dispatch focusid "client,$1" | jq -e '.success == true' > /dev/null
+		;;
+	wayfire)
+		# focus-view restores a minimised view and switches the
+		# workspace when less than a tenth of the view is visible.
+		lan-mouse-wayfire-ipc focus-view "{\"id\": $1}" | jq -e '.result == "ok"' > /dev/null
+		;;
+	esac
+}
+
 # Print the scale of the named output.  lan-mouse does not call this,
 # so shellcheck sees it as unused there.
 # shellcheck disable=SC2329

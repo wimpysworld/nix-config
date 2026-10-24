@@ -165,6 +165,18 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           background-color: ${hoverColor};
         }
 
+        #custom-recording {
+          background-color: ${pillColor};
+          border-radius: 0.75rem;
+          color: @text;
+          margin: 5px 0 0 0.5rem;
+          padding: 0.25rem 0.75rem;
+        }
+
+        #custom-recording:hover {
+          background-color: ${hoverColor};
+        }
+
         #tray {
           margin-right: 1rem;
           border-radius: 0.75rem;
@@ -289,7 +301,9 @@ lib.mkIf (host.is.linux && host.is.workstation) {
             modules-left = [
               "custom/launcher"
             ]
-            ++ lib.optional (workspaceModule != null) workspaceModule;
+            ++ lib.optional (workspaceModule != null) workspaceModule
+            # The recording indicator shows only while a recording runs.
+            ++ [ "custom/recording" ];
             modules-center = [
               "idle_inhibitor"
               "clock"
@@ -370,6 +384,18 @@ lib.mkIf (host.is.linux && host.is.workstation) {
               exec = "${pkgs.swaynotificationcenter}/bin/swaync-client --subscribe-waybar";
               on-click = "${pkgs.swaynotificationcenter}/bin/swaync-client --toggle-panel --skip-wait";
               tooltip-format = "󰵚  {} notification(s)";
+            };
+            # fuzzel-capture prints the elapsed time while a screen recording
+            # runs and sends SIGRTMIN+9 when one starts or stops. The module
+            # hides when the state file is absent or the output is empty.
+            "custom/recording" = {
+              format = "<big><span foreground='${palette.getColor "red"}'>󰑊</span></big> <small>{}</small>";
+              exec-if = "test -e \"$XDG_RUNTIME_DIR/fuzzel-capture-recording.state\"";
+              exec = "fuzzel-capture status";
+              interval = 1;
+              signal = 9;
+              on-click = "fuzzel-capture stop";
+              tooltip-format = "󰑊  Screen recording. Click to stop.";
             };
             tray = {
               icon-size = 22;

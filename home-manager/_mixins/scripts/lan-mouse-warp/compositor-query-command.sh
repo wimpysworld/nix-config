@@ -5,9 +5,11 @@
 #   compositor-query focused-output       name, logical width and height, scale
 #   compositor-query output-scale <name>  scale of the named output
 #   compositor-query monitors             JSON array of logical geometries
+#   compositor-query windows              JSON array of toplevel windows
+#   compositor-query focus-window <id>    focus, raise and show a window
 
 function usage() {
-	echo "usage: ${0##*/} focused-output | output-scale <name> | monitors" >&2
+	echo "usage: ${0##*/} focused-output | output-scale <name> | monitors | windows | focus-window <id>" >&2
 	exit 2
 }
 
@@ -26,6 +28,16 @@ monitors)
 	[ $# -eq 1 ] || usage
 	detect_compositor
 	compositor_monitors
+	;;
+windows)
+	[ $# -eq 1 ] || usage
+	detect_compositor
+	compositor_windows
+	;;
+focus-window)
+	[ $# -eq 2 ] && [[ "$2" =~ ^[0-9]+$ ]] || usage
+	detect_compositor
+	compositor_focus_window "$2"
 	;;
 *)
 	usage

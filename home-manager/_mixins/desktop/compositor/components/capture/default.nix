@@ -6,19 +6,22 @@
 }:
 let
   inherit (config.noughty) host;
+  compositorQuery = import ../../../../scripts/lan-mouse-warp/compositor-query.nix { inherit pkgs; };
   fuzzelCapture = pkgs.writeShellApplication {
     name = "fuzzel-capture";
+    # Only the capture-specific tools. coreutils, util-linux (flock),
+    # systemctl, pactl, xdg-open and wl-copy come from the system and the
+    # desktop profile on every workstation.
     runtimeInputs = with pkgs; [
-      coreutils
+      compositorQuery
       fuzzel
+      fyi
       grim
       jq
       lswt
-      fyi
-      pulseaudio
       satty
       slurp
-      util-linux
+      swayosd
       wl-screenrec
       wlr-randr
     ];

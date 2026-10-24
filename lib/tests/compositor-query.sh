@@ -129,6 +129,57 @@ if "$query" focused-output >/dev/null 2>&1; then
 fi
 expect "bane wleave without a focused output" "$(margins "")" "$(wleave_margins)"
 
+# Wayfire reports view geometry relative to the current workspace of the
+# output, so windows gain the output position, and a view on another
+# workspace is not visible. Panels and unmapped views are not windows.
+jq -nc '[
+	{name: "eDP-1", geometry: {x: 0, y: 0, width: 2048, height: 1280}},
+	{name: "DP-4", geometry: {x: 2048, y: 0, width: 2560, height: 1440}}
+]' >"$FAKE_STATE/outputs.json"
+jq -nc '[
+	{id: 7, title: "Terminal", "app-id": "foot", "output-name": "DP-4", role: "toplevel", type: "toplevel", mapped: true, minimized: false, geometry: {x: 10, y: 20, width: 800, height: 600}},
+	{id: 8, title: "Mail", "app-id": "thunderbird", "output-name": "eDP-1", role: "toplevel", type: "toplevel", mapped: true, minimized: false, geometry: {x: 2100, y: 0, width: 900, height: 700}},
+	{id: 9, title: "Notes", "app-id": "gedit", "output-name": "eDP-1", role: "toplevel", type: "toplevel", mapped: true, minimized: true, geometry: {x: 0, y: 0, width: 500, height: 500}},
+	{id: 3, title: "waybar", "app-id": "waybar", "output-name": "DP-4", role: "desktop-environment", type: "panel", mapped: true, minimized: false, geometry: {x: 0, y: 0, width: 2560, height: 40}},
+	{id: 4, title: "", "app-id": "", "output-name": "null", role: "toplevel", type: "toplevel", mapped: false, minimized: false, geometry: {x: 0, y: 0, width: 0, height: 0}}
+]' >"$FAKE_STATE/views.json"
+expect "bane windows" \
+	"$(jq -c '.' <<<'[
+		{"id":7,"title":"Terminal","app-id":"foot","output":"DP-4","x":2058,"y":20,"width":800,"height":600,"visible":true},
+		{"id":8,"title":"Mail","app-id":"thunderbird","output":"eDP-1","x":2100,"y":0,"width":900,"height":700,"visible":false},
+		{"id":9,"title":"Notes","app-id":"gedit","output":"eDP-1","x":0,"y":0,"width":500,"height":500,"visible":false}
+	]')" \
+	"$("$query" windows)"
+echo '{"result": "ok"}' >"$FAKE_STATE/focus-reply.json"
+"$query" focus-window 8 || fail "bane focus-window: expected success"
+expect "bane focus-window request" 'lan-mouse-wayfire-ipc focus-view {"id": 8}' "$(cat "$FAKE_STATE/focus")"
+echo '{"error": "no such view"}' >"$FAKE_STATE/focus-reply.json"
+if "$query" focus-window 99 >/dev/null 2>&1; then
+	fail "bane focus-window: expected failure for an absent view"
+fi
+if "$query" focus-window '1}' >/dev/null 2>&1; then
+	fail "focus-window: expected a usage error for a non-numeric id"
+fi
+
+# Mango reports client geometry in layout coordinates and its own
+# visibility. A client without a monitor is not a window.
+compositor mango-1.sock
+jq -nc '{clients: [
+	{id: 4, title: "Terminal", appid: "foot", monitor: "DP-4", x: 2560, y: 0, width: 1280, height: 2880, is_visible: true, tags: [1]},
+	{id: 5, title: "Mail", appid: "thunderbird", monitor: "DP-1", x: 100, y: 100, width: 900, height: 700, is_visible: false, tags: [3]},
+	{id: 6, title: "Parked", appid: "foot", monitor: "", x: 0, y: 0, width: 10, height: 10, is_visible: false, tags: []}
+]}' >"$FAKE_STATE/clients.json"
+expect "skrye windows" \
+	'[{"id":4,"title":"Terminal","app-id":"foot","output":"DP-4","x":2560,"y":0,"width":1280,"height":2880,"visible":true},{"id":5,"title":"Mail","app-id":"thunderbird","output":"DP-1","x":100,"y":100,"width":900,"height":700,"visible":false}]' \
+	"$("$query" windows)"
+echo '{"success":true}' >"$FAKE_STATE/focus-reply.json"
+"$query" focus-window 5 || fail "skrye focus-window: expected success"
+expect "skrye focus-window request" "mmsg dispatch focusid client,5" "$(cat "$FAKE_STATE/focus")"
+echo '{"error":"no client found"}' >"$FAKE_STATE/focus-reply.json"
+if "$query" focus-window 99 >/dev/null 2>&1; then
+	fail "skrye focus-window: expected failure for an absent client"
+fi
+
 # Without a compositor, wleave keeps its default margins.
 compositor unrelated.sock
 expect "no compositor wleave" "$(margins "")" "$(wleave_margins)"

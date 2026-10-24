@@ -56,8 +56,9 @@ measurement.
   a rename upstream should be a single edit here.
 - `compositor-query.nix` and `compositor-query-command.sh` - the
   `compositor-query` command, which exposes the same queries plus the
-  focused output and an output scale to session tools: `wleave-session`
-  and the Mango `xwayland-dpi` service. Wayfire IPC reports no output
+  focused output, an output scale, the toplevel windows and a window
+  focus to session tools: `wleave-session`, `fuzzel-capture` and the
+  Mango `xwayland-dpi` service. Wayfire IPC reports no output
   scale, so the Wayfire scale comes from `wlr-randr`. The flake check
   `checks.<system>.compositor-query` tests it with fake compositor tools.
 - `warp-application.nix` - the shared derivation, imported by this
