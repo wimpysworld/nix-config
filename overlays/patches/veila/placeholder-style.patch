@@ -1,0 +1,172 @@
+diff --git a/crates/common/src/config/validation/schema/visuals.rs b/crates/common/src/config/validation/schema/visuals.rs
+index fac200b..fa83a06 100644
+--- a/crates/common/src/config/validation/schema/visuals.rs
++++ b/crates/common/src/config/validation/schema/visuals.rs
+@@ -162,7 +162,12 @@ const DATE: &[KeyRule] = &[
+     key("relative_to", Schema::Any),
+ ];
+
+-const PLACEHOLDER: &[KeyRule] = &[key("enabled", Schema::Any), key("color", Schema::Any)];
++const PLACEHOLDER: &[KeyRule] = &[
++    key("enabled", Schema::Any),
++    key("color", Schema::Any),
++    key("opacity", Schema::Any),
++    key("font_size", Schema::Any),
++];
+
+ const REVEAL: &[KeyRule] = &[
+     key("mode", Schema::Any),
+diff --git a/crates/common/src/config/visuals/indicators.rs b/crates/common/src/config/visuals/indicators.rs
+index ce7954d..dabb162 100644
+--- a/crates/common/src/config/visuals/indicators.rs
++++ b/crates/common/src/config/visuals/indicators.rs
+@@ -28,6 +28,10 @@ pub struct PlaceholderVisualConfig {
+     pub enabled: Option<bool>,
+     #[serde(default)]
+     pub color: Option<RgbColor>,
++    #[serde(default)]
++    pub opacity: Option<u8>,
++    #[serde(default)]
++    pub font_size: Option<u16>,
+ }
+
+ impl Default for PlaceholderVisualConfig {
+@@ -35,6 +39,8 @@ impl Default for PlaceholderVisualConfig {
+         Self {
+             enabled: Some(true),
+             color: Some(RgbColor::rgba(255, 255, 255, 230)),
++            opacity: None,
++            font_size: None,
+         }
+     }
+ }
+@@ -286,6 +292,18 @@ impl super::VisualConfig {
+             .or(self.placeholder_color)
+     }
+
++    pub fn placeholder_opacity(&self) -> Option<u8> {
++        self.placeholder
++            .as_ref()
++            .and_then(|placeholder| placeholder.opacity)
++    }
++
++    pub fn placeholder_font_size(&self) -> Option<u16> {
++        self.placeholder
++            .as_ref()
++            .and_then(|placeholder| placeholder.font_size)
++    }
++
+     pub fn placeholder_enabled(&self) -> bool {
+         self.placeholder
+             .as_ref()
+diff --git a/crates/ui/src/shell/render/styles/text.rs b/crates/ui/src/shell/render/styles/text.rs
+index 7b3fe51..b7ed7af 100644
+--- a/crates/ui/src/shell/render/styles/text.rs
++++ b/crates/ui/src/shell/render/styles/text.rs
+@@ -21,6 +21,7 @@ const MAX_NOW_PLAYING_ARTIST_FONT_SIZE_PX: u32 = 512;
+ const MAX_USERNAME_FONT_SIZE_PX: u32 = 512;
+ const MAX_INPUT_FONT_SIZE_PX: u32 = 512;
+ const MAX_REVEAL_FONT_SIZE_PX: u32 = 512;
++const MAX_PLACEHOLDER_FONT_SIZE_PX: u32 = 512;
+ const MAX_CUSTOM_LAYER_FONT_SIZE_PX: u32 = 512;
+ const MAX_KEYBOARD_FONT_SIZE_PX: u32 = 512;
+
+@@ -156,13 +157,17 @@ impl ShellState {
+     }
+
+     pub(crate) fn placeholder_text_style(&self) -> TextStyle {
++        let font_size = match self.theme.placeholder_font_size {
++            Some(font_size) => font_size.clamp(1, MAX_PLACEHOLDER_FONT_SIZE_PX),
++            None => self.input_font_size_px(),
++        };
+         let style = TextStyle::new_px(
+             secondary_text_color(
+                 self.theme.placeholder_color.unwrap_or(self.theme.muted),
+-                None,
++                self.theme.placeholder_opacity,
+                 154,
+             ),
+-            self.input_font_size_px(),
++            font_size,
+         );
+         self.apply_input_font(style)
+     }
+diff --git a/crates/ui/src/shell/render/tests/auth_style_tests.rs b/crates/ui/src/shell/render/tests/auth_style_tests.rs
+index 51d1589..2c3b718 100644
+--- a/crates/ui/src/shell/render/tests/auth_style_tests.rs
++++ b/crates/ui/src/shell/render/tests/auth_style_tests.rs
+@@ -472,6 +472,31 @@ fn placeholder_style_uses_configured_color() {
+     assert_eq!(style.color.alpha, 153);
+ }
+
++#[test]
++fn placeholder_style_uses_configured_font_size_and_opacity() {
++    let config = veila_common::AppConfig::from_toml_str(
++        r##"
++            [visuals.input]
++            font_size = 21
++
++            [visuals.placeholder]
++            color = "#f9e2af"
++            opacity = 100
++            font_size = 36
++        "##,
++    )
++    .expect("config");
++    let theme = ShellTheme::from_config(&config);
++    let shell = ShellState::new(theme.clone(), None, None, true);
++    let style = shell.placeholder_text_style();
++
++    assert_eq!(style.color.alpha, 255);
++    assert_eq!(style.font_size_px, Some(36));
++
++    let scaled = ShellState::new(theme.scaled_for_render(2), None, None, true);
++    assert_eq!(scaled.placeholder_text_style().font_size_px, Some(72));
++}
++
+ #[test]
+ fn input_text_styles_use_configured_font_family_and_weight() {
+     let theme = ShellTheme {
+diff --git a/crates/ui/src/shell/theme/mod.rs b/crates/ui/src/shell/theme/mod.rs
+index 8f34068..bf4fe7b 100644
+--- a/crates/ui/src/shell/theme/mod.rs
++++ b/crates/ui/src/shell/theme/mod.rs
+@@ -154,6 +154,8 @@ pub struct ShellTheme {
+     pub date_font_size: Option<u32>,
+     pub placeholder_enabled: bool,
+     pub placeholder_color: Option<ClearColor>,
++    pub placeholder_opacity: Option<u8>,
++    pub placeholder_font_size: Option<u32>,
+     pub eye_enabled: bool,
+     pub eye_icon_color: Option<ClearColor>,
+     pub caps_lock_enabled: bool,
+@@ -250,6 +252,7 @@ impl ShellTheme {
+         let mut theme = self.clone();
+         theme.input_font_size = scale_u32_opt(theme.input_font_size, scale);
+         theme.reveal_font_size = scale_u32_opt(theme.reveal_font_size, scale);
++        theme.placeholder_font_size = scale_u32_opt(theme.placeholder_font_size, scale);
+         theme.input_position = theme
+             .input_position
+             .map(|position| scale_position(position, scale));
+@@ -893,6 +896,8 @@ impl ShellTheme {
+             date_font_size: config.visuals.date_font_size().map(u32::from),
+             placeholder_enabled: config.visuals.placeholder_enabled(),
+             placeholder_color: config.visuals.placeholder_color().map(to_color),
++            placeholder_opacity: config.visuals.placeholder_opacity(),
++            placeholder_font_size: config.visuals.placeholder_font_size().map(u32::from),
+             eye_enabled: config.visuals.eye_enabled(),
+             eye_icon_color: config.visuals.eye_icon_color().map(to_color),
+             caps_lock_enabled: config.visuals.caps_lock_enabled(),
+diff --git a/crates/ui/src/shell/theme/tests.rs b/crates/ui/src/shell/theme/tests.rs
+index 8792e79..f43be83 100644
+--- a/crates/ui/src/shell/theme/tests.rs
++++ b/crates/ui/src/shell/theme/tests.rs
+@@ -86,6 +86,8 @@ fn input_alpha_uses_rgba_values() {
+     config.visuals.placeholder = Some(PlaceholderVisualConfig {
+         enabled: Some(true),
+         color: Some(ConfigColor::rgba(134, 148, 180, 153)),
++        opacity: None,
++        font_size: None,
+     });
+     config.visuals.reveal = Some(RevealVisualConfig {
+         mode: Some(RevealDisplayMode::Shown),

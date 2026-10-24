@@ -68,6 +68,18 @@ in
           '';
         });
       };
+      # Make the password mask dot size and spacing configurable through
+      # visuals.input.mask_size and visuals.input.mask_spacing. Add
+      # visuals.placeholder.font_size and visuals.placeholder.opacity, so the
+      # placeholder can be larger than the input text and fully opaque.
+      veilaAttrs = prev.lib.optionalAttrs prev.stdenv.hostPlatform.isLinux {
+        veila = inputs.veila.packages.${prev.stdenv.hostPlatform.system}.default.overrideAttrs (oldAttrs: {
+          patches = (oldAttrs.patches or [ ]) ++ [
+            ./patches/veila/mask-size.patch
+            ./patches/veila/placeholder-style.patch
+          ];
+        });
+      };
       hermesStdenv = final.unstable.stdenv // {
         isLinux = final.unstable.stdenv.hostPlatform.isLinux;
       };
@@ -241,7 +253,8 @@ in
         '';
       });
     }
-    // handyAttrs;
+    // handyAttrs
+    // veilaAttrs;
 
   # When applied, the unstable nixpkgs set (declared in the flake inputs) will
   # be accessible through 'pkgs.unstable'

@@ -1,7 +1,6 @@
 {
   catppuccinPalette,
   config,
-  inputs,
   lib,
   noughtyLib,
   pkgs,
@@ -11,7 +10,7 @@ let
   inherit (config.noughty) host;
   inherit (host) display displays;
   palette = catppuccinPalette;
-  veila = inputs.veila.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  inherit (pkgs) veila;
   veilaBin = lib.getExe' veila "veila";
   veiladBin = lib.getExe' veila "veilad";
   # Seconds of idle before Veila locks the session. The fade starts earlier so
@@ -37,8 +36,10 @@ let
     '';
   };
   fprintdEnabled = noughtyLib.hostHasTag "fprintd";
-  # The placeholder glyph is a fingerprint on fprintd hosts, otherwise a key.
+  # The placeholder glyph is a pink fingerprint on fprintd hosts, otherwise a
+  # yellow key.
   unlockGlyph = if fprintdEnabled then "󰈷" else "󰌋";
+  unlockGlyphColor = if fprintdEnabled then "pink" else "yellow";
   # Use the avatar's source store path. Fall back to ~/.face for users without
   # a configured avatar.
   avatarImagePath =
@@ -147,21 +148,35 @@ let
     font_family = "Work Sans"
 
     [visuals.input]
-    # Stylised entry: a centred unlock glyph when empty
-    # and centred mask symbols while typing, no "Password" label. Position and
-    # size are inherited from the theme; only the styling changes here.
+    # Stylised entry: an unlock glyph when empty and mask dots while typing, no
+    # "Password" label. Both start at the left padding of the box, not the
+    # centre. Position and size are inherited from the theme; only the styling
+    # changes here. font_size also sizes the glyph and the inline status text.
     placeholder = "${unlockGlyph}"
     font_family = "FiraCode Nerd Font Mono"
-    font_size = 30
+    # Bold keeps the same width in a monospaced font, so the text looks
+    # stronger and "Authentication failed" still fits the 360 px box,
+    # which holds it up to about 21 points.
+    font_weight = 700
+    font_size = 21
     mask_color = "${palette.getColor "text"}"
+    # Dot diameter and centre-to-centre spacing in logical pixels, from the
+    # local mask-size patch (the defaults are 7 and 16).
+    mask_size = 12
+    mask_spacing = 20
     background_color = "${palette.mkRgba "surface2" "1.0"}"
     border_color = "${palette.getColor "blue"}"
     border_width = 2
     radius = 8
 
     [visuals.placeholder]
-    # Colour the unlock glyph yellow.
-    color = "${palette.getColor "yellow"}"
+    # Colour and size the unlock glyph, from the local placeholder-style
+    # patch. Veila draws an opaque placeholder colour at about 60% alpha, so
+    # opacity (a percentage) keeps the glyph opaque. A 36 px glyph has a 48 px
+    # line box, which fits the 54 px input box and stays centred in it.
+    color = "${palette.getColor unlockGlyphColor}"
+    opacity = ${toString (builtins.floor (palette.alpha.opaque * 100 + 0.5))}
+    font_size = 36
 
     [visuals.avatar]
     # Render the avatar via the documented visual key.
@@ -182,7 +197,9 @@ let
     enabled = true
 
     [visuals.weather.location]
-    enabled = true
+    # Hide the place label. The icon and temperature stay, and they keep the
+    # weather refresh running.
+    enabled = false
 
     [visuals.eye]
     # Disable the show-password reveal toggle: the only UI path to reveal the

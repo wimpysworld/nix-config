@@ -1,6 +1,5 @@
 {
   config,
-  inputs,
   lib,
   noughtyLib,
   pkgs,
@@ -10,7 +9,7 @@ let
   inherit (config.noughty) host;
   inherit (host) display;
   isHandyHost = host.is.linux && host.is.workstation && noughtyLib.hostHasTag "handy";
-  veila = inputs.veila.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  inherit (pkgs) veila;
   veilaBin = lib.getExe' veila "veila";
 in
 {

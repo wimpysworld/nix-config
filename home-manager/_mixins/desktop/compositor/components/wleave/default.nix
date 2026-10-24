@@ -42,8 +42,8 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         {
           label = "obliterate";
           action = "wayland-session obliterate";
-          text = "Obliterate";
-          keybind = "o";
+          text = "Close all";
+          keybind = "c";
           icon = "${icons}/obliterate.svg";
         }
         {

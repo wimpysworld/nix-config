@@ -92,7 +92,10 @@ in
       security.polkit.enable = lib.mkDefault true;
     })
     (lib.mkIf (host.is.linux && host.is.workstation && !host.is.iso) {
-      programs.veila.enable = true;
+      programs.veila = {
+        enable = true;
+        package = pkgs.veila;
+      };
     })
     # Home Manager installs and configures the compositor. NixOS keeps only
     # the system services that a user profile cannot provide.

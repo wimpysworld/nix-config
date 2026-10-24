@@ -1,6 +1,5 @@
 {
   config,
-  inputs,
   lib,
   pkgs,
   ...
@@ -25,7 +24,7 @@ let
         (toString (builtins.length compositor.startupEnvironment))
       ]
       ++ compositor.startupEnvironment;
-  veila = inputs.veila.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  inherit (pkgs) veila;
   shellApplication = pkgs.writeShellApplication {
     inherit name;
     runtimeInputs = [
