@@ -9,10 +9,11 @@ let
   inherit (config.noughty) host;
 in
 {
-  # Import compositor-specific configuration; each compositor gates itself internally.
+  # Each imported module gates itself internally.
   imports = [
     ./apps
     ./compositor
+    ./removable-media
   ];
 
   config = lib.mkIf host.is.workstation (
@@ -224,12 +225,6 @@ in
         };
         polkit-gnome = {
           enable = true;
-        };
-        udiskie = {
-          enable = true;
-          automount = false;
-          tray = "auto";
-          notify = true;
         };
       };
 

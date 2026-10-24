@@ -19,6 +19,7 @@ in
     ./backgrounds
     ./greeters/greetd.nix
     ./mango
+    ./removable-media
     ./wayfire
     ./wayland-shim
   ];
@@ -80,7 +81,6 @@ in
           };
         };
         gvfs.enable = true;
-        udisks2.enable = true;
         usbmuxd.enable = true;
         xserver = {
           # Disable xterm

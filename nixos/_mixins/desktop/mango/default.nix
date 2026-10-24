@@ -50,9 +50,6 @@ in
           };
         }
       ];
-      udevil.enable = true;
     };
-
-    services.devmon.enable = true;
   };
 }
