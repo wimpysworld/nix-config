@@ -32,7 +32,14 @@ let
   };
   fuzzelClipboard = pkgs.writeShellApplication {
     name = "fuzzel-clipboard";
-    text = "cliphist list | fuzzel --dmenu --prompt '󱘢 ' --width 56 | cliphist decode | wl-copy --primary --trim-newline";
+    # Copy to the regular clipboard, so that Ctrl+V pastes the entry. Stop when
+    # the picker is cancelled, so that an empty selection never clears the
+    # clipboard.
+    text = ''
+      selection=$(cliphist list | fuzzel --dmenu --prompt '󱘢 ' --width 56) || exit 0
+      [ -n "$selection" ] || exit 0
+      printf '%s\n' "$selection" | cliphist decode | wl-copy --trim-newline
+    '';
   };
   fuzzelControlCenter = pkgs.writeShellApplication {
     name = "fuzzel-control-center";
@@ -61,7 +68,13 @@ let
   };
   fuzzelHistory = pkgs.writeShellApplication {
     name = "fuzzel-history";
-    text = "$SHELL -c history | uniq | fuzzel --dmenu --prompt '󱆃 ' --width 56 | wl-copy --primary --trim-newline";
+    # Copy to the regular clipboard, and stop when the picker is cancelled,
+    # as the clipboard picker does.
+    text = ''
+      selection=$($SHELL -c history | uniq | fuzzel --dmenu --prompt '󱆃 ' --width 56) || exit 0
+      [ -n "$selection" ] || exit 0
+      printf '%s' "$selection" | wl-copy --trim-newline
+    '';
   };
   fuzzelLauncher = pkgs.writeShellApplication {
     name = "fuzzel-launcher";
