@@ -30,8 +30,12 @@ in
       # Home Manager issue 7124: until nixpkgs 26.11, the Home Manager portal
       # directory hides every backend that only NixOS installs. Keep GTK here
       # always, because the NixOS portal stub lists it.
+      # GNOME Keyring serves the Secret portal through the daemon that already
+      # owns org.freedesktop.secrets. Its UseIn=gnome line does not matter,
+      # because portalRouting selects it explicitly.
       portalBackends = {
         gtk = pkgs.xdg-desktop-portal-gtk;
+        inherit (pkgs) gnome-keyring;
       }
       // lib.optionalAttrs (compositor != null) {
         ${compositor.portal.backend} = pkgs.${compositor.portal.packageAttr};
