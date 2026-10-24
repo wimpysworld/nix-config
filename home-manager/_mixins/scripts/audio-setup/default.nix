@@ -10,7 +10,6 @@ let
     inherit name;
     runtimeInputs = with pkgs; [
       coreutils
-      pipewire
       playerctl
       procps
       rhythmbox

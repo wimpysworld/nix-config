@@ -2,17 +2,9 @@
 
 set +o pipefail  # Disable pipefail
 
-HOST=$(hostnamectl hostname)
-
 # Enable sidetone
 mic-loopback on
 mic-loopback set 120
-
-# Optimise PipeWire Quantum for OBS Studio; prevent audio crackling
-case "${HOST}" in
-    skrye|zannah) pw-metadata --name settings 0 clock.force-quantum 64;;
-    *) pw-metadata --name settings 0 clock.force-quantum 1024;;
-esac
 
 # Pause all audio players
 playerctl -p sidra pause || true

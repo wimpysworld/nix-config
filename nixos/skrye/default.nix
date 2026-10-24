@@ -24,6 +24,10 @@ in
       "amdgpu"
       "kvm-amd"
     ];
+    # The SSL USB interface handles all audio. Block the HD Audio driver so
+    # that the Radeon HDMI and DisplayPort audio and the Ryzen analogue
+    # audio never appear as sound cards.
+    blacklistedKernelModules = [ "snd_hda_intel" ];
     swraid = {
       enable = true;
       mdadmConf = "MAILADDR=${username}@wimpys.world";
