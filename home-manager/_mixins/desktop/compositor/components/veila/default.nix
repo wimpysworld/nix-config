@@ -97,8 +97,9 @@ let
     # Keep the pointer visible so the user can navigate and click while locked;
     # the Wayland compositor supplies the cursor via the cursor-shape protocol.
     hide_cursor = false
-    # Submit Enter-on-empty to PAM so the fingerprint flow can proceed.
-    allow_empty_password = true
+    # Ignore Enter on an empty password. The native fprintd loop runs without
+    # a submit, and an empty submit only counts a failed PAM attempt.
+    allow_empty_password = false
     # Power displays off while locked.
     screen_off_seconds = 305
     # suspend_seconds left unset: suspend stays with logind, not Veila.

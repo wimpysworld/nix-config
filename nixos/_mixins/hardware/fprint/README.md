@@ -1,8 +1,11 @@
 # Fingerprint Unlock
 
-Enables fprintd and configures Veila fingerprint unlock for Wayfire
-and Mango. Veila authenticates fingerprints through fprintd's D-Bus API. Login,
-sudo, and polkit require a password.
+Enables fprintd and configures Veila fingerprint unlock for Wayfire and Mango.
+A fingerprint unlocks the Veila lock screen only. Veila verifies fingerprints
+through the fprintd D-Bus API, in parallel with its password field. Every PAM
+service, including `sudo`, polkit, `run0`, `su`, `passwd` and the greeter, uses
+the password. The greeter must use the password because the password unlocks
+GNOME Keyring.
 
 ## Enabling
 
@@ -36,10 +39,12 @@ Three modules collaborate:
 **NixOS mixin** (`nixos/_mixins/hardware/fprint/default.nix`)
 
 - Enables `services.fprintd`
-- Sets `fprintAuth = false` on greetd, login, veila, sudo, and polkit-1
-  PAM services. NixOS defaults `fprintAuth = true` on every PAM service when
-  fprintd is enabled; these overrides restrict fingerprint to Veila's native
-  integration
+- Sets `fprintAuth = false` on every PAM service. NixOS defaults `fprintAuth`
+  to `services.fprintd.enable`, so the mixin extends the PAM service submodule
+  with a `lib.mkDefault false`. This default also covers PAM services that
+  NixOS adds later
+- Fails evaluation when any PAM service on a fingerprint host has
+  `fprintAuth = true`, for example from a plain definition in another module
 - Runs a `fprintd-resume` systemd unit that restarts fprintd after
   suspend/resume to clear stale device handles
 
@@ -55,6 +60,8 @@ Three modules collaborate:
   the host carries the `"fprintd"` tag
 - Uses Veila's native fprintd D-Bus integration for fingerprints and the
   `veila` PAM service for passwords
+- Sets `allow_empty_password = false`. The fingerprint loop starts when the
+  screen locks and needs no submit, so Enter on an empty field does nothing
 - Displays a fingerprint glyph on tagged hosts and a key glyph elsewhere
 - Runs `veilad.service` and `veila-idle.service` under the selected compositor
   session target. The idle service locks before sleep. The shared hypridle
