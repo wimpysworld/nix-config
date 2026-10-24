@@ -5,7 +5,8 @@ usage() {
     cat <<'EOF'
 Usage: mint-tokens [--force] [--headless]
 
-Refresh Google Cloud, Workspace, Chainguard, MCP, and Docker credentials.
+Refresh GitHub, Google Cloud, Workspace, Chainguard, MCP, and Docker
+credentials.
 
   --force     Log in again even when existing credentials are valid.
   --headless  Use non-browser login where supported.
@@ -18,6 +19,10 @@ With --headless, gcloud login uses --no-launch-browser.
 The Chainguard development environment is skipped unless MINT_DEV_ENV names
 one, for example MINT_DEV_ENV=wimpress.guardenv.dev mint-tokens.
 A failed Chainguard development login is reported and does not stop the run.
+The GitHub step logs in or refreshes only when the gh token lacks a required
+scope, or with --force. It never logs in while the keyring is locked. With
+--headless, gh prints the device code and URL and opens no browser. A failed
+GitHub step is reported and does not stop the run.
 EOF
 }
 
@@ -45,6 +50,10 @@ done
 : "${MINT_MCP_TOKENS:?}"
 : "${MINT_STAGE_ENV:?}"
 : "${MINT_LOGIN_BROWSER:?}"
+: "${MINT_GH_CREDENTIAL_SYNC:?}"
+: "${MINT_GH_MISSING_SCOPES:?}"
+: "${MINT_GH_SCOPES:?}"
+: "${MINT_GH_UNCHECKED_STATUS:?}"
 
 probe_pid=
 stop_probe() {
@@ -106,6 +115,55 @@ environment_tokens_usable() {
         probe_pid=
     done
 }
+
+# A gh token keeps its scopes until a login or refresh asks for fewer, so
+# gh-credential-sync decides whether a login is necessary. Inside a function
+# that a condition calls, errexit is off, so every failure returns explicitly.
+github_env=(-u GH_TOKEN -u GITHUB_TOKEN)
+if ((headless)); then
+    # GH_BROWSER outranks every other gh browser setting. With a no-op
+    # browser, gh still prints the device code and the URL.
+    github_env+=(GH_BROWSER=true)
+fi
+github_sync() {
+    local status=0
+    "$MINT_GH_CREDENTIAL_SYNC" || status=$?
+    if ((status == MINT_GH_UNCHECKED_STATUS)); then
+        echo '✘ ERROR! Cannot check the GitHub token. Unlock the keyring or restore network access, then run mint-tokens again.' >&2
+        return 1
+    elif ((status)); then
+        echo '✘ ERROR! gh-credential-sync failed.' >&2
+        return 1
+    fi
+    github_missing=
+    if [[ -s "$MINT_GH_MISSING_SCOPES" ]]; then
+        github_missing=$(tr '\n' ' ' <"$MINT_GH_MISSING_SCOPES")
+        github_missing=${github_missing% }
+    fi
+}
+github_step() {
+    echo '◍ Checking GitHub token scopes...'
+    github_sync || return 1
+    if [[ "$github_missing" == 'not logged in' ]]; then
+        echo '◍ GitHub login missing or rejected. Logging in...'
+        env "${github_env[@]}" gh auth login -h github.com -p https --scopes "$MINT_GH_SCOPES" || return 1
+    elif [[ -n "$github_missing" ]] || ((force)); then
+        echo "◍ Refreshing the GitHub login${github_missing:+ to add ${github_missing}}..."
+        env "${github_env[@]}" gh auth refresh -h github.com --scopes "$MINT_GH_SCOPES" || return 1
+    else
+        echo '✔ GitHub token has the required scopes.'
+        return 0
+    fi
+    github_sync || return 1
+    if [[ -n "$github_missing" ]]; then
+        echo "✘ ERROR! GitHub token still lacks: ${github_missing}" >&2
+        return 1
+    fi
+    echo '✔ GitHub token has the required scopes.'
+}
+if ! github_step; then
+    echo '✘ ERROR! GitHub step failed. Continuing with the other credentials.' >&2
+fi
 
 mapfile -t prod_flags < <(audience_flags "${prod_audiences[@]}")
 echo "◍ Checking Chainguard production credentials..."

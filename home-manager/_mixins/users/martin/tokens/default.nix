@@ -48,6 +48,10 @@ let
   stageConfigFile = mkEnvironmentConfig stageEnvironment;
   stageConfig = "${config.xdg.configHome}/chainctl/stage-${stageEnvironment}.yaml";
 
+  githubCredentialSync = import ../../../development/github/credential-sync.nix {
+    inherit config lib pkgs;
+  };
+
   mcpTokens = pkgs.writeShellApplication {
     name = "mcp-tokens-private";
     runtimeInputs = [
@@ -78,6 +82,7 @@ let
       pkgs.chainctl
       pkgs.coreutils
       pkgs.curl
+      pkgs.gh
       pkgs.google-cloud-sdk
       pkgs.gnugrep
       pkgs.jq
@@ -90,6 +95,10 @@ let
       export MINT_MCP_TOKENS=${lib.escapeShellArg (lib.getExe mcpTokens)}
       export MINT_STAGE_ENV=${lib.escapeShellArg stageEnvironment}
       export MINT_LOGIN_BROWSER=${lib.escapeShellArg (lib.getExe loginBrowser)}
+      export MINT_GH_CREDENTIAL_SYNC=${lib.escapeShellArg (lib.getExe githubCredentialSync.package)}
+      export MINT_GH_MISSING_SCOPES=${lib.escapeShellArg githubCredentialSync.missingScopesFile}
+      export MINT_GH_SCOPES=${lib.escapeShellArg (lib.concatStringsSep "," githubCredentialSync.requiredScopes)}
+      export MINT_GH_UNCHECKED_STATUS=${toString githubCredentialSync.uncheckedExitStatus}
       exec bash "${./mint-tokens.sh}" "$@"
     '';
   };

@@ -43,6 +43,18 @@ If consent remains absent, check organisation policy with your administrator.
 If an API check fails, check connectivity and API availability before you retry.
 These checks do not prove that every Docs, Sheets, or Slides API is enabled, or that a particular file permits access.
 
+## GitHub scopes
+
+`mint-tokens` first runs `gh-credential-sync`, which compares the stored `gh` token with the required scopes.
+A `gh` token loses no scopes over time. It lacks a scope only after a login or refresh that asked for fewer, on a new machine, or after revocation.
+When the token has every required scope, the helper reports that and starts no login.
+When scopes are missing, it runs `gh auth refresh` with the required scopes. When `gh` has no valid login, it runs `gh auth login` with the required scopes.
+`--force` refreshes the GitHub login even when the scopes are complete.
+`--headless` sets `GH_BROWSER` to a no-op, so `gh` prints the device code and URL and opens no browser.
+When the keyring is locked or GitHub is unreachable, the helper reports the problem and starts no login.
+After a login, the helper runs the sync again. A failed GitHub step does not stop the other credential checks.
+In bash, zsh, and fish, a `gh` shell function adds the required scopes to every `gh auth login` and `gh auth refresh`.
+
 ## Automatic token refresh
 
 Each `gws` invocation requests a fresh access token from the absolute gcloud executable, with a 30-second limit.

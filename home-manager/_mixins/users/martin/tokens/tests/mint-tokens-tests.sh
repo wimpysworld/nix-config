@@ -115,6 +115,28 @@ cat >"$tmp/bin/mcp-private" <<'EOF'
 printf 'mcp-private %s\n' "$*" >>"$TEST_LOG"
 exit "${MCP_EXIT:-0}"
 EOF
+cat >"$tmp/bin/gh-sync" <<'EOF'
+#!/usr/bin/env bash
+printf 'gh-sync\n' >>"$TEST_LOG"
+state=${GH_SYNC_STATE:-complete}
+if grep -Eq '^gh auth (login|refresh) ' "$TEST_LOG"; then
+    state=${GH_SYNC_AFTER:-complete}
+fi
+mkdir -p "${MINT_GH_MISSING_SCOPES%/*}"
+case "$state" in
+complete) rm -f "$MINT_GH_MISSING_SCOPES" ;;
+missing) printf '%s\n' project workflow >"$MINT_GH_MISSING_SCOPES" ;;
+logged-out) printf '%s\n' 'not logged in' >"$MINT_GH_MISSING_SCOPES" ;;
+locked) exit 75 ;;
+broken) exit 1 ;;
+esac
+EOF
+cat >"$tmp/bin/gh" <<'EOF'
+#!/usr/bin/env bash
+printf 'gh %s\n' "$*" >>"$TEST_LOG"
+printf 'gh-env browser=%s token=%s\n' "${GH_BROWSER-unset}" "${GH_TOKEN-unset}" >>"$TEST_LOG"
+exit "${GH_LOGIN_EXIT:-0}"
+EOF
 chmod +x "$tmp/bin/"*
 
 export PATH="$tmp/bin:$PATH"
@@ -127,6 +149,11 @@ export MINT_STAGE_AUDIENCES='stage mcp-stage'
 export MINT_MCP_TOKENS="$tmp/bin/mcp-private"
 export MINT_STAGE_ENV='stage.example'
 export MINT_LOGIN_BROWSER="$tmp/bin/login-browser"
+export MINT_GH_CREDENTIAL_SYNC="$tmp/bin/gh-sync"
+export MINT_GH_MISSING_SCOPES="$tmp/home/.local/state/gh/missing-scopes"
+export MINT_GH_SCOPES='gist,project,repo'
+export MINT_GH_UNCHECKED_STATUS=75
+export GH_TOKEN=SECRET_GH_TOKEN
 export GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$XDG_CONFIG_HOME/gws"
 unset GOOGLE_WORKSPACE_CLI_TOKEN GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE
 unset GOOGLE_WORKSPACE_CLI_CLIENT_ID GOOGLE_WORKSPACE_CLI_CLIENT_SECRET MINT_GWS_ACCOUNT
@@ -425,6 +452,70 @@ assert_log 'docker-credential-cgr'
 : >"$log"
 MINT_DEV_ENV=dev.example MINT_DEV_AUDIENCES='dev' bash "$script" --force --headless >/dev/null 2>&1
 assert_log "--config $XDG_CONFIG_HOME/chainctl/dev.yaml auth login --headless --audience=dev"
+
+github_refresh='gh auth refresh -h github.com --scopes gist,project,repo'
+github_login='gh auth login -h github.com -p https --scopes gist,project,repo'
+github_syncs() {
+    grep -c '^gh-sync$' "$log"
+}
+
+: >"$log"
+bash "$script" >"$tmp/github-output" 2>&1
+grep -Fq '✔ GitHub token has the required scopes.' "$tmp/github-output" || fail 'complete scopes were not reported'
+assert_no_log 'gh auth '
+[[ $(github_syncs) == 1 ]] || fail 'complete scopes did not sync exactly once'
+
+: >"$log"
+GH_SYNC_STATE=missing bash "$script" >"$tmp/github-output" 2>&1
+assert_log "$github_refresh"
+assert_log 'gh-env browser=unset token=unset'
+assert_no_log 'gh auth login '
+grep -Fq 'to add project workflow' "$tmp/github-output" || fail 'missing scopes were not reported'
+[[ $(github_syncs) == 2 ]] || fail 'the refresh was not followed by a sync'
+(($(line_of "$github_refresh") < $(grep -n '^gh-sync$' "$log" | tail -1 | cut -d: -f1))) ||
+    fail 'the sync did not run after the refresh'
+
+: >"$log"
+GH_SYNC_STATE=logged-out bash "$script" >/dev/null 2>&1
+assert_log "$github_login"
+assert_no_log 'gh auth refresh '
+[[ $(github_syncs) == 2 ]] || fail 'the login was not followed by a sync'
+
+for state in locked broken; do
+    : >"$log"
+    GH_SYNC_STATE=$state bash "$script" --force >"$tmp/github-output" 2>&1 ||
+        fail "a $state GitHub sync stopped the run"
+    assert_no_log 'gh auth '
+    grep -Fq 'GitHub step failed' "$tmp/github-output" || fail "a $state GitHub sync was not reported"
+    assert_log 'mcp-private '
+    assert_log 'docker-credential-gcloud'
+done
+GH_SYNC_STATE=locked bash "$script" >"$tmp/github-output" 2>&1
+grep -Fq 'Unlock the keyring' "$tmp/github-output" || fail 'a locked keyring was not explained'
+
+: >"$log"
+bash "$script" --force >/dev/null 2>&1
+assert_log "$github_refresh"
+[[ $(github_syncs) == 2 ]] || fail 'the forced refresh was not followed by a sync'
+
+: >"$log"
+GH_SYNC_STATE=missing bash "$script" --headless >/dev/null 2>&1
+assert_log "$github_refresh"
+assert_log 'gh-env browser=true token=unset'
+
+for after in missing logged-out; do
+    : >"$log"
+    GH_SYNC_STATE=missing GH_SYNC_AFTER=$after bash "$script" >"$tmp/github-output" 2>&1 ||
+        fail 'an incomplete GitHub refresh stopped the run'
+    grep -Fq 'GitHub step failed' "$tmp/github-output" || fail "an incomplete refresh ($after) was not reported"
+done
+
+: >"$log"
+GH_SYNC_STATE=missing GH_LOGIN_EXIT=1 bash "$script" >"$tmp/github-output" 2>&1 ||
+    fail 'a failed GitHub refresh stopped the run'
+grep -Fq 'GitHub step failed' "$tmp/github-output" || fail 'a failed GitHub refresh was not reported'
+[[ $(github_syncs) == 1 ]] || fail 'a failed refresh ran the sync again'
+assert_log 'docker-credential-gcloud'
 
 login_browser="${script%/*}/login-browser.sh"
 for case in \

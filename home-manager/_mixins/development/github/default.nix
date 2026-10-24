@@ -7,6 +7,12 @@
 }:
 let
   inherit (config.noughty) host;
+  compositor =
+    if host.is.linux && host.is.workstation then
+      lib.attrByPath [ host.desktop ] null (import ../../../../lib/wayland-compositors.nix).compositors
+    else
+      null;
+  sessionTarget = if compositor == null then "graphical-session.target" else compositor.sessionTarget;
   gh-dispatch-gh = pkgs.runCommand "gh-dispatch-gh" { } ''
     mkdir -p "$out/bin"
     ln -s ${pkgs.gh}/bin/.gh-wrapped "$out/bin/gh-dispatch-gh"
@@ -117,83 +123,43 @@ let
   ghUnsetFish = lib.concatMapStringsSep "\n" (name: "set -e ${name}") ghTokenVariables;
   ghUnsetBash = "unset ${lib.concatStringsSep " " ghTokenVariables}";
 
-  # The OAuth token `gh` stores never expires and has no refresh token, so
-  # nothing refreshes it. The scopes `gh` asked for at login are the one thing
-  # that goes stale, and only a browser device flow can add one. Every scope a
-  # command in this configuration needs is listed here. `gh-credential-sync`
-  # compares the list with the live token and leaves a marker that the shell
-  # prompt reports, so a missing scope surfaces without a network call at shell
-  # start.
-  ghRequiredScopes = [
-    "gist"
-    "project"
-    "read:org"
-    "repo"
-    "workflow"
-  ];
-  ghStateDir = "${config.xdg.stateHome}/gh";
-  ghMissingScopesFile = "${ghStateDir}/missing-scopes";
-  # Nix reads GitHub tokens from `access-tokens`, never from `GH_TOKEN`, so
-  # the sync also writes the token into a file that the user `nix.conf`
-  # includes. `!include` ignores a missing file, so a host that has never run
-  # the sync loses nothing.
-  nixAccessTokensFile = "${config.xdg.configHome}/nix/access-tokens.conf";
+  credentialSync = import ./credential-sync.nix { inherit config lib pkgs; };
+  ghCredentialSync = credentialSync.package;
+  ghMissingScopesFile = credentialSync.missingScopesFile;
+  ghScopesFlag = "--scopes ${lib.concatStringsSep "," credentialSync.requiredScopes}";
 
-  ghCredentialSync = pkgs.writeShellApplication {
-    name = "gh-credential-sync";
-    runtimeInputs = [
-      pkgs.coreutils
-      pkgs.gh
-      pkgs.jq
-    ];
-    text = ''
-      required=(${lib.escapeShellArgs ghRequiredScopes})
-      state_dir=${lib.escapeShellArg ghStateDir}
-      missing_file=${lib.escapeShellArg ghMissingScopesFile}
-      tokens_file=${lib.escapeShellArg nixAccessTokensFile}
-
-      # Read the stored credential, never an inherited environment copy.
-      unset GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN GITHUB_ENTERPRISE_TOKEN
-      mkdir -p "$state_dir" "$(dirname "$tokens_file")"
-
-      if ! status_json="$(gh auth status --hostname github.com --active --json hosts 2>/dev/null)"; then
-        echo "gh-credential-sync: not logged in to github.com" >&2
-        printf 'not logged in\n' > "$missing_file"
-        exit 0
-      fi
-
-      scopes="$(jq -r '.hosts["github.com"][] | select(.active) | .scopes // ""' <<< "$status_json")"
-      missing=()
-      for scope in "''${required[@]}"; do
-        if ! grep -q -w -- "$scope" <<< "$scopes"; then
-          missing+=("$scope")
-        fi
-      done
-
-      if (( ''${#missing[@]} > 0 )); then
-        printf '%s\n' "''${missing[@]}" > "$missing_file"
-        echo "gh-credential-sync: token lacks scopes: ''${missing[*]}" >&2
+  # A plain `gh auth login` or `gh auth refresh` requests only the default
+  # scopes, so these shell functions add the required scopes to both. `gh`
+  # merges repeated `--scopes` flags, so a scope the caller passes is kept.
+  # `--with-token` rejects `--scopes`, so that login passes through unchanged.
+  ghScopesWrapperBash = ''
+    gh() {
+      if [[ ''${1-} == auth && ( ''${2-} == login || ''${2-} == refresh ) && " $* " != *" --with-token "* ]]; then
+        command gh auth "$2" ${ghScopesFlag} "''${@:3}"
       else
-        rm -f "$missing_file"
+        command gh "$@"
       fi
-
-      token="$(gh auth token --hostname github.com)"
-      tmp="$(mktemp "$tokens_file.XXXXXX")"
-      printf 'access-tokens = github.com=%s\n' "$token" > "$tmp"
-      chmod 600 "$tmp"
-      mv "$tmp" "$tokens_file"
-    '';
-  };
+    }
+  '';
+  ghScopesWrapperFish = ''
+    if test (count $argv) -ge 2; and test "$argv[1]" = auth; and contains -- "$argv[2]" login refresh; and not contains -- --with-token $argv
+      command gh auth $argv[2] ${ghScopesFlag} $argv[3..-1]
+    else
+      command gh $argv
+    end
+  '';
 
   # Print the pending scope warning, if any, without touching the network.
   ghScopeWarningBash = ''
     if [[ -s ${lib.escapeShellArg ghMissingScopesFile} ]]; then
-      echo " GitHub token lacks: $(tr '\n' ' ' < ${lib.escapeShellArg ghMissingScopesFile})run 'gh auth refresh -s ${lib.concatStringsSep "," ghRequiredScopes}'"
+      echo " GitHub token lacks: $(tr '\n' ' ' < ${lib.escapeShellArg ghMissingScopesFile})run '$(command -v mint-tokens >/dev/null && echo mint-tokens || echo 'gh auth refresh')'"
     fi
   '';
   ghScopeWarningFish = ''
     if test -s ${lib.escapeShellArg ghMissingScopesFile}
-      echo " GitHub token lacks: "(string join ' ' (cat ${lib.escapeShellArg ghMissingScopesFile}))" run 'gh auth refresh -s ${lib.concatStringsSep "," ghRequiredScopes}'"
+      set -l fix 'gh auth refresh'
+      type -q mint-tokens; and set fix mint-tokens
+      echo " GitHub token lacks: "(string join ' ' (cat ${lib.escapeShellArg ghMissingScopesFile}))" run '$fix'"
     end
   '';
 
@@ -272,8 +238,8 @@ let
     };
 
   shellAliases = {
-    gh-login = "${pkgs.gh}/bin/gh auth login -p https -s ${lib.concatStringsSep "," ghRequiredScopes}";
-    gh-refresh = "${pkgs.gh}/bin/gh auth refresh -s ${lib.concatStringsSep "," ghRequiredScopes}";
+    gh-login = "gh auth login -p https";
+    gh-refresh = "gh auth refresh";
     gh-status = "${pkgs.gh}/bin/gh auth status";
     gh-sync = lib.getExe ghCredentialSync;
     gh-test = "${pkgs.openssh}/bin/ssh -T github.com";
@@ -298,15 +264,28 @@ lib.mkMerge [
     # reads this file for every fetch, so a refreshed token reaches flake
     # fetching without any environment variable.
     xdg.configFile."nix/nix.conf".text = ''
-      !include ${nixAccessTokensFile}
+      !include ${credentialSync.nixAccessTokensFile}
     '';
 
     systemd.user = lib.mkIf host.is.linux {
+      # The keyring stays locked until desktop login, so a workstation also
+      # runs the sync when the session starts. The timer refreshes it later.
       services.gh-credential-sync = {
-        Unit.Description = "Check gh token scopes and write the Nix access token file";
+        Unit = {
+          Description = "Check gh token scopes and write the Nix access token file";
+        }
+        // lib.optionalAttrs host.is.workstation {
+          After = [ sessionTarget ];
+          PartOf = [ sessionTarget ];
+        };
         Service = {
           Type = "oneshot";
           ExecStart = lib.getExe ghCredentialSync;
+          # A locked keyring or a network failure is not a unit failure.
+          SuccessExitStatus = credentialSync.uncheckedExitStatus;
+        };
+        Install = lib.optionalAttrs host.is.workstation {
+          WantedBy = [ sessionTarget ];
         };
       };
       timers.gh-credential-sync = {
@@ -335,6 +314,7 @@ lib.mkMerge [
         shellAliases = bashShellAliases;
         initExtra = ''
           ${ghTokenBash}
+          ${ghScopesWrapperBash}
           ${toolWrappersBash}
           if [[ $- == *i* ]]; then
             ${ghScopeWarningBash}
@@ -344,6 +324,10 @@ lib.mkMerge [
       fish = {
         inherit shellAliases;
         functions = {
+          gh = {
+            description = "Request the required scopes on gh auth login and refresh";
+            body = ghScopesWrapperFish;
+          };
           gh-unset = {
             description = "Erase the GitHub token variables that gh-token exported";
             body = ghUnsetFish;
@@ -378,6 +362,7 @@ lib.mkMerge [
         initContent = lib.mkMerge [
           (lib.mkOrder 500 ''
             ${ghTokenBash}
+            ${ghScopesWrapperBash}
             ${toolWrappersBash}
           '')
           (lib.mkOrder 1000 ''
