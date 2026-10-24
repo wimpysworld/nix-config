@@ -8,6 +8,7 @@
 }:
 let
   inherit (config.noughty) host;
+  nautilusExtensionDir = "${pkgs.nautilus-python}/lib/nautilus/extensions-4";
   audioPlayer = [ "org.gnome.Decibels.desktop" ];
   archiveManager = [ "org.gnome.FileRoller.desktop" ];
   webBrowser =
@@ -256,8 +257,13 @@ in
       ]
       ++ desktopApps;
     sessionVariables = {
-      NAUTILUS_4_EXTENSION_DIR = "${pkgs.nautilus-python}/lib/nautilus/extensions-4";
+      NAUTILUS_4_EXTENSION_DIR = lib.mkDefault nautilusExtensionDir;
     };
+  };
+  # D-Bus activation starts Nautilus with the systemd environment, so it needs
+  # the extension directory there too.
+  systemd.user.sessionVariables = lib.mkIf (host.is.linux && host.is.workstation) {
+    NAUTILUS_4_EXTENSION_DIR = lib.mkDefault nautilusExtensionDir;
   };
 
   xdg = lib.mkIf (host.is.linux && host.is.workstation) {

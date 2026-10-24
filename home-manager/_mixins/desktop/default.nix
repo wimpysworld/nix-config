@@ -59,6 +59,23 @@ in
       portalPackages = lib.optionals config.targets.genericLinux.enable (
         [ pkgs.xdg-desktop-portal ] ++ builtins.attrValues portalBackends
       );
+      # Login shells read home.sessionVariables. The systemd user manager and
+      # D-Bus activation read systemd.user.sessionVariables, so apps that
+      # start through the portal, XDG autostart or D-Bus need both.
+      desktopSessionVariables = lib.mapAttrs (_: lib.mkDefault) (
+        {
+          GDK_BACKEND = "wayland,x11";
+          MOZ_ENABLE_WAYLAND = "1";
+          NIXOS_OZONE_WL = "1";
+          QT_QPA_PLATFORM = "wayland;xcb";
+          QT_STYLE_OVERRIDE = "kvantum";
+          QT_WAYLAND_DISABLE_WINDOWDECORATION = if clientSideDecorations then "0" else "1";
+        }
+        // lib.optionalAttrs (compositor != null) {
+          DESKTOP_SESSION = lib.toLower compositor.launcher.desktopNames;
+          XDG_SESSION_DESKTOP = lib.toLower compositor.launcher.desktopNames;
+        }
+      );
       gtkCatppuccinThemePackage = pkgs.catppuccin-gtk.override {
         accents = [ "${config.catppuccin.accent}" ];
         size = "standard";
@@ -121,15 +138,16 @@ in
           size = cursorSize;
           x11.enable = true;
         };
-        sessionVariables = {
-          GDK_BACKEND = "wayland,x11";
-          MOZ_ENABLE_WAYLAND = "1";
-          NIXOS_OZONE_WL = "1";
-          QT_QPA_PLATFORM = "wayland;xcb";
-          QT_STYLE_OVERRIDE = "kvantum";
-          QT_WAYLAND_DISABLE_WINDOWDECORATION = if clientSideDecorations then 0 else 1;
-        };
+        sessionVariables = desktopSessionVariables;
       };
+
+      systemd.user.sessionVariables = lib.mkIf host.is.linux (
+        desktopSessionVariables
+        // lib.optionalAttrs config.xdg.portal.xdgOpenUsePortal {
+          # The Home Manager portal module sets this for login shells only.
+          NIXOS_XDG_OPEN_USE_PORTAL = lib.mkDefault "1";
+        }
+      );
 
       gtk = lib.mkIf host.is.linux {
         enable = true;
