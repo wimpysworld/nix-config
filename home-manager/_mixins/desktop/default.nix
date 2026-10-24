@@ -250,6 +250,9 @@ in
       };
 
       services = lib.mkIf host.is.linux {
+        # Home Manager runs the keyring daemon on every Linux host. The system
+        # only unlocks it with the login password: on NixOS the greetd PAM
+        # service does, and on generic Linux libpam-gnome-keyring does.
         gnome-keyring = {
           enable = true;
         };

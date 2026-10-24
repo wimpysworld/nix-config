@@ -115,6 +115,8 @@ lib.mkIf host.is.workstation {
   systemd.tmpfiles.rules = [
     "d /var/cache/regreet 0700 greeter greeter - -"
   ];
+  # Unlock the Home Manager keyring daemon with the login password, so that no
+  # keyring prompt appears after login.
   security.pam.services.greetd.enableGnomeKeyring = true;
   services.greetd = {
     enable = true;
