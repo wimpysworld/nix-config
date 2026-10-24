@@ -60,7 +60,7 @@ let
     let
       tags = e.tags or [ ];
     in
-    builtins.elem "wsl" tags || builtins.elem "steamdeck" tags;
+    builtins.elem "wsl" tags || builtins.elem "steamdeck" tags || builtins.elem "generic-linux" tags;
 
   # Single source of truth for nixpkgs instantiation.
   mkPkgs =
@@ -216,6 +216,7 @@ rec {
       hostKeyboardLayout ? "gb",
       hostKeyboardVariant ? "",
       userTags ? [ ],
+      hostIsNixos ? false,
       userKeyboard ? { },
     }:
     let
@@ -261,6 +262,7 @@ rec {
               variant = hostKeyboardVariant;
             };
             inherit desktop;
+            is.nixos = hostIsNixos;
           };
           noughty.user.name = username;
           noughty.user.tags = userTags;
@@ -288,6 +290,7 @@ rec {
       hostKeyboardLayout ? "gb",
       hostKeyboardVariant ? "",
       userTags ? [ ],
+      hostIsNixos ? true,
       userKeyboard ? { },
     }:
     let
@@ -339,6 +342,7 @@ rec {
                 variant = hostKeyboardVariant;
               };
               inherit desktop;
+              is.nixos = hostIsNixos;
             };
             noughty.user.name = username;
             noughty.user.tags = userTags;
@@ -366,6 +370,7 @@ rec {
       hostKeyboardLayout ? "gb",
       hostKeyboardVariant ? "",
       userTags ? [ ],
+      hostIsNixos ? false,
       userKeyboard ? { },
     }:
     let
@@ -414,6 +419,7 @@ rec {
               variant = hostKeyboardVariant;
             };
             inherit desktop;
+            is.nixos = hostIsNixos;
           };
           noughty.user.name = username;
           noughty.user.tags = userTags;
@@ -453,6 +459,8 @@ rec {
       hostKeyboardVariant = (resolved.keyboard or { }).variant or "";
       userTags = (resolved.userEntry or { }).tags or [ ];
       userKeyboard = (resolved.userEntry or { }).keyboard or { };
+      # Home-only Linux entries run Home Manager on another distribution.
+      hostIsNixos = isLinuxEntry resolved && !isHomeOnlyEntry resolved;
     };
 
   # Generate configurations by filtering with a predicate function

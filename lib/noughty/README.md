@@ -142,6 +142,7 @@ All derived from other `noughty.host.*` options. Settable (not `readOnly`), so h
 | `is.vm` | `bool` | `kind == "vm"` |
 | `is.darwin` | `bool` | `os == "darwin"` |
 | `is.linux` | `bool` | `os == "linux"` |
+| `is.nixos` | `bool` | `false` (set by the flake builders: `false` for home-only entries and Darwin) |
 
 ### `noughty.host.gpu` - GPU vendor classification
 
@@ -332,10 +333,12 @@ Tags are freeform `listOf str`. The canonical vocabulary is documented in a comm
 
 - **Host tags:**
   - `studio`, `davinci`, `gamedev`, `streamdeck`
-  - `pci-hdmi-capture`, `thinkpad`, `cg`, `steamdeck`, `wsl`
+  - `pci-hdmi-capture`, `thinkpad`, `cg`, `steamdeck`, `wsl`, `generic-linux`
   - `iso`, `reframe`, `inference`, `scrutiny`, `dropbox`
   - `borgbackup`, `fprintd`, `strix-halo`, `gatus`, `irc-bouncer`, `handy`
 - **User tags:** `developer`, `admin`, `family`
+
+The `wsl`, `steamdeck` and `generic-linux` tags mark home-only Linux entries: they get a Home Manager configuration but no NixOS configuration, and `host.is.nixos` is `false`. Use `generic-linux` for a distribution such as Ubuntu with a Home Manager desktop.
 
 Tags centralise classification that was previously scattered as hostname comparisons across the tree (e.g. `hostname == "phasma" || hostname == "vader"` becomes the `"studio"` tag, set once in the registry).
 

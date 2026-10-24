@@ -280,6 +280,10 @@ in
   };
 
   targets.darwin.mac-app-util.enable = lib.mkDefault host.is.darwin;
+  # On Linux distributions other than NixOS, add the Home profile and
+  # distribution data directories to XDG_DATA_DIRS, so the session bus,
+  # portals and other XDG lookups find what the profile installs.
+  targets.genericLinux.enable = lib.mkDefault (host.is.linux && !host.is.nixos);
 
   xdg = {
     enable = host.is.linux;

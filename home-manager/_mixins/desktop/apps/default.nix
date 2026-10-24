@@ -34,9 +34,10 @@ let
   fileManager = [ "org.gnome.Nautilus.desktop" ];
   imageViewer = [ "org.gnome.Loupe.desktop" ];
   videoPlayer = [ "io.github.celluloid_player.Celluloid.desktop" ];
-  # Packages whose D-Bus configuration files should be included in the
-  # configuration of the D-Bus session-wide message bus.
-  dbusPackages = with pkgs; [
+  # The session bus finds the D-Bus service files these apps ship in the Home
+  # profile through XDG_DATA_DIRS, set by PAM on NixOS and by
+  # targets.genericLinux elsewhere, so no dbus.packages registration is needed.
+  desktopApps = with pkgs; [
     celluloid # video player
     dconf-editor # dconf GUI editor
     decibels # audio player
@@ -69,10 +70,6 @@ in
     ./voice
   ];
 
-  dbus = lib.mkIf (host.is.linux && host.is.workstation) {
-    packages = dbusPackages;
-  };
-
   dconf = lib.mkIf (host.is.linux && host.is.workstation) {
     settings = with lib.hm.gvariant; {
       "ca/desrt/dconf-editor" = {
@@ -91,7 +88,7 @@ in
         nautilus-python
         nautilus-open-any-terminal
       ]
-      ++ dbusPackages;
+      ++ desktopApps;
     sessionVariables = {
       NAUTILUS_4_EXTENSION_DIR = "${pkgs.nautilus-python}/lib/nautilus/extensions-4";
     };

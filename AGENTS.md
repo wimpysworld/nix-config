@@ -153,6 +153,8 @@ System entries require `kind` and `platform`. Common fields include `formFactor`
 
 ISO hosts use `tags = ["iso"]`, which implies `desktop = null` and `username = "nixos"`. The ISO host is `nihilus`.
 
+Home-only Linux hosts use the `wsl`, `steamdeck` or `generic-linux` tag. They get no NixOS configuration, and `host.is.nixos` is false for them. Use `generic-linux` for other distributions, such as Ubuntu.
+
 `resolveEntry` in `lib/flake-builders.nix` merges four layers, in order: baseline username, kind+OS derived desktop, ISO defaults, then explicit registry values. Registry data flows through `resolveEntry` -> `mkSystemConfig` -> `mkNixos`/`mkHome`/`mkDarwin` -> `config.noughty.*`.
 
 Read host and user metadata from `config.noughty.*`, not from `specialArgs`. Noughty provides type checking, defaults, and `mkDefault`/`mkForce` overridability.
@@ -161,7 +163,7 @@ Only four `specialArgs` are expected: `inputs`, `outputs`, `stateVersion`, `catp
 
 Key gates:
 
-- `host.is.workstation`, `host.is.server`, `host.is.laptop`, `host.is.iso`, `host.is.vm`, `host.is.darwin`, `host.is.linux`
+- `host.is.workstation`, `host.is.server`, `host.is.laptop`, `host.is.iso`, `host.is.vm`, `host.is.darwin`, `host.is.linux`, `host.is.nixos`
 - `host.gpu.hasNvidia`, `host.gpu.hasCuda`, `host.gpu.hasAmd`, `host.gpu.hasROCm`
 - `host.display.primaryOutput`, `host.display.isMultiMonitor`
 - `noughtyLib.isUser [ "martin" ]`, `noughtyLib.isHost [ "skrye" "zannah" ]`, `noughtyLib.hostHasTag "studio"`, `noughtyLib.userHasTag "developer"`

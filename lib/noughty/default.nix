@@ -174,6 +174,12 @@ in
           default = config.noughty.host.os == "linux";
           description = "Whether this host runs Linux.";
         };
+
+        nixos = lib.mkOption {
+          type = lib.types.bool;
+          default = false;
+          description = "Whether this host runs NixOS. The flake builders set it from the registry: true for NixOS and ISO hosts, false for home-only Linux entries and Darwin.";
+        };
       };
 
       # ── GPU vendor classification ─────────────────────────────────
