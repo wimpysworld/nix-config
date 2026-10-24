@@ -6,16 +6,6 @@
   ...
 }:
 let
-  # Strix Halo (AMD Ryzen AI Max 300, dcn35) workaround: disable hardware video
-  # decode/encode in Chromium-family browsers. The full hardware acceleration
-  # path stays on; only the VPE ring that wedges the AMDGPU SMU is avoided.
-  videoAccelDisableFlags = "--disable-accelerated-video-decode --disable-accelerated-video-encode";
-  googleChrome =
-    if noughtyLib.hostHasTag "strix-halo" then
-      pkgs.google-chrome.override { commandLineArgs = videoAccelDisableFlags; }
-    else
-      pkgs.google-chrome;
-
   # Wrap Slack to open all URLs in Chrome
   slackChrome = inputs.xdg-override.lib.wrapPackage {
     nameMatch = [
@@ -86,7 +76,7 @@ in
 lib.mkIf (noughtyLib.hostHasTag "cg") {
   environment.systemPackages = [
     pkgs._1password-gui
-    googleChrome
+    pkgs.google-chrome
     slackChrome
     chromeXdgOpen
   ];

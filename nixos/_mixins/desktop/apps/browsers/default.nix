@@ -15,28 +15,13 @@ let
   ];
   forMartin = [ "martin" ];
 
-  # Strix Halo (AMD Ryzen AI Max 300, dcn35) workaround: disable hardware video
-  # decode/encode in Chromium-family browsers. Hardware-accelerated video on
-  # Strix Halo wedges the AMDGPU SMU via the VPE ring; disabling the video
-  # codec path alone keeps the rest of the GPU acceleration in play.
-  videoAccelDisableFlags = "--disable-accelerated-video-decode --disable-accelerated-video-encode";
-  applyVideoAccelWorkaround =
-    pkg:
-    if noughtyLib.hostHasTag "strix-halo" then
-      pkg.override { commandLineArgs = videoAccelDisableFlags; }
-    else
-      pkg;
-  brave = applyVideoAccelWorkaround pkgs.brave;
-  google-chrome = applyVideoAccelWorkaround pkgs.google-chrome;
-  microsoft-edge = applyVideoAccelWorkaround pkgs.microsoft-edge;
-
-  familyPackages = [
+  familyPackages = with pkgs; [
     google-chrome
     microsoft-edge
   ];
-  martinPackages = [
+  martinPackages = with pkgs; [
     brave
-    pkgs.mullvad-browser
+    mullvad-browser
   ];
   essentialExtensions = [
     "hdokiejnpimakedhajhdlcegeplioahd" # LastPass
