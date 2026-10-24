@@ -785,9 +785,9 @@ let
   # server.
   herdrProfileBin = "${config.home.profileDirectory}/bin/herdr";
   herdrSocket = "${config.xdg.configHome}/herdr/herdr.sock";
-  # NixOS runs `ssh-agent.service` in the user manager. WSL hosts are
-  # Home Manager only, so they have no such unit.
-  hostHasSshAgentUnit = host.is.linux && !(noughtyLib.hostHasTag "wsl");
+  # The Home Manager gpg-agent is the SSH agent on every Linux host,
+  # including home-only and WSL hosts. Unit files expand `%t`.
+  gpgAgentSshSocket = config.systemd.user.sockets.gpg-agent-ssh.Socket.ListenStream;
   # Panes of a server that starts at boot have no display. These are the
   # variables the compositor imports into the user manager, with a generic
   # fallback for a desktop outside the compositor contract.
@@ -953,14 +953,14 @@ in
       Unit = {
         Description = "Herdr server";
         X-SwitchMethod = "keep-old";
-        After = lib.optional hostHasSshAgentUnit "ssh-agent.service";
-        Wants = lib.optional hostHasSshAgentUnit "ssh-agent.service";
       };
       Service = {
         Type = "simple";
         ExecCondition = "${pkgs.bash}/bin/bash -c '! ${lib.getExe pkgs.socat} -u OPEN:/dev/null UNIX-CONNECT:${herdrSocket} 2>/dev/null'";
         ExecStart = "${herdrProfileBin} server";
-        Environment = lib.optional hostHasSshAgentUnit "SSH_AUTH_SOCK=%t/ssh-agent";
+        # Panes keep the gpg-agent socket even if another unit changes the
+        # user manager environment.
+        Environment = [ "SSH_AUTH_SOCK=${gpgAgentSshSocket}" ];
         Restart = "on-failure";
         RestartSec = 30;
         # Herdr saves the session as it stops.
