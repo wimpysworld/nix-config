@@ -10,22 +10,39 @@ let
   palette = catppuccinPalette;
   textColor = palette.mkRgba "text" palette.alpha.opaque;
   # The user stylesheet loads above the SwayOSD default stylesheet, so it
-  # only overrides the rules that it sets. The 8px radius matches the Mango
-  # blur corners and the Fuzzel border.
+  # only overrides the rules that it sets. The size follows the old avizo
+  # OSD: about 480 px wide, 32 px padding, a 16 px bar and a 1 px blue
+  # border. The background uses the scrim level, so the blurred desktop
+  # shows through. The 8px radius matches the Mango blur corners and Fuzzel.
   style = pkgs.writeText "swayosd-style.css" ''
     window#osd {
       border-radius: 8px;
-      border: none;
-      background: ${palette.mkRgba "base" palette.alpha.surface};
+      border: 1px solid ${palette.mkRgba "blue" palette.alpha.opaque};
+      background: ${palette.mkRgba "base" palette.alpha.scrim};
     }
 
     window#osd #container {
-      margin: 16px;
+      margin: 32px;
     }
 
     window#osd image,
     window#osd label {
       color: ${textColor};
+    }
+
+    /* SwayOSD fixes the icon at 32 px in code. Scale it when drawn, and
+       add a margin so that the box makes room for the larger icon. The
+       scaled icon fills a 16 px margin exactly, so the right margin is
+       wider to leave a gap before the bar. */
+    window#osd image {
+      -gtk-icon-transform: scale(2);
+      margin: 16px 32px 16px 16px;
+    }
+
+    window#osd progressbar,
+    window#osd segmentedprogress {
+      min-width: 340px;
+      min-height: 16px;
     }
 
     window#osd trough,

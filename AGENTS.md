@@ -234,15 +234,15 @@ Using overlays to patch Nixpkgs software is a last resort for debugging or addin
 
 `catppuccinPalette.alpha` holds the shared transparency levels:
 
-| Level           | Value | Use                                                                            |
-| --------------- | ----- | ------------------------------------------------------------------------------ |
-| `scrim`         | 0.6   | Full-screen backgrounds behind modal menus, such as wleave and the Rofi window |
-| `surface`       | 0.85  | Blurred menus, launchers, bar pills and OSDs                                   |
-| `surfaceStrong` | 0.95  | Unblurred surfaces and tooltips, such as SwayNC                                |
-| `opaque`        | 1.0   | Lock screen, greeter, terminals, selections and all text                       |
-| `muted`         | 0.55  | De-emphasised accent text only: the Mango inactive tab text                    |
-| `tint`          | 0.33  | Drop target                                                                    |
-| `dim`           | 0.025 | Unfocused window dim                                                           |
+| Level           | Value | Use                                                                                                 |
+| --------------- | ----- | --------------------------------------------------------------------------------------------------- |
+| `scrim`         | 0.6   | Full-screen backgrounds behind modal menus, such as wleave and the Rofi window, and the SwayOSD OSD |
+| `surface`       | 0.85  | Blurred menus, launchers and bar pills                                                              |
+| `surfaceStrong` | 0.95  | Unblurred surfaces and tooltips, such as SwayNC                                                     |
+| `opaque`        | 1.0   | Lock screen, greeter, terminals, selections and all text                                            |
+| `muted`         | 0.55  | De-emphasised accent text only: the Mango inactive tab text                                         |
+| `tint`          | 0.33  | Drop target                                                                                         |
+| `dim`           | 0.025 | Unfocused window dim                                                                                |
 
 Render colours with `mkHexA name alpha` (`#rrggbbaa`) or `mkRgba` (CSS `rgba()`). Mango's `toMangoColor` renders `0xrrggbbaa` and stays in the Mango module.
 

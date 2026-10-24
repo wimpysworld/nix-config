@@ -103,9 +103,9 @@ rec {
       # every component and compositor. Shadows are not a level, because
       # each renderer draws them differently and keeps its own tuned value.
       alpha = {
-        # Full-screen backgrounds behind modal menus.
+        # Full-screen backgrounds behind modal menus, and the OSD.
         scrim = 0.6;
-        # Blurred menus, launchers, bar pills and OSDs.
+        # Blurred menus, launchers and bar pills.
         surface = 0.85;
         # Unblurred surfaces and tooltips.
         surfaceStrong = 0.95;
