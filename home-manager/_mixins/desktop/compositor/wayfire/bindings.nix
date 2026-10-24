@@ -21,7 +21,9 @@ in
       autostart.rofi = false;
       command = {
         binding_files = "<super> KEY_E";
-        command_files = "${lib.getExe pkgs.nautilus} --new-window";
+        # Start Nautilus through PATH, so that the Home profile wrapper sets
+        # its extension directory.
+        command_files = "nautilus --new-window";
 
         binding_play_pause = "KEY_PLAYPAUSE";
         command_play_pause = "${lib.getExe pkgs.playerctl} play-pause";

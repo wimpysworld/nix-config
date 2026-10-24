@@ -8,7 +8,32 @@
 }:
 let
   inherit (config.noughty) host;
-  nautilusExtensionDir = "${pkgs.nautilus-python}/lib/nautilus/extensions-4";
+  # Nautilus loads Python extensions, such as the "Open in Ghostty" and
+  # "Open in WezTerm" items that those packages ship, only
+  # from NAUTILUS_4_EXTENSION_DIR. The wrapper sets it for every start path:
+  # desktop files call the binary through PATH, and the D-Bus service files
+  # call it by store path, so they become copies that call the wrapper. The
+  # symlink wrapper avoids a rebuild of Nautilus.
+  nautilusWithExtensions = pkgs.symlinkJoin {
+    inherit (pkgs.nautilus)
+      pname
+      version
+      meta
+      passthru
+      ;
+    paths = [ pkgs.nautilus ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      rm "$out/bin/nautilus"
+      makeWrapper ${lib.getExe pkgs.nautilus} "$out/bin/nautilus" \
+        --set NAUTILUS_4_EXTENSION_DIR ${pkgs.nautilus-python}/lib/nautilus/extensions-4
+      for service in "$out"/share/dbus-1/services/*.service; do
+        rm "$service"
+        substitute "${pkgs.nautilus}/share/dbus-1/services/$(basename "$service")" "$service" \
+          --replace-fail ${lib.getExe pkgs.nautilus} "$out/bin/nautilus"
+      done
+    '';
+  };
   audioPlayer = [ "org.gnome.Decibels.desktop" ];
   archiveManager = [ "org.gnome.FileRoller.desktop" ];
   webBrowser =
@@ -214,7 +239,7 @@ let
     gnome-disk-utility # disk utility
     gnome-font-viewer # font viewer
     loupe # image viewer
-    nautilus # file manager
+    nautilusWithExtensions # file manager
     papers # document viewer
     resources # monitor system resources
     seahorse # encryption and key manager
@@ -253,17 +278,8 @@ in
       with pkgs;
       [
         nautilus-python
-        nautilus-open-any-terminal
       ]
       ++ desktopApps;
-    sessionVariables = {
-      NAUTILUS_4_EXTENSION_DIR = lib.mkDefault nautilusExtensionDir;
-    };
-  };
-  # D-Bus activation starts Nautilus with the systemd environment, so it needs
-  # the extension directory there too.
-  systemd.user.sessionVariables = lib.mkIf (host.is.linux && host.is.workstation) {
-    NAUTILUS_4_EXTENSION_DIR = lib.mkDefault nautilusExtensionDir;
   };
 
   xdg = lib.mkIf (host.is.linux && host.is.workstation) {

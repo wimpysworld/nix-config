@@ -65,7 +65,9 @@ in
           "SUPER,Home,toggleoverview"
           "SUPER,j,togglejump"
           "SUPER,r,setkeymode,resize"
-          "SUPER,e,spawn,${pkgs.nautilus}/bin/nautilus --new-window"
+          # Start Nautilus through PATH, so that the Home profile wrapper sets
+          # its extension directory.
+          "SUPER,e,spawn,nautilus --new-window"
           "SUPER,t,spawn,${lib.getExe pkgs.xdg-terminal-exec}"
         ]
         # Bind Pause by keycode (xkb 127 = evdev KEY_PAUSE 119 + 8).

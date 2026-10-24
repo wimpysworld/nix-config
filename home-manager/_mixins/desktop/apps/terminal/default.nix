@@ -10,27 +10,22 @@ let
   terminalEmulators = {
     alacritty = {
       launchCommand = lib.getExe config.programs.alacritty.package;
-      nautilusIdentifier = "alacritty";
       desktopFileId = "Alacritty.desktop";
     };
     foot = {
       launchCommand = lib.getExe config.programs.foot.package;
-      nautilusIdentifier = "foot";
       desktopFileId = "foot.desktop";
     };
     ghostty = {
       launchCommand = lib.getExe config.programs.ghostty.package;
-      nautilusIdentifier = "ghostty";
       desktopFileId = "com.mitchellh.ghostty.desktop";
     };
     kitty = {
       launchCommand = lib.getExe config.programs.kitty.package;
-      nautilusIdentifier = "kitty";
       desktopFileId = "kitty.desktop";
     };
     wezterm = {
       launchCommand = lib.getExe config.programs.wezterm.package;
-      nautilusIdentifier = "wezterm";
       desktopFileId = "org.wezfurlong.wezterm.desktop";
     };
   };
@@ -55,16 +50,6 @@ in
   ];
 
   config = lib.mkIf host.is.workstation {
-
-    # User specific dconf terminal-related settings. Nautilus is only installed
-    # on workstations, so gate this setting accordingly.
-    dconf = lib.mkIf (host.is.linux && host.is.workstation) {
-      settings = {
-        "com/github/stunkymonkey/nautilus-open-any-terminal" = {
-          terminal = defaultTerminal.nautilusIdentifier;
-        };
-      };
-    };
 
     # Point tools that read TERMINAL at the default terminal, in login shells
     # and in systemd user services such as the compositor session.
