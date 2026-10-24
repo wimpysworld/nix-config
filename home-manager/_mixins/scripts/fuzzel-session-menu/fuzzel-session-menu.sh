@@ -13,7 +13,7 @@ bluetooth="󰂯 Bluetooth"
 audio="󰕾 Audio"
 virtualcam_start="󰄀 Start Virtualcam"
 virtualcam_stop="󰗟 Stop Virtualcam"
-screenshot="󰹑 Screenshot"
+screenshot="󱎴 Screenshot"
 picker="󰏘 Colour Picker"
 window_layout="󰹫 Window Layout"
 
