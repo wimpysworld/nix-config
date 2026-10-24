@@ -72,6 +72,14 @@ in
 
     programs.ghostty.settings.window-decoration = lib.mkForce "server";
 
+    # Waybar sends the wrong workspace row from wayfire/workspaces; the patch
+    # header explains the bug. Only Wayfire hosts build this from source.
+    programs.waybar.package = pkgs.waybar.overrideAttrs (oldAttrs: {
+      patches = (oldAttrs.patches or [ ]) ++ [
+        ../../../../../overlays/patches/waybar/wayfire-workspace-row.patch
+      ];
+    });
+
     systemd.user.targets.wayfire-session.Unit.Wants = [ "xdg-desktop-autostart.target" ];
 
     wayland.windowManager.wayfire = {
