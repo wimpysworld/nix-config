@@ -11,7 +11,9 @@ let
   inherit (pkgs) veila;
   veilaBin = lib.getExe' veila "veila";
   handyBin = lib.getExe pkgs.handy;
-  avizoBin = "${pkgs.avizo}/bin";
+  swayosdClient = lib.getExe' pkgs.swayosd "swayosd-client";
+  # SwayOSD does not unmute on a volume change, so unmute the output first.
+  unmuteOutput = "${lib.getExe' pkgs.wireplumber "wpctl"} set-mute @DEFAULT_AUDIO_SINK@ 0";
   playerctlBin = lib.getExe pkgs.playerctl;
 
   tags = import ./tags.nix { inherit host; };
@@ -91,13 +93,17 @@ in
           "NONE,XF86AudioPlay,spawn,${playerctlBin} play-pause"
           "NONE,XF86AudioPrev,spawn,${playerctlBin} previous"
           "NONE,XF86AudioNext,spawn,${playerctlBin} next"
-          "NONE,XF86AudioMute,spawn,${avizoBin}/volumectl toggle-mute"
-          "NONE,XF86AudioMicMute,spawn,${avizoBin}/volumectl -m toggle-mute"
-          "NONE,XF86AudioRaiseVolume,spawn,${avizoBin}/volumectl -u up"
-          "NONE,XF86AudioLowerVolume,spawn,${avizoBin}/volumectl -u down"
-          "NONE,XF86MonBrightnessUp,spawn,${avizoBin}/lightctl up"
-          "NONE,XF86MonBrightnessDown,spawn,${avizoBin}/lightctl down"
+          "NONE,XF86AudioMute,spawn,${swayosdClient} --output-volume mute-toggle"
+          "NONE,XF86AudioMicMute,spawn,${swayosdClient} --input-volume mute-toggle"
+          "NONE,XF86AudioRaiseVolume,spawn_shell,${unmuteOutput}; ${swayosdClient} --output-volume +5"
+          "NONE,XF86AudioLowerVolume,spawn_shell,${unmuteOutput}; ${swayosdClient} --output-volume -5"
+          "NONE,XF86MonBrightnessUp,spawn,${swayosdClient} --brightness +5"
+          "NONE,XF86MonBrightnessDown,spawn,${swayosdClient} --brightness -5"
         ];
+        # Show the caps lock state on release, after the press has toggled it.
+        # The p flag passes the release to the client, and Mango ignores the
+        # caps lock modifier when it matches a binding.
+        bindrp = [ "NONE,Caps_Lock,spawn,${swayosdClient} --caps-lock" ];
         # A tap of SUPER on its own toggles the application grid.
         bindr = [
           "SUPER,Super_L,spawn_shell,${pkgs.procps}/bin/pkill rofi || rofi -theme ${config.xdg.configHome}/rofi/launchers/rofi-appgrid/style.rasi -show drun"

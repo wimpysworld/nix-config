@@ -50,6 +50,9 @@ let
     else
       null;
   sessionTarget = if compositor == null then "graphical-session.target" else compositor.sessionTarget;
+  swayosdClient = lib.getExe' pkgs.swayosd "swayosd-client";
+  # SwayOSD does not unmute on a volume change, so unmute the output first.
+  unmuteOutput = "${lib.getExe' pkgs.wireplumber "wpctl"} set-mute @DEFAULT_AUDIO_SINK@ 0";
   workspaceModule = compositor.waybar.workspaceModule or null;
 in
 lib.mkIf (host.is.linux && host.is.workstation) {
@@ -385,9 +388,9 @@ lib.mkIf (host.is.linux && host.is.workstation) {
                 ];
               };
               max-volume = 100;
-              on-click-middle = "${pkgs.avizo}/bin/volumectl -d -u toggle-mute";
-              on-scroll-up = "${pkgs.avizo}/bin/volumectl -d -u up 2";
-              on-scroll-down = "${pkgs.avizo}/bin/volumectl -d -u down 2";
+              on-click-middle = "${swayosdClient} --output-volume mute-toggle";
+              on-scroll-up = "${unmuteOutput}; ${swayosdClient} --output-volume +2";
+              on-scroll-down = "${unmuteOutput}; ${swayosdClient} --output-volume -2";
               tooltip-format = "󰓃  {volume}󰏰\n󰒓  {node_name}";
             };
             "pulseaudio#input" = {
@@ -395,9 +398,9 @@ lib.mkIf (host.is.linux && host.is.workstation) {
               format-alt = "<big>{format_source}</big> <small>{source_volume}󰏰</small>";
               format-source = "󰍬";
               format-source-muted = "󰍭";
-              on-click-middle = "${pkgs.avizo}/bin/volumectl -d -m toggle-mute";
-              on-scroll-up = "${pkgs.avizo}/bin/volumectl -d -m up 2";
-              on-scroll-down = "${pkgs.avizo}/bin/volumectl -d -m down 2";
+              on-click-middle = "${swayosdClient} --input-volume mute-toggle";
+              on-scroll-up = "${swayosdClient} --input-volume +2";
+              on-scroll-down = "${swayosdClient} --input-volume -2";
               tooltip-format = "  {source_volume}󰏰\n󰒓  {desc}";
               ignored-sinks = [
                 "INZONE Buds Analog Stereo"
@@ -453,9 +456,9 @@ lib.mkIf (host.is.linux && host.is.workstation) {
                 ""
                 ""
               ];
-              on-click-middle = "${pkgs.avizo}/bin/lightctl -d set 50";
-              on-scroll-up = "${pkgs.avizo}/bin/lightctl -d up 2";
-              on-scroll-down = "${pkgs.avizo}/bin/lightctl -d down 2";
+              on-click-middle = "${swayosdClient} --brightness 50";
+              on-scroll-up = "${swayosdClient} --brightness +2";
+              on-scroll-down = "${swayosdClient} --brightness -2";
               tooltip-format = "󰃠  {percent}󰏰";
             };
             cpu = {

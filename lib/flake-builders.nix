@@ -133,7 +133,7 @@ rec {
             lib.optionalString (builtins.elemAt parts 1 != null) (builtins.elemAt parts 1)
           }";
 
-      # CSS rgba() helper for use in GTK CSS, avizo, wleave, etc. The alpha
+      # CSS rgba() helper for use in GTK CSS, SwayOSD, wleave, etc. The alpha
       # is a number, such as a level from alpha, or a string.
       mkRgba =
         colorName: alpha:

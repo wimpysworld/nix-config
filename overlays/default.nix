@@ -129,6 +129,7 @@ in
       inherit (final.unstable) markless;
       inherit (final.unstable) mas;
       inherit (final.unstable) melange;
+      inherit (final.unstable) swayosd;
       inherit (final.unstable) tmux;
       inherit (final.unstable) wezterm;
 

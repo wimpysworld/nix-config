@@ -44,7 +44,7 @@ let
     "rofi"
   ];
   blurredLayers = launcherLayers ++ [
-    "avizo"
+    "swayosd"
     "wleave"
   ];
   matchLayers = namespaces: lib.concatMapStringsSep " | " (n: ''app_id is "${n}"'') namespaces;

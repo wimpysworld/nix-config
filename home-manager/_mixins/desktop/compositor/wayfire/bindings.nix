@@ -11,6 +11,9 @@ let
   isHandyHost = host.is.linux && host.is.workstation && noughtyLib.hostHasTag "handy";
   inherit (pkgs) veila;
   veilaBin = lib.getExe' veila "veila";
+  swayosdClient = lib.getExe' pkgs.swayosd "swayosd-client";
+  # SwayOSD does not unmute on a volume change, so unmute the output first.
+  unmuteOutput = "${lib.getExe' pkgs.wireplumber "wpctl"} set-mute @DEFAULT_AUDIO_SINK@ 0";
 in
 {
   config = lib.mkIf (host.desktop == "wayfire") {
@@ -28,17 +31,20 @@ in
         command_next = "${lib.getExe pkgs.playerctl} next";
 
         binding_mute = "KEY_MUTE";
-        command_mute = "${pkgs.avizo}/bin/volumectl toggle-mute";
+        command_mute = "${swayosdClient} --output-volume mute-toggle";
         binding_micmute = "KEY_MICMUTE";
-        command_micmute = "${pkgs.avizo}/bin/volumectl -m toggle-mute";
+        command_micmute = "${swayosdClient} --input-volume mute-toggle";
         binding_volumeup = "KEY_VOLUMEUP";
-        command_volumeup = "${pkgs.avizo}/bin/volumectl -u up";
+        command_volumeup = "${unmuteOutput}; ${swayosdClient} --output-volume +5";
         binding_volumedown = "KEY_VOLUMEDOWN";
-        command_volumedown = "${pkgs.avizo}/bin/volumectl -u down";
+        command_volumedown = "${unmuteOutput}; ${swayosdClient} --output-volume -5";
         binding_brightnessup = "KEY_BRIGHTNESSUP";
-        command_brightnessup = "${pkgs.avizo}/bin/lightctl up";
+        command_brightnessup = "${swayosdClient} --brightness +5";
         binding_brightnessdown = "KEY_BRIGHTNESSDOWN";
-        command_brightnessdown = "${pkgs.avizo}/bin/lightctl down";
+        command_brightnessdown = "${swayosdClient} --brightness -5";
+        # Show the caps lock state on release, after the press has toggled it.
+        release_binding_caps_lock = "KEY_CAPSLOCK";
+        command_caps_lock = "${swayosdClient} --caps-lock";
 
         binding_capture_menu = "KEY_SYSRQ";
         command_capture_menu = "fuzzel-capture";
