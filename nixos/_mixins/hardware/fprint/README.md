@@ -57,7 +57,8 @@ Three modules collaborate:
   `veila` PAM service for passwords
 - Displays a fingerprint glyph on tagged hosts and a key glyph elsewhere
 - Runs `veilad.service` and `veila-idle.service` under the selected compositor
-  session target. The idle service locks after 300 seconds and before sleep
+  session target. The idle service locks before sleep. The shared hypridle
+  component locks after 300 seconds of idle
 - Binds `veila lock` to <kbd>Super</kbd>+<kbd>L</kbd> and
   <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>L</kbd> in Wayfire and Mango.
   `wayland-session lock` uses the same command

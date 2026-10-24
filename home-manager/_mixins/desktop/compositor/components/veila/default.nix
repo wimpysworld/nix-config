@@ -13,11 +13,10 @@ let
   inherit (pkgs) veila;
   veilaBin = lib.getExe' veila "veila";
   veiladBin = lib.getExe' veila "veilad";
-  # Seconds of idle before Veila locks the session. The fade starts earlier so
-  # that it ends at the lock; veila-idle locks a little later as a backstop.
+  # Seconds of idle before hypridle locks the session. The fade starts earlier
+  # so that it ends at the lock.
   idleLockAfter = 300;
   fadeSeconds = 10;
-  backstopLockAfter = idleLockAfter + 5;
   veilaFadeLock = pkgs.writeShellApplication {
     name = "veila-fade-lock";
     runtimeInputs = [
@@ -35,6 +34,12 @@ let
       fi
     '';
   };
+  # hypridle owns the idle lock, and veila-idle only locks before sleep.
+  # `veila idle` cannot disable its idle timer, so this workaround sets the
+  # timer to about 23 days. The value keeps the timer in milliseconds below
+  # INT_MAX, which wlroots requires. Never disable hypridle without restoring
+  # this timer, or the session stops locking on idle.
+  sleepGuardLockAfter = 2000000;
   fprintdEnabled = noughtyLib.hostHasTag "fprintd";
   # The placeholder glyph is a pink fingerprint on fprintd hosts, otherwise a
   # yellow key.
@@ -380,29 +385,48 @@ in
 lib.mkIf (host.is.linux && host.is.workstation) {
   # Veila is a Wayland-native screen locker. The package
   # and the `veila` PAM service are provided by the NixOS module; this mixin
-  # writes the user config, runs the daemon and idle monitor, and binds locking.
+  # writes the user config, runs the daemon and sleep lock monitor, and binds
+  # locking.
+  #
+  # The lock stack has three parts that depend on each other:
+  # - hypridle fades the screen after 290 seconds of idle and locks at 300.
+  #   It honours org.freedesktop.ScreenSaver inhibits from applications and
+  #   the Inhibit portal, Wayland idle inhibitors such as the Waybar toggle,
+  #   and logind idle inhibitors. Music alone does not inhibit, so the
+  #   session still locks while it plays.
+  # - veila-idle only locks before sleep, and holds sleep until the lock is
+  #   visible. Its own idle timer is pushed out of the way.
+  # - veilad draws the lock screen, and also locks on the logind Lock signal.
   xdg.configFile."veila/config.toml".text = veilaConfig;
 
-  # Tune the packaged idle monitor without editing the unit file.
+  services.hypridle = {
+    enable = true;
+    systemdTarget = sessionTarget;
+    settings = {
+      general = {
+        # veila-idle holds sleep until the lock is visible. hypridle can only
+        # do that through hyprland-lock-notify-v1, which Mango and Wayfire do
+        # not provide.
+        inhibit_sleep = 0;
+      };
+      # No on-resume, because input cancels the fade and Veila wakes the
+      # outputs while locked.
+      listener = [
+        {
+          timeout = idleLockAfter - fadeSeconds;
+          on-timeout = lib.getExe veilaFadeLock;
+        }
+      ];
+    };
+  };
+
+  # Tune the packaged sleep lock monitor without editing the unit file.
   xdg.configFile."veila/idle.env".text = ''
-    VEILA_IDLE_LOCK_AFTER=${toString backstopLockAfter}
+    VEILA_IDLE_LOCK_AFTER=${toString sleepGuardLockAfter}
     VEILA_IDLE_SLEEP_FLAG=--lock-before-sleep
   '';
 
-  # Fade the outputs to black before the idle lock; input during the fade
-  # cancels it. Veila keeps the sleep lock, so swayidle handles no events.
-  services.swayidle = {
-    enable = true;
-    systemdTargets = [ sessionTarget ];
-    timeouts = [
-      {
-        timeout = idleLockAfter - fadeSeconds;
-        command = lib.getExe veilaFadeLock;
-      }
-    ];
-  };
-
-  # Run the locker daemon and idle monitor as user services. The package ships
+  # Run the locker daemon and sleep lock monitor as user services. The package ships
   # these as templates under share/veila/systemd with Debian paths, so define
   # them here against the Nix store binaries.
   systemd.user.services = {
@@ -430,7 +454,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
     };
     veila-idle = {
       Unit = {
-        Description = "Veila idle and sleep lock monitor";
+        Description = "Veila sleep lock monitor";
         After = [
           sessionTarget
           "veilad.service"
@@ -440,7 +464,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
       Service = {
         Type = "simple";
         Environment = [
-          "VEILA_IDLE_LOCK_AFTER=${toString backstopLockAfter}"
+          "VEILA_IDLE_LOCK_AFTER=${toString sleepGuardLockAfter}"
           "VEILA_IDLE_SLEEP_FLAG=--lock-before-sleep"
         ];
         EnvironmentFile = "-%h/.config/veila/idle.env";
