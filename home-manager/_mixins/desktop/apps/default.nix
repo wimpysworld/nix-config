@@ -238,7 +238,7 @@ in
   ];
 
   dconf = lib.mkIf (host.is.linux && host.is.workstation) {
-    settings = with lib.hm.gvariant; {
+    settings = {
       "ca/desrt/dconf-editor" = {
         show-warning = false;
       };

@@ -71,11 +71,6 @@ in
       sessionAdapter
     ];
 
-    # Mango imports its own seven variables, then starts mango-session.target,
-    # which binds graphical-session.target, before `wayland-session start` runs.
-    # NIXOS_OZONE_WL is not in Mango's list, so set it early here.
-    systemd.user.sessionVariables.NIXOS_OZONE_WL = "1";
-
     wayland.windowManager.mango = {
       enable = true;
       settings = {

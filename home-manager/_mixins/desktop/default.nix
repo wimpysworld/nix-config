@@ -256,7 +256,6 @@ in
         gnome-keyring = {
           enable = true;
         };
-        gpg-agent.pinentry.package = lib.mkForce pkgs.pinentry-gnome3;
         mpris-proxy = {
           # https://nixos.wiki/wiki/Bluetooth#Using_Bluetooth_headsets_with_PulseAudio
           enable = true;

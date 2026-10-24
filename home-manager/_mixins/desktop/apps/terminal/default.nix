@@ -59,7 +59,7 @@ in
     # User specific dconf terminal-related settings. Nautilus is only installed
     # on workstations, so gate this setting accordingly.
     dconf = lib.mkIf (host.is.linux && host.is.workstation) {
-      settings = with lib.hm.gvariant; {
+      settings = {
         "com/github/stunkymonkey/nautilus-open-any-terminal" = {
           terminal = defaultTerminal.nautilusIdentifier;
         };

@@ -19,11 +19,16 @@ lib.mkIf (noughtyLib.isUser [ "martin" ]) {
     activation.importGpgPrivateKeys = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
       GPG="${pkgs.gnupg}/bin/gpg"
 
-      for PRIVATE in \
-        "${config.sops.secrets.gpg_private_0864983E.path}" \
-        "${config.sops.secrets.gpg_private_FFEE1E5C.path}" \
-        "${config.sops.secrets.gpg_private_15E06DA3.path}"; do
-        if [ -f "$PRIVATE" ]; then
+      # Each entry pairs a key fingerprint with its secret file. A key that
+      # already has secret material in the keyring is skipped, because a
+      # repeat import makes gpg log "IMPORT_KEY failed: File exists".
+      for ENTRY in \
+        "5E7585ADFF106BFFBBA319DC654B877A0864983E:${config.sops.secrets.gpg_private_0864983E.path}" \
+        "79F9461BF24B27F50DEB8A507454357CFFEE1E5C:${config.sops.secrets.gpg_private_FFEE1E5C.path}" \
+        "8F04688C17006782143279DA61DF940515E06DA3:${config.sops.secrets.gpg_private_15E06DA3.path}"; do
+        FPR="''${ENTRY%%:*}"
+        PRIVATE="''${ENTRY#*:}"
+        if [ -f "$PRIVATE" ] && ! $GPG --batch --list-secret-keys "$FPR" >/dev/null 2>&1; then
           $GPG --batch --yes --pinentry-mode loopback \
             --allow-secret-key-import --import "$PRIVATE" 2>/dev/null || true
         fi
