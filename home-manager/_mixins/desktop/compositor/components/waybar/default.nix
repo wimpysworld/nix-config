@@ -25,23 +25,6 @@ let
     ];
     text = builtins.readFile ./bluetooth-toggle.sh;
   };
-  virtualcamCheck = pkgs.writeShellApplication {
-    name = "virtualcam-check";
-    runtimeInputs = with pkgs; [
-      coreutils
-      gnugrep
-    ];
-    text = builtins.readFile ./virtualcam-check.sh;
-  };
-  virtualcamToggle = pkgs.writeShellApplication {
-    name = "virtualcam-toggle";
-    runtimeInputs = with pkgs; [
-      coreutils
-      gnugrep
-      fyi
-    ];
-    text = builtins.readFile ./virtualcam-toggle.sh;
-  };
   compositor =
     if host.is.linux && host.is.workstation then
       lib.attrByPath [
@@ -165,7 +148,8 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           background-color: ${hoverColor};
         }
 
-        #custom-recording {
+        #custom-recording,
+        #custom-virtualcam {
           background-color: ${pillColor};
           border-radius: 0.75rem;
           color: @text;
@@ -173,7 +157,8 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           padding: 0.25rem 0.75rem;
         }
 
-        #custom-recording:hover {
+        #custom-recording:hover,
+        #custom-virtualcam:hover {
           background-color: ${hoverColor};
         }
 
@@ -188,7 +173,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         }
 
         #tray,
-        #custom-virtualcam,
         #wireplumber,
         #pulseaudio.input,
         #bluetooth,
@@ -204,7 +188,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
           padding: 0.25rem 0.75rem;
         }
 
-        #custom-virtualcam:hover,
         #wireplumber:hover,
         #pulseaudio.input:hover,
         #bluetooth:hover,
@@ -226,11 +209,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         }
 
         #pulseaudio.input {
-          border-radius: 0;
-          color: @mauve;
-        }
-
-        #custom-virtualcam {
           border-radius: 0;
           color: @mauve;
         }
@@ -302,8 +280,10 @@ lib.mkIf (host.is.linux && host.is.workstation) {
               "custom/launcher"
             ]
             ++ lib.optional (workspaceModule != null) workspaceModule
-            # The recording indicator shows only while a recording runs.
-            ++ [ "custom/recording" ];
+            # The recording and virtual camera indicators show only while
+            # they run.
+            ++ [ "custom/recording" ]
+            ++ lib.optional (noughtyLib.hostHasTag "pci-hdmi-capture") "custom/virtualcam";
             modules-center = [
               "idle_inhibitor"
               "clock"
@@ -313,9 +293,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
               "tray"
               "wireplumber"
               "pulseaudio#input"
-            ]
-            ++ lib.optional (noughtyLib.hostHasTag "pci-hdmi-capture") "custom/virtualcam"
-            ++ [
               "bluetooth"
               "network"
               "battery"
@@ -397,6 +374,17 @@ lib.mkIf (host.is.linux && host.is.workstation) {
               on-click = "fuzzel-capture stop";
               tooltip-format = "󰑊  Screen recording. Click to stop.";
             };
+            # virtualcam prints the elapsed time while the camera runs and
+            # sends SIGRTMIN+10 when it starts or stops.
+            "custom/virtualcam" = {
+              format = "<big><span foreground='${palette.getColor "green"}'>󰄀</span></big> <small>{}</small>";
+              exec-if = "virtualcam status";
+              exec = "virtualcam status";
+              interval = 1;
+              signal = 10;
+              on-click = "virtualcam stop";
+              tooltip-format = "󰄀  Virtual camera. Click to stop.";
+            };
             tray = {
               icon-size = 22;
               spacing = 12;
@@ -431,13 +419,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
               ignored-sinks = [
                 "INZONE Buds Analog Stereo"
               ];
-            };
-            "custom/virtualcam" = {
-              format = "<big>{}</big>";
-              exec = "${lib.getExe virtualcamCheck}";
-              on-click-middle = "${lib.getExe virtualcamToggle}";
-              interval = 1;
-              max-length = 2;
             };
             bluetooth = {
               format = "<big>{icon}</big>";

@@ -9,6 +9,33 @@ VIDEO_DEVICE_NR="13"
 CARD_LABEL="OBS Virtual Camera"
 SOURCE_DEVICE="/dev/video0"
 TARGET_DEVICE="/dev/video${VIDEO_DEVICE_NR}"
+LOG_FILE="/tmp/virtualcam.log"
+# The Waybar custom/virtualcam module refreshes on SIGRTMIN+10.
+WAYBAR_SIGNAL=10
+
+# Only the Waybar main process handles the signal. Its children, for example
+# module scripts, would end on an unhandled real-time signal.
+refresh_waybar() {
+    systemctl --user kill --kill-whom=main --signal="RTMIN+$WAYBAR_SIGNAL" waybar.service \
+        >/dev/null 2>&1 || true
+}
+
+notify_error() {
+    fyi --urgency=critical --app-name="Virtual Camera" "$1" "$2" >/dev/null 2>&1 || true
+}
+
+# Print the PID of the running ffmpeg process. Remove a stale PID file.
+running_pid() {
+    local pid
+    [ -f "$PID_FILE" ] || return 1
+    pid=$(cat "$PID_FILE")
+    if [ -n "$pid" ] && ps -p "$pid" > /dev/null 2>&1; then
+        echo "$pid"
+        return 0
+    fi
+    rm -f "$PID_FILE"
+    return 1
+}
 
 start() {
     if [ -f "$PID_FILE" ]; then
@@ -29,24 +56,27 @@ start() {
     if [ ! -e "$TARGET_DEVICE" ]; then
         echo "Error: Virtual camera device $TARGET_DEVICE was not created."
         echo "Make sure v4l2loopback module is installed and loaded correctly."
+        notify_error "󰗟 Virtual camera failed to start" "The device $TARGET_DEVICE is not present."
         exit 1
     fi
 
     # Start ffmpeg in the background
-    ffmpeg -f v4l2 -threads 1 -input_format yuyv422 -framerate 60 -video_size 1920x1080 -i "$SOURCE_DEVICE" -c:v copy -f v4l2 "$TARGET_DEVICE" > /tmp/virtualcam.log 2>&1 &
+    ffmpeg -f v4l2 -threads 1 -input_format yuyv422 -framerate 60 -video_size 1920x1080 -i "$SOURCE_DEVICE" -c:v copy -f v4l2 "$TARGET_DEVICE" > "$LOG_FILE" 2>&1 &
     FFMPEG_PID=$!
     echo $FFMPEG_PID > "$PID_FILE"
     sleep 1
 
     if ! ps -p "$FFMPEG_PID" > /dev/null; then
         echo "Error: ffmpeg process (PID: $FFMPEG_PID) failed to start or exited prematurely."
-        cat /tmp/virtualcam.log
+        cat "$LOG_FILE"
         rm "$PID_FILE"
+        notify_error "󰗟 Virtual camera failed to start" "$(tail -n 5 "$LOG_FILE")"
         exit 1
     fi
 
     echo "Virtual camera started (PID: $FFMPEG_PID)."
-    echo "Output logged to /tmp/virtualcam.log"
+    echo "Output logged to $LOG_FILE"
+    refresh_waybar
 }
 
 stop() {
@@ -57,40 +87,33 @@ stop() {
 
     echo "Stopping virtual camera..."
     FFMPEG_PID=$(cat "$PID_FILE")
-    kill "$FFMPEG_PID"
+    if ! kill "$FFMPEG_PID"; then
+        rm "$PID_FILE"
+        notify_error "󰄀 Virtual camera failed to stop" "Could not stop the ffmpeg process (PID: $FFMPEG_PID)."
+        refresh_waybar
+        exit 1
+    fi
     rm "$PID_FILE"
     echo "Virtual camera stopped."
+    refresh_waybar
 }
 
+# Print the elapsed time as mm:ss while the camera runs. Print nothing and
+# exit 1 when it is off.
 status() {
-    if [ -f "$PID_FILE" ]; then
-        FFMPEG_PID=$(cat "$PID_FILE")
-        if ps -p "$FFMPEG_PID" > /dev/null; then
-            echo "Virtual camera is running (PID: $FFMPEG_PID)."
-            if lsmod | grep -q "v4l2loopback"; then
-                echo "v4l2loopback module is loaded."
-            else
-                echo "Warning: v4l2loopback module is NOT loaded, but PID file exists."
-            fi
-            if [ -e "$TARGET_DEVICE" ]; then
-                echo "Virtual device $TARGET_DEVICE exists."
-            else
-                echo "Warning: Virtual device $TARGET_DEVICE does NOT exist."
-            fi
-        else
-            echo "Virtual camera is not running (stale PID file found)."
-            rm "$PID_FILE" # Clean up stale PID file
-            if lsmod | grep -q "v4l2loopback"; then
-                echo "v4l2loopback module is loaded."
-            fi
-        fi
+    local pid
+    local elapsed
+    pid=$(running_pid) || exit 1
+    elapsed=$(ps -o etimes= -p "$pid" | tr -d ' ')
+    [ -n "$elapsed" ] || exit 1
+    printf '%02d:%02d\n' "$((elapsed / 60))" "$((elapsed % 60))"
+}
+
+toggle() {
+    if running_pid > /dev/null; then
+        stop
     else
-        echo "Virtual camera is not running."
-        if lsmod | grep -q "v4l2loopback"; then
-            echo "v4l2loopback module is loaded (but ffmpeg process not managed by this script)."
-        else
-            echo "v4l2loopback module is not loaded."
-        fi
+        start
     fi
 }
 
@@ -104,8 +127,11 @@ case "$1" in
     status)
         status
         ;;
+    toggle)
+        toggle
+        ;;
     *)
-        echo "Usage: $0 {start|stop|status}"
+        echo "Usage: $0 {start|stop|status|toggle}"
         exit 1
         ;;
 esac
