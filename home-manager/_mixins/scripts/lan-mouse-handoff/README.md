@@ -38,5 +38,6 @@ fraction along the matching edge.
   undeployed peer degrades to stock lan-mouse behaviour, never a
   stalled cursor.
 
-The compositor query functions are shared from
-`../lan-mouse-warp/compositor-query.sh`.
+The compositor query functions, including the cursor read, are shared
+from the compositor-query component. See
+`../../desktop/compositor/components/compositor-query/README.md`.

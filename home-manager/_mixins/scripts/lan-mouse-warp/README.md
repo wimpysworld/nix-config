@@ -45,35 +45,16 @@ measurement.
 ## Files
 
 - `lan-mouse-warp.sh` - the warp and report logic.
-- `compositor-query.sh` - shared compositor detection and monitor
-  queries for Wayfire and Mango, sourced by this script
-  and by `lan-mouse-handoff`. Detection works from the runtime
-  directory alone, because SSH sessions carry no compositor
-  environment.
-- `lan-mouse-wayfire-ipc.py` - stdlib-only Python client for Wayfire's
-  length-prefixed JSON IPC. Every Wayfire method name lives in its
-  `METHODS` table, because the `stipc` plugin is a test interface and
-  a rename upstream should be a single edit here.
-- `compositor-query.nix` and `compositor-query-command.sh` - the
-  `compositor-query` command, which exposes the same queries plus the
-  focused output, an output scale, the toplevel windows and a window
-  focus to session tools: `wleave-session`, `fuzzel-capture` and the
-  Mango `xwayland-dpi` service. Wayfire IPC reports no output
-  scale, so the Wayfire scale comes from `wlr-randr`. The flake check
-  `checks.<system>.compositor-query` tests it with fake compositor tools.
 - `warp-application.nix` - the shared derivation, imported by this
-  module and by `lan-mouse-hookd`.
-- `wayfire-ipc.nix` - the helper derivation, shared with
-  `lan-mouse-handoff`.
+  module and by `lan-mouse-hookd`. It concatenates the shared
+  `compositor-query.sh` library before `lan-mouse-warp.sh`, and carries
+  the `compositor-wayfire-ipc` client in `runtimeInputs`.
 
-Wayfire needs the `ipc`, `ipc-rules`, and `stipc` plugins enabled;
-`stipc/move_cursor` takes global layout coordinates.
+The compositor detection, monitor and cursor queries live in the
+shared compositor-query component. See
+`../../desktop/compositor/components/compositor-query/README.md`.
 
-Mango detection checks first, because Mango removes its
-`$XDG_RUNTIME_DIR/mango-*.sock` socket on exit. The newest socket sets
-`MANGO_INSTANCE_SIGNATURE`, and the newest `wayland-*` socket sets
-`WAYLAND_DISPLAY` when the environment does not supply it. `mmsg`
-reads the monitors and the cursor in logical layout coordinates.
+`stipc/move_cursor` takes global layout coordinates on Wayfire.
 Mango has no warp dispatcher, so the warp reads the cursor and sends
 the difference as a relative `wlrctl pointer move <dx> <dy>` through
 wlr-virtual-pointer. It does not retry, so the result can land off

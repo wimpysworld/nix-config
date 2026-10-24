@@ -10,13 +10,13 @@ shift
 case "$tool $*" in
 "mmsg get all-monitors" | "mmsg watch all-monitors") cat "$state/monitors.json" ;;
 "mmsg get all-clients") cat "$state/clients.json" ;;
-"mmsg dispatch focusid client,"* | "lan-mouse-wayfire-ipc focus-view "*)
+"mmsg dispatch focusid client,"* | "compositor-wayfire-ipc focus-view "*)
 	printf '%s %s\n' "$tool" "$*" >"$state/focus"
 	cat "$state/focus-reply.json"
 	;;
-"lan-mouse-wayfire-ipc focused-output") cat "$state/focused.json" ;;
-"lan-mouse-wayfire-ipc outputs") cat "$state/outputs.json" ;;
-"lan-mouse-wayfire-ipc views") cat "$state/views.json" ;;
+"compositor-wayfire-ipc focused-output") cat "$state/focused.json" ;;
+"compositor-wayfire-ipc outputs") cat "$state/outputs.json" ;;
+"compositor-wayfire-ipc views") cat "$state/views.json" ;;
 "wlr-randr --json") cat "$state/randr.json" ;;
 "xrdb -nocpp -merge") cat >>"$state/xrdb" ;;
 "wleave "*) printf '%s\n' "$*" >"$state/wleave" ;;

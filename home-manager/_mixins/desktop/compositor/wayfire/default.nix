@@ -62,10 +62,9 @@ in
   imports = [ ./bindings.nix ];
 
   config = lib.mkIf (host.desktop == "wayfire") {
-    #TODO: IPC tooling for wayfire
-    # https://github.com/killown/wayfire-rs
-    # https://github.com/AR-CADE/wayfire-ipc
-    # https://github.com/bluebyt/Wayfire-dots/tree/main/.config/ipc-scripts
+    # Shared components reach Wayfire IPC through the compositor-query
+    # command, and its compositor-wayfire-ipc client, in
+    # ../components/compositor-query.
     home.packages = with pkgs; [
       sessionAdapter
       wayland-logout

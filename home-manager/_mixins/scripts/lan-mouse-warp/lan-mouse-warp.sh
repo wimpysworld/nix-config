@@ -12,20 +12,6 @@
 # because the controlled machine knows about a return before anyone
 # else.
 
-# Print the cursor position in logical layout coordinates, as in
-# lan-mouse-handoff.  Shellcheck rejects a shared copy in
-# compositor-query.sh as unused there, so each script keeps its own.
-function compositor_cursor() {
-	case "$COMPOSITOR" in
-	mango)
-		mmsg get cursorpos | jq -r '"\(.x) \(.y)"'
-		;;
-	wayfire)
-		lan-mouse-wayfire-ipc cursor | jq -r '"\(.pos.x) \(.pos.y)"'
-		;;
-	esac
-}
-
 # Warp the cursor to a point in global layout coordinates.
 function compositor_warp() {
 	case "$COMPOSITOR" in
@@ -42,7 +28,7 @@ function compositor_warp() {
 		# The stipc do_motion handler subtracts the global cursor
 		# position, so move_cursor takes global layout coordinates.
 		# Confirm at runtime on felkor.
-		lan-mouse-wayfire-ipc move-cursor "{\"x\": $1, \"y\": $2}" > /dev/null
+		compositor-wayfire-ipc move-cursor "{\"x\": $1, \"y\": $2}" > /dev/null
 		;;
 	esac
 }

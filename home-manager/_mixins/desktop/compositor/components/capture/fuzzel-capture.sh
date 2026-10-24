@@ -382,25 +382,11 @@ select_output() {
   printf '%s\n' "${selection%% *}"
 }
 
-# Print the enabled outputs as compact JSON lines with name, x, y, width and
-# height in logical layout coordinates. wlr-randr reports the current mode
-# in physical pixels, so divide by the scale and swap the axes for 90 and
-# 270 degree transforms.
+# Print the outputs as compact JSON lines with name, x, y, width and height
+# in logical layout coordinates. The compositor reports the layout box,
+# which already accounts for the scale and the transform.
 list_output_boxes() {
-  wlr-randr --json |
-    jq --compact-output '
-      .[]
-      | select(.enabled == true)
-      | first(.modes[] | select(.current == true)) as $mode
-      | ((.transform // "normal") | test("90|270")) as $rotated
-      | {
-          name,
-          x: .position.x,
-          y: .position.y,
-          width: ((if $rotated then $mode.height else $mode.width end) / (.scale // 1)),
-          height: ((if $rotated then $mode.width else $mode.height end) / (.scale // 1))
-        }
-    '
+  compositor-query monitors | jq --compact-output '.[]'
 }
 
 # Print the enabled outputs that a slurp region ("x,y wxh" in logical layout

@@ -9,7 +9,7 @@ let
   inherit (config.noughty) host;
   palette = catppuccinPalette;
   icons = ./icons;
-  compositorQuery = import ../../../../scripts/lan-mouse-warp/compositor-query.nix { inherit pkgs; };
+  compositorQuery = import ../compositor-query/package.nix { inherit pkgs; };
   # One wrapper so the waybar button and the fuzzel session menu share a single
   # invocation. Redirecting XDG_CONFIG_HOME to an empty directory drops the
   # catppuccin gtk.css `@import` (loaded at PRIORITY_USER, which would otherwise

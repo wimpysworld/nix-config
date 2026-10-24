@@ -8,7 +8,7 @@ let
   inherit (config.noughty) host;
   cfg = config.wayland.windowManager.mango;
   contract = (import ../../../../../lib/wayland-compositors.nix).compositors.mango;
-  compositorQuery = import ../../../scripts/lan-mouse-warp/compositor-query.nix { inherit pkgs; };
+  compositorQuery = import ../components/compositor-query/package.nix { inherit pkgs; };
 
   xwaylandDpi = pkgs.writeShellApplication {
     name = "xwayland-dpi";

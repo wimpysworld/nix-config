@@ -8,7 +8,7 @@
 let
   inherit (config.noughty) host;
   name = builtins.baseNameOf (builtins.toString ./.);
-  wayfireIpc = import ../lan-mouse-warp/wayfire-ipc.nix pkgs;
+  wayfireIpc = import ../../desktop/compositor/components/compositor-query/wayfire-ipc.nix pkgs;
   shellApplication = pkgs.writeShellApplication {
     inherit name;
     # mmsg resolves from the session PATH, so it always matches the
@@ -23,7 +23,7 @@ let
       openssh
     ]);
     text =
-      builtins.readFile ../lan-mouse-warp/compositor-query.sh
+      builtins.readFile ../../desktop/compositor/components/compositor-query/compositor-query.sh
       + lib.removePrefix "#!/usr/bin/env bash\n" (builtins.readFile ./${name}.sh);
   };
 in

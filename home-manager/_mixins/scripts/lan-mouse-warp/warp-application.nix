@@ -2,7 +2,7 @@
 # and lan-mouse-hookd, which runs the local warp on a return crossing.
 pkgs:
 let
-  wayfireIpc = import ./wayfire-ipc.nix pkgs;
+  wayfireIpc = import ../../desktop/compositor/components/compositor-query/wayfire-ipc.nix pkgs;
 in
 pkgs.writeShellApplication {
   name = "lan-mouse-warp";
@@ -18,6 +18,6 @@ pkgs.writeShellApplication {
     wlrctl
   ]);
   text =
-    builtins.readFile ./compositor-query.sh
+    builtins.readFile ../../desktop/compositor/components/compositor-query/compositor-query.sh
     + pkgs.lib.removePrefix "#!/usr/bin/env bash\n" (builtins.readFile ./lan-mouse-warp.sh);
 }

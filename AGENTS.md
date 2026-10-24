@@ -186,12 +186,12 @@ Key gates:
 - Preserve valid upstream names exactly, such as `hyprpicker`.
 - Keep generic fallbacks for unsupported compositors. Gamescope must use the generic fallback.
 
-When adding a compositor, also extend the lan-mouse cursor tooling in `home-manager/_mixins/scripts/lan-mouse-warp/` (READMEs there explain the design):
+When adding a compositor, also extend the shared compositor query component in `home-manager/_mixins/desktop/compositor/components/compositor-query/` and the lan-mouse cursor warp in `home-manager/_mixins/scripts/lan-mouse-warp/` (READMEs there explain the design):
 
-- Add detection, monitor, focused-output and output-scale queries to `compositor-query.sh`. Detection must work from the runtime directory alone, with no session environment, because the scripts run over SSH. `wleave-session` and the Mango `xwayland-dpi` service use these queries through the `compositor-query` command.
-- Add a cursor read to `lan-mouse-handoff` and a cursor warp to `lan-mouse-warp`, in global logical layout coordinates.
-- Monitor queries must return logical layout geometry; divide physical sizes by scale and swap axes for 90 and 270 degree transforms where the compositor reports physical pixels.
-- Isolate unstable or compositor-specific IPC behind one function or helper, as `lan-mouse-wayfire-ipc.py` does for `stipc`.
+- Add detection, monitor, cursor, focused-output, output-scale, window and window-focus queries to `compositor-query.sh`. Detection must work from the runtime directory alone, with no session environment, because lan-mouse sources the library and runs over SSH. Shared components use these queries through the `compositor-query` command.
+- Add a cursor warp to `lan-mouse-warp`, in global logical layout coordinates.
+- Monitor queries must return the output name and logical layout geometry; divide physical sizes by scale and swap axes for 90 and 270 degree transforms where the compositor reports physical pixels.
+- Isolate unstable or compositor-specific IPC behind one function or helper, as the `compositor-wayfire-ipc` client in the compositor-query component does for `stipc`.
 
 ## Module gating patterns
 

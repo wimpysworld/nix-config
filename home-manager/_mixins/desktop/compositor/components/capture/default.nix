@@ -6,7 +6,7 @@
 }:
 let
   inherit (config.noughty) host;
-  compositorQuery = import ../../../../scripts/lan-mouse-warp/compositor-query.nix { inherit pkgs; };
+  compositorQuery = import ../compositor-query/package.nix { inherit pkgs; };
   fuzzelCapture = pkgs.writeShellApplication {
     name = "fuzzel-capture";
     # Only the capture-specific tools. coreutils, util-linux (flock),

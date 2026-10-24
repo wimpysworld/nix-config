@@ -5,18 +5,6 @@
 # point from the local compositor and asks the peer to warp its cursor
 # to the matching fraction along the opposite edge.
 
-# Print the cursor position in logical layout coordinates.
-function compositor_cursor() {
-	case "$COMPOSITOR" in
-	mango)
-		mmsg get cursorpos | jq -r '"\(.x) \(.y)"'
-		;;
-	wayfire)
-		lan-mouse-wayfire-ipc cursor | jq -r '"\(.pos.x) \(.pos.y)"'
-		;;
-	esac
-}
-
 # The position and address are baked into the hook command by
 # lan-mouse-hookd, which rewrites the hook whenever the daemon reports
 # a change.  Querying the daemon here would stall the hot path: the

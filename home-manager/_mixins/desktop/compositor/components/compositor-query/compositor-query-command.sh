@@ -4,7 +4,7 @@
 # compositor-query.sh:
 #   compositor-query focused-output       name, logical width and height, scale
 #   compositor-query output-scale <name>  scale of the named output
-#   compositor-query monitors             JSON array of logical geometries
+#   compositor-query monitors             JSON array of output names and logical geometries
 #   compositor-query windows              JSON array of toplevel windows
 #   compositor-query focus-window <id>    focus, raise and show a window
 

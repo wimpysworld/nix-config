@@ -1,6 +1,8 @@
-# Shared compositor detection and monitor queries for lan-mouse-warp
-# and lan-mouse-handoff.  Both scripts run without session environment
-# variables, so detection works from the runtime directory alone.
+# Shared compositor detection and queries.  lan-mouse-warp and
+# lan-mouse-handoff source this library and run without session
+# environment variables, so detection works from the runtime directory
+# alone.  Session tools use the queries through the compositor-query
+# command.
 
 function detect_compositor() {
 	local runtime signature candidate
@@ -31,19 +33,34 @@ function detect_compositor() {
 	return 1
 }
 
-# Print the monitor layout as a JSON array of geometries in logical
-# layout coordinates.
+# Print the monitor layout as a JSON array of objects with the output
+# name and its geometry in logical layout coordinates.
 function compositor_monitors() {
 	case "$COMPOSITOR" in
 	mango)
 		# mmsg reports the output layout box, already in logical
 		# layout coordinates.
-		mmsg get all-monitors | jq -c '[.monitors[] | {x, y, width, height}]'
+		mmsg get all-monitors | jq -c '[.monitors[] | {name, x, y, width, height}]'
 		;;
 	wayfire)
 		# The ipc-rules list-outputs geometry is the layout geometry,
 		# already in logical layout coordinates.
-		lan-mouse-wayfire-ipc outputs | jq -c '[.[] | .geometry]'
+		compositor-wayfire-ipc outputs | jq -c '[.[] | {name} + .geometry]'
+		;;
+	esac
+}
+
+# Print the cursor position in logical layout coordinates.  The
+# compositor-query command does not call this, so shellcheck sees it as
+# unused there.
+# shellcheck disable=SC2329
+function compositor_cursor() {
+	case "$COMPOSITOR" in
+	mango)
+		mmsg get cursorpos | jq -r '"\(.x) \(.y)"'
+		;;
+	wayfire)
+		compositor-wayfire-ipc cursor | jq -r '"\(.pos.x) \(.pos.y)"'
 		;;
 	esac
 }
@@ -62,7 +79,7 @@ function compositor_focused_output() {
 	wayfire)
 		# Wayfire IPC reports no scale, so wlr-randr supplies it.
 		local output scale
-		output=$(lan-mouse-wayfire-ipc focused-output | jq -er '.info | select(. != null) | "\(.name) \(.geometry.width) \(.geometry.height)"') || return 1
+		output=$(compositor-wayfire-ipc focused-output | jq -er '.info | select(. != null) | "\(.name) \(.geometry.width) \(.geometry.height)"') || return 1
 		scale=$(compositor_output_scale "${output%% *}") || return 1
 		echo "$output $scale"
 		;;
@@ -92,8 +109,8 @@ function compositor_windows() {
 		# position.  A view on another workspace lies outside the
 		# output box.
 		local outputs
-		outputs=$(lan-mouse-wayfire-ipc outputs) || return 1
-		lan-mouse-wayfire-ipc views | jq -c --argjson outputs "$outputs" '
+		outputs=$(compositor-wayfire-ipc outputs) || return 1
+		compositor-wayfire-ipc views | jq -c --argjson outputs "$outputs" '
 			($outputs | map({key: .name, value: .geometry}) | from_entries) as $boxes
 			| [
 				.[]
@@ -132,7 +149,7 @@ function compositor_focus_window() {
 	wayfire)
 		# focus-view restores a minimised view and switches the
 		# workspace when less than a tenth of the view is visible.
-		lan-mouse-wayfire-ipc focus-view "{\"id\": $1}" | jq -e '.result == "ok"' > /dev/null
+		compositor-wayfire-ipc focus-view "{\"id\": $1}" | jq -e '.result == "ok"' > /dev/null
 		;;
 	esac
 }

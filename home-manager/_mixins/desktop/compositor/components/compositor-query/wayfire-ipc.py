@@ -1,8 +1,8 @@
 """Framed JSON client for the Wayfire IPC socket.
 
 Wayfire frames IPC JSON with a four byte little-endian length prefix
-in both directions.  Every Wayfire method name used by the lan-mouse
-tooling lives in METHODS below, so an upstream rename is a single
+in both directions.  Every Wayfire method name used by compositor-query
+and lan-mouse lives in METHODS below, so an upstream rename is a single
 edit.
 """
 import glob
@@ -38,7 +38,7 @@ def find_socket():
         matches = sorted(glob.glob(pattern), key=os.path.getmtime)
         if matches:
             return matches[-1]
-    sys.exit("lan-mouse-wayfire-ipc: no Wayfire IPC socket found")
+    sys.exit("compositor-wayfire-ipc: no Wayfire IPC socket found")
 
 
 def read_exact(sock, count):
@@ -46,14 +46,14 @@ def read_exact(sock, count):
     while len(data) < count:
         chunk = sock.recv(count - len(data))
         if not chunk:
-            sys.exit("lan-mouse-wayfire-ipc: connection closed early")
+            sys.exit("compositor-wayfire-ipc: connection closed early")
         data += chunk
     return data
 
 
 def main():
     if len(sys.argv) not in (2, 3):
-        sys.exit("usage: lan-mouse-wayfire-ipc <method> [json]")
+        sys.exit("usage: compositor-wayfire-ipc <method> [json]")
     method = METHODS.get(sys.argv[1], sys.argv[1])
     data = json.loads(sys.argv[2]) if len(sys.argv) == 3 else {}
     request = json.dumps({"method": method, "data": data}).encode()

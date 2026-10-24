@@ -10,6 +10,7 @@ set -euo pipefail
 query=$1
 wleave_session=$2
 xwayland_dpi=$3
+capture_mapping=$4
 
 export FAKE_STATE="$TMPDIR/state"
 export XDG_RUNTIME_DIR="$TMPDIR/run"
@@ -57,6 +58,26 @@ wleave_margins() {
 
 margins() {
 	echo "--no-version-info --buttons-per-row 6 ${1:+$1 }--layout layout.json --css style.css"
+}
+
+# Both compositors report the same ravi layout with name and logical
+# geometry. DP-2 is a 2560x1440 display rotated by 90 degrees at scale 1.25,
+# so its logical box is 1152x2048. fuzzel-capture maps a region or a window
+# to the outputs that it overlaps, and clips a window to its output.
+ravi_monitors='[{"name":"eDP-1","x":0,"y":0,"width":1920,"height":1280},{"name":"DP-2","x":1920,"y":0,"width":1152,"height":2048}]'
+
+capture_case() {
+	local host=$1
+	expect "$host monitors" "$ravi_monitors" "$("$query" monitors)"
+	expect "$host region on eDP-1" "eDP-1" "$("$capture_mapping" outputs "100,100 200x200")"
+	expect "$host region on rotated DP-2" "DP-2" "$("$capture_mapping" outputs "2000,1500 100x100")"
+	expect "$host region on two outputs" $'eDP-1\nDP-2' "$("$capture_mapping" outputs "1900,100 100x100")"
+	expect "$host region at the eDP-1 corner" "eDP-1" "$("$capture_mapping" outputs "1919,1279 1x1")"
+	expect "$host region off the outputs" "" "$("$capture_mapping" outputs "4000,0 10x10")"
+	expect "$host window clipped to DP-2" "1920,1200 280x848" "$("$capture_mapping" clamp "1800,1200 400x900" DP-2)"
+	if "$capture_mapping" clamp "100,100 10x10" DP-2 >/dev/null; then
+		fail "$host clamp: expected failure for a window outside the output"
+	fi
 }
 
 # Arguments: host, monitors, expected focused output, expected margins,
@@ -111,6 +132,12 @@ if "$query" focused-output extra >/dev/null 2>&1; then
 	fail "focused-output: expected a usage error for an extra argument"
 fi
 
+mango <<<"$(
+	monitor eDP-1 true 0 0 1920 1280 1.5
+	monitor DP-2 false 1920 0 1152 2048 1.25
+)"
+capture_case ravi-mango
+
 # bane runs Wayfire. Its IPC gives the focused output and wlr-randr the scale.
 compositor wayfire-1.socket
 jq -nc '{result: "ok", info: {name: "eDP-1", geometry: {x: 0, y: 0, width: 2048, height: 1280}}}' \
@@ -152,7 +179,7 @@ expect "bane windows" \
 	"$("$query" windows)"
 echo '{"result": "ok"}' >"$FAKE_STATE/focus-reply.json"
 "$query" focus-window 8 || fail "bane focus-window: expected success"
-expect "bane focus-window request" 'lan-mouse-wayfire-ipc focus-view {"id": 8}' "$(cat "$FAKE_STATE/focus")"
+expect "bane focus-window request" 'compositor-wayfire-ipc focus-view {"id": 8}' "$(cat "$FAKE_STATE/focus")"
 echo '{"error": "no such view"}' >"$FAKE_STATE/focus-reply.json"
 if "$query" focus-window 99 >/dev/null 2>&1; then
 	fail "bane focus-window: expected failure for an absent view"
@@ -160,6 +187,12 @@ fi
 if "$query" focus-window '1}' >/dev/null 2>&1; then
 	fail "focus-window: expected a usage error for a non-numeric id"
 fi
+
+jq -nc '[
+	{name: "eDP-1", geometry: {x: 0, y: 0, width: 1920, height: 1280}},
+	{name: "DP-2", geometry: {x: 1920, y: 0, width: 1152, height: 2048}}
+]' >"$FAKE_STATE/outputs.json"
+capture_case ravi-wayfire
 
 # Mango reports client geometry in layout coordinates and its own
 # visibility. A client without a monitor is not a window.
