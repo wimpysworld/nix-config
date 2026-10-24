@@ -2,38 +2,34 @@
   catppuccinPalette,
   config,
   lib,
+  pkgs,
   ...
 }:
 let
   inherit (config.noughty) host;
   terminalEmulators = {
-    alacritty = rec {
+    alacritty = {
       launchCommand = lib.getExe config.programs.alacritty.package;
-      fuzzelExecute = "${launchCommand} -e";
       nautilusIdentifier = "alacritty";
       desktopFileId = "Alacritty.desktop";
     };
-    foot = rec {
+    foot = {
       launchCommand = lib.getExe config.programs.foot.package;
-      fuzzelExecute = "${launchCommand} -e";
       nautilusIdentifier = "foot";
       desktopFileId = "foot.desktop";
     };
-    ghostty = rec {
+    ghostty = {
       launchCommand = lib.getExe config.programs.ghostty.package;
-      fuzzelExecute = "${launchCommand} -e";
       nautilusIdentifier = "ghostty";
       desktopFileId = "com.mitchellh.ghostty.desktop";
     };
-    kitty = rec {
+    kitty = {
       launchCommand = lib.getExe config.programs.kitty.package;
-      fuzzelExecute = "${launchCommand} --";
       nautilusIdentifier = "kitty";
       desktopFileId = "kitty.desktop";
     };
-    wezterm = rec {
+    wezterm = {
       launchCommand = lib.getExe config.programs.wezterm.package;
-      fuzzelExecute = "${launchCommand} start --";
       nautilusIdentifier = "wezterm";
       desktopFileId = "org.wezfurlong.wezterm.desktop";
     };
@@ -81,7 +77,9 @@ in
 
     programs = {
       fuzzel = lib.mkIf config.programs.fuzzel.enable {
-        settings.main.terminal = defaultTerminal.fuzzelExecute;
+        # Open Terminal=true entries in the default terminal, as Rofi and
+        # TERMINAL do. xdg-terminal-exec takes the command without -e.
+        settings.main.terminal = lib.getExe pkgs.xdg-terminal-exec;
       };
     };
 

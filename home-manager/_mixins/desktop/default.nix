@@ -270,6 +270,21 @@ in
 
       dbus.packages = portalPackages;
       systemd.user.packages = portalPackages;
+      # Bind the polkit agent to the selected compositor session target, as
+      # the other session services do. The Home Manager module uses
+      # graphical-session.target, so these values replace its own.
+      systemd.user.services.polkit-gnome = lib.mkIf host.is.linux (
+        let
+          sessionTarget = if compositor == null then "graphical-session.target" else compositor.sessionTarget;
+        in
+        {
+          Unit = {
+            After = lib.mkForce [ sessionTarget ];
+            PartOf = lib.mkForce [ sessionTarget ];
+          };
+          Install.WantedBy = lib.mkForce [ sessionTarget ];
+        }
+      );
 
       # Start tray applets such as nm-applet with --indicator, because the
       # Waybar tray shows only StatusNotifierItem icons.

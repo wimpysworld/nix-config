@@ -34,6 +34,8 @@ in
         (floatSized "app_id" "^nm-connection-editor$" 700 500)
         (floatSized "app_id" "^org\\.gnome\\.Calculator$" 395 496)
         (floatBy "app_id" "^polkit-gnome-authentication-agent-1$")
+        # Keyring and pinentry prompts
+        (floatBy "app_id" "^gcr-prompter$")
 
         # Windows that should never be translucent
         (opaqueBy "app_id" "com.obsproject.Studio")
