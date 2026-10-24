@@ -9,6 +9,7 @@ let
 in
 lib.mkIf (host.is.workstation && host.is.linux) {
   home.packages = [
+    pkgs.foliate
     pkgs.libreoffice
   ];
 }
