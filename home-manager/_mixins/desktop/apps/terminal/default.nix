@@ -70,6 +70,15 @@ in
       };
     };
 
+    # Point tools that read TERMINAL at the default terminal, in login shells
+    # and in systemd user services such as the compositor session.
+    home.sessionVariables = lib.mkIf host.is.linux {
+      TERMINAL = lib.mkDefault "xdg-terminal-exec";
+    };
+    systemd.user.sessionVariables = lib.mkIf host.is.linux {
+      TERMINAL = lib.mkDefault "xdg-terminal-exec";
+    };
+
     programs = {
       fuzzel = lib.mkIf config.programs.fuzzel.enable {
         settings.main.terminal = defaultTerminal.fuzzelExecute;

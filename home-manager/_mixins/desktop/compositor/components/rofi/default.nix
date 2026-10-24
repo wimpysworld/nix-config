@@ -88,6 +88,9 @@ lib.mkIf (host.is.linux && host.is.workstation) {
     rofi = {
       enable = true;
       package = pkgs.rofi;
+      # Open Terminal=true apps in the default terminal. Without this, Rofi
+      # falls back to the first terminal emulator it finds on PATH.
+      terminal = lib.mkDefault (lib.getExe pkgs.xdg-terminal-exec);
     };
   };
 
