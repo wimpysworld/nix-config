@@ -27,6 +27,51 @@ in
       buttonLayout = if clientSideDecorations then ":minimize,maximize,close" else ":appmenu";
       clockFormat = "24h";
       cursorSize = 32;
+      monospaceFont = {
+        name = "FiraCode Nerd Font Mono";
+        size = 13;
+        weight = "Medium";
+      };
+      # qtct parses fonts with QFont::fromString. Qt 5 writes 10 fields with
+      # weights from 0 to 99. Qt 6 writes 16 fields with OpenType weights.
+      qtFontWeights = {
+        Regular = {
+          qt5 = 50;
+          qt6 = 400;
+        };
+        Medium = {
+          qt5 = 57;
+          qt6 = 500;
+        };
+      };
+      qtctFont =
+        qt: name: size: weight:
+        let
+          fields = [
+            name
+            (toString size)
+            "-1"
+            "5"
+            (toString qtFontWeights.${weight}.${qt})
+          ]
+          ++ lib.replicate 5 "0"
+          ++ lib.optionals (qt == "qt6") (lib.replicate 5 "0" ++ [ "1" ]);
+        in
+        ''"${lib.concatStringsSep "," fields}"'';
+      # Kvantum keeps its own palette, because custom_palette is off. Qt file
+      # dialogs go through the portal, which portalRouting sends to GTK.
+      qtctSettings = qt: {
+        Appearance = {
+          custom_palette = false;
+          icon_theme = config.gtk.iconTheme.name;
+          standard_dialogs = "xdgdesktopportal";
+          style = config.qt.style.name;
+        };
+        Fonts = {
+          fixed = qtctFont qt monospaceFont.name monospaceFont.size monospaceFont.weight;
+          general = qtctFont qt config.gtk.font.name config.gtk.font.size "Regular";
+        };
+      };
       gtkCatppuccinThemeName = "catppuccin-${config.catppuccin.flavor}-${config.catppuccin.accent}-standard";
       # Home Manager issue 7124: until nixpkgs 26.11, the Home Manager portal
       # directory hides every backend that only NixOS installs. Keep GTK here
@@ -73,7 +118,6 @@ in
           MOZ_ENABLE_WAYLAND = "1";
           NIXOS_OZONE_WL = "1";
           QT_QPA_PLATFORM = "wayland;xcb";
-          QT_STYLE_OVERRIDE = "kvantum";
           QT_WAYLAND_DISABLE_WINDOWDECORATION = if clientSideDecorations then "0" else "1";
         }
         // lib.optionalAttrs (compositor != null) {
@@ -105,7 +149,7 @@ in
             gtk-enable-primary-paste = true;
             gtk-theme = config.gtk.theme.name;
             icon-theme = config.gtk.iconTheme.name;
-            monospace-font-name = "FiraCode Nerd Font Mono Medium 13";
+            monospace-font-name = "${monospaceFont.name} ${monospaceFont.weight} ${toString monospaceFont.size}";
             text-scaling-factor = 1.0;
           };
 
@@ -130,8 +174,6 @@ in
 
       home = lib.mkIf host.is.linux {
         packages = [
-          pkgs.kdePackages.qt6ct
-          pkgs.libsForQt5.qt5ct
           pkgs.fyi
           pkgs.wlr-randr
           pkgs.wl-clipboard
@@ -189,21 +231,19 @@ in
         };
       };
 
+      # qtct is the Qt platform theme. It gives Qt the GTK icon theme and
+      # fonts, and portal file dialogs. Kvantum is the widget style, with the
+      # Catppuccin theme from catppuccin.kvantum. Home Manager installs qt5ct,
+      # qt6ct and both Kvantum plugins, and exports QT_QPA_PLATFORMTHEME=qt5ct,
+      # which both plugins accept. It also exports QT_STYLE_OVERRIDE from
+      # qt.style.name. Keep that, because apps that skip qtct still get Kvantum.
       qt = lib.mkIf host.is.linux {
         enable = true;
         platformTheme = {
-          inherit (config.qt.style) name;
+          name = "qtct";
         };
-        qt5ctSettings = {
-          Appearance = {
-            icon_theme = config.gtk.iconTheme.name;
-          };
-        };
-        qt6ctSettings = {
-          Appearance = {
-            icon_theme = config.gtk.iconTheme.name;
-          };
-        };
+        qt5ctSettings = qtctSettings "qt5";
+        qt6ctSettings = qtctSettings "qt6";
         style = {
           name = "kvantum";
         };
