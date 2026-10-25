@@ -10,7 +10,7 @@ let
   fuzzelCapture = pkgs.writeShellApplication {
     name = "fuzzel-capture";
     # Only the capture-specific tools. coreutils, util-linux (flock),
-    # systemctl, pactl, xdg-open and wl-copy come from the system and the
+    # systemctl, xdg-open and wl-copy come from the system and the
     # desktop profile on every workstation.
     runtimeInputs = with pkgs; [
       compositorQuery
@@ -19,6 +19,7 @@ let
       grim
       jq
       lswt
+      pulseaudio
       satty
       slurp
       swayosd
@@ -28,6 +29,17 @@ let
     text = builtins.replaceStrings [ "@wlScreenrec@" ] [ (lib.getExe pkgs.wl-screenrec) ] (
       builtins.readFile ./fuzzel-capture.sh
     );
+    derivationArgs.postCheck = ''
+      PATH=${
+        lib.makeBinPath [
+          pkgs.coreutils
+          pkgs.jq
+          pkgs.util-linux
+        ]
+      } \
+        ${pkgs.python3}/bin/python3 ${./test-capture-audio.py} \
+        ${./fuzzel-capture.sh} ${pkgs.bash}/bin/bash
+    '';
   };
 in
 lib.mkIf (host.is.linux && host.is.workstation) {

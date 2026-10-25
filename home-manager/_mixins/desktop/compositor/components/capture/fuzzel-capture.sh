@@ -236,10 +236,29 @@ find_desktop_audio_source() {
 }
 
 find_microphone_source() {
-  local source_name
+  local default_source
+  local sources
 
-  source_name="$(pactl get-default-source 2>/dev/null)" || source_name=""
-  printf '%s\n' "${source_name:-default}"
+  sources="$(pactl --format=json list sources)" || return 1
+  default_source="$(pactl get-default-source)" || return 1
+  [[ -n "$default_source" ]] || return 1
+
+  # pactl 17 serialises monitor_of_sink_name as monitor_source. A null
+  # pointer becomes an empty string, not JSON null or PA_INVALID_INDEX.
+  jq --slurp --raw-output --exit-status --arg default "$default_source" '
+    select(length == 1) | .[0]
+    | select(type == "array")
+    | select(all(.[];
+        type == "object"
+        and (.name | type == "string")
+        and (.name | length > 0)
+        and (.name | test("[\u0000-\u001f\u007f]") | not)
+        and (.monitor_source | type == "string")
+      ))
+    | map(select(.monitor_source == "" and .name == $default))
+    | select(length == 1)
+    | .[0].name
+  ' <<< "$sources"
 }
 
 get_audio_choice() {
@@ -550,11 +569,6 @@ start_recording() {
     --low-power=off
     --max-fps 60
   )
-  # The "none" audio choice records video only.
-  if [[ "$(get_audio_choice)" != "none" ]]; then
-    audio_source="$(find_audio_source)"
-    recorder_args+=(--audio --audio-device "$audio_source")
-  fi
   : > "$recording_log_file"
   # Mesa VAAPI does not support output transforms, so a rotated output
   # needs the software encoder.
@@ -568,6 +582,17 @@ start_recording() {
   if ! countdown "$output" cancellable; then
     rm -f "$countdown_state_file"
     return
+  fi
+  # Resolve audio after the countdown, when the available inputs can differ.
+  # The "none" audio choice records video only.
+  if [[ "$(get_audio_choice)" != "none" ]]; then
+    if ! audio_source="$(find_audio_source 2>> "$recording_log_file")"; then
+      rm -f "$countdown_state_file"
+      "${notify[@]}" --icon="replay-record-error" "Screen Recording Failed" \
+        "No valid default microphone is available. Check the audio input and try again."
+      return 1
+    fi
+    recorder_args+=(--audio --audio-device "$audio_source")
   fi
   (
     exec {recording_lock_fd}>&-
