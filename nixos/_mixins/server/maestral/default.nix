@@ -8,7 +8,7 @@
 let
   inherit (config.noughty) host;
 in
-lib.mkIf (noughtyLib.hostHasTag "dropbox") {
+lib.mkIf (noughtyLib.hostHasTag "dropbox" && !(noughtyLib.hostHasTag "cg")) {
   environment.systemPackages = with pkgs; [ maestral ];
 
   systemd.user.services.maestral = {

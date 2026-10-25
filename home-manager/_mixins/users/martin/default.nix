@@ -11,7 +11,6 @@ let
   syncDefs = import ../../filesync/syncthing-devices.nix;
   hostHasSyncthingFolder = folderName: lib.elem host.name syncDefs.folders.${folderName}.devices;
   hostHasCryptFolder = hostHasSyncthingFolder "crypt";
-  hostHasDevelopmentFolder = hostHasSyncthingFolder "development";
   hostHasGamesFolder = hostHasSyncthingFolder "games";
   isLinuxHostWithCryptFolder = host.is.linux && hostHasCryptFolder;
 in
@@ -36,7 +35,6 @@ in
     home = {
       file = {
         ".face".source = ./face.png;
-        "Development/.keep" = lib.mkIf hostHasDevelopmentFolder { text = ""; };
         "Games/.keep" = lib.mkIf hostHasGamesFolder { text = ""; };
         "Zero/.keep".text = "";
       };

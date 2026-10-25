@@ -19,6 +19,7 @@ let
     rsync-copy = "${pkgs.rsync}/bin/rsync --archive --block-size=131072 --human-readable --info=progress2 --inplace --no-compress --partial --stats";
     rsync-mirror = "${pkgs.rsync}/bin/rsync --archive --block-size=131072 --delete --human-readable --info=progress2 --no-compress --inplace --partial --stats";
     speedtest = "${pkgs.speedtest-go}/bin/speedtest-go";
+    wormhole = "${pkgs.wormhole-william}/bin/wormhole-william";
   }
   // lib.optionalAttrs host.is.linux {
     lsusb = "${pkgs.usbutils}/bin/lsusb";
@@ -33,7 +34,6 @@ let
     moon = "${pkgs.curlMinimal}/bin/curl -s wttr.in/Moon";
     ruler = ''${pkgs.hr}/bin/hr "╭─³⁴⁵⁶⁷⁸─╮"'';
     weather = "${lib.getExe pkgs.girouette} --quiet";
-    wormhole = "${pkgs.wormhole-rs}/bin/wormhole-rs";
   };
 in
 {
@@ -101,7 +101,6 @@ in
         hyperfine # Terminal benchmarking
         iperf3 # Terminal network benchmarking
         jpegoptim # Terminal JPEG optimizer
-        magic-wormhole-rs # Terminal file transfer
         mprocs # Terminal parallel process runner
         netdiscover # Modern Unix `arp`
         optipng # Terminal PNG optimizer

@@ -8,7 +8,7 @@
 {
   environment.systemPackages =
     with pkgs;
-    [
+    lib.optionals (!(noughtyLib.hostHasTag "cg")) [
       maestral # CLI
     ]
     ++ lib.optionals (noughtyLib.isUser [ "martin" ]) [
@@ -27,9 +27,9 @@
     casks = [
       "blender"
       "inkscape"
-      "maestral" # GUI
       "zed"
     ]
+    ++ lib.optionals (!(noughtyLib.hostHasTag "cg")) [ "maestral" ]
     ++ lib.optionals config.noughty.host.is.workstation [ "ghostty" ]
     ++ lib.optionals (noughtyLib.isUser [ "martin" ]) [
       "beyond-compare"

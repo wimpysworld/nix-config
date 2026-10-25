@@ -33,16 +33,6 @@
   };
 
   folders = {
-    chainguard = {
-      id = "chainguard";
-      label = "Chainguard";
-      maxConflicts = 10;
-      path = "~/Chainguard";
-      devices = [
-        "bane"
-        "ravi"
-      ];
-    };
     crypt = {
       id = "crypt";
       label = "Crypt";
@@ -61,29 +51,13 @@
         "zannah"
       ];
     };
-    development = {
-      id = "development";
-      label = "Development";
-      maxConflicts = 10;
-      path = "~/Development";
-      devices = [
-        "bane"
-        "momin"
-        "ravi"
-        "skrye"
-        "tanis"
-        "zannah"
-      ];
-    };
     documents = {
       id = "documents";
       label = "Documents";
       maxConflicts = 10;
       path = "~/Documents";
       devices = [
-        "bane"
         "momin"
-        "ravi"
         "revan"
         "skrye"
         "tanis"
@@ -96,9 +70,7 @@
       maxConflicts = 10;
       path = "~/Downloads";
       devices = [
-        "bane"
         "momin"
-        "ravi"
         "revan"
         "skrye"
         "tanis"
@@ -134,10 +106,8 @@
       maxConflicts = 10;
       path = "~/Notes";
       devices = [
-        "bane"
         "felkor"
         "momin"
-        "ravi"
         "revan"
         "shaa"
         "sidious"
@@ -152,8 +122,6 @@
       maxConflicts = 10;
       path = "~/Pictures";
       devices = [
-        "bane"
-        "ravi"
         "revan"
         "skrye"
         "tanis"
@@ -167,8 +135,6 @@
       path = "~/Studio";
       rescanIntervalS = 21600;
       devices = [
-        "bane"
-        "ravi"
         "revan"
         "skrye"
         "tanis"
