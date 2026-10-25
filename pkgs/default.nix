@@ -9,6 +9,7 @@ pkgs: {
   davinci-resolve = pkgs.callPackage ./davinci-resolve { };
   davinci-resolve-studio = pkgs.callPackage ./davinci-resolve { studioVariant = true; };
   export-agentic-dots = pkgs.callPackage ./export-agentic-dots { };
+  fuzzel-emoji-data = pkgs.callPackage ./fuzzel-emoji-data { };
   herdr-ctx-bar = pkgs.callPackage ./herdr-ctx-bar { };
   herdr-disp-model = pkgs.callPackage ./herdr-disp-model { };
   herdr-integrations = pkgs.callPackage ./herdr-integrations { };

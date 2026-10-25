@@ -1,0 +1,29 @@
+{
+  "unicode": {
+    "version": "18.0",
+    "url": "https://www.unicode.org/Public/18.0.0/emoji/emoji-test.txt",
+    "hash": "sha256-jzc1zaH5KnedeK9nz4YGa7HwcUPcIvKsKTlNm8V6sho=",
+    "license": "Unicode-3.0",
+    "role": "Accepted fully-qualified sequences, names, order, groups, subgroups and emoji versions"
+  },
+  "emojibase": {
+    "version": "18.0.0",
+    "url": "https://registry.npmjs.org/emojibase-data/-/emojibase-data-18.0.0.tgz",
+    "hash": "sha256-7SB8ZPMbqrXbQZaGE1vjaWu9GWqIIoo1ZDg9eRjbjzQ=",
+    "license": "MIT AND Unicode-3.0",
+    "annotations": "CLDR 49 beta 1, en",
+    "role": "English keywords and explicit parent-to-skin relationships"
+  },
+  "emojilib": {
+    "version": "4.0.3",
+    "url": "https://registry.npmjs.org/emojilib/-/emojilib-4.0.3.tgz",
+    "hash": "sha256-f5prQ8/zHRiYW31l0R+rpb2XHLzGACDPbQkyL7qq8wM=",
+    "license": "MIT",
+    "role": "Additional English search keywords"
+  },
+  "unicodeLicense": {
+    "url": "https://www.unicode.org/license.txt",
+    "hash": "sha256-56k7AJVlz85VkZo4FDesTbiD6dohJvoouR0ScyvFPZY=",
+    "license": "Unicode-3.0"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "🐳": { "add": ["fish"] },
+  "🐋": { "add": ["fish"], "remove": ["whale2"] },
+  "🧌": { "add": ["shrek"] }
+}

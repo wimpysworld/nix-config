@@ -59,12 +59,10 @@ let
     ];
     text = builtins.readFile ./fuzzel-control-center.sh;
   };
-  # Workaround Nix failing to evaluate the DATA in fuzzel-emoji
-  fuzzelEmoji = pkgs.writeTextFile {
-    name = "fuzzel-emoji";
-    executable = true;
-    destination = "/bin/fuzzel-emoji";
-    text = builtins.readFile ./fuzzel-emoji.sh;
+  fuzzelEmoji = import ./emoji.nix {
+    inherit pkgs;
+    fuzzel = config.programs.fuzzel.package;
+    configFile = "${config.xdg.configHome}/fuzzel/fuzzel.ini";
   };
   fuzzelHistory = pkgs.writeShellApplication {
     name = "fuzzel-history";
