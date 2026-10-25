@@ -209,6 +209,7 @@ in
         settings = {
           update = "disable";
           share = "disabled";
+          websearch = false;
           permissions = [
             {
               action = "external_directory";
