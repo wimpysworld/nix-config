@@ -113,6 +113,28 @@ let
           pkgs.python3
         ]
       }:$PATH"
+      export OPENCODE_TEST_BINARY=${lib.getExe' opencodeUpstreamPackage "opencode2"}
+      export OPENCODE_TEST_DELIVERY=${
+        pkgs.writeText "opencode-test-delivery.json" (
+          builtins.toJSON {
+            files =
+              lib.mapAttrsToList
+                (_: file: {
+                  inherit (file) target source recursive;
+                })
+                (
+                  lib.filterAttrs (
+                    _: file:
+                    lib.hasPrefix "${config.xdg.configHome}/opencode/plugins/" "${config.home.homeDirectory}/${file.target}"
+                    ||
+                      "${config.home.homeDirectory}/${file.target}"
+                      == "${config.xdg.configHome}/opencode/agents/donatello.md"
+                  ) config.home.file
+                );
+            inherit (config.programs.opencode.settings) permissions;
+          }
+        )
+      }
       ${lib.getExe pkgs.bun} test ${./.}/provider-router/index.test.mjs ${./.}/plugins/communication-rules.test.ts ${./.}/launcher.test.ts
     '';
   };
@@ -173,11 +195,19 @@ in
   ) opencodeFencedPackage;
   xdg.configFile = lib.mkMerge [
     (lib.mkIf config.programs.opencode.enable {
-      "opencode/plugins/provider-router/index.ts".text = providerRouterPlugin;
+      "opencode/plugins/provider-router".source = pkgs.writeTextFile {
+        name = "opencode-provider-router";
+        destination = "/index.ts";
+        text = providerRouterPlugin;
+      };
       "opencode/cli.json".text = builtins.toJSON cliSettings;
     })
     (lib.mkIf (config.programs.opencode.enable && communicationRules.enable) {
-      "opencode/plugins/communication-rules/index.ts".text = opencodeTripwirePlugin.pluginText;
+      "opencode/plugins/communication-rules".source = pkgs.writeTextFile {
+        name = "opencode-communication-rules";
+        destination = "/index.ts";
+        text = opencodeTripwirePlugin.pluginText;
+      };
     })
     (lib.mkIf (config.programs.opencode.enable && host.is.linux) {
       "opencode/herdr-tui-session.js".source =

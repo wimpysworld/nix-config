@@ -46,6 +46,8 @@ The launcher disables model-catalogue downloads. It disables project configurati
 
 ## Agent Tripwire
 
+Home Manager links each plugin directory to a store directory with a regular `index.ts` file. V2 rejects entrypoint symlinks that escape their plugin directory.
+
 The directory plugin `plugins/communication-rules/index.ts` uses V2 session hooks to inject the Communication Rules. Its `execute.before` tool hook checks outgoing prose side effects through the shared Python scanner. Scanner failures block tool execution.
 
 Final-message checks run after display. A detected violation adds a synthetic notice, without an automatic model turn. These checks do not provide a pre-display hard block for final or subagent prose.
@@ -92,6 +94,8 @@ The `/init` command uses Rosey's `create-agents-md` prompt. Default orchestratio
 ## Validation and first launch
 
 The launcher build runs the router, Tripwire, and launcher suites in an isolated HOME and XDG environment. The fixtures do not make inference requests.
+
+The build also starts isolated V2 servers against the generated Home Manager plugin sources. It checks discovery, rejects the old file-link layout, and verifies fenced approval changes without weakening explicit denies. These build-only tests use no credentials or MCP servers.
 
 Run the offline suites from the repository root:
 
