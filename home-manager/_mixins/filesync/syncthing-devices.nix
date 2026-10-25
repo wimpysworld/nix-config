@@ -1,8 +1,5 @@
 {
   devices = {
-    atrius = {
-      id = "EKWH3CX-CPKKVGM-KWVNFTJ-AA5GGEU-KR3PRPE-2CC7DBG-K7YXOVO-24GGXAX";
-    };
     bane = {
       id = "X7K3SCU-7KN62YR-NKAZQHW-V2JYRXP-JXGNXFO-QPPPPHX-3MQTO6B-XIK72Q3";
     };
@@ -52,7 +49,6 @@
       maxConflicts = 10;
       path = "~/Crypt";
       devices = [
-        "atrius"
         "bane"
         "felkor"
         "momin"
@@ -138,7 +134,6 @@
       maxConflicts = 10;
       path = "~/Notes";
       devices = [
-        "atrius"
         "bane"
         "felkor"
         "momin"
