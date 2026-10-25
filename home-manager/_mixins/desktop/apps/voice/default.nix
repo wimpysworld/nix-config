@@ -75,7 +75,62 @@ let
     }
   ];
   providerDefaults = lib.listToAttrs (map (provider: lib.nameValuePair provider.id "") providers);
-  handySettings = {
+  managedSettings = {
+    append_trailing_space = true;
+    start_hidden = true;
+    autostart_enabled = false;
+    show_tray_icon = true;
+    selected_language = "en";
+    translate_to_english = false;
+    overlay_style = "minimal";
+    overlay_position = "bottom";
+    model_unload_timeout = "hour1";
+    vad_enabled = true;
+    filler_word_removal_enabled = true;
+    custom_words = [
+      "CGO"
+      "ffmpeg-statigo"
+      "Ebitengine"
+      "Tetra3D"
+      "GPU"
+      "FPS"
+      "herdr"
+      "Hajime"
+      "Skrye"
+      "Zannah"
+      "Bane"
+      "Momin"
+      "Ravi"
+      "Nix"
+      "Ebiten"
+      "Goly"
+      "Wayfire"
+      "Hyprland"
+      "MangoWM"
+      "guigui"
+      "Fuzzel"
+      "Waybar"
+      "manifest-gen"
+      "image-gen"
+      "Sidra"
+      "Tailor"
+      "Noughty Linux"
+      "Oval Tutu"
+      "Five Horizons"
+      "mobile-depot"
+      "nix-darwin"
+      "system-manager"
+      "macOS"
+      "Linux"
+      "Ubuntu"
+      "Home Manager"
+      "Pi agent"
+      "Pi coding agent"
+      "OpenCode"
+      "Moltis"
+    ];
+  };
+  interactiveDefaults = {
     settings_schema_version = 2;
     # Handy has no disabled binding value. An empty binding makes shortcut
     # registration fail, so the compositor owns the transcription shortcut.
@@ -106,8 +161,6 @@ let
     audio_feedback = false;
     audio_feedback_volume = 1.0;
     sound_theme = "marimba";
-    start_hidden = true;
-    autostart_enabled = false;
     update_checks_enabled = false;
     show_whats_new_on_update = false;
     whats_new_last_seen_version = "0.9.6";
@@ -116,13 +169,8 @@ let
     selected_channel = null;
     clamshell_microphone = null;
     selected_output_device = null;
-    translate_to_english = false;
-    selected_language = "en";
-    overlay_position = "bottom";
     debug_mode = false;
     log_level = "info";
-    custom_words = [ ];
-    model_unload_timeout = "min5";
     word_correction_threshold = 0.18;
     history_limit = 5;
     recording_retention_period = "preserve_limit";
@@ -138,74 +186,31 @@ let
     post_process_prompts = [ ];
     post_process_selected_prompt_id = null;
     mute_while_recording = false;
-    append_trailing_space = true;
     app_language = "en";
     theme = "dark";
     experimental_enabled = false;
     lazy_stream_close = false;
     keyboard_implementation = "tauri";
-    show_tray_icon = true;
     paste_delay_ms = 60;
     paste_delay_after_ms = 60;
     reliable_paste = false;
     typing_tool = "wtype";
     external_script_path = null;
-    filler_word_removal_enabled = true;
     custom_filler_words = null;
     transcribe_accelerator = "auto";
     ort_accelerator = "auto";
     transcribe_gpu_device = null;
     extra_recording_buffer_ms = 0;
-    vad_enabled = true;
-    overlay_style = "minimal";
   };
-  handySettingsStore = pkgs.writeText "handy-settings-store.json" (
-    builtins.toJSON {
-      settings = handySettings;
-    }
-  );
-  startHandy = pkgs.writeShellApplication {
-    name = "start-handy";
-    runtimeInputs = [
-      pkgs.coreutils
-      pkgs.jq
-    ];
-    text = ''
-      data_home="''${XDG_DATA_HOME:-"$HOME/.local/share"}"
-      data_dir="$data_home/com.pais.handy"
-      settings_file="$data_dir/settings_store.json"
-      existing_store='{}'
-
-      mkdir -p "$data_dir"
-
-      if [ -f "$settings_file" ]; then
-        if parsed_store="$(
-          jq --compact-output --slurp '
-            (if length == 1 then .[0] else {} end)
-            | if type == "object" and (.settings? | type == "object") then . else {} end
-          ' "$settings_file" 2>/dev/null
-        )"; then
-          existing_store="$parsed_store"
-        fi
-      fi
-
-      temporary_file="$(mktemp "$data_dir/.settings_store.json.XXXXXX")"
-      trap 'rm -f -- "$temporary_file"' EXIT
-
-      jq --compact-output --argjson existing "$existing_store" \
-        '(.settings | {append_trailing_space, start_hidden, autostart_enabled, show_tray_icon}) as $managed | . * $existing | .settings += $managed' \
-        ${handySettingsStore} > "$temporary_file"
-      chmod 0600 "$temporary_file"
-      mv -T -- "$temporary_file" "$settings_file"
-      trap - EXIT
-
-      exec ${lib.getExe pkgs.handy} --start-hidden
-    '';
+  handy = import ./handy-launcher {
+    inherit pkgs lib;
+    defaults = interactiveDefaults;
+    managed = managedSettings;
   };
 in
 lib.mkIf isHandyHost {
   home.packages = [
-    pkgs.handy
+    handy
     pkgs.wtype
   ];
 
@@ -214,7 +219,7 @@ lib.mkIf isHandyHost {
       [Desktop Entry]
       Type=Application
       Name=Handy
-      Exec=${lib.getExe startHandy}
+      Exec=${lib.getExe handy} --start-hidden
       Terminal=false
     '')
   ];

@@ -10,7 +10,6 @@ let
   inherit (host) display;
   inherit (pkgs) veila;
   veilaBin = lib.getExe' veila "veila";
-  handyBin = lib.getExe pkgs.handy;
   swayosdClient = lib.getExe' pkgs.swayosd "swayosd-client";
   # SwayOSD does not unmute on a volume change, so unmute the output first.
   unmuteOutput = "${lib.getExe' pkgs.wireplumber "wpctl"} set-mute @DEFAULT_AUDIO_SINK@ 0";
@@ -72,8 +71,8 @@ in
         ]
         # Bind Pause by keycode (xkb 127 = evdev KEY_PAUSE 119 + 8).
         ++ lib.optionals (host.is.linux && host.is.workstation && noughtyLib.hostHasTag "handy") (
-          [ "SUPER,v,spawn,${handyBin} --toggle-transcription" ]
-          ++ lib.optional (!host.is.laptop) "NONE,code:127,spawn,${handyBin} --toggle-transcription"
+          [ "SUPER,v,spawn,handy --toggle-transcription" ]
+          ++ lib.optional (!host.is.laptop) "NONE,code:127,spawn,handy --toggle-transcription"
         )
         ++ [
           "SUPER,l,spawn,${veilaBin} lock"

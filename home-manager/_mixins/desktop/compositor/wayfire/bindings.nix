@@ -88,11 +88,11 @@ in
       }
       // lib.optionalAttrs isHandyHost {
         binding_handy = "<super> KEY_V";
-        command_handy = "${lib.getExe pkgs.handy} --toggle-transcription";
+        command_handy = "handy --toggle-transcription";
       }
       // lib.optionalAttrs (isHandyHost && !host.is.laptop) {
         binding_handy_pause = "KEY_PAUSE";
-        command_handy_pause = "${lib.getExe pkgs.handy} --toggle-transcription";
+        command_handy_pause = "handy --toggle-transcription";
       };
     };
   };
