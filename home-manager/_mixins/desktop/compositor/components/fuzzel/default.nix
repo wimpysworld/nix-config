@@ -74,6 +74,12 @@ let
       printf '%s' "$selection" | wl-copy --trim-newline
     '';
   };
+  fuzzelKeybindings = import ./keybindings.nix {
+    inherit pkgs;
+    fuzzel = config.programs.fuzzel.package;
+    configFile = "${config.xdg.configHome}/fuzzel/fuzzel.ini";
+    entries = config.compositor.keybindingHelp.entries;
+  };
   fuzzelLauncher = pkgs.writeShellApplication {
     name = "fuzzel-launcher";
     text = "fuzzel --prompt '󱓞 '";
@@ -127,6 +133,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         wl-clipboard
         wtype
       ]
+      ++ lib.optional (compositor != null && config.programs.fuzzel.enable) fuzzelKeybindings
       ++ lib.optionals host.network.wifi [
         fuzzelWifi
         iwmenu

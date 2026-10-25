@@ -139,10 +139,7 @@ in
         };
         cube = {
           activate = "none";
-          rotate_left = "<ctrl> <alt> KEY_LEFT";
-          rotate_right = "<ctrl> <alt> KEY_RIGHT";
         };
-        expo.toggle = "<super> KEY_HOME";
         vecdecor = {
           bg_color = toWayfireColor "base" 1.0;
           bg_text_color = "0.527451 0.531373 0.570588 1.0";
@@ -193,11 +190,6 @@ in
         grid = {
           duration = 300;
           type = "crossfade";
-          # Slot keybindings for window positioning
-          slot_l = "<super> <alt> KEY_LEFT"; # Snap to left half
-          slot_r = "<super> <alt> KEY_RIGHT"; # Snap to right half
-          slot_t = "<super> <alt> KEY_UP"; # Snap to top half
-          slot_b = "<super> <alt> KEY_DOWN"; # Snap to bottom half
           slot_c = "none";
           #slot_tl = "<super> <shift> KEY_UP"; # Top-left quarter
           #slot_tr = "<super> <ctrl> KEY_UP"; # Top-right quarter
@@ -206,7 +198,6 @@ in
           restore = "none";
         };
         idle = {
-          toggle = "<super> KEY_Z";
           # Disable the cube screensaver; Veila owns the idle fade and lock.
           screensaver_timeout = -1;
           dpms_timeout = 600;
@@ -233,10 +224,6 @@ in
         resize = {
           activate = "<super> BTN_RIGHT";
         };
-        switcher = {
-          next_view = "<alt> KEY_TAB";
-          prev_view = "<alt> <shift> KEY_TAB";
-        };
         vswipe = {
           enable_horizontal = true;
           enable_vertical = false;
@@ -245,14 +232,6 @@ in
         # Virtual desktop switching with Ctrl+Alt+[1-8]
         vswitch = {
           duration = 0;
-          binding_1 = "<ctrl> <alt> KEY_1";
-          binding_2 = "<ctrl> <alt> KEY_2";
-          binding_3 = "<ctrl> <alt> KEY_3";
-          binding_4 = "<ctrl> <alt> KEY_4";
-          binding_5 = "<ctrl> <alt> KEY_5";
-          binding_6 = "<ctrl> <alt> KEY_6";
-          binding_7 = "<ctrl> <alt> KEY_7";
-          binding_8 = "<ctrl> <alt> KEY_8";
           binding_down = "none";
           binding_last = "none";
           binding_left = "none";
@@ -272,7 +251,6 @@ in
         # Window management actions
         wm-actions = {
           #toggle_fullscreen = "<super> KEY_F";
-          toggle_maximize = "<super> KEY_UP";
           #minimize = "<super> KEY_N";
           #toggle_always_on_top = "<super> KEY_A";
           #toggle_sticky = "<super> KEY_S";

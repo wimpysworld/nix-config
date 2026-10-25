@@ -16,6 +16,7 @@ virtualcam_stop="󰗟 Stop Virtualcam"
 screenshot="󱎴 Screenshot"
 picker="󰏘 Colour Picker"
 window_layout="󰹫 Window Layout"
+keyboard_shortcuts="󰌌 Keyboard shortcuts"
 
 # Power
 session="󰐦 Session"
@@ -39,6 +40,9 @@ fi
 menu="$menu\n"
 if command -v fuzzel-layout >/dev/null 2>&1; then
 	menu="$menu\n$window_layout"
+fi
+if command -v fuzzel-keybindings >/dev/null 2>&1; then
+	menu="$menu\n$keyboard_shortcuts"
 fi
 menu="$menu\n$control_center\n$session"
 
@@ -69,6 +73,9 @@ case $selected in
 	;;
 "$window_layout")
 	fuzzel-layout
+	;;
+"$keyboard_shortcuts")
+	fuzzel-keybindings
 	;;
 "$session")
 	wleave-session

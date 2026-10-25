@@ -39,6 +39,25 @@ in
     description = "Waybar module definitions from the selected compositor's module.";
   };
 
+  options.compositor.keybindingHelp.entries = lib.mkOption {
+    type = lib.types.listOf (
+      lib.types.submodule {
+        options = {
+          description = lib.mkOption { type = lib.types.str; };
+          keys = lib.mkOption { type = lib.types.str; };
+          category = lib.mkOption { type = lib.types.str; };
+          keywords = lib.mkOption {
+            type = lib.types.listOf lib.types.str;
+            default = [ ];
+          };
+        };
+      }
+    );
+    default = [ ];
+    internal = true;
+    description = "Read-only help for the selected compositor's configured keyboard shortcuts.";
+  };
+
   config = lib.mkIf (compositor != null) {
     home.activation.removeObsoleteGraphicalSessionDependencies =
       lib.mkIf
