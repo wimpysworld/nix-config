@@ -67,14 +67,16 @@ class PickerTests(unittest.TestCase):
         self.master.write_text(
             json.dumps(
                 {
-                    "schemaVersion": 1,
+                    "schemaVersion": emoji.SCHEMA_VERSION,
                     "sources": {},
                     "emojis": [
                         {
                             "id": "1F44B",
                             "emoji": "👋",
                             "name": "waving hand",
+                            "displayName": "waving hand",
                             "keywords": ["hello", "goodbye"],
+                            "searchKeywords": ["hello", "goodbye"],
                             "group": "People & Body",
                             "subgroup": "hand-fingers-open",
                             "emojiVersion": "0.6",
@@ -90,7 +92,9 @@ class PickerTests(unittest.TestCase):
                             "id": "1F600",
                             "emoji": "😀",
                             "name": "grinning face",
+                            "displayName": "grinning face",
                             "keywords": ["happy"],
+                            "searchKeywords": ["happy"],
                             "group": "Smileys & Emotion",
                             "subgroup": "face-smiling",
                             "emojiVersion": "1.0",
@@ -100,7 +104,9 @@ class PickerTests(unittest.TestCase):
                             "id": "1F91D",
                             "emoji": "🤝",
                             "name": "handshake",
+                            "displayName": "handshake",
                             "keywords": ["agreement"],
+                            "searchKeywords": ["agreement"],
                             "group": "People & Body",
                             "subgroup": "hands",
                             "emojiVersion": "3.0",
@@ -160,38 +166,116 @@ class PickerTests(unittest.TestCase):
             any(event["command"] in ("wtype", "wl-copy") for event in self.events)
         )
 
-    def test_search_hidden_fields_and_output_order(self):
+    def assert_compact_ordered(self, menu):
+        for flag in ("--with-nth=1", "--match-nth=2", "--no-sort"):
+            self.assertIn(flag, menu["args"])
+        self.assertNotIn("--with-nth=2", menu["args"])
+
+    def test_search_long_rows_and_output_order(self):
         menus = self.run_picker([{"output": "3\n"}])
         self.assert_output("👋")
         rows = menus[0]["input"].splitlines()
         self.assertEqual(len(rows), 6)
-        # Nerd Fonts glyphnames.json: cod-sparkle_filled, md-folder_table, md-cog.
+        # Nerd Fonts glyphnames.json: md-sprout, md-folder_table, md-cog.
         # https://raw.githubusercontent.com/ryanoasis/nerd-fonts/v3.5.1/glyphnames.json
         self.assertEqual(
             rows[:3],
-            ["\uec21 New\t", "\U000f12e3 Browse\t", "\U000f0493 Settings\t"],
+            [
+                "\U000f0e66 New\t\U000f0e66 New",
+                "\U000f12e3 Browse\t\U000f12e3 Browse",
+                "\U000f0493 Settings\t\U000f0493 Settings",
+            ],
         )
-        self.assertEqual([row.split("\t")[1] for row in rows[:3]], ["", "", ""])
         label, search, *_ = rows[3].split("\t")
         self.assertEqual(label, "👋 waving hand")
-        for term in ("hello", "People & Body", "hand-fingers-open"):
+        self.assertEqual(search, label + " · hello goodbye")
+        self.assertEqual(search.count(" · "), 1)
+        for term in ("hello", "goodbye"):
             self.assertNotIn(term, label)
             self.assertIn(term, search)
+        for term in ("People & Body", "hand-fingers-open"):
+            self.assertNotIn(term, search)
         for flag in (
             "--index",
             "--only-match",
-            "--with-nth=1",
-            "--match-nth=2",
+            "--with-nth=2",
             "--match-mode=exact",
             "--width=48",
             "--prompt=󰞅 ",
         ):
             self.assertIn(flag, menus[0]["args"])
-        self.assertIn("--no-sort", menus[0]["args"])
+        self.assertNotIn("--no-sort", menus[0]["args"])
+        self.assertNotIn("--with-nth=1", menus[0]["args"])
+        self.assertFalse(any(arg.startswith("--match-nth") for arg in menus[0]["args"]))
         self.assertIn("execute-input=none", CONFIG.read_text())
         self.assertIn("include=", CONFIG.read_text())
         self.run_picker([{"output": "5\n"}])
         self.assert_output("🤝")
+
+    def test_projection_uses_generated_fields_and_invalidates_valid_prior_cache(self):
+        data = json.loads(self.master.read_text())
+        entry = data["emojis"][0]
+        entry.update(
+            name="flag: United Kingdom",
+            displayName="United Kingdom",
+            keywords=["flag: united kingdom", "raw source phrase"],
+            searchKeywords=["flag", "generated", "generated", "ONLY"],
+        )
+        self.master.write_text(json.dumps(data))
+        with patch.dict(os.environ, self.env):
+            with patch.object(
+                emoji, "PROJECTION_VERSION", emoji.PROJECTION_VERSION - 1
+            ):
+                rows = emoji.projection(self.master, "yellow")
+            legacy = next((self.root / "cache/fuzzel-emoji").glob("*.tsv"))
+            stale = [list(row) for row in rows]
+            stale[0][1] = " ".join([rows[0][0], *entry["searchKeywords"]])
+            old_text = "".join("\t".join(row) + "\n" for row in stale)
+            legacy.write_text(old_text)
+            self.assertEqual(emoji.parse_projection(old_text)[0][1], stale[0][1])
+            current = emoji.projection(self.master, "yellow")
+            self.assertEqual(current[0][0], "👋 United Kingdom")
+            self.assertEqual(
+                current[0][1], "👋 United Kingdom · flag generated generated ONLY"
+            )
+            self.assertEqual(current[0][3:5], (entry["group"], entry["subgroup"]))
+            self.assertEqual(legacy.read_text(), old_text)
+            self.assertEqual(len(list(legacy.parent.glob("*.tsv"))), 2)
+
+    def test_search_without_keywords_keeps_compact_label(self):
+        data = json.loads(self.master.read_text())
+        data["emojis"][0]["searchKeywords"] = []
+        self.master.write_text(json.dumps(data))
+        menus = self.run_picker([{"output": "3\n"}])
+        label, search, *_ = menus[0]["input"].splitlines()[3].split("\t")
+        self.assertEqual(label, "👋 waving hand")
+        self.assertEqual(search, label)
+        self.assertNotIn("·", search)
+        self.assert_output("👋")
+
+    def test_projection_requires_generated_fields_and_rejects_old_schema(self):
+        data = json.loads(self.master.read_text())
+        with patch.dict(os.environ, self.env):
+            for field in ("displayName", "searchKeywords"):
+                value = data["emojis"][0].pop(field)
+                self.master.write_text(json.dumps(data))
+                with self.subTest(field=field), self.assertRaises(KeyError):
+                    emoji.projection(self.master, "yellow")
+                data["emojis"][0][field] = value
+            data["schemaVersion"] = emoji.SCHEMA_VERSION - 1
+            self.master.write_text(json.dumps(data))
+            with self.assertRaisesRegex(ValueError, "Unsupported emoji schema"):
+                emoji.projection(self.master, "yellow")
+
+    def test_real_admission_tickets_enrichment(self):
+        with patch.dict(os.environ, self.env):
+            rows = emoji.projection(MASTER, "yellow")
+        row = next(row for row in rows if row[5] == "1F39F-FE0F")
+        self.assertEqual(row[0], "🎟️ admission tickets")
+        self.assertEqual(
+            row[1],
+            "🎟️ admission tickets · ticket sports concert entrance entertainment",
+        )
 
     def test_cancel_custom_exit_and_invalid_indexes(self):
         invalid = [
@@ -230,7 +314,7 @@ class PickerTests(unittest.TestCase):
         )
         for index, (tone, glyph, _) in enumerate(choices):
             menus = self.run_picker([{"output": f"{index}\n"}], "--tone")
-            self.assertIn("--no-sort", menus[0]["args"])
+            self.assert_compact_ordered(menus[0])
             self.assertEqual(
                 menus[0]["input"].splitlines(),
                 [f"{sample} {label}\t{sample} {label}" for _, sample, label in choices],
@@ -268,9 +352,7 @@ class PickerTests(unittest.TestCase):
             "--browse",
         )
         for menu in menus:
-            self.assertIn("--no-sort", menu["args"])
-            self.assertIn("--with-nth=1", menu["args"])
-            self.assertIn("--match-nth=2", menu["args"])
+            self.assert_compact_ordered(menu)
             self.assertIn("--match-mode=exact", menu["args"])
         self.assertEqual(
             menus[0]["input"].splitlines(),
@@ -350,6 +432,8 @@ class PickerTests(unittest.TestCase):
                 [{"output": f"{action}\n"}, {"status": 2}, {"status": 2}]
             )
             self.assertEqual(menus[0]["input"], menus[2]["input"])
+            self.assertEqual(menus[0]["args"], menus[2]["args"])
+            self.assert_compact_ordered(menus[1])
             self.assert_no_output()
             self.assertFalse(self.state.exists())
 
@@ -438,6 +522,7 @@ class PickerTests(unittest.TestCase):
                 **template,
                 "id": str(index),
                 "name": f"hand {index}",
+                "displayName": f"hand {index}",
                 "emojiVersion": version,
             }
             for index, version in enumerate(versions)
@@ -455,7 +540,7 @@ class PickerTests(unittest.TestCase):
             original = root[int(row[5])]
             self.assertEqual(row[0], f"{original[6]} · {original[0]}")
             self.assertEqual(row[1:], original[1:])
-        self.assertIn("--no-sort", menus[1]["args"])
+        self.assert_compact_ordered(menus[1])
 
     def test_legacy_cache_is_not_reused_and_actions_are_not_projections(self):
         with patch.dict(os.environ, self.env):
@@ -468,7 +553,7 @@ class PickerTests(unittest.TestCase):
             self.assertEqual(emoji.projection(self.master, "yellow"), rows)
             self.assertEqual(legacy.read_text(), old_text)
             self.assertEqual(len(list(legacy.parent.glob("*.tsv"))), 2)
-            invalid = [old_text, "\uec21 New\t\n"]
+            invalid = [old_text, "\U000f0e66 New\t\n"]
             invalid.extend(
                 "\t".join((*rows[0][:6], version)) + "\n"
                 for version in ("", "18", "18.x", "18.0.1")
@@ -494,9 +579,9 @@ class PickerTests(unittest.TestCase):
             ):
                 emoji.projection(self.master, "yellow")
             data = json.loads(copy.read_text())
-            data["schemaVersion"] = 2
+            data["schemaVersion"] = emoji.SCHEMA_VERSION + 1
             copy.write_text(json.dumps(data))
-            with patch.object(emoji, "SCHEMA_VERSION", 2):
+            with patch.object(emoji, "SCHEMA_VERSION", data["schemaVersion"]):
                 emoji.projection(copy, "yellow")
             self.assertEqual(len(list(cache_dir.glob("*.tsv"))), 5)
             cache.write_text("broken\n")
@@ -533,6 +618,16 @@ class PickerTests(unittest.TestCase):
                 rows = emoji.projection(MASTER, tone)
                 self.assertEqual(len(rows), len(data["emojis"]))
                 for row, entry in zip(rows, data["emojis"], strict=True):
+                    self.assertEqual(row[0], f"{row[2]} {entry['displayName']}")
+                    if entry["searchKeywords"]:
+                        label, separator, keywords = row[1].partition(" · ")
+                        self.assertEqual(label, row[0])
+                        self.assertEqual(separator, " · ")
+                        self.assertEqual(keywords, " ".join(entry["searchKeywords"]))
+                        self.assertEqual(row[1].count(" · "), 1)
+                    else:
+                        self.assertEqual(row[1], row[0])
+                    self.assertEqual(row[3:5], (entry["group"], entry["subgroup"]))
                     self.assertEqual(row[5], entry["id"])
                     self.assertEqual(row[6], entry["emojiVersion"])
                     self.assertEqual(

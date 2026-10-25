@@ -5,7 +5,7 @@
   "required": ["schemaVersion", "sources", "emojis"],
   "additionalProperties": false,
   "properties": {
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": { "const": 2 },
     "sources": { "type": "object", "additionalProperties": { "type": "object" } },
     "emojis": {
       "type": "array",
@@ -14,9 +14,21 @@
           { "$ref": "#/$defs/sequence" },
           {
             "type": "object",
-            "required": ["keywords", "skinTones", "tonePolicy", "variants"],
+            "required": ["displayName", "keywords", "searchKeywords", "skinTones", "tonePolicy", "variants"],
             "properties": {
+              "displayName": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Unicode name with one leading ASCII alphabetic prefix removed (^[A-Za-z]+:\\s*). Presentation cleanup converts curly quotes and en/em dashes to ASCII and removes trailing colons from alphabetic words. Accents remain intact."
+              },
+              "searchKeywords": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": { "type": "string", "minLength": 1 },
+                "description": "Ordered source enrichment words, deduplicated against normalised displayName and earlier words after presentation cleanup. Curly quotes and en/em dashes become ASCII, and alphabetic words lose trailing colons. Accents and existing ASCII aliases remain distinct. Leading ASCII alphabetic colon prefixes become searchable words. Group and subgroup values are never appended, but equivalent source keywords remain eligible."
+              },
               "keywords": {
+                "description": "Merged source phrases after existing normalisation and local overrides, before presentation cleanup.",
                 "type": "array",
                 "uniqueItems": true,
                 "items": { "type": "string", "minLength": 1 }

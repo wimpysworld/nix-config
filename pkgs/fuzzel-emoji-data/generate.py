@@ -5,9 +5,11 @@ import hashlib
 import json
 import re
 import tarfile
+import unicodedata
 from pathlib import Path
 
 TONES = ("light", "medium-light", "medium", "medium-dark", "dark")
+PREFIX = re.compile(r"^([A-Za-z]+):\s*")
 ROW = re.compile(
     r"^([0-9A-F ]+)\s*;\s*([a-z-]+)\s*#\s*(\S+)\s+E([0-9.]+)\s+(.+)$"
 )
@@ -59,6 +61,45 @@ def normalise_keyword(value):
     if not isinstance(value, str):
         raise ValueError("Keywords must be strings")
     return " ".join(value.replace("_", " ").split()).casefold()
+
+
+def presentation_text(text):
+    text = text.translate(str.maketrans("\u2018\u2019\u201c\u201d\u2013\u2014", "''\"\"--"))
+    return re.sub(r"(?<!\S)([^\W\d_]+(?:['-][^\W\d_]+)*):+(?=\s|$)", r"\1", text)
+
+
+def word_key(word):
+    """Casefold words after trimming boundary brackets, quotes and sentence marks.
+
+    Trim Unicode Ps/Pe/Pi/Pf characters and . , ; ! ? ' " plus … 、 。 ， ； ！ ？.
+    Keep other punctuation, symbols and internal characters. Keep tokens with no
+    letters or numbers intact, so that punctuation-only emoticons stay distinct.
+    """
+    word = presentation_text(word)
+    if any(char.isalnum() for char in word):
+        punctuation = "".join(
+            char
+            for char in word
+            if unicodedata.category(char) in ("Ps", "Pe", "Pi", "Pf")
+            or char in ".,;!?\"'…、。，；！？"
+        )
+        word = word.strip(punctuation)
+    return word.casefold()
+
+
+def enrichment_words(description, fields):
+    def clean(text):
+        return presentation_text(re.sub(r"[\x00-\x1f\x7f-\x9f\u2028\u2029]", " ", text))
+
+    seen = {word_key(word) for word in clean(description).split()}
+    words = []
+    for field in fields:
+        for word in presentation_text(PREFIX.sub(r"\1 ", clean(field))).split():
+            key = word_key(word)
+            if key != "143" and key not in seen:
+                seen.add(key)
+                words.append(word)
+    return words
 
 
 def skin_tones(row):
@@ -128,9 +169,17 @@ def generate(catalogue, annotations, synonyms, overrides):
         keywords += annotation.get("tags", []) + synonyms.get(emoji, []) + override.get("add", [])
         removed = {normalise_keyword(value) for value in override.get("remove", [])}
         keywords = list(dict.fromkeys(normalise_keyword(value) for value in keywords))
+        keywords = [value for value in keywords if value and value not in removed]
+        display_name = presentation_text(PREFIX.sub("", entry["name"]))
+        search_fields = keywords
+        prefix = PREFIX.match(entry["name"])
+        if prefix:
+            search_fields = [*keywords, prefix.group(1).casefold()]
         records.append({
             **entry,
-            "keywords": [value for value in keywords if value and value not in removed],
+            "displayName": display_name,
+            "keywords": keywords,
+            "searchKeywords": enrichment_words(display_name, search_fields),
             "skinTones": skin_map,
             "tonePolicy": "default" if default_only else "single",
             "variants": children,
@@ -174,7 +223,7 @@ def main():
         json.loads(args.overrides.read_text(encoding="utf-8")),
     )
     args.output.mkdir(parents=True, exist_ok=True)
-    master = {"schemaVersion": 1, "sources": sources, "emojis": records}
+    master = {"schemaVersion": 2, "sources": sources, "emojis": records}
     (args.output / "master.json").write_text(
         json.dumps(master, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )

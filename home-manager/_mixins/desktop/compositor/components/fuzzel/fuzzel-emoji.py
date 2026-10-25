@@ -8,11 +8,11 @@ import sys
 import tempfile
 from pathlib import Path
 
-SCHEMA_VERSION = 1
-PROJECTION_VERSION = 2
+SCHEMA_VERSION = 2
+PROJECTION_VERSION = 6
 TONES = ("yellow", "light", "medium-light", "medium", "medium-dark", "dark")
 ROOT_ACTIONS = {
-    0: ("new", "\uec21 New"),
+    0: ("new", "\U000f0e66 New"),
     1: ("browse", "\U000f12e3 Browse"),
     2: ("settings", "\U000f0493 Settings"),
 }
@@ -85,9 +85,11 @@ def projection(master, tone):
         glyph = entry["skinTones"].get(tone, entry["emoji"])
         if not valid_glyph(glyph):
             raise ValueError("Invalid emoji glyph")
-        label = clean(f"{glyph} {entry['name']}")
-        search = clean(
-            " ".join([label, *entry["keywords"], entry["group"], entry["subgroup"]])
+        label = clean(f"{glyph} {entry['displayName']}")
+        search = (
+            clean(f"{label} · {' '.join(entry['searchKeywords'])}")
+            if entry["searchKeywords"]
+            else label
         )
         lines.append(
             "\t".join(
@@ -108,7 +110,7 @@ def projection(master, tone):
     return rows
 
 
-def choose(rows, ordered=False):
+def choose(rows, ordered=False, long_rows=False):
     result = subprocess.run(
         [
             "fuzzel",
@@ -117,8 +119,7 @@ def choose(rows, ordered=False):
             "--only-match",
             *(["--no-sort"] if ordered else []),
             "--match-mode=exact",
-            "--with-nth=1",
-            "--match-nth=2",
+            *(["--with-nth=2"] if long_rows else ["--with-nth=1", "--match-nth=2"]),
             "--width=48",
             "--prompt=󰞅 ",
             "--cache=/dev/null",
@@ -208,9 +209,9 @@ def set_tone(state, tone="choose"):
 
 
 def root_menu(master, rows, state):
-    actions = tuple((label, "") for _, label in ROOT_ACTIONS.values())
+    actions = tuple((label, label) for _, label in ROOT_ACTIONS.values())
     while True:
-        selected = choose(actions + rows, ordered=True)
+        selected = choose(actions + rows, long_rows=True)
         if selected is None:
             return None
         if selected not in ROOT_ACTIONS:
