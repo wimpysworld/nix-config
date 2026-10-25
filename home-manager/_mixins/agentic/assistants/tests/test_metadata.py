@@ -475,7 +475,8 @@ skills = false
                     if platform == "claude":
                         self.assertNotIn("context", native)
                     if platform == "opencode":
-                        self.assertIs(native["subtask"], False)
+                        self.assertIs(native["subagent"], False)
+                        self.assertNotIn("subtask", native)
                     if selection != "unbound":
                         worker = commands[selection + "-false"]
                         if platform == "claude":
@@ -548,7 +549,8 @@ skills = false
                             if platform == "claude":
                                 self.assertNotIn("context", native)
                             if platform == "opencode":
-                                self.assertIs(native["subtask"], False)
+                                self.assertIs(native["subagent"], False)
+                                self.assertNotIn("subtask", native)
                 elif command["dispatch"]["selectedAgent"] is not None:
                     self.assertTrue(command["dispatch"]["spawn"])
                     for platform, rendered in command["rendered"].items():
@@ -752,8 +754,6 @@ reasoningEffort = "low"
 [opencode.options]
 textVerbosity = "low"
 store = false
-[opencode.metadata]
-model = "A descriptive label"
 [routing.opencode]
 reasoningEffort = "high"
 """,
@@ -761,9 +761,13 @@ reasoningEffort = "high"
         self.assertEqual(
             result,
             {
-                "options": {"textVerbosity": "low", "store": False},
-                "metadata": {"model": "A descriptive label"},
-                "reasoningEffort": "high",
+                "request": {
+                    "body": {
+                        "textVerbosity": "low",
+                        "store": False,
+                        "reasoningEffort": "high",
+                    }
+                },
             },
         )
 
@@ -775,7 +779,7 @@ reasoningEffort = "high"
             "inline": (
                 "[compose.claude]\nuse-task = false\n"
                 "[compose.pi]\nspawn-agent = false\n"
-                "[opencode]\nsubtask = false\n"
+                "[opencode]\nsubagent = false\n"
             ),
         }.items():
             directory = f"commands/{name}"
@@ -837,8 +841,22 @@ reasoningEffort = "high"
                         self.assertIn("Agent", native["disallowedTools"])
                     elif platform == "opencode":
                         self.assertEqual(native["mode"], "subagent")
-                        self.assertEqual(native["permission"]["task"], "deny")
-                        self.assertEqual(native["permission"]["question"], "allow")
+                        self.assertNotIn("permission", native)
+                        self.assertEqual(
+                            native["permissions"],
+                            [
+                                {
+                                    "action": "question",
+                                    "resource": "*",
+                                    "effect": "allow",
+                                },
+                                {
+                                    "action": "subagent",
+                                    "resource": "*",
+                                    "effect": "deny",
+                                },
+                            ],
+                        )
                     else:
                         self.assertEqual(native["prompt_mode"], "replace")
                         self.assertTrue(native["skills"])
@@ -914,8 +932,8 @@ reasoningEffort = "high"
         result = self.project_runtime(
             "pi", "{ inherit piSubagentsSource piSubagentsConfig; }"
         )
-        self.assertEqual(
-            result["piSubagentsSource"], "npm:@tintinweb/pi-subagents@0.19.0"
+        self.assertRegex(
+            result["piSubagentsSource"], r"^npm:@tintinweb/pi-subagents@\d+\.\d+\.\d+$"
         )
         settings = result["piSubagentsConfig"]
         self.assertEqual(settings["maxSubagentDepth"], 1)
@@ -1051,15 +1069,97 @@ reasoningEffort = "high"
                     self.assertEqual(result["description"], "Fixture.")
                     self.assertNotIn("model", result)
 
+    def test_opencode_native_projection_preserves_order_and_model_variants(self):
+        for kind in ("agent", "command"):
+            with self.subTest(kind=kind):
+                result = self.evaluate(
+                    f'm.project "{kind}" "opencode" "fixture" h',
+                    '[routing.opencode]\nmodel = "provider/model"\nvariant = "high"\n',
+                )
+                self.assertEqual(result, {"model": "provider/model#high"})
+        result = self.evaluate(
+            'm.project "agent" "opencode" "fixture" h',
+            """[opencode]
+prompt = "SYSTEM"
+disable = false
+permissions = [{ action = "shell", resource = "git status", effect = "allow" }]
+[opencode.permission]
+"*" = "ask"
+task = "deny"
+[opencode.permission.bash]
+"*" = "deny"
+"git diff*" = "allow"
+""",
+        )
+        self.assertEqual(
+            result,
+            {
+                "system": "SYSTEM",
+                "disabled": False,
+                "permissions": [
+                    {"action": "*", "resource": "*", "effect": "ask"},
+                    {"action": "shell", "resource": "*", "effect": "deny"},
+                    {"action": "shell", "resource": "git diff*", "effect": "allow"},
+                    {"action": "subagent", "resource": "*", "effect": "deny"},
+                    {"action": "shell", "resource": "git status", "effect": "allow"},
+                ],
+            },
+        )
+        for route in (
+            'model = "missing-provider"',
+            'variant = "high"',
+            'model = "provider/model#low"\nvariant = "high"',
+            'model = "provider/model"\nvariant = "high#low"',
+        ):
+            with self.subTest(route=route):
+                self.evaluate("h", "[routing.opencode]\n" + route, success=False)
+
+    def test_opencode_mcp_projection_keeps_servers_and_all_denies(self):
+        result = self.evaluate(
+            """let
+          definitions = import """
+            + str(ASSISTANTS.parent / "mcp/servers.nix")
+            + """ {
+            pkgs = { inherit lib; cg-mcp-proxy = "/proxy"; nodejs = "/node"; };
+            config.noughty.host.tags = [ "cg" ];
+          };
+        in {
+          servers = definitions.opencodeServers;
+          permissions = definitions.opencodeToolPermissions;
+          canonical = lib.mapAttrs (_: s: s.consumers.opencode.disabledTools or []) definitions.servers;
+        }"""
+        )
+        for name, server in result["servers"].items():
+            self.assertIs(server["disabled"], False, name)
+            self.assertNotIn("enabled", server)
+        self.assertEqual(
+            result["servers"]["context7"]["headers"],
+            {"Authorization": "Bearer {env:CONTEXT7_API_KEY}"},
+        )
+        self.assertEqual(result["servers"]["cg-apk"]["type"], "local")
+        self.assertEqual(
+            result["servers"]["cg-apk"]["command"][0], "/proxy/bin/cg-mcp-proxy"
+        )
+        self.assertEqual(
+            set(result["servers"]["slack"]["oauth"]), {"client_id", "redirect_uri"}
+        )
+        expected = [
+            {"action": f"{server}_{tool}", "resource": "*", "effect": "deny"}
+            for server, tools in sorted(result["canonical"].items())
+            for tool in tools
+        ]
+        self.assertTrue(expected)
+        self.assertEqual(result["permissions"], expected)
+
     def test_opencode_command_routing_rules_remain_unchanged(self):
         result = self.evaluate(
             'm.project "command" "opencode" "fixture" h',
-            '[routing.opencode]\nmodel = "test-model"\n',
+            '[routing.opencode]\nmodel = "provider/test-model"\n',
         )
-        self.assertEqual(result, {"model": "test-model"})
+        self.assertEqual(result, {"model": "provider/test-model"})
         for kind, route in (
             ("command", '[routing.opencode]\nreasoningEffort = "high"\n'),
-            ("skill", '[routing.opencode]\nmodel = "test-model"\n'),
+            ("skill", '[routing.opencode]\nmodel = "provider/test-model"\n'),
         ):
             with self.subTest(kind=kind):
                 error = self.evaluate(
@@ -1105,7 +1205,7 @@ reasoningEffort = "high"
             "[routing.opencode.providers.openai]\nmodel = 42\n",
             '[routing.opencode.providers.openai]\nthinking = "high"\n',
             '[routing.opencode.providers.openai]\nmodel = "ok"\nvariant = "Bad Variant"\n',
-            "[routing.opencode.providers.openai]\nmodel = \"ok\"\nvariant = 42\n",
+            '[routing.opencode.providers.openai]\nmodel = "ok"\nvariant = 42\n',
             '[routing.opencode.providers.openai]\nvariant = "high"\n',
             '[routing.opencode.providers."bad/provider"]\nmodel = "ok"\n',
             '[routing.opencode]\nproviders = "openai"\n',

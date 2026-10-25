@@ -45,7 +45,7 @@ class CatalogueTests(unittest.TestCase):
         return {
             "agents/worker/header.toml": '[common]\ndescription = "Worker."\n[routing.pi.provider]\nmodel = "agent-model"\nthinking = "high"\n',
             "skills/delegate-task/header.toml": '[common]\nname = "delegate-task"\ndescription = "Delegate a task."\n',
-            "commands/zulu/command.toml": '[common]\ndescription = "Pipe | newline\\n<text>"\n[compose]\nagent = "worker"\ncaller-context = true\n[compose.coordinator]\nbefore-launch = "PRIVATE_COORDINATOR"\n[routing.opencode]\nmodel = "command-model"\n',
+            "commands/zulu/command.toml": '[common]\ndescription = "Pipe | newline\\n<text>"\n[compose]\nagent = "worker"\ncaller-context = true\n[compose.coordinator]\nbefore-launch = "PRIVATE_COORDINATOR"\n[routing.opencode]\nmodel = "provider/command-model"\n',
             "commands/zulu/command.sops": "PRIVATE_KEY",
             "commands/alpha/command.toml": '[common]\ndescription = "Alpha."\n[compose]\nagent = "worker"\n',
             "commands/alpha/command.md": "PRIVATE_BODY",
@@ -65,7 +65,7 @@ class CatalogueTests(unittest.TestCase):
         self.assertEqual(zulu["visibility"], "secret")
         for client in zulu["clients"].values():
             self.assertTrue(client["behaviour"].startswith("Caller context"))
-        self.assertEqual(zulu["clients"]["opencode"]["model"], "command-model")
+        self.assertEqual(zulu["clients"]["opencode"]["model"], "provider/command-model")
         self.assertIsNone(zulu["clients"]["pi"]["model"])
         self.assertIn(
             {
@@ -127,7 +127,7 @@ class CatalogueTests(unittest.TestCase):
         self.assertIn("../agents/README.md", data["commandsMarkdown"])
         legend = data["agentsMarkdown"].split("## Agent model defaults\n", 1)[1]
         self.assertIn(
-            "OpenCode provider routes apply only to direct-root native task children, "
+            "OpenCode provider routes apply only to direct-root native subagent children, "
             "not direct slash-command bindings.",
             legend,
         )
@@ -287,7 +287,8 @@ class CatalogueTests(unittest.TestCase):
             agent["clients"]["claude"]["controls"], {"disallowedTools": ["Agent"]}
         )
         self.assertEqual(
-            agent["clients"]["opencode"]["controls"]["permission"], {"task": "deny"}
+            agent["clients"]["opencode"]["controls"]["permissions"],
+            [{"action": "subagent", "resource": "*", "effect": "deny"}],
         )
         self.assertEqual(agent["clients"]["codex"]["controls"], {})
         self.assertEqual(agent["clients"]["pi"]["controls"]["prompt_mode"], "replace")

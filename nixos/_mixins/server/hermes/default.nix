@@ -26,6 +26,8 @@ let
   hermesHome = "${config.services.hermes-agent.stateDir}/.hermes";
   hermesDashboardHost = "127.0.0.1";
   hermesDashboardPort = 9119;
+  opencodeGoBaseUrl = "https://opencode.ai/inference/go/openai/v1";
+  opencodeZenBaseUrl = "https://opencode.ai/inference/openai/v1";
   managedHermesConfig =
     (pkgs.formats.yaml { }).generate "hermes-managed-config.yaml"
       config.services.hermes-agent.settings;
@@ -398,7 +400,7 @@ in
         mode = "0400";
       };
 
-      OPENCODE_ZEN_API_KEY = {
+      OPENCODE_API_KEY = {
         sopsFile = aiSopsFile;
         owner = "root";
         group = "root";
@@ -491,18 +493,21 @@ in
         WEBHOOK_ENABLED=true
         WEBHOOK_PORT=8644
         WEBHOOK_SECRET=${config.sops.placeholder.WEBHOOK_SECRET}
-        OPENCODE_ZEN_API_KEY=${config.sops.placeholder.OPENCODE_ZEN_API_KEY}
-        # One Zen API key authenticates both relays; hermes names the Go
-        # credential separately.
-        OPENCODE_GO_API_KEY=${config.sops.placeholder.OPENCODE_ZEN_API_KEY}
+        # Hermes requires separate runtime names for the same workspace key.
+        OPENCODE_ZEN_API_KEY=${config.sops.placeholder.OPENCODE_API_KEY}
+        OPENCODE_GO_API_KEY=${config.sops.placeholder.OPENCODE_API_KEY}
+        OPENCODE_ZEN_BASE_URL=${opencodeZenBaseUrl}
+        OPENCODE_GO_BASE_URL=${opencodeGoBaseUrl}
         CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
         JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
         LINEAR_API_KEY=${config.sops.placeholder.LINEAR_API_KEY}
         GH_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
         GITHUB_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}
         _HERMES_FORCE_TELEGRAM_BOT_TOKEN=${config.sops.placeholder.TELEGRAM_BOT_TOKEN}
-        _HERMES_FORCE_OPENCODE_ZEN_API_KEY=${config.sops.placeholder.OPENCODE_ZEN_API_KEY}
-        _HERMES_FORCE_OPENCODE_GO_API_KEY=${config.sops.placeholder.OPENCODE_ZEN_API_KEY}
+        _HERMES_FORCE_OPENCODE_ZEN_API_KEY=${config.sops.placeholder.OPENCODE_API_KEY}
+        _HERMES_FORCE_OPENCODE_GO_API_KEY=${config.sops.placeholder.OPENCODE_API_KEY}
+        _HERMES_FORCE_OPENCODE_ZEN_BASE_URL=${opencodeZenBaseUrl}
+        _HERMES_FORCE_OPENCODE_GO_BASE_URL=${opencodeGoBaseUrl}
         _HERMES_FORCE_CONTEXT7_API_KEY=${config.sops.placeholder.CONTEXT7_API_KEY}
         _HERMES_FORCE_JINA_API_KEY=${config.sops.placeholder.JINA_API_KEY}
         _HERMES_FORCE_GH_TOKEN=${config.sops.placeholder.GITHUB_TOKEN}

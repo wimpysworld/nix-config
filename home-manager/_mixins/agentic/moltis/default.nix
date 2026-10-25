@@ -30,7 +30,7 @@ let
   moltisSecretSopsFiles = {
     TELEGRAM_BOT_TOKEN = hermesSopsFile;
     TELEGRAM_ALLOWED_USERS = hermesSopsFile;
-    OPENCODE_ZEN_API_KEY = aiSopsFile;
+    OPENCODE_API_KEY = aiSopsFile;
     CONTEXT7_API_KEY = mcpSopsFile;
     LINEAR_API_KEY = linearSopsFile;
   };
@@ -47,8 +47,8 @@ let
 
   # Plumbing for the composed `moltis.toml`: one entry per environment
   # variable, with its sops source and ready-made placeholder.
-  # `OPENCODE_GO_API_KEY` has no sops key of its own; its value is the
-  # `OPENCODE_ZEN_API_KEY` value, so it is an alias entry.
+  # `OPENCODE_ZEN_API_KEY` and `OPENCODE_GO_API_KEY` are runtime aliases
+  # of the canonical `OPENCODE_API_KEY` secret.
   moltisEnvPlumbing =
     map (
       name:
@@ -62,9 +62,14 @@ let
     ) (lib.attrNames moltisSecretSopsFiles)
     ++ [
       {
+        name = "OPENCODE_ZEN_API_KEY";
+        aliasOf = "OPENCODE_API_KEY";
+        placeholder = config.sops.placeholder.OPENCODE_API_KEY;
+      }
+      {
         name = "OPENCODE_GO_API_KEY";
-        aliasOf = "OPENCODE_ZEN_API_KEY";
-        placeholder = config.sops.placeholder.OPENCODE_ZEN_API_KEY;
+        aliasOf = "OPENCODE_API_KEY";
+        placeholder = config.sops.placeholder.OPENCODE_API_KEY;
       }
     ];
 
@@ -123,8 +128,9 @@ in
     default = moltisEnvPlumbing;
     description = ''
       Environment variables for the composed Moltis configuration, each with
-      its sops file and placeholder. The `OPENCODE_GO_API_KEY` entry is an
-      alias of `OPENCODE_ZEN_API_KEY` and carries no sops file.
+      its sops file and placeholder. The `OPENCODE_ZEN_API_KEY` and
+      `OPENCODE_GO_API_KEY` entries are aliases of `OPENCODE_API_KEY`
+      and carry no sops file.
     '';
   };
 
@@ -151,9 +157,8 @@ in
       # `${NAME}` placeholders in rendered MCP image headers resolve from it
       # (loader second pass treats `[env]` as an overrides map).
       #
-      # Alias choice for `OPENCODE_GO_API_KEY`: the plumbing entry duplicates
-      # the same sops placeholder string rather than writing
-      # `${OPENCODE_ZEN_API_KEY}`. Either form resolves (the loader
+      # The runtime aliases duplicate the same sops placeholder string
+      # rather than writing `${OPENCODE_API_KEY}`. Either form resolves (the loader
       # substitutes `${VAR}` against `[env]` values), but a direct duplicate
       # avoids one expansion hop and works even if `[env]`-to-`[env]`
       # references regress upstream.
@@ -269,8 +274,8 @@ in
             # Custom OpenAI-compatible relays, named after the Hermes
             # provider table (`hermes_cli/auth.py`, hermes-agent tag
             # v2026.9.14): Go gateway base `https://opencode.ai/zen/go/v1`,
-            # Zen gateway base `https://opencode.ai/zen/v1`. One Zen API key
-            # authenticates both relays, exported as two env vars above.
+            # Zen gateway base `https://opencode.ai/zen/v1`. Both runtime
+            # aliases above use the canonical OpenCode API key.
             # No inline `api_key`: Moltis does not expand `${VAR}` placeholders
             # inside provider `api_key` values, so the credentials must come
             # from the process environment swept in by `[env]`.

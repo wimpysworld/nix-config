@@ -1,166 +1,111 @@
 import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 
-// Thin shim. All policy lives in the Python core; each hook spawns
-// `core opencode <event>` and maps the decision to OpenCode's return/throw. The
-// system, text, toast, and log writes are the one named exception to "zero logic
-// in TS": runtime glue applying the core's flags, notice, and level. The Nix wiring substitutes these tokens at build time.
 const scannerPath = "@tripwireScanner@";
 const rulesPath = "@tripwireRules@";
 const correctionPromptPath = "@tripwireCorrectionPrompt@";
-
-const FALLBACK_BLOCK =
-  "Blocked. Revise this prose to follow the Communication Rules.";
-
-type Decision = {
-  decision: string;
-  surface: string;
-  notice: string;
-  level: string;
-  inject_base_rules: boolean;
-  append_correction: boolean;
-  block_message: string;
-};
-type PluginClient = {
-  tui?: {
-    showToast?: (input: {
-      body: { message: string; variant?: string };
-    }) => Promise<unknown>;
-  };
-  app?: {
-    log?: (input: { body: Record<string, unknown> }) => Promise<unknown>;
-  };
-};
+const FALLBACK_BLOCK = "Blocked. Revise this prose to follow the Communication Rules.";
 
 function readText(file: string): string {
-  try {
-    return readFileSync(file, "utf-8").trimEnd();
-  } catch {
-    return "";
-  }
-}
-// Spawn the core and parse its one-line decision; a failed spawn fails closed.
-function decide(event: string, payload: unknown): Decision {
-  const r = Bun.spawnSync([scannerPath, "opencode", event], {
-    stdin: new Response(JSON.stringify(payload ?? {})),
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  try {
-    if (r.exitCode === 0)
-      return JSON.parse(new TextDecoder().decode(r.stdout).trim()) as Decision;
-  } catch {
-    /* fall through */
-  }
-  return {
-    decision: "block",
-    surface: "B1",
-    notice: "",
-    level: "error",
-    inject_base_rules: false,
-    append_correction: false,
-    block_message: "",
-  };
-}
-// Fresh-context reminder (content, cached). The core answers for `opencode`: a
-// brief pointer when OpenCode's global instructions carry the house style, so
-// the rules are not injected twice, and the full rules when they do not. The
-// full rules file is the fallback when the core cannot supply it.
-let reminderText: string | undefined;
-function reminder(): string {
-  if (reminderText === undefined) {
-    const r = Bun.spawnSync([scannerPath, "remind-brief", "opencode"], {
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    reminderText =
-      r.exitCode === 0 ? new TextDecoder().decode(r.stdout).trim() : "";
-  }
-  return reminderText || `Communication Rules:\n${readText(rulesPath)}`;
-}
-async function toast(
-  client: PluginClient | undefined,
-  message: string,
-): Promise<void> {
-  if (!message) return;
-  try {
-    await client?.tui?.showToast?.({ body: { message, variant: "error" } });
-  } catch {
-    /* fall through */
-  }
-  try {
-    await client?.app?.log?.({
-      body: { service: "communication-rules", level: "warn", message },
-    });
-  } catch {
-    /* ignore */
-  }
+  return readFileSync(file, "utf8").trimEnd();
 }
 
-export const CommunicationRules = async (
-  context: { client?: PluginClient } = {},
-) => {
-  const client = context.client;
-  return {
-    "experimental.chat.system.transform": async (
-      input: unknown,
-      output: { system?: string[] },
-    ) => {
-      const d = decide("context", input);
-      output.system ??= [];
-      if (d.inject_base_rules) {
-        const section = reminder();
-        if (!output.system.includes(section)) output.system.push(section);
-      }
-      if (d.append_correction) {
-        const correction = readText(correctionPromptPath);
-        if (correction && !output.system.includes(correction))
-          output.system.push(correction);
-      }
-    },
-    "tool.execute.before": async (input: unknown, output: unknown) => {
-      const d = decide("tool.execute.before", {
-        event: "tool.execute.before",
-        ...(input as object),
-        args: (output as { args?: unknown })?.args ?? {},
+function decide(event: string, payload: unknown) {
+  try {
+    const result = spawnSync(scannerPath, ["opencode", event], {
+      input: JSON.stringify(payload), encoding: "utf8",
+    });
+    if (result.status === 0) {
+      const decision = JSON.parse(result.stdout);
+      if (decision && typeof decision === "object" && typeof decision.decision === "string") return decision;
+    }
+  } catch {
+    // A scanner failure must not authorise a side effect.
+  }
+  throw new Error(FALLBACK_BLOCK);
+}
+
+function reminder() {
+  const result = spawnSync(scannerPath, ["remind-brief", "opencode"], { encoding: "utf8" });
+  return (result.status === 0 && result.stdout.trim()) || `Communication Rules:\n${readText(rulesPath)}`;
+}
+
+export default {
+  id: "nix-config.communication-rules",
+  async setup(ctx: any) {
+    let observationFailed = false;
+    let observationError: unknown;
+    const controller = new AbortController();
+    const checkObserver = () => {
+      if (observationFailed) throw new Error("Communication Rules: event observation failed.", { cause: observationError });
+    };
+    const notify = async (sessionID: string, text: string) => {
+      if (text) await ctx.session.synthetic({
+        sessionID, text, description: "Communication Rules", resume: false,
       });
-      // B2 yield and B1 allow-revise both allow the write: toast and return.
-      if (d.decision === "yield" || d.decision === "allow-revise") {
-        void toast(client, d.notice);
+    };
+    const inject = (event: any, sections: string[]) => {
+      for (const text of sections) {
+        if (text && !event.system.some((part: any) => part.type === "text" && part.text === text)) {
+          event.system.push({ type: "text", text });
+        }
+      }
+    };
+    await ctx.session.hook("context", (event: any) => {
+      checkObserver();
+      const decision = decide("context", { sessionID: event.sessionID });
+      if (decision.decision !== "pass") throw new Error(FALLBACK_BLOCK);
+      inject(event, [
+        ...(decision.inject_base_rules ? [reminder()] : []),
+        ...(decision.append_correction ? [readText(correctionPromptPath)] : []),
+      ]);
+    });
+    const auxiliaryContext = (event: any) => {
+      checkObserver();
+      inject(event, [reminder()]);
+    };
+    for (const name of ["compaction", "generate", "title"]) {
+      await ctx.session.hook(name, auxiliaryContext);
+    }
+    await ctx.tool.hook("execute.before", async (event: any) => {
+      checkObserver();
+      const tool = (await ctx.tool.list()).find((item: any) => item.id === event.tool);
+      const name = tool?.options?.namespace
+        ? `mcp__${tool.options.namespace}__${tool.name}` : event.tool;
+      const decision = decide("tool.execute.before", {
+        event: "tool.execute.before", sessionID: event.sessionID, tool: name, args: event.input,
+      });
+      if (decision.decision === "pass") return;
+      if (decision.decision === "yield" || decision.decision === "allow-revise") {
+        await notify(event.sessionID, decision.notice);
         return;
       }
-      // A clean pass allows the tool to run.
-      if (d.decision === "pass") return;
-      // A middle B2 block carries the short nudge in `d.notice`; the first and
-      // penultimate blocks carry an empty notice and fall back to the full
-      // block message (or the baked fallback).
-      if (d.decision === "block")
-        throw new Error(d.notice || d.block_message || FALLBACK_BLOCK);
-      // Any unrecognised decision fails closed on this gating surface: throw the
-      // full block message (or the baked fallback), matching Tier B fail-closed.
-      throw new Error(d.block_message || FALLBACK_BLOCK);
-    },
-    "experimental.text.complete": async (
-      input: unknown,
-      output: { text?: string },
-    ) => {
-      const d = decide("message.final", {
-        event: "message.final",
-        surface: "final",
-        ...(input as object),
-        message: { content: output.text ?? "" },
-      });
-      if (
-        d.notice &&
-        typeof output.text === "string" &&
-        !output.text.includes(d.notice)
-      ) {
-        output.text = `${output.text.trimEnd()}\n\n${d.notice}`;
+      throw new Error(decision.notice || decision.block_message || FALLBACK_BLOCK);
+    });
+    const observe = async () => {
+      for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
+        if (event.type !== "session.step.ended" || event.data.finish === "tool-calls") continue;
+        const session = await ctx.session.get({ sessionID: event.data.sessionID });
+        if (session.location.directory !== ctx.location.directory) continue;
+        const { data } = await ctx.session.context({ sessionID: session.id });
+        const message = data.find((item: any) => item.id === event.data.assistantMessageID);
+        if (message?.type !== "assistant") throw new Error("Communication Rules: completed message is unavailable.");
+        const text = message.content.filter((part: any) => part.type === "text")
+          .map((part: any) => part.text).join("\n");
+        const decision = decide("message.final", {
+          event: "message.final", surface: "final", sessionID: session.id, message: { content: text },
+        });
+        if (!["pass", "block"].includes(decision.decision)) throw new Error(FALLBACK_BLOCK);
+        await notify(session.id, decision.notice);
       }
-      if (d.notice) void toast(client, d.notice);
-    },
-    event: async (input: unknown) => {
-      const d = decide("event", input);
-      if (d.notice) void toast(client, d.notice);
-    },
-  };
+      if (!controller.signal.aborted) throw new Error("Communication Rules: event stream closed.");
+    };
+    const observing = observe().catch((error) => {
+      if (!controller.signal.aborted) {
+        observationFailed = true;
+        observationError = error;
+      }
+    });
+    return async () => { controller.abort(); await observing; };
+  },
 };

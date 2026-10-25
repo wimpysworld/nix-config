@@ -17,6 +17,7 @@ let
     "model_reasoning_effort"
     "reasoningEffort"
     "thinking"
+    "variant"
   ];
   fail = path: message: throw "${toString path}/header.toml: ${message}";
   nonEmptyString = value: builtins.isString value && lib.trim value != "";
@@ -79,6 +80,7 @@ let
             else if provider == "opencode" then
               [
                 "model"
+                "variant"
                 "reasoningEffort"
               ]
             else
@@ -90,6 +92,16 @@ let
         builtins.isAttrs route
         && lib.all (key: lib.elem key allowed) (builtins.attrNames route)
         && lib.all nonEmptyString (builtins.attrValues route)
+        && (
+          provider != "opencode"
+          || (
+            (!(route ? model) || builtins.match "[^/#]+/[^#]+(#[^#]+)?" route.model != null)
+            && (
+              !(route ? variant)
+              || (route ? model && !lib.hasInfix "#" route.model && !lib.hasInfix "#" route.variant)
+            )
+          )
+        )
         && (
           !(route ? thinking)
           || lib.elem route.thinking [
@@ -126,7 +138,10 @@ let
             )
           )
         ) (builtins.attrNames opencodeProviders)
-        && (opencodeProviders == { } || !(routing.opencode ? model || routing.opencode ? reasoningEffort));
+        && (
+          opencodeProviders == { }
+          || !(routing.opencode ? model || routing.opencode ? variant || routing.opencode ? reasoningEffort)
+        );
       routesValid = lib.all (
         provider:
         lib.elem provider providers
@@ -256,7 +271,12 @@ let
         if platform == "pi" then
           { }
         else if platform == "opencode" then
-          lib.removeAttrs route [ "providers" ]
+          lib.optionalAttrs (route ? model) {
+            model = route.model + lib.optionalString (route ? variant) "#${route.variant}";
+          }
+          // lib.optionalAttrs (route ? reasoningEffort) {
+            request.body.reasoningEffort = route.reasoningEffort;
+          }
         else
           route;
       identity = lib.optionalAttrs (
@@ -270,7 +290,7 @@ let
       result = lib.foldl' lib.recursiveUpdate { } [
         defaults
         (lib.getAttrs (lib.intersectLists allowed (builtins.attrNames common)) common)
-        native
+        (if platform == "opencode" then projectOpenCode kind native else native)
         projectedRoute
         identity
       ];
@@ -291,6 +311,50 @@ let
       throw "Provider name must match ${name}."
     else
       result;
+
+  projectOpenCode =
+    kind: native:
+    if kind == "agent" then
+      lib.removeAttrs native [
+        "prompt"
+        "disable"
+        "permission"
+        "options"
+      ]
+      // lib.optionalAttrs (native ? prompt) { system = native.prompt; }
+      // lib.optionalAttrs (native ? disable) { disabled = native.disable; }
+      // lib.optionalAttrs (native ? options) { request.body = native.options; }
+      // lib.optionalAttrs (native ? permission) {
+        permissions =
+          let
+            normaliseAction =
+              action:
+              {
+                task = "subagent";
+                bash = "shell";
+                write = "edit";
+                patch = "edit";
+              }
+              .${action} or action;
+            rules =
+              if builtins.isString native.permission then { "*" = native.permission; } else native.permission;
+          in
+          lib.concatLists (
+            lib.mapAttrsToList (
+              action: value:
+              lib.mapAttrsToList (resource: effect: {
+                action = normaliseAction action;
+                inherit resource effect;
+              }) (if builtins.isString value then { "*" = value; } else value)
+            ) rules
+          )
+          ++ (native.permissions or [ ]);
+      }
+    else if kind == "command" then
+      lib.removeAttrs native [ "subtask" ]
+      // lib.optionalAttrs (native ? subtask) { subagent = native.subtask; }
+    else
+      native;
 
   renderYaml =
     value:
@@ -328,7 +392,7 @@ let
       projected = project "command" platform name header;
       native =
         if platform == "opencode" && callerContext then
-          (lib.removeAttrs projected [ "agent" ]) // { subtask = false; }
+          (lib.removeAttrs projected [ "agent" ]) // { subagent = false; }
         else if platform == "claude" && callerContext then
           lib.removeAttrs projected [
             "agent"
@@ -346,9 +410,9 @@ let
           "pi-agent"
         else if
           platform == "opencode"
-          && ((projected.subtask or false) || (selectedAgent != null && (projected.subtask or true)))
+          && ((projected.subagent or false) || (selectedAgent != null && (projected.subagent or true)))
         then
-          "opencode-subtask"
+          "opencode-subagent"
         else if platform == "codex" && selectedAgent != null then
           if header.compose.codex.spawn-agent or true then "codex-agent" else "codex-inline"
         else

@@ -12,9 +12,8 @@ let
   inherit (pkgs.stdenv.hostPlatform) system;
   aiSopsFile = ../../../../secrets/ai.yaml;
   fencedEnabled = !host.is.server;
-  # OpenCode Zen is a personal-model gateway. Work hosts carry the "cg" tag
-  # and keep the key out of sops-nix rendering entirely.
-  zenEnabled = !noughtyLib.hostHasTag "cg";
+  # Work hosts carry the "cg" tag and exclude the personal OpenCode key.
+  opencodeEnabled = !noughtyLib.hostHasTag "cg";
   # Use Node mode to retain the SDK modules that pi-subagents imports.
   piPackage = (inputs.llm-agents.packages.${system}.pi.override { useBun = false; }).overrideAttrs {
     # Retain the SDK dependency tree for native background sessions.
@@ -251,12 +250,10 @@ let
         export BASETEN_API_KEY
       fi
 
-      opencode_zen_api_key_path="${
-        if zenEnabled then config.sops.secrets.OPENCODE_ZEN_API_KEY.path else ""
-      }"
-      if [ -n "$opencode_zen_api_key_path" ] && [ -r "$opencode_zen_api_key_path" ]; then
-        OPENCODE_ZEN_API_KEY="$(cat "$opencode_zen_api_key_path")"
-        export OPENCODE_ZEN_API_KEY
+      opencode_api_key_path="${if opencodeEnabled then config.sops.secrets.OPENCODE_API_KEY.path else ""}"
+      if [ -n "$opencode_api_key_path" ] && [ -r "$opencode_api_key_path" ]; then
+        OPENCODE_API_KEY="$(cat "$opencode_api_key_path")"
+        export OPENCODE_API_KEY
       fi
 
       if [ "''${NOUGHTY_AGENT_LAUNCH_COMMAND:-pi}" = "pi-fenced" ]; then
@@ -364,10 +361,8 @@ let
       "openai-codex/gpt-6-astra"
       "openai-codex/gpt-6.1-sol"
       "openai-codex/gpt-6-luna"
-      # The wrapper exports OPENCODE_ZEN_API_KEY on non-cg hosts.
-      # models.json maps the credential to Pi's built-in opencode provider.
-      "opencode/glm-5.3-flash"
-      "opencode/glm-5.3"
+      "opencode-go/glm-5.3-flash"
+      "opencode-go/glm-5.3"
     ];
 
     theme = piThemeName;
@@ -796,7 +791,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
     mode = "0400";
   };
 
-  sops.secrets.OPENCODE_ZEN_API_KEY = lib.mkIf zenEnabled {
+  sops.secrets.OPENCODE_API_KEY = lib.mkIf opencodeEnabled {
     sopsFile = aiSopsFile;
     mode = "0400";
   };
@@ -830,9 +825,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
       # smaller built-in registry value. Subscription auth must accept the
       # window, so this declaration must stay within what the provider
       # entitlement accepts. Unknown model ids are silently ignored by Pi.
-      # The Zen API key authenticates the OpenCode relays: the Zen gateway
-      # (Pi provider "opencode") and the Go gateway (Pi provider
-      # "opencode-go"). The wrapper exports the key on non-cg hosts.
+      # Both OpenCode providers use the workspace key on non-cg hosts.
       ".pi/agent/models.json" = {
         text = builtins.toJSON (
           lib.recursiveUpdate
@@ -852,9 +845,9 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
                   });
             }
             (
-              lib.optionalAttrs zenEnabled {
-                providers.opencode.apiKey = "$OPENCODE_ZEN_API_KEY";
-                providers."opencode-go".apiKey = "$OPENCODE_ZEN_API_KEY";
+              lib.optionalAttrs opencodeEnabled {
+                providers.opencode.apiKey = "$OPENCODE_API_KEY";
+                providers."opencode-go".apiKey = "$OPENCODE_API_KEY";
               }
             )
         );

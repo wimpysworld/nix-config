@@ -327,7 +327,7 @@ let
           ${body}
         ''
       )
-    else if mode == "opencode-subtask" then
+    else if mode == "opencode-subagent" then
       composeWithFrontmatter header "${leafWorkerContract}\n${body}"
     else
       composeWithFrontmatter header body;

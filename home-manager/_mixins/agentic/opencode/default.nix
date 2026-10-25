@@ -12,11 +12,8 @@ let
   defaultOpenCodeEnabled = !host.is.server;
   fencedEnabled = !host.is.server;
   aiSopsFile = ../../../../secrets/ai.yaml;
-  # OpenCode Zen is a personal-model gateway. Work hosts carry the "cg" tag
-  # and keep the key out of sops-nix rendering entirely.
-  zenEnabled = !noughtyLib.hostHasTag "cg";
+  gatewayEnabled = !noughtyLib.hostHasTag "cg";
   herdrIntegrations = pkgs.herdr-integrations;
-  # Directories whose project-level OpenCode config is trusted to load.
   trustedProjectConfigRoots = [
     "${config.home.homeDirectory}/Chainguard"
     "${config.home.homeDirectory}/Development"
@@ -24,12 +21,10 @@ let
     "${config.home.homeDirectory}/Zero"
   ];
   trustedProjectConfigPatterns = lib.concatMapStringsSep " | " (
-    root: "${root} | ${root}/*"
+    root: "${lib.escapeShellArg root} | ${lib.escapeShellArg root}/*"
   ) trustedProjectConfigRoots;
   robotEmoji = builtins.fromJSON "\"\\ud83e\\udd16\"";
-  # Use the pre-built binary from numtide's llm-agents.nix flake.
-  # This avoids upstream source build issues entirely.
-  opencodeUpstreamPackage = inputs.llm-agents.packages.${system}.opencode;
+  opencodeUpstreamPackage = inputs.llm-agents.packages.${system}.opencode2;
   providerRouterMap = pkgs.writeText "opencode-provider-routes.json" (
     builtins.toJSON config.agentic.assistants.opencode.providerRouterMap
   );
@@ -56,18 +51,9 @@ let
       export ANTHROPIC_API_KEY
     fi
   ''
-  # The OpenCode Zen provider maps OPENCODE_ZEN_API_KEY through its options.
-  # The secret is declared only on non-cg hosts, so the read skips silently
-  # wherever the key is not rendered.
-  + lib.optionalString zenEnabled ''
-    if [ -r "${config.sops.secrets.OPENCODE_ZEN_API_KEY.path}" ]; then
-      OPENCODE_ZEN_API_KEY="$(cat "${config.sops.secrets.OPENCODE_ZEN_API_KEY.path}")"
-      export OPENCODE_ZEN_API_KEY
-      # OpenCode's built-in opencode and opencode-go providers both resolve
-      # their credential from OPENCODE_API_KEY (env: ["OPENCODE_API_KEY"] in
-      # the bundled provider table); the per-provider options.apiKey mapping
-      # is not consulted for them. Export the standard name too.
-      OPENCODE_API_KEY="$OPENCODE_ZEN_API_KEY"
+  + lib.optionalString gatewayEnabled ''
+    if [ -r "${config.sops.secrets.OPENCODE_API_KEY.path}" ]; then
+      OPENCODE_API_KEY="$(cat "${config.sops.secrets.OPENCODE_API_KEY.path}")"
       export OPENCODE_API_KEY
     fi
   '';
@@ -76,11 +62,6 @@ let
     name = "opencode-communication-rules-correction-prompt.md";
     text = communicationRules.correctionPrompt;
   };
-  # The OpenCode plugin is an in-process TS shim, so it spawns the Python core
-  # directly: mkPluginAdapter substitutes the core path and the config paths into
-  # the shim text. The scanner wrapper bakes --policy-json and --rules, so the
-  # shim passes only the agent and event; the rules and correction-prompt paths
-  # feed the Tier A live-object writes (base-rules injection and re-issue).
   opencodeTripwirePlugin =
     if communicationRules.mkPluginAdapter == null then
       null
@@ -95,72 +76,46 @@ let
           "@tripwireCorrectionPrompt@" = "${opencodeTripwireCorrectionPromptFile}";
         };
       };
-  # Wrap opencode so its process inherits API keys sourced from sops at
-  # invocation time. The Anthropic key is available only on personal physical
-  # computers. OpenCode's loader recognises GEMINI_API_KEY; the underlying
-  # @ai-sdk/google SDK reads GOOGLE_GENERATIVE_AI_API_KEY. Export both Google
-  # names so the provider works through either path. The reads are non-fatal
-  # because OpenCode is multi-provider and must still launch when a key is
-  # absent.
   opencodePackage = pkgs.symlinkJoin {
     name = "opencode-wrapped-${opencodeUpstreamPackage.version or "unknown"}";
     paths = [ opencodeUpstreamPackage ];
     nativeBuildInputs = [ pkgs.makeWrapper ];
     postBuild = ''
-      wrapProgram $out/bin/opencode \
+      wrapProgram $out/bin/opencode2 \
         --run ${lib.escapeShellArg opencodeApiKeyShell}
     '';
     inherit (opencodeUpstreamPackage) meta;
-    passthru = (opencodeUpstreamPackage.passthru or { }) // {
-      unwrapped = opencodeUpstreamPackage;
-    };
+    passthru.unwrapped = opencodeUpstreamPackage;
   };
-  # Resume the most recent session by default. The API-key env wrapper stays
-  # in opencodePackage; this launcher only injects `--continue` for interactive
-  # launches and execs the wrapped binary. Resume is skipped for subcommands
-  # (run, mcp, serve, ...), help/version, and when the caller already selects a
-  # session, so non-interactive and management commands are untouched.
-  opencodeLauncherPackage =
-    (pkgs.writeShellApplication {
-      name = "opencode";
-      text = ''
-        # Stop the background model-catalogue fetch to models.dev. Each release
-        # bundles a catalogue snapshot, and Nix pins the OpenCode version.
-        export OPENCODE_DISABLE_MODELS_FETCH=1
-        # Ignore project-level OpenCode config outside trusted roots so an
-        # untrusted repository cannot inject config, plugins, or agents into a
-        # session.
-        case "$PWD" in
-          ${trustedProjectConfigPatterns}) ;;
-          *)
-            export OPENCODE_DISABLE_PROJECT_CONFIG=1
-            ;;
-        esac
-        opencode_resume=(--continue)
-        case "''${1:-}" in
-          completion | acp | mcp | attach | run | debug | providers | auth | agent | upgrade | uninstall | serve | web | models | stats | export | import | github | pr | session | plugin | plug | db | -h | --help | -v | --version)
-            opencode_resume=()
-            ;;
-          *)
-            for arg in "$@"; do
-              case "$arg" in
-                -c | --continue | -s | --session | --fork)
-                  opencode_resume=()
-                  break
-                  ;;
-              esac
-            done
-            ;;
-        esac
-
-        exec ${lib.getExe' opencodePackage "opencode"} "''${opencode_resume[@]}" "$@"
-      '';
-    }).overrideAttrs
-      (old: {
-        passthru = (old.passthru or { }) // {
-          unwrapped = opencodeUpstreamPackage;
-        };
-      });
+  cliSettings = import ./cli.nix {
+    inherit lib host;
+    flavour = config.catppuccin.opencode.flavor;
+  };
+  opencodeLauncherPackage = pkgs.writeShellApplication {
+    name = "opencode";
+    text =
+      builtins.replaceStrings
+        [ "@trustedRoots@" "@opencode@" ]
+        [ trustedProjectConfigPatterns (lib.getExe' opencodePackage "opencode2") ]
+        (builtins.readFile ./launcher.sh);
+    passthru.unwrapped = opencodeUpstreamPackage;
+    derivationArgs.postCheck = ''
+      export HOME="$TMPDIR/home"
+      export XDG_CONFIG_HOME="$HOME/.config"
+      export XDG_DATA_HOME="$HOME/.local/share"
+      export XDG_STATE_HOME="$HOME/.local/state"
+      export XDG_CACHE_HOME="$HOME/.cache"
+      mkdir -p "$HOME"
+      export PATH="${
+        lib.makeBinPath [
+          pkgs.bash
+          pkgs.coreutils
+          pkgs.python3
+        ]
+      }:$PATH"
+      ${lib.getExe pkgs.bun} test ${./.}/provider-router/index.test.mjs ${./.}/plugins/communication-rules.test.ts ${./.}/launcher.test.ts
+    '';
+  };
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceAgentShare = import ../fence/agent-share.nix { inherit config pkgs; };
   fenceGit = import ../fence/git.nix { inherit config pkgs; };
@@ -185,96 +140,58 @@ let
     ++ fenceChromium.runtimeInputs
     ++ fenceLogging.runtimeInputs;
     text = ''
-      # Read keys before entering Fence and pass them through the inherited
-      # environment. This keeps their values out of Fence's command arguments.
       ${opencodeApiKeyShell}
-
+      export HERDR_AGENT=opencode
       if [[ "''${FENCE_SANDBOX:-0}" == 1 ]]; then
-        export HERDR_AGENT=opencode
-        export OPENCODE_PERMISSION='{"*":"allow","webfetch":"deny","websearch":"deny"}'
-        exec ${lib.getExe' opencodeLauncherPackage "opencode"} "$@"
+        exec ${lib.getExe opencodeLauncherPackage} "$@"
       fi
-
       ${fenceAgentShare.captureShell}
       ${fenceMemoryCap.captureShell}
       ${fenceWaylandBridge.setupShell}
       ${fenceAgentShare.setupShell}
       ${fenceGit.setupShell}
       ${fenceChromium.setupShell}
-
       fence_log_agent="opencode"
       ${fenceLogging.setupShell}
-
-      # herdr identifies a pane's agent from the foreground process group
-      # environ. Export the hint host-side so fence and the whole wrapper chain
-      # inherit it; an inline post-`--` token would land only inside the sandbox
-      # PID namespace, which herdr does not read.
-      export HERDR_AGENT=opencode
-
-      # Allow everything inside the fence, but keep the built-in web tools
-      # denied so both the plain and fenced paths route web access through the
-      # Exa MCP server. The env var wins on conflicting keys, so the denies are
-      # named here explicitly.
-      export OPENCODE_PERMISSION='{"*":"allow","webfetch":"deny","websearch":"deny"}'
       ${fenceMemoryCap.setupShell}
-      "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" ${lib.getExe' opencodeLauncherPackage "opencode"} "$@"
+      "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" ${lib.getExe opencodeLauncherPackage} "$@"
     '';
   };
-
-  # Import shared MCP server definitions.
 in
 {
   sops.secrets.GEMINI_API_KEY = lib.mkIf config.programs.opencode.enable {
     sopsFile = aiSopsFile;
     mode = "0400";
   };
-
-  sops.secrets.OPENCODE_ZEN_API_KEY = lib.mkIf (config.programs.opencode.enable && zenEnabled) {
+  sops.secrets.OPENCODE_API_KEY = lib.mkIf (config.programs.opencode.enable && gatewayEnabled) {
     sopsFile = aiSopsFile;
     mode = "0400";
   };
-
-  catppuccin.opencode.enable = config.programs.opencode.enable;
-
+  catppuccin.opencode.enable = lib.mkForce false;
   home.packages = lib.optional (
     config.programs.opencode.enable && fencedEnabled
   ) opencodeFencedPackage;
-
   xdg.configFile = lib.mkMerge [
     (lib.mkIf config.programs.opencode.enable {
-      "opencode/plugins/provider-router.ts".text = providerRouterPlugin;
+      "opencode/plugins/provider-router/index.ts".text = providerRouterPlugin;
+      "opencode/cli.json".text = builtins.toJSON cliSettings;
     })
     (lib.mkIf (config.programs.opencode.enable && communicationRules.enable) {
-      "opencode/plugins/communication-rules.ts".text = opencodeTripwirePlugin.pluginText;
+      "opencode/plugins/communication-rules/index.ts".text = opencodeTripwirePlugin.pluginText;
     })
-    # Herdr's OpenCode plugins report session identity and state to the
-    # multiplexer over its control socket. The generated assets match the
-    # installed Herdr release.
     (lib.mkIf (config.programs.opencode.enable && host.is.linux) {
       "opencode/herdr-tui-session.js".source =
         "${herdrIntegrations}/home/.config/opencode/herdr-tui-session.js";
-      "opencode/plugins/herdr-agent-state.js".source =
-        "${herdrIntegrations}/home/.config/opencode/plugins/herdr-agent-state.js";
-      "opencode/tui.jsonc".text = builtins.toJSON {
-        plugin = [ "./herdr-tui-session.js" ];
-      };
-      # OpenCode V2 loads the TUI plugin from a directory named in cli.json.
-      # The directory entrypoint re-exports herdr-tui-session.js.
       "opencode/herdr-opencode/tui.js".source =
         "${herdrIntegrations}/home/.config/opencode/herdr-opencode/tui.js";
-      "opencode/cli.json".text = builtins.toJSON {
-        plugins = [ "./herdr-opencode" ];
-      };
     })
   ];
-
   assertions = [
     {
       assertion = herdrIntegrations.version == pkgs.herdr.version;
       message = "The OpenCode Herdr integrations must match Herdr ${pkgs.herdr.version}.";
     }
   ];
-
   programs = {
     bash.shellAliases = lib.mkIf (config.programs.opencode.enable && fencedEnabled) {
       opencode-fenced = lib.getExe opencodeFencedPackage;
@@ -282,292 +199,64 @@ in
     fish.shellAliases = lib.mkIf (config.programs.opencode.enable && fencedEnabled) {
       opencode-fenced = lib.getExe opencodeFencedPackage;
     };
+    zsh.shellAliases = lib.mkIf (config.programs.opencode.enable && fencedEnabled) {
+      opencode-fenced = lib.getExe opencodeFencedPackage;
+    };
     opencode = lib.mkMerge [
-      {
-        enable = lib.mkDefault defaultOpenCodeEnabled;
-      }
+      { enable = lib.mkDefault defaultOpenCodeEnabled; }
       (lib.mkIf config.programs.opencode.enable {
         package = opencodeLauncherPackage;
         settings = {
-          # Nix owns the installed OpenCode version, so upstream self-updates are
-          # disabled. Updates should flow through the flake inputs instead.
-          autoupdate = false;
-
-          # Block session sharing entirely. The default "manual" still allows
-          # /share; "disabled" removes it. OpenCode has no usage telemetry per
-          # its maintainers, so this is the main privacy control.
+          update = "disable";
           share = "disabled";
-
-          # OpenTelemetry is off by default; set it explicitly.
-          experimental = {
-            openTelemetry = false;
-          };
-
-          # Deny the built-in web tools so web access routes through the Exa MCP
-          # server. OpenCode keeps a denied tool in the model's toolset (a small
-          # token cost) but blocks the call; this is the supported path. MCP tools
-          # are namespaced separately, so the Exa tools stay available.
-          permission = {
-            webfetch = "deny";
-            websearch = "deny";
-          };
-
-          # Restrict the /models picker to an explicit whitelist.
-          # enabled_providers keeps only these providers; the per-provider
-          # whitelist then hides every model except the listed ones. The
-          # default model must appear in its provider's whitelist.
-          enabled_providers = [
-            "anthropic"
-            "google"
-            "openai"
-            "opencode"
-            "opencode-go"
+          permissions = [
+            {
+              action = "external_directory";
+              resource = "*";
+              effect = "ask";
+            }
+            {
+              action = "webfetch";
+              resource = "*";
+              effect = "deny";
+            }
+            {
+              action = "websearch";
+              resource = "*";
+              effect = "deny";
+            }
           ];
           model = "opencode-go/glm-5.3-flash";
-          provider = {
-            # One Zen API key authenticates both OpenCode relays: the Zen
-            # gateway (provider "opencode") and the Go gateway (provider
-            # "opencode-go").
-            opencode = lib.mkIf zenEnabled {
-              options.apiKey = "{env:OPENCODE_ZEN_API_KEY}";
-              whitelist = [
-                "deepseek-v4-pro"
-                "glm-5.3"
-                "glm-5.3-flash"
-                "grok-4.6"
-                "kimi-k3"
-                "minimax-m3"
-              ];
-            };
-            opencode-go = lib.mkIf zenEnabled {
-              options.apiKey = "{env:OPENCODE_ZEN_API_KEY}";
-              whitelist = [
-                "deepseek-v4-pro"
-                "deepseek-v4.1-flash"
-                "glm-5.3"
-                "glm-5.3-flash"
-                "grok-4.6"
-                "kimi-k3"
-                "minimax-m3"
-                "qwen3.8-flash"
-                "qwen3.8-max"
-              ];
-            };
-            anthropic = {
-              whitelist = [
-                "claude-fable-5-1"
-                "claude-haiku-5-5"
-                "claude-opus-5-5"
-                "claude-opus-5-5-fast"
-                "claude-sonnet-5-5"
-              ];
-              # The bundled models.dev catalogue in OpenCode 1.18.35 predates
-              # Claude Haiku 5.5. Remove this entry when OpenCode includes the
-              # model. Reasoning enables the built-in adaptive effort variants.
-              models."claude-haiku-5-5" = {
-                name = "Claude Haiku 5.5";
-                attachment = true;
-                reasoning = true;
-                temperature = false;
-                tool_call = true;
-                release_date = "2026-10-07";
-                modalities = {
-                  input = [
-                    "text"
-                    "image"
-                  ];
-                  output = [ "text" ];
-                };
-                limit = {
-                  context = 1000000;
-                  output = 128000;
-                };
-              };
-            };
-            google = {
-              whitelist = [
-                "gemini-3.8-flash"
-              ];
-            };
-            openai = {
-              whitelist = [
-                "gpt-5.3-codex-spark"
-                "gpt-5.6-luna"
-                "gpt-5.6-luna-fast"
-                "gpt-5.6-sol"
-                "gpt-5.6-sol-fast"
-                "gpt-5.6-terra"
-                "gpt-5.6-terra-fast"
-                "gpt-6-astra"
-                "gpt-6-astra-fast"
-                "gpt-6-luna"
-                "gpt-6.1-sol"
-              ];
-              # Declare the real context window for the six subscription
-              # models, overriding the bundled models.dev snapshot, which
-              # reports a smaller window. Output is declared as 38,400 so
-              # automatic compaction starts when estimated tokens reach the
-              # context limit minus max(output reserve, buffer) = 384,000 -
-              # 38,400 = 345,600, matching Codex's 90%-of-window trigger.
-              # OPENCODE_DISABLE_MODELS_FETCH=1 keeps the bundled catalogue,
-              # so these limits are the authoritative source.
-              models = {
-                "gpt-5.6-sol".limit = {
-                  context = 384000;
-                  output = 38400;
-                };
-                "gpt-5.6-terra".limit = {
-                  context = 384000;
-                  output = 38400;
-                };
-                "gpt-5.6-luna".limit = {
-                  context = 384000;
-                  output = 38400;
-                };
-                "gpt-6-astra".limit = {
-                  context = 384000;
-                  output = 38400;
-                };
-                "gpt-6-luna".limit = {
-                  context = 384000;
-                  output = 38400;
-                };
-                "gpt-6.1-sol".limit = {
-                  context = 384000;
-                  output = 38400;
-                };
-              };
-            };
+          providers = {
+            opencode = lib.mkIf gatewayEnabled { settings.apiKey = "{env:OPENCODE_API_KEY}"; };
+            opencode-go = lib.mkIf gatewayEnabled { settings.apiKey = "{env:OPENCODE_API_KEY}"; };
+            openai.models =
+              lib.genAttrs
+                [
+                  "gpt-5.6-sol"
+                  "gpt-5.6-terra"
+                  "gpt-5.6-luna"
+                  "gpt-6-astra"
+                  "gpt-6-luna"
+                  "gpt-6.1-sol"
+                ]
+                (_: {
+                  limit = {
+                    context = 384000;
+                    output = 38400;
+                  };
+                });
           };
-
-          # Automatic compaction. The trigger is the model's context limit
-          # minus max(output reserve, buffer); with the per-model limits above
-          # and the 20,000-token default buffer, OpenCode compacts at 345,600
-          # estimated tokens. keep.tokens stays at the 15,000-token default.
-          # OpenCode also recognises provider context-overflow errors and
-          # compacts once to retry when auto is true.
-          compaction = {
-            auto = true; # Compact automatically at the trigger above
-            prune = true; # Keep pruning old tool outputs to save tokens
-          };
-
-          # Override built-in /init with custom create-agents-md command
-          command = {
-            init = {
-              description = "Create AGENTS.md ${robotEmoji}";
-              agent = "rosey";
-              template = builtins.readFile ../assistants/commands/create-agents-md/command.md;
-            };
-          };
-        };
-        tui = {
-          tui = {
-            diff_style = "stacked";
-            scroll_acceleration = {
-              enabled = true;
-            };
-          };
-
-          # ------------------------------------------------------------
-          # Keybindings - Standard CUA text editor navigation
-          # ------------------------------------------------------------
-          keybinds = {
-            # Core principle: Arrow keys, Home, End, and standard navigation
-            # work like a normal text editor. PgUp/PgDn scroll chat history.
-            # Full CUA (Common User Access) clipboard support.
-
-            # Application control
-            app_exit = "ctrl+d"; # Quit application, unified across all agents on Ctrl+D
-            session_interrupt = "escape"; # Interrupt model (keep default)
-
-            # Text input cursor movement - standard arrow keys only
-            input_move_up = "up";
-            input_move_down = "down";
-            input_move_left = "left";
-            input_move_right = "right";
-
-            # History navigation - use Ctrl+Up/Down (avoiding Alt conflicts with window manager)
-            history_previous = "ctrl+up";
-            history_next = "ctrl+down";
-
-            # Home/End - dedicated to line navigation in input
-            input_line_home = "home";
-            input_line_end = "end";
-            input_buffer_home = "ctrl+home"; # Top of input buffer
-            input_buffer_end = "ctrl+end"; # Bottom of input buffer
-
-            # Message navigation - PgUp/PgDn for scrolling
-            messages_first = "shift+pageup"; # Jump to first message
-            messages_last = "shift+pagedown"; # Jump to last message
-            messages_page_up = "pageup"; # Scroll up one page
-            messages_page_down = "pagedown"; # Scroll down one page
-            messages_next = "none"; # Not bound (use PgDn to scroll)
-            messages_previous = "none"; # Not bound (use PgUp to scroll)
-
-            # Newline insertion - Shift+Enter (primary) plus alternatives
-            input_newline = "shift+return,ctrl+return";
-
-            # Submit on Enter
-            input_submit = "return";
-
-            # Selection with Shift+Arrows (standard text editor)
-            input_select_up = "shift+up";
-            input_select_down = "shift+down";
-            input_select_left = "shift+left";
-            input_select_right = "shift+right";
-            input_select_line_home = "shift+home"; # Select to line start
-            input_select_line_end = "shift+end"; # Select to line end
-            input_select_buffer_home = "ctrl+shift+home,ctrl+a"; # Select to buffer start (Ctrl+A = CUA "Select All")
-            input_select_buffer_end = "ctrl+shift+end"; # Select to buffer end
-
-            # Note: Ctrl+A (Select All in CUA) selects from cursor to buffer start.
-            # For true "select all": Press Ctrl+End (go to end) then Ctrl+A (select to start).
-            # Most of the time you're already at the end when typing, so Ctrl+A works as expected.
-
-            # Word movement (standard Windows/Linux text editor style)
-            input_word_forward = "ctrl+right";
-            input_word_backward = "ctrl+left";
-            input_select_word_forward = "ctrl+shift+right";
-            input_select_word_backward = "ctrl+shift+left";
-
-            # Standard CUA (Common User Access) clipboard
-            input_clear = "none"; # No clear binding needed (just select all & delete if needed)
-            input_paste = "ctrl+v,shift+insert,ctrl+shift+v"; # Paste - standard CUA + terminal paste
-            # Pending https://github.com/anomalyco/opencode/pull/7520
-            #input_copy = "ctrl+insert"; # Copy selection (CUA standard)
-            #input_cut = "shift+delete"; # Cut selection (CUA standard)
-            input_undo = "ctrl+z"; # Undo
-            input_redo = "ctrl+shift+z"; # Redo
-
-            # Keyboard-based text copying in OpenCode:
-            # 1. Select text with Shift+Arrow keys (or other input_select_* bindings)
-            # 2. Press Ctrl+Insert to copy selected text to clipboard (CUA standard)
-            # 3. Press Shift+Delete to cut selected text (copy + delete) (CUA standard)
-            # 4. Press Ctrl+V or Shift+Insert to paste
-            #
-            # CUA-standard keybindings (Common User Access from IBM/Windows/Office):
-            # - Work reliably across all terminal emulators (not intercepted)
-            # - Align with existing input_paste default (Shift+Insert)
-            # - Avoid conflicts with terminal native shortcuts (Ctrl+Shift+C/V)
-            #
-            # Alternative - Mouse-based copying:
-            # - SELECT TEXT WITH MOUSE: automatically copied via OSC52
-            # - Ctrl+Shift+V pastes (terminal native)
-            # - Ctrl+V pastes (CUA standard, configured above)
-            # - Shift+Insert pastes (CUA alternative, configured above)
-
-            # Delete operations - standard text editor with CUA
-            input_backspace = "backspace";
-            input_delete = "delete"; # Plain Delete key only (Shift+Del is for cut in CUA)
-            input_delete_word_forward = "ctrl+delete"; # Delete word forward
-            input_delete_word_backward = "ctrl+backspace"; # Delete word backward
-            input_delete_line = "ctrl+shift+k"; # Delete entire line
+          # V2 uses the resolved input limit, then its default reserve. Keep the
+          # model limits without imposing a new buffer on unrelated providers.
+          compaction.auto = true;
+          commands.init = {
+            description = "Create AGENTS.md ${robotEmoji}";
+            agent = "rosey";
+            template = builtins.readFile ../assistants/commands/create-agents-md/command.md;
           };
         };
       })
     ];
-    zsh.shellAliases = lib.mkIf (config.programs.opencode.enable && fencedEnabled) {
-      opencode-fenced = lib.getExe opencodeFencedPackage;
-    };
   };
 }

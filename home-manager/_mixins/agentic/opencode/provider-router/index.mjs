@@ -1,215 +1,91 @@
-const markerKey = "nix-config.opencode-provider-router.v1";
+const markerKey = "nix-config.opencode-provider-router.v2";
 
-function data(result) {
-  if (result.error || result.data === undefined) {
-    throw new Error("Provider router: OpenCode lookup failed.");
-  }
-  return result.data;
-}
-
-function taskReferences(messages, sessionID) {
-  return messages.flatMap(({ info, parts }) =>
-    info.role === "assistant"
-      ? parts
-          .filter(
-            (part) =>
-              part.type === "tool" &&
-              part.tool === "task" &&
-              part.state.metadata?.sessionId === sessionID,
-          )
-          .map((part) => ({ info, part }))
+function references(messages, sessionID) {
+  return messages.flatMap((message) =>
+    message.type === "assistant"
+      ? message.content.filter((part) =>
+          part.type === "tool" && part.name === "subagent" &&
+          part.state.metadata?.sessionID === sessionID,
+        ).map((part) => ({ message, part }))
       : [],
   );
 }
 
-function savedRoute(history, parentID, agent, references) {
-  const saved = [];
-  for (const { info, parts } of history) {
-    for (const part of parts) {
-      if (
-        part.type !== "text" ||
-        !Object.hasOwn(part.metadata ?? {}, markerKey)
-      )
-        continue;
-      const marker = part.metadata[markerKey];
-      if (!marker || typeof marker !== "object" || Array.isArray(marker)) {
-        throw new Error("Provider router: invalid saved route.");
-      }
-      const origin = references.filter(
-        ({ part: task }) => task.id === marker.taskID,
-      );
-      if (
-        info.role !== "user" ||
-        info.agent !== agent ||
-        marker.agent !== agent ||
-        marker.parentID !== parentID ||
-        marker.providerID !== info.model.providerID ||
-        marker.modelID !== info.model.modelID ||
-        (marker.variant !== undefined &&
-          marker.variant !== info.model.variant) ||
-        origin.length !== 1 ||
-        origin[0].info.providerID !== marker.providerID ||
-        origin[0].part.state.input.subagent_type !== agent
-      ) {
-        throw new Error("Provider router: invalid saved route.");
-      }
-      saved.push(marker);
-    }
+async function validateModel(ctx, route) {
+  const { data: models } = await ctx.model.list({ location: ctx.location });
+  const model = models.find((item) => item.providerID === route.providerID && item.id === route.id);
+  if (!model || model.disabled) {
+    throw new Error(`Provider router: unavailable exact model ${route.providerID}/${route.id}.`);
   }
-  if (
-    saved.some(
-      (route) =>
-        route.providerID !== saved[0].providerID ||
-        route.modelID !== saved[0].modelID ||
-        route.variant !== saved[0].variant ||
-        route.taskID !== saved[0].taskID,
-    )
-  ) {
-    throw new Error("Provider router: conflicting saved routes.");
-  }
-  return saved[0];
-}
-
-async function validateModel(client, route) {
-  const catalogue = data(await client.provider.list());
-  const provider = catalogue.all.find((item) => item.id === route.providerID);
-  if (
-    !catalogue.connected.includes(route.providerID) ||
-    !provider ||
-    !Object.hasOwn(provider.models, route.modelID) ||
-    provider.models[route.modelID].id !== route.modelID
-  ) {
-    throw new Error(
-      `Provider router: unavailable exact model ${route.providerID}/${route.modelID}.`,
-    );
-  }
-  if (
-    route.variant !== undefined &&
-    !Object.hasOwn(provider.models[route.modelID].variants ?? {}, route.variant)
-  ) {
-    throw new Error(
-      `Provider router: unavailable variant ${route.variant} for ${route.providerID}/${route.modelID}.`,
-    );
+  if (route.variant !== undefined && !model.variants.some((item) => item.id === route.variant)) {
+    throw new Error(`Provider router: unavailable variant ${route.variant}.`);
   }
 }
 
-export default function createRouter(client, routes, variants = {}) {
+export default async function createRouter(ctx, routes, variants = {}) {
   const entering = new Set();
-  const active = new Map();
-
-  return {
-    "chat.message": async (input, output) => {
-      const sessionID = input.sessionID;
-      const child = data(await client.session.get({ path: { id: sessionID } }));
-      if (!child.parentID) return;
-      const parent = data(
-        await client.session.get({ path: { id: child.parentID } }),
-      );
-      if (parent.parentID) return;
-      if (entering.has(sessionID)) {
-        throw new Error(
-          "Provider router: concurrent child prompts are unsupported.",
-        );
+  await ctx.session.hook("prompt", async (event) => {
+    const sessionID = event.sessionID;
+    const child = await ctx.session.get({ sessionID });
+    if (!child.parentID) return;
+    const parent = await ctx.session.get({ sessionID: child.parentID });
+    if (parent.parentID) return;
+    if (entering.has(sessionID)) throw new Error("Provider router: concurrent child prompts are unsupported.");
+    entering.add(sessionID);
+    try {
+      const { data: messages } = await ctx.session.context({ sessionID: parent.id });
+      const matches = references(messages, sessionID);
+      const running = matches.filter(({ part }) => part.state.status === "running");
+      const key = `${markerKey}/${sessionID}`;
+      const saved = await ctx.storage.get(key);
+      if (saved !== undefined && (!saved || typeof saved !== "object" || Array.isArray(saved))) {
+        throw new Error("Provider router: invalid saved route.");
       }
-      // Acquire before history lookups, including the gap before message persistence.
-      entering.add(sessionID);
-      try {
-        const references = taskReferences(
-          data(await client.session.messages({ path: { id: parent.id } })),
-          sessionID,
-        );
-        const previous = active.get(sessionID);
-        if (previous) {
-          if (
-            references.some(
-              ({ part }) =>
-                part.id === previous && part.state.status === "running",
-            )
-          ) {
-            throw new Error(
-              "Provider router: concurrent child prompts are unsupported.",
-            );
-          }
-          active.delete(sessionID);
-        }
-        const running = references.filter(
-          ({ part }) => part.state.status === "running",
-        );
-        if (running.length !== 1) return;
-        const { info, part: task } = running[0];
-        const agent = output.message.agent;
-        if (task.state.input.subagent_type !== agent) return;
-        const history = data(
-          await client.session.messages({ path: { id: sessionID } }),
-        );
-        if (
-          history.some(({ parts }) =>
-            parts.some(
-              (part) =>
-                part.type === "text" &&
-                part.metadata?.[markerKey]?.promptTaskID === task.id,
-            ),
-          )
-        ) {
-          throw new Error(
-            "Provider router: concurrent child prompts are unsupported.",
-          );
-        }
-        let route = savedRoute(history, parent.id, agent, references);
-        if (!route) {
-          // Never retrofit a route onto an existing native child.
-          if (history.length !== 0) return;
-          const modelID = routes[agent]?.[info.providerID];
-          if (modelID === undefined) return;
-          if (typeof modelID !== "string" || !/^[^\s/]+$/.test(modelID)) {
-            throw new Error("Provider router: invalid exact model route.");
-          }
-          const variant = variants[agent]?.[info.providerID];
-          if (
-            variant !== undefined &&
-            (typeof variant !== "string" || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(variant))
-          ) {
-            throw new Error("Provider router: invalid variant route.");
-          }
-          route = {
-            parentID: parent.id,
-            taskID: task.id,
-            agent,
-            providerID: info.providerID,
-            modelID,
-            ...(variant === undefined ? {} : { variant }),
-          };
-        }
-        const text = output.parts.find((part) => part.type === "text");
-        if (!text) return;
-        await validateModel(client, route);
-        // OpenCode 1.18.30 persists these live objects after chat.message returns.
-        Object.assign(output.message.model, {
-          providerID: route.providerID,
-          modelID: route.modelID,
-          ...(route.variant === undefined ? {} : { variant: route.variant }),
-        });
-        text.metadata = {
-          ...text.metadata,
-          [markerKey]: { ...route, promptTaskID: task.id },
-        };
-        active.set(sessionID, task.id);
-      } finally {
-        entering.delete(sessionID);
-      }
-    },
-    event: async ({ event }) => {
-      if (event.type !== "message.part.updated") return;
-      const part = event.properties.part;
-      if (
-        part.type !== "tool" ||
-        part.tool !== "task" ||
-        part.state.status === "running"
-      )
+      if (running.length !== 1) {
+        if (saved !== undefined) throw new Error("Provider router: ambiguous saved-route invocation.");
         return;
-      const sessionID = part.state.metadata?.sessionId;
-      if (sessionID && active.get(sessionID) === part.id)
-        active.delete(sessionID);
-    },
-  };
+      }
+      const { message, part } = running[0];
+      const agent = child.agent;
+      if (part.state.input.agent !== agent) return;
+      // An explicit native model override belongs to the caller, not the router.
+      if (part.state.input.model) return;
+      let route = saved;
+      if (route) {
+        if (route.parentID !== parent.id || route.agent !== agent ||
+            typeof route.providerID !== "string" || typeof route.id !== "string" ||
+            typeof route.taskID !== "string" || typeof route.promptTaskID !== "string" ||
+            (route.variant !== undefined && typeof route.variant !== "string")) {
+          throw new Error("Provider router: invalid saved route.");
+        }
+        if (route.promptTaskID === part.id) {
+          throw new Error("Provider router: concurrent child prompts are unsupported.");
+        }
+      } else {
+        const { data: history } = await ctx.session.context({ sessionID });
+        if (history.length !== 0) return;
+        const providerID = message.model.providerID;
+        const id = routes[agent]?.[providerID];
+        if (id === undefined) return;
+        if (typeof id !== "string" || !/^[^\s/]+$/.test(id)) {
+          throw new Error("Provider router: invalid exact model route.");
+        }
+        const variant = variants[agent]?.[providerID] ?? child.model?.variant;
+        if (variant !== undefined && (typeof variant !== "string" || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(variant))) {
+          throw new Error("Provider router: invalid variant route.");
+        }
+        route = { parentID: parent.id, taskID: part.id, agent, providerID, id,
+          ...(variant === undefined ? {} : { variant }) };
+      }
+      await validateModel(ctx, route);
+      const model = { providerID: route.providerID, id: route.id,
+        ...(route.variant === undefined ? {} : { variant: route.variant }) };
+      // Storage survives compaction. Reserve the invocation before admitting its prompt.
+      await ctx.storage.set(key, { ...route, promptTaskID: part.id });
+      await ctx.session.switchModel({ sessionID, model });
+      event.metadata = { ...event.metadata, [markerKey]: { ...route, promptTaskID: part.id } };
+    } finally {
+      entering.delete(sessionID);
+    }
+  });
 }

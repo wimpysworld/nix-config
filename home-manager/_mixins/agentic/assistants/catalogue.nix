@@ -28,7 +28,7 @@ let
       pi-agent = "Agent worker: ${agent}";
       codex-agent = "spawn_agent: ${agent}";
       codex-inline = "Inline persona: ${agent}";
-      opencode-subtask = "Native subtask: ${execution.native.agent or "client selection"}";
+      opencode-subagent = "Native subagent: ${execution.native.agent or "client selection"}";
       body =
         if execution.native ? agent then
           "Body, native agent: ${execution.native.agent}"
@@ -38,8 +38,8 @@ let
     .${execution.mode}
     + lib.optionalString (execution.native ? context) ", native context: ${execution.native.context}"
     + lib.optionalString (
-      execution.native ? subtask
-    ) ", subtask: ${builtins.toJSON execution.native.subtask}"
+      execution.native ? subagent
+    ) ", subagent: ${builtins.toJSON execution.native.subagent}"
     + lib.optionalString (execution.native ? model) ", command model: ${execution.native.model}";
   commands = lib.mapAttrsToList (
     name: entry:
@@ -59,7 +59,7 @@ let
         argumentHint = execution.native.argument-hint or null;
         behaviour = entryText execution;
         nativeContext = execution.native.context or null;
-        nativeSubtask = execution.native.subtask or null;
+        nativeSubagent = execution.native.subagent or null;
         model = execution.native.model or null;
       }) executions;
     }
@@ -109,7 +109,7 @@ let
     ];
     opencode = [
       "mode"
-      "permission"
+      "permissions"
     ];
     codex = [ "sandbox_mode" ];
     pi = [
@@ -318,7 +318,7 @@ let
           ]
         ) clients
       ) agentRecords
-      + "\n## Agent model defaults\n\nThese are declared agent defaults, not command or caller model assignments. Unset values leave runtime fallback unchanged. Provider routes depend on the active inference provider. OpenCode provider routes apply only to direct-root native task children, not direct slash-command bindings. Explicit supported overrides take precedence. Inline personas do not apply agent model defaults.\n\n"
+      + "\n## Agent model defaults\n\nThese are declared agent defaults, not command or caller model assignments. Unset values leave runtime fallback unchanged. Provider routes depend on the active inference provider. OpenCode provider routes apply only to direct-root native subagent children, not direct slash-command bindings. Explicit supported overrides take precedence. Inline personas do not apply agent model defaults.\n\n"
       + row [
         "Agent"
         "Client"

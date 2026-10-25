@@ -319,27 +319,19 @@ rec {
     in
     lib.mapAttrs render (lib.filterAttrs keep servers);
 
-  # opencodeServers: OpenCode's `mcp` settings block. Bearer-auth servers
-  # emit `headers.Authorization = "Bearer {env:<envVar>}"` per AC 7 of
-  # MCP-PROPOSAL.md.
-  #
-  # Per-consumer disable does NOT omit the entry: AC 8 requires the server
-  # to remain visible in the OpenCode TUI with `enabled = false` so it can
-  # be toggled at runtime. The renderer therefore filters only on the
-  # global `enabled` flag and reflects `consumers.opencode.enabled` into
-  # the emitted `enabled` field.
+  # OpenCode keeps per-consumer disabled servers available for manual toggles.
   opencodeServers =
     let
       keep = _: s: s.enabled or true;
       render =
         _: s:
         let
-          enabled = s.consumers.opencode.enabled or true;
+          disabled = !(s.consumers.opencode.enabled or true);
         in
         if s.transport == "http" then
           {
             type = "remote";
-            inherit enabled;
+            inherit disabled;
             inherit (s) url;
           }
           // lib.optionalAttrs (s.auth or null != null && s.auth.kind == "bearer") {
@@ -349,14 +341,14 @@ rec {
           }
           // lib.optionalAttrs (s.oauth or null != null) {
             oauth = {
-              clientId = s.oauth.clientId;
-              inherit (s.oauth) redirectUri;
+              client_id = s.oauth.clientId;
+              redirect_uri = s.oauth.redirectUri;
             };
           }
         else
           {
             type = "local";
-            inherit enabled;
+            inherit disabled;
             # Canonical schema stores `command` as a string and `args` as a
             # list; OpenCode wants them concatenated into a single argv list.
             command = [ s.command ] ++ (s.args or [ ]);
@@ -364,23 +356,16 @@ rec {
     in
     lib.mapAttrs render (lib.filterAttrs keep servers);
 
-  # OpenCode has no per-server tool exclusion field. Its native permission map
-  # accepts exact tool names, and MCP tools use `<server>_<tool>`. Denying those
-  # names blocks calls while leaving every other tool from the server available.
-  opencodeToolPermissions =
-    let
-      keep = _: s: s.enabled or true;
-      rendered = lib.concatLists (
-        lib.mapAttrsToList (
-          serverName: s:
-          map (toolName: {
-            name = "${serverName}_${toolName}";
-            value = "deny";
-          }) (s.consumers.opencode.disabledTools or [ ])
-        ) (lib.filterAttrs keep servers)
-      );
-    in
-    lib.listToAttrs rendered;
+  opencodeToolPermissions = lib.concatLists (
+    lib.mapAttrsToList (
+      serverName: s:
+      map (toolName: {
+        action = "${serverName}_${toolName}";
+        resource = "*";
+        effect = "deny";
+      }) (s.consumers.opencode.disabledTools or [ ])
+    ) (lib.filterAttrs (_: s: s.enabled or true) servers)
+  );
 
   # piServers: Pi adapter server entries for `~/.pi/agent/mcp-adapter.json`.
   # `pi-mcp-adapter` supports per-server `enabled` flags, so

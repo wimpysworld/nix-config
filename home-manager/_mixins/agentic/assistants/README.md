@@ -90,7 +90,7 @@ This aggregate rule is guidance, not a shared scheduler. Workers cannot launch a
 | Claude Code | `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS = "12"` | Concurrent subagents, with spawn depth one. No total-spawn setting is configured. |
 | Codex | `agents.max_concurrent_threads_per_session = 12` | Open child threads per session, not only active workers, with depth one. |
 | Pi | `maxConcurrent = 12`, `maxConcurrentForeground = 12` | Separate direct pools, with depth one. Each workflow has a separate twelve-call active limit and the native 1000-call total cap. |
-| OpenCode | No supported native worker concurrency setting | Shared aggregate guidance applies. Specialist `task` access remains denied. |
+| OpenCode | No supported native worker concurrency setting | Shared aggregate guidance applies. Specialist `subagent` access remains denied. |
 
 Native CPU capacity can lower Pi workflow concurrency. Claude Code's parallel tool scheduler remains unchanged because it is separate from worker concurrency.
 
@@ -211,13 +211,18 @@ Agents without routing defaults inherit the model selected in the coding tool. T
 
 Agent `header.toml` files are the sole routing default source for Claude Code, Codex, and Pi. Commands and ordinary skills remain model-neutral. Explicit launch-time child model, thinking, or effort overrides remain supported. Caller-context commands never change the caller's model, whether or not they have an agent binding. Direct `make-commit` and `make-pr` launches use Garfield's agent defaults on Claude Code, Codex, and Pi. Explicit coordinator inline reuse retains the caller's model.
 
-The [OpenCode router](../opencode/README.md#provider-router-prototype) installs whenever OpenCode is enabled, without a version restriction. Version 1.18.30 is the tested and source-reviewed version. Google and other missing routes retain native behaviour. Existing OpenCode command model metadata remains supported. OpenCode's direct slash commands use native agent binding. Do not assume that binding uses the router, which applies only to direct-root native task children.
+The [OpenCode router](../opencode/README.md#provider-routing) installs whenever OpenCode is enabled. Google and other missing routes retain native behaviour. Existing OpenCode command model metadata remains supported. OpenCode's direct slash commands use native agent binding. Do not assume that binding uses the router, which applies only to direct-root native subagent children.
 
 ---
 
 ## Platform Delivery
 
 `compose.nix` reads `command.toml` for each command and `header.toml` for each agent, skill, or instruction source. It projects metadata into each client's native format.
+
+OpenCode receives native V2 metadata. The projection converts source aliases `prompt`, `disable`, `permission`, `options`, and `subtask` to their native fields.
+Permission maps retain their generated key order, with native permission arrays appended unchanged. Worker `task` denies become `subagent` denies.
+Use `routing.opencode.variant` with a model to emit `provider/model#variant`. OpenCode loads an agent's Markdown body as its `system` prompt.
+V2 does not run language servers. OpenCode users must run the installed `semgrep` command through the existing `semgrep` skill for security checks.
 
 | Table | Purpose |
 | --- | --- |
@@ -243,7 +248,7 @@ Pi composition routes through `compose.composeAgentFromPrompt "pi"` and `compose
 
 Generated child tasks carry a shared worker contract. Workers complete assigned work directly, launch no agents, and return to the parent. They follow nested workflow bodies without executing generated launch wrappers. If more specialist work is necessary, they return a bounded request after completing independent assigned work. The coordinator dispatches that work and continues the original task.
 
-Launch wrappers require a bounded packet with scope, exact arguments, existing authority, stop condition, validation, and output. Claude Code uses the Task wrapper by default for agent-bound commands. Set `[compose.claude] use-task = false` to retain the inline `@agent` form. OpenCode native subtask bodies carry the contract, but explicit `subtask = false` keeps the caller context.
+Launch wrappers require a bounded packet with scope, exact arguments, existing authority, stop condition, validation, and output. Claude Code uses the Task wrapper by default for agent-bound commands. Set `[compose.claude] use-task = false` to retain the inline `@agent` form. OpenCode native subagent bodies carry the contract, but explicit `subagent = false` keeps the caller context.
 
 Command-specific coordinator guidance lives in `command.toml`. `make-commit` supplies packet preparation, and `make-pr` also supplies the consent-based watch continuation. See [Coordinator guidance](skills/write-command/SKILL.md#coordinator-guidance) for the schema, wrapper placement, bypass rules, and OpenCode limits.
 
@@ -254,11 +259,11 @@ Set `[compose] caller-context = true` to preserve the caller's role by suppressi
 | Client | Output for `caller-context = true` |
 | --- | --- |
 | Claude Code | No `@agent` prefix, Task wrapper, or native `agent` and `context` overrides. |
-| OpenCode | No `agent` binding and `subtask: false`, so the caller retains its agent and permissions. |
+| OpenCode | No `agent` binding and `subagent: false`, so the caller retains its agent and permissions. |
 | Pi | Command body without a subagent launch wrapper. |
 | Codex | Command body without `spawn_agent` or an inline specialist persona. The manual-only companion policy remains. |
 
-Caller-context commands retain the caller's model. Claude Code, Codex, and Pi reject non-empty command routing in all execution modes. Codex launches the selected agent role without a command-specific role. OpenCode provider routes apply only to direct-root native task children.
+Caller-context commands retain the caller's model. Claude Code, Codex, and Pi reject non-empty command routing in all execution modes. Codex launches the selected agent role without a command-specific role. OpenCode provider routes apply only to direct-root native subagent children.
 
 Per-client controls remain available when `caller-context` is false. In Codex, `[compose.codex] spawn-agent = false` embeds the specialist persona in the caller's context. Use `caller-context = true` to preserve the caller's role instead.
 
@@ -281,7 +286,7 @@ Tintinweb defaults are `prompt_mode: replace`, `extensions: true`, `skills: true
 The Pi composer adds the worker contract, shared safety rules, and house style without changing specialist source bodies or other clients.
 Omit `inherit_context` so callers can select fresh or inherited context. The global `maxSubagentDepth: 1` prevents nested delegation.
 
-OpenCode `permission` headers are not mapped to Pi. Pi supports an explicit `tools` allowlist for subagents, but OpenCode's allow/deny permission model is not equivalent.
+OpenCode `permissions` headers are not mapped to Pi. Pi supports an explicit `tools` allowlist for subagents, but OpenCode's allow/deny permission model is not equivalent.
 
 ### Provider routing
 

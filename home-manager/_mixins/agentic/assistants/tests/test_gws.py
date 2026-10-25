@@ -78,6 +78,7 @@ class GwsTests(unittest.TestCase):
             noughtyLib = {{
               userHasTag = tag: developer && tag == "developer";
               hostHasTag = tag: workHost && tag == "cg";
+              isHost = _: false;
             }};
             composer = import {ASSISTANTS}/compose.nix {{
               inherit lib pkgs;
@@ -107,7 +108,8 @@ class GwsTests(unittest.TestCase):
               config.xdg.configHome = "/fixture/.config";
             }};
             fence = import {REPO}/home-manager/_mixins/agentic/fence/default.nix {{
-              inherit lib pkgs noughtyLib;
+              inherit lib noughtyLib;
+              pkgs = pkgs // {{ herdr-ctx-bar.passthru.pluginId = "fixture-context-bar"; }};
               inherit (flake) inputs;
               config = {{
                 noughty.host.is = {{ server = false; linux = true; darwin = false; }};

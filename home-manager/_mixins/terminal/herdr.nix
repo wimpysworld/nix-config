@@ -855,8 +855,7 @@ in
 
     # The env file must exist before sd-switch starts the service. Roamgate
     # exits at start when the PIN is not 6 to 12 ASCII digits. Ranger's
-    # `opencode-go` provider reads its key from `OPENCODE_API_KEY`. The
-    # OpenCode Zen key of the OpenCode Go subscription is that key.
+    # `opencode-go` provider reads the workspace key from `OPENCODE_API_KEY`.
     home.activation.roamgateEnv = lib.mkIf roamgateEnabled (mkEnvFileStep {
       step = "roamgateEnv";
       unit = "roamgate.service";
@@ -875,7 +874,7 @@ in
         }
         {
           var = "OPENCODE_API_KEY";
-          key = "OPENCODE_ZEN_API_KEY";
+          key = "OPENCODE_API_KEY";
           sopsFile = ../../../secrets/ai.yaml;
         }
       ];

@@ -225,6 +225,9 @@ currently exports:
 - `WEBHOOK_PORT`
 - `WEBHOOK_SECRET`
 - `OPENCODE_ZEN_API_KEY`
+- `OPENCODE_GO_API_KEY`
+- `OPENCODE_ZEN_BASE_URL`
+- `OPENCODE_GO_BASE_URL`
 - `CONTEXT7_API_KEY`
 - `JINA_API_KEY`
 - `LINEAR_API_KEY`
@@ -246,8 +249,8 @@ Operationally:
 - `auth.json` is seeded from `secrets/hermes-auth.json`
 - OpenAI device auth for `openai-codex` comes from `auth.json`, not from an
   `OPENAI_API_KEY` env var
-- `OPENCODE_ZEN_API_KEY` authenticates the OpenCode Zen provider and comes from
-  `secrets/ai.yaml`
+- `OPENCODE_API_KEY` in `secrets/ai.yaml` supplies the client-required runtime aliases
+  `OPENCODE_ZEN_API_KEY` and `OPENCODE_GO_API_KEY`, plus their `_HERMES_FORCE_` variants
 - `LINEAR_API_KEY` comes from the `wimpysworld` key in `secrets/linear.yaml`
 - `traya@darth.cc` Fastmail access is rendered to the Himalaya config from
   `secrets/traya.yaml`
@@ -449,10 +452,32 @@ Current source of truth:
 - `opencode-zen` is the fallback provider with `glm-5.3-flash`
 
 The OpenCode Go provider supplies the `glm-5.3-flash` model. Authentication
-uses `OPENCODE_GO_API_KEY` from the managed env file, which the template fills
-from the same sops secret as `OPENCODE_ZEN_API_KEY` because one Zen API key
-authenticates both relays. Hermes sends
-`reasoning_effort` at the top level for the primary provider.
+uses `OPENCODE_GO_API_KEY` from the managed env file. The template sources both
+OpenCode runtime aliases from the canonical `OPENCODE_API_KEY` sops secret.
+Hermes sends `reasoning_effort` at the top level for the primary provider.
+
+The managed environment overrides the pinned Hermes release's legacy endpoints:
+
+- `OPENCODE_GO_BASE_URL=https://opencode.ai/inference/go/openai/v1`
+- `OPENCODE_ZEN_BASE_URL=https://opencode.ai/inference/openai/v1`
+
+Both have `_HERMES_FORCE_` variants, like the key aliases. These supported
+provider overrides cover primary, delegated, auxiliary, and fallback requests
+without changing provider identities. The configured GLM models and Zen
+`minimax-m3` use OpenAI-compatible chat completions, as listed in the
+[Go endpoints](https://opencode.ai/docs/go/#endpoints) and
+[Zen endpoints](https://opencode.ai/docs/zen/#endpoints).
+
+The pinned source sends its own `HermesAgent` user agent and a stable
+`x-opencode-session` header for conversation requests, including auxiliary calls.
+No fixed session header is configured. These URLs select the OpenAI protocol.
+Recheck endpoint routing before selecting an Anthropic or Google protocol model.
+
+This changes inference routing, not every OpenCode API call. The pinned Go
+usage reader still calls the hard-coded `/zen/go/v1/usage` endpoint and has no
+configuration override. A complete removal of legacy API calls needs an upstream
+change. Model discovery and live authentication are not validated by the offline
+routing checks.
 
 The local llama-server stack remains available in the repo, but it is not the
 active primary route in the current deployment.

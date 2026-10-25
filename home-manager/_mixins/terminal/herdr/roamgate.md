@@ -35,7 +35,7 @@ Each activation decrypts two keys with `sops` and the user's age key, and writes
 | File | Key | Variable | Value |
 | --- | --- | --- | --- |
 | `secrets/herdr.yaml` | `ROAMGATE_PIN` | `ROAMGATE_PIN` | The login PIN for skrye and zannah. 6 to 12 ASCII digits. |
-| `secrets/ai.yaml` | `OPENCODE_ZEN_API_KEY` | `OPENCODE_API_KEY` | The OpenCode API key of the OpenCode Go subscription, for [Ranger](#ranger). |
+| `secrets/ai.yaml` | `OPENCODE_API_KEY` | `OPENCODE_API_KEY` | The workspace API key for the OpenCode Go subscription, for [Ranger](#ranger). |
 
 If the age key is missing, a file or a key is missing, decryption fails, a value is empty, or the PIN is not 6 to 12 digits, activation prints a `roamgateEnv` warning with the reason and leaves the old file. One failed key keeps both old values, so a missing API key also stops a PIN change. Roamgate exits at start with a PIN outside that rule. Activation also warns when the file is still missing. Without the file the pre-start check fails and logs `missing ~/.config/roamgate/roamgate.env`, so the server never runs without the PIN.
 
@@ -92,7 +92,7 @@ Upstream declares Bun 1.4.3. The flake has Bun 1.4.2, and the build and a short 
 ## Set up
 
 1. Put the PIN in `secrets/herdr.yaml` as `ROAMGATE_PIN` with `sops`.
-2. Make sure that `secrets/ai.yaml` has `OPENCODE_ZEN_API_KEY`, the key of the OpenCode Go subscription.
+2. Make sure that `secrets/ai.yaml` has `OPENCODE_API_KEY`, the workspace key for the OpenCode Go subscription.
 3. Run `just switch-home` on skrye and on zannah.
 4. Open the host URL and log in with the PIN.
 5. Add the app to the Home Screen on the phone, so that web push works.

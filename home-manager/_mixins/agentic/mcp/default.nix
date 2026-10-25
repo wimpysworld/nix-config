@@ -92,10 +92,9 @@ in
     })
     {
       opencode = lib.mkIf opencodeMcpEnabled {
-        enableMcpIntegration = true;
         settings = {
-          mcp = opencodeServers;
-          permission = opencodeToolPermissions;
+          mcp.servers = opencodeServers;
+          permissions = lib.mkAfter opencodeToolPermissions;
         };
       };
       zed-editor = lib.mkIf zedMcpEnabled {

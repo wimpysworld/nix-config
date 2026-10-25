@@ -1,334 +1,168 @@
+// Gate: the OpenCode launcher build runs this suite in postCheck.
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { test } from "node:test";
+import { test } from "bun:test";
 import createRouter from "./index.mjs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-const routes = {
-  garfield: { openai: "gpt-5.6-terra", anthropic: "claude-haiku-5-5" },
-};
-
+const routes = { garfield: { openai: "gpt-5.6-terra", anthropic: "claude-haiku-5-5" } };
+const key = "nix-config.opencode-provider-router.v2/child";
 function task(provider = "openai", child = "child", id = "task-1") {
-  return {
-    info: { role: "assistant", providerID: provider, modelID: "parent-model" },
-    parts: [
-      {
-        id,
-        type: "tool",
-        tool: "task",
-        state: {
-          status: "running",
-          input: { subagent_type: "garfield" },
-          metadata: { sessionId: child },
-        },
-      },
-    ],
-  };
+  return { type: "assistant", model: { providerID: provider, id: "parent-model" }, content: [{
+    type: "tool", name: "subagent", id,
+    state: { status: "running", input: { agent: "garfield" }, metadata: { sessionID: child } },
+  }] };
 }
-
-function draft(sessionID = "child", providerID = "openai", agent = "garfield") {
-  return {
-    message: {
-      id: `user-${sessionID}`,
-      role: "user",
-      sessionID,
-      agent,
-      model: { providerID, modelID: "native-model", variant: "high" },
-      tools: { task: false },
-    },
-    parts: [
-      {
-        id: "text-1",
-        type: "text",
-        text: "Do the task.",
-        metadata: { existing: true },
-      },
-    ],
-  };
-}
-
-function fixture(provider = "openai", map = routes, variants = {}) {
+async function fixture(provider = "openai", map = routes, variants = {}) {
   const state = {
-    sessions: {
-      root: {
-        id: "root",
-        permission: [{ permission: "task", action: "deny" }],
-      },
-      child: { id: "child", parentID: "root" },
-    },
+    sessions: { root: { id: "root" }, child: { id: "child", parentID: "root", agent: "garfield",
+      model: { providerID: provider, id: "native-model", variant: "high" },
+      permissions: [{ action: "subagent", resource: "*", effect: "deny" }] } },
     messages: { root: [task(provider)], child: [] },
-    catalogue: {
-      connected: ["openai", "anthropic"],
-      all: Object.entries(routes.garfield).map(([id, model]) => ({
-        id,
-        models: { [model]: { id: model, variants: { low: {}, max: {} } } },
-      })),
-    },
+    models: Object.entries(routes.garfield).map(([providerID, id]) => ({ providerID, id,
+      variants: [{ id: "high" }, { id: "max" }] })), storage: {},
   };
-  const reads = [];
-  const client = {
+  let prompt;
+  const ctx = {
+    location: { directory: "/project" },
     session: {
-      get: async ({ path: { id } }) => {
-        reads.push(["get", id]);
-        return { data: state.sessions[id] };
-      },
-      messages: async ({ path: { id } }) => {
-        reads.push(["messages", id]);
-        return { data: state.messages[id] };
-      },
+      hook: async (name, callback) => { assert.equal(name, "prompt"); prompt = callback; },
+      get: async ({ sessionID }) => structuredClone(state.sessions[sessionID]),
+      context: async ({ sessionID }) => ({ data: structuredClone(state.messages[sessionID]) }),
+      switchModel: async ({ sessionID, model }) => { state.sessions[sessionID].model = model; },
     },
-    provider: {
-      list: async () => {
-        reads.push(["providers"]);
-        return { data: state.catalogue };
-      },
+    model: { list: async () => ({ data: state.models }) },
+    storage: {
+      get: async (key) => structuredClone(state.storage[key]),
+      set: async (key, value) => { state.storage[key] = structuredClone(value); },
     },
   };
-  return { state, client, reads, hooks: createRouter(client, map, variants) };
+  const install = async (map = routes, variants = {}) => createRouter(ctx, map, variants);
+  await install(map, variants);
+  const send = async (sessionID = "child") => {
+    const event = { sessionID, messageID: "user", prompt: { text: "Do the task." }, metadata: { existing: true } };
+    await prompt(event);
+    return event;
+  };
+  const resume = (provider = "anthropic") => {
+    state.messages.root[0].content[0].state.status = "completed";
+    state.messages.root.push(task(provider, "child", "task-2"));
+  };
+  return { state, ctx, install, send, resume };
 }
-
-async function send(f, output = draft(), hooks = f.hooks) {
-  await hooks["chat.message"]({ sessionID: output.message.sessionID }, output);
-  return output;
-}
-
-function persist(f, output) {
-  f.state.messages.child.push(
-    JSON.parse(JSON.stringify({ info: output.message, parts: output.parts })),
-  );
-}
-
-function resume(f, provider = "anthropic") {
-  f.state.messages.root[0].parts[0].state.status = "completed";
-  f.state.messages.root.push(task(provider, "child", "task-2"));
-}
-
-for (const [provider, modelID] of Object.entries(routes.garfield)) {
-  test(`new ${provider} route mutates the live model, not task permissions`, async () => {
-    const f = fixture(provider);
-    const output = draft("child", provider);
-    const model = output.message.model;
-    const parent = structuredClone(f.state);
-    const result = await send(f, output);
-    assert.equal(result.message.model, model);
-    assert.equal(model.modelID, modelID);
-    assert.equal(model.providerID, provider);
-    assert.equal(model.variant, "high");
-    assert.deepEqual(result.message.tools, { task: false });
-    assert.equal(result.parts[0].text, "Do the task.");
-    assert.equal(result.parts[0].metadata.existing, true);
-    assert.deepEqual(f.state, parent);
-    assert.deepEqual(Object.keys(f.hooks).sort(), ["chat.message", "event"]);
+for (const [provider, id] of Object.entries(routes.garfield)) {
+  test(`routes ${provider} and preserves worker permissions and prompt`, async () => {
+    const f = await fixture(provider);
+    const permissions = structuredClone(f.state.sessions.child.permissions);
+    const event = await f.send();
+    assert.deepEqual(f.state.sessions.child.model, { providerID: provider, id, variant: "high" });
+    assert.deepEqual(f.state.sessions.child.permissions, permissions);
+    assert.equal(event.prompt.text, "Do the task.");
+    assert.equal(event.metadata.existing, true);
   });
 }
-
-for (const [name, provider, agent] of [
-  ["Google", "google", "garfield"],
-  ["unmapped agent", "openai", "donatello"],
-]) {
-  test(`${name} retains native behaviour`, async () => {
-    const f = fixture(provider);
-    f.state.messages.root[0].parts[0].state.input.subagent_type = agent;
-    const output = draft("child", provider, agent);
-    const before = structuredClone(output);
-    assert.deepEqual(await send(f, output), before);
-    assert.ok(!f.reads.some(([kind]) => kind === "providers"));
-  });
-}
-
-test("invalid exact model, qualified model, and disconnected provider reject without fallback", async () => {
-  for (const model of ["missing", "anthropic/claude-sonnet-5-5", "", 42]) {
-    const f = fixture("openai", { garfield: { openai: model } });
-    const output = draft();
-    await assert.rejects(send(f, output), /exact model/);
-    assert.equal(output.message.model.modelID, "native-model");
+test("missing routes, root sessions, nested sessions and native history remain native", async () => {
+  for (const change of [
+    (f) => { f.state.messages.root[0].model.providerID = "google"; },
+    (f) => { f.state.messages.root[0].content[0].state.input.agent = "donatello"; },
+    (f) => { f.state.sessions.child.parentID = undefined; },
+    (f) => { f.state.sessions.root.parentID = "grandparent"; },
+    (f) => { f.state.messages.child.push({ type: "user", text: "Migrated native history" }); },
+    (f) => { f.state.messages.child.push({ type: "compaction" }); },
+    (f) => { f.state.messages.root.push(task("anthropic", "child", "task-2")); },
+    (f) => { f.state.messages.root = []; },
+    (f) => { f.state.messages.root[0].content[0].state.input.model = "openai/user-override"; },
+  ]) {
+    const f = await fixture(); change(f);
+    const before = structuredClone(f.state.sessions.child.model);
+    await f.send();
+    assert.deepEqual(f.state.sessions.child.model, before);
+    assert.deepEqual(f.state.storage, {});
   }
-  const f = fixture();
-  f.state.catalogue.connected = ["anthropic"];
-  await assert.rejects(send(f), /unavailable exact model openai/);
 });
-
-test("a variant route sets and restores the variant, and an unavailable variant rejects", async () => {
-  const variants = { garfield: { anthropic: "max" } };
-  const f = fixture("anthropic", routes, variants);
-  const first = await send(f, draft("child", "anthropic"));
-  assert.equal(first.message.model.modelID, "claude-haiku-5-5");
-  assert.equal(first.message.model.variant, "max");
-  persist(f, first);
-  resume(f, "openai");
-  const resumed = await send(f, draft("child", "openai"));
-  assert.equal(resumed.message.model.providerID, "anthropic");
-  assert.equal(resumed.message.model.variant, "max");
+test("exact model and variant failures never fall back", async () => {
+  for (const id of ["missing", "other/model", "", 42]) {
+    const f = await fixture("openai", { garfield: { openai: id } });
+    await assert.rejects(f.send(), /exact model/);
+    assert.equal(f.state.sessions.child.model.id, "native-model");
+  }
   for (const variant of ["missing", "Bad Variant", 42]) {
-    const g = fixture("anthropic", routes, { garfield: { anthropic: variant } });
-    const output = draft("child", "anthropic");
-    await assert.rejects(send(g, output), /variant/);
-    assert.equal(output.message.model.variant, "high");
+    const f = await fixture("anthropic", routes, { garfield: { anthropic: variant } });
+    await assert.rejects(f.send(), /variant/);
   }
+  const f = await fixture();
+  f.state.models[0].providerID = "other-provider";
+  await assert.rejects(f.send(), /unavailable exact model/);
 });
-
-test("new child follows its containing assistant, not the latest parent message", async () => {
-  const f = fixture("anthropic");
-  f.state.messages.root.push(task("openai", "sibling", "task-2"));
-  const result = await send(f);
-  assert.equal(result.message.model.providerID, "anthropic");
-  assert.equal(result.message.model.modelID, "claude-haiku-5-5");
-});
-
-test("root and nested sessions remain unchanged, including concurrent root hooks", async () => {
-  const f = fixture();
-  const root = draft("root");
-  const before = structuredClone(root);
-  await Promise.all([send(f, root), send(f, draft("root"))]);
-  assert.deepEqual(root, before);
-  f.state.sessions.child.parentID = "nested-parent";
-  f.state.sessions["nested-parent"] = { id: "nested-parent", parentID: "root" };
-  assert.deepEqual(await send(f), draft());
-});
-
-test("simultaneous siblings correlate independently", async () => {
-  const f = fixture();
-  f.state.sessions.sibling = { id: "sibling", parentID: "root" };
+test("siblings follow the originating assistant independently", async () => {
+  const f = await fixture();
+  f.state.sessions.sibling = { ...f.state.sessions.child, id: "sibling" };
   f.state.messages.sibling = [];
   f.state.messages.root.push(task("anthropic", "sibling", "task-2"));
-  const [first, second] = await Promise.all([
-    send(f),
-    send(f, draft("sibling")),
-  ]);
-  assert.equal(first.message.model.modelID, "gpt-5.6-terra");
-  assert.equal(second.message.model.modelID, "claude-haiku-5-5");
+  await Promise.all([f.send(), f.send("sibling")]);
+  assert.equal(f.state.sessions.child.model.providerID, "openai");
+  assert.equal(f.state.sessions.sibling.model.providerID, "anthropic");
 });
-
-test("ambiguous, missing, or wrong-agent task correlation retains native behaviour", async () => {
-  for (const change of [
-    (f) => f.state.messages.root.push(task("anthropic", "child", "task-2")),
-    (f) => {
-      f.state.messages.root = [];
-    },
-    (f) => {
-      f.state.messages.root[0].parts[0].state.input.subagent_type = "donatello";
-    },
-  ]) {
-    const f = fixture();
-    change(f);
-    assert.deepEqual(await send(f), draft());
-  }
+test("durable route survives restart, compaction and parent provider changes", async () => {
+  const f = await fixture("anthropic", routes, { garfield: { anthropic: "max" } });
+  await f.send(); f.resume("openai");
+  f.state.storage = JSON.parse(JSON.stringify(f.state.storage));
+  f.state.messages.child = [{ type: "compaction" }];
+  f.state.messages.root.shift();
+  await f.install({});
+  await f.send();
+  assert.deepEqual(f.state.sessions.child.model, { providerID: "anthropic", id: "claude-haiku-5-5", variant: "max" });
 });
-
-test("resume restores the saved model after the parent provider changes", async () => {
-  const f = fixture();
-  persist(f, await send(f));
-  resume(f);
-  const result = await send(f, draft("child", "anthropic"));
-  assert.equal(result.message.model.providerID, "openai");
-  assert.equal(result.message.model.modelID, "gpt-5.6-terra");
-});
-
-test("serialised history restores the route in a fresh process", async () => {
-  const f = fixture();
-  persist(f, await send(f));
-  resume(f);
-  const script = `
-    import createRouter from ${JSON.stringify(new URL("./index.mjs", import.meta.url).href)};
-    const state = ${JSON.stringify(f.state)};
-    const client = {
-      session: {
-        get: async ({path:{id}}) => ({data:state.sessions[id]}),
-        messages: async ({path:{id}}) => ({data:state.messages[id]}),
-      },
-      provider: {list:async () => ({data:state.catalogue})},
-    };
-    const output = ${JSON.stringify(draft("child", "anthropic"))};
-    await createRouter(client, {})["chat.message"]({sessionID:"child"}, output);
-    process.stdout.write(JSON.stringify(output.message.model));
-  `;
-  const model = JSON.parse(
-    execFileSync(process.execPath, ["--input-type=module", "-e", script], {
-      encoding: "utf8",
-    }),
-  );
-  assert.equal(model.providerID, "openai");
-  assert.equal(model.modelID, "gpt-5.6-terra");
-});
-
-test("same-child overlap rejects during lookup and before persistence", async () => {
-  const f = fixture();
-  const results = await Promise.allSettled([send(f), send(f)]);
-  assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+test("same-child overlap and repeated invocation fail before prompt admission", async () => {
+  const f = await fixture();
+  const results = await Promise.allSettled([f.send(), f.send()]);
   assert.equal(results.filter((r) => r.status === "rejected").length, 1);
-  await assert.rejects(send(f), /concurrent child prompts/);
+  await f.install();
+  await assert.rejects(f.send(), /concurrent child/);
 });
-
-test("saved history excludes an active same-child prompt after restart", async () => {
-  const f = fixture();
-  persist(f, await send(f));
-  await assert.rejects(
-    send(f, draft(), createRouter(f.client, routes)),
-    /concurrent child prompts/,
-  );
-});
-
-test("native history is not retroactively routed", async () => {
-  const f = fixture();
-  persist(f, draft());
-  assert.deepEqual(await send(f), draft());
-});
-
-test("saved route corruption and unavailable saved model reject", async () => {
-  const f = fixture();
-  persist(f, await send(f));
-  resume(f);
-  f.state.catalogue.all[0].models = {};
-  await assert.rejects(send(f), /unavailable exact model/);
-  f.state.messages.child[0].info.model.modelID = "tampered";
-  await assert.rejects(send(f), /invalid saved route/);
-});
-
-test("invalid saved marker types reject", async () => {
-  for (const marker of [null, false, 0, "", [], "invalid"]) {
-    const f = fixture();
-    persist(f, await send(f));
-    resume(f);
-    f.state.messages.child[0].parts[0].metadata[
-      "nix-config.opencode-provider-router.v1"
-    ] = marker;
-    await assert.rejects(send(f), /invalid saved route/);
+test("fenced permission evaluation changes ask only and preserves explicit denies", async () => {
+  const root = mkdtempSync(join(tmpdir(), "opencode-router-plugin-"));
+  const map = join(root, "routes.json");
+  writeFileSync(map, "{}");
+  const path = join(root, "index.ts");
+  writeFileSync(path, readFileSync(new URL("../plugins/provider-router.ts", import.meta.url), "utf8")
+    .replaceAll("@routerModule@", new URL("./index.mjs", import.meta.url).href)
+    .replaceAll("@routerMap@", map).replaceAll("@routerVariants@", map));
+  const { default: plugin } = await import(path);
+  const original = process.env.FENCE_SANDBOX;
+  try {
+    for (const fenced of ["0", "1"]) {
+      process.env.FENCE_SANDBOX = fenced;
+      let evaluate;
+      await plugin.setup({
+        session: { hook: async () => {} },
+        permission: { hook: async (name, callback) => { assert.equal(name, "evaluate"); evaluate = callback; } },
+      });
+      assert.equal(typeof evaluate, fenced === "1" ? "function" : "undefined");
+      if (!evaluate) continue;
+      for (const action of ["external_directory", "webfetch", "websearch", "slack_slack_post", "subagent"]) {
+        for (const effect of ["ask", "deny", "allow"]) {
+          const event = { action, effect, resources: ["*"] };
+          await evaluate(event);
+          assert.deepEqual(event, { action, effect: effect === "ask" ? "allow" : effect, resources: ["*"] });
+        }
+      }
+    }
+  } finally {
+    if (original === undefined) delete process.env.FENCE_SANDBOX;
+    else process.env.FENCE_SANDBOX = original;
   }
 });
 
-test("the session model does not select the route", async () => {
-  const f = fixture("anthropic");
-  f.state.sessions.child.model = { providerID: "google", id: "native-model" };
-  assert.equal((await send(f)).message.model.providerID, "anthropic");
-});
-
-test("an unavailable provider cannot use the same model from another provider", async () => {
-  const f = fixture();
-  f.state.catalogue.all[0].id = "other-provider";
-  await assert.rejects(send(f), /unavailable exact model openai/);
-});
-
-test("the generated Home Manager plugin loads its map", {
-  skip: !process.env.OPENCODE_ROUTER_PLUGIN,
-}, async () => {
-  const { default: plugin } = await import(process.env.OPENCODE_ROUTER_PLUGIN);
-  const f = fixture();
-  const hooks = await plugin({ client: f.client });
-  assert.equal(
-    (await send(f, draft(), hooks)).message.model.modelID,
-    "gpt-5.6-terra",
-  );
-});
-
-test("task completion releases the in-process guard without changing the event", async () => {
-  const f = fixture();
-  persist(f, await send(f));
-  resume(f);
-  const event = {
-    type: "message.part.updated",
-    properties: { part: f.state.messages.root[0].parts[0] },
-  };
-  const before = structuredClone(event);
-  await f.hooks.event({ event });
-  assert.deepEqual(event, before);
-  assert.equal((await send(f)).message.model.modelID, "gpt-5.6-terra");
+test("invalid saved state, ambiguous resume and unavailable saved routes reject", async () => {
+  for (const value of [null, false, 0, "", [], "invalid", { parentID: "wrong" }]) {
+    const f = await fixture(); f.state.storage[key] = value;
+    await assert.rejects(f.send(), /invalid saved route/);
+  }
+  const f = await fixture(); await f.send(); f.resume();
+  f.state.models = [];
+  await assert.rejects(f.send(), /unavailable exact model/);
+  f.state.messages.root.push(task("openai", "child", "third"));
+  await assert.rejects(f.send(), /ambiguous/);
 });

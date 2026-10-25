@@ -8,79 +8,79 @@ Claude Code, OpenCode, and Pi use `/name`. Codex uses manual-only `$name` skills
 
 | Command | Description | Associated agent | Visibility | Claude Code | OpenCode | Codex | Pi |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| [ack](./ack/command.toml) | Acknowledge feedback 👂 | Unset | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [add-agentic-repo-capability](./add-agentic-repo-capability/command.toml) | Add Agentic Repo Capability 🧰 | donatello | public | Task worker: donatello | Native subtask: donatello | spawn_agent: donatello | Agent worker: donatello |
-| [address-code-review](./address-code-review/command.toml) | Address Code Review 👀 | donatello | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [address-security-review](./address-security-review/command.toml) | Address Security Review 🛡️ | donatello | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [ahem](./ahem/command.toml) | Politely re-issue the Communication Rules 📜 | Unset | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [align-documentation](./align-documentation/command.toml) | Align Documentation 📚 | velma | public | Task worker: velma | Native subtask: velma | spawn_agent: velma | Agent worker: velma |
-| [ask](./ask/command.toml) | Answer a question 💬 | Unset | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [audit-code-security](./audit-code-security/command.toml) | Audit Code Security 🔍 | dibble | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [audit-infra-security](./audit-infra-security/command.toml) | Audit Infrastructure Security 🛡️ | batfink | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [audit-tasks](./audit-tasks/command.toml) | Audit Linear project tasks before approved updates | penfold | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [babysit-pr](./babysit-pr/command.toml) | Babysit a PR to the finish line 🍼 | donatello | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [call](./call/command.toml) | Make the call 🎯 | Unset | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [clarify-plan](./clarify-plan/command.toml) | Clarify Plan 💎 | Unset | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [collaborate](./collaborate/command.toml) | Read supplied sources and prepare to collaborate 🤝 | Unset | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [create-agents-md](./create-agents-md/command.toml) | Create AGENTS.md 🤖 | rosey | public | Task worker: rosey | Native subtask: rosey | spawn_agent: rosey | Agent worker: rosey |
-| [create-assistant](./create-assistant/command.toml) | Create AI Assistant ✨ | rosey | public | Task worker: rosey | Native subtask: rosey | spawn_agent: rosey | Agent worker: rosey |
-| [create-command](./create-command/command.toml) | Create Slash Command 🪄 | rosey | public | Task worker: rosey | Native subtask: rosey | spawn_agent: rosey | Agent worker: rosey |
-| [create-plan](./create-plan/command.toml) | Create Plan 💾 | donatello | public | Task worker: donatello | Native subtask: donatello | spawn_agent: donatello | Agent worker: donatello |
-| [create-project](./create-project/command.toml) | Create Project 🗂️ | penfold | public | Task worker: penfold | Native subtask: penfold | spawn_agent: penfold | Agent worker: penfold |
-| [create-skill](./create-skill/command.toml) | Create Skill 🧩 | rosey | public | Task worker: rosey | Native subtask: rosey | spawn_agent: rosey | Agent worker: rosey |
-| [create-task](./create-task/command.toml) | Create Task 📝 | penfold | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [design-presentation](./design-presentation/command.toml) | Design and export a Marp presentation | morph | public | Task worker: morph | Native subtask: morph | spawn_agent: morph | Agent worker: morph |
-| [draft-blog-post](./draft-blog-post/command.toml) | Draft Blog Post ✍️ | casper | public | Task worker: casper | Native subtask: casper | spawn_agent: casper | Agent worker: casper |
-| [draft-code-review](./draft-code-review/command.toml) | Draft Code Review ✍️ | donatello | public | Task worker: donatello | Native subtask: donatello | spawn_agent: donatello | Agent worker: donatello |
-| [draft-commit-message](./draft-commit-message/command.toml) | Draft Commit Message ✍️ | garfield | public | Task worker: garfield | Native subtask: garfield, subtask: true | spawn_agent: garfield | Agent worker: garfield |
-| [draft-pr-message](./draft-pr-message/command.toml) | Draft PR Message 🐙 | garfield | public | Task worker: garfield | Native subtask: garfield, subtask: true | spawn_agent: garfield | Agent worker: garfield |
-| [draft-readme](./draft-readme/command.toml) | Draft README 📄 | velma | public | Task worker: velma | Native subtask: velma | spawn_agent: velma | Agent worker: velma |
-| [draft-security-review](./draft-security-review/command.toml) | Draft Security Review ✍️ | donatello | public | Task worker: donatello | Native subtask: donatello | spawn_agent: donatello | Agent worker: donatello |
-| [draft-self-review](./draft-self-review/command.toml) | Draft Self-Review 🪞 | penfold | secret | Task worker: penfold | Native subtask: penfold | spawn_agent: penfold | Agent worker: penfold |
-| [draft-video-script](./draft-video-script/command.toml) | Draft Video Script 🎬 | casper | public | Task worker: casper | Native subtask: casper | spawn_agent: casper | Agent worker: casper |
-| [finish-pr](./finish-pr/command.toml) | Wrap up a finished PR 🧹 | garfield | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [gather-review-data](./gather-review-data/command.toml) | Gather Review Data 📊 | penfold | secret | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [gist](./gist/command.toml) | Rewrite the previous response concisely | Unset | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [handover-fork](./handover-fork/command.toml) | Compact handover to a worker 🔀 | rosey | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [handover-fresh](./handover-fresh/command.toml) | Handover to a fresh session 📤 | rosey | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [implement-plan](./implement-plan/command.toml) | Implement Plan 👨‍💻 | donatello | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [implement-task](./implement-task/command.toml) | Implement a tracked task end to end 🛠️ | Unset | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [make-commit](./make-commit/command.toml) | Draft and make a commit ✍️ | garfield | public | Task worker: garfield | Native subtask: garfield | spawn_agent: garfield | Agent worker: garfield |
-| [make-pr](./make-pr/command.toml) | Draft and open a PR 🐙 | garfield | public | Task worker: garfield | Native subtask: garfield | spawn_agent: garfield | Agent worker: garfield |
-| [oi](./oi/command.toml) | Bluntly re-issue the Communication Rules 📜 | Unset | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [orientate](./orientate/command.toml) | Digest existing sources for orientation 🧭 | penfold | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [post-code-review](./post-code-review/command.toml) | Post Code Review 📮 | donatello | public | Task worker: donatello | Native subtask: donatello | spawn_agent: donatello | Agent worker: donatello |
-| [post-comment](./post-comment/command.toml) | Post Comment 📤 | penfold | public | Task worker: penfold | Native subtask: penfold | spawn_agent: penfold | Agent worker: penfold |
-| [post-issue](./post-issue/command.toml) | Post Issue 📮 | penfold | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [post-security-review](./post-security-review/command.toml) | Post Security Review 📮 | donatello | public | Task worker: donatello | Native subtask: donatello | spawn_agent: donatello | Agent worker: donatello |
-| [project-code-review](./project-code-review/command.toml) | Project Code Review 🔍 | penry | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [project-documentation-review](./project-documentation-review/command.toml) | Project Documentation Review 📋 | velma | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [project-peer-review](./project-peer-review/command.toml) | Project Peer Review 👁️ | donatello | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [project-performance-review](./project-performance-review/command.toml) | Project Performance Review ⚡ | gonzales | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [project-polish-comments](./project-polish-comments/command.toml) | Project Polish Comments ✨ | donatello | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [project-smells-review](./project-smells-review/command.toml) | Project Smells Review 🦨 | penry | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [project-tests-review](./project-tests-review/command.toml) | Project Tests Review 🧪 | brain | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [ready](./ready/command.toml) | Get ready 🌱 | Unset | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [reflect](./reflect/command.toml) | Reflect on the session and suggest tooling changes 💭 | Unset | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [review-code-again](./review-code-again/command.toml) | Review Code Again 🔁 | donatello | public | Task worker: donatello | Native subtask: donatello | spawn_agent: donatello | Agent worker: donatello |
-| [review-code-colleague](./review-code-colleague/command.toml) | Review Colleague Code 🔍 | donatello | public | Task worker: donatello | Native subtask: donatello | spawn_agent: donatello | Agent worker: donatello |
-| [review-code-community](./review-code-community/command.toml) | Review Community Code 🛡️ | donatello | public | Task worker: donatello | Native subtask: donatello | spawn_agent: donatello | Agent worker: donatello |
-| [review-code-mine](./review-code-mine/command.toml) | Review My Code 🪞 | donatello | public | Task worker: donatello | Native subtask: donatello | spawn_agent: donatello | Agent worker: donatello |
-| [review-open-source-attestation](./review-open-source-attestation/command.toml) | Open Source Attestation Review 🧾 | penfold | secret | Task worker: penfold | Native subtask: penfold | spawn_agent: penfold | Agent worker: penfold |
-| [review-task](./review-task/command.toml) | Review Task 🔬 | penfold | public | Task worker: penfold | Native subtask: penfold | spawn_agent: penfold | Agent worker: penfold |
-| [review-web-interface](./review-web-interface/command.toml) | Review web interface code | morph | public | Task worker: morph | Native subtask: morph | spawn_agent: morph | Agent worker: morph |
-| [triage-tasks](./triage-tasks/command.toml) | Triage Tasks 🗂️ | penfold | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [update-agents-md](./update-agents-md/command.toml) | Update AGENTS.md 🧠 | rosey | public | Task worker: rosey | Native subtask: rosey | spawn_agent: rosey | Agent worker: rosey |
-| [update-assistant](./update-assistant/command.toml) | Update AI Assistant ⚡ | rosey | public | Task worker: rosey | Native subtask: rosey | spawn_agent: rosey | Agent worker: rosey |
-| [update-command](./update-command/command.toml) | Update Slash Command ⚡ | rosey | public | Task worker: rosey | Native subtask: rosey | spawn_agent: rosey | Agent worker: rosey |
-| [update-skill](./update-skill/command.toml) | Update Skill ⚡ | rosey | public | Task worker: rosey | Native subtask: rosey | spawn_agent: rosey | Agent worker: rosey |
-| [update-task](./update-task/command.toml) | Update Task ✏️ | penfold | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
-| [weekly-update](./weekly-update/command.toml) | Weekly Update 📣 | penfold | public | Task worker: penfold | Native subtask: penfold | spawn_agent: penfold | Agent worker: penfold |
-| [work-order-create](./work-order-create/command.toml) | Create Work Order 📋 | penfold | public | Task worker: penfold | Native subtask: penfold | spawn_agent: penfold | Agent worker: penfold |
-| [work-order-next](./work-order-next/command.toml) | Find Next Work 👉 | penfold | public | Task worker: penfold | Native subtask: penfold | spawn_agent: penfold | Agent worker: penfold |
-| [work-order-plan](./work-order-plan/command.toml) | Plan Work Order 📐 | penfold | public | Task worker: penfold | Native subtask: penfold | spawn_agent: penfold | Agent worker: penfold |
-| [work-order-update](./work-order-update/command.toml) | Update Work Order ✏️ | penfold | public | Task worker: penfold | Native subtask: penfold | spawn_agent: penfold | Agent worker: penfold |
-| [wtb](./wtb/command.toml) | Want to Buy 🪿 | Unset | public | Caller context | Caller context, subtask: false | Caller context | Caller context |
+| [ack](./ack/command.toml) | Acknowledge feedback 👂 | Unset | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [add-agentic-repo-capability](./add-agentic-repo-capability/command.toml) | Add Agentic Repo Capability 🧰 | donatello | public | Task worker: donatello | Native subagent: donatello | spawn_agent: donatello | Agent worker: donatello |
+| [address-code-review](./address-code-review/command.toml) | Address Code Review 👀 | donatello | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [address-security-review](./address-security-review/command.toml) | Address Security Review 🛡️ | donatello | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [ahem](./ahem/command.toml) | Politely re-issue the Communication Rules 📜 | Unset | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [align-documentation](./align-documentation/command.toml) | Align Documentation 📚 | velma | public | Task worker: velma | Native subagent: velma | spawn_agent: velma | Agent worker: velma |
+| [ask](./ask/command.toml) | Answer a question 💬 | Unset | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [audit-code-security](./audit-code-security/command.toml) | Audit Code Security 🔍 | dibble | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [audit-infra-security](./audit-infra-security/command.toml) | Audit Infrastructure Security 🛡️ | batfink | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [audit-tasks](./audit-tasks/command.toml) | Audit Linear project tasks before approved updates | penfold | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [babysit-pr](./babysit-pr/command.toml) | Babysit a PR to the finish line 🍼 | donatello | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [call](./call/command.toml) | Make the call 🎯 | Unset | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [clarify-plan](./clarify-plan/command.toml) | Clarify Plan 💎 | Unset | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [collaborate](./collaborate/command.toml) | Read supplied sources and prepare to collaborate 🤝 | Unset | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [create-agents-md](./create-agents-md/command.toml) | Create AGENTS.md 🤖 | rosey | public | Task worker: rosey | Native subagent: rosey | spawn_agent: rosey | Agent worker: rosey |
+| [create-assistant](./create-assistant/command.toml) | Create AI Assistant ✨ | rosey | public | Task worker: rosey | Native subagent: rosey | spawn_agent: rosey | Agent worker: rosey |
+| [create-command](./create-command/command.toml) | Create Slash Command 🪄 | rosey | public | Task worker: rosey | Native subagent: rosey | spawn_agent: rosey | Agent worker: rosey |
+| [create-plan](./create-plan/command.toml) | Create Plan 💾 | donatello | public | Task worker: donatello | Native subagent: donatello | spawn_agent: donatello | Agent worker: donatello |
+| [create-project](./create-project/command.toml) | Create Project 🗂️ | penfold | public | Task worker: penfold | Native subagent: penfold | spawn_agent: penfold | Agent worker: penfold |
+| [create-skill](./create-skill/command.toml) | Create Skill 🧩 | rosey | public | Task worker: rosey | Native subagent: rosey | spawn_agent: rosey | Agent worker: rosey |
+| [create-task](./create-task/command.toml) | Create Task 📝 | penfold | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [design-presentation](./design-presentation/command.toml) | Design and export a Marp presentation | morph | public | Task worker: morph | Native subagent: morph | spawn_agent: morph | Agent worker: morph |
+| [draft-blog-post](./draft-blog-post/command.toml) | Draft Blog Post ✍️ | casper | public | Task worker: casper | Native subagent: casper | spawn_agent: casper | Agent worker: casper |
+| [draft-code-review](./draft-code-review/command.toml) | Draft Code Review ✍️ | donatello | public | Task worker: donatello | Native subagent: donatello | spawn_agent: donatello | Agent worker: donatello |
+| [draft-commit-message](./draft-commit-message/command.toml) | Draft Commit Message ✍️ | garfield | public | Task worker: garfield | Native subagent: garfield, subagent: true | spawn_agent: garfield | Agent worker: garfield |
+| [draft-pr-message](./draft-pr-message/command.toml) | Draft PR Message 🐙 | garfield | public | Task worker: garfield | Native subagent: garfield, subagent: true | spawn_agent: garfield | Agent worker: garfield |
+| [draft-readme](./draft-readme/command.toml) | Draft README 📄 | velma | public | Task worker: velma | Native subagent: velma | spawn_agent: velma | Agent worker: velma |
+| [draft-security-review](./draft-security-review/command.toml) | Draft Security Review ✍️ | donatello | public | Task worker: donatello | Native subagent: donatello | spawn_agent: donatello | Agent worker: donatello |
+| [draft-self-review](./draft-self-review/command.toml) | Draft Self-Review 🪞 | penfold | secret | Task worker: penfold | Native subagent: penfold | spawn_agent: penfold | Agent worker: penfold |
+| [draft-video-script](./draft-video-script/command.toml) | Draft Video Script 🎬 | casper | public | Task worker: casper | Native subagent: casper | spawn_agent: casper | Agent worker: casper |
+| [finish-pr](./finish-pr/command.toml) | Wrap up a finished PR 🧹 | garfield | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [gather-review-data](./gather-review-data/command.toml) | Gather Review Data 📊 | penfold | secret | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [gist](./gist/command.toml) | Rewrite the previous response concisely | Unset | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [handover-fork](./handover-fork/command.toml) | Compact handover to a worker 🔀 | rosey | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [handover-fresh](./handover-fresh/command.toml) | Handover to a fresh session 📤 | rosey | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [implement-plan](./implement-plan/command.toml) | Implement Plan 👨‍💻 | donatello | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [implement-task](./implement-task/command.toml) | Implement a tracked task end to end 🛠️ | Unset | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [make-commit](./make-commit/command.toml) | Draft and make a commit ✍️ | garfield | public | Task worker: garfield | Native subagent: garfield | spawn_agent: garfield | Agent worker: garfield |
+| [make-pr](./make-pr/command.toml) | Draft and open a PR 🐙 | garfield | public | Task worker: garfield | Native subagent: garfield | spawn_agent: garfield | Agent worker: garfield |
+| [oi](./oi/command.toml) | Bluntly re-issue the Communication Rules 📜 | Unset | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [orientate](./orientate/command.toml) | Digest existing sources for orientation 🧭 | penfold | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [post-code-review](./post-code-review/command.toml) | Post Code Review 📮 | donatello | public | Task worker: donatello | Native subagent: donatello | spawn_agent: donatello | Agent worker: donatello |
+| [post-comment](./post-comment/command.toml) | Post Comment 📤 | penfold | public | Task worker: penfold | Native subagent: penfold | spawn_agent: penfold | Agent worker: penfold |
+| [post-issue](./post-issue/command.toml) | Post Issue 📮 | penfold | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [post-security-review](./post-security-review/command.toml) | Post Security Review 📮 | donatello | public | Task worker: donatello | Native subagent: donatello | spawn_agent: donatello | Agent worker: donatello |
+| [project-code-review](./project-code-review/command.toml) | Project Code Review 🔍 | penry | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [project-documentation-review](./project-documentation-review/command.toml) | Project Documentation Review 📋 | velma | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [project-peer-review](./project-peer-review/command.toml) | Project Peer Review 👁️ | donatello | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [project-performance-review](./project-performance-review/command.toml) | Project Performance Review ⚡ | gonzales | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [project-polish-comments](./project-polish-comments/command.toml) | Project Polish Comments ✨ | donatello | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [project-smells-review](./project-smells-review/command.toml) | Project Smells Review 🦨 | penry | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [project-tests-review](./project-tests-review/command.toml) | Project Tests Review 🧪 | brain | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [ready](./ready/command.toml) | Get ready 🌱 | Unset | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [reflect](./reflect/command.toml) | Reflect on the session and suggest tooling changes 💭 | Unset | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [review-code-again](./review-code-again/command.toml) | Review Code Again 🔁 | donatello | public | Task worker: donatello | Native subagent: donatello | spawn_agent: donatello | Agent worker: donatello |
+| [review-code-colleague](./review-code-colleague/command.toml) | Review Colleague Code 🔍 | donatello | public | Task worker: donatello | Native subagent: donatello | spawn_agent: donatello | Agent worker: donatello |
+| [review-code-community](./review-code-community/command.toml) | Review Community Code 🛡️ | donatello | public | Task worker: donatello | Native subagent: donatello | spawn_agent: donatello | Agent worker: donatello |
+| [review-code-mine](./review-code-mine/command.toml) | Review My Code 🪞 | donatello | public | Task worker: donatello | Native subagent: donatello | spawn_agent: donatello | Agent worker: donatello |
+| [review-open-source-attestation](./review-open-source-attestation/command.toml) | Open Source Attestation Review 🧾 | penfold | secret | Task worker: penfold | Native subagent: penfold | spawn_agent: penfold | Agent worker: penfold |
+| [review-task](./review-task/command.toml) | Review Task 🔬 | penfold | public | Task worker: penfold | Native subagent: penfold | spawn_agent: penfold | Agent worker: penfold |
+| [review-web-interface](./review-web-interface/command.toml) | Review web interface code | morph | public | Task worker: morph | Native subagent: morph | spawn_agent: morph | Agent worker: morph |
+| [triage-tasks](./triage-tasks/command.toml) | Triage Tasks 🗂️ | penfold | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [update-agents-md](./update-agents-md/command.toml) | Update AGENTS.md 🧠 | rosey | public | Task worker: rosey | Native subagent: rosey | spawn_agent: rosey | Agent worker: rosey |
+| [update-assistant](./update-assistant/command.toml) | Update AI Assistant ⚡ | rosey | public | Task worker: rosey | Native subagent: rosey | spawn_agent: rosey | Agent worker: rosey |
+| [update-command](./update-command/command.toml) | Update Slash Command ⚡ | rosey | public | Task worker: rosey | Native subagent: rosey | spawn_agent: rosey | Agent worker: rosey |
+| [update-skill](./update-skill/command.toml) | Update Skill ⚡ | rosey | public | Task worker: rosey | Native subagent: rosey | spawn_agent: rosey | Agent worker: rosey |
+| [update-task](./update-task/command.toml) | Update Task ✏️ | penfold | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [weekly-update](./weekly-update/command.toml) | Weekly Update 📣 | penfold | public | Task worker: penfold | Native subagent: penfold | spawn_agent: penfold | Agent worker: penfold |
+| [work-order-create](./work-order-create/command.toml) | Create Work Order 📋 | penfold | public | Task worker: penfold | Native subagent: penfold | spawn_agent: penfold | Agent worker: penfold |
+| [work-order-next](./work-order-next/command.toml) | Find Next Work 👉 | penfold | public | Task worker: penfold | Native subagent: penfold | spawn_agent: penfold | Agent worker: penfold |
+| [work-order-plan](./work-order-plan/command.toml) | Plan Work Order 📐 | penfold | public | Task worker: penfold | Native subagent: penfold | spawn_agent: penfold | Agent worker: penfold |
+| [work-order-update](./work-order-update/command.toml) | Update Work Order ✏️ | penfold | public | Task worker: penfold | Native subagent: penfold | spawn_agent: penfold | Agent worker: penfold |
+| [wtb](./wtb/command.toml) | Want to Buy 🪿 | Unset | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
 
 ## Client metadata differences
 

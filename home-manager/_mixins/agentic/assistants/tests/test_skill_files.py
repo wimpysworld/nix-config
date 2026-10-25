@@ -105,7 +105,7 @@ class SkillFileTests(unittest.TestCase):
               module = import {directory}/default.nix {{
                 inherit lib;
                 pkgs = pkgs // {{ writeText = name: text: text; }};
-                noughtyLib.userHasTag = _: true;
+                noughtyLib = {{ userHasTag = _: true; isUser = _: false; }};
                 config = {{
                   home.homeDirectory = "/fixture";
                   home.preferXdgDirectories = false;
@@ -206,7 +206,8 @@ class SkillFileTests(unittest.TestCase):
                         self.assertNotIn("PERSONA_SENTINEL", rendered)
                         self.assertNotIn("agent", native)
                         if mode == "caller-context" and platform == "opencode":
-                            self.assertIs(native["subtask"], False)
+                            self.assertIs(native["subagent"], False)
+                            self.assertNotIn("subtask", native)
                         if mode == "caller-context" and platform == "claude":
                             self.assertNotIn("context", native)
                     elif platform == "codex":
@@ -246,7 +247,8 @@ class SkillFileTests(unittest.TestCase):
                     if child:
                         launch = ""
                         if platform == "opencode":
-                            self.assertIs(native.get("subtask", True), True)
+                            self.assertIs(native.get("subagent", True), True)
+                            self.assertNotIn("subtask", native)
                             child_task = task
                         else:
                             launch, child_task = task.split("\n## Task\n", 1)
@@ -450,7 +452,7 @@ description = "A public fixture skill."
                     fixture-headerless = "PLACEHOLDER_HEADERLESS";
                   }};
                 }};
-                noughtyLib = {{ userHasTag = _: true; hostHasTag = _: false; }};
+                noughtyLib = {{ userHasTag = _: true; hostHasTag = _: false; isUser = _: false; }};
               }};
             in {{
               models = assistants.config.agentic.assistants.pi.providerRouterMap;
