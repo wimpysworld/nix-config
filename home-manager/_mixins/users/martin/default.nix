@@ -37,18 +37,6 @@ in
       file = {
         ".face".source = ./face.png;
         "Development/.keep" = lib.mkIf hostHasDevelopmentFolder { text = ""; };
-        "Development/salsa/.envrc" = lib.mkIf hostHasDevelopmentFolder {
-          text = "export DEB_VENDOR=Debian";
-        };
-        "Development/launchpad/.envrc" = lib.mkIf hostHasDevelopmentFolder {
-          text = "export DEB_VENDOR=Ubuntu";
-        };
-        "Development/ubuntu/.envrc" = lib.mkIf hostHasDevelopmentFolder {
-          text = "export DEB_VENDOR=Ubuntu";
-        };
-        "Development/ubuntu-mate/.envrc" = lib.mkIf hostHasDevelopmentFolder {
-          text = "export DEB_VENDOR=Ubuntu";
-        };
         "Games/.keep" = lib.mkIf hostHasGamesFolder { text = ""; };
         "Zero/.keep".text = "";
       };
