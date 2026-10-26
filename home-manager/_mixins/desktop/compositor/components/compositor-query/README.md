@@ -7,12 +7,11 @@ themselves.
 ## Files
 
 - `compositor-query.sh` - the sourceable library: compositor detection,
-  monitors, cursor, focused output, output scale, toplevel windows and
-  window focus. `lan-mouse-warp` and `lan-mouse-handoff` concatenate it
-  into their scripts at build time. Detection works from the runtime
-  directory alone, because those scripts run over SSH with no
-  compositor environment. A library function that a consumer does not
-  call needs `# shellcheck disable=SC2329`, or the consumer build fails.
+  monitors, focused output, output scale, toplevel windows and window
+  focus. Detection works from the runtime directory alone, so a caller
+  with an incomplete compositor environment still finds the session. A
+  library function that a consumer does not call needs
+  `# shellcheck disable=SC2329`, or the consumer build fails.
 - `compositor-query-command.sh` and `package.nix` - the
   `compositor-query` command for session tools: `wleave-session`,
   `fuzzel-capture` and the Mango `xwayland-dpi` service. Consumers
@@ -22,8 +21,7 @@ themselves.
 - `wayfire-ipc.py` and `wayfire-ipc.nix` - the `compositor-wayfire-ipc`
   client, a stdlib-only Python client for the length-prefixed JSON IPC
   of Wayfire. Every Wayfire method name lives in its `METHODS` table,
-  because the `stipc` plugin is a test interface and an upstream rename
-  must be a single edit here.
+  so an upstream rename is a single edit here.
 
 ## Commands
 
@@ -41,11 +39,11 @@ Mango detection runs first, because Mango removes its
 `$XDG_RUNTIME_DIR/mango-*.sock` socket on exit. The newest socket sets
 `MANGO_INSTANCE_SIGNATURE`, and the newest `wayland-*` socket sets
 `WAYLAND_DISPLAY` when the environment does not supply it. `mmsg`
-reports the monitors, the cursor and the clients in logical layout
+reports the monitors and the clients in logical layout
 coordinates. `mmsg` comes from the session `PATH`, so it always matches
 the running Mango instance.
 
-Wayfire needs the `ipc`, `ipc-rules` and `stipc` plugins. The
+Wayfire needs the `ipc` and `ipc-rules` plugins. The
 `list-outputs` geometry is the layout geometry. Wayfire IPC reports no
 output scale, so the Wayfire scale comes from `wlr-randr`.
 

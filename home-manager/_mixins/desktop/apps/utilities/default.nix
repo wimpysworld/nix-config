@@ -19,7 +19,10 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.workstation && host.is.linux
     vaults
   ];
 
-  programs.lan-mouse.enable = true;
+  programs.lan-mouse = {
+    enable = true;
+    package = pkgs.unstable.lan-mouse;
+  };
 
   systemd.user.services.lan-mouse = lib.mkIf (compositor != null) {
     Unit.PartOf = [ compositor.sessionTarget ];

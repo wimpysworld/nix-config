@@ -188,12 +188,11 @@ Key gates:
 - Preserve valid upstream names exactly, such as `hyprpicker`.
 - Keep generic fallbacks for unsupported compositors. Gamescope must use the generic fallback.
 
-When adding a compositor, also extend the shared compositor query component in `home-manager/_mixins/desktop/compositor/components/compositor-query/` and the lan-mouse cursor warp in `home-manager/_mixins/scripts/lan-mouse-warp/` (READMEs there explain the design):
+When adding a compositor, also extend the shared compositor query component in `home-manager/_mixins/desktop/compositor/components/compositor-query/` (its README explains the design):
 
-- Add detection, monitor, cursor, focused-output, output-scale, window and window-focus queries to `compositor-query.sh`. Detection must work from the runtime directory alone, with no session environment, because lan-mouse sources the library and runs over SSH. Shared components use these queries through the `compositor-query` command.
-- Add a cursor warp to `lan-mouse-warp`, in global logical layout coordinates.
+- Add detection, monitor, focused-output, output-scale, window and window-focus queries to `compositor-query.sh`. Detection must work from the runtime directory alone, with no session environment. Shared components use these queries through the `compositor-query` command.
 - Monitor queries must return the output name and logical layout geometry; divide physical sizes by scale and swap axes for 90 and 270 degree transforms where the compositor reports physical pixels.
-- Isolate unstable or compositor-specific IPC behind one function or helper, as the `compositor-wayfire-ipc` client in the compositor-query component does for `stipc`.
+- Isolate unstable or compositor-specific IPC behind one function or helper, as the `compositor-wayfire-ipc` client in the compositor-query component does for Wayfire IPC.
 
 ## Module gating patterns
 

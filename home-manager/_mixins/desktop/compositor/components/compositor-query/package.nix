@@ -1,5 +1,5 @@
 # The compositor-query command, built from compositor-query.sh so that
-# session tools share the compositor queries that lan-mouse sources.
+# session tools share one set of compositor queries.
 # Consumers import this file with a let binding. It is a package, not a
 # module, so the compositor hub does not import it. The test in
 # lib/tests/compositor-query.nix passes fake compositor tools as

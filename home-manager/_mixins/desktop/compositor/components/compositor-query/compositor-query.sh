@@ -1,8 +1,7 @@
-# Shared compositor detection and queries.  lan-mouse-warp and
-# lan-mouse-handoff source this library and run without session
-# environment variables, so detection works from the runtime directory
-# alone.  Session tools use the queries through the compositor-query
-# command.
+# Shared compositor detection and queries.  Callers can run without
+# session environment variables, so detection works from the runtime
+# directory alone.  Session tools use the queries through the
+# compositor-query command.
 
 function detect_compositor() {
 	local runtime signature candidate
@@ -15,7 +14,7 @@ function detect_compositor() {
 	if [ -S "$signature" ]; then
 		COMPOSITOR="mango"
 		export MANGO_INSTANCE_SIGNATURE="$signature"
-		# wlrctl needs the Wayland display, which SSH sessions lack.
+		# wlrctl needs the Wayland display, which a bare environment lacks.
 		if [ -z "${WAYLAND_DISPLAY:-}" ]; then
 			WAYLAND_DISPLAY=$(find "$runtime" -mindepth 1 -maxdepth 1 -name 'wayland-*' ! -name '*.lock' -type s -printf '%T@ %f\n' 2> /dev/null | sort -rn | head -n 1 | cut -d ' ' -f 2-)
 			export WAYLAND_DISPLAY
@@ -50,25 +49,8 @@ function compositor_monitors() {
 	esac
 }
 
-# Print the cursor position in logical layout coordinates.  The
-# compositor-query command does not call this, so shellcheck sees it as
-# unused there.
-# shellcheck disable=SC2329
-function compositor_cursor() {
-	case "$COMPOSITOR" in
-	mango)
-		mmsg get cursorpos | jq -r '"\(.x) \(.y)"'
-		;;
-	wayfire)
-		compositor-wayfire-ipc cursor | jq -r '"\(.pos.x) \(.pos.y)"'
-		;;
-	esac
-}
-
 # Print the focused output as one line: name, logical width, logical
-# height and scale.  lan-mouse does not call this, so shellcheck sees
-# it as unused there.
-# shellcheck disable=SC2329
+# height and scale.
 function compositor_focused_output() {
 	case "$COMPOSITOR" in
 	mango)
@@ -89,9 +71,7 @@ function compositor_focused_output() {
 # Print the toplevel windows as a JSON array of objects with id, title,
 # app-id, output, x, y, width, height and visible.  The geometry is in
 # global logical layout coordinates, and visible is true when the window
-# shows on the current tag or workspace of its output.  lan-mouse does
-# not call this, so shellcheck sees it as unused there.
-# shellcheck disable=SC2329
+# shows on the current tag or workspace of its output.
 function compositor_windows() {
 	case "$COMPOSITOR" in
 	mango)
@@ -137,9 +117,7 @@ function compositor_windows() {
 }
 
 # Focus and raise the window with the given compositor id, switching its
-# output to the tag or workspace that shows it.  lan-mouse does not call
-# this, so shellcheck sees it as unused there.
-# shellcheck disable=SC2329
+# output to the tag or workspace that shows it.
 function compositor_focus_window() {
 	case "$COMPOSITOR" in
 	mango)
@@ -154,9 +132,7 @@ function compositor_focus_window() {
 	esac
 }
 
-# Print the scale of the named output.  lan-mouse does not call this,
-# so shellcheck sees it as unused there.
-# shellcheck disable=SC2329
+# Print the scale of the named output.
 function compositor_output_scale() {
 	case "$COMPOSITOR" in
 	mango)

@@ -2,8 +2,7 @@
 
 Wayfire frames IPC JSON with a four byte little-endian length prefix
 in both directions.  Every Wayfire method name used by compositor-query
-and lan-mouse lives in METHODS below, so an upstream rename is a single
-edit.
+lives in METHODS below, so an upstream rename is a single edit.
 """
 import glob
 import json
@@ -12,15 +11,13 @@ import socket
 import struct
 import sys
 
-# Friendly aliases for the Wayfire IPC methods.  The stipc plugin is
-# unstable, so nothing outside this table names a method directly.
+# Friendly aliases for the Wayfire IPC methods.  Nothing outside this
+# table names a method directly.
 METHODS = {
-    "cursor": "window-rules/get_cursor_position",
     "outputs": "window-rules/list-outputs",
     "focused-output": "window-rules/get-focused-output",
     "views": "window-rules/list-views",
     "focus-view": "window-rules/focus-view",
-    "move-cursor": "stipc/move_cursor",
 }
 
 
