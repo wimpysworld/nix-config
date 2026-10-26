@@ -767,15 +767,15 @@ in
       fi
 
       # Skip silently if the file is unreadable as JSON (corrupt or empty).
-      if ! "$jq" -e . "$claude_config" >/dev/null 2>&1; then
-        exit 0
-      fi
-
-      tmp="$(${pkgs.coreutils}/bin/mktemp "$claude_config.XXXXXX")"
-      if "$jq" '.lspRecommendationDisabled = true' "$claude_config" > "$tmp"; then
-        ${pkgs.coreutils}/bin/mv "$tmp" "$claude_config"
-      else
-        ${pkgs.coreutils}/bin/rm -f "$tmp"
+      # This step shares one script with every other activation step, so it
+      # must not exit.
+      if "$jq" -e . "$claude_config" >/dev/null 2>&1; then
+        tmp="$(${pkgs.coreutils}/bin/mktemp "$claude_config.XXXXXX")"
+        if "$jq" '.lspRecommendationDisabled = true' "$claude_config" > "$tmp"; then
+          ${pkgs.coreutils}/bin/mv "$tmp" "$claude_config"
+        else
+          ${pkgs.coreutils}/bin/rm -f "$tmp"
+        fi
       fi
     '';
 
@@ -798,15 +798,15 @@ in
       fi
 
       # Skip silently if the file is unreadable as JSON (corrupt or empty).
-      if ! "$jq" -e . "$claude_config" >/dev/null 2>&1; then
-        exit 0
-      fi
-
-      tmp="$(${pkgs.coreutils}/bin/mktemp "$claude_config.XXXXXX")"
-      if "$jq" '.diffSidebarOpen = false' "$claude_config" > "$tmp"; then
-        ${pkgs.coreutils}/bin/mv "$tmp" "$claude_config"
-      else
-        ${pkgs.coreutils}/bin/rm -f "$tmp"
+      # This step shares one script with every other activation step, so it
+      # must not exit.
+      if "$jq" -e . "$claude_config" >/dev/null 2>&1; then
+        tmp="$(${pkgs.coreutils}/bin/mktemp "$claude_config.XXXXXX")"
+        if "$jq" '.diffSidebarOpen = false' "$claude_config" > "$tmp"; then
+          ${pkgs.coreutils}/bin/mv "$tmp" "$claude_config"
+        else
+          ${pkgs.coreutils}/bin/rm -f "$tmp"
+        fi
       fi
     '';
 
@@ -835,39 +835,39 @@ in
 
           # Skip silently when the secret is not decrypted yet, for example on
           # the first activation before the sops-nix user service has run.
+          # This step shares one script with every other activation step, so
+          # it must not exit.
           if [[ ! -r "$anthropic_api_key_path" ]]; then
             echo "claude-code: Anthropic API key secret is not readable yet, skipping approval"
-            exit 0
-          fi
-
-          anthropic_api_key="$(< "$anthropic_api_key_path")"
-          anthropic_api_key_tail="''${anthropic_api_key: -20}"
-          unset anthropic_api_key
-
-          if [[ ! -f "$claude_config" ]]; then
-            ${pkgs.coreutils}/bin/install -m 600 /dev/null "$claude_config"
-            echo '{}' > "$claude_config"
-          fi
-
-          if ! "$jq" -e . "$claude_config" >/dev/null 2>&1; then
-            exit 0
-          fi
-
-          tmp="$(${pkgs.coreutils}/bin/mktemp "$claude_config.XXXXXX")"
-          if "$jq" --arg tail "$anthropic_api_key_tail" '
-            .hasCompletedOnboarding = true
-            | .customApiKeyResponses.approved = ((.customApiKeyResponses.approved // []) + [$tail] | unique)
-            | .customApiKeyResponses.rejected = ((.customApiKeyResponses.rejected // []) | map(select(. != $tail)))
-            | del(.oauthAccount)
-          ' "$claude_config" > "$tmp"; then
-            ${pkgs.coreutils}/bin/mv "$tmp" "$claude_config"
           else
-            ${pkgs.coreutils}/bin/rm -f "$tmp"
-          fi
+            anthropic_api_key="$(< "$anthropic_api_key_path")"
+            anthropic_api_key_tail="''${anthropic_api_key: -20}"
+            unset anthropic_api_key
 
-          if [[ -f "$claude_credentials" ]]; then
-            echo "claude-code: removing subscription login so the API key is the only credential"
-            ${pkgs.coreutils}/bin/rm -f "$claude_credentials"
+            if [[ ! -f "$claude_config" ]]; then
+              ${pkgs.coreutils}/bin/install -m 600 /dev/null "$claude_config"
+              echo '{}' > "$claude_config"
+            fi
+
+            # Skip the rest silently if the file is unreadable as JSON.
+            if "$jq" -e . "$claude_config" >/dev/null 2>&1; then
+              tmp="$(${pkgs.coreutils}/bin/mktemp "$claude_config.XXXXXX")"
+              if "$jq" --arg tail "$anthropic_api_key_tail" '
+                .hasCompletedOnboarding = true
+                | .customApiKeyResponses.approved = ((.customApiKeyResponses.approved // []) + [$tail] | unique)
+                | .customApiKeyResponses.rejected = ((.customApiKeyResponses.rejected // []) | map(select(. != $tail)))
+                | del(.oauthAccount)
+              ' "$claude_config" > "$tmp"; then
+                ${pkgs.coreutils}/bin/mv "$tmp" "$claude_config"
+              else
+                ${pkgs.coreutils}/bin/rm -f "$tmp"
+              fi
+
+              if [[ -f "$claude_credentials" ]]; then
+                echo "claude-code: removing subscription login so the API key is the only credential"
+                ${pkgs.coreutils}/bin/rm -f "$claude_credentials"
+              fi
+            fi
           fi
         ''
     );

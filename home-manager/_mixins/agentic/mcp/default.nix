@@ -127,25 +127,21 @@ in
           managed=${lib.escapeShellArg (builtins.toJSON zedManagedContextServers)}
           jq=${lib.getExe pkgs.jq}
 
-          # First-run on a fresh machine: nothing to purge yet.
-          if [[ ! -f "$settings_path" ]]; then
-            exit 0
-          fi
-
-          # Skip silently if the file is unreadable as JSON (corrupt or empty).
-          if ! "$jq" -e . "$settings_path" >/dev/null 2>&1; then
-            exit 0
-          fi
-
-          tmp="$(${pkgs.coreutils}/bin/mktemp "$settings_path.XXXXXX")"
-          if "$jq" --argjson managed "$managed" '
-            if has("context_servers") then
-              .context_servers |= with_entries(select(.key as $k | $managed | index($k)))
-            else . end
-          ' "$settings_path" > "$tmp"; then
-            ${pkgs.coreutils}/bin/mv "$tmp" "$settings_path"
-          else
-            ${pkgs.coreutils}/bin/rm -f "$tmp"
+          # Skip silently on the first run on a fresh machine, when there is
+          # nothing to purge yet, and when the file is unreadable as JSON
+          # (corrupt or empty). This step shares one script with every other
+          # activation step, so it must not exit.
+          if [[ -f "$settings_path" ]] && "$jq" -e . "$settings_path" >/dev/null 2>&1; then
+            tmp="$(${pkgs.coreutils}/bin/mktemp "$settings_path.XXXXXX")"
+            if "$jq" --argjson managed "$managed" '
+              if has("context_servers") then
+                .context_servers |= with_entries(select(.key as $k | $managed | index($k)))
+              else . end
+            ' "$settings_path" > "$tmp"; then
+              ${pkgs.coreutils}/bin/mv "$tmp" "$settings_path"
+            else
+              ${pkgs.coreutils}/bin/rm -f "$tmp"
+            fi
           fi
         '';
   };
