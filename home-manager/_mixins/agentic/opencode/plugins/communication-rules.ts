@@ -31,15 +31,20 @@ function reminder() {
   return (result.status === 0 && result.stdout.trim()) || `Communication Rules:\n${readText(rulesPath)}`;
 }
 
+// V2 plugin client methods resolve to the bare value. Older clients wrapped it
+// as `{ data }`, so accept both forms.
+function unwrap(result: any) {
+  return result && typeof result === "object" && !Array.isArray(result) && "data" in result ? result.data : result;
+}
+
+function logError(message: string, error: unknown) {
+  console.error(`Communication Rules: ${message}`, error);
+}
+
 export default {
   id: "nix-config.communication-rules",
   async setup(ctx: any) {
-    let observationFailed = false;
-    let observationError: unknown;
     const controller = new AbortController();
-    const checkObserver = () => {
-      if (observationFailed) throw new Error("Communication Rules: event observation failed.", { cause: observationError });
-    };
     const notify = async (sessionID: string, text: string) => {
       if (text) await ctx.session.synthetic({
         sessionID, text, description: "Communication Rules", resume: false,
@@ -52,25 +57,31 @@ export default {
         }
       }
     };
-    await ctx.session.hook("context", (event: any) => {
-      checkObserver();
+    // In V2 a session hook that throws fails the model request and the session
+    // drain, so a session hook logs its error and lets the turn continue.
+    const guard = (name: string, callback: (event: any) => void) => (event: any) => {
+      try {
+        callback(event);
+      } catch (error) {
+        logError(`${name} hook failed.`, error);
+        try { inject(event, [reminder()]); } catch { /* The turn continues without the rules. */ }
+      }
+    };
+    await ctx.session.hook("context", guard("context", (event: any) => {
       const decision = decide("context", { sessionID: event.sessionID });
-      if (decision.decision !== "pass") throw new Error(FALLBACK_BLOCK);
+      if (decision.decision !== "pass") throw new Error(`Unexpected context decision: ${decision.decision}`);
       inject(event, [
         ...(decision.inject_base_rules ? [reminder()] : []),
         ...(decision.append_correction ? [readText(correctionPromptPath)] : []),
       ]);
-    });
-    const auxiliaryContext = (event: any) => {
-      checkObserver();
-      inject(event, [reminder()]);
-    };
+    }));
     for (const name of ["compaction", "generate", "title"]) {
-      await ctx.session.hook(name, auxiliaryContext);
+      await ctx.session.hook(name, guard(name, (event: any) => inject(event, [reminder()])));
     }
+    // A rejection here fails only the one tool call, so blocks still reject.
     await ctx.tool.hook("execute.before", async (event: any) => {
-      checkObserver();
-      const tool = (await ctx.tool.list()).find((item: any) => item.id === event.tool);
+      const tools = unwrap(await ctx.tool.list());
+      const tool = Array.isArray(tools) ? tools.find((item: any) => item.id === event.tool) : undefined;
       const name = tool?.options?.namespace
         ? `mcp__${tool.options.namespace}__${tool.name}` : event.tool;
       const decision = decide("tool.execute.before", {
@@ -83,33 +94,39 @@ export default {
       }
       throw new Error(decision.notice || decision.block_message || FALLBACK_BLOCK);
     });
+    const check = async (event: any) => {
+      const session = unwrap(await ctx.session.get({ sessionID: event.data.sessionID }));
+      if (session?.location?.directory !== ctx.location.directory) return;
+      const messages = unwrap(await ctx.session.context({ sessionID: session.id }));
+      const message = Array.isArray(messages)
+        ? messages.find((item: any) => item.id === event.data.assistantMessageID) : undefined;
+      if (message?.type !== "assistant") throw new Error("Completed message is unavailable.");
+      const text = message.content.filter((part: any) => part.type === "text")
+        .map((part: any) => part.text).join("\n");
+      // The scanner treats empty content as a breach, so skip steps with no text.
+      if (!text.trim()) return;
+      const decision = decide("message.final", {
+        event: "message.final", surface: "final", sessionID: session.id, message: { content: text },
+      });
+      if (!["pass", "block"].includes(decision.decision)) throw new Error(`Unexpected final decision: ${decision.decision}`);
+      await notify(session.id, decision.notice);
+    };
     const observe = async () => {
       for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
         // Tool-call, error and unknown steps carry no final prose. A provider
         // error must surface as an error, not as a rules breach.
-        if (event.type !== "session.step.ended" || skippedFinishes.has(event.data.finish)) continue;
-        const session = await ctx.session.get({ sessionID: event.data.sessionID });
-        if (session.location.directory !== ctx.location.directory) continue;
-        const { data } = await ctx.session.context({ sessionID: session.id });
-        const message = data.find((item: any) => item.id === event.data.assistantMessageID);
-        if (message?.type !== "assistant") throw new Error("Communication Rules: completed message is unavailable.");
-        const text = message.content.filter((part: any) => part.type === "text")
-          .map((part: any) => part.text).join("\n");
-        // The scanner treats empty content as a breach, so skip steps with no text.
-        if (!text.trim()) continue;
-        const decision = decide("message.final", {
-          event: "message.final", surface: "final", sessionID: session.id, message: { content: text },
-        });
-        if (!["pass", "block"].includes(decision.decision)) throw new Error(FALLBACK_BLOCK);
-        await notify(session.id, decision.notice);
+        if (event?.type !== "session.step.ended" || skippedFinishes.has(event.data?.finish)) continue;
+        // One failed check must not stop the checks of later turns.
+        try {
+          await check(event);
+        } catch (error) {
+          logError("final-message check failed.", error);
+        }
       }
-      if (!controller.signal.aborted) throw new Error("Communication Rules: event stream closed.");
+      if (!controller.signal.aborted) throw new Error("event stream closed.");
     };
     const observing = observe().catch((error) => {
-      if (!controller.signal.aborted) {
-        observationFailed = true;
-        observationError = error;
-      }
+      if (!controller.signal.aborted) logError("event observation stopped.", error);
     });
     return async () => { controller.abort(); await observing; };
   },

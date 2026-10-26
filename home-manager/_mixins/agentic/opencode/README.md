@@ -52,6 +52,8 @@ Home Manager links each plugin directory to a store directory with a regular `in
 
 The directory plugin `plugins/communication-rules/index.ts` uses V2 session hooks to inject the Communication Rules. Its `execute.before` tool hook checks outgoing prose side effects through the shared Python scanner. Scanner failures block tool execution.
 
+The session hooks never reject, because a rejected V2 session hook fails the model request. A hook error is logged, and the hook injects the base rules reminder instead. A failed final-message check is logged and blocks no later turn.
+
 Final-message checks run after display. A detected violation adds a synthetic notice, without an automatic model turn. The checks skip steps that finish with `tool-calls`, `error`, or `unknown`, and steps with no text. A provider error then shows as an error, without a rules notice. These checks do not provide a pre-display hard block for final or subagent prose.
 
 Remove the Agent Tripwire configuration through a reviewed rebuild for operator recovery. Prompts do not provide a Tripwire bypass.
