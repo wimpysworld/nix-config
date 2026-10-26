@@ -1,12 +1,5 @@
 let
   systems = builtins.fromTOML (builtins.readFile ../../../lib/registry-systems.toml);
-  excludeCgDevices = builtins.filter (
-    name:
-    let
-      system = builtins.getAttr name systems;
-    in
-    !(builtins.elem "cg" (system.tags or [ ]))
-  );
 in
 {
   devices = {
@@ -55,7 +48,6 @@ in
         "ravi"
         "revan"
         "shaa"
-        "sidious"
         "skrye"
         "tanis"
         "zannah"
@@ -103,7 +95,13 @@ in
       label = "Linux-Matters";
       maxConflicts = 10;
       path = "~/Linux-Matters";
-      devices = excludeCgDevices crypt.devices;
+      devices = [
+        "momin"
+        "revan"
+        "skrye"
+        "tanis"
+        "zannah"
+      ];
     };
     music = {
       id = "music";
@@ -123,11 +121,8 @@ in
       maxConflicts = 10;
       path = "~/Notes";
       devices = [
-        "felkor"
         "momin"
         "revan"
-        "shaa"
-        "sidious"
         "skrye"
         "tanis"
         "zannah"
@@ -138,7 +133,13 @@ in
       label = "Oval-Tutu";
       maxConflicts = 10;
       path = "~/Oval-Tutu";
-      devices = excludeCgDevices crypt.devices;
+      devices = [
+        "momin"  
+        "revan"
+        "skrye"
+        "tanis"
+        "zannah"
+      ];
     };
     pictures = {
       id = "pictures";
@@ -146,6 +147,7 @@ in
       maxConflicts = 10;
       path = "~/Pictures";
       devices = [
+        "momin"
         "revan"
         "skrye"
         "tanis"
@@ -159,6 +161,7 @@ in
       path = "~/Studio";
       rescanIntervalS = 21600;
       devices = [
+        "momin"
         "revan"
         "skrye"
         "tanis"
@@ -172,7 +175,9 @@ in
       path = "~/Videos";
       rescanIntervalS = 21600;
       devices = [
+        "momin"
         "skrye"
+        "tanis"
         "zannah"
       ];
     };
