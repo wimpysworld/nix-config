@@ -26,8 +26,6 @@ The `reframe` tag enables the NixOS ReFrame, websockify, and Caddy configuration
 
 | Host | Captured connector | ReFrame desktop |
 | --- | --- | --- |
-| `bane` | `eDP-1` | `2560x1600` |
-| `ravi` | `eDP-1` | `2880x1920` |
 | `skrye` | `DP-1` | `2560x2880` |
 | `zannah` | `DP-1` | `3440x1440` |
 
@@ -115,13 +113,13 @@ Do not deploy until an authorised age key can decrypt the source on the target w
 Build both generations for every target first:
 
 ```bash
-for host in bane ravi skrye zannah; do
+for host in skrye zannah; do
   just build-host hostname="$host"
   just build-home username=martin hostname="$host"
 done
 ```
 
-Roll out in this order: `bane`, `ravi`, `skrye`, then `zannah`. The two single-monitor laptops come first. Complete every acceptance check on one host before starting the next.
+Roll out in this order: `skrye`, then `zannah`. Complete every acceptance check on one host before starting the next.
 
 On each target:
 
@@ -135,7 +133,7 @@ The split switch creates a short period without remote desktop access. Run it lo
 
 ## Runtime acceptance checklist
 
-Repeat this checklist on `bane`, `ravi`, `skrye`, and `zannah`. Stop and roll back the current host if local input, display, login, or network access regresses.
+Repeat this checklist on `skrye` and `zannah`. Stop and roll back the current host if local input, display, login, or network access regresses.
 
 - [ ] All four system services are active and have no repeated restart or error messages.
 - [ ] ReFrame listens only on `127.0.0.1:5933` and websockify only on `127.0.0.1:5900`.
