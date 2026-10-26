@@ -2,13 +2,14 @@
   config,
   inputs,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
 let
   # ─── External agents (ACP) ────────────────────────────────────────────
-  # Each agent mixin (claude-code, codex, opencode) only declares that it
-  # is enabled. Zed-side wiring lives here so the structure of Zed's
+  # Each agent mixin (claude-code, codex, opencode, pi) only declares that
+  # it is enabled. Zed-side wiring lives here so the structure of Zed's
   # `settings.json` stays owned by a single module. Agent binaries come
   # from numtide's llm-agents flake, the same input the agent mixins use,
   # which keeps the ACP adapters version-pinned alongside their CLIs.
@@ -16,6 +17,8 @@ let
   acpPackages = inputs.llm-agents.packages.${system};
   zedAcpEnabled = config.programs.zed-editor.enable;
   codexAcpEnabled = zedAcpEnabled && config.programs.codex.enable;
+  # The Pi mixin has no `programs.pi` option; it gates on this user tag.
+  piAcpEnabled = noughtyLib.userHasTag "developer";
 
   # `agent_servers` table emitted into Zed's userSettings. Each entry is
   # gated on its agent mixin being enabled; disabling the mixin removes
@@ -45,6 +48,19 @@ let
         command = "${config.programs.opencode.package}/bin/opencode";
         args = [ "acp" ];
         env = { };
+      };
+    }
+    // lib.optionalAttrs piAcpEnabled {
+      Pi = {
+        type = "custom";
+        command = "${acpPackages.pi-acp}/bin/pi-acp";
+        args = [ ];
+        # pi-acp puts the stock llm-agents `pi` first on PATH. Run the Pi
+        # mixin's `pi` wrapper instead, so ACP sessions get the same Node
+        # build, API keys and extensions as the terminal.
+        env = {
+          PI_ACP_PI_COMMAND = "${config.home.path}/bin/pi";
+        };
       };
     };
 
@@ -88,6 +104,22 @@ let
             agent = {
               custom = {
                 name = "OpenCode";
+              };
+            };
+          }
+        ];
+      };
+    }
+    # Zed binds `ctrl-alt-shift-p` to `dev::ToggleFpsOverlay`, so Pi uses a
+    # free key.
+    ++ lib.optional piAcpEnabled {
+      bindings = {
+        "ctrl-alt-shift-a" = [
+          "agent::NewExternalAgentThread"
+          {
+            agent = {
+              custom = {
+                name = "Pi";
               };
             };
           }

@@ -263,8 +263,9 @@ let
       fi
 
       # Resume the most recent session by default. Skipped for management
-      # subcommands (install, update, ...), headless `-p` runs, and when the
-      # caller already selects a session, so those paths are untouched.
+      # subcommands (install, update, ...), headless `-p` and `--mode` runs
+      # (pi-acp starts `pi --mode rpc`), and when the caller already selects
+      # a session, so those paths are untouched.
       pi_resume=(--continue)
       case "''${1:-}" in
         install | remove | uninstall | update | list | config | -h | --help | -v | --version)
@@ -273,7 +274,7 @@ let
         *)
           for arg in "$@"; do
             case "$arg" in
-              -c | --continue | -r | --resume | --session | --session-id | --fork | --no-session | -p | --print)
+              -c | --continue | -r | --resume | --session | --session-id | --fork | --no-session | -p | --print | --mode)
                 pi_resume=()
                 break
                 ;;
