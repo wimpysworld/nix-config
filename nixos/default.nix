@@ -175,9 +175,13 @@ in
       # drop the build-graph derivations to free disk space.
       keep-derivations = lib.mkIf (host.is.server || host.is.iso) (lib.mkDefault false);
       # Use Numtide's cache for llm-agents.nix packages such as Codex.
-      extra-substituters = [ "https://cache.numtide.com" ];
+      extra-substituters = [
+        "https://cache.numtide.com"
+        "https://cache.nixos-cuda.org"
+      ];
       extra-trusted-public-keys = [
         "niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g="
+        "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="
       ];
       warn-dirty = false;
       # Allow wheel users to set client-side Nix options (e.g. netrc-file

@@ -97,15 +97,7 @@ in
 
       fresh = final.unstable.fresh-editor;
 
-      herdr = inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}.herdr.overrideAttrs (
-        oldAttrs:
-        prev.lib.optionalAttrs final.stdenv.hostPlatform.isLinux {
-          nativeBuildInputs = (oldAttrs.nativeBuildInputs or [ ]) ++ [ final.llvmPackages.lld ];
-          env = (oldAttrs.env or { }) // {
-            RUSTFLAGS = (oldAttrs.env.RUSTFLAGS or "") + " -C link-arg=-fuse-ld=lld";
-          };
-        }
-      );
+      herdr = inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}.herdr;
 
       inherit (final.unstable) ollama;
       inherit (final.unstable) ollama-cuda;

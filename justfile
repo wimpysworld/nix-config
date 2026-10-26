@@ -470,12 +470,28 @@ gc:
     @echo "Garbage 󰩹 Collection"
     nh clean all --keep 5
 
-# Update flake.lock
-update input="":
+# Update inputs, refresh the lock, or repair one pin: just update INPUT true URL.
+update input="" lock_only="false" override_url="":
     #!/usr/bin/env bash
     set -euo pipefail
+    if [[ {{ quote(lock_only) }} != "true" && {{ quote(lock_only) }} != "false" ]]; then
+      echo "lock_only must be true or false" >&2
+      exit 1
+    fi
+    if [[ -n {{ quote(override_url) }} && ( {{ quote(lock_only) }} != "true" || -z {{ quote(input) }} ) ]]; then
+      echo "override_url requires lock_only=true and an input" >&2
+      exit 1
+    fi
+    if [[ {{ quote(lock_only) }} == "true" && -n {{ quote(input) }} && -z {{ quote(override_url) }} ]]; then
+      echo "lock_only with an input requires override_url" >&2
+      exit 1
+    fi
     echo "flake.lock 󰈡 Updating"
-    if [[ -n {{ quote(input) }} ]]; then
+    if [[ -n {{ quote(override_url) }} ]]; then
+      nix flake lock --override-input {{ quote(input) }} {{ quote(override_url) }}
+    elif [[ {{ quote(lock_only) }} == "true" ]]; then
+      nix flake lock
+    elif [[ -n {{ quote(input) }} ]]; then
       nix flake update {{ quote(input) }}
     else
       nix flake update

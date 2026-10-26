@@ -21,7 +21,6 @@
     hermes-agent.inputs.nixpkgs.follows = "nixpkgs-unstable";
     hermes-agent.inputs.uv2nix.url = "github:pyproject-nix/uv2nix";
     llm-agents.url = "github:numtide/llm-agents.nix";
-    llm-agents.inputs.nixpkgs.follows = "nixpkgs-unstable";
     llm-agents.inputs.treefmt-nix.follows = "direnv-instant/treefmt-nix";
     sidra.url = "github:wimpysworld/sidra";
     sidra.inputs.nixpkgs.follows = "nixpkgs";
