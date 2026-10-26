@@ -40,6 +40,10 @@ in
   catppuccin = {
     inherit (catppuccinPalette) accent;
     inherit (catppuccinPalette) flavor;
+    cursors.accent = catppuccinPalette.cursorAccent;
+    # Use the Nixpkgs cursor build, which the greeter also uses and which
+    # cache.nixos.org serves, instead of the uncached catppuccin/nix port.
+    sources.cursors = pkgs.catppuccin-cursors;
     fish.enable = config.programs.fish.enable;
     zsh-syntax-highlighting.enable = config.programs.zsh.enable;
   };

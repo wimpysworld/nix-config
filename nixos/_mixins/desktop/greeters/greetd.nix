@@ -10,8 +10,8 @@ let
   inherit (config.noughty) host;
   cursorPackage =
     pkgs.catppuccin-cursors."${catppuccinPalette.flavor}${
-      lib.toUpper (builtins.substring 0 1 catppuccinPalette.accent)
-    }${builtins.substring 1 (-1) catppuccinPalette.accent}";
+      lib.toUpper (builtins.substring 0 1 catppuccinPalette.cursorAccent)
+    }${builtins.substring 1 (-1) catppuccinPalette.cursorAccent}";
   gtkThemePackage = pkgs.catppuccin-gtk.override {
     accents = [ "${catppuccinPalette.accent}" ];
     variant = catppuccinPalette.flavor;
@@ -35,7 +35,7 @@ let
   regreetCage = pkgs.writeShellScriptBin "regreet-cage" ''
     # Start regreet in a Wayland kiosk using Cage
     export GTK_THEME="catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-standard"
-    export XCURSOR_THEME="catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors"
+    export XCURSOR_THEME="catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.cursorAccent}-cursors"
     export XCURSOR_SIZE="32"
     export XDG_DATA_DIRS="${regreetDataDirs}"
     export XDG_CACHE_HOME="/var/cache/regreet"
@@ -80,7 +80,7 @@ lib.mkIf host.is.workstation {
     regreet = {
       enable = true;
       cursorTheme = {
-        name = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
+        name = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.cursorAccent}-cursors";
         package = cursorPackage;
       };
       settings = {
@@ -104,7 +104,7 @@ lib.mkIf host.is.workstation {
         };
         GTK = lib.mkForce {
           application_prefer_dark_theme = catppuccinPalette.isDark;
-          cursor_theme_name = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
+          cursor_theme_name = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.cursorAccent}-cursors";
           font_name = "Work Sans 16";
           icon_theme_name = iconTheme;
           theme_name = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-standard";

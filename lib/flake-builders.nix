@@ -89,6 +89,8 @@ rec {
       system ? null,
       flavor ? "mocha",
       accent ? "blue",
+      # Selects only the pointer cursor theme. Every other accent uses `accent`.
+      cursorAccent ? "yellow",
     }:
     let
       paletteJson = builtins.fromJSON (builtins.readFile ./catppuccin-palette.json);
@@ -194,6 +196,7 @@ rec {
         ;
       colors = palette;
       inherit accent;
+      inherit cursorAccent;
       inherit flavor;
     };
 

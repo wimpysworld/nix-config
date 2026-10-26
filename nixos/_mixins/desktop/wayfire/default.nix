@@ -13,7 +13,7 @@ in
     environment.sessionVariables = {
       # Make sure the cursor size is the same in all environments
       XCURSOR_SIZE = 32;
-      XCURSOR_THEME = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
+      XCURSOR_THEME = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.cursorAccent}-cursors";
       NIXOS_OZONE_WL = 1;
       WLR_NO_HARDWARE_CURSORS = lib.mkIf (noughtyLib.hostHasTag "reframe") 1;
     };
@@ -26,7 +26,7 @@ in
               clock-format = "24h";
               color-scheme = "${catppuccinPalette.preferShade}";
               cursor-size = mkInt32 32;
-              cursor-theme = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-cursors";
+              cursor-theme = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.cursorAccent}-cursors";
               document-font-name = "Work Sans 12";
               font-name = "Work Sans 12";
               gtk-theme = "catppuccin-${catppuccinPalette.flavor}-${catppuccinPalette.accent}-standard";
