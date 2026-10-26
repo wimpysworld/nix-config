@@ -1,3 +1,13 @@
+let
+  systems = builtins.fromTOML (builtins.readFile ../../../lib/registry-systems.toml);
+  excludeCgDevices = builtins.filter (
+    name:
+    let
+      system = builtins.getAttr name systems;
+    in
+    !(builtins.elem "cg" (system.tags or [ ]))
+  );
+in
 {
   devices = {
     bane = {
@@ -32,7 +42,7 @@
     };
   };
 
-  folders = {
+  folders = rec {
     crypt = {
       id = "crypt";
       label = "Crypt";
@@ -88,6 +98,13 @@
         "zannah"
       ];
     };
+    linux-matters = {
+      id = "linux-matters";
+      label = "Linux-Matters";
+      maxConflicts = 10;
+      path = "~/Linux-Matters";
+      devices = excludeCgDevices crypt.devices;
+    };
     music = {
       id = "music";
       label = "Music";
@@ -115,6 +132,13 @@
         "tanis"
         "zannah"
       ];
+    };
+    oval-tutu = {
+      id = "oval-tutu";
+      label = "Oval-Tutu";
+      maxConflicts = 10;
+      path = "~/Oval-Tutu";
+      devices = excludeCgDevices crypt.devices;
     };
     pictures = {
       id = "pictures";

@@ -13,6 +13,11 @@ let
   hostHasCryptFolder = hostHasSyncthingFolder "crypt";
   hostHasGamesFolder = hostHasSyncthingFolder "games";
   isLinuxHostWithCryptFolder = host.is.linux && hostHasCryptFolder;
+  # Match nixos/_mixins/server/maestral and darwin/_mixins/desktop provisioning.
+  hostHasMaestral =
+    !(noughtyLib.hostHasTag "cg")
+    && (host.is.darwin || (host.is.nixos && noughtyLib.hostHasTag "dropbox"));
+  gtkBookmarksEnabled = config.gtk.enable && config.gtk.gtk3.enable;
 in
 {
   imports = [
@@ -78,6 +83,50 @@ in
         unlock-secrets = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Secrets ~/Vaults/Secrets";
       };
     };
+    gtk.gtk3.bookmarks = lib.mkIf gtkBookmarksEnabled (
+      lib.optional (noughtyLib.userHasTag "developer") "file://${config.xdg.userDirs.extraConfig.DEVELOPMENT} Development"
+      ++ lib.optionals hostHasMaestral [
+        "file://${config.home.homeDirectory}/Dropbox/Documents/Martin Dropbox-Martin"
+        "file://${config.home.homeDirectory}/Dropbox/Documents/Both Dropbox-Both"
+      ]
+      ++ [
+        "file://${config.xdg.userDirs.extraConfig.LINUX_MATTERS} Linux-Matters"
+        "file://${config.xdg.userDirs.extraConfig.NOTES} Notes"
+        "file://${config.xdg.userDirs.extraConfig.OVAL_TUTU} Oval-Tutu"
+        "file://${config.xdg.userDirs.pictures} Pictures"
+        "file://${config.xdg.userDirs.videos} Videos"
+        "file://${config.xdg.userDirs.extraConfig.VOLATILE} Volatile"
+      ]
+    );
+    xdg.configFile."gtk-3.0/bookmarks" = lib.mkIf (
+      gtkBookmarksEnabled && config.gtk.gtk3.bookmarks != [ ]
+    ) { force = true; };
+    xdg.userDirs.extraConfig = {
+      CRYPT = "${config.home.homeDirectory}/Crypt";
+      LINUX_MATTERS = "${config.home.homeDirectory}/Linux-Matters";
+      NOTES = "${config.home.homeDirectory}/Notes";
+      OVAL_TUTU = "${config.home.homeDirectory}/Oval-Tutu";
+      VAULTS = "${config.home.homeDirectory}/Vaults";
+      VOLATILE = "${config.home.homeDirectory}/Volatile";
+    }
+    // lib.optionalAttrs (noughtyLib.hostHasTag "cg") {
+      CHAINGUARD = "${config.home.homeDirectory}/Chainguard";
+    }
+    // lib.optionalAttrs (noughtyLib.userHasTag "developer") {
+      DEVELOPMENT = "${config.home.homeDirectory}/Development";
+    }
+    // lib.optionalAttrs (noughtyLib.hostHasTag "studio") {
+      STUDIO = "${config.home.homeDirectory}/Studio";
+    }
+    //
+      lib.optionalAttrs
+        (noughtyLib.isHost [
+          "skrye"
+          "zannah"
+        ])
+        {
+          GAMES = "${config.home.homeDirectory}/Games";
+        };
     systemd.user.tmpfiles = lib.mkIf isLinuxHostWithCryptFolder {
       rules = [
         "d ${config.home.homeDirectory}/Crypt 0755 ${username} users - -"
