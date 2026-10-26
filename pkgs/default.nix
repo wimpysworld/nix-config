@@ -19,6 +19,7 @@ pkgs: {
   manuscript = pkgs.callPackage ./manuscript { };
   moltis = pkgs.callPackage ./moltis { };
   openhue-cli = pkgs.callPackage ./openhue-cli { };
+  openusage = pkgs.callPackage ./openusage { };
   roamgate = pkgs.callPackage ./roamgate { };
   tcount = pkgs.callPackage ./tcount { };
   vecdecor = pkgs.callPackage ./vecdecor { };

@@ -76,6 +76,9 @@ jobs:
             name: Roamgate
             changelog: https://github.com/powerfooI/roamgate/releases
             automerge: false
+          - id: openusage
+            name: OpenUsage
+            changelog: https://github.com/janekbaraniewski/openusage/releases
           - id: weave
             name: Weave
             changelog: https://github.com/matze/weave/releases
