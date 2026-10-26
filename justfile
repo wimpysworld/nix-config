@@ -530,8 +530,34 @@ build-home username=current_username hostname=current_hostname: token-check
 
 # Switch Home configuration
 switch-home username=current_username hostname=current_hostname: token-check
-    @echo "Home Manager  Switching: {{ username }}@{{ hostname }}"
-    @nh home switch . --configuration "{{ username }}@{{ hostname }}" --backup-extension {{ backup_ext }} --show-activation-logs
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Home Manager  Switching: {{ username }}@{{ hostname }}"
+    result_directory=$(mktemp -d)
+    trap 'rm -rf "${result_directory}"' EXIT
+    nh home switch . --configuration "{{ username }}@{{ hostname }}" --backup-extension {{ backup_ext }} --show-activation-logs --out-link "${result_directory}/result"
+    just check-home-generation "${result_directory}/result"
+
+# Check that the last Home Manager activation recorded its generation gcroot
+[private]
+check-home-generation generation current_link="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Home Manager records the current-home gcroot as the last activation
+    # step, so a missing or older gcroot means that the activation stopped
+    # early. The next switch then restarts every user unit.
+    expected=$(readlink -f {{ quote(generation) }})
+    current_link={{ quote(current_link) }}
+    current_link="${current_link:-${XDG_STATE_HOME:-${HOME}/.local/state}/home-manager/gcroots/current-home}"
+    current=""
+    if [[ -L "${current_link}" ]]; then
+      current=$(readlink -f "${current_link}")
+    fi
+    if [[ "${current}" != "${expected}" ]]; then
+      echo "Home Manager  Warning: ${current_link} does not point to ${expected}." >&2
+      echo "   The activation stopped before its last step. The likely cause is an activation entry that exits early." >&2
+      exit 1
+    fi
 
 # Build OS configuration
 build-host hostname=current_hostname: token-check

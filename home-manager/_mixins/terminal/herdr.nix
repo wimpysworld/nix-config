@@ -902,6 +902,9 @@ in
       ''
     );
 
+    # With no server running, the step skips the reload. Any other failure
+    # prints a warning and does not stop the activation, because an exit here
+    # would end the whole activation script.
     home.activation.herdrReloadConfig =
       lib.hm.dag.entryAfter
         [
@@ -918,8 +921,7 @@ in
           if ((herdr_reload_status != 0)) \
             && ! printf '%s\n' "$herdr_reload_output" \
               | ${pkgs.jq}/bin/jq -e '.error.code == "server_not_running"' >/dev/null 2>&1; then
-            printf '%s\n' "$herdr_reload_output" >&2
-            exit "$herdr_reload_status"
+            warnEcho "herdrReloadConfig: the config reload failed with status $herdr_reload_status: $herdr_reload_output" >&2
           fi
         '';
 

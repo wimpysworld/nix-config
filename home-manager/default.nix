@@ -26,6 +26,7 @@ in
     inputs.nix-index-database.homeModules.nix-index
     inputs.lan-mouse.homeManagerModules.default
     inputs.handy.homeManagerModules.default
+    ./_mixins/activation-checks
     ./_mixins/agentic
     ./_mixins/development
     ./_mixins/filesync
