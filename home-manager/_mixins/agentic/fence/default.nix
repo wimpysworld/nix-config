@@ -112,6 +112,8 @@ let
         "${homeDirectory}/Chainguard/**"
         "${homeDirectory}/Development"
         "${homeDirectory}/Development/**"
+        "${homeDirectory}/Oval-Tutu"
+        "${homeDirectory}/Oval-Tutu/**"
         "${homeDirectory}/Notes"
         "${homeDirectory}/Notes/**"
         "${homeDirectory}/Volatile"
