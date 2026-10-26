@@ -13,6 +13,7 @@ let
   fencedEnabled = !host.is.server;
   aiSopsFile = ../../../../secrets/ai.yaml;
   gatewayEnabled = !noughtyLib.hostHasTag "cg";
+  workModelsOnly = noughtyLib.hostHasTag "cg";
   herdrIntegrations = pkgs.herdr-integrations;
   trustedProjectConfigRoots = [
     "${config.home.homeDirectory}/Chainguard"
@@ -257,7 +258,23 @@ in
               effect = "deny";
             }
           ];
-          model = "opencode-go/glm-5.3-flash";
+          model = if workModelsOnly then "google/gemini-4-argon" else "opencode-go/glm-5.3-flash";
+          # V2 has no small_model field. Its legacy migration moves small_model
+          # to the built-in title agent, so set that agent's model directly.
+          agents = lib.mkIf workModelsOnly { title.model = "google/gemini-3.8-flash"; };
+          # V2 replaces disabled_providers with provider.use deny policies.
+          policies = lib.mkIf workModelsOnly (
+            map
+              (provider: {
+                action = "provider.use";
+                resource = provider;
+                effect = "deny";
+              })
+              [
+                "opencode"
+                "opencode-go"
+              ]
+          );
           providers = {
             opencode = lib.mkIf gatewayEnabled { settings.apiKey = "{env:OPENCODE_API_KEY}"; };
             opencode-go = lib.mkIf gatewayEnabled { settings.apiKey = "{env:OPENCODE_API_KEY}"; };

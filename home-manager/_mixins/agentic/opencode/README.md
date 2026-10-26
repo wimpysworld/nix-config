@@ -6,11 +6,13 @@ The [assistants module](../assistants/README.md) supplies shared agents, command
 
 ## Package and configuration
 
-The module selects `inputs.llm-agents.packages.${system}.opencode2`. The current pin is `2.1.2`. The public command remains `opencode`, including for editors and Herdr. Nix owns updates, so native automatic updates are disabled.
+The module selects `inputs.llm-agents.packages.${system}.opencode2`. The current pin is `2.1.4`. The public command remains `opencode`, including for editors and Herdr. Nix owns updates, so native automatic updates are disabled.
 
 Server settings use native V2 fields in `opencode.json`. Terminal settings use `cli.json`, with native keybinding names and the built-in Catppuccin themes. The V1 Catppuccin generator is disabled. Linux hosts also receive the matching Herdr terminal plugin.
 
-No local provider or model allowlist filters the catalogue. The default model is `opencode-go/glm-5.3-flash`. OpenCode Go and the pay-as-you-go `opencode` provider remain separate providers.
+No local model allowlist filters the catalogue. The default model is `opencode-go/glm-5.3-flash`. OpenCode Go and the pay-as-you-go `opencode` provider remain separate providers.
+
+Hosts with the `cg` tag use only models that are approved for work. Their default model is `google/gemini-4-argon`, and the built-in `title` agent uses `google/gemini-3.8-flash`. V2 has no `small_model` field, so the module sets the `title` agent model instead. `provider.use` deny policies remove the `opencode` and `opencode-go` providers from these hosts. These policies are the V2 form of `disabled_providers`.
 
 The six OpenAI model limit overrides remain in `default.nix`. Automatic compaction uses V2's resolved input limit and default reserve. The old fixed 345,600-token trigger does not apply.
 
@@ -50,7 +52,7 @@ Home Manager links each plugin directory to a store directory with a regular `in
 
 The directory plugin `plugins/communication-rules/index.ts` uses V2 session hooks to inject the Communication Rules. Its `execute.before` tool hook checks outgoing prose side effects through the shared Python scanner. Scanner failures block tool execution.
 
-Final-message checks run after display. A detected violation adds a synthetic notice, without an automatic model turn. These checks do not provide a pre-display hard block for final or subagent prose.
+Final-message checks run after display. A detected violation adds a synthetic notice, without an automatic model turn. The checks skip steps that finish with `tool-calls`, `error`, or `unknown`, and steps with no text. A provider error then shows as an error, without a rules notice. These checks do not provide a pre-display hard block for final or subagent prose.
 
 Remove the Agent Tripwire configuration through a reviewed rebuild for operator recovery. Prompts do not provide a Tripwire bypass.
 

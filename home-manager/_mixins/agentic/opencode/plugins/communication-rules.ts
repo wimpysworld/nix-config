@@ -5,6 +5,7 @@ const scannerPath = "@tripwireScanner@";
 const rulesPath = "@tripwireRules@";
 const correctionPromptPath = "@tripwireCorrectionPrompt@";
 const FALLBACK_BLOCK = "Blocked. Revise this prose to follow the Communication Rules.";
+const skippedFinishes = new Set(["tool-calls", "error", "unknown"]);
 
 function readText(file: string): string {
   return readFileSync(file, "utf8").trimEnd();
@@ -84,7 +85,9 @@ export default {
     });
     const observe = async () => {
       for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
-        if (event.type !== "session.step.ended" || event.data.finish === "tool-calls") continue;
+        // Tool-call, error and unknown steps carry no final prose. A provider
+        // error must surface as an error, not as a rules breach.
+        if (event.type !== "session.step.ended" || skippedFinishes.has(event.data.finish)) continue;
         const session = await ctx.session.get({ sessionID: event.data.sessionID });
         if (session.location.directory !== ctx.location.directory) continue;
         const { data } = await ctx.session.context({ sessionID: session.id });
@@ -92,6 +95,8 @@ export default {
         if (message?.type !== "assistant") throw new Error("Communication Rules: completed message is unavailable.");
         const text = message.content.filter((part: any) => part.type === "text")
           .map((part: any) => part.text).join("\n");
+        // The scanner treats empty content as a breach, so skip steps with no text.
+        if (!text.trim()) continue;
         const decision = decide("message.final", {
           event: "message.final", surface: "final", sessionID: session.id, message: { content: text },
         });

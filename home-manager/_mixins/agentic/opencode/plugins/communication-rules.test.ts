@@ -143,6 +143,23 @@ test("completed V2 prose is observed after display and queues a correction notic
   assert.deepEqual(context.system, [{ type: "text", text: "Correct the prose." }]);
   await f.cleanup();
 });
+test("error, unknown and empty steps reach neither the scanner nor a notice", async () => {
+  const f = await fixture();
+  f.ctx.session.context = async () => ({ data: [
+    { id: "empty", type: "assistant", content: [] },
+    { id: "answer", type: "assistant", content: [{ type: "text", text: "Bad prose." }] },
+  ] });
+  f.setDecision({ decision: "block", notice: "Revise the answer." });
+  for (const [assistantMessageID, finish] of [["empty", "error"], ["empty", "unknown"], ["empty", "stop"]]) {
+    f.send({ type: "session.step.ended", data: { sessionID: "session", assistantMessageID, finish } });
+  }
+  f.send({ type: "session.step.ended", data: { sessionID: "session", assistantMessageID: "answer", finish: "stop" } });
+  await f.notice;
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(f.notices.length, 1);
+  assert.equal(f.payload().message.content, "Bad prose.");
+  await f.cleanup();
+});
 
 for (const failure of ["closed", "rejected", "undefined", "scanner", "missing-message", "notice"]) {
   test(`observer failure (${failure}) blocks subsequent context and side effects`, async () => {
