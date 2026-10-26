@@ -9,7 +9,7 @@ gh-token-push --all
 
 `--all` targets every host with `kind = "server"` in `lib/registry-systems.toml`. The list is built when Nix evaluates the module.
 
-The token goes to each host only through the standard input of `ssh`. It never appears in argv, output, or logs. On each host, the script runs `gh auth login --with-token --insecure-storage`, checks `gh auth status`, and runs `gh-credential-sync`. Hosts are processed one at a time, with one status line each. The exit status is non-zero when any host fails.
+The token goes to each host only through the standard input of `ssh`. It never appears in argv, output, or logs. On each host, the script runs `gh auth login --with-token --insecure-storage`, checks `gh auth status`, and runs `gh-credential-sync`. When the first login fails, the script waits 2 seconds and tries once more. If the retry succeeds, a warning under the `ok` line shows the first error. If both logins fail, the `failed` line shows both errors. Error output from the host is shown with tokens redacted. Hosts are processed one at a time, with one status line each. The exit status is non-zero when any host fails.
 
 A `ghu_` token or an unknown token type causes a warning, because the copy can expire. All host names are checked before the script reads the token.
 

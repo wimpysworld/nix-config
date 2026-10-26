@@ -14,6 +14,7 @@ let
     runtimeInputs = with pkgs; [
       coreutils
       gh
+      gnused
       openssh
     ];
     runtimeEnv.GH_TOKEN_PUSH_SERVERS = lib.concatStringsSep " " servers;
