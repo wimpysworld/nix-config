@@ -17,6 +17,7 @@ screenshot="󱎴 Screenshot"
 picker="󰏘 Colour Picker"
 window_layout="󰹫 Window Layout"
 keyboard_shortcuts="󰌌 Keyboard shortcuts"
+connections="󰖟 Connections"
 
 # Power
 session="󰐦 Session"
@@ -44,10 +45,13 @@ fi
 if command -v fuzzel-keybindings >/dev/null 2>&1; then
 	menu="$menu\n$keyboard_shortcuts"
 fi
+if command -v fuzzel-connections >/dev/null 2>&1; then
+	menu="$menu\n$connections"
+fi
 menu="$menu\n$control_center\n$session"
 
 selected=$(echo -e "$menu" |
-	fuzzel --dmenu --prompt "󱑞 " --lines=10 --width=21)
+	fuzzel --dmenu --prompt "󱑞 " --lines=12 --width=21)
 
 case $selected in
 "$control_center")
@@ -76,6 +80,9 @@ case $selected in
 	;;
 "$keyboard_shortcuts")
 	fuzzel-keybindings
+	;;
+"$connections")
+	fuzzel-connections
 	;;
 "$session")
 	wleave-session

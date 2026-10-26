@@ -2,6 +2,7 @@
   catppuccinPalette,
   config,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
@@ -40,6 +41,12 @@ let
       [ -n "$selection" ] || exit 0
       printf '%s\n' "$selection" | cliphist decode | wl-copy --trim-newline
     '';
+  };
+  fuzzelConnections = import ./connections.nix {
+    inherit pkgs;
+    fuzzel = config.programs.fuzzel.package;
+    configFile = "${config.xdg.configHome}/fuzzel/fuzzel.ini";
+    inherit (config.noughty.network) tailNet;
   };
   fuzzelControlCenter = pkgs.writeShellApplication {
     name = "fuzzel-control-center";
@@ -134,6 +141,7 @@ lib.mkIf (host.is.linux && host.is.workstation) {
         wtype
       ]
       ++ lib.optional (compositor != null && config.programs.fuzzel.enable) fuzzelKeybindings
+      ++ lib.optional (noughtyLib.isUser [ "martin" ]) fuzzelConnections
       ++ lib.optionals host.network.wifi [
         fuzzelWifi
         iwmenu
