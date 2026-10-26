@@ -84,7 +84,12 @@ in
       };
     };
     gtk.gtk3.bookmarks = lib.mkIf gtkBookmarksEnabled (
-      lib.optional (noughtyLib.userHasTag "developer") "file://${config.xdg.userDirs.extraConfig.DEVELOPMENT} Development"
+      lib.optional (noughtyLib.hostHasTag "cg") "file://${config.xdg.userDirs.extraConfig.CHAINGUARD} Chainguard"
+      ++ lib.optional (noughtyLib.userHasTag "developer") "file://${config.xdg.userDirs.extraConfig.DEVELOPMENT} Development"
+      ++ [
+        "file://${config.xdg.userDirs.documents} Documents"
+        "file://${config.xdg.userDirs.download} Downloads"
+      ]
       ++ lib.optionals hostHasMaestral [
         "file://${config.home.homeDirectory}/Dropbox/Documents/Martin Dropbox-Martin"
         "file://${config.home.homeDirectory}/Dropbox/Documents/Both Dropbox-Both"
