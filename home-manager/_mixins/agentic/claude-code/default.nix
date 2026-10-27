@@ -499,13 +499,77 @@ let
   # list`) and headless `-p` runs, where resume flags would break the command or
   # resume an unrelated conversation. Resume is also withheld when the caller
   # already names a session, so the flags never clash. Session presence is
-  # detected by looking for `*.jsonl` transcripts under
+  # detected by looking at `*.jsonl` transcripts under
   # `$CLAUDE_CONFIG_DIR/projects/<encoded-cwd>` (default `$HOME/.claude`), where
   # the cwd is encoded by replacing each non-alphanumeric character with a
-  # hyphen. The wrapper never writes Claude Code's project trust state; trust is
-  # a user decision and must stay interactive. The array sits before the user's
-  # own arguments, so a passed `--model`/`--effort` wins on last-flag precedence.
+  # hyphen. Plain `claude` never writes Claude Code's project trust state; when
+  # `NOUGHTY_CLAUDE_BYPASS=1` is set (`claude-fenced`), the helper exports
+  # `CLAUDE_CODE_SANDBOXED=1` and records project trust in `~/.claude.json` for
+  # the canonical working directory, worktree root, and main repository root.
+  # The array sits before the user's own arguments, so a passed
+  # `--model`/`--effort` wins on last-flag precedence.
   claudeLaunchDefaults = ''
+    seed_claude_project_trust() {
+      local claude_state_file pwd_phys git_top git_common_dir repo_root candidate tmp
+      local -a candidates=()
+      local -a jq_args=()
+
+      if [[ -n "''${CLAUDE_CONFIG_DIR:-}" ]]; then
+        claude_state_file="$CLAUDE_CONFIG_DIR/.claude.json"
+      else
+        claude_state_file="$HOME/.claude.json"
+      fi
+
+      pwd_phys="$(pwd -P)"
+      candidates+=("$pwd_phys")
+
+      if git_top="$(${lib.getExe pkgs.git} rev-parse --path-format=absolute --show-toplevel 2>/dev/null)" && [[ -n "$git_top" ]]; then
+        git_top="$(${lib.getExe' pkgs.coreutils "realpath"} "$git_top" 2>/dev/null || true)"
+        if [[ -n "$git_top" && "$git_top" != "$pwd_phys" ]]; then
+          candidates+=("$git_top")
+        fi
+      fi
+
+      if git_common_dir="$(${lib.getExe pkgs.git} rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" && [[ -n "$git_common_dir" ]]; then
+        repo_root="$(${lib.getExe' pkgs.coreutils "realpath"} "$(${lib.getExe' pkgs.coreutils "dirname"} "$git_common_dir")" 2>/dev/null || true)"
+        if [[ -n "$repo_root" && "$repo_root" != "$pwd_phys" && "$repo_root" != "''${git_top:-}" ]]; then
+          candidates+=("$repo_root")
+        fi
+      fi
+
+      for candidate in "''${candidates[@]}"; do
+        jq_args+=("$candidate")
+      done
+
+      if [[ -f "$claude_state_file" ]] && ${lib.getExe pkgs.jq} -e '
+        . as $root | all($ARGS.positional[]; . as $p | $root.projects[$p].hasTrustDialogAccepted == true)
+      ' "$claude_state_file" --args "''${jq_args[@]}" >/dev/null 2>&1; then
+        return 0
+      fi
+
+      ${lib.getExe' pkgs.coreutils "mkdir"} -p "$(${lib.getExe' pkgs.coreutils "dirname"} "$claude_state_file")"
+      if [[ ! -f "$claude_state_file" ]]; then
+        ${lib.getExe' pkgs.coreutils "install"} -m 600 /dev/null "$claude_state_file"
+        printf '{}\n' > "$claude_state_file"
+      fi
+
+      if ${lib.getExe pkgs.jq} -e . "$claude_state_file" >/dev/null 2>&1; then
+        tmp="$(${lib.getExe' pkgs.coreutils "mktemp"} "$claude_state_file.XXXXXX")"
+        if ${lib.getExe pkgs.jq} '
+          reduce $ARGS.positional[] as $p (.; .projects[$p].hasTrustDialogAccepted = true)
+        ' "$claude_state_file" --args "''${jq_args[@]}" > "$tmp"; then
+          ${lib.getExe' pkgs.coreutils "mv"} "$tmp" "$claude_state_file"
+        else
+          ${lib.getExe' pkgs.coreutils "rm"} -f "$tmp"
+        fi
+      fi
+    }
+
+    if [ "''${NOUGHTY_CLAUDE_BYPASS:-0}" = "1" ]; then
+      export CLAUDE_CODE_SANDBOXED=1
+      seed_claude_project_trust
+    fi
+
     encode_claude_project_path() {
       printf '%s' "$1" | ${lib.getExe pkgs.gnused} 's/[^a-zA-Z0-9]/-/g'
     }
@@ -578,14 +642,16 @@ let
   # extra config paths. Own the wrapper here with `--mcp-config=<path>`,
   # which keeps argument parsing intact and reads the sops-rendered file.
   claudePackageWithMcp =
-    pkgs.runCommand "claude-code-with-mcp"
-      {
-        inherit (claudePackageWithLsp) meta;
-      }
-      ''
-        mkdir -p "$out/bin"
-        cat > "$out/bin/claude" <<'EOF'
-        #!${lib.getExe pkgs.bash}
+    (pkgs.writeShellApplication {
+      name = "claude";
+      runtimeInputs = [
+        pkgs.coreutils
+        pkgs.findutils
+        pkgs.git
+        pkgs.gnused
+        pkgs.jq
+      ];
+      text = ''
         mcp_configs=(
           ${lib.escapeShellArg sharedMcpConfigPath}
           ${lib.escapeShellArg renderedMcpConfigPath}
@@ -608,14 +674,21 @@ let
         done
 
         exec "$claude" "''${claude_plugin_args[@]}" "''${claude_permission_args[@]}" "''${claude_defaults[@]}" "$@"
-        EOF
-        chmod +x "$out/bin/claude"
       '';
+    }).overrideAttrs
+      {
+        inherit (claudePackageWithLsp) meta;
+      };
 
   claudeFencedPackage = pkgs.writeShellApplication {
     name = "claude-fenced";
     runtimeInputs = [
       fencePackage
+      pkgs.coreutils
+      pkgs.findutils
+      pkgs.git
+      pkgs.gnused
+      pkgs.jq
       pkgs.ncurses
     ]
     ++ fenceAgentShare.runtimeInputs
@@ -623,9 +696,10 @@ let
     ++ fenceChromium.runtimeInputs
     ++ fenceLogging.runtimeInputs;
     text = ''
+      export NOUGHTY_CLAUDE_BYPASS=1
+
       if [[ "''${FENCE_SANDBOX:-0}" == 1 ]]; then
         export HERDR_AGENT=claude
-        export NOUGHTY_CLAUDE_BYPASS=1
         export NOUGHTY_AGENT_ISOLATION=Fenced
 
         width="$(tput cols 2>/dev/null || true)"
@@ -690,16 +764,16 @@ let
       case "$width" in
         "" | *[!0-9]*)
           if [[ -n "$tmp_mcp_config" ]]; then
-            "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithCredentials "claude"} "''${claude_plugin_args[@]}" "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
+            "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "CLAUDE_CODE_SANDBOXED=1" "NOUGHTY_CLAUDE_BYPASS=1" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithCredentials "claude"} "''${claude_plugin_args[@]}" "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
           else
-            "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithCredentials "claude"} "''${claude_plugin_args[@]}" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
+            "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "CLAUDE_CODE_SANDBOXED=1" "NOUGHTY_CLAUDE_BYPASS=1" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithCredentials "claude"} "''${claude_plugin_args[@]}" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
           fi
           ;;
         *)
           if [[ -n "$tmp_mcp_config" ]]; then
-            "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithCredentials "claude"} "''${claude_plugin_args[@]}" "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
+            "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "CCSTATUSLINE_WIDTH=$width" "CLAUDE_CODE_SANDBOXED=1" "NOUGHTY_CLAUDE_BYPASS=1" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithCredentials "claude"} "''${claude_plugin_args[@]}" "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
           else
-            "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "CCSTATUSLINE_WIDTH=$width" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithCredentials "claude"} "''${claude_plugin_args[@]}" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
+            "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "CCSTATUSLINE_WIDTH=$width" "CLAUDE_CODE_SANDBOXED=1" "NOUGHTY_CLAUDE_BYPASS=1" "NOUGHTY_AGENT_ISOLATION=Fenced" ${claudeEnvironmentArgs} ${lib.getExe' claudePackageWithCredentials "claude"} "''${claude_plugin_args[@]}" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@"
           fi
           ;;
       esac
@@ -803,6 +877,70 @@ in
       if "$jq" -e . "$claude_config" >/dev/null 2>&1; then
         tmp="$(${pkgs.coreutils}/bin/mktemp "$claude_config.XXXXXX")"
         if "$jq" '.diffSidebarOpen = false' "$claude_config" > "$tmp"; then
+          ${pkgs.coreutils}/bin/mv "$tmp" "$claude_config"
+        else
+          ${pkgs.coreutils}/bin/rm -f "$tmp"
+        fi
+      fi
+    '';
+
+    # Pre-seed project trust for all personal development roots and repair any
+    # existing `.projects` entries under the workspace trees that `IS_DEMO=1`
+    # left stuck at `hasTrustDialogAccepted: false`.
+    home.activation.claudeCodeSeedProjectTrust = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      claude_config=${lib.escapeShellArg "${config.home.homeDirectory}/.claude.json"}
+      jq=${lib.getExe pkgs.jq}
+
+      # Start from an empty object when the file does not exist yet.
+      if [[ ! -f "$claude_config" ]]; then
+        ${pkgs.coreutils}/bin/install -m 600 /dev/null "$claude_config"
+        echo '{}' > "$claude_config"
+      fi
+
+      # Skip silently if the file is unreadable as JSON (corrupt or empty).
+      # This step shares one script with every other activation step, so it
+      # must not exit.
+      if "$jq" -e . "$claude_config" >/dev/null 2>&1; then
+        tmp="$(${pkgs.coreutils}/bin/mktemp "$claude_config.XXXXXX")"
+        if "$jq" \
+          --argjson roots ${
+            lib.escapeShellArg (
+              builtins.toJSON [
+                "${config.home.homeDirectory}/Chainguard"
+                "${config.home.homeDirectory}/Chainguard/_worktrees"
+                "${config.home.homeDirectory}/Chainguard/mono"
+                "${config.home.homeDirectory}/Chainguard/stereo"
+                "${config.home.homeDirectory}/Chainguard/cg-github"
+                "${config.home.homeDirectory}/Chainguard/infra"
+                "${config.home.homeDirectory}/Development"
+                "${config.home.homeDirectory}/Development/_worktrees"
+                "${config.home.homeDirectory}/Volatile"
+                "${config.home.homeDirectory}/Zero"
+                "${config.home.homeDirectory}/Zero/nix-config"
+              ]
+            )
+          } \
+          --argjson prefixes ${
+            lib.escapeShellArg (
+              builtins.toJSON [
+                "${config.home.homeDirectory}/Chainguard"
+                "${config.home.homeDirectory}/Development"
+                "${config.home.homeDirectory}/Volatile"
+                "${config.home.homeDirectory}/Zero"
+              ]
+            )
+          } \
+          '
+            .projects = ((.projects // {}) | with_entries(
+              .key as $k
+              | if any($prefixes[]; . as $pfx | ($k == $pfx) or ($k | startswith($pfx + "/"))) then
+                  .value.hasTrustDialogAccepted = true
+                else
+                  .
+                end
+            ))
+            | reduce $roots[] as $r (.; .projects[$r].hasTrustDialogAccepted = true)
+          ' "$claude_config" > "$tmp"; then
           ${pkgs.coreutils}/bin/mv "$tmp" "$claude_config"
         else
           ${pkgs.coreutils}/bin/rm -f "$tmp"

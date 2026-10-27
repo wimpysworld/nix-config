@@ -46,3 +46,38 @@ The module appends Tripwire hooks and keeps existing MCP config, status line, LS
 This module provides `claude-fenced`, which runs Claude Code through Fence with
 `--dangerously-skip-permissions`. Fence is the managed filesystem, network, and
 command policy provider for that entry point.
+
+When `NOUGHTY_CLAUDE_BYPASS=1` is set (`claude-fenced`), the launch wrapper
+exports `CLAUDE_CODE_SANDBOXED=1` and records project trust in `~/.claude.json`
+(or `$CLAUDE_CONFIG_DIR/.claude.json` when `CLAUDE_CONFIG_DIR` is set) for the
+canonical working directory (`pwd -P`), the current Git worktree root
+(`git rev-parse --path-format=absolute --show-toplevel`), and the main Git
+repository root (the parent of `git rev-parse --path-format=absolute
+--git-common-dir`). If every candidate path already has
+`hasTrustDialogAccepted = true`, the wrapper skips rewriting the state file.
+Plain `claude` does not modify project trust at launch.
+
+## Project trust
+
+Home Manager activation pre-seeds `hasTrustDialogAccepted = true` in
+`~/.claude.json` for the configured development roots:
+
+```text
+~/Chainguard
+~/Chainguard/_worktrees
+~/Chainguard/mono
+~/Chainguard/stereo
+~/Chainguard/cg-github
+~/Chainguard/infra
+~/Development
+~/Development/_worktrees
+~/Volatile
+~/Zero
+~/Zero/nix-config
+```
+
+Activation also sets `hasTrustDialogAccepted = true` on every existing
+`.projects` entry in `~/.claude.json` whose path equals or starts with
+`~/Chainguard/`, `~/Development/`, `~/Volatile/`, or `~/Zero/`. This repairs
+stale `hasTrustDialogAccepted: false` entries left behind by earlier
+`IS_DEMO=1` sessions while keeping all other project and top-level state intact.
