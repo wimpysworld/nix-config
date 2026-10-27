@@ -123,7 +123,7 @@ qemu_args=(
 	-object "memory-backend-memfd,id=mem,size=16G,share=on"
 	-drive "if=pflash,format=raw,unit=0,file=${OVMF_CODE},readonly=on"
 	-drive "if=pflash,format=raw,unit=1,file=${ovmf_vars}"
-	-display "gtk,gl=on,grab-on-hover=on,zoom-to-fit=off"
+	-display "gtk,gl=on,clipboard=on,grab-on-hover=on,zoom-to-fit=off"
 	-device "${gpu_dev}"
 	-device "qemu-xhci,id=xhci"
 	-device "usb-tablet,bus=xhci.0"
