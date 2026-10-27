@@ -148,6 +148,7 @@ let
       "Waybar"
       "Wayfire"
       "Wolfi"
+      "xcover"
       "Zannah"
     ];
   };
