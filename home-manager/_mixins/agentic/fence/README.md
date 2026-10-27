@@ -263,7 +263,7 @@ every other system binary stopped resolving, and it removed
 `/run/user/$UID/secrets.d`, so every sops-nix secret became unreadable. Three
 unrelated-looking faults followed: a herdr hook that could not find `bash`, a
 project devShell that would not load because nix-direnv could not hash its cache
-key, and `slack-post` reporting that its token file was missing.
+key, and `agent-slack` losing access to its sops-nix token file.
 
 Keep shared paths on the same device as `/`. The agent share directory is
 `~/.cache/fence-share` for this reason. The Wayland bridge and the Chromium

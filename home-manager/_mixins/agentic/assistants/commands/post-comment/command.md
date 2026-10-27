@@ -19,7 +19,7 @@ Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
    - GitHub issue or pull request: strip only the Markdown fence lines, write the remaining body text unchanged to a temporary file, then run `gh issue comment <url> --body-file <file>` or `gh pr comment <url> --body-file <file>`
    - GitHub review comment: reply inside the thread with `gh-review-reply <review-comment-url> --body-file <file>`, using the same fence-stripped temporary file. Pass the review comment URL you were given, unchanged; the helper parses the owner, repository, pull request number, and comment id out of it. Both the `#discussion_r<id>` and `#r<id>` anchor forms work. Never use `gh pr comment` here; it posts at the top level, away from the question
    - Linear: the Linear MCP comment tool. Send real newlines in the body, never literal backslash-n. For a Linear document inline comment only, first confirm that the available write tool can create and verify a true inline anchor. If it cannot, do not post an unanchored substitute. Resolve the best manual placement with read-only Linear access and return the manual-placement output below. Keep ordinary Linear issue comments and document comments with supported, verifiable inline anchors on this posting path
-   - Slack: `slack-post <target> --body-file <file>`, using the same fence-stripped temporary file. Pass the target you were given, unchanged. The `slack` skill holds the target forms and the rest of the rules
+   - Slack: `agent-slack message send <target> "$(cat <file>)"`, using the same fence-stripped temporary file. Pass the target you were given, unchanged. The `slack` skill holds the target forms and the rest of the rules
 5. Report the surface, the target URL, and the comment body
 
 ### Output

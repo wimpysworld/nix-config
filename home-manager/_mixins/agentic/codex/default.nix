@@ -608,10 +608,6 @@ let
       };
     };
   }
-  // lib.optionalAttrs (mcpServerDefs.codexOAuthCallbackPort != null) {
-    mcp_oauth_callback_port = mcpServerDefs.codexOAuthCallbackPort;
-    mcp_oauth_callback_url = mcpServerDefs.codexOAuthCallbackUrl;
-  }
   // codexHooks;
 
   # Generate the config.toml content in the nix store, then deploy it as a real

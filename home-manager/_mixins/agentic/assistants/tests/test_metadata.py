@@ -1140,15 +1140,12 @@ task = "deny"
         self.assertEqual(
             result["servers"]["cg-apk"]["command"][0], "/proxy/bin/cg-mcp-proxy"
         )
-        self.assertEqual(
-            set(result["servers"]["slack"]["oauth"]), {"client_id", "redirect_uri"}
-        )
+        self.assertNotIn("slack", result["servers"])
         expected = [
             {"action": f"{server}_{tool}", "resource": "*", "effect": "deny"}
             for server, tools in sorted(result["canonical"].items())
             for tool in tools
         ]
-        self.assertTrue(expected)
         self.assertEqual(result["permissions"], expected)
 
     def test_opencode_command_routing_rules_remain_unchanged(self):

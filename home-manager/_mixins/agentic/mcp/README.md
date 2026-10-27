@@ -1,6 +1,6 @@
 # MCP Servers
 
-Three unconditional MCP servers provide reference material and Linear access. Slack and six Chainguard servers are emitted only on hosts tagged `cg`. Definitions live once in `servers.nix` and are distributed to each enabled Claude Code, OpenCode, Zed, Codex, and Pi Agent client via per-consumer renderers.
+Three unconditional MCP servers provide reference material and Linear access. Six Chainguard servers are emitted only on hosts tagged `cg`. Definitions live once in `servers.nix` and are distributed to each enabled Claude Code, OpenCode, Zed, Codex, and Pi Agent client via per-consumer renderers.
 
 The Nix composition is the delivery mechanism, not the strategy. Most servers here are information retrieval tools: documentation search, web reading, and package lookup. The practical reason: a language model with a training cutoff hallucinates library APIs that changed after the cutoff. A model that fetches live documentation does not need to guess.
 
@@ -86,17 +86,18 @@ The same pattern applies to Zed: `servers.context7.consumers.zed.enabled = false
 
 ## Servers
 
-Three unconditional servers and seven conditional servers. `On` means enabled by default. `Off` means rendered as disabled where the client supports that state. `Omitted` means the client receives no entry.
+Three unconditional servers and six conditional servers. `On` means enabled by default. `Off` means rendered as disabled where the client supports that state. `Omitted` means the client receives no entry.
 
 | Server       | Transport | Auth   | Claude Code | Codex | OpenCode | Pi      | Zed       | Purpose                                      |
 | ------------ | --------- | ------ | ----------- | ----- | -------- | ------- | --------- | -------------------------------------------- |
 | `context7`   | HTTP      | bearer | On          | On    | On       | On      | Extension | Live library documentation                   |
 | `exa`        | HTTP      | -      | On          | On    | On       | On      | On        | Web search and URL content extraction        |
 | `linear`     | HTTP      | bearer | On          | On    | On       | On      | On        | Linear issues, projects, and comments        |
-| `slack`      | HTTP      | OAuth  | On          | On    | On       | On      | Off       | Conditional workspace Slack access           |
 | `cg-*`, `agent-trace-mcp*` | stdio | chainctl | Omitted | On | On | On | On | Conditional Chainguard servers through `cg-mcp-proxy` |
 
-The unconditional servers use remote HTTP. `slack` and the Chainguard servers are conditional additions. The Chainguard servers are `cg-apk`, `cg-oci`, `cg-versions`, `cg-build-logs`, `agent-trace-mcp`, and `agent-trace-mcp-stage`. Each runs `cg-mcp-proxy <url>`, which gets the token from chainctl. Claude Code omits them because Chainguard repositories define them at project scope.
+The unconditional servers use remote HTTP. The Chainguard servers are conditional additions: `cg-apk`, `cg-oci`, `cg-versions`, `cg-build-logs`, `agent-trace-mcp`, and `agent-trace-mcp-stage`. Each runs `cg-mcp-proxy <url>`, which gets the token from chainctl. Claude Code omits them because Chainguard repositories define them at project scope.
+
+Workspace Slack access uses the `agent-slack` CLI installed by `home-manager/_mixins/development/slack` rather than an MCP server.
 
 NixOS MCP is project-owned rather than part of this Home Manager registry. Projects that use it provide the package in their development shell and define their own client configuration.
 
@@ -132,25 +133,6 @@ Linear's MCP tools can read and mutate issues, projects, and comments. The serve
 
 `LINEAR_API_KEY` reads from `secrets/linear.yaml`. Hosts tagged `cg` select the `chainguard` key. Other hosts select `wimpysworld`. The existing fish and bash secret exports expose the selected value to coding-agent clients.
 
-#### slack
-
-Slack's official hosted MCP server. It uses Streamable HTTP at `https://mcp.slack.com/mcp`. Slack rejects dynamic client registration, so each supported client receives the public client id `1601185624273.8899143856786` and callback port `3118` from Slack's Claude connection guide.
-
-The server exists only on hosts tagged `cg`. Claude Code, Codex, OpenCode, and Pi enable it. Zed stays disabled. All four coding agents block `slack_send_message`, `slack_send_message_draft`, `slack_schedule_message`, and `slack_update_canvas`. OpenCode denies the server-prefixed tool names through its ordered `permissions` array. Pi excludes the original names through `pi-mcp-adapter`. Slack reads, searches, profiles, files, and reactions remain available. Messages use `slack-post` so Slack attributes them to the user.
-
-After applying Home Manager, sign in once per client and work computer:
-
-| Client      | Login step                                                                                   |
-| ----------- | -------------------------------------------------------------------------------------------- |
-| Claude Code | Run `claude mcp login slack`.                                                                  |
-| Codex       | Run `codex mcp login slack`.                                                                   |
-| OpenCode    | Run `opencode mcp auth slack`.                                                                  |
-| Pi          | Run `pi`, enter `/mcp`, select `slack`, then press `Ctrl+A` to authenticate.                  |
-
-Each step opens Slack in a browser. Complete the organisation's Okta sign-in and approve the workspace. Claude Code stores credentials in the macOS keychain or its credentials file. Codex's default `auto` MCP OAuth store uses the OS credential store when available and falls back to a local file. OpenCode stores tokens in `~/.local/share/opencode/mcp-auth.json`. Pi's adapter stores new credentials in the OS credential store by default. It treats `~/.pi/agent/mcp-oauth/` as a legacy import location.
-
-No Slack token, environment variable, or secret is declared in this repository.
-
 ---
 
 ## Platform delivery
@@ -171,7 +153,7 @@ Pi Agent is installed by `../pi` with `pi-mcp-adapter` pinned in the Home Manage
 
 - **Claude Code** - bearer auth becomes `headers.Authorization = "Bearer ${config.sops.placeholder.<envVar>}"`; the placeholder is interpolated at activation time from the decrypted sops file.
 - **Pi Agent** - bearer auth becomes `headers.Authorization = "Bearer ${config.sops.placeholder.<envVar>}"`; the placeholder is interpolated at activation time. Pre-registered OAuth becomes `oauth.clientId` plus an exact `oauth.redirectUri`. Per-server `enabled = false` keeps a server visible in Pi's MCP TUI but disabled by default. Global adapter settings keep the proxy tool enabled and default `directTools`, `autoAuth`, and sampling disabled. Per-server `directTools` follows OpenCode's enabled-by-default preference, but disabled Pi servers force `directTools = false`. Per-server `excludeTools` hides named tools from direct tools, proxy discovery, and the MCP panel. Globally disabled servers and `consumers.pi.omit = true` servers are omitted.
-- **Codex** - schema strictness rejects unknown fields (`RawMcpServerConfig` uses `deny_unknown_fields`), so `codexServers` only emits accepted keys. Bearer auth becomes `bearer_token_env_var = "<envVar>"`. Pre-registered OAuth becomes `oauth.client_id`; work hosts also set the callback port. Every entry carries `enabled` and `default_tools_approval_mode`; `disabled_tools` and `startup_timeout_sec` are emitted when configured. Flip `consumers.codex.enabled` to `false` to keep the entry visible to `codex mcp list` while skipping initialisation.
+- **Codex** - schema strictness rejects unknown fields (`RawMcpServerConfig` uses `deny_unknown_fields`), so `codexServers` only emits accepted keys. Bearer auth becomes `bearer_token_env_var = "<envVar>"`. Pre-registered OAuth becomes `oauth.client_id`. Every entry carries `enabled` and `default_tools_approval_mode`; `disabled_tools` and `startup_timeout_sec` are emitted when configured. Flip `consumers.codex.enabled` to `false` to keep the entry visible to `codex mcp list` while skipping initialisation.
 - **OpenCode** - bearer auth becomes `headers.Authorization = "Bearer {env:<envVar>}"`, which the server resolves from its environment. Pre-registered OAuth becomes `oauth.client_id` plus an exact `oauth.redirect_uri`. Stdio `command` is a list of the canonical `command` and `args`. The native V2 renderer writes `mcp.servers` directly, without Home Manager's V1 MCP conversion. `opencodeToolPermissions` appends exact `<server>_<tool>` denies after ordinary permission rules.
 - **Zed** - HTTP servers are wrapped as `npx -y mcp-remote <url>` so Zed can launch them as local processes. Bearer auth adds `--header "Authorization: Bearer ${<envVar>}"`; `mcp-remote` resolves the environment reference at process start. Servers tagged `mode = "extension"` install via the marketplace and skip `context_servers` while enabled. Every emitted entry carries an `enabled` field (default `true`); flip `consumers.zed.enabled` to `false` to disable a server without removing it from the config. Extension-mode servers gain a stub `context_servers` entry (`{ enabled = false; settings = {}; }`) under the same name when disabled, which is how Zed's `Extension` settings variant is identified.
 

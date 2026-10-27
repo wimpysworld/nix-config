@@ -382,6 +382,7 @@ class GeneratedExportTests(unittest.TestCase):
                 "gh-api-safe",
                 "gh-review-reply",
                 "gh-review-resolve",
+                "agent-slack",
                 "slack-post",
             ):
                 self.assertNotIn(unavailable, instructions, path)

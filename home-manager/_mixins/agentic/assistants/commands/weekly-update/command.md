@@ -40,12 +40,12 @@ Also match the next cycle's document, titled with cycle `<n + 1>`, in the same `
 
 **9. Post to Slack.** Load the `slack` skill and follow it.
 
-- Resolve the channel argument to a channel ID with `slack_search_channels` first. A bare name only reaches a public channel.
+- When the channel argument is a name rather than an ID, resolve it with `agent-slack channel list` if needed, or pass the channel target directly to `agent-slack`.
 - Parent message: `My weekly update for <date> 🧵`, with a British date such as `28 August 2026`. It posts as the user, so it does not name them.
 - Post one thread reply for all projects. Give each project one line: `*<update-url|Project name>* - <project status>: <n> completed, <n> added, <n> remaining this cycle`. The asterisks make the linked project name bold in Slack. Put one blank line after each project line. The project status is the project's own Linear status name, never an invented name.
 - End the reply with the line `Plan: *<doc-url|<first name>'s Cycle <n> work order>*`. The asterisks make the linked document title bold in Slack.
 - When the next cycle's work order document exists, add one more line after Plan: `Next cycle: *<doc-url|<first name>'s Cycle <n+1> work order>*`.
-- Write each body to a file and post it with `slack-post`. To reply in the thread, pass the parent message's URL unchanged, and never hand-convert a timestamp.
+- Write each body to a file and post it with `agent-slack message send <target> "$(cat <file>)"`. To reply in the thread, pass the parent message's `permalink` URL unchanged, and never hand-convert a timestamp.
 - No headings, no bullet lists, no sign-off.
 
 **10. Report** the projects updated with their update URLs, and the Slack parent and reply links. One reply serves all projects. No health column anywhere.

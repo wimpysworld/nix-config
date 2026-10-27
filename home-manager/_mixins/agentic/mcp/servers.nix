@@ -12,12 +12,6 @@ let
   inherit (pkgs) lib;
   inherit (config.noughty) host;
   isWorkHost = lib.elem "cg" (host.tags or [ ]);
-  slackWriteTools = [
-    "slack_send_message"
-    "slack_send_message_draft"
-    "slack_schedule_message"
-    "slack_update_canvas"
-  ];
   # Every Chainguard MCP server is reached through cg-mcp-proxy rather than as an
   # http entry. Those servers use an OAuth flow that registers a client per
   # session, and that registration does not outlive the session, so a direct http
@@ -171,30 +165,6 @@ rec {
         # Linear exposes issue/project/comment reads and mutations. Make Codex
         # ask before tool calls rather than inheriting the unattended default.
         codex.defaultToolsApprovalMode = "prompt";
-      };
-    };
-  }
-  // lib.optionalAttrs isWorkHost {
-    slack = {
-      # Official Slack-hosted MCP server over Streamable HTTP with OAuth.
-      # Slack has no OAuth dynamic client registration, so the pre-registered
-      # public client id and callback port from Slack's Claude connection guide
-      # are supplied inline. Claude Code, Codex, OpenCode, and Pi each complete
-      # the browser OAuth flow and store the resulting credentials locally.
-      transport = "http";
-      url = "https://mcp.slack.com/mcp";
-      oauth = {
-        clientId = "1601185624273.8899143856786";
-        callbackPort = 3118;
-        redirectUri = "http://localhost:3118/callback";
-      };
-      consumers = {
-        # Match Claude Code's Slack policy. Keep read and reaction tools, but
-        # route message writes through the user-attributed `slack-post` helper.
-        codex.disabledTools = slackWriteTools;
-        opencode.disabledTools = slackWriteTools;
-        pi.excludeTools = slackWriteTools;
-        zed.enabled = false;
       };
     };
   }
@@ -486,9 +456,6 @@ rec {
           };
     in
     lib.mapAttrs render (lib.filterAttrs keep servers);
-
-  codexOAuthCallbackPort = if isWorkHost then servers.slack.oauth.callbackPort else null;
-  codexOAuthCallbackUrl = if isWorkHost then servers.slack.oauth.redirectUri else null;
 
   # zedContextServers: entries Zed launches as local context servers, either
   # by spawning the canonical stdio command directly or by wrapping an HTTP

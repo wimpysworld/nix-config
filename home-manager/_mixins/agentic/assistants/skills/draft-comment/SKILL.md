@@ -15,7 +15,7 @@ Read context and draft text. Never post, comment, send, edit, or change provider
 
 For GitHub, load `gh` before any GitHub access and follow it for all GitHub tool and policy choices.
 
-Use Linear MCP reads for Linear. Use Slack reads for Slack. Never call their write tools while drafting.
+Use Linear MCP reads for Linear. Load `slack` and use read-only `agent-slack` commands for Slack. Never call their write tools while drafting.
 
 ## Process
 

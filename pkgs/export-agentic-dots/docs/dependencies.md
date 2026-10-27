@@ -24,4 +24,4 @@ The provider-router integrations use the route maps beside their source files. T
 
 The tested versions are evidence, not compatibility limits. Exact model routes require matching recipient access. Edit `routes.json`, `agents.json`, and `thinking.json` when the recipient uses different providers or models.
 
-The review bundle omits `make-pr`, `post-comment`, and `wtb` because their full flows need unavailable helpers. Other resources can still name `gh-api-safe`, `gh-review-reply`, `gh-review-resolve`, `slack`, or `slack-post`. Treat those resources as review material until the recipient supplies each dependency.
+The review bundle omits `make-pr`, `post-comment`, and `wtb` because their full flows need unavailable helpers. Other resources can still name `gh-api-safe`, `gh-review-reply`, `gh-review-resolve`, `slack`, or `agent-slack`. Treat those resources as review material until the recipient supplies each dependency.

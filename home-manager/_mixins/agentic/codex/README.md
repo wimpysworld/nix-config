@@ -86,7 +86,6 @@ Configured servers:
 | `context7` | HTTP      | Uses `CONTEXT7_API_KEY` via `bearer_token_env_var`                 |
 | `exa`      | HTTP      | Web search and fetch                                              |
 | `linear`   | HTTP      | Uses `LINEAR_API_KEY`; tool calls require approval                 |
-| `slack`    | HTTP      | Workspace hosts only; manual OAuth via `codex mcp login slack`    |
 
 ## Skills
 

@@ -1,5 +1,6 @@
 {
   config,
+  inputs,
   lib,
   noughtyLib,
   pkgs,
@@ -9,32 +10,26 @@ let
   # The Slack workspace is a work account, so this mixin only applies where the
   # work profile lives. The `cg` tag marks those hosts.
   isWorkHost = noughtyLib.hostHasTag "cg";
+  agentSlackPkg = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.agent-slack;
 
-  # Post one message to Slack as the token owner. The Slack MCP server posts
-  # through Anthropic's Slack app, so Slack stamps those messages with a
-  # "Sent using @Claude" attribution that no local setting removes, and renders
-  # them through Block Kit, which leaves a custom emote as literal text. This
-  # helper posts with the user's own OAuth token instead. Only chat.postMessage
-  # and conversations.open are reachable, both held as fixed strings, and the
-  # script validates every argument. It never edits and never deletes, although
-  # a user token grants both. See `slack-post.sh` for the policy details and
-  # `slack-post-tests.sh` for the runnable policy test.
-  slack-post = pkgs.writeShellApplication {
-    name = "slack-post";
-    runtimeInputs = with pkgs; [
-      coreutils
-      curl
-      gnugrep
-      jq
-    ];
+  # Wrap agent-slack so it reads the user's Slack token from sops-nix when
+  # SLACK_TOKEN is not already set in the environment, and disables upstream
+  # update checks on Nix-managed installations.
+  agent-slack = pkgs.writeShellApplication {
+    name = "agent-slack";
     text = ''
-      readonly SLACK_POST_TOKEN_FILE=${lib.escapeShellArg config.sops.secrets.slack-user-token.path}
-    ''
-    + builtins.readFile ./slack-post.sh;
+      export AGENT_SLACK_NO_UPDATE_CHECK=1
+      token_file=${lib.escapeShellArg config.sops.secrets.slack-user-token.path}
+      if [[ -z "''${SLACK_TOKEN:-}" && -r "$token_file" ]]; then
+        SLACK_TOKEN="$(< "$token_file")"
+        export SLACK_TOKEN
+      fi
+      exec ${lib.getExe agentSlackPkg} "$@"
+    '';
   };
 in
 lib.mkIf isWorkHost {
-  home.packages = [ slack-post ];
+  home.packages = [ agent-slack ];
 
   sops.secrets.slack-user-token = {
     sopsFile = ../../../../secrets/slack.yaml;
