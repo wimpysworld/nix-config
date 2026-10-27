@@ -728,13 +728,30 @@ lib.mkMerge [
     home.packages =
       let
         chatgpt = inputs.llm-agents.packages.${system}.chatgpt;
+        chatgptUnwrapped = chatgpt.unwrapped.overrideAttrs (old: {
+          buildInputs = old.buildInputs ++ lib.optional pkgs.stdenv.hostPlatform.isLinux pkgs.tpm2-tss;
+        });
       in
       [
-        (chatgpt.override {
-          chatgpt-unwrapped = chatgpt.unwrapped.overrideAttrs (old: {
-            buildInputs = old.buildInputs ++ lib.optional pkgs.stdenv.hostPlatform.isLinux pkgs.tpm2-tss;
-          });
-        })
+        (
+          (chatgpt.override {
+            chatgpt-unwrapped = chatgptUnwrapped;
+          }).overrideAttrs
+            (
+              old:
+              lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+                postInstall = (old.postInstall or "") + ''
+                  rm "$out/share"
+                  mkdir -p "$out/share/applications"
+                  ln -s "${chatgptUnwrapped}/share/pixmaps" "$out/share/pixmaps"
+                  substitute "${chatgptUnwrapped}/share/applications/chatgpt.desktop" \
+                    "$out/share/applications/chatgpt.desktop" \
+                    --replace-fail "x-scheme-handler/http;" "" \
+                    --replace-fail "x-scheme-handler/https;" ""
+                '';
+              }
+            )
+        )
       ];
   })
   (lib.mkIf (isDeveloper && !host.is.server) {

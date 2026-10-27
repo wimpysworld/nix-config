@@ -337,6 +337,10 @@ in
         // audioMimeTypes
         // imageMimeTypes
         // videoMimeTypes;
+      associations.removed = {
+        "x-scheme-handler/http" = [ "chatgpt.desktop" ];
+        "x-scheme-handler/https" = [ "chatgpt.desktop" ];
+      };
       defaultApplications =
         browserMimeTypes
         // audioMimeTypes

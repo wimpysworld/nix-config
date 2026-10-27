@@ -344,7 +344,7 @@ in
           ];
           enable = true;
           extraPortals = builtins.attrValues portalBackends;
-          xdgOpenUsePortal = true;
+          xdgOpenUsePortal = false;
         };
       };
     }
