@@ -28,7 +28,6 @@ in
     inputs.disko.nixosModules.disko
     inputs.kolide-launcher.nixosModules.kolide-launcher
     inputs.nix-flatpak.nixosModules.nix-flatpak
-    inputs.nix-index-database.nixosModules.nix-index
     inputs.sops-nix.nixosModules.sops
     (modulesPath + "/installer/scan/not-detected.nix")
     ./_mixins/console
@@ -196,9 +195,6 @@ in
   programs = {
     command-not-found.enable = false;
     nano.enable = lib.mkDefault false;
-    # The prebuilt nix-index database is roughly 115 MiB and is not needed on
-    # servers or live ISO media.
-    nix-index.enable = lib.mkIf (host.is.server || host.is.iso) (lib.mkForce false);
     nh = {
       clean = {
         enable = !host.is.iso;

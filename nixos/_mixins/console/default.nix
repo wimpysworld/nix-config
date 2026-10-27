@@ -75,9 +75,8 @@ in
     packages =
       with pkgs;
       lib.optionals host.is.workstation [
+        fira-code
         nerd-fonts.fira-code
-        noto-fonts-monochrome-emoji
-        symbola
         work-sans
       ];
     fontconfig = lib.mkMerge [

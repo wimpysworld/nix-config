@@ -45,7 +45,6 @@ in
 
     variables = {
       EDITOR = "fresh";
-      GIT_EDITOR = "fresh";
       SUDO_EDITOR = "fresh";
       SYSTEMD_EDITOR = "fresh";
       VISUAL = "fresh";
@@ -78,6 +77,5 @@ in
 
   programs = {
     fish.enable = true;
-    nix-index-database.comma.enable = false;
   };
 }

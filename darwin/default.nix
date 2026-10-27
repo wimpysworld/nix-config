@@ -23,7 +23,6 @@ in
     inputs.determinate.darwinModules.default
     inputs.mac-app-util.darwinModules.default
     inputs.nix-homebrew.darwinModules.nix-homebrew
-    inputs.nix-index-database.darwinModules.nix-index
     ./_mixins/desktop
     ./_mixins/features
     ./_mixins/rosetta
@@ -34,9 +33,7 @@ in
     shells = [ pkgs.fish ];
     # Darwin-specific packages; common packages are in ../common
     systemPackages = with pkgs; [
-      m-cli
       mas
-      nh
       plistwatch
     ];
 
@@ -95,12 +92,6 @@ in
   nix.daemonIOLowPriority = true;
 
   programs = {
-    fish = {
-      shellAliases = {
-        micro = "fresh";
-        nano = "fresh";
-      };
-    };
     gnupg.agent = {
       enable = true;
       enableSSHSupport = true;

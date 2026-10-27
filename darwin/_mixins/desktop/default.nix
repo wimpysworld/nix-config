@@ -8,11 +8,7 @@
 {
   environment.systemPackages =
     with pkgs;
-    lib.optionals (!(noughtyLib.hostHasTag "cg")) [
-      maestral # CLI
-    ]
-    ++ lib.optionals (noughtyLib.isUser [ "martin" ]) [
-      brave
+    lib.optionals (noughtyLib.isUser [ "martin" ]) [
       stats
     ];
 

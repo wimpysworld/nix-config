@@ -28,7 +28,6 @@
       fixedsys-core-font
       fixedsys-excelsior-font
       impact-label-font
-      lato
       merriweather
       mocha-mattari-font
       poppins-font

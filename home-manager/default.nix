@@ -92,7 +92,7 @@ in
       ))
     ];
     homeDirectory = if host.is.darwin then "/Users/${username}" else "/home/${username}";
-    file = lib.mkIf host.is.workstation {
+    file = lib.mkIf (host.is.linux && !host.is.nixos && host.is.workstation) {
       ".config/fontconfig/fonts.conf".text = ''
         <?xml version="1.0"?>
         <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
@@ -226,10 +226,11 @@ in
     man.generateCaches = lib.mkIf host.is.darwin false;
     nh = {
       enable = true;
+      flake = "${config.home.homeDirectory}/Zero/nix-config";
       clean = {
         dates = "weekly";
-        enable = true;
-        extraArgs = "--keep 2 --keep-since 5d";
+        enable = !host.is.nixos;
+        extraArgs = "--keep 3 --keep-since 7d";
       };
     };
     nix-index.enable = !host.is.server;

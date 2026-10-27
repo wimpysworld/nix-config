@@ -72,7 +72,6 @@ lib.mkIf host.is.workstation {
       cursorPackage
       gtkThemePackage
       pkgs.papirus-icon-theme
-      pkgs.wlr-randr
       regreetCage
     ];
   };
