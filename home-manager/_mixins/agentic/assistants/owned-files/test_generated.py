@@ -29,10 +29,17 @@ class GeneratedDeploymentTests(unittest.TestCase):
                 entry["path"] = relocate(entry["path"])
                 source = Path(entry["source"])
                 if not source.is_relative_to("/nix/store"):
-                    fake = base / "fake-secrets" / str(number)
-                    fake.parent.mkdir(exist_ok=True)
-                    fake.write_text("Fake secret for activation tests.\n")
-                    entry["source"] = str(fake)
+                    if entry.get("optional"):
+                        entry["source"] = relocate(entry["source"])
+                        Path(entry["source"]).parent.mkdir(parents=True, exist_ok=True)
+                        Path(entry["source"]).write_text(
+                            "Optional resource for activation tests.\n"
+                        )
+                    else:
+                        fake = base / "fake-secrets" / str(number)
+                        fake.parent.mkdir(exist_ok=True)
+                        fake.write_text("Fake secret for activation tests.\n")
+                        entry["source"] = str(fake)
                 self.assertNotIn("bootstrapSources", entry)
 
             fixture_root = home / ".codex/skills/catalogue-test-fixture"

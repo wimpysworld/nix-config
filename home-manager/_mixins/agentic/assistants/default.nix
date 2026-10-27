@@ -378,7 +378,8 @@ let
 
   # Collision guard for the flat ~/.moltis/skills/ namespace. The deployed
   # names are exactly the project skills (moltisSkills), the secret skills
-  # (secretSkillList, deployed from sops templates), and the command-derived
+  # (secretSkillList, deployed from sops templates), the Chainguard skills
+  # (deployed from ~/Chainguard/.agents/ when present), and the command-derived
   # skills from the allowlist. Secret commands never map, so the allowlist is
   # the only command source.
   moltisCommandSources =
@@ -390,6 +391,12 @@ let
       inherit (entry) name;
       source = "skill: ${entry.name}";
     }) secretSkillList
+    ++ [
+      {
+        name = "self-review";
+        source = "chainguard-skill: self-review";
+      }
+    ]
     ++ map (cmdName: {
       name = cmdName;
       source = "command: ${cmdName}";
@@ -491,6 +498,17 @@ let
   # identifier is used in the throw message to make the origin obvious. Secret
   # skills are absent from `skillContents`, so they are listed separately;
   # without them a command could silently overwrite a secret skill's directory.
+  chainguardAgentsDir = "${config.home.homeDirectory}/Chainguard/.agents";
+  chainguardCommands = [
+    "draft-self-review"
+    "gather-review-data"
+    "review-open-source-attestation"
+  ];
+  chainguardSkillFiles = [
+    "skills/self-review/SKILL.md"
+    "skills/self-review/references/cycle-mechanics.md"
+  ];
+
   codexCommandSources =
     lib.mapAttrsToList (name: _: {
       inherit name;
@@ -500,6 +518,16 @@ let
       inherit (entry) name;
       source = "skill: ${entry.name}";
     }) secretSkillList
+    ++ [
+      {
+        name = "self-review";
+        source = "chainguard-skill: self-review";
+      }
+    ]
+    ++ map (name: {
+      inherit name;
+      source = "chainguard-command: ${name}";
+    }) chainguardCommands
     ++ compose.commandSources;
   codexCommandCollisionCheck = compose.assertNoCommandCollisions {
     context = "Codex skills (~/.codex/skills/)";
@@ -583,9 +611,71 @@ let
     source = config.sops.templates.${name}.path;
     kind = "symlink";
   }) secretTemplates;
+
+  optionalSymlink = path: source: {
+    inherit path source;
+    kind = "symlink";
+    optional = true;
+  };
+  optionalFile = path: source: {
+    inherit path source;
+    kind = "file";
+    mode = "0600";
+    optional = true;
+  };
+
+  chainguardClientOwnedFiles =
+    lib.optionals config.programs.claude-code.enable (
+      map (
+        cmdName:
+        optionalSymlink (secretClaudePath cmdName) "${chainguardAgentsDir}/claude/commands/${cmdName}.md"
+      ) chainguardCommands
+      ++ map (
+        relPath:
+        optionalSymlink "${config.home.homeDirectory}/.claude/${relPath}" "${chainguardAgentsDir}/${relPath}"
+      ) chainguardSkillFiles
+    )
+    ++ lib.optionals config.programs.opencode.enable (
+      map (
+        cmdName:
+        optionalSymlink (secretOpencodePath cmdName) "${chainguardAgentsDir}/opencode/commands/${cmdName}.md"
+      ) chainguardCommands
+      ++ map (
+        relPath:
+        optionalSymlink "${config.xdg.configHome}/opencode/${relPath}" "${chainguardAgentsDir}/${relPath}"
+      ) chainguardSkillFiles
+    )
+    ++ lib.optionals piEnabled (
+      map (
+        cmdName: optionalSymlink (secretPiPath cmdName) "${chainguardAgentsDir}/pi/prompts/${cmdName}.md"
+      ) chainguardCommands
+      ++ map (
+        relPath:
+        optionalSymlink "${config.home.homeDirectory}/.pi/agent/${relPath}" "${chainguardAgentsDir}/${relPath}"
+      ) chainguardSkillFiles
+    )
+    ++ lib.optionals moltisEnabled (
+      map (
+        relPath:
+        optionalSymlink "${config.home.homeDirectory}/.moltis/${relPath}" "${chainguardAgentsDir}/${relPath}"
+      ) chainguardSkillFiles
+    );
+
+  chainguardCodexOwnedFiles =
+    lib.concatMap (cmdName: [
+      (optionalFile "${codexDir}/skills/${cmdName}/SKILL.md" "${chainguardAgentsDir}/codex/skills/${cmdName}/SKILL.md")
+      (optionalFile "${codexDir}/skills/${cmdName}/agents/openai.yaml" "${chainguardAgentsDir}/codex/skills/${cmdName}/agents/openai.yaml")
+    ]) chainguardCommands
+    ++ map (
+      relPath: optionalFile "${codexDir}/${relPath}" "${chainguardAgentsDir}/${relPath}"
+    ) chainguardSkillFiles;
+
   ownedFiles =
-    lib.optionals config.programs.codex.enable (codexOwnedFiles ++ codexSecretOwnedFiles)
-    ++ secretOwnedFiles;
+    lib.optionals config.programs.codex.enable (
+      codexOwnedFiles ++ codexSecretOwnedFiles ++ chainguardCodexOwnedFiles
+    )
+    ++ secretOwnedFiles
+    ++ chainguardClientOwnedFiles;
   ownedDeployment = import ./owned-deployment.nix {
     inherit
       config

@@ -36,10 +36,8 @@ Claude Code, OpenCode, and Pi use `/name`. Codex uses manual-only `$name` skills
 | [draft-pr-message](./draft-pr-message/command.toml) | Draft PR Message 🐙 | garfield | public | Task worker: garfield | Native subagent: garfield, subagent: true | spawn_agent: garfield | Agent worker: garfield |
 | [draft-readme](./draft-readme/command.toml) | Draft README 📄 | velma | public | Task worker: velma | Native subagent: velma | spawn_agent: velma | Agent worker: velma |
 | [draft-security-review](./draft-security-review/command.toml) | Draft Security Review ✍️ | donatello | public | Task worker: donatello | Native subagent: donatello | spawn_agent: donatello | Agent worker: donatello |
-| [draft-self-review](./draft-self-review/command.toml) | Draft Self-Review 🪞 | penfold | secret | Task worker: penfold | Native subagent: penfold | spawn_agent: penfold | Agent worker: penfold |
 | [draft-video-script](./draft-video-script/command.toml) | Draft Video Script 🎬 | casper | public | Task worker: casper | Native subagent: casper | spawn_agent: casper | Agent worker: casper |
 | [finish-pr](./finish-pr/command.toml) | Wrap up a finished PR 🧹 | garfield | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
-| [gather-review-data](./gather-review-data/command.toml) | Gather Review Data 📊 | penfold | secret | Caller context | Caller context, subagent: false | Caller context | Caller context |
 | [gist](./gist/command.toml) | Rewrite the previous response concisely | Unset | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
 | [handover-fork](./handover-fork/command.toml) | Compact handover to a worker 🔀 | rosey | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
 | [handover-fresh](./handover-fresh/command.toml) | Handover to a fresh session 📤 | rosey | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
@@ -66,7 +64,6 @@ Claude Code, OpenCode, and Pi use `/name`. Codex uses manual-only `$name` skills
 | [review-code-colleague](./review-code-colleague/command.toml) | Review Colleague Code 🔍 | donatello | public | Task worker: donatello | Native subagent: donatello | spawn_agent: donatello | Agent worker: donatello |
 | [review-code-community](./review-code-community/command.toml) | Review Community Code 🛡️ | donatello | public | Task worker: donatello | Native subagent: donatello | spawn_agent: donatello | Agent worker: donatello |
 | [review-code-mine](./review-code-mine/command.toml) | Review My Code 🪞 | donatello | public | Task worker: donatello | Native subagent: donatello | spawn_agent: donatello | Agent worker: donatello |
-| [review-open-source-attestation](./review-open-source-attestation/command.toml) | Open Source Attestation Review 🧾 | penfold | secret | Task worker: penfold | Native subagent: penfold | spawn_agent: penfold | Agent worker: penfold |
 | [review-task](./review-task/command.toml) | Review Task 🔬 | penfold | public | Task worker: penfold | Native subagent: penfold | spawn_agent: penfold | Agent worker: penfold |
 | [review-web-interface](./review-web-interface/command.toml) | Review web interface code | morph | public | Task worker: morph | Native subagent: morph | spawn_agent: morph | Agent worker: morph |
 | [triage-tasks](./triage-tasks/command.toml) | Triage Tasks 🗂️ | penfold | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
@@ -176,10 +173,6 @@ Only description overrides and nonempty argument hints are shown. When any clien
 | [draft-security-review](./draft-security-review/command.toml) | opencode | Same as common | [alerts\|report] |
 | [draft-security-review](./draft-security-review/command.toml) | codex | Same as common | Unset |
 | [draft-security-review](./draft-security-review/command.toml) | pi | Same as common | [alerts\|report] |
-| [draft-self-review](./draft-self-review/command.toml) | claude | Same as common | &lt;cycle&gt; [activity-file] |
-| [draft-self-review](./draft-self-review/command.toml) | opencode | Same as common | &lt;cycle&gt; [activity-file] |
-| [draft-self-review](./draft-self-review/command.toml) | codex | Same as common | Unset |
-| [draft-self-review](./draft-self-review/command.toml) | pi | Same as common | &lt;cycle&gt; [activity-file] |
 | [draft-video-script](./draft-video-script/command.toml) | claude | Same as common | [topic] |
 | [draft-video-script](./draft-video-script/command.toml) | opencode | Same as common | Unset |
 | [draft-video-script](./draft-video-script/command.toml) | codex | Same as common | Unset |
@@ -188,10 +181,6 @@ Only description overrides and nonempty argument hints are shown. When any clien
 | [finish-pr](./finish-pr/command.toml) | opencode | Same as common | [branch] |
 | [finish-pr](./finish-pr/command.toml) | codex | Same as common | Unset |
 | [finish-pr](./finish-pr/command.toml) | pi | Same as common | [branch] |
-| [gather-review-data](./gather-review-data/command.toml) | claude | Same as common | &lt;start-date&gt; &lt;end-date&gt; |
-| [gather-review-data](./gather-review-data/command.toml) | opencode | Same as common | &lt;start-date&gt; &lt;end-date&gt; |
-| [gather-review-data](./gather-review-data/command.toml) | codex | Same as common | Unset |
-| [gather-review-data](./gather-review-data/command.toml) | pi | Same as common | &lt;start-date&gt; &lt;end-date&gt; |
 | [handover-fork](./handover-fork/command.toml) | claude | Same as common | [focus] |
 | [handover-fork](./handover-fork/command.toml) | opencode | Same as common | [focus] |
 | [handover-fork](./handover-fork/command.toml) | codex | Same as common | Unset |
@@ -264,10 +253,6 @@ Only description overrides and nonempty argument hints are shown. When any clien
 | [review-code-mine](./review-code-mine/command.toml) | opencode | Same as common | [pr\|branch\|worktree\|commit] |
 | [review-code-mine](./review-code-mine/command.toml) | codex | Same as common | Unset |
 | [review-code-mine](./review-code-mine/command.toml) | pi | Same as common | [pr\|branch\|worktree\|commit] |
-| [review-open-source-attestation](./review-open-source-attestation/command.toml) | claude | Same as common | [pr\|branch\|worktree] |
-| [review-open-source-attestation](./review-open-source-attestation/command.toml) | opencode | Same as common | [pr\|branch\|worktree] |
-| [review-open-source-attestation](./review-open-source-attestation/command.toml) | codex | Same as common | Unset |
-| [review-open-source-attestation](./review-open-source-attestation/command.toml) | pi | Same as common | [pr\|branch\|worktree] |
 | [review-task](./review-task/command.toml) | claude | Same as common | [issue-or-file] |
 | [review-task](./review-task/command.toml) | opencode | Same as common | Unset |
 | [review-task](./review-task/command.toml) | codex | Same as common | Unset |

@@ -516,7 +516,6 @@ skills = false
             "handover-fresh",
             "handover-fork",
             "project-tests-review",
-            "gather-review-data",
             "audit-code-security",
         ):
             with self.subTest(caller_context_command=name):

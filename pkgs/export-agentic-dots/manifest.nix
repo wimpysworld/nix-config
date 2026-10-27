@@ -940,19 +940,15 @@ let
     excluded = {
       commands = [
         "babysit-pr"
-        "draft-self-review"
-        "gather-review-data"
         "make-pr"
         "post-comment"
         "reflect"
-        "review-open-source-attestation"
         "weekly-update"
         "wtb"
       ];
       skills = [
         "gws-*"
         "herdr"
-        "self-review"
         "slack"
         "zk"
       ];

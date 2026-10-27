@@ -392,8 +392,14 @@ let
     let
       sharedSkillNames = builtins.attrNames assistantCompose.skillDirs;
       commandSkillNames = builtins.attrNames assistantCompose.commandDirs;
+      chainguardSkillNames = [
+        "draft-self-review"
+        "gather-review-data"
+        "review-open-source-attestation"
+        "self-review"
+      ];
     in
-    lib.sort (a: b: a < b) (sharedSkillNames ++ commandSkillNames);
+    lib.sort (a: b: a < b) (lib.unique (sharedSkillNames ++ commandSkillNames ++ chainguardSkillNames));
 
   # Codex config.toml settings. These are written via activation script (not
   # home.file) so the deployed file is a real mutable file. Codex can persist
@@ -691,12 +697,27 @@ let
       ""
       "    return allowlisted"
       ""
+      "def filter_skills(merged):"
+      "    skills = merged.get(\"skills\")"
+      "    if not isinstance(skills, dict):"
+      "        return"
+      "    config = skills.get(\"config\")"
+      "    if not isinstance(config, list):"
+      "        return"
+      "    skills[\"config\"] = ["
+      "        entry for entry in config"
+      "        if not isinstance(entry, dict)"
+      "        or not isinstance(entry.get(\"path\"), str)"
+      "        or pathlib.Path(entry[\"path\"]).exists()"
+      "    ]"
+      ""
       "def merge_config(existing, desired):"
       "    if not isinstance(desired, dict):"
       "        return {}"
       ""
       "    merged = copy.deepcopy(desired)"
       "    merged.update(runtime_state_allowlist(existing, desired))"
+      "    filter_skills(merged)"
       ""
       "    return merged"
       ""
@@ -814,7 +835,10 @@ lib.mkMerge [
       ++ lib.optional fencedEnabled codexFencedPackage;
       # config.toml is written as a real mutable file (not a symlink) so that
       # codex can edit it in-place at runtime. See codexConfigActivationScript.
-      activation.codexConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] codexConfigActivationScript;
+      activation.codexConfig = lib.hm.dag.entryAfter [
+        "writeBoundary"
+        "assistantOwnedFiles"
+      ] codexConfigActivationScript;
       sessionVariables = {
         CODEX_HOME = codexDir;
       };

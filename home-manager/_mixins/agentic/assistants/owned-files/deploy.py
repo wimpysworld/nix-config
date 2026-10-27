@@ -57,10 +57,16 @@ def load_manifest(path):
     if not stat.S_ISREG(path.lstat().st_mode):
         raise Conflict(f"Manifest is not a regular file: {path}")
     data = json.loads(path.read_text())
-    if not isinstance(data, dict) or data.get("version") != 1 or not isinstance(data.get("files"), dict):
+    if (
+        not isinstance(data, dict)
+        or data.get("version") != 1
+        or not isinstance(data.get("files"), dict)
+    ):
         raise Conflict("Unsupported ownership manifest")
     directories = data.get("directories", [])
-    if not isinstance(directories, list) or any(not isinstance(path, str) for path in directories):
+    if not isinstance(directories, list) or any(
+        not isinstance(path, str) for path in directories
+    ):
         raise Conflict("Invalid owned directory list")
     for value in data["files"].values():
         if not isinstance(value, dict) or value.get("kind") not in ("file", "symlink"):
@@ -141,7 +147,10 @@ def deploy(spec, dry_run=False, bootstrap_manifest=None):
         raise Conflict(f"Ownership state is not private: {state}")
     manifest_path = state / "manifest.json"
     manifest = load_manifest(manifest_path)
-    old = {allowed(absolute(path), roots): value for path, value in manifest["files"].items()}
+    old = {
+        allowed(absolute(path), roots): value
+        for path, value in manifest["files"].items()
+    }
     owned_directories = {
         allowed(absolute(path), roots) for path in manifest.get("directories", [])
     }
@@ -166,19 +175,34 @@ def deploy(spec, dry_run=False, bootstrap_manifest=None):
         kind = entry["kind"]
         if kind == "file":
             if not source.is_file():
+                if (
+                    entry.get("optional")
+                    and not source.exists()
+                    and not source.is_symlink()
+                ):
+                    continue
                 raise Conflict(f"Required source is not a readable file: {source}")
             content = entry.get("prefix", "").encode() + source.read_bytes()
             mode = int(entry.get("mode", "0600"), 8)
             if mode not in (0o600, 0o644, 0o700, 0o755):
                 raise Conflict(f"Unsupported file mode for {path}")
             desired[path] = (kind, content, mode)
-            expected[path] = {"kind": kind, "sha256": hashlib.sha256(content).hexdigest()}
+            expected[path] = {
+                "kind": kind,
+                "sha256": hashlib.sha256(content).hexdigest(),
+            }
         elif kind == "symlink":
             if source.is_file():
                 source.read_bytes()
             elif source.is_dir():
                 with os.scandir(source) as entries:
                     list(entries)
+            elif (
+                entry.get("optional")
+                and not source.exists()
+                and not source.is_symlink()
+            ):
+                continue
             else:
                 raise Conflict(f"Required symlink source is unavailable: {source}")
             desired[path] = (kind, str(source), None)
@@ -210,7 +234,12 @@ def deploy(spec, dry_run=False, bootstrap_manifest=None):
     retired = set(manifest.get("retired", []))
     for name in spec.get("retire", []):
         path = allowed(absolute(name), roots)
-        if path.name != "traya.md" or path.parts[-4:] != (".pi", "agent", "agents", "traya.md"):
+        if path.name != "traya.md" or path.parts[-4:] != (
+            ".pi",
+            "agent",
+            "agents",
+            "traya.md",
+        ):
             raise Conflict(f"Unapproved legacy retirement: {path}")
         if str(path) in retired:
             continue
@@ -225,7 +254,9 @@ def deploy(spec, dry_run=False, bootstrap_manifest=None):
     before = {path: snapshot(path) for path in changes}
     original_fingerprints = {path: fingerprint(path) for path in changes}
     if dry_run:
-        print(f"Would deploy {len(desired)} files and retire {sum(v is None for v in changes.values())} files")
+        print(
+            f"Would deploy {len(desired)} files and retire {sum(v is None for v in changes.values())} files"
+        )
         return
     created = []
     applied = []
@@ -241,9 +272,13 @@ def deploy(spec, dry_run=False, bootstrap_manifest=None):
             replace(path, value)
             applied.append(path)
         owned_directories.update(
-            path for path in created if any(path != root and path.is_relative_to(root) for root in roots)
+            path
+            for path in created
+            if any(path != root and path.is_relative_to(root) for root in roots)
         )
-        for directory in sorted(owned_directories, key=lambda path: len(path.parts), reverse=True):
+        for directory in sorted(
+            owned_directories, key=lambda path: len(path.parts), reverse=True
+        ):
             parents_safe(directory)
             if directory.is_symlink():
                 continue
@@ -253,14 +288,21 @@ def deploy(spec, dry_run=False, bootstrap_manifest=None):
                 removed_directories.append((directory, mode))
             except (FileNotFoundError, OSError):
                 pass
-        remaining_directories = [str(path) for path in owned_directories if path.is_dir() and not path.is_symlink()]
+        remaining_directories = [
+            str(path)
+            for path in owned_directories
+            if path.is_dir() and not path.is_symlink()
+        ]
         result = {
             "version": 1,
             "files": {str(path): value for path, value in expected.items()},
             "directories": sorted(remaining_directories),
             "retired": sorted(retired),
         }
-        replace(manifest_path, ("file", (json.dumps(result, indent=2) + "\n").encode(), 0o600))
+        replace(
+            manifest_path,
+            ("file", (json.dumps(result, indent=2) + "\n").encode(), 0o600),
+        )
     except BaseException:
         failures = []
         for directory, mode in reversed(removed_directories):
@@ -286,7 +328,10 @@ def deploy(spec, dry_run=False, bootstrap_manifest=None):
         raise
     if bootstrap_manifest:
         bootstrap_path = absolute(bootstrap_manifest)
-        if bootstrap_path == state / "bootstrap.json" and not bootstrap_path.is_symlink():
+        if (
+            bootstrap_path == state / "bootstrap.json"
+            and not bootstrap_path.is_symlink()
+        ):
             bootstrap_path.unlink(missing_ok=True)
 
 
@@ -298,7 +343,11 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         spec = json.loads(Path(args.spec).read_text())
-        deploy(spec, args.dry_run or bool(os.environ.get("DRY_RUN_CMD")), args.bootstrap_manifest)
+        deploy(
+            spec,
+            args.dry_run or bool(os.environ.get("DRY_RUN_CMD")),
+            args.bootstrap_manifest,
+        )
     except (OSError, ValueError, KeyError, TypeError, Conflict) as error:
         print(f"Agent file deployment failed: {error}", file=sys.stderr)
         return 1

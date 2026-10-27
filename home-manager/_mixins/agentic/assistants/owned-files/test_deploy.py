@@ -79,7 +79,10 @@ class DeploymentTests(unittest.TestCase):
         return result
 
     def test_rename_remove_and_disable_preserve_manual_siblings(self):
-        self.spec["files"] = [self.entry("old/SKILL.md"), self.entry("old/references/guide.md")]
+        self.spec["files"] = [
+            self.entry("old/SKILL.md"),
+            self.entry("old/references/guide.md"),
+        ]
         self.activate()
         manual = self.root / "old/references/manual.md"
         manual.write_text("User content.\n")
@@ -100,7 +103,10 @@ class DeploymentTests(unittest.TestCase):
         self.assertTrue(plugin.exists())
 
     def test_repeated_activation_has_no_history_and_keeps_regular_skill_files(self):
-        self.spec["files"] = [self.entry("fixture/SKILL.md"), self.entry("fixture/references/nested/SKILL.md")]
+        self.spec["files"] = [
+            self.entry("fixture/SKILL.md"),
+            self.entry("fixture/references/nested/SKILL.md"),
+        ]
         self.activate()
         before = self.snapshot()
         for _ in range(3):
@@ -112,7 +118,9 @@ class DeploymentTests(unittest.TestCase):
             self.assertTrue(stat.S_ISREG(path.lstat().st_mode))
             self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
         self.assertEqual(stat.S_IMODE(self.state.stat().st_mode), 0o700)
-        self.assertEqual(stat.S_IMODE((self.state / "manifest.json").stat().st_mode), 0o600)
+        self.assertEqual(
+            stat.S_IMODE((self.state / "manifest.json").stat().st_mode), 0o600
+        )
 
     def test_unknown_destination_conflict_leaves_everything_unchanged(self):
         self.spec["files"] = [self.entry("existing/SKILL.md")]
@@ -167,9 +175,14 @@ class DeploymentTests(unittest.TestCase):
         before = self.snapshot()
         for source in (self.sources / "missing", self.sources):
             with self.subTest(source=source):
-                self.spec["files"] = [self.entry("new.md"), {
-                    "path": str(self.root / "secret.md"), "source": str(source), "kind": "file",
-                }]
+                self.spec["files"] = [
+                    self.entry("new.md"),
+                    {
+                        "path": str(self.root / "secret.md"),
+                        "source": str(source),
+                        "kind": "file",
+                    },
+                ]
                 self.activate(success=False)
                 self.assertEqual(self.snapshot(), before)
 
@@ -219,7 +232,10 @@ class DeploymentTests(unittest.TestCase):
                 before = self.snapshot()
                 result = self.activate(success=False)
                 self.assertEqual(result.returncode, 1)
-                self.assertEqual(result.stderr, "Agent file deployment failed: Unsupported ownership manifest\n")
+                self.assertEqual(
+                    result.stderr,
+                    "Agent file deployment failed: Unsupported ownership manifest\n",
+                )
                 self.assertEqual(self.snapshot(), before)
 
     def test_stale_symlink_changed_by_user_is_preserved(self):
@@ -245,9 +261,18 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual(target.read_text(), "User agent.\n")
 
     def test_secret_prefix_is_combined_before_deployment(self):
-        self.spec["files"] = [self.entry("secret/SKILL.md", "Fake secret body.\n", prefix="---\nname: secret\n---\n")]
+        self.spec["files"] = [
+            self.entry(
+                "secret/SKILL.md",
+                "Fake secret body.\n",
+                prefix="---\nname: secret\n---\n",
+            )
+        ]
         self.activate()
-        self.assertEqual((self.root / "secret/SKILL.md").read_text(), "---\nname: secret\n---\nFake secret body.\n")
+        self.assertEqual(
+            (self.root / "secret/SKILL.md").read_text(),
+            "---\nname: secret\n---\nFake secret body.\n",
+        )
 
     def test_commit_failure_restores_files_manifest_and_directories(self):
         self.spec["files"] = [self.entry("old/SKILL.md"), self.entry("kept.md")]
@@ -255,10 +280,15 @@ class DeploymentTests(unittest.TestCase):
         empty = self.root / "old-empty"
         empty.mkdir(mode=0o755)
         captured = self.state / "bootstrap.json"
-        captured.write_text(json.dumps({"version": 1, "files": {}, "directories": [str(empty)]}))
+        captured.write_text(
+            json.dumps({"version": 1, "files": {}, "directories": [str(empty)]})
+        )
         captured.chmod(0o600)
         before = self.snapshot()
-        self.spec["files"] = [self.entry("new/SKILL.md"), self.entry("kept.md", "Updated content.\n")]
+        self.spec["files"] = [
+            self.entry("new/SKILL.md"),
+            self.entry("kept.md", "Updated content.\n"),
+        ]
         module_spec = importlib.util.spec_from_file_location("owned_deploy", HELPER)
         helper = importlib.util.module_from_spec(module_spec)
         module_spec.loader.exec_module(helper)
@@ -279,7 +309,11 @@ class DeploymentTests(unittest.TestCase):
         old = self.source("old-generation.md", "Old generated content.\n")
         destination = self.root / "SKILL.md"
         destination.write_text(old.read_text())
-        self.spec["files"] = [self.entry("SKILL.md", "New generated content.\n", bootstrapSources=[str(old)])]
+        self.spec["files"] = [
+            self.entry(
+                "SKILL.md", "New generated content.\n", bootstrapSources=[str(old)]
+            )
+        ]
         self.activate()
         self.assertEqual(destination.read_text(), "New generated content.\n")
 
@@ -296,13 +330,24 @@ class DeploymentTests(unittest.TestCase):
         unknown.mkdir()
         self.state.mkdir(parents=True, mode=0o700)
         captured = self.state / "bootstrap.json"
-        captured.write_text(json.dumps({
-            "version": 1,
-            "files": {str(former): {"kind": "file", "sha256": hashlib.sha256(former.read_bytes()).hexdigest()}},
-            "directories": [str(obsolete), str(mixed)],
-        }))
+        captured.write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "files": {
+                        str(former): {
+                            "kind": "file",
+                            "sha256": hashlib.sha256(former.read_bytes()).hexdigest(),
+                        }
+                    },
+                    "directories": [str(obsolete), str(mixed)],
+                }
+            )
+        )
         captured.chmod(0o600)
-        module_spec = importlib.util.spec_from_file_location("deploy_directories", HELPER)
+        module_spec = importlib.util.spec_from_file_location(
+            "deploy_directories", HELPER
+        )
         helper = importlib.util.module_from_spec(module_spec)
         module_spec.loader.exec_module(helper)
         helper.deploy(self.spec, bootstrap_manifest=str(captured))
@@ -338,6 +383,27 @@ class DeploymentTests(unittest.TestCase):
         legacy.write_text("Recreated by the user.\n")
         self.activate()
         self.assertEqual(legacy.read_text(), "Recreated by the user.\n")
+
+    def test_optional_missing_sources_are_skipped_without_failing(self):
+        present = self.entry("present/SKILL.md", optional=True)
+        missing_file = {
+            "path": str(self.root / "missing/SKILL.md"),
+            "source": str(self.sources / "does-not-exist.md"),
+            "kind": "file",
+            "mode": "0600",
+            "optional": True,
+        }
+        missing_symlink = {
+            "path": str(self.root / "missing-link.md"),
+            "source": str(self.sources / "does-not-exist-link.md"),
+            "kind": "symlink",
+            "optional": True,
+        }
+        self.spec["files"] = [present, missing_file, missing_symlink]
+        self.activate()
+        self.assertTrue((self.root / "present/SKILL.md").is_file())
+        self.assertFalse((self.root / "missing/SKILL.md").exists())
+        self.assertFalse((self.root / "missing-link.md").exists())
 
 
 if __name__ == "__main__":
