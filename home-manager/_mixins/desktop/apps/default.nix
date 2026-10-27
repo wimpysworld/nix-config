@@ -260,6 +260,7 @@ in
     ./terminal
     ./utilities
     ./voice
+    ./workspace
   ];
 
   dconf = lib.mkIf (host.is.linux && host.is.workstation) {
