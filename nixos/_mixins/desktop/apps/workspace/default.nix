@@ -6,15 +6,32 @@
 }:
 let
   workspaceBrowserOpts = {
+    "AIModeSettings" = 1;
     "AutofillAddressEnabled" = false;
     "AutofillCreditCardEnabled" = false;
+    "AutofillGenAiSettings" = 2;
+    "AutofillPredictionSettings" = 2;
+    "BuiltInAIAPIsEnabled" = false;
+    "CreateThemesSettings" = 2;
+    "DevToolsGenAiSettings" = 2;
+    "GeminiActOnWebSettings" = 1;
+    "GeminiSparkSettings" = 1;
+    "GenAILocalFoundationalModelSettings" = 1;
+    "HelpMeWriteSettings" = 2;
     "PasswordManagerEnabled" = false;
+    "PrintingPaperSizeDefault" = {
+      name = "iso_a4_210x297mm";
+    };
+    "PromotionsEnabled" = false;
     "PromptForDownloadLocation" = true;
+    "SearchContentSharingSettings" = 1;
     "SpellcheckEnabled" = true;
     "SpellcheckLanguage" = [
       "en-GB"
       "en-US"
     ];
+    "TabCompareSettings" = 2;
+    "ThirdPartyAiChatSettings" = 1;
   };
 
   workspaceBrowserExtensions = [

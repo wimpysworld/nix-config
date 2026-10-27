@@ -56,7 +56,7 @@ lib.mkIf (host.is.linux && host.is.workstation && !isWorkHost && noughtyLib.isUs
             installation_mode = "force_installed";
           };
           "{bbb880ce-43c9-47ae-b746-c3e0096c5b76}" = {
-            install_url = "https://addons.mozilla.org/firefox/download/latest/catppuccin-web-file-icons/";
+            install_url = "https://addons.mozilla.org/firefox/downloads/latest/catppuccin-web-file-icons/latest.xpi";
             installation_mode = "force_installed";
           };
           "{7a7a4a92-a2a0-41d1-9fd7-1e92480d612d}" = {

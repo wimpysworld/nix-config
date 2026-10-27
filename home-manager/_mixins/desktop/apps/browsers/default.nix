@@ -51,14 +51,12 @@ let
         "browser.crashReports.unsubmittedCheck.autoSubmit2" = false;
         "browser.crashReports.unsubmittedCheck.enabled" = false;
         "browser.fixup.dns_first_for_single_words" = false;
-        "browser.newtab.extensionControlled" = true;
         "browser.search.update" = true;
         "browser.tabs.crashReporting.sendReport" = false;
         "browser.urlbar.suggest.bookmark" = false;
         "browser.urlbar.suggest.history" = true;
         "browser.urlbar.suggest.openpage" = false;
         "browser.tabs.warnOnClose" = false;
-        "browser.urlbar.update2.engineAliasRefresh" = true;
         "datareporting.policy.dataSubmissionPolicyBypassNotification" = true;
         "dom.disable_window_flip" = true;
         "dom.disable_window_move_resize" = false;
@@ -68,8 +66,6 @@ let
         "media.gmp-gmpopenh264.enabled" = true;
         "media.gmp-widevinecdm.enabled" = true;
         "places.history.enabled" = true;
-        "security.ssl.errorReporting.enabled" = false;
-        "widget.use-xdg-desktop-portal.file-picker" = 1;
       };
 in
 {
@@ -101,13 +97,10 @@ in
           "AutofillCreditCardEnabled" = false;
           "CaptivePortal" = true;
           "Cookies" = {
-            "AcceptThirdParty" = "from-visited";
-            "Behavior" = "reject-tracker";
-            "BehaviorPrivateBrowsing" = "reject-tracker";
-            "RejectTracker" = true;
+            "Behavior" = "reject-tracker-and-partition-foreign";
+            "BehaviorPrivateBrowsing" = "reject-tracker-and-partition-foreign";
           };
           "DisableAppUpdate" = true;
-          "DisableDefaultBrowserAgent" = true;
           "DisableFirefoxStudies" = true;
           "DisableFormHistory" = true;
           "DisablePocket" = true;
@@ -121,7 +114,7 @@ in
           };
           "DontCheckDefaultBrowser" = true;
           "EnableTrackingProtection" = {
-            "Value" = false;
+            "Value" = true;
             "Locked" = false;
             "Cryptomining" = true;
             "EmailTracking" = true;
@@ -146,23 +139,30 @@ in
             "Highlights" = false;
             "Pocket" = false;
             "SponsoredPocket" = false;
-            "Snippets" = false;
+            "Stories" = false;
+            "SponsoredStories" = false;
+            "Weather" = false;
             "Locked" = true;
           };
           "FirefoxSuggest" = {
             "WebSuggestions" = false;
             "SponsoredSuggestions" = false;
-            "ImproveSuggest" = false;
+            "OnlineEnabled" = false;
             "Locked" = true;
           };
-          "FlashPlugin" = {
-            "Default" = false;
+          "GenerativeAI" = {
+            "Enabled" = false;
+            "Chatbot" = false;
+            "LinkPreviews" = false;
+            "TabGroups" = false;
+            "Locked" = true;
           };
           "HardwareAcceleration" = true;
           "Homepage" = {
             "Locked" = false;
             "StartPage" = "none";
           };
+          "HttpsOnlyMode" = "force_enabled";
           "NetworkPrediction" = false;
           "NewTabPage" = true;
           "NoDefaultBookmarks" = true;
@@ -173,27 +173,36 @@ in
           "PopupBlocking" = {
             "Default" = true;
           };
+          "PostQuantumKeyAgreementEnabled" = true;
           "Preferences" = firefoxPreferences // {
             "media.getusermedia.audio.processing.agc.enabled" = {
               "Value" = false;
               "Status" = "locked";
+            };
+            "widget.use-xdg-desktop-portal.file-picker" = {
+              "Value" = 1;
+              "Status" = "default";
+              "Type" = "number";
             };
           };
           "PromptForDownloadLocation" = true;
           "SearchBar" = "unified";
           "SearchSuggestEnabled" = true;
           "ShowHomeButton" = false;
+          "SkipTermsOfUse" = true;
           "StartDownloadsInTempDirectory" = true;
           "UserMessaging" = {
             "WhatsNew" = false;
-            "ExtensionRecommendations" = true;
+            "ExtensionRecommendations" = false;
             "FeatureRecommendations" = false;
             "UrlbarInterventions" = false;
             "SkipOnboarding" = true;
             "MoreFromMozilla" = false;
+            "FirefoxLabs" = false;
             "Locked" = false;
           };
           "UseSystemPrintDialog" = true;
+          "VisualSearchEnabled" = false;
         };
       };
     };

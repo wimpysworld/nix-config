@@ -32,9 +32,98 @@ in
 {
   imports = [ ./martin.nix ];
   config = lib.mkIf (host.is.workstation && !isWorkHost) {
-    # TODO: Configure Microsoft Edge policy
-    # - https://learn.microsoft.com/en-us/deployedge/microsoft-edge-policies
-    # - https://github.com/M86xKC/edge-config/blob/main/policies.json
+    environment.etc = {
+      "brave/policies/managed/brave.json".text = builtins.toJSON {
+        BraveAIChatEnabled = false;
+        BraveDeAmpEnabled = true;
+        BraveDebouncingEnabled = true;
+        BraveGlobalPrivacyControlEnabled = true;
+        BraveLocalAIEnabled = false;
+        BraveNewsDisabled = true;
+        BraveP3AEnabled = false;
+        BravePlaylistEnabled = false;
+        BraveReduceLanguageEnabled = true;
+        BraveRewardsDisabled = true;
+        BraveSpeedreaderEnabled = false;
+        BraveStatsPingEnabled = false;
+        BraveTalkDisabled = true;
+        BraveTrackingQueryParametersFilteringEnabled = true;
+        BraveVPNDisabled = true;
+        BraveWalletDisabled = true;
+        BraveWaybackMachineEnabled = false;
+        BraveWebDiscoveryEnabled = false;
+        TorDisabled = true;
+      };
+      # - https://learn.microsoft.com/en-us/deployedge/microsoft-edge-policies
+      "opt/edge/policies/managed/policies.json".text = builtins.toJSON {
+        ExtensionInstallForcelist = map (
+          id: "${id};https://clients2.google.com/service/update2/crx"
+        ) config.programs.chromium.extensions;
+        # Copilot, Sidebar, and Generative AI
+        AIGenThemesEnabled = false;
+        ComposeInlineEnabled = false;
+        CopilotPageContext = false;
+        EdgeEntraCopilotPageContext = false;
+        EdgeHistoryAISearchEnabled = false;
+        GenAILocalFoundationalModelSettings = 1;
+        HubsSidebarEnabled = false;
+        Microsoft365CopilotChatIconEnabled = false;
+        SearchInSidebarEnabled = 2;
+        # Shopping, Rewards, Workspaces, and Recommendations
+        EdgeEDropEnabled = false;
+        EdgeShoppingAssistantEnabled = false;
+        EdgeWorkspacesEnabled = false;
+        HideFirstRunExperience = true;
+        ShowMicrosoftRewards = false;
+        ShowRecommendationsEnabled = false;
+        SpotlightExperiencesAndRecommendationsEnabled = false;
+        # New Tab Page and Startup
+        FavoritesBarEnabled = false;
+        HomepageIsNewTabPage = true;
+        NewTabPageAllowedBackgroundTypes = 3;
+        NewTabPageContentEnabled = false;
+        NewTabPageHideDefaultTopSites = true;
+        NewTabPageQuickLinksEnabled = false;
+        RestoreOnStartup = 1;
+        ShowHomeButton = false;
+        # Privacy and Telemetry
+        AlternateErrorPagesEnabled = false;
+        DiagnosticData = 0;
+        Edge3PSerpTelemetryEnabled = false;
+        ExperimentationAndConfigurationServiceControl = 0;
+        NetworkPredictionOptions = 2;
+        PersonalizationReportingEnabled = false;
+        ResolveNavigationErrorsUseWebService = false;
+        SiteSafetyServicesEnabled = false;
+        TrackingPrevention = 3;
+        UserFeedbackAllowed = false;
+        # Passwords and Autofill
+        AutofillAddressEnabled = false;
+        AutofillCreditCardEnabled = false;
+        EdgeAutofillMlEnabled = false;
+        PasswordExportEnabled = false;
+        PasswordGeneratorEnabled = false;
+        PasswordManagerEnabled = false;
+        PasswordMonitorAllowed = false;
+        PaymentMethodQueryEnabled = false;
+        # Network, Downloads, Printing, Content, and Spellcheck
+        BackgroundModeEnabled = false;
+        BuiltInDnsClientEnabled = false;
+        DefaultGeolocationSetting = 3;
+        DefaultImagesSetting = 1;
+        DefaultPopupsSetting = 1;
+        DefaultSearchProviderEnabled = true;
+        PrintingPaperSizeDefault = {
+          name = "iso_a4_210x297mm";
+        };
+        PromptForDownloadLocation = true;
+        SpellcheckEnabled = true;
+        SpellcheckLanguage = [
+          "en-GB"
+          "en-US"
+        ];
+      };
+    };
     programs = {
       chromium = {
         # Configures policies for Chromium, Chrome and Brave
@@ -49,7 +138,6 @@ in
         extraOpts = {
           # Misc; privacy and data collection prevention
           "BrowserNetworkTimeQueriesEnabled" = false;
-          "DeviceMetricsReportingEnabled" = false;
           "DomainReliabilityAllowed" = false;
           "FeedbackSurveysEnabled" = false;
           "MetricsReportingEnabled" = false;
@@ -59,7 +147,6 @@ in
           # Misc; Tabs
           "NTPCardsVisible" = false;
           "NTPCustomBackgroundEnabled" = false;
-          "NTPMiddleSlotAnnouncementVisible" = false;
           # Misc; Downloads
           # Note: DefaultDownloadDirectory and DownloadDirectory removed as they conflict with PromptForDownloadLocation
           "PromptForDownloadLocation" = true;
@@ -71,7 +158,7 @@ in
           "BookmarkBarEnabled" = false;
           "BrowserAddPersonEnabled" = true;
           "BrowserLabsEnabled" = false;
-          "PromotionalTabsEnabled" = false;
+          "PromotionsEnabled" = false;
           "ShoppingListEnabled" = false;
           "ShowFullUrlsInAddressBar" = true;
           "SpellcheckEnabled" = true;
@@ -79,38 +166,40 @@ in
             "en-GB"
             "en-US"
           ];
-          # Cloud Reporting
-          "CloudReportingEnabled" = false;
-          "CloudProfileReportingEnabled" = false;
           # Content settings
           "DefaultGeolocationSetting" = 3;
           "DefaultImagesSetting" = 1;
           "DefaultPopupsSetting" = 1;
           "DefaultSearchProviderEnabled" = true;
           # Generative AI; these settings disable the AI features to prevent data collection
+          "AIModeSettings" = 1;
+          "AutofillGenAiSettings" = 2;
+          "AutofillPredictionSettings" = 2;
+          "BuiltInAIAPIsEnabled" = false;
           "CreateThemesSettings" = 2;
           "DevToolsGenAiSettings" = 2;
+          "GeminiActOnWebSettings" = 1;
+          "GeminiSparkSettings" = 1;
           "GenAILocalFoundationalModelSettings" = 1;
           "HelpMeWriteSettings" = 2;
-          "TabOrganizerSettings" = 2;
-          # Network
-          "ZstdContentEncodingEnabled" = true;
+          "SearchContentSharingSettings" = 1;
+          "TabCompareSettings" = 2;
+          "ThirdPartyAiChatSettings" = 1;
           # Password manager
           "PasswordDismissCompromisedAlertEnabled" = true;
           "PasswordLeakDetectionEnabled" = false;
           "PasswordManagerEnabled" = false;
           "PasswordSharingEnabled" = false;
           # Printing
-          "PrintingPaperSizeDefault" = "iso_a4_210x297mm";
-          # Related Website Sets
-          "RelatedWebsiteSetsEnabled" = false;
+          "PrintingPaperSizeDefault" = {
+            name = "iso_a4_210x297mm";
+          };
           # Safe Browsing
-          "SafeBrowsingExtendedReportingEnabled" = false;
           "SafeBrowsingProtectionLevel" = 1;
           "SafeBrowsingProxiedRealTimeChecksAllowed" = false;
           "SafeBrowsingSurveysEnabled" = false;
           # Startup, Home and New Tab Page
-          "HomePageIsNewTabPage" = true;
+          "HomepageIsNewTabPage" = true;
           "RestoreOnStartup" = 1;
           "ShowHomeButton" = false;
         };

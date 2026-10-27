@@ -20,7 +20,8 @@ lib.mkIf (host.is.workstation && !isWorkHost && noughtyLib.isUser [ "martin" ]) 
         "DefaultSearchProviderName" = "Kagi";
         "DefaultSearchProviderSearchURL" = "https://kagi.com/search?q={searchTerms}";
         "DefaultSearchProviderSuggestURL" = "https://kagi.com/api/autosuggest?q={searchTerms}";
-        "HomePageLocation" = "https://kagi.com";
+        "HomepageIsNewTabPage" = lib.mkForce false;
+        "HomepageLocation" = "https://kagi.com";
         "NewTabPageLocation" = "https://kagi.com";
       };
     };
