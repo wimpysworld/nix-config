@@ -3,13 +3,82 @@
   config,
   lib,
   noughtyLib,
+  pkgs,
   ...
 }:
 let
   inherit (config.noughty) host;
   isWorkHost = noughtyLib.hostHasTag "cg";
+
+  mullvadPolicies = pkgs.writeText "mullvad-browser-policies.json" (
+    builtins.toJSON {
+      policies = {
+        SearchEngines = {
+          Default = "Brave Search";
+          DefaultPrivate = "Brave Search";
+        };
+      };
+    }
+  );
+
+  mullvadBrowser =
+    (pkgs.mullvad-browser.override {
+      extraPrefs = ''
+        // General -> Content alignment: top
+        pref("privacy.resistFingerprinting.letterboxing.vcenter", false);
+
+        // Address Bar -> disable all suggestions
+        pref("browser.urlbar.suggest.history", false);
+        pref("browser.urlbar.suggest.bookmark", false);
+        pref("browser.urlbar.suggest.openpage", false);
+        pref("browser.urlbar.suggest.topsites", false);
+        pref("browser.urlbar.suggest.engines", false);
+        pref("browser.urlbar.suggest.quickactions", false);
+        pref("browser.urlbar.quickactions.enabled", false);
+        pref("browser.urlbar.shortcuts.actions", false);
+
+        // Privacy & Security -> History
+        pref("privacy.history.custom", true);
+        pref("browser.privatebrowsing.autostart", false);
+        pref("permissions.memory_only", false);
+        pref("places.history.enabled", true);
+        pref("browser.formfill.enable", false);
+        pref("privacy.sanitize.sanitizeOnShutdown", true);
+
+        // Clear history when Mullvad Browser closes (v2 and legacy v1 branches)
+        pref("privacy.sanitize.clearOnShutdown.hasMigratedToNewPrefs3", true);
+        pref("privacy.clearOnShutdown_v2.browsingHistoryAndDownloads", true);
+        pref("privacy.clearOnShutdown_v2.cookiesAndStorage", false);
+        pref("privacy.clearOnShutdown_v2.cache", true);
+        pref("privacy.clearOnShutdown_v2.formdata", true);
+        pref("privacy.clearOnShutdown_v2.siteSettings", false);
+        pref("privacy.clearOnShutdown.history", true);
+        pref("privacy.clearOnShutdown.downloads", true);
+        pref("privacy.clearOnShutdown.cookies", false);
+        pref("privacy.clearOnShutdown.sessions", false);
+        pref("privacy.clearOnShutdown.offlineApps", false);
+        pref("privacy.clearOnShutdown.cache", true);
+        pref("privacy.clearOnShutdown.formdata", true);
+        pref("privacy.clearOnShutdown.siteSettings", false);
+      '';
+    }).overrideAttrs
+      (old: {
+        postInstall = (old.postInstall or "") + ''
+          install -Dvm644 ${mullvadPolicies} $out/share/mullvad-browser/distribution/policies.json
+        '';
+        preFixup = (old.preFixup or "") + ''
+          gappsWrapperArgs+=(
+            --set MOZ_LEGACY_PROFILES 1
+            --set MOZ_ALLOW_DOWNGRADE 1
+          )
+        '';
+      });
 in
 lib.mkIf (host.is.linux && host.is.workstation && !isWorkHost && noughtyLib.isUser [ "martin" ]) {
+  home.packages = [
+    mullvadBrowser
+  ];
+
   programs = {
     firefox = {
       policies = {

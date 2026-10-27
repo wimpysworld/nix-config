@@ -18,9 +18,6 @@ let
     google-chrome
     microsoft-edge
   ];
-  martinPackages = with pkgs; [
-    mullvad-browser
-  ];
 
   basicExtensions = [
     { id = "hdokiejnpimakedhajhdlcegeplioahd"; } # LastPass
@@ -71,9 +68,7 @@ in
 {
   imports = [ ./martin.nix ];
   config = lib.mkIf (host.is.workstation && !isWorkHost) {
-    home.packages =
-      lib.optionals (host.is.linux && noughtyLib.isUser forFamily) familyPackages
-      ++ lib.optionals (host.is.linux && noughtyLib.isUser forMartin) martinPackages;
+    home.packages = lib.optionals (host.is.linux && noughtyLib.isUser forFamily) familyPackages;
 
     # Install browser extensions via Home Manager on macOS; Linux uses NixOS /etc/brave/policies/managed.
     programs = {
