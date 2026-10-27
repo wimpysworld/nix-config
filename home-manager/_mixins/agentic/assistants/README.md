@@ -299,7 +299,7 @@ The inference-provider name must match Pi exactly, including hyphens. The defaul
 `Agent` receives `model: provider/modelId` and a separate `thinking` field. Workflow children receive `model` and `effort`.
 A thinking-only entry reuses the active session model ID. Model and effort pins are independent. An omitted table preserves session inheritance.
 
-Pi's global `defaultThinkingLevel = "medium"` and `defaultModel = "gpt-5.6-sol"`
+Pi's global `defaultThinkingLevel = "medium"` and `defaultModel = "gpt-6-astra"`
 set the session default for the unnamed global prompt. Agents that omit a
 header do not fall back to them per-agent; they inherit whatever model the
 session is running.

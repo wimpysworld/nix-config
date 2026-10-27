@@ -163,7 +163,7 @@ test("invalid arguments never change Fast", async () => {
 test("model, provider, endpoint, and unannounced changes reset Fast", async () => {
 	const h = harness();
 	for (const next of [
-		model("openai", "gpt-5.6-sol"),
+		model("openai", "gpt-6.1-sol"),
 		model("anthropic"),
 		model("openai-codex"),
 	]) {
@@ -174,7 +174,7 @@ test("model, provider, endpoint, and unannounced changes reset Fast", async () =
 		assert.equal(h.request().speed, undefined);
 	}
 	await h.command("on");
-	h.ctx.model = model("openai", "gpt-5.6-terra");
+	h.ctx.model = model("openai", "gpt-6.1-terra");
 	assert.equal(h.request().service_tier, "default");
 	await h.command("on");
 	h.ctx.model = { ...h.ctx.model, baseUrl: "https://example.com" };
@@ -284,9 +284,9 @@ test("all verified exact IDs enable Fast", async () => {
 	for (const provider of ["openai", "openai-codex"]) {
 		for (const id of [
 			"gpt-6-astra",
-			"gpt-5.6-sol",
-			"gpt-5.6-terra",
-			"gpt-5.6-luna",
+			"gpt-6.1-sol",
+			"gpt-6.1-terra",
+			"gpt-6-luna",
 		]) {
 			const h = harness(model(provider, id));
 			await h.command("on");

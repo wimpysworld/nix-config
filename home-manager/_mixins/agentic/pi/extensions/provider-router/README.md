@@ -77,7 +77,7 @@ Declare defaults only in the agent's `header.toml`:
 
 ```toml
 [routing.pi.openai-codex]
-model = "gpt-5.6-terra"
+model = "gpt-6.1-terra"
 thinking = "high"
 ```
 

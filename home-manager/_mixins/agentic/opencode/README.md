@@ -14,7 +14,7 @@ No local model allowlist filters the catalogue. The default model is `opencode-g
 
 Hosts with the `cg` tag use only models that are approved for work. Their default model is `google/gemini-4-argon`, and the built-in `title` agent uses `google/gemini-3.8-flash`. V2 has no `small_model` field, so the module sets the `title` agent model instead. `provider.use` deny policies remove the `opencode` and `opencode-go` providers from these hosts. These policies are the V2 form of `disabled_providers`.
 
-The six OpenAI model limit overrides remain in `default.nix`. Automatic compaction uses V2's resolved input limit and default reserve. The old fixed 345,600-token trigger does not apply.
+The four OpenAI model limit overrides remain in `default.nix`. Automatic compaction uses V2's resolved input limit and default reserve. The old fixed 345,600-token trigger does not apply.
 
 Session sharing and the built-in `webfetch` and `websearch` tools are disabled. Web access uses the shared [MCP servers](../mcp/README.md). Plain launches ask before access to external directories.
 

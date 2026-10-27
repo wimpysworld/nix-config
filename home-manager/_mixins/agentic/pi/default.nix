@@ -361,6 +361,7 @@ let
       "anthropic/claude-sonnet-5-5"
       "openai-codex/gpt-6-astra"
       "openai-codex/gpt-6.1-sol"
+      "openai-codex/gpt-6.1-terra"
       "openai-codex/gpt-6-luna"
       "opencode-go/glm-5.3-flash"
       "opencode-go/glm-5.3"
@@ -384,7 +385,7 @@ let
     compaction = {
       enabled = true;
       # The trigger fires when context tokens exceed the model's context
-      # window minus this reserve. The GPT-5.6 family and GPT-6 Astra carry a
+      # window minus this reserve. The GPT-6 and GPT-6.1 families carry a
       # 384,000-token window via models.json modelOverrides below, so a
       # 38,400 reserve starts compaction at 345,600 tokens for them, matching
       # Codex's 90%-of-window trigger. keepRecentTokens stays at its 20,000.
@@ -834,11 +835,9 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
               providers."openai-codex".modelOverrides =
                 lib.genAttrs
                   [
-                    "gpt-5.6-sol"
-                    "gpt-5.6-terra"
-                    "gpt-5.6-luna"
                     "gpt-6-astra"
                     "gpt-6.1-sol"
+                    "gpt-6.1-terra"
                     "gpt-6-luna"
                   ]
                   (_: {

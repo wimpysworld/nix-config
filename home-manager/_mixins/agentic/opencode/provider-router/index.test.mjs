@@ -6,7 +6,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const routes = { garfield: { openai: "gpt-5.6-terra", anthropic: "claude-haiku-5-5" } };
+const routes = { garfield: { openai: "gpt-6.1-terra", anthropic: "claude-haiku-5-5" } };
 const key = "nix-config.opencode-provider-router.v2/child";
 function task(provider = "openai", child = "child", id = "task-1") {
   return { type: "assistant", model: { providerID: provider, id: "parent-model" }, content: [{
@@ -124,7 +124,7 @@ test("exact model and variant failures run on the parent model", async () => {
   const f = await fixture();
   f.state.models[0].providerID = "other-provider";
   const notice = await failsOpen(f, /unavailable exact model/);
-  assert.equal(notice.text, "Provider Router: the route for garfield (openai/gpt-5.6-terra variant high) is not available, " +
+  assert.equal(notice.text, "Provider Router: the route for garfield (openai/gpt-6.1-terra variant high) is not available, " +
     "so garfield ran on google/orchestrator-model.");
 });
 test("one invalid invocation posts one notice across retries", async () => {
@@ -171,7 +171,7 @@ test("legacy { data } client results still route", async () => {
   f.ctx.session.context = async (args) => ({ data: await context(args) });
   f.ctx.model.list = async () => ({ data: f.state.models });
   await f.send();
-  assert.deepEqual(f.state.sessions.child.model, { providerID: "openai", id: "gpt-5.6-terra", variant: "high" });
+  assert.deepEqual(f.state.sessions.child.model, { providerID: "openai", id: "gpt-6.1-terra", variant: "high" });
 });
 test("failed or odd session context resolves the prompt unchanged", async () => {
   for (const context of [
@@ -294,7 +294,7 @@ test("an unpublished launch routes when one candidate matches", async () => {
     const f = await unpublished(); setup(f);
     await f.send();
     assert.deepEqual(f.state.notices, []);
-    assert.deepEqual(f.state.sessions.child.model, { providerID: "openai", id: "gpt-5.6-terra", variant: "high" });
+    assert.deepEqual(f.state.sessions.child.model, { providerID: "openai", id: "gpt-6.1-terra", variant: "high" });
     assert.equal(f.state.storage[key].taskID, "task-1");
   }
   const f = await fixture("anthropic", routes, { garfield: { anthropic: "max" } });
@@ -319,14 +319,14 @@ test("a native default variant routes without a variant", async () => {
   launch(f);
   await f.send();
   assert.deepEqual(f.state.notices, []);
-  assert.deepEqual(f.state.sessions.child.model, { providerID: "openai", id: "gpt-5.6-terra" });
+  assert.deepEqual(f.state.sessions.child.model, { providerID: "openai", id: "gpt-6.1-terra" });
 });
 test("a published session ID wins over unpublished launches", async () => {
   const f = await fixture();
   launch(f, {}, "anthropic", "task-2");
   await f.send();
   assert.deepEqual(f.state.notices, []);
-  assert.deepEqual(f.state.sessions.child.model, { providerID: "openai", id: "gpt-5.6-terra", variant: "high" });
+  assert.deepEqual(f.state.sessions.child.model, { providerID: "openai", id: "gpt-6.1-terra", variant: "high" });
 });
 test("prompts without a matching subagent launch stay native", async () => {
   for (const setup of [

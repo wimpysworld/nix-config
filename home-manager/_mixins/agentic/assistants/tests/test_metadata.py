@@ -1167,7 +1167,7 @@ task = "deny"
                 self.assertIn(f"Unsupported opencode routing for {kind}", error)
 
     def test_opencode_provider_routes_are_agent_only_and_not_native_fields(self):
-        header = '[routing.opencode.providers.openai]\nmodel = "gpt-5.6-terra"\n'
+        header = '[routing.opencode.providers.openai]\nmodel = "gpt-6.1-terra"\n'
         result = self.evaluate(
             'lib.genAttrs [ "claude" "codex" "opencode" "pi" ] '
             '(platform: m.project "agent" platform "fixture" h)',
