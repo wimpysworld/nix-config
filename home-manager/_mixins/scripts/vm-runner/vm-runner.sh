@@ -89,11 +89,12 @@ done
 disk_img="${state_dir}/disk.qcow2"
 ovmf_vars="${state_dir}/OVMF_VARS.fd"
 pid_file="${state_dir}/qemu.pid"
+qga_sock="${state_dir}/qga.sock"
 qmp_sock="${state_dir}/qmp.sock"
 spice_sock="${state_dir}/spice.sock"
 
 cleanup_runtime() {
-	rm -f -- "$pid_file" "$qmp_sock" "$spice_sock"
+	rm -f -- "$pid_file" "$qga_sock" "$qmp_sock" "$spice_sock"
 }
 
 is_running() {
@@ -135,9 +136,13 @@ if ((shutdown_vm == 1)); then
 	fi
 	pid=""
 	read -r pid <"$pid_file" || true
+	if [[ -S "$qga_sock" ]]; then
+		printf '{"execute":"guest-shutdown"}\n' |
+			socat -t 0.2 - "UNIX-CONNECT:${qga_sock}" >/dev/null 2>&1 || true
+	fi
 	printf '{"execute":"qmp_capabilities"}\n{"execute":"system_powerdown"}\n' |
 		socat - "UNIX-CONNECT:${qmp_sock}" >/dev/null 2>&1 || true
-	for _ in {1..150}; do
+	for _ in {1..350}; do
 		if ! kill -0 "$pid" 2>/dev/null; then
 			cleanup_runtime
 			printf '%s: VM shut down\n' "$prog"
@@ -228,6 +233,8 @@ qemu_args=(
 	-device "virtio-net-pci,netdev=net0"
 	-netdev "user,id=net0,hostfwd=tcp:127.0.0.1:${ssh_port}-:22"
 	-device "virtio-serial-pci"
+	-chardev "socket,id=qga0,path=${qga_sock},server=on,wait=off"
+	-device "virtserialport,chardev=qga0,name=org.qemu.guest_agent.0"
 	-chardev "spicevmc,id=vdagent,name=vdagent"
 	-device "virtserialport,chardev=vdagent,name=com.redhat.spice.0"
 	-drive "id=disk0,file=${disk_img},format=qcow2,if=none,discard=unmap,detect-zeroes=unmap"
