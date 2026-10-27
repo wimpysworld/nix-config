@@ -11,9 +11,6 @@ lib.mkIf (host.is.workstation && !host.is.iso) {
   # Only enables auxilary printing support/packages if
   # config.services.printing.enable is true; the master control
   # - https://wiki.nixos.org/wiki/Printing
-  programs.system-config-printer = lib.mkIf config.services.printing.enable {
-    enable = true;
-  };
   services = {
     printing = {
       enable = true;

@@ -17,18 +17,6 @@ lib.mkIf (host.is.workstation && !host.is.iso) {
     kernelParams = [ "threadirqs" ];
   };
 
-  environment.systemPackages =
-    with pkgs;
-    [
-      alsa-utils
-      playerctl
-      pulseaudio
-      pulsemixer
-    ]
-    ++ lib.optionals host.is.workstation [
-      pwvucontrol
-    ];
-
   services = {
     # https://nixos.wiki/wiki/PipeWire
     # https://gitlab.freedesktop.org/pipewire/pipewire/-/wikis/Config-PipeWire#quantum-ranges

@@ -2,14 +2,10 @@
 # udev access rules and keyd event remapping in one module.
 {
   config,
-  inputs,
   lib,
-  pkgs,
   ...
 }:
 lib.mkIf config.noughty.host.is.workstation {
-  environment.systemPackages = [ inputs.nix-packages.packages.${pkgs.system}.wonkey ];
-
   services = {
     # Provides users with access to VIA
     # https://get.vial.today/manual/linux-udev.html

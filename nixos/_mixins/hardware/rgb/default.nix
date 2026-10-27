@@ -31,16 +31,6 @@ let
   };
 in
 lib.mkIf (!host.is.iso) {
-  environment = {
-    systemPackages =
-      with pkgs;
-      lib.optionals (builtins.hasAttr host.name razerPeripherals && host.is.workstation) [
-        polychromatic
-      ]
-      ++ lib.optionals (builtins.hasAttr host.name ratbagMice && host.is.workstation) [
-        piper
-      ];
-  };
   hardware = {
     openrazer = lib.mkIf (builtins.hasAttr host.name razerPeripherals) {
       enable = true;

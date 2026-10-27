@@ -1,7 +1,7 @@
 {
+  config,
   lib,
   noughtyLib,
-  pkgs,
   ...
 }:
 let
@@ -49,9 +49,10 @@ let
   ];
 in
 lib.mkIf (noughtyLib.hostHasTag "cg") {
-  environment.systemPackages = [
-    pkgs._1password-gui
-  ];
+  programs._1password-gui = {
+    enable = true;
+    polkitPolicyOwners = [ config.noughty.user.name ];
+  };
 
   programs.chromium = {
     enable = true;

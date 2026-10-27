@@ -1,24 +1,12 @@
 {
   config,
-  noughtyLib,
   lib,
-  pkgs,
   ...
 }:
 let
   inherit (config.noughty) host;
-  username = config.noughty.user.name;
-  hasStreamdeck = noughtyLib.hostHasTag "streamdeck";
-  # Bundle all .deck config files into a single store directory so that
-  # relative deck references (deck = "foo.deck") resolve correctly.
-  deckmaster-xl-config = pkgs.runCommand "deckmaster-xl-config" { } ''
-    mkdir -p $out
-    cp ${./xl}/*.deck $out/
-  '';
 in
-lib.mkIf (!host.is.iso && !host.is.server) {
-  environment.systemPackages = with pkgs; [ deckmaster ];
-
+lib.mkIf (host.is.linux && !host.is.server) {
   services = {
     # Provides users with access to all Elgato StreamDecks.
     # https://github.com/muesli/deckmaster
@@ -52,35 +40,5 @@ lib.mkIf (!host.is.iso && !host.is.server) {
       # Elgato Stream Deck Pedal
       SUBSYSTEM=="usb", ATTRS{idVendor}=="0fd9", ATTRS{idProduct}=="0086", TAG+="uaccess", SYMLINK+="streamdeck-pedal"
     '';
-  };
-
-  users.users.${username} = {
-    extraGroups = [ "input" ];
-  };
-
-  # Systemd user service for deckmaster on stream workstations
-  systemd.user.services.deckmaster-xl = lib.mkIf hasStreamdeck {
-    description = "Deckmaster XL for Stream Deck";
-    after = [ "graphical-session.target" ];
-    partOf = [ "graphical-session.target" ];
-    wantedBy = [ "graphical-session.target" ];
-
-    unitConfig = {
-      # Restart up to 5 times within 60 seconds before giving up
-      StartLimitBurst = 5;
-      StartLimitIntervalSec = 60;
-    };
-
-    serviceConfig = {
-      Type = "simple";
-      ExecStart = "${pkgs.deckmaster}/bin/deckmaster -deck ${deckmaster-xl-config}/main.deck";
-      Restart = "on-failure";
-      RestartSec = "5s";
-    };
-
-    # Inherit full system PATH so deckmaster can execute shell scripts and system binaries
-    environment = {
-      PATH = lib.mkForce "/run/wrappers/bin:/home/${username}/.nix-profile/bin:/etc/profiles/per-user/${username}/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin";
-    };
   };
 }

@@ -32,6 +32,7 @@ in
     ./_mixins/filesync
     ./_mixins/scripts
     ./_mixins/desktop
+    ./_mixins/hardware
     ./_mixins/services
     ./_mixins/terminal
     ./_mixins/users

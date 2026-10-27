@@ -3,7 +3,6 @@
 # controller tooling for firmware, battery, and LED management.
 {
   lib,
-  pkgs,
   noughtyLib,
   ...
 }:
@@ -46,11 +45,6 @@ lib.mkIf (noughtyLib.hostHasTag "framework") {
       ];
     };
   };
-
-  environment.systemPackages = with pkgs; [
-    framework-tool
-    framework-tool-tui
-  ];
 
   # Grant the logged-in user access to the embedded controller so that
   # framework-tool works without sudo.
