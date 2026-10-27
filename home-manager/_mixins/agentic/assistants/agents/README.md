@@ -112,10 +112,11 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | donatello | pi | openai-codex | gpt-6-astra | high |
 | garfield | claude | Unset | claude-haiku-5-5 | high |
 | garfield | opencode | anthropic | claude-haiku-5-5 | high |
+| garfield | opencode | google | gemini-3.8-flash | high |
 | garfield | opencode | openai | gpt-6-luna | Unset |
 | garfield | codex | Unset | gpt-6-luna | high |
 | garfield | pi | anthropic | claude-haiku-5-5 | high |
-| garfield | pi | google | gemini-3-flash | Unset |
+| garfield | pi | google | gemini-3.8-flash | high |
 | garfield | pi | openai-codex | gpt-6-luna | high |
 | gonzales | claude | Unset | claude-opus-5-5 | medium |
 | gonzales | opencode | anthropic | claude-opus-5-5 | Unset |

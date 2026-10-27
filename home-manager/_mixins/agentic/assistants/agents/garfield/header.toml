@@ -18,6 +18,10 @@ model = "gpt-6-luna"
 model = "claude-haiku-5-5"
 variant = "high"
 
+[routing.opencode.providers.google]
+model = "gemini-3.8-flash"
+variant = "high"
+
 [routing.pi]
 
 [routing.pi.anthropic]
@@ -29,7 +33,8 @@ model = "gpt-6-luna"
 thinking = "high"
 
 [routing.pi.google]
-model = "gemini-3-flash"
+model = "gemini-3.8-flash"
+thinking = "high"
 
 [claude]
 disallowedTools = ["Agent"]

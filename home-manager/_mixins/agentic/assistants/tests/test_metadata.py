@@ -1183,11 +1183,15 @@ task = "deny"
                 )
         self.assertEqual(
             self.evaluate('c.extractOpenCodeProviderModels "garfield"'),
-            {"openai": "gpt-6-luna", "anthropic": "claude-haiku-5-5"},
+            {
+                "openai": "gpt-6-luna",
+                "anthropic": "claude-haiku-5-5",
+                "google": "gemini-3.8-flash",
+            },
         )
         self.assertEqual(
             self.evaluate('c.extractOpenCodeProviderVariants "garfield"'),
-            {"anthropic": "high"},
+            {"anthropic": "high", "google": "high"},
         )
         self.evaluate(
             "h",
@@ -1221,10 +1225,14 @@ task = "deny"
             {
                 "models": {
                     "anthropic": "claude-haiku-5-5",
-                    "google": "gemini-3-flash",
+                    "google": "gemini-3.8-flash",
                     "openai-codex": "gpt-6-luna",
                 },
-                "thinking": {"anthropic": "high", "openai-codex": "high"},
+                "thinking": {
+                    "anthropic": "high",
+                    "google": "high",
+                    "openai-codex": "high",
+                },
             },
         )
 
