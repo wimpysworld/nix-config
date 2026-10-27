@@ -1,6 +1,3 @@
-let
-  systems = builtins.fromTOML (builtins.readFile ../../../lib/registry-systems.toml);
-in
 {
   devices = {
     bane = {
@@ -134,7 +131,7 @@ in
       maxConflicts = 10;
       path = "~/Oval-Tutu";
       devices = [
-        "momin"  
+        "momin"
         "revan"
         "skrye"
         "tanis"
