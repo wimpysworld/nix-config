@@ -5,12 +5,14 @@ prog="$(basename "$0")"
 
 usage() {
 	cat <<EOF
-Usage: ${prog} [--delete] [--vulkan] [iso_path]
+Usage: ${prog} [--shutdown] [--kill] [--delete] [--vulkan] [iso_path]
 
-Launch the ${prog#vm-} QEMU virtual machine.
+Launch or control the ${prog#vm-} QEMU virtual machine.
 
 Options:
-  --delete    Delete the virtual disk and UEFI NVRAM state.
+  --shutdown  Send an ACPI powerdown signal to the running VM and wait for exit.
+  --kill      Forcefully terminate the running VM process.
+  --delete    Stop the VM if running, then delete disk and UEFI NVRAM state.
   --vulkan    Enable Venus Vulkan support on the VirtIO GPU.
   -h, --help  Show this help.
 EOF
@@ -37,6 +39,8 @@ vm-wolfi)
 	;;
 esac
 
+shutdown_vm=0
+kill_vm=0
 delete_disk=0
 vulkan=0
 iso_path=""
@@ -46,6 +50,14 @@ while [[ $# -gt 0 ]]; do
 	-h | --help)
 		usage
 		exit 0
+		;;
+	--shutdown)
+		shutdown_vm=1
+		shift
+		;;
+	--kill)
+		kill_vm=1
+		shift
 		;;
 	--delete)
 		delete_disk=1
@@ -76,8 +88,79 @@ done
 
 disk_img="${state_dir}/disk.qcow2"
 ovmf_vars="${state_dir}/OVMF_VARS.fd"
+pid_file="${state_dir}/qemu.pid"
+qmp_sock="${state_dir}/qmp.sock"
+spice_sock="${state_dir}/spice.sock"
+
+cleanup_runtime() {
+	rm -f -- "$pid_file" "$qmp_sock" "$spice_sock"
+}
+
+is_running() {
+	if [[ -f "$pid_file" ]]; then
+		local pid=""
+		read -r pid <"$pid_file" || true
+		if [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null; then
+			return 0
+		fi
+		cleanup_runtime
+	fi
+	return 1
+}
+
+stop_forcefully() {
+	if is_running; then
+		local pid=""
+		read -r pid <"$pid_file" || true
+		if [[ -n "$pid" ]]; then
+			kill -TERM "$pid" 2>/dev/null || true
+			for _ in {1..15}; do
+				if ! kill -0 "$pid" 2>/dev/null; then
+					break
+				fi
+				sleep 0.1
+			done
+			if kill -0 "$pid" 2>/dev/null; then
+				kill -KILL "$pid" 2>/dev/null || true
+			fi
+		fi
+	fi
+	cleanup_runtime
+}
+
+if ((shutdown_vm == 1)); then
+	if ! is_running; then
+		printf '%s: VM is not running\n' "$prog"
+		exit 0
+	fi
+	pid=""
+	read -r pid <"$pid_file" || true
+	printf '{"execute":"qmp_capabilities"}\n{"execute":"system_powerdown"}\n' |
+		socat - "UNIX-CONNECT:${qmp_sock}" >/dev/null 2>&1 || true
+	for _ in {1..150}; do
+		if ! kill -0 "$pid" 2>/dev/null; then
+			cleanup_runtime
+			printf '%s: VM shut down\n' "$prog"
+			exit 0
+		fi
+		sleep 0.2
+	done
+	fail "timed out waiting for VM (PID ${pid}) to shut down; use --kill to force stop"
+fi
+
+if ((kill_vm == 1)); then
+	if is_running; then
+		stop_forcefully
+		printf '%s: killed running VM\n' "$prog"
+	else
+		cleanup_runtime
+		printf '%s: VM is not running\n' "$prog"
+	fi
+	exit 0
+fi
 
 if ((delete_disk == 1)); then
+	stop_forcefully
 	rm -f -- "$disk_img" "$ovmf_vars"
 	if [[ -z "$iso_path" ]]; then
 		printf '%s: deleted state in %s\n' "$prog" "$state_dir"
@@ -85,7 +168,16 @@ if ((delete_disk == 1)); then
 	fi
 fi
 
+if is_running; then
+	if [[ -n "$iso_path" ]]; then
+		fail "VM is already running; use --shutdown, --kill, or --delete before booting an ISO"
+	fi
+	printf '%s: reconnecting to running VM\n' "$prog"
+	exec spicy --uri="spice+unix://${spice_sock}" --title="vm-${profile}" >/dev/null 2>&1
+fi
+
 mkdir -p -- "$state_dir"
+cleanup_runtime
 
 if [[ ! -f "$ovmf_vars" ]]; then
 	cp -- "$OVMF_VARS" "$ovmf_vars"
@@ -116,6 +208,9 @@ fi
 
 qemu_args=(
 	-name "${profile},process=vm-${profile}"
+	-daemonize
+	-pidfile "${pid_file}"
+	-qmp "unix:${qmp_sock},server=on,wait=off"
 	-machine "q35,accel=kvm,smm=on,memory-backend=mem"
 	-cpu host
 	-smp "${cpus}"
@@ -123,7 +218,8 @@ qemu_args=(
 	-object "memory-backend-memfd,id=mem,size=16G,share=on"
 	-drive "if=pflash,format=raw,unit=0,file=${OVMF_CODE},readonly=on"
 	-drive "if=pflash,format=raw,unit=1,file=${ovmf_vars}"
-	-display "gtk,gl=on,clipboard=on,grab-on-hover=on,zoom-to-fit=off"
+	-display none
+	-spice "unix=on,addr=${spice_sock},disable-ticketing=on,image-compression=off,streaming-video=off,gl=on"
 	-device "${gpu_dev}"
 	-device "qemu-xhci,id=xhci"
 	-device "usb-tablet,bus=xhci.0"
@@ -132,7 +228,7 @@ qemu_args=(
 	-device "virtio-net-pci,netdev=net0"
 	-netdev "user,id=net0,hostfwd=tcp:127.0.0.1:${ssh_port}-:22"
 	-device "virtio-serial-pci"
-	-chardev "qemu-vdagent,id=vdagent,name=vdagent,clipboard=on,mouse=on"
+	-chardev "spicevmc,id=vdagent,name=vdagent"
 	-device "virtserialport,chardev=vdagent,name=com.redhat.spice.0"
 	-drive "id=disk0,file=${disk_img},format=qcow2,if=none,discard=unmap,detect-zeroes=unmap"
 	-device "virtio-blk-pci,drive=disk0,bootindex=${disk_bootindex}"
@@ -153,4 +249,5 @@ if [[ -n "$iso_path" ]]; then
 	)
 fi
 
-exec qemu-system-x86_64 "${qemu_args[@]}"
+qemu-system-x86_64 "${qemu_args[@]}"
+exec spicy --uri="spice+unix://${spice_sock}" --title="vm-${profile}" >/dev/null 2>&1

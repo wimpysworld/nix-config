@@ -11,6 +11,8 @@ let
     runtimeInputs = with pkgs; [
       coreutils
       qemu_kvm
+      socat
+      spice-gtk
     ];
     runtimeEnv = {
       OVMF_CODE = "${pkgs.OVMF.fd}/FV/OVMF_CODE.fd";
