@@ -13,7 +13,7 @@ let
   hostHasCryptFolder = hostHasSyncthingFolder "crypt";
   hostHasGamesFolder = hostHasSyncthingFolder "games";
   isLinuxHostWithCryptFolder = host.is.linux && hostHasCryptFolder;
-  # Match nixos/_mixins/server/maestral and darwin/_mixins/desktop provisioning.
+  # Match home-manager/_mixins/filesync and darwin/_mixins/desktop provisioning.
   hostHasMaestral =
     !(noughtyLib.hostHasTag "cg")
     && (host.is.darwin || (host.is.nixos && noughtyLib.hostHasTag "dropbox"));

@@ -29,6 +29,9 @@ let
   ) syncDefs.folders;
 
   isKeybaseHost = host.is.linux && host.is.workstation && !(noughtyLib.hostHasTag "cg");
+  isMaestralHost = host.is.linux && noughtyLib.hostHasTag "dropbox" && !(noughtyLib.hostHasTag "cg");
+  isMaestralWorkstation = isMaestralHost && host.is.workstation;
+  isMaestralServer = isMaestralHost && !host.is.workstation;
 
   keybasePackages = [
     pkgs.keybase
@@ -53,7 +56,9 @@ lib.mkMerge [
       };
       packages =
         lib.optionals (host.is.linux && isSyncthingHost) [ pkgs.stc-cli ]
-        ++ lib.optionals isKeybaseHost keybasePackages;
+        ++ lib.optionals isKeybaseHost keybasePackages
+        ++ lib.optional isMaestralHost pkgs.maestral
+        ++ lib.optional isMaestralWorkstation pkgs.maestral-gui;
 
       activation.syncthingNotesIgnore = lib.mkIf (isSyncthingHost && hostFolders.notes.enable) (
         lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "writeBoundary" ] ''
@@ -88,6 +93,10 @@ lib.mkMerge [
     programs.fish.shellAliases = lib.mkIf (host.is.linux && isSyncthingHost) {
       stc = "${pkgs.stc-cli}/bin/stc";
     };
+
+    xdg.autostart.entries = lib.optionals isMaestralWorkstation [
+      "${pkgs.maestral-gui}/share/applications/maestral.desktop"
+    ];
 
     sops.secrets = lib.mkIf isSyncthingHost {
       syncthing_key.sopsFile = ../../../secrets/host-${host.name}.yaml;
@@ -142,17 +151,32 @@ lib.mkMerge [
 
     # Workaround for Failed to restart syncthingtray.service: Unit tray.target not found.
     # - https://github.com/nix-community/home-manager/issues/2064
-    systemd = lib.mkIf (host.is.linux && isSyncthingHost) {
-      user = {
-        targets.tray = lib.mkIf host.is.workstation {
+    systemd.user = lib.mkIf host.is.linux {
+      targets.tray = lib.mkIf (isSyncthingHost && host.is.workstation) {
+        Unit = {
+          Description = "Home Manager System Tray";
+          Wants = [ "graphical-session-pre.target" ];
+        };
+      };
+
+      services = {
+        maestral = lib.mkIf isMaestralServer {
           Unit = {
-            Description = "Home Manager System Tray";
-            Wants = [ "graphical-session-pre.target" ];
+            Description = "Maestral Dropbox daemon";
+          };
+          Install = {
+            WantedBy = [ "default.target" ];
+          };
+          Service = {
+            ExecStart = "${pkgs.maestral}/bin/maestral start --foreground";
+            ExecReload = "${pkgs.util-linux}/bin/kill -HUP $MAINPID";
+            KillMode = "process";
+            Restart = "on-failure";
           };
         };
 
-        services = {
-          syncthing-init.Service.ExecStartPost =
+        syncthing-init = lib.mkIf isSyncthingHost {
+          Service.ExecStartPost =
             let
               setApiKey = pkgs.writeShellScript "syncthing-set-apikey" ''
                 APIKEY=$(${pkgs.coreutils}/bin/cat ${config.sops.secrets.syncthing_apikey.path})
@@ -166,10 +190,10 @@ lib.mkMerge [
               '';
             in
             "${setApiKey}";
+        };
 
-          syncthingtray = lib.mkIf host.is.workstation {
-            Service.ExecStart = lib.mkForce "${pkgs.syncthingtray}/bin/syncthingtray --wait";
-          };
+        syncthingtray = lib.mkIf (isSyncthingHost && host.is.workstation) {
+          Service.ExecStart = lib.mkForce "${pkgs.syncthingtray}/bin/syncthingtray --wait";
         };
       };
     };
