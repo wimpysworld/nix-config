@@ -74,6 +74,9 @@ in
     programs = {
       brave = {
         enable = host.is.darwin || (host.is.linux && noughtyLib.isUser forMartin);
+        commandLineArgs = lib.optionals host.is.linux [
+          "--enable-features=AcceleratedVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoEncoder,VaapiIgnoreDriverChecks"
+        ];
         extensions = lib.optionals host.is.darwin (
           if (noughtyLib.isUser forMartin) then basicExtensions ++ advancedExtensions else basicExtensions
         );

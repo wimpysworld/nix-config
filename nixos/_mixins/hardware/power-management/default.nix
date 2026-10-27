@@ -2,6 +2,7 @@
   config,
   noughtyLib,
   lib,
+  pkgs,
   ...
 }:
 let
@@ -13,6 +14,41 @@ let
   desktopName = if builtins.isString host.desktop then host.desktop else "";
   waylandCompositors = (import ../../../../lib/wayland-compositors.nix).compositors;
   usePowerProfiles = builtins.hasAttr desktopName waylandCompositors;
+  syncPowerProfileOnAc = host.is.laptop && usePowerProfiles;
+  ppdAcPowerSync = pkgs.writeShellApplication {
+    name = "ppd-ac-power-sync";
+    runtimeInputs = [
+      pkgs.coreutils
+      config.services.power-profiles-daemon.package
+    ];
+    text = ''
+      ac_online=0
+      has_battery=0
+      for supply in /sys/class/power_supply/*; do
+        [ -r "$supply/type" ] || continue
+        read -r supply_type < "$supply/type"
+        case "$supply_type" in
+          Battery)
+            has_battery=1
+            ;;
+          Mains|USB)
+            if [ -r "$supply/online" ]; then
+              read -r online < "$supply/online"
+              if [ "$online" = "1" ]; then
+                ac_online=1
+              fi
+            fi
+            ;;
+        esac
+      done
+
+      if [ "$has_battery" = "1" ] && [ "$ac_online" = "0" ]; then
+        powerprofilesctl set power-saver
+      else
+        powerprofilesctl set balanced
+      fi
+    '';
+  };
   chargeThresholds = {
     start = 15;
     stop = 85;
@@ -92,7 +128,24 @@ lib.mkIf (!host.is.iso) {
       ''
       + lib.optionalString isFrameworkLaptop ''
         ACTION=="add|change", SUBSYSTEM=="power_supply", KERNEL=="BAT*", TEST=="charge_control_end_threshold", ATTR{charge_control_end_threshold}="${toString chargeThresholds.stop}"
+      ''
+      + lib.optionalString syncPowerProfileOnAc ''
+        SUBSYSTEM=="power_supply", ATTR{online}=="0|1", RUN+="${pkgs.systemd}/bin/systemctl start --no-block power-profiles-ac-sync.service"
       '';
+  };
+
+  systemd.services.power-profiles-ac-sync = lib.mkIf syncPowerProfileOnAc {
+    description = "Sync power-profiles-daemon profile with AC adapter state";
+    after = [ "power-profiles-daemon.service" ];
+    wants = [ "power-profiles-daemon.service" ];
+    wantedBy = [
+      "multi-user.target"
+      "post-resume.target"
+    ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${ppdAcPowerSync}/bin/ppd-ac-power-sync";
+    };
   };
 
   # Disable hiberate, hybrid-sleep and suspend-then-hibernate when zram swap is enabled.

@@ -138,7 +138,7 @@ in
       enable = true;
       unmanaged = unmanagedInterfaces;
       wifi.backend = lib.mkIf host.network.wifi "iwd";
-      wifi.powersave = lib.mkIf host.network.wifi (!host.is.laptop);
+      wifi.powersave = lib.mkIf host.network.wifi host.is.laptop;
       # sops-nix owns the iwd network files. Stop NetworkManager from copying
       # its profiles into /var/lib/iwd. When iwd stops, NetworkManager drops
       # the profiles that it made from iwd networks, and it then deletes the

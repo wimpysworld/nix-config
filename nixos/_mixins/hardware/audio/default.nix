@@ -1,16 +1,18 @@
 {
   config,
   lib,
+  noughtyLib,
   pkgs,
   ...
 }:
 let
   inherit (config.noughty) host;
+  isStudio = noughtyLib.hostHasTag "studio";
   username = config.noughty.user.name;
 in
 lib.mkIf (host.is.workstation && !host.is.iso) {
-  # Enable the threadirqs kernel parameter to reduce pipewire/audio latency
-  boot = lib.mkIf config.services.pipewire.enable {
+  # Enable the threadirqs kernel parameter to reduce pipewire/audio latency on studio hosts
+  boot = lib.mkIf (config.services.pipewire.enable && isStudio) {
     # - Inspired by: https://github.com/musnix/musnix/blob/master/modules/base.nix#L56
     kernelParams = [ "threadirqs" ];
   };
@@ -103,23 +105,27 @@ lib.mkIf (host.is.workstation && !host.is.iso) {
           '')
         ];
       };
-      # All workstations run the graph at 48 kHz, with a minimum quantum of 256
-      # frames. The default quantum (1024) and maximum quantum (2048) stay at the
-      # PipeWire defaults.
+      # All workstations run the graph at 48 kHz. Studio hosts pin the minimum
+      # quantum to 256 frames, while laptops keep the PipeWire default dynamic
+      # quantum scaling.
       # https://gitlab.freedesktop.org/pipewire/pipewire/-/wikis/Config-PipeWire#quantum-ranges
       extraConfig.pipewire."92-workstation-clock" = {
         "context.properties" = {
           "default.clock.rate" = 48000;
           "default.clock.allowed-rates" = [ 48000 ];
+        }
+        // lib.optionalAttrs isStudio {
           "default.clock.min-quantum" = 256;
         };
       };
-      # Stop PulseAudio clients from asking for a smaller buffer than the minimum quantum.
-      extraConfig.pipewire-pulse."92-workstation-clock" = {
-        "pulse.properties" = {
-          "pulse.min.req" = "256/48000";
-          "pulse.min.frag" = "256/48000";
-          "pulse.min.quantum" = "256/48000";
+      # Stop PulseAudio clients from asking for a smaller buffer than the minimum quantum on studio hosts.
+      extraConfig.pipewire-pulse = lib.mkIf isStudio {
+        "92-workstation-clock" = {
+          "pulse.properties" = {
+            "pulse.min.req" = "256/48000";
+            "pulse.min.frag" = "256/48000";
+            "pulse.min.quantum" = "256/48000";
+          };
         };
       };
     };

@@ -51,8 +51,14 @@ let
   };
 in
 lib.mkIf (host.is.linux && noughtyLib.hostHasTag "cg") {
+  programs.google-chrome = {
+    enable = true;
+    commandLineArgs = [
+      "--enable-features=AcceleratedVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoEncoder,VaapiIgnoreDriverChecks"
+    ];
+  };
+
   home.packages = [
-    pkgs.google-chrome
     slackChrome
     chromeXdgOpen
   ];

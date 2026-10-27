@@ -314,7 +314,12 @@ in
             noDisplay = true;
           };
         };
-        configFile = lib.mkIf (compositor != null && compositor.portal.backend == "wlr") {
+        configFile = {
+          "electron-flags.conf".text = ''
+            --enable-features=AcceleratedVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoEncoder,VaapiIgnoreDriverChecks
+          '';
+        }
+        // lib.optionalAttrs (compositor != null && compositor.portal.backend == "wlr") {
           # NixOS passed an empty settings file to xdg-desktop-portal-wlr
           # through --config. The backend reads this file by default, which
           # keeps those defaults without a NixOS service override.

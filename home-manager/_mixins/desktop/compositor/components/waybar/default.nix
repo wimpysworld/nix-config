@@ -448,8 +448,6 @@ lib.mkIf (host.is.linux && host.is.workstation) {
               tooltip-format-disconnected = "󰲜  disconnected";
             };
             backlight = {
-              # TODO: configure this to use the correct device
-              device = "thinkpad_acpi";
               format = "<big>{icon}</big>";
               format-alt = "<big>{icon}</big> <small>{percent}󰏰</small>";
               format-icons = [

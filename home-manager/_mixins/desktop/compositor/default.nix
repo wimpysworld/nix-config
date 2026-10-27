@@ -14,6 +14,7 @@ let
 in
 {
   imports = [
+    ./components/battery-refresh
     ./components/capture
     ./components/fuzzel
     ./components/kanshi

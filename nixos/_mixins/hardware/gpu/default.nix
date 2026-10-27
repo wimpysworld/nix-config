@@ -56,8 +56,10 @@ lib.mkIf (!host.is.iso && (host.is.workstation || host.gpu.hasAny)) {
     initrd.kernelModules = initrdGpuKernelModules;
     # If an NVIDIA GPU is present, blacklist the nouveau driver.
     blacklistedKernelModules = lib.optionals host.gpu.hasNvidia [ "nouveau" ];
-    # Unlock access to adjust AMD GPU clocks and voltages via sysfs.
-    kernelParams = lib.optionals host.gpu.hasAmd [ "amdgpu.ppfeaturemask=0xfff7ffff" ];
+    # Unlock access to adjust AMD GPU clocks and voltages via sysfs on desktops.
+    kernelParams = lib.optionals (host.gpu.hasAmd && !host.is.laptop) [
+      "amdgpu.ppfeaturemask=0xfff7ffff"
+    ];
   };
 
   environment = {
@@ -71,7 +73,7 @@ lib.mkIf (!host.is.iso && (host.is.workstation || host.gpu.hasAny)) {
         vulkan-tools
       ]
       ++ lib.optionals host.is.workstation [ gpu-viewer ]
-      ++ lib.optionals (host.is.workstation && host.gpu.hasAmd) [ lact ]
+      ++ lib.optionals (host.is.workstation && host.gpu.hasAmd && !host.is.laptop) [ lact ]
       ++ lib.optionals (host.is.workstation && host.gpu.hasNvidia) [ gwe ]
       ++ lib.optionals host.gpu.hasCuda [
         cudaPackages.cudatoolkit
@@ -85,11 +87,18 @@ lib.mkIf (!host.is.iso && (host.is.workstation || host.gpu.hasAny)) {
       ++ lib.optionals host.gpu.hasIntel [ intel-gpu-tools ];
   };
   hardware = {
-    amdgpu = lib.mkIf host.gpu.hasAmd { opencl.enable = true; };
+    amdgpu = lib.mkIf (host.gpu.hasAmd && (host.gpu.hasROCm || !host.is.laptop)) {
+      opencl.enable = true;
+    };
     graphics = {
       enable = true;
       enable32Bit = lib.mkForce host.is.workstation;
-      extraPackages = with pkgs; lib.optionals host.gpu.hasIntel [ intel-compute-runtime ];
+      extraPackages =
+        with pkgs;
+        lib.optionals host.gpu.hasIntel [
+          intel-compute-runtime
+          intel-media-driver
+        ];
     };
     nvidia = lib.mkIf host.gpu.hasNvidia {
       nvidiaSettings = lib.mkDefault host.is.workstation;
@@ -103,8 +112,8 @@ lib.mkIf (!host.is.iso && (host.is.workstation || host.gpu.hasAny)) {
     '';
   };
 
-  # Enable lact daemon for AMD GPU control on workstations.
-  systemd.services.lactd = lib.mkIf (host.gpu.hasAmd && host.is.workstation) {
+  # Enable lact daemon for AMD GPU control on desktop workstations.
+  systemd.services.lactd = lib.mkIf (host.gpu.hasAmd && host.is.workstation && !host.is.laptop) {
     description = "AMDGPU Control Daemon";
     enable = true;
     serviceConfig = {
