@@ -86,7 +86,9 @@ let
       startAt = "*-*-* 03:00:00";
       paths = [
         "${home}/Games"
+        "${home}/Linux-Matters"
         "${home}/Music"
+        "${home}/Oval-Tutu"
         "${home}/Pictures"
         "${home}/Studio"
         "${home}/Videos"
