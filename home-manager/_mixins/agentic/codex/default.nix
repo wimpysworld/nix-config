@@ -89,7 +89,11 @@ let
 
   codexLauncherPackage = pkgs.writeShellApplication {
     name = "codex";
-    runtimeInputs = lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.bubblewrap ];
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.git
+    ]
+    ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.bubblewrap ];
     text = ''
       export CODEX_HOME=${lib.escapeShellArg codexDir}
 
@@ -103,12 +107,24 @@ let
         fi
       done
 
-      # codex-fenced sets NOUGHTY_CODEX_BYPASS so the sandbox bypass is added
-      # here as a top-level flag (before the resume subcommand). Plain `codex`
-      # keeps Codex's native workspace-write sandbox.
+      # codex-fenced sets NOUGHTY_CODEX_BYPASS so the sandbox bypass and
+      # canonical project trust for the working directory (and main git
+      # repository root when inside a linked worktree or subdirectory) are
+      # added here as top-level flags before the resume subcommand. Plain
+      # `codex` keeps Codex's native workspace-write sandbox and trust checks.
       bypass=()
       if [ "''${NOUGHTY_CODEX_BYPASS:-0}" = "1" ]; then
-        bypass=(--dangerously-bypass-approvals-and-sandbox)
+        pwd_phys="$(pwd -P)"
+        bypass=(
+          --dangerously-bypass-approvals-and-sandbox
+          -c "projects.\"$pwd_phys\".trust_level=\"trusted\""
+        )
+        if git_common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" && [ -n "$git_common_dir" ]; then
+          repo_root="$(realpath "$(dirname "$git_common_dir")" 2>/dev/null || true)"
+          if [ -n "$repo_root" ] && [ "$repo_root" != "$pwd_phys" ]; then
+            bypass+=(-c "projects.\"$repo_root\".trust_level=\"trusted\"")
+          fi
+        fi
       fi
 
       # Resume the most recent session by default. The `resume --last`
@@ -543,6 +559,8 @@ let
       status_line_use_colors = true;
       # Disable the built-in TUI notifications.
       notifications = false;
+      # Keep the current working directory when resuming the latest session.
+      resume_cwd = "current";
     };
 
     # Explicitly enable every generated skill so command/agent skills are
@@ -571,7 +589,7 @@ let
     #
     # codex writes new trust decisions back to config.toml at runtime. The
     # file is writable so those writes succeed during a session, and activation
-    # rewrites it from this Nix baseline so only declared trust remains.
+    # preserves runtime [projects] entries while declarative entries here win.
     projects = {
       "${config.home.homeDirectory}/Chainguard" = {
         trust_level = "trusted";
@@ -618,8 +636,9 @@ let
   # store leaves codex with a target it cannot rewrite.
   #
   # Why merge instead of copy-once: the helper starts from the declarative
-  # baseline and can selectively import future allowlisted runtime state. No
-  # runtime keys are currently preserved, so activation scrubs config drift.
+  # baseline and selectively imports allowlisted runtime state (currently
+  # [projects] trust entries, with declarative entries taking precedence) so
+  # activation scrubs other config drift.
   codexConfigToml = (pkgs.formats.toml { }).generate "codex-config.toml" codexSettings;
   codexConfigMergeScriptFixed = pkgs.writeText "merge-codex-config.py" (
     builtins.concatStringsSep "\n" [
@@ -643,14 +662,34 @@ let
       ""
       "    return data if isinstance(data, dict) else {}"
       ""
-      "def runtime_state_allowlist(existing, _desired):"
+      "def runtime_state_allowlist(existing, desired):"
       "    if not isinstance(existing, dict):"
       "        return {}"
       ""
       "    # Runtime keys must be explicitly copied here after verifying that"
       "    # Codex still stores them in config.toml and that they are safe to"
       "    # preserve across Home Manager activations."
-      "    return {}"
+      "    allowlisted = {}"
+      "    existing_projects = existing.get(\"projects\")"
+      "    if isinstance(existing_projects, dict):"
+      "        desired_projects = desired.get(\"projects\") if isinstance(desired, dict) else {}"
+      "        if not isinstance(desired_projects, dict):"
+      "            desired_projects = {}"
+      "        merged_projects = {"
+      "            path: copy.deepcopy(cfg)"
+      "            for path, cfg in existing_projects.items()"
+      "            if isinstance(path, str) and isinstance(cfg, dict)"
+      "        }"
+      "        for path, cfg in desired_projects.items():"
+      "            if isinstance(path, str) and isinstance(cfg, dict):"
+      "                existing_cfg = merged_projects.get(path)"
+      "                if isinstance(existing_cfg, dict):"
+      "                    merged_projects[path] = {**existing_cfg, **copy.deepcopy(cfg)}"
+      "                else:"
+      "                    merged_projects[path] = copy.deepcopy(cfg)"
+      "        allowlisted[\"projects\"] = merged_projects"
+      ""
+      "    return allowlisted"
       ""
       "def merge_config(existing, desired):"
       "    if not isinstance(desired, dict):"

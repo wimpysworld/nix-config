@@ -41,10 +41,10 @@ This matters because Codex edits `config.toml` at runtime to persist trust decis
 Activation merges the generated baseline into existing runtime config:
 
 - Managed keys from Nix win over runtime values.
-- Unknown runtime keys are preserved.
-- Existing `[projects]` entries are preserved and updated.
+- Existing runtime `[projects]` entries are preserved across activations, while declarative `[projects]` entries take precedence.
+- Other unknown runtime keys and removed managed keys are scrubbed from runtime config.
 - `mcp_servers` is replaced from Nix so removed MCP servers do not linger.
-- Managed keys removed from the Nix baseline are deleted from runtime config.
+- `tui.resume_cwd = "current"` keeps the current working directory when the launcher runs `resume --last`.
 
 Both legacy `~/.codex` and XDG Codex homes are seeded because Codex, Home Manager, and older runtime state can disagree about which home exists first.
 
@@ -165,10 +165,10 @@ Agent roles are not a TUI persona picker. `/agent` shows active live threads. Th
 
 ## Fenced Mode
 
-Use `codex-fenced` for the Fence-isolated entry point. It runs:
+Use `codex-fenced` for the Fence-isolated entry point. It sets `NOUGHTY_CODEX_BYPASS=1`, which makes the launcher pass `--dangerously-bypass-approvals-and-sandbox` and trust the canonical current working directory (plus the main Git repository root when launched in a linked worktree or subdirectory) via `-c` overrides:
 
 ```console
-fence -- codex --dangerously-bypass-approvals-and-sandbox
+fence -- NOUGHTY_CODEX_BYPASS=1 codex
 ```
 
 Fence owns filesystem isolation, network access, and command denials for this
@@ -182,21 +182,29 @@ Use `codex-fenced` when the shared Fence policy should be the only isolation and
 
 ## Project Trust
 
-The `[projects]` block pre-seeds trust for the development roots so Codex does not ask "Do you trust this directory?" on every launch.
+The `[projects]` block pre-seeds trust for the development roots so Codex does not ask "Do you trust this directory?" on launch.
 
-Codex matches the current working directory or git repository root exactly against `[projects]` keys. Parent directory entries are not inherited. `~/Zero/nix-config` therefore needs its own trust entry even though `~/Zero` is already trusted.
+Codex matches the canonical working directory or main Git repository root (`--git-common-dir` parent) against `[projects]` keys. Parent directory entries are not inherited. `~/Zero/nix-config` therefore needs its own trust entry even though `~/Zero` is already trusted.
 
 Current seeded entries:
 
 ```text
 ~/Chainguard
+~/Chainguard/_worktrees
+~/Chainguard/mono
+~/Chainguard/stereo
+~/Chainguard/cg-github
+~/Chainguard/infra
 ~/Development
+~/Development/_worktrees
 ~/Volatile
 ~/Zero
 ~/Zero/nix-config
 ```
 
-Codex can append new trust decisions at runtime. The merge script preserves unknown project entries while keeping the managed baseline up to date.
+When `NOUGHTY_CODEX_BYPASS=1` is set (`codex-fenced`), the launcher also passes `-c 'projects."<cwd>".trust_level="trusted"'` for `pwd -P` and, if inside a linked worktree or subdirectory, `-c 'projects."<repo_root>".trust_level="trusted"'` for the canonical parent of `git rev-parse --path-format=absolute --git-common-dir`.
+
+Codex can append new trust decisions to `config.toml` at runtime. Activation preserves runtime `[projects]` entries while letting declarative `[projects]` entries take precedence.
 
 ## File Layout
 
