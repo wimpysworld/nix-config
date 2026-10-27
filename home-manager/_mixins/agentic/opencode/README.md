@@ -62,11 +62,13 @@ Remove the Agent Tripwire configuration through a reviewed rebuild for operator 
 
 `plugins/provider-router/index.ts` loads the route maps from shared agent headers. Routes remain separate from native agent model pins. Commands and skills cannot declare provider routes.
 
-The V2 prompt hook routes direct children of root sessions. It finds the running `subagent` call that names the child. The containing assistant message supplies the provider, so concurrent siblings remain independent.
+The V2 prompt hook routes direct children of root sessions. It finds the running `subagent` call that names the child session. OpenCode publishes the child session ID to that call after the hook runs. Until then, the router accepts a running call that matches the child's agent, title, resumed session, and prompt text. When several such calls remain and a route applies, the child runs on the parent model. The containing assistant message supplies the provider, so concurrent siblings remain independent.
 
-Missing routes retain native behaviour. Explicit native per-call model choices also retain native behaviour. An unavailable exact model or variant rejects the prompt without a provider fallback.
+Missing routes retain native behaviour. Explicit native per-call model choices also retain native behaviour. The prompt hook never rejects, because a rejected V2 session hook fails the model request. A routing error logs a `Provider Router:` error.
 
-V2 plugin storage preserves each selected route across compaction and restart. A new invocation can restore the saved route after the parent changes provider. Invalid saved routes and repeated active invocations fail closed.
+An invalid route runs the child on the parent session's current model. Invalid routes include an unavailable exact model or variant, a provider that policy removes from the model list, an invalid saved route, and an ambiguous or concurrent invocation. The router posts one synthetic `Provider Router` notice in the parent session for each invalid invocation. The notice names the agent, the route, the reason, and the model that ran instead. It enters the parent model context on the next turn. When the parent model is unknown, the child keeps its native model. An unexpected internal error also keeps the native model and posts an `internal error` notice. A failed notice only logs an error. The router never switches to a different routed provider.
+
+V2 plugin storage preserves each selected route across compaction and restart. A new invocation can restore the saved route after the parent changes provider.
 
 Existing children without a V2 saved route retain native behaviour. V1 text-part route metadata does not migrate into this plugin's storage. Keep the child history, parent history, and plugin storage together.
 
