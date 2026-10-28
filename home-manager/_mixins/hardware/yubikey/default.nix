@@ -10,6 +10,9 @@ let
 in
 lib.mkIf (host.is.linux && host.is.workstation) {
   home.packages = with pkgs; [
+    pam_u2f
+    pamtester
+    yubikey-manager
     yubikey-touch-detector
     yubioath-flutter
   ];

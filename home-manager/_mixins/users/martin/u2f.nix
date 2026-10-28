@@ -2,7 +2,6 @@
   config,
   lib,
   noughtyLib,
-  pkgs,
   ...
 }:
 let
@@ -17,12 +16,6 @@ let
   u2f_vader = "G4S+zVnfPIpcnShvEuLYazwAS8XhX8DRyZZBX2OdV3K+7RVbr4UG+TqmmT3kEgC0XgTpKpN2cM/t4CpFDUE9Ig==,xxXHLkGtoMUAEbyu7/TMxmPGjuqISDVT1ldSy7qoWppWzgNlyvZZiu5bST7Llf3sHLDsT/agFbqzuf4HcVJZcw==,es256,+presence";
 in
 lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.linux && host.is.workstation) {
-  home.packages = with pkgs; [
-    yubikey-manager
-    pam_u2f
-    pamtester
-  ];
-
   xdg.configFile."Yubico/u2f_keys".text = ''
     ${username}:${u2f_28L}:${u2f_45L}:${u2f_bane}:${u2f_keyring}:${u2f_phasma}:${u2f_vader}
   '';
