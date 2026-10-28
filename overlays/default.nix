@@ -220,19 +220,19 @@ in
         ];
       });
 
-      # Determinate Nix 3.23 emits activity type 10113, which nom 2.2.0 rejects
-      # with a ParseNixJSONMessageError. Apply the upstream fix that maps
-      # unknown activity types to Unknown. Remove this override once a nom
-      # release that includes the fix reaches nixpkgs.
+      # Determinate Nix 3.23 emits unknown activity and result types, which nom
+      # 2.2.0 rejects with a ParseNixJSONMessageError. Apply the upstream fix
+      # that handles unknown activity and result types gracefully. Remove this
+      # override once a nom release that includes the fix reaches nixpkgs.
       # https://github.com/maralorn/nix-output-monitor/issues/320
       # https://github.com/maralorn/nix-output-monitor/pull/321
       nix-output-monitor = prev.nix-output-monitor.override {
         extraComposeFunctions = [
           (prev.haskell.lib.compose.appendPatch (
             prev.fetchpatch2 {
-              url = "https://github.com/maralorn/nix-output-monitor/commit/3c2ae037013e840046ed9785c4da82aa1c628872.patch";
+              url = "https://github.com/maralorn/nix-output-monitor/commit/d48ff7935da72a5a5764ee8c5358d38417b0f337.patch";
               relative = "nix-output-monitor";
-              hash = "sha256-kwmbXQZI+UyOVCAngr6cYpwqIbbG48MJgHzFpCt138o=";
+              hash = "sha256-OVem8p/Q2MAo+fZk2MmqO8cBANDFRJQdtpd6ypUIdP0=";
             }
           ))
         ];
