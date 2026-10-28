@@ -23,9 +23,9 @@ let
   # one `key` attribute per identity in the same sops file.
   isWorkHost = lib.elem "cg" (host.tags or [ ]);
 
-  # Per-host Gemini TTS voice (`skrye` uses the assistant voice; `zannah`
-  # uses the commercial voice).
-  googleTtsVoice = if host.name == "zannah" then "en-gb-commercial-6" else "en-gb-assistant-9";
+  # Per-host Gemini TTS voice (`skrye` uses the Irish assistant voice;
+  # `zannah` uses the British commercial voice).
+  googleTtsVoice = if host.name == "zannah" then "en-gb-commercial-6" else "en-ie-assistant-3";
   googleTtsModel = "gemini-3.8-flash-tts";
   googleSttModel = "gemini-3.8-flash";
   ttsShimPort = 13132;
@@ -812,6 +812,8 @@ in
                 # crates/config/src/loader/config_io.rs, tag 20260913.02).
                 group_allowlist = [ "\${TELEGRAM_HOME_CHANNEL}" ];
                 mention_mode = "always";
+                stream_mode = "off";
+                reply_to_message = true;
                 untrusted_audience = "trusted";
                 untrusted_tools = "policy";
                 otp_self_approval = false;
