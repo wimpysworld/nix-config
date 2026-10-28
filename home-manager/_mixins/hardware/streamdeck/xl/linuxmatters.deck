@@ -5,6 +5,6 @@ parent = "audio-base.deck"
   [keys.widget]
     id = "button"
     [keys.widget.config]
-      icon = "~/Development/github.com/restfulmedia/brand-artwork/linux-matters/Telegram/Telegram-Profile-512x512.png"
+      icon = "~/Development/linuxmatters/assets/Telegram/Telegram-Profile-512x512.png"
   [keys.action]
     deck = "linuxmatters.deck"

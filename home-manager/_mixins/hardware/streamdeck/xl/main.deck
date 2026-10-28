@@ -139,7 +139,7 @@
   [keys.widget]
     id = "button"
     [keys.widget.config]
-      icon = "~/Development/restfulmedia/brand-artwork/linux-matters/Telegram/Telegram-Profile-512x512.png"
+      icon = "~/Development/linuxmatters/assets/Telegram/Telegram-Profile-512x512.png"
   [keys.action]
     deck = "linuxmatters.deck"
 
@@ -211,7 +211,7 @@
   [keys.widget]
     id = "button"
     [keys.widget.config]
-      icon = "~/Development/restfulmedia/brand-artwork/linux-matters/Telegram/Telegram-Profile-512x512.png"
+      icon = "~/Development/linuxmatters/assets/Telegram/Telegram-Profile-512x512.png"
       label = "Deck"
       fontsize = 6.0
       color = "#fefefe"

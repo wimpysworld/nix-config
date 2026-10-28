@@ -5,7 +5,8 @@ parent = "audio-base.deck"
   [keys.widget]
     id = "button"
     [keys.widget.config]
-      icon = "~/Studio/DetSys/Social/determinatesystems_brandmark_RBG_avatar.png"
+      label = "VirtalCam"
+      #icon = "~/Studio/DetSys/Social/determinatesystems_brandmark_RBG_avatar.png"
   [keys.action]
     deck = "virtualcam.deck"
 

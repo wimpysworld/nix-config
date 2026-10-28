@@ -33,12 +33,14 @@ lib.mkIf (host.is.linux && !host.is.server) {
 
     Service = {
       Type = "simple";
+      ExecStartPre = "${pkgs.coreutils}/bin/touch %t/deckmaster.Xauthority";
       ExecStart = "${pkgs.deckmaster}/bin/deckmaster -deck ${deckmaster-xl-config}/main.deck";
       Restart = "on-failure";
       RestartSec = "5s";
       # Inherit full system PATH so deckmaster can execute shell scripts and system binaries
       Environment = [
         "PATH=/run/wrappers/bin:/home/${username}/.nix-profile/bin:/etc/profiles/per-user/${username}/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin"
+        "XAUTHORITY=%t/deckmaster.Xauthority"
       ];
     };
 
