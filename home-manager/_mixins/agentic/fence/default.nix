@@ -11,24 +11,6 @@ let
   inherit (config.home) homeDirectory profileDirectory;
   fencePackage = import ./package.nix { inherit inputs pkgs; };
 
-  # Telegram Agents keeps its bot token and operator list in the config
-  # directory, and its sharing grants, inbox, logs, and control socket in the
-  # state directory. The state directory is otherwise writable through the
-  # XDG state grant. The plugin binary is in the read-only Nix store.
-  herdrTelegramAgentsPaths =
-    let
-      inherit (pkgs.herdr-telegram-agents.passthru) pluginId;
-    in
-    lib.optionals
-      (noughtyLib.isHost [
-        "skrye"
-        "zannah"
-      ])
-      [
-        "${herdrDir}/plugins/config/${pluginId}/**"
-        "${config.xdg.stateHome}/herdr/plugins/${pluginId}/**"
-      ];
-
   # Context Bar keeps its daemon lock and preview overrides in its state
   # directory. The lock holds the PID that the `restart` action signals, so a
   # writable lock would let a sandboxed process have any user process killed.
@@ -249,11 +231,10 @@ let
         "${homeDirectory}/.fish_history"
         "${config.xdg.dataHome}/fish/fish_history"
       ]
-      ++ herdrTelegramAgentsPaths
       ++ herdrCtxBarPaths
       ++ roamgatePaths;
 
-      denyWrite = herdrTelegramAgentsPaths ++ herdrCtxBarPaths ++ roamgatePaths;
+      denyWrite = herdrCtxBarPaths ++ roamgatePaths;
     };
     command = {
       useDefaults = true;
