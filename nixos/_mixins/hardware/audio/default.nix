@@ -8,13 +8,15 @@
 let
   inherit (config.noughty) host;
   isStudio = noughtyLib.hostHasTag "studio";
+  isThinkpad = noughtyLib.hostHasTag "thinkpad";
   username = config.noughty.user.name;
 in
 lib.mkIf (host.is.workstation && !host.is.iso) {
-  # Enable the threadirqs kernel parameter to reduce pipewire/audio latency on studio hosts
-  boot = lib.mkIf (config.services.pipewire.enable && isStudio) {
+  boot = {
+    kernelModules = lib.optionals isThinkpad [ "snd-ctl-led" ];
+    # Enable the threadirqs kernel parameter to reduce pipewire/audio latency on studio hosts
     # - Inspired by: https://github.com/musnix/musnix/blob/master/modules/base.nix#L56
-    kernelParams = [ "threadirqs" ];
+    kernelParams = lib.optionals (config.services.pipewire.enable && isStudio) [ "threadirqs" ];
   };
 
   services = {
@@ -160,6 +162,11 @@ lib.mkIf (host.is.workstation && !host.is.iso) {
       KERNEL=="hpet", GROUP="audio"
       # Allow users in the audio group to change cpu dma latency
       DEVPATH=="/devices/virtual/misc/cpu_dma_latency", OWNER="root", GROUP="audio", MODE="0660"
+    ''
+    + lib.optionalString isThinkpad ''
+      # Run ALSA UCM FixedBootSequence so snd-ctl-led attaches the virtual
+      # Mic ACP LED Capture Switch instead of the unused HDA Capture Switch.
+      ACTION=="add", SUBSYSTEM=="sound", KERNEL=="controlC*", KERNELS!="card*", RUN+="${lib.getExe' pkgs.alsa-utils "alsactl"} init $attr{device/number}"
     '';
   };
 

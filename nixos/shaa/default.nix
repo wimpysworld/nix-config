@@ -5,8 +5,6 @@
   ...
 }:
 {
-  # TODO: There is an issue where the LED light on the mic button is always on.
-  # - https://wiki.archlinux.org/title/Lenovo_ThinkPad_T14_(AMD)_Gen_3#Mute_Mic_LED_always_on
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-amd-pstate
     inputs.nixos-hardware.nixosModules.common-gpu-amd
