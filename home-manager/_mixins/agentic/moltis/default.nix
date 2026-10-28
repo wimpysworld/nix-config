@@ -27,6 +27,7 @@ let
   # uses the commercial voice).
   googleTtsVoice = if host.name == "zannah" then "en-gb-commercial-6" else "en-gb-assistant-9";
   googleTtsModel = "gemini-3.8-flash-tts";
+  googleSttModel = "gemini-3.8-flash";
   ttsShimPort = 13132;
   geminiKeyPath = config.sops.secrets.GEMINI_API_KEY.path;
 
@@ -101,18 +102,22 @@ let
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceLogging = import ../fence/logging.nix { inherit pkgs; };
 
-  # Local OpenAI-compatible `/v1/audio/speech` shim backed by Google's
-  # `gemini-3.8-flash-tts` model and `ffmpeg` transcoding. Moltis' built-in
-  # Google Gemini TTS path hardcodes `AudioFormat::Mp3` and returns raw
-  # `audio/wav` bytes (`crates/voice/src/tts/google.rs`, tag 20261023.01),
-  # whereas `OpenAiTts` preserves `request.output_format` (`AudioFormat::Opus` ->
-  # `"opus"` / `audio/ogg`), allowing Moltis to send native Telegram OGG Opus
-  # voice notes (`crates/voice/src/tts/openai.rs` and
-  # `crates/chat/src/channels/tts.rs`).
+  # Local OpenAI-compatible `/v1/audio/speech` and `/v1/audio/transcriptions`
+  # shim backed by Google's `gemini-3.8-flash-tts` and `gemini-3.8-flash`
+  # models and `ffmpeg` transcoding. Moltis' built-in Google Gemini TTS path
+  # hardcodes `AudioFormat::Mp3` and returns raw `audio/wav` bytes
+  # (`crates/voice/src/tts/google.rs`, tag 20261023.01), whereas `OpenAiTts`
+  # preserves `request.output_format` (`AudioFormat::Opus` -> `"opus"` /
+  # `audio/ogg`), allowing Moltis to send native Telegram OGG Opus voice notes
+  # (`crates/voice/src/tts/openai.rs` and `crates/chat/src/channels/tts.rs`).
+  # Inbound voice messages use `WhisperStt` against `/v1/audio/transcriptions`
+  # (`crates/voice/src/stt/whisper.rs`).
   moltisTtsShim = pkgs.writeScript "moltis-tts-shim" ''
     #!${lib.getExe pkgs.python3}
     import base64
     import ctypes
+    from email.parser import BytesParser
+    from email.policy import default as email_default_policy
     import http.server
     import json
     import os
@@ -124,11 +129,20 @@ let
     import urllib.request
 
     DEFAULT_MODEL = ${builtins.toJSON googleTtsModel}
+    DEFAULT_STT_MODEL = ${builtins.toJSON googleSttModel}
     DEFAULT_VOICE = ${builtins.toJSON googleTtsVoice}
     FFMPEG_BIN = ${builtins.toJSON (lib.getExe pkgs.ffmpeg-headless)}
     GEMINI_KEY_PATH = os.environ.get("MOLTIS_TTS_GEMINI_KEY_PATH", ${builtins.toJSON geminiKeyPath})
     HOST = os.environ.get("MOLTIS_TTS_SHIM_HOST", "127.0.0.1")
     PORT = int(os.environ.get("MOLTIS_TTS_SHIM_PORT", ${builtins.toJSON (toString ttsShimPort)}))
+    SUPPORTED_AUDIO_MIMES = {
+        "audio/ogg",
+        "audio/wav",
+        "audio/mp3",
+        "audio/mpeg",
+        "audio/aac",
+        "audio/flac",
+    }
 
 
     def set_parent_death_signal():
@@ -300,6 +314,115 @@ let
         return proc.stdout, content_type
 
 
+    def parse_multipart_audio(content_type, raw_body):
+        header_bytes = (
+            f"Content-Type: {content_type}\r\nMIME-Version: 1.0\r\n\r\n"
+        ).encode("latin-1")
+        msg = BytesParser(policy=email_default_policy).parsebytes(header_bytes + raw_body)
+        if not msg.is_multipart():
+            raise ValueError("expected multipart/form-data request")
+
+        file_bytes = None
+        file_mime = None
+        filename = None
+        model = None
+
+        for part in msg.iter_parts():
+            name = part.get_param("name", header="content-disposition")
+            if name == "file":
+                file_bytes = part.get_payload(decode=True)
+                file_mime = part.get_content_type()
+                filename = part.get_filename() or ""
+            elif name == "model":
+                payload = part.get_payload(decode=True)
+                if payload is not None:
+                    model = payload.decode("utf-8", errors="replace").strip()
+
+        if not file_bytes:
+            raise ValueError("missing uploaded audio file")
+        return file_bytes, file_mime or "", filename or "", model or ""
+
+
+    def normalize_stt_audio(raw_bytes, part_mime, filename):
+        mime = (part_mime or "").split(";", 1)[0].strip().lower()
+        alias_map = {
+            "audio/opus": "audio/ogg",
+            "audio/x-wav": "audio/wav",
+            "audio/wave": "audio/wav",
+            "audio/mp4": "audio/aac",
+            "audio/m4a": "audio/aac",
+            "audio/x-m4a": "audio/aac",
+        }
+        mime = alias_map.get(mime, mime)
+        if mime in SUPPORTED_AUDIO_MIMES:
+            return raw_bytes, mime
+
+        ext = os.path.splitext(filename.lower())[1]
+        ext_map = {
+            ".ogg": "audio/ogg",
+            ".opus": "audio/ogg",
+            ".oga": "audio/ogg",
+            ".wav": "audio/wav",
+            ".mp3": "audio/mpeg",
+            ".aac": "audio/aac",
+            ".m4a": "audio/aac",
+            ".flac": "audio/flac",
+        }
+        if ext in ext_map:
+            return raw_bytes, ext_map[ext]
+
+        if raw_bytes.startswith(b"OggS"):
+            return raw_bytes, "audio/ogg"
+        if raw_bytes.startswith(b"RIFF"):
+            return raw_bytes, "audio/wav"
+        if raw_bytes.startswith(b"fLaC"):
+            return raw_bytes, "audio/flac"
+        if raw_bytes.startswith(b"ID3") or raw_bytes[:2] in (b"\xff\xfb", b"\xff\xf3", b"\xff\xf2"):
+            return raw_bytes, "audio/mpeg"
+
+        return transcode_audio(raw_bytes, "ogg")
+
+
+    def transcribe_gemini(api_key, model, audio_bytes, mime_type):
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        b64_audio = base64.b64encode(audio_bytes).decode("ascii")
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {"inlineData": {"mimeType": mime_type, "data": b64_audio}},
+                        {
+                            "text": "Transcribe this audio verbatim. Return only the spoken words, with no commentary or formatting."
+                        },
+                    ]
+                }
+            ]
+        }
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "x-goog-api-key": api_key,
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+
+        parts = (
+            body.get("candidates", [{}])[0]
+            .get("content", {})
+            .get("parts", [])
+        )
+        transcript = "".join(
+            p.get("text", "")
+            for p in parts
+            if isinstance(p, dict) and not p.get("thought")
+        ).strip()
+        return transcript
+
+
     class ReusableTCPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
         allow_reuse_address = True
         daemon_threads = True
@@ -317,11 +440,7 @@ let
             self.end_headers()
             self.wfile.write(body)
 
-        def do_POST(self):
-            if self.path not in ("/v1/audio/speech", "/audio/speech"):
-                self._send_json(404, {"error": {"message": "not found"}})
-                return
-
+        def _handle_speech(self):
             try:
                 length = int(self.headers.get("Content-Length", "0"))
                 raw_body = self.rfile.read(length) if length > 0 else b"{}"
@@ -361,6 +480,52 @@ let
             self.send_header("Content-Length", str(len(out_bytes)))
             self.end_headers()
             self.wfile.write(out_bytes)
+
+        def _handle_transcriptions(self):
+            content_type = self.headers.get("Content-Type", "")
+            if not content_type.lower().startswith("multipart/form-data"):
+                self._send_json(400, {"error": {"message": "expected multipart/form-data"}})
+                return
+
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                raw_body = self.rfile.read(length) if length > 0 else b""
+                file_bytes, part_mime, filename, req_model = parse_multipart_audio(
+                    content_type, raw_body
+                )
+            except Exception as exc:
+                self._send_json(400, {"error": {"message": f"invalid multipart request: {exc}"}})
+                return
+
+            model = (
+                req_model
+                if isinstance(req_model, str) and req_model.startswith("gemini-")
+                else DEFAULT_STT_MODEL
+            )
+
+            try:
+                api_key = load_api_key()
+                audio_bytes, mime_type = normalize_stt_audio(file_bytes, part_mime, filename)
+                transcript = transcribe_gemini(api_key, model, audio_bytes, mime_type)
+            except urllib.error.HTTPError as exc:
+                err_body = exc.read().decode("utf-8", errors="replace")
+                sys.stderr.write(f"moltis-tts-shim STT upstream HTTP {exc.code}: {err_body}\n")
+                self._send_json(502, {"error": {"message": f"Gemini STT HTTP {exc.code}"}})
+                return
+            except Exception as exc:
+                sys.stderr.write(f"moltis-tts-shim STT error: {exc}\n")
+                self._send_json(500, {"error": {"message": str(exc)}})
+                return
+
+            self._send_json(200, {"text": transcript})
+
+        def do_POST(self):
+            if self.path in ("/v1/audio/speech", "/audio/speech"):
+                self._handle_speech()
+            elif self.path in ("/v1/audio/transcriptions", "/audio/transcriptions"):
+                self._handle_transcriptions()
+            else:
+                self._send_json(404, {"error": {"message": "not found"}})
 
 
     if __name__ == "__main__":
@@ -501,6 +666,54 @@ in
               bind = "127.0.0.1";
             };
 
+            identity = {
+              inherit (host) name;
+            };
+
+            user = {
+              name = "Martin";
+              timezone = "Europe/London";
+            };
+
+            auxiliary = {
+              compaction = "gemini::gemini-3.8-flash";
+              title_generation = "gemini::gemini-3.8-flash";
+              vision = "gemini::gemini-3.8-flash";
+            };
+
+            chat.compaction.mode = "structured";
+
+            skills.enable_self_improvement = false;
+
+            tools = {
+              exec = {
+                approval_mode = "never";
+                sandbox.mode = "off";
+              };
+              fs = {
+                workspace_root = homeDir;
+                track_reads = true;
+                must_read_before_write = true;
+              };
+            };
+
+            memory = {
+              provider = "custom";
+              base_url = "https://generativelanguage.googleapis.com/v1beta/openai";
+              model = "gemini-embedding-2";
+              api_key = "\${GEMINI_API_KEY}";
+            };
+
+            heartbeat = {
+              enabled = true;
+              every = "30m";
+              model = "gemini::gemini-3.8-flash";
+              sandbox_enabled = false;
+              deliver = true;
+              channel = "moltis";
+              to = "\${TELEGRAM_HOME_CHANNEL}";
+            };
+
             # Moltis resolves `${VAR}` placeholders against the process
             # environment, and the config loader's second pass treats the
             # `[env]` table as an overrides map (crates/config/src/loader.rs,
@@ -548,20 +761,33 @@ in
               ];
             };
 
-            voice.tts = {
-              enabled = true;
-              provider = "openai";
-              # Route TTS through the local OpenAI-compatible Gemini shim inside
-              # `moltis-fenced`. `OpenAiTts::is_configured()` is true whenever
-              # `base_url` differs from `https://api.openai.com/v1`, so no
-              # `api_key` is needed and `migrate_voice_keys_to_key_store()`
-              # never rewrites `moltis.toml` (`crates/voice/src/tts/openai.rs`
-              # and `crates/gateway/src/voice/mod.rs`, tag 20261023.01).
-              openai = {
+            voice = {
+              tts = {
                 enabled = true;
-                base_url = "http://127.0.0.1:${toString ttsShimPort}/v1";
-                voice = googleTtsVoice;
-                model = googleTtsModel;
+                provider = "openai";
+                # Route TTS through the local OpenAI-compatible Gemini shim inside
+                # `moltis-fenced`. `OpenAiTts::is_configured()` is true whenever
+                # `base_url` differs from `https://api.openai.com/v1`, so no
+                # `api_key` is needed and `migrate_voice_keys_to_key_store()`
+                # never rewrites `moltis.toml` (`crates/voice/src/tts/openai.rs`
+                # and `crates/gateway/src/voice/mod.rs`, tag 20261023.01).
+                openai = {
+                  enabled = true;
+                  base_url = "http://127.0.0.1:${toString ttsShimPort}/v1";
+                  voice = googleTtsVoice;
+                  model = googleTtsModel;
+                };
+              };
+              stt = {
+                enabled = true;
+                provider = "whisper";
+                # `WhisperStt::is_configured()` is true whenever `base_url`
+                # differs from `https://api.openai.com/v1`
+                # (`crates/voice/src/stt/whisper.rs`, tag 20261023.01).
+                whisper = {
+                  base_url = "http://127.0.0.1:${toString ttsShimPort}/v1";
+                  model = googleSttModel;
+                };
               };
             };
 

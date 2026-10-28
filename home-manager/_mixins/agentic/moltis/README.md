@@ -8,7 +8,14 @@ The assistants consumer projects agents, skills, and global instructions into `~
 
 - `coordinator` and `review` presets use `gemini::gemini-4-argon`.
 - `auxiliary` and `compression` presets use `gemini::gemini-3.8-flash`.
+- `identity` sets `name` to the host name, and `user` sets `name = "Martin"` and `timezone = "Europe/London"`.
+- `auxiliary` routes `compaction`, `title_generation`, and `vision` to `gemini::gemini-3.8-flash`, and `chat.compaction.mode` uses `"structured"`.
+- `skills.enable_self_improvement` is `false`.
+- `tools.exec` sets `approval_mode = "never"` and `sandbox.mode = "off"` (Moltis runs inside `moltis-fenced`), and `tools.fs` sets `workspace_root` to `$HOME` with `track_reads = true` and `must_read_before_write = true`.
+- `memory` uses `provider = "custom"` with `base_url = "https://generativelanguage.googleapis.com/v1beta/openai"`, `model = "gemini-embedding-2"`, and `api_key = "${GEMINI_API_KEY}"`.
+- `heartbeat` runs every `30m` on `gemini::gemini-3.8-flash` (`sandbox_enabled = false`, `deliver = true`) and delivers to `channel = "moltis"` (`to = "${TELEGRAM_HOME_CHANNEL}"`).
 - `voice.tts` selects the `openai` provider pointed at a local OpenAI-compatible shim (`base_url = "http://127.0.0.1:13132/v1"`) started inside `moltis-fenced`, with `model = "gemini-3.8-flash-tts"`. `skrye` uses `voice = "en-gb-assistant-9"` and `zannah` uses `voice = "en-gb-commercial-6"`. The shim reads `GEMINI_API_KEY` from the sops secret file, calls Google's `gemini-3.8-flash-tts` `generateContent` endpoint, and transcodes the returned WAV audio to Ogg Opus (`audio/ogg`) via `ffmpeg` so Moltis sends native Telegram voice notes without setting `voice.tts.openai.api_key`.
+- `voice.stt` selects the `whisper` provider pointed at the same local shim (`base_url = "http://127.0.0.1:13132/v1"`) with `model = "gemini-3.8-flash"`. On `POST /v1/audio/transcriptions`, the shim parses the `multipart/form-data` audio upload, normalizes or transcodes unsupported formats to `audio/ogg` via `ffmpeg`, calls `gemini-3.8-flash:generateContent` with `GEMINI_API_KEY`, and returns `{"text": "..."}` without setting `voice.stt.whisper.api_key`.
 - `channels.telegram.moltis` defaults to `gemini-4-argon` on `gemini` with `dm_policy = "allowlist"`, `group_policy = "allowlist"`, `mention_mode = "always"`, `untrusted_audience = "trusted"`, `untrusted_tools = "policy"`, and `otp_self_approval = false`.
 
 The `[env]` table injects sops placeholders into the Moltis process environment at render time:
