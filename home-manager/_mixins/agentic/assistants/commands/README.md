@@ -29,6 +29,7 @@ Claude Code, OpenCode, and Pi use `/name`. Codex uses manual-only `$name` skills
 | [create-project](./create-project/command.toml) | Create Project 🗂️ | penfold | public | Task worker: penfold | Native subagent: penfold | spawn_agent: penfold | Agent worker: penfold |
 | [create-skill](./create-skill/command.toml) | Create Skill 🧩 | rosey | public | Task worker: rosey | Native subagent: rosey | spawn_agent: rosey | Agent worker: rosey |
 | [create-task](./create-task/command.toml) | Create Task 📝 | penfold | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [daily-update](./daily-update/command.toml) | Draft and post the daily Slack update 🗓️ | penfold | public | Task worker: penfold | Native subagent: penfold | spawn_agent: penfold | Agent worker: penfold |
 | [design-presentation](./design-presentation/command.toml) | Design and export a Marp presentation | morph | public | Task worker: morph | Native subagent: morph | spawn_agent: morph | Agent worker: morph |
 | [draft-blog-post](./draft-blog-post/command.toml) | Draft Blog Post ✍️ | casper | public | Task worker: casper | Native subagent: casper | spawn_agent: casper | Agent worker: casper |
 | [draft-code-review](./draft-code-review/command.toml) | Draft Code Review ✍️ | donatello | public | Task worker: donatello | Native subagent: donatello | spawn_agent: donatello | Agent worker: donatello |
@@ -157,6 +158,10 @@ Only description overrides and nonempty argument hints are shown. When any clien
 | [create-task](./create-task/command.toml) | opencode | Same as common | Unset |
 | [create-task](./create-task/command.toml) | codex | Same as common | Unset |
 | [create-task](./create-task/command.toml) | pi | Same as common | &lt;project\|path&gt; |
+| [daily-update](./daily-update/command.toml) | claude | Same as common | [slack-url] [period] |
+| [daily-update](./daily-update/command.toml) | opencode | Same as common | [slack-url] [period] |
+| [daily-update](./daily-update/command.toml) | codex | Same as common | Unset |
+| [daily-update](./daily-update/command.toml) | pi | Same as common | [slack-url] [period] |
 | [design-presentation](./design-presentation/command.toml) | claude | Same as common | [brief\|deck] |
 | [design-presentation](./design-presentation/command.toml) | opencode | Same as common | [brief\|deck] |
 | [design-presentation](./design-presentation/command.toml) | codex | Same as common | Unset |

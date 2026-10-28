@@ -1,0 +1,22 @@
+[common]
+description = "Draft and post the daily Slack update 🗓️"
+argument-hint = "[slack-url] [period]"
+
+[compose]
+agent = "penfold"
+
+[compose.coordinator]
+before-launch = """
+Before launch, put the Slack thread URL and the optional period in the child's packet, exactly as the user gave them.
+When the Slack URL is blank, ask the user for it before launch.
+Tell the child that it is read-only: it gathers data and returns the draft, and it never posts.
+"""
+after-return = """
+After the draft returns, show it to the user verbatim.
+Ask for the "Docs blocked" and "Ask" lines and for any edits, in one question. Use a structured question when available.
+Omit each of the two lines that the user leaves empty. Apply the user's edits.
+Show the final text verbatim and ask for explicit approval to post it.
+Only after explicit approval, load the `slack` skill and post the text as a reply in the thread.
+Write the text to a file and run `agent-slack message send <slack-url> "$(cat <file>)"`.
+Report the permalink that `agent-slack` prints. Silence, cancellation, or any other answer means stop without a post.
+"""
