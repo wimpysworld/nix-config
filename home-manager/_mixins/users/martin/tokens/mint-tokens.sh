@@ -55,6 +55,17 @@ done
 : "${MINT_GH_SCOPES:?}"
 : "${MINT_GH_UNCHECKED_STATUS:?}"
 
+# chainctl, gh, and gcloud open the browser through the display variables,
+# which a shell in a Herdr pane or a non-interactive run can lack.
+if [[ -z "${WAYLAND_DISPLAY:-}" && -z "${DISPLAY:-}" ]]; then
+    if command -v session-env >/dev/null 2>&1; then
+        eval "$(session-env)"
+    fi
+    if ((!headless)) && [[ "$(uname -s)" == Linux && -z "${WAYLAND_DISPLAY:-}" && -z "${DISPLAY:-}" ]]; then
+        echo '✘ WARNING! No graphical session found; run mint-tokens from a desktop terminal, or log in to the desktop first.' >&2
+    fi
+fi
+
 probe_pid=
 stop_probe() {
     if [[ -n "$probe_pid" ]]; then

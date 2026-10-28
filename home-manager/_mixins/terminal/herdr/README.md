@@ -8,7 +8,7 @@ Every non-ISO host runs the Herdr server as a service from [home-manager/_mixins
 
 - On NixOS, [nixos/_mixins/users/default.nix](../../../../nixos/_mixins/users/default.nix) sets `linger`, so the user manager and the server start at boot, before any login. On momin the server starts at login. WSL hosts start it with their user manager.
 - The unit sets `X-SwitchMethod=keep-old`, so `just switch-home` never restarts a running server or its panes. It sets `Restart=on-failure`, so a crash restarts it, but `herdr server stop` leaves it stopped.
-- On NixOS the unit sets `SSH_AUTH_SOCK` to the `ssh-agent.service` socket. It sets no display variables. On a workstation, a fish shell in a Herdr pane copies `WAYLAND_DISPLAY`, `DISPLAY`, and the other compositor variables from `systemctl --user show-environment` when it has no display.
+- On NixOS the unit sets `SSH_AUTH_SOCK` to the `ssh-agent.service` socket. It sets no display variables. On a Linux workstation, a fish or bash shell in a Herdr pane always copies `WAYLAND_DISPLAY`, `DISPLAY`, and the other compositor variables from the user manager with `session-env`, so a stale value is replaced. Other shells copy them only when they have no display.
 - If a server already owns the socket, the service skips its start instead of failing in a loop.
 
 To load a new Herdr version, which ends every pane process, run `systemctl --user restart herdr` on Linux, or `launchctl kickstart -k gui/$(id -u)/org.nix-community.home.herdr` on momin.

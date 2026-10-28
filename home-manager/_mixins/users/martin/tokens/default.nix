@@ -76,6 +76,13 @@ let
     text = builtins.readFile ./login-browser.sh;
   };
 
+  # A shell in a Herdr pane can lack the display variables that chainctl, gh,
+  # and gcloud need to open a browser.
+  sessionEnv = import ../../../scripts/session-env/package.nix {
+    inherit lib pkgs;
+    inherit (host) desktop;
+  };
+
   mintTokens = pkgs.writeShellApplication {
     name = "mint-tokens";
     runtimeInputs = [
@@ -86,7 +93,8 @@ let
       pkgs.google-cloud-sdk
       pkgs.gnugrep
       pkgs.jq
-    ];
+    ]
+    ++ lib.optional (host.is.linux && host.is.workstation) sessionEnv;
     text = ''
       export MINT_PROD_AUDIENCES=${
         lib.escapeShellArg (lib.concatStringsSep " " (productionAudiences ++ mcpAudiences))

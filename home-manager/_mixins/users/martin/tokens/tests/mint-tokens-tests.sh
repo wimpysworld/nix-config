@@ -137,6 +137,11 @@ printf 'gh %s\n' "$*" >>"$TEST_LOG"
 printf 'gh-env browser=%s token=%s\n' "${GH_BROWSER-unset}" "${GH_TOKEN-unset}" >>"$TEST_LOG"
 exit "${GH_LOGIN_EXIT:-0}"
 EOF
+cat >"$tmp/bin/session-env" <<'EOF'
+#!/usr/bin/env bash
+printf 'session-env %s\n' "$*" >>"$TEST_LOG"
+[[ -z "${SESSION_ENV_DISPLAY:-}" ]] || printf "export WAYLAND_DISPLAY='%s'\n" "$SESSION_ENV_DISPLAY"
+EOF
 chmod +x "$tmp/bin/"*
 
 export PATH="$tmp/bin:$PATH"
@@ -154,6 +159,7 @@ export MINT_GH_MISSING_SCOPES="$tmp/home/.local/state/gh/missing-scopes"
 export MINT_GH_SCOPES='gist,project,repo'
 export MINT_GH_UNCHECKED_STATUS=75
 export GH_TOKEN=SECRET_GH_TOKEN
+export WAYLAND_DISPLAY=wayland-1
 export GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$XDG_CONFIG_HOME/gws"
 unset GOOGLE_WORKSPACE_CLI_TOKEN GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE
 unset GOOGLE_WORKSPACE_CLI_CLIENT_ID GOOGLE_WORKSPACE_CLI_CLIENT_SECRET MINT_GWS_ACCOUNT
@@ -516,6 +522,22 @@ GH_SYNC_STATE=missing GH_LOGIN_EXIT=1 bash "$script" >"$tmp/github-output" 2>&1 
 grep -Fq 'GitHub step failed' "$tmp/github-output" || fail 'a failed GitHub refresh was not reported'
 [[ $(github_syncs) == 1 ]] || fail 'a failed refresh ran the sync again'
 assert_log 'docker-credential-gcloud'
+
+# With no display, the run imports the session variables before any login,
+# and warns only when the user manager has no graphical session either.
+no_session_warning='No graphical session found'
+run_success env -u DISPLAY -u WAYLAND_DISPLAY SESSION_ENV_DISPLAY=wayland-test \
+    bash "$script" >"$tmp/session-output" 2>&1
+assert_log 'session-env '
+[[ $(line_of 'session-env ') -lt $(line_of 'chainctl ') ]] || fail 'session-env ran after chainctl'
+! grep -Fq "$no_session_warning" "$tmp/session-output" || fail 'an imported session still warned'
+run_success env -u DISPLAY -u WAYLAND_DISPLAY bash "$script" >"$tmp/session-output" 2>&1
+grep -Fq "$no_session_warning" "$tmp/session-output" || fail 'a missing session was not reported'
+run_success env -u DISPLAY -u WAYLAND_DISPLAY bash "$script" --headless >"$tmp/session-output" 2>&1
+! grep -Fq "$no_session_warning" "$tmp/session-output" || fail 'a headless run warned about the session'
+run_success env WAYLAND_DISPLAY=wayland-1 bash "$script" >"$tmp/session-output" 2>&1
+assert_no_log 'session-env '
+! grep -Fq "$no_session_warning" "$tmp/session-output" || fail 'a run with a display warned'
 
 login_browser="${script%/*}/login-browser.sh"
 for case in \

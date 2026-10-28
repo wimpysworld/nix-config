@@ -581,22 +581,6 @@ let
   # The Home Manager gpg-agent is the SSH agent on every Linux host,
   # including home-only and WSL hosts. Unit files expand `%t`.
   gpgAgentSshSocket = config.systemd.user.sockets.gpg-agent-ssh.Socket.ListenStream;
-  # Panes of a server that starts at boot have no display. These are the
-  # variables the compositor imports into the user manager, with a generic
-  # fallback for a desktop outside the compositor contract.
-  compositor = lib.attrByPath [
-    host.desktop
-  ] null (import ../../../lib/wayland-compositors.nix).compositors;
-  paneDisplayVariables =
-    if compositor != null then
-      compositor.ephemeralEnvironment
-    else
-      [
-        "DISPLAY"
-        "WAYLAND_DISPLAY"
-        "XDG_SESSION_TYPE"
-        "XDG_CURRENT_DESKTOP"
-      ];
 
 in
 {
@@ -759,21 +743,6 @@ in
         StandardErrorPath = "${config.home.homeDirectory}/Library/Logs/herdr.log";
       };
     };
-
-    # A pane of a server that started before the graphical login has no
-    # display variables. This copies them from the user manager into a new
-    # pane shell, once, and only when the pane has no Wayland or X11 display.
-    programs.fish.interactiveShellInit = lib.mkIf (host.is.workstation && host.is.linux) ''
-      if test "$HERDR_ENV" = 1; and not set -q WAYLAND_DISPLAY; and not set -q DISPLAY; and command -q systemctl
-          for __herdr_line in (systemctl --user show-environment 2>/dev/null)
-              set -l __herdr_kv (string split -m 1 = -- $__herdr_line)
-              if contains -- $__herdr_kv[1] ${lib.escapeShellArgs paneDisplayVariables}; and not set -q $__herdr_kv[1]
-                  set -gx $__herdr_kv[1] $__herdr_kv[2]
-              end
-          end
-          set -e __herdr_line
-      end
-    '';
 
     # Roamgate runs as a user service from the Nix store, not as its Herdr
     # plugin, which downloads a prebuilt binary. It runs from source on Bun,
