@@ -15,7 +15,7 @@ let
   username = config.noughty.user.name;
   homeDir = config.home.homeDirectory;
 
-  hermesSopsFile = ../../../../secrets/hermes.yaml;
+  herdrSopsFile = ../../../../secrets/herdr.yaml;
   aiSopsFile = ../../../../secrets/ai.yaml;
   mcpSopsFile = ../../../../secrets/mcp.yaml;
   linearSopsFile = ../../../../secrets/linear.yaml;
@@ -24,13 +24,12 @@ let
   isWorkHost = lib.elem "cg" (host.tags or [ ]);
 
   # Environment variables the composed `moltis.toml` references, mapped to
-  # the sops file each one comes from. Mirrors the NixOS-side declarations in
-  # `nixos/_mixins/server/hermes/default.nix`; Home Manager and NixOS keep
-  # separate `sops.secrets` module systems, so the shared key names coexist.
+  # the sops file each one comes from.
   moltisSecretSopsFiles = {
-    TELEGRAM_BOT_TOKEN = hermesSopsFile;
-    TELEGRAM_ALLOWED_USERS = hermesSopsFile;
-    OPENCODE_API_KEY = aiSopsFile;
+    TELEGRAM_BOT_TOKEN = herdrSopsFile;
+    TELEGRAM_HOME_CHANNEL = herdrSopsFile;
+    TELEGRAM_ALLOWED_USERS = herdrSopsFile;
+    GEMINI_API_KEY = aiSopsFile;
     CONTEXT7_API_KEY = mcpSopsFile;
     LINEAR_API_KEY = linearSopsFile;
   };
@@ -42,36 +41,41 @@ let
         sopsFile = linearSopsFile;
         key = if isWorkHost then "chainguard" else "wimpysworld";
       }
+    else if name == "TELEGRAM_BOT_TOKEN" then
+      {
+        sopsFile = herdrSopsFile;
+        key = "TELEGRAM_BOT_${lib.toUpper host.name}";
+      }
+    else if name == "TELEGRAM_HOME_CHANNEL" then
+      {
+        sopsFile = herdrSopsFile;
+        key = "TELEGRAM_CHAT_ID_${lib.toUpper host.name}";
+      }
+    else if name == "TELEGRAM_ALLOWED_USERS" then
+      {
+        sopsFile = herdrSopsFile;
+        key = "TELEGRAM_OPERATOR_IDS";
+      }
+    else if name == "GEMINI_API_KEY" then
+      {
+        sopsFile = aiSopsFile;
+        mode = "0400";
+      }
     else
       { sopsFile = moltisSecretSopsFiles.${name}; };
 
   # Plumbing for the composed `moltis.toml`: one entry per environment
   # variable, with its sops source and ready-made placeholder.
-  # `OPENCODE_ZEN_API_KEY` and `OPENCODE_GO_API_KEY` are runtime aliases
-  # of the canonical `OPENCODE_API_KEY` secret.
-  moltisEnvPlumbing =
-    map (
-      name:
-      {
-        inherit name;
-      }
-      // {
-        sopsFile = moltisSecretSopsFiles.${name};
-        placeholder = config.sops.placeholder.${name};
-      }
-    ) (lib.attrNames moltisSecretSopsFiles)
-    ++ [
-      {
-        name = "OPENCODE_ZEN_API_KEY";
-        aliasOf = "OPENCODE_API_KEY";
-        placeholder = config.sops.placeholder.OPENCODE_API_KEY;
-      }
-      {
-        name = "OPENCODE_GO_API_KEY";
-        aliasOf = "OPENCODE_API_KEY";
-        placeholder = config.sops.placeholder.OPENCODE_API_KEY;
-      }
-    ];
+  moltisEnvPlumbing = map (
+    name:
+    {
+      inherit name;
+    }
+    // {
+      sopsFile = moltisSecretSopsFiles.${name};
+      placeholder = config.sops.placeholder.${name};
+    }
+  ) (lib.attrNames moltisSecretSopsFiles);
 
   # PATH entries for the systemd user unit, so it can find user profile tools.
   moltisPath = lib.concatStringsSep ":" [
@@ -128,9 +132,7 @@ in
     default = moltisEnvPlumbing;
     description = ''
       Environment variables for the composed Moltis configuration, each with
-      its sops file and placeholder. The `OPENCODE_ZEN_API_KEY` and
-      `OPENCODE_GO_API_KEY` entries are aliases of `OPENCODE_API_KEY`
-      and carry no sops file.
+      its sops file and placeholder.
     '';
   };
 
@@ -156,22 +158,9 @@ in
       # `[env]` variables part of its process environment, so the literal
       # `${NAME}` placeholders in rendered MCP image headers resolve from it
       # (loader second pass treats `[env]` as an overrides map).
-      #
-      # The runtime aliases duplicate the same sops placeholder string
-      # rather than writing `${OPENCODE_API_KEY}`. Either form resolves (the loader
-      # substitutes `${VAR}` against `[env]` values), but a direct duplicate
-      # avoids one expansion hop and works even if `[env]`-to-`[env]`
-      # references regress upstream.
-      envBlock =
-        lib.listToAttrs (
-          lib.map (entry: lib.nameValuePair entry.name entry.placeholder) config.agentic.moltis.envPlumbing
-        )
-        // {
-          # Not a sops secret: Hermes ships the channel id as a plain service
-          # environment value. Kept as a Nix literal here; WW-274 may inject it
-          # from its own environment instead, making this the fallback.
-          TELEGRAM_HOME_CHANNEL = "-1003933927882";
-        };
+      envBlock = lib.listToAttrs (
+        lib.map (entry: lib.nameValuePair entry.name entry.placeholder) config.agentic.moltis.envPlumbing
+      );
     in
     {
       home.packages = [
@@ -234,65 +223,41 @@ in
             mcp.servers = mcpServerDefs.moltisServers;
 
             agents = {
-              # Hermes lane mapping. `coordinator` carries the delegation
-              # lane (`delegation` in the Hermes settings) and is the
-              # default spawn preset, mirroring Hermes' delegation-first
-              # posture. Auxiliary presets follow Hermes' auxiliary routing:
-              # fast/cheap classifier work on the Go relay, long-context
-              # summarisation on MiniMax M3 and quality review on GLM 5.3,
-              # both on the Zen relay. Every lane runs at medium effort in
-              # Hermes today, so each preset pins `reasoning_effort`
-              # explicitly. Model ids use Moltis' `provider::model`
-              # namespace separator (crates/providers/src/model_id.rs).
+              # Preset lane mapping. `coordinator` is the default spawn preset.
+              # Every lane pins `reasoning_effort` explicitly. Model ids use
+              # Moltis' `provider::model` namespace separator
+              # (crates/providers/src/model_id.rs).
               default_preset = "coordinator";
               presets = {
                 coordinator = {
-                  model = "custom-opencode-go::glm-5.3-flash";
+                  model = "gemini::gemini-4-argon";
                   reasoning_effort = "medium";
                   delegate_only = true;
                 };
                 auxiliary = {
-                  # Classifier-shaped lanes in Hermes (approval, titles,
-                  # monitor): fast and cheap, on the primary relay.
-                  model = "custom-opencode-go::glm-5.3-flash";
+                  model = "gemini::gemini-3.8-flash";
                   reasoning_effort = "medium";
                 };
                 compression = {
-                  # Long-context summarisation/compression-shaped lanes
-                  # (compression, curator): MiniMax M3 on the Zen relay.
-                  model = "custom-opencode-zen::minimax-m3";
+                  model = "gemini::gemini-3.8-flash";
                   reasoning_effort = "medium";
                 };
                 review = {
-                  # Review-shaped lane: the flagship tier earns its price.
-                  model = "custom-opencode-zen::glm-5.3";
+                  model = "gemini::gemini-4-argon";
                   reasoning_effort = "medium";
                 };
               };
             };
 
-            # Custom OpenAI-compatible relays, named after the Hermes
-            # provider table (`hermes_cli/auth.py`, hermes-agent tag
-            # v2026.9.14): Go gateway base `https://opencode.ai/zen/go/v1`,
-            # Zen gateway base `https://opencode.ai/zen/v1`. Both runtime
-            # aliases above use the canonical OpenCode API key.
             # No inline `api_key`: Moltis does not expand `${VAR}` placeholders
-            # inside provider `api_key` values, so the credentials must come
-            # from the process environment swept in by `[env]`.
-            providers = {
-              "custom-opencode-go" = {
-                enabled = true;
-                base_url = "https://opencode.ai/zen/go/v1";
-                models = [ "glm-5.3-flash" ];
-              };
-              "custom-opencode-zen" = {
-                enabled = true;
-                base_url = "https://opencode.ai/zen/v1";
-                models = [
-                  "minimax-m3"
-                  "glm-5.3"
-                ];
-              };
+            # inside provider `api_key` values, so `GEMINI_API_KEY` comes from
+            # the process environment swept in by `[env]`.
+            providers.gemini = {
+              enabled = true;
+              models = [
+                "gemini-4-argon"
+                "gemini-3.8-flash"
+              ];
             };
 
             channels = {
@@ -309,16 +274,18 @@ in
                 # exactly one username or user id: upstream does not split
                 # comma-joined values here.
                 allowlist = [ "\${TELEGRAM_ALLOWED_USERS}" ];
+                operators = [ "\${TELEGRAM_ALLOWED_USERS}" ];
                 group_policy = "allowlist";
                 # Whole-file substitution resolves this from `[env]`, so the
                 # channel id lives exactly once (loader second pass,
                 # crates/config/src/loader/config_io.rs, tag 20260913.02).
                 group_allowlist = [ "\${TELEGRAM_HOME_CHANNEL}" ];
-                # Channel-level model defaults mirror Hermes' `model.default`
-                # and `model.provider` (NixOS Hermes module): glm-5.3-flash
-                # on the Go relay steers chat sessions.
-                model = "glm-5.3-flash";
-                model_provider = "custom-opencode-go";
+                mention_mode = "always";
+                untrusted_audience = "trusted";
+                untrusted_tools = "policy";
+                otp_self_approval = false;
+                model = "gemini-4-argon";
+                model_provider = "gemini";
               };
             };
           }

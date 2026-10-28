@@ -1,6 +1,25 @@
 # Moltis projection
 
-The assistants consumer projects agents, skills, and global instructions into `~/.moltis` for the Moltis client (tag 20260913.02). The gate is `moltisEnabled` in `../assistants/default.nix`, which matches the host gate in `mcp/default.nix`: user `martin`, Linux host, host tag `moltis` (skrye). The owned-files deployer tracks `~/.moltis` as an ownership root so its sops-rendered secret skills and managed links deploy there.
+The assistants consumer projects agents, skills, and global instructions into `~/.moltis` for the Moltis client (tag 20260913.02). The gate is `moltisEnabled` in `../assistants/default.nix`, which matches the host gate in `mcp/default.nix`: user `martin`, Linux host, host tag `moltis` (`skrye` and `zannah`). The owned-files deployer tracks `~/.moltis` as an ownership root so its sops-rendered secret skills and managed links deploy there.
+
+## Provider, presets, and Telegram channel
+
+`default.nix` renders `~/.config/moltis/moltis.toml` through a sops template. It enables the `gemini` provider with `gemini-4-argon` and `gemini-3.8-flash`:
+
+- `coordinator` and `review` presets use `gemini::gemini-4-argon`.
+- `auxiliary` and `compression` presets use `gemini::gemini-3.8-flash`.
+- `channels.telegram.moltis` defaults to `gemini-4-argon` on `gemini` with `dm_policy = "allowlist"`, `group_policy = "allowlist"`, `mention_mode = "always"`, `untrusted_audience = "trusted"`, `untrusted_tools = "policy"`, and `otp_self_approval = false`.
+
+The `[env]` table injects sops placeholders into the Moltis process environment at render time:
+
+| Variable                 | Sops file             | Key                                |
+| ------------------------ | --------------------- | ---------------------------------- |
+| `GEMINI_API_KEY`         | `secrets/ai.yaml`     | `GEMINI_API_KEY`                   |
+| `TELEGRAM_BOT_TOKEN`     | `secrets/herdr.yaml`  | `TELEGRAM_BOT_<HOST>`              |
+| `TELEGRAM_HOME_CHANNEL`  | `secrets/herdr.yaml`  | `TELEGRAM_CHAT_ID_<HOST>`          |
+| `TELEGRAM_ALLOWED_USERS` | `secrets/herdr.yaml`  | `TELEGRAM_OPERATOR_IDS`            |
+| `CONTEXT7_API_KEY`       | `secrets/mcp.yaml`    | `CONTEXT7_API_KEY`                 |
+| `LINEAR_API_KEY`         | `secrets/linear.yaml` | `chainguard` or `wimpysworld`      |
 
 ## Projection surfaces
 
