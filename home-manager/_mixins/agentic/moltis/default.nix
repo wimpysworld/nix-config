@@ -23,6 +23,13 @@ let
   # one `key` attribute per identity in the same sops file.
   isWorkHost = lib.elem "cg" (host.tags or [ ]);
 
+  # Per-host Gemini TTS voice (`skrye` uses the assistant voice; `zannah`
+  # uses the commercial voice).
+  googleTtsVoice = if host.name == "zannah" then "en-gb-commercial-6" else "en-gb-assistant-9";
+  googleTtsModel = "gemini-3.8-flash-tts";
+  ttsShimPort = 13132;
+  geminiKeyPath = config.sops.secrets.GEMINI_API_KEY.path;
+
   # Environment variables the composed `moltis.toml` references, mapped to
   # the sops file each one comes from.
   moltisSecretSopsFiles = {
@@ -94,6 +101,286 @@ let
   fencePackage = import ../fence/package.nix { inherit inputs pkgs; };
   fenceLogging = import ../fence/logging.nix { inherit pkgs; };
 
+  # Local OpenAI-compatible `/v1/audio/speech` shim backed by Google's
+  # `gemini-3.8-flash-tts` model and `ffmpeg` transcoding. Moltis' built-in
+  # Google Gemini TTS path hardcodes `AudioFormat::Mp3` and returns raw
+  # `audio/wav` bytes (`crates/voice/src/tts/google.rs`, tag 20261023.01),
+  # whereas `OpenAiTts` preserves `request.output_format` (`AudioFormat::Opus` ->
+  # `"opus"` / `audio/ogg`), allowing Moltis to send native Telegram OGG Opus
+  # voice notes (`crates/voice/src/tts/openai.rs` and
+  # `crates/chat/src/channels/tts.rs`).
+  moltisTtsShim = pkgs.writeScript "moltis-tts-shim" ''
+    #!${lib.getExe pkgs.python3}
+    import base64
+    import ctypes
+    import http.server
+    import json
+    import os
+    import signal
+    import socketserver
+    import subprocess
+    import sys
+    import urllib.error
+    import urllib.request
+
+    DEFAULT_MODEL = ${builtins.toJSON googleTtsModel}
+    DEFAULT_VOICE = ${builtins.toJSON googleTtsVoice}
+    FFMPEG_BIN = ${builtins.toJSON (lib.getExe pkgs.ffmpeg-headless)}
+    GEMINI_KEY_PATH = os.environ.get("MOLTIS_TTS_GEMINI_KEY_PATH", ${builtins.toJSON geminiKeyPath})
+    HOST = os.environ.get("MOLTIS_TTS_SHIM_HOST", "127.0.0.1")
+    PORT = int(os.environ.get("MOLTIS_TTS_SHIM_PORT", ${builtins.toJSON (toString ttsShimPort)}))
+
+
+    def set_parent_death_signal():
+        try:
+            libc = ctypes.CDLL("libc.so.6", use_errno=True)
+            # PR_SET_PDEATHSIG = 1
+            libc.prctl(1, signal.SIGTERM, 0, 0, 0)
+        except Exception:
+            pass
+
+
+    def load_api_key():
+        env_key = os.environ.get("GEMINI_API_KEY", "").strip()
+        if env_key:
+            return env_key
+        with open(GEMINI_KEY_PATH, "r", encoding="utf-8") as fh:
+            return fh.read().strip()
+
+
+    def synthesize_gemini(api_key, model, voice, text, instructions=None):
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        payload = {
+            "contents": [{"parts": [{"text": text}]}],
+            "generationConfig": {
+                "responseModalities": ["AUDIO"],
+                "speechConfig": {
+                    "voiceConfig": {
+                        "prebuiltVoiceConfig": {
+                            "voiceName": voice,
+                        }
+                    }
+                },
+            },
+        }
+        if instructions:
+            payload["systemInstruction"] = {"parts": [{"text": instructions}]}
+
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "x-goog-api-key": api_key,
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+
+        inline = (
+            body.get("candidates", [{}])[0]
+            .get("content", {})
+            .get("parts", [{}])[0]
+            .get("inlineData", {})
+        )
+        audio_b64 = inline.get("data")
+        if not audio_b64:
+            raise RuntimeError("Gemini TTS response missing inlineData.data")
+        return base64.b64decode(audio_b64), inline.get("mimeType", "audio/wav")
+
+
+    def transcode_audio(raw_bytes, response_format):
+        fmt = (response_format or "opus").lower()
+        if fmt in ("opus", "ogg"):
+            cmd = [
+                FFMPEG_BIN,
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-i",
+                "pipe:0",
+                "-c:a",
+                "libopus",
+                "-b:a",
+                "48k",
+                "-f",
+                "ogg",
+                "pipe:1",
+            ]
+            content_type = "audio/ogg"
+        elif fmt == "mp3":
+            cmd = [
+                FFMPEG_BIN,
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-i",
+                "pipe:0",
+                "-c:a",
+                "libmp3lame",
+                "-f",
+                "mp3",
+                "pipe:1",
+            ]
+            content_type = "audio/mpeg"
+        elif fmt == "wav":
+            if raw_bytes.startswith(b"RIFF"):
+                return raw_bytes, "audio/wav"
+            cmd = [
+                FFMPEG_BIN,
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-i",
+                "pipe:0",
+                "-f",
+                "wav",
+                "pipe:1",
+            ]
+            content_type = "audio/wav"
+        elif fmt in ("aac", "m4a"):
+            cmd = [
+                FFMPEG_BIN,
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-i",
+                "pipe:0",
+                "-c:a",
+                "aac",
+                "-f",
+                "adts",
+                "pipe:1",
+            ]
+            content_type = "audio/aac"
+        elif fmt == "pcm":
+            cmd = [
+                FFMPEG_BIN,
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-i",
+                "pipe:0",
+                "-f",
+                "s16le",
+                "-acodec",
+                "pcm_s16le",
+                "pipe:1",
+            ]
+            content_type = "audio/pcm"
+        else:
+            cmd = [
+                FFMPEG_BIN,
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-i",
+                "pipe:0",
+                "-c:a",
+                "libopus",
+                "-b:a",
+                "48k",
+                "-f",
+                "ogg",
+                "pipe:1",
+            ]
+            content_type = "audio/ogg"
+
+        proc = subprocess.run(
+            cmd,
+            input=raw_bytes,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        if proc.returncode != 0:
+            err = proc.stderr.decode("utf-8", errors="replace").strip()
+            raise RuntimeError(f"ffmpeg exited with {proc.returncode}: {err}")
+        return proc.stdout, content_type
+
+
+    class ReusableTCPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
+        allow_reuse_address = True
+        daemon_threads = True
+
+
+    class TtsHandler(http.server.BaseHTTPRequestHandler):
+        def log_message(self, fmt, *args):
+            return
+
+        def _send_json(self, status, payload):
+            body = json.dumps(payload).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_POST(self):
+            if self.path not in ("/v1/audio/speech", "/audio/speech"):
+                self._send_json(404, {"error": {"message": "not found"}})
+                return
+
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                raw_body = self.rfile.read(length) if length > 0 else b"{}"
+                data = json.loads(raw_body.decode("utf-8"))
+            except Exception as exc:
+                self._send_json(400, {"error": {"message": f"invalid JSON: {exc}"}})
+                return
+
+            input_text = data.get("input") or ""
+            if not isinstance(input_text, str) or not input_text.strip():
+                self._send_json(400, {"error": {"message": "missing input text"}})
+                return
+
+            req_model = data.get("model") or ""
+            model = req_model if isinstance(req_model, str) and req_model.startswith("gemini-") else DEFAULT_MODEL
+            req_voice = data.get("voice") or ""
+            voice = req_voice if isinstance(req_voice, str) and req_voice.startswith("en-") else DEFAULT_VOICE
+            response_format = data.get("response_format") or "opus"
+            instructions = data.get("instructions")
+
+            try:
+                api_key = load_api_key()
+                raw_audio, _ = synthesize_gemini(api_key, model, voice, input_text, instructions)
+                out_bytes, content_type = transcode_audio(raw_audio, response_format)
+            except urllib.error.HTTPError as exc:
+                err_body = exc.read().decode("utf-8", errors="replace")
+                sys.stderr.write(f"moltis-tts-shim upstream HTTP {exc.code}: {err_body}\n")
+                self._send_json(502, {"error": {"message": f"Gemini TTS HTTP {exc.code}"}})
+                return
+            except Exception as exc:
+                sys.stderr.write(f"moltis-tts-shim error: {exc}\n")
+                self._send_json(500, {"error": {"message": str(exc)}})
+                return
+
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(out_bytes)))
+            self.end_headers()
+            self.wfile.write(out_bytes)
+
+
+    if __name__ == "__main__":
+        set_parent_death_signal()
+        with ReusableTCPServer((HOST, PORT), TtsHandler) as httpd:
+            httpd.serve_forever()
+  '';
+
+  moltisInFenceLauncher = pkgs.writeShellApplication {
+    name = "moltis-in-fence";
+    runtimeInputs = [
+      pkgs.ffmpeg-headless
+      pkgs.python3
+    ];
+    text = ''
+      ${moltisTtsShim} &
+      exec ${lib.getExe pkgs.moltis} "$@"
+    '';
+  };
+
   moltisFencedPackage = pkgs.writeShellApplication {
     name = "moltis-fenced";
     runtimeInputs = [
@@ -109,11 +396,12 @@ let
 
       # The rendered `[env]` table already carries the real secret values at
       # sops render time, so unlike `opencode-fenced` no key-read prologue is
-      # needed here. The gateway is a foreground daemon, so `fence -- moltis`
-      # satisfies the unit's `Type = "simple"` contract. The `fence_direnv`
-      # launcher is inert here: the unit runs at $HOME, away from any
-      # project `.envrc`.
-      exec fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" ${lib.getExe pkgs.moltis} "$@"
+      # needed here. `moltis-in-fence` starts the local Gemini TTS shim in the
+      # same Fence sandbox and network namespace before replacing the shell
+      # with `moltis`, so the gateway stays the foreground daemon and satisfies
+      # the unit's `Type = "simple"` contract. The `fence_direnv` launcher is
+      # inert here: the unit runs at $HOME, away from any project `.envrc`.
+      exec fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" ${lib.getExe moltisInFenceLauncher} "$@"
     '';
   };
 in
@@ -258,6 +546,23 @@ in
                 "gemini-4-argon"
                 "gemini-3.8-flash"
               ];
+            };
+
+            voice.tts = {
+              enabled = true;
+              provider = "openai";
+              # Route TTS through the local OpenAI-compatible Gemini shim inside
+              # `moltis-fenced`. `OpenAiTts::is_configured()` is true whenever
+              # `base_url` differs from `https://api.openai.com/v1`, so no
+              # `api_key` is needed and `migrate_voice_keys_to_key_store()`
+              # never rewrites `moltis.toml` (`crates/voice/src/tts/openai.rs`
+              # and `crates/gateway/src/voice/mod.rs`, tag 20261023.01).
+              openai = {
+                enabled = true;
+                base_url = "http://127.0.0.1:${toString ttsShimPort}/v1";
+                voice = googleTtsVoice;
+                model = googleTtsModel;
+              };
             };
 
             channels = {

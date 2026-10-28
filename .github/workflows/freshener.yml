@@ -47,6 +47,9 @@ jobs:
           - id: manuscript
             name: Manuscript
             changelog: https://gitlab.com/ilshat-apps/manuscript/-/blob/main/CHANGELOG.md
+          - id: moltis
+            name: Moltis
+            changelog: https://github.com/moltis-org/moltis/releases
           - id: hermes-agent
             name: Hermes Agent
             changelog: https://github.com/NousResearch/hermes-agent/releases

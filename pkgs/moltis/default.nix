@@ -14,11 +14,11 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "moltis";
-  version = "20260913.02";
+  version = "20261023.01";
 
   src = fetchurl {
     url = "https://github.com/moltis-org/moltis/releases/download/${finalAttrs.version}/moltis-${finalAttrs.version}-x86_64-unknown-linux-gnu.tar.gz";
-    hash = "sha256-aljDxPoSM/0S8H9Ot3dfSh+6hNPUW7rQi618gEb4jI0=";
+    hash = "sha256-kDjdhkbZ3bItq+U7nRsWQ5vT9MVNgXuKyuYwnJEQ3CQ=";
   };
 
   # The archive holds the binary and share/ as siblings; keep the checkout root.

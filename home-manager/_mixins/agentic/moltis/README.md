@@ -1,6 +1,6 @@
 # Moltis projection
 
-The assistants consumer projects agents, skills, and global instructions into `~/.moltis` for the Moltis client (tag 20260913.02). The gate is `moltisEnabled` in `../assistants/default.nix`, which matches the host gate in `mcp/default.nix`: user `martin`, Linux host, host tag `moltis` (`skrye` and `zannah`). The owned-files deployer tracks `~/.moltis` as an ownership root so its sops-rendered secret skills and managed links deploy there.
+The assistants consumer projects agents, skills, and global instructions into `~/.moltis` for the Moltis client (tag 20261023.01). The gate is `moltisEnabled` in `../assistants/default.nix`, which matches the host gate in `mcp/default.nix`: user `martin`, Linux host, host tag `moltis` (`skrye` and `zannah`). The owned-files deployer tracks `~/.moltis` as an ownership root so its sops-rendered secret skills and managed links deploy there.
 
 ## Provider, presets, and Telegram channel
 
@@ -8,6 +8,7 @@ The assistants consumer projects agents, skills, and global instructions into `~
 
 - `coordinator` and `review` presets use `gemini::gemini-4-argon`.
 - `auxiliary` and `compression` presets use `gemini::gemini-3.8-flash`.
+- `voice.tts` selects the `openai` provider pointed at a local OpenAI-compatible shim (`base_url = "http://127.0.0.1:13132/v1"`) started inside `moltis-fenced`, with `model = "gemini-3.8-flash-tts"`. `skrye` uses `voice = "en-gb-assistant-9"` and `zannah` uses `voice = "en-gb-commercial-6"`. The shim reads `GEMINI_API_KEY` from the sops secret file, calls Google's `gemini-3.8-flash-tts` `generateContent` endpoint, and transcodes the returned WAV audio to Ogg Opus (`audio/ogg`) via `ffmpeg` so Moltis sends native Telegram voice notes without setting `voice.tts.openai.api_key`.
 - `channels.telegram.moltis` defaults to `gemini-4-argon` on `gemini` with `dm_policy = "allowlist"`, `group_policy = "allowlist"`, `mention_mode = "always"`, `untrusted_audience = "trusted"`, `untrusted_tools = "policy"`, and `otp_self_approval = false`.
 
 The `[env]` table injects sops placeholders into the Moltis process environment at render time:
