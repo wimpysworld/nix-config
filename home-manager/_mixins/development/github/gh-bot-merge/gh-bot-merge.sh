@@ -143,7 +143,8 @@ def is_github_actions:
 def touches_sensitive_package:
   any(
     (.files // [])[];
-    (.path // "") | test("^pkgs/(herdr-ctx-bar|herdr-disp-model|roamgate)/")
+    .changeType == "RENAMED"
+    or ((.path // "") | test("^pkgs/(herdr-ctx-bar|herdr-disp-model|roamgate)/"))
   );
 
 def is_peer_agent:
