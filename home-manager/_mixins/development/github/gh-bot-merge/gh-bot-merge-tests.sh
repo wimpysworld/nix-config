@@ -151,7 +151,7 @@ write_pr_json() {
 				}
 			],
 			reviewDecision: "REVIEW_REQUIRED"
-		} | '"${extra_jq}" >"${state_dir}/pr.json"
+		} | '"${extra_jq}"' | .changedFiles = (.changedFiles // ((.files // []) | length))' >"${state_dir}/pr.json"
 }
 
 run_helper() {
@@ -352,6 +352,17 @@ for blocked_pkg in roamgate herdr-ctx-bar herdr-disp-model; do
 	GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
 		"reject peer-agent change to sensitive package ${blocked_pkg}" "${url_ww}" 'does not match'
 done
+
+reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/large-change' \
+	'.files = [{path: "src/main.rs"}] | .changedFiles = 101'
+GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
+	'reject peer-agent PR with incomplete changed file list' "${url_ww}" 'changed file list is incomplete'
+if grep -q 'changedFiles' "${state_dir}/argv-1"; then
+	pass 'request changedFiles with pull request metadata'
+else
+	fail 'request changedFiles with pull request metadata' "$(cat "${state_dir}/argv-1")"
+fi
 
 # 6. Valid Dependabot PRs (--dry-run and full merge across allowed owners)
 for owner in wimpysworld linuxmatters quickemu-project flexiondotorg; do

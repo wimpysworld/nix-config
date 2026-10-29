@@ -94,7 +94,7 @@ readonly GH_BOT_MERGE_GH_BIN
 export GH_PROMPT_DISABLED=true
 export GH_TELEMETRY=false
 
-readonly PR_VIEW_FIELDS='number,state,isDraft,mergeable,mergeStateStatus,author,headRefName,headRepositoryOwner,isCrossRepository,labels,files,statusCheckRollup,reviewDecision'
+readonly PR_VIEW_FIELDS='number,state,isDraft,mergeable,mergeStateStatus,author,headRefName,headRepositoryOwner,isCrossRepository,labels,changedFiles,files,statusCheckRollup,reviewDecision'
 
 set +e
 pr_json="$("${GH_BOT_MERGE_GH_BIN}" pr view "${pr_url}" --json "${PR_VIEW_FIELDS}" </dev/null)"
@@ -177,6 +177,8 @@ elif (.isCrossRepository != false) or (((.headRepositoryOwner.login // "") | asc
   "ERR\tpull request #" + $pr_number + " is a fork or cross-repository pull request (isCrossRepository=" + (.isCrossRepository | tostring) + ", headRepositoryOwner=" + (.headRepositoryOwner.login // "UNKNOWN") + ")"
 elif .mergeable != "MERGEABLE" then
   "ERR\tpull request #" + $pr_number + " is not mergeable (mergeable=" + (.mergeable // "UNKNOWN") + ")"
+elif ((.changedFiles // ((.files // []) | length)) > ((.files // []) | length)) then
+  "ERR\tpull request #" + $pr_number + " changed file list is incomplete (changedFiles=" + (.changedFiles | tostring) + ", files=" + (((.files // []) | length) | tostring) + ")"
 elif ((.statusCheckRollup // []) | length) == 0 then
   "ERR\tpull request #" + $pr_number + " has no statusCheckRollup entries (CI checks are missing or have not registered yet)"
 else
