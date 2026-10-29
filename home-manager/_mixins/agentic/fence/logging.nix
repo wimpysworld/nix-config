@@ -8,7 +8,7 @@
 # `fence_args`. It also prepares the `direnv exec` prefix and a `BASH_ENV` hook
 # used to load the project devShell inside Fence. The agent name is taken from
 # the wrapper-local variable `fence_log_agent`; only literal
-# `claude|codex|opencode|pi` should be set.
+# `claude|codex|moltis|opencode|pi` should be set.
 #
 # Permissions: the directory is created 0700; Fence opens the file 0600 via
 # the flag path, so the helper deliberately does not pre-create the file.
@@ -62,7 +62,7 @@ in
 
       agent="''${fence_log_agent:-agent}"
       case "$agent" in
-        claude | codex | opencode | pi | agent) ;;
+        claude | codex | moltis | opencode | pi | agent) ;;
         *)
           agent="agent"
           ;;

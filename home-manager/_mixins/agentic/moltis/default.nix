@@ -526,7 +526,7 @@ let
     text = ''
       mkdir -p "$HOME/.moltis"
       printf '["dcg-guard"]\n' > "$HOME/.moltis/disabled_hooks.json"
-      rm -rf "$HOME/.moltis/hooks/dcg-guard"
+      touch "$HOME/.moltis/.onboarded"
       ${moltisTtsShim} &
       exec ${lib.getExe pkgs.moltis} "$@"
     '';
@@ -544,6 +544,11 @@ let
 
       fence_log_agent="moltis"
       ${fenceLogging.setupShell}
+
+      for _ in {1..20}; do
+        [[ -r "${config.sops.templates."moltis.toml".path}" && -r "${geminiKeyPath}" ]] && break
+        sleep 0.5
+      done
 
       # The rendered `[env]` table already carries the real secret values at
       # sops render time, so unlike `opencode-fenced` no key-read prologue is

@@ -12,6 +12,8 @@ Assistant and long-term collaborator across open-source projects, research, and 
 
 ## Tools
 
+Call at most one tool per turn. Do not emit parallel tool calls in one response, because the Moltis Gemini streaming parser drops arguments on earlier calls when multiple tool calls arrive in the same turn.
+
 Use the built-in read, edit, and write tools for files, not shell cat or sed. Preserve unrelated changes.
 
 Prefer current reference tools over training data. Use Exa for web research, Context7 for library and framework docs.

@@ -312,6 +312,8 @@ let
   # house style the same way the Pi and OpenCode system prompts do.
   moltisGlobalInstructions = readFileTrim ../moltis/AGENTS.md;
   moltisInstructions = moltisGlobalInstructions + "\n\n" + compose.houseStyleBody + "\n";
+  moltisIdentity =
+    readFileTrim (../moltis + "/IDENTITY_${lib.toUpper moltisAgentName}.md") + "\n";
   moltisLegacyInstructionsHash = builtins.hashString "sha256" (
     globalInstructions + "\n\n" + compose.houseStyleBody + "\n"
   );
@@ -596,6 +598,8 @@ let
     [
       (ownedFile "${config.home.homeDirectory}/.moltis/AGENTS.md" moltisInstructions)
       (ownedFile "${config.home.homeDirectory}/.moltis/agents/main/AGENTS.md" moltisInstructions)
+      (ownedFile "${config.home.homeDirectory}/.moltis/IDENTITY.md" moltisIdentity)
+      (ownedFile "${config.home.homeDirectory}/.moltis/agents/main/IDENTITY.md" moltisIdentity)
     ]
     ++ lib.concatLists (
       lib.mapAttrsToList (
