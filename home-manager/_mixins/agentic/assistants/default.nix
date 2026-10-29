@@ -285,10 +285,16 @@ let
     SOUL_ALL = {
       sopsFile = moltisSopsFile;
     };
+    USER = {
+      sopsFile = moltisSopsFile;
+    };
   };
   moltisSoulTemplates = lib.optionalAttrs moltisEnabled {
     assistant-moltis-soul = {
       content = "${config.sops.placeholder.${moltisSoulKey}}\n\n${config.sops.placeholder.SOUL_ALL}\n";
+    };
+    assistant-moltis-user = {
+      content = "${config.sops.placeholder.USER}\n";
     };
   };
   moltisSoulOwnedFiles = lib.optionals moltisEnabled (
@@ -302,6 +308,17 @@ let
       [
         "${config.home.homeDirectory}/.moltis/SOUL.md"
         "${config.home.homeDirectory}/.moltis/agents/main/SOUL.md"
+      ]
+    ++ map
+      (path: {
+        inherit path;
+        source = config.sops.templates."assistant-moltis-user".path;
+        kind = "file";
+        mode = "0600";
+      })
+      [
+        "${config.home.homeDirectory}/.moltis/USER.md"
+        "${config.home.homeDirectory}/.moltis/agents/main/USER.md"
       ]
   );
 

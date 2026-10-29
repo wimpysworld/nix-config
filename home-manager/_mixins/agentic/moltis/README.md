@@ -8,7 +8,7 @@ The assistants consumer projects agents, skills, and global instructions into `~
 
 - `coordinator` (`delegate_only = false`) and `review` presets use `gemini::gemini-4-argon`.
 - `auxiliary` and `compression` presets use `gemini::gemini-3.8-flash`.
-- `identity` sets `name` to `agentName` (`traya` on `malak`, otherwise `host.name`), and `user` sets `name = "Martin"` and `timezone = "Europe/London"`.
+- `identity` sets `name` to `agentName` (`traya` on `malak`, otherwise `host.name`), and `user` sets `name = "Martin"`, `timezone = "Europe/London"`, and `write_mode = "off"`.
 - `auxiliary` routes `compaction`, `title_generation`, and `vision` to `gemini::gemini-3.8-flash`, and `chat.compaction.mode` uses `"structured"`.
 - `skills.enable_self_improvement` is `false`.
 - `tools.exec` sets `approval_mode = "never"` and `sandbox.mode = "off"` (Moltis runs inside `moltis-fenced`), and `tools.fs` sets `workspace_root` to `$HOME` with `track_reads = true` and `must_read_before_write = true`.
@@ -44,6 +44,8 @@ The `[env]` table injects sops placeholders into the Moltis process environment 
 | `~/.moltis/agents/main/AGENTS.md`        | `moltis/AGENTS.md` + `compose.houseStyleBody`                        | Same instructions deployed into the `main` agent workspace via `ownedFiles` so Moltis's first-run seed copy never goes stale.       |
 | `~/.moltis/SOUL.md`                      | `assistant-moltis-soul` sops template (`SOUL_<AGENT>` + `SOUL_ALL`)  | Agent soul from `secrets/moltis.yaml` followed by `SOUL_ALL`, deployed via `ownedFiles` (`kind = "file"`, mode `0600`).             |
 | `~/.moltis/agents/main/SOUL.md`          | `assistant-moltis-soul` sops template (`SOUL_<AGENT>` + `SOUL_ALL`)  | Same soul deployed into the `main` agent workspace via `ownedFiles` so Moltis's first-run seed copy never goes stale.               |
+| `~/.moltis/USER.md`                      | `assistant-moltis-user` sops template (`USER` in `secrets/moltis.yaml`) | User profile deployed via `ownedFiles` (`kind = "file"`, mode `0600`).                                                              |
+| `~/.moltis/agents/main/USER.md`          | `assistant-moltis-user` sops template (`USER` in `secrets/moltis.yaml`) | Same user profile deployed into the `main` agent workspace via `ownedFiles`.                                                        |
 | `~/.moltis/HEARTBEAT.md`                 | `moltis/HEARTBEAT.md` (per-host schedule substituted)                | Weekly maintenance checklist (`skrye` Wednesday, `zannah` Saturday, `traya` Sunday), deployed via `ownedFiles` (`0600`).            |
 | `~/.moltis/agents/main/HEARTBEAT.md`     | `moltis/HEARTBEAT.md` (per-host schedule substituted)                | Same heartbeat specification deployed into the `main` agent workspace via `ownedFiles` (`kind = "file"`, mode `0600`).              |
 

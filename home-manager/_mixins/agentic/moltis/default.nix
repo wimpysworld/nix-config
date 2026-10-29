@@ -804,6 +804,7 @@ in
             user = {
               name = "Martin";
               timezone = "Europe/London";
+              write_mode = "off";
             };
 
             auxiliary = {
