@@ -253,6 +253,10 @@ write_pr_json wimpysworld 'app/dependabot' 'dependabot/nix/nixpkgs-3ec6363' '.me
 assert_pr_rejected 'reject conflicting PR' "${url_ww}" 'not mergeable'
 
 reset_stub
+write_pr_json wimpysworld 'app/dependabot' 'dependabot/nix/nixpkgs-3ec6363' '.statusCheckRollup = []'
+assert_pr_rejected 'reject empty statusCheckRollup' "${url_ww}" 'no statusCheckRollup entries'
+
+reset_stub
 write_pr_json wimpysworld 'app/dependabot' 'dependabot/nix/nixpkgs-3ec6363' \
 	'.statusCheckRollup += [{__typename: "CheckRun", name: "Nix ❄️", status: "COMPLETED", conclusion: "FAILURE"}]'
 assert_pr_rejected 'reject failing CheckRun and name check' "${url_ww}" 'Nix ❄️'

@@ -160,6 +160,8 @@ elif (.isCrossRepository != false) or (((.headRepositoryOwner.login // "") | asc
   "ERR\tpull request #" + $pr_number + " is a fork or cross-repository pull request (isCrossRepository=" + (.isCrossRepository | tostring) + ", headRepositoryOwner=" + (.headRepositoryOwner.login // "UNKNOWN") + ")"
 elif .mergeable != "MERGEABLE" then
   "ERR\tpull request #" + $pr_number + " is not mergeable (mergeable=" + (.mergeable // "UNKNOWN") + ")"
+elif ((.statusCheckRollup // []) | length) == 0 then
+  "ERR\tpull request #" + $pr_number + " has no statusCheckRollup entries (CI checks are missing or have not registered yet)"
 else
   ([(.statusCheckRollup // [])[] | select(check_ok | not) | check_label]) as $bad_checks
   | if ($bad_checks | length) > 0 then
