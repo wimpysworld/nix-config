@@ -354,6 +354,12 @@ for blocked_pkg in roamgate herdr-ctx-bar herdr-disp-model; do
 done
 
 reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/rename-sensitive-package' \
+	'.files = [{path: "pkgs/allowed-package/default.nix", changeType: "RENAMED"}]'
+GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
+	'reject peer-agent rename with unavailable previous path' "${url_ww}" 'does not match'
+
+reset_stub
 write_pr_json wimpysworld 'sith-skrye' 'fix/large-change' \
 	'.files = [{path: "src/main.rs"}] | .changedFiles = 101'
 GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
