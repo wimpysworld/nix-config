@@ -8,8 +8,8 @@ The assistant resources are plain Markdown unless a skill states another require
 | Codex tree | Codex with agent roles and skills |
 | OpenCode tree | OpenCode with JavaScript plugin support. The router was tested with OpenCode 1.18.30 |
 | Pi tree | Pi 1.1.0 or later with TypeScript extension support |
-| Pi MCP integration | `git:github.com/nicobailon/pi-mcp-adapter@80fcdef8d9f6958751f1e225f88b272440caa542`, Git, and npm |
-| Pi delegation | `npm:@tintinweb/pi-subagents@0.20.0` |
+| Pi MCP integration | `git:github.com/nicobailon/pi-mcp-adapter@1c7a84d489c18c69fde3d6a6503cd051133dd9a9`, Git, and npm |
+| Pi delegation | `npm:@tintinweb/pi-subagents@0.22.0` |
 | Communication Rules scanner | Python 3 standard library |
 | `diagram-design` skill | Python 3, with a browser and Playwright optional |
 | `nix` skill | Nix |

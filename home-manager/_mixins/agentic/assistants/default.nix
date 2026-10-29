@@ -608,29 +608,24 @@ let
 
   # Moltis has no slash-command surface, so selected commands deploy as
   # skills, mirroring Moltis' own importer (import-core
-  # create_skill_from_command). The allowlist projects conversational and
-  # context commands alongside the code-review and pull-request workflow
-  # commands (`review-code-colleague`, `review-code-again`,
-  # `draft-code-review`, `post-code-review`, `address-code-review`, and
-  # `make-pr`) without generated sub-agent launch wrappers. Secret commands
+  # create_skill_from_command). An entry qualifies only when its command.toml
+  # proves `caller-context = true` (the body runs in the caller's context, so
+  # no dispatch wrapper is needed) and its body assumes no native platform
+  # tooling (no Task tool, spawn_agent, gh, Slack, or Herdr references).
+  # Body inspection proved these nine: each is a conversational or context
+  # command that only references projected skills. Secret commands
   # (draft-self-review, gather-review-data, review-open-source-attestation)
-  # stay unmapped.
+  # and dispatch-bound commands stay unmapped.
   moltisCommandAllowlist = [
     "ack"
-    "address-code-review"
     "ahem"
     "ask"
     "call"
     "clarify-plan"
-    "draft-code-review"
     "gist"
     "handover-fresh"
-    "make-pr"
     "oi"
-    "post-code-review"
     "ready"
-    "review-code-again"
-    "review-code-colleague"
   ];
 
   # Render one allowlisted command as a Moltis skill. composeWithFrontmatter
