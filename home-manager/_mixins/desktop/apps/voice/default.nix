@@ -93,7 +93,6 @@ let
       "CGO"
       "Chainguard"
       "CUDA"
-      "Ebiten"
       "Ebitengine"
       "FFmpeg"
       "ffmpeg-statigo"
