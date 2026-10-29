@@ -554,15 +554,27 @@ let
         exit 1
       fi
 
-      if [[ "$1" == "--body-file" ]]; then
-        if [[ $# -lt 2 || ! -r "$2" ]]; then
-          echo "moltis-telegram-voice: --body-file requires a readable file path" >&2
-          exit 1
-        fi
-        text="$(cat "$2")"
-      else
-        text="$*"
-      fi
+      case "$1" in
+        -h | --help)
+          echo "Usage: moltis-telegram-voice <text> | --body-file <path>"
+          exit 0
+          ;;
+        --body-file)
+          if [[ $# -lt 2 || ! -r "$2" ]]; then
+            echo "moltis-telegram-voice: --body-file requires a readable file path" >&2
+            exit 1
+          fi
+          text="$(cat "$2")"
+          ;;
+        -*)
+          echo "moltis-telegram-voice: unknown option: $1" >&2
+          echo "Usage: moltis-telegram-voice <text> | --body-file <path>" >&2
+          exit 2
+          ;;
+        *)
+          text="$*"
+          ;;
+      esac
 
       if [[ -z "''${text//[[:space:]]/}" ]]; then
         echo "moltis-telegram-voice: text must not be empty" >&2
@@ -805,7 +817,11 @@ in
             skills.enable_self_improvement = false;
 
             tools = {
+              agent_timeout_secs = 3600;
+              agent_max_iterations = 100;
               exec = {
+                default_timeout_secs = 300;
+                max_timeout_secs = 1800;
                 approval_mode = "never";
                 sandbox.mode = "off";
               };

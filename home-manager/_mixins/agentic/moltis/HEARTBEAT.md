@@ -13,21 +13,24 @@ mkdir -p "$HOME/.moltis/state"
 today="$(TZ=Europe/London date +%F)"
 dow="$(TZ=Europe/London date +%u)"
 hour="$(TZ=Europe/London date +%H)"
+now="$(date +%s)"
 last="$(cat "$HOME/.moltis/state/last-maintenance-date" 2>/dev/null || true)"
-printf 'today=%s dow=%s hour=%s last=%s\n' "$today" "$dow" "$hour" "$last"
+lock_ts="$(cat "$HOME/.moltis/state/maintenance.lock" 2>/dev/null || echo 0)"
+printf 'today=%s dow=%s hour=%s now=%s last=%s lock_ts=%s\n' "$today" "$dow" "$hour" "$now" "$last" "$lock_ts"
 ```
 
-Proceed only when all three conditions hold:
+Proceed only when all four conditions hold:
 - `dow` is `@SCHEDULE_DOW@` (`@SCHEDULE_DAY_NAME@`).
 - `10#$hour >= 9`.
 - `last` does not equal `today`.
+- `now - lock_ts > 7200` (no maintenance run is already in progress from the last 2 hours).
 
 When any condition is false, reply `HEARTBEAT_OK` immediately with no other text and stop.
 
-When all three conditions hold, record the run date immediately so later 30-minute ticks on the same day return `HEARTBEAT_OK`:
+When all four conditions hold, write an in-progress lock timestamp so overlapping 30-minute ticks do not start a duplicate run while this sweep is active:
 
 ```bash
-printf '%s\n' "$today" > "$HOME/.moltis/state/last-maintenance-date"
+date +%s > "$HOME/.moltis/state/maintenance.lock"
 ```
 
 ## 2. Automated Bot and Freshener Pull Request Sweep
@@ -35,7 +38,7 @@ printf '%s\n' "$today" > "$HOME/.moltis/state/last-maintenance-date"
 List open Pull Requests (PRs) across `wimpysworld`, `linuxmatters`, and `quickemu-project`:
 
 ```bash
-gh search prs --owner wimpysworld --owner linuxmatters --owner quickemu-project --state open --json repository,number,title,author,headRefName,url --limit 100
+gh search prs --owner wimpysworld --owner linuxmatters --owner quickemu-project --state open --json repository,number,title,author,headRefName,labels,url --limit 100
 ```
 
 Filter to eligible pull requests only:
@@ -65,10 +68,12 @@ When an actionable security alert has a clear, bounded fix:
 
 Write a short conversational spoken summary (3 to 6 sentences, plain British English, no Markdown formatting, and no URLs) to a temporary file. Cover the merged pull requests, any pull requests blocked by failing Continuous Integration (CI) or awaiting human review (`roamgate`, `herdr-*`), and any security fix pull requests opened.
 
-Send the spoken summary as a Telegram voice note:
+Send the spoken summary as a Telegram voice note and record completion for today:
 
 ```bash
 moltis-telegram-voice --body-file <summary-txt-path>
+TZ=Europe/London date +%F > "$HOME/.moltis/state/last-maintenance-date"
+rm -f "$HOME/.moltis/state/maintenance.lock"
 ```
 
 Return a concise written summary with pull request and alert links as the final response of the heartbeat turn so Moltis delivers the companion text message to Telegram.
