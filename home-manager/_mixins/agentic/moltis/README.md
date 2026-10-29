@@ -34,20 +34,20 @@ The `[env]` table injects sops placeholders into the Moltis process environment 
 
 ## Projection surfaces
 
-| Destination                              | Source                                                               | Notes                                                                                                                               |
-| ---------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `~/.moltis/agents/<name>.md`             | `agents/<name>/prompt.md` + `compose.readHeader`                     | One file per coding agent, file by file. Moltis writes runtime workspaces into `~/.moltis/agents/`.                                  |
-| `~/.moltis/skills/<name>/SKILL.md`       | `compose.composeSkillsFor "moltis"`, allowlisted commands           | Skill directories with `SKILL.md`; Moltis discovers skills one level deep and never writes inside a personal skill.                 |
-| `~/.moltis/IDENTITY.md`                  | `moltis/IDENTITY_<AGENT>.md`                                         | YAML frontmatter (`name`, `emoji`, `theme`), deployed via `ownedFiles` (`kind = "file"`, mode `0600`).                             |
-| `~/.moltis/agents/main/IDENTITY.md`      | `moltis/IDENTITY_<AGENT>.md`                                         | Same identity deployed into the `main` agent workspace via `ownedFiles` so Moltis's first-run seed copy never goes stale.          |
-| `~/.moltis/AGENTS.md`                    | `moltis/AGENTS.md` + `compose.houseStyleBody`                        | Plain Markdown, no frontmatter. Deployed via `ownedFiles` (`kind = "file"`, mode `0600`).                                           |
-| `~/.moltis/agents/main/AGENTS.md`        | `moltis/AGENTS.md` + `compose.houseStyleBody`                        | Same instructions deployed into the `main` agent workspace via `ownedFiles` so Moltis's first-run seed copy never goes stale.       |
-| `~/.moltis/SOUL.md`                      | `assistant-moltis-soul` sops template (`SOUL_<AGENT>` + `SOUL_ALL`)  | Agent soul from `secrets/moltis.yaml` followed by `SOUL_ALL`, deployed via `ownedFiles` (`kind = "file"`, mode `0600`).             |
-| `~/.moltis/agents/main/SOUL.md`          | `assistant-moltis-soul` sops template (`SOUL_<AGENT>` + `SOUL_ALL`)  | Same soul deployed into the `main` agent workspace via `ownedFiles` so Moltis's first-run seed copy never goes stale.               |
-| `~/.moltis/USER.md`                      | `assistant-moltis-user` sops template (`USER` in `secrets/moltis.yaml`) | User profile deployed via `ownedFiles` (`kind = "file"`, mode `0600`).                                                              |
-| `~/.moltis/agents/main/USER.md`          | `assistant-moltis-user` sops template (`USER` in `secrets/moltis.yaml`) | Same user profile deployed into the `main` agent workspace via `ownedFiles`.                                                        |
-| `~/.moltis/HEARTBEAT.md`                 | `moltis/HEARTBEAT.md` (per-host schedule substituted)                | Weekly maintenance checklist (`skrye` Wednesday, `zannah` Saturday, `traya` Sunday), deployed via `ownedFiles` (`0600`).            |
-| `~/.moltis/agents/main/HEARTBEAT.md`     | `moltis/HEARTBEAT.md` (per-host schedule substituted)                | Same heartbeat specification deployed into the `main` agent workspace via `ownedFiles` (`kind = "file"`, mode `0600`).              |
+| Destination                          | Source                                                                  | Notes                                                                                                                           |
+| ------------------------------------ | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `~/.moltis/agents/<name>.md`         | `agents/<name>/prompt.md` + `compose.readHeader`                        | One file per coding agent, file by file. Moltis writes runtime workspaces into `~/.moltis/agents/`.                             |
+| `~/.moltis/skills/<name>/SKILL.md`   | `compose.composeSkillsFor "moltis"`, allowlisted commands               | Skill directories with `SKILL.md`; Moltis discovers skills one level deep and never writes inside a personal skill.             |
+| `~/.moltis/IDENTITY.md`              | `moltis/IDENTITY_<AGENT>.md`                                            | YAML frontmatter (`name`, `emoji`, `theme`), deployed via `ownedFiles` (`kind = "file"`, mode `0600`).                          |
+| `~/.moltis/agents/main/IDENTITY.md`  | `moltis/IDENTITY_<AGENT>.md`                                            | Same identity deployed into the `main` agent workspace via `ownedFiles` so Moltis's first-run seed copy never goes stale.       |
+| `~/.moltis/AGENTS.md`                | `moltis/AGENTS.md` + `compose.houseStyleBody`                           | Plain Markdown, no frontmatter. Defines reciprocal PR and review workflows (`ownedFiles`, mode `0600`).                         |
+| `~/.moltis/agents/main/AGENTS.md`    | `moltis/AGENTS.md` + `compose.houseStyleBody`                           | Same instructions deployed into the `main` agent workspace via `ownedFiles` so Moltis's first-run seed copy never goes stale.   |
+| `~/.moltis/SOUL.md`                  | `assistant-moltis-soul` sops template (`SOUL_<AGENT>` + `SOUL_ALL`)     | Agent soul from `secrets/moltis.yaml` followed by `SOUL_ALL`, deployed via `ownedFiles` (`kind = "file"`, mode `0600`).         |
+| `~/.moltis/agents/main/SOUL.md`      | `assistant-moltis-soul` sops template (`SOUL_<AGENT>` + `SOUL_ALL`)     | Same soul deployed into the `main` agent workspace via `ownedFiles` so Moltis's first-run seed copy never goes stale.           |
+| `~/.moltis/USER.md`                  | `assistant-moltis-user` sops template (`USER` in `secrets/moltis.yaml`) | User profile deployed via `ownedFiles` (`kind = "file"`, mode `0600`).                                                          |
+| `~/.moltis/agents/main/USER.md`      | `assistant-moltis-user` sops template (`USER` in `secrets/moltis.yaml`) | Same user profile deployed into the `main` agent workspace via `ownedFiles`.                                                    |
+| `~/.moltis/HEARTBEAT.md`             | `moltis/HEARTBEAT.md` (per-host schedule substituted)                   | 30-minute GitHub notification inbox triage plus weekly maintenance sweep (`skrye` Wednesday, `zannah` Saturday, `traya` Sunday). |
+| `~/.moltis/agents/main/HEARTBEAT.md` | `moltis/HEARTBEAT.md` (per-host schedule substituted)                   | Same heartbeat specification deployed into the `main` agent workspace via `ownedFiles` (`kind = "file"`, mode `0600`).          |
 
 Agent frontmatter is `name` and `theme`; Moltis has no `description` field, so `theme` carries the agent description (Moltis `AgentFrontmatter`, `crates/config/src/agent_defs.rs`). The body becomes the preset's `system_prompt_suffix`.
 
@@ -55,25 +55,28 @@ Moltis's `read_skill` tool (`crates/tools/src/skill_tools/read_ops.rs`) rejects 
 
 ## Command allowlist
 
-Moltis has no slash-command surface. Its importer models a command as a skill (`create_skill_from_command`, `crates/import-core/src/skills.rs`), so selected commands deploy as skills under `~/.moltis/skills/`. An entry qualifies only when its `command.toml` proves `caller-context = true` and its body assumes no native platform tooling. The allowlist (`moltisCommandAllowlist` in `../assistants/default.nix`):
+Moltis has no slash-command surface. Its importer models a command as a skill (`create_skill_from_command`, `crates/import-core/src/skills.rs`), so selected commands deploy as skills under `~/.moltis/skills/` without generated launch wrappers. The allowlist (`moltisCommandAllowlist` in `../assistants/default.nix`) includes conversational, context, code-review, and pull-request workflow commands:
 
 - `ack` - acknowledge feedback, conversational
+- `address-code-review` - judge review feedback, fix or decline findings, reply, and resolve threads
 - `ahem` - correct the last response, conversational
 - `ask` - answer a question in the caller's context
 - `call` - name a called agent, context-only
 - `clarify-plan` - question a plan draft, conversational
+- `draft-code-review` - draft a concise GitHub review comment from a completed review report
 - `gist` - rewrite the previous response concisely
 - `handover-fresh` - handover to a fresh session, context-only
+- `make-pr` - draft and open a pull request
 - `oi` - draw attention to the current work, conversational
+- `post-code-review` - post an approve or comment review to a pull request
 - `ready` - session priming prompt, context-only
-
-Each command runs in the caller's context, so no dispatch wrapper is needed, and Moltis provides no native tooling for the body to lean on.
+- `review-code-again` - run a follow-up code review (`review-code-follow-up`)
+- `review-code-colleague` - run a defect-only colleague code review (`review-code`)
 
 ## Not mapped
 
 - **Secret commands**: `draft-self-review`, `gather-review-data`, `review-open-source-attestation`. Their bodies are sops-encrypted (`command.sops`) and never enter the Nix store, so they cannot be rendered as skills.
-- **Dispatch-bound commands**: any command with `[compose] agent` set and `caller-context` unset (`agent = "..."` without `caller-context = true`, for example `draft-*`, `create-*`, `post-*`, `review-*`, `work-order-*`, `make-commit`, `make-pr`). Their bodies assume native Task, Agent, or `spawn_agent` tooling that Moltis does not project.
-- **Desktop and CI commands**: commands that assume an interactive desktop or CI context, for example `babysit-pr`, `finish-pr`, `address-code-review`, `implement-task`, and `implement-plan`.
+- **Unlisted dispatch-bound and desktop commands**: commands outside `moltisCommandAllowlist` (for example `babysit-pr`, `finish-pr`, `implement-task`, `implement-plan`, `work-order-*`) stay unmapped.
 
 ## Preset naming rule
 
