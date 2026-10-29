@@ -142,25 +142,40 @@ def is_github_actions:
     or ((.headRefName // "") | startswith("freshen/"))
   );
 
-def touches_sensitive_package:
-  any(
+def touches_sensitive_package($owner; $repo):
+  (($owner | ascii_downcase) == "wimpysworld" and ($repo | ascii_downcase) == "nix-config")
+  and any(
     (.files // [])[];
     .changeType == "RENAMED"
     or ((.path // "") | test("^pkgs/(herdr-ctx-bar|herdr-disp-model|roamgate)/"))
   );
 
-def is_trusted_peer:
-  .author.login == "flexiondotorg"
-  or .author.login == "sith-skrye"
-  or .author.login == "sith-traya"
-  or .author.login == "sith-zannah";
+def has_freshener_labels:
+  ((.labels // []) | map(.name)) | (contains(["automated"]) and contains(["dependencies"]));
+
+def is_trusted_peer($owner; $repo):
+  (
+    .author.login == "flexiondotorg"
+    or .author.login == "sith-skrye"
+    or .author.login == "sith-traya"
+    or .author.login == "sith-zannah"
+  )
+  and (
+    (
+      ($owner | ascii_downcase) == "wimpysworld"
+      and ($repo | ascii_downcase) == "nix-config"
+      and .author.login == "flexiondotorg"
+      and has_freshener_labels
+    )
+    | not
+  );
 
 def is_freshener($owner; $repo):
   (($owner | ascii_downcase) == "wimpysworld" and ($repo | ascii_downcase) == "nix-config")
   and (.author.login == "flexiondotorg")
-  and (((.labels // []) | map(.name)) | (contains(["automated"]) and contains(["dependencies"])))
+  and has_freshener_labels
   and ((.headRefName // "") | test("^(chainctl|claude-themes-catppuccin|defold|handy|lan-mouse|manuscript|moltis|openusage|weave|wolfictl|yam)-[0-9A-Za-z._-]+$"))
-  and (touches_sensitive_package | not)
+  and (touches_sensitive_package($owner; $repo) | not)
   and (((.files // []) | length) > 0)
   and all(
     (.files // [])[];
@@ -170,33 +185,33 @@ def is_freshener($owner; $repo):
   );
 
 if type != "object" or ((.number | tostring) != $pr_number) then
-  "ERR\tresponse did not identify pull request #" + $pr_number
+  "ERR\u001fresponse did not identify pull request #" + $pr_number
 elif .state != "OPEN" then
-  "ERR\tpull request #" + $pr_number + " is not OPEN (state=" + (.state // "UNKNOWN") + ")"
+  "ERR\u001fpull request #" + $pr_number + " is not OPEN (state=" + (.state // "UNKNOWN") + ")"
 elif .isDraft != false then
-  "ERR\tpull request #" + $pr_number + " is a draft"
+  "ERR\u001fpull request #" + $pr_number + " is a draft"
 elif (.isCrossRepository != false) or (((.headRepositoryOwner.login // "") | ascii_downcase) != ($owner | ascii_downcase)) then
-  "ERR\tpull request #" + $pr_number + " is a fork or cross-repository pull request (isCrossRepository=" + (.isCrossRepository | tostring) + ", headRepositoryOwner=" + (.headRepositoryOwner.login // "UNKNOWN") + ")"
+  "ERR\u001fpull request #" + $pr_number + " is a fork or cross-repository pull request (isCrossRepository=" + (.isCrossRepository | tostring) + ", headRepositoryOwner=" + (.headRepositoryOwner.login // "UNKNOWN") + ")"
 elif .mergeable != "MERGEABLE" then
-  "ERR\tpull request #" + $pr_number + " is not mergeable (mergeable=" + (.mergeable // "UNKNOWN") + ")"
+  "ERR\u001fpull request #" + $pr_number + " is not mergeable (mergeable=" + (.mergeable // "UNKNOWN") + ")"
 elif ((.changedFiles // ((.files // []) | length)) > ((.files // []) | length)) then
-  "ERR\tpull request #" + $pr_number + " changed file list is incomplete (changedFiles=" + (.changedFiles | tostring) + ", files=" + (((.files // []) | length) | tostring) + ")"
+  "ERR\u001fpull request #" + $pr_number + " changed file list is incomplete (changedFiles=" + (.changedFiles | tostring) + ", files=" + (((.files // []) | length) | tostring) + ")"
 elif ((.statusCheckRollup // []) | length) == 0 then
-  "ERR\tpull request #" + $pr_number + " has no statusCheckRollup entries (CI checks are missing or have not registered yet)"
+  "ERR\u001fpull request #" + $pr_number + " has no statusCheckRollup entries (CI checks are missing or have not registered yet)"
 else
   ([(.statusCheckRollup // [])[] | select(check_ok | not) | check_label]) as $bad_checks
   | if ($bad_checks | length) > 0 then
-      "ERR\tpull request #" + $pr_number + " has failing or pending status checks: " + ($bad_checks | join(", "))
+      "ERR\u001fpull request #" + $pr_number + " has failing or pending status checks: " + ($bad_checks | join(", "))
     elif is_dependabot then
-      ["OK", "dependabot", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package | tostring)] | @tsv
+      ["OK", "dependabot", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package($owner; $repo) | tostring)] | join("\u001f")
     elif is_github_actions then
-      ["OK", "github-actions", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package | tostring)] | @tsv
+      ["OK", "github-actions", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package($owner; $repo) | tostring)] | join("\u001f")
     elif is_freshener($owner; $repo) then
-      ["OK", "freshener", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package | tostring)] | @tsv
-    elif is_trusted_peer then
-      ["OK", "trusted-peer", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package | tostring)] | @tsv
+      ["OK", "freshener", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package($owner; $repo) | tostring)] | join("\u001f")
+    elif is_trusted_peer($owner; $repo) then
+      ["OK", "trusted-peer", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package($owner; $repo) | tostring)] | join("\u001f")
     else
-      "ERR\tpull request #" + $pr_number + " (author=" + (.author.login // "UNKNOWN") + ", headRefName=" + (.headRefName // "UNKNOWN") + ") does not match any permitted PR policy"
+      "ERR\u001fpull request #" + $pr_number + " (author=" + (.author.login // "UNKNOWN") + ", headRefName=" + (.headRefName // "UNKNOWN") + ") does not match any permitted PR policy"
     end
 end
 '
@@ -214,7 +229,7 @@ if [[ ${jq_status} -ne 0 ]]; then
 	exit "${jq_status}"
 fi
 
-IFS=$'\t' read -r verdict field1 field2 field3 field4 field5 <<<"${verify_out}"
+IFS=$'\x1f' read -r verdict field1 field2 field3 field4 field5 <<<"${verify_out}"
 if [[ ${verdict} != "OK" ]]; then
 	die "${field1:-verification failed}"
 fi
@@ -249,11 +264,17 @@ if [[ ${pr_class} == "trusted-peer" ]]; then
   repository(owner: $owner, name: $repo) {
     pullRequest(number: $pr) {
       reviewThreads(first: 100) {
+        pageInfo {
+          hasNextPage
+        }
         nodes {
           isResolved
         }
       }
       latestOpinionatedReviews(first: 50) {
+        pageInfo {
+          hasNextPage
+        }
         nodes {
           author {
             login
@@ -275,7 +296,9 @@ def is_trusted_peer_login($login):
 
 (.data.repository.pullRequest // null) as $pr
 | if ($pr | type) != "object" then
-    "ERR\tGraphQL response did not identify pull request #" + $pr_number
+    "ERR\u001fGraphQL response did not identify pull request #" + $pr_number
+  elif ($pr.reviewThreads.pageInfo.hasNextPage == true) or ($pr.latestOpinionatedReviews.pageInfo.hasNextPage == true) then
+    "ERR\u001fpull request #" + $pr_number + " has more than 100 review threads or 50 opinionated reviews; refusing automated merge"
   else
     ([($pr.reviewThreads.nodes // [])[] | select(.isResolved != true)] | length) as $unresolved
     | ($pr.latestOpinionatedReviews.nodes // []) as $reviews
@@ -292,15 +315,15 @@ def is_trusted_peer_login($login):
         and (.author.login // "") == "flexiondotorg"
       ) as $has_flexion_approval
     | if $unresolved > 0 then
-        "ERR\tpull request #" + $pr_number + " has " + ($unresolved | tostring) + " unresolved review thread(s)"
+        "ERR\u001fpull request #" + $pr_number + " has " + ($unresolved | tostring) + " unresolved review thread(s)"
       elif ($review_decision == "CHANGES_REQUESTED") or $changes_requested then
-        "ERR\tpull request #" + $pr_number + " has a review requesting changes"
+        "ERR\u001fpull request #" + $pr_number + " has a review requesting changes"
       elif ($touches_sensitive == "true") and ($author_login != "flexiondotorg") and ($has_flexion_approval | not) then
-        "ERR\tpull request #" + $pr_number + " touches a sensitive package and requires flexiondotorg as author or approver"
+        "ERR\u001fpull request #" + $pr_number + " touches a sensitive package and requires flexiondotorg as author or approver"
       elif ($viewer == $author_login) and ($has_peer_approval | not) then
-        "ERR\tpull request #" + $pr_number + " authored by " + $viewer + " requires an APPROVED review from another trusted peer before merging"
+        "ERR\u001fpull request #" + $pr_number + " authored by " + $viewer + " requires an APPROVED review from another trusted peer before merging"
       else
-        ["OK", ($has_peer_approval | tostring)] | @tsv
+        ["OK", ($has_peer_approval | tostring)] | join("\u001f")
       end
   end
 '
@@ -333,7 +356,7 @@ def is_trusted_peer_login($login):
 		exit "${peer_jq_status}"
 	fi
 
-	IFS=$'\t' read -r peer_verdict peer_field1 <<<"${peer_verify_out}"
+	IFS=$'\x1f' read -r peer_verdict peer_field1 <<<"${peer_verify_out}"
 	if [[ ${peer_verdict} != "OK" ]]; then
 		die "${peer_field1:-trusted-peer verification failed}"
 	fi

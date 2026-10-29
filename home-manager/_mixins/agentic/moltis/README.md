@@ -55,28 +55,25 @@ Moltis's `read_skill` tool (`crates/tools/src/skill_tools/read_ops.rs`) rejects 
 
 ## Command allowlist
 
-Moltis has no slash-command surface. Its importer models a command as a skill (`create_skill_from_command`, `crates/import-core/src/skills.rs`), so selected commands deploy as skills under `~/.moltis/skills/` without generated launch wrappers. The allowlist (`moltisCommandAllowlist` in `../assistants/default.nix`) includes conversational, context, code-review, and pull-request workflow commands:
+Moltis has no slash-command surface. Its importer models a command as a skill (`create_skill_from_command`, `crates/import-core/src/skills.rs`), so selected commands deploy as skills under `~/.moltis/skills/`. An entry qualifies only when its `command.toml` proves `caller-context = true` and its body assumes no native platform tooling. The allowlist (`moltisCommandAllowlist` in `../assistants/default.nix`):
 
 - `ack` - acknowledge feedback, conversational
-- `address-code-review` - judge review feedback, fix or decline findings, reply, and resolve threads
 - `ahem` - correct the last response, conversational
 - `ask` - answer a question in the caller's context
 - `call` - name a called agent, context-only
 - `clarify-plan` - question a plan draft, conversational
-- `draft-code-review` - draft a concise GitHub review comment from a completed review report
 - `gist` - rewrite the previous response concisely
 - `handover-fresh` - handover to a fresh session, context-only
-- `make-pr` - draft and open a pull request
 - `oi` - draw attention to the current work, conversational
-- `post-code-review` - post an approve or comment review to a pull request
 - `ready` - session priming prompt, context-only
-- `review-code-again` - run a follow-up code review (`review-code-follow-up`)
-- `review-code-colleague` - run a defect-only colleague code review (`review-code`)
+
+Each command runs in the caller's context, so no dispatch wrapper is needed, and Moltis provides no native tooling for the body to lean on.
 
 ## Not mapped
 
 - **Secret commands**: `draft-self-review`, `gather-review-data`, `review-open-source-attestation`. Their bodies are sops-encrypted (`command.sops`) and never enter the Nix store, so they cannot be rendered as skills.
-- **Unlisted dispatch-bound and desktop commands**: commands outside `moltisCommandAllowlist` (for example `babysit-pr`, `finish-pr`, `implement-task`, `implement-plan`, `work-order-*`) stay unmapped.
+- **Dispatch-bound commands**: any command with `[compose] agent` set and `caller-context` unset (`agent = "..."` without `caller-context = true`, for example `draft-*`, `create-*`, `post-*`, `review-*`, `work-order-*`, `make-commit`, `make-pr`). Their bodies assume native Task, Agent, or `spawn_agent` tooling that Moltis does not project.
+- **Desktop and CI commands**: commands that assume an interactive desktop or CI context, for example `babysit-pr`, `finish-pr`, `address-code-review`, `implement-task`, and `implement-plan`.
 
 ## Preset naming rule
 

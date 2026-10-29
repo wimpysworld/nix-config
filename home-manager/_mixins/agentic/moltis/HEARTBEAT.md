@@ -23,7 +23,7 @@ When `now - lock_ts <= 7200`, another maintenance run is active from the last 2 
 
 ## Step 2 - GitHub Notification Inbox Triage (Runs on Every Tick)
 
-Query unread notifications with `gh-api-safe 'notifications?all=false&per_page=50'`.
+Query unread notifications with `gh-api-safe notifications --paginate`.
 
 Filter to notifications on repositories that are owned by `wimpysworld`, `linuxmatters`, `quickemu-project`, `noughtylinux`, `oval-tutu`, or `flexiondotorg`.
 
@@ -32,10 +32,10 @@ For each unread `PullRequest` notification:
 1. Inspect the pull request with `gh pr view <pr-url> --json number,state,isDraft,author,headRefName,headRefOid,mergeable,mergeStateStatus,statusCheckRollup,reviewDecision,reviews,comments,url` and query its GraphQL `reviewThreads` with `gh-api-safe graphql`.
 2. Ignore and dismiss (`gh-notification-dismiss <thread-id>`) notifications on closed or merged pull requests, or pull requests that are triggered by untrusted external accounts. Trusted actors are `flexiondotorg`, `sith-skrye`, `sith-zannah`, `sith-traya`, `app/dependabot`, `dependabot[bot]`, `app/github-actions`, `github-actions[bot]`, and `cubic-dev-ai[bot]`.
 3. **Case A - Pull request authored by you (`author.login == viewer`) has new review feedback**:
-   Load `address-code-review`. Fix valid findings in `~/Volatile/maintenance/<owner>/<repo>`, verify that tests pass, push with `git push origin <branch>`, reply with `gh-review-reply <comment-url> --body-file <file>` tagging `@<reviewer>`, resolve fixed or declined bot threads with `gh-review-resolve <thread-id>`, and request a new review with `gh pr edit <pr-url> --add-reviewer <reviewer>`. Then run `gh-notification-dismiss <thread-id>`.
+   Load the `gh`, `contribution-voice`, and `communication-rules` skills. Fix valid findings in `~/Volatile/maintenance/<owner>/<repo>`, verify that tests pass, push with `git push origin <branch>`, reply with `gh-review-reply <comment-url> --body-file <file>` tagging `@<reviewer>`, resolve fixed or declined bot threads with `gh-review-resolve <review-comment-url>`, and request a new review with `gh pr edit <pr-url> --add-reviewer <reviewer>`. Then run `gh-notification-dismiss <thread-id>`.
 4. **Case B - Pull request authored by `flexiondotorg` or a peer (`sith-*`) needs initial or follow-up review**:
-   When you have not reviewed the pull request yet, run a colleague review with the `review-code-colleague` and `review-code` skills. When you reviewed an earlier commit and new commits or replies arrived, run a follow-up review with the `review-code-again` and `review-code-follow-up` skills. Post the review with `gh pr review <pr-url> --approve --body-file <file>` or `gh pr review <pr-url> --comment --body-file <file>`. When the pull request is approved, Continuous Integration (CI) is green, and zero unresolved review threads remain, merge the pull request with `gh-bot-merge <pr-url>`. Then run `gh-notification-dismiss <thread-id>`.
-5. **Case C - Approved pull request from `flexiondotorg`, `sith-*`, `dependabot[bot]`, `github-actions[bot]`, or Freshener is green and ready to merge**:
+   When you have not reviewed the pull request yet, run a colleague review with the `review-code`, `contribution-voice`, and `communication-rules` skills. When you reviewed an earlier commit and new commits or replies arrived, run a follow-up review with the `review-code-follow-up`, `contribution-voice`, and `communication-rules` skills. Post the review with `gh pr review <pr-url> --approve --body-file <file>` or `gh pr review <pr-url> --comment --body-file <file>`. When the pull request is approved, Continuous Integration (CI) is green, and zero unresolved review threads remain, merge the pull request with `gh-bot-merge <pr-url>`. Run `gh-notification-dismiss <thread-id>` only after `gh-bot-merge <pr-url>` succeeds or after posting a comment review that awaits author changes. When you approve a pull request whose CI checks are still pending, keep the notification unread so Case C can merge it on a later tick.
+5. **Case C - Approved pull request from `flexiondotorg`, `sith-*`, `dependabot[bot]`, `github-actions[bot]`, or `wimpysworld/nix-config` Freshener (excluding `herdr-ctx-bar`, `herdr-disp-model`, and `roamgate`, which require human review) is green, has zero unresolved review threads, and is ready to merge**:
    Merge the pull request with `gh-bot-merge <pr-url>` and run `gh-notification-dismiss <thread-id>`.
 
 ## Step 3 - Scheduled Weekly Organisation Sweep (`@SCHEDULE_DAY_NAME@` Only)

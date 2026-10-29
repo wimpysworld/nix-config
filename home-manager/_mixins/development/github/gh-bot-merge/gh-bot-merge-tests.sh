@@ -108,11 +108,17 @@ write_graphql_json() {
 				repository: {
 					pullRequest: {
 						reviewThreads: {
+							pageInfo: {
+								hasNextPage: false
+							},
 							nodes: [
 								{ isResolved: true }
 							]
 						},
 						latestOpinionatedReviews: {
+							pageInfo: {
+								hasNextPage: false
+							},
 							nodes: []
 						}
 					}
@@ -320,13 +326,15 @@ for blocked_pkg in roamgate herdr-ctx-bar herdr-disp-model; do
 	reset_stub
 	write_pr_json wimpysworld 'flexiondotorg' "${blocked_pkg}-0.2.0" \
 		'.files = [{path: ("pkgs/" + "'"${blocked_pkg}"'" + "/default.nix")}]'
-	assert_pr_rejected "reject automerge: false package ${blocked_pkg}" "${url_ww}" 'requires an APPROVED review from another trusted peer'
+	GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
+		"reject automerge: false package ${blocked_pkg} even when reviewed by peer" "${url_ww}" 'does not match'
 done
 
 reset_stub
 write_pr_json wimpysworld 'flexiondotorg' 'handy-1' \
 	'.files = [{path: "pkgs/roamgate/default.nix"}]'
-assert_pr_rejected 'reject allowed freshener branch touching sensitive package' "${url_ww}" 'requires an APPROVED review from another trusted peer'
+GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
+	'reject allowed freshener branch touching sensitive package' "${url_ww}" 'does not match'
 
 reset_stub
 write_pr_json wimpysworld 'flexiondotorg' 'chainctl-0.2.391' \
@@ -342,14 +350,15 @@ assert_pr_rejected 'reject freshener PR missing automated label' "${url_ww}" 're
 reset_stub
 write_pr_json wimpysworld 'flexiondotorg' 'chainctl-0.2.391' \
 	'.files = [{path: "pkgs/chainctl/default.nix"}, {path: ".github/workflows/freshener.yml"}]'
-assert_pr_rejected 'reject freshener PR touching workflow file' "${url_ww}" 'requires an APPROVED review from another trusted peer'
+GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
+	'reject freshener PR touching workflow file' "${url_ww}" 'does not match'
 
 # 5. Trusted-peer policy: reviewThreads, latestOpinionatedReviews, peer review, and sensitive packages
 for peer_case in 'flexiondotorg:sith-zannah' 'sith-skrye:sith-zannah' 'sith-traya:sith-skrye' 'sith-zannah:sith-traya'; do
 	author="${peer_case%%:*}"
 	viewer="${peer_case##*:}"
 	reset_stub
-	write_pr_json wimpysworld "${author}" "feat/${author}-change" '.files = [{path: "src/main.rs"}]'
+	write_pr_json wimpysworld "${author}" "feat/${author}-change" '.labels = [] | .files = [{path: "src/main.rs"}]'
 	GH_STUB_VIEWER="${viewer}" run_helper --dry-run "${url_ww}"
 	if [[ ${status} -ne 0 ]]; then
 		fail "trusted-peer dry-run ${author} reviewed by ${viewer}" "status ${status}: ${stderr}"
@@ -364,7 +373,7 @@ done
 
 for author in flexiondotorg sith-skrye; do
 	reset_stub
-	write_pr_json wimpysworld "${author}" "feat/${author}-merge" '.files = [{path: "src/main.rs"}]'
+	write_pr_json wimpysworld "${author}" "feat/${author}-merge" '.labels = [] | .files = [{path: "src/main.rs"}]'
 	GH_STUB_VIEWER=sith-zannah run_helper "${url_ww}"
 	if [[ ${status} -ne 0 ]]; then
 		fail "sith-zannah merges trusted-peer PR by ${author}" "status ${status}: ${stderr}"
@@ -392,6 +401,20 @@ write_pr_json wimpysworld 'sith-skrye' 'fix/unresolved-thread' '.files = [{path:
 write_graphql_json '.data.repository.pullRequest.reviewThreads.nodes = [{isResolved: true}, {isResolved: false}]'
 GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
 	'reject trusted-peer PR with unresolved review thread' "${url_ww}" 'has 1 unresolved review thread(s)'
+
+reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/too-many-threads' '.files = [{path: "Cargo.lock"}]'
+write_graphql_json '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage = true'
+GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
+	'reject trusted-peer PR when reviewThreads hasNextPage is true' "${url_ww}" \
+	'more than 100 review threads or 50 opinionated reviews'
+
+reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/too-many-reviews' '.files = [{path: "Cargo.lock"}]'
+write_graphql_json '.data.repository.pullRequest.latestOpinionatedReviews.pageInfo.hasNextPage = true'
+GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
+	'reject trusted-peer PR when latestOpinionatedReviews hasNextPage is true' "${url_ww}" \
+	'more than 100 review threads or 50 opinionated reviews'
 
 reset_stub
 write_pr_json wimpysworld 'sith-skrye' 'fix/changes-requested' '.files = [{path: "Cargo.lock"}]'
@@ -431,6 +454,12 @@ for blocked_pkg in roamgate herdr-ctx-bar herdr-disp-model; do
 done
 
 reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/roamgate-empty-review-decision' \
+	'.files = [{path: "pkgs/roamgate/default.nix"}] | .reviewDecision = ""'
+GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
+	'reject trusted-peer sensitive package PR when reviewDecision is empty' "${url_ww}" 'sensitive package'
+
+reset_stub
 write_pr_json wimpysworld 'sith-skrye' 'fix/roamgate-approved-by-flexion' \
 	'.files = [{path: "pkgs/roamgate/default.nix"}] | .reviewDecision = "APPROVED"'
 write_graphql_json '.data.repository.pullRequest.latestOpinionatedReviews.nodes = [{author: {login: "flexiondotorg"}, state: "APPROVED"}]'
@@ -445,7 +474,17 @@ reset_stub
 write_pr_json wimpysworld 'sith-skrye' 'fix/rename-sensitive-package' \
 	'.files = [{path: "pkgs/allowed-package/default.nix", changeType: "RENAMED"}]'
 GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
-	'reject trusted-peer rename with unavailable previous path' "${url_ww}" 'sensitive package'
+	'reject trusted-peer rename with unavailable previous path on nix-config' "${url_ww}" 'sensitive package'
+
+reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/rename-other-repo' \
+	'.files = [{path: "src/new_name.rs", changeType: "RENAMED"}]'
+GH_STUB_VIEWER=sith-zannah run_helper --dry-run 'https://github.com/wimpysworld/nyala/pull/42'
+if [[ ${status} -ne 0 ]]; then
+	fail 'accept trusted-peer rename outside wimpysworld/nix-config' "status ${status}: ${stderr}"
+else
+	pass 'accept trusted-peer rename outside wimpysworld/nix-config'
+fi
 
 reset_stub
 write_pr_json wimpysworld 'sith-skrye' 'fix/large-change' \
