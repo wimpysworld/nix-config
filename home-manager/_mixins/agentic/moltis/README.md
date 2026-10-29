@@ -72,8 +72,8 @@ Each command runs in the caller's context, so no dispatch wrapper is needed, and
 ## Not mapped
 
 - **Secret commands**: `draft-self-review`, `gather-review-data`, `review-open-source-attestation`. Their bodies are sops-encrypted (`command.sops`) and never enter the Nix store, so they cannot be rendered as skills.
-- **Dispatch-bound commands**: any command with `[compose] agent` set and `caller-context` unset (`agent = "..."` without `caller-context = true`, for example `draft-*`, `create-*`, `post-*`, `review-*`, `work-order-*`, `make-commit`, `make-pr`). Their bodies assume native Task, Agent, or `spawn_agent` tooling that Moltis does not project.
-- **Desktop and CI commands**: commands that assume an interactive desktop or CI context, for example `babysit-pr`, `finish-pr`, `address-code-review`, `implement-task`, and `implement-plan`.
+- **Dispatch-bound commands**: any command with `[compose] agent` set and `caller-context` unset (`agent = "..."` without `caller-context = true`, for example `draft-*`, `create-*`, `post-*`, `review-*`, `work-order-*`). Their bodies assume native Task or Agent sub-agent dispatch wrappers that Moltis does not project.
+- **Git, GitHub, and interactive workflow commands**: commands whose bodies reference Git, `gh`, Slack, Herdr, or interactive desktop/CI workflows (for example `make-commit`, `make-pr`, `babysit-pr`, `finish-pr`, `address-code-review`, `implement-task`, and `implement-plan`) stay out of `moltisCommandAllowlist`; Moltis uses the projected `gh`, `review-code`, and `review-code-follow-up` skills instead.
 
 ## Preset naming rule
 

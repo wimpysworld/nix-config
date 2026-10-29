@@ -345,7 +345,8 @@ assert_pr_rejected 'reject freshener PR outside wimpysworld/nix-config' \
 reset_stub
 write_pr_json wimpysworld 'flexiondotorg' 'chainctl-0.2.391' \
 	'.labels = [{name: "dependencies"}] | .files = [{path: "pkgs/chainctl/default.nix"}]'
-assert_pr_rejected 'reject freshener PR missing automated label' "${url_ww}" 'requires an APPROVED review from another trusted peer'
+GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
+	'reject freshener PR missing automated label' "${url_ww}" 'does not match'
 
 reset_stub
 write_pr_json wimpysworld 'flexiondotorg' 'chainctl-0.2.391' \
