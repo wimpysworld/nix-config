@@ -15,6 +15,13 @@ let
   username = config.noughty.user.name;
   homeDir = config.home.homeDirectory;
   agentName = if host.name == "malak" then "traya" else host.name;
+  agentDisplayName =
+    if agentName == "zannah" then
+      "Zannah"
+    else if agentName == "traya" then
+      "Traya"
+    else
+      "Skrye";
 
   moltisSopsFile = ../../../../secrets/moltis.yaml;
   aiSopsFile = ../../../../secrets/ai.yaml;
@@ -31,6 +38,8 @@ let
   googleSttModel = "gemini-3.8-flash";
   ttsShimPort = 13139;
   geminiKeyPath = config.sops.secrets.GEMINI_API_KEY.path;
+  ghTokenPath = config.sops.secrets.GH_TOKEN.path;
+  gitAuthorEmailPath = config.sops.secrets.GIT_AUTHOR_EMAIL.path;
   sshKeyPath = config.sops.secrets.ssh_key.path;
 
   # Environment variables the composed `moltis.toml` references, mapped to
@@ -38,6 +47,8 @@ let
   moltisSecretSopsFiles = {
     TELEGRAM_BOT_TOKEN = moltisSopsFile;
     TELEGRAM_ALLOWED_USERS = moltisSopsFile;
+    GH_TOKEN = moltisSopsFile;
+    GIT_AUTHOR_EMAIL = moltisSopsFile;
     GEMINI_API_KEY = aiSopsFile;
     CONTEXT7_API_KEY = mcpSopsFile;
     LINEAR_API_KEY = linearSopsFile;
@@ -59,6 +70,18 @@ let
       {
         sopsFile = moltisSopsFile;
         key = "TELEGRAM_OPERATOR_IDS";
+      }
+    else if name == "GH_TOKEN" then
+      {
+        sopsFile = moltisSopsFile;
+        key = "GITHUB_TOKEN_${lib.toUpper agentName}";
+        mode = "0400";
+      }
+    else if name == "GIT_AUTHOR_EMAIL" then
+      {
+        sopsFile = moltisSopsFile;
+        key = "GITHUB_EMAIL_${lib.toUpper agentName}";
+        mode = "0400";
       }
     else if name == "GEMINI_API_KEY" then
       {
@@ -594,10 +617,32 @@ let
       (pkgs.writeShellScriptBin "dcg" "exit 0")
       moltisTelegramVoice
       pkgs.ffmpeg-headless
+      pkgs.gh
+      pkgs.git
       pkgs.python3
       pkgs.sqlite
     ];
     text = ''
+      export GH_TOKEN
+      GH_TOKEN="$(< "${ghTokenPath}")"
+      export GIT_AUTHOR_NAME=${lib.escapeShellArg agentDisplayName}
+      export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"
+      export GIT_AUTHOR_EMAIL
+      GIT_AUTHOR_EMAIL="$(< "${gitAuthorEmailPath}")"
+      export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
+
+      export GIT_CONFIG_COUNT=5
+      export GIT_CONFIG_KEY_0="commit.gpgSign"
+      export GIT_CONFIG_VALUE_0="false"
+      export GIT_CONFIG_KEY_1="tag.gpgSign"
+      export GIT_CONFIG_VALUE_1="false"
+      export GIT_CONFIG_KEY_2="credential.https://github.com.helper"
+      export GIT_CONFIG_VALUE_2="!${lib.getExe pkgs.gh} auth git-credential"
+      export GIT_CONFIG_KEY_3="url.https://github.com/.insteadOf"
+      export GIT_CONFIG_VALUE_3="git@github.com:"
+      export GIT_CONFIG_KEY_4="url.https://github.com/.insteadOf"
+      export GIT_CONFIG_VALUE_4="ssh://git@github.com/"
+
       mkdir -p "$HOME/.moltis"
       printf '["dcg-guard"]\n' > "$HOME/.moltis/disabled_hooks.json"
       touch "$HOME/.moltis/.onboarded"
@@ -622,12 +667,12 @@ let
       for _ in {1..20}; do
         [[ -r "${
           config.sops.templates."moltis.toml".path
-        }" && -r "${geminiKeyPath}" && -e "${sshKeyPath}" ]] && break
+        }" && -r "${geminiKeyPath}" && -r "${ghTokenPath}" && -r "${gitAuthorEmailPath}" && -e "${sshKeyPath}" ]] && break
         sleep 0.5
       done
       if [[ ! -r "${
         config.sops.templates."moltis.toml".path
-      }" || ! -r "${geminiKeyPath}" || ! -e "${sshKeyPath}" ]]; then
+      }" || ! -r "${geminiKeyPath}" || ! -r "${ghTokenPath}" || ! -r "${gitAuthorEmailPath}" || ! -e "${sshKeyPath}" ]]; then
         echo "moltis-fenced: timed out waiting for sops-nix secrets" >&2
         exit 1
       fi
