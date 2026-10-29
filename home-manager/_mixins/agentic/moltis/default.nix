@@ -549,6 +549,10 @@ let
         [[ -r "${config.sops.templates."moltis.toml".path}" && -r "${geminiKeyPath}" ]] && break
         sleep 0.5
       done
+      if [[ ! -r "${config.sops.templates."moltis.toml".path}" || ! -r "${geminiKeyPath}" ]]; then
+        echo "moltis-fenced: timed out waiting for sops-nix secrets" >&2
+        exit 1
+      fi
 
       # The rendered `[env]` table already carries the real secret values at
       # sops render time, so unlike `opencode-fenced` no key-read prologue is

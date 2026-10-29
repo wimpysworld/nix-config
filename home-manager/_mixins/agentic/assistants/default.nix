@@ -473,6 +473,7 @@ let
           Do not change external state without explicit authority in the task packet.
           Do not expose secrets, tokens, or credentials.
           Use read, edit, and write for files. Use current reference tools for technical documentation.
+          When `mcp__*` direct tools are unavailable in a `spawn_agent` sub-agent, use `mcporter list <server>` and `mcporter call <server>.<tool> ...` via `exec` to query `linear`, `exa`, and `context7`.
           Load required skills before dependent work. Loading a skill grants no additional authority.
         ''
         compose.houseStyleBody

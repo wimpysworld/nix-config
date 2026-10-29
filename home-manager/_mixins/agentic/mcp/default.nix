@@ -27,8 +27,15 @@ let
   isMartin = noughtyLib.isUser [ "martin" ];
   moltisMcpEnabled = isMartin && host.is.linux && noughtyLib.hostHasTag "moltis";
   mcpClientEnabled =
-    claudeMcpEnabled || codexMcpEnabled || opencodeMcpEnabled || piMcpEnabled || zedMcpEnabled;
-  mcporterEnabled = mcpClientEnabled && !host.is.server;
+    claudeMcpEnabled
+    || codexMcpEnabled
+    || opencodeMcpEnabled
+    || piMcpEnabled
+    || zedMcpEnabled
+    || moltisMcpEnabled;
+  mcporterEnabled = (mcpClientEnabled && !host.is.server) || moltisMcpEnabled;
+  sharedMcpConfigEnabled = claudeMcpEnabled || mcporterEnabled || moltisMcpEnabled;
+  mcpConfigPath = "${config.xdg.configHome}/mcp/mcp.json";
 
   enabledMcpSecretConsumers =
     lib.optionals claudeMcpEnabled [ "claudeCode" ]
@@ -74,6 +81,12 @@ let
 in
 {
   home.packages = lib.optional (mcporterEnabled && mcporterPackage != null) mcporterPackage;
+
+  home.file = lib.mkIf (mcporterEnabled && mcporterPackage != null) {
+    ".mcporter/mcporter.json".source = config.lib.file.mkOutOfStoreSymlink mcpConfigPath;
+    "${config.xdg.configHome}/mcporter/mcporter.json".source =
+      config.lib.file.mkOutOfStoreSymlink mcpConfigPath;
+  };
 
   programs = lib.mkMerge [
     (lib.mkIf (allSecrets != [ ]) {
@@ -149,11 +162,11 @@ in
     (lib.mkIf (allSecrets != [ ]) {
       secrets = lib.genAttrs allSecrets secretConfig;
     })
-    (lib.mkIf claudeMcpEnabled {
-      # Shared MCP servers used by Claude Code.
+    (lib.mkIf sharedMcpConfigEnabled {
+      # Shared MCP servers used by Claude Code and mcporter.
       templates."mcp-config.json" = {
         content = builtins.toJSON { mcpServers = mcpServerDefs.claudeServers; };
-        path = "${config.xdg.configHome}/mcp/mcp.json";
+        path = mcpConfigPath;
       };
     })
   ];
