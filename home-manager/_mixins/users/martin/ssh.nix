@@ -43,6 +43,17 @@ lib.mkIf (noughtyLib.isUser [ "martin" ]) {
     '';
     # Darwin openssh for FIDO2 support
     packages = lib.optionals host.is.darwin [ pkgs.openssh ];
+    activation.pruneBrokenSshKeyLinks = lib.hm.dag.entryAfter [ "sops-nix" "linkGeneration" ] ''
+      for stale_key in \
+        "$HOME/.ssh/id_ed25519_sk_phasma" \
+        "$HOME/.ssh/id_ed25519_sk_phasma.pub" \
+        "$HOME/.ssh/id_ed25519_sk_vader" \
+        "$HOME/.ssh/id_ed25519_sk_vader.pub"; do
+        if [[ -L "$stale_key" && ! -e "$stale_key" ]]; then
+          rm -f -- "$stale_key"
+        fi
+      done
+    '';
   };
 
   programs = {

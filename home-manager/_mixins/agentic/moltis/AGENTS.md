@@ -22,11 +22,15 @@ If a `mcp__*` tool (`linear`, `exa`, `context7`) is missing or fails in the main
 
 For GitHub, load the `gh` skill. For reads, prefer the constrained CLI path when available: use a dedicated `gh` subcommand first, then `gh-api-safe` for raw REST or GraphQL reads. Otherwise use GitHub MCP only for a documented, clearly read-only operation such as get, list, read, search, fetch, or repository-content retrieval. A broad MCP capability grant gives no mutation authority. Do not call a tool whose effect is unclear.
 
-Keep GitHub mutations on named, authorised paths. Coding agents run fenced. Raw `gh api` stays denied. Fence permits the everyday mutations: `git push`, `gh pr comment`, `gh-review-reply <review-comment-url> --body-file <file>` (answers inside a review comment thread), `gh issue create`, `gh run rerun`, `gh run cancel`, `gh pr update-branch`, and `gh pr review --approve`. Run them when the task calls for them. The source policy also permits `gh-code-scanning-dismiss` for an explicitly authorised alert dismissal. Load `gh` for its exact arguments and limits. Source capability does not imply current installation or authorise changes to existing alerts. Fence-denied commands (`gh pr merge`, `gh release`, `gh workflow run`, `gh config`, `gh secret`, `gh variable`) are output for the operator to run unfenced.
+Keep GitHub mutations on named, authorised paths. Coding agents run fenced. Raw `gh api` stays denied. Fence permits the everyday mutations: `git push`, `gh pr create`, `gh pr comment`, `gh-review-reply <review-comment-url> --body-file <file>` (answers inside a review comment thread), `gh issue create`, `gh run rerun`, `gh run cancel`, `gh pr update-branch`, `gh pr review --approve`, and `gh-bot-merge <pr-url-or-number>` (approves and squash-merges verified Dependabot, GitHub Actions, and `nix-config` Freshener pull requests when checks pass). Run them when the task calls for them. The source policy also permits `gh-code-scanning-dismiss` for an explicitly authorised alert dismissal. Load `gh` for its exact arguments and limits. Source capability does not imply current installation or authorise changes to existing alerts. Fence-denied commands (`gh pr merge`, `gh release`, `gh workflow run`, `gh config`, `gh secret`, `gh variable`) are output for the operator to run unfenced.
+
+Use `moltis-telegram-voice <text>` or `moltis-telegram-voice --body-file <path>` via `exec` to synthesise Ogg Opus audio through the local Gemini Text-to-Speech (TTS) shim and send a proactive voice note to Telegram.
 
 Fence mounts `.git/config` and `.git/hooks` read-only, so every local Git configuration write fails with `Device or resource busy`. Push with an explicit refspec, `git push origin <branch>`, never `-u`, and read the remote head as `origin/<branch>` rather than `<branch>@{u}`. Pushing is intended and works. State the read-only mount as a fact when it comes up, and carry on; it blocks no task you have been given.
 
 Use LSP diagnostics and navigation when available, including grammar and formatting diagnostics.
+
+Email (`himalaya`) and external dataset connectors (`connectors`) are not configured by design. Do not report their absence as an environment gap.
 
 ## Safety
 

@@ -345,6 +345,15 @@ and reaches only `POST /repos/{owner}/{repo}/pulls/{n}/comments/{id}/replies`.
 It builds that path from validated arguments, refuses every endpoint,
 method, and field flag, and exits 64 on a policy violation.
 
+`gh-bot-merge` approves and squash-merges one verified automated pull request
+on `wimpysworld`, `linuxmatters`, `quickemu-project`, or `flexiondotorg`.
+It verifies that the pull request is open, is not from a fork, is mergeable,
+passes all status checks, and matches the Dependabot, GitHub Actions, or
+`wimpysworld/nix-config` Freshener policy. Packages with `automerge: false`
+(`herdr-ctx-bar`, `herdr-disp-model`, and `roamgate`) stay blocked.
+Pass `--dry-run` before the pull request URL to print the verified class
+and required flags without mutating GitHub state.
+
 `gh-code-scanning-dismiss` dismisses one open code scanning alert.
 Use exactly this argument order:
 

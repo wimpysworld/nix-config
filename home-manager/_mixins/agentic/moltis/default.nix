@@ -518,11 +518,84 @@ let
             httpd.serve_forever()
   '';
 
+  moltisTelegramVoice = pkgs.writeShellApplication {
+    name = "moltis-telegram-voice";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.curl
+      pkgs.jq
+    ];
+    text = ''
+      if [[ $# -eq 0 ]]; then
+        echo "Usage: moltis-telegram-voice <text> | --body-file <path>" >&2
+        exit 1
+      fi
+
+      if [[ "$1" == "--body-file" ]]; then
+        if [[ $# -lt 2 || ! -r "$2" ]]; then
+          echo "moltis-telegram-voice: --body-file requires a readable file path" >&2
+          exit 1
+        fi
+        text="$(cat "$2")"
+      else
+        text="$*"
+      fi
+
+      if [[ -z "''${text//[[:space:]]/}" ]]; then
+        echo "moltis-telegram-voice: text must not be empty" >&2
+        exit 1
+      fi
+
+      bot_token="''${TELEGRAM_BOT_TOKEN:-}"
+      if [[ -z "$bot_token" && -r "${config.sops.secrets.TELEGRAM_BOT_TOKEN.path}" ]]; then
+        bot_token="$(tr -d '\r\n' < "${config.sops.secrets.TELEGRAM_BOT_TOKEN.path}")"
+      fi
+      if [[ -z "$bot_token" ]]; then
+        echo "moltis-telegram-voice: missing TELEGRAM_BOT_TOKEN" >&2
+        exit 1
+      fi
+
+      chat_id="''${TELEGRAM_ALLOWED_USERS:-}"
+      if [[ -z "$chat_id" && -r "${config.sops.secrets.TELEGRAM_ALLOWED_USERS.path}" ]]; then
+        chat_id="$(tr -d '\r\n' < "${config.sops.secrets.TELEGRAM_ALLOWED_USERS.path}")"
+      fi
+      if [[ -z "$chat_id" ]]; then
+        echo "moltis-telegram-voice: missing TELEGRAM_ALLOWED_USERS" >&2
+        exit 1
+      fi
+
+      tmp_ogg="$(mktemp --suffix=.ogg)"
+      trap 'rm -f "$tmp_ogg"' EXIT
+
+      payload="$(jq -n \
+        --arg input "$text" \
+        --arg voice "${googleTtsVoice}" \
+        --arg model "${googleTtsModel}" \
+        '{model: $model, input: $input, voice: $voice, response_format: "opus"}')"
+
+      curl -fsSL \
+        -X POST "http://127.0.0.1:${toString ttsShimPort}/v1/audio/speech" \
+        -H "Content-Type: application/json" \
+        -d "$payload" \
+        -o "$tmp_ogg"
+
+      response="$(curl -fsSL \
+        -X POST "https://api.telegram.org/bot''${bot_token}/sendVoice" \
+        -F "chat_id=''${chat_id}" \
+        -F "voice=@''${tmp_ogg};type=audio/ogg")"
+
+      printf '%s\n' "$response" | jq -c '{ok: .ok, message_id: .result.message_id, chat_id: .result.chat.id}'
+    '';
+  };
+
   moltisInFenceLauncher = pkgs.writeShellApplication {
     name = "moltis-in-fence";
     runtimeInputs = [
+      (pkgs.writeShellScriptBin "dcg" "exit 0")
+      moltisTelegramVoice
       pkgs.ffmpeg-headless
       pkgs.python3
+      pkgs.sqlite
     ];
     text = ''
       mkdir -p "$HOME/.moltis"
@@ -547,10 +620,14 @@ let
       ${fenceLogging.setupShell}
 
       for _ in {1..20}; do
-        [[ -r "${config.sops.templates."moltis.toml".path}" && -r "${geminiKeyPath}" && -e "${sshKeyPath}" ]] && break
+        [[ -r "${
+          config.sops.templates."moltis.toml".path
+        }" && -r "${geminiKeyPath}" && -e "${sshKeyPath}" ]] && break
         sleep 0.5
       done
-      if [[ ! -r "${config.sops.templates."moltis.toml".path}" || ! -r "${geminiKeyPath}" || ! -e "${sshKeyPath}" ]]; then
+      if [[ ! -r "${
+        config.sops.templates."moltis.toml".path
+      }" || ! -r "${geminiKeyPath}" || ! -e "${sshKeyPath}" ]]; then
         echo "moltis-fenced: timed out waiting for sops-nix secrets" >&2
         exit 1
       fi
@@ -615,6 +692,7 @@ in
       home.packages = [
         pkgs.moltis
         moltisFencedPackage
+        moltisTelegramVoice
       ];
 
       home.shellAliases.moltis-log = "journalctl --user -u moltis.service";

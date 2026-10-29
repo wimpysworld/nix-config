@@ -312,16 +312,76 @@ let
   # house style the same way the Pi and OpenCode system prompts do.
   moltisGlobalInstructions = readFileTrim ../moltis/AGENTS.md;
   moltisInstructions = moltisGlobalInstructions + "\n\n" + compose.houseStyleBody + "\n";
-  moltisIdentity =
-    readFileTrim (../moltis + "/IDENTITY_${lib.toUpper moltisAgentName}.md") + "\n";
+  moltisIdentity = readFileTrim (../moltis + "/IDENTITY_${lib.toUpper moltisAgentName}.md") + "\n";
+  moltisSchedule =
+    if moltisAgentName == "skrye" then
+      {
+        agentDisplayName = "Skrye";
+        dayName = "Wednesday";
+        dow = "3";
+      }
+    else if moltisAgentName == "zannah" then
+      {
+        agentDisplayName = "Zannah";
+        dayName = "Saturday";
+        dow = "6";
+      }
+    else
+      {
+        agentDisplayName = "Traya";
+        dayName = "Sunday";
+        dow = "7";
+      };
+  moltisHeartbeat =
+    lib.replaceStrings
+      [
+        "@AGENT_NAME@"
+        "@SCHEDULE_DAY_NAME@"
+        "@SCHEDULE_DOW@"
+      ]
+      [
+        moltisSchedule.agentDisplayName
+        moltisSchedule.dayName
+        moltisSchedule.dow
+      ]
+      (readFileTrim ../moltis/HEARTBEAT.md)
+    + "\n";
   moltisLegacyInstructionsHash = builtins.hashString "sha256" (
     globalInstructions + "\n\n" + compose.houseStyleBody + "\n"
   );
   moltisCurrentInstructionsHash = builtins.hashString "sha256" moltisInstructions;
+  moltisCurrentIdentityHash = builtins.hashString "sha256" moltisIdentity;
+  moltisCurrentHeartbeatHash = builtins.hashString "sha256" moltisHeartbeat;
+  moltisIdentityLegacyHashes = [
+    moltisCurrentIdentityHash
+    "67f9aa462e69609eff631923e0c9d5ad8f0cc537046c166d608e9582b7c29e18"
+    "cca66bd3ab3ee4a3000793936fe9c3115342e9e74aa1271cc607463a57c0a358"
+    "180a03c54a422909bdcb53dabe1534ea8dcde19ff6f978da1911f5d15bf821f4"
+    "924884a238b7e291616b4af2cab5071765c0cfa12359a4b78fa58901d570eccf"
+    "a78716a36b95031770ea9e59c74b20836a8372f5734e156ef33471b08798a9ce"
+    "190b565f161dcdc430f66ea24db8acd1ebe6c4a39dd860a1564c61254db36272"
+    "5fb63443e462d916dd22c10238d5034b0bfe9311df2d1fe3e88c97e77c18af1e"
+    "05b4233d3e2ce0e14e6c7a8d60cdc6f41f8304a01732615481f0c430282f5e39"
+    "7e0c314dce268a5ca40a70c313152dcff2f98ffb517c12769179f031e0bdeb67"
+    "ddd74095bc580c6726974d26d73a08fe5db62482103f5a6bf7227fe7744555cb"
+    "b60037a32303a617da4fb0d837e9b0e6fc4b3d52800875c7a5069294071cb028"
+    "a63f2f59dec8eb31187a313afffbdbc2ba455d30ecad3a358d0a2cdb4e7726d5"
+    "5dab0018740233f2df6674d6bc1ef1e5acf0ccc3be6fb830ff5fbfcbdc3ee603"
+    "a2e3d16f6b15c2a2acea1dd40a6d9945d6fa936eff7502b4994f49ba9bb9abe2"
+    "1ce22fc3176e5dfbfce0ee49a85d313d1f02a5d2ef658bf5815705734eddba4d"
+    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  ];
+  moltisHeartbeatLegacyHashes = [
+    moltisCurrentHeartbeatHash
+    "f5fbea7130a450caa5acdedadce24aa16a08d4bc2ed42c7ed056612cb790bf5d"
+    "2a637af01a613be9b3e6566acf00e2e03573d56cdd30a35c563506a1ba3c4704"
+    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  ];
 
-  # Recover ownership of Moltis-seeded default workspace files (AGENTS.md and
-  # SOUL.md in ~/.moltis and ~/.moltis/agents/main) and prune any leftover
-  # /nix/store symlinks under ~/.moltis/skills before assistantOwnedFiles runs.
+  # Recover ownership of Moltis-seeded default workspace files (AGENTS.md,
+  # SOUL.md, IDENTITY.md, and HEARTBEAT.md in ~/.moltis and ~/.moltis/agents/main)
+  # and prune any leftover /nix/store symlinks under ~/.moltis/skills before
+  # assistantOwnedFiles runs.
   moltisBootstrapScript = pkgs.writeText "moltis-assistant-bootstrap.py" ''
     import hashlib
     import json
@@ -336,12 +396,14 @@ let
         moltis_root / "AGENTS.md": {
             ${builtins.toJSON moltisLegacyInstructionsHash},
             ${builtins.toJSON moltisCurrentInstructionsHash},
+            "b49b0d17217e3362d3095907f33f9ca2765e7465095cdc08d44a0ad5470679ea",
             "9dd888f8a07009f4bccc05149a7117819887aa87a49e7be7f8788d4c5ae87b02",
             "f5986e6d8ffd5168a0e00cc4d39b2619e836f56313c0224b5e855872f857a363",
         },
         moltis_root / "agents/main/AGENTS.md": {
             ${builtins.toJSON moltisLegacyInstructionsHash},
             ${builtins.toJSON moltisCurrentInstructionsHash},
+            "b49b0d17217e3362d3095907f33f9ca2765e7465095cdc08d44a0ad5470679ea",
             "9dd888f8a07009f4bccc05149a7117819887aa87a49e7be7f8788d4c5ae87b02",
             "f5986e6d8ffd5168a0e00cc4d39b2619e836f56313c0224b5e855872f857a363",
         },
@@ -353,6 +415,10 @@ let
             "36ea5d9157979ce51cac0730f4fc4402bbe6944ea8f8e30cfca2ea316e7b7e40",
             "95c467f710183b2c0397c29ec4ef886bb723671a39ee767dc4d59165f723b68f",
         },
+        moltis_root / "IDENTITY.md": set(${builtins.toJSON moltisIdentityLegacyHashes}),
+        moltis_root / "agents/main/IDENTITY.md": set(${builtins.toJSON moltisIdentityLegacyHashes}),
+        moltis_root / "HEARTBEAT.md": set(${builtins.toJSON moltisHeartbeatLegacyHashes}),
+        moltis_root / "agents/main/HEARTBEAT.md": set(${builtins.toJSON moltisHeartbeatLegacyHashes}),
     }
 
 
@@ -601,6 +667,8 @@ let
       (ownedFile "${config.home.homeDirectory}/.moltis/agents/main/AGENTS.md" moltisInstructions)
       (ownedFile "${config.home.homeDirectory}/.moltis/IDENTITY.md" moltisIdentity)
       (ownedFile "${config.home.homeDirectory}/.moltis/agents/main/IDENTITY.md" moltisIdentity)
+      (ownedFile "${config.home.homeDirectory}/.moltis/HEARTBEAT.md" moltisHeartbeat)
+      (ownedFile "${config.home.homeDirectory}/.moltis/agents/main/HEARTBEAT.md" moltisHeartbeat)
     ]
     ++ lib.concatLists (
       lib.mapAttrsToList (

@@ -346,6 +346,12 @@ let
         "gh api rate_limit"
         "gh api meta"
         "gh api octocat"
+        # gh-bot-merge is a fixed GitHub write path under Fence. The helper
+        # accepts one pull request URL (with optional --dry-run), verifies
+        # repository owner, mergeability, status checks, and automated author
+        # and branch rules before approving or merging through the private gh
+        # backend. The family-wide `gh pr merge` deny below remains unchanged.
+        "gh-bot-merge"
         # gh-code-scanning-dismiss is a fixed GitHub write path under Fence.
         # The helper accepts one alert URL, reason, and comment file. It reads
         # the alert before one PATCH, and it rejects all other argument forms.

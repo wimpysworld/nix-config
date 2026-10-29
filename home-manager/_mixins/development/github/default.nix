@@ -29,6 +29,7 @@ let
     mkdir -p "$out/bin"
     ln -s ${pkgs.gh}/bin/.gh-wrapped "$out/bin/gh-review-resolve-gh"
   '';
+  gh-bot-merge = pkgs.callPackage ./gh-bot-merge { };
   gh-code-scanning-dismiss = pkgs.callPackage ./gh-code-scanning-dismiss { };
   ghDashPackage = pkgs.symlinkJoin rec {
     pname = "gh-dash";
@@ -253,6 +254,7 @@ lib.mkMerge [
     home = {
       packages = [
         gh-api-safe
+        gh-bot-merge
         gh-code-scanning-dismiss
         gh-review-reply
         gh-review-resolve
