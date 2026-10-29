@@ -352,14 +352,21 @@ let
         # accepts one pull request URL (with optional --dry-run), verifies
         # repository owner, mergeability, status checks, and trusted author
         # rules before approving or merging through the private gh backend.
-        # Peer-agent rules also require a different authorised viewer. The
-        # family-wide `gh pr merge` deny below remains unchanged.
+        # Trusted-peer rules also verify review threads, reviews, and peer
+        # approvals. The family-wide `gh pr merge` deny below remains
+        # unchanged.
         "gh-bot-merge"
         # gh-code-scanning-dismiss is a fixed GitHub write path under Fence.
         # The helper accepts one alert URL, reason, and comment file. It reads
         # the alert before one PATCH, and it rejects all other argument forms.
         # The family-wide `gh api` deny below remains unchanged.
         "gh-code-scanning-dismiss"
+        # gh-notification-dismiss is a fixed GitHub write path under Fence.
+        # The helper accepts one positive decimal notification thread ID (with
+        # optional --read) and sends DELETE or PATCH to
+        # `notifications/threads/{id}` through the private gh backend. The
+        # family-wide `gh api` deny below remains unchanged.
+        "gh-notification-dismiss"
         # gh-review-reply is a fixed GitHub write path allowed under Fence.
         # It reaches exactly one endpoint,
         # `POST /repos/{owner}/{repo}/pulls/{n}/comments/{id}/replies`,

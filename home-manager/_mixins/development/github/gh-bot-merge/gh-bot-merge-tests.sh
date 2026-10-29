@@ -50,6 +50,14 @@ if [[ $# -ge 2 && $1 == "api" && $2 == "user" ]]; then
 	exit 0
 fi
 
+if [[ $# -ge 2 && $1 == "api" && $2 == "graphql" ]]; then
+	if [[ -r "${GH_STUB_STATE}/graphql-exit" ]]; then
+		exit "$(cat "${GH_STUB_STATE}/graphql-exit")"
+	fi
+	cat "${GH_STUB_STATE}/graphql.json"
+	exit 0
+fi
+
 if [[ $# -ge 2 && $1 == "pr" && $2 == "review" ]]; then
 	printf '%s\n' "$*" >>"${GH_STUB_STATE}/reviews"
 	exit "${GH_STUB_REVIEW_EXIT:-0}"
@@ -91,11 +99,34 @@ fail() {
 	fi
 }
 
+write_graphql_json() {
+	local extra_jq="${1:-.}"
+
+	jq -n '
+		{
+			data: {
+				repository: {
+					pullRequest: {
+						reviewThreads: {
+							nodes: [
+								{ isResolved: true }
+							]
+						},
+						latestOpinionatedReviews: {
+							nodes: []
+						}
+					}
+				}
+			}
+		} | '"${extra_jq}" >"${state_dir}/graphql.json"
+}
+
 reset_stub() {
 	rm -f "${state_dir}"/*
 	: >"${state_dir}/calls"
 	: >"${state_dir}/reviews"
 	: >"${state_dir}/merges"
+	write_graphql_json
 }
 
 write_pr_json() {
@@ -210,7 +241,7 @@ assert_pr_rejected() {
 # 1. --help and CLI argument checks
 reset_stub
 run_helper --help
-if [[ ${status} -ne 0 || ${stdout} != *"USAGE"* || ${stdout} != *"peer-agent"* || $(call_count) -ne 0 ]]; then
+if [[ ${status} -ne 0 || ${stdout} != *"USAGE"* || ${stdout} != *"trusted-peer"* || $(call_count) -ne 0 ]]; then
 	fail '--help prints usage and exits 0' "status=${status}"
 else
 	pass '--help prints usage and exits 0'
@@ -289,45 +320,59 @@ for blocked_pkg in roamgate herdr-ctx-bar herdr-disp-model; do
 	reset_stub
 	write_pr_json wimpysworld 'flexiondotorg' "${blocked_pkg}-0.2.0" \
 		'.files = [{path: ("pkgs/" + "'"${blocked_pkg}"'" + "/default.nix")}]'
-	assert_pr_rejected "reject automerge: false package ${blocked_pkg}" "${url_ww}" 'does not match'
+	assert_pr_rejected "reject automerge: false package ${blocked_pkg}" "${url_ww}" 'requires an APPROVED review from another trusted peer'
 done
 
 reset_stub
 write_pr_json wimpysworld 'flexiondotorg' 'handy-1' \
 	'.files = [{path: "pkgs/roamgate/default.nix"}]'
-assert_pr_rejected 'reject allowed freshener branch touching sensitive package' "${url_ww}" 'does not match'
+assert_pr_rejected 'reject allowed freshener branch touching sensitive package' "${url_ww}" 'requires an APPROVED review from another trusted peer'
 
 reset_stub
 write_pr_json wimpysworld 'flexiondotorg' 'chainctl-0.2.391' \
 	'.files = [{path: "pkgs/chainctl/default.nix"}]'
 assert_pr_rejected 'reject freshener PR outside wimpysworld/nix-config' \
-	'https://github.com/wimpysworld/nyala/pull/42' 'does not match'
+	'https://github.com/wimpysworld/nyala/pull/42' 'requires an APPROVED review from another trusted peer'
 
 reset_stub
 write_pr_json wimpysworld 'flexiondotorg' 'chainctl-0.2.391' \
 	'.labels = [{name: "dependencies"}] | .files = [{path: "pkgs/chainctl/default.nix"}]'
-assert_pr_rejected 'reject freshener PR missing automated label' "${url_ww}" 'does not match'
+assert_pr_rejected 'reject freshener PR missing automated label' "${url_ww}" 'requires an APPROVED review from another trusted peer'
 
 reset_stub
 write_pr_json wimpysworld 'flexiondotorg' 'chainctl-0.2.391' \
 	'.files = [{path: "pkgs/chainctl/default.nix"}, {path: ".github/workflows/freshener.yml"}]'
-assert_pr_rejected 'reject freshener PR touching workflow file' "${url_ww}" 'does not match'
+assert_pr_rejected 'reject freshener PR touching workflow file' "${url_ww}" 'requires an APPROVED review from another trusted peer'
 
-# 5. Peer-agent policy and no-self-merge enforcement
-for peer_case in 'sith-skrye:sith-zannah' 'sith-traya:sith-skrye' 'sith-zannah:sith-traya'; do
+# 5. Trusted-peer policy: reviewThreads, latestOpinionatedReviews, peer review, and sensitive packages
+for peer_case in 'flexiondotorg:sith-zannah' 'sith-skrye:sith-zannah' 'sith-traya:sith-skrye' 'sith-zannah:sith-traya'; do
 	author="${peer_case%%:*}"
 	viewer="${peer_case##*:}"
 	reset_stub
 	write_pr_json wimpysworld "${author}" "feat/${author}-change" '.files = [{path: "src/main.rs"}]'
 	GH_STUB_VIEWER="${viewer}" run_helper --dry-run "${url_ww}"
 	if [[ ${status} -ne 0 ]]; then
-		fail "peer-agent dry-run ${author} reviewed by ${viewer}" "status ${status}: ${stderr}"
-	elif [[ ${stdout} != *"class=peer-agent"* || ${stdout} != *"--approve=yes"* ]]; then
-		fail "peer-agent dry-run output ${author} reviewed by ${viewer}" "stdout: ${stdout}"
+		fail "trusted-peer dry-run ${author} reviewed by ${viewer}" "status ${status}: ${stderr}"
+	elif [[ ${stdout} != *"class=trusted-peer"* || ${stdout} != *"--approve=yes"* ]]; then
+		fail "trusted-peer dry-run output ${author} reviewed by ${viewer}" "stdout: ${stdout}"
 	elif [[ $(review_count) -ne 0 || $(merge_count) -ne 0 ]]; then
-		fail "peer-agent dry-run did not mutate ${author}" "reviews=$(review_count) merges=$(merge_count)"
+		fail "trusted-peer dry-run did not mutate ${author}" "reviews=$(review_count) merges=$(merge_count)"
 	else
-		pass "peer-agent dry-run accepts ${author} reviewed by ${viewer} without mutating"
+		pass "trusted-peer dry-run accepts ${author} reviewed by ${viewer} without mutating"
+	fi
+done
+
+for author in flexiondotorg sith-skrye; do
+	reset_stub
+	write_pr_json wimpysworld "${author}" "feat/${author}-merge" '.files = [{path: "src/main.rs"}]'
+	GH_STUB_VIEWER=sith-zannah run_helper "${url_ww}"
+	if [[ ${status} -ne 0 ]]; then
+		fail "sith-zannah merges trusted-peer PR by ${author}" "status ${status}: ${stderr}"
+	elif [[ $(review_count) -ne 1 || $(merge_count) -ne 1 ]]; then
+		fail "sith-zannah approves and merges trusted-peer PR by ${author} once" \
+			"reviews=$(review_count) merges=$(merge_count)"
+	else
+		pass "sith-zannah approves and merges trusted-peer PR by ${author} with 0 unresolved threads and green CI"
 	fi
 done
 
@@ -335,40 +380,78 @@ reset_stub
 write_pr_json wimpysworld 'sith-skrye' 'fix/security-update' '.files = [{path: "Cargo.lock"}]'
 GH_STUB_VIEWER=flexiondotorg run_helper "${url_ww}"
 if [[ ${status} -ne 0 ]]; then
-	fail 'authorised operator merges peer-agent PR' "status ${status}: ${stderr}"
+	fail 'authorised operator merges trusted-peer PR' "status ${status}: ${stderr}"
 elif [[ $(review_count) -ne 1 || $(merge_count) -ne 1 ]]; then
-	fail 'authorised operator approves and merges peer-agent PR once' "reviews=$(review_count) merges=$(merge_count)"
+	fail 'authorised operator approves and merges trusted-peer PR once' "reviews=$(review_count) merges=$(merge_count)"
 else
-	pass 'authorised operator approves and merges peer-agent PR'
+	pass 'authorised operator approves and merges trusted-peer PR'
 fi
 
 reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/unresolved-thread' '.files = [{path: "Cargo.lock"}]'
+write_graphql_json '.data.repository.pullRequest.reviewThreads.nodes = [{isResolved: true}, {isResolved: false}]'
+GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
+	'reject trusted-peer PR with unresolved review thread' "${url_ww}" 'has 1 unresolved review thread(s)'
+
+reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/changes-requested' '.files = [{path: "Cargo.lock"}]'
+write_graphql_json '.data.repository.pullRequest.latestOpinionatedReviews.nodes = [{author: {login: "sith-traya"}, state: "CHANGES_REQUESTED"}]'
+GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
+	'reject trusted-peer PR when latestOpinionatedReviews has CHANGES_REQUESTED' "${url_ww}" 'requesting changes'
+
+reset_stub
 write_pr_json wimpysworld 'sith-skrye' 'fix/self-merge' '.files = [{path: "Cargo.lock"}]'
-GH_STUB_VIEWER=sith-skrye assert_pr_rejected 'reject peer-agent self-merge' "${url_ww}" 'cannot approve or merge her own'
+GH_STUB_VIEWER=sith-skrye assert_pr_rejected \
+	'reject trusted-peer self-merge without peer approval' "${url_ww}" \
+	'pull request #42 authored by sith-skrye requires an APPROVED review from another trusted peer before merging'
+
+reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/self-merge-approved' '.files = [{path: "Cargo.lock"}] | .reviewDecision = "APPROVED"'
+write_graphql_json '.data.repository.pullRequest.latestOpinionatedReviews.nodes = [{author: {login: "sith-zannah"}, state: "APPROVED"}]'
+GH_STUB_VIEWER=sith-skrye run_helper "${url_ww}"
+if [[ ${status} -ne 0 ]]; then
+	fail 'accept trusted-peer self-merge when approved by sith-zannah' "status ${status}: ${stderr}"
+elif [[ $(review_count) -ne 0 || $(merge_count) -ne 1 ]]; then
+	fail 'trusted-peer self-merge skips review and calls merge once' \
+		"reviews=$(review_count) merges=$(merge_count)"
+else
+	pass 'accept trusted-peer self-merge when another trusted peer (sith-zannah) has APPROVED it'
+fi
 
 reset_stub
 write_pr_json wimpysworld 'sith-skrye' 'fix/unauthorised-reviewer' '.files = [{path: "Cargo.lock"}]'
-GH_STUB_VIEWER=mallory assert_pr_rejected 'reject unauthorised peer-agent viewer' "${url_ww}" 'not authorised'
+GH_STUB_VIEWER=mallory assert_pr_rejected 'reject unauthorised trusted-peer viewer' "${url_ww}" 'not authorised'
 
 for blocked_pkg in roamgate herdr-ctx-bar herdr-disp-model; do
 	reset_stub
 	write_pr_json wimpysworld 'sith-skrye' "fix/${blocked_pkg}" \
 		'.files = [{path: ("pkgs/" + "'"${blocked_pkg}"'" + "/default.nix")}]'
 	GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
-		"reject peer-agent change to sensitive package ${blocked_pkg}" "${url_ww}" 'does not match'
+		"reject trusted-peer change to sensitive package ${blocked_pkg}" "${url_ww}" 'sensitive package'
 done
+
+reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/roamgate-approved-by-flexion' \
+	'.files = [{path: "pkgs/roamgate/default.nix"}] | .reviewDecision = "APPROVED"'
+write_graphql_json '.data.repository.pullRequest.latestOpinionatedReviews.nodes = [{author: {login: "flexiondotorg"}, state: "APPROVED"}]'
+GH_STUB_VIEWER=sith-zannah run_helper "${url_ww}"
+if [[ ${status} -ne 0 ]]; then
+	fail 'accept sensitive package PR when approved by flexiondotorg' "status ${status}: ${stderr}"
+else
+	pass 'accept sensitive package PR when flexiondotorg approved it'
+fi
 
 reset_stub
 write_pr_json wimpysworld 'sith-skrye' 'fix/rename-sensitive-package' \
 	'.files = [{path: "pkgs/allowed-package/default.nix", changeType: "RENAMED"}]'
 GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
-	'reject peer-agent rename with unavailable previous path' "${url_ww}" 'does not match'
+	'reject trusted-peer rename with unavailable previous path' "${url_ww}" 'sensitive package'
 
 reset_stub
 write_pr_json wimpysworld 'sith-skrye' 'fix/large-change' \
 	'.files = [{path: "src/main.rs"}] | .changedFiles = 101'
 GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
-	'reject peer-agent PR with incomplete changed file list' "${url_ww}" 'changed file list is incomplete'
+	'reject trusted-peer PR with incomplete changed file list' "${url_ww}" 'changed file list is incomplete'
 if grep -q 'changedFiles' "${state_dir}/argv-1"; then
 	pass 'request changedFiles with pull request metadata'
 else

@@ -31,6 +31,7 @@ let
   '';
   gh-bot-merge = pkgs.callPackage ./gh-bot-merge { };
   gh-code-scanning-dismiss = pkgs.callPackage ./gh-code-scanning-dismiss { };
+  gh-notification-dismiss = pkgs.callPackage ./gh-notification-dismiss { };
   ghDashPackage = pkgs.symlinkJoin rec {
     pname = "gh-dash";
     version = pkgs.gh-dash.version;
@@ -256,6 +257,7 @@ lib.mkMerge [
         gh-api-safe
         gh-bot-merge
         gh-code-scanning-dismiss
+        gh-notification-dismiss
         gh-review-reply
         gh-review-resolve
         ghCredentialSync

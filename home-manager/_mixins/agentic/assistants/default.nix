@@ -309,17 +309,18 @@ let
         "${config.home.homeDirectory}/.moltis/SOUL.md"
         "${config.home.homeDirectory}/.moltis/agents/main/SOUL.md"
       ]
-    ++ map
-      (path: {
-        inherit path;
-        source = config.sops.templates."assistant-moltis-user".path;
-        kind = "file";
-        mode = "0600";
-      })
-      [
-        "${config.home.homeDirectory}/.moltis/USER.md"
-        "${config.home.homeDirectory}/.moltis/agents/main/USER.md"
-      ]
+    ++
+      map
+        (path: {
+          inherit path;
+          source = config.sops.templates."assistant-moltis-user".path;
+          kind = "file";
+          mode = "0600";
+        })
+        [
+          "${config.home.homeDirectory}/.moltis/USER.md"
+          "${config.home.homeDirectory}/.moltis/agents/main/USER.md"
+        ]
   );
 
   # Moltis loads ~/.moltis/AGENTS.md as workspace agent instructions and seeds
@@ -390,6 +391,9 @@ let
   ];
   moltisHeartbeatLegacyHashes = [
     moltisCurrentHeartbeatHash
+    "f077069a08f9076bda43b793b47a2b65be9692baf01ca7aae86604569194ffb8"
+    "2aba808309db23a563ff24868fe53eb3b5d6e3c692693be21765c04221428fd1"
+    "0fbe59ed29d77b01b1fab5e3f5d429a78749d334e1fb05f78a0020f65b078d3d"
     "f5fbea7130a450caa5acdedadce24aa16a08d4bc2ed42c7ed056612cb790bf5d"
     "2a637af01a613be9b3e6566acf00e2e03573d56cdd30a35c563506a1ba3c4704"
     "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -413,6 +417,7 @@ let
         moltis_root / "AGENTS.md": {
             ${builtins.toJSON moltisLegacyInstructionsHash},
             ${builtins.toJSON moltisCurrentInstructionsHash},
+            "4b28f77dbdcfb4fb650e8e4624d51c094057901f0a9549603cc5ca6a19183512",
             "b49b0d17217e3362d3095907f33f9ca2765e7465095cdc08d44a0ad5470679ea",
             "9dd888f8a07009f4bccc05149a7117819887aa87a49e7be7f8788d4c5ae87b02",
             "f5986e6d8ffd5168a0e00cc4d39b2619e836f56313c0224b5e855872f857a363",
@@ -420,6 +425,7 @@ let
         moltis_root / "agents/main/AGENTS.md": {
             ${builtins.toJSON moltisLegacyInstructionsHash},
             ${builtins.toJSON moltisCurrentInstructionsHash},
+            "4b28f77dbdcfb4fb650e8e4624d51c094057901f0a9549603cc5ca6a19183512",
             "b49b0d17217e3362d3095907f33f9ca2765e7465095cdc08d44a0ad5470679ea",
             "9dd888f8a07009f4bccc05149a7117819887aa87a49e7be7f8788d4c5ae87b02",
             "f5986e6d8ffd5168a0e00cc4d39b2619e836f56313c0224b5e855872f857a363",
@@ -602,24 +608,29 @@ let
 
   # Moltis has no slash-command surface, so selected commands deploy as
   # skills, mirroring Moltis' own importer (import-core
-  # create_skill_from_command). An entry qualifies only when its command.toml
-  # proves `caller-context = true` (the body runs in the caller's context, so
-  # no dispatch wrapper is needed) and its body assumes no native platform
-  # tooling (no Task tool, spawn_agent, gh, Slack, or Herdr references).
-  # Body inspection proved these nine: each is a conversational or context
-  # command that only references projected skills. Secret commands
+  # create_skill_from_command). The allowlist projects conversational and
+  # context commands alongside the code-review and pull-request workflow
+  # commands (`review-code-colleague`, `review-code-again`,
+  # `draft-code-review`, `post-code-review`, `address-code-review`, and
+  # `make-pr`) without generated sub-agent launch wrappers. Secret commands
   # (draft-self-review, gather-review-data, review-open-source-attestation)
-  # and dispatch-bound commands stay unmapped.
+  # stay unmapped.
   moltisCommandAllowlist = [
     "ack"
+    "address-code-review"
     "ahem"
     "ask"
     "call"
     "clarify-plan"
+    "draft-code-review"
     "gist"
     "handover-fresh"
+    "make-pr"
     "oi"
+    "post-code-review"
     "ready"
+    "review-code-again"
+    "review-code-colleague"
   ];
 
   # Render one allowlisted command as a Moltis skill. composeWithFrontmatter

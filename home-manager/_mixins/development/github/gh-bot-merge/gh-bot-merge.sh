@@ -43,9 +43,11 @@ POLICY
           - github-actions
           - freshener (wimpysworld/nix-config only; excludes automerge=false
             packages herdr-ctx-bar, herdr-disp-model, and roamgate)
-          - peer-agent (authored by sith-skrye, sith-traya, or sith-zannah;
-            requires a different peer agent or flexiondotorg as viewer and
-            excludes herdr-ctx-bar, herdr-disp-model, and roamgate packages)
+          - trusted-peer (authored by flexiondotorg, sith-skrye, sith-traya,
+            or sith-zannah; requires zero unresolved review threads, zero
+            reviews requesting changes, a trusted-peer approval or peer viewer,
+            and flexiondotorg as author or approver when touching sensitive
+            packages)
 
     With --dry-run, gh-bot-merge prints the verified classification and
     whether the pull request requires --approve or --admin, then exits 0
@@ -147,13 +149,11 @@ def touches_sensitive_package:
     or ((.path // "") | test("^pkgs/(herdr-ctx-bar|herdr-disp-model|roamgate)/"))
   );
 
-def is_peer_agent:
-  (
-    .author.login == "sith-skrye"
-    or .author.login == "sith-traya"
-    or .author.login == "sith-zannah"
-  )
-  and (touches_sensitive_package | not);
+def is_trusted_peer:
+  .author.login == "flexiondotorg"
+  or .author.login == "sith-skrye"
+  or .author.login == "sith-traya"
+  or .author.login == "sith-zannah";
 
 def is_freshener($owner; $repo):
   (($owner | ascii_downcase) == "wimpysworld" and ($repo | ascii_downcase) == "nix-config")
@@ -188,13 +188,13 @@ else
   | if ($bad_checks | length) > 0 then
       "ERR\tpull request #" + $pr_number + " has failing or pending status checks: " + ($bad_checks | join(", "))
     elif is_dependabot then
-      ["OK", "dependabot", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // "")] | @tsv
+      ["OK", "dependabot", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package | tostring)] | @tsv
     elif is_github_actions then
-      ["OK", "github-actions", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // "")] | @tsv
+      ["OK", "github-actions", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package | tostring)] | @tsv
     elif is_freshener($owner; $repo) then
-      ["OK", "freshener", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // "")] | @tsv
-    elif is_peer_agent then
-      ["OK", "peer-agent", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // "")] | @tsv
+      ["OK", "freshener", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package | tostring)] | @tsv
+    elif is_trusted_peer then
+      ["OK", "trusted-peer", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package | tostring)] | @tsv
     else
       "ERR\tpull request #" + $pr_number + " (author=" + (.author.login // "UNKNOWN") + ", headRefName=" + (.headRefName // "UNKNOWN") + ") does not match any permitted PR policy"
     end
@@ -214,7 +214,7 @@ if [[ ${jq_status} -ne 0 ]]; then
 	exit "${jq_status}"
 fi
 
-IFS=$'\t' read -r verdict field1 field2 field3 field4 <<<"${verify_out}"
+IFS=$'\t' read -r verdict field1 field2 field3 field4 field5 <<<"${verify_out}"
 if [[ ${verdict} != "OK" ]]; then
 	die "${field1:-verification failed}"
 fi
@@ -223,6 +223,7 @@ pr_class="${field1}"
 author_login="${field2}"
 review_decision="${field3}"
 merge_state_status="${field4}"
+touches_sensitive="${field5:-false}"
 
 set +e
 viewer="$("${GH_BOT_MERGE_GH_BIN}" api user --jq .login </dev/null)"
@@ -236,23 +237,120 @@ if [[ -z ${viewer} ]]; then
 	die "authenticated viewer login is empty"
 fi
 
-if [[ ${pr_class} == "peer-agent" ]]; then
+peer_approved="false"
+if [[ ${pr_class} == "trusted-peer" ]]; then
 	case "${viewer}" in
 	flexiondotorg | sith-skrye | sith-traya | sith-zannah) ;;
-	*) die "authenticated viewer '${viewer}' is not authorised to merge peer-agent pull requests" ;;
+	*) die "authenticated viewer '${viewer}' is not authorised to merge trusted-peer pull requests" ;;
 	esac
-	if [[ ${viewer} == "${author_login}" ]]; then
-		die "peer agent '${viewer}' cannot approve or merge her own pull request"
+
+	# shellcheck disable=SC2016 # $owner, $repo, and $pr are GraphQL variables.
+	readonly TRUSTED_PEER_GRAPHQL_QUERY='query($owner: String!, $repo: String!, $pr: Int!) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $pr) {
+      reviewThreads(first: 100) {
+        nodes {
+          isResolved
+        }
+      }
+      latestOpinionatedReviews(first: 50) {
+        nodes {
+          author {
+            login
+          }
+          state
+        }
+      }
+    }
+  }
+}'
+
+	# shellcheck disable=SC2016 # jq variables, not shell expansion.
+	readonly JQ_VERIFY_TRUSTED_PEER='
+def is_trusted_peer_login($login):
+  $login == "flexiondotorg"
+  or $login == "sith-skrye"
+  or $login == "sith-traya"
+  or $login == "sith-zannah";
+
+(.data.repository.pullRequest // null) as $pr
+| if ($pr | type) != "object" then
+    "ERR\tGraphQL response did not identify pull request #" + $pr_number
+  else
+    ([($pr.reviewThreads.nodes // [])[] | select(.isResolved != true)] | length) as $unresolved
+    | ($pr.latestOpinionatedReviews.nodes // []) as $reviews
+    | any($reviews[]; .state == "CHANGES_REQUESTED") as $changes_requested
+    | any(
+        $reviews[];
+        .state == "APPROVED"
+        and (.author.login // "") != $author_login
+        and is_trusted_peer_login(.author.login // "")
+      ) as $has_peer_approval
+    | any(
+        $reviews[];
+        .state == "APPROVED"
+        and (.author.login // "") == "flexiondotorg"
+      ) as $has_flexion_approval
+    | if $unresolved > 0 then
+        "ERR\tpull request #" + $pr_number + " has " + ($unresolved | tostring) + " unresolved review thread(s)"
+      elif ($review_decision == "CHANGES_REQUESTED") or $changes_requested then
+        "ERR\tpull request #" + $pr_number + " has a review requesting changes"
+      elif ($touches_sensitive == "true") and ($author_login != "flexiondotorg") and ($has_flexion_approval | not) then
+        "ERR\tpull request #" + $pr_number + " touches a sensitive package and requires flexiondotorg as author or approver"
+      elif ($viewer == $author_login) and ($has_peer_approval | not) then
+        "ERR\tpull request #" + $pr_number + " authored by " + $viewer + " requires an APPROVED review from another trusted peer before merging"
+      else
+        ["OK", ($has_peer_approval | tostring)] | @tsv
+      end
+  end
+'
+
+	set +e
+	graphql_json="$("${GH_BOT_MERGE_GH_BIN}" api graphql \
+		-f "query=${TRUSTED_PEER_GRAPHQL_QUERY}" \
+		-f "owner=${owner}" \
+		-f "repo=${repo}" \
+		-F "pr=${pr_number}" </dev/null)"
+	graphql_status=$?
+	set -e
+	if [[ ${graphql_status} -ne 0 ]]; then
+		printf 'gh-bot-merge: gh exited %s while reading review threads and reviews for %s.\n' "${graphql_status}" "${pr_url}" >&2
+		exit "${graphql_status}"
 	fi
+
+	set +e
+	peer_verify_out="$(jq -r \
+		--arg pr_number "${pr_number}" \
+		--arg author_login "${author_login}" \
+		--arg viewer "${viewer}" \
+		--arg review_decision "${review_decision}" \
+		--arg touches_sensitive "${touches_sensitive}" \
+		"${JQ_VERIFY_TRUSTED_PEER}" <<<"${graphql_json}")"
+	peer_jq_status=$?
+	set -e
+	if [[ ${peer_jq_status} -ne 0 ]]; then
+		printf 'gh-bot-merge: jq exited %s while verifying trusted-peer reviews for %s.\n' "${peer_jq_status}" "${pr_url}" >&2
+		exit "${peer_jq_status}"
+	fi
+
+	IFS=$'\t' read -r peer_verdict peer_field1 <<<"${peer_verify_out}"
+	if [[ ${peer_verdict} != "OK" ]]; then
+		die "${peer_field1:-trusted-peer verification failed}"
+	fi
+	peer_approved="${peer_field1}"
 fi
 
 needs_approve=false
-if [[ ${author_login} != "${viewer}" && ${review_decision} != "APPROVED" ]]; then
+if [[ ${pr_class} == "trusted-peer" ]]; then
+	if [[ ${author_login} != "${viewer}" && ${peer_approved} != "true" ]]; then
+		needs_approve=true
+	fi
+elif [[ ${author_login} != "${viewer}" && ${review_decision} != "APPROVED" ]]; then
 	needs_approve=true
 fi
 
 needs_admin=false
-if [[ ${author_login} == "${viewer}" && (${review_decision} == "REVIEW_REQUIRED" || ${merge_state_status} == "BLOCKED") ]]; then
+if [[ ${author_login} == "${viewer}" && ${peer_approved} != "true" && (${review_decision} == "REVIEW_REQUIRED" || ${merge_state_status} == "BLOCKED") ]]; then
 	needs_admin=true
 fi
 
@@ -281,7 +379,7 @@ if [[ ${needs_approve} == true ]]; then
 	fi
 fi
 
-if [[ ${author_login} == "${viewer}" && ${review_decision} == "REVIEW_REQUIRED" ]]; then
+if [[ ${author_login} == "${viewer}" && ${peer_approved} != "true" && ${review_decision} == "REVIEW_REQUIRED" ]]; then
 	set +e
 	"${GH_BOT_MERGE_GH_BIN}" pr merge "${pr_url}" --admin --squash --delete-branch </dev/null
 	merge_status=$?
