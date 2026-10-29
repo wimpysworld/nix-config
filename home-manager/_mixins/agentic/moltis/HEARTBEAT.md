@@ -35,10 +35,10 @@ date +%s > "$HOME/.moltis/state/maintenance.lock"
 
 ## 2. Automated Bot and Freshener Pull Request Sweep
 
-List open Pull Requests (PRs) across `wimpysworld`, `linuxmatters`, and `quickemu-project`:
+List open Pull Requests (PRs) across `wimpysworld`, `linuxmatters`, `quickemu-project`, `noughtylinux`, and `oval-tutu`:
 
 ```bash
-gh search prs --owner wimpysworld --owner linuxmatters --owner quickemu-project --state open --json repository,number,title,author,headRefName,labels,url --limit 100
+gh search prs --owner wimpysworld --owner linuxmatters --owner quickemu-project --owner noughtylinux --owner oval-tutu --state open --json repository,number,title,author,labels,url --limit 100
 ```
 
 Filter to eligible pull requests only:
@@ -49,14 +49,14 @@ Filter to eligible pull requests only:
 Never approve or merge pull requests from any other author or from a fork.
 
 For each eligible pull request:
-1. Check status with `gh pr view <url> --json mergeable,mergeStateStatus,statusCheckRollup,labels`.
+1. Check status with `gh pr view <url> --json mergeable,mergeStateStatus,statusCheckRollup,headRefName,labels`.
 2. When `mergeStateStatus` is `"BEHIND"`, update the branch with `gh pr update-branch <url>`.
 3. When a check failed because of a transient runner or network error, rerun the failed workflow with `gh run rerun <run-id> --failed`.
 4. When all checks pass and the diff is a clean dependency or package update, approve and merge the pull request with `gh-bot-merge <url>`.
 
 ## 3. CodeQL and Dependabot Security Alert Triage
 
-Query open CodeQL code-scanning alerts and high or critical Dependabot security alerts across active repositories in `wimpysworld`, `linuxmatters`, and `quickemu-project` with `gh-api-safe`.
+Query open CodeQL code-scanning alerts and high or critical Dependabot security alerts across active repositories in `wimpysworld`, `linuxmatters`, `quickemu-project`, `noughtylinux`, and `oval-tutu` with `gh-api-safe`.
 
 When an actionable security alert has a clear, bounded fix:
 1. Clone or update the repository under `~/Volatile/maintenance/<owner>/<repo>`.

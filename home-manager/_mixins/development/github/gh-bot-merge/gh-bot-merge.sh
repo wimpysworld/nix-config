@@ -2,7 +2,7 @@
 
 # gh-bot-merge: Fence-friendly helper for approving and merging verified
 # automated pull requests across wimpysworld, linuxmatters, quickemu-project,
-# and flexiondotorg.
+# noughtylinux, oval-tutu, and flexiondotorg.
 
 readonly EX_POLICY=64
 
@@ -25,7 +25,7 @@ EXAMPLES
 
 POLICY
     The URL must match:
-      ^https://github\.com/(wimpysworld|linuxmatters|quickemu-project|flexiondotorg)/([A-Za-z0-9._-]+)/pull/([1-9][0-9]*)/?$
+      ^https://github\.com/(wimpysworld|linuxmatters|quickemu-project|noughtylinux|oval-tutu|flexiondotorg)/([A-Za-z0-9._-]+)/pull/([1-9][0-9]*)/?$
     Any other owner, URL format, or extra flag is rejected with exit 64.
 
     Before any mutation, gh-bot-merge reads the pull request metadata and
@@ -71,9 +71,9 @@ if [[ ${raw_url} == -* ]]; then
 	die "flag-like argument '${raw_url}' is not permitted in <pr-url> position"
 fi
 
-readonly URL_PATTERN='^https://github\.com/(wimpysworld|linuxmatters|quickemu-project|flexiondotorg)/([A-Za-z0-9._-]+)/pull/([1-9][0-9]*)/?$'
+readonly URL_PATTERN='^https://github\.com/(wimpysworld|linuxmatters|quickemu-project|noughtylinux|oval-tutu|flexiondotorg)/([A-Za-z0-9._-]+)/pull/([1-9][0-9]*)/?$'
 if [[ ! ${raw_url} =~ ${URL_PATTERN} ]]; then
-	die "URL '${raw_url}' must match https://github.com/(wimpysworld|linuxmatters|quickemu-project|flexiondotorg)/<repo>/pull/<number>"
+	die "URL '${raw_url}' must match https://github.com/(wimpysworld|linuxmatters|quickemu-project|noughtylinux|oval-tutu|flexiondotorg)/<repo>/pull/<number>"
 fi
 
 owner="${BASH_REMATCH[1]}"

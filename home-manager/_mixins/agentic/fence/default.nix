@@ -94,6 +94,8 @@ let
         "${homeDirectory}/Chainguard/**"
         "${homeDirectory}/Development"
         "${homeDirectory}/Development/**"
+        "${homeDirectory}/Linux-Matters"
+        "${homeDirectory}/Linux-Matters/**"
         "${homeDirectory}/Oval-Tutu"
         "${homeDirectory}/Oval-Tutu/**"
         "${homeDirectory}/Notes"
