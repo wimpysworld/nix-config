@@ -151,7 +151,10 @@ def touches_sensitive_package($owner; $repo):
   );
 
 def has_freshener_labels:
-  ((.labels // []) | map(.name)) | (contains(["automated"]) and contains(["dependencies"]));
+  ((.labels // []) | map(.name)) | (any(. == "automated") and any(. == "dependencies"));
+
+def is_freshener_branch:
+  ((.headRefName // "") | test("^freshen/|^(chainctl|claude-themes-catppuccin|defold|handy|herdr-ctx-bar|herdr-disp-model|lan-mouse|manuscript|moltis|openusage|roamgate|weave|wolfictl|yam)-[0-9A-Za-z._-]+$"));
 
 def is_trusted_peer($owner; $repo):
   (
@@ -165,7 +168,7 @@ def is_trusted_peer($owner; $repo):
       ($owner | ascii_downcase) == "wimpysworld"
       and ($repo | ascii_downcase) == "nix-config"
       and .author.login == "flexiondotorg"
-      and has_freshener_labels
+      and (has_freshener_labels or is_freshener_branch)
     )
     | not
   );
