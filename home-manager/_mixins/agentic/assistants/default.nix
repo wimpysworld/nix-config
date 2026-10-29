@@ -312,6 +312,130 @@ let
   # house style the same way the Pi and OpenCode system prompts do.
   moltisGlobalInstructions = readFileTrim ../moltis/AGENTS.md;
   moltisInstructions = moltisGlobalInstructions + "\n\n" + compose.houseStyleBody + "\n";
+  moltisLegacyInstructionsHash = builtins.hashString "sha256" (
+    globalInstructions + "\n\n" + compose.houseStyleBody + "\n"
+  );
+  moltisCurrentInstructionsHash = builtins.hashString "sha256" moltisInstructions;
+
+  # Recover ownership of Moltis-seeded default workspace files (AGENTS.md and
+  # SOUL.md in ~/.moltis and ~/.moltis/agents/main) and prune any leftover
+  # /nix/store symlinks under ~/.moltis/skills before assistantOwnedFiles runs.
+  moltisBootstrapScript = pkgs.writeText "moltis-assistant-bootstrap.py" ''
+    import hashlib
+    import json
+    import os
+    from pathlib import Path
+    import stat
+    import tempfile
+
+    moltis_root = Path(${builtins.toJSON "${config.home.homeDirectory}/.moltis"})
+    bootstrap_path = Path(${builtins.toJSON "${config.xdg.stateHome}/agentic/assistants/bootstrap.json"})
+    legacy_hashes = {
+        moltis_root / "AGENTS.md": {
+            ${builtins.toJSON moltisLegacyInstructionsHash},
+            ${builtins.toJSON moltisCurrentInstructionsHash},
+            "9dd888f8a07009f4bccc05149a7117819887aa87a49e7be7f8788d4c5ae87b02",
+            "f5986e6d8ffd5168a0e00cc4d39b2619e836f56313c0224b5e855872f857a363",
+        },
+        moltis_root / "agents/main/AGENTS.md": {
+            ${builtins.toJSON moltisLegacyInstructionsHash},
+            ${builtins.toJSON moltisCurrentInstructionsHash},
+            "9dd888f8a07009f4bccc05149a7117819887aa87a49e7be7f8788d4c5ae87b02",
+            "f5986e6d8ffd5168a0e00cc4d39b2619e836f56313c0224b5e855872f857a363",
+        },
+        moltis_root / "SOUL.md": {
+            "36ea5d9157979ce51cac0730f4fc4402bbe6944ea8f8e30cfca2ea316e7b7e40",
+            "95c467f710183b2c0397c29ec4ef886bb723671a39ee767dc4d59165f723b68f",
+        },
+        moltis_root / "agents/main/SOUL.md": {
+            "36ea5d9157979ce51cac0730f4fc4402bbe6944ea8f8e30cfca2ea316e7b7e40",
+            "95c467f710183b2c0397c29ec4ef886bb723671a39ee767dc4d59165f723b68f",
+        },
+    }
+
+
+    def is_store_symlink(path):
+        if not path.is_symlink():
+            return False
+        target = Path(os.readlink(path))
+        return (
+            target.is_absolute()
+            and ".." not in target.parts
+            and target.is_relative_to("/nix/store")
+        )
+
+
+    if not any(parent.is_symlink() for parent in (moltis_root, *moltis_root.parents)):
+        for path in legacy_hashes:
+            if not any(parent.is_symlink() for parent in path.parents) and is_store_symlink(path):
+                path.unlink()
+        skills_dir = moltis_root / "skills"
+        if skills_dir.is_dir() and not skills_dir.is_symlink():
+            for root, dirnames, filenames in os.walk(
+                skills_dir, topdown=False, followlinks=False
+            ):
+                root_path = Path(root)
+                for name in [*filenames, *dirnames]:
+                    candidate = root_path / name
+                    if is_store_symlink(candidate):
+                        candidate.unlink()
+                if root_path != skills_dir and not root_path.is_symlink():
+                    try:
+                        root_path.rmdir()
+                    except OSError:
+                        pass
+
+    verified = {}
+    for path, allowed_hashes in legacy_hashes.items():
+        if any(parent.is_symlink() for parent in path.parents):
+            continue
+        try:
+            info = path.lstat()
+        except FileNotFoundError:
+            continue
+        if stat.S_ISREG(info.st_mode):
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            if digest in allowed_hashes:
+                verified[str(path)] = {"kind": "file", "sha256": digest}
+
+    if verified and not any(
+        parent.is_symlink()
+        for parent in (bootstrap_path.parent, *bootstrap_path.parent.parents)
+    ):
+        data = {"version": 1, "files": {}, "directories": []}
+        if bootstrap_path.exists():
+            info = bootstrap_path.lstat()
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or info.st_uid != os.getuid()
+                or stat.S_IMODE(info.st_mode) != 0o600
+            ):
+                raise ValueError(
+                    "Existing bootstrap must be a private regular file owned by the current user"
+                )
+            loaded = json.loads(bootstrap_path.read_text())
+            if (
+                isinstance(loaded, dict)
+                and loaded.get("version") == 1
+                and isinstance(loaded.get("files"), dict)
+            ):
+                data = loaded
+        data["files"].update(verified)
+        bootstrap_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        os.chmod(bootstrap_path.parent, 0o700)
+        fd, temporary = tempfile.mkstemp(
+            prefix=".bootstrap-", dir=bootstrap_path.parent
+        )
+        try:
+            with os.fdopen(fd, "w") as handle:
+                os.fchmod(handle.fileno(), 0o600)
+                json.dump(data, handle, sort_keys=True)
+                handle.write("\n")
+            os.replace(temporary, bootstrap_path)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
+  '';
 
   # Moltis agent presets are markdown files under ~/.moltis/agents/ with YAML
   # frontmatter. AgentFrontmatter in Moltis (crates/config/src/agent_defs.rs)
@@ -850,6 +974,7 @@ in
         || config.programs.opencode.enable
         || config.programs.codex.enable
         || piEnabled
+        || moltisEnabled
       ) pkgs.python3;
 
       file = lib.mkMerge [
@@ -874,7 +999,21 @@ in
         (lib.mkIf moltisEnabled moltisAgentFiles)
       ];
 
-      inherit (ownedDeployment) activation;
+      activation =
+        ownedDeployment.activation
+        // lib.optionalAttrs moltisEnabled {
+          moltisAssistantBootstrap =
+            lib.hm.dag.entryBetween
+              [ "assistantOwnedFiles" ]
+              [
+                "writeBoundary"
+                "linkGeneration"
+                "captureAssistantOwnership"
+              ]
+              ''
+                run ${pkgs.python3}/bin/python ${moltisBootstrapScript}
+              '';
+        };
     };
 
     programs = {
