@@ -509,6 +509,8 @@ skills = false
         }) c.commandSources)""")
         for name in (
             "address-code-review",
+            "make-commit",
+            "make-pr",
             "implement-task",
             "implement-plan",
             "finish-pr",
@@ -567,7 +569,7 @@ skills = false
                             self.assertNotIn("Use the Task tool to launch", child)
                             self.assertNotIn("Use the Agent tool with", child)
 
-    def test_git_commands_are_unique_garfield_leaves_with_context_handover(self):
+    def test_git_commands_run_in_caller_context_without_garfield_wrappers(self):
         result = self.evaluate("""{
           sources = c.commandSources;
           commands = lib.genAttrs [ "claude" "opencode" "pi" ] c.composeCommands;
@@ -583,42 +585,36 @@ skills = false
                 self.assertTrue(sources[0]["source"].endswith("/commands/" + name))
                 self.assertTrue((ASSISTANTS / "commands" / name).exists())
                 metadata = result["metadata"][name]
-                self.assertNotIn("caller-context", metadata["compose"])
+                self.assertTrue(metadata["compose"]["caller-context"])
+                self.assertNotIn("agent", metadata["compose"])
+                self.assertNotIn("coordinator", metadata["compose"])
                 self.assertNotIn("routing", metadata)
-                self.assertEqual(metadata["common"]["argument-hint"], "[context]")
+                self.assertNotIn("argument-hint", metadata["common"])
+                expected_body = (
+                    (ASSISTANTS / "commands" / name / "command.md").read_text().strip()
+                )
                 for platform, commands in result["commands"].items():
                     rendered = commands[name]
                     native = yaml.safe_load(rendered.split("---", 2)[1])
-                    self.assertEqual(native["argument-hint"], "[context]")
+                    self.assertNotIn("argument-hint", native)
                     self.assertNotIn("model", native)
-                    task = rendered.split("---", 2)[2]
+                    self.assertNotIn("agent", native)
                     if platform == "opencode":
-                        self.assertEqual(native["agent"], "garfield")
-                        self.assertNotIn("Before launch, add", task)
-                        child = task
-                    else:
-                        launch, child = task.split("\n## Task\n", 1)
-                        self.assertIn("Before launch, add the known intent", launch)
-                        self.assertIn("exclusions, and validation evidence", launch)
-                        self.assertIn("explicit mutation authority", launch)
-                        self.assertIn(
-                            "not the general conversation or transcript", launch
-                        )
-                        self.assertIn("Launch only one Garfield worker", launch)
-                    self.assertIn("You are a worker.", child)
-                    self.assertIn("accompanying invocation text", child)
-                    self.assertIn(
-                        "require explicit context or clarify missing decisions", child
-                    )
-                    self.assertIn("stop before dependent writes", child)
-                    self.assertNotIn("Use the Task tool to launch", child)
-                    self.assertNotIn("Use the Agent tool with", child)
+                        self.assertIs(native["subagent"], False)
+                    task = rendered.split("---", 2)[2]
+                    self.assertEqual(task.strip(), expected_body)
+                    self.assertNotIn("You are a worker.", task)
+                    self.assertNotIn("Use the Task tool to launch", task)
+                    self.assertNotIn("Use the Agent tool with", task)
         for skill in result["skills"].values():
-            self.assertIn("Directly invoked `make-commit` and `make-pr`", skill)
-            self.assertIn("one garfield worker", skill)
-            self.assertIn("The coordinator retains index ownership", skill)
-            self.assertIn("Garfield never launches monitoring", skill)
-            self.assertNotIn("staged diff is large", skill)
+            self.assertIn(
+                "Committing intended work: run the `make-commit` command inline; "
+                "delegate to garfield only when the staged diff is large and the "
+                "session did not author it.",
+                skill,
+            )
+            self.assertNotIn("Directly invoked `make-commit` and `make-pr`", skill)
+            self.assertNotIn("Garfield never launches monitoring", skill)
 
     def test_git_command_collisions_are_rejected_for_every_client(self):
         for platform in ("claude", "opencode", "pi", "codex"):
@@ -642,26 +638,27 @@ skills = false
         commit = (garfield / "commands/make-commit/command.md").read_text()
         pr = (garfield / "commands/make-pr/command.md").read_text()
         for text in (
+            "Run this command in the current context",
             "Keep all already-staged content included",
             "Do not reset, unstage, restore, or edit staged content",
             "git add -- <path>",
             "git diff --staged --check",
             "It never pushes",
-            "without its generated launch wrapper",
+            "ignoring generated launch instructions",
+            "One exception: when the staged diff is large and this session did not author it, the coordinator delegates the whole command to `garfield`",
         ):
             self.assertIn(text, commit)
-        self.assertNotIn("One exception", commit)
         for text in (
-            "Read its body directly",
-            "`draft-pr-message`",
-            "supplied parent evidence supports for the committed changes",
-            "A delegated task must restate push, PR creation, review metadata, and tracker mutation authority",
+            "Draft the pull request title and body with the inline contract below.",
+            "Run the pull request creation flow in the current context",
+            "State only checks that this session verified",
             "Never report success from `gh pr create` alone",
-            "Watch handover: Coordinator can offer babysit-pr",
-            "Never invoke `babysit-pr`",
+            "### Watch choice",
+            "Header: `Babysit PR`",
+            "If the user selects `Babysit (Recommended)`, invoke the provider-specific command and wait for it to finish.",
         ):
             self.assertIn(text, pr)
-        self.assertNotIn("invoke the provider-specific command", pr)
+        self.assertNotIn("Watch handover:", pr)
         coordinator_paths = {
             "commands/address-code-review": (
                 "without generated launch wrappers",

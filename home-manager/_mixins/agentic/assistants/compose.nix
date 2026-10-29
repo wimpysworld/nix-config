@@ -527,9 +527,7 @@ let
       - Non-Nix implementation from a defined plan: donatello.
       - Prompts, skills, commands, or instruction files: rosey.
       - Tests: brain. Documentation: velma. General research or option framing: penfold.
-      - Directly invoked `make-commit` and `make-pr`: one garfield worker. Supply intent, paths, exclusions, test evidence, and explicit mutation authority.
-      - Keep explicit coordinator inline commit procedures in `address-code-review`, `implement-task`, and `babysit-pr`. Read their draft and commit bodies without launch wrappers. The coordinator retains index ownership. Never run concurrent index mutations.
-      - After `make-pr` returns a verified URL, the coordinator offers `babysit-pr` and continues only after user consent. Garfield never launches monitoring.
+      - Committing intended work: run the `make-commit` command inline; delegate to garfield only when the staged diff is large and the session did not author it.
       - If no route matches, use the smallest capable specialist or ask.
 
       ## Depth

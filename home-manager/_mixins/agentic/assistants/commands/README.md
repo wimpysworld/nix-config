@@ -44,8 +44,8 @@ Claude Code, OpenCode, and Pi use `/name`. Codex uses manual-only `$name` skills
 | [handover-fresh](./handover-fresh/command.toml) | Handover to a fresh session 📤 | rosey | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
 | [implement-plan](./implement-plan/command.toml) | Implement Plan 👨‍💻 | donatello | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
 | [implement-task](./implement-task/command.toml) | Implement a tracked task end to end 🛠️ | Unset | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
-| [make-commit](./make-commit/command.toml) | Draft and make a commit ✍️ | garfield | public | Task worker: garfield | Native subagent: garfield | spawn_agent: garfield | Agent worker: garfield |
-| [make-pr](./make-pr/command.toml) | Draft and open a PR 🐙 | garfield | public | Task worker: garfield | Native subagent: garfield | spawn_agent: garfield | Agent worker: garfield |
+| [make-commit](./make-commit/command.toml) | Draft and make a commit ✍️ | Unset | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [make-pr](./make-pr/command.toml) | Draft and open a PR 🐙 | Unset | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
 | [oi](./oi/command.toml) | Bluntly re-issue the Communication Rules 📜 | Unset | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
 | [orientate](./orientate/command.toml) | Digest existing sources for orientation 🧭 | penfold | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
 | [post-code-review](./post-code-review/command.toml) | Post Code Review 📮 | donatello | public | Task worker: donatello | Native subagent: donatello | spawn_agent: donatello | Agent worker: donatello |
@@ -202,14 +202,6 @@ Only description overrides and nonempty argument hints are shown. When any clien
 | [implement-task](./implement-task/command.toml) | opencode | Same as common | [issue-or-path] |
 | [implement-task](./implement-task/command.toml) | codex | Same as common | Unset |
 | [implement-task](./implement-task/command.toml) | pi | Same as common | [issue-or-path] |
-| [make-commit](./make-commit/command.toml) | claude | Same as common | [context] |
-| [make-commit](./make-commit/command.toml) | opencode | Same as common | [context] |
-| [make-commit](./make-commit/command.toml) | codex | Same as common | Unset |
-| [make-commit](./make-commit/command.toml) | pi | Same as common | [context] |
-| [make-pr](./make-pr/command.toml) | claude | Same as common | [context] |
-| [make-pr](./make-pr/command.toml) | opencode | Same as common | [context] |
-| [make-pr](./make-pr/command.toml) | codex | Same as common | Unset |
-| [make-pr](./make-pr/command.toml) | pi | Same as common | [context] |
 | [orientate](./orientate/command.toml) | claude | Same as common | [sources ...] |
 | [orientate](./orientate/command.toml) | opencode | Same as common | [sources ...] |
 | [orientate](./orientate/command.toml) | codex | Same as common | Unset |

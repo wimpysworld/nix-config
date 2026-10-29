@@ -139,9 +139,7 @@ The four commands `review-code-community`, `review-code-colleague`, `review-code
 
 The shared `review-code` skill supports direct worker mode and coordinator mode. Coordinator mode retains fan-out and selective verification. The `review-code-follow-up` skill keeps its prior-report and response-delta scope in direct worker mode. A complete-review worker allocates one exclusive report run when none is supplied. Review-lane workers reuse their parent's paths.
 
-Direct human invocation of `make-commit` or `make-pr` runs one Garfield worker. Optional context supplies intent, paths, exclusions, validation evidence, and mutation authority. Claude Code, Codex, and Pi wrappers add known parent decisions to the packet, without the transcript. OpenCode uses native agent binding without a parent wrapper, so missing decisions require explicit context or clarification.
-
-`make-pr` returns the verified PR URL and a watch handover. The coordinator offers `babysit-pr` and runs its coordinator workflow only after consent. Garfield never starts monitoring. Explicit coordinator inline commit procedures in `address-code-review`, `implement-task`, and `babysit-pr` retain index ownership. They read workflow bodies without invoking generated launch wrappers.
+`make-commit` and `make-pr` run in the caller's context and inherit the caller's model for message drafting, commit and PR creation, and the `babysit-pr` choice. Only the coordinator can delegate a commit to Garfield for a large staged diff that the session did not author.
 
 ---
 
@@ -209,7 +207,7 @@ Compact, stable system prompts preserve Claude prompt-cache hits; bloated or var
 
 Agents without routing defaults inherit the model selected in the coding tool. The [agent catalogue](agents/README.md) lists current defaults from `header.toml`. Defaults do not guarantee the model for every invocation. Client entry behaviour and explicit overrides determine whether a route applies.
 
-Agent `header.toml` files are the sole routing default source for Claude Code, Codex, and Pi. Commands and ordinary skills remain model-neutral. Explicit launch-time child model, thinking, or effort overrides remain supported. Caller-context commands never change the caller's model, whether or not they have an agent binding. Direct `make-commit` and `make-pr` launches use Garfield's agent defaults on Claude Code, Codex, and Pi. Explicit coordinator inline reuse retains the caller's model.
+Agent `header.toml` files are the sole routing default source for Claude Code, Codex, and Pi. Commands and ordinary skills remain model-neutral. Explicit launch-time child model, thinking, or effort overrides remain supported. Caller-context commands never change the caller's model, whether or not they have an agent binding. The `make-commit` and `make-pr` commands retain the caller's model.
 
 The [OpenCode router](../opencode/README.md#provider-routing) installs whenever OpenCode is enabled. Google and other missing routes retain native behaviour. Existing OpenCode command model metadata remains supported. OpenCode's direct slash commands use native agent binding. Do not assume that binding uses the router, which applies only to direct-root native subagent children.
 
@@ -250,7 +248,7 @@ Generated child tasks carry a shared worker contract. Workers complete assigned 
 
 Launch wrappers require a bounded packet with scope, exact arguments, existing authority, stop condition, validation, and output. Claude Code uses the Task wrapper by default for agent-bound commands. Set `[compose.claude] use-task = false` to retain the inline `@agent` form. OpenCode native subagent bodies carry the contract, but explicit `subagent = false` keeps the caller context.
 
-Command-specific coordinator guidance lives in `command.toml`. `make-commit` supplies packet preparation, and `make-pr` also supplies the consent-based watch continuation. See [Coordinator guidance](skills/write-command/SKILL.md#coordinator-guidance) for the schema, wrapper placement, bypass rules, and OpenCode limits.
+Command-specific coordinator guidance lives in `command.toml`. See [Coordinator guidance](skills/write-command/SKILL.md#coordinator-guidance) for the schema, wrapper placement, bypass rules, and OpenCode limits.
 
 ### Caller-context commands
 

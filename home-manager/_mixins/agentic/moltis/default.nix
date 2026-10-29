@@ -31,6 +31,7 @@ let
   googleSttModel = "gemini-3.8-flash";
   ttsShimPort = 13139;
   geminiKeyPath = config.sops.secrets.GEMINI_API_KEY.path;
+  sshKeyPath = config.sops.secrets.ssh_key.path;
 
   # Environment variables the composed `moltis.toml` references, mapped to
   # the sops file each one comes from.
@@ -546,10 +547,10 @@ let
       ${fenceLogging.setupShell}
 
       for _ in {1..20}; do
-        [[ -r "${config.sops.templates."moltis.toml".path}" && -r "${geminiKeyPath}" ]] && break
+        [[ -r "${config.sops.templates."moltis.toml".path}" && -r "${geminiKeyPath}" && -e "${sshKeyPath}" ]] && break
         sleep 0.5
       done
-      if [[ ! -r "${config.sops.templates."moltis.toml".path}" || ! -r "${geminiKeyPath}" ]]; then
+      if [[ ! -r "${config.sops.templates."moltis.toml".path}" || ! -r "${geminiKeyPath}" || ! -e "${sshKeyPath}" ]]; then
         echo "moltis-fenced: timed out waiting for sops-nix secrets" >&2
         exit 1
       fi

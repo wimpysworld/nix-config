@@ -68,6 +68,11 @@ class SkillFileTests(unittest.TestCase):
                         directory + ("/command.sops" if secret else "/command.md")
                     ] = (name if secret else body) + "\n"
         for name in ("make-commit", "make-pr"):
+            cases[name] = ("unbound", "caller-context", False)
+            for filename in ("command.toml", "command.md"):
+                path = f"commands/{name}/{filename}"
+                files[path] = (ASSISTANTS / path).read_text()
+        for name in ("draft-commit-message", "draft-pr-message"):
             cases[name] = ("garfield", "worker", False)
             for filename in ("command.toml", "command.md"):
                 path = f"commands/{name}/{filename}"
@@ -148,7 +153,10 @@ class SkillFileTests(unittest.TestCase):
                         if selection in ("garfield", "donatello")
                         else "worker"
                     )
-                    if selection == "donatello" or selection == "garfield":
+                    if selection in ("donatello", "garfield") or name in (
+                        "make-commit",
+                        "make-pr",
+                    ):
                         expected_body = files[f"commands/{name}/command.md"].strip()
                     if platform == "codex":
                         entry = owned[f"/fixture/.codex/skills/{name}/SKILL.md"]
@@ -186,7 +194,10 @@ class SkillFileTests(unittest.TestCase):
                         and mode == "worker"
                         and platform != "opencode"
                     )
-                    if selection not in ("garfield", "donatello"):
+                    if (
+                        selection not in ("garfield", "donatello")
+                        and name not in ("make-commit", "make-pr")
+                    ):
                         for marker in ("BEFORE_SENTINEL", "AFTER_SENTINEL"):
                             self.assertEqual(rendered.count(marker), int(wrapped))
                         if wrapped:
@@ -279,27 +290,8 @@ class SkillFileTests(unittest.TestCase):
                                 )
                                 self.assertEqual(native["argument-hint"], hint)
                         if selection == "garfield":
-                            self.assertNotIn("Before launch, add", child_task)
                             self.assertNotIn("model", native)
-                            if platform != "codex":
-                                self.assertEqual(native["argument-hint"], "[context]")
-                            self.assertIn("accompanying invocation text", child_task)
-                            if platform != "opencode":
-                                self.assertIn(
-                                    "Before launch, add the known intent", launch
-                                )
-                                self.assertIn("explicit mutation authority", launch)
-                                self.assertIn(
-                                    "not the general conversation or transcript", launch
-                                )
-                                if name == "make-pr":
-                                    self.assertIn("Only after explicit consent", launch)
-                                    self.assertIn(
-                                        "Do not send monitoring to Garfield", launch
-                                    )
-                            if name == "make-pr":
-                                self.assertIn("Watch handover: Coordinator", child_task)
-                                self.assertIn("Never invoke `babysit-pr`", child_task)
+                            self.assertNotIn("argument-hint", native)
                         for wrapper in (
                             "Use the `spawn_agent` tool to launch",
                             "Use the Agent tool with",
