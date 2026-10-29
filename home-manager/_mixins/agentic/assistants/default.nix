@@ -275,6 +275,43 @@ let
   # Same host gate that `moltis/default.nix` and `mcp/default.nix` use.
   moltisEnabled =
     noughtyLib.isUser [ "martin" ] && config.noughty.host.is.linux && noughtyLib.hostHasTag "moltis";
+  moltisSopsFile = ../../../../secrets/moltis.yaml;
+  moltisAgentName = if config.noughty.host.name == "malak" then "traya" else config.noughty.host.name;
+  moltisSoulKey = "SOUL_${lib.toUpper moltisAgentName}";
+  moltisSoulSecrets = lib.optionalAttrs moltisEnabled {
+    ${moltisSoulKey} = {
+      sopsFile = moltisSopsFile;
+    };
+    SOUL_ALL = {
+      sopsFile = moltisSopsFile;
+    };
+  };
+  moltisSoulTemplates = lib.optionalAttrs moltisEnabled {
+    assistant-moltis-soul = {
+      content = "${config.sops.placeholder.${moltisSoulKey}}\n\n${config.sops.placeholder.SOUL_ALL}\n";
+    };
+  };
+  moltisSoulOwnedFiles = lib.optionals moltisEnabled (
+    map
+      (path: {
+        inherit path;
+        source = config.sops.templates."assistant-moltis-soul".path;
+        kind = "file";
+        mode = "0600";
+      })
+      [
+        "${config.home.homeDirectory}/.moltis/SOUL.md"
+        "${config.home.homeDirectory}/.moltis/agents/main/SOUL.md"
+      ]
+  );
+
+  # Moltis loads ~/.moltis/AGENTS.md as workspace agent instructions and seeds
+  # ~/.moltis/agents/main/AGENTS.md from it on first run, reading the main
+  # workspace copy first. Deploy both paths through ownedFiles as regular files
+  # so neither copy drifts. Plain markdown, no frontmatter. It carries the
+  # house style the same way the Pi and OpenCode system prompts do.
+  moltisGlobalInstructions = readFileTrim ../moltis/AGENTS.md;
+  moltisInstructions = moltisGlobalInstructions + "\n\n" + compose.houseStyleBody + "\n";
 
   # Moltis agent presets are markdown files under ~/.moltis/agents/ with YAML
   # frontmatter. AgentFrontmatter in Moltis (crates/config/src/agent_defs.rs)
@@ -323,14 +360,35 @@ let
   }) codingAgentDirs;
 
   # Moltis discovers personal skills one level deep under ~/.moltis/skills/,
-  # and nothing writes inside a personal skills/<name>/ directory, so whole
-  # directory symlinks are safe. composeSkillsFor also emits the generated
-  # delegate-task skill, which is platform-neutral.
+  # and `read_skill` (crates/tools/src/skill_tools/read_ops.rs) rejects
+  # symlinked skill directories and symlinked sidecar files outside the
+  # canonical skill directory. Every Moltis skill file therefore deploys
+  # through `ownedFiles` as a regular file (`kind = "file"`).
   moltisSkills = compose.composeSkillsFor "moltis";
-  mkMoltisSkillFiles = lib.mapAttrs' (name: skill: {
-    name = "${config.home.homeDirectory}/.moltis/skills/${name}";
-    value.source = skill.path;
-  }) moltisSkills;
+  listFilesRecursive =
+    dir:
+    lib.concatLists (
+      lib.mapAttrsToList (
+        name: type:
+        if name == "header.toml" then
+          [ ]
+        else if type == "directory" then
+          map (rel: "${name}/${rel}") (listFilesRecursive (dir + "/${name}"))
+        else
+          [ name ]
+      ) (builtins.readDir dir)
+    );
+  moltisSkillExtraPaths =
+    name: skill:
+    lib.concatLists (
+      lib.mapAttrsToList (
+        entryName: entryType:
+        if entryType == "directory" then
+          map (relPath: "${entryName}/${relPath}") (listFilesRecursive (./skills + "/${name}/${entryName}"))
+        else
+          [ entryName ]
+      ) (skill.extras or { })
+    );
 
   # Moltis has no slash-command surface, so selected commands deploy as
   # skills, mirroring Moltis' own importer (import-core
@@ -406,26 +464,36 @@ let
     sources = moltisCommandSources;
   };
 
-  # Force the collision check before assembling the command-derived Moltis
-  # skill files. The `seq` forces evaluation of
-  # `moltisCommandCollisionCheck`, which either returns `true` or throws with
-  # the colliding name and source paths. Moltis' `FsSkillDiscoverer`
-  # discovers skills one level deep as `skills/<name>/SKILL.md`, so each
-  # command deploys as a directory holding `SKILL.md`; the bodies are public
-  # command markdown, so the text file carries no secret risk.
-  moltisCommandSkillFiles = builtins.seq moltisCommandCollisionCheck (
-    builtins.listToAttrs (
-      map (cmdName: {
-        name = "${config.home.homeDirectory}/.moltis/skills/${cmdName}/SKILL.md";
-        value.text = mkMoltisCommandSkill cmdName;
-      }) moltisCommandAllowlist
+  # Force the collision check before assembling the Moltis skill entries in
+  # `ownedFiles`. The `seq` forces evaluation of `moltisCommandCollisionCheck`,
+  # which either returns `true` or throws with the colliding name and source
+  # paths.
+  moltisOwnedFiles = builtins.seq moltisCommandCollisionCheck (
+    [
+      (ownedFile "${config.home.homeDirectory}/.moltis/AGENTS.md" moltisInstructions)
+      (ownedFile "${config.home.homeDirectory}/.moltis/agents/main/AGENTS.md" moltisInstructions)
+    ]
+    ++ lib.concatLists (
+      lib.mapAttrsToList (
+        name: skill:
+        [
+          (ownedFile "${config.home.homeDirectory}/.moltis/skills/${name}/SKILL.md" skill.content)
+        ]
+        ++ map (relPath: {
+          path = "${config.home.homeDirectory}/.moltis/skills/${name}/${relPath}";
+          source = "${skill.path}/${relPath}";
+          kind = "file";
+          mode = "0600";
+        }) (moltisSkillExtraPaths name skill)
+      ) moltisSkills
     )
+    ++ map (
+      cmdName:
+      ownedFile "${config.home.homeDirectory}/.moltis/skills/${cmdName}/SKILL.md" (
+        mkMoltisCommandSkill cmdName
+      )
+    ) moltisCommandAllowlist
   );
-
-  # Moltis loads ~/.moltis/AGENTS.md as workspace agent instructions. Plain
-  # markdown, no frontmatter. It carries the house style the same way the
-  # Pi and OpenCode system prompts do.
-  moltisInstructions = globalInstructions + "\n\n" + compose.houseStyleBody + "\n";
 
   # ============ SKILLS ============
 
@@ -606,11 +674,22 @@ let
     ) secretSkillList;
 
   secretTemplates = secretCommandTemplates // secretSkillTemplates;
-  secretOwnedFiles = lib.mapAttrsToList (name: template: {
-    inherit (template) path;
-    source = config.sops.templates.${name}.path;
-    kind = "symlink";
-  }) secretTemplates;
+  secretOwnedFiles =
+    lib.mapAttrsToList (
+      name: template:
+      let
+        isMoltis = lib.hasPrefix "assistant-moltis-skill-" name;
+      in
+      {
+        inherit (template) path;
+        source = config.sops.templates.${name}.path;
+        kind = if isMoltis then "file" else "symlink";
+      }
+      // lib.optionalAttrs isMoltis {
+        mode = "0600";
+      }
+    ) secretTemplates
+    ++ moltisSoulOwnedFiles;
 
   optionalSymlink = path: source: {
     inherit path source;
@@ -657,7 +736,7 @@ let
     ++ lib.optionals moltisEnabled (
       map (
         relPath:
-        optionalSymlink "${config.home.homeDirectory}/.moltis/${relPath}" "${chainguardAgentsDir}/${relPath}"
+        optionalFile "${config.home.homeDirectory}/.moltis/${relPath}" "${chainguardAgentsDir}/${relPath}"
       ) chainguardSkillFiles
     );
 
@@ -674,6 +753,7 @@ let
     lib.optionals config.programs.codex.enable (
       codexOwnedFiles ++ codexSecretOwnedFiles ++ chainguardCodexOwnedFiles
     )
+    ++ lib.optionals moltisEnabled moltisOwnedFiles
     ++ secretOwnedFiles
     ++ chainguardClientOwnedFiles;
   ownedDeployment = import ./owned-deployment.nix {
@@ -758,8 +838,10 @@ in
 
     # Render secrets privately before the ownership helper installs client files.
     sops = {
-      secrets = secretCommandSecrets // secretSkillSecrets;
-      templates = lib.mapAttrs (_: template: builtins.removeAttrs template [ "path" ]) secretTemplates;
+      secrets = secretCommandSecrets // secretSkillSecrets // moltisSoulSecrets;
+      templates =
+        lib.mapAttrs (_: template: builtins.removeAttrs template [ "path" ]) secretTemplates
+        // moltisSoulTemplates;
     };
 
     home = {
@@ -788,15 +870,8 @@ in
         ))
         # OpenCode skill files
         (lib.mkIf config.programs.opencode.enable mkOpencodeSkillFiles)
-        # Moltis agent presets, skills, and global instructions
-        (lib.mkIf moltisEnabled (
-          {
-            "${config.home.homeDirectory}/.moltis/AGENTS.md".text = moltisInstructions;
-          }
-          // moltisAgentFiles
-          // mkMoltisSkillFiles
-          // moltisCommandSkillFiles
-        ))
+        # Moltis agent presets
+        (lib.mkIf moltisEnabled moltisAgentFiles)
       ];
 
       inherit (ownedDeployment) activation;

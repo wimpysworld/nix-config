@@ -659,33 +659,35 @@ let
   };
 in
 {
-  config = lib.mkIf (!host.is.server && noughtyLib.userHasTag "developer") {
-    home.packages = [
-      fencePackage
-      pkgs.socat
-    ]
-    ++ lib.optionals host.is.linux [
-      pkgs.bubblewrap
-      pkgs.bpftrace
-    ];
+  config =
+    lib.mkIf ((!host.is.server || noughtyLib.hostHasTag "moltis") && noughtyLib.userHasTag "developer")
+      {
+        home.packages = [
+          fencePackage
+          pkgs.socat
+        ]
+        ++ lib.optionals host.is.linux [
+          pkgs.bubblewrap
+          pkgs.bpftrace
+        ];
 
-    xdg.configFile."fence/fence.jsonc".text = builtins.toJSON fenceConfig;
+        xdg.configFile."fence/fence.jsonc".text = builtins.toJSON fenceConfig;
 
-    systemd.user.tmpfiles.rules = lib.mkIf host.is.linux [
-      # Shared launch directory for fenced agents, used as TMPDIR inside the
-      # sandbox. It sits under ~/.cache rather than $XDG_RUNTIME_DIR so Fence
-      # never has to cross the /run mount boundary. See the allowWrite note
-      # above. Contents age out after a day.
-      "d ${config.xdg.cacheHome}/fence-share 0700 - - 1d"
+        systemd.user.tmpfiles.rules = lib.mkIf host.is.linux [
+          # Shared launch directory for fenced agents, used as TMPDIR inside the
+          # sandbox. It sits under ~/.cache rather than $XDG_RUNTIME_DIR so Fence
+          # never has to cross the /run mount boundary. See the allowWrite note
+          # above. Contents age out after a day.
+          "d ${config.xdg.cacheHome}/fence-share 0700 - - 1d"
 
-      # Per-launch Fence logs land in ${XDG_STATE_HOME}/fence. The fenced
-      # wrappers create the directory on demand, but pin permissions and
-      # retention here so a 14-day window applies even when the wrappers
-      # have not run recently. The directory holds argv, blocked URLs, and
-      # filesystem paths, so it stays mode 0700 with `e` for stat-time
-      # ageing of regular files only.
-      "d ${config.xdg.stateHome}/fence 0700 - - - -"
-      "e ${config.xdg.stateHome}/fence - - - 14d"
-    ];
-  };
+          # Per-launch Fence logs land in ${XDG_STATE_HOME}/fence. The fenced
+          # wrappers create the directory on demand, but pin permissions and
+          # retention here so a 14-day window applies even when the wrappers
+          # have not run recently. The directory holds argv, blocked URLs, and
+          # filesystem paths, so it stays mode 0700 with `e` for stat-time
+          # ageing of regular files only.
+          "d ${config.xdg.stateHome}/fence 0700 - - - -"
+          "e ${config.xdg.stateHome}/fence - - - 14d"
+        ];
+      };
 }

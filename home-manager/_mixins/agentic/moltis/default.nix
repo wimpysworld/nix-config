@@ -14,8 +14,9 @@ let
 
   username = config.noughty.user.name;
   homeDir = config.home.homeDirectory;
+  agentName = if host.name == "malak" then "traya" else host.name;
 
-  herdrSopsFile = ../../../../secrets/herdr.yaml;
+  moltisSopsFile = ../../../../secrets/moltis.yaml;
   aiSopsFile = ../../../../secrets/ai.yaml;
   mcpSopsFile = ../../../../secrets/mcp.yaml;
   linearSopsFile = ../../../../secrets/linear.yaml;
@@ -23,9 +24,9 @@ let
   # one `key` attribute per identity in the same sops file.
   isWorkHost = lib.elem "cg" (host.tags or [ ]);
 
-  # Per-host Gemini TTS voice (`skrye` uses the Irish assistant voice;
+  # Per-host Gemini TTS voice (`skrye` uses the British concierge voice;
   # `zannah` uses the British commercial voice).
-  googleTtsVoice = if host.name == "zannah" then "en-gb-commercial-6" else "en-ie-assistant-3";
+  googleTtsVoice = if host.name == "zannah" then "en-gb-commercial-6" else "en-gb-concierge-6";
   googleTtsModel = "gemini-3.8-flash-tts";
   googleSttModel = "gemini-3.8-flash";
   ttsShimPort = 13132;
@@ -34,9 +35,9 @@ let
   # Environment variables the composed `moltis.toml` references, mapped to
   # the sops file each one comes from.
   moltisSecretSopsFiles = {
-    TELEGRAM_BOT_TOKEN = herdrSopsFile;
-    TELEGRAM_HOME_CHANNEL = herdrSopsFile;
-    TELEGRAM_ALLOWED_USERS = herdrSopsFile;
+    TELEGRAM_BOT_TOKEN = moltisSopsFile;
+    TELEGRAM_HOME_CHANNEL = moltisSopsFile;
+    TELEGRAM_ALLOWED_USERS = moltisSopsFile;
     GEMINI_API_KEY = aiSopsFile;
     CONTEXT7_API_KEY = mcpSopsFile;
     LINEAR_API_KEY = linearSopsFile;
@@ -51,17 +52,17 @@ let
       }
     else if name == "TELEGRAM_BOT_TOKEN" then
       {
-        sopsFile = herdrSopsFile;
-        key = "TELEGRAM_BOT_${lib.toUpper host.name}";
+        sopsFile = moltisSopsFile;
+        key = "TELEGRAM_BOT_${lib.toUpper agentName}";
       }
     else if name == "TELEGRAM_HOME_CHANNEL" then
       {
-        sopsFile = herdrSopsFile;
-        key = "TELEGRAM_CHAT_ID_${lib.toUpper host.name}";
+        sopsFile = moltisSopsFile;
+        key = "TELEGRAM_CHAT_ID_${lib.toUpper agentName}";
       }
     else if name == "TELEGRAM_ALLOWED_USERS" then
       {
-        sopsFile = herdrSopsFile;
+        sopsFile = moltisSopsFile;
         key = "TELEGRAM_OPERATOR_IDS";
       }
     else if name == "GEMINI_API_KEY" then
@@ -667,7 +668,7 @@ in
             };
 
             identity = {
-              inherit (host) name;
+              name = agentName;
             };
 
             user = {
@@ -733,7 +734,7 @@ in
                 coordinator = {
                   model = "gemini::gemini-4-argon";
                   reasoning_effort = "medium";
-                  delegate_only = true;
+                  delegate_only = false;
                 };
                 auxiliary = {
                   model = "gemini::gemini-3.8-flash";
@@ -812,7 +813,9 @@ in
                 # crates/config/src/loader/config_io.rs, tag 20260913.02).
                 group_allowlist = [ "\${TELEGRAM_HOME_CHANNEL}" ];
                 mention_mode = "always";
-                stream_mode = "off";
+                stream_mode = "edit_in_place";
+                stream_min_initial_chars = 30;
+                edit_throttle_ms = 1000;
                 reply_to_message = true;
                 untrusted_audience = "trusted";
                 untrusted_tools = "policy";
