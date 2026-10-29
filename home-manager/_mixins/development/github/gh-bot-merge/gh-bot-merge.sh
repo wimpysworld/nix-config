@@ -160,6 +160,7 @@ def is_freshener($owner; $repo):
   and (.author.login == "flexiondotorg")
   and (((.labels // []) | map(.name)) | (contains(["automated"]) and contains(["dependencies"])))
   and ((.headRefName // "") | test("^(chainctl|claude-themes-catppuccin|defold|handy|lan-mouse|manuscript|moltis|openusage|weave|wolfictl|yam)-[0-9A-Za-z._-]+$"))
+  and (touches_sensitive_package | not)
   and (((.files // []) | length) > 0)
   and all(
     (.files // [])[];

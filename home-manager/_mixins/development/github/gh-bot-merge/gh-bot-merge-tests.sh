@@ -293,6 +293,11 @@ for blocked_pkg in roamgate herdr-ctx-bar herdr-disp-model; do
 done
 
 reset_stub
+write_pr_json wimpysworld 'flexiondotorg' 'handy-1' \
+	'.files = [{path: "pkgs/roamgate/default.nix"}]'
+assert_pr_rejected 'reject allowed freshener branch touching sensitive package' "${url_ww}" 'does not match'
+
+reset_stub
 write_pr_json wimpysworld 'flexiondotorg' 'chainctl-0.2.391' \
 	'.files = [{path: "pkgs/chainctl/default.nix"}]'
 assert_pr_rejected 'reject freshener PR outside wimpysworld/nix-config' \
