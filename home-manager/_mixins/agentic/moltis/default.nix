@@ -24,9 +24,9 @@ let
   # one `key` attribute per identity in the same sops file.
   isWorkHost = lib.elem "cg" (host.tags or [ ]);
 
-  # Per-host Gemini TTS voice (`skrye` uses the British concierge voice;
-  # `zannah` uses the British commercial voice).
-  googleTtsVoice = if host.name == "zannah" then "en-gb-commercial-6" else "en-gb-concierge-6";
+  # Per-host Gemini TTS voice (`skrye` uses the British commercial voice;
+  # `zannah` uses the British concierge voice).
+  googleTtsVoice = if host.name == "zannah" then "en-gb-concierge-6" else "en-gb-commercial-6";
   googleTtsModel = "gemini-3.8-flash-tts";
   googleSttModel = "gemini-3.8-flash";
   ttsShimPort = 13139;
