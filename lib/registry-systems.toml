@@ -307,7 +307,6 @@ tags = [
   "librechat",
   "mongodb",
   "inference",
-  "hermes",
   "gatus",
   "irc-bouncer",
   "kmscon",

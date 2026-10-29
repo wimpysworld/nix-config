@@ -9,7 +9,6 @@ let
   cloudflareSopsFile = ../../../../secrets + "/cloudflare.yaml";
   hasCloudflareSopsFile = builtins.pathExists cloudflareSopsFile;
   gatusPort = 8741;
-  hermesSopsFile = ../../../../secrets + "/hermes.yaml";
 in
 lib.mkIf (noughtyLib.hostHasTag "gatus") {
   environment = {
@@ -33,20 +32,6 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
         path = "/etc/gatus/secrets.env";
         sopsFile = ../../../../secrets/gatus.yaml;
       };
-      TELEGRAM_BOT_TOKEN = {
-        group = "root";
-        mode = "0400";
-        owner = "root";
-        sopsFile = hermesSopsFile;
-      };
-    };
-    templates."gatus-telegram-env" = {
-      content = ''
-        GATUS_TELEGRAM_TOKEN=${config.sops.placeholder.TELEGRAM_BOT_TOKEN}
-      '';
-      group = "root";
-      mode = "0400";
-      owner = "root";
     };
   };
   services = {
@@ -55,19 +40,6 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
       environmentFile = config.sops.secrets.gatus-env.path;
       openFirewall = lib.mkDefault false;
       settings = {
-        alerting = {
-          telegram = {
-            token = "$GATUS_TELEGRAM_TOKEN";
-            id = "-1003933927882";
-            topic-id = "5657";
-            default-alert = {
-              description = "Gatus health check";
-              send-on-resolved = true;
-              failure-threshold = 5;
-              success-threshold = 2;
-            };
-          };
-        };
         connectivity = {
           checker = {
             target = "1.1.1.1:53";
@@ -98,11 +70,6 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             conditions = [
               "[STATUS] == 200"
             ];
-            alerts = [
-              {
-                type = "telegram";
-              }
-            ];
           }
           {
             name = "Domain and Certifcate Check";
@@ -113,11 +80,6 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
               "[CERTIFICATE_EXPIRATION] > 48h"
               "[DOMAIN_EXPIRATION] > 168h"
             ];
-            alerts = [
-              {
-                type = "telegram";
-              }
-            ];
           }
           {
             name = "Website";
@@ -126,11 +88,6 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             interval = "30s";
             conditions = [
               "[STATUS] == 200"
-            ];
-            alerts = [
-              {
-                type = "telegram";
-              }
             ];
           }
           {
@@ -141,11 +98,6 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             conditions = [
               "[CERTIFICATE_EXPIRATION] > 48h"
               "[DOMAIN_EXPIRATION] > 168h"
-            ];
-            alerts = [
-              {
-                type = "telegram";
-              }
             ];
           }
           {
@@ -156,11 +108,6 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             conditions = [
               "[STATUS] == 200"
             ];
-            alerts = [
-              {
-                type = "telegram";
-              }
-            ];
           }
           {
             name = "Discourse";
@@ -169,11 +116,6 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             interval = "30s";
             conditions = [
               "[STATUS] == 200"
-            ];
-            alerts = [
-              {
-                type = "telegram";
-              }
             ];
           }
           {
@@ -184,11 +126,6 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             conditions = [
               "[CERTIFICATE_EXPIRATION] > 48h"
               "[DOMAIN_EXPIRATION] > 168h"
-            ];
-            alerts = [
-              {
-                type = "telegram";
-              }
             ];
           }
           {
@@ -200,11 +137,6 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             conditions = [
               "[RESPONSE_TIME] < 300"
             ];
-            alerts = [
-              {
-                type = "telegram";
-              }
-            ];
           }
           {
             name = "Node - York";
@@ -214,11 +146,6 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             ui.hide-hostname = true;
             conditions = [
               "[RESPONSE_TIME] < 300"
-            ];
-            alerts = [
-              {
-                type = "telegram";
-              }
             ];
           }
           {
@@ -230,11 +157,6 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             conditions = [
               "[RESPONSE_TIME] < 300"
             ];
-            alerts = [
-              {
-                type = "telegram";
-              }
-            ];
           }
           {
             name = "Website";
@@ -244,11 +166,6 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             conditions = [
               "[STATUS] == 200"
               "[BODY] == pat(*Martin Wimpress</h1>*)"
-            ];
-            alerts = [
-              {
-                type = "telegram";
-              }
             ];
           }
           {
@@ -260,11 +177,6 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
               "[STATUS] == 200"
               "[BODY] == pat(*>Wimpy's Links 🔗</h1>*)"
             ];
-            alerts = [
-              {
-                type = "telegram";
-              }
-            ];
           }
           {
             name = "GotoSocial";
@@ -274,11 +186,6 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
             conditions = [
               "[STATUS] == 200"
               "[BODY] == pat(*>Profile for martin</h2>*)"
-            ];
-            alerts = [
-              {
-                type = "telegram";
-              }
             ];
           }
           {
@@ -290,11 +197,6 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
               "[STATUS] == 200"
               "[BODY] == pat(*New episode every fortnight*)"
             ];
-            alerts = [
-              {
-                type = "telegram";
-              }
-            ];
           }
           {
             name = "Domain and Certifcate Check";
@@ -305,20 +207,11 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
               "[CERTIFICATE_EXPIRATION] > 48h"
               "[DOMAIN_EXPIRATION] > 168h"
             ];
-            alerts = [
-              {
-                type = "telegram";
-              }
-            ];
           }
         ];
       };
     };
   };
-
-  systemd.services.gatus.serviceConfig.EnvironmentFile = [
-    config.sops.templates."gatus-telegram-env".path
-  ];
 
   systemd.services.cloudflared-gatus = lib.mkIf hasCloudflareSopsFile {
     description = "Cloudflare Tunnel connector for Gatus";
