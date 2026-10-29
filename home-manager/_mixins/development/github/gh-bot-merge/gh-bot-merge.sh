@@ -25,7 +25,7 @@ EXAMPLES
 
 POLICY
     The URL must match:
-      ^https://github\.com/(wimpysworld|linuxmatters|quickemu-project|noughtylinux|oval-tutu|flexiondotorg)/([A-Za-z0-9._-]+)/pull/([1-9][0-9]*)/?$
+      ^https://github\.com/(wimpysworld|linuxmatters|quickemu-project|noughtylinux|oval-tutu|Oval-Tutu|flexiondotorg)/([A-Za-z0-9._-]+)/pull/([1-9][0-9]*)/?$
     Any other owner, URL format, or extra flag is rejected with exit 64.
 
     Before any mutation, gh-bot-merge reads the pull request metadata and
@@ -71,9 +71,9 @@ if [[ ${raw_url} == -* ]]; then
 	die "flag-like argument '${raw_url}' is not permitted in <pr-url> position"
 fi
 
-readonly URL_PATTERN='^https://github\.com/(wimpysworld|linuxmatters|quickemu-project|noughtylinux|oval-tutu|flexiondotorg)/([A-Za-z0-9._-]+)/pull/([1-9][0-9]*)/?$'
+readonly URL_PATTERN='^https://github\.com/(wimpysworld|linuxmatters|quickemu-project|noughtylinux|oval-tutu|Oval-Tutu|flexiondotorg)/([A-Za-z0-9._-]+)/pull/([1-9][0-9]*)/?$'
 if [[ ! ${raw_url} =~ ${URL_PATTERN} ]]; then
-	die "URL '${raw_url}' must match https://github.com/(wimpysworld|linuxmatters|quickemu-project|noughtylinux|oval-tutu|flexiondotorg)/<repo>/pull/<number>"
+	die "URL '${raw_url}' must match https://github.com/(wimpysworld|linuxmatters|quickemu-project|noughtylinux|oval-tutu|Oval-Tutu|flexiondotorg)/<repo>/pull/<number>"
 fi
 
 owner="${BASH_REMATCH[1]}"
@@ -138,7 +138,7 @@ def is_github_actions:
   );
 
 def is_freshener($owner; $repo):
-  ($owner == "wimpysworld" and $repo == "nix-config")
+  (($owner | ascii_downcase) == "wimpysworld" and ($repo | ascii_downcase) == "nix-config")
   and (.author.login == "flexiondotorg")
   and (((.labels // []) | map(.name)) | (contains(["automated"]) and contains(["dependencies"])))
   and ((.headRefName // "") | test("^(chainctl|claude-themes-catppuccin|defold|handy|lan-mouse|manuscript|moltis|openusage|weave|wolfictl|yam)-[0-9A-Za-z._-]+$"))
@@ -156,7 +156,7 @@ elif .state != "OPEN" then
   "ERR\tpull request #" + $pr_number + " is not OPEN (state=" + (.state // "UNKNOWN") + ")"
 elif .isDraft != false then
   "ERR\tpull request #" + $pr_number + " is a draft"
-elif (.isCrossRepository != false) or ((.headRepositoryOwner.login // "") != $owner) then
+elif (.isCrossRepository != false) or (((.headRepositoryOwner.login // "") | ascii_downcase) != ($owner | ascii_downcase)) then
   "ERR\tpull request #" + $pr_number + " is a fork or cross-repository pull request (isCrossRepository=" + (.isCrossRepository | tostring) + ", headRepositoryOwner=" + (.headRepositoryOwner.login // "UNKNOWN") + ")"
 elif .mergeable != "MERGEABLE" then
   "ERR\tpull request #" + $pr_number + " is not mergeable (mergeable=" + (.mergeable // "UNKNOWN") + ")"

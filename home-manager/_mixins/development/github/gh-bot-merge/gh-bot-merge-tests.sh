@@ -392,6 +392,24 @@ else
 	pass 'freshener PR by viewer skips self-approval and merges with --admin'
 fi
 
+reset_stub
+write_pr_json Oval-Tutu 'dependabot[bot]' 'dependabot/go_modules/ebitengine-2.8.0'
+run_helper --dry-run "https://github.com/Oval-Tutu/game/pull/42"
+if [[ ${status} -ne 0 ]]; then
+	fail 'Oval-Tutu mixed-case URL dry-run' "status ${status}: ${stderr}"
+else
+	pass 'dry-run accepts mixed-case Oval-Tutu URL and owner login'
+fi
+
+reset_stub
+write_pr_json Oval-Tutu 'dependabot[bot]' 'dependabot/go_modules/ebitengine-2.8.0'
+run_helper --dry-run "https://github.com/oval-tutu/game/pull/42"
+if [[ ${status} -ne 0 ]]; then
+	fail 'oval-tutu lowercase URL against Oval-Tutu owner login' "status ${status}: ${stderr}"
+else
+	pass 'dry-run accepts lowercase oval-tutu URL when GitHub returns Oval-Tutu owner login'
+fi
+
 printf '%s: %s passed, %s failed\n' \
 	"$([[ ${failures} -eq 0 ]] && printf PASS || printf FAIL)" \
 	"${passes}" "${failures}"
