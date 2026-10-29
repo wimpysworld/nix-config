@@ -345,12 +345,14 @@ and reaches only `POST /repos/{owner}/{repo}/pulls/{n}/comments/{id}/replies`.
 It builds that path from validated arguments, refuses every endpoint,
 method, and field flag, and exits 64 on a policy violation.
 
-`gh-bot-merge` approves and squash-merges one verified automated pull request
-on `wimpysworld`, `linuxmatters`, `quickemu-project`, or `flexiondotorg`.
-It verifies that the pull request is open, is not from a fork, is mergeable,
-passes all status checks, and matches the Dependabot, GitHub Actions, or
-`wimpysworld/nix-config` Freshener policy. Packages with `automerge: false`
-(`herdr-ctx-bar`, `herdr-disp-model`, and `roamgate`) stay blocked.
+`gh-bot-merge` approves and squash-merges one verified pull request on an
+allowed organisation. It verifies the pull request state, fork status,
+mergeability, status checks, and the Dependabot, GitHub Actions,
+`wimpysworld/nix-config` Freshener, or peer-agent policy. A peer-agent pull
+request must be authored by `sith-skrye`, `sith-traya`, or `sith-zannah`, and
+the authenticated viewer must be a different peer agent or `flexiondotorg`.
+Packages with `automerge: false` (`herdr-ctx-bar`, `herdr-disp-model`, and
+`roamgate`) stay blocked for Freshener and peer-agent pull requests.
 Pass `--dry-run` before the pull request URL to print the verified class
 and required flags without mutating GitHub state.
 

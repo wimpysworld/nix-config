@@ -37,12 +37,15 @@ POLICY
       * every statusCheckRollup entry is either a COMPLETED CheckRun with
         conclusion in [SUCCESS, SKIPPED, NEUTRAL] or a StatusContext with
         state SUCCESS
-      * the author, branch, labels, and changed files match one of the three
-        permitted automated pull request classes:
+      * the author, branch, labels, and changed files match one of the four
+        permitted pull request classes:
           - dependabot
           - github-actions
           - freshener (wimpysworld/nix-config only; excludes automerge=false
             packages herdr-ctx-bar, herdr-disp-model, and roamgate)
+          - peer-agent (authored by sith-skrye, sith-traya, or sith-zannah;
+            requires a different peer agent or flexiondotorg as viewer and
+            excludes herdr-ctx-bar, herdr-disp-model, and roamgate packages)
 
     With --dry-run, gh-bot-merge prints the verified classification and
     whether the pull request requires --approve or --admin, then exits 0
@@ -137,6 +140,20 @@ def is_github_actions:
     or ((.headRefName // "") | startswith("freshen/"))
   );
 
+def touches_sensitive_package:
+  any(
+    (.files // [])[];
+    (.path // "") | test("^pkgs/(herdr-ctx-bar|herdr-disp-model|roamgate)/")
+  );
+
+def is_peer_agent:
+  (
+    .author.login == "sith-skrye"
+    or .author.login == "sith-traya"
+    or .author.login == "sith-zannah"
+  )
+  and (touches_sensitive_package | not);
+
 def is_freshener($owner; $repo):
   (($owner | ascii_downcase) == "wimpysworld" and ($repo | ascii_downcase) == "nix-config")
   and (.author.login == "flexiondotorg")
@@ -172,8 +189,10 @@ else
       ["OK", "github-actions", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // "")] | @tsv
     elif is_freshener($owner; $repo) then
       ["OK", "freshener", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // "")] | @tsv
+    elif is_peer_agent then
+      ["OK", "peer-agent", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // "")] | @tsv
     else
-      "ERR\tpull request #" + $pr_number + " (author=" + (.author.login // "UNKNOWN") + ", headRefName=" + (.headRefName // "UNKNOWN") + ") does not match any permitted automated PR policy"
+      "ERR\tpull request #" + $pr_number + " (author=" + (.author.login // "UNKNOWN") + ", headRefName=" + (.headRefName // "UNKNOWN") + ") does not match any permitted PR policy"
     end
 end
 '
@@ -211,6 +230,16 @@ if [[ ${viewer_status} -ne 0 ]]; then
 fi
 if [[ -z ${viewer} ]]; then
 	die "authenticated viewer login is empty"
+fi
+
+if [[ ${pr_class} == "peer-agent" ]]; then
+	case "${viewer}" in
+	flexiondotorg | sith-skrye | sith-traya | sith-zannah) ;;
+	*) die "authenticated viewer '${viewer}' is not authorised to merge peer-agent pull requests" ;;
+	esac
+	if [[ ${viewer} == "${author_login}" ]]; then
+		die "peer agent '${viewer}' cannot approve or merge her own pull request"
+	fi
 fi
 
 needs_approve=false
