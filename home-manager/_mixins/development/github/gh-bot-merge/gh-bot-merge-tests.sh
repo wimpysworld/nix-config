@@ -210,7 +210,7 @@ assert_pr_rejected() {
 # 1. --help and CLI argument checks
 reset_stub
 run_helper --help
-if [[ ${status} -ne 0 || ${stdout} != *"USAGE"* || $(call_count) -ne 0 ]]; then
+if [[ ${status} -ne 0 || ${stdout} != *"USAGE"* || ${stdout} != *"peer-agent"* || $(call_count) -ne 0 ]]; then
 	fail '--help prints usage and exits 0' "status=${status}"
 else
 	pass '--help prints usage and exits 0'
@@ -308,7 +308,52 @@ write_pr_json wimpysworld 'flexiondotorg' 'chainctl-0.2.391' \
 	'.files = [{path: "pkgs/chainctl/default.nix"}, {path: ".github/workflows/freshener.yml"}]'
 assert_pr_rejected 'reject freshener PR touching workflow file' "${url_ww}" 'does not match'
 
-# 5. Valid Dependabot PRs (--dry-run and full merge across allowed owners)
+# 5. Peer-agent policy and no-self-merge enforcement
+for peer_case in 'sith-skrye:sith-zannah' 'sith-traya:sith-skrye' 'sith-zannah:sith-traya'; do
+	author="${peer_case%%:*}"
+	viewer="${peer_case##*:}"
+	reset_stub
+	write_pr_json wimpysworld "${author}" "feat/${author}-change" '.files = [{path: "src/main.rs"}]'
+	GH_STUB_VIEWER="${viewer}" run_helper --dry-run "${url_ww}"
+	if [[ ${status} -ne 0 ]]; then
+		fail "peer-agent dry-run ${author} reviewed by ${viewer}" "status ${status}: ${stderr}"
+	elif [[ ${stdout} != *"class=peer-agent"* || ${stdout} != *"--approve=yes"* ]]; then
+		fail "peer-agent dry-run output ${author} reviewed by ${viewer}" "stdout: ${stdout}"
+	elif [[ $(review_count) -ne 0 || $(merge_count) -ne 0 ]]; then
+		fail "peer-agent dry-run did not mutate ${author}" "reviews=$(review_count) merges=$(merge_count)"
+	else
+		pass "peer-agent dry-run accepts ${author} reviewed by ${viewer} without mutating"
+	fi
+done
+
+reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/security-update' '.files = [{path: "Cargo.lock"}]'
+GH_STUB_VIEWER=flexiondotorg run_helper "${url_ww}"
+if [[ ${status} -ne 0 ]]; then
+	fail 'authorised operator merges peer-agent PR' "status ${status}: ${stderr}"
+elif [[ $(review_count) -ne 1 || $(merge_count) -ne 1 ]]; then
+	fail 'authorised operator approves and merges peer-agent PR once' "reviews=$(review_count) merges=$(merge_count)"
+else
+	pass 'authorised operator approves and merges peer-agent PR'
+fi
+
+reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/self-merge' '.files = [{path: "Cargo.lock"}]'
+GH_STUB_VIEWER=sith-skrye assert_pr_rejected 'reject peer-agent self-merge' "${url_ww}" 'cannot approve or merge her own'
+
+reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/unauthorised-reviewer' '.files = [{path: "Cargo.lock"}]'
+GH_STUB_VIEWER=mallory assert_pr_rejected 'reject unauthorised peer-agent viewer' "${url_ww}" 'not authorised'
+
+for blocked_pkg in roamgate herdr-ctx-bar herdr-disp-model; do
+	reset_stub
+	write_pr_json wimpysworld 'sith-skrye' "fix/${blocked_pkg}" \
+		'.files = [{path: ("pkgs/" + "'"${blocked_pkg}"'" + "/default.nix")}]'
+	GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
+		"reject peer-agent change to sensitive package ${blocked_pkg}" "${url_ww}" 'does not match'
+done
+
+# 6. Valid Dependabot PRs (--dry-run and full merge across allowed owners)
 for owner in wimpysworld linuxmatters quickemu-project flexiondotorg; do
 	reset_stub
 	write_pr_json "${owner}" 'dependabot[bot]' 'dependabot/github_actions/actions/checkout-7'
@@ -337,7 +382,7 @@ else
 	pass 'merge app/dependabot PR approves and squash-merges without --admin when allowed'
 fi
 
-# 6. Fallback to --admin when ruleset rejects non-admin merge after approval
+# 7. Fallback to --admin when ruleset rejects non-admin merge after approval
 reset_stub
 write_pr_json wimpysworld 'app/dependabot' 'dependabot/nix/nixpkgs-3ec6363'
 GH_STUB_STD_MERGE_EXIT=1 run_helper "${url_ww}"
@@ -351,7 +396,7 @@ else
 	pass 'fallback to --admin succeeds when repository ruleset blocks standard merge'
 fi
 
-# 7. Valid GitHub Actions automated update branches
+# 8. Valid GitHub Actions automated update branches
 for ga_branch in update_flake_lock_action ci/update-electron-toolchain tailor-alter freshen/packages; do
 	reset_stub
 	write_pr_json wimpysworld 'github-actions[bot]' "${ga_branch}" '.reviewDecision = "APPROVED"'
@@ -366,7 +411,7 @@ for ga_branch in update_flake_lock_action ci/update-electron-toolchain tailor-al
 	fi
 done
 
-# 8. Valid wimpysworld/nix-config Freshener PRs (self-authored by flexiondotorg)
+# 9. Valid wimpysworld/nix-config Freshener PRs (self-authored by flexiondotorg)
 for pkg in chainctl claude-themes-catppuccin defold handy lan-mouse manuscript moltis openusage weave wolfictl yam; do
 	reset_stub
 	write_pr_json wimpysworld 'flexiondotorg' "${pkg}-1.2.3" \
