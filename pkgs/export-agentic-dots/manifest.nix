@@ -532,30 +532,12 @@ let
     "linear"
   ] mcp.servers;
 
-  # Keep these package specs equal to the canonical pins in
-  # home-manager/_mixins/agentic/pi/default.nix. The package test checks drift.
-  piMcpAdapterRevision = "1c7a84d489c18c69fde3d6a6503cd051133dd9a9";
-  piMcpAdapterSource = "git:github.com/nicobailon/pi-mcp-adapter@${piMcpAdapterRevision}";
-  piSubagentsSource = "npm:@tintinweb/pi-subagents@0.22.0";
-
-  piSubagentsConfig = {
-    backgroundByDefault = true;
-    maxConcurrent = 12;
-    maxConcurrentForeground = 12;
-    maxSubagentDepth = 1;
-    defaultMaxTurns = 50;
-    graceTurns = 5;
-    defaultJoinMode = "async";
-    disableDefaultAgents = true;
-    fallbackSubagent = "none";
-    strictAgentFiles = true;
-    rememberAgents = true;
-    outputTranscript = true;
-    workflowsEnabled = true;
-    agentMentions = "off";
-    schedulingEnabled = false;
-    worktreeIsolation = false;
-  };
+  piShared = import ../../home-manager/_mixins/agentic/pi/shared.nix;
+  inherit (piShared)
+    piMcpAdapterSource
+    piSubagentsConfig
+    piSubagentsSource
+    ;
 
   portableInstructions = ''
     # Portable global rules

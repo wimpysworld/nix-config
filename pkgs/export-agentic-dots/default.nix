@@ -30,7 +30,7 @@ let
     runCommand "export-agentic-dots-test"
       {
         nativeBuildInputs = [ testPython ];
-        AGENTIC_DOTS_TEST_CANONICAL_PI = ../../home-manager/_mixins/agentic/pi/default.nix;
+        AGENTIC_DOTS_TEST_CANONICAL_PI = ../../home-manager/_mixins/agentic/pi/shared.nix;
         AGENTIC_DOTS_TEST_COMMAND = lib.getExe application;
         AGENTIC_DOTS_TEST_EXPORTER = ./exporter.py;
         AGENTIC_DOTS_TEST_MANIFEST = manifestFile;
