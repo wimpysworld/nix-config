@@ -88,5 +88,5 @@ env:
 | Not authenticated | No login | `npx wrangler login` |
 | Cannot find KVNamespace | Missing types | `npm run cf-typegen` |
 | Worker already exists | Name conflict | Change `name` |
-| CI hangs | Missing flags | Add --type, --lang, --no-deploy |
+| CI hangs | Missing answers | Select a built-in template with `--type`, a framework with `--framework`, or an external template with `--template`. Supply the remaining template-specific answers and `--no-deploy`. |
 | Template not found | Bad name | Check cloudflare/templates |
