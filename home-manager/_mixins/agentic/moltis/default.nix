@@ -41,7 +41,7 @@ let
   # `zannah` uses the British concierge voice).
   googleTtsVoice =
     if isTraya then
-      "en-gb-commercial-1"
+      "en-gb-tutor-13"
     else if host.name == "zannah" then
       "en-gb-concierge-6"
     else
