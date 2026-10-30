@@ -107,6 +107,38 @@ if [[ ${gh_status} -ne 0 ]]; then
 	exit "${gh_status}"
 fi
 
+if jq -e 'type == "object" and ((.changedFiles // 0) > ((.files // []) | length))' <<<"${pr_json}" >/dev/null 2>&1; then
+	# shellcheck disable=SC2016
+	readonly JQ_REST_FILE_ENTRY='.[] | {path: (.filename // ""), previousPath: (.previous_filename // ""), changeType: ((.status // "") | ascii_upcase)}'
+	set +e
+	paginated_files_jsonl="$("${GH_BOT_MERGE_GH_BIN}" api --paginate "repos/${owner}/${repo}/pulls/${pr_number}/files?per_page=100" --jq "${JQ_REST_FILE_ENTRY}" </dev/null)"
+	files_status=$?
+	set -e
+	if [[ ${files_status} -ne 0 ]]; then
+		printf 'gh-bot-merge: gh exited %s while reading pull request files for %s.\n' "${files_status}" "${pr_url}" >&2
+		exit "${files_status}"
+	fi
+
+	set +e
+	pr_json="$(
+		printf '%s\n%s\n' "${pr_json}" "${paginated_files_jsonl}" | jq -s '
+			.[0] as $pr
+			| (.[1:]) as $paginated
+			| if ($paginated | length) > (($pr.files // []) | length) then
+				$pr | .files = $paginated
+			  else
+				$pr
+			  end
+		'
+	)"
+	merge_files_status=$?
+	set -e
+	if [[ ${merge_files_status} -ne 0 ]]; then
+		printf 'gh-bot-merge: jq exited %s while merging paginated pull request files for %s.\n' "${merge_files_status}" "${pr_url}" >&2
+		exit "${merge_files_status}"
+	fi
+fi
+
 # shellcheck disable=SC2016 # $owner, $repo, and $pr_number are jq variables.
 readonly JQ_VERIFY='
 def check_ok:

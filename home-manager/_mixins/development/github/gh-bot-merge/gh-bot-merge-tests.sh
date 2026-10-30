@@ -50,6 +50,16 @@ if [[ $# -ge 2 && $1 == "api" && $2 == "user" ]]; then
 	exit 0
 fi
 
+if [[ $# -ge 3 && $1 == "api" && $2 == "--paginate" && $3 == repos/*/pulls/*/files* ]]; then
+	if [[ -r "${GH_STUB_STATE}/files-exit" ]]; then
+		exit "$(cat "${GH_STUB_STATE}/files-exit")"
+	fi
+	if [[ -r "${GH_STUB_STATE}/paginated-files.jsonl" ]]; then
+		cat "${GH_STUB_STATE}/paginated-files.jsonl"
+	fi
+	exit 0
+fi
+
 if [[ $# -ge 2 && $1 == "api" && $2 == "graphql" ]]; then
 	if [[ -r "${GH_STUB_STATE}/graphql-exit" ]]; then
 		exit "$(cat "${GH_STUB_STATE}/graphql-exit")"
@@ -491,11 +501,37 @@ reset_stub
 write_pr_json wimpysworld 'sith-skrye' 'fix/large-change' \
 	'.files = [{path: "src/main.rs"}] | .changedFiles = 101'
 GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
-	'reject trusted-peer PR with incomplete changed file list' "${url_ww}" 'changed file list is incomplete'
+	'reject trusted-peer PR when paginated file list is still incomplete' "${url_ww}" 'changed file list is incomplete'
 if grep -q 'changedFiles' "${state_dir}/argv-1"; then
 	pass 'request changedFiles with pull request metadata'
 else
 	fail 'request changedFiles with pull request metadata' "$(cat "${state_dir}/argv-1")"
+fi
+
+reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/large-change-complete' \
+	'.files = [{path: "docs/file-1.md"}] | .changedFiles = 101'
+jq -c -n 'range(1; 102) | {path: ("docs/file-\(.).md"), previousPath: "", changeType: "MODIFIED"}' \
+	>"${state_dir}/paginated-files.jsonl"
+GH_STUB_VIEWER=sith-zannah run_helper --dry-run "${url_ww}"
+if [[ ${status} -ne 0 ]]; then
+	fail 'accept trusted-peer PR >100 files when paginated REST files complete list' "status ${status}: ${stderr}"
+else
+	pass 'accept trusted-peer PR >100 files when paginated REST files complete list'
+fi
+
+reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/large-change-sensitive' \
+	'.files = [{path: "docs/file-1.md"}] | .changedFiles = 101'
+{
+	jq -c -n 'range(1; 101) | {path: ("docs/file-\(.).md"), previousPath: "", changeType: "MODIFIED"}'
+	printf '%s\n' '{"path":"pkgs/roamgate/default.nix","previousPath":"","changeType":"MODIFIED"}'
+} >"${state_dir}/paginated-files.jsonl"
+GH_STUB_VIEWER=sith-zannah run_helper --dry-run "${url_ww}"
+if [[ ${status} -ne 64 || ${stderr} != *"sensitive package"* ]]; then
+	fail 'reject >100-file PR when sensitive package appears on page 2' "status=${status} stderr=${stderr}"
+else
+	pass 'reject >100-file PR when sensitive package appears on page 2'
 fi
 
 # 6. Valid Dependabot PRs (--dry-run and full merge across allowed owners)
