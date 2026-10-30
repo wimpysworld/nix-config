@@ -11,5 +11,6 @@ in
 lib.mkIf
   (host.is.workstation && noughtyLib.userHasTag "developer" && noughtyLib.isUser [ "martin" ])
   {
-    home.packages = [ pkgs.wrangler ];
+    # Prefer standalone TypeScript over Wrangler's bundled copy in the profile.
+    home.packages = [ (lib.lowPrio pkgs.wrangler) ];
   }
