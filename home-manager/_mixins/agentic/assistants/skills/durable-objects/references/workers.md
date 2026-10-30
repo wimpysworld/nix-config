@@ -134,9 +134,6 @@ export default {
       if (url.pathname.startsWith("/api/rooms")) {
         return await handleRooms(request, env);
       }
-      if (url.pathname.startsWith("/api/users")) {
-        return await handleUsers(request, env);
-      }
 
       return new Response("Not Found", { status: 404 });
     } catch (error) {
