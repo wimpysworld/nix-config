@@ -13,7 +13,7 @@ pnpm create cloudflare@latest [name] [-- flags]
 | Flag | Values | Description |
 |------|--------|-------------|
 | `--type` | `hello-world`, `web-app`, `demo`, `pre-existing`, `remote-template` | Application type |
-| `--platform` | `workers` (default), `pages` | Target platform |
+| `--platform` | `workers` (default), `pages` | Target platform (only for framework templates that support both Pages and Workers) |
 | `--framework` | `next`, `remix`, `astro`, `react-router`, `solid`, `svelte`, `qwik`, `vue`, `angular`, `hono` | Web framework (requires `--type=web-app`) |
 | `--lang` | `ts`, `js`, `python` | Language (for `--type=hello-world`) |
 | `--ts` / `--no-ts` | - | TypeScript for web apps |
