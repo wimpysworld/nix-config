@@ -13,7 +13,12 @@ Deployments, resource changes, remote tests, and unauthenticated claim deploymen
 These limits also apply to the examples and linked references below.
 Resolve body references from this skill's directory and nested links from the file that contains them.
 
-Use this skill only when the project has `wrangler.jsonc`, `wrangler.json`, or `wrangler.toml` and no `cloudflare.config.ts`, or when the user asks for Wrangler. For a new project, a project with `cloudflare.config.ts`, or a project with no Cloudflare configuration, use the Cloudflare CLI (`cf`) instead: load the `cf-cli` skill if it is installed, or follow [Use cf with coding agents](https://developers.cloudflare.com/cf/agents/index.md). Do not add Wrangler to those projects.
+Select the CLI in this order:
+
+- If the project has `cloudflare.config.ts` or otherwise requires `cf`, stop CLI work and request separate approval. An explicit Wrangler request does not authorise migration of an existing `cf` project.
+- Otherwise, if the user explicitly asks for Wrangler, use this skill, including for new projects or projects without Cloudflare configuration. This request does not authorise tool installation or dependency changes.
+- Otherwise, use this skill when the project has `wrangler.jsonc`, `wrangler.json`, or `wrangler.toml`.
+- For other new projects or projects without Cloudflare configuration, select the Cloudflare CLI (`cf`) instead. Load the `cf-cli` skill if installed, or follow [Use cf with coding agents](https://developers.cloudflare.com/cf/agents/index.md). Do not add Wrangler or install `cf` without approval.
 
 Use the project's Wrangler version and retrieve the relevant documentation before writing commands or configuration. CLI flags and configuration fields change; do not rely on memorized examples.
 
