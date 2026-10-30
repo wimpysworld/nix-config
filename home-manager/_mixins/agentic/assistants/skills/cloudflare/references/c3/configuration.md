@@ -63,7 +63,7 @@ Run after adding bindings:
 npm run cf-typegen
 ```
 
-Generates `.wrangler/types/runtime.d.ts`:
+Generates `worker-configuration.d.ts` by default:
 ```typescript
 interface Env {
   MY_KV: KVNamespace;
