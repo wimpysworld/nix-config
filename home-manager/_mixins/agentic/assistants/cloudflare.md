@@ -32,7 +32,19 @@ The shared MCP registry supplies the documentation-only `cloudflare-docs` endpoi
 - Normalise line endings and trailing whitespace. Preserve Markdown hard breaks as backslashes.
 - Add contents lists to reference files longer than 100 lines where section headings exist.
 
-The upstream technical guidance and examples remain unchanged apart from these adaptations.
+Technical corrections also change the imported guidance and examples:
+
+- C3 (create-cloudflare): correct `--existing-script` to name a deployed Worker, category values and restrictions, platform applicability, and the telemetry variable. Mark framework values as examples.
+- C3 output and resources: use `worker-configuration.d.ts` as the default type output. Add resource-name placeholders and explicit authority requirements to resource creation commands.
+- Framework bindings: link to the framework guide index rather than direct every project to Hono. Retain Hono-specific guidance for Hono projects.
+- KV selection: prefer Workers Cache for application caching. Require a concrete unmet requirement before choosing KV, with links to cache patterns and limitations.
+- AI Gateway: document dynamic routes through REST `/ai/v1/chat/completions` and `env.AI.run()`, using `dynamic/<route-name>`, OpenAI chat completions requests, and explicit gateway selection. The compatibility endpoint remains supported, not required.
+
+Feedback references in all four skills use `post-issue`, starting with `draft-issue` contribution policy, duplicate, template, and writing checks.
+The feedback table supplies source information rather than replacing the repository template.
+Posting requires approval of the exact title and body, repeated after changes, without a direct `gh issue create` bypass.
+Repository title requirements take precedence over the suggested feedback title.
+
 Examples are reference material, not permission to install tools, authenticate, change resources, or delete files.
 
 ## Refresh
