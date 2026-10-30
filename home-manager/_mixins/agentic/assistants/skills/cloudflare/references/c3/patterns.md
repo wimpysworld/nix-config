@@ -9,7 +9,7 @@ For framework apps, follow [Framework Setup](README.md#framework-setup).
 npm create cloudflare@latest my-api -- --type=hello-world --lang=ts --deploy
 
 # Astro static site\
-npm create cloudflare@latest my-blog -- --type=web-app --framework=astro --platform=pages --ts
+npm create cloudflare@latest my-blog -- --type=web-app --framework=astro --platform=pages --lang=ts
 ```
 
 ## CI/CD (GitHub Actions)
@@ -28,7 +28,7 @@ npm create cloudflare@latest my-blog -- --type=web-app --framework=astro --platf
 --no-git             # Recommended (CI already in git)
 --no-deploy          # Deploy separately with secrets
 --framework=<value>  # For web-app
---ts / --no-ts       # Required
+--lang=ts           # Use --lang=js for JavaScript
 ```
 
 ## Monorepo
