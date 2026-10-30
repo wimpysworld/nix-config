@@ -1,6 +1,6 @@
 # MCP Servers
 
-Four unconditional MCP servers provide reference material and Linear access. Six Chainguard servers are emitted only on hosts tagged `cg`. Definitions live once in `servers.nix` and are distributed to each enabled Claude Code, OpenCode, Zed, Codex, and Pi Agent client via per-consumer renderers.
+Four unconditional MCP servers provide reference material and Linear access. `cloudflare-api` adds authenticated Cloudflare access for Martin's developer accounts. Six Chainguard servers are emitted only on hosts tagged `cg`. Definitions live once in `servers.nix` and are distributed to each enabled Claude Code, OpenCode, Zed, Codex, and Pi Agent client via per-consumer renderers.
 
 The Nix composition is the delivery mechanism, not the strategy. Most servers here are information retrieval tools: documentation search, web reading, and package lookup. The practical reason: a language model with a training cutoff hallucinates library APIs that changed after the cutoff. A model that fetches live documentation does not need to guess.
 
@@ -86,11 +86,12 @@ The same pattern applies to Zed: `servers.context7.consumers.zed.enabled = false
 
 ## Servers
 
-Four unconditional servers and six conditional servers. `On` means enabled by default. `Off` means rendered as disabled where the client supports that state. `Omitted` means the client receives no entry.
+Four unconditional servers, one conditional Cloudflare server, and six conditional Chainguard servers. `On` means enabled by default. `Off` means rendered as disabled where the client supports that state. `Omitted` means the client receives no entry.
 
 | Server       | Transport | Auth   | Claude Code | Codex | OpenCode | Pi      | Zed       | Purpose                                      |
 | ------------ | --------- | ------ | ----------- | ----- | -------- | ------- | --------- | -------------------------------------------- |
 | `cloudflare-docs` | HTTP  | -      | On          | On    | On       | On      | On        | Public Cloudflare documentation              |
+| `cloudflare-api` | stdio | token file | On | On | On | On | On | Conditional authenticated Cloudflare API access |
 | `context7`   | HTTP      | bearer | On          | On    | On       | On      | Extension | Live library documentation                   |
 | `exa`        | HTTP      | -      | On          | On    | On       | On      | On        | Web search and URL content extraction        |
 | `linear`     | HTTP      | bearer | On          | On    | On       | On      | On        | Linear issues, projects, and comments        |
@@ -107,6 +108,22 @@ NixOS MCP is project-owned rather than part of this Home Manager registry. Proje
 #### cloudflare-docs
 
 Cloudflare's public documentation MCP server uses HTTP at `https://docs.mcp.cloudflare.com/mcp`. It requires no authentication and is enabled by default in Claude Code, Codex, OpenCode, Pi, and Zed. It provides documentation access, not account management.
+
+#### cloudflare-api
+
+`cloudflare-api` is enabled for username `martin` with the `developer` user tag, subject to existing client gates.
+Unlike the [Wrangler module](../../development/cloudflare/README.md), this gate includes developer servers, not only workstations.
+
+Clients launch a stdio wrapper that reads the SOPS-managed `CLOUDFLARE_API_TOKEN` file at runtime.
+The wrapper stops if the file is unavailable or empty. It sets `API_ACCESS_TOKEN` only for the proxy child.
+The proxy runs `pkgs.mcp-proxy --transport streamablehttp https://mcp.cloudflare.com/mcp`.
+Secret values stay out of generated client configuration, command arguments, and the Nix store.
+No Cloudflare secret is exported globally. R2 credentials are not injected into this server.
+
+The proxy shares its token with managed Wrangler. Revoking or replacing that token affects both clients.
+Token permissions do not grant authority for an operation. Obtain explicit authority before account changes or remote tests.
+Codex sets `default_tools_approval_mode = "prompt"` for this server.
+Authenticated checks remain deferred until the user activates the configuration and authorises those checks.
 
 #### context7
 
@@ -166,7 +183,9 @@ Pi Agent is installed by `../pi` with `pi-mcp-adapter` pinned in the Home Manage
 
 ## Secrets
 
-Enabled clients drive `sops.secrets` and the shell init exports.
+Enabled clients drive `sops.secrets` and the shell init exports for the HTTP bearer secrets below.
+`cloudflare-api` uses a runtime token file instead, as described in its [server section](#cloudflare-api).
+The [Cloudflare credential reference](../../development/cloudflare/README.md#credentials) lists the encrypted source and keys.
 
 ### `requiredSecretsForConsumers` (derived)
 

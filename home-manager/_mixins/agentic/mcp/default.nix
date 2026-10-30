@@ -159,6 +159,13 @@ in
         '';
   };
   sops = lib.mkMerge [
+    (lib.mkIf (mcpServerDefs.cloudflareApiEnabled && mcpClientEnabled) {
+      secrets.CLOUDFLARE_API_TOKEN = {
+        key = "CLOUDFLARE_API_TOKEN";
+        sopsFile = ../../../../secrets/cloudflare.yaml;
+        mode = "0400";
+      };
+    })
     (lib.mkIf (allSecrets != [ ]) {
       secrets = lib.genAttrs allSecrets secretConfig;
     })
