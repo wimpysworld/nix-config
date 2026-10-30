@@ -41,7 +41,7 @@ pnpm create cloudflare@latest [name] [-- flags]
 ```bash
 CLOUDFLARE_API_TOKEN=xxx    # For deployment
 CLOUDFLARE_ACCOUNT_ID=xxx   # Account ID
-CF_TELEMETRY_DISABLED=1     # Disable telemetry
+CREATE_CLOUDFLARE_TELEMETRY_DISABLED=1 # Disable C3 telemetry
 ```
 
 ## Exit Codes
