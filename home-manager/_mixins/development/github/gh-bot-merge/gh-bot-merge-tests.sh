@@ -548,6 +548,38 @@ GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
 	'reject trusted-peer PR when paginated file count mismatches changedFiles' "${url_ww}" 'changed file list is incomplete'
 
 reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/large-change-duplicate' \
+	'.files = [{path: "docs/file-1.md"}] | .changedFiles = 101'
+jq -n '[range(1; 101) | {filename: ("docs/file-\(.).md"), previous_filename: null, status: "modified"}] + [{filename: "docs/file-1.md", previous_filename: null, status: "modified"}]' \
+	>"${state_dir}/files-raw.json"
+GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
+	'reject trusted-peer PR when paginated file list contains duplicate paths' "${url_ww}" 'changed file list is incomplete'
+
+reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/large-change-sensitive-prev' \
+	'.files = [{path: "docs/file-1.md"}] | .changedFiles = 101'
+jq -n '[range(1; 101) | {filename: ("docs/file-\(.).md"), previous_filename: null, status: "modified"}] + [{filename: "pkgs/renamed/default.nix", previous_filename: "pkgs/roamgate/default.nix", status: "renamed"}]' \
+	>"${state_dir}/files-raw.json"
+GH_STUB_VIEWER=sith-zannah run_helper --dry-run "${url_ww}"
+if [[ ${status} -ne 64 || ${stderr} != *"sensitive package"* ]]; then
+	fail 'reject >100-file PR when previous_filename is a sensitive package' "status=${status} stderr=${stderr}"
+else
+	pass 'reject >100-file PR when previous_filename is a sensitive package'
+fi
+
+reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/large-change-safe-rename' \
+	'.files = [{path: "docs/file-1.md"}] | .changedFiles = 101'
+jq -n '[range(1; 101) | {filename: ("docs/file-\(.).md"), previous_filename: null, status: "modified"}] + [{filename: "docs/new-name.md", previous_filename: "docs/old-name.md", status: "renamed"}]' \
+	>"${state_dir}/files-raw.json"
+GH_STUB_VIEWER=sith-zannah run_helper --dry-run "${url_ww}"
+if [[ ${status} -ne 0 ]]; then
+	fail 'accept >100-file PR when REST rename has safe previous_filename' "status=${status} stderr=${stderr}"
+else
+	pass 'accept >100-file PR when REST rename has safe previous_filename'
+fi
+
+reset_stub
 write_pr_json wimpysworld 'sith-skrye' 'fix/large-change-sensitive' \
 	'.files = [{path: "docs/file-1.md"}] | .changedFiles = 101'
 jq -n '[range(1; 101) | {filename: ("docs/file-\(.).md"), previous_filename: null, status: "modified"}] + [{filename: "pkgs/roamgate/default.nix", previous_filename: null, status: "modified"}]' \

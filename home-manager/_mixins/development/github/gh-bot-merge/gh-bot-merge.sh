@@ -124,7 +124,7 @@ if jq -e 'type == "object" and ((.changedFiles // 0) > ((.files // []) | length)
 		printf '%s\n%s\n' "${pr_json}" "${paginated_files_jsonl}" | jq -s '
 			.[0] as $pr
 			| (.[1:]) as $paginated
-			| if ($paginated | length) == ($pr.changedFiles // 0) then
+			| if (($paginated | length) == ($pr.changedFiles // 0)) and ((($paginated | map(.path) | unique) | length) == ($pr.changedFiles // 0)) then
 				$pr | .files = $paginated
 			  else
 				$pr
@@ -178,8 +178,9 @@ def touches_sensitive_package($owner; $repo):
   (($owner | ascii_downcase) == "wimpysworld" and ($repo | ascii_downcase) == "nix-config")
   and any(
     (.files // [])[];
-    .changeType == "RENAMED"
+    ((.changeType == "RENAMED") and ((.previousPath // "") == ""))
     or ((.path // "") | test("^pkgs/(herdr-ctx-bar|herdr-disp-model|roamgate)/"))
+    or ((.previousPath // "") | test("^pkgs/(herdr-ctx-bar|herdr-disp-model|roamgate)/"))
   );
 
 def has_freshener_labels:

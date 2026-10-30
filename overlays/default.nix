@@ -212,9 +212,10 @@ in
       });
 
       # Prowler 5.12.3 in nixos-26.05 fails to build because python3.13-imageio
-      # 2.37.2 fails two tests against pillow 13.0.0. Use the cached unstable
-      # build until nixos-26.05 caches the fix.
-      inherit (final.unstable) prowler;
+      # 2.37.2 fails two tests against pillow 13.0.0, and mcp-nixos 2.4.3 fails
+      # to build because python3.13-fastmcp 3.2.3 fails its proxy client tests.
+      # Use the cached unstable builds until nixos-26.05 caches the fixes.
+      inherit (final.unstable) mcp-nixos prowler;
 
       # Determinate Nix 3.23 emits unknown activity and result types, which nom
       # 2.2.0 rejects with a ParseNixJSONMessageError. Apply the upstream fix
