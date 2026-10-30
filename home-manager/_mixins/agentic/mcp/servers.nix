@@ -43,6 +43,10 @@ let
   };
 in
 rec {
+  cloudflareApiEnabled =
+    (config.noughty.user.name or "") == "martin"
+    && lib.elem "developer" (config.noughty.user.tags or [ ]);
+
   # Canonical MCP server definitions.
   # Phase 1 of the MCP refactor: this attrset is the single source of truth
   # for every MCP server and its per-consumer state. Renderers added in later
@@ -170,6 +174,21 @@ rec {
         # Linear exposes issue/project/comment reads and mutations. Make Codex
         # ask before tool calls rather than inheriting the unattended default.
         codex.defaultToolsApprovalMode = "prompt";
+      };
+    };
+  }
+  // lib.optionalAttrs cloudflareApiEnabled {
+    cloudflare-api = {
+      transport = "stdio";
+      command = lib.getExe (
+        pkgs.callPackage ./cloudflare-api {
+          apiTokenPath = config.sops.secrets.CLOUDFLARE_API_TOKEN.path;
+        }
+      );
+      args = [ ];
+      consumers = {
+        codex.defaultToolsApprovalMode = "prompt";
+        pi.lifecycle = "eager";
       };
     };
   }

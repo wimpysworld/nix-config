@@ -18,7 +18,12 @@ Plugin manifests and their authenticated MCP configuration are not imported.
 The existing composer discovers these skills for enabled Claude Code, Codex, OpenCode, and Pi clients.
 Existing Moltis delivery also remains in place. Skills do not change client gates or imply that Wrangler is installed on every host.
 See [the development module](../../development/cloudflare/README.md) for the package gate.
-The shared MCP registry supplies the documentation-only `cloudflare-docs` endpoint through existing client renderers.
+The shared MCP registry supplies the documentation-only `cloudflare-docs` endpoint and the authenticated `cloudflare-api` stdio wrapper through existing client renderers.
+The API wrapper passes the shared runtime token as `API_ACCESS_TOKEN` only to `pkgs.mcp-proxy` for `https://mcp.cloudflare.com/mcp`.
+The managed Wrangler wrapper reads `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` from SOPS runtime files when explicit environment overrides are absent.
+Project-local Wrangler does not automatically receive these wrapper credentials. No separate MCP token or global credential export is required.
+The R2 keys `CLOUDFLARE_ACCESS_KEY_ID`, `CLOUDFLARE_SECRET_ACCESS_KEY`, and `CLOUDFLARE_S3_API_ENDPOINT` remain separate from Wrangler and MCP.
+Source configuration does not prove that the wrappers are active in an installed client.
 
 ## Local changes
 
@@ -27,7 +32,9 @@ The shared MCP registry supplies the documentation-only `cloudflare-docs` endpoi
 - Replace automatic Wrangler installation with the managed executable or an explicitly approved project dependency change.
 - Refer to `cloudflare-docs` tools rather than the authenticated API server's `docs` tool.
 - Clarify CLI selection: honour explicit Wrangler requests, including new projects, but stop when a project requires unapproved `cf`. Tool installation and migration need separate approval.
-- Defer authentication, token creation, and credential reads. Require explicit authority for remote operations, including claim deployments.
+- Permit task-scoped reads through the authorised runtime wrappers without repeated authentication approval, including unattended reads.
+- Prohibit direct credential reads, decryption, disclosure, and global exports. Require explicit approval for login, new tokens, and secret-wiring changes.
+- Keep credential permissions separate from authority for mutations, remote tests, deployments, and claim deployments in the target account and environment.
 - Convert optional sibling skill links to pinned upstream URLs.
 - Normalise line endings and trailing whitespace. Preserve Markdown hard breaks as backslashes.
 - Add contents lists to reference files longer than 100 lines where section headings exist.
@@ -71,7 +78,9 @@ Examples are reference material, not permission to install tools, authenticate, 
 | "Create a new project with cf." | Read product guidance, then stop CLI work for separate tool approval. |
 | "Check the Wrangler config for this existing Worker." | Load `wrangler`. |
 | "Review this Python command-line parser." | Ignore `wrangler` and Workers-specific skills. |
-| "Deploy this Worker, but no credentials are configured." | Load `wrangler`, then stop before authentication or deployment. |
+| "Deploy this Worker, but no credentials are configured." | Load `wrangler`, then report missing setup without login or replacement tokens. |
+| "List Workers in this account." | Use an available managed runtime path for the scoped read without another authentication approval. |
+| "Review this Worker without deploying it." | Read within scope, but do not infer deployment authority from token permissions. |
 | "Review this Worker's streaming response." | Load `workers-best-practices`. |
 | "Review this React component's layout." | Ignore `workers-best-practices` and `durable-objects`. |
 | "Review the SQLite transaction in this Durable Object." | Load `durable-objects` rather than rely only on general Workers guidance. |
