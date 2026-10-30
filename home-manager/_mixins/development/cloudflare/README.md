@@ -23,4 +23,8 @@ The authenticated API endpoint `https://mcp.cloudflare.com/mcp` is not configure
 - Upstream skills recommend `cf` for some projects. If that tool is required, request separate approval rather than install it or convert the project.
 - Deployments, remote resource changes, and remote tests require explicit authority. Local execution can still use remote bindings.
 
-Validate configuration and generated files without activation. Use a temporary home for CLI checks so that checks cannot read existing credentials.
+Validate configuration and generated files without activation.
+For CLI checks, start with an empty environment (`env -i`) and set `HOME` to a new temporary directory.
+Run from a clean temporary working directory, with no inherited Cloudflare or XDG environment variables.
+Limit checks to `--help` and `--version`. Do not read, source, or use existing credentials.
+A temporary `HOME` alone does not prevent credential access through inherited environment variables or project files.
