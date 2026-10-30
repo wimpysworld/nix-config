@@ -21,7 +21,7 @@ Official CLI for scaffolding Cloudflare Workers and Pages projects with template
 npm create cloudflare@latest my-app
 
 # Worker (API/WebSocket/Cron)
-npm create cloudflare@latest my-api -- --type=hello-world --ts
+npm create cloudflare@latest my-api -- --type=hello-world --lang=ts
 
 # Pages (static/SSG)
 npm create cloudflare@latest my-site -- --type=web-app --framework=astro --platform=pages

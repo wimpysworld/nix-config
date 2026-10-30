@@ -15,8 +15,7 @@ pnpm create cloudflare@latest [name] [-- flags]
 | `--type` | `hello-world`, `web-app`, `demo`, `pre-existing`, `remote-template` | Application type |
 | `--platform` | `workers` (default), `pages` | Target platform (only for framework templates that support both Pages and Workers) |
 | `--framework` | Examples: `next`, `remix`, `astro`, `react-router`, `solid`, `svelte`, `qwik`, `vue`, `angular`, `hono` | Web framework (requires `--type=web-app`) |
-| `--lang` | `ts`, `js`, `python` | Language (for `--type=hello-world`) |
-| `--ts` / `--no-ts` | - | TypeScript for web apps |
+| `--lang` | `ts`, `js`, `python` | Template language. Use `--lang=ts` for TypeScript or `--lang=js` for JavaScript. |
 
 ## Deployment Flags
 
@@ -57,7 +56,7 @@ For framework apps, follow [Framework Setup](README.md#framework-setup).
 npm create cloudflare@latest my-api -- --type=hello-world --lang=ts --no-deploy
 
 # Astro blog
-npm create cloudflare@latest my-blog -- --type=web-app --framework=astro --ts --deploy
+npm create cloudflare@latest my-blog -- --type=web-app --framework=astro --lang=ts --deploy
 
 # CI: non-interactive
 npm create cloudflare@latest my-api -- --type=hello-world --lang=ts --no-git --no-deploy
