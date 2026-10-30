@@ -25,6 +25,8 @@ The authenticated API endpoint `https://mcp.cloudflare.com/mcp` is not configure
 
 Validate configuration and generated files without activation.
 For CLI checks, start with an empty environment (`env -i`) and set `HOME` to a new temporary directory.
+Invoke the managed Nix package's `bin/wrangler` by its absolute `/nix/store/...` path because `env -i` clears `PATH`.
+The Nix wrapper uses absolute paths for Bash and Node.js. Do not restore the inherited environment.
 Run from a clean temporary working directory, with no inherited Cloudflare or XDG environment variables.
 Limit checks to `--help` and `--version`. Do not read, source, or use existing credentials.
 A temporary `HOME` alone does not prevent credential access through inherited environment variables or project files.
