@@ -11,7 +11,8 @@ The managed `wrangler` wrapper reads `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API
 The configured `cloudflare-api` MCP wrapper uses the same token, not a separate MCP token.
 It passes `API_ACCESS_TOKEN` only to `pkgs.mcp-proxy`, which connects to `https://mcp.cloudflare.com/mcp` through the canonical stdio entry.
 Project-local Wrangler does not automatically use the managed wrapper's authentication.
-Use these runtime paths for task-scoped reads without repeated authentication approval, including unattended reads.
+For task-scoped reads, use the managed `wrangler` executable or configured `cloudflare-api` MCP server.
+These reads need no repeated authentication approval, including unattended reads.
 Do not read or decrypt credential files yourself, print credentials, or copy them into arguments, logs, source, or client configuration.
 Do not export credentials globally or expose the R2 credentials to Wrangler or MCP.
 The separate R2 keys are `CLOUDFLARE_ACCESS_KEY_ID`, `CLOUDFLARE_SECRET_ACCESS_KEY`, and `CLOUDFLARE_S3_API_ENDPOINT`.
