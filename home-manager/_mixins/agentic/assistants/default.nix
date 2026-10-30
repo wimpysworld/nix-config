@@ -527,14 +527,14 @@ let
                 )
             loaded = json.loads(bootstrap_path.read_text())
             if (
-                isinstance(loaded, dict)
-                and loaded.get("version") == 1
-                and isinstance(loaded.get("files"), dict)
+                not isinstance(loaded, dict)
+                or loaded.get("version") != 1
+                or not isinstance(loaded.get("files"), dict)
             ):
-                data = loaded
-        data["files"].update(verified)
-        write_private_json(bootstrap_path, data)
+                raise ValueError("Invalid existing bootstrap manifest")
+            data = loaded
 
+        manifest = None
         if manifest_path.exists():
             info = manifest_path.lstat()
             if (
@@ -547,12 +547,17 @@ let
                 )
             manifest = json.loads(manifest_path.read_text())
             if (
-                isinstance(manifest, dict)
-                and manifest.get("version") == 1
-                and isinstance(manifest.get("files"), dict)
+                not isinstance(manifest, dict)
+                or manifest.get("version") != 1
+                or not isinstance(manifest.get("files"), dict)
             ):
-                manifest["files"].update(verified)
-                write_private_json(manifest_path, manifest, indent=2)
+                raise ValueError("Invalid existing ownership manifest")
+
+        data["files"].update(verified)
+        write_private_json(bootstrap_path, data)
+        if manifest is not None:
+            manifest["files"].update(verified)
+            write_private_json(manifest_path, manifest, indent=2)
   '';
 
   # Moltis agent presets are markdown files under ~/.moltis/agents/ with YAML
