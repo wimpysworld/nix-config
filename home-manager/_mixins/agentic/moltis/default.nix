@@ -22,6 +22,37 @@ let
       "Traya"
     else
       "Skrye";
+  moltisSchedule =
+    if agentName == "skrye" then
+      {
+        dayName = "Wednesday";
+        dow = "3";
+      }
+    else if agentName == "zannah" then
+      {
+        dayName = "Saturday";
+        dow = "6";
+      }
+    else
+      {
+        dayName = "Sunday";
+        dow = "7";
+      };
+  moltisHeartbeat =
+    lib.replaceStrings
+      [
+        "@AGENT_NAME@"
+        "@SCHEDULE_DAY_NAME@"
+        "@SCHEDULE_DOW@"
+      ]
+      [
+        agentDisplayName
+        moltisSchedule.dayName
+        moltisSchedule.dow
+      ]
+      (lib.strings.trim (builtins.readFile ./HEARTBEAT.md))
+    + "\n";
+  moltisHeartbeatFile = pkgs.writeText "HEARTBEAT.md" moltisHeartbeat;
 
   moltisSopsFile = ../../../../secrets/moltis.yaml;
   aiSopsFile = ../../../../secrets/ai.yaml;
@@ -628,6 +659,7 @@ let
     runtimeInputs = [
       (pkgs.writeShellScriptBin "dcg" "exit 0")
       moltisTelegramVoice
+      pkgs.coreutils
       pkgs.ffmpeg-headless
       pkgs.gh
       pkgs.git
@@ -655,7 +687,9 @@ let
       export GIT_CONFIG_KEY_4="url.https://github.com/.insteadOf"
       export GIT_CONFIG_VALUE_4="ssh://git@github.com/"
 
-      mkdir -p "$HOME/.moltis"
+      mkdir -p "$HOME/.moltis/agents/main"
+      install -m 0600 ${moltisHeartbeatFile} "$HOME/.moltis/HEARTBEAT.md"
+      install -m 0600 ${moltisHeartbeatFile} "$HOME/.moltis/agents/main/HEARTBEAT.md"
       printf '["dcg-guard"]\n' > "$HOME/.moltis/disabled_hooks.json"
       touch "$HOME/.moltis/.onboarded"
       ${moltisTtsShim} &
@@ -819,6 +853,7 @@ in
           tools = {
             agent_timeout_secs = 3600;
             agent_max_iterations = 100;
+            agent_max_auto_continues = 0;
             exec = {
               default_timeout_secs = 300;
               max_timeout_secs = 1800;
