@@ -26,7 +26,7 @@ The shared MCP registry supplies the documentation-only `cloudflare-docs` endpoi
 - Add managed-tooling and authority limits to every skill body. These limits also govern supporting references.
 - Replace automatic Wrangler installation with the managed executable or an explicitly approved project dependency change.
 - Refer to `cloudflare-docs` tools rather than the authenticated API server's `docs` tool.
-- Preserve upstream CLI selection guidance, but stop CLI work when it requires the unapproved `cf` tool.
+- Clarify CLI selection: honour explicit Wrangler requests, including new projects, but stop when a project requires unapproved `cf`. Tool installation and migration need separate approval.
 - Defer authentication, token creation, and credential reads. Require explicit authority for remote operations, including claim deployments.
 - Convert optional sibling skill links to pinned upstream URLs.
 - Normalise line endings and trailing whitespace. Preserve Markdown hard breaks as backslashes.
@@ -34,9 +34,12 @@ The shared MCP registry supplies the documentation-only `cloudflare-docs` endpoi
 
 Technical corrections also change the imported guidance and examples:
 
-- C3 (create-cloudflare): correct `--existing-script` to name a deployed Worker, category values and restrictions, platform applicability, and the telemetry variable. Mark framework values as examples.
+- C3 (create-cloudflare): correct deployed Worker cloning, category and template selection, `--lang` flags, platform applicability, and the telemetry variable. Mark framework values as examples. Clarify template-dependent prompts and automation, and repair reference links.
 - C3 output and resources: use `worker-configuration.d.ts` as the default type output. Add resource-name placeholders and explicit authority requirements to resource creation commands.
 - Framework bindings: link to the framework guide index rather than direct every project to Hono. Retain Hono-specific guidance for Hono projects.
+- Observability: describe `persist` as persistence in Cloudflare, not local persistence.
+- Durable Objects: prefer SQLite for new classes, preserve existing storage backends unless migration is authorised, and retain `fetch()` for HTTP and WebSocket flows. Correct room routing, await handlers inside error handling, remove the undefined user helper, and replace the D1 listing query with authorised API guidance.
+- Workers types: accept `Response` or `Promise<Response>`, use `WorkflowEntrypoint`, and preserve required specialisations of generated environment types.
 - KV selection: prefer Workers Cache for application caching. Require a concrete unmet requirement before choosing KV, with links to cache patterns and limitations.
 - AI Gateway: document dynamic routes through REST `/ai/v1/chat/completions` and `env.AI.run()`, using `dynamic/<route-name>`, OpenAI chat completions requests, and explicit gateway selection. The compatibility endpoint remains supported, not required.
 
