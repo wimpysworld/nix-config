@@ -5,9 +5,19 @@ Do not install or upgrade tools automatically, including through `npx`. If a req
 The `cf` CLI, `cloudflared`, and unbundled skills are not supplied by this integration. Upstream CLI selection guidance does not authorise their installation.
 For a project that requires `cf`, stop CLI work and request separate approval rather than convert the project to Wrangler.
 Use the configured `cloudflare-docs` MCP server for documentation only, or fetch official documentation directly.
-Do not add the authenticated Cloudflare API MCP server.
-Credentials and authentication setup are deferred. Do not run login, create tokens, read existing credentials, or change secret wiring without explicit approval.
-Deployments, resource changes, remote tests, and unauthenticated claim deployments require explicit authority for the target operation.
+The managed `wrangler` wrapper reads `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` from SOPS runtime files only when their explicit environment overrides are absent.
+The configured `cloudflare-api` MCP wrapper uses the same token, not a separate MCP token.
+It passes `API_ACCESS_TOKEN` only to `pkgs.mcp-proxy`, which connects to `https://mcp.cloudflare.com/mcp` through the canonical stdio entry.
+Project-local Wrangler does not automatically use the managed wrapper's authentication.
+For task-scoped reads, use the managed `wrangler` executable or configured `cloudflare-api` MCP server.
+These reads need no repeated authentication approval, including unattended reads.
+Do not read or decrypt credential files yourself, print credentials, or copy them into arguments, logs, source, or client configuration.
+Do not export credentials globally or expose the R2 credentials to Wrangler or MCP.
+The separate R2 keys are `CLOUDFLARE_ACCESS_KEY_ID`, `CLOUDFLARE_SECRET_ACCESS_KEY`, and `CLOUDFLARE_S3_API_ENDPOINT`.
+If runtime credentials are unavailable, report the missing setup rather than run login or create replacement tokens.
+Login, new tokens, and secret or credential-wiring changes require explicit approval.
+Credential permissions do not grant operation authority.
+Deployments, resource changes, remote tests, and unauthenticated claim deployments require explicit authority for the target account, environment, and operation.
 These limits also apply to the examples and linked references below.
 Resolve body references from this skill's directory and nested links from the file that contains them.
 

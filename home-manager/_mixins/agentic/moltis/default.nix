@@ -783,177 +783,175 @@ in
       agentic.moltis.renderedConfig = config.sops.templates."moltis.toml".path;
 
       sops.templates."moltis.toml" = {
-        content = builtins.readFile (
-          (pkgs.formats.toml { }).generate "moltis.toml" {
-            # Pin the gateway server address. `ServerConfig::default().port`
-            # is 0, and a port of 0 on disk makes `initialize_config()`
-            # generate a random port and write it back to the config file it
-            # loaded, which against this layout means writing through the
-            # sops-rendered symlink on every restart (crates/config/src/
-            # schema/system.rs and crates/config/src/loader/config_io.rs,
-            # tag 20260913.02). A non-zero port on loopback prevents both.
-            server = {
-              port = 13131;
-              bind = "127.0.0.1";
+        file = (pkgs.formats.toml { }).generate "moltis.toml" {
+          # Pin the gateway server address. `ServerConfig::default().port`
+          # is 0, and a port of 0 on disk makes `initialize_config()`
+          # generate a random port and write it back to the config file it
+          # loaded, which against this layout means writing through the
+          # sops-rendered symlink on every restart (crates/config/src/
+          # schema/system.rs and crates/config/src/loader/config_io.rs,
+          # tag 20260913.02). A non-zero port on loopback prevents both.
+          server = {
+            port = 13131;
+            bind = "127.0.0.1";
+          };
+
+          identity = {
+            name = agentName;
+          };
+
+          user = {
+            name = "Martin";
+            timezone = "Europe/London";
+            write_mode = "off";
+          };
+
+          auxiliary = {
+            compaction = "gemini::gemini-3.8-flash";
+            title_generation = "gemini::gemini-3.8-flash";
+            vision = "gemini::gemini-3.8-flash";
+          };
+
+          chat.compaction.mode = "structured";
+
+          skills.enable_self_improvement = false;
+
+          tools = {
+            agent_timeout_secs = 3600;
+            agent_max_iterations = 100;
+            exec = {
+              default_timeout_secs = 300;
+              max_timeout_secs = 1800;
+              approval_mode = "never";
+              sandbox.mode = "off";
             };
-
-            identity = {
-              name = agentName;
+            fs = {
+              workspace_root = homeDir;
+              track_reads = true;
+              must_read_before_write = true;
             };
+          };
 
-            user = {
-              name = "Martin";
-              timezone = "Europe/London";
-              write_mode = "off";
-            };
+          memory = {
+            provider = "custom";
+            base_url = "https://generativelanguage.googleapis.com/v1beta/openai";
+            model = "gemini-embedding-2";
+            api_key = "\${GEMINI_API_KEY}";
+          };
 
-            auxiliary = {
-              compaction = "gemini::gemini-3.8-flash";
-              title_generation = "gemini::gemini-3.8-flash";
-              vision = "gemini::gemini-3.8-flash";
-            };
+          heartbeat = {
+            enabled = true;
+            every = "30m";
+            model = "gemini::gemini-3.8-flash";
+            sandbox_enabled = false;
+            deliver = true;
+            channel = "moltis";
+            to = "\${TELEGRAM_ALLOWED_USERS}";
+          };
 
-            chat.compaction.mode = "structured";
+          # Moltis resolves `${VAR}` placeholders against the process
+          # environment, and the config loader's second pass treats the
+          # `[env]` table as an overrides map (crates/config/src/loader.rs,
+          # tag 20260913.02). Placeholders here come from `envPlumbing`,
+          # so no literal secret value ever enters a store path.
+          env = envBlock;
 
-            skills.enable_self_improvement = false;
+          mcp.servers = mcpServerDefs.moltisServers;
 
-            tools = {
-              agent_timeout_secs = 3600;
-              agent_max_iterations = 100;
-              exec = {
-                default_timeout_secs = 300;
-                max_timeout_secs = 1800;
-                approval_mode = "never";
-                sandbox.mode = "off";
+          agents = {
+            # Preset lane mapping. `coordinator` is the default spawn preset.
+            # Every lane pins `reasoning_effort` explicitly. Model ids use
+            # Moltis' `provider::model` namespace separator
+            # (crates/providers/src/model_id.rs).
+            default_preset = "coordinator";
+            presets = {
+              coordinator = {
+                model = "gemini::gemini-4-argon";
+                reasoning_effort = "medium";
+                delegate_only = false;
               };
-              fs = {
-                workspace_root = homeDir;
-                track_reads = true;
-                must_read_before_write = true;
+              auxiliary = {
+                model = "gemini::gemini-3.8-flash";
+                reasoning_effort = "medium";
+              };
+              compression = {
+                model = "gemini::gemini-3.8-flash";
+                reasoning_effort = "medium";
+              };
+              review = {
+                model = "gemini::gemini-4-argon";
+                reasoning_effort = "medium";
               };
             };
+          };
 
-            memory = {
-              provider = "custom";
-              base_url = "https://generativelanguage.googleapis.com/v1beta/openai";
-              model = "gemini-embedding-2";
-              api_key = "\${GEMINI_API_KEY}";
-            };
+          # No inline `api_key`: Moltis does not expand `${VAR}` placeholders
+          # inside provider `api_key` values, so `GEMINI_API_KEY` comes from
+          # the process environment swept in by `[env]`.
+          providers.gemini = {
+            enabled = true;
+            models = [
+              "gemini-4-argon"
+              "gemini-3.8-flash"
+            ];
+          };
 
-            heartbeat = {
+          voice = {
+            tts = {
               enabled = true;
-              every = "30m";
-              model = "gemini::gemini-3.8-flash";
-              sandbox_enabled = false;
-              deliver = true;
-              channel = "moltis";
-              to = "\${TELEGRAM_ALLOWED_USERS}";
-            };
-
-            # Moltis resolves `${VAR}` placeholders against the process
-            # environment, and the config loader's second pass treats the
-            # `[env]` table as an overrides map (crates/config/src/loader.rs,
-            # tag 20260913.02). Placeholders here come from `envPlumbing`,
-            # so no literal secret value ever enters a store path.
-            env = envBlock;
-
-            mcp.servers = mcpServerDefs.moltisServers;
-
-            agents = {
-              # Preset lane mapping. `coordinator` is the default spawn preset.
-              # Every lane pins `reasoning_effort` explicitly. Model ids use
-              # Moltis' `provider::model` namespace separator
-              # (crates/providers/src/model_id.rs).
-              default_preset = "coordinator";
-              presets = {
-                coordinator = {
-                  model = "gemini::gemini-4-argon";
-                  reasoning_effort = "medium";
-                  delegate_only = false;
-                };
-                auxiliary = {
-                  model = "gemini::gemini-3.8-flash";
-                  reasoning_effort = "medium";
-                };
-                compression = {
-                  model = "gemini::gemini-3.8-flash";
-                  reasoning_effort = "medium";
-                };
-                review = {
-                  model = "gemini::gemini-4-argon";
-                  reasoning_effort = "medium";
-                };
+              provider = "openai";
+              # Route TTS through the local OpenAI-compatible Gemini shim inside
+              # `moltis-fenced`. `OpenAiTts::is_configured()` is true whenever
+              # `base_url` differs from `https://api.openai.com/v1`, so no
+              # `api_key` is needed and `migrate_voice_keys_to_key_store()`
+              # never rewrites `moltis.toml` (`crates/voice/src/tts/openai.rs`
+              # and `crates/gateway/src/voice/mod.rs`, tag 20261023.01).
+              openai = {
+                enabled = true;
+                base_url = "http://127.0.0.1:${toString ttsShimPort}/v1";
+                voice = googleTtsVoice;
+                model = googleTtsModel;
               };
             };
-
-            # No inline `api_key`: Moltis does not expand `${VAR}` placeholders
-            # inside provider `api_key` values, so `GEMINI_API_KEY` comes from
-            # the process environment swept in by `[env]`.
-            providers.gemini = {
+            stt = {
               enabled = true;
-              models = [
-                "gemini-4-argon"
-                "gemini-3.8-flash"
-              ];
+              provider = "whisper";
+              # `WhisperStt::is_configured()` is true whenever `base_url`
+              # differs from `https://api.openai.com/v1`
+              # (`crates/voice/src/stt/whisper.rs`, tag 20261023.01).
+              whisper = {
+                base_url = "http://127.0.0.1:${toString ttsShimPort}/v1";
+                model = googleSttModel;
+              };
             };
+          };
 
-            voice = {
-              tts = {
-                enabled = true;
-                provider = "openai";
-                # Route TTS through the local OpenAI-compatible Gemini shim inside
-                # `moltis-fenced`. `OpenAiTts::is_configured()` is true whenever
-                # `base_url` differs from `https://api.openai.com/v1`, so no
-                # `api_key` is needed and `migrate_voice_keys_to_key_store()`
-                # never rewrites `moltis.toml` (`crates/voice/src/tts/openai.rs`
-                # and `crates/gateway/src/voice/mod.rs`, tag 20261023.01).
-                openai = {
-                  enabled = true;
-                  base_url = "http://127.0.0.1:${toString ttsShimPort}/v1";
-                  voice = googleTtsVoice;
-                  model = googleTtsModel;
-                };
-              };
-              stt = {
-                enabled = true;
-                provider = "whisper";
-                # `WhisperStt::is_configured()` is true whenever `base_url`
-                # differs from `https://api.openai.com/v1`
-                # (`crates/voice/src/stt/whisper.rs`, tag 20261023.01).
-                whisper = {
-                  base_url = "http://127.0.0.1:${toString ttsShimPort}/v1";
-                  model = googleSttModel;
-                };
-              };
+          channels = {
+            offered = [ "telegram" ];
+            telegram.moltis = {
+              # BotFather token arrives through `[env]`; Moltis applies
+              # `${VAR}` substitution to the whole raw config text, not
+              # per-field, so `token` expands at load time
+              # (crates/config/src/loader.rs, tag 20260913.02).
+              token = "\${TELEGRAM_BOT_TOKEN}";
+              dm_policy = "allowlist";
+              # Whole-file substitution also covers array elements, so
+              # the allowlist can reference a secret env var. One value,
+              # exactly one username or user id: upstream does not split
+              # comma-joined values here.
+              allowlist = [ "\${TELEGRAM_ALLOWED_USERS}" ];
+              operators = [ "\${TELEGRAM_ALLOWED_USERS}" ];
+              group_policy = "disabled";
+              stream_mode = "edit_in_place";
+              stream_min_initial_chars = 30;
+              edit_throttle_ms = 1000;
+              reply_to_message = true;
+              otp_self_approval = false;
+              model = "gemini-4-argon";
+              model_provider = "gemini";
             };
-
-            channels = {
-              offered = [ "telegram" ];
-              telegram.moltis = {
-                # BotFather token arrives through `[env]`; Moltis applies
-                # `${VAR}` substitution to the whole raw config text, not
-                # per-field, so `token` expands at load time
-                # (crates/config/src/loader.rs, tag 20260913.02).
-                token = "\${TELEGRAM_BOT_TOKEN}";
-                dm_policy = "allowlist";
-                # Whole-file substitution also covers array elements, so
-                # the allowlist can reference a secret env var. One value,
-                # exactly one username or user id: upstream does not split
-                # comma-joined values here.
-                allowlist = [ "\${TELEGRAM_ALLOWED_USERS}" ];
-                operators = [ "\${TELEGRAM_ALLOWED_USERS}" ];
-                group_policy = "disabled";
-                stream_mode = "edit_in_place";
-                stream_min_initial_chars = 30;
-                edit_throttle_ms = 1000;
-                reply_to_message = true;
-                otp_self_approval = false;
-                model = "gemini-4-argon";
-                model_provider = "gemini";
-              };
-            };
-          }
-        );
+          };
+        };
         path = "${config.xdg.configHome}/moltis/moltis.toml";
       };
     }

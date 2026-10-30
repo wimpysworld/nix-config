@@ -415,7 +415,9 @@ let
     import tempfile
 
     moltis_root = Path(${builtins.toJSON "${config.home.homeDirectory}/.moltis"})
-    bootstrap_path = Path(${builtins.toJSON "${config.xdg.stateHome}/agentic/assistants/bootstrap.json"})
+    state_dir = Path(${builtins.toJSON "${config.xdg.stateHome}/agentic/assistants"})
+    bootstrap_path = state_dir / "bootstrap.json"
+    manifest_path = state_dir / "manifest.json"
     legacy_hashes = {
         moltis_root / "AGENTS.md": {
             ${builtins.toJSON moltisLegacyInstructionsHash},
@@ -494,8 +496,24 @@ let
 
     if verified and not any(
         parent.is_symlink()
-        for parent in (bootstrap_path.parent, *bootstrap_path.parent.parents)
+        for parent in (state_dir, *state_dir.parents)
     ):
+        def write_private_json(target_path, payload, indent=None):
+            fd, temporary = tempfile.mkstemp(
+                prefix=f".{target_path.name}-", dir=state_dir
+            )
+            try:
+                with os.fdopen(fd, "w") as handle:
+                    os.fchmod(handle.fileno(), 0o600)
+                    json.dump(payload, handle, indent=indent, sort_keys=indent is None)
+                    handle.write("\n")
+                os.replace(temporary, target_path)
+            finally:
+                if os.path.exists(temporary):
+                    os.unlink(temporary)
+
+        state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        os.chmod(state_dir, 0o700)
         data = {"version": 1, "files": {}, "directories": []}
         if bootstrap_path.exists():
             info = bootstrap_path.lstat()
@@ -509,26 +527,37 @@ let
                 )
             loaded = json.loads(bootstrap_path.read_text())
             if (
-                isinstance(loaded, dict)
-                and loaded.get("version") == 1
-                and isinstance(loaded.get("files"), dict)
+                not isinstance(loaded, dict)
+                or loaded.get("version") != 1
+                or not isinstance(loaded.get("files"), dict)
             ):
-                data = loaded
+                raise ValueError("Invalid existing bootstrap manifest")
+            data = loaded
+
+        manifest = None
+        if manifest_path.exists():
+            info = manifest_path.lstat()
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or info.st_uid != os.getuid()
+                or stat.S_IMODE(info.st_mode) != 0o600
+            ):
+                raise ValueError(
+                    "Existing manifest must be a private regular file owned by the current user"
+                )
+            manifest = json.loads(manifest_path.read_text())
+            if (
+                not isinstance(manifest, dict)
+                or manifest.get("version") != 1
+                or not isinstance(manifest.get("files"), dict)
+            ):
+                raise ValueError("Invalid existing ownership manifest")
+
         data["files"].update(verified)
-        bootstrap_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-        os.chmod(bootstrap_path.parent, 0o700)
-        fd, temporary = tempfile.mkstemp(
-            prefix=".bootstrap-", dir=bootstrap_path.parent
-        )
-        try:
-            with os.fdopen(fd, "w") as handle:
-                os.fchmod(handle.fileno(), 0o600)
-                json.dump(data, handle, sort_keys=True)
-                handle.write("\n")
-            os.replace(temporary, bootstrap_path)
-        finally:
-            if os.path.exists(temporary):
-                os.unlink(temporary)
+        write_private_json(bootstrap_path, data)
+        if manifest is not None:
+            manifest["files"].update(verified)
+            write_private_json(manifest_path, manifest, indent=2)
   '';
 
   # Moltis agent presets are markdown files under ~/.moltis/agents/ with YAML
