@@ -20,7 +20,7 @@ Verify affected signatures against the project's target type definitions; consul
 - Correct import path (most Workers platform classes import from `"cloudflare:workers"`)
 - Generic type parameter on base classes (e.g., `DurableObject<Env>`)
 - `ExecutionContext` as the third param in module export handlers (needed for `ctx.waitUntil()`)
-- `fetch()` handlers must return `Promise<Response>`
+- `fetch()` handlers must return `Response` or `Promise<Response>`
 
 ### Binding access — the most common error
 
