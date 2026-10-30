@@ -4,6 +4,8 @@ Nix composes agents, commands, and skills from one source tree for each enabled 
 
 Developer servers keep Pi Agent resources. Claude Code, OpenCode, and Codex resources are emitted only when those clients are enabled.
 
+[Moltis delivery](../moltis/README.md) also supports Martin's Linux and Darwin hosts with the `moltis` tag. Momin is Traya's prepared replacement for Malak.
+
 The [20 Workspace skills](gws.md) also require a `developer` user and a `cg` host, matching the `gws` package gate.
 Their pinned source, local changes, and refresh procedure are documented separately. [Authentication](../../development/gcloud/README.md) uses the existing Google Cloud project.
 

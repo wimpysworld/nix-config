@@ -10,11 +10,17 @@ let
   inherit (config.noughty) host;
 
   isMartin = noughtyLib.isUser [ "martin" ];
-  moltisEnabled = isMartin && host.is.linux && noughtyLib.hostHasTag "moltis";
+  moltisEnabled = isMartin && (host.is.linux || host.is.darwin) && noughtyLib.hostHasTag "moltis";
 
   username = config.noughty.user.name;
   homeDir = config.home.homeDirectory;
-  agentName = if host.name == "malak" then "traya" else host.name;
+  agentName = if host.name == "momin" then "traya" else host.name;
+  isTraya = agentName == "traya";
+  mainModel = if isTraya then "openai-codex::gpt-6-astra" else "gemini::gemini-4-argon";
+  auxiliaryModel =
+    if isTraya then "openai-codex::gpt-6-luna@reasoning-high" else "gemini::gemini-3.8-flash";
+  auxiliaryReasoningEffort = if isTraya then "high" else "medium";
+  stateDir = "${config.xdg.stateHome}/moltis";
   agentDisplayName =
     if agentName == "zannah" then
       "Zannah"
@@ -33,7 +39,13 @@ let
 
   # Per-host Gemini TTS voice (`skrye` uses the British commercial voice;
   # `zannah` uses the British concierge voice).
-  googleTtsVoice = if host.name == "zannah" then "en-gb-concierge-6" else "en-gb-commercial-6";
+  googleTtsVoice =
+    if isTraya then
+      "en-gb-commercial-1"
+    else if host.name == "zannah" then
+      "en-gb-concierge-6"
+    else
+      "en-gb-commercial-6";
   googleTtsModel = "gemini-3.8-flash-tts";
   googleSttModel = "gemini-3.8-flash";
   ttsShimPort = 13139;
@@ -105,14 +117,22 @@ let
   ) (lib.attrNames moltisSecretSopsFiles);
 
   # PATH entries for the systemd user unit, so it can find user profile tools.
-  moltisPath = lib.concatStringsSep ":" [
-    "${homeDir}/.nix-profile/bin"
-    "${homeDir}/.local/state/nix/profile/bin"
-    "/etc/profiles/per-user/${username}/bin"
-    "/run/current-system/sw/bin"
-    "/run/wrappers/bin"
-    "/nix/var/nix/profiles/default/bin"
-  ];
+  moltisPath = lib.concatStringsSep ":" (
+    [
+      "${homeDir}/.nix-profile/bin"
+      "${homeDir}/.local/state/nix/profile/bin"
+      "/etc/profiles/per-user/${username}/bin"
+      "/run/current-system/sw/bin"
+      "/run/wrappers/bin"
+      "/nix/var/nix/profiles/default/bin"
+    ]
+    ++ lib.optionals host.is.darwin [
+      "/usr/bin"
+      "/bin"
+      "/usr/sbin"
+      "/sbin"
+    ]
+  );
 
   # Fence plumbing for the daemon wrapper: only the fence binary and the
   # logging helper. The shared agent-share, wayland-bridge, git, and
@@ -658,8 +678,30 @@ let
       mkdir -p "$HOME/.moltis"
       printf '["dcg-guard"]\n' > "$HOME/.moltis/disabled_hooks.json"
       touch "$HOME/.moltis/.onboarded"
-      ${moltisTtsShim} &
-      exec ${lib.getExe pkgs.moltis} "$@"
+      ${lib.optionalString host.is.linux ''
+        ${moltisTtsShim} &
+        exec ${lib.getExe pkgs.moltis} "$@"
+      ''}
+      ${lib.optionalString host.is.darwin ''
+        children=()
+        cleanup() {
+          trap - EXIT INT TERM
+          if (( ''${#children[@]} )); then
+            kill "''${children[@]}" 2>/dev/null || true
+            wait "''${children[@]}" 2>/dev/null || true
+          fi
+        }
+        trap 'cleanup' EXIT
+        trap 'exit 130' INT
+        trap 'exit 143' TERM
+        ${moltisTtsShim} &
+        children+=("$!")
+        ${lib.getExe pkgs.moltis} "$@" &
+        children+=("$!")
+        wait -n || true
+        cleanup
+        exit 1
+      ''}
     '';
   };
 
@@ -752,9 +794,32 @@ in
         moltisTelegramVoice
       ];
 
-      home.shellAliases.moltis-log = "journalctl --user -u moltis.service";
+      home.shellAliases.moltis-log =
+        if host.is.darwin then
+          "tail -F ${stateDir}/daemon.stdout.log ${stateDir}/daemon.stderr.log"
+        else
+          "journalctl --user -u moltis.service";
 
-      systemd.user.services.moltis = {
+      xdg.stateFile."moltis/.keep" = lib.mkIf host.is.darwin { text = ""; };
+      launchd.agents.moltis = lib.mkIf host.is.darwin {
+        enable = true;
+        config = {
+          Label = "org.moltis.gateway";
+          ProgramArguments = [ "${moltisFencedPackage}/bin/moltis-fenced" ];
+          EnvironmentVariables = {
+            HOME = homeDir;
+            PATH = moltisPath;
+          };
+          WorkingDirectory = homeDir;
+          RunAtLoad = true;
+          KeepAlive = true;
+          ThrottleInterval = 30;
+          StandardOutPath = "${stateDir}/daemon.stdout.log";
+          StandardErrorPath = "${stateDir}/daemon.stderr.log";
+        };
+      };
+
+      systemd.user.services.moltis = lib.mkIf host.is.linux {
         # Start only after sops-nix creates the rendered `moltis.toml` symlink.
         Unit = {
           Description = "Moltis - secure persistent personal agent server";
@@ -807,9 +872,9 @@ in
           };
 
           auxiliary = {
-            compaction = "gemini::gemini-3.8-flash";
-            title_generation = "gemini::gemini-3.8-flash";
-            vision = "gemini::gemini-3.8-flash";
+            compaction = auxiliaryModel;
+            title_generation = auxiliaryModel;
+            vision = auxiliaryModel;
           };
 
           chat.compaction.mode = "structured";
@@ -842,7 +907,7 @@ in
           heartbeat = {
             enabled = true;
             every = "30m";
-            model = "gemini::gemini-3.8-flash";
+            model = auxiliaryModel;
             sandbox_enabled = false;
             deliver = true;
             channel = "moltis";
@@ -866,20 +931,20 @@ in
             default_preset = "coordinator";
             presets = {
               coordinator = {
-                model = "gemini::gemini-4-argon";
+                model = mainModel;
                 reasoning_effort = "medium";
                 delegate_only = false;
               };
               auxiliary = {
-                model = "gemini::gemini-3.8-flash";
-                reasoning_effort = "medium";
+                model = auxiliaryModel;
+                reasoning_effort = auxiliaryReasoningEffort;
               };
               compression = {
-                model = "gemini::gemini-3.8-flash";
-                reasoning_effort = "medium";
+                model = auxiliaryModel;
+                reasoning_effort = auxiliaryReasoningEffort;
               };
               review = {
-                model = "gemini::gemini-4-argon";
+                model = mainModel;
                 reasoning_effort = "medium";
               };
             };
@@ -888,12 +953,25 @@ in
           # No inline `api_key`: Moltis does not expand `${VAR}` placeholders
           # inside provider `api_key` values, so `GEMINI_API_KEY` comes from
           # the process environment swept in by `[env]`.
-          providers.gemini = {
-            enabled = true;
-            models = [
-              "gemini-4-argon"
-              "gemini-3.8-flash"
-            ];
+          providers = {
+            gemini = {
+              enabled = !isTraya;
+              models = [
+                "gemini-4-argon"
+                "gemini-3.8-flash"
+              ];
+            };
+          }
+          // lib.optionalAttrs isTraya {
+            offered = [ "openai-codex" ];
+            openai-codex = {
+              enabled = true;
+              models = [
+                "gpt-6-astra"
+                "gpt-6-luna"
+              ];
+              fetch_models = false;
+            };
           };
 
           voice = {
@@ -947,8 +1025,8 @@ in
               edit_throttle_ms = 1000;
               reply_to_message = true;
               otp_self_approval = false;
-              model = "gemini-4-argon";
-              model_provider = "gemini";
+              model = if isTraya then "gpt-6-astra" else "gemini-4-argon";
+              model_provider = if isTraya then "openai-codex" else "gemini";
             };
           };
         };

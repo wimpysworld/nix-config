@@ -341,6 +341,7 @@ tags = ["wsl"]
 kind = "computer"
 platform = "aarch64-darwin"
 formFactor = "desktop"
+tags = ["moltis"]
 
 [momin.gpu]
 vendors = ["apple"]

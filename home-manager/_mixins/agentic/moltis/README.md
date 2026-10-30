@@ -1,21 +1,50 @@
 # Moltis projection
 
-The assistants consumer projects agents, skills, and global instructions into `~/.moltis` for the Moltis client (tag 20261023.01). The gate is `moltisEnabled` in `../assistants/default.nix`, which matches the host gate in `mcp/default.nix`: user `martin`, Linux host, host tag `moltis` (`skrye` and `zannah`). The owned-files deployer tracks `~/.moltis` as an ownership root so all personal, command-derived, sops-rendered secret, and Chainguard skills deploy there as regular files.
+The assistants consumer projects agents, skills, and global instructions into `~/.moltis` for Moltis (tag 20261023.01). The shared gate requires user `martin`, Linux or Darwin, and host tag `moltis`: `skrye`, `zannah`, and `momin`. Momin replaces Malak as Traya's host.
+
+The owned-files deployer tracks `~/.moltis` as an ownership root. Personal, command-derived, sops-rendered secret, and Chainguard skills deploy there as regular files.
+
+> [!IMPORTANT]
+> This change prepares configuration only. Do not activate services, create accounts, change DNS, write secrets, or sign in without separate approval.
+
+## Traya on Momin
+
+Traya uses the ChatGPT subscription through `openai-codex::gpt-6-astra` for chat, with medium effort in the `coordinator` and `review` presets. The `auxiliary` and `compression` presets use `openai-codex::gpt-6-luna@reasoning-high` with `reasoning_effort = "high"`. Title generation and heartbeat use the same Luna model with high effort through Moltis's `@reasoning-high` model suffix, independently of presets.
+
+The `auxiliary.compaction` and `auxiliary.vision` settings also select Luna with high effort, but Moltis 20261023.01 does not connect those settings to callers. Structured compaction still uses the session provider. The [pinned provider registry](https://github.com/moltis-org/moltis/blob/20261023.01/crates/providers/src/registry/registration.rs) applies reasoning suffixes when it resolves models.
+
+The installed Codex catalogue confirms `gpt-6-luna` and high effort. Live availability under the subscription remains unverified. No API-key billing fallback is configured.
+
+After approval and deployment, sign in locally on Momin as the same user that runs Moltis:
+
+```sh
+moltis auth login --provider openai-codex
+```
+
+Alternatively, connect OpenAI Codex in the Moltis settings UI. [Upstream provider documentation](https://github.com/moltis-org/moltis/blob/20261023.01/docs/src/providers.md) describes OAuth sign-in. OAuth credentials are unmanaged runtime state, not Nix configuration or SOPS secrets. Do not copy tokens into this repository.
+
+Gemini still supplies text-to-speech, speech-to-text, and embeddings. Traya therefore still requires `GEMINI_API_KEY`, although the Gemini chat provider is disabled. Traya retains `TELEGRAM_BOT_TRAYA` and `SOUL_TRAYA` from `secrets/moltis.yaml`.
+
+Momin uses the logged-in user's LaunchAgent, labelled `org.moltis.gateway`. It starts at login and restarts on failure. It is not a boot daemon. An always-on Mac still needs a user login and readable sops-nix secrets. The wrapper waits briefly for secrets and fails if they remain unavailable.
+
+Use `moltis-log` to read `${XDG_STATE_HOME}/moltis/daemon.stdout.log` and `daemon.stderr.log`. With the default state directory, both files are under `~/.local/state/moltis/`. Linux retains `moltis.service` and its journal alias.
+
+Fence command controls on Darwin are weaker than the Linux controls. The user accepts that difference. Native Darwin build and runtime validation remain pending. Build on Momin after approval, without an automatic SSH runtime test.
 
 ## Provider, presets, and Telegram channel
 
-`default.nix` renders `~/.config/moltis/moltis.toml` through a sops template. It enables the `gemini` provider with `gemini-4-argon` and `gemini-3.8-flash`:
+`default.nix` renders `~/.config/moltis/moltis.toml` through a sops template. Skrye and Zannah use the Gemini defaults below. Traya uses the Astra and Luna routing described above:
 
 - `coordinator` (`delegate_only = false`) and `review` presets use `gemini::gemini-4-argon`.
 - `auxiliary` and `compression` presets use `gemini::gemini-3.8-flash`.
-- `identity` sets `name` to `agentName` (`traya` on `malak`, otherwise `host.name`), and `user` sets `name = "Martin"`, `timezone = "Europe/London"`, and `write_mode = "off"`.
+- `identity` sets `name` to `agentName` (`traya` on `momin`, otherwise `host.name`), and `user` sets `name = "Martin"`, `timezone = "Europe/London"`, and `write_mode = "off"`.
 - `auxiliary` routes `compaction`, `title_generation`, and `vision` to `gemini::gemini-3.8-flash`, and `chat.compaction.mode` uses `"structured"`.
 - `skills.enable_self_improvement` is `false`.
 - `tools.exec` sets `approval_mode = "never"` and `sandbox.mode = "off"` (Moltis runs inside `moltis-fenced`), and `tools.fs` sets `workspace_root` to `$HOME` with `track_reads = true` and `must_read_before_write = true`.
 - `moltis-in-fence` exports per-agent GitHub and Git identity variables (`GH_TOKEN`, `GIT_AUTHOR_NAME`, `GIT_COMMITTER_NAME`, `GIT_AUTHOR_EMAIL`, and `GIT_COMMITTER_EMAIL`), disables commit and tag signing (`commit.gpgSign = false`, `tag.gpgSign = false`) via `GIT_CONFIG_*`, and rewrites GitHub SSH URLs (`git@github.com:` and `ssh://git@github.com/`) to `https://github.com/` authenticated through `gh auth git-credential`.
 - `memory` uses `provider = "custom"` with `base_url = "https://generativelanguage.googleapis.com/v1beta/openai"`, `model = "gemini-embedding-2"`, and `api_key = "${GEMINI_API_KEY}"`.
 - `heartbeat` runs every `30m` on `gemini::gemini-3.8-flash` (`sandbox_enabled = false`, `deliver = true`) and delivers to `channel = "moltis"` (`to = "${TELEGRAM_ALLOWED_USERS}"`).
-- `voice.tts` selects the `openai` provider pointed at a local OpenAI-compatible shim (`base_url = "http://127.0.0.1:13139/v1"`) started inside `moltis-fenced`, with `model = "gemini-3.8-flash-tts"`. `skrye` uses `voice = "en-gb-commercial-6"` and `zannah` uses `voice = "en-gb-concierge-6"`. The shim reads `GEMINI_API_KEY` from the sops secret file, calls Google's `gemini-3.8-flash-tts` `generateContent` endpoint, and transcodes the returned WAV audio to Ogg Opus (`audio/ogg`) via `ffmpeg` so Moltis sends native Telegram voice notes without setting `voice.tts.openai.api_key`.
+- `voice.tts` selects the `openai` provider pointed at a local OpenAI-compatible shim (`base_url = "http://127.0.0.1:13139/v1"`) started inside `moltis-fenced`, with `model = "gemini-3.8-flash-tts"`. Traya on `momin` uses `voice = "en-gb-commercial-1"`. `skrye` uses `voice = "en-gb-commercial-6"` and `zannah` uses `voice = "en-gb-concierge-6"`. The shim reads `GEMINI_API_KEY` from the sops secret file, calls Google's `gemini-3.8-flash-tts` `generateContent` endpoint, and transcodes the returned WAV audio to Ogg Opus (`audio/ogg`) via `ffmpeg` so Moltis sends native Telegram voice notes without setting `voice.tts.openai.api_key`.
 - `moltis-telegram-voice` (`<text>` or `--body-file <path>`) is installed in `home.packages` and `moltis-in-fence` `runtimeInputs`. It posts text to the local TTS shim (`http://127.0.0.1:13139/v1/audio/speech`) for Ogg Opus synthesis and uploads the voice note to Telegram `sendVoice` using `TELEGRAM_BOT_TOKEN` and `TELEGRAM_ALLOWED_USERS`.
 - `voice.stt` selects the `whisper` provider pointed at the same local shim (`base_url = "http://127.0.0.1:13139/v1"`) with `model = "gemini-3.8-flash"`. On `POST /v1/audio/transcriptions`, the shim parses the `multipart/form-data` audio upload, normalizes or transcodes unsupported formats to `audio/ogg` via `ffmpeg`, calls `gemini-3.8-flash:generateContent` with `GEMINI_API_KEY`, and returns `{"text": "..."}` without setting `voice.stt.whisper.api_key`.
 - `channels.telegram.moltis` defaults to `gemini-4-argon` on `gemini` with `dm_policy = "allowlist"`, `group_policy = "disabled"`, `stream_mode = "edit_in_place"`, `stream_min_initial_chars = 30`, `edit_throttle_ms = 1000`, `reply_to_message = true`, and `otp_self_approval = false`.
@@ -81,4 +110,4 @@ Never name a projected Moltis agent preset `coordinator`, `auxiliary`, `compress
 
 ## Verification
 
-After `just switch-home` on the moltis-tagged host, agents and skills appear in the Moltis UI.
+Preparation does not authorise `just switch-home`. After separate deployment approval, check that agents and skills appear in the Moltis UI.

@@ -274,9 +274,11 @@ let
 
   # Same host gate that `moltis/default.nix` and `mcp/default.nix` use.
   moltisEnabled =
-    noughtyLib.isUser [ "martin" ] && config.noughty.host.is.linux && noughtyLib.hostHasTag "moltis";
+    noughtyLib.isUser [ "martin" ]
+    && (config.noughty.host.is.linux || config.noughty.host.is.darwin)
+    && noughtyLib.hostHasTag "moltis";
   moltisSopsFile = ../../../../secrets/moltis.yaml;
-  moltisAgentName = if config.noughty.host.name == "malak" then "traya" else config.noughty.host.name;
+  moltisAgentName = if config.noughty.host.name == "momin" then "traya" else config.noughty.host.name;
   moltisSoulKey = "SOUL_${lib.toUpper moltisAgentName}";
   moltisSoulSecrets = lib.optionalAttrs moltisEnabled {
     ${moltisSoulKey} = {
