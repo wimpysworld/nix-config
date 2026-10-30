@@ -173,6 +173,7 @@ async function handleRooms(request: Request, env: Env): Promise<Response> {
 import { z } from "zod";
 
 const SendMessageSchema = z.object({
+  roomId: z.string().min(1),
   userId: z.string().min(1),
   message: z.string().min(1).max(1000),
 });
@@ -188,7 +189,7 @@ async function handleSendMessage(request: Request, env: Env): Promise<Response> 
     );
   }
 
-  const stub = env.CHAT_ROOM.getByName(result.data.userId);
+  const stub = env.CHAT_ROOM.getByName(result.data.roomId);
   const message = await stub.sendMessage(result.data.userId, result.data.message);
   return Response.json(message);
 }
