@@ -31,7 +31,7 @@ pnpm create cloudflare@latest [name] [-- flags]
 | Flag | Description |
 |------|-------------|
 | `--template=user/repo` | GitHub template or local path |
-| `--existing-script=./src/worker.ts` | Existing script (requires `--type=pre-existing`) |
+| `--existing-script=my-worker` | Name of a deployed Worker to clone locally (sets `--type=pre-existing`, ignores `--deploy`) |
 | `--category=ai\|database\|realtime` | Demo filter (requires `--type=demo`) |
 | `--experimental` | Enable experimental features |
 | `--wrangler-defaults` | Skip wrangler prompts |
@@ -65,6 +65,6 @@ npm create cloudflare@latest my-api -- --type=hello-world --lang=ts --no-git --n
 # GitHub template
 npm create cloudflare@latest -- --template=cloudflare/templates/worker-openapi
 
-# Convert existing project
-npm create cloudflare@latest . -- --type=pre-existing --existing-script=./build/worker.js
+# Clone a deployed Worker into a local project
+npm create cloudflare@latest my-local-worker -- --type=pre-existing --existing-script=my-worker
 ```
