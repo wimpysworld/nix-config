@@ -350,7 +350,7 @@ wrangler deploy
 
 # Tail logs
 wrangler tail
-
-# List DOs
-wrangler d1 execute DB --command "SELECT * FROM _cf_DO"
 ```
+
+To list Durable Objects, see the Cloudflare API documentation for [namespaces](https://developers.cloudflare.com/api/resources/durable_objects/subresources/namespaces/methods/list/) and [objects within a namespace](https://developers.cloudflare.com/api/resources/durable_objects/subresources/namespaces/subresources/objects/methods/list/).
+Defer authentication and API calls until the user authorises them.
