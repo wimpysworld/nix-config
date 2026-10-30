@@ -54,7 +54,21 @@ if [[ $# -ge 3 && $1 == "api" && $2 == "--paginate" && $3 == repos/*/pulls/*/fil
 	if [[ -r "${GH_STUB_STATE}/files-exit" ]]; then
 		exit "$(cat "${GH_STUB_STATE}/files-exit")"
 	fi
-	if [[ -r "${GH_STUB_STATE}/paginated-files.jsonl" ]]; then
+	jq_expr=""
+	for ((i = 1; i <= $#; i++)); do
+		if [[ "${!i}" == "--jq" ]]; then
+			next=$((i + 1))
+			jq_expr="${!next}"
+			break
+		fi
+	done
+	if [[ -r "${GH_STUB_STATE}/files-raw.json" ]]; then
+		if [[ -n "${jq_expr}" ]]; then
+			jq -c "${jq_expr}" "${GH_STUB_STATE}/files-raw.json"
+		else
+			cat "${GH_STUB_STATE}/files-raw.json"
+		fi
+	elif [[ -r "${GH_STUB_STATE}/paginated-files.jsonl" ]]; then
 		cat "${GH_STUB_STATE}/paginated-files.jsonl"
 	fi
 	exit 0
@@ -511,22 +525,33 @@ fi
 reset_stub
 write_pr_json wimpysworld 'sith-skrye' 'fix/large-change-complete' \
 	'.files = [{path: "docs/file-1.md"}] | .changedFiles = 101'
-jq -c -n 'range(1; 102) | {path: ("docs/file-\(.).md"), previousPath: "", changeType: "MODIFIED"}' \
-	>"${state_dir}/paginated-files.jsonl"
+jq -n '[range(1; 102) | {filename: ("docs/file-\(.).md"), previous_filename: null, status: "modified"}]' \
+	>"${state_dir}/files-raw.json"
 GH_STUB_VIEWER=sith-zannah run_helper --dry-run "${url_ww}"
 if [[ ${status} -ne 0 ]]; then
 	fail 'accept trusted-peer PR >100 files when paginated REST files complete list' "status ${status}: ${stderr}"
 else
 	pass 'accept trusted-peer PR >100 files when paginated REST files complete list'
 fi
+if grep -qF '.[] | {path: (.filename // ""), previousPath: (.previous_filename // ""), changeType: ((.status // "") | ascii_upcase)}' "${state_dir}/argv-2"; then
+	pass 'pass expected jq filter to paginated files endpoint'
+else
+	fail 'pass expected jq filter to paginated files endpoint' "$(cat "${state_dir}/argv-2" 2>/dev/null || true)"
+fi
+
+reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/large-change-mismatch' \
+	'.files = [{path: "docs/file-1.md"}] | .changedFiles = 101'
+jq -n '[range(1; 103) | {filename: ("docs/file-\(.).md"), previous_filename: null, status: "modified"}]' \
+	>"${state_dir}/files-raw.json"
+GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
+	'reject trusted-peer PR when paginated file count mismatches changedFiles' "${url_ww}" 'changed file list is incomplete'
 
 reset_stub
 write_pr_json wimpysworld 'sith-skrye' 'fix/large-change-sensitive' \
 	'.files = [{path: "docs/file-1.md"}] | .changedFiles = 101'
-{
-	jq -c -n 'range(1; 101) | {path: ("docs/file-\(.).md"), previousPath: "", changeType: "MODIFIED"}'
-	printf '%s\n' '{"path":"pkgs/roamgate/default.nix","previousPath":"","changeType":"MODIFIED"}'
-} >"${state_dir}/paginated-files.jsonl"
+jq -n '[range(1; 101) | {filename: ("docs/file-\(.).md"), previous_filename: null, status: "modified"}] + [{filename: "pkgs/roamgate/default.nix", previous_filename: null, status: "modified"}]' \
+	>"${state_dir}/files-raw.json"
 GH_STUB_VIEWER=sith-zannah run_helper --dry-run "${url_ww}"
 if [[ ${status} -ne 64 || ${stderr} != *"sensitive package"* ]]; then
 	fail 'reject >100-file PR when sensitive package appears on page 2' "status=${status} stderr=${stderr}"

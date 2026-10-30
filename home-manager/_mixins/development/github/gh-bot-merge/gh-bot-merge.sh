@@ -124,7 +124,7 @@ if jq -e 'type == "object" and ((.changedFiles // 0) > ((.files // []) | length)
 		printf '%s\n%s\n' "${pr_json}" "${paginated_files_jsonl}" | jq -s '
 			.[0] as $pr
 			| (.[1:]) as $paginated
-			| if ($paginated | length) > (($pr.files // []) | length) then
+			| if ($paginated | length) == ($pr.changedFiles // 0) then
 				$pr | .files = $paginated
 			  else
 				$pr
