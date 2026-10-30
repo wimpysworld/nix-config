@@ -367,6 +367,8 @@ class GeneratedExportTests(unittest.TestCase):
         self.assertEqual(subagents["maxConcurrent"], 12)
         self.assertEqual(subagents["maxConcurrentForeground"], 12)
         self.assertEqual(subagents["maxSubagentDepth"], 1)
+        self.assertFalse(subagents["packageAgents"])
+        self.assertFalse(subagents["packageWorkflows"])
         self.assertFalse(subagents["worktreeIsolation"])
 
         for path in (

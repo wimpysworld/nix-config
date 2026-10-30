@@ -868,7 +868,7 @@ reasoningEffort = "high"
         # Evaluate the original let bindings without packages, activation or secrets.
         source = (ASSISTANTS.parent / client / "default.nix").read_text()
         source = re.sub(
-            r"(?<=import )\.\./[\w./-]+",
+            r"(?<=import )\.\.?/[\w./-]+",
             lambda match: str((ASSISTANTS.parent / client / match[0]).resolve()),
             source,
         )
@@ -937,6 +937,8 @@ reasoningEffort = "high"
         self.assertEqual(settings["maxConcurrentForeground"], 12)
         self.assertTrue(settings["workflowsEnabled"])
         self.assertTrue(settings["disableDefaultAgents"])
+        self.assertFalse(settings["packageAgents"])
+        self.assertFalse(settings["packageWorkflows"])
         self.assertTrue(settings["strictAgentFiles"])
         self.assertFalse(settings["worktreeIsolation"])
         self.assertFalse(settings["schedulingEnabled"])
