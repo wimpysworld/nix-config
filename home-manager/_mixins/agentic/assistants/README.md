@@ -7,6 +7,9 @@ Developer servers keep Pi Agent resources. Claude Code, OpenCode, and Codex reso
 The [20 Workspace skills](gws.md) also require a `developer` user and a `cg` host, matching the `gws` package gate.
 Their pinned source, local changes, and refresh procedure are documented separately. [Authentication](../../development/gcloud/README.md) uses the existing Google Cloud project.
 
+The four [Cloudflare skills](cloudflare.md) use the same shared composer and existing client gates.
+[Wrangler](../../development/cloudflare/README.md) is available on Martin's developer workstations. Cloudflare authentication remains deferred.
+
 The Nix composition is the delivery mechanism, not the strategy. Everything below - the prompt hierarchy, agent specialisation, model selection where pinned, context-efficiency constraints, and orchestration patterns - is a general approach to prompt and context engineering. The portable source uses Markdown prompts with provider-specific headers, and Nix emits each client's native file layout. If you use Claude Code or OpenCode directly, you can recreate any part of this by placing files in the right directories.
 
 ### File layout
