@@ -6,7 +6,7 @@ Fetch the relevant documentation before choosing method signatures, binding type
 | --- | --- |
 | Access bindings in handlers, entrypoint classes, or imported `env` | [Bindings and environment access](https://developers.cloudflare.com/workers/runtime-apis/bindings/index.md) |
 | Generate environment and runtime types; configure TypeScript or migrate from `@cloudflare/workers-types` | [Workers TypeScript](https://developers.cloudflare.com/workers/languages/typescript/index.md) |
-| Use framework-specific environment access | [Hono on Workers](https://developers.cloudflare.com/workers/framework-guides/web-apps/more-web-frameworks/hono/index.md) (follow the framework's linked documentation) |
+| Use framework-specific environment access | Select the project's framework from [Framework guides](https://developers.cloudflare.com/workers/framework-guides/index.md). For Hono, use [Hono on Workers](https://developers.cloudflare.com/workers/framework-guides/web-apps/more-web-frameworks/hono/index.md) and its linked bindings documentation. |
 | Read, write, delete, and list KV keys | [KV Workers API](https://developers.cloudflare.com/kv/api/index.md) |
 | Read, write, delete, and list R2 objects | [R2 Workers API](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/index.md) |
 | Prepare and bind SQL statements or execute batches | [D1 Workers Binding API](https://developers.cloudflare.com/d1/worker-api/index.md) |
