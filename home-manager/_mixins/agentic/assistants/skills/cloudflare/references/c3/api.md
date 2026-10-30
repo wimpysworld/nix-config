@@ -32,7 +32,7 @@ pnpm create cloudflare@latest [name] [-- flags]
 |------|-------------|
 | `--template=user/repo` | GitHub template or local path |
 | `--existing-script=my-worker` | Name of a deployed Worker to clone locally (sets `--type=pre-existing`, ignores `--deploy`) |
-| `--category=ai\|database\|realtime` | Demo filter (requires `--type=demo`) |
+| `--category=<category>` | Template category: `hello-world`, `web-framework`, `demo`, or `remote-template`. With `--platform=pages`, only `web-framework` and `remote-template` are available. With `--experimental`, only `web-framework` is available. |
 | `--experimental` | Enable experimental features |
 | `--wrangler-defaults` | Skip wrangler prompts |
 
