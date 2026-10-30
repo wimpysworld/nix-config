@@ -1,6 +1,8 @@
 # Cloudflare Workers KV
 
-Use KV for read-heavy configuration, preferences, and application caches that tolerate stale data. Read [how KV works](https://developers.cloudflare.com/kv/concepts/how-kv-works/index.md) before choosing it: reads are eventually consistent, including cached missing keys, and immediate visibility is not guaranteed even in the location of a write.
+Use KV for read-heavy configuration and preferences that tolerate stale data. For application caching, prefer [Workers Cache](https://developers.cloudflare.com/workers/cache/index.md). Choose KV caching only when a concrete requirement cannot be met by Workers Cache after checking its [patterns](https://developers.cloudflare.com/workers/cache/examples/index.md) and [limitations](https://developers.cloudflare.com/workers/cache/limitations/index.md).
+
+Read [how KV works](https://developers.cloudflare.com/kv/concepts/how-kv-works/index.md) before choosing it: reads are eventually consistent, including cached missing keys, and immediate visibility is not guaranteed even in the location of a write.
 
 For atomic updates or coordination, consider [Durable Objects](https://developers.cloudflare.com/durable-objects/index.md); for relational queries, [D1](../d1/); for large objects, [R2](../r2/). Use the [storage comparison](https://developers.cloudflare.com/workers/platform/storage-options/index.md) to choose based on requirements.
 
