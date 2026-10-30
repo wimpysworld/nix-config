@@ -391,6 +391,9 @@ let
   ];
   moltisHeartbeatLegacyHashes = [
     moltisCurrentHeartbeatHash
+    "39ec86bbc74ffd56748753bcfcce2dee46540e3767f14cdcb05c2688327393a1"
+    "eee950ea74b76130fd08018483d3e84e68976e97b439c643325eb5690ca3662f"
+    "88e5873b9f1b4906d92f79330b596109f1c6349879a7a2bd47204947f9133cdd"
     "d2c730ff1a820ac4e6fe1dad8ea253e4a354a6026d7b0f879976b904273d4ed6"
     "dc20bdcaa1b87f2b7734e67cafca7c96bd249627870bc034c6912a244ffb8017"
     "d98a5256ea01f35025cd02cb583518842c58d9a9c00b039057dffbbc4a0b5d62"
@@ -1024,6 +1027,13 @@ let
   };
 in
 {
+  options.agentic.assistants.moltis.heartbeatHash = lib.mkOption {
+    type = lib.types.str;
+    internal = true;
+    readOnly = true;
+    default = moltisCurrentHeartbeatHash;
+    description = "SHA-256 digest of the rendered per-host Moltis HEARTBEAT.md.";
+  };
   options.agentic.assistants.ownedSpec = lib.mkOption {
     type = lib.types.attrs;
     internal = true;

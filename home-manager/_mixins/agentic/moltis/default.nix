@@ -758,6 +758,9 @@ in
         # Start only after sops-nix creates the rendered `moltis.toml` symlink.
         Unit = {
           Description = "Moltis - secure persistent personal agent server";
+          X-Restart-Triggers = [
+            config.agentic.assistants.moltis.heartbeatHash
+          ];
           After = [
             "sops-nix.service"
           ];
@@ -819,6 +822,7 @@ in
           tools = {
             agent_timeout_secs = 3600;
             agent_max_iterations = 100;
+            agent_max_auto_continues = 0;
             exec = {
               default_timeout_secs = 300;
               max_timeout_secs = 1800;

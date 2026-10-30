@@ -41,7 +41,8 @@ in
             --output ${lib.escapeShellArg "${stateDir}/bootstrap.json"}
         '';
     assistantOwnedFiles =
-      lib.hm.dag.entryAfter
+      lib.hm.dag.entryBetween
+        [ "reloadSystemd" ]
         [
           "writeBoundary"
           "linkGeneration"
