@@ -132,10 +132,10 @@ export default {
     try {
       // Route to appropriate handler
       if (url.pathname.startsWith("/api/rooms")) {
-        return handleRooms(request, env);
+        return await handleRooms(request, env);
       }
       if (url.pathname.startsWith("/api/users")) {
-        return handleUsers(request, env);
+        return await handleUsers(request, env);
       }
 
       return new Response("Not Found", { status: 404 });
