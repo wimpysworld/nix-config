@@ -1,6 +1,6 @@
 # MCP Servers
 
-Three unconditional MCP servers provide reference material and Linear access. Six Chainguard servers are emitted only on hosts tagged `cg`. Definitions live once in `servers.nix` and are distributed to each enabled Claude Code, OpenCode, Zed, Codex, and Pi Agent client via per-consumer renderers.
+Four unconditional MCP servers provide reference material and Linear access. Six Chainguard servers are emitted only on hosts tagged `cg`. Definitions live once in `servers.nix` and are distributed to each enabled Claude Code, OpenCode, Zed, Codex, and Pi Agent client via per-consumer renderers.
 
 The Nix composition is the delivery mechanism, not the strategy. Most servers here are information retrieval tools: documentation search, web reading, and package lookup. The practical reason: a language model with a training cutoff hallucinates library APIs that changed after the cutoff. A model that fetches live documentation does not need to guess.
 
@@ -86,10 +86,11 @@ The same pattern applies to Zed: `servers.context7.consumers.zed.enabled = false
 
 ## Servers
 
-Three unconditional servers and six conditional servers. `On` means enabled by default. `Off` means rendered as disabled where the client supports that state. `Omitted` means the client receives no entry.
+Four unconditional servers and six conditional servers. `On` means enabled by default. `Off` means rendered as disabled where the client supports that state. `Omitted` means the client receives no entry.
 
 | Server       | Transport | Auth   | Claude Code | Codex | OpenCode | Pi      | Zed       | Purpose                                      |
 | ------------ | --------- | ------ | ----------- | ----- | -------- | ------- | --------- | -------------------------------------------- |
+| `cloudflare-docs` | HTTP  | -      | On          | On    | On       | On      | On        | Public Cloudflare documentation              |
 | `context7`   | HTTP      | bearer | On          | On    | On       | On      | Extension | Live library documentation                   |
 | `exa`        | HTTP      | -      | On          | On    | On       | On      | On        | Web search and URL content extraction        |
 | `linear`     | HTTP      | bearer | On          | On    | On       | On      | On        | Linear issues, projects, and comments        |
@@ -102,6 +103,10 @@ Workspace Slack access uses the `agent-slack` CLI installed by `home-manager/_mi
 NixOS MCP is project-owned rather than part of this Home Manager registry. Projects that use it provide the package in their development shell and define their own client configuration.
 
 ### Active servers
+
+#### cloudflare-docs
+
+Cloudflare's public documentation MCP server uses HTTP at `https://docs.mcp.cloudflare.com/mcp`. It requires no authentication and is enabled by default in Claude Code, Codex, OpenCode, Pi, and Zed. It provides documentation access, not account management.
 
 #### context7
 
