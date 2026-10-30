@@ -123,6 +123,11 @@ rec {
   #                  zed.mode           "context_server" | "extension"
   #                  zed.id             extension id when mode = "extension"
   servers = {
+    cloudflare-docs = {
+      transport = "http";
+      url = "https://docs.mcp.cloudflare.com/mcp";
+    };
+
     context7 = {
       transport = "http";
       url = "https://mcp.context7.com/mcp";

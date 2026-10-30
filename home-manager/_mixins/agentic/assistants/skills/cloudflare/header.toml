@@ -1,0 +1,10 @@
+[common]
+name = "cloudflare"
+description = "Discover and choose Cloudflare products for apps, APIs, AI agents, storage, networking, and security. Use for architecture and product selection, including when the user describes a need without naming a Cloudflare product; then find the relevant skill or documentation."
+license = "Apache-2.0"
+
+[common.metadata]
+upstream = "https://github.com/cloudflare/skills"
+revision = "c668cb2d1e28e0ba38efc73625b31732a6d5d13c"
+source = "skills/cloudflare"
+local-changes = "Moved frontmatter to header.toml; added managed-tooling and deferred-authentication boundaries; adapted Wrangler install and MCP guidance; linked optional sibling skills to the pinned upstream; normalised whitespace; added reference contents lists."
