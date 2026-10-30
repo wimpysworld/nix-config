@@ -124,7 +124,7 @@ export default {
 2. **Use `getByName()` for deterministic routing** - Same input = same DO instance
 3. **Prefer SQLite for new classes** - For projects that use migrations, declare new SQLite classes with `new_sqlite_classes`. Inspect existing classes' storage backends before selecting APIs. Preserve existing backends, including key-value (KV) storage, unless the user explicitly authorises a migration. Before any authorised migration, verify the supported path in the current documentation.
 4. **Initialize in constructor** - Use `blockConcurrencyWhile()` for schema setup only
-5. **Use RPC methods** - Not fetch() handler (compatibility date >= 2024-04-03)
+5. **Prefer RPC methods for direct calls** (compatibility date >= 2024-04-03). Retain `fetch()` handlers for HTTP request/response flows and WebSocket upgrades.
 6. **Persist first, cache second** - Always write to storage before updating in-memory state
 7. **One alarm per DO** - `setAlarm()` replaces any existing alarm
 
