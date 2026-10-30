@@ -25,7 +25,7 @@ Verify affected signatures against the project's target type definitions; consul
 ### Binding access — the most common error
 
 - **Module export handlers** (`fetch`, `scheduled`, `queue`, `email`): bindings via `env.X` parameter
-- **Platform base classes** (`WorkerEntrypoint`, `DurableObject`, `Workflow`, `Agent`): bindings via `this.env.X`
+- **Platform base classes** (`WorkerEntrypoint`, `DurableObject`, `WorkflowEntrypoint`, `Agent`): bindings via `this.env.X`
 
 Flag `env.X` inside a class extending a platform base class. Flag `this.env.X` inside a module export handler.
 
