@@ -73,7 +73,10 @@ For existing framework apps, follow [Framework Setup](README.md#framework-setup)
 ## Post-Creation Checklist
 
 1. Review `wrangler.jsonc` - set `compatibility_date`, verify `name`
-2. Create bindings: `wrangler kv namespace create`, `wrangler d1 create`, `wrangler r2 bucket create`
+2. With explicit authority for each remote operation, create the required resources using these command templates. Replace each placeholder with the intended resource name:
+   - `wrangler kv namespace create <NAMESPACE_NAME>`
+   - `wrangler d1 create <DATABASE_NAME>`
+   - `wrangler r2 bucket create <BUCKET_NAME>`
 3. Generate types: `npm run cf-typegen`
 4. Test: `npm run dev`
 5. Deploy: `npm run deploy`
