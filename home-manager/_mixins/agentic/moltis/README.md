@@ -59,7 +59,9 @@ The `[env]` table injects sops placeholders into the Moltis process environment 
 | `GH_TOKEN`               | `secrets/moltis.yaml` | `GITHUB_TOKEN_<AGENT>`             |
 | `GIT_AUTHOR_EMAIL`       | `secrets/moltis.yaml` | `GITHUB_EMAIL_<AGENT>`             |
 | `CONTEXT7_API_KEY`       | `secrets/mcp.yaml`    | `CONTEXT7_API_KEY`                 |
-| `LINEAR_API_KEY`         | `secrets/linear.yaml` | `chainguard` or `wimpysworld`      |
+| `LINEAR_API_KEY` (Skrye and Zannah only) | `secrets/linear.yaml` | `chainguard` or `wimpysworld`      |
+
+Traya on `momin` omits the Linear MCP server and its Moltis environment placeholder because OpenAI Codex rejects Linear's URI tool schemas. Pi, Codex, and other clients keep Linear and the shared key. Skrye and Zannah keep Linear in Moltis.
 
 ## Projection surfaces
 

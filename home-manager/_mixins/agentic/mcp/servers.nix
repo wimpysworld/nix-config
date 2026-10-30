@@ -174,6 +174,7 @@ rec {
         # Linear exposes issue/project/comment reads and mutations. Make Codex
         # ask before tool calls rather than inheriting the unattended default.
         codex.defaultToolsApprovalMode = "prompt";
+        moltis.enabled = host.name != "momin";
       };
     };
   }

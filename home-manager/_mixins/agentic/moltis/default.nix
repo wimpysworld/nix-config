@@ -63,8 +63,8 @@ let
     GIT_AUTHOR_EMAIL = moltisSopsFile;
     GEMINI_API_KEY = aiSopsFile;
     CONTEXT7_API_KEY = mcpSopsFile;
-    LINEAR_API_KEY = linearSopsFile;
-  };
+  }
+  // lib.optionalAttrs (!isTraya) { LINEAR_API_KEY = linearSopsFile; };
 
   secretConfig =
     name:

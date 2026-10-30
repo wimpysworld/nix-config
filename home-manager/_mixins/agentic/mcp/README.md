@@ -153,6 +153,8 @@ Linear's official hosted MCP server. It uses Streamable HTTP at `https://mcp.lin
 
 Linear's MCP tools can read and mutate issues, projects, and comments. The server is active in Claude Code, Codex, OpenCode, Pi, and Zed on every host with those clients. Codex also sets `default_tools_approval_mode = "prompt"` for Linear so tool calls require review instead of inheriting the unattended default.
 
+Moltis omits Linear only for Traya on `momin`, because OpenAI Codex rejects Linear's URI tool schemas. Skrye and Zannah retain Linear. Other clients, including Pi and Codex on Momin, retain Linear and their shared key.
+
 `LINEAR_API_KEY` reads from `secrets/linear.yaml`. Hosts tagged `cg` select the `chainguard` key. Other hosts select `wimpysworld`. The existing fish and bash secret exports expose the selected value to coding-agent clients.
 
 ---
