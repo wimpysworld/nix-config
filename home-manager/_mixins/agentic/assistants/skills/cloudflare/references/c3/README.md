@@ -116,9 +116,9 @@ npm run deploy
 
 ## See Also
 
-- **workers/README.md** - Workers runtime, bindings, APIs
-- **workers-ai/README.md** - AI/ML models
-- **pages/README.md** - Pages-specific features
-- **wrangler/README.md** - Wrangler CLI beyond initial setup
-- **d1/README.md** - SQLite database
-- **r2/README.md** - Object storage
+- [Workers documentation](https://developers.cloudflare.com/workers/) - Workers runtime, bindings, APIs
+- [Workers AI](../workers-ai/README.md) - AI/ML models
+- [Pages](../pages/README.md) - Pages-specific features
+- [Wrangler documentation](https://developers.cloudflare.com/workers/wrangler/) - Wrangler CLI beyond initial setup
+- [D1](../d1/README.md) - SQLite database
+- [R2](../r2/README.md) - Object storage
