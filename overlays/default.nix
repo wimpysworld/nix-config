@@ -211,6 +211,11 @@ in
         ];
       });
 
+      # Prowler 5.12.3 in nixos-26.05 fails to build because python3.13-imageio
+      # 2.37.2 fails two tests against pillow 13.0.0. Use the cached unstable
+      # build until nixos-26.05 caches the fix.
+      inherit (final.unstable) prowler;
+
       # Determinate Nix 3.23 emits unknown activity and result types, which nom
       # 2.2.0 rejects with a ParseNixJSONMessageError. Apply the upstream fix
       # that handles unknown activity and result types gracefully. Remove this
