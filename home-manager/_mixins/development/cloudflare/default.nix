@@ -25,9 +25,6 @@ lib.mkIf
         [
           "CLOUDFLARE_ACCOUNT_ID"
           "CLOUDFLARE_API_TOKEN"
-          "CLOUDFLARE_ACCESS_KEY_ID"
-          "CLOUDFLARE_SECRET_ACCESS_KEY"
-          "CLOUDFLARE_S3_API_ENDPOINT"
         ]
         (key: {
           inherit key;

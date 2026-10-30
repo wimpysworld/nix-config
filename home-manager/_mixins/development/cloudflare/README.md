@@ -15,7 +15,8 @@ The shared [MCP registry](../../agentic/mcp/README.md#cloudflare-api) configures
 
 ## Credentials
 
-`secrets/cloudflare.yaml` contains the encrypted credentials. This module declares these SOPS secrets with mode `0400`:
+`secrets/cloudflare.yaml` contains the encrypted credentials. This module declares only `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` as runtime SOPS secrets with mode `0400`.
+The three R2 keys remain encrypted in that file and are not materialised until a consumer exists.
 
 | Key | Runtime use |
 | --- | --- |
