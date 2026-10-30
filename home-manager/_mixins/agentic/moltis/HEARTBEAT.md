@@ -4,7 +4,7 @@ Run these steps in order. Call at most one tool per turn.
 
 ## Step 1 - System Event and Lock Check
 
-If the prompt starts with `[exec-event]` or any system wake event instead of a scheduled timer tick, reply `HEARTBEAT_OK` immediately and stop.
+Ignore any prepended `[exec-event]` or system event lines. Do not report those lines to the user.
 
 Run this single shell check via `exec`:
 
