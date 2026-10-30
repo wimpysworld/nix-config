@@ -12,10 +12,14 @@ pnpm create cloudflare@latest [name] [-- flags]
 
 | Flag | Values | Description |
 |------|--------|-------------|
-| `--type` | `hello-world`, `web-app`, `demo`, `pre-existing`, `remote-template` | Application type |
+| `--type` | Examples: `hello-world`, `pre-existing` | Built-in template identifier, not a category. Available values come from the current template maps. |
 | `--platform` | `workers` (default), `pages` | Target platform (only for framework templates that support both Pages and Workers) |
-| `--framework` | Examples: `next`, `remix`, `astro`, `react-router`, `solid`, `svelte`, `qwik`, `vue`, `angular`, `hono` | Web framework (requires `--type=web-app`) |
+| `--framework` | Examples: `next`, `remix`, `astro`, `react-router`, `solid`, `svelte`, `qwik`, `vue`, `angular`, `hono` | Web framework (sets `--category=web-framework`, no `--type` needed) |
 | `--lang` | `ts`, `js`, `python` | Template language. Use `--lang=ts` for TypeScript or `--lang=js` for JavaScript. |
+
+`--category` selects a template group. `--type` selects a built-in template within that model. Use `--framework` for framework starters and `--template` for external templates. Do not use `web-app`, `demo`, or `remote-template` as `--type` values.
+
+Source: [C3 argument definitions](https://github.com/cloudflare/workers-sdk/blob/main/packages/create-cloudflare/src/helpers/args.ts). Check the current definitions before choosing a template or framework identifier.
 
 ## Deployment Flags
 
@@ -56,7 +60,7 @@ For framework apps, follow [Framework Setup](README.md#framework-setup).
 npm create cloudflare@latest my-api -- --type=hello-world --lang=ts --no-deploy
 
 # Astro blog
-npm create cloudflare@latest my-blog -- --type=web-app --framework=astro --lang=ts --deploy
+npm create cloudflare@latest my-blog -- --framework=astro --lang=ts --deploy
 
 # CI: non-interactive
 npm create cloudflare@latest my-api -- --type=hello-world --lang=ts --no-git --no-deploy

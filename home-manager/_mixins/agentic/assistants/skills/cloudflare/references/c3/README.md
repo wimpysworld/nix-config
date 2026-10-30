@@ -24,7 +24,7 @@ npm create cloudflare@latest my-app
 npm create cloudflare@latest my-api -- --type=hello-world --lang=ts
 
 # Pages (static/SSG)
-npm create cloudflare@latest my-site -- --type=web-app --framework=astro --platform=pages
+npm create cloudflare@latest my-site -- --framework=astro --platform=pages
 ```
 
 ## Platform Decision Tree
@@ -38,13 +38,13 @@ What are you building?
 
 ├─ Static site / SSG / Documentation
 │   └─ Pages - requires --platform=pages
-│       npm create cloudflare@latest my-site -- --type=web-app --framework=astro --platform=pages
+│       npm create cloudflare@latest my-site -- --framework=astro --platform=pages
 
 ├─ Full-stack app (Next.js/Remix/SvelteKit)
 │   └─ Follow the current framework guide below
 
-└─ Convert existing project
-    └─ npm create cloudflare@latest . -- --type=pre-existing --existing-script=./src/worker.ts
+└─ Clone a deployed Worker locally
+    └─ npm create cloudflare@latest my-local-worker -- --type=pre-existing --existing-script=my-worker
 ```
 
 **Critical:** Pages projects require `--platform=pages` flag. Without it, C3 defaults to Workers.
@@ -55,15 +55,18 @@ Fetch the [Workers framework guide](https://developers.cloudflare.com/workers/fr
 
 ## Interactive Flow
 
-When run without flags, C3 prompts in this order:
+Prompts depend on the selected category, template, and supplied flags:
 
-1. **Project name** - Directory to create (defaults to current dir with `.`)
-2. **Application type** - `hello-world`, `web-app`, `demo`, `pre-existing`, `remote-template`
-3. **Platform** - `workers` (default) or `pages` (for web apps only)
-4. **Framework** - If web-app: `next`, `remix`, `astro`, `react-router`, `solid`, `svelte`, etc.
-5. **TypeScript** - `yes` (recommended) or `no`
-6. **Git** - Initialize repository? `yes` or `no`
-7. **Deploy** - Deploy now? `yes` or `no` (requires `wrangler login`)
+- **Project name** - Directory to create.
+- **Category** - Template group, such as `hello-world`, `web-framework`, `demo`, or `remote-template`.
+- **Template type** - Built-in template identifier, such as `hello-world` or `pre-existing`, not a category name.
+- **Framework** - For framework starters, use `--framework=astro`, for example. This sets the category to `web-framework` without `--type`.
+- **External template** - Use `--template=user/repo`, not `--type=remote-template`.
+- **Platform** - `workers` (default) or `pages`, for framework templates that support both.
+- **Language** - Template-dependent. Use `--lang=ts` for TypeScript or `--lang=js` for JavaScript.
+- **Git and deployment** - Repository creation and deployment choices. Authentication and deployment require separate authority.
+
+See [Core Flags](api.md#core-flags) for the current argument model and source.
 
 ## Installation Methods
 

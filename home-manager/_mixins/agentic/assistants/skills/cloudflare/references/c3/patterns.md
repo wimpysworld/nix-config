@@ -9,7 +9,7 @@ For framework apps, follow [Framework Setup](README.md#framework-setup).
 npm create cloudflare@latest my-api -- --type=hello-world --lang=ts --deploy
 
 # Astro static site\
-npm create cloudflare@latest my-blog -- --type=web-app --framework=astro --platform=pages --lang=ts
+npm create cloudflare@latest my-blog -- --framework=astro --platform=pages --lang=ts
 ```
 
 ## CI/CD (GitHub Actions)
@@ -22,14 +22,15 @@ npm create cloudflare@latest my-blog -- --type=web-app --framework=astro --platf
     CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 ```
 
-**Non-interactive requires:**
+**Template selection for automation:** Choose `--type=<identifier>` for a built-in template, `--framework=<identifier>` for a framework, or `--template=<source>` for an external template. `--framework` sets `--category=web-framework` and does not require `--type`.
+
 ```bash
---type=<value>       # Required
 --no-git             # Recommended (CI already in git)
 --no-deploy          # Deploy separately with secrets
---framework=<value>  # For web-app
---lang=ts           # Use --lang=js for JavaScript
+--lang=ts            # For templates with language selection. Use --lang=js for JavaScript.
 ```
+
+Framework creation tools can require additional answers. Check the chosen framework guide before assuming that a command is non-interactive.
 
 ## Monorepo
 
@@ -64,8 +65,8 @@ npm create cloudflare@latest my-app -- --template=../my-template
 ## Existing Projects
 
 ```bash
-# Add Cloudflare to existing Worker
-npm create cloudflare@latest . -- --type=pre-existing --existing-script=./dist/index.js
+# Clone a deployed Worker into a local project
+npm create cloudflare@latest my-local-worker -- --type=pre-existing --existing-script=my-worker
 ```
 
 For existing framework apps, follow [Framework Setup](README.md#framework-setup).
