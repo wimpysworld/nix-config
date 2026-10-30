@@ -14,6 +14,6 @@ Choose an integration that matches the application's runtime and required API sh
 | Set request metadata, caching, or other gateway headers | [Header glossary](https://developers.cloudflare.com/ai-gateway/glossary/index.md) |
 | Invoke a dynamic route | [Dynamic route usage](https://developers.cloudflare.com/ai-gateway/features/dynamic-routing/usage/index.md) |
 
-The [legacy Unified API](https://developers.cloudflare.com/ai-gateway/usage/chat-completion/index.md) is deprecated for single-model calls, but dynamic routes still require its compatibility endpoint. Do not migrate a dynamic route to the REST inference endpoint as though it were a single-model call.
+The [legacy Unified API](https://developers.cloudflare.com/ai-gateway/usage/chat-completion/index.md) is deprecated for single-model calls. Dynamic routes also support REST `/ai/v1/chat/completions` and the AI binding's `env.AI.run()` with `dynamic/<route-name>` as the model. Use the OpenAI chat completions request shape only. Select the gateway that owns the route with REST header `cf-aig-gateway-id` or binding option `gateway.id`. The compatibility endpoint remains supported, but is not required.
 
 Confirm [gateway authentication and provider credentials](./configuration.md) separately, including the selected path's BYOK and billing behavior.
