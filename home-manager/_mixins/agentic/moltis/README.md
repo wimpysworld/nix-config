@@ -64,6 +64,7 @@ The `[env]` table injects sops placeholders into the Moltis process environment 
 | `GIT_AUTHOR_EMAIL`       | `secrets/moltis.yaml` | `GITHUB_EMAIL_<AGENT>`             |
 | `CONTEXT7_API_KEY`       | `secrets/mcp.yaml`    | `CONTEXT7_API_KEY`                 |
 | `LINEAR_API_KEY`         | `secrets/linear.yaml` | `chainguard` or `wimpysworld`      |
+| `MATRIX_PASSWORD`        | `secrets/matrix.yaml` | `MATRIX_PASSWORD_<AGENT>`         |
 
 ## MCP through MCPorter
 
