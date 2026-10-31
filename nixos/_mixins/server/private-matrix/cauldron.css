@@ -1,173 +1,191 @@
-/* Catppuccin Mocha overrides and layout refinements for The Cauldron (µCSS 1.4.9) */
+/* Sith Holocron and Mustafar Obsidian theme for The Cauldron (@digicreon/mucss 1.4.9) */
 :root,
 [data-theme="dark"],
 :root:not([data-theme]) {
   color-scheme: dark;
 
-  /* Catppuccin Mocha palette tokens */
-  --ctp-rosewater: #f5e0dc;
-  --ctp-flamingo: #f2cdcd;
-  --ctp-pink: #f5c2e7;
-  --ctp-mauve: #cba6f7;
-  --ctp-red: #f38ba8;
-  --ctp-maroon: #eba0ac;
-  --ctp-peach: #fab387;
-  --ctp-yellow: #f9e2af;
-  --ctp-green: #a6e3a1;
-  --ctp-teal: #94e2d5;
-  --ctp-sky: #89dceb;
-  --ctp-sapphire: #74c7ec;
-  --ctp-blue: #89b4fa;
-  --ctp-lavender: #b4befe;
-  --ctp-text: #cdd6f4;
-  --ctp-subtext1: #bac2de;
-  --ctp-subtext0: #a6adc8;
-  --ctp-overlay2: #9399b2;
-  --ctp-overlay1: #7f849c;
-  --ctp-overlay0: #6c7086;
-  --ctp-surface2: #585b70;
-  --ctp-surface1: #45475a;
-  --ctp-surface0: #313244;
-  --ctp-base: #1e1e2e;
-  --ctp-mantle: #181825;
-  --ctp-crust: #11111b;
+  /* Sith palette tokens: blacks, crimson reds, molten oranges, and Holocron golds */
+  --sith-void: #050406;
+  --sith-obsidian: #0b080b;
+  --sith-basalt: #130d10;
+  --sith-charcoal: #1b1115;
+  --sith-cinder-bg: #24161b;
+  --sith-iron: #361f26;
+  --sith-bronze-border: #4f2c33;
 
-  /* Base µCSS surface and typography overrides */
-  --mu-background-color: var(--ctp-base);
-  --mu-color: var(--ctp-text);
-  --mu-text-selection-color: rgba(203, 166, 247, 0.25);
-  --mu-muted-color: var(--ctp-subtext0);
-  --mu-muted-border-color: var(--ctp-surface0);
-  --mu-border-radius: 0.5rem;
+  /* High-contrast warm bone, parchment, and ash text */
+  --sith-bone: #f7ece6;
+  --sith-parchment: #e6d3c8;
+  --sith-ash: #b89f94;
+  --sith-cinder: #967c72;
 
-  --mu-h1-color: var(--ctp-text);
-  --mu-h2-color: var(--ctp-text);
-  --mu-h3-color: var(--ctp-subtext1);
-  --mu-h4-color: var(--ctp-subtext1);
-  --mu-h5-color: var(--ctp-subtext0);
-  --mu-h6-color: var(--ctp-overlay2);
+  /* Kyber reds, Mustafar oranges, and Holocron yellows */
+  --sith-crimson: #ff3b4e;
+  --sith-blood: #8f0b1d;
+  --sith-scarlet: #ff5238;
+  --sith-orange: #ff7724;
+  --sith-ember: #ff9429;
+  --sith-amber: #ffaa33;
+  --sith-gold: #f5b727;
+  --sith-yellow: #ffd43b;
 
-  /* Primary: Mauve (The Cauldron / Traya) */
-  --mu-primary: var(--ctp-mauve);
-  --mu-primary-background: #28203c;
-  --mu-primary-border: var(--ctp-mauve);
-  --mu-primary-hover: var(--ctp-lavender);
-  --mu-primary-hover-background: var(--ctp-mauve);
-  --mu-primary-hover-border: var(--ctp-lavender);
-  --mu-primary-focus: rgba(203, 166, 247, 0.45);
-  --mu-primary-inverse: var(--ctp-crust);
-  --mu-primary-underline: rgba(203, 166, 247, 0.5);
+  /* Base muCSS surface and typography overrides */
+  --mu-background-color: var(--sith-obsidian);
+  --mu-color: var(--sith-bone);
+  --mu-text-selection-color: rgba(255, 59, 78, 0.32);
+  --mu-muted-color: var(--sith-ash);
+  --mu-muted-border-color: var(--sith-iron);
+  --mu-border-color: var(--sith-iron);
+  --mu-border-radius: 0.375rem;
 
-  /* Secondary: Surface2 / Subtext */
-  --mu-secondary: var(--ctp-subtext0);
-  --mu-secondary-background: var(--ctp-surface0);
-  --mu-secondary-border: var(--ctp-surface1);
-  --mu-secondary-hover: var(--ctp-text);
-  --mu-secondary-hover-background: var(--ctp-surface1);
-  --mu-secondary-hover-border: var(--ctp-surface2);
-  --mu-secondary-focus: rgba(166, 173, 200, 0.35);
-  --mu-secondary-inverse: var(--ctp-text);
-  --mu-secondary-underline: rgba(166, 173, 200, 0.5);
+  --mu-h1-color: var(--sith-bone);
+  --mu-h2-color: var(--sith-bone);
+  --mu-h3-color: var(--sith-parchment);
+  --mu-h4-color: var(--sith-parchment);
+  --mu-h5-color: var(--sith-ash);
+  --mu-h6-color: var(--sith-cinder);
 
-  /* Tertiary: Overlay1 / Mantle */
-  --mu-tertiary: var(--ctp-overlay2);
-  --mu-tertiary-background: var(--ctp-mantle);
-  --mu-tertiary-hover: var(--ctp-subtext1);
-  --mu-tertiary-hover-background: var(--ctp-surface0);
-  --mu-tertiary-focus: rgba(147, 153, 178, 0.35);
-  --mu-tertiary-inverse: var(--ctp-text);
-  --mu-tertiary-underline: rgba(147, 153, 178, 0.5);
+  /* Primary: Kyber Crimson */
+  --mu-primary: var(--sith-crimson);
+  --mu-primary-background: #230b11;
+  --mu-primary-border: var(--sith-crimson);
+  --mu-primary-hover: var(--sith-scarlet);
+  --mu-primary-hover-background: var(--sith-crimson);
+  --mu-primary-hover-border: var(--sith-scarlet);
+  --mu-primary-focus: rgba(255, 59, 78, 0.45);
+  --mu-primary-inverse: var(--sith-void);
+  --mu-primary-underline: rgba(255, 59, 78, 0.55);
 
-  /* Contrast: Pink */
-  --mu-contrast: var(--ctp-pink);
-  --mu-contrast-background: #332036;
-  --mu-contrast-border: var(--ctp-pink);
-  --mu-contrast-hover: var(--ctp-rosewater);
-  --mu-contrast-hover-background: var(--ctp-pink);
-  --mu-contrast-focus: rgba(245, 194, 231, 0.4);
-  --mu-contrast-inverse: var(--ctp-crust);
-  --mu-contrast-underline: rgba(245, 194, 231, 0.5);
+  /* Secondary: Forged Iron and Ash */
+  --mu-secondary: var(--sith-parchment);
+  --mu-secondary-background: var(--sith-cinder-bg);
+  --mu-secondary-border: var(--sith-bronze-border);
+  --mu-secondary-hover: var(--sith-bone);
+  --mu-secondary-hover-background: var(--sith-iron);
+  --mu-secondary-hover-border: var(--sith-ash);
+  --mu-secondary-focus: rgba(230, 211, 200, 0.35);
+  --mu-secondary-inverse: var(--sith-void);
+  --mu-secondary-underline: rgba(184, 159, 148, 0.5);
 
-  /* Success: Green */
-  --mu-success: var(--ctp-green);
-  --mu-success-background: #1d2d28;
-  --mu-success-hover: var(--ctp-teal);
-  --mu-success-hover-background: var(--ctp-green);
-  --mu-success-focus: rgba(166, 227, 161, 0.4);
-  --mu-success-inverse: var(--ctp-crust);
-  --mu-success-underline: rgba(166, 227, 161, 0.5);
+  /* Tertiary: Basalt and Cinder */
+  --mu-tertiary: var(--sith-ash);
+  --mu-tertiary-background: var(--sith-basalt);
+  --mu-tertiary-hover: var(--sith-bone);
+  --mu-tertiary-hover-background: var(--sith-cinder-bg);
+  --mu-tertiary-focus: rgba(184, 159, 148, 0.35);
+  --mu-tertiary-inverse: var(--sith-void);
+  --mu-tertiary-underline: rgba(184, 159, 148, 0.5);
 
-  /* Info: Sapphire (Skrye) */
-  --mu-info: var(--ctp-sapphire);
-  --mu-info-background: #1b2938;
-  --mu-info-hover: var(--ctp-sky);
-  --mu-info-hover-background: var(--ctp-sapphire);
-  --mu-info-focus: rgba(116, 199, 236, 0.4);
-  --mu-info-inverse: var(--ctp-crust);
-  --mu-info-underline: rgba(116, 199, 236, 0.5);
+  /* Contrast: Sith Eye Yellow */
+  --mu-contrast: var(--sith-yellow);
+  --mu-contrast-background: #261d08;
+  --mu-contrast-border: var(--sith-yellow);
+  --mu-contrast-hover: var(--sith-gold);
+  --mu-contrast-hover-background: var(--sith-yellow);
+  --mu-contrast-focus: rgba(255, 212, 59, 0.45);
+  --mu-contrast-inverse: var(--sith-void);
+  --mu-contrast-underline: rgba(255, 212, 59, 0.55);
 
-  /* Warning: Yellow */
-  --mu-warning: var(--ctp-yellow);
-  --mu-warning-background: #332d26;
-  --mu-warning-hover: var(--ctp-peach);
-  --mu-warning-hover-background: var(--ctp-yellow);
-  --mu-warning-focus: rgba(249, 226, 175, 0.4);
-  --mu-warning-inverse: var(--ctp-crust);
-  --mu-warning-underline: rgba(249, 226, 175, 0.5);
+  /* Success: Holocron Gold */
+  --mu-success: var(--sith-gold);
+  --mu-success-background: #231908;
+  --mu-success-hover: var(--sith-yellow);
+  --mu-success-hover-background: var(--sith-gold);
+  --mu-success-focus: rgba(245, 183, 39, 0.45);
+  --mu-success-inverse: var(--sith-void);
+  --mu-success-underline: rgba(245, 183, 39, 0.55);
 
-  /* Error: Red (Zannah / Lockdown) */
-  --mu-error: var(--ctp-red);
-  --mu-error-background: #341f2b;
-  --mu-error-hover: var(--ctp-maroon);
-  --mu-error-hover-background: var(--ctp-red);
-  --mu-error-focus: rgba(243, 139, 168, 0.4);
-  --mu-error-inverse: var(--ctp-crust);
-  --mu-error-underline: rgba(243, 139, 168, 0.5);
+  /* Info: Forge Ember */
+  --mu-info: var(--sith-ember);
+  --mu-info-background: #241308;
+  --mu-info-hover: var(--sith-amber);
+  --mu-info-hover-background: var(--sith-ember);
+  --mu-info-focus: rgba(255, 148, 41, 0.45);
+  --mu-info-inverse: var(--sith-void);
+  --mu-info-underline: rgba(255, 148, 41, 0.55);
 
-  /* Accent: Peach (Martin) */
-  --mu-accent: var(--ctp-peach);
-  --mu-accent-background: #342625;
-  --mu-accent-hover: var(--ctp-yellow);
-  --mu-accent-hover-background: var(--ctp-peach);
-  --mu-accent-focus: rgba(250, 179, 135, 0.4);
-  --mu-accent-inverse: var(--ctp-crust);
-  --mu-accent-underline: rgba(250, 179, 135, 0.5);
+  /* Warning: Sith Eye Yellow */
+  --mu-warning: var(--sith-yellow);
+  --mu-warning-background: #281e07;
+  --mu-warning-hover: var(--sith-amber);
+  --mu-warning-hover-background: var(--sith-yellow);
+  --mu-warning-focus: rgba(255, 212, 59, 0.45);
+  --mu-warning-inverse: var(--sith-void);
+  --mu-warning-underline: rgba(255, 212, 59, 0.55);
 
-  /* Pop & Spark */
-  --mu-pop: var(--ctp-teal);
-  --mu-pop-background: #1b2d2f;
-  --mu-pop-hover: var(--ctp-sky);
-  --mu-pop-hover-background: var(--ctp-teal);
-  --mu-pop-focus: rgba(148, 226, 213, 0.4);
-  --mu-pop-inverse: var(--ctp-crust);
+  /* Error: Kyber Scarlet */
+  --mu-error: var(--sith-scarlet);
+  --mu-error-background: #260d0a;
+  --mu-error-hover: var(--sith-crimson);
+  --mu-error-hover-background: var(--sith-scarlet);
+  --mu-error-focus: rgba(255, 82, 56, 0.45);
+  --mu-error-inverse: var(--sith-void);
+  --mu-error-underline: rgba(255, 82, 56, 0.55);
 
-  --mu-spark: var(--ctp-lavender);
-  --mu-spark-background: #23263c;
-  --mu-spark-hover: var(--ctp-blue);
-  --mu-spark-hover-background: var(--ctp-lavender);
-  --mu-spark-focus: rgba(180, 190, 254, 0.4);
-  --mu-spark-inverse: var(--ctp-crust);
+  /* Accent: Mustafar Orange */
+  --mu-accent: var(--sith-orange);
+  --mu-accent-background: #251108;
+  --mu-accent-hover: var(--sith-ember);
+  --mu-accent-hover-background: var(--sith-orange);
+  --mu-accent-focus: rgba(255, 119, 36, 0.45);
+  --mu-accent-inverse: var(--sith-void);
+  --mu-accent-underline: rgba(255, 119, 36, 0.55);
+
+  /* Pop: Holocron Gold */
+  --mu-pop: var(--sith-gold);
+  --mu-pop-background: #241907;
+  --mu-pop-hover: var(--sith-yellow);
+  --mu-pop-hover-background: var(--sith-gold);
+  --mu-pop-focus: rgba(245, 183, 39, 0.45);
+  --mu-pop-inverse: var(--sith-void);
+  --mu-pop-underline: rgba(245, 183, 39, 0.55);
+
+  /* Spark: Korriban Amber */
+  --mu-spark: var(--sith-amber);
+  --mu-spark-background: #251608;
+  --mu-spark-hover: var(--sith-yellow);
+  --mu-spark-hover-background: var(--sith-amber);
+  --mu-spark-focus: rgba(255, 170, 51, 0.45);
+  --mu-spark-inverse: var(--sith-void);
+  --mu-spark-underline: rgba(255, 170, 51, 0.55);
 
   /* Cards, code, tables, and forms */
-  --mu-card-background-color: var(--ctp-mantle);
-  --mu-card-border-color: var(--ctp-surface0);
-  --mu-card-sectioning-background-color: var(--ctp-crust);
-  --mu-code-background-color: var(--ctp-crust);
-  --mu-code-color: var(--ctp-lavender);
-  --mu-table-border-color: var(--ctp-surface0);
-  --mu-table-row-stripped-background-color: rgba(49, 50, 68, 0.35);
-  --mu-form-element-background-color: var(--ctp-crust);
-  --mu-form-element-border-color: var(--ctp-surface1);
-  --mu-form-element-color: var(--ctp-text);
-  --mu-switch-background-color: var(--ctp-surface1);
-  --mu-switch-checked-background-color: var(--ctp-mauve);
-  --mu-switch-color: var(--ctp-crust);
-  --mu-accordion-border-color: var(--ctp-surface0);
-  --mu-accordion-active-summary-color: var(--ctp-mauve);
-  --mu-accordion-close-summary-color: var(--ctp-text);
-  --mu-accordion-open-summary-color: var(--ctp-subtext1);
-  --mu-inverted-background: var(--ctp-text);
-  --mu-inverted-color: var(--ctp-crust);
+  --mu-card-background-color: var(--sith-basalt);
+  --mu-card-border-color: var(--sith-iron);
+  --mu-card-sectioning-background-color: var(--sith-void);
+  --mu-code-background-color: var(--sith-void);
+  --mu-code-color: var(--sith-amber);
+  --mu-table-border-color: var(--sith-iron);
+  --mu-table-row-stripped-background-color: rgba(36, 22, 27, 0.55);
+  --mu-form-element-background-color: var(--sith-void);
+  --mu-form-element-border-color: var(--sith-bronze-border);
+  --mu-form-element-color: var(--sith-bone);
+  --mu-switch-background-color: var(--sith-iron);
+  --mu-switch-checked-background-color: var(--sith-crimson);
+  --mu-switch-color: var(--sith-bone);
+  --mu-accordion-border-color: var(--sith-iron);
+  --mu-accordion-active-summary-color: var(--sith-gold);
+  --mu-accordion-close-summary-color: var(--sith-bone);
+  --mu-accordion-open-summary-color: var(--sith-amber);
+  --mu-inverted-background: var(--sith-bone);
+  --mu-inverted-color: var(--sith-void);
+}
+
+/* Global links and focus rings */
+a {
+  color: var(--sith-amber);
+  text-decoration-color: rgba(255, 170, 51, 0.45);
+}
+
+a:hover,
+a:focus-visible {
+  color: var(--sith-yellow);
+  text-decoration-color: var(--sith-yellow);
+}
+
+:focus-visible {
+  outline: 2px solid var(--sith-yellow);
+  outline-offset: 2px;
 }
 
 /* Accessibility: skip link */
@@ -177,8 +195,8 @@
   left: 1rem;
   z-index: 200;
   padding: 0.5rem 1rem;
-  background-color: var(--ctp-mauve);
-  color: var(--ctp-crust);
+  background-color: var(--sith-crimson);
+  color: var(--sith-void);
   font-weight: 700;
   border-radius: var(--mu-border-radius);
   text-decoration: none;
@@ -186,15 +204,18 @@
 
 .skip-link:focus {
   top: 0.75rem;
-  outline: 2px solid var(--ctp-text);
+  outline: 2px solid var(--sith-yellow);
   outline-offset: 2px;
 }
 
 /* Sticky navigation bar */
 header.site-header {
-  background-color: rgba(17, 17, 27, 0.88);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--ctp-surface0);
+  background-color: rgba(5, 4, 6, 0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--sith-iron);
+  box-shadow:
+    0 1px 0 rgba(255, 59, 78, 0.25),
+    0 8px 24px rgba(0, 0, 0, 0.75);
 }
 
 header.site-header nav {
@@ -203,38 +224,52 @@ header.site-header nav {
   gap: 0.5rem;
 }
 
+header.site-header nav a {
+  color: var(--sith-parchment);
+}
+
+header.site-header nav a:hover,
+header.site-header nav a:focus-visible {
+  color: var(--sith-yellow);
+}
+
 .brand-link {
   display: inline-flex;
   align-items: center;
   gap: 0.65rem;
   font-weight: 700;
-  color: var(--ctp-text);
+  color: var(--sith-bone);
   text-decoration: none;
+  letter-spacing: 0.03em;
 }
 
 .brand-link img {
   width: 2rem;
   height: 2rem;
   border-radius: 50%;
-  border: 1px solid var(--ctp-mauve);
+  border: 1px solid var(--sith-crimson);
+  box-shadow: 0 0 0.65rem rgba(255, 59, 78, 0.45);
   object-fit: cover;
+  background-color: #000000;
 }
 
 section[id] {
   scroll-margin-top: 5rem;
 }
 
-/* Hero refinement */
+/* Hero section */
 .hero.cauldron-hero {
   position: relative;
-  padding: 3.5rem 0 3rem;
-  background-color: var(--ctp-crust);
+  padding: 3.75rem 0 3.25rem;
+  background-color: var(--sith-void);
   background-image:
-    radial-gradient(circle at 20% 20%, rgba(203, 166, 247, 0.16), transparent 45%),
-    radial-gradient(circle at 80% 10%, rgba(243, 139, 168, 0.14), transparent 40%),
-    linear-gradient(180deg, var(--ctp-crust) 0%, var(--ctp-mantle) 100%);
-  color: var(--ctp-text);
-  border-bottom: 1px solid var(--ctp-surface0);
+    radial-gradient(circle at 50% 18%, rgba(255, 59, 78, 0.24), transparent 46%),
+    radial-gradient(circle at 18% 28%, rgba(255, 119, 36, 0.16), transparent 42%),
+    radial-gradient(circle at 82% 24%, rgba(245, 183, 39, 0.14), transparent 40%),
+    linear-gradient(180deg, #040305 0%, var(--sith-obsidian) 55%, var(--sith-basalt) 100%);
+  color: var(--sith-bone);
+  border-bottom: 2px solid var(--sith-iron);
+  box-shadow: inset 0 -1px 0 rgba(255, 119, 36, 0.3);
 }
 
 .hero-identity {
@@ -244,30 +279,128 @@ section[id] {
   gap: 1.25rem;
 }
 
+/* Triumvirate emblem cluster: Sith Emblem, The Cauldron, and Sith Holocron */
+.hero-sanctum-crests {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.35rem;
+  flex-wrap: wrap;
+}
+
 .cauldron-emblem {
-  width: 7.5rem;
-  height: 7.5rem;
+  width: 7.75rem;
+  height: 7.75rem;
   border-radius: 50%;
-  border: 3px solid var(--ctp-mauve);
-  box-shadow: 0 0 2.25rem rgba(203, 166, 247, 0.28);
+  border: 3px solid var(--sith-crimson);
+  box-shadow:
+    0 0 0 2px rgba(245, 183, 39, 0.45),
+    0 0 2.75rem rgba(255, 59, 78, 0.48),
+    0 0 4.5rem rgba(255, 119, 36, 0.25);
   object-fit: cover;
-  background-color: var(--ctp-mantle);
+  background-color: #000000;
+}
+
+.sith-relic-crest {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.sith-relic-crest img {
+  width: 4.25rem;
+  height: 4.25rem;
+  border-radius: 50%;
+  border: 2px solid var(--sith-gold);
+  box-shadow:
+    0 0 1.35rem rgba(245, 183, 39, 0.32),
+    0 0 2.25rem rgba(255, 59, 78, 0.22);
+  object-fit: cover;
+  background-color: #000000;
+}
+
+.sith-relic-caption {
+  font-family: var(--mu-font-family-monospace);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sith-amber);
+}
+
+.sith-epigraph {
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--sith-gold);
+  margin-bottom: 0.35rem;
+  font-weight: 700;
 }
 
 .hero.cauldron-hero h1 {
-  color: var(--ctp-text);
+  color: var(--sith-bone);
   margin-bottom: 0.25rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: 0 0 1.5rem rgba(255, 59, 78, 0.45);
 }
 
 .hero.cauldron-hero .hero-tagline {
-  color: var(--ctp-subtext1);
+  color: var(--sith-parchment);
   max-width: 44rem;
   margin-inline: auto;
+  opacity: 1;
 }
 
 .hero.cauldron-hero .hero-subtitle {
-  color: var(--ctp-subtext0);
-  margin-bottom: 1.25rem;
+  color: var(--sith-ash);
+  margin-bottom: 0.5rem;
+  opacity: 1;
+}
+
+/* Preserve semantic badge colours inside .hero-badges */
+.hero.cauldron-hero .hero-badges {
+  margin-bottom: 0.75rem;
+}
+
+.hero.cauldron-hero .hero-badges .badge {
+  background-color: var(--sith-charcoal);
+  color: var(--sith-bone);
+  border: 1px solid var(--sith-bronze-border);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.hero.cauldron-hero .hero-badges .badge.badge-info {
+  background-color: rgba(255, 148, 41, 0.16);
+  color: var(--sith-ember);
+  border-color: var(--sith-ember);
+}
+
+.hero.cauldron-hero .hero-badges .badge.badge-success {
+  background-color: rgba(245, 183, 39, 0.18);
+  color: var(--sith-yellow);
+  border-color: var(--sith-gold);
+  box-shadow: 0 0 1rem rgba(245, 183, 39, 0.28);
+}
+
+.hero.cauldron-hero .hero-badges .badge.badge-warning {
+  background-color: rgba(255, 212, 59, 0.18);
+  color: var(--sith-yellow);
+  border-color: var(--sith-yellow);
+}
+
+.hero.cauldron-hero .hero-badges .badge.badge-error {
+  background-color: rgba(255, 59, 78, 0.2);
+  color: var(--sith-crimson);
+  border-color: var(--sith-crimson);
+  box-shadow: 0 0 1rem rgba(255, 59, 78, 0.35);
+}
+
+.hero.cauldron-hero .hero-badges .badge.badge-secondary {
+  background-color: rgba(27, 17, 21, 0.9);
+  color: var(--sith-parchment);
+  border-color: var(--sith-iron);
 }
 
 .telemetry-bar {
@@ -275,12 +408,14 @@ section[id] {
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem 1rem;
-  padding: 0.75rem 1.15rem;
+  gap: 0.75rem 1.15rem;
+  padding: 0.75rem 1.25rem;
   margin-top: 0.5rem;
-  background-color: rgba(30, 30, 46, 0.85);
-  border: 1px solid var(--ctp-surface0);
+  background-color: rgba(11, 8, 11, 0.92);
+  border: 1px solid var(--sith-bronze-border);
+  border-top: 2px solid var(--sith-crimson);
   border-radius: var(--mu-border-radius);
+  box-shadow: 0 0.5rem 1.75rem rgba(0, 0, 0, 0.65);
   font-size: 0.875rem;
 }
 
@@ -290,11 +425,19 @@ section[id] {
   gap: 0.45rem;
   margin: 0;
   cursor: pointer;
-  color: var(--ctp-subtext1);
+  color: var(--sith-parchment);
 }
 
 .telemetry-bar input[type="checkbox"] {
   margin: 0;
+}
+
+.telemetry-bar strong {
+  color: var(--sith-gold);
+}
+
+.c-secondary {
+  color: var(--sith-ash);
 }
 
 .tabular {
@@ -309,51 +452,63 @@ section[id] {
   border-radius: 50%;
   margin-right: 0.4rem;
   background-color: currentColor;
+  box-shadow: 0 0 0.5rem currentColor;
 }
 
-/* Cards & Grid Equal Height */
+/* Cards and equal height grid mapped to Sith palette */
 .card-primary {
-  --card-color: var(--mu-primary);
+  --card-color: var(--sith-crimson);
+  --card-bg: #18090e;
 }
 
 .card-secondary {
-  --card-color: var(--mu-secondary);
+  --card-color: var(--sith-parchment);
+  --card-bg: var(--sith-basalt);
 }
 
 .card-tertiary {
-  --card-color: var(--mu-tertiary);
+  --card-color: var(--sith-ash);
+  --card-bg: var(--sith-basalt);
 }
 
 .card-contrast {
-  --card-color: var(--mu-contrast);
+  --card-color: var(--sith-yellow);
+  --card-bg: #1a1407;
 }
 
 .card-success {
-  --card-color: var(--mu-success);
+  --card-color: var(--sith-gold);
+  --card-bg: #191207;
 }
 
 .card-info {
-  --card-color: var(--mu-info);
+  --card-color: var(--sith-ember);
+  --card-bg: #190e07;
 }
 
 .card-warning {
-  --card-color: var(--mu-warning);
+  --card-color: var(--sith-yellow);
+  --card-bg: #1b1507;
 }
 
 .card-error {
-  --card-color: var(--mu-error);
+  --card-color: var(--sith-scarlet);
+  --card-bg: #1a0908;
 }
 
 .card-accent {
-  --card-color: var(--mu-accent);
+  --card-color: var(--sith-orange);
+  --card-bg: #1a0d07;
 }
 
 .card-pop {
-  --card-color: var(--mu-pop);
+  --card-color: var(--sith-gold);
+  --card-bg: #191307;
 }
 
 .card-spark {
-  --card-color: var(--mu-spark);
+  --card-color: var(--sith-amber);
+  --card-bg: #1a1007;
 }
 
 .row.equal-cards > [class*="col-"] {
@@ -362,13 +517,27 @@ section[id] {
 }
 
 .row.equal-cards > [class*="col-"] > article {
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   width: 100%;
   margin: 0;
-  border: 1px solid color-mix(in srgb, var(--card-color, var(--ctp-surface1)) 30%, var(--ctp-surface0));
-  box-shadow: 0 0.5rem 1.5rem rgba(17, 17, 27, 0.45);
+  background-color: var(--card-bg, var(--sith-basalt));
+  border: 1px solid color-mix(in srgb, var(--card-color, var(--sith-crimson)) 38%, var(--sith-iron));
+  border-top: 3px solid var(--card-color, var(--sith-crimson));
+  box-shadow:
+    0 0.65rem 1.75rem rgba(0, 0, 0, 0.72),
+    inset 0 1px 0 rgba(255, 212, 59, 0.08);
+  transition: transform 0.18s ease-out, box-shadow 0.18s ease-out, border-color 0.18s ease-out;
+}
+
+.row.equal-cards > [class*="col-"] > article:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--card-color, var(--sith-crimson)) 68%, var(--sith-gold));
+  box-shadow:
+    0 0.85rem 2.25rem rgba(0, 0, 0, 0.85),
+    0 0 1.25rem color-mix(in srgb, var(--card-color, var(--sith-crimson)) 22%, transparent);
 }
 
 article[class*="card-"] > header {
@@ -377,17 +546,22 @@ article[class*="card-"] > header {
   justify-content: space-between;
   gap: 0.75rem;
   flex-wrap: wrap;
+  background-color: color-mix(in srgb, var(--card-color, var(--sith-crimson)) 14%, var(--sith-void));
+  border-bottom: 1px solid color-mix(in srgb, var(--card-color, var(--sith-crimson)) 28%, var(--sith-iron));
 }
 
 article[class*="card-"] > header h3 {
   margin: 0;
   font-size: 1.05rem;
-  color: var(--ctp-text);
+  color: var(--sith-bone);
+  letter-spacing: 0.015em;
 }
 
 article[class*="card-"] > footer {
   font-size: 0.8125rem;
-  color: var(--ctp-subtext0);
+  color: var(--sith-ash);
+  background-color: color-mix(in srgb, var(--card-color, var(--sith-crimson)) 9%, var(--sith-void));
+  border-top: 1px solid color-mix(in srgb, var(--card-color, var(--sith-crimson)) 24%, var(--sith-iron));
 }
 
 /* Probe card details */
@@ -395,41 +569,62 @@ article[class*="card-"] > footer {
   display: inline-block;
   font-family: var(--mu-font-family-monospace);
   font-size: 0.8125rem;
-  color: var(--ctp-lavender);
-  background-color: var(--ctp-crust);
-  padding: 0.2rem 0.5rem;
+  color: var(--sith-gold);
+  background-color: var(--sith-void);
+  padding: 0.22rem 0.55rem;
   border-radius: 0.25rem;
-  border: 1px solid var(--ctp-surface0);
+  border: 1px solid color-mix(in srgb, var(--card-color, var(--sith-crimson)) 35%, var(--sith-iron));
   word-break: break-all;
 }
 
 .kv-list {
   display: grid;
   grid-template-columns: minmax(7rem, auto) 1fr;
-  gap: 0.4rem 0.85rem;
+  gap: 0.42rem 0.85rem;
   margin: 0.85rem 0;
   font-size: 0.875rem;
 }
 
 .kv-list dt {
-  color: var(--ctp-subtext0);
+  color: var(--sith-ash);
   font-weight: 600;
 }
 
 .kv-list dd {
   margin: 0;
-  color: var(--ctp-text);
+  color: var(--sith-bone);
   text-align: right;
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
-/* Latency Sparkline Bar History */
+.inline-relic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.inline-relic img {
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 50%;
+  border: 1px solid var(--sith-gold);
+  background-color: #000000;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+/* Latency sparkline bar history */
 .sparkline-wrap {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.sparkline-wrap strong {
+  color: var(--sith-gold);
 }
 
 .sparkline {
@@ -438,8 +633,8 @@ article[class*="card-"] > footer {
   gap: 3px;
   height: 1.5rem;
   padding: 2px 4px;
-  background-color: var(--ctp-crust);
-  border: 1px solid var(--ctp-surface0);
+  background-color: var(--sith-void);
+  border: 1px solid var(--sith-iron);
   border-radius: 0.25rem;
   min-width: 5.5rem;
 }
@@ -448,11 +643,17 @@ article[class*="card-"] > footer {
   width: 5px;
   min-height: 3px;
   border-radius: 1px;
-  background-color: var(--card-color, var(--ctp-mauve));
+  background: linear-gradient(
+    180deg,
+    var(--sith-yellow) 0%,
+    var(--card-color, var(--sith-orange)) 55%,
+    var(--sith-crimson) 100%
+  );
+  box-shadow: 0 0 4px color-mix(in srgb, var(--card-color, var(--sith-crimson)) 50%, transparent);
   transition: height 0.2s ease-out;
 }
 
-/* Tag cloud for MSC features & auth flows */
+/* Tag cloud for MSC features and authentication flows */
 .tag-cloud {
   display: flex;
   flex-wrap: wrap;
@@ -462,7 +663,7 @@ article[class*="card-"] > footer {
 
 .tag-cloud .badge {
   font-family: var(--mu-font-family-monospace);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 /* Council member cards */
@@ -473,12 +674,13 @@ article[class*="card-"] > footer {
 }
 
 .council-avatar {
-  width: 3.75rem;
-  height: 3.75rem;
+  width: 3.85rem;
+  height: 3.85rem;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid var(--card-color, var(--ctp-mauve));
-  background-color: var(--ctp-crust);
+  border: 2px solid var(--card-color, var(--sith-crimson));
+  box-shadow: 0 0 1rem color-mix(in srgb, var(--card-color, var(--sith-crimson)) 40%, transparent);
+  background-color: var(--sith-void);
   flex-shrink: 0;
 }
 
@@ -489,33 +691,53 @@ article[class*="card-"] > footer {
 .council-identity h3 {
   margin: 0 0 0.15rem 0;
   font-size: 1.15rem;
+  color: var(--sith-bone);
 }
 
 .council-mxid {
   display: inline-block;
   font-family: var(--mu-font-family-monospace);
   font-size: 0.75rem;
-  color: var(--ctp-subtext0);
+  color: var(--sith-amber);
   overflow-wrap: anywhere;
 }
 
 .council-role {
   font-weight: 700;
-  color: var(--card-color, var(--ctp-mauve));
+  color: var(--card-color, var(--sith-crimson));
   margin-bottom: 0.4rem;
   font-size: 0.925rem;
+  letter-spacing: 0.02em;
 }
 
 .council-desc {
   font-size: 0.875rem;
-  color: var(--ctp-subtext1);
+  color: var(--sith-parchment);
   margin-bottom: 0.85rem;
+}
+
+/* Security table refinements */
+table.table-striped thead th {
+  background-color: var(--sith-void);
+  color: var(--sith-gold);
+  border-bottom: 2px solid var(--sith-crimson);
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+}
+
+table.table-striped tbody th {
+  color: var(--sith-bone);
+}
+
+table.table-striped tbody td {
+  color: var(--sith-parchment);
 }
 
 /* Section spacing and headings */
 .section-block {
-  padding-block: 2.25rem;
-  border-bottom: 1px solid var(--ctp-surface0);
+  padding-block: 2.5rem;
+  border-bottom: 1px solid var(--sith-iron);
 }
 
 .section-heading {
@@ -524,28 +746,37 @@ article[class*="card-"] > footer {
   align-items: baseline;
   justify-content: space-between;
   gap: 0.5rem 1rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.35rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid var(--sith-iron);
 }
 
 .section-heading h2 {
   margin-bottom: 0.15rem;
+  color: var(--sith-bone);
 }
 
 .section-heading p {
   margin-bottom: 0;
-  color: var(--ctp-subtext0);
+  color: var(--sith-ash);
   font-size: 0.95rem;
 }
 
 footer.site-footer {
-  padding-block: 2rem;
-  background-color: var(--ctp-crust);
-  color: var(--ctp-subtext0);
+  padding-block: 2.25rem;
+  background-color: var(--sith-void);
+  border-top: 1px solid var(--sith-crimson);
+  color: var(--sith-ash);
   font-size: 0.875rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sparkline-bar {
+  .sparkline-bar,
+  .row.equal-cards > [class*="col-"] > article {
     transition: none;
+  }
+
+  .row.equal-cards > [class*="col-"] > article:hover {
+    transform: none;
   }
 }
