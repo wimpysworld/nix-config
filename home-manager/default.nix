@@ -86,7 +86,7 @@ in
     # succeed before it replaces the previously installed files.
     activation.refreshSopsNix = lib.mkMerge [
       (lib.mkIf host.is.linux (
-        lib.hm.dag.entryAfter [ "reloadSystemd" "sops-nix" ] ''
+        lib.hm.dag.entryBetween [ "reloadSystemd" ] [ "linkGeneration" "sops-nix" ] ''
           run ${pkgs.systemd}/bin/systemctl --user daemon-reload || ${
             if config.agentic.assistants.requiresSecrets then "exit 1" else "true"
           }
