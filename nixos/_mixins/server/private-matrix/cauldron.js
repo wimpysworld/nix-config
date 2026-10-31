@@ -50,20 +50,28 @@
   }
 
   async function timedFetch(url) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
     const t0 = performance.now();
-    const response = await fetch(url, {
-      method: "GET",
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    });
-    const rtt = performance.now() - t0;
-    let data = null;
     try {
-      data = await response.json();
-    } catch {
-      data = null;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      const rtt = performance.now() - t0;
+      let data = null;
+      try {
+        data = await response.json();
+      } catch (err) {
+        if (controller.signal.aborted) throw err;
+        data = null;
+      }
+      return { response, data, rtt };
+    } finally {
+      clearTimeout(timer);
     }
-    return { response, data, rtt };
   }
 
   async function probeVersions() {
@@ -130,13 +138,14 @@
     try {
       const { response, data, rtt } = await timedFetch("/_tuwunel/server_version");
       pushSample("daemon", "spark-daemon", "rtt-daemon", rtt);
-      if (!response.ok || !data || !data.server) {
+      const srv = (data && data.server) || data;
+      if (!response.ok || !srv || (!srv.name && !srv.version)) {
         setBadge(el("status-daemon"), "err", "HTTP " + response.status);
         return { ok: false, rtt };
       }
-      el("val-daemon-name").textContent = data.server.name || "Tuwunel";
-      el("val-daemon-version").textContent = data.server.version || "-";
-      setBadge(el("status-daemon"), "ok", data.server.version || "ACTIVE");
+      el("val-daemon-name").textContent = srv.name || "Tuwunel";
+      el("val-daemon-version").textContent = srv.version || "-";
+      setBadge(el("status-daemon"), "ok", srv.version || "ACTIVE");
       return { ok: true, rtt };
     } catch {
       setBadge(el("status-daemon"), "err", "UNREACHABLE");
