@@ -846,6 +846,24 @@ in
       envBlock = lib.listToAttrs (
         lib.map (entry: lib.nameValuePair entry.name entry.placeholder) config.agentic.moltis.envPlumbing
       );
+      restartToken = builtins.hashString "sha256" (
+        builtins.toJSON {
+          template = toString config.sops.templates."moltis.toml".file;
+          launcher = toString moltisFencedPackage;
+          mcporter = config.xdg.configFile."moltis/mcporter.json".text;
+          heartbeat = config.agentic.assistants.moltis.heartbeatHash;
+          secrets = lib.genAttrs (lib.attrNames moltisSecretSopsFiles) (
+            name:
+            let
+              secret = config.sops.secrets.${name};
+            in
+            {
+              source = "${secret.sopsFile}";
+              inherit (secret) key;
+            }
+          );
+        }
+      );
     in
     {
       assertions = lib.optional host.is.darwin {
@@ -866,25 +884,6 @@ in
           "journalctl --user -u moltis.service";
 
       home.activation.restartMoltis = lib.mkIf host.is.darwin (
-        let
-          restartToken = builtins.hashString "sha256" (
-            builtins.toJSON {
-              template = toString config.sops.templates."moltis.toml".file;
-              launcher = toString moltisFencedPackage;
-              mcporter = config.xdg.configFile."moltis/mcporter.json".text;
-              secrets = lib.genAttrs (lib.attrNames moltisSecretSopsFiles) (
-                name:
-                let
-                  secret = config.sops.secrets.${name};
-                in
-                {
-                  source = "${secret.sopsFile}";
-                  inherit (secret) key;
-                }
-              );
-            }
-          );
-        in
         lib.hm.dag.entryAfter [ "refreshSopsNix" "assistantOwnedFiles" "setupLaunchAgents" ] ''
           restartMoltis() (
             set -e
@@ -940,10 +939,7 @@ in
         # Start only after sops-nix creates the rendered `moltis.toml` symlink.
         Unit = {
           Description = "Moltis - secure persistent personal agent server";
-          X-Restart-Triggers = [
-            config.agentic.assistants.moltis.heartbeatHash
-            (toString config.sops.templates."moltis.toml".file)
-          ];
+          X-Restart-Triggers = [ restartToken ];
           After = [
             "sops-nix.service"
           ];

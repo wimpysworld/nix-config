@@ -9,6 +9,64 @@ let
     lib.findFirst (package: (package.pname or "") == "mcporter")
       (throw "Moltis requires the pinned MCPorter package")
       homeConfigurations."martin@skrye".config.home.packages;
+  checkRestartInputs =
+    host:
+    let
+      home = homeConfigurations."martin@${host}";
+      c = home.config;
+      restartState =
+        config:
+        if c.noughty.host.is.darwin then
+          config.home.activation.restartMoltis.data
+        else
+          config.systemd.user.services.moltis.Unit.X-Restart-Triggers;
+      withChanges = changes: restartState (home.extendModules { modules = [ changes ]; }).config;
+      original = restartState c;
+      # The heartbeat hash is read-only, so vary it at the module boundary.
+      withHeartbeat =
+        heartbeatHash:
+        let
+          module = import ../../home-manager/_mixins/agentic/moltis {
+            config = lib.recursiveUpdate c {
+              agentic.assistants.moltis = { inherit heartbeatHash; };
+            };
+            inherit (home) pkgs;
+            inherit (home._module.specialArgs) inputs;
+            inherit (home._module.args) noughtyLib;
+            lib = lib // {
+              hm = c.lib;
+            };
+          };
+        in
+        if c.noughty.host.is.darwin then
+          module.config.content.home.activation.restartMoltis.content.data
+        else
+          module.config.content.systemd.user.services.moltis.content.Unit.X-Restart-Triggers;
+    in
+    assert withChanges { } == original;
+    assert
+      withChanges {
+        sops.secrets.GH_TOKEN.key = lib.mkForce "moltis-restart-test";
+      } != original;
+    assert
+      withChanges {
+        sops.secrets.GH_TOKEN.sopsFile = lib.mkForce (
+          builtins.toFile "moltis-restart-test.yaml" "synthetic encrypted source change\n"
+        );
+      } != original;
+    assert withHeartbeat c.agentic.assistants.moltis.heartbeatHash == original;
+    assert withHeartbeat "moltis-restart-test" != original;
+    assert
+      withChanges {
+        sops.templates."moltis.toml".file = lib.mkForce (
+          builtins.toFile "moltis-restart-test.toml" "test = true\n"
+        );
+      } != original;
+    assert
+      withChanges {
+        xdg.configFile."moltis/mcporter.json".text = lib.mkForce "{}";
+      } != original;
+    true;
   checkHost =
     host:
     let
@@ -151,15 +209,32 @@ let
     assert lib.hasInfix "Linux Fence mounts" body == !darwin;
     assert
       !c.noughty.host.is.linux
-      || lib.elem (toString
-        c.sops.templates."moltis.toml".file
-      ) c.systemd.user.services.moltis.Unit.X-Restart-Triggers;
+      || (
+        builtins.length c.systemd.user.services.moltis.Unit.X-Restart-Triggers == 1
+        &&
+          builtins.match "[0-9a-f]{64}" (builtins.head c.systemd.user.services.moltis.Unit.X-Restart-Triggers)
+          != null
+      );
     assert !c.noughty.host.is.linux || lib.elem "reloadSystemd" c.home.activation.refreshSopsNix.before;
+    assert
+      !c.noughty.host.is.linux || lib.elem "reloadSystemd" c.home.activation.assistantOwnedFiles.before;
+    assert
+      !darwin
+      || builtins.all (step: lib.elem step c.home.activation.restartMoltis.after) [
+        "refreshSopsNix"
+        "assistantOwnedFiles"
+        "setupLaunchAgents"
+      ];
     assert
       lib.hasInfix "`.git/config` and `.git/hooks` read-only, including in maintenance checkouts" body
       == !darwin;
     true;
 in
+assert builtins.all checkRestartInputs [
+  "skrye"
+  "zannah"
+  "momin"
+];
 assert builtins.all checkHost [
   "skrye"
   "zannah"
