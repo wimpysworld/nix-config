@@ -416,6 +416,45 @@ class Bootstrap:
         prefix = CLIENT + "/rooms/" + quoted(room)
         events = self.call("GET", prefix + "/state")
         state = {(event["type"], event["state_key"]): event for event in events}
+
+        def content(kind):
+            return state.get(("m.room." + kind, ""), {}).get("content", {})
+
+        conduit_id = user_id(CONDUIT_USER)
+        admin_id = user_id("martin")
+        create = content("create")
+        power_users = content("power_levels").get("users", {})
+        members = {
+            key: event["content"].get("membership")
+            for (kind, key), event in state.items()
+            if kind == "m.room.member"
+        }
+        if (
+            ("m.room.encryption", "") in state
+            or ("m.room.tombstone", "") in state
+            or state.get(("m.room.create", ""), {}).get("sender") != conduit_id
+            or create.get("room_version") != "11"
+            or create.get("additional_creators", [])
+            or content("canonical_alias").get("alias") != ADMIN_ALIAS
+            or content("join_rules").get("join_rule") != "invite"
+            or content("guest_access").get("guest_access") != "forbidden"
+            or content("history_visibility").get("history_visibility") != "shared"
+            or not isinstance(power_users, dict)
+            or type(power_users.get(conduit_id)) is not int
+            or power_users[conduit_id] < 100
+            or type(power_users.get(admin_id)) is not int
+            or power_users[admin_id] != 100
+            or any(uid not in (conduit_id, admin_id) for uid in power_users)
+            or members.get(conduit_id) != "join"
+            or members.get(admin_id) != "join"
+            or any(
+                uid not in (conduit_id, admin_id) and membership != "leave"
+                for uid, membership in members.items()
+            )
+        ):
+            raise Stop(
+                "Existing Matrix admin room settings conflict. No room state was overwritten."
+            )
         self.reconcile_room_metadata(
             prefix, state, ADMIN_ROOM_NAME, ADMIN_ROOM_TOPIC, "admins"
         )
