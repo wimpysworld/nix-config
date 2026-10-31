@@ -202,6 +202,13 @@
       const contact =
         Array.isArray(data.contacts) && data.contacts[0] ? data.contacts[0] : {};
       if (contact.matrix_id) el("val-support-mxid").textContent = contact.matrix_id;
+      if (contact.email_address) {
+        const mailLink = document.createElement("a");
+        mailLink.href = "mailto:" + contact.email_address;
+        mailLink.textContent = contact.email_address;
+        const emailCell = el("val-support-email");
+        if (emailCell) emailCell.replaceChildren(mailLink);
+      }
       if (contact.role) el("val-support-role").textContent = contact.role;
       if (data.support_page) {
         const link = document.createElement("a");

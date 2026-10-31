@@ -52,6 +52,7 @@ assert config.services.privateMatrix.enable;
 assert
   config.services.matrix-tuwunel.settings.global.well_known == {
     client = "https://matrix.wimpys.world";
+    support_email = "kneel@darth.cc";
     support_mxid = "@martin:matrix.wimpys.world";
     support_role = "m.role.admin";
     support_page = "https://github.com/the-cauldron";
@@ -83,6 +84,8 @@ pkgs.runCommand "private-matrix"
     test -s "$cauldronCss"
     test -s "$cauldronJs"
     test -s "$avatars/the-cauldron.jpg"
+    test -s "$avatars/conduit.png"
+    test -s "$avatars/admins.png"
     test -s "$avatars/traya.jpg"
     test -s "$avatars/skrye.jpg"
     test -s "$avatars/zannah.jpg"
@@ -90,6 +93,8 @@ pkgs.runCommand "private-matrix"
     grep -q '/mu.min.css' "$indexHtml"
     grep -q '/cauldron.css' "$indexHtml"
     grep -q '/cauldron.js' "$indexHtml"
+    grep -q 'kneel@darth.cc' "$indexHtml"
+    grep -q 'Holocron' "$indexHtml"
     grep -q '/_matrix/client/versions' "$cauldronJs"
     grep -q '/_tuwunel/server_version' "$cauldronJs"
     grep -q '/_matrix/client/v3/login' "$cauldronJs"

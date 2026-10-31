@@ -8,6 +8,8 @@
 }:
 let
   avatars = linkFarm "private-matrix-avatars" {
+    "admins.png" = ./admins.png;
+    "conduit.png" = ./conduit.png;
     "martin.png" = fetchurl {
       name = "martin-avatar.png";
       url = "https://avatars.githubusercontent.com/u/304639?v=4";
