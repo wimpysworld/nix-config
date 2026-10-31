@@ -77,6 +77,106 @@ let
   googleTtsModel = "gemini-3.8-flash-tts";
   googleSttModel = "gemini-3.8-flash";
   ttsShimPort = 13139;
+  llamaSwapPort = 8080;
+  darwinLlamaCacheRoot = "${stateDir}/llama-models/huggingface";
+  llamaRuntime = import ../../../../nixos/_mixins/server/llama-server/runtime.nix { inherit lib; };
+  selectedLlamaRuntime = llamaRuntime.mkRuntime {
+    acceleration = host.gpu.compute.acceleration or null;
+    cacheRoot = if host.is.darwin then darwinLlamaCacheRoot else llamaRuntime.defaultCacheRoot;
+    hostVramGiB = host.gpu.compute.vram or 0;
+  };
+  embeddingModel = selectedLlamaRuntime.selectedRuntimeModels.embedding;
+  embeddingDownloads = builtins.filter (
+    entry: entry.modelRef == embeddingModel.modelRef
+  ) selectedLlamaRuntime.selectedModelDownloads;
+  darwinPreseedModelsJson = pkgs.writeText "moltis-llama-models-preseed.json" (
+    builtins.toJSON embeddingDownloads
+  );
+  darwinPreseedModels = pkgs.writeShellApplication {
+    name = "moltis-llama-preseed-models";
+    runtimeInputs = with pkgs; [
+      coreutils
+      findutils
+      jq
+      python3Packages.huggingface-hub
+    ];
+    text = builtins.readFile ../../../../nixos/_mixins/server/llama-server/preseed-models.sh;
+  };
+  darwinLaunchLlamaServer = pkgs.writeShellApplication {
+    name = "moltis-llama-server-launch";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.findutils
+      pkgs.llama-cpp
+    ];
+    text = ''
+      modelPathPattern="$1"
+      port="$2"
+      shift 2
+
+      snapshotRoot="''${modelPathPattern%/*/*}"
+      modelFileName="''${modelPathPattern##*/}"
+
+      mapfile -t modelPathMatches < <(
+        find "$snapshotRoot" -mindepth 2 -maxdepth 2 -name "$modelFileName" -print
+      )
+
+      if [[ "''${#modelPathMatches[@]}" -ne 1 ]]; then
+        printf 'Error: expected one model path for pattern %s, got %s\n' \
+          "$modelPathPattern" "''${#modelPathMatches[@]}" >&2
+        exit 1
+      fi
+
+      modelPath="$(readlink -f "''${modelPathMatches[0]}")"
+
+      exec ${lib.getExe' pkgs.llama-cpp "llama-server"} \
+        --port "$port" \
+        -m "$modelPath" \
+        "$@"
+    '';
+  };
+  darwinLlamaSwapSettings = {
+    globalTTL = 0;
+    healthCheckTimeout = 500;
+    startPort = 10001;
+    models.${embeddingModel.publicName} = {
+      cmd = ''
+        ${lib.getExe darwinLaunchLlamaServer} '${embeddingModel.resolvedPrimaryPathPattern}' ''${PORT} ${lib.escapeShellArgs embeddingModel.runtimeArgs}
+      '';
+      metadata = {
+        inherit (embeddingModel)
+          hfRepo
+          modelRef
+          role
+          ;
+      };
+      name = embeddingModel.publicName;
+    };
+    groups.embedding = {
+      exclusive = false;
+      members = [ embeddingModel.publicName ];
+      swap = false;
+    };
+  };
+  darwinLlamaSwapConfig = pkgs.writeText "moltis-llama-swap.yaml" (
+    builtins.toJSON darwinLlamaSwapSettings
+  );
+  darwinLlamaSwapService = pkgs.writeShellApplication {
+    name = "moltis-llama-swap";
+    runtimeInputs = [
+      darwinPreseedModels
+      pkgs.coreutils
+      pkgs.llama-swap
+    ];
+    text = ''
+      export LLAMA_PRESEED_CACHE_ROOT=${lib.escapeShellArg darwinLlamaCacheRoot}
+      export LLAMA_PRESEED_MODELS_JSON=${lib.escapeShellArg "${darwinPreseedModelsJson}"}
+      moltis-llama-preseed-models
+      exec ${lib.getExe pkgs.llama-swap} \
+        --listen "127.0.0.1:${toString llamaSwapPort}" \
+        --config ${lib.escapeShellArg "${darwinLlamaSwapConfig}"}
+    '';
+  };
   geminiKeyPath = config.sops.secrets.GEMINI_API_KEY.path;
   ghTokenPath = config.sops.secrets.GH_TOKEN.path;
   gitAuthorEmailPath = config.sops.secrets.GIT_AUTHOR_EMAIL.path;
@@ -1095,6 +1195,12 @@ let
       export GIT_CONFIG_VALUE_4="ssh://git@github.com/"
 
       mkdir -p "$HOME/.moltis"
+      if [[ -f "$MOLTIS_DATA_DIR/memory.db" ]]; then
+        has_chunks="$(sqlite3 "$MOLTIS_DATA_DIR/memory.db" "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'chunks';" 2>/dev/null || echo 0)"
+        if [[ "$has_chunks" == "1" ]]; then
+          sqlite3 "$MOLTIS_DATA_DIR/memory.db" "DELETE FROM chunks WHERE model != '${embeddingModel.publicName}' OR embedding IS NULL; DELETE FROM files WHERE size > 0 AND NOT EXISTS (SELECT 1 FROM chunks WHERE chunks.path = files.path); DELETE FROM embedding_cache WHERE model != '${embeddingModel.publicName}';"
+        fi
+      fi
       printf '["dcg-guard"]\n' > "$HOME/.moltis/disabled_hooks.json"
       touch "$HOME/.moltis/.onboarded"
       ${lib.optionalString host.is.linux ''
@@ -1287,7 +1393,11 @@ in
     in
     {
       assertions =
-        lib.optional host.is.darwin {
+        lib.optional host.is.linux {
+          assertion = noughtyLib.hostHasTag "inference";
+          message = "Moltis on Linux requires the host inference tag so llama-swap serves local embeddings.";
+        }
+        ++ lib.optional host.is.darwin {
           assertion = config.agentic.assistants.requiresSecrets;
           message = "Moltis on Darwin requires the synchronous refreshSopsNix activation step.";
         }
@@ -1354,21 +1464,40 @@ in
       );
 
       xdg.stateFile."moltis/.keep" = lib.mkIf host.is.darwin { text = ""; };
-      launchd.agents.moltis = lib.mkIf host.is.darwin {
-        enable = true;
-        config = {
-          Label = "org.moltis.gateway";
-          ProgramArguments = [ "${moltisFencedPackage}/bin/moltis-fenced" ];
-          EnvironmentVariables = {
-            HOME = homeDir;
-            PATH = moltisPath;
+      launchd.agents = lib.mkIf host.is.darwin {
+        llama-swap = {
+          enable = true;
+          config = {
+            Label = "org.moltis.llama-swap";
+            ProgramArguments = [ "${darwinLlamaSwapService}/bin/moltis-llama-swap" ];
+            EnvironmentVariables = {
+              HOME = homeDir;
+              PATH = moltisPath;
+            };
+            WorkingDirectory = homeDir;
+            RunAtLoad = true;
+            KeepAlive = true;
+            ThrottleInterval = 30;
+            StandardOutPath = "${stateDir}/llama-swap.stdout.log";
+            StandardErrorPath = "${stateDir}/llama-swap.stderr.log";
           };
-          WorkingDirectory = homeDir;
-          RunAtLoad = true;
-          KeepAlive = true;
-          ThrottleInterval = 30;
-          StandardOutPath = "${stateDir}/daemon.stdout.log";
-          StandardErrorPath = "${stateDir}/daemon.stderr.log";
+        };
+        moltis = {
+          enable = true;
+          config = {
+            Label = "org.moltis.gateway";
+            ProgramArguments = [ "${moltisFencedPackage}/bin/moltis-fenced" ];
+            EnvironmentVariables = {
+              HOME = homeDir;
+              PATH = moltisPath;
+            };
+            WorkingDirectory = homeDir;
+            RunAtLoad = true;
+            KeepAlive = true;
+            ThrottleInterval = 30;
+            StandardOutPath = "${stateDir}/daemon.stdout.log";
+            StandardErrorPath = "${stateDir}/daemon.stderr.log";
+          };
         };
       };
 
@@ -1476,9 +1605,8 @@ in
 
         memory = {
           provider = "custom";
-          base_url = "https://generativelanguage.googleapis.com/v1beta/openai";
-          model = "gemini-embedding-2";
-          api_key = "\${GEMINI_API_KEY}";
+          base_url = "http://127.0.0.1:${toString llamaSwapPort}/v1";
+          model = embeddingModel.publicName;
         };
 
         heartbeat = {

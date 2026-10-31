@@ -71,7 +71,7 @@ assert service.environment.LD_LIBRARY_PATH == "/run/opengl-driver/lib:/run/openg
 assert service.environment.XDG_DATA_DIRS == "/run/opengl-driver/share:/run/opengl-driver-32/share";
 assert builtins.elem inferenceEval.pkgs.llama-swap inferenceEval.config.environment.systemPackages;
 assert builtins.elem "qwen3-coder-next" modelNames;
-assert builtins.elem "qwen3-embedding-4b" modelNames;
+assert builtins.elem "qwen3-embedding-0.6b" modelNames;
 assert builtins.elem "embedding" groupNames;
 assert builtins.elem "generation" groupNames;
 assert builtins.elem "llama-models-preseed.service" service.requires;

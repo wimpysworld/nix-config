@@ -16,7 +16,7 @@ let
     let
       home = homeConfigurations."martin@${host}";
       module = import ../../home-manager/_mixins/agentic/moltis {
-        config = home.config;
+        inherit (home) config;
         inherit (home) pkgs;
         inherit (home._module.specialArgs) inputs;
         inherit (home._module.args) noughtyLib;
@@ -186,7 +186,17 @@ let
     assert !(lib.elem "${c.home.homeDirectory}/.moltis" disabled.agentic.assistants.ownedSpec.roots);
     assert !(disabled.home.activation ? moltisAssistantBootstrap);
     assert !(disabled.xdg.configFile ? "moltis/mcporter.json");
+    assert !(disabled.launchd.agents ? llama-swap);
     assert !(lib.any (package: (package.name or "") == "moltis-fenced") disabled.home.packages);
+    assert (c.launchd.agents ? llama-swap) == darwin;
+    assert !darwin || c.launchd.agents.llama-swap.config.Label == "org.moltis.llama-swap";
+    assert
+      settings.memory == {
+        provider = "custom";
+        base_url = "http://127.0.0.1:8080/v1";
+        model = "qwen3-embedding-0.6b";
+      };
+    assert lib.hasInfix "WHERE model != 'qwen3-embedding-0.6b'" scripts.inner;
     assert builtins.all
       (
         name:
