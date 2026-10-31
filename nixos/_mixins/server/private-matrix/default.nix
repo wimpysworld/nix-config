@@ -2,27 +2,18 @@
   config,
   lib,
   noughtyLib,
+  pkgs,
   ...
 }:
 let
   cfg = config.services.privateMatrix;
   domain = "matrix.wimpys.world";
-  octet = "(0|[1-9][0-9]?|1[0-9][0-9]|2[0-4][0-9]|25[0-5])";
-  tailnetAddress = "100\\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\\.${octet}\\.${octet}";
+  registrationSecret = "MATRIX_REGISTRATION_SHARED_SECRET";
+  tuwunelUnit = config.systemd.services.tuwunel.name;
 in
 {
   options.services.privateMatrix = {
     enable = lib.mkEnableOption "the private Matrix server on Malak";
-    listenAddresses = lib.mkOption {
-      type = lib.types.listOf lib.types.str;
-      default = [ ];
-      description = "Literal Tailnet IPv4 addresses on Malak for the HTTPS listener on port 8443.";
-    };
-    acmeEmail = lib.mkOption {
-      type = lib.types.nullOr lib.types.str;
-      default = null;
-      description = "Explicit contact address for the Matrix certificate. ACME terms require separate acceptance.";
-    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -31,25 +22,14 @@ in
         assertion = noughtyLib.isHost [ "malak" ];
         message = "services.privateMatrix is restricted to Malak.";
       }
-      {
-        assertion = config.services.tailscale.enable;
-        message = "services.privateMatrix requires Tailscale.";
-      }
-      {
-        assertion =
-          cfg.listenAddresses != [ ]
-          && lib.all (address: builtins.match tailnetAddress address != null) cfg.listenAddresses;
-        message = "services.privateMatrix.listenAddresses requires literal IPv4 addresses within 100.64.0.0/10.";
-      }
-      {
-        assertion = cfg.acmeEmail != null && builtins.match ".*[^[:space:]].*" cfg.acmeEmail != null;
-        message = "services.privateMatrix.acmeEmail requires an explicit certificate contact address.";
-      }
-      {
-        assertion = config.security.acme.acceptTerms;
-        message = "services.privateMatrix requires separate, explicit acceptance through security.acme.acceptTerms.";
-      }
     ];
+
+    nix.settings = lib.mkIf (noughtyLib.isHost [ "malak" ]) {
+      extra-substituters = [ "https://cache.tuwunel.chat" ];
+      extra-trusted-public-keys = [
+        "cache.tuwunel.chat-1:ZafUaXiRMozDa9N2SWim6EdzH0EEjWjwfvlTxXvcjLA="
+      ];
+    };
 
     services.matrix-tuwunel = {
       enable = true;
@@ -58,56 +38,70 @@ in
         address = [ "127.0.0.1" ];
         port = [ 6167 ];
         allow_registration = false;
+        allow_guest_registration = false;
         allow_federation = false;
         federate_created_rooms = false;
         allow_encryption = false;
         encryption_enabled_by_default_for_room_type = "none";
+        allow_legacy_media = false;
         allow_public_room_directory_over_federation = false;
         allow_public_room_directory_without_auth = false;
         require_auth_for_profile_requests = true;
         trusted_servers = [ ];
+        registration_shared_secret_file = "/run/credentials/${tuwunelUnit}/${registrationSecret}";
+      };
+    };
+
+    sops.secrets =
+      lib.genAttrs
+        [
+          "MATRIX_PASSWORD_MARTIN"
+          "MATRIX_PASSWORD_SKRYE"
+          "MATRIX_PASSWORD_ZANNAH"
+          "MATRIX_PASSWORD_TRAYA"
+          registrationSecret
+        ]
+        (name: {
+          sopsFile = ../../../../secrets/matrix.yaml;
+          path = "/run/secrets/${name}";
+          owner = "root";
+          group = "root";
+          mode = "0400";
+        });
+
+    systemd.services.tuwunel.serviceConfig.LoadCredential = [
+      "${registrationSecret}:${config.sops.secrets.${registrationSecret}.path}"
+    ];
+
+    systemd.services.private-matrix-bootstrap = {
+      description = "Provision private Matrix accounts and the-cauldron";
+      wantedBy = [ "multi-user.target" ];
+      requires = [ "tuwunel.service" ];
+      after = [ "tuwunel.service" ];
+      partOf = [ "tuwunel.service" ];
+      restartTriggers = [ ../../../../secrets/matrix.yaml ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        User = "root";
+        UMask = "0077";
+        ExecStartPre = "${lib.getExe pkgs.curl} --fail --silent --output /dev/null --retry 20 --retry-connrefused --retry-delay 1 --retry-max-time 30 --max-time 2 http://127.0.0.1:6167/_matrix/client/versions";
+        ExecStart = lib.getExe pkgs.private-matrix-bootstrap;
+        TimeoutStartSec = 180;
       };
     };
 
     services.caddy = {
       enable = true;
-      virtualHosts = {
-        "https://${domain}:8443" = {
-          inherit (cfg) listenAddresses;
-          useACMEHost = domain;
-          extraConfig = ''
-            @tailnet remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
-            handle @tailnet {
-              reverse_proxy 127.0.0.1:6167
-            }
-            handle {
-              respond 403
-            }
-          '';
-        };
-        "http://${domain}".extraConfig = ''
-          respond 404
-        '';
-      };
-    };
-
-    systemd.services.caddy = {
-      after = [ "tailscaled-autoconnect.service" ];
-      wants = [ "tailscaled-autoconnect.service" ];
-    };
-
-    security.acme.certs.${domain} = {
-      email = cfg.acmeEmail;
-      dnsProvider = "cloudflare";
-      credentialFiles.CLOUDFLARE_DNS_API_TOKEN_FILE =
-        config.sops.secrets.CLOUDFLARE_DNS_API_TOKEN_MATRIX.path;
-    };
-
-    sops.secrets.CLOUDFLARE_DNS_API_TOKEN_MATRIX = {
-      sopsFile = ../../../../secrets/cloudflare.yaml;
-      owner = "root";
-      group = "root";
-      mode = "0600";
+      virtualHosts.${domain}.extraConfig = ''
+        @restricted path /_synapse/* /_matrix/federation/* /_matrix/key/*
+        handle @restricted {
+          respond 403
+        }
+        handle {
+          reverse_proxy 127.0.0.1:6167
+        }
+      '';
     };
   };
 }

@@ -19,6 +19,7 @@ pkgs: {
   moltis = pkgs.callPackage ./moltis { };
   openhue-cli = pkgs.callPackage ./openhue-cli { };
   openusage = pkgs.callPackage ./openusage { };
+  private-matrix-bootstrap = pkgs.callPackage ./private-matrix-bootstrap { };
   roamgate = pkgs.callPackage ./roamgate { };
   tcount = pkgs.callPackage ./tcount { };
   vecdecor = pkgs.callPackage ./vecdecor { };

@@ -60,5 +60,7 @@ in
     };
   };
 
+  services.privateMatrix.enable = true;
+
   powerManagement.cpuFreqGovernor = "performance";
 }

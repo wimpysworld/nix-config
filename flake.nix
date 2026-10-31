@@ -134,6 +134,11 @@
             inherit pkgs;
             inherit (self) homeConfigurations;
           };
+          private-matrix = import ./lib/tests/private-matrix.nix {
+            inherit (nixpkgs) lib;
+            inherit pkgs;
+            inherit (self) nixosConfigurations homeConfigurations;
+          };
           wayland-compositors = import ./lib/tests/wayland-compositors.nix {
             inherit (nixpkgs) lib;
             inherit pkgs;
