@@ -733,12 +733,6 @@ let
 
 
     def restore_private_persona(data_dir: Path, system_content: str, tool_count: int) -> list[str]:
-        soul_text = read_workspace_file(data_dir, "SOUL.md")
-        if soul_text:
-            snippet = first_snippet(soul_text)
-            if snippet and snippet in system_content:
-                return []
-
         specs = [
             ("SOUL.md", "## Workspace Soul (SOUL.md)"),
             ("USER.md", "## User Profile (USER.md)"),
@@ -750,7 +744,7 @@ let
 
         sections = []
         for filename, heading in specs:
-            text = soul_text if filename == "SOUL.md" else read_workspace_file(data_dir, filename)
+            text = read_workspace_file(data_dir, filename)
             if not text:
                 continue
             snippet = first_snippet(text)
