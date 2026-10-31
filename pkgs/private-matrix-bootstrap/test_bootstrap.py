@@ -49,6 +49,15 @@ class FakeAPI:
                     "room_version": "11",
                 },
                 ("m.room.canonical_alias", ""): {"alias": b.ADMIN_ALIAS},
+                ("m.room.join_rules", ""): {"join_rule": "invite"},
+                ("m.room.history_visibility", ""): {"history_visibility": "shared"},
+                ("m.room.guest_access", ""): {"guest_access": "forbidden"},
+                ("m.room.power_levels", ""): {
+                    "users": {
+                        b.user_id(b.CONDUIT_USER): 69420,
+                        b.user_id("martin"): 100,
+                    },
+                },
                 ("m.room.name", ""): {"name": f"{b.SERVER} Admin Room"},
                 ("m.room.member", b.user_id(b.CONDUIT_USER)): {"membership": "join"},
                 ("m.room.member", b.user_id("martin")): {"membership": "join"},
@@ -247,12 +256,17 @@ class FakeAPI:
                 raise b.APIError(403, "M_FORBIDDEN")
             room_events = self.rooms[room_id]
             if suffix == "/state":
+                sender = (
+                    b.user_id(b.CONDUIT_USER)
+                    if room_id == ADMIN_ROOM
+                    else b.user_id("martin")
+                )
                 return [
                     {
                         "type": kind,
                         "state_key": key,
                         "content": value,
-                        "sender": b.user_id("martin"),
+                        "sender": sender,
                     }
                     for (kind, key), value in room_events.items()
                 ]
@@ -565,6 +579,25 @@ class BootstrapTests(unittest.TestCase):
             self.run_bootstrap()
         self.assertEqual(self.writes(), [])
         self.api.users["skrye"]["admin"] = False
+        self.api.aliases[b.ADMIN_ALIAS] = b.ROOM
+        self.api.calls.clear()
+        with self.assertRaises(b.Stop):
+            self.run_bootstrap()
+        self.assertEqual(self.writes(), [])
+        self.api.aliases[b.ADMIN_ALIAS] = ADMIN_ROOM
+        self.api.rooms[ADMIN_ROOM][("m.room.power_levels", "")] = {
+            "users": {b.user_id("martin"): 100}
+        }
+        self.api.calls.clear()
+        with self.assertRaises(b.Stop):
+            self.run_bootstrap()
+        self.assertEqual(self.writes(), [])
+        self.api.rooms[ADMIN_ROOM][("m.room.power_levels", "")] = {
+            "users": {
+                b.user_id(b.CONDUIT_USER): 69420,
+                b.user_id("martin"): 100,
+            }
+        }
         self.api.events[("m.room.join_rules", "")] = {"join_rule": "public"}
         self.api.calls.clear()
         with self.assertRaises(b.Stop):
