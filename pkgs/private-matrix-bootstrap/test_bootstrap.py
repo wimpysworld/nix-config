@@ -24,6 +24,7 @@ class FakeAPI:
         self.alias = None
         self.calls = []
         self.fail_after: tuple[str, str] | None = None
+        self.displayname_suffix = ""
 
     def call(self, method, path, body=None, token=None):
         self.calls.append((method, path, copy.deepcopy(body)))
@@ -58,6 +59,8 @@ class FakeAPI:
             if user in self.users:
                 raise b.APIError(400, "M_USER_IN_USE")
             self.users[user] = copy.deepcopy(body)
+            if self.displayname_suffix:
+                self.users[user]["displayname"] += " " + self.displayname_suffix
             return {"user_id": b.user_id(user)}
         if path == b.CLIENT + "/login":
             user = body["identifier"]["user"].split(":")[0][1:]
@@ -74,6 +77,9 @@ class FakeAPI:
             }
         assert token in self.users
         if path.endswith("/displayname"):
+            if method == "PUT":
+                self.users[token]["displayname"] = body["displayname"]
+                return {}
             return {"displayname": self.users[token]["displayname"]}
         if path.startswith("/_synapse/admin/v1/users/"):
             assert token == b.USERS[0]
@@ -139,13 +145,15 @@ class BootstrapTests(unittest.TestCase):
         return [
             (method, path)
             for method, path, _ in self.api.calls
-            if method == "POST"
+            if method in ("POST", "PUT")
             and path not in (b.CLIENT + "/login", b.CLIENT + "/logout")
         ]
 
     def test_initial_creation_and_rerun(self):
+        self.api.displayname_suffix = "💕"
         self.assertEqual(self.run_bootstrap(), b.ROOM)
         for user in b.USERS:
+            self.assertEqual(self.api.users[user]["displayname"], user)
             self.assertEqual(self.api.users[user]["admin"], user == "martin")
             self.assertEqual(
                 self.api.events[("m.room.member", b.user_id(user))]["membership"],
@@ -162,10 +170,17 @@ class BootstrapTests(unittest.TestCase):
         for path in (b.REGISTER, b.CLIENT + "/createRoom"):
             with self.subTest(path=path):
                 self.api = FakeAPI()
+                self.api.displayname_suffix = "💕"
                 self.api.fail_after = ("POST", path)
                 with self.assertRaises(b.Stop):
                     self.run_bootstrap()
+                if path == b.REGISTER:
+                    self.assertEqual(
+                        self.api.users["martin"]["displayname"], "martin 💕"
+                    )
                 self.assertEqual(self.run_bootstrap(), b.ROOM)
+                for user in b.USERS:
+                    self.assertEqual(self.api.users[user]["displayname"], user)
                 posts = [
                     body
                     for method, endpoint, body in self.api.calls

@@ -38,6 +38,7 @@ in
         address = [ "127.0.0.1" ];
         port = [ 6167 ];
         allow_registration = false;
+        new_user_displayname_suffix = "";
         allow_guest_registration = false;
         allow_federation = false;
         federate_created_rooms = false;

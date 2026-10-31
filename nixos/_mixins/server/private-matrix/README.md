@@ -23,7 +23,7 @@ Room version 11 supports Tuwunel's fixed room ID. This lets all clients use the 
 
 Credentials already exist in `secrets/matrix.yaml`. SOPS installs root-only files on Malak. Systemd passes the registration secret to Tuwunel through `LoadCredential`. The registration endpoint remains available only through the loopback listener, not public Caddy.
 
-Provisioning verifies existing accounts and room policy without resetting passwords or overwriting conflicting state. A repeated run does not duplicate accounts or rooms. Temporary login tokens stay in memory, use devices distinct from Moltis, and are logged out afterwards. Conflicting state fails the service rather than silently changing access.
+Provisioning restores the configured plain display names and verifies account privileges and room policy. It does not reset passwords or overwrite conflicting privileges or room state. A repeated run does not duplicate accounts or rooms. Temporary login tokens stay in memory, use devices distinct from Moltis, and are logged out afterwards. Conflicting state fails the service rather than silently changing access.
 
 Normal Home Manager deployment enables Matrix for Skrye, Zannah, and Traya. Each agent receives only its own runtime password. Stable device IDs avoid new bot devices on every restart. There is no room-ID handoff or separate bootstrap mode.
 

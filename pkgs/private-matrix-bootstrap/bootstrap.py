@@ -203,22 +203,17 @@ class Bootstrap:
                     },
                 )
                 self.login(user)
-            profile = self.call(
-                "GET",
-                CLIENT + "/profile/" + quoted(user_id(user)) + "/displayname",
-                user=user,
-            )
             admin = self.call(
                 "GET", f"/_synapse/admin/v1/users/{quoted(user_id(user))}/admin"
             ).get("admin")
-            if (
-                profile.get("displayname") != user
-                or type(admin) is not bool
-                or admin != (user == "martin")
-            ):
+            if type(admin) is not bool or admin != (user == "martin"):
                 raise Stop(
-                    "Existing Matrix account settings conflict. No credentials or privileges were changed."
+                    "Existing Matrix account privileges conflict. No credentials or privileges were changed."
                 )
+            profile_path = CLIENT + "/profile/" + quoted(user_id(user)) + "/displayname"
+            profile = self.call("GET", profile_path, user=user)
+            if profile.get("displayname") != user:
+                self.call("PUT", profile_path, {"displayname": user}, user=user)
 
     def room(self):
         try:
