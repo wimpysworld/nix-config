@@ -21,10 +21,23 @@ let
       agent = if host == "momin" then "traya" else host;
       matrix = home.agentic.moltis.matrix;
       channel = home.agentic.moltis.settings.channels.matrix."matrix-${agent}";
+      hooks = home.agentic.moltis.settings.hooks.hooks;
       secret = home.sops.secrets.MATRIX_PASSWORD;
     in
     assert matrix.enable;
     assert channel.room_allowlist == [ matrix.roomId ];
+    assert !channel.reply_to_message;
+    assert channel.operators == [ "@martin:matrix.wimpys.world" ];
+    assert
+      channel.user_allowlist == [
+        "@martin:matrix.wimpys.world"
+        "@skrye:matrix.wimpys.world"
+        "@zannah:matrix.wimpys.world"
+        "@traya:matrix.wimpys.world"
+      ];
+    assert builtins.length hooks == 1;
+    assert (builtins.head hooks).name == "matrix-council-context";
+    assert (builtins.head hooks).events == [ "BeforeLLMCall" ];
     assert secret.sopsFile == config.sops.secrets.${secret.key}.sopsFile;
     assert !(home.sops.secrets ? MATRIX_REGISTRATION_SHARED_SECRET);
     channel.device_id;
