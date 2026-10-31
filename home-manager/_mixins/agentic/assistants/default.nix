@@ -383,6 +383,9 @@ let
   moltisTools =
     lib.replaceStrings [ "@ENVIRONMENT@" ] [ moltisToolsEnvironment ] (readFileTrim ../moltis/TOOLS.md)
     + "\n";
+  # Private chat replaces the compiled Guidelines section with this non-empty body.
+  # Upstream seeds no GUIDELINES.md default, so unowned files remain conflicts.
+  moltisGuidelines = readFileTrim ../moltis/GUIDELINES.md + "\n";
   moltisToolsLegacyHashes = [
     (builtins.hashString "sha256" moltisTools)
     "4ea621b099941df455de110db1deda26466a11fcc3d2b036f0a2e39747c715ea"
@@ -794,6 +797,19 @@ let
         "${config.home.homeDirectory}/.moltis/agents/main/TOOLS.md"
       ]
     )
+    ++
+      map
+        (
+          path:
+          (ownedFile path moltisGuidelines)
+          // {
+            source = builtins.toFile "moltis-GUIDELINES.md" moltisGuidelines;
+          }
+        )
+        [
+          "${config.home.homeDirectory}/.moltis/docs/moltis/GUIDELINES.md"
+          "${config.home.homeDirectory}/.moltis/agents/main/GUIDELINES.md"
+        ]
     ++ [
       (ownedFile "${config.home.homeDirectory}/.moltis/AGENTS.md" moltisInstructions)
       (ownedFile "${config.home.homeDirectory}/.moltis/agents/main/AGENTS.md" moltisInstructions)

@@ -80,12 +80,14 @@ class DeploymentTests(unittest.TestCase):
                 result[name] = ("directory", stat.S_IMODE(info.st_mode))
         return result
 
-    def test_moltis_tools_pair_first_install_and_repeat(self):
+    def test_moltis_workspace_files_first_install_and_repeat(self):
         self.root = self.home / ".moltis"
         self.spec["roots"].append(str(self.root))
         self.spec["files"] = [
             self.entry("TOOLS.md", "Generated tools.\n"),
             self.entry("agents/main/TOOLS.md", "Generated tools.\n"),
+            self.entry("docs/moltis/GUIDELINES.md", "Generated guidelines.\n"),
+            self.entry("agents/main/GUIDELINES.md", "Generated guidelines.\n"),
         ]
         self.activate()
         before = self.snapshot()
@@ -95,7 +97,11 @@ class DeploymentTests(unittest.TestCase):
             path = Path(entry["path"])
             self.assertFalse(path.is_symlink())
             self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
-            self.assertEqual(path.read_text(), "Generated tools.\n")
+            self.assertEqual(path.read_bytes(), Path(entry["source"]).read_bytes())
+            self.assertTrue(path.read_text().strip())
+        self.assertFalse((self.root / "GUIDELINES.md").exists())
+        manifest = json.loads((self.state / "manifest.json").read_text())
+        self.assertEqual(set(manifest["files"]), {e["path"] for e in self.spec["files"]})
 
     def test_moltis_verified_bootstrap_adopts_both_workspace_files(self):
         self.root = self.home / ".moltis"
@@ -123,11 +129,16 @@ class DeploymentTests(unittest.TestCase):
         self.activate()
         self.assertEqual(self.snapshot(), before)
 
-    def test_moltis_tools_unknown_and_empty_files_remain_unowned(self):
+    def test_moltis_workspace_unknown_and_empty_files_remain_unowned(self):
         self.root = self.home / ".moltis"
         self.spec["roots"].append(str(self.root))
-        for relative in ("TOOLS.md", "agents/main/TOOLS.md"):
-            for content in ("", "Custom tools.\n"):
+        for relative in (
+            "TOOLS.md",
+            "agents/main/TOOLS.md",
+            "docs/moltis/GUIDELINES.md",
+            "agents/main/GUIDELINES.md",
+        ):
+            for content in ("", "Custom workspace instructions.\n"):
                 with self.subTest(relative=relative, content=content):
                     path = self.root / relative
                     path.parent.mkdir(parents=True, exist_ok=True)

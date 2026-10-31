@@ -91,6 +91,8 @@ Keep configuration and instructions in their Nix-managed sources, not installed 
 | `~/.moltis/agents/main/AGENTS.md`    | `moltis/AGENTS.md` + `compose.houseStyleBody`                           | Same instructions deployed into the `main` agent workspace via `ownedFiles` so Moltis's first-run seed copy never goes stale.   |
 | `~/.moltis/TOOLS.md`                 | `moltis/TOOLS.md` with Nix-derived `@ENVIRONMENT@`                     | Plain Markdown, deployed via `ownedFiles` as a regular file, mode `0600`. |
 | `~/.moltis/agents/main/TOOLS.md`     | Same composed `moltis/TOOLS.md`                                       | Identical content in the `main` agent workspace, with the same ownership and mode. |
+| `~/.moltis/docs/moltis/GUIDELINES.md` | `moltis/GUIDELINES.md` | Fallback for private chat, deployed through `ownedFiles` as a regular file, mode `0600`. |
+| `~/.moltis/agents/main/GUIDELINES.md` | Same `moltis/GUIDELINES.md` | Main profile override, with identical content, ownership, and mode. |
 | `~/.moltis/SOUL.md`                  | `assistant-moltis-soul` sops template (`SOUL_<AGENT>` + `SOUL_ALL`)     | Agent soul from `secrets/moltis.yaml` followed by `SOUL_ALL`, deployed via `ownedFiles` (`kind = "file"`, mode `0600`).         |
 | `~/.moltis/agents/main/SOUL.md`      | `assistant-moltis-soul` sops template (`SOUL_<AGENT>` + `SOUL_ALL`)     | Same soul deployed into the `main` agent workspace via `ownedFiles` so Moltis's first-run seed copy never goes stale.           |
 | `~/.moltis/USER.md`                  | `assistant-moltis-user` sops template (`USER` in `secrets/moltis.yaml`) | User profile deployed via `ownedFiles` (`kind = "file"`, mode `0600`).                                                          |
@@ -111,6 +113,18 @@ Only the Tools section moves out of Moltis's `AGENTS.md`. Role, workflow, Safety
 For normal chat, Moltis reads profile `TOOLS.md` first and falls back to the root copy. It injects exactly one copy on each request. A deployed tool-instruction change needs no daemon restart for this path. Other request paths remain unverified. Nix activation owns both generated files. Upstream Moltis seeds a missing root `TOOLS.md` from its default comment-only content and copies the root file into a missing main workspace copy. Startup does not overwrite existing files.
 
 Migration accepts the known previous `AGENTS.md` hash and the upstream comment-only `TOOLS.md` seed. Unknown custom content, including an unowned empty file, remains untouched and causes a deployment conflict. Web UI edits do not bypass ownership checks and can cause the same conflict. Keep the repository source canonical and review conflicts before activation.
+
+## Guidelines override
+
+Edit [GUIDELINES.md](GUIDELINES.md) to change the Guidelines section for normal private chat. This non-empty file replaces the whole compiled section, not only its MCP advice. It retains applicable upstream tool, safety, result-checking, and silent-reply guidance while selecting MCPorter instead of native MCP tools.
+
+The loader checks `~/.moltis/agents/<agent_id>/GUIDELINES.md` first, then `~/.moltis/docs/moltis/GUIDELINES.md`. It does not read `~/.moltis/GUIDELINES.md`. Nix delivers identical regular files to the fallback path and `agents/main`, with mode `0600`. Other profiles can supply their own override before the fallback.
+
+Normal private chat reloads these instructions for each request, without a daemon restart. Non-private chat paths retain compiled defaults. Spawned workers do not use this compiled Guidelines section. Their existing preset suffixes and parent briefings supply MCPorter instructions and the `TOOLS.md` recipe. This override is not global.
+
+The pinned upstream workspace seeding code creates no `GUIDELINES.md` default, so this change adds no adoption hashes. Unknown unowned files, empty files, modified owned files, and symlinks remain protected by ownership checks. Conflicts stop deployment rather than overwrite those files. Review each conflict before activation.
+
+`TOOLS.md` also requires agents to treat returned error content as failure, even when MCPorter exits with status zero.
 
 ## Command allowlist
 

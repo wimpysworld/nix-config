@@ -5,6 +5,53 @@
   homeConfigurations,
 }:
 let
+  hosts = [
+    "skrye"
+    "zannah"
+    "momin"
+  ];
+  # Expose the nested script without building or running either launcher.
+  launcherScripts =
+    host:
+    let
+      home = homeConfigurations."martin@${host}";
+      module = import ../../home-manager/_mixins/agentic/moltis {
+        config = home.config;
+        inherit (home) pkgs;
+        inherit (home._module.specialArgs) inputs;
+        inherit (home._module.args) noughtyLib;
+        lib = lib // {
+          hm = home.config.lib;
+          getExe =
+            package:
+            if (package.name or "") == "moltis-in-fence" then
+              "MOLTIS_TEST_INNER_START${package.text}MOLTIS_TEST_INNER_END"
+            else
+              lib.getExe package;
+        };
+      };
+      outer = lib.findFirst (
+        package: package.name == "moltis-fenced"
+      ) (throw "Missing Moltis launcher") module.config.content.home.packages;
+      parts = lib.splitString "MOLTIS_TEST_INNER_START" outer.text;
+    in
+    {
+      outer = builtins.head parts;
+      inner = builtins.head (lib.splitString "MOLTIS_TEST_INNER_END" (builtins.elemAt parts 1));
+    };
+  launcherFixtures = map (
+    host:
+    let
+      c = homeConfigurations."martin@${host}".config;
+    in
+    {
+      inherit host;
+      inherit (launcherScripts host) inner outer;
+      paths = lib.mapAttrs (_: secret: secret.path) c.sops.secrets // {
+        template = c.sops.templates."moltis.toml".path;
+      };
+    }
+  ) hosts;
   mcporter =
     lib.findFirst (package: (package.pname or "") == "mcporter")
       (throw "Moltis requires the pinned MCPorter package")
@@ -70,13 +117,25 @@ let
   checkHost =
     host:
     let
-      c = homeConfigurations."martin@${host}".config;
+      home = homeConfigurations."martin@${host}";
+      c = home.config;
+      disabled =
+        (home.extendModules {
+          modules = [ { noughty.host.tags = lib.mkForce (lib.remove "moltis" c.noughty.host.tags); } ];
+        }).config;
+      scripts = launcherScripts host;
       context = c.agentic.moltis.toolsContext;
       files = c.agentic.assistants.ownedSpec.files;
       tools = builtins.filter (
         entry:
         lib.hasSuffix "/TOOLS.md" entry.path && lib.hasPrefix "${c.home.homeDirectory}/.moltis/" entry.path
       ) files;
+      guidelines = builtins.filter (
+        entry:
+        lib.hasSuffix "/GUIDELINES.md" entry.path
+        && lib.hasPrefix "${c.home.homeDirectory}/.moltis/" entry.path
+      ) files;
+      guidelinesSource = (builtins.head guidelines).source;
       root = builtins.head tools;
       body = builtins.readFile root.source;
       darwin = context.platform == "darwin";
@@ -108,6 +167,47 @@ let
     assert builtins.all (
       entry: entry.kind == "file" && entry.mode == "0600" && entry.source == root.source
     ) tools;
+    assert
+      map (entry: entry.path) guidelines == [
+        "${c.home.homeDirectory}/.moltis/docs/moltis/GUIDELINES.md"
+        "${c.home.homeDirectory}/.moltis/agents/main/GUIDELINES.md"
+      ];
+    assert builtins.match "[[:space:]]*" (builtins.readFile guidelinesSource) == null;
+    assert builtins.all (
+      entry:
+      entry.kind == "file"
+      && entry.mode == "0600"
+      && entry.source == guidelinesSource
+      && (entry.bootstrapSources or [ ]) == [ ]
+    ) guidelines;
+    assert builtins.all (
+      entry: !(lib.hasPrefix "${c.home.homeDirectory}/.moltis/" entry.path)
+    ) disabled.agentic.assistants.ownedSpec.files;
+    assert !(lib.elem "${c.home.homeDirectory}/.moltis" disabled.agentic.assistants.ownedSpec.roots);
+    assert !(disabled.home.activation ? moltisAssistantBootstrap);
+    assert !(disabled.xdg.configFile ? "moltis/mcporter.json");
+    assert !(lib.any (package: (package.name or "") == "moltis-fenced") disabled.home.packages);
+    assert builtins.all
+      (
+        name:
+        lib.hasInfix ''
+          ${name}="$(< ${lib.escapeShellArg c.sops.secrets.${name}.path})"
+          export ${name}
+        '' scripts.inner
+      )
+      [
+        "LINEAR_API_KEY"
+        "CONTEXT7_API_KEY"
+      ];
+    assert builtins.all (
+      name:
+      lib.hasInfix "&& -r ${lib.escapeShellArg c.sops.secrets.${name}.path}" scripts.outer
+      && lib.hasInfix "|| ! -r ${lib.escapeShellArg c.sops.secrets.${name}.path}" scripts.outer
+    ) (defs.requiredSecretsForConsumers [ "moltis" ] ++ [ "CLOUDFLARE_API_TOKEN" ]);
+    assert !(lib.hasInfix "CLOUDFLARE_API_TOKEN" scripts.inner);
+    assert !(lib.hasInfix "export CLOUDFLARE_API_TOKEN" scripts.outer);
+    assert lib.hasInfix "export LINEAR_API_KEY" scripts.inner == (cli.mcpServers ? linear);
+    assert lib.hasInfix "-systemd-" scripts.inner == !darwin;
     assert lib.hasInfix c.home.homeDirectory body;
     assert lib.hasInfix context.platform body;
     assert context.system == homeConfigurations."martin@${host}".pkgs.stdenv.hostPlatform.system;
@@ -230,17 +330,62 @@ let
       == !darwin;
     true;
 in
-assert builtins.all checkRestartInputs [
-  "skrye"
-  "zannah"
-  "momin"
-];
-assert builtins.all checkHost [
-  "skrye"
-  "zannah"
-  "momin"
-];
+assert builtins.all checkRestartInputs hosts;
+assert builtins.all checkHost hosts;
 pkgs.runCommand "moltis-tools" { } ''
+  ${pkgs.python3}/bin/python3 - ${builtins.toFile "moltis-launcher-fixtures.json" (builtins.unsafeDiscardStringContext (builtins.toJSON launcherFixtures))} ${pkgs.bash}/bin/bash <<'PY'
+  import json
+  import os
+  from pathlib import Path
+  import re
+  import subprocess
+  import sys
+  import tempfile
+
+  fixtures = json.loads(Path(sys.argv[1]).read_text())
+  bash = sys.argv[2]
+  for fixture in fixtures:
+      with tempfile.TemporaryDirectory() as directory:
+          root = Path(directory)
+          paths = {name: root / name for name in fixture["paths"]}
+          for name, path in paths.items():
+              path.write_text("synthetic-" + name)
+          inner, outer = fixture["inner"], fixture["outer"]
+          for name, original in fixture["paths"].items():
+              inner = inner.replace(original, str(paths[name]))
+              outer = outer.replace(original, str(paths[name]))
+          prologue = inner.split("export MCPORTER_CONFIG=", 1)[1].split("export MOLTIS_DATA_DIR=", 1)[0]
+          prologue = "set -euo pipefail\nexport MCPORTER_CONFIG=" + prologue
+          child = """
+  import os
+  from pathlib import Path
+  Path(os.environ["HOME"], "child-started").touch()
+  assert os.environ["LINEAR_API_KEY"] == "synthetic-LINEAR_API_KEY"
+  assert os.environ["CONTEXT7_API_KEY"] == "synthetic-CONTEXT7_API_KEY"
+  assert "CLOUDFLARE_API_TOKEN" not in os.environ
+  """
+          command = prologue + f"{sys.executable} - <<'CHILD'\n{child}\nCHILD\n"
+          env = {"HOME": directory, "PATH": os.defpath}
+          result = subprocess.run([bash, "-c", command], env=env, capture_output=True, timeout=5)
+          assert result.returncode == 0, (fixture["host"], result.stderr)
+          marker = root / "child-started"
+          marker.unlink()
+          ready = re.search(r"(\[\[ -r .*?\]\]) && break", outer).group(1)
+          failed = re.search(r"if (\[\[ ! -r .*?\]\]); then", outer).group(1)
+          for missing in (None, "LINEAR_API_KEY", "CONTEXT7_API_KEY", "CLOUDFLARE_API_TOKEN"):
+              if missing:
+                  paths[missing].unlink()
+              for condition, expected in ((ready, missing is None), (failed, missing is not None)):
+                  result = subprocess.run([bash, "-c", condition], env=env, capture_output=True, timeout=5)
+                  assert (result.returncode == 0) == expected, (fixture["host"], missing, condition)
+              if missing in ("LINEAR_API_KEY", "CONTEXT7_API_KEY"):
+                  result = subprocess.run([bash, "-c", command], env=env, capture_output=True, timeout=5)
+                  assert result.returncode != 0, (fixture["host"], missing)
+                  assert not marker.exists(), (fixture["host"], missing, "child started without credentials")
+              if missing:
+                  paths[missing].write_text("synthetic-" + missing)
+  print("Moltis launcher checks passed for all three hosts.")
+  PY
   ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/assistants/owned-files}/test_deploy.py
   PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis/mcp-cli-migration}/test_migrate.py
   PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis/mcp-cli-migration}/test_mcporter.py ${lib.getExe mcporter}
