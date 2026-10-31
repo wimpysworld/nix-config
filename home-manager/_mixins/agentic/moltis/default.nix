@@ -678,6 +678,383 @@ let
     '';
   };
 
+  moltisMatrixCouncilHook = pkgs.writeScript "moltis-matrix-council-hook" ''
+    #!${lib.getExe pkgs.python3}
+    from datetime import datetime, timezone
+    import json
+    import os
+    from pathlib import Path
+    import sqlite3
+    import sys
+
+    MARKER = "<!-- moltis-matrix-context -->"
+    AGENT_NAME = ${builtins.toJSON agentName}
+    AGENT_DISPLAY_NAME = ${builtins.toJSON agentDisplayName}
+    SELF_USER_ID = ${builtins.toJSON (matrixCfg.userId or "@${agentName}:matrix.wimpys.world")}
+    ROOM_ID = ${builtins.toJSON (matrixCfg.roomId or "!the-cauldron:matrix.wimpys.world")}
+    MARTIN_ID = "@martin:matrix.wimpys.world"
+    BOT_IDS = {
+        "@skrye:matrix.wimpys.world",
+        "@zannah:matrix.wimpys.world",
+        "@traya:matrix.wimpys.world",
+    }
+    MAX_BOT_TURNS = 9
+    ENCODED_COMPONENT_BYTES = 120
+
+
+    def emit_continue():
+        sys.stdout.write('{"action":"continue"}\n')
+        sys.stdout.flush()
+
+
+    def read_workspace_file(data_dir: Path, filename: str) -> str:
+        candidates = (
+            data_dir / filename,
+            data_dir / "agents" / "main" / filename,
+            data_dir / "docs" / "moltis" / filename,
+        )
+        for path in candidates:
+            try:
+                if path.is_file():
+                    text = path.read_text(encoding="utf-8", errors="replace").strip()
+                    if text:
+                        return text
+            except OSError:
+                continue
+        return ""
+
+
+    def first_snippet(text: str) -> str:
+        for line in text.splitlines():
+            stripped = line.strip()
+            if stripped and not stripped.startswith("---"):
+                return stripped[:60]
+        return text[:60].strip()
+
+
+    def restore_private_persona(data_dir: Path, system_content: str, tool_count: int) -> list[str]:
+        soul_text = read_workspace_file(data_dir, "SOUL.md")
+        if soul_text:
+            snippet = first_snippet(soul_text)
+            if snippet and snippet in system_content:
+                return []
+
+        specs = [
+            ("SOUL.md", "## Workspace Soul (SOUL.md)"),
+            ("USER.md", "## User Profile (USER.md)"),
+            ("AGENTS.md", "## Agent Instructions (AGENTS.md)"),
+            ("GUIDELINES.md", "## Operational Guidelines (GUIDELINES.md)"),
+        ]
+        if tool_count > 0:
+            specs.append(("TOOLS.md", "## Tooling Context (TOOLS.md)"))
+
+        sections = []
+        for filename, heading in specs:
+            text = soul_text if filename == "SOUL.md" else read_workspace_file(data_dir, filename)
+            if not text:
+                continue
+            snippet = first_snippet(text)
+            if snippet and snippet in system_content:
+                continue
+            sections.append(f"{heading}\n\n{text}")
+        return sections
+
+
+    def encoded_key_components(key: str) -> list[str]:
+        encoded = key.encode("utf-8").hex()
+        if not encoded:
+            return ["k"]
+        chunks = []
+        for idx in range(0, len(encoded), ENCODED_COMPONENT_BYTES):
+            chunk = encoded[idx : idx + ENCODED_COMPONENT_BYTES]
+            chunks.append(f"k{chunk}" if idx == 0 else chunk)
+        return chunks
+
+
+    def history_paths(data_dir: Path, session_key: str) -> list[Path]:
+        sessions_v1 = data_dir / "sessions" / "v1"
+        keys = [session_key]
+        canonical_key = f"matrix:matrix-{AGENT_NAME}:{ROOM_ID}"
+        if canonical_key not in keys:
+            keys.append(canonical_key)
+        paths = []
+        for key in keys:
+            chunked = sessions_v1.joinpath(*encoded_key_components(key), "history.jsonl")
+            if chunked not in paths:
+                paths.append(chunked)
+            unchunked = sessions_v1 / f"k{key.encode('utf-8').hex()}" / "history.jsonl"
+            if unchunked not in paths:
+                paths.append(unchunked)
+        return paths
+
+
+    def normalize_ts(raw_ts) -> tuple[int, int]:
+        try:
+            val = int(raw_ts)
+        except (TypeError, ValueError):
+            return 0, 0
+        if val > 10_000_000_000:
+            return val // 1000, val
+        return val, val * 1000
+
+
+    def load_room_messages(data_dir: Path, session_key: str, payload_messages: list) -> list[dict]:
+        db_entries = []
+        db_path = data_dir / "moltis.db"
+        if db_path.is_file():
+            try:
+                conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=2.0)
+                try:
+                    cols = {
+                        row[1]
+                        for row in conn.execute("PRAGMA table_info(message_log)").fetchall()
+                    }
+                    if "sender_id" in cols and "peer_id" in cols:
+                        sender_expr = "COALESCE(sender_id, peer_id)"
+                    elif "sender_id" in cols:
+                        sender_expr = "sender_id"
+                    else:
+                        sender_expr = "peer_id"
+                    query = (
+                        f"SELECT {sender_expr}, sender_name, body, created_at, id "
+                        "FROM message_log "
+                        "WHERE channel_type = 'matrix' AND chat_id = ? "
+                        "ORDER BY created_at DESC, id DESC "
+                        "LIMIT 30"
+                    )
+                    rows = conn.execute(query, (ROOM_ID,)).fetchall()
+                    for sender_id, sender_name, body, created_at, row_id in rows:
+                        text = (body or "").strip()
+                        if not text:
+                            continue
+                        ts_sec, ts_ms = normalize_ts(created_at)
+                        db_entries.append(
+                            {
+                                "ts_sec": ts_sec,
+                                "ts_ms": ts_ms,
+                                "source_order": 0,
+                                "seq": int(row_id or 0),
+                                "sender_id": (sender_id or "").strip(),
+                                "sender_name": (sender_name or sender_id or "").strip(),
+                                "body": text,
+                            }
+                        )
+                finally:
+                    conn.close()
+            except Exception as exc:
+                sys.stderr.write(f"moltis-matrix-council-hook sqlite warning: {exc}\n")
+
+        self_entries = []
+        for path in history_paths(data_dir, session_key):
+            if not path.is_file():
+                continue
+            try:
+                lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+                for idx, line in enumerate(lines):
+                    raw = line.strip()
+                    if not raw:
+                        continue
+                    try:
+                        item = json.loads(raw)
+                    except ValueError:
+                        continue
+                    if not isinstance(item, dict) or item.get("role") != "assistant":
+                        continue
+                    content = item.get("content")
+                    if not isinstance(content, str) or not content.strip():
+                        continue
+                    ts_sec, ts_ms = normalize_ts(item.get("created_at"))
+                    self_entries.append(
+                        {
+                            "ts_sec": ts_sec,
+                            "ts_ms": ts_ms,
+                            "source_order": 1,
+                            "seq": idx,
+                            "sender_id": SELF_USER_ID,
+                            "sender_name": AGENT_DISPLAY_NAME,
+                            "body": content.strip(),
+                        }
+                    )
+                if self_entries:
+                    break
+            except OSError:
+                continue
+
+        if not self_entries and not db_entries:
+            for idx, msg in enumerate(payload_messages):
+                if not isinstance(msg, dict) or msg.get("role") != "assistant":
+                    continue
+                content = msg.get("content")
+                if isinstance(content, str) and content.strip():
+                    self_entries.append(
+                        {
+                            "ts_sec": 0,
+                            "ts_ms": idx,
+                            "source_order": 1,
+                            "seq": idx,
+                            "sender_id": SELF_USER_ID,
+                            "sender_name": AGENT_DISPLAY_NAME,
+                            "body": content.strip(),
+                        }
+                    )
+
+        # Avoid duplicating self messages if message_log already recorded them.
+        db_self_bodies = {
+            (e["body"], e["ts_sec"])
+            for e in db_entries
+            if e["sender_id"] == SELF_USER_ID
+        }
+        filtered_self = [
+            e for e in self_entries if (e["body"], e["ts_sec"]) not in db_self_bodies
+        ]
+
+        merged = db_entries + filtered_self
+        merged.sort(key=lambda e: (e["ts_sec"], e["ts_ms"], e["source_order"], e["seq"]))
+        return merged[-30:]
+
+
+    def is_martin(entry: dict) -> bool:
+        sender_id = entry.get("sender_id", "")
+        sender_name = entry.get("sender_name", "").lower()
+        return sender_id == MARTIN_ID or sender_id.startswith("@martin:") or sender_name == "martin"
+
+
+    def is_bot(entry: dict) -> bool:
+        sender_id = entry.get("sender_id", "")
+        return sender_id in BOT_IDS or sender_id.startswith(("@skrye:", "@zannah:", "@traya:"))
+
+
+    def build_council_section(room_messages: list[dict]) -> str:
+        bot_turns_since_martin = 0
+        for entry in reversed(room_messages):
+            if is_martin(entry):
+                break
+            if is_bot(entry):
+                bot_turns_since_martin += 1
+
+        current_bot_turn = bot_turns_since_martin + 1
+        if current_bot_turn >= MAX_BOT_TURNS:
+            budget_block = (
+                f"**HARD STOP ON AGENT TAGGING (Turn {current_bot_turn} of {MAX_BOT_TURNS})**: "
+                f"The {MAX_BOT_TURNS}-turn council budget since `{MARTIN_ID}`'s last message is reached. "
+                f"Synthesise the council's conclusions, open trade-offs, and recommended next action for `{MARTIN_ID}`. "
+                "Do NOT output any `@...:matrix.wimpys.world` string in this reply."
+            )
+        elif current_bot_turn == MAX_BOT_TURNS - 1:
+            budget_block = (
+                f"Council turn budget: bot turn {current_bot_turn} of {MAX_BOT_TURNS} since `{MARTIN_ID}`'s last message. "
+                "If a final synthesis is needed, hand off to `@traya:matrix.wimpys.world` for the turn-9 synthesis, or wrap up directly without tagging."
+            )
+        else:
+            budget_block = (
+                f"Council turn budget: bot turn {current_bot_turn} of {MAX_BOT_TURNS} since `{MARTIN_ID}`'s last message."
+            )
+
+        transcript_lines = []
+        for entry in room_messages:
+            ts_sec = entry.get("ts_sec", 0)
+            if ts_sec > 0:
+                ts_str = datetime.fromtimestamp(ts_sec, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+            else:
+                ts_str = "recent"
+            sender = entry.get("sender_id") or entry.get("sender_name") or "unknown"
+            body = entry.get("body", "")
+            transcript_lines.append(f"- [{ts_str}] {sender}: {body}")
+
+        transcript_block = (
+            "\n".join(transcript_lines)
+            if transcript_lines
+            else "- (No prior room messages recorded in local log.)"
+        )
+
+        return (
+            f"## Matrix Council Protocol (`{ROOM_ID}`)\n\n"
+            "You are in the private Matrix council room with Martin and your two Sith peers:\n"
+            f"- **Operator**: Martin (`{MARTIN_ID}`)\n"
+            "- **Traya** (`@traya:matrix.wimpys.world`): Council Chair & Synthesiser - frames architecture, weighs trade-offs, challenges assumptions, and synthesises action plans.\n"
+            "- **Skrye** (`@skrye:matrix.wimpys.world`): Systems & Implementation Lead - grounds proposals in NixOS, Linux, hardware, and concrete implementation reality.\n"
+            "- **Zannah** (`@zannah:matrix.wimpys.world`): Adversarial Critic & Edge-Case Hunter - probes failure modes, security/sandbox boundaries, operational traps, and simpler alternatives.\n\n"
+            "### Anti-Sycophancy and Contribution Rules\n\n"
+            "- Never post a turn just to agree, praise a peer, or ask a vague \"what do you think?\".\n"
+            "- Lead with your distinct perspective, new evidence, a concrete trade-off, or a specific flaw.\n\n"
+            "### Tagging and Turn-Budget Rules\n\n"
+            "- To wake another agent, you MUST write their exact full Matrix ID in plain text (`@traya:matrix.wimpys.world`, `@skrye:matrix.wimpys.world`, or `@zannah:matrix.wimpys.world`). Short names like `@traya` or `@skrye` do NOT wake the other agent.\n"
+            f"- Never tag yourself (`{SELF_USER_ID}`) and never write `@room`.\n"
+            "- Tag **at most one** peer agent in a reply to prevent parallel fan-out storms.\n"
+            f"- Only tag a peer when handing off a specific sub-problem, asking a targeted question, or requesting an adversarial check on a concrete claim. If the point is settled or awaits human direction, tag no peer so the floor returns to `{MARTIN_ID}`.\n"
+            f"- {budget_block}\n\n"
+            "### Recent Council Room Transcript\n\n"
+            f"{transcript_block}"
+        )
+
+
+    def main():
+        raw_input = sys.stdin.read()
+        if not raw_input.strip():
+            emit_continue()
+            return
+
+        payload = json.loads(raw_input)
+        if not isinstance(payload, dict):
+            emit_continue()
+            return
+
+        session_key = payload.get("session_key") or ""
+        if not isinstance(session_key, str) or not (
+            session_key.startswith("channel:matrix:") or session_key.startswith("matrix:")
+        ):
+            emit_continue()
+            return
+
+        messages = payload.get("messages")
+        if (
+            not isinstance(messages, list)
+            or not messages
+            or not isinstance(messages[0], dict)
+            or messages[0].get("role") != "system"
+        ):
+            emit_continue()
+            return
+
+        system_content = messages[0].get("content")
+        if not isinstance(system_content, str) or MARKER in system_content:
+            emit_continue()
+            return
+
+        data_dir = Path(
+            os.environ.get("MOLTIS_DATA_DIR") or os.path.expanduser("~/.moltis")
+        )
+        tool_count = int(payload.get("tool_count") or 0)
+
+        injected_sections = restore_private_persona(data_dir, system_content, tool_count)
+
+        is_council_room = bool(ROOM_ID) and (
+            session_key.endswith(f":{ROOM_ID}") or f":{ROOM_ID}:" in session_key
+        )
+        if is_council_room:
+            room_messages = load_room_messages(data_dir, session_key, messages)
+            injected_sections.append(build_council_section(room_messages))
+
+        if not injected_sections:
+            emit_continue()
+            return
+
+        appended = f"\n\n{MARKER}\n\n" + "\n\n".join(injected_sections) + "\n"
+        messages[0]["content"] = system_content + appended
+        sys.stdout.write(
+            json.dumps({"action": "modify", "data": {"messages": messages}}) + "\n"
+        )
+        sys.stdout.flush()
+
+
+    if __name__ == "__main__":
+        try:
+            main()
+        except Exception as exc:
+            sys.stderr.write(f"moltis-matrix-council-hook error: {exc}\n")
+            emit_continue()
+  '';
+
   moltisInFenceLauncher = pkgs.writeShellApplication {
     name = "moltis-in-fence";
     runtimeInputs = [
@@ -1267,10 +1644,23 @@ in
             room_allowlist = [ matrixCfg.roomId ];
             mention_mode = "mention";
             auto_join = "allowlist";
-            user_allowlist = [ "@martin:matrix.wimpys.world" ];
-            operators = [ ];
+            reply_to_message = false;
+            user_allowlist = [
+              "@martin:matrix.wimpys.world"
+              "@skrye:matrix.wimpys.world"
+              "@zannah:matrix.wimpys.world"
+              "@traya:matrix.wimpys.world"
+            ];
+            operators = [ "@martin:matrix.wimpys.world" ];
             stream_mode = "off";
           };
+        };
+
+        hooks.hooks = lib.optional matrixCfg.enable {
+          name = "matrix-council-context";
+          command = "${moltisMatrixCouncilHook}";
+          events = [ "BeforeLLMCall" ];
+          timeout = 10;
         };
       };
     }
