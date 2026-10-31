@@ -12,6 +12,7 @@ import urllib.parse
 
 import bootstrap as b
 
+ADMIN_ROOM = f"!admins:{b.SERVER}"
 VALUES = {
     key: f"synthetic-{key}"
     for key in [*(f"MATRIX_PASSWORD_{name.upper()}" for name in b.USERS), b.SHARED_KEY]
@@ -33,13 +34,35 @@ def configured_avatars():
 
 class FakeAPI:
     def __init__(self):
-        self.users = {}
-        self.events = {}
+        self.users = {
+            b.CONDUIT_USER: {
+                "username": b.CONDUIT_USER,
+                "displayname": b.CONDUIT_USER,
+                "admin": True,
+            }
+        }
+        self.account_data = {}
+        self.rooms = {
+            ADMIN_ROOM: {
+                ("m.room.create", ""): {
+                    "m.federate": False,
+                    "room_version": "11",
+                },
+                ("m.room.canonical_alias", ""): {"alias": b.ADMIN_ALIAS},
+                ("m.room.name", ""): {"name": f"{b.SERVER} Admin Room"},
+                ("m.room.member", b.user_id(b.CONDUIT_USER)): {"membership": "join"},
+                ("m.room.member", b.user_id("martin")): {"membership": "join"},
+            }
+        }
+        self.aliases = {b.ADMIN_ALIAS: ADMIN_ROOM}
         self.media = {}
-        self.alias = None
         self.calls = []
         self.fail_after: tuple[str, str] | None = None
         self.displayname_suffix = ""
+
+    @property
+    def events(self):
+        return self.rooms[b.ROOM]
 
     def call(
         self,
@@ -88,8 +111,9 @@ class FakeAPI:
         if path == b.CLIENT + "/login":
             user = body["identifier"]["user"].split(":")[0][1:]
             if (
-                user not in self.users
-                or self.users[user]["password"] != body["password"]
+                user == b.CONDUIT_USER
+                or user not in self.users
+                or self.users[user].get("password") != body["password"]
             ):
                 raise b.APIError(403, "M_FORBIDDEN")
             assert body["device_id"] == f"PRIVATE_MATRIX_BOOTSTRAP_{user.upper()}"
@@ -116,79 +140,141 @@ class FakeAPI:
             if media_id not in self.media:
                 raise b.APIError(404, "M_NOT_FOUND")
             return self.media[media_id]
-        if path.endswith("/displayname"):
-            target = urllib.parse.unquote(path.split("/")[-2]).split(":")[0][1:]
+        if path.startswith(b.CLIENT + "/profile/"):
+            parts = path.removeprefix(b.CLIENT + "/profile/").split("/")
+            target = urllib.parse.unquote(parts[0]).split(":")[0][1:]
+            if len(parts) == 1:
+                assert method == "GET"
+                if target not in self.users:
+                    raise b.APIError(404, "M_NOT_FOUND")
+                profile = {}
+                if "displayname" in self.users[target]:
+                    profile["displayname"] = self.users[target]["displayname"]
+                if "avatar_url" in self.users[target]:
+                    profile["avatar_url"] = self.users[target]["avatar_url"]
+                return profile
+            field = parts[1]
             assert target == token
-            if method == "PUT":
-                self.users[token]["displayname"] = body["displayname"]
-                return {}
-            return {"displayname": self.users[token]["displayname"]}
-        if path.endswith("/avatar_url"):
-            target = urllib.parse.unquote(path.split("/")[-2]).split(":")[0][1:]
-            assert target == token
-            if method == "PUT":
-                self.users[token]["avatar_url"] = body["avatar_url"]
-                return {}
-            if "avatar_url" not in self.users[token]:
-                return {}
-            return {"avatar_url": self.users[token]["avatar_url"]}
+            if field == "displayname":
+                if method == "PUT":
+                    self.users[token]["displayname"] = body["displayname"]
+                    return {}
+                return {"displayname": self.users[token]["displayname"]}
+            if field == "avatar_url":
+                if method == "PUT":
+                    self.users[token]["avatar_url"] = body["avatar_url"]
+                    return {}
+                if "avatar_url" not in self.users[token]:
+                    return {}
+                return {"avatar_url": self.users[token]["avatar_url"]}
         if path.startswith("/_synapse/admin/v1/users/"):
             assert token == b.USERS[0]
             target = urllib.parse.unquote(path.split("/")[-2]).split(":")[0][1:]
             return {"admin": self.users[target]["admin"]}
+        if path.startswith("/_synapse/admin/v2/users/"):
+            assert method == "PUT"
+            assert token == b.USERS[0]
+            target = urllib.parse.unquote(path.split("/")[-1]).split(":")[0][1:]
+            assert target == b.CONDUIT_USER
+            if "displayname" in body:
+                self.users[target]["displayname"] = body["displayname"]
+            if "avatar_url" in body:
+                self.users[target]["avatar_url"] = body["avatar_url"]
+            return {"name": b.user_id(target)}
+        if path.startswith(b.CLIENT + "/user/") and path.endswith(
+            "/account_data/m.direct"
+        ):
+            target = (
+                urllib.parse.unquote(path.removeprefix(b.CLIENT + "/user/").split("/")[0])
+                .split(":")[0][1:]
+            )
+            assert target == token
+            if method == "GET":
+                if target not in self.account_data:
+                    raise b.APIError(404, "M_NOT_FOUND")
+                return copy.deepcopy(self.account_data[target])
+            assert method == "PUT"
+            self.account_data[target] = copy.deepcopy(body)
+            return {}
         if path == b.CLIENT + "/logout":
             return {}
-        if path == b.CLIENT + "/directory/room/" + b.quoted(b.ALIAS):
-            if self.alias is None:
+        if path.startswith(b.CLIENT + "/directory/room/"):
+            alias = urllib.parse.unquote(
+                path.removeprefix(b.CLIENT + "/directory/room/")
+            )
+            if alias not in self.aliases:
                 raise b.APIError(404, "M_NOT_FOUND")
-            return {"room_id": self.alias}
+            return {"room_id": self.aliases[alias]}
         if path == b.CLIENT + "/createRoom":
-            assert self.alias is None
-            assert body["room_id"] == "the-cauldron"
-            self.alias = b.ROOM
-            self.events = {
+            room_id = f"!{body['room_id']}:{b.SERVER}"
+            if room_id in self.rooms:
+                raise b.APIError(400, "M_ROOM_IN_USE")
+            events = {
                 (event["type"], event["state_key"]): event["content"]
                 for event in body["initial_state"]
             }
-            self.events.update(
+            events.update(
                 {
                     ("m.room.create", ""): {
                         **body["creation_content"],
                         "room_version": body["room_version"],
                     },
-                    ("m.room.canonical_alias", ""): {"alias": b.ALIAS},
                     ("m.room.name", ""): {"name": body["name"]},
                     ("m.room.topic", ""): {"topic": body["topic"]},
                     ("m.room.power_levels", ""): body["power_level_content_override"],
-                    ("m.room.member", b.user_id("martin")): {"membership": "join"},
+                    ("m.room.member", b.user_id("martin")): {
+                        "membership": "join",
+                        **(
+                            {"is_direct": True}
+                            if body.get("is_direct")
+                            else {}
+                        ),
+                    },
                 }
             )
-            return {"room_id": b.ROOM}
-        if path.endswith("/state"):
-            return [
-                {
-                    "type": kind,
-                    "state_key": key,
-                    "content": value,
-                    "sender": b.user_id("martin"),
-                }
-                for (kind, key), value in self.events.items()
-            ]
-        for state_kind in ("avatar", "name", "topic"):
-            if path.endswith(f"/state/m.room.{state_kind}/"):
-                assert method == "PUT"
+            if "room_alias_name" in body:
+                alias = f"#{body['room_alias_name']}:{b.SERVER}"
+                assert alias not in self.aliases
+                self.aliases[alias] = room_id
+                events[("m.room.canonical_alias", "")] = {"alias": alias}
+            self.rooms[room_id] = events
+            return {"room_id": room_id}
+        if path.startswith(b.CLIENT + "/rooms/"):
+            rest = path.removeprefix(b.CLIENT + "/rooms/")
+            room_id = urllib.parse.unquote(rest.split("/", 1)[0])
+            suffix = "/" + rest.split("/", 1)[1]
+            if room_id not in self.rooms:
+                raise b.APIError(403, "M_FORBIDDEN")
+            room_events = self.rooms[room_id]
+            if suffix == "/state":
+                return [
+                    {
+                        "type": kind,
+                        "state_key": key,
+                        "content": value,
+                        "sender": b.user_id("martin"),
+                    }
+                    for (kind, key), value in room_events.items()
+                ]
+            for state_kind in ("avatar", "name", "topic"):
+                if suffix == f"/state/m.room.{state_kind}/":
+                    assert method == "PUT"
+                    assert token == b.USERS[0]
+                    room_events[(f"m.room.{state_kind}", "")] = copy.deepcopy(body)
+                    return {"event_id": f"$synthetic-room-{state_kind}"}
+            if suffix == "/invite":
                 assert token == b.USERS[0]
-                self.events[(f"m.room.{state_kind}", "")] = copy.deepcopy(body)
-                return {"event_id": f"$synthetic-room-{state_kind}"}
+                room_events[("m.room.member", body["user_id"])] = {
+                    "membership": "invite"
+                }
+                return {}
+            if suffix == "/join":
+                room_events[("m.room.member", b.user_id(token))] = {
+                    "membership": "join"
+                }
+                return {"room_id": room_id}
         if "/directory/list/room/" in path:
             return {"visibility": "private"}
-        if path.endswith("/invite"):
-            assert token == b.USERS[0]
-            self.events[("m.room.member", body["user_id"])] = {"membership": "invite"}
-            return {}
-        if path.endswith("/join"):
-            self.events[("m.room.member", b.user_id(token))] = {"membership": "join"}
-            return {"room_id": b.ROOM}
         raise AssertionError((method, path))
 
 
@@ -235,6 +321,28 @@ class BootstrapTests(unittest.TestCase):
                 "join",
             )
         self.assertEqual(
+            self.api.users[b.CONDUIT_USER]["displayname"],
+            b.CONDUIT_DISPLAY_NAME,
+        )
+        self.assertEqual(
+            self.media_bytes(self.api.users[b.CONDUIT_USER]["avatar_url"]),
+            self.avatars[b.CONDUIT_USER],
+        )
+        self.assertEqual(
+            self.api.rooms[ADMIN_ROOM][("m.room.name", "")]["name"],
+            b.ADMIN_ROOM_NAME,
+        )
+        self.assertEqual(
+            self.api.rooms[ADMIN_ROOM][("m.room.topic", "")]["topic"],
+            b.ADMIN_ROOM_TOPIC,
+        )
+        self.assertEqual(
+            self.media_bytes(
+                self.api.rooms[ADMIN_ROOM][("m.room.avatar", "")]["url"]
+            ),
+            self.avatars["admins"],
+        )
+        self.assertEqual(
             self.api.events[("m.room.name", "")]["name"],
             b.ROOM_NAME,
         )
@@ -245,6 +353,37 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(
             self.media_bytes(self.api.events[("m.room.avatar", "")]["url"]),
             self.avatars["the-cauldron"],
+        )
+        for agent in b.AGENTS:
+            dm_room = b.dm_room_id(agent)
+            dm_events = self.api.rooms[dm_room]
+            self.assertEqual(
+                dm_events[("m.room.name", "")]["name"],
+                b.DISPLAY_NAMES[agent],
+            )
+            self.assertEqual(
+                dm_events[("m.room.topic", "")]["topic"],
+                b.DM_TOPICS[agent],
+            )
+            self.assertEqual(
+                self.media_bytes(dm_events[("m.room.avatar", "")]["url"]),
+                self.avatars[agent],
+            )
+            self.assertEqual(
+                dm_events[("m.room.member", b.user_id("martin"))]["membership"],
+                "join",
+            )
+            self.assertEqual(
+                dm_events[("m.room.member", b.user_id(agent))]["membership"],
+                "join",
+            )
+            self.assertEqual(
+                self.api.account_data[agent],
+                {b.user_id("martin"): [dm_room]},
+            )
+        self.assertEqual(
+            self.api.account_data["martin"],
+            {b.user_id(agent): [b.dm_room_id(agent)] for agent in b.AGENTS},
         )
         self.api.calls.clear()
         self.assertEqual(self.run_bootstrap(), b.ROOM)
@@ -257,14 +396,34 @@ class BootstrapTests(unittest.TestCase):
         self.run_bootstrap()
         for user in b.USERS:
             self.api.users[user]["displayname"] = user
+        self.api.users[b.CONDUIT_USER]["displayname"] = b.CONDUIT_USER
+        self.api.rooms[ADMIN_ROOM][("m.room.name", "")] = {"name": "admins"}
+        del self.api.rooms[ADMIN_ROOM][("m.room.topic", "")]
         self.api.events[("m.room.name", "")] = {"name": "the-cauldron"}
         del self.api.events[("m.room.topic", "")]
+        dm_skrye = b.dm_room_id("skrye")
+        self.api.rooms[dm_skrye][("m.room.name", "")] = {"name": "skrye"}
+        del self.api.rooms[dm_skrye][("m.room.topic", "")]
+        self.api.account_data["martin"][b.user_id("skrye")] = ["!legacy:matrix.wimpys.world"]
+        del self.api.account_data["skrye"]
         self.api.calls.clear()
         self.assertEqual(self.run_bootstrap(), b.ROOM)
         for user in b.USERS:
             self.assertEqual(
                 self.api.users[user]["displayname"], b.DISPLAY_NAMES[user]
             )
+        self.assertEqual(
+            self.api.users[b.CONDUIT_USER]["displayname"],
+            b.CONDUIT_DISPLAY_NAME,
+        )
+        self.assertEqual(
+            self.api.rooms[ADMIN_ROOM][("m.room.name", "")],
+            {"name": b.ADMIN_ROOM_NAME},
+        )
+        self.assertEqual(
+            self.api.rooms[ADMIN_ROOM][("m.room.topic", "")],
+            {"topic": b.ADMIN_ROOM_TOPIC},
+        )
         self.assertEqual(
             self.api.events[("m.room.name", "")],
             {"name": b.ROOM_NAME},
@@ -274,14 +433,46 @@ class BootstrapTests(unittest.TestCase):
             {"topic": b.ROOM_TOPIC},
         )
         self.assertEqual(
+            self.api.rooms[dm_skrye][("m.room.name", "")],
+            {"name": b.DISPLAY_NAMES["skrye"]},
+        )
+        self.assertEqual(
+            self.api.rooms[dm_skrye][("m.room.topic", "")],
+            {"topic": b.DM_TOPICS["skrye"]},
+        )
+        self.assertEqual(
+            self.api.account_data["martin"][b.user_id("skrye")],
+            ["!legacy:matrix.wimpys.world", dm_skrye],
+        )
+        self.assertEqual(
+            self.api.account_data["skrye"],
+            {b.user_id("martin"): [dm_skrye]},
+        )
+        self.assertEqual(
             self.writes(),
             [
                 *(
                     ("PUT", f"{b.CLIENT}/profile/{b.quoted(b.user_id(user))}/displayname")
                     for user in b.USERS
                 ),
+                (
+                    "PUT",
+                    f"/_synapse/admin/v2/users/{b.quoted(b.user_id(b.CONDUIT_USER))}",
+                ),
+                ("PUT", f"{b.CLIENT}/rooms/{b.quoted(ADMIN_ROOM)}/state/m.room.name/"),
+                ("PUT", f"{b.CLIENT}/rooms/{b.quoted(ADMIN_ROOM)}/state/m.room.topic/"),
                 ("PUT", f"{b.CLIENT}/rooms/{b.quoted(b.ROOM)}/state/m.room.name/"),
                 ("PUT", f"{b.CLIENT}/rooms/{b.quoted(b.ROOM)}/state/m.room.topic/"),
+                ("PUT", f"{b.CLIENT}/rooms/{b.quoted(dm_skrye)}/state/m.room.name/"),
+                ("PUT", f"{b.CLIENT}/rooms/{b.quoted(dm_skrye)}/state/m.room.topic/"),
+                (
+                    "PUT",
+                    f"{b.CLIENT}/user/{b.quoted(b.user_id('skrye'))}/account_data/m.direct",
+                ),
+                (
+                    "PUT",
+                    f"{b.CLIENT}/user/{b.quoted(b.user_id('martin'))}/account_data/m.direct",
+                ),
             ],
         )
         self.api.calls.clear()
@@ -345,7 +536,16 @@ class BootstrapTests(unittest.TestCase):
                         len([body for body in posts if body["username"] == "martin"]), 1
                     )
                 else:
-                    self.assertEqual(len(posts), 1)
+                    self.assertEqual(
+                        len(
+                            [
+                                body
+                                for body in posts
+                                if body["room_id"] == "the-cauldron"
+                            ]
+                        ),
+                        1,
+                    )
 
     def test_existing_password_is_not_reset(self):
         self.run_bootstrap()

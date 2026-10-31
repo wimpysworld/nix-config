@@ -65,6 +65,7 @@ in
         registration_shared_secret_file = "/run/credentials/${tuwunelUnit}/${registrationSecret}";
         well_known = {
           client = "https://${domain}";
+          support_email = "kneel@darth.cc";
           support_mxid = "@martin:${domain}";
           support_role = "m.role.admin";
           support_page = "https://github.com/the-cauldron";
