@@ -24,6 +24,15 @@ let
   auxiliaryReasoningEffort = if isTraya then "high" else "medium";
   stateDir = "${config.xdg.stateHome}/moltis";
   mcporterConfig = "${config.xdg.configHome}/moltis/mcporter.json";
+  mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
+  mcpRequiredSecrets = mcpServerDefs.requiredSecretsForConsumers [ "moltis" ];
+  mcpExportedSecrets = lib.intersectLists [
+    "LINEAR_API_KEY"
+    "CONTEXT7_API_KEY"
+  ] mcpRequiredSecrets;
+  mcpReadySecrets =
+    mcpRequiredSecrets
+    ++ lib.optional (mcpServerDefs.moltisCapabilities ? cloudflare-api) "CLOUDFLARE_API_TOKEN";
   mcpInstructions = ''
     For all MCP operations, use only `mcporter --config "$MCPORTER_CONFIG" ...` through `exec`, with `--no-oauth`.
     Never use native MCP tools or management controls.
@@ -671,9 +680,14 @@ let
       pkgs.git
       pkgs.python3
       pkgs.sqlite
-    ];
+    ]
+    ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.systemd ];
     text = ''
       export MCPORTER_CONFIG=${lib.escapeShellArg mcporterConfig}
+      ${lib.concatMapStringsSep "\n" (name: ''
+        ${name}="$(< ${lib.escapeShellArg config.sops.secrets.${name}.path})"
+        export ${name}
+      '') mcpExportedSecrets}
       export MOLTIS_DATA_DIR=${lib.escapeShellArg "${homeDir}/.moltis"}
       ${lib.getExe mcpCliMigration} "$MOLTIS_DATA_DIR"
 
@@ -743,20 +757,28 @@ let
       for _ in {1..20}; do
         [[ -r "${
           config.sops.templates."moltis.toml".path
-        }" && -r "${geminiKeyPath}" && -r "${ghTokenPath}" && -r "${gitAuthorEmailPath}" && -e "${sshKeyPath}" ]] && break
+        }" && -r "${geminiKeyPath}" && -r "${ghTokenPath}" && -r "${gitAuthorEmailPath}" && -e "${sshKeyPath}" ${
+          lib.concatMapStringsSep " " (
+            name: "&& -r ${lib.escapeShellArg config.sops.secrets.${name}.path}"
+          ) mcpReadySecrets
+        } ]] && break
         sleep 0.5
       done
       if [[ ! -r "${
         config.sops.templates."moltis.toml".path
-      }" || ! -r "${geminiKeyPath}" || ! -r "${ghTokenPath}" || ! -r "${gitAuthorEmailPath}" || ! -e "${sshKeyPath}" ]]; then
+      }" || ! -r "${geminiKeyPath}" || ! -r "${ghTokenPath}" || ! -r "${gitAuthorEmailPath}" || ! -e "${sshKeyPath}" ${
+        lib.concatMapStringsSep " " (
+          name: "|| ! -r ${lib.escapeShellArg config.sops.secrets.${name}.path}"
+        ) mcpReadySecrets
+      } ]]; then
         echo "moltis-fenced: timed out waiting for sops-nix secrets" >&2
         exit 1
       fi
 
-      # The rendered `[env]` table already carries the real secret values at
-      # sops render time, so unlike `opencode-fenced` no key-read prologue is
-      # needed here. `moltis-in-fence` starts the local Gemini TTS shim in the
-      # same Fence sandbox and network namespace before replacing the shell
+      # The rendered `[env]` table supplies internal config substitutions.
+      # `moltis-in-fence` exports credentials for child processes and starts
+      # the local Gemini TTS shim in the same Fence sandbox and network
+      # namespace before replacing the shell
       # with `moltis`, so the gateway stays the foreground daemon and satisfies
       # the unit's `Type = "simple"` contract. The `fence_direnv` launcher is
       # inert here: the unit runs at $HOME, away from any project `.envrc`.
@@ -834,15 +856,8 @@ in
 
   config = lib.mkIf moltisEnabled (
     let
-      # Import the shared MCP server definitions the same way
-      # `mcp/default.nix` does; never re-derive the renderer.
-      mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
-
-      # The `[env]` table: one entry per plumbing variable, values replaced
-      # with the rendered secret at sops template render time. Moltis makes
-      # `[env]` variables part of its process environment, so the literal
-      # `${NAME}` placeholders in rendered MCP image headers resolve from it
-      # (loader second pass treats `[env]` as an overrides map).
+      # The `[env]` table supplies internal config substitutions from sops
+      # template values. It does not export variables to child processes.
       envBlock = lib.listToAttrs (
         lib.map (entry: lib.nameValuePair entry.name entry.placeholder) config.agentic.moltis.envPlumbing
       );
@@ -1110,9 +1125,8 @@ in
               );
         };
 
-        # No inline `api_key`: Moltis does not expand `${VAR}` placeholders
-        # inside provider `api_key` values, so `GEMINI_API_KEY` comes from
-        # the process environment swept in by `[env]`.
+        # No inline `api_key`: the provider reads `GEMINI_API_KEY` from
+        # Moltis' internal `[env]` configuration.
         providers = {
           gemini = {
             enabled = !isTraya;
