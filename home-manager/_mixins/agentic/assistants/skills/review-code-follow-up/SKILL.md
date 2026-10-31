@@ -93,8 +93,8 @@ Severity bar: <original bar>
 <what remains and whether another author response is required>
 ```
 
-Put each `partly resolved` or `unresolved` prior defect in `Findings`. Also put response-caused defects and permitted serious missed defects there. Keep resolved and withdrawn items only in `Prior Findings`, so `draft-code-review` continues to read `Findings` only.
+Put each `partly resolved` or `unresolved` prior defect in `Findings`. Also put response-caused defects, permitted serious missed defects, false-positive inline threads that need a rebuttal, and `Resolve: <review-comment-url>` entries for open GitHub threads whose prior finding is now `resolved` or `withdrawn` in `Findings`, so `draft-code-review` continues to read `Findings` only.
 
-Apply `contribution-voice` when wording every actionable finding. Each finding is at most three sentences: the defect, the proof with one `file:line`, and the fix. Do not draft or post a GitHub comment, state a review verdict, or mutate GitHub.
+Apply `contribution-voice` when wording every actionable finding. Precede each entry in `Findings` with its placement prefix line (`Reply: <review-comment-url>` for an existing thread, `Refute: <review-comment-url>` or `Refute-Resolve: <review-comment-url>` for a false-positive thread, `Resolve: <review-comment-url>` to close a resolved or withdrawn thread, `Inline: <repo-path>:<line>` for a net-new diff finding, or `General` when no diff line applies). Each finding body is at most three sentences: the defect, the proof with one `file:line`, and the fix. Do not draft or post a GitHub comment, state a review verdict, or mutate GitHub.
 
 Return the conclusion, each finding that needs action, and the report path.

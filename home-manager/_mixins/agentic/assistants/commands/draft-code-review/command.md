@@ -1,6 +1,6 @@
 ## Draft Code Review
 
-Draft the single GitHub review comment for a review that has already been conducted. This step drafts only; it never posts, approves, or mutates GitHub.
+Draft the inline GitHub review comments and thread replies for a review that has already been conducted. This step drafts only; it never posts, approves, or mutates GitHub.
 
 ### Input
 
@@ -10,7 +10,7 @@ Draft the single GitHub review comment for a review that has already been conduc
 
 The `contribution-voice` skill governs the structure. These rules are what it does not cover:
 
-- One concise comment, not a list of separate comments
+- Place each finding on its exact diff line (`Inline: <repo-path>:<line>`), inside the existing review thread (`Reply: <review-comment-url>`, `Refute: <review-comment-url>`, `Refute-Resolve: <review-comment-url>`, or `Resolve: <review-comment-url>`), or under `General` when no diff line applies, rather than combining all findings into one top-level comment
 - A changes or comment verdict carries the findings and nothing else. No opening list of what you checked, no verification paragraph, no statement that the rest holds. That is the audit trail; it stays in the report
 - Each finding gets three sentences at most: the defect, the proof, the fix
 - When approving, say only that. Do not describe what the pull request does; the code speaks for itself
@@ -23,6 +23,8 @@ These bans govern this drafting step. They do not restrict the command that invo
 NEVER execute while drafting:
 
 - `gh pr review` - this step produces the comment, the caller posts it
+- `gh-review-inline` - this step produces the inline comments, the caller posts them
+- `gh-review-reply` - this step produces the thread replies, the caller posts them
 - `gh pr comment` - this step produces the comment, the caller posts it
 - `gh pr merge` - never change pull request state
 - `gh pr close` - never change pull request state
@@ -72,9 +74,11 @@ Report finds a race on the shared cache map and an unbounded retry loop.
 Verdict: changes
 
 ```markdown
-`cache.Set` writes the shared map without holding `mu`. Take the same lock `cache.Get` uses, or swap to `sync.Map`.
+Inline: pkg/cache/cache.go:42
+`cache.Set` writes the shared map without holding `mu`. Concurrent calls with `cache.Get` panic on map writes. Take the same lock `cache.Get` uses, or swap to `sync.Map`.
 
-`fetchWithRetry` retries forever on a 4xx. Cap the attempts and return the last error for any non-retryable status.
+Reply: https://github.com/owner/repo/pull/12#discussion_r1000001
+`fetchWithRetry` retries forever on a 4xx status. Reproducing a 404 response loops without bound at `pkg/http/client.go:88`. Cap the attempts and return the last error for any non-retryable status.
 ```
 
 </example_output>

@@ -4,7 +4,7 @@
 ## Fence policy
 
 Coding agents run fenced. Fence permits the everyday mutations:
-`git push`, `gh pr comment`, `gh-review-reply`, `gh issue create`,
+`git push`, `gh pr comment`, `gh-review-inline`, `gh-review-reply`, `gh-review-resolve`, `gh issue create`,
 `gh issue edit`, `gh issue comment`, `gh issue develop`, `gh project item-add`,
 `gh project item-edit`, `gh run rerun`, `gh run cancel`, `gh pr update-branch`,
 and `gh pr review --approve`. The source policy also permits
@@ -30,7 +30,7 @@ It governs the structure: length, layout,
 sign-offs, and the cut pass.
 
 This covers `gh pr create`, `gh pr comment`, `gh pr review`,
-`gh issue create`, `gh issue comment`, `gh-review-reply`, and
+`gh issue create`, `gh issue comment`, `gh-review-inline`, `gh-review-reply`, and
 `gh-code-scanning-dismiss`.
 
 Prefer the dedicated commands where one fits, because each already loads
@@ -220,8 +220,10 @@ command for the operator to run in an unfenced shell.
 | -------------------------------------- | ---------------------------------------------------- |
 | Read-only REST fetch                   | `gh-api-safe <path>`                                 |
 | GraphQL read (queries only)            | `gh-api-safe graphql -f query='…'`                   |
-| Dedicated subcommand exists            | that subcommand (`gh pr edit`, `gh issue edit`, ...) |
+|Dedicated subcommand exists            | that subcommand (`gh pr edit`, `gh issue edit`, ...) |
+| Submit inline review comments          | `gh-review-inline <pr-url> --commit <sha> ...`       |
 | Reply inside a review comment thread   | `gh-review-reply <review-comment-url>`               |
+| Resolve a review comment thread        | `gh-review-resolve <review-comment-url>`             |
 | Dismiss an authorised alert            | `gh-code-scanning-dismiss`                           |
 | Other mutation (POST/PATCH/PUT/DELETE) | `gh api -X ...` in unfenced shell                    |
 | Field input from file (`-F x=@file`)   | raw `gh api` in unfenced shell                       |
@@ -296,6 +298,13 @@ gh-api-safe repos/{owner}/{repo}/pulls/123/comments \
   --jq '.[] | {id, path, user: .user.login, url: .html_url}'
 gh-review-reply https://github.com/owner/repo/pull/123#discussion_r2109876543 \
   --body-file reply.md
+
+# Submit net-new inline review comments anchored to diff lines
+gh-review-inline https://github.com/owner/repo/pull/123 \
+  --commit 0123456789abcdef0123456789abcdef01234567 \
+  --event COMMENT \
+  --comment src/main.rs:42 \
+  --comment-file finding-1.md
 ```
 
 `gh-code-scanning-dismiss` dismisses one open code scanning alert.

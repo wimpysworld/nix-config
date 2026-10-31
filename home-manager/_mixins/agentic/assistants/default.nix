@@ -483,6 +483,7 @@ let
     manifest_path = state_dir / "manifest.json"
     legacy_hashes = {
         moltis_root / "AGENTS.md": {
+            "9ad67614f503e1268087081c54dda04ba77a9db1a915bdcaf95fd8793599c33e",
             "4210d71edfc6902e037c6592f0933a6c4929970bc3cf20cad9cce16be652c2de",
             ${builtins.toJSON moltisLegacyInstructionsHash},
             ${builtins.toJSON moltisCurrentInstructionsHash},
@@ -494,6 +495,7 @@ let
         moltis_root / "TOOLS.md": set(${builtins.toJSON moltisToolsLegacyHashes}),
         moltis_root / "agents/main/TOOLS.md": set(${builtins.toJSON moltisToolsLegacyHashes}),
         moltis_root / "agents/main/AGENTS.md": {
+            "9ad67614f503e1268087081c54dda04ba77a9db1a915bdcaf95fd8793599c33e",
             "4210d71edfc6902e037c6592f0933a6c4929970bc3cf20cad9cce16be652c2de",
             ${builtins.toJSON moltisLegacyInstructionsHash},
             ${builtins.toJSON moltisCurrentInstructionsHash},
