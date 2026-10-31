@@ -4,7 +4,7 @@ Nix composes agents, commands, and skills from one source tree for each enabled 
 
 Developer servers keep Pi Agent resources. Claude Code, OpenCode, and Codex resources are emitted only when those clients are enabled.
 
-[Moltis delivery](../moltis/README.md) also supports Martin's Linux and Darwin hosts with the `moltis` tag. Momin is Traya's prepared replacement for Malak.
+[Moltis delivery](../moltis/README.md) also supports Martin's Linux and Darwin hosts with the `moltis` tag. Momin is Traya's prepared replacement for Malak. The optional shared Matrix room remains off until separate onboarding and activation approval.
 
 Moltis also receives Nix-managed tool instructions from [`../moltis/TOOLS.md`](../moltis/TOOLS.md), with public host and provider facts. Both installed copies use the shared ownership helper. See [tool instructions and ownership](../moltis/README.md#tool-instructions-and-ownership) for editing, migration, and normal-chat reload behaviour. This Markdown source changes no agent or skill metadata, so it needs no catalogue update.
 

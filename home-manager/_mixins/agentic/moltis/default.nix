@@ -8,6 +8,7 @@
 }:
 let
   inherit (config.noughty) host;
+  matrixCfg = config.agentic.moltis.matrix;
 
   isMartin = noughtyLib.isUser [ "martin" ];
   moltisEnabled = isMartin && (host.is.linux || host.is.darwin) && noughtyLib.hostHasTag "moltis";
@@ -90,7 +91,8 @@ let
     GEMINI_API_KEY = aiSopsFile;
     CONTEXT7_API_KEY = mcpSopsFile;
     LINEAR_API_KEY = linearSopsFile;
-  };
+  }
+  // lib.optionalAttrs matrixCfg.enable { MATRIX_ACCESS_TOKEN = moltisSopsFile; };
 
   secretConfig =
     name:
@@ -98,6 +100,12 @@ let
       {
         sopsFile = linearSopsFile;
         key = if isWorkHost then "chainguard" else "wimpysworld";
+      }
+    else if name == "MATRIX_ACCESS_TOKEN" then
+      {
+        sopsFile = moltisSopsFile;
+        key = "MATRIX_ACCESS_TOKEN_${lib.toUpper agentName}";
+        mode = "0400";
       }
     else if name == "TELEGRAM_BOT_TOKEN" then
       {
@@ -817,6 +825,20 @@ in
       internal = true;
       description = "Public runtime facts for the composed Moltis TOOLS.md.";
     };
+    matrix = {
+      enable = lib.mkEnableOption "the private Matrix room channel";
+      userId = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = "Provisioned Matrix user ID on matrix.wimpys.world.";
+      };
+      roomId = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = "Provisioned unencrypted Matrix room ID. Room aliases are not accepted.";
+      };
+    };
+
     envPlumbing = lib.mkOption {
       type =
         with lib.types;
@@ -881,10 +903,28 @@ in
       );
     in
     {
-      assertions = lib.optional host.is.darwin {
-        assertion = config.agentic.assistants.requiresSecrets;
-        message = "Moltis on Darwin requires the synchronous refreshSopsNix activation step.";
-      };
+      assertions =
+        lib.optional host.is.darwin {
+          assertion = config.agentic.assistants.requiresSecrets;
+          message = "Moltis on Darwin requires the synchronous refreshSopsNix activation step.";
+        }
+        ++ lib.optionals matrixCfg.enable [
+          {
+            assertion =
+              matrixCfg.userId != null
+              && builtins.stringLength matrixCfg.userId <= 255
+              && builtins.match "@[a-z0-9._=/-]+:matrix\\.wimpys\\.world" matrixCfg.userId != null;
+            message = "agentic.moltis.matrix.userId must be a provisioned Matrix user ID on matrix.wimpys.world when Matrix is enabled.";
+          }
+          {
+            assertion =
+              matrixCfg.roomId != null
+              && builtins.stringLength matrixCfg.roomId <= 255
+              &&
+                builtins.match "![^[:space:]:]+:[A-Za-z0-9]+([.-][A-Za-z0-9]+)*(:[0-9]+)?" matrixCfg.roomId != null;
+            message = "agentic.moltis.matrix.roomId must be a provisioned Matrix room ID (!opaque:server), not an alias, when Matrix is enabled.";
+          }
+        ];
 
       home.packages = [
         pkgs.moltis
@@ -1179,7 +1219,7 @@ in
         };
 
         channels = {
-          offered = [ "telegram" ];
+          offered = [ "telegram" ] ++ lib.optional matrixCfg.enable "matrix";
           telegram.moltis = {
             # BotFather token arrives through `[env]`; Moltis applies
             # `${VAR}` substitution to the whole raw config text, not
@@ -1201,6 +1241,24 @@ in
             otp_self_approval = false;
             model = mainModelName;
             model_provider = mainProvider;
+          };
+        }
+        // lib.optionalAttrs matrixCfg.enable {
+          matrix."matrix-${agentName}" = {
+            homeserver = "https://matrix.wimpys.world:8443";
+            auth_mode = "access_token";
+            access_token = "\${MATRIX_ACCESS_TOKEN}";
+            user_id = matrixCfg.userId;
+            ownership_mode = "user_managed";
+            dm_policy = "disabled";
+            otp_self_approval = false;
+            room_policy = "allowlist";
+            room_allowlist = [ matrixCfg.roomId ];
+            mention_mode = "mention";
+            auto_join = "allowlist";
+            user_allowlist = [ ];
+            operators = [ ];
+            stream_mode = "off";
           };
         };
       };

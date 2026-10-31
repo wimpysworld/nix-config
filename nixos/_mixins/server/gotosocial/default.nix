@@ -45,8 +45,7 @@ lib.mkMerge [
         virtualHosts."${config.services.gotosocial.settings.host}" = {
           extraConfig = ''
             encode zstd gzip
-            reverse_proxy ${config.services.gotosocial.settings.bind-address}:${toString config.services.gotosocial.settings.port}
-            {
+            reverse_proxy ${config.services.gotosocial.settings.bind-address}:${toString config.services.gotosocial.settings.port} {
               # Flush immediately, to prevent buffered response to the client
               flush_interval -1
             }
