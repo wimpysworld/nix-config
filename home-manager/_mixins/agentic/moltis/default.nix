@@ -818,6 +818,11 @@ in
       );
     in
     {
+      assertions = lib.optional host.is.darwin {
+        assertion = config.agentic.assistants.requiresSecrets;
+        message = "Moltis on Darwin requires the synchronous refreshSopsNix activation step.";
+      };
+
       home.packages = [
         pkgs.moltis
         moltisFencedPackage
@@ -829,6 +834,56 @@ in
           "tail -F ${stateDir}/daemon.stdout.log ${stateDir}/daemon.stderr.log"
         else
           "journalctl --user -u moltis.service";
+
+      home.activation.restartMoltis = lib.mkIf host.is.darwin (
+        let
+          restartToken = builtins.hashString "sha256" (
+            builtins.toJSON {
+              template = toString config.sops.templates."moltis.toml".file;
+              secrets = lib.genAttrs (lib.attrNames moltisSecretSopsFiles) (
+                name:
+                let
+                  secret = config.sops.secrets.${name};
+                in
+                {
+                  source = "${secret.sopsFile}";
+                  inherit (secret) key;
+                }
+              );
+            }
+          );
+        in
+        lib.hm.dag.entryAfter [ "refreshSopsNix" "assistantOwnedFiles" "setupLaunchAgents" ] ''
+          restartMoltis() (
+            set -e
+            umask 077
+            stateDir=${lib.escapeShellArg stateDir}
+            marker="$stateDir/activation-token"
+            if [[ -L "$stateDir" || -L "$marker" || ( -e "$marker" && ! -f "$marker" ) ]]; then
+              echo "Moltis: refusing an unsafe activation marker path." >&2
+              exit 1
+            fi
+            if [[ -f "$marker" && "$(< "$marker")" == ${lib.escapeShellArg restartToken} ]]; then
+              exit 0
+            fi
+            domain="gui/$(${pkgs.coreutils}/bin/id -u)"
+            if ! /bin/launchctl print "$domain" >/dev/null 2>&1; then
+              echo "Moltis: no GUI login domain. Log in and run Home Manager activation again." >&2
+              exit 1
+            fi
+            if ! /bin/launchctl kickstart -k "$domain/org.moltis.gateway"; then
+              echo "Moltis: restart failed. The change token remains pending for the next activation." >&2
+              exit 1
+            fi
+            tmp="$(${pkgs.coreutils}/bin/mktemp "$stateDir/.activation-token.XXXXXX")"
+            trap '${pkgs.coreutils}/bin/rm -f "$tmp"' EXIT
+            printf '%s\n' ${lib.escapeShellArg restartToken} > "$tmp"
+            ${pkgs.coreutils}/bin/mv -T "$tmp" "$marker"
+          )
+          run restartMoltis
+          unset -f restartMoltis
+        ''
+      );
 
       xdg.stateFile."moltis/.keep" = lib.mkIf host.is.darwin { text = ""; };
       launchd.agents.moltis = lib.mkIf host.is.darwin {

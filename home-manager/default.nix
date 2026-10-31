@@ -54,12 +54,28 @@ in
     inherit stateVersion;
     username = config.noughty.user.name;
     # Install LaunchAgents before sops-nix starts on the first activation.
-    # Default empty bodies preserve the upstream activation scripts.
+    # The empty body preserves the upstream LaunchAgent setup script.
     activation.setupLaunchAgents = lib.mkIf host.is.darwin (
       lib.hm.dag.entryAfter [ "linkGeneration" ] (lib.mkDefault "")
     );
     activation.sops-nix = lib.mkIf host.is.darwin (
-      lib.hm.dag.entryAfter [ "setupLaunchAgents" ] (lib.mkDefault "")
+      lib.hm.dag.entryAfter [ "setupLaunchAgents" ] (
+        if
+          host.is.darwin
+          && (config.launchd.agents.moltis.enable or false)
+          && (config.launchd.agents.sops-nix.enable or false)
+        then
+          lib.mkForce ''
+            if [[ ! -v DRY_RUN ]] && ! /bin/launchctl print "gui/$UID" >/dev/null 2>&1; then
+              echo "SOPS: no GUI login domain. Log in and run Home Manager activation again." >&2
+              exit 1
+            fi
+            run /bin/launchctl bootout "gui/$UID/org.nix-community.home.sops-nix" && true
+            run /bin/launchctl bootstrap "gui/$UID" ${lib.escapeShellArg "${config.home.homeDirectory}/Library/LaunchAgents/org.nix-community.home.sops-nix.plist"}
+          ''
+        else
+          lib.mkDefault ""
+      )
     );
     # Force a user daemon reload and a sops-nix rerun after every switch.
     # sd-switch is enabled below, but it restarted a stale in-memory
@@ -87,7 +103,10 @@ in
                 name: value: "${name}=${value}"
               ) config.launchd.agents.sops-nix.config.EnvironmentVariables
             )
-          } ${config.launchd.agents.sops-nix.config.Program}
+          } ${config.launchd.agents.sops-nix.config.Program} || {
+            echo "SOPS refresh failed. Dependent activation steps cannot continue." >&2
+            exit 1
+          }
         ''
       ))
     ];

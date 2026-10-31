@@ -27,6 +27,10 @@ Gemini still supplies text-to-speech, speech-to-text, and embeddings. Traya ther
 
 Momin uses the logged-in user's LaunchAgent, labelled `org.moltis.gateway`. It starts at login and restarts on failure. It is not a boot daemon. An always-on Mac still needs a user login and readable sops-nix secrets. The wrapper waits briefly for secrets and fails if they remain unavailable.
 
+On Darwin, Home Manager also restarts Moltis after synchronous SOPS rendering and owned assistant deployment when its public change token changes. The token covers the template's store path and the configured keys and encrypted source paths for Moltis environment secrets. Changes anywhere in those encrypted source files trigger a restart, including credential rotations. The hook never reads or hashes decrypted values. Other assistant resource changes and unmanaged OAuth credentials do not independently trigger this hook. Home Manager still handles binary and LaunchAgent changes.
+
+The first activation restarts Moltis because no token exists. The hook saves `~/.local/state/moltis/activation-token` (under `xdg.stateHome`) atomically with mode `0600` only after a successful restart. Failed rendering stops activation before the hook. Failed restarts leave the previous token intact for a retry. If the GUI login domain is absent, log in and repeat activation. The restart hook and synchronous refresh respect Home Manager's dry-run mode.
+
 Use `moltis-log` to read `${XDG_STATE_HOME}/moltis/daemon.stdout.log` and `daemon.stderr.log`. With the default state directory, both files are under `~/.local/state/moltis/`. Linux retains `moltis.service` and its journal alias.
 
 Fence command controls on Darwin are weaker than the Linux controls. The user accepts that difference. Native Darwin build and runtime validation remain pending. Build on Momin after approval, without an automatic SSH runtime test.
