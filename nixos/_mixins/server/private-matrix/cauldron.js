@@ -236,6 +236,8 @@
   }
 
   async function probeLockdown() {
+    const tableBadge = el("table-lockdown-badge");
+    setBadge(tableBadge, "warn", "PROBING…");
     try {
       const { response, rtt } = await timedFetch("/_matrix/federation/v1/version");
       pushSample("lockdown", "spark-lockdown", "rtt-lockdown", rtt);
@@ -243,14 +245,16 @@
       if (response.status === 403) {
         el("val-lockdown-verdict").textContent = "VERIFIED LOCKDOWN (403)";
         setBadge(el("status-lockdown"), "ok", "VERIFIED LOCKDOWN");
-        setBadge(el("table-lockdown-badge"), "ok", "VERIFIED LOCKDOWN (403)");
+        setBadge(tableBadge, "ok", "VERIFIED LOCKDOWN (403)");
         return { ok: true, rtt };
       }
       el("val-lockdown-verdict").textContent = "Unexpected HTTP " + response.status;
       setBadge(el("status-lockdown"), "warn", "HTTP " + response.status);
+      setBadge(tableBadge, "err", "EXPOSED (HTTP " + response.status + ")");
       return { ok: false, rtt };
     } catch {
       setBadge(el("status-lockdown"), "err", "UNREACHABLE");
+      setBadge(tableBadge, "err", "UNVERIFIED (UNREACHABLE)");
       return { ok: false, rtt: null };
     }
   }
