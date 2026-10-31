@@ -21,7 +21,13 @@ if TYPE_CHECKING:
 # (Tier B2). The helpers carry prose in a file path. The extractors import this
 # set so the names live in one place.
 GH_POST_COMMANDS = frozenset(
-    {"gh", "gh-api-safe", "gh-code-scanning-dismiss", "gh-review-reply"}
+    {
+        "gh",
+        "gh-api-safe",
+        "gh-code-scanning-dismiss",
+        "gh-review-inline",
+        "gh-review-reply",
+    }
 )
 
 # The same names in the normalised tool-name form the OpenCode extractor matches
@@ -482,6 +488,11 @@ def is_known_post_command(argv: list[str]) -> bool:
         # the body flag is the whole post test. No method or field flag exists to
         # look for: the helper exits 64 on either.
         return any(has_body_flag(argv, index) for index in range(len(argv)))
+    if name == "gh-review-inline":
+        return any(
+            has_body_flag(argv, index) or has_comment_file_flag(argv, index)
+            for index in range(len(argv))
+        )
     if name == "gh-code-scanning-dismiss":
         return any(has_comment_file_flag(argv, index) for index in range(len(argv)))
     return False
@@ -549,6 +560,10 @@ def _argv_is_gh_post(argv: list[str]) -> bool:
         return False
     if argv[0] == "gh-code-scanning-dismiss":
         return any(has_comment_file_flag(argv, index) for index in range(len(argv)))
+    if argv[0] == "gh-review-inline" and any(
+        has_comment_file_flag(argv, index) for index in range(len(argv))
+    ):
+        return True
     if any(has_body_flag(argv, index) for index in range(len(argv))):
         return True
     return has_api_post_signal(argv)
@@ -595,7 +610,10 @@ def extract_post_texts(
 ) -> tuple[list[str], bool]:
     texts: list[str] = []
     unresolved = False
-    reads_comment_file = command_name(argv) == "gh-code-scanning-dismiss"
+    reads_comment_file = command_name(argv) in {
+        "gh-code-scanning-dismiss",
+        "gh-review-inline",
+    }
     index = 0
 
     while index < len(argv):
@@ -708,7 +726,10 @@ def has_prose_sink(argv: list[str]) -> bool:
     resolve, and a sink it cannot resolve fails closed.
     """
     index = 0
-    reads_comment_file = command_name(argv) == "gh-code-scanning-dismiss"
+    reads_comment_file = command_name(argv) in {
+        "gh-code-scanning-dismiss",
+        "gh-review-inline",
+    }
     while index < len(argv):
         token = argv[index]
         if token in BODY_FLAGS or any(

@@ -367,6 +367,12 @@ let
         # `notifications/threads/{id}` through the private gh backend. The
         # family-wide `gh api` deny below remains unchanged.
         "gh-notification-dismiss"
+        # gh-review-inline is a fixed GitHub write path allowed under Fence.
+        # It reaches `POST /repos/{owner}/{repo}/pulls/{n}/reviews` with
+        # validated inline `comments[]`, commit SHA guard, and COMMENT/APPROVE
+        # event only (rejecting REQUEST_CHANGES). The family-wide `gh api` deny
+        # below remains unchanged.
+        "gh-review-inline"
         # gh-review-reply is a fixed GitHub write path allowed under Fence.
         # It reaches exactly one endpoint,
         # `POST /repos/{owner}/{repo}/pulls/{n}/comments/{id}/replies`,

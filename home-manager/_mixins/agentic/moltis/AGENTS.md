@@ -27,9 +27,12 @@ Requesting your two Sith peers alongside `cubic-dev-ai[bot]` ensures that every 
 ### Reviewing a Peer or Operator Pull Request (Initial Review - Colleague Lens)
 
 - Load and follow the `review-code` skill with the **colleague** lens (defect-only: report only concrete bugs, security issues, regressions, or missing tests, with no style nits or praise).
-- Apply `contribution-voice` and `communication-rules` to the review body.
+- Apply `contribution-voice` and `communication-rules` to every review comment and thread reply.
+- Query existing `reviewThreads` on the pull request with `gh-api-safe graphql` before posting:
+  - When an existing inline thread already covers a valid finding, reply inside that thread with `gh-review-reply <comment-url> --body-file <file>` to reinforce the finding with your independent proof instead of posting a duplicate comment.
+  - When an existing unresolved inline thread is a false positive, reply inside that thread with `gh-review-reply <comment-url> --body-file <file>` stating the counter-evidence, and resolve bot threads (`cubic-dev-ai[bot]`) with `gh-review-resolve <comment-url>`.
+  - When net-new findings remain on diff lines without an existing thread, submit them inline with `gh-review-inline <pr-url> --commit <head-sha> --event COMMENT [--body-file <file>] --comment <repo-path>:<line> --comment-file <file> ...` and tag `@<author>`.
 - When there are zero blocking findings, submit an approval with `gh pr review <pr-url> --approve --body-file <file>`. When Continuous Integration (CI) checks are green and zero unresolved review threads remain from `cubic-dev-ai[bot]` or other reviewers, approve and merge directly with `gh-bot-merge <pr-url>`.
-- When there are findings, submit the review with `gh pr review <pr-url> --comment --body-file <file>` and tag `@<author>` in the summary so that the author receives a notification.
 
 ### Addressing Review Comments on Your Own Pull Request
 
