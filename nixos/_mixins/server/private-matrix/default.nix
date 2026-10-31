@@ -10,6 +10,19 @@ let
   domain = "matrix.wimpys.world";
   registrationSecret = "MATRIX_REGISTRATION_SHARED_SECRET";
   tuwunelUnit = config.systemd.services.tuwunel.name;
+  mucssStylesheet = pkgs.fetchurl {
+    name = "mu-1.4.9.min.css";
+    url = "https://raw.githubusercontent.com/Digicreon/muCSS/f42cabdda91353d782bca0ed78d33e2a62396b88/dist/mu.css";
+    hash = "sha256-BHE4dLRMnDvt+YyBmN1dHEpHWpR1JW641E+6NyJU0iY=";
+  };
+  landingSite = pkgs.linkFarm "private-matrix-landing" {
+    "index.html" = ./index.html;
+    "mu.min.css" = mucssStylesheet;
+    "cauldron.css" = ./cauldron.css;
+    "cauldron.js" = ./cauldron.js;
+    "favicon.ico" = "${pkgs.private-matrix-bootstrap.avatars}/the-cauldron.jpg";
+    "avatars" = pkgs.private-matrix-bootstrap.avatars;
+  };
 in
 {
   options.services.privateMatrix = {
@@ -50,6 +63,12 @@ in
         require_auth_for_profile_requests = true;
         trusted_servers = [ ];
         registration_shared_secret_file = "/run/credentials/${tuwunelUnit}/${registrationSecret}";
+        well_known = {
+          client = "https://${domain}";
+          support_mxid = "@martin:${domain}";
+          support_role = "m.role.admin";
+          support_page = "https://github.com/the-cauldron";
+        };
       };
     };
 
@@ -99,8 +118,13 @@ in
         handle @restricted {
           respond 403
         }
-        handle {
+        @matrix path /_matrix/* /_tuwunel/* /.well-known/matrix/*
+        handle @matrix {
           reverse_proxy 127.0.0.1:6167
+        }
+        handle {
+          root * ${landingSite}
+          file_server
         }
       '';
     };

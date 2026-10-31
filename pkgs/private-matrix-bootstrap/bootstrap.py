@@ -15,8 +15,20 @@ from pathlib import Path
 
 SERVER = "matrix.wimpys.world"
 USERS = ("martin", "skrye", "zannah", "traya")
+DISPLAY_NAMES = {
+    "martin": "Martin",
+    "skrye": "Skrye",
+    "zannah": "Zannah",
+    "traya": "Traya",
+}
 ALIAS = f"#the-cauldron:{SERVER}"
 ROOM = f"!the-cauldron:{SERVER}"
+ROOM_NAME = "The Cauldron"
+ROOM_TOPIC = (
+    "Sith Triumvirate council room for research, architecture, and planning with "
+    f"Martin (@martin:{SERVER}), Traya (@traya:{SERVER}), "
+    f"Skrye (@skrye:{SERVER}), and Zannah (@zannah:{SERVER})."
+)
 CLIENT = "/_matrix/client/v3"
 MEDIA_UPLOAD = "/_matrix/media/v3/upload"
 MEDIA_DOWNLOAD = f"/_matrix/client/v1/media/download/{SERVER}"
@@ -158,7 +170,8 @@ def room_body():
     return {
         "visibility": "private",
         "room_alias_name": "the-cauldron",
-        "name": "the-cauldron",
+        "name": ROOM_NAME,
+        "topic": ROOM_TOPIC,
         "preset": "private_chat",
         # Tuwunel's supported custom ID removes any cross-host provisioning handoff.
         "room_version": "11",
@@ -282,7 +295,7 @@ class Bootstrap:
                         "nonce": nonce,
                         "username": user,
                         "password": password,
-                        "displayname": user,
+                        "displayname": DISPLAY_NAMES[user],
                         "admin": user == "martin",
                         "mac": mac,
                         "inhibit_login": True,
@@ -296,11 +309,12 @@ class Bootstrap:
                 raise Stop(
                     "Existing Matrix account privileges conflict. No credentials or privileges were changed."
                 )
+            displayname = DISPLAY_NAMES[user]
             profile_base = CLIENT + "/profile/" + quoted(user_id(user))
             profile_path = profile_base + "/displayname"
             profile = self.call("GET", profile_path, user=user)
-            if profile.get("displayname") != user:
-                self.call("PUT", profile_path, {"displayname": user}, user=user)
+            if profile.get("displayname") != displayname:
+                self.call("PUT", profile_path, {"displayname": displayname}, user=user)
             avatar_path = profile_base + "/avatar_url"
             try:
                 current_avatar = self.call("GET", avatar_path, user=user).get(
@@ -344,7 +358,6 @@ class Bootstrap:
             or create["m.federate"]
             or content("power_levels") != powers()
             or content("canonical_alias").get("alias") != ALIAS
-            or content("name").get("name") != "the-cauldron"
             or content("join_rules").get("join_rule") != "invite"
             or content("guest_access").get("guest_access") != "forbidden"
             or content("history_visibility").get("history_visibility") != "joined"
@@ -375,6 +388,10 @@ class Bootstrap:
             if membership != "invite":
                 self.call("POST", prefix + "/invite", {"user_id": user_id(user)})
             self.call("POST", prefix + "/join", {}, user=user)
+        if content("name").get("name") != ROOM_NAME:
+            self.call("PUT", prefix + "/state/m.room.name/", {"name": ROOM_NAME})
+        if content("topic").get("topic") != ROOM_TOPIC:
+            self.call("PUT", prefix + "/state/m.room.topic/", {"topic": ROOM_TOPIC})
         avatar = self.avatar_uri("the-cauldron", content("avatar").get("url"))
         if avatar is not None:
             self.call("PUT", prefix + "/state/m.room.avatar/", {"url": avatar})

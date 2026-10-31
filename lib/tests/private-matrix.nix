@@ -13,6 +13,7 @@ let
       modules = [ { services.privateMatrix.enable = lib.mkForce false; } ];
     }).config;
   service = config.systemd.services.private-matrix-bootstrap;
+  caddyExtraConfig = config.services.caddy.virtualHosts."matrix.wimpys.world".extraConfig;
   registrationSecret = "MATRIX_REGISTRATION_SHARED_SECRET";
   checkHome =
     host:
@@ -48,6 +49,13 @@ let
   ];
 in
 assert config.services.privateMatrix.enable;
+assert
+  config.services.matrix-tuwunel.settings.global.well_known == {
+    client = "https://matrix.wimpys.world";
+    support_mxid = "@martin:matrix.wimpys.world";
+    support_role = "m.role.admin";
+    support_page = "https://github.com/the-cauldron";
+  };
 assert builtins.all (a: a.assertion) config.assertions;
 assert !(disabled.systemd.services ? private-matrix-bootstrap);
 assert !(disabled.sops.secrets ? MATRIX_REGISTRATION_SHARED_SECRET);
@@ -59,12 +67,35 @@ assert
     "${registrationSecret}:${config.sops.secrets.${registrationSecret}.path}"
   ];
 assert builtins.length (lib.unique devices) == builtins.length devices;
+assert lib.hasInfix "@matrix path /_matrix/* /_tuwunel/* /.well-known/matrix/*" caddyExtraConfig;
+assert lib.hasInfix "file_server" caddyExtraConfig;
 pkgs.runCommand "private-matrix"
   {
     bootstrapTests = malak.pkgs.private-matrix-bootstrap.tests;
+    avatars = malak.pkgs.private-matrix-bootstrap.avatars;
+    indexHtml = ../../nixos/_mixins/server/private-matrix/index.html;
+    cauldronCss = ../../nixos/_mixins/server/private-matrix/cauldron.css;
+    cauldronJs = ../../nixos/_mixins/server/private-matrix/cauldron.js;
   }
   ''
     test -e "$bootstrapTests"
+    test -s "$indexHtml"
+    test -s "$cauldronCss"
+    test -s "$cauldronJs"
+    test -s "$avatars/the-cauldron.jpg"
+    test -s "$avatars/traya.jpg"
+    test -s "$avatars/skrye.jpg"
+    test -s "$avatars/zannah.jpg"
+    test -s "$avatars/martin.png"
+    grep -q '/mu.min.css' "$indexHtml"
+    grep -q '/cauldron.css' "$indexHtml"
+    grep -q '/cauldron.js' "$indexHtml"
+    grep -q '/_matrix/client/versions' "$cauldronJs"
+    grep -q '/_tuwunel/server_version' "$cauldronJs"
+    grep -q '/_matrix/client/v3/login' "$cauldronJs"
+    grep -q '/.well-known/matrix/client' "$cauldronJs"
+    grep -q '/.well-known/matrix/support' "$cauldronJs"
+    grep -q '/_matrix/federation/v1/version' "$cauldronJs"
     ${lib.getExe config.services.caddy.package} adapt --adapter caddyfile \
       --config ${config.services.caddy.configFile} > /dev/null
     touch "$out"
