@@ -88,11 +88,9 @@ let
     vad_enabled = true;
     filler_word_removal_enabled = true;
     custom_words = [
-      "Bane"
       "Catppuccin"
       "CGO"
       "Chainguard"
-      "CUDA"
       "Ebitengine"
       "FFmpeg"
       "ffmpeg-statigo"
@@ -132,6 +130,7 @@ let
       "Tailor"
       "Tailscale"
       "Tetra3D"
+      "Traya"
       "Ubuntu"
       "Vulkan"
       "Waybar"
