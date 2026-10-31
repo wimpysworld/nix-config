@@ -23,7 +23,12 @@ class MigrationTests(unittest.TestCase):
 
     def write_registry(self):
         value = {
-            "unknown": {"keep": [1, True, "value"]},
+            "unknown": {
+                "keep": [1, True, "value"],
+                "high_surrogate": "\ud800",
+                "low_surrogate": "\udc00",
+                "unicode": "café 日本語 😀",
+            },
             "servers": {
                 "remote": {"url": "https://example.invalid/mcp", "headers": {"Authorization": "synthetic-secret"}},
                 "local": {"command": "example", "enabled": True, "extra": {"keep": 1}},

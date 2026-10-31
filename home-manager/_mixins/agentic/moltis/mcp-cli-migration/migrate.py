@@ -101,7 +101,7 @@ def migrate(path):
                     os.unlink(temporary, dir_fd=directory)
             for server in servers.values():
                 server["enabled"] = False
-            temporary = write_temporary(directory, (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode())
+            temporary = write_temporary(directory, (json.dumps(data, indent=2, ensure_ascii=True) + "\n").encode())
             try:
                 current = os.stat(REGISTRY, dir_fd=directory, follow_symlinks=False)
                 if (current.st_dev, current.st_ino, current.st_mtime_ns, current.st_size) != (
