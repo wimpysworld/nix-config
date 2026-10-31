@@ -27,7 +27,7 @@ Gemini still supplies text-to-speech, speech-to-text, and embeddings. Traya ther
 
 Momin uses the logged-in user's LaunchAgent, labelled `org.moltis.gateway`. It starts at login and restarts on failure. It is not a boot daemon. An always-on Mac still needs a user login and readable sops-nix secrets. The wrapper waits briefly for secrets and fails if they remain unavailable.
 
-On Darwin, Home Manager also restarts Moltis after synchronous SOPS rendering and owned assistant deployment when its public change token changes. The token covers the template's store path and the configured keys and encrypted source paths for Moltis environment secrets. Changes anywhere in those encrypted source files trigger a restart, including credential rotations. The hook never reads or hashes decrypted values. Other assistant resource changes and unmanaged OAuth credentials do not independently trigger this hook. Home Manager still handles binary and LaunchAgent changes.
+On Darwin, Home Manager also restarts Moltis after synchronous SOPS rendering and owned assistant deployment when its public change token changes. The token covers the TOML template's store path, the launcher's store path, and the public MCPorter configuration text. It also covers the configured keys and encrypted source paths for Moltis environment secrets. Changes anywhere in those encrypted source files trigger a restart, including credential rotations. The hook never reads or hashes decrypted values. Other assistant resource changes and unmanaged OAuth credentials do not independently trigger this hook. Home Manager still handles binary and LaunchAgent changes.
 
 The first activation restarts Moltis because no token exists. The hook saves `~/.local/state/moltis/activation-token` (under `xdg.stateHome`) atomically with mode `0600` only after a successful restart. Failed rendering stops activation before the hook. Failed restarts leave the previous token intact for a retry. If the GUI login domain is absent, log in and repeat activation. The restart hook and synchronous refresh respect Home Manager's dry-run mode.
 
@@ -63,9 +63,21 @@ The `[env]` table injects sops placeholders into the Moltis process environment 
 | `GH_TOKEN`               | `secrets/moltis.yaml` | `GITHUB_TOKEN_<AGENT>`             |
 | `GIT_AUTHOR_EMAIL`       | `secrets/moltis.yaml` | `GITHUB_EMAIL_<AGENT>`             |
 | `CONTEXT7_API_KEY`       | `secrets/mcp.yaml`    | `CONTEXT7_API_KEY`                 |
-| `LINEAR_API_KEY` (Skrye and Zannah only) | `secrets/linear.yaml` | `chainguard` or `wimpysworld`      |
+| `LINEAR_API_KEY`         | `secrets/linear.yaml` | `chainguard` or `wimpysworld`      |
 
-Traya on `momin` omits the Linear MCP server and its Moltis environment placeholder because OpenAI Codex rejects Linear's URI tool schemas. Pi, Codex, and other clients keep Linear and the shared key. Skrye and Zannah keep Linear in Moltis.
+## MCP through MCPorter
+
+Skrye, Zannah, and Traya use MCPorter through `exec` for Model Context Protocol (MCP) access, in main and spawned agents. All three receive the five configured servers, including Linear. Other clients keep their native MCP configuration unchanged.
+
+Nix generates a dedicated MCPorter configuration from the Moltis-filtered shared registry, with `imports = []`. Its path is `moltis/mcporter.json` relative to `config.xdg.configHome`. The runtime supplies its absolute path through `MCPORTER_CONFIG` and explicitly selects the pinned MCPorter binary. No editor configuration imports or automatic OAuth login are part of this route. Credentials reach MCPorter through SOPS-managed environment variables and runtime wrappers, never command arguments.
+
+Moltis no longer registers these servers directly with the model. This avoids exposing Linear's URI tool schemas to Traya's Codex provider. Main and spawned agents use the same CLI recipe in [TOOLS.md](TOOLS.md). The CLI adds process and connection work. Latency is unmeasured, and no token savings or performance measurements are established.
+
+An empty TOML server table is insufficient for migration: persisted `mcp-servers.json` entries override the empty table. Before gateway startup, the migration helper disables persisted native entries but preserves their definitions and unknown fields. It creates `mcp-servers.json.pre-mcporter.bak` beside the registry without overwriting an existing backup. Both files use mode `0600`, and registry replacement is atomic. The helper rejects invalid data, symlinks, unsafe ownership, and a data directory that other users can write. These repository changes prepare all three agents together.
+
+The main agent's `tools.policy.deny = [ "mcp_*" ]` filters native MCP tools. Generated Markdown presets deny the five exact native management tools: `mcp_list`, `mcp_add`, `mcp_remove`, `mcp_status`, and `mcp_restart`. TOML presets, including the retained upstream `research` and `coder` presets, also receive these denies and CLI instructions. This is not a global MCP shutdown or a hard security boundary. Spawned agents do not inherit that global policy. Their preset denies and explicit parent briefings must retain the CLI route and native management restrictions. An explicit non-empty `deny_tools` list replaces preset defaults, so callers must preserve the complete preset denylist rather than supply a partial override.
+
+Keep configuration and instructions in their Nix-managed sources, not installed files. Use [TOOLS.md](TOOLS.md) for focused discovery, JSON calls, output bounds, and spawn briefings. If a write times out, its outcome is unknown. Verify remote state through an authorised read before any retry, and never replay a write automatically.
 
 ## Projection surfaces
 
@@ -86,13 +98,13 @@ Traya on `momin` omits the Linear MCP server and its Moltis environment placehol
 | `~/.moltis/HEARTBEAT.md`             | `moltis/HEARTBEAT.md` (per-host schedule substituted)                   | 30-minute GitHub notification inbox triage plus weekly maintenance sweep (`skrye` Wednesday, `zannah` Saturday, `traya` Sunday). |
 | `~/.moltis/agents/main/HEARTBEAT.md` | `moltis/HEARTBEAT.md` (per-host schedule substituted)                   | Same heartbeat specification deployed into the `main` agent workspace via `ownedFiles` (`kind = "file"`, mode `0600`).          |
 
-Agent frontmatter is `name` and `theme`; Moltis has no `description` field, so `theme` carries the agent description (Moltis `AgentFrontmatter`, `crates/config/src/agent_defs.rs`). The body becomes the preset's `system_prompt_suffix`.
+Generated agent frontmatter contains `name`, `theme`, and `deny_tools`. Moltis has no `description` field, so `theme` carries the agent description (Moltis `AgentFrontmatter`, `crates/config/src/agent_defs.rs`). The body becomes the preset's `system_prompt_suffix`.
 
 Moltis's `read_skill` tool (`crates/tools/src/skill_tools/read_ops.rs`) rejects symlinked skill directories and rejects sidecar files whose canonical path resolves outside the skill directory. Therefore, all skills under `~/.moltis/skills/<name>/` (project `SKILL.md` files, recursive sidecar files, command-derived skills, sops-rendered secret skills, and optional Chainguard skills) deploy through `ownedFiles` as real directories and regular files (`kind = "file"`, mode `0600`).
 
 ## Tool instructions and ownership
 
-Edit the repository's [TOOLS.md](TOOLS.md), not either installed copy. Nix replaces its single `@ENVIRONMENT@` marker with public host and provider facts. The generated section uses the configured home directory for Linux or Darwin paths and describes the existing Fence restrictions. It grants no broader access. Gemini's parser restriction applies only to Gemini, not Traya's Codex chat provider. Traya's missing Linear server is intentional, as described above.
+Edit the repository's [TOOLS.md](TOOLS.md), not either installed copy. Nix replaces its single `@ENVIRONMENT@` marker with public host and provider facts. The generated section uses the configured home directory for Linux or Darwin paths and describes the existing Fence restrictions. It grants no broader access. Gemini's parser restriction applies only to Gemini, not Traya's Codex chat provider. All three agents access Linear through MCPorter, as described above.
 
 Only the Tools section moves out of Moltis's `AGENTS.md`. Role, workflow, Safety, and house-style instructions remain in `AGENTS.md` and its composition.
 

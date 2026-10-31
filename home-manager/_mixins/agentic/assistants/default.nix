@@ -339,6 +339,10 @@ let
     Home: `${moltisToolsContext.homeDirectory}`. Platform: `${moltisToolsContext.platform}`. System: `${moltisToolsContext.system}`.
     Main provider: `${moltisToolsContext.provider}`. Main model: `${moltisToolsContext.mainModel}`.
     Auxiliary model: `${moltisToolsContext.auxiliaryModel}`.
+    MCP transport: `mcporter` through `exec`. Configuration: `${moltisToolsContext.mcporterConfig}` (`MCPORTER_CONFIG`).
+    Preserve these native management denies in spawn `deny_tools`: ${
+      lib.concatStringsSep ", " (map (name: "`${name}`") moltisToolsContext.nativeMcpManagementTools)
+    }.
     Configured MCP servers: ${
       lib.concatStringsSep ", " (map (name: "`${name}`") moltisToolsContext.mcpServers)
     }.
@@ -651,13 +655,13 @@ let
           Do not change external state without explicit authority in the task packet.
           Do not expose secrets, tokens, or credentials.
           Use read, edit, and write for files. Use current reference tools for technical documentation.
-          When `mcp__*` direct tools are unavailable in a `spawn_agent` sub-agent, use `mcporter list <server>` and `mcporter call <server>.<tool> ...` via `exec` to query `linear`, `exa`, and `context7`.
+          ${moltisToolsContext.mcpInstructions}
           Load required skills before dependent work. Loading a skill grants no additional authority.
         ''
         compose.houseStyleBody
       ];
     in
-    "---\nname: ${name}\ntheme: ${core}\n---\n\n${body}\n";
+    "---\nname: ${name}\ntheme: ${core}\ndeny_tools: ${lib.concatStringsSep ", " moltisToolsContext.nativeMcpManagementTools}\n---\n\n${body}\n";
 
   moltisAgentFiles = lib.mapAttrs' (name: _: {
     name = "${config.home.homeDirectory}/.moltis/agents/${name}.md";
