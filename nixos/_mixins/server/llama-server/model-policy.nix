@@ -101,8 +101,8 @@ let
           };
         };
         embedding = mkModel {
-          modelRef = "Qwen/Qwen3-Embedding-4B-GGUF:Q8_0";
-          maxContext = 40960;
+          modelRef = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
+          maxContext = 8192;
         };
       };
     };
@@ -155,8 +155,8 @@ let
           };
         };
         embedding = mkModel {
-          modelRef = "Qwen/Qwen3-Embedding-4B-GGUF:Q8_0";
-          maxContext = 40960;
+          modelRef = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
+          maxContext = 8192;
         };
       };
     };
@@ -209,8 +209,8 @@ let
           };
         };
         embedding = mkModel {
-          modelRef = "Qwen/Qwen3-Embedding-4B-GGUF:Q8_0";
-          maxContext = 40960;
+          modelRef = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
+          maxContext = 8192;
         };
       };
     };
@@ -256,8 +256,8 @@ let
           };
         };
         embedding = mkModel {
-          modelRef = "Qwen/Qwen3-Embedding-4B-GGUF:Q8_0";
-          maxContext = 40960;
+          modelRef = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
+          maxContext = 8192;
         };
       };
     };
@@ -298,7 +298,7 @@ let
         };
         embedding = mkModel {
           modelRef = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
-          maxContext = 32768;
+          maxContext = 8192;
         };
       };
     };
