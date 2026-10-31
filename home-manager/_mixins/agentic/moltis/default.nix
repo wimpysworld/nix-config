@@ -1484,7 +1484,7 @@ in
         heartbeat = {
           enabled = true;
           every = "30m";
-          model = auxiliaryModel;
+          model = mainModel;
           sandbox_enabled = false;
           deliver = true;
           channel = "moltis";

@@ -276,6 +276,10 @@ let
     assert settings.agents.presets.coordinator.reasoning_effort == "medium";
     assert settings.agents.presets.review.model == context.mainModel;
     assert settings.agents.presets.review.reasoning_effort == "medium";
+    assert settings.heartbeat.model == context.mainModel;
+    assert settings.auxiliary.compaction == context.auxiliaryModel;
+    assert settings.auxiliary.title_generation == context.auxiliaryModel;
+    assert settings.auxiliary.vision == context.auxiliaryModel;
     assert builtins.all
       (
         name:
