@@ -237,7 +237,7 @@
 
   async function probeLockdown() {
     const tableBadge = el("table-lockdown-badge");
-    setBadge(tableBadge, "warn", "PROBING…");
+    setBadge(tableBadge, "warn", "PROBING...");
     try {
       const { response, rtt } = await timedFetch("/_matrix/federation/v1/version");
       pushSample("lockdown", "spark-lockdown", "rtt-lockdown", rtt);
