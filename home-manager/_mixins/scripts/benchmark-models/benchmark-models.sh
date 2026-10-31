@@ -689,7 +689,7 @@ run_llama_bench_warmup() {
 		-m "${model_path}" \
 		-ngl 99 \
 		-fa 1 \
-		--mmap 0 \
+		--load-mode none \
 		-p "${PROMPT_BENCH_TOKENS}" \
 		-n 1 \
 		-r 1 \
@@ -737,7 +737,7 @@ run_llama_bench_once() {
 		-m "${model_path}" \
 		-ngl 99 \
 		-fa 1 \
-		--mmap 0 \
+		--load-mode none \
 		-p 0 \
 		-n "${GENERATION_MAX_TOKENS}" \
 		-r 1 \
@@ -754,7 +754,7 @@ run_llama_bench_once() {
 		-m "${model_path}" \
 		-ngl 99 \
 		-fa 1 \
-		--mmap 0 \
+		--load-mode none \
 		-p "${PROMPT_BENCH_TOKENS}" \
 		-n 0 \
 		-r 1 \
@@ -788,7 +788,7 @@ start_llama_server() {
 		--host 127.0.0.1
 		--port 18080
 		-fa on
-		--no-mmap
+		--load-mode none
 	)
 
 	case "${mode}" in

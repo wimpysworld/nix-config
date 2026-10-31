@@ -164,7 +164,8 @@ let
       [
         "--flash-attn"
         "on"
-        "--no-mmap"
+        "--load-mode"
+        "none"
       ]
     else
       [ ];
@@ -247,11 +248,12 @@ assert downloadsCoverSelection cudaRuntime;
 assert vulkanEmbedding.generation == null;
 assert !builtins.elem "--temp" vulkanEmbedding.runtimeArgs;
 assert
-  lib.take 3 (lib.reverseList vulkanCoding.runtimeArgs) == [
-    "--no-mmap"
+  lib.take 4 (lib.reverseList vulkanCoding.runtimeArgs) == [
+    "none"
+    "--load-mode"
     "on"
     "--flash-attn"
   ];
 assert !(builtins.elem "--flash-attn" cudaReasoning.runtimeArgs);
-assert !(builtins.elem "--no-mmap" cudaReasoning.runtimeArgs);
+assert !(builtins.elem "--load-mode" cudaReasoning.runtimeArgs);
 true

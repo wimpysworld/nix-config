@@ -69,7 +69,8 @@ let
       [
         "--flash-attn"
         "on"
-        "--no-mmap"
+        "--load-mode"
+        "none"
       ]
     else
       [ ];
