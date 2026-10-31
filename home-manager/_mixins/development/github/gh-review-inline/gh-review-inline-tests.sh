@@ -7,9 +7,9 @@ set -uo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 target_bin="${1:-}"
-helper_script="${script_dir}/gh-review-inline.sh"
+helper_script="${2:-${script_dir}/gh-review-inline.sh}"
 
-if [[ -z ${target_bin} && ! -r ${helper_script} ]]; then
+if [[ ! -r ${helper_script} ]]; then
 	printf 'gh-review-inline-tests: cannot read %s\n' "${helper_script}" >&2
 	exit 1
 fi
@@ -85,13 +85,8 @@ reset_stub() {
 }
 
 run_helper() {
-	if [[ -n ${target_bin} ]]; then
-		stdout="$("${target_bin}" "$@" 2>"${work}/stderr")"
-		status=$?
-	else
-		stdout="$(bash -euo pipefail "${helper_script}" "$@" 2>"${work}/stderr")"
-		status=$?
-	fi
+	stdout="$(bash -euo pipefail "${helper_script}" "$@" 2>"${work}/stderr")"
+	status=$?
 	stderr="$(cat "${work}/stderr")"
 }
 
@@ -201,6 +196,8 @@ else
 	posted="${state_dir}/stdin-2"
 	if jq -e \
 		--arg sha "${HEAD_SHA}" \
+		--rawfile body1 "${finding1}" \
+		--rawfile body2 "${finding2}" \
 		'.commit_id == $sha
 		and .event == "COMMENT"
 		and (.body | startswith("@flexiondotorg"))
@@ -208,15 +205,31 @@ else
 		and .comments[0].path == "nixos/_mixins/server/private-matrix/cauldron.js"
 		and .comments[0].line == 133
 		and .comments[0].side == "RIGHT"
+		and .comments[0].body == $body1
 		and (.comments[0] | has("start_line") | not)
 		and .comments[1].path == "nixos/_mixins/server/private-matrix/cauldron.css"
 		and .comments[1].start_line == 315
 		and .comments[1].start_side == "RIGHT"
 		and .comments[1].line == 326
-		and .comments[1].side == "RIGHT"' "${posted}" >/dev/null; then
+		and .comments[1].side == "RIGHT"
+		and .comments[1].body == $body2' "${posted}" >/dev/null; then
 		pass "submit multi-comment inline review encodes single-line and range comments"
 	else
 		fail "submit multi-comment inline review payload" "$(cat "${posted}")"
+	fi
+fi
+
+# 5. Packaged binary ignores caller GH_REVIEW_INLINE_GH_BIN override
+if [[ -n ${target_bin} ]]; then
+	reset_stub
+	GH_TOKEN="" GH_REVIEW_INLINE_GH_BIN="${stub_dir}/gh" "${target_bin}" \
+		"${PR_URL}" --commit "${HEAD_SHA}" --comment "a.nix:10" --comment-file "${finding1}" \
+		>"${work}/target-stdout" 2>"${work}/target-stderr"
+	target_status=$?
+	if [[ ${target_status} -ne 0 && $(call_count) -eq 0 ]]; then
+		pass "packaged binary ignores caller GH_REVIEW_INLINE_GH_BIN override"
+	else
+		fail "packaged binary ignores caller GH_REVIEW_INLINE_GH_BIN override" "status=${target_status} calls=$(call_count)"
 	fi
 fi
 

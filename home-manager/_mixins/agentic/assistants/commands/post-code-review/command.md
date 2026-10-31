@@ -27,11 +27,12 @@ Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
 5. Follow the loaded `draft-code-review` body with the exact selected report path as its argument. Preserve its fenced comment verbatim as the comment source
 6. Compare the pull request's current head SHA against the SHA recorded when the selected review ran. If it has moved, stop and report that the contributor pushed during the review, so the findings may no longer apply. Do not post. This guard is internal; never write a SHA into the comment body
 7. Show the exact comment body and the verdict, and confirm before posting
-8. If the comment source came from `draft-code-review`, strip the outer Markdown fence lines and split the entries by their placement prefix (`Inline: <repo-path>:<line>`, `Reply: <review-comment-url>`, `Refute: <review-comment-url>`, `Refute-Resolve: <review-comment-url>`, or `General`). Write each entry's body text (without the placement prefix line) unchanged to its own temporary file
+8. If the comment source came from `draft-code-review`, strip the outer Markdown fence lines and split the entries by their placement prefix (`Inline: <repo-path>:<line>`, `Reply: <review-comment-url>`, `Refute: <review-comment-url>`, `Refute-Resolve: <review-comment-url>`, `Resolve: <review-comment-url>`, or `General`). Treat an unprefixed approval body as a `General` body. Write each `Inline:`, `Reply:`, `Refute:`, and `Refute-Resolve:` body (without the placement prefix line) unchanged to its own temporary file, and concatenate all `General` bodies in order into one general temporary file when any `General` body exists
 9. Post each entry with its dedicated helper, never raw `gh api`:
+   - For each `Resolve:` entry, run `gh-review-resolve <review-comment-url>`
    - For each `Reply:`, `Refute:`, or `Refute-Resolve:` entry, run `gh-review-reply <review-comment-url> --body-file <temp-file>`. For `Refute-Resolve:`, also run `gh-review-resolve <review-comment-url>`
    - When one or more `Inline:` entries exist, submit them in one call with `gh-review-inline <pr-url> --commit <head-sha> --event <COMMENT|APPROVE> [--body-file <general-temp-file>] --comment <spec> --comment-file <temp-file> ...`
-   - When no `Inline:` entries exist and the verdict is `approve` or a `General` body remains, run `gh pr review <pr-url> --approve --body-file <temp-file>` or `gh pr review <pr-url> --comment --body-file <temp-file>`
+   - When no `Inline:` entries exist, run `gh pr review <pr-url> --approve` for an `approve` verdict (adding `--body-file <general-temp-file>` when a general temporary file exists), or run `gh pr review <pr-url> --comment --body-file <general-temp-file>` when a general temporary file remains for a `comment` verdict
 10. Report the pull request URL, the verdict posted, and each inline comment or thread reply posted
 
 ### Output

@@ -268,8 +268,9 @@ while [[ ${idx} -lt ${#comment_specs[@]} ]]; do
 	idx=$((idx + 1))
 done
 
-: "${GH_REVIEW_INLINE_GH_BIN:=gh}"
-readonly GH_REVIEW_INLINE_GH_BIN
+if [[ -z ${GH_REVIEW_INLINE_GH_BIN:-} ]]; then
+	readonly GH_REVIEW_INLINE_GH_BIN="gh"
+fi
 export GH_PROMPT_DISABLED=true
 export GH_TELEMETRY=false
 

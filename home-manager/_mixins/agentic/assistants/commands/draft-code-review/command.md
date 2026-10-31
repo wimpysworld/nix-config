@@ -10,7 +10,7 @@ Draft the inline GitHub review comments and thread replies for a review that has
 
 The `contribution-voice` skill governs the structure. These rules are what it does not cover:
 
-- Place each finding on its exact diff line (`Inline: <repo-path>:<line>`) or inside the existing review thread (`Reply: <review-comment-url>`, `Refute: <review-comment-url>`, or `Refute-Resolve: <review-comment-url>`), rather than combining all findings into one top-level comment
+- Place each finding on its exact diff line (`Inline: <repo-path>:<line>`), inside the existing review thread (`Reply: <review-comment-url>`, `Refute: <review-comment-url>`, `Refute-Resolve: <review-comment-url>`, or `Resolve: <review-comment-url>`), or under `General` when no diff line applies, rather than combining all findings into one top-level comment
 - A changes or comment verdict carries the findings and nothing else. No opening list of what you checked, no verification paragraph, no statement that the rest holds. That is the audit trail; it stays in the report
 - Each finding gets three sentences at most: the defect, the proof, the fix
 - When approving, say only that. Do not describe what the pull request does; the code speaks for itself

@@ -19,7 +19,7 @@ writeShellApplication {
     jq
   ];
   text = ''
-    : "''${GH_REVIEW_INLINE_GH_BIN:=${ghBackend}/bin/gh-review-inline-gh}"
+    readonly GH_REVIEW_INLINE_GH_BIN=${lib.escapeShellArg "${ghBackend}/bin/gh-review-inline-gh"}
   ''
   + builtins.readFile ./gh-review-inline.sh;
   derivationArgs = {
@@ -29,7 +29,7 @@ writeShellApplication {
         ${lib.getExe shellcheck-minimal} ${./gh-review-inline-tests.sh}
       ''
       + ''
-        ${lib.getExe bash} ${./gh-review-inline-tests.sh} "$target"
+        ${lib.getExe bash} ${./gh-review-inline-tests.sh} "$target" ${./gh-review-inline.sh}
       '';
   };
 }
