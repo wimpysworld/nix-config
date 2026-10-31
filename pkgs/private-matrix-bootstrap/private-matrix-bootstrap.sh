@@ -1,1 +1,2 @@
+export PRIVATE_MATRIX_AVATARS_DIR="@AVATARS@"
 exec python3 @BOOTSTRAP@ "$@"

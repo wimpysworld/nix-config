@@ -18,8 +18,17 @@ USERS = ("martin", "skrye", "zannah", "traya")
 ALIAS = f"#the-cauldron:{SERVER}"
 ROOM = f"!the-cauldron:{SERVER}"
 CLIENT = "/_matrix/client/v3"
+MEDIA_UPLOAD = "/_matrix/media/v3/upload"
+MEDIA_DOWNLOAD = f"/_matrix/client/v1/media/download/{SERVER}"
 REGISTER = "/_synapse/admin/v1/register"
 SHARED_KEY = "MATRIX_REGISTRATION_SHARED_SECRET"
+AVATARS = {
+    "martin": ("martin.png", "image/png"),
+    "skrye": ("skrye.jpg", "image/jpeg"),
+    "zannah": ("zannah.jpg", "image/jpeg"),
+    "traya": ("traya.jpg", "image/jpeg"),
+    "the-cauldron": ("the-cauldron.jpg", "image/jpeg"),
+}
 
 
 class Stop(Exception):
@@ -53,18 +62,35 @@ class API:
             urllib.request.ProxyHandler({}), NoRedirect()
         )
 
-    def call(self, method, path, body=None, token=None):
-        headers = {"Content-Type": "application/json"}
+    def call(
+        self,
+        method,
+        path,
+        body=None,
+        token=None,
+        content_type="application/json",
+        raw=False,
+    ):
+        headers = {"Content-Type": content_type}
         if token:
             headers["Authorization"] = f"Bearer {token}"
         request = urllib.request.Request(
             "http://127.0.0.1:6167" + path,
-            data=None if body is None else json.dumps(body).encode(),
+            data=(
+                body
+                if body is None or isinstance(body, bytes)
+                else json.dumps(body).encode()
+            ),
             headers=headers,
             method=method,
         )
         try:
             with self.opener.open(request, timeout=20) as response:
+                if raw:
+                    data = response.read(1048577)
+                    if len(data) > 1048576:
+                        raise Stop("Matrix returned an oversized media response.")
+                    return data
                 return json.load(response)
         except urllib.error.HTTPError as error:
             try:
@@ -97,6 +123,20 @@ def runtime_secrets():
             raise Stop("A Matrix credential is invalid.")
         values[key] = value
     return values
+
+
+def runtime_avatars():
+    directory = os.environ.get("PRIVATE_MATRIX_AVATARS_DIR")
+    if not directory:
+        raise Stop("Matrix avatar directory is not configured.")
+    root = Path(directory)
+    avatars = {}
+    for name, (filename, _) in AVATARS.items():
+        data = (root / filename).read_bytes()
+        if not data or len(data) > 1048576:
+            raise Stop("A Matrix avatar file is invalid.")
+        avatars[name] = data
+    return avatars
 
 
 def powers():
@@ -146,12 +186,58 @@ def room_body():
 
 
 class Bootstrap:
-    def __init__(self, api, values):
+    def __init__(self, api, values, avatars=None):
         self.api, self.values = api, values
+        self.avatars = runtime_avatars() if avatars is None else avatars
         self.tokens = {}
 
-    def call(self, method, path, body=None, user="martin"):
-        return self.api.call(method, path, body, self.tokens.get(user))
+    def call(
+        self,
+        method,
+        path,
+        body=None,
+        user="martin",
+        content_type="application/json",
+        raw=False,
+    ):
+        return self.api.call(
+            method, path, body, self.tokens.get(user), content_type, raw
+        )
+
+    def avatar_uri(self, name, current_uri, user="martin"):
+        filename, content_type = AVATARS[name]
+        expected = self.avatars[name]
+        prefix = f"mxc://{SERVER}/"
+        if isinstance(current_uri, str) and current_uri.startswith(prefix):
+            media_id = current_uri.removeprefix(prefix)
+            if media_id and "/" not in media_id:
+                try:
+                    actual = self.call(
+                        "GET",
+                        f"{MEDIA_DOWNLOAD}/{quoted(media_id)}",
+                        user=user,
+                        raw=True,
+                    )
+                    if actual == expected:
+                        return None
+                except APIError as error:
+                    if error.code != "M_NOT_FOUND":
+                        raise
+        uri = self.call(
+            "POST",
+            f"{MEDIA_UPLOAD}?filename={quoted(filename)}",
+            expected,
+            user=user,
+            content_type=content_type,
+        ).get("content_uri")
+        if (
+            not isinstance(uri, str)
+            or not uri.startswith(prefix)
+            or not uri.removeprefix(prefix)
+            or "/" in uri.removeprefix(prefix)
+        ):
+            raise Stop("Matrix returned an unexpected media URI.")
+        return uri
 
     def login(self, user):
         device = f"PRIVATE_MATRIX_BOOTSTRAP_{user.upper()}"
@@ -210,10 +296,23 @@ class Bootstrap:
                 raise Stop(
                     "Existing Matrix account privileges conflict. No credentials or privileges were changed."
                 )
-            profile_path = CLIENT + "/profile/" + quoted(user_id(user)) + "/displayname"
+            profile_base = CLIENT + "/profile/" + quoted(user_id(user))
+            profile_path = profile_base + "/displayname"
             profile = self.call("GET", profile_path, user=user)
             if profile.get("displayname") != user:
                 self.call("PUT", profile_path, {"displayname": user}, user=user)
+            avatar_path = profile_base + "/avatar_url"
+            try:
+                current_avatar = self.call("GET", avatar_path, user=user).get(
+                    "avatar_url"
+                )
+            except APIError as error:
+                if error.code != "M_NOT_FOUND":
+                    raise
+                current_avatar = None
+            avatar = self.avatar_uri(user, current_avatar, user=user)
+            if avatar is not None:
+                self.call("PUT", avatar_path, {"avatar_url": avatar}, user=user)
 
     def room(self):
         try:
@@ -276,6 +375,9 @@ class Bootstrap:
             if membership != "invite":
                 self.call("POST", prefix + "/invite", {"user_id": user_id(user)})
             self.call("POST", prefix + "/join", {}, user=user)
+        avatar = self.avatar_uri("the-cauldron", content("avatar").get("url"))
+        if avatar is not None:
+            self.call("PUT", prefix + "/state/m.room.avatar/", {"url": avatar})
         return room
 
     def run(self):

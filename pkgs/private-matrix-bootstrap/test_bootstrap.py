@@ -6,6 +6,7 @@ These checks cover API side effects that Nix evaluation cannot verify.
 import copy
 import hashlib
 import hmac
+import os
 import unittest
 import urllib.parse
 
@@ -15,20 +16,42 @@ VALUES = {
     key: f"synthetic-{key}"
     for key in [*(f"MATRIX_PASSWORD_{name.upper()}" for name in b.USERS), b.SHARED_KEY]
 }
+SYNTHETIC_AVATARS = {
+    name: (
+        b"\x89PNG\r\n\x1a\n" if content_type == "image/png" else b"\xff\xd8\xff\xe0"
+    )
+    + f"synthetic-avatar-{name}".encode()
+    for name, (_, content_type) in b.AVATARS.items()
+}
+
+
+def configured_avatars():
+    if os.environ.get("PRIVATE_MATRIX_AVATARS_DIR"):
+        return b.runtime_avatars()
+    return copy.deepcopy(SYNTHETIC_AVATARS)
 
 
 class FakeAPI:
     def __init__(self):
         self.users = {}
         self.events = {}
+        self.media = {}
         self.alias = None
         self.calls = []
         self.fail_after: tuple[str, str] | None = None
         self.displayname_suffix = ""
 
-    def call(self, method, path, body=None, token=None):
+    def call(
+        self,
+        method,
+        path,
+        body=None,
+        token=None,
+        content_type="application/json",
+        raw=False,
+    ):
         self.calls.append((method, path, copy.deepcopy(body)))
-        result = self.respond(method, path, body, token)
+        result = self.respond(method, path, body, token, content_type, raw)
         if self.fail_after == (method, path):
             self.fail_after = None
             raise b.Stop(
@@ -36,7 +59,7 @@ class FakeAPI:
             )
         return result
 
-    def respond(self, method, path, body, token):
+    def respond(self, method, path, body, token, content_type, raw):
         if path == b.REGISTER:
             if method == "GET":
                 return {"nonce": "synthetic-nonce"}
@@ -76,11 +99,39 @@ class FakeAPI:
                 "access_token": user,
             }
         assert token in self.users
+        if path.startswith(b.MEDIA_UPLOAD + "?filename="):
+            assert method == "POST"
+            assert isinstance(body, bytes)
+            filename = urllib.parse.unquote(path.split("?filename=", 1)[1])
+            assert content_type == dict(b.AVATARS.values())[filename]
+            media_id = f"media-{len(self.media) + 1}"
+            self.media[media_id] = body
+            return {"content_uri": f"mxc://{b.SERVER}/{media_id}"}
+        if path.startswith(b.MEDIA_DOWNLOAD + "/"):
+            assert method == "GET"
+            assert raw
+            media_id = urllib.parse.unquote(
+                path.removeprefix(b.MEDIA_DOWNLOAD + "/")
+            )
+            if media_id not in self.media:
+                raise b.APIError(404, "M_NOT_FOUND")
+            return self.media[media_id]
         if path.endswith("/displayname"):
+            target = urllib.parse.unquote(path.split("/")[-2]).split(":")[0][1:]
+            assert target == token
             if method == "PUT":
                 self.users[token]["displayname"] = body["displayname"]
                 return {}
             return {"displayname": self.users[token]["displayname"]}
+        if path.endswith("/avatar_url"):
+            target = urllib.parse.unquote(path.split("/")[-2]).split(":")[0][1:]
+            assert target == token
+            if method == "PUT":
+                self.users[token]["avatar_url"] = body["avatar_url"]
+                return {}
+            if "avatar_url" not in self.users[token]:
+                return {}
+            return {"avatar_url": self.users[token]["avatar_url"]}
         if path.startswith("/_synapse/admin/v1/users/"):
             assert token == b.USERS[0]
             target = urllib.parse.unquote(path.split("/")[-2]).split(":")[0][1:]
@@ -122,6 +173,11 @@ class FakeAPI:
                 }
                 for (kind, key), value in self.events.items()
             ]
+        if path.endswith("/state/m.room.avatar/"):
+            assert method == "PUT"
+            assert token == b.USERS[0]
+            self.events[("m.room.avatar", "")] = copy.deepcopy(body)
+            return {"event_id": "$synthetic-room-avatar"}
         if "/directory/list/room/" in path:
             return {"visibility": "private"}
         if path.endswith("/invite"):
@@ -137,9 +193,17 @@ class FakeAPI:
 class BootstrapTests(unittest.TestCase):
     def setUp(self):
         self.api = FakeAPI()
+        self.avatars = configured_avatars()
 
-    def run_bootstrap(self):
-        return b.Bootstrap(self.api, VALUES).run()
+    def run_bootstrap(self, avatars=None):
+        return b.Bootstrap(
+            self.api, VALUES, self.avatars if avatars is None else avatars
+        ).run()
+
+    def media_bytes(self, uri):
+        prefix = f"mxc://{b.SERVER}/"
+        self.assertTrue(uri.startswith(prefix))
+        return self.api.media[uri.removeprefix(prefix)]
 
     def writes(self):
         return [
@@ -152,18 +216,59 @@ class BootstrapTests(unittest.TestCase):
     def test_initial_creation_and_rerun(self):
         self.api.displayname_suffix = "💕"
         self.assertEqual(self.run_bootstrap(), b.ROOM)
+        for name, (_, content_type) in b.AVATARS.items():
+            header = b"\x89PNG\r\n\x1a\n" if content_type == "image/png" else b"\xff\xd8\xff"
+            self.assertTrue(self.avatars[name].startswith(header))
         for user in b.USERS:
             self.assertEqual(self.api.users[user]["displayname"], user)
             self.assertEqual(self.api.users[user]["admin"], user == "martin")
             self.assertEqual(
+                self.media_bytes(self.api.users[user]["avatar_url"]),
+                self.avatars[user],
+            )
+            self.assertEqual(
                 self.api.events[("m.room.member", b.user_id(user))]["membership"],
                 "join",
             )
+        self.assertEqual(
+            self.media_bytes(self.api.events[("m.room.avatar", "")]["url"]),
+            self.avatars["the-cauldron"],
+        )
         self.api.calls.clear()
         self.assertEqual(self.run_bootstrap(), b.ROOM)
         self.assertEqual(self.writes(), [])
         self.assertEqual(
             sum(path.endswith("/logout") for _, path, _ in self.api.calls), len(b.USERS)
+        )
+
+    def test_avatar_reconciliation_updates_only_mismatched_or_missing_media(self):
+        self.run_bootstrap()
+        skrye_old_uri = self.api.users["skrye"]["avatar_url"]
+        self.api.media[skrye_old_uri.removeprefix(f"mxc://{b.SERVER}/")] = b"stale-image"
+        self.api.events[("m.room.avatar", "")] = {
+            "url": f"mxc://{b.SERVER}/missing-room-media"
+        }
+        martin_uri = self.api.users["martin"]["avatar_url"]
+        self.api.calls.clear()
+        self.assertEqual(self.run_bootstrap(), b.ROOM)
+        self.assertEqual(self.api.users["martin"]["avatar_url"], martin_uri)
+        self.assertNotEqual(self.api.users["skrye"]["avatar_url"], skrye_old_uri)
+        self.assertEqual(
+            self.media_bytes(self.api.users["skrye"]["avatar_url"]),
+            self.avatars["skrye"],
+        )
+        self.assertEqual(
+            self.media_bytes(self.api.events[("m.room.avatar", "")]["url"]),
+            self.avatars["the-cauldron"],
+        )
+        self.assertEqual(
+            self.writes(),
+            [
+                ("POST", f"{b.MEDIA_UPLOAD}?filename=skrye.jpg"),
+                ("PUT", f"{b.CLIENT}/profile/{b.quoted(b.user_id('skrye'))}/avatar_url"),
+                ("POST", f"{b.MEDIA_UPLOAD}?filename=the-cauldron.jpg"),
+                ("PUT", f"{b.CLIENT}/rooms/{b.quoted(b.ROOM)}/state/m.room.avatar/"),
+            ],
         )
 
     def test_retry_after_uncertain_creation_does_not_duplicate(self):
