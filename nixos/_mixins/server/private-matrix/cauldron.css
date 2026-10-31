@@ -312,6 +312,50 @@ section[id] {
 }
 
 /* Cards & Grid Equal Height */
+.card-primary {
+  --card-color: var(--mu-primary);
+}
+
+.card-secondary {
+  --card-color: var(--mu-secondary);
+}
+
+.card-tertiary {
+  --card-color: var(--mu-tertiary);
+}
+
+.card-contrast {
+  --card-color: var(--mu-contrast);
+}
+
+.card-success {
+  --card-color: var(--mu-success);
+}
+
+.card-info {
+  --card-color: var(--mu-info);
+}
+
+.card-warning {
+  --card-color: var(--mu-warning);
+}
+
+.card-error {
+  --card-color: var(--mu-error);
+}
+
+.card-accent {
+  --card-color: var(--mu-accent);
+}
+
+.card-pop {
+  --card-color: var(--mu-pop);
+}
+
+.card-spark {
+  --card-color: var(--mu-spark);
+}
+
 .row.equal-cards > [class*="col-"] {
   display: flex;
   margin-bottom: 1.5rem;
