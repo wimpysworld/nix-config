@@ -274,9 +274,11 @@ let
 
   # Same host gate that `moltis/default.nix` and `mcp/default.nix` use.
   moltisEnabled =
-    noughtyLib.isUser [ "martin" ] && config.noughty.host.is.linux && noughtyLib.hostHasTag "moltis";
+    noughtyLib.isUser [ "martin" ]
+    && (config.noughty.host.is.linux || config.noughty.host.is.darwin)
+    && noughtyLib.hostHasTag "moltis";
   moltisSopsFile = ../../../../secrets/moltis.yaml;
-  moltisAgentName = if config.noughty.host.name == "malak" then "traya" else config.noughty.host.name;
+  moltisAgentName = if config.noughty.host.name == "momin" then "traya" else config.noughty.host.name;
   moltisSoulKey = "SOUL_${lib.toUpper moltisAgentName}";
   moltisSoulSecrets = lib.optionalAttrs moltisEnabled {
     ${moltisSoulKey} = {
@@ -330,6 +332,61 @@ let
   # house style the same way the Pi and OpenCode system prompts do.
   moltisGlobalInstructions = readFileTrim ../moltis/AGENTS.md;
   moltisInstructions = moltisGlobalInstructions + "\n\n" + compose.houseStyleBody + "\n";
+  moltisToolsContext = config.agentic.moltis.toolsContext;
+  moltisToolsEnvironment = ''
+    ## Host Environment
+
+    Home: `${moltisToolsContext.homeDirectory}`. Platform: `${moltisToolsContext.platform}`. System: `${moltisToolsContext.system}`.
+    Main provider: `${moltisToolsContext.provider}`. Main model: `${moltisToolsContext.mainModel}`.
+    Auxiliary model: `${moltisToolsContext.auxiliaryModel}`.
+    MCP transport: `mcporter` through `exec`. Configuration: `${moltisToolsContext.mcporterConfig}` (`MCPORTER_CONFIG`).
+    Preserve these native management denies in spawn `deny_tools`: ${
+      lib.concatStringsSep ", " (map (name: "`${name}`") moltisToolsContext.nativeMcpManagementTools)
+    }.
+    Configured MCP servers: ${
+      lib.concatStringsSep ", " (map (name: "`${name}`") moltisToolsContext.mcpServers)
+    }.
+    ${
+      if lib.elem "linear" moltisToolsContext.mcpServers then
+        "Linear is configured on this host."
+      else
+        "Linear is intentionally not configured on this host. Its absence is not a recovery task."
+    }
+    ${lib.optionalString (moltisToolsContext.provider == "gemini") ''
+      With Gemini, use one tool call per response. Do not issue parallel tool calls.
+    ''}
+    ${
+      if moltisToolsContext.platform == "darwin" then
+        ''
+          Inspect the gateway with `launchctl print gui/$(id -u)/org.moltis.gateway`.
+          Logs: `${moltisToolsContext.stateDirectory}/daemon.stdout.log` and `${moltisToolsContext.stateDirectory}/daemon.stderr.log`.
+          Resolve Apple tools with `command -v`, `xcrun --find`, and `xcode-select -p` before use.
+          Check the selected developer directory. Do not assume an Xcode installation path.
+          Check the target volume's case sensitivity before relying on case-sensitive paths.
+          Check the chosen Bash executable's version before using version-specific features.
+          Check each command's supported flags. Do not assume GNU or BSD behaviour from the operating system alone.
+        ''
+      else
+        ''
+          Inspect the gateway with `systemctl --user status moltis.service`.
+          Read logs with `journalctl --user -u moltis.service`.
+          Linux Fence mounts `.git` read-only in protected checkouts. Do Git mutations only in an authorised maintenance checkout.
+          Fence also mounts `.git/config` and `.git/hooks` read-only, including in maintenance checkouts.
+          Local configuration and branch-tracking updates can fail with `Device or resource busy` because Git cannot replace the mounted configuration file.
+        ''
+    }
+    Runtime Git identity: `${moltisToolsContext.gitName}`. Commit and tag signing are disabled in the runtime.
+    Voice uses the local OpenAI-compatible Gemini shim.
+    Text-to-speech model: `${moltisToolsContext.ttsModel}`. Voice: `${moltisToolsContext.ttsVoice}`.
+    Speech-to-text model: `${moltisToolsContext.sttModel}`.
+  '';
+  moltisTools =
+    lib.replaceStrings [ "@ENVIRONMENT@" ] [ moltisToolsEnvironment ] (readFileTrim ../moltis/TOOLS.md)
+    + "\n";
+  moltisToolsLegacyHashes = [
+    (builtins.hashString "sha256" moltisTools)
+    "4ea621b099941df455de110db1deda26466a11fcc3d2b036f0a2e39747c715ea"
+  ];
   moltisIdentity = readFileTrim (../moltis + "/IDENTITY_${lib.toUpper moltisAgentName}.md") + "\n";
   moltisSchedule =
     if moltisAgentName == "skrye" then
@@ -423,6 +480,7 @@ let
     manifest_path = state_dir / "manifest.json"
     legacy_hashes = {
         moltis_root / "AGENTS.md": {
+            "4210d71edfc6902e037c6592f0933a6c4929970bc3cf20cad9cce16be652c2de",
             ${builtins.toJSON moltisLegacyInstructionsHash},
             ${builtins.toJSON moltisCurrentInstructionsHash},
             "4b28f77dbdcfb4fb650e8e4624d51c094057901f0a9549603cc5ca6a19183512",
@@ -430,7 +488,10 @@ let
             "9dd888f8a07009f4bccc05149a7117819887aa87a49e7be7f8788d4c5ae87b02",
             "f5986e6d8ffd5168a0e00cc4d39b2619e836f56313c0224b5e855872f857a363",
         },
+        moltis_root / "TOOLS.md": set(${builtins.toJSON moltisToolsLegacyHashes}),
+        moltis_root / "agents/main/TOOLS.md": set(${builtins.toJSON moltisToolsLegacyHashes}),
         moltis_root / "agents/main/AGENTS.md": {
+            "4210d71edfc6902e037c6592f0933a6c4929970bc3cf20cad9cce16be652c2de",
             ${builtins.toJSON moltisLegacyInstructionsHash},
             ${builtins.toJSON moltisCurrentInstructionsHash},
             "4b28f77dbdcfb4fb650e8e4624d51c094057901f0a9549603cc5ca6a19183512",
@@ -597,13 +658,13 @@ let
           Do not change external state without explicit authority in the task packet.
           Do not expose secrets, tokens, or credentials.
           Use read, edit, and write for files. Use current reference tools for technical documentation.
-          When `mcp__*` direct tools are unavailable in a `spawn_agent` sub-agent, use `mcporter list <server>` and `mcporter call <server>.<tool> ...` via `exec` to query `linear`, `exa`, and `context7`.
+          ${moltisToolsContext.mcpInstructions}
           Load required skills before dependent work. Loading a skill grants no additional authority.
         ''
         compose.houseStyleBody
       ];
     in
-    "---\nname: ${name}\ntheme: ${core}\n---\n\n${body}\n";
+    "---\nname: ${name}\ntheme: ${core}\ndeny_tools: ${lib.concatStringsSep ", " moltisToolsContext.nativeMcpManagementTools}\n---\n\n${body}\n";
 
   moltisAgentFiles = lib.mapAttrs' (name: _: {
     name = "${config.home.homeDirectory}/.moltis/agents/${name}.md";
@@ -720,7 +781,20 @@ let
   # which either returns `true` or throws with the colliding name and source
   # paths.
   moltisOwnedFiles = builtins.seq moltisCommandCollisionCheck (
-    [
+    (map
+      (
+        path:
+        (ownedFile path moltisTools)
+        // {
+          source = builtins.toFile "moltis-TOOLS.md" moltisTools;
+        }
+      )
+      [
+        "${config.home.homeDirectory}/.moltis/TOOLS.md"
+        "${config.home.homeDirectory}/.moltis/agents/main/TOOLS.md"
+      ]
+    )
+    ++ [
       (ownedFile "${config.home.homeDirectory}/.moltis/AGENTS.md" moltisInstructions)
       (ownedFile "${config.home.homeDirectory}/.moltis/agents/main/AGENTS.md" moltisInstructions)
       (ownedFile "${config.home.homeDirectory}/.moltis/IDENTITY.md" moltisIdentity)

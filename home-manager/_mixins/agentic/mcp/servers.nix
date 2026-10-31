@@ -424,6 +424,27 @@ rec {
     in
     lib.mapAttrs render (lib.filterAttrs keep servers);
 
+  moltisCapabilities = lib.filterAttrs (
+    _: s: (s.enabled or true) && (s.consumers.moltis.enabled or true)
+  ) servers;
+
+  moltisMcporterServers = lib.mapAttrs (
+    _: s:
+    if s.transport == "http" || s.transport == "sse" then
+      {
+        inherit (s) url;
+      }
+      // lib.optionalAttrs (s.auth or null != null && s.auth.kind == "bearer") {
+        headers.Authorization = "Bearer \${${s.auth.envVar}}";
+      }
+    else
+      {
+        inherit (s) command;
+        args = s.args or [ ];
+      }
+      // lib.optionalAttrs ((s.env or { }) != { }) { inherit (s) env; }
+  ) moltisCapabilities;
+
   # moltisServers: entries for Moltis' `moltis.toml` `[mcp.servers.<name>]`
   # tables, rendered to the upstream schema of tag 20260913.02
   # (docs/src/mcp.md): transport = "stdio" | "sse" | "streamable-http", plus

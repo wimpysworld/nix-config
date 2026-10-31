@@ -1,6 +1,6 @@
 # MCP Servers
 
-Four unconditional MCP servers provide reference material and Linear access. `cloudflare-api` adds authenticated Cloudflare access for Martin's developer accounts. Six Chainguard servers are emitted only on hosts tagged `cg`. Definitions live once in `servers.nix` and are distributed to each enabled Claude Code, OpenCode, Zed, Codex, and Pi Agent client via per-consumer renderers.
+Four unconditional MCP servers provide reference material and Linear access. `cloudflare-api` adds authenticated Cloudflare access for Martin's developer accounts. Six Chainguard servers are emitted only on hosts tagged `cg`. Definitions live once in `servers.nix`. Per-consumer renderers deliver native MCP configuration to enabled Claude Code, OpenCode, Zed, Codex, and Pi Agent clients. Moltis uses a dedicated MCPorter configuration.
 
 The Nix composition is the delivery mechanism, not the strategy. Most servers here are information retrieval tools: documentation search, web reading, and package lookup. The practical reason: a language model with a training cutoff hallucinates library APIs that changed after the cutoff. A model that fetches live documentation does not need to guess.
 
@@ -32,6 +32,8 @@ The Nix composition is the delivery mechanism, not the strategy. Most servers he
 | `zedExtensionDisables` | Stub `context_servers` entries that flip extension-mode servers off              |
 | `requiredSecretsForConsumers` | Function returning env var names needed by the selected consumers         |
 | `requiredSecrets`      | Full legacy secret set for callers without an enabled-client context             |
+| `moltisCapabilities` | Moltis-filtered server definitions for capability descriptions |
+| `moltisMcporterServers` | Dedicated MCPorter server definitions for Moltis |
 
 Each renderer is a pure function of the canonical `servers` attrset. Adding or modifying a server means editing one entry; the renderers and `requiredSecretsForConsumers` derivation pick up the change automatically.
 
@@ -153,6 +155,8 @@ Linear's official hosted MCP server. It uses Streamable HTTP at `https://mcp.lin
 
 Linear's MCP tools can read and mutate issues, projects, and comments. The server is active in Claude Code, Codex, OpenCode, Pi, and Zed on every host with those clients. Codex also sets `default_tools_approval_mode = "prompt"` for Linear so tool calls require review instead of inheriting the unattended default.
 
+Skrye, Zannah, and Traya access Linear through MCPorter rather than native Moltis tools. Linear's URI schemas therefore do not enter Traya's Codex tool registrations. Other clients retain native Linear access and their shared key.
+
 `LINEAR_API_KEY` reads from `secrets/linear.yaml`. Hosts tagged `cg` select the `chainguard` key. Other hosts select `wimpysworld`. The existing fish and bash secret exports expose the selected value to coding-agent clients.
 
 ---
@@ -170,6 +174,14 @@ Pi Agent is installed by `../pi` with `pi-mcp-adapter` pinned in the Home Manage
 | OpenCode    | `~/.config/opencode/opencode.json` `mcp.servers` and `permissions`                    | `opencodeServers`, `opencodeToolPermissions` |
 | Zed         | `~/.config/zed/settings.json` `context_servers` and `extensions`                   | `zedContextServers`, `zedExtensions` |
 | Codex       | `~/.config/codex/config.toml` `[mcp_servers.*]`                                    | `codexServers`                       |
+
+### Moltis through MCPorter
+
+All three Moltis agents use the command-line interface (CLI), including spawned agents. Their dedicated configuration contains the five Moltis-enabled servers and `imports = []`. The runtime supplies an absolute `MCPORTER_CONFIG` and explicitly selects the pinned MCPorter binary. Other clients keep the native delivery paths above.
+
+SOPS-managed environment variables and runtime wrappers supply credentials, never command arguments. Discovery and calls disable automatic OAuth login. The shared [TOOLS.md](../moltis/TOOLS.md) defines focused discovery, JSON calls, and spawn briefings without a duplicate tool inventory.
+
+The [Moltis migration and policy notes](../moltis/README.md#mcp-through-mcporter) explain persisted native entries and policy limits. Change the Nix-managed sources, not installed configuration. A timed-out write has an unknown outcome. Verify remote state through an authorised read before a retry, and never replay the write automatically.
 
 ### Platform-specific formats
 

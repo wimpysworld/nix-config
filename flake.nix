@@ -129,6 +129,11 @@
             homeFlake = self;
             inherit (nixpkgs) lib;
           };
+          moltis-tools = import ./lib/tests/moltis-tools.nix {
+            inherit (nixpkgs) lib;
+            inherit pkgs;
+            inherit (self) homeConfigurations;
+          };
           wayland-compositors = import ./lib/tests/wayland-compositors.nix {
             inherit (nixpkgs) lib;
             inherit pkgs;

@@ -25,7 +25,7 @@ let
   zedMcpEnabled = config.programs.zed-editor.enable;
   # Same host gate that `moltis/default.nix` uses to install the binary.
   isMartin = noughtyLib.isUser [ "martin" ];
-  moltisMcpEnabled = isMartin && host.is.linux && noughtyLib.hostHasTag "moltis";
+  moltisMcpEnabled = isMartin && (host.is.linux || host.is.darwin) && noughtyLib.hostHasTag "moltis";
   mcpClientEnabled =
     claudeMcpEnabled
     || codexMcpEnabled

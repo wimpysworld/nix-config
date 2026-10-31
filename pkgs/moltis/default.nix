@@ -1,5 +1,5 @@
 # Moltis publishes prebuilt release archives, so package the upstream
-# x86_64-linux GNU tarball instead of building from the source flake. The
+# platform tarball instead of building from the source flake. The
 # archive carries the binary and its web assets under share/, which the
 # server expects to find relative to the executable.
 {
@@ -16,20 +16,16 @@ stdenv.mkDerivation (finalAttrs: {
   pname = "moltis";
   version = "20261023.01";
 
-  src = fetchurl {
-    url = "https://github.com/moltis-org/moltis/releases/download/${finalAttrs.version}/moltis-${finalAttrs.version}-x86_64-unknown-linux-gnu.tar.gz";
-    hash = "sha256-kDjdhkbZ3bItq+U7nRsWQ5vT9MVNgXuKyuYwnJEQ3CQ=";
-  };
+  src =
+    finalAttrs.passthru.sources.${stdenv.hostPlatform.system}
+      or (throw "moltis: no binary available for ${stdenv.hostPlatform.system}");
 
   # The archive holds the binary and share/ as siblings; keep the checkout root.
   sourceRoot = ".";
 
-  nativeBuildInputs = [
-    autoPatchelfHook
-    makeWrapper
-  ];
+  nativeBuildInputs = lib.optional stdenv.hostPlatform.isLinux autoPatchelfHook ++ [ makeWrapper ];
 
-  buildInputs = [
+  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [
     zlib
     gcc-unwrapped.lib
   ];
@@ -49,6 +45,25 @@ stdenv.mkDerivation (finalAttrs: {
     wrapProgram "$out/bin/moltis" --set-default MOLTIS_SHARE_DIR "$out/share/moltis"
   '';
 
+  passthru.sources =
+    let
+      base = "https://github.com/moltis-org/moltis/releases/download/${finalAttrs.version}/moltis-${finalAttrs.version}";
+    in
+    {
+      x86_64-linux = fetchurl {
+        url = "${base}-x86_64-unknown-linux-gnu.tar.gz";
+        hash = "sha256-kDjdhkbZ3bItq+U7nRsWQ5vT9MVNgXuKyuYwnJEQ3CQ=";
+      };
+      aarch64-darwin = fetchurl {
+        url = "${base}-aarch64-apple-darwin.tar.gz";
+        hash = "sha256-E//zSc+59e9AaLpVGf3BngTJlY/mfoUx3UgXwMGZzFk=";
+      };
+      x86_64-darwin = fetchurl {
+        url = "${base}-x86_64-apple-darwin.tar.gz";
+        hash = "sha256-X4IN3NUlbuRfNzuAwpmM2l3ND+sL23wC/Our0lH0vYc=";
+      };
+    };
+
   meta = {
     description = "Secure persistent personal agent server";
     homepage = "https://moltis.org";
@@ -56,6 +71,6 @@ stdenv.mkDerivation (finalAttrs: {
     license = lib.licenses.mit;
     sourceProvenance = with lib.sourceTypes; [ binaryNativeCode ];
     mainProgram = "moltis";
-    platforms = [ "x86_64-linux" ];
+    platforms = lib.attrNames finalAttrs.passthru.sources;
   };
 })
