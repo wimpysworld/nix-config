@@ -93,7 +93,8 @@ lib.mkIf host.is.workstation {
       ++ lib.optionals (noughtyLib.isUser [ "martin" ] && host.is.linux) [
         halloy
         fractal
-      ];
+      ]
+      ++ lib.optionals (noughtyLib.isUser [ "martin" ] && host.is.nixos) [ fluffychat ];
   };
 
   sops = lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.linux) {

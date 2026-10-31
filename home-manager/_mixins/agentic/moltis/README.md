@@ -1,6 +1,6 @@
 # Moltis projection
 
-The assistants consumer projects agents, skills, and global instructions into `~/.moltis` for Moltis (tag 20261023.01). The shared gate requires user `martin`, Linux or Darwin, and host tag `moltis`: `skrye`, `zannah`, and `momin`. Momin replaces Malak as Traya's host.
+The assistants consumer projects agents, skills, and global instructions into `~/.moltis` for Moltis (tag 20261023.01). The shared gate requires user `martin`, Linux or Darwin, and host tag `moltis`: `skrye`, `zannah`, and `momin`. Momin replaces Malak as Traya's host. Malak hosts the optional [private Matrix server](../../../../nixos/_mixins/server/private-matrix/README.md).
 
 The owned-files deployer tracks `~/.moltis` as an ownership root. Personal, command-derived, sops-rendered secret, and Chainguard skills deploy there as regular files.
 
@@ -78,6 +78,28 @@ An empty TOML server table is insufficient for migration: persisted `mcp-servers
 The main agent's `tools.policy.deny = [ "mcp_*" ]` filters native MCP tools. Generated Markdown presets deny the five exact native management tools: `mcp_list`, `mcp_add`, `mcp_remove`, `mcp_status`, and `mcp_restart`. TOML presets, including the retained upstream `research` and `coder` presets, also receive these denies and CLI instructions. This is not a global MCP shutdown or a hard security boundary. Spawned agents do not inherit that global policy. Their preset denies and explicit parent briefings must retain the CLI route and native management restrictions. An explicit non-empty `deny_tools` list replaces preset defaults, so callers must preserve the complete preset denylist rather than supply a partial override.
 
 Keep configuration and instructions in their Nix-managed sources, not installed files. Use [TOOLS.md](TOOLS.md) for focused discovery, JSON calls, output bounds, and spawn briefings. If a write times out, its outcome is unknown. Verify remote state through an authorised read before any retry, and never replay a write automatically.
+
+## Optional shared Matrix room
+
+Matrix is off by default. With `agentic.moltis.matrix.enable = false`, the module emits neither a Matrix channel nor a Matrix secret. Keep Telegram direct messages for operator work and voice. Use Matrix only for shared text conversation.
+
+After the operator provisions the server, accounts, and room, set these Home Manager options separately for each agent:
+
+| Option | Required value |
+| --- | --- |
+| `agentic.moltis.matrix.enable` | `true`, only after approval |
+| `agentic.moltis.matrix.userId` | The provisioned `@user:matrix.wimpys.world` ID |
+| `agentic.moltis.matrix.roomId` | The real `!opaque:server` room ID, not an alias |
+
+Store each account token in `secrets/moltis.yaml` under `MATRIX_ACCESS_TOKEN_SKRYE`, `MATRIX_ACCESS_TOKEN_ZANNAH`, or `MATRIX_ACCESS_TOKEN_TRAYA`. Each agent receives only its own token as runtime `MATRIX_ACCESS_TOKEN`. Never put a token in a Nix option.
+
+The channel connects to `https://matrix.wimpys.world:8443` with access-token authentication and `ownership_mode = "user_managed"`. This unencrypted room needs no encryption device keys. The channel disables direct messages, one-time-password self-approval, and streaming. It allows only the configured room and auto-joins only that room. It has no user allowlist or operators.
+
+Room replies require mentions. Mention checks also accept `@room` and mentions from other bots, so mention gating does not prevent response loops. The human controls each hand-off. Do not configure automatic prompts that ask peers to continue without a stopping point.
+
+Moltis treats Matrix rooms and direct messages as shared contexts. Privileged commands, tools, and private owner context fail closed in this version. Matrix is not a privileged command path. See the [pinned Matrix documentation](https://github.com/moltis-org/moltis/blob/20261023.01/docs/src/matrix.md).
+
+FluffyChat is included for Linux desktop chat. The user installs and configures the phone client separately. Both clients need Tailnet access and the explicit homeserver URL above. Follow the [server onboarding and checks](../../../../nixos/_mixins/server/private-matrix/README.md#operator-onboarding-after-approval) before enabling channels.
 
 ## Projection surfaces
 
@@ -157,3 +179,5 @@ Never name a projected Moltis agent preset `coordinator`, `auxiliary`, `compress
 Preparation does not authorise `just switch-home`. After separate deployment approval, check that agents and skills appear in the Moltis UI.
 
 Validate composed tool instructions for Skrye, Zannah, and Traya. Test deployment and migration with a temporary `HOME`, never the real home directory. These checks need neither activation nor a Rust build. See the [owned-files tests](../assistants/owned-files/README.md) for the safe deployment procedure.
+
+For Matrix onboarding, test one explicit peer mention and one response before wider use. Confirm that invitations to other rooms fail. Leave runtime checks to the operator.
