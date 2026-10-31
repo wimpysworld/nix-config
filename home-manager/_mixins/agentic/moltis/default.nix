@@ -942,6 +942,7 @@ in
           Description = "Moltis - secure persistent personal agent server";
           X-Restart-Triggers = [
             config.agentic.assistants.moltis.heartbeatHash
+            (toString config.sops.templates."moltis.toml".file)
           ];
           After = [
             "sops-nix.service"

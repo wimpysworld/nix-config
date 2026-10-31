@@ -150,6 +150,12 @@ let
     assert lib.hasInfix "journalctl --user" body == !darwin;
     assert lib.hasInfix "Linux Fence mounts" body == !darwin;
     assert
+      !c.noughty.host.is.linux
+      || lib.elem (toString
+        c.sops.templates."moltis.toml".file
+      ) c.systemd.user.services.moltis.Unit.X-Restart-Triggers;
+    assert !c.noughty.host.is.linux || lib.elem "reloadSystemd" c.home.activation.refreshSopsNix.before;
+    assert
       lib.hasInfix "`.git/config` and `.git/hooks` read-only, including in maintenance checkouts" body
       == !darwin;
     true;
