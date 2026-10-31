@@ -1258,6 +1258,8 @@ in
             password = "\${MATRIX_PASSWORD}";
             user_id = matrixCfg.userId;
             device_id = "MOLTIS_${lib.toUpper agentName}";
+            model = mainModelName;
+            model_provider = mainProvider;
             ownership_mode = "user_managed";
             dm_policy = "allowlist";
             otp_self_approval = false;
