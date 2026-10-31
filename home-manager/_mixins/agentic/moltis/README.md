@@ -1,6 +1,6 @@
 # Moltis projection
 
-The assistants consumer projects agents, skills, and global instructions into `~/.moltis` for Moltis (tag 20261023.01). The shared gate requires user `martin`, Linux or Darwin, and host tag `moltis`: `skrye`, `zannah`, and `momin`. Momin replaces Malak as Traya's host. Malak hosts the optional [private Matrix server](../../../../nixos/_mixins/server/private-matrix/README.md).
+The assistants consumer projects agents, skills, and global instructions into `~/.moltis` for Moltis (tag 20261023.01). The shared gate requires user `martin`, Linux or Darwin, and host tag `moltis`: `skrye`, `zannah`, and `momin`. Momin replaces Malak as Traya's host. Malak hosts the [private Matrix server](../../../../nixos/_mixins/server/private-matrix/README.md).
 
 The owned-files deployer tracks `~/.moltis` as an ownership root. Personal, command-derived, sops-rendered secret, and Chainguard skills deploy there as regular files.
 
@@ -79,27 +79,21 @@ The main agent's `tools.policy.deny = [ "mcp_*" ]` filters native MCP tools. Gen
 
 Keep configuration and instructions in their Nix-managed sources, not installed files. Use [TOOLS.md](TOOLS.md) for focused discovery, JSON calls, output bounds, and spawn briefings. If a write times out, its outcome is unknown. Verify remote state through an authorised read before any retry, and never replay a write automatically.
 
-## Optional shared Matrix room
+## Shared Matrix room
 
-Matrix is off by default. With `agentic.moltis.matrix.enable = false`, the module emits neither a Matrix channel nor a Matrix secret. Keep Telegram direct messages for operator work and voice. Use Matrix only for shared text conversation.
+Normal deployment enables Matrix on `skrye`, `zannah`, and `momin`. Malak automatically provisions the accounts and `the-cauldron`. All three agents use the fixed room ID `!the-cauldron:matrix.wimpys.world`, so deployment needs no room-ID handoff. Setting `agentic.moltis.matrix.enable = false` removes the channel and its runtime secret. Keep Telegram direct messages for operator work and voice.
 
-After the operator provisions the server, accounts, and room, set these Home Manager options separately for each agent:
+Each agent reads its password from `secrets/matrix.yaml`: `MATRIX_PASSWORD_SKRYE`, `MATRIX_PASSWORD_ZANNAH`, or `MATRIX_PASSWORD_TRAYA`. SOPS renders the agent's `MATRIX_PASSWORD` placeholder at runtime. Never put plaintext passwords in Nix values, command arguments, or logs.
 
-| Option | Required value |
-| --- | --- |
-| `agentic.moltis.matrix.enable` | `true`, only after approval |
-| `agentic.moltis.matrix.userId` | The provisioned `@user:matrix.wimpys.world` ID |
-| `agentic.moltis.matrix.roomId` | The real `!opaque:server` room ID, not an alias |
+The channel uses `https://matrix.wimpys.world`, `auth_mode = "password"`, and `ownership_mode = "user_managed"`. Stable device IDs are `MOLTIS_SKRYE`, `MOLTIS_ZANNAH`, and `MOLTIS_TRAYA`. The default `userId` follows the agent identity, including `@traya:matrix.wimpys.world` on Momin.
 
-Store each account token in `secrets/moltis.yaml` under `MATRIX_ACCESS_TOKEN_SKRYE`, `MATRIX_ACCESS_TOKEN_ZANNAH`, or `MATRIX_ACCESS_TOKEN_TRAYA`. Each agent receives only its own token as runtime `MATRIX_ACCESS_TOKEN`. Never put a token in a Nix option.
-
-The channel connects to `https://matrix.wimpys.world:8443` with access-token authentication and `ownership_mode = "user_managed"`. This unencrypted room needs no encryption device keys. The channel disables direct messages, one-time-password self-approval, and streaming. It allows only the configured room and auto-joins only that room. It has no user allowlist or operators.
+The room allowlist and automatic joining permit only `roomId`. Direct messages permit only `@martin:matrix.wimpys.world`. Operators are empty, streaming is off, and one-time-password self-approval is disabled.
 
 Room replies require mentions. Mention checks also accept `@room` and mentions from other bots, so mention gating does not prevent response loops. The human controls each hand-off. Do not configure automatic prompts that ask peers to continue without a stopping point.
 
-Moltis treats Matrix rooms and direct messages as shared contexts. Privileged commands, tools, and private owner context fail closed in this version. Matrix is not a privileged command path. See the [pinned Matrix documentation](https://github.com/moltis-org/moltis/blob/20261023.01/docs/src/matrix.md).
+Matrix rooms and Martin's direct messages are conversation-only. They expose neither tools nor private owner context. Operator execution needs a separate future patch. Keep Telegram for operator work. See the [pinned Matrix documentation](https://github.com/moltis-org/moltis/blob/20261023.01/docs/src/matrix.md).
 
-FluffyChat is included for Linux desktop chat. The user installs and configures the phone client separately. Both clients need Tailnet access and the explicit homeserver URL above. Follow the [server onboarding and checks](../../../../nixos/_mixins/server/private-matrix/README.md#operator-onboarding-after-approval) before enabling channels.
+FluffyChat is included for Linux desktop chat. The user configures the phone client separately. Both clients use the public homeserver URL above. See the [server deployment documentation](../../../../nixos/_mixins/server/private-matrix/README.md) for automatic provisioning and the accepted consequences of database loss. Live client checks require deployment.
 
 ## Projection surfaces
 
@@ -180,4 +174,4 @@ Preparation does not authorise `just switch-home`. After separate deployment app
 
 Validate composed tool instructions for Skrye, Zannah, and Traya. Test deployment and migration with a temporary `HOME`, never the real home directory. These checks need neither activation nor a Rust build. See the [owned-files tests](../assistants/owned-files/README.md) for the safe deployment procedure.
 
-For Matrix onboarding, test one explicit peer mention and one response before wider use. Confirm that invitations to other rooms fail. Leave runtime checks to the operator.
+Matrix provisioning runs automatically on Malak. Human login and live messaging checks follow normal deployment.

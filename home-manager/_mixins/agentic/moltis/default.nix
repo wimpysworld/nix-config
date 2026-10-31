@@ -57,6 +57,7 @@ let
       "Skrye";
 
   moltisSopsFile = ../../../../secrets/moltis.yaml;
+  matrixSopsFile = ../../../../secrets/matrix.yaml;
   aiSopsFile = ../../../../secrets/ai.yaml;
   mcpSopsFile = ../../../../secrets/mcp.yaml;
   linearSopsFile = ../../../../secrets/linear.yaml;
@@ -92,7 +93,7 @@ let
     CONTEXT7_API_KEY = mcpSopsFile;
     LINEAR_API_KEY = linearSopsFile;
   }
-  // lib.optionalAttrs matrixCfg.enable { MATRIX_ACCESS_TOKEN = moltisSopsFile; };
+  // lib.optionalAttrs matrixCfg.enable { MATRIX_PASSWORD = matrixSopsFile; };
 
   secretConfig =
     name:
@@ -101,10 +102,10 @@ let
         sopsFile = linearSopsFile;
         key = if isWorkHost then "chainguard" else "wimpysworld";
       }
-    else if name == "MATRIX_ACCESS_TOKEN" then
+    else if name == "MATRIX_PASSWORD" then
       {
-        sopsFile = moltisSopsFile;
-        key = "MATRIX_ACCESS_TOKEN_${lib.toUpper agentName}";
+        sopsFile = matrixSopsFile;
+        key = "MATRIX_PASSWORD_${lib.toUpper agentName}";
         mode = "0400";
       }
     else if name == "TELEGRAM_BOT_TOKEN" then
@@ -826,15 +827,23 @@ in
       description = "Public runtime facts for the composed Moltis TOOLS.md.";
     };
     matrix = {
-      enable = lib.mkEnableOption "the private Matrix room channel";
+      enable = lib.mkEnableOption "the private Matrix room channel" // {
+        default =
+          moltisEnabled
+          && noughtyLib.isHost [
+            "skrye"
+            "zannah"
+            "momin"
+          ];
+      };
       userId = lib.mkOption {
         type = lib.types.nullOr lib.types.str;
-        default = null;
+        default = "@${agentName}:matrix.wimpys.world";
         description = "Provisioned Matrix user ID on matrix.wimpys.world.";
       };
       roomId = lib.mkOption {
         type = lib.types.nullOr lib.types.str;
-        default = null;
+        default = "!the-cauldron:matrix.wimpys.world";
         description = "Provisioned unencrypted Matrix room ID. Room aliases are not accepted.";
       };
     };
@@ -920,9 +929,8 @@ in
             assertion =
               matrixCfg.roomId != null
               && builtins.stringLength matrixCfg.roomId <= 255
-              &&
-                builtins.match "![^[:space:]:]+:[A-Za-z0-9]+([.-][A-Za-z0-9]+)*(:[0-9]+)?" matrixCfg.roomId != null;
-            message = "agentic.moltis.matrix.roomId must be a provisioned Matrix room ID (!opaque:server), not an alias, when Matrix is enabled.";
+              && builtins.match "![^[:space:]]+" matrixCfg.roomId != null;
+            message = "agentic.moltis.matrix.roomId must be a provisioned Matrix room ID (!opaque or !opaque:server), not an alias, when Matrix is enabled.";
           }
         ];
 
@@ -1245,18 +1253,19 @@ in
         }
         // lib.optionalAttrs matrixCfg.enable {
           matrix."matrix-${agentName}" = {
-            homeserver = "https://matrix.wimpys.world:8443";
-            auth_mode = "access_token";
-            access_token = "\${MATRIX_ACCESS_TOKEN}";
+            homeserver = "https://matrix.wimpys.world";
+            auth_mode = "password";
+            password = "\${MATRIX_PASSWORD}";
             user_id = matrixCfg.userId;
+            device_id = "MOLTIS_${lib.toUpper agentName}";
             ownership_mode = "user_managed";
-            dm_policy = "disabled";
+            dm_policy = "allowlist";
             otp_self_approval = false;
             room_policy = "allowlist";
             room_allowlist = [ matrixCfg.roomId ];
             mention_mode = "mention";
             auto_join = "allowlist";
-            user_allowlist = [ ];
+            user_allowlist = [ "@martin:matrix.wimpys.world" ];
             operators = [ ];
             stream_mode = "off";
           };
