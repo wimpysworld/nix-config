@@ -158,6 +158,7 @@ class FakeAPI:
                     },
                     ("m.room.canonical_alias", ""): {"alias": b.ALIAS},
                     ("m.room.name", ""): {"name": body["name"]},
+                    ("m.room.topic", ""): {"topic": body["topic"]},
                     ("m.room.power_levels", ""): body["power_level_content_override"],
                     ("m.room.member", b.user_id("martin")): {"membership": "join"},
                 }
@@ -173,11 +174,12 @@ class FakeAPI:
                 }
                 for (kind, key), value in self.events.items()
             ]
-        if path.endswith("/state/m.room.avatar/"):
-            assert method == "PUT"
-            assert token == b.USERS[0]
-            self.events[("m.room.avatar", "")] = copy.deepcopy(body)
-            return {"event_id": "$synthetic-room-avatar"}
+        for state_kind in ("avatar", "name", "topic"):
+            if path.endswith(f"/state/m.room.{state_kind}/"):
+                assert method == "PUT"
+                assert token == b.USERS[0]
+                self.events[(f"m.room.{state_kind}", "")] = copy.deepcopy(body)
+                return {"event_id": f"$synthetic-room-{state_kind}"}
         if "/directory/list/room/" in path:
             return {"visibility": "private"}
         if path.endswith("/invite"):
@@ -220,7 +222,9 @@ class BootstrapTests(unittest.TestCase):
             header = b"\x89PNG\r\n\x1a\n" if content_type == "image/png" else b"\xff\xd8\xff"
             self.assertTrue(self.avatars[name].startswith(header))
         for user in b.USERS:
-            self.assertEqual(self.api.users[user]["displayname"], user)
+            self.assertEqual(
+                self.api.users[user]["displayname"], b.DISPLAY_NAMES[user]
+            )
             self.assertEqual(self.api.users[user]["admin"], user == "martin")
             self.assertEqual(
                 self.media_bytes(self.api.users[user]["avatar_url"]),
@@ -231,6 +235,14 @@ class BootstrapTests(unittest.TestCase):
                 "join",
             )
         self.assertEqual(
+            self.api.events[("m.room.name", "")]["name"],
+            b.ROOM_NAME,
+        )
+        self.assertEqual(
+            self.api.events[("m.room.topic", "")]["topic"],
+            b.ROOM_TOPIC,
+        )
+        self.assertEqual(
             self.media_bytes(self.api.events[("m.room.avatar", "")]["url"]),
             self.avatars["the-cauldron"],
         )
@@ -240,6 +252,41 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(
             sum(path.endswith("/logout") for _, path, _ in self.api.calls), len(b.USERS)
         )
+
+    def test_metadata_reconciliation_upgrades_legacy_names_and_topic(self):
+        self.run_bootstrap()
+        for user in b.USERS:
+            self.api.users[user]["displayname"] = user
+        self.api.events[("m.room.name", "")] = {"name": "the-cauldron"}
+        del self.api.events[("m.room.topic", "")]
+        self.api.calls.clear()
+        self.assertEqual(self.run_bootstrap(), b.ROOM)
+        for user in b.USERS:
+            self.assertEqual(
+                self.api.users[user]["displayname"], b.DISPLAY_NAMES[user]
+            )
+        self.assertEqual(
+            self.api.events[("m.room.name", "")],
+            {"name": b.ROOM_NAME},
+        )
+        self.assertEqual(
+            self.api.events[("m.room.topic", "")],
+            {"topic": b.ROOM_TOPIC},
+        )
+        self.assertEqual(
+            self.writes(),
+            [
+                *(
+                    ("PUT", f"{b.CLIENT}/profile/{b.quoted(b.user_id(user))}/displayname")
+                    for user in b.USERS
+                ),
+                ("PUT", f"{b.CLIENT}/rooms/{b.quoted(b.ROOM)}/state/m.room.name/"),
+                ("PUT", f"{b.CLIENT}/rooms/{b.quoted(b.ROOM)}/state/m.room.topic/"),
+            ],
+        )
+        self.api.calls.clear()
+        self.assertEqual(self.run_bootstrap(), b.ROOM)
+        self.assertEqual(self.writes(), [])
 
     def test_avatar_reconciliation_updates_only_mismatched_or_missing_media(self):
         self.run_bootstrap()
@@ -281,11 +328,13 @@ class BootstrapTests(unittest.TestCase):
                     self.run_bootstrap()
                 if path == b.REGISTER:
                     self.assertEqual(
-                        self.api.users["martin"]["displayname"], "martin 💕"
+                        self.api.users["martin"]["displayname"], "Martin 💕"
                     )
                 self.assertEqual(self.run_bootstrap(), b.ROOM)
                 for user in b.USERS:
-                    self.assertEqual(self.api.users[user]["displayname"], user)
+                    self.assertEqual(
+                        self.api.users[user]["displayname"], b.DISPLAY_NAMES[user]
+                    )
                 posts = [
                     body
                     for method, endpoint, body in self.api.calls
