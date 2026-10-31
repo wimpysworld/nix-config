@@ -1,4 +1,4 @@
-"""Check owned-file deployment in temporary homes, without reading real secrets."""
+"""Temporary-home tests. Gate: checks.x86_64-linux.moltis-tools."""
 
 import importlib.util
 import hashlib
@@ -52,12 +52,14 @@ class DeploymentTests(unittest.TestCase):
             **extra,
         }
 
-    def activate(self, success=True, dry_run=False):
+    def activate(self, success=True, dry_run=False, bootstrap=None):
         spec = self.base / "desired.json"
         spec.write_text(json.dumps(self.spec))
         command = [sys.executable, str(HELPER), str(spec)]
         if dry_run:
             command.append("--dry-run")
+        if bootstrap is not None:
+            command.extend(["--bootstrap-manifest", str(bootstrap)])
         result = subprocess.run(command, capture_output=True, text=True)
         if success:
             self.assertEqual(result.returncode, 0, result.stderr)
@@ -77,6 +79,63 @@ class DeploymentTests(unittest.TestCase):
             else:
                 result[name] = ("directory", stat.S_IMODE(info.st_mode))
         return result
+
+    def test_moltis_tools_pair_first_install_and_repeat(self):
+        self.root = self.home / ".moltis"
+        self.spec["roots"].append(str(self.root))
+        self.spec["files"] = [
+            self.entry("TOOLS.md", "Generated tools.\n"),
+            self.entry("agents/main/TOOLS.md", "Generated tools.\n"),
+        ]
+        self.activate()
+        before = self.snapshot()
+        self.activate()
+        self.assertEqual(self.snapshot(), before)
+        for entry in self.spec["files"]:
+            path = Path(entry["path"])
+            self.assertFalse(path.is_symlink())
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+            self.assertEqual(path.read_text(), "Generated tools.\n")
+
+    def test_moltis_verified_bootstrap_adopts_both_workspace_files(self):
+        self.root = self.home / ".moltis"
+        self.spec["roots"].append(str(self.root))
+        verified = {}
+        for directory in ("", "agents/main/"):
+            for name in ("TOOLS.md", "AGENTS.md"):
+                relative = directory + name
+                path = self.root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("Verified previous content.\n")
+                verified[str(path)] = {
+                    "kind": "file",
+                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                }
+                self.spec["files"].append(self.entry(relative, "New generated content.\n"))
+        self.state.mkdir(parents=True, mode=0o700)
+        bootstrap = self.state / "bootstrap.json"
+        bootstrap.write_text(json.dumps({"version": 1, "files": verified, "directories": []}))
+        bootstrap.chmod(0o600)
+        self.activate(bootstrap=bootstrap)
+        for entry in self.spec["files"]:
+            self.assertEqual(Path(entry["path"]).read_text(), "New generated content.\n")
+        before = self.snapshot()
+        self.activate()
+        self.assertEqual(self.snapshot(), before)
+
+    def test_moltis_tools_unknown_and_empty_files_remain_unowned(self):
+        self.root = self.home / ".moltis"
+        self.spec["roots"].append(str(self.root))
+        for relative in ("TOOLS.md", "agents/main/TOOLS.md"):
+            for content in ("", "Custom tools.\n"):
+                with self.subTest(relative=relative, content=content):
+                    path = self.root / relative
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text(content)
+                    self.spec["files"] = [self.entry(relative, "Generated tools.\n")]
+                    before = self.snapshot()
+                    self.activate(success=False)
+                    self.assertEqual(self.snapshot(), before)
 
     def test_rename_remove_and_disable_preserve_manual_siblings(self):
         self.spec["files"] = [
@@ -290,6 +349,7 @@ class DeploymentTests(unittest.TestCase):
             self.entry("kept.md", "Updated content.\n"),
         ]
         module_spec = importlib.util.spec_from_file_location("owned_deploy", HELPER)
+        assert module_spec is not None and module_spec.loader is not None
         helper = importlib.util.module_from_spec(module_spec)
         module_spec.loader.exec_module(helper)
         real_replace = os.replace
@@ -348,6 +408,7 @@ class DeploymentTests(unittest.TestCase):
         module_spec = importlib.util.spec_from_file_location(
             "deploy_directories", HELPER
         )
+        assert module_spec is not None and module_spec.loader is not None
         helper = importlib.util.module_from_spec(module_spec)
         module_spec.loader.exec_module(helper)
         helper.deploy(self.spec, bootstrap_manifest=str(captured))

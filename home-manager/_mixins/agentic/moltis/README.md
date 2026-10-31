@@ -73,6 +73,8 @@ Traya on `momin` omits the Linear MCP server and its Moltis environment placehol
 | `~/.moltis/agents/main/IDENTITY.md`  | `moltis/IDENTITY_<AGENT>.md`                                            | Same identity deployed into the `main` agent workspace via `ownedFiles` so Moltis's first-run seed copy never goes stale.       |
 | `~/.moltis/AGENTS.md`                | `moltis/AGENTS.md` + `compose.houseStyleBody`                           | Plain Markdown, no frontmatter. Defines reciprocal PR and review workflows (`ownedFiles`, mode `0600`).                         |
 | `~/.moltis/agents/main/AGENTS.md`    | `moltis/AGENTS.md` + `compose.houseStyleBody`                           | Same instructions deployed into the `main` agent workspace via `ownedFiles` so Moltis's first-run seed copy never goes stale.   |
+| `~/.moltis/TOOLS.md`                 | `moltis/TOOLS.md` with Nix-derived `@ENVIRONMENT@`                     | Plain Markdown, deployed via `ownedFiles` as a regular file, mode `0600`. |
+| `~/.moltis/agents/main/TOOLS.md`     | Same composed `moltis/TOOLS.md`                                       | Identical content in the `main` agent workspace, with the same ownership and mode. |
 | `~/.moltis/SOUL.md`                  | `assistant-moltis-soul` sops template (`SOUL_<AGENT>` + `SOUL_ALL`)     | Agent soul from `secrets/moltis.yaml` followed by `SOUL_ALL`, deployed via `ownedFiles` (`kind = "file"`, mode `0600`).         |
 | `~/.moltis/agents/main/SOUL.md`      | `assistant-moltis-soul` sops template (`SOUL_<AGENT>` + `SOUL_ALL`)     | Same soul deployed into the `main` agent workspace via `ownedFiles` so Moltis's first-run seed copy never goes stale.           |
 | `~/.moltis/USER.md`                  | `assistant-moltis-user` sops template (`USER` in `secrets/moltis.yaml`) | User profile deployed via `ownedFiles` (`kind = "file"`, mode `0600`).                                                          |
@@ -83,6 +85,16 @@ Traya on `momin` omits the Linear MCP server and its Moltis environment placehol
 Agent frontmatter is `name` and `theme`; Moltis has no `description` field, so `theme` carries the agent description (Moltis `AgentFrontmatter`, `crates/config/src/agent_defs.rs`). The body becomes the preset's `system_prompt_suffix`.
 
 Moltis's `read_skill` tool (`crates/tools/src/skill_tools/read_ops.rs`) rejects symlinked skill directories and rejects sidecar files whose canonical path resolves outside the skill directory. Therefore, all skills under `~/.moltis/skills/<name>/` (project `SKILL.md` files, recursive sidecar files, command-derived skills, sops-rendered secret skills, and optional Chainguard skills) deploy through `ownedFiles` as real directories and regular files (`kind = "file"`, mode `0600`).
+
+## Tool instructions and ownership
+
+Edit the repository's [TOOLS.md](TOOLS.md), not either installed copy. Nix replaces its single `@ENVIRONMENT@` marker with public host and provider facts. The generated section uses the configured home directory for Linux or Darwin paths and describes the existing Fence restrictions. It grants no broader access. Gemini's parser restriction applies only to Gemini, not Traya's Codex chat provider. Traya's missing Linear server is intentional, as described above.
+
+Only the Tools section moves out of Moltis's `AGENTS.md`. Role, workflow, Safety, and house-style instructions remain in `AGENTS.md` and its composition.
+
+For normal chat, Moltis reads profile `TOOLS.md` first and falls back to the root copy. It injects exactly one copy on each request. A deployed tool-instruction change needs no daemon restart for this path. Other request paths remain unverified. Nix activation owns both generated files. Upstream Moltis seeds a missing root `TOOLS.md` from its default comment-only content and copies the root file into a missing main workspace copy. Startup does not overwrite existing files.
+
+Migration accepts the known previous `AGENTS.md` hash and the upstream comment-only `TOOLS.md` seed. Unknown custom content, including an unowned empty file, remains untouched and causes a deployment conflict. Web UI edits do not bypass ownership checks and can cause the same conflict. Keep the repository source canonical and review conflicts before activation.
 
 ## Command allowlist
 
@@ -113,3 +125,5 @@ Never name a projected Moltis agent preset `coordinator`, `auxiliary`, `compress
 ## Verification
 
 Preparation does not authorise `just switch-home`. After separate deployment approval, check that agents and skills appear in the Moltis UI.
+
+Validate composed tool instructions for Skrye, Zannah, and Traya. Test deployment and migration with a temporary `HOME`, never the real home directory. These checks need neither activation nor a Rust build. See the [owned-files tests](../assistants/owned-files/README.md) for the safe deployment procedure.

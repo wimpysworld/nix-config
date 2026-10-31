@@ -16,7 +16,9 @@ let
   homeDir = config.home.homeDirectory;
   agentName = if host.name == "momin" then "traya" else host.name;
   isTraya = agentName == "traya";
-  mainModel = if isTraya then "openai-codex::gpt-6-astra" else "gemini::gemini-4-argon";
+  mainProvider = if isTraya then "openai-codex" else "gemini";
+  mainModelName = if isTraya then "gpt-6-astra" else "gemini-4-argon";
+  mainModel = "${mainProvider}::${mainModelName}";
   auxiliaryModel =
     if isTraya then "openai-codex::gpt-6-luna@reasoning-high" else "gemini::gemini-3.8-flash";
   auxiliaryReasoningEffort = if isTraya then "high" else "medium";
@@ -743,33 +745,61 @@ let
   };
 in
 {
-  options.agentic.moltis.envPlumbing = lib.mkOption {
-    type =
-      with lib.types;
-      listOf (
-        attrsOf (oneOf [
-          str
-          path
-        ])
-      );
-    readOnly = true;
-    internal = true;
-    default = moltisEnvPlumbing;
-    description = ''
-      Environment variables for the composed Moltis configuration, each with
-      its sops file and placeholder.
-    '';
-  };
+  options.agentic.moltis = {
+    toolsContext = lib.mkOption {
+      type = lib.types.submodule {
+        options = {
+          homeDirectory = lib.mkOption { type = lib.types.str; };
+          system = lib.mkOption { type = lib.types.str; };
+          platform = lib.mkOption {
+            type = lib.types.enum [
+              "darwin"
+              "linux"
+            ];
+          };
+          provider = lib.mkOption { type = lib.types.str; };
+          mainModel = lib.mkOption { type = lib.types.str; };
+          auxiliaryModel = lib.mkOption { type = lib.types.str; };
+          mcpServers = lib.mkOption { type = lib.types.listOf lib.types.str; };
+          stateDirectory = lib.mkOption { type = lib.types.str; };
+          ttsModel = lib.mkOption { type = lib.types.str; };
+          ttsVoice = lib.mkOption { type = lib.types.str; };
+          sttModel = lib.mkOption { type = lib.types.str; };
+          gitName = lib.mkOption { type = lib.types.str; };
+        };
+      };
+      readOnly = true;
+      internal = true;
+      description = "Public runtime facts for the composed Moltis TOOLS.md.";
+    };
+    envPlumbing = lib.mkOption {
+      type =
+        with lib.types;
+        listOf (
+          attrsOf (oneOf [
+            str
+            path
+          ])
+        );
+      readOnly = true;
+      internal = true;
+      default = moltisEnvPlumbing;
+      description = ''
+        Environment variables for the composed Moltis configuration, each with
+        its sops file and placeholder.
+      '';
+    };
 
-  options.agentic.moltis.renderedConfig = lib.mkOption {
-    type = with lib.types; path;
-    readOnly = true;
-    description = ''
-      Rendered `moltis.toml` for the child service to symlink into the
-      writable Moltis config directory. The sops template substitutes the
-      placeholder markers at render time, so the path is the only safe
-      consumer: the generated file on any store path still holds markers.
-    '';
+    renderedConfig = lib.mkOption {
+      type = with lib.types; path;
+      readOnly = true;
+      description = ''
+        Rendered `moltis.toml` for the child service to symlink into the
+        writable Moltis config directory. The sops template substitutes the
+        placeholder markers at render time, so the path is the only safe
+        consumer: the generated file on any store path still holds markers.
+      '';
+    };
   };
 
   config = lib.mkIf moltisEnabled (
@@ -845,6 +875,19 @@ in
 
       sops.secrets = lib.genAttrs (lib.attrNames moltisSecretSopsFiles) secretConfig;
 
+      agentic.moltis.toolsContext = {
+        homeDirectory = homeDir;
+        system = pkgs.stdenv.hostPlatform.system;
+        platform = if host.is.darwin then "darwin" else "linux";
+        provider = mainProvider;
+        inherit mainModel auxiliaryModel;
+        mcpServers = lib.attrNames mcpServerDefs.moltisServers;
+        stateDirectory = stateDir;
+        ttsModel = googleTtsModel;
+        ttsVoice = googleTtsVoice;
+        sttModel = googleSttModel;
+        gitName = agentDisplayName;
+      };
       agentic.moltis.renderedConfig = config.sops.templates."moltis.toml".path;
 
       sops.templates."moltis.toml" = {
@@ -1025,8 +1068,8 @@ in
               edit_throttle_ms = 1000;
               reply_to_message = true;
               otp_self_approval = false;
-              model = if isTraya then "gpt-6-astra" else "gemini-4-argon";
-              model_provider = if isTraya then "openai-codex" else "gemini";
+              model = mainModelName;
+              model_provider = mainProvider;
             };
           };
         };

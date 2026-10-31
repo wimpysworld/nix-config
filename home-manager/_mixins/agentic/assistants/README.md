@@ -6,6 +6,8 @@ Developer servers keep Pi Agent resources. Claude Code, OpenCode, and Codex reso
 
 [Moltis delivery](../moltis/README.md) also supports Martin's Linux and Darwin hosts with the `moltis` tag. Momin is Traya's prepared replacement for Malak.
 
+Moltis also receives Nix-managed tool instructions from [`../moltis/TOOLS.md`](../moltis/TOOLS.md), with public host and provider facts. Both installed copies use the shared ownership helper. See [tool instructions and ownership](../moltis/README.md#tool-instructions-and-ownership) for editing, migration, and normal-chat reload behaviour. This Markdown source changes no agent or skill metadata, so it needs no catalogue update.
+
 The [20 Workspace skills](gws.md) also require a `developer` user and a `cg` host, matching the `gws` package gate.
 Their pinned source, local changes, and refresh procedure are documented separately. [Authentication](../../development/gcloud/README.md) uses the existing Google Cloud project.
 
