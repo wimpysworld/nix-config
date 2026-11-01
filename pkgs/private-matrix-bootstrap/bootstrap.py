@@ -37,20 +37,6 @@ ROOM_TOPIC = (
     f"Martin (@martin:{SERVER}), Traya (@traya:{SERVER}), "
     f"Skrye (@skrye:{SERVER}), and Zannah (@zannah:{SERVER})."
 )
-DM_TOPICS = {
-    "skrye": (
-        f"Direct channel between Martin (@martin:{SERVER}) and "
-        f"Skrye (@skrye:{SERVER}) for systems and implementation work."
-    ),
-    "zannah": (
-        f"Direct channel between Martin (@martin:{SERVER}) and "
-        f"Zannah (@zannah:{SERVER}) for adversarial review and failure analysis."
-    ),
-    "traya": (
-        f"Direct channel between Martin (@martin:{SERVER}) and "
-        f"Traya (@traya:{SERVER}) for architecture and synthesis."
-    ),
-}
 CLIENT = "/_matrix/client/v3"
 MEDIA_UPLOAD = "/_matrix/media/v3/upload"
 MEDIA_DOWNLOAD = f"/_matrix/client/v1/media/download/{SERVER}"
@@ -194,11 +180,9 @@ def powers():
     }
 
 
-def base_room_body(room_id, name, topic, preset="private_chat"):
+def base_room_body(room_id, preset="private_chat"):
     return {
         "visibility": "private",
-        "name": name,
-        "topic": topic,
         "preset": preset,
         # Tuwunel's supported custom ID removes any cross-host provisioning handoff.
         "room_version": "11",
@@ -227,19 +211,17 @@ def base_room_body(room_id, name, topic, preset="private_chat"):
 
 def room_body():
     return {
-        **base_room_body("the-cauldron", ROOM_NAME, ROOM_TOPIC),
+        **base_room_body("the-cauldron"),
+        "name": ROOM_NAME,
+        "topic": ROOM_TOPIC,
         "room_alias_name": "the-cauldron",
     }
 
 
 def dm_room_body(agent):
     return {
-        **base_room_body(
-            f"dm-martin-{agent}",
-            DISPLAY_NAMES[agent],
-            DM_TOPICS[agent],
-            preset="trusted_private_chat",
-        ),
+        **base_room_body(f"dm-martin-{agent}", preset="trusted_private_chat"),
+        "invite": [user_id(agent)],
         "is_direct": True,
     }
 
@@ -556,6 +538,18 @@ class Bootstrap:
         if changed:
             self.call("PUT", path, updated, user=user)
 
+    def reconcile_dm_room_metadata(self, prefix, state):
+        def content(kind):
+            return state.get(("m.room." + kind, ""), {}).get("content", {})
+
+        if content("name").get("name"):
+            self.call("PUT", prefix + "/state/m.room.name/", {"name": ""})
+        topic = content("topic")
+        if topic.get("topic") or topic.get("m.topic"):
+            self.call("PUT", prefix + "/state/m.room.topic/", {"topic": ""})
+        if content("avatar").get("url"):
+            self.call("PUT", prefix + "/state/m.room.avatar/", {})
+
     def dm_rooms(self):
         for agent in AGENTS:
             room = dm_room_id(agent)
@@ -575,9 +569,7 @@ class Bootstrap:
                 events = self.call("GET", prefix + "/state")
             state = {(event["type"], event["state_key"]): event for event in events}
             self.check_private_room(room, state, ("martin", agent))
-            self.reconcile_room_metadata(
-                prefix, state, DISPLAY_NAMES[agent], DM_TOPICS[agent], agent
-            )
+            self.reconcile_dm_room_metadata(prefix, state)
             self.reconcile_direct_account_data(
                 agent, {user_id("martin"): room}
             )
