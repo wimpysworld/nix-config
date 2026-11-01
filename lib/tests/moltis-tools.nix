@@ -404,6 +404,13 @@ pkgs.runCommand "moltis-tools" { } ''
                   assert not marker.exists(), (fixture["host"], missing, "child started without credentials")
               if missing:
                   paths[missing].write_text("synthetic-" + missing)
+          readiness_tail = inner.split('mkdir -p "$HOME/.moltis"\n', 1)[1].split('if [[ -f "$MOLTIS_DATA_DIR/memory.db" ]]; then', 1)[0]
+          timeout_cmd = "set -euo pipefail\n" + readiness_tail + f"{sys.executable} -c 'from pathlib import Path; import os; Path(os.environ[\"HOME\"], \"reached-cleanup\").touch()'\n"
+          timeout_env = dict(env, MOLTIS_EMBEDDING_READY_TIMEOUT_SECS="0")
+          result = subprocess.run([bash, "-c", timeout_cmd], env=timeout_env, capture_output=True, text=True, timeout=5)
+          assert result.returncode != 0, (fixture["host"], "expected readiness timeout to fail")
+          assert "moltis-in-fence: timed out waiting for the embedding model" in result.stderr, (fixture["host"], result.stderr)
+          assert not (root / "reached-cleanup").exists(), (fixture["host"], "launcher continued after readiness timeout")
   print("Moltis launcher checks passed for all three hosts.")
   PY
   ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/assistants/owned-files}/test_deploy.py
