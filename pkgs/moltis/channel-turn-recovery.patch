@@ -1,0 +1,81 @@
+--- a/crates/agents/src/model/convert.rs
++++ b/crates/agents/src/model/convert.rs
+@@ -238,6 +238,14 @@
+                 for tc in &tool_calls {
+                     pending_tool_call_ids.insert(tc.id.clone());
+                 }
++                if filter_orphan_tool_results
++                    && tool_calls.is_empty()
++                    && reasoning.is_none()
++                    && content.as_deref().is_none_or(|s| s.trim().is_empty())
++                {
++                    tracing::debug!(index = i, "skipping empty persisted assistant message");
++                    continue;
++                }
+                 messages.push(ChatMessage::Assistant {
+                     content,
+                     tool_calls,
+--- a/crates/agents/src/runner/retry.rs
++++ b/crates/agents/src/runner/retry.rs
+@@ -37,6 +37,7 @@
+     "bad gateway",
+     "service unavailable",
+     "the server had an error processing your request",
++    "malformed_function_call",
+ ];
+ 
+ /// Check if an error looks like a transient provider failure that may
+--- a/crates/agents/src/runner/streaming.rs
++++ b/crates/agents/src/runner/streaming.rs
+@@ -507,6 +507,19 @@
+ 
+         if let Some(cb) = on_event {
+             cb(RunnerEvent::ThinkingDone);
++        }
++
++        if stream_error.is_none()
++            && accumulated_text.is_empty()
++            && tool_calls.is_empty()
++            && request_usage.input_tokens > 0
++            && request_usage.output_tokens == 0
++            && finish_reason.is_none()
++        {
++            stream_error = Some(
++                "server_error: provider stream ended without finish_reason or output tokens"
++                    .to_string(),
++            );
+         }
+ 
+         // Handle stream errors — retry on transient failures/rate limits.
+--- a/crates/chat/src/run_with_tools.rs
++++ b/crates/chat/src/run_with_tools.rs
+@@ -1218,7 +1218,11 @@
+             // produced means the LLM never processed the request (e.g.
+             // network_error finish_reason).  Surface as an error so the
+             // UI renders a visible error card instead of showing nothing.
+-            if is_silent && usage.output_tokens == 0 && tool_calls_made == 0 {
++            if is_silent
++                && request_usage.output_tokens == 0
++                && ((usage.output_tokens == 0 && tool_calls_made == 0)
++                    || request_usage.input_tokens > 0)
++            {
+                 warn!(
+                     run_id,
+                     "empty response with zero tokens — treating as provider error"
+--- a/crates/chat/src/service/chat_impl/tool_policy.rs
++++ b/crates/chat/src/service/chat_impl/tool_policy.rs
+@@ -59,7 +59,13 @@
+ /// authorization may no longer be valid.
+ #[must_use]
+ pub(crate) fn downgrade_queued_channel_request(params: &mut Value, private_context: bool) -> bool {
+-    if !private_context || !params.get("channel").is_some_and(Value::is_object) {
++    if !private_context
++        || !params.get("channel").is_some_and(Value::is_object)
++        || params
++            .get("_native_channel_request")
++            .and_then(Value::as_bool)
++            == Some(true)
++    {
+         return false;
+     }
+     apply_untrusted_request_context(params);

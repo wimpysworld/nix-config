@@ -1232,6 +1232,7 @@ let
           sqlite3 "$MOLTIS_DATA_DIR/memory.db" "DELETE FROM files WHERE path IN (SELECT path FROM chunks WHERE model != '${embeddingModel.publicName}' OR embedding IS NULL); DELETE FROM chunks WHERE model != '${embeddingModel.publicName}' OR embedding IS NULL; DELETE FROM files WHERE size > 0 AND NOT EXISTS (SELECT 1 FROM chunks WHERE chunks.path = files.path); INSERT INTO chunks_fts(chunks_fts) VALUES ('rebuild'); DELETE FROM embedding_cache WHERE model != '${embeddingModel.publicName}';"
         fi
       fi
+      python3 -c 'import glob, json, os, sys; root = sys.argv[1]; [open(p + ".tmp", "w", encoding="utf-8").write("".join(line for line in lines if not (isinstance(d := json.loads(line), dict) and d.get("role") == "assistant" and not str(d.get("content") or "").strip() and not d.get("tool_calls") and not str(d.get("reasoning") or "").strip()))) and os.replace(p + ".tmp", p) for p in glob.glob(os.path.join(root, "sessions", "v1", "*", "history.jsonl")) if (lines := open(p, encoding="utf-8").splitlines(True)) and any(isinstance(d := json.loads(l), dict) and d.get("role") == "assistant" and not str(d.get("content") or "").strip() and not d.get("tool_calls") and not str(d.get("reasoning") or "").strip() for l in lines)]' "$MOLTIS_DATA_DIR" 2>/dev/null || true
       printf '["dcg-guard"]\n' > "$HOME/.moltis/disabled_hooks.json"
       touch "$HOME/.moltis/.onboarded"
       ${lib.optionalString host.is.linux ''
