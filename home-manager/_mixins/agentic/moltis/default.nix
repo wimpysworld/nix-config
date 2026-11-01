@@ -1777,6 +1777,7 @@ in
               "@traya:matrix.wimpys.world"
             ];
             operators = [ "@martin:matrix.wimpys.world" ];
+            private_instance = true;
             stream_mode = "off";
           };
         };
