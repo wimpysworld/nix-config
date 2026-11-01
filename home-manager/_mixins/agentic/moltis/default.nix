@@ -1631,7 +1631,10 @@ in
             default_timeout_secs = 300;
             max_timeout_secs = 1800;
             approval_mode = "never";
-            sandbox.mode = "off";
+            sandbox = {
+              mode = "off";
+              backend = "restricted-host";
+            };
           };
           fs = {
             workspace_root = homeDir;

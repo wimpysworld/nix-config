@@ -282,6 +282,8 @@ let
     assert !(settings.env ? MOLTIS_LINEAR_CLIENT_SECRET);
     assert settings.mcp.servers == { };
     assert settings.tools.policy.deny == [ "mcp_*" ];
+    assert settings.tools.exec.sandbox.mode == "off";
+    assert settings.tools.exec.sandbox.backend == "restricted-host";
     assert builtins.all (name: lib.hasPrefix "mcp_" name) (
       context.nativeMcpManagementTools ++ [ "mcp__linear__list_issues" ]
     );

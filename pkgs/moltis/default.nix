@@ -126,6 +126,10 @@ rustPlatform.buildRustPackage {
 
   env.MOLTIS_VERSION = version;
 
+  patches = [
+    ./network-filter-bind.patch
+  ];
+
   postPatch = ''
     sed -i '1i #![recursion_limit = "512"]' "$cargoDepsCopy"/matrix-sdk-*/src/lib.rs
   '';

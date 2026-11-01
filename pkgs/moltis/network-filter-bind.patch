@@ -1,0 +1,168 @@
+--- a/crates/gateway/src/server/prepare_core.rs
++++ b/crates/gateway/src/server/prepare_core.rs
+@@ -1036,7 +1036,12 @@
+                 ),
+             );
+             let proxy_addr: SocketAddr =
+-                ([0, 0, 0, 0], moltis_network_filter::DEFAULT_PROXY_PORT).into();
++                moltis_network_filter::proxy::proxy_listener_addr_for_sandbox(
++                    sandbox_config.mode != moltis_tools::sandbox::SandboxMode::Off
++                        || config.heartbeat.sandbox_enabled,
++                    sandbox_router.backend_name(),
++                    moltis_network_filter::DEFAULT_PROXY_PORT,
++                );
+             let proxy = moltis_network_filter::proxy::NetworkProxyServer::new(
+                 proxy_addr,
+                 Arc::clone(&domain_mgr),
+--- a/crates/network-filter/src/proxy.rs
++++ b/crates/network-filter/src/proxy.rs
+@@ -98,6 +98,35 @@
+     }
+ }
+ 
++/// Return the socket address for the trusted-network proxy listener.
++///
++/// Binds `0.0.0.0:port` only when `bridge_clients` is true (container or VM
++/// sandboxes in a separate network namespace that reach the host via a bridge
++/// or vmnet gateway). Otherwise binds `127.0.0.1:port` so only local loopback
++/// clients can connect.
++pub fn proxy_listener_addr(bridge_clients: bool, port: u16) -> SocketAddr {
++    let ip = if bridge_clients {
++        Ipv4Addr::UNSPECIFIED
++    } else {
++        Ipv4Addr::LOCALHOST
++    };
++    SocketAddr::from((ip, port))
++}
++
++/// Select the proxy listener address from sandbox state and backend name.
++pub fn proxy_listener_addr_for_sandbox(
++    sandbox_enabled: bool,
++    backend_name: &str,
++    port: u16,
++) -> SocketAddr {
++    let bridge_clients = sandbox_enabled
++        && matches!(
++            backend_name,
++            "docker" | "podman" | "apple-container" | "firecracker"
++        );
++    proxy_listener_addr(bridge_clients, port)
++}
++
+ /// Returns `true` if the IP is loopback or belongs to a private/link-local
+ /// range.  Used to reject connections from public IPs when the proxy binds
+ /// to `0.0.0.0` so container VMs on bridge/vmnet networks can reach it.
+@@ -762,6 +791,44 @@
+     }
+ 
+     #[test]
++    fn test_proxy_listener_addr() {
++        let loopback = SocketAddr::from((Ipv4Addr::LOCALHOST, DEFAULT_PROXY_PORT));
++        let unspecified = SocketAddr::from((Ipv4Addr::UNSPECIFIED, DEFAULT_PROXY_PORT));
++
++        assert_eq!(proxy_listener_addr(false, DEFAULT_PROXY_PORT), loopback);
++        assert_eq!(proxy_listener_addr(true, DEFAULT_PROXY_PORT), unspecified);
++
++        for backend in [
++            "docker",
++            "podman",
++            "apple-container",
++            "firecracker",
++            "restricted-host",
++            "wasm",
++            "none",
++        ] {
++            assert_eq!(
++                proxy_listener_addr_for_sandbox(false, backend, DEFAULT_PROXY_PORT),
++                loopback
++            );
++        }
++
++        for backend in ["restricted-host", "wasm", "none", "vercel", "daytona"] {
++            assert_eq!(
++                proxy_listener_addr_for_sandbox(true, backend, DEFAULT_PROXY_PORT),
++                loopback
++            );
++        }
++
++        for backend in ["docker", "podman", "apple-container", "firecracker"] {
++            assert_eq!(
++                proxy_listener_addr_for_sandbox(true, backend, DEFAULT_PROXY_PORT),
++                unspecified
++            );
++        }
++    }
++
++    #[test]
+     fn test_is_private_or_loopback() {
+         // Loopback
+         assert!(is_private_or_loopback(&IpAddr::V4(Ipv4Addr::LOCALHOST)));
+@@ -787,4 +854,68 @@
+         assert!(!is_private_or_loopback(&"1.1.1.1".parse().unwrap()));
+         assert!(!is_private_or_loopback(&"2001:db8::1".parse().unwrap()));
+     }
++
++    #[tokio::test]
++    async fn test_proxy_server_loopback_permits_and_rejects() {
++        use tokio::io::AsyncReadExt;
++        let upstream_listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
++        let upstream_port = upstream_listener.local_addr().unwrap().port();
++        tokio::spawn(async move {
++            if let Ok((mut sock, _)) = upstream_listener.accept().await {
++                let mut buf = [0u8; 4];
++                if sock.read_exact(&mut buf).await.is_ok() {
++                    let _ = sock.write_all(&buf).await;
++                }
++            }
++        });
++
++        let probe = TcpListener::bind(proxy_listener_addr(false, 0))
++            .await
++            .unwrap();
++        let proxy_addr = probe.local_addr().unwrap();
++        drop(probe);
++        assert_eq!(proxy_addr.ip(), IpAddr::V4(Ipv4Addr::LOCALHOST));
++
++        let allowed = vec!["127.0.0.1".to_string()];
++        let filter = Arc::new(DomainApprovalManager::new(
++            &allowed,
++            std::time::Duration::from_millis(10),
++        ));
++        let proxy = NetworkProxyServer::new(proxy_addr, filter, None);
++        let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
++        let proxy_task = tokio::spawn(async move { proxy.run(shutdown_rx).await });
++
++        let mut client = loop {
++            match TcpStream::connect(proxy_addr).await {
++                Ok(stream) => break stream,
++                Err(_) => tokio::time::sleep(std::time::Duration::from_millis(5)).await,
++            }
++        };
++        let connect_req =
++            format!("CONNECT 127.0.0.1:{upstream_port} HTTP/1.1\r\nHost: 127.0.0.1:{upstream_port}\r\n\r\n");
++        client.write_all(connect_req.as_bytes()).await.unwrap();
++        let mut reader = BufReader::new(client);
++        let mut status_line = String::new();
++        reader.read_line(&mut status_line).await.unwrap();
++        assert!(status_line.starts_with("HTTP/1.1 200"));
++        let mut blank = String::new();
++        reader.read_line(&mut blank).await.unwrap();
++        reader.get_mut().write_all(b"ping").await.unwrap();
++        let mut echoed = [0u8; 4];
++        reader.read_exact(&mut echoed).await.unwrap();
++        assert_eq!(&echoed, b"ping");
++
++        let mut denied_client = TcpStream::connect(proxy_addr).await.unwrap();
++        denied_client
++            .write_all(b"CONNECT denied.invalid:443 HTTP/1.1\r\nHost: denied.invalid:443\r\n\r\n")
++            .await
++            .unwrap();
++        let mut denied_reader = BufReader::new(denied_client);
++        let mut denied_status = String::new();
++        denied_reader.read_line(&mut denied_status).await.unwrap();
++        assert!(denied_status.starts_with("HTTP/1.1 403"));
++
++        let _ = shutdown_tx.send(true);
++        proxy_task.await.unwrap().unwrap();
++    }
+ }
