@@ -4,9 +4,14 @@ set -euo pipefail
 script=${1:?script path required}
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
-export HOME=$tmp/home LOG=$tmp/log DATA=$tmp/data MODE=ok
+export HOME=$tmp/home LOG=$tmp/log DATA=$tmp/data MODE=ok ORIGIN_URL=https://github.com/WimpysWorld/project.git
 mkdir -p "$HOME" "$tmp/bin"
 export PATH=$tmp/bin:$PATH
+printf '#!%s\n' "$BASH" > "$tmp/bin/gh"
+cat >> "$tmp/bin/gh" <<'MOCK'
+set -eu
+exit 0
+MOCK
 printf '#!%s\n' "$BASH" > "$tmp/bin/gh-api-safe"
 cat >> "$tmp/bin/gh-api-safe" <<'MOCK'
 set -eu
@@ -21,25 +26,36 @@ printf '#!%s\n' "$BASH" > "$tmp/bin/git"
 cat >> "$tmp/bin/git" <<'MOCK'
 set -eu
 printf '%s\n' "$*" >> "$LOG"
-if [[ $1 == clone ]]; then [[ $MODE != clone-fail ]]; exit; fi
+if [[ $1 == -c ]]; then
+    [[ $2 == 'credential.https://github.com.helper=' ]] || exit 94
+    [[ $3 == '-c' && $4 == 'credential.https://github.com.helper=!gh auth git-credential' ]] || exit 94
+    [[ $5 == clone && $6 == -- ]] || exit 94
+    [[ $MODE != clone-fail ]]
+    exit
+fi
 [[ $1 == -C ]] || exit 91
 dest=$2
 shift 2
 case $1 in
     rev-parse) [[ $MODE != bad-root ]] && printf '%s\n' "$dest" || printf '/wrong\n' ;;
     remote)
+        if [[ $2 == set-url ]]; then
+            [[ $3 == origin && $4 == https://github.com/WimpysWorld/project.git ]] || exit 95
+            [[ $MODE != set-url-fail ]]
+            exit
+        fi
         case $MODE in
             mismatch) printf 'https://secret@github.com/other/repo.git\n' ;;
             missing) exit 1 ;;
-            *) printf 'git@github.com:WimpysWorld/project.git\n' ;;
+            *) printf '%s\n' "$ORIGIN_URL" ;;
         esac ;;
     -c)
-        [[ "$*" == '-c maintenance.auto=false fetch --no-prune --no-prune-tags --no-tags --no-recurse-submodules --refmap= origin +refs/heads/*:refs/remotes/origin/*' ]] || exit 92
+        [[ "$*" == '-c maintenance.auto=false -c credential.https://github.com.helper= -c credential.https://github.com.helper=!gh auth git-credential fetch --no-prune --no-prune-tags --no-tags --no-recurse-submodules --refmap= origin +refs/heads/*:refs/remotes/origin/*' ]] || exit 92
         [[ $MODE != fetch-fail ]] ;;
     *) exit 93 ;;
 esac
 MOCK
-chmod +x "$tmp/bin/gh-api-safe" "$tmp/bin/git"
+chmod +x "$tmp/bin/gh" "$tmp/bin/gh-api-safe" "$tmp/bin/git"
 fixture() {
     jq -n --arg name "$1" '[{name:$name, owner:{login:"WimpysWorld"}, full_name:("WimpysWorld/"+$name), archived:false, fork:true}]' > "$DATA"
 }
@@ -53,18 +69,30 @@ run() {
 }
 fixture .github
 run 0
-grep -q 'https://github.com/WimpysWorld/.github.git .*Development/WimpysWorld/_github' "$LOG"
+grep -q '^-c credential\.https://github\.com\.helper= -c credential\.https://github\.com\.helper=!gh auth git-credential clone -- https://github\.com/WimpysWorld/\.github\.git .*Development/WimpysWorld/_github$' "$LOG"
 [[ $(wc -l < "$LOG.api") == 5 ]]
+fixture .github-private
+run 0
+grep -q '^-c credential\.https://github\.com\.helper= -c credential\.https://github\.com\.helper=!gh auth git-credential clone -- https://github\.com/WimpysWorld/\.github-private\.git .*Development/WimpysWorld/_github-private$' "$LOG"
 # Separate JSON pages, ordinary forks included and archived entries excluded.
 fixture project
 printf '\n[{"name":"old","owner":{"login":"WimpysWorld"},"full_name":"WimpysWorld/old","archived":true}]\n' >> "$DATA"
 run 0
-[[ $(grep -c '^clone ' "$LOG") == 1 ]]
+[[ $(grep -c ' clone -- ' "$LOG") == 1 ]]
 mkdir -p "$HOME/Development/WimpysWorld/project/.git" "$HOME/Development/WimpysWorld/project/.github"
 printf keep > "$HOME/Development/WimpysWorld/project/.github/workflow.yml"
-run 0
-grep -q 'fetch --no-prune' "$LOG"
+# Existing HTTPS origin fetches directly without set-url.
+ORIGIN_URL=https://github.com/WimpysWorld/project.git run 0
+if grep -q 'remote set-url' "$LOG"; then exit 1; fi
+grep -q -- '-c maintenance.auto=false -c credential.https://github.com.helper= -c credential.https://github.com.helper=!gh auth git-credential fetch --no-prune' "$LOG"
 [[ $(< "$HOME/Development/WimpysWorld/project/.github/workflow.yml") == keep ]]
+# Existing SSH origin migrates to HTTPS via remote set-url before fetching.
+ORIGIN_URL=git@github.com:WimpysWorld/project.git run 0
+grep -q 'remote set-url origin https://github.com/WimpysWorld/project.git$' "$LOG"
+grep -q -- '-c maintenance.auto=false -c credential.https://github.com.helper= -c credential.https://github.com.helper=!gh auth git-credential fetch --no-prune' "$LOG"
+ORIGIN_URL=git@github.com:WimpysWorld/project.git MODE=set-url-fail run 1
+if grep -q ' fetch ' "$LOG"; then exit 1; fi
+ORIGIN_URL=https://github.com/WimpysWorld/project.git
 for MODE in mismatch missing bad-root; do
     export MODE
     run 1
@@ -86,12 +114,17 @@ printf '[]\n[]\n' > "$DATA"
 run 0
 [[ ! -s $LOG ]]
 fixture .github
-jq '.[0].name="_github" | .[0].full_name="WimpysWorld/_github"' "$DATA" >> "$tmp/page"
+jq '.[0].name="_github" | .[0].full_name="WimpysWorld/_github"' "$DATA" > "$tmp/page"
+cat "$tmp/page" >> "$DATA"
+run 1
+[[ ! -s $LOG ]]
+fixture .github-private
+jq '.[0].name="_github-private" | .[0].full_name="WimpysWorld/_github-private"' "$DATA" > "$tmp/page"
 cat "$tmp/page" >> "$DATA"
 run 1
 [[ ! -s $LOG ]]
 # Reserved destinations must never reach Git, even when populated.
-for name in _worktrees _WORKTREES .git; do
+for name in _worktrees _WORKTREES .worktrees .git; do
     fixture "$name"
     run 1
     [[ ! -s $LOG ]]
@@ -123,7 +156,7 @@ fixture occupied
 jq '.[0].name="zz-valid" | .[0].full_name="WimpysWorld/zz-valid"' "$DATA" > "$tmp/page"
 cat "$tmp/page" >> "$DATA"
 run 1
-grep -q '^clone .*zz-valid' "$LOG"
+grep -q ' clone -- .*zz-valid' "$LOG"
 # Managed owner and root symlinks never redirect actions into primary homes.
 mkdir -p "$tmp/other-home/Zero"
 ln -s "$tmp/other-home/Zero" "$tmp/other-home/Development"
