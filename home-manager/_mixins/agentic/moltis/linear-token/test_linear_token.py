@@ -151,7 +151,15 @@ class TokenTests(unittest.TestCase):
     def test_only_linear_proxy_receives_token_and_renews(self):
         args = ["linear-server", str(self.client_id), str(self.secret), str(self.cache),
                 "/proxy", "https://example.invalid/mcp"]
-        with patch.dict(os.environ, {"LINEAR_API_KEY": "personal", "API_ACCESS_TOKEN": "personal"}):
+        ambient = {
+            "LINEAR_API_KEY": "personal",
+            "API_ACCESS_TOKEN": "personal",
+            "PYTHONPATH": "/nonexistent/python3.14/site-packages",
+            "PYTHONHOME": "/nonexistent/python3.14",
+            "_PYTHON_HOST_PLATFORM": "linux-x86_64",
+            "_PYTHON_SYSCONFIGDATA_NAME": "_sysconfigdata__linux_x86_64-linux-gnu",
+        }
+        with patch.dict(os.environ, ambient):
             for value in ("synthetic-first", "synthetic-second"):
                 self.issuer.return_value = (value, 2592000)
                 with patch.object(token.os, "execve") as execute:
@@ -159,7 +167,9 @@ class TokenTests(unittest.TestCase):
                     binary, argv, environment = execute.call_args.args
                     self.assertEqual(argv, [binary, "--transport", "streamablehttp", args[-1]])
                     self.assertEqual(environment["API_ACCESS_TOKEN"], value)
-                    self.assertNotIn("LINEAR_API_KEY", environment)
+                    for removed in ("LINEAR_API_KEY", "PYTHONPATH", "PYTHONHOME",
+                                    "_PYTHON_HOST_PLATFORM", "_PYTHON_SYSCONFIGDATA_NAME"):
+                        self.assertNotIn(removed, environment)
                 self.expire_in(0)
             self.issuer.side_effect = ValueError("synthetic outage")
             with patch.object(token.os, "execve") as execute, self.assertRaises(ValueError):

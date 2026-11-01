@@ -20,4 +20,5 @@ export API_ACCESS_TOKEN="$token"
 if [[ "${https_proxy-${HTTPS_PROXY-}}" == http://* && "${http_proxy-${HTTP_PROXY-}}" == http://* ]]; then
   unset ALL_PROXY all_proxy
 fi
+unset PYTHONPATH PYTHONHOME _PYTHON_HOST_PLATFORM _PYTHON_SYSCONFIGDATA_NAME
 exec @mcpProxy@ --transport streamablehttp https://mcp.cloudflare.com/mcp

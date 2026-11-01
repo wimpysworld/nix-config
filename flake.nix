@@ -250,7 +250,9 @@
             home-manager
             jq
             just
-            mcp-nixos
+            (runCommand "mcp-nixos-bin" { }
+              "mkdir -p $out/bin && ln -s ${nixpkgs.lib.getExe mcp-nixos} $out/bin/mcp-nixos"
+            )
             nh
             nixfmt-tree
             nixfmt
