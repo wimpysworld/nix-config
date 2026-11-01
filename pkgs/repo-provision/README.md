@@ -1,44 +1,19 @@
-# repo-provision: initial read-only planner
+# repo-provision
 
-This operator command inventories token-visible GitHub repositories and reports local destination conflicts. It does not provision repositories yet. There is no apply option, clone, fetch, rename, reset, deletion, activation integration or local Git execution.
-
-## Configuration
-
-The root must already exist. Use an absolute path with no symlinks or parent traversal. Roots inside or containing `~/Zero` are rejected.
-
-```json
-{
-  "root": "/absolute/path/to/Development",
-  "owners": [
-    {"login": "wimpysworld", "kind": "organization", "includeForks": false}
-  ]
-}
-```
+Run this operator command **outside Fence**, after authenticating GitHub and installing the constrained `gh-api-safe` helper:
 
 ```console
-repo-provision --config repositories.json
+nix run .#repo-provision
 ```
 
-Install the constrained `gh-api-safe` helper separately and authenticate GitHub access before use. The command does not fall back to raw `gh api`. Organisation enumeration requires active membership. Personal enumeration requires the authenticated owner. Each owner needs an explicit fork policy.
+There are no arguments or activation hooks. The command provisions token-visible, nonarchived repositories from `wimpysworld`, `oval-tutu`, `linuxmatters`, `quickemu-project` and `noughtylinux`. Ordinary forks are included. It reads every API page and validates the full organisation response before acting on that organisation. A failed enumeration is an error, not an empty inventory. Token permissions can hide private repositories.
 
-Pagination continues to a short terminal page. `paginationComplete` confirms that traversal only, not visibility of every private repository or an atomic snapshot. Restricted tokens can silently omit repositories. An operator must check token permissions before using this inventory for future provisioning.
+Destinations are `~/Development/<canonical-owner>/<repo>`, using API spelling. Only the repository named `.github` gets the checkout basename `_github`. For example, `wimpysworld/.github` becomes `~/Development/wimpysworld/_github`. Internal `.github` directories, workflows and repository metadata are not renamed.
 
-## Output and preservation
+Missing destinations are cloned over HTTPS. Existing plain repositories must have the expected root and a matching GitHub origin (standard HTTPS or SSH URL). Fetch updates only `refs/remotes/origin/*`, with no pruning, tags or submodule recursion. Configured fetch refspecs cannot update local branches. Fetch leaves the checked-out branch, index and working files alone. The command never pulls, resets, stashes, renames, deletes, changes remotes or migrates worktrees.
 
-Completed inventory output is JSON with `schemaVersion: 1`, `mode: "plan"` and `executable: false`. `actions` contains `candidate` for a missing destination or `preserve` for an excluded or conflicting destination. A candidate is informational, not permission to clone. `existing` lists local entries that remain untouched. `conflicts` records occupied destinations, symlinks and path collisions.
+Output reports `CLONED`, `FETCHED`, `EMPTY` or `SKIP`. Symlinks at managed directories, non-repositories, worktrees, origin mismatches and case-insensitive path collisions are skipped. Both sides of a `.github`/`_github` inventory collision are skipped. Other repositories continue, with exit status 1 if anything fails. Invalid arguments return 2. Git error output and origin URLs are not printed, to avoid credential disclosure. Inspect a failed or partial clone manually.
 
-Exit status is zero for a completed inventory without conflicts, or one for conflicts and failures. A failed inventory returns `mode: "blocked"`, `complete: false` and `actions: null`, never a partial list presented as success. Each GitHub request has a 60-second timeout and blocks the inventory on expiry. `complete: true` means that inspection finished, not that the plan is executable or that token visibility is complete. Invalid command-line arguments return argparse exit status two.
+The destination is fixed. `~/Zero` and other primary directories are not scanned or modified. `~/Development` and its owner directories must not be symlinks. Existing local repositories and Git configuration must be trusted. Do not run concurrently with another provisioner or filesystem changes. This is not a transaction or a defence against hostile Git configuration. There is no custom request timeout. Interrupt a stalled network operation and inspect its destination before retrying.
 
-The local scan reads directory names at exactly two levels, `<root>/<owner>/<repository>`. It does not open `.git`, run Git, resolve remote URLs or inspect checkout contents. Dirty, detached, divergent and multi-remote checkouts therefore remain uninspected and preserved. Existing destinations require later identity review, even when they look correct. `_worktrees` entries at either level are skipped. Internal metadata symlinks are not followed because repository contents are never scanned.
-
-Only the repository named `.github` maps to local `_github`. GitHub identity remains `.github`. Internal `.github` folders and `.git` metadata remain untouched. `.github` and `_github` repositories under one owner conflict. Case-folded destination collisions also preserve all affected entries.
-
-Archived repositories, excluded forks and `wimpysworld/nix-config` are preserved. The last identity is excluded for `~/Zero/nix-config`. No local identity adoption or duplicate-checkout reconciliation occurs in this stage. Local paths and private repository names in output can be sensitive. Save output only to private operator-owned files.
-
-## Validation and staged delivery
-
-The Nix package check phase runs `test_repo_provision.py`. Tests use temporary directories and mocked GitHub responses. They cover pagination failures, permissions, malformed inputs, path and mapping collisions, exclusions and preservation of untrusted checkout metadata. No live inventory, clone or fetch is part of validation.
-
-Cloning and fetching are deferred. A later change needs stable identity adoption, saved-plan approval, descriptor-relative path checks, metadata validation, concurrency handling and detailed partial results. It also needs real Git integration tests on disposable macOS and Linux fixtures. This planner is a point-in-time report, not a filesystem transaction or an input to an apply command.
-
-Home Manager integration, migrations and mandatory agent worktrees remain separate follow-up work.
+The Nix package runs ShellCheck and `test-repo-provision.sh`. Tests use mocked Git/GitHub commands and temporary homes, with no live clone or fetch. Home Manager integration and worktree policy are separate work.
