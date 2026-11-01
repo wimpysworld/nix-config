@@ -20,6 +20,7 @@ pkgs: {
   openhue-cli = pkgs.callPackage ./openhue-cli { };
   openusage = pkgs.callPackage ./openusage { };
   private-matrix-bootstrap = pkgs.callPackage ./private-matrix-bootstrap { };
+  repo-provision = pkgs.callPackage ./repo-provision { };
   roamgate = pkgs.callPackage ./roamgate { };
   tcount = pkgs.callPackage ./tcount { };
   vecdecor = pkgs.callPackage ./vecdecor { };
