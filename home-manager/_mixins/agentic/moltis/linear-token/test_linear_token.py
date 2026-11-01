@@ -163,7 +163,7 @@ class TokenTests(unittest.TestCase):
             "ALL_PROXY": "socks5h://127.0.0.1:36747",
             "all_proxy": "socks5h://127.0.0.1:36747",
         }
-        with patch.dict(os.environ, ambient):
+        with patch.dict(os.environ, ambient, clear=True):
             for value in ("synthetic-first", "synthetic-second"):
                 self.issuer.return_value = (value, 2592000)
                 with patch.object(token.os, "execve") as execute:
