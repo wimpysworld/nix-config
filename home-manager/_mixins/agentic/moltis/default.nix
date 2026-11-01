@@ -1195,10 +1195,19 @@ let
       export GIT_CONFIG_VALUE_4="ssh://git@github.com/"
 
       mkdir -p "$HOME/.moltis"
+      # Wait up to 60s for the pre-seeded GGUF snapshot and local llama-swap
+      # server before Moltis runs its one-time startup memory sync.
+      for _ in {1..120}; do
+        if compgen -G "${embeddingModel.resolvedPrimaryPathPattern}" >/dev/null &&
+          python3 -c 'import json, sys, urllib.request; data = json.load(urllib.request.urlopen("http://127.0.0.1:${toString llamaSwapPort}/v1/models", timeout=1)); sys.exit(0 if any(isinstance(m, dict) and m.get("id") == "${embeddingModel.publicName}" for m in data.get("data", [])) else 1)' 2>/dev/null; then
+          break
+        fi
+        sleep 0.5
+      done
       if [[ -f "$MOLTIS_DATA_DIR/memory.db" ]]; then
         has_chunks="$(sqlite3 "$MOLTIS_DATA_DIR/memory.db" "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'chunks';" 2>/dev/null || echo 0)"
         if [[ "$has_chunks" == "1" ]]; then
-          sqlite3 "$MOLTIS_DATA_DIR/memory.db" "DELETE FROM chunks WHERE model != '${embeddingModel.publicName}' OR embedding IS NULL; DELETE FROM files WHERE size > 0 AND NOT EXISTS (SELECT 1 FROM chunks WHERE chunks.path = files.path); DELETE FROM embedding_cache WHERE model != '${embeddingModel.publicName}';"
+          sqlite3 "$MOLTIS_DATA_DIR/memory.db" "DELETE FROM files WHERE path IN (SELECT path FROM chunks WHERE model != '${embeddingModel.publicName}' OR embedding IS NULL); DELETE FROM chunks WHERE model != '${embeddingModel.publicName}' OR embedding IS NULL; DELETE FROM files WHERE size > 0 AND NOT EXISTS (SELECT 1 FROM chunks WHERE chunks.path = files.path); DELETE FROM chunks_fts WHERE id NOT IN (SELECT id FROM chunks); DELETE FROM embedding_cache WHERE model != '${embeddingModel.publicName}';"
         fi
       fi
       printf '["dcg-guard"]\n' > "$HOME/.moltis/disabled_hooks.json"
@@ -1378,6 +1387,7 @@ in
           launcher = toString moltisFencedPackage;
           mcporter = config.xdg.configFile."moltis/mcporter.json".text;
           heartbeat = config.agentic.assistants.moltis.heartbeatHash;
+          embedding = embeddingModel;
           secrets = lib.genAttrs (lib.attrNames moltisSecretSopsFiles) (
             name:
             let

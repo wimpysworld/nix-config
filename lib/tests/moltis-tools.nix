@@ -113,6 +113,12 @@ let
       withChanges {
         xdg.configFile."moltis/mcporter.json".text = lib.mkForce "{}";
       } != original;
+    assert
+      withChanges {
+        noughty.host.gpu.compute.acceleration = lib.mkForce (
+          if (c.noughty.host.gpu.compute.acceleration or null) == "vulkan" then "cuda" else "vulkan"
+        );
+      } != original;
     true;
   checkHost =
     host:
