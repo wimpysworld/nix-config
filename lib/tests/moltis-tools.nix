@@ -56,6 +56,14 @@ let
     lib.findFirst (package: (package.pname or "") == "mcporter")
       (throw "Moltis requires the pinned MCPorter package")
       homeConfigurations."martin@skrye".config.home.packages;
+  linearWrapper = pkgs.callPackage ../../home-manager/_mixins/agentic/moltis/linear-token {
+    inherit mcporter;
+    clientIdPath = "/synthetic/client-id";
+    clientSecretPath = "/synthetic/client-secret";
+    cacheDirectory = "/synthetic/cache";
+    configPath = "/synthetic/mcporter.json";
+    linearUrl = "https://example.invalid/mcp";
+  };
   checkRestartInputs =
     host:
     let
@@ -100,6 +108,10 @@ let
         sops.secrets.GH_TOKEN.sopsFile = lib.mkForce (
           builtins.toFile "moltis-restart-test.yaml" "synthetic encrypted source change\n"
         );
+      } != original;
+    assert
+      withChanges {
+        sops.secrets.MOLTIS_LINEAR_CLIENT_SECRET.key = lib.mkForce "moltis/restart-test/client_secret";
       } != original;
     assert withHeartbeat c.agentic.assistants.moltis.heartbeatHash == original;
     assert withHeartbeat "moltis-restart-test" != original;
@@ -206,17 +218,36 @@ let
         '' scripts.inner
       )
       [
-        "LINEAR_API_KEY"
         "CONTEXT7_API_KEY"
       ];
-    assert builtins.all (
-      name:
-      lib.hasInfix "&& -r ${lib.escapeShellArg c.sops.secrets.${name}.path}" scripts.outer
-      && lib.hasInfix "|| ! -r ${lib.escapeShellArg c.sops.secrets.${name}.path}" scripts.outer
-    ) (defs.requiredSecretsForConsumers [ "moltis" ] ++ [ "CLOUDFLARE_API_TOKEN" ]);
+    assert builtins.all
+      (
+        name:
+        lib.hasInfix "&& -r ${lib.escapeShellArg c.sops.secrets.${name}.path}" scripts.outer
+        && lib.hasInfix "|| ! -r ${lib.escapeShellArg c.sops.secrets.${name}.path}" scripts.outer
+      )
+      (
+        lib.remove "LINEAR_API_KEY" (defs.requiredSecretsForConsumers [ "moltis" ])
+        ++ [
+          "MOLTIS_LINEAR_CLIENT_ID"
+          "MOLTIS_LINEAR_CLIENT_SECRET"
+          "CLOUDFLARE_API_TOKEN"
+        ]
+      );
     assert !(lib.hasInfix "CLOUDFLARE_API_TOKEN" scripts.inner);
     assert !(lib.hasInfix "export CLOUDFLARE_API_TOKEN" scripts.outer);
-    assert lib.hasInfix "export LINEAR_API_KEY" scripts.inner == (cli.mcpServers ? linear);
+    assert !(lib.hasInfix "export LINEAR_API_KEY" scripts.inner);
+    assert lib.hasInfix "unset LINEAR_API_KEY" scripts.inner;
+    assert
+      c.sops.secrets.MOLTIS_LINEAR_CLIENT_ID.key
+      == "moltis/${if host == "momin" then "traya" else host}/client_id";
+    assert
+      c.sops.secrets.MOLTIS_LINEAR_CLIENT_SECRET.key
+      == "moltis/${if host == "momin" then "traya" else host}/client_secret";
+    assert c.sops.secrets.MOLTIS_LINEAR_CLIENT_SECRET.mode == "0400";
+    assert !(disabled.sops.secrets ? MOLTIS_LINEAR_CLIENT_ID);
+    assert !(disabled.sops.secrets ? MOLTIS_LINEAR_CLIENT_SECRET);
+    assert c.sops.secrets.LINEAR_API_KEY.key == disabled.sops.secrets.LINEAR_API_KEY.key;
     assert lib.hasInfix "-systemd-" scripts.inner == !darwin;
     assert lib.hasInfix c.home.homeDirectory body;
     assert lib.hasInfix context.platform body;
@@ -229,12 +260,17 @@ let
     assert context.mcpServers == expectedServers;
     assert cli.imports == [ ];
     assert builtins.attrNames cli.mcpServers == context.mcpServers;
-    assert cli.mcpServers == defs.moltisMcporterServers;
-    assert cli.mcpServers.linear.headers.Authorization == "Bearer \${LINEAR_API_KEY}";
+    assert
+      removeAttrs cli.mcpServers [ "linear" ] == removeAttrs defs.moltisMcporterServers [ "linear" ];
+    assert cli.mcpServers.linear.lifecycle == "ephemeral";
+    assert lib.hasSuffix "/bin/moltis-linear-server" cli.mcpServers.linear.command;
+    assert !(cli.mcpServers.linear ? headers);
+    assert !(cli.mcpServers.linear ? url);
     assert cli.mcpServers.context7.headers.Authorization == "Bearer \${CONTEXT7_API_KEY}";
     assert !(lib.hasInfix "<SOPS:" c.xdg.configFile."moltis/mcporter.json".text);
-    assert lib.elem "LINEAR_API_KEY" envNames;
-    assert settings.env ? LINEAR_API_KEY;
+    assert !(lib.elem "LINEAR_API_KEY" envNames);
+    assert !(settings.env ? LINEAR_API_KEY);
+    assert !(settings.env ? MOLTIS_LINEAR_CLIENT_SECRET);
     assert settings.mcp.servers == { };
     assert settings.tools.policy.deny == [ "mcp_*" ];
     assert builtins.all (name: lib.hasPrefix "mcp_" name) (
@@ -347,6 +383,8 @@ in
 assert builtins.all checkRestartInputs hosts;
 assert builtins.all checkHost hosts;
 pkgs.runCommand "moltis-tools" { } ''
+  test -x ${linearWrapper}/bin/mcporter
+  test -x ${lib.getExe linearWrapper.linearServer}
   ${pkgs.python3}/bin/python3 - ${builtins.toFile "moltis-launcher-fixtures.json" (builtins.unsafeDiscardStringContext (builtins.toJSON launcherFixtures))} ${pkgs.bash}/bin/bash <<'PY'
   import json
   import os
@@ -374,25 +412,25 @@ pkgs.runCommand "moltis-tools" { } ''
   import os
   from pathlib import Path
   Path(os.environ["HOME"], "child-started").touch()
-  assert os.environ["LINEAR_API_KEY"] == "synthetic-LINEAR_API_KEY"
+  assert "LINEAR_API_KEY" not in os.environ
   assert os.environ["CONTEXT7_API_KEY"] == "synthetic-CONTEXT7_API_KEY"
   assert "CLOUDFLARE_API_TOKEN" not in os.environ
   """
           command = prologue + f"{sys.executable} - <<'CHILD'\n{child}\nCHILD\n"
-          env = {"HOME": directory, "PATH": os.defpath}
+          env = {"HOME": directory, "PATH": os.defpath, "LINEAR_API_KEY": "synthetic-personal"}
           result = subprocess.run([bash, "-c", command], env=env, capture_output=True, timeout=5)
           assert result.returncode == 0, (fixture["host"], result.stderr)
           marker = root / "child-started"
           marker.unlink()
           ready = re.search(r"(\[\[ -r .*?\]\]) && break", outer).group(1)
           failed = re.search(r"if (\[\[ ! -r .*?\]\]); then", outer).group(1)
-          for missing in (None, "LINEAR_API_KEY", "CONTEXT7_API_KEY", "CLOUDFLARE_API_TOKEN"):
+          for missing in (None, "MOLTIS_LINEAR_CLIENT_ID", "MOLTIS_LINEAR_CLIENT_SECRET", "CONTEXT7_API_KEY", "CLOUDFLARE_API_TOKEN"):
               if missing:
                   paths[missing].unlink()
               for condition, expected in ((ready, missing is None), (failed, missing is not None)):
                   result = subprocess.run([bash, "-c", condition], env=env, capture_output=True, timeout=5)
                   assert (result.returncode == 0) == expected, (fixture["host"], missing, condition)
-              if missing in ("LINEAR_API_KEY", "CONTEXT7_API_KEY"):
+              if missing == "CONTEXT7_API_KEY":
                   result = subprocess.run([bash, "-c", command], env=env, capture_output=True, timeout=5)
                   assert result.returncode != 0, (fixture["host"], missing)
                   assert not marker.exists(), (fixture["host"], missing, "child started without credentials")
@@ -403,5 +441,7 @@ pkgs.runCommand "moltis-tools" { } ''
   ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/assistants/owned-files}/test_deploy.py
   PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis/mcp-cli-migration}/test_migrate.py
   PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis/mcp-cli-migration}/test_mcporter.py ${lib.getExe mcporter}
+  PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis/linear-token}/test_linear_token.py
+  PYTHONPATH=${../../home-manager/_mixins/agentic/moltis/mcp-cli-migration} PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis/linear-token}/test_linear_token.py ${lib.getExe mcporter} ${lib.getExe pkgs.mcp-proxy}
   touch "$out"
 ''

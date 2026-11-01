@@ -26,20 +26,31 @@ let
   stateDir = "${config.xdg.stateHome}/moltis";
   mcporterConfig = "${config.xdg.configHome}/moltis/mcporter.json";
   mcpServerDefs = import ../mcp/servers.nix { inherit config pkgs; };
-  mcpRequiredSecrets = mcpServerDefs.requiredSecretsForConsumers [ "moltis" ];
-  mcpExportedSecrets = lib.intersectLists [
-    "LINEAR_API_KEY"
-    "CONTEXT7_API_KEY"
-  ] mcpRequiredSecrets;
+  mcpRequiredSecrets = lib.remove "LINEAR_API_KEY" (
+    mcpServerDefs.requiredSecretsForConsumers [ "moltis" ]
+  );
+  linearSecrets = [
+    "MOLTIS_LINEAR_CLIENT_ID"
+    "MOLTIS_LINEAR_CLIENT_SECRET"
+  ];
+  mcpExportedSecrets = lib.intersectLists [ "CONTEXT7_API_KEY" ] mcpRequiredSecrets;
   mcpReadySecrets =
     mcpRequiredSecrets
+    ++ linearSecrets
     ++ lib.optional (mcpServerDefs.moltisCapabilities ? cloudflare-api) "CLOUDFLARE_API_TOKEN";
   mcpInstructions = ''
     For all MCP operations, use only `mcporter --config "$MCPORTER_CONFIG" ...` through `exec`, with `--no-oauth`.
     Never use native MCP tools or management controls.
     Read `${homeDir}/.moltis/TOOLS.md` for the full transport, capability, and safety rules before MCP work.
   '';
-  mcporterPackage = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.mcporter;
+  mcporterPackage = pkgs.callPackage ./linear-token {
+    mcporter = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.mcporter;
+    clientIdPath = config.sops.secrets.MOLTIS_LINEAR_CLIENT_ID.path;
+    clientSecretPath = config.sops.secrets.MOLTIS_LINEAR_CLIENT_SECRET.path;
+    cacheDirectory = "${stateDir}/linear-${agentName}";
+    configPath = mcporterConfig;
+    linearUrl = mcpServerDefs.moltisMcporterServers.linear.url;
+  };
   mcpCliMigration = pkgs.callPackage ./mcp-cli-migration { };
   nativeMcpManagementTools = [
     "mcp_list"
@@ -61,9 +72,6 @@ let
   aiSopsFile = ../../../../secrets/ai.yaml;
   mcpSopsFile = ../../../../secrets/mcp.yaml;
   linearSopsFile = ../../../../secrets/linear.yaml;
-  # Same work-host split that `mcp/default.nix` uses for `LINEAR_API_KEY`:
-  # one `key` attribute per identity in the same sops file.
-  isWorkHost = lib.elem "cg" (host.tags or [ ]);
 
   # Per-host Gemini TTS voice (`skrye` uses the British commercial voice;
   # `zannah` uses the British concierge voice).
@@ -191,16 +199,18 @@ let
     GIT_AUTHOR_EMAIL = moltisSopsFile;
     GEMINI_API_KEY = aiSopsFile;
     CONTEXT7_API_KEY = mcpSopsFile;
-    LINEAR_API_KEY = linearSopsFile;
   }
   // lib.optionalAttrs matrixCfg.enable { MATRIX_PASSWORD = matrixSopsFile; };
 
   secretConfig =
     name:
-    if name == "LINEAR_API_KEY" then
+    if lib.elem name linearSecrets then
       {
         sopsFile = linearSopsFile;
-        key = if isWorkHost then "chainguard" else "wimpysworld";
+        key = "moltis/${agentName}/${
+          if name == "MOLTIS_LINEAR_CLIENT_ID" then "client_id" else "client_secret"
+        }";
+        mode = "0400";
       }
     else if name == "MATRIX_PASSWORD" then
       {
@@ -254,6 +264,7 @@ let
   # PATH entries for the systemd user unit, so it can find user profile tools.
   moltisPath = lib.concatStringsSep ":" (
     [
+      "${mcporterPackage}/bin"
       "${homeDir}/.nix-profile/bin"
       "${homeDir}/.local/state/nix/profile/bin"
       "/etc/profiles/per-user/${username}/bin"
@@ -1167,6 +1178,7 @@ let
     ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.systemd ];
     text = ''
       export MCPORTER_CONFIG=${lib.escapeShellArg mcporterConfig}
+      unset LINEAR_API_KEY
       ${lib.concatMapStringsSep "\n" (name: ''
         ${name}="$(< ${lib.escapeShellArg config.sops.secrets.${name}.path})"
         export ${name}
@@ -1378,7 +1390,7 @@ in
           launcher = toString moltisFencedPackage;
           mcporter = config.xdg.configFile."moltis/mcporter.json".text;
           heartbeat = config.agentic.assistants.moltis.heartbeatHash;
-          secrets = lib.genAttrs (lib.attrNames moltisSecretSopsFiles) (
+          secrets = lib.genAttrs (lib.attrNames moltisSecretSopsFiles ++ linearSecrets) (
             name:
             let
               secret = config.sops.secrets.${name};
@@ -1526,10 +1538,15 @@ in
         Install.WantedBy = [ "default.target" ];
       };
 
-      sops.secrets = lib.genAttrs (lib.attrNames moltisSecretSopsFiles) secretConfig;
+      sops.secrets = lib.genAttrs (lib.attrNames moltisSecretSopsFiles ++ linearSecrets) secretConfig;
       xdg.configFile."moltis/mcporter.json".text = builtins.toJSON {
         imports = [ ];
-        mcpServers = mcpServerDefs.moltisMcporterServers;
+        mcpServers = mcpServerDefs.moltisMcporterServers // {
+          linear = {
+            command = lib.getExe mcporterPackage.linearServer;
+            lifecycle = "ephemeral";
+          };
+        };
       };
 
       agentic.moltis.toolsContext = {
