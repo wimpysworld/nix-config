@@ -59,8 +59,8 @@ for org in wimpysworld oval-tutu linuxmatters quickemu-project noughtylinux; do
     while IFS=$'\t' read -r owner name basename collision; do
         identity=$owner/$name
         dest=$root/$owner/$basename
-        if [[ $collision == true || $basename == .git ]]; then
-            fail "$identity" 'destination collision or reserved Git directory'
+        if [[ $collision == true || $basename == .git || $basename == _worktrees ]]; then
+            fail "$identity" 'destination collision or reserved directory'
             continue
         fi
         # Reject case aliases even on case-sensitive disks, for portable layouts.

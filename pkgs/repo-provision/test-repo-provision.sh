@@ -7,8 +7,8 @@ trap 'rm -rf "$tmp"' EXIT
 export HOME=$tmp/home LOG=$tmp/log DATA=$tmp/data MODE=ok
 mkdir -p "$HOME" "$tmp/bin"
 export PATH=$tmp/bin:$PATH
-cat > "$tmp/bin/gh-api-safe" <<'MOCK'
-#!/usr/bin/env bash
+printf '#!%s\n' "$BASH" > "$tmp/bin/gh-api-safe"
+cat >> "$tmp/bin/gh-api-safe" <<'MOCK'
 set -eu
 [[ $2 == --paginate ]] || exit 90
 printf '%s\n' "$1" >> "$LOG.api"
@@ -17,8 +17,8 @@ case $1 in
     *) printf '[]\n' ;;
 esac
 MOCK
-cat > "$tmp/bin/git" <<'MOCK'
-#!/usr/bin/env bash
+printf '#!%s\n' "$BASH" > "$tmp/bin/git"
+cat >> "$tmp/bin/git" <<'MOCK'
 set -eu
 printf '%s\n' "$*" >> "$LOG"
 if [[ $1 == clone ]]; then [[ $MODE != clone-fail ]]; exit; fi
@@ -90,6 +90,18 @@ jq '.[0].name="_github" | .[0].full_name="WimpysWorld/_github"' "$DATA" >> "$tmp
 cat "$tmp/page" >> "$DATA"
 run 1
 [[ ! -s $LOG ]]
+# Reserved destinations must never reach Git, even when populated.
+for name in _worktrees _WORKTREES .git; do
+    fixture "$name"
+    run 1
+    [[ ! -s $LOG ]]
+done
+mkdir -p "$HOME/Development/WimpysWorld/_worktrees/.git"
+printf keep > "$HOME/Development/WimpysWorld/_worktrees/marker"
+fixture _worktrees
+run 1
+[[ ! -s $LOG ]]
+[[ $(< "$HOME/Development/WimpysWorld/_worktrees/marker") == keep ]]
 fixture blocked
 ln -s "$tmp/missing" "$HOME/Development/WimpysWorld/blocked"
 run 1
