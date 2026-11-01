@@ -9,6 +9,7 @@
 let
   inherit (config.noughty) host;
   matrixCfg = config.agentic.moltis.matrix;
+  privateWeb = host.is.darwin && host.name == "momin";
 
   isMartin = noughtyLib.isUser [ "martin" ];
   moltisEnabled = isMartin && (host.is.linux || host.is.darwin) && noughtyLib.hostHasTag "moltis";
@@ -33,7 +34,8 @@ let
   ] mcpRequiredSecrets;
   mcpReadySecrets =
     mcpRequiredSecrets
-    ++ lib.optional (mcpServerDefs.moltisCapabilities ? cloudflare-api) "CLOUDFLARE_API_TOKEN";
+    ++ lib.optional (mcpServerDefs.moltisCapabilities ? cloudflare-api) "CLOUDFLARE_API_TOKEN"
+    ++ lib.optional privateWeb "MOLTIS_PASSWORD";
   mcpInstructions = ''
     For all MCP operations, use only `mcporter --config "$MCPORTER_CONFIG" ...` through `exec`, with `--no-oauth`.
     Never use native MCP tools or management controls.
@@ -1166,6 +1168,18 @@ let
     ]
     ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.systemd ];
     text = ''
+      ${lib.optionalString privateWeb ''
+        # Read only at runtime. Never put the bootstrap password in arguments or TOML.
+        set +x
+        MOLTIS_PASSWORD="$(< ${lib.escapeShellArg config.sops.secrets.MOLTIS_PASSWORD.path})"
+        if [[ ''${#MOLTIS_PASSWORD} -lt 12 ]]; then
+          echo "Moltis: missing or short bootstrap password." >&2
+          exit 1
+        fi
+        export MOLTIS_PASSWORD
+        export MOLTIS_BEHIND_PROXY=true
+        export MOLTIS_ALLOW_TLS_BEHIND_PROXY=true
+      ''}
       export MCPORTER_CONFIG=${lib.escapeShellArg mcporterConfig}
       ${lib.concatMapStringsSep "\n" (name: ''
         ${name}="$(< ${lib.escapeShellArg config.sops.secrets.${name}.path})"
@@ -1526,7 +1540,15 @@ in
         Install.WantedBy = [ "default.target" ];
       };
 
-      sops.secrets = lib.genAttrs (lib.attrNames moltisSecretSopsFiles) secretConfig;
+      sops.secrets =
+        lib.genAttrs (lib.attrNames moltisSecretSopsFiles) secretConfig
+        // lib.optionalAttrs privateWeb {
+          MOLTIS_PASSWORD = {
+            sopsFile = ../../../../secrets/moltis-web.yaml;
+            key = "MOLTIS_PASSWORD_TRAYA";
+            mode = "0400";
+          };
+        };
       xdg.configFile."moltis/mcporter.json".text = builtins.toJSON {
         imports = [ ];
         mcpServers = mcpServerDefs.moltisMcporterServers;
@@ -1552,243 +1574,257 @@ in
         file = (pkgs.formats.toml { }).generate "moltis.toml" config.agentic.moltis.settings;
         path = "${config.xdg.configHome}/moltis/moltis.toml";
       };
-      agentic.moltis.settings = {
-        # Pin the gateway server address. `ServerConfig::default().port`
-        # is 0, and a port of 0 on disk makes `initialize_config()`
-        # generate a random port and write it back to the config file it
-        # loaded, which against this layout means writing through the
-        # sops-rendered symlink on every restart (crates/config/src/
-        # schema/system.rs and crates/config/src/loader/config_io.rs,
-        # tag 20260913.02). A non-zero port on loopback prevents both.
-        server = {
-          port = 13131;
-          bind = "127.0.0.1";
-        };
-
-        identity = {
-          name = agentName;
-        };
-
-        user = {
-          name = "Martin";
-          timezone = "Europe/London";
-          write_mode = "off";
-        };
-
-        auxiliary = {
-          compaction = auxiliaryModel;
-          title_generation = auxiliaryModel;
-          vision = auxiliaryModel;
-        };
-
-        chat.compaction.mode = "structured";
-
-        skills.enable_self_improvement = false;
-
-        tools = {
-          policy.deny = [ "mcp_*" ];
-          agent_timeout_secs = 3600;
-          agent_max_iterations = 100;
-          agent_max_auto_continues = 0;
-          exec = {
-            default_timeout_secs = 300;
-            max_timeout_secs = 1800;
-            approval_mode = "never";
-            sandbox.mode = "off";
+      agentic.moltis.settings =
+        lib.optionalAttrs privateWeb {
+          auth.disabled = false;
+          tls = {
+            enabled = true;
+            loopback_http = false;
           };
-          fs = {
-            workspace_root = homeDir;
-            track_reads = true;
-            must_read_before_write = true;
+          tailscale = {
+            mode = "off";
+            reset_on_exit = false;
           };
-        };
-
-        memory = {
-          provider = "custom";
-          base_url = "http://127.0.0.1:${toString llamaSwapPort}/v1";
-          model = embeddingModel.publicName;
-        };
-
-        heartbeat = {
-          enabled = true;
-          every = "30m";
-          model = mainModel;
-          sandbox_enabled = false;
-          deliver = true;
-          channel = "moltis";
-          to = "\${TELEGRAM_ALLOWED_USERS}";
-        };
-
-        # Moltis resolves `${VAR}` placeholders against the process
-        # environment, and the config loader's second pass treats the
-        # `[env]` table as an overrides map (crates/config/src/loader.rs,
-        # tag 20260913.02). Placeholders here come from `envPlumbing`,
-        # so no literal secret value ever enters a store path.
-        env = envBlock // {
-          MCPORTER_CONFIG = mcporterConfig;
-        };
-
-        mcp.servers = { };
-
-        agents = {
-          # Preset lane mapping. `coordinator` is the default spawn preset.
-          # Every lane pins `reasoning_effort` explicitly. Model ids use
-          # Moltis' `provider::model` namespace separator
-          # (crates/providers/src/model_id.rs).
-          default_preset = "coordinator";
-          presets =
-            lib.mapAttrs
-              (
-                _: preset:
-                preset
-                // {
-                  tools = (preset.tools or { }) // {
-                    deny = lib.unique ((preset.tools.deny or [ ]) ++ nativeMcpManagementTools);
-                  };
-                  system_prompt_suffix = lib.concatStringsSep "\n\n" (
-                    lib.optional ((preset.system_prompt_suffix or "") != "") preset.system_prompt_suffix
-                    ++ [ mcpInstructions ]
-                  );
-                }
-              )
-              (
-                (import ./builtin-presets.nix)
-                // {
-                  coordinator = {
-                    model = mainModel;
-                    reasoning_effort = "medium";
-                    delegate_only = false;
-                  };
-                  auxiliary = {
-                    model = auxiliaryModel;
-                    reasoning_effort = auxiliaryReasoningEffort;
-                  };
-                  compression = {
-                    model = auxiliaryModel;
-                    reasoning_effort = auxiliaryReasoningEffort;
-                  };
-                  review = {
-                    model = mainModel;
-                    reasoning_effort = "medium";
-                  };
-                }
-              );
-        };
-
-        # No inline `api_key`: the provider reads `GEMINI_API_KEY` from
-        # Moltis' internal `[env]` configuration.
-        providers = {
-          gemini = {
-            enabled = !isTraya;
-            models = [
-              "gemini-4-argon"
-              "gemini-3.8-flash"
-            ];
-          };
+          cloudflare_tunnel.enabled = false;
         }
-        // lib.optionalAttrs isTraya {
-          offered = [ "openai-codex" ];
-          openai-codex = {
-            enabled = true;
-            models = [
-              "gpt-6-astra"
-              "gpt-6-luna"
-            ];
-            fetch_models = false;
+        // {
+          # Serve is owned by the operator, outside the fenced gateway lifecycle.
+          # Pin the gateway server address. `ServerConfig::default().port`
+          # is 0, and a port of 0 on disk makes `initialize_config()`
+          # generate a random port and write it back to the config file it
+          # loaded, which against this layout means writing through the
+          # sops-rendered symlink on every restart (crates/config/src/
+          # schema/system.rs and crates/config/src/loader/config_io.rs,
+          # tag 20260913.02). A non-zero port on loopback prevents both.
+          server = {
+            port = 13131;
+            bind = "127.0.0.1";
           };
-        };
 
-        voice = {
-          tts = {
+          identity = {
+            name = agentName;
+          };
+
+          user = {
+            name = "Martin";
+            timezone = "Europe/London";
+            write_mode = "off";
+          };
+
+          auxiliary = {
+            compaction = auxiliaryModel;
+            title_generation = auxiliaryModel;
+            vision = auxiliaryModel;
+          };
+
+          chat.compaction.mode = "structured";
+
+          skills.enable_self_improvement = false;
+
+          tools = {
+            policy.deny = [ "mcp_*" ];
+            agent_timeout_secs = 3600;
+            agent_max_iterations = 100;
+            agent_max_auto_continues = 0;
+            exec = {
+              default_timeout_secs = 300;
+              max_timeout_secs = 1800;
+              approval_mode = "never";
+              sandbox.mode = "off";
+            };
+            fs = {
+              workspace_root = homeDir;
+              track_reads = true;
+              must_read_before_write = true;
+            };
+          };
+
+          memory = {
+            provider = "custom";
+            base_url = "http://127.0.0.1:${toString llamaSwapPort}/v1";
+            model = embeddingModel.publicName;
+          };
+
+          heartbeat = {
             enabled = true;
-            provider = "openai";
-            # Route TTS through the local OpenAI-compatible Gemini shim inside
-            # `moltis-fenced`. `OpenAiTts::is_configured()` is true whenever
-            # `base_url` differs from `https://api.openai.com/v1`, so no
-            # `api_key` is needed and `migrate_voice_keys_to_key_store()`
-            # never rewrites `moltis.toml` (`crates/voice/src/tts/openai.rs`
-            # and `crates/gateway/src/voice/mod.rs`, tag 20261023.01).
-            openai = {
+            every = "30m";
+            model = mainModel;
+            sandbox_enabled = false;
+            deliver = true;
+            channel = "moltis";
+            to = "\${TELEGRAM_ALLOWED_USERS}";
+          };
+
+          # Moltis resolves `${VAR}` placeholders against the process
+          # environment, and the config loader's second pass treats the
+          # `[env]` table as an overrides map (crates/config/src/loader.rs,
+          # tag 20260913.02). Placeholders here come from `envPlumbing`,
+          # so no literal secret value ever enters a store path.
+          env = envBlock // {
+            MCPORTER_CONFIG = mcporterConfig;
+          };
+
+          mcp.servers = { };
+
+          agents = {
+            # Preset lane mapping. `coordinator` is the default spawn preset.
+            # Every lane pins `reasoning_effort` explicitly. Model ids use
+            # Moltis' `provider::model` namespace separator
+            # (crates/providers/src/model_id.rs).
+            default_preset = "coordinator";
+            presets =
+              lib.mapAttrs
+                (
+                  _: preset:
+                  preset
+                  // {
+                    tools = (preset.tools or { }) // {
+                      deny = lib.unique ((preset.tools.deny or [ ]) ++ nativeMcpManagementTools);
+                    };
+                    system_prompt_suffix = lib.concatStringsSep "\n\n" (
+                      lib.optional ((preset.system_prompt_suffix or "") != "") preset.system_prompt_suffix
+                      ++ [ mcpInstructions ]
+                    );
+                  }
+                )
+                (
+                  (import ./builtin-presets.nix)
+                  // {
+                    coordinator = {
+                      model = mainModel;
+                      reasoning_effort = "medium";
+                      delegate_only = false;
+                    };
+                    auxiliary = {
+                      model = auxiliaryModel;
+                      reasoning_effort = auxiliaryReasoningEffort;
+                    };
+                    compression = {
+                      model = auxiliaryModel;
+                      reasoning_effort = auxiliaryReasoningEffort;
+                    };
+                    review = {
+                      model = mainModel;
+                      reasoning_effort = "medium";
+                    };
+                  }
+                );
+          };
+
+          # No inline `api_key`: the provider reads `GEMINI_API_KEY` from
+          # Moltis' internal `[env]` configuration.
+          providers = {
+            gemini = {
+              enabled = !isTraya;
+              models = [
+                "gemini-4-argon"
+                "gemini-3.8-flash"
+              ];
+            };
+          }
+          // lib.optionalAttrs isTraya {
+            offered = [ "openai-codex" ];
+            openai-codex = {
               enabled = true;
-              base_url = "http://127.0.0.1:${toString ttsShimPort}/v1";
-              voice = googleTtsVoice;
-              model = googleTtsModel;
+              models = [
+                "gpt-6-astra"
+                "gpt-6-luna"
+              ];
+              fetch_models = false;
             };
           };
-          stt = {
-            enabled = true;
-            provider = "whisper";
-            # `WhisperStt::is_configured()` is true whenever `base_url`
-            # differs from `https://api.openai.com/v1`
-            # (`crates/voice/src/stt/whisper.rs`, tag 20261023.01).
-            whisper = {
-              base_url = "http://127.0.0.1:${toString ttsShimPort}/v1";
-              model = googleSttModel;
+
+          voice = {
+            tts = {
+              enabled = true;
+              provider = "openai";
+              # Route TTS through the local OpenAI-compatible Gemini shim inside
+              # `moltis-fenced`. `OpenAiTts::is_configured()` is true whenever
+              # `base_url` differs from `https://api.openai.com/v1`, so no
+              # `api_key` is needed and `migrate_voice_keys_to_key_store()`
+              # never rewrites `moltis.toml` (`crates/voice/src/tts/openai.rs`
+              # and `crates/gateway/src/voice/mod.rs`, tag 20261023.01).
+              openai = {
+                enabled = true;
+                base_url = "http://127.0.0.1:${toString ttsShimPort}/v1";
+                voice = googleTtsVoice;
+                model = googleTtsModel;
+              };
+            };
+            stt = {
+              enabled = true;
+              provider = "whisper";
+              # `WhisperStt::is_configured()` is true whenever `base_url`
+              # differs from `https://api.openai.com/v1`
+              # (`crates/voice/src/stt/whisper.rs`, tag 20261023.01).
+              whisper = {
+                base_url = "http://127.0.0.1:${toString ttsShimPort}/v1";
+                model = googleSttModel;
+              };
             };
           };
-        };
 
-        channels = {
-          offered = [ "telegram" ] ++ lib.optional matrixCfg.enable "matrix";
-          telegram.moltis = {
-            # BotFather token arrives through `[env]`; Moltis applies
-            # `${VAR}` substitution to the whole raw config text, not
-            # per-field, so `token` expands at load time
-            # (crates/config/src/loader.rs, tag 20260913.02).
-            token = "\${TELEGRAM_BOT_TOKEN}";
-            dm_policy = "allowlist";
-            # Whole-file substitution also covers array elements, so
-            # the allowlist can reference a secret env var. One value,
-            # exactly one username or user id: upstream does not split
-            # comma-joined values here.
-            allowlist = [ "\${TELEGRAM_ALLOWED_USERS}" ];
-            operators = [ "\${TELEGRAM_ALLOWED_USERS}" ];
-            group_policy = "disabled";
-            stream_mode = "edit_in_place";
-            stream_min_initial_chars = 30;
-            edit_throttle_ms = 1000;
-            reply_to_message = true;
-            otp_self_approval = false;
-            model = mainModelName;
-            model_provider = mainProvider;
+          channels = {
+            offered = [ "telegram" ] ++ lib.optional matrixCfg.enable "matrix";
+            telegram.moltis = {
+              # BotFather token arrives through `[env]`; Moltis applies
+              # `${VAR}` substitution to the whole raw config text, not
+              # per-field, so `token` expands at load time
+              # (crates/config/src/loader.rs, tag 20260913.02).
+              token = "\${TELEGRAM_BOT_TOKEN}";
+              dm_policy = "allowlist";
+              # Whole-file substitution also covers array elements, so
+              # the allowlist can reference a secret env var. One value,
+              # exactly one username or user id: upstream does not split
+              # comma-joined values here.
+              allowlist = [ "\${TELEGRAM_ALLOWED_USERS}" ];
+              operators = [ "\${TELEGRAM_ALLOWED_USERS}" ];
+              group_policy = "disabled";
+              stream_mode = "edit_in_place";
+              stream_min_initial_chars = 30;
+              edit_throttle_ms = 1000;
+              reply_to_message = true;
+              otp_self_approval = false;
+              model = mainModelName;
+              model_provider = mainProvider;
+            };
+          }
+          // lib.optionalAttrs matrixCfg.enable {
+            matrix."matrix-${agentName}" = {
+              homeserver = "https://matrix.wimpys.world";
+              auth_mode = "password";
+              password = "\${MATRIX_PASSWORD}";
+              user_id = matrixCfg.userId;
+              device_id = "MOLTIS_${lib.toUpper agentName}";
+              model = mainModelName;
+              model_provider = mainProvider;
+              ownership_mode = "user_managed";
+              dm_policy = "allowlist";
+              otp_self_approval = false;
+              room_policy = "allowlist";
+              room_allowlist = [ matrixCfg.roomId ];
+              mention_mode = "mention";
+              auto_join = "allowlist";
+              reply_to_message = false;
+              user_allowlist = [
+                "@martin:matrix.wimpys.world"
+                "@skrye:matrix.wimpys.world"
+                "@zannah:matrix.wimpys.world"
+                "@traya:matrix.wimpys.world"
+              ];
+              operators = [ "@martin:matrix.wimpys.world" ];
+              private_instance = true;
+              stream_mode = "off";
+            };
           };
-        }
-        // lib.optionalAttrs matrixCfg.enable {
-          matrix."matrix-${agentName}" = {
-            homeserver = "https://matrix.wimpys.world";
-            auth_mode = "password";
-            password = "\${MATRIX_PASSWORD}";
-            user_id = matrixCfg.userId;
-            device_id = "MOLTIS_${lib.toUpper agentName}";
-            model = mainModelName;
-            model_provider = mainProvider;
-            ownership_mode = "user_managed";
-            dm_policy = "allowlist";
-            otp_self_approval = false;
-            room_policy = "allowlist";
-            room_allowlist = [ matrixCfg.roomId ];
-            mention_mode = "mention";
-            auto_join = "allowlist";
-            reply_to_message = false;
-            user_allowlist = [
-              "@martin:matrix.wimpys.world"
-              "@skrye:matrix.wimpys.world"
-              "@zannah:matrix.wimpys.world"
-              "@traya:matrix.wimpys.world"
-            ];
-            operators = [ "@martin:matrix.wimpys.world" ];
-            private_instance = true;
-            stream_mode = "off";
-          };
-        };
 
-        hooks.hooks = lib.optional matrixCfg.enable {
-          name = "matrix-council-context";
-          command = "${moltisMatrixCouncilHook}";
-          events = [ "BeforeLLMCall" ];
-          timeout = 10;
+          hooks.hooks = lib.optional matrixCfg.enable {
+            name = "matrix-council-context";
+            command = "${moltisMatrixCouncilHook}";
+            events = [ "BeforeLLMCall" ];
+            timeout = 10;
+          };
         };
-      };
     }
   );
 }

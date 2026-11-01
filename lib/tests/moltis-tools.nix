@@ -214,6 +214,27 @@ let
       lib.hasInfix "&& -r ${lib.escapeShellArg c.sops.secrets.${name}.path}" scripts.outer
       && lib.hasInfix "|| ! -r ${lib.escapeShellArg c.sops.secrets.${name}.path}" scripts.outer
     ) (defs.requiredSecretsForConsumers [ "moltis" ] ++ [ "CLOUDFLARE_API_TOKEN" ]);
+    assert (c.sops.secrets ? MOLTIS_PASSWORD) == (host == "momin");
+    assert !(settings.env ? MOLTIS_PASSWORD);
+    assert !(disabled.sops.secrets ? MOLTIS_PASSWORD);
+    assert
+      host != "momin"
+      || (
+        !settings.auth.disabled
+        && settings.tls.enabled
+        && !settings.tls.loopback_http
+        && settings.tailscale.mode == "off"
+        && !settings.tailscale.reset_on_exit
+        && !settings.cloudflare_tunnel.enabled
+        && settings.server.bind == "127.0.0.1"
+        && c.sops.secrets.MOLTIS_PASSWORD.mode == "0400"
+        && c.launchd.agents.moltis.config.RunAtLoad
+        && c.launchd.agents.moltis.config.KeepAlive
+      );
+    assert !(lib.hasInfix "Tailscale serve" scripts.inner);
+    assert !(lib.hasInfix "Tailscale serve" scripts.outer);
+    assert lib.hasInfix "export MOLTIS_BEHIND_PROXY=true" scripts.inner == (host == "momin");
+    assert lib.hasInfix "export MOLTIS_ALLOW_TLS_BEHIND_PROXY=true" scripts.inner == (host == "momin");
     assert !(lib.hasInfix "CLOUDFLARE_API_TOKEN" scripts.inner);
     assert !(lib.hasInfix "export CLOUDFLARE_API_TOKEN" scripts.outer);
     assert lib.hasInfix "export LINEAR_API_KEY" scripts.inner == (cli.mcpServers ? linear);
@@ -369,7 +390,10 @@ pkgs.runCommand "moltis-tools" { } ''
               inner = inner.replace(original, str(paths[name]))
               outer = outer.replace(original, str(paths[name]))
           prologue = inner.split("export MCPORTER_CONFIG=", 1)[1].split("export MOLTIS_DATA_DIR=", 1)[0]
-          prologue = "set -euo pipefail\nexport MCPORTER_CONFIG=" + prologue
+          prologue = "export MCPORTER_CONFIG=" + prologue
+          if fixture["host"] == "momin":
+              prologue = "set +x" + inner.split("set +x", 1)[1].split("export MCPORTER_CONFIG=", 1)[0] + prologue
+          prologue = "set -euo pipefail\n" + prologue
           child = """
   import os
   from pathlib import Path
@@ -378,6 +402,12 @@ pkgs.runCommand "moltis-tools" { } ''
   assert os.environ["CONTEXT7_API_KEY"] == "synthetic-CONTEXT7_API_KEY"
   assert "CLOUDFLARE_API_TOKEN" not in os.environ
   """
+          if fixture["host"] == "momin":
+              child += '\nassert os.environ["MOLTIS_PASSWORD"] == "synthetic-MOLTIS_PASSWORD"\n'
+              for name in ("MOLTIS_BEHIND_PROXY", "MOLTIS_ALLOW_TLS_BEHIND_PROXY"):
+                  child += f'assert os.environ[{name!r}] == "true"\n'
+          else:
+              child += '\nassert "MOLTIS_PASSWORD" not in os.environ\n'
           command = prologue + f"{sys.executable} - <<'CHILD'\n{child}\nCHILD\n"
           env = {"HOME": directory, "PATH": os.defpath}
           result = subprocess.run([bash, "-c", command], env=env, capture_output=True, timeout=5)
@@ -386,13 +416,22 @@ pkgs.runCommand "moltis-tools" { } ''
           marker.unlink()
           ready = re.search(r"(\[\[ -r .*?\]\]) && break", outer).group(1)
           failed = re.search(r"if (\[\[ ! -r .*?\]\]); then", outer).group(1)
-          for missing in (None, "LINEAR_API_KEY", "CONTEXT7_API_KEY", "CLOUDFLARE_API_TOKEN"):
+          missing_secrets = [None, "LINEAR_API_KEY", "CONTEXT7_API_KEY", "CLOUDFLARE_API_TOKEN"]
+          if fixture["host"] == "momin":
+              missing_secrets.append("MOLTIS_PASSWORD")
+              for value in ("", "short"):
+                  paths["MOLTIS_PASSWORD"].write_text(value)
+                  result = subprocess.run([bash, "-c", command], env=env, capture_output=True, timeout=5)
+                  assert result.returncode != 0
+                  assert not marker.exists()
+              paths["MOLTIS_PASSWORD"].write_text("synthetic-MOLTIS_PASSWORD")
+          for missing in missing_secrets:
               if missing:
                   paths[missing].unlink()
               for condition, expected in ((ready, missing is None), (failed, missing is not None)):
                   result = subprocess.run([bash, "-c", condition], env=env, capture_output=True, timeout=5)
                   assert (result.returncode == 0) == expected, (fixture["host"], missing, condition)
-              if missing in ("LINEAR_API_KEY", "CONTEXT7_API_KEY"):
+              if missing in ("LINEAR_API_KEY", "CONTEXT7_API_KEY", "MOLTIS_PASSWORD"):
                   result = subprocess.run([bash, "-c", command], env=env, capture_output=True, timeout=5)
                   assert result.returncode != 0, (fixture["host"], missing)
                   assert not marker.exists(), (fixture["host"], missing, "child started without credentials")
