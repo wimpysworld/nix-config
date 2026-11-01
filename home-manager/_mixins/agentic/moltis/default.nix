@@ -1197,13 +1197,20 @@ let
       mkdir -p "$HOME/.moltis"
       # Wait up to 60s for the pre-seeded GGUF snapshot and local llama-swap
       # server before Moltis runs its one-time startup memory sync.
-      for _ in {1..120}; do
+      ready=false
+      deadline=$((SECONDS + ${"$"}{MOLTIS_EMBEDDING_READY_TIMEOUT_SECS:-60}))
+      while (( SECONDS < deadline )); do
         if compgen -G "${embeddingModel.resolvedPrimaryPathPattern}" >/dev/null &&
           python3 -c 'import json, sys, urllib.request; data = json.load(urllib.request.urlopen("http://127.0.0.1:${toString llamaSwapPort}/v1/models", timeout=1)); sys.exit(0 if any(isinstance(m, dict) and m.get("id") == "${embeddingModel.publicName}" for m in data.get("data", [])) else 1)' 2>/dev/null; then
+          ready=true
           break
         fi
         sleep 0.5
       done
+      if [[ $ready != true ]]; then
+        echo "moltis-in-fence: timed out waiting for the embedding model" >&2
+        exit 1
+      fi
       if [[ -f "$MOLTIS_DATA_DIR/memory.db" ]]; then
         has_chunks="$(sqlite3 "$MOLTIS_DATA_DIR/memory.db" "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'chunks';" 2>/dev/null || echo 0)"
         if [[ "$has_chunks" == "1" ]]; then
