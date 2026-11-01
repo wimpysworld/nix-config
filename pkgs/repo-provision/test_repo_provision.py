@@ -97,9 +97,8 @@ class Boundaries(unittest.TestCase):
         self.assertTrue((checkout / ".git/index").is_symlink())
 
     def test_worktrees_not_descended(self):
-        (self.root / "_worktrees").symlink_to(self.root / "missing")
-        (self.root / "team").mkdir()
-        (self.root / "team/_worktrees").symlink_to(self.root / "missing")
+        (self.root / "_worktrees/repo").mkdir(parents=True)
+        (self.root / "team/_worktrees/repo").mkdir(parents=True)
         result = self.planned([])
         self.assertEqual(result["existing"], [])
         self.assertEqual(result["conflicts"], [])
@@ -110,6 +109,24 @@ class Boundaries(unittest.TestCase):
         result = self.planned([(repo(), False)])
         self.assertTrue(result["conflicts"])
         self.assertEqual(result["actions"][0]["action"], "preserve")
+
+    def test_request_timeout_blocks_without_partial_actions(self):
+        def stalled_request(command, **kwargs):
+            timeout = kwargs.get("timeout")
+            self.assertIsNotNone(timeout)
+            self.assertGreater(timeout, 0)
+            self.assertLessEqual(timeout, 60)
+            raise rp.subprocess.TimeoutExpired(command, timeout, output="private output",
+                                               stderr="private error")
+
+        with patch.object(rp.subprocess, "run", side_effect=stalled_request):
+            code, result = self.cli(self.config)
+        self.assertEqual(code, 1)
+        self.assertEqual(result["mode"], "blocked")
+        self.assertFalse(result["complete"])
+        self.assertFalse(result["executable"])
+        self.assertIsNone(result["actions"])
+        self.assertNotIn("private", json.dumps(result))
 
     def test_pagination_failure_not_empty(self):
         batch = [repo(f"team/r{i}", f"R_{i}") for i in range(100)]

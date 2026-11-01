@@ -17,7 +17,7 @@ class Blocked(Exception):
 def api(endpoint):
     try:
         result = subprocess.run(
-            ["gh-api-safe", endpoint], text=True, capture_output=True, check=True,
+            ["gh-api-safe", endpoint], text=True, capture_output=True, check=True, timeout=60,
             env={**os.environ, "GH_PROMPT_DISABLED": "1"},
         )
         return json.loads(result.stdout)

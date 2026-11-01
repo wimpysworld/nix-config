@@ -25,9 +25,9 @@ Pagination continues to a short terminal page. `paginationComplete` confirms tha
 
 ## Output and preservation
 
-Output is JSON with `schemaVersion: 1`, `mode: "plan"` and `executable: false`. `actions` contains `candidate` for a missing destination or `preserve` for an excluded or conflicting destination. A candidate is informational, not permission to clone. `existing` lists local entries that remain untouched. `conflicts` records occupied destinations, symlinks and path collisions.
+Completed inventory output is JSON with `schemaVersion: 1`, `mode: "plan"` and `executable: false`. `actions` contains `candidate` for a missing destination or `preserve` for an excluded or conflicting destination. A candidate is informational, not permission to clone. `existing` lists local entries that remain untouched. `conflicts` records occupied destinations, symlinks and path collisions.
 
-Exit status is zero for a completed inventory without conflicts, or one for conflicts and failures. A failed inventory returns `complete: false` and `actions: null`, never a partial list presented as success. `complete: true` means that inspection finished, not that the plan is executable or that token visibility is complete. Invalid command-line arguments return argparse exit status two.
+Exit status is zero for a completed inventory without conflicts, or one for conflicts and failures. A failed inventory returns `mode: "blocked"`, `complete: false` and `actions: null`, never a partial list presented as success. Each GitHub request has a 60-second timeout and blocks the inventory on expiry. `complete: true` means that inspection finished, not that the plan is executable or that token visibility is complete. Invalid command-line arguments return argparse exit status two.
 
 The local scan reads directory names at exactly two levels, `<root>/<owner>/<repository>`. It does not open `.git`, run Git, resolve remote URLs or inspect checkout contents. Dirty, detached, divergent and multi-remote checkouts therefore remain uninspected and preserved. Existing destinations require later identity review, even when they look correct. `_worktrees` entries at either level are skipped. Internal metadata symlinks are not followed because repository contents are never scanned.
 
