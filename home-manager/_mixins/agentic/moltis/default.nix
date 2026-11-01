@@ -1169,6 +1169,7 @@ let
       (pkgs.writeShellScriptBin "dcg" "exit 0")
       moltisTelegramVoice
       mcporterPackage
+      pkgs.coreutils
       pkgs.ffmpeg-headless
       pkgs.gh
       pkgs.git
@@ -1212,8 +1213,10 @@ let
       ready=false
       deadline=$((SECONDS + ${"$"}{MOLTIS_EMBEDDING_READY_TIMEOUT_SECS:-60}))
       while (( SECONDS < deadline )); do
-        if compgen -G "${embeddingModel.resolvedPrimaryPathPattern}" >/dev/null &&
-          python3 -c 'import json, sys, urllib.request; data = json.load(urllib.request.urlopen("http://127.0.0.1:${toString llamaSwapPort}/v1/models", timeout=1)); sys.exit(0 if any(isinstance(m, dict) and m.get("id") == "${embeddingModel.publicName}" for m in data.get("data", [])) else 1)' 2>/dev/null; then
+        if python3 -c 'import glob, json, os, sys, urllib.request; pattern, url, model = sys.argv[1:4]; ready = any(os.access(p, os.R_OK) for p in glob.glob(pattern)) and any(isinstance(m, dict) and m.get("id") == model for m in json.load(urllib.request.urlopen(url, timeout=1)).get("data", [])); sys.exit(0 if ready else 1)' \
+          "${embeddingModel.resolvedPrimaryPathPattern}" \
+          "http://127.0.0.1:${toString llamaSwapPort}/v1/models" \
+          "${embeddingModel.publicName}" 2>/dev/null; then
           ready=true
           break
         fi
