@@ -228,8 +228,6 @@ class FakeAPI:
                         **body["creation_content"],
                         "room_version": body["room_version"],
                     },
-                    ("m.room.name", ""): {"name": body["name"]},
-                    ("m.room.topic", ""): {"topic": body["topic"]},
                     ("m.room.power_levels", ""): body["power_level_content_override"],
                     ("m.room.member", b.user_id("martin")): {
                         "membership": "join",
@@ -241,6 +239,19 @@ class FakeAPI:
                     },
                 }
             )
+            if "name" in body:
+                events[("m.room.name", "")] = {"name": body["name"]}
+            if "topic" in body:
+                events[("m.room.topic", "")] = {"topic": body["topic"]}
+            for invitee in body.get("invite", []):
+                events[("m.room.member", invitee)] = {
+                    "membership": "invite",
+                    **(
+                        {"is_direct": True}
+                        if body.get("is_direct")
+                        else {}
+                    ),
+                }
             if "room_alias_name" in body:
                 alias = f"#{body['room_alias_name']}:{b.SERVER}"
                 assert alias not in self.aliases
@@ -371,25 +382,20 @@ class BootstrapTests(unittest.TestCase):
         for agent in b.AGENTS:
             dm_room = b.dm_room_id(agent)
             dm_events = self.api.rooms[dm_room]
+            self.assertNotIn(("m.room.name", ""), dm_events)
+            self.assertNotIn(("m.room.topic", ""), dm_events)
+            self.assertNotIn(("m.room.avatar", ""), dm_events)
             self.assertEqual(
-                dm_events[("m.room.name", "")]["name"],
-                b.DISPLAY_NAMES[agent],
-            )
-            self.assertEqual(
-                dm_events[("m.room.topic", "")]["topic"],
-                b.DM_TOPICS[agent],
-            )
-            self.assertEqual(
-                self.media_bytes(dm_events[("m.room.avatar", "")]["url"]),
-                self.avatars[agent],
-            )
-            self.assertEqual(
-                dm_events[("m.room.member", b.user_id("martin"))]["membership"],
-                "join",
+                dm_events[("m.room.member", b.user_id("martin"))],
+                {"membership": "join", "is_direct": True},
             )
             self.assertEqual(
                 dm_events[("m.room.member", b.user_id(agent))]["membership"],
                 "join",
+            )
+            self.assertNotIn(
+                ("POST", f"{b.CLIENT}/rooms/{b.quoted(dm_room)}/invite"),
+                self.writes(),
             )
             self.assertEqual(
                 self.api.account_data[agent],
@@ -416,8 +422,14 @@ class BootstrapTests(unittest.TestCase):
         self.api.events[("m.room.name", "")] = {"name": "the-cauldron"}
         del self.api.events[("m.room.topic", "")]
         dm_skrye = b.dm_room_id("skrye")
-        self.api.rooms[dm_skrye][("m.room.name", "")] = {"name": "skrye"}
-        del self.api.rooms[dm_skrye][("m.room.topic", "")]
+        self.api.rooms[dm_skrye][("m.room.name", "")] = {"name": "Skrye"}
+        self.api.rooms[dm_skrye][("m.room.topic", "")] = {
+            "topic": "Legacy direct channel topic",
+            "m.topic": {"m.text": [{"body": "Legacy direct channel topic"}]},
+        }
+        self.api.rooms[dm_skrye][("m.room.avatar", "")] = {
+            "url": f"mxc://{b.SERVER}/legacy-dm-avatar"
+        }
         self.api.account_data["martin"][b.user_id("skrye")] = ["!legacy:matrix.wimpys.world"]
         del self.api.account_data["skrye"]
         self.api.calls.clear()
@@ -448,11 +460,15 @@ class BootstrapTests(unittest.TestCase):
         )
         self.assertEqual(
             self.api.rooms[dm_skrye][("m.room.name", "")],
-            {"name": b.DISPLAY_NAMES["skrye"]},
+            {"name": ""},
         )
         self.assertEqual(
             self.api.rooms[dm_skrye][("m.room.topic", "")],
-            {"topic": b.DM_TOPICS["skrye"]},
+            {"topic": ""},
+        )
+        self.assertEqual(
+            self.api.rooms[dm_skrye][("m.room.avatar", "")],
+            {},
         )
         self.assertEqual(
             self.api.account_data["martin"][b.user_id("skrye")],
@@ -479,6 +495,7 @@ class BootstrapTests(unittest.TestCase):
                 ("PUT", f"{b.CLIENT}/rooms/{b.quoted(b.ROOM)}/state/m.room.topic/"),
                 ("PUT", f"{b.CLIENT}/rooms/{b.quoted(dm_skrye)}/state/m.room.name/"),
                 ("PUT", f"{b.CLIENT}/rooms/{b.quoted(dm_skrye)}/state/m.room.topic/"),
+                ("PUT", f"{b.CLIENT}/rooms/{b.quoted(dm_skrye)}/state/m.room.avatar/"),
                 (
                     "PUT",
                     f"{b.CLIENT}/user/{b.quoted(b.user_id('skrye'))}/account_data/m.direct",
