@@ -1214,7 +1214,7 @@ let
       if [[ -f "$MOLTIS_DATA_DIR/memory.db" ]]; then
         has_chunks="$(sqlite3 "$MOLTIS_DATA_DIR/memory.db" "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'chunks';" 2>/dev/null || echo 0)"
         if [[ "$has_chunks" == "1" ]]; then
-          sqlite3 "$MOLTIS_DATA_DIR/memory.db" "DELETE FROM files WHERE path IN (SELECT path FROM chunks WHERE model != '${embeddingModel.publicName}' OR embedding IS NULL); DELETE FROM chunks WHERE model != '${embeddingModel.publicName}' OR embedding IS NULL; DELETE FROM files WHERE size > 0 AND NOT EXISTS (SELECT 1 FROM chunks WHERE chunks.path = files.path); DELETE FROM chunks_fts WHERE id NOT IN (SELECT id FROM chunks); DELETE FROM embedding_cache WHERE model != '${embeddingModel.publicName}';"
+          sqlite3 "$MOLTIS_DATA_DIR/memory.db" "DELETE FROM files WHERE path IN (SELECT path FROM chunks WHERE model != '${embeddingModel.publicName}' OR embedding IS NULL); DELETE FROM chunks WHERE model != '${embeddingModel.publicName}' OR embedding IS NULL; DELETE FROM files WHERE size > 0 AND NOT EXISTS (SELECT 1 FROM chunks WHERE chunks.path = files.path); INSERT INTO chunks_fts(chunks_fts) VALUES ('rebuild'); DELETE FROM embedding_cache WHERE model != '${embeddingModel.publicName}';"
         fi
       fi
       printf '["dcg-guard"]\n' > "$HOME/.moltis/disabled_hooks.json"
