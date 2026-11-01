@@ -167,6 +167,11 @@ def run_linear_server(arguments):
     environment.pop("LINEAR_API_KEY", None)
     for var in ("PYTHONPATH", "PYTHONHOME", "_PYTHON_HOST_PLATFORM", "_PYTHON_SYSCONFIGDATA_NAME"):
         environment.pop(var, None)
+    https_proxy = environment.get("https_proxy", environment.get("HTTPS_PROXY", ""))
+    http_proxy = environment.get("http_proxy", environment.get("HTTP_PROXY", ""))
+    if https_proxy.startswith("http://") and http_proxy.startswith("http://"):
+        environment.pop("ALL_PROXY", None)
+        environment.pop("all_proxy", None)
     environment["API_ACCESS_TOKEN"] = token
     os.execve(binary, [binary, "--transport", "streamablehttp", url], environment)
 

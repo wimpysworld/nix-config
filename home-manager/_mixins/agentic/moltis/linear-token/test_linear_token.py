@@ -158,6 +158,10 @@ class TokenTests(unittest.TestCase):
             "PYTHONHOME": "/nonexistent/python3.14",
             "_PYTHON_HOST_PLATFORM": "linux-x86_64",
             "_PYTHON_SYSCONFIGDATA_NAME": "_sysconfigdata__linux_x86_64-linux-gnu",
+            "HTTP_PROXY": "http://127.0.0.1:34339",
+            "HTTPS_PROXY": "http://127.0.0.1:34339",
+            "ALL_PROXY": "socks5h://127.0.0.1:36747",
+            "all_proxy": "socks5h://127.0.0.1:36747",
         }
         with patch.dict(os.environ, ambient):
             for value in ("synthetic-first", "synthetic-second"):
@@ -167,8 +171,11 @@ class TokenTests(unittest.TestCase):
                     binary, argv, environment = execute.call_args.args
                     self.assertEqual(argv, [binary, "--transport", "streamablehttp", args[-1]])
                     self.assertEqual(environment["API_ACCESS_TOKEN"], value)
+                    self.assertEqual(environment["HTTP_PROXY"], "http://127.0.0.1:34339")
+                    self.assertEqual(environment["HTTPS_PROXY"], "http://127.0.0.1:34339")
                     for removed in ("LINEAR_API_KEY", "PYTHONPATH", "PYTHONHOME",
-                                    "_PYTHON_HOST_PLATFORM", "_PYTHON_SYSCONFIGDATA_NAME"):
+                                    "_PYTHON_HOST_PLATFORM", "_PYTHON_SYSCONFIGDATA_NAME",
+                                    "ALL_PROXY", "all_proxy"):
                         self.assertNotIn(removed, environment)
                 self.expire_in(0)
             self.issuer.side_effect = ValueError("synthetic outage")
