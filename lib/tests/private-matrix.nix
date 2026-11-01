@@ -29,6 +29,7 @@ let
     assert channel.room_allowlist == [ matrix.roomId ];
     assert !channel.reply_to_message;
     assert channel.operators == [ "@martin:matrix.wimpys.world" ];
+    assert channel.private_instance;
     assert
       channel.user_allowlist == [
         "@martin:matrix.wimpys.world"

@@ -125,6 +125,12 @@ let
       withChanges {
         xdg.configFile."moltis/mcporter.json".text = lib.mkForce "{}";
       } != original;
+    assert
+      withChanges {
+        noughty.host.gpu.compute.acceleration = lib.mkForce (
+          if (c.noughty.host.gpu.compute.acceleration or null) == "vulkan" then "cuda" else "vulkan"
+        );
+      } != original;
     true;
   checkHost =
     host:
@@ -385,17 +391,19 @@ assert builtins.all checkHost hosts;
 pkgs.runCommand "moltis-tools" { } ''
   test -x ${linearWrapper}/bin/mcporter
   test -x ${lib.getExe linearWrapper.linearServer}
-  ${pkgs.python3}/bin/python3 - ${builtins.toFile "moltis-launcher-fixtures.json" (builtins.unsafeDiscardStringContext (builtins.toJSON launcherFixtures))} ${pkgs.bash}/bin/bash <<'PY'
+  ${pkgs.python3}/bin/python3 - ${builtins.toFile "moltis-launcher-fixtures.json" (builtins.unsafeDiscardStringContext (builtins.toJSON launcherFixtures))} ${pkgs.bash}/bin/bash ${pkgs.sqlite}/bin <<'PY'
   import json
   import os
   from pathlib import Path
   import re
+  import sqlite3
   import subprocess
   import sys
   import tempfile
 
   fixtures = json.loads(Path(sys.argv[1]).read_text())
   bash = sys.argv[2]
+  sqlite_bin = sys.argv[3]
   for fixture in fixtures:
       with tempfile.TemporaryDirectory() as directory:
           root = Path(directory)
@@ -436,6 +444,80 @@ pkgs.runCommand "moltis-tools" { } ''
                   assert not marker.exists(), (fixture["host"], missing, "child started without credentials")
               if missing:
                   paths[missing].write_text("synthetic-" + missing)
+          readiness_tail = inner.split('mkdir -p "$HOME/.moltis"\n', 1)[1].split('if [[ -f "$MOLTIS_DATA_DIR/memory.db" ]]; then', 1)[0]
+          timeout_cmd = "set -euo pipefail\n" + readiness_tail + f"{sys.executable} -c 'from pathlib import Path; import os; Path(os.environ[\"HOME\"], \"reached-cleanup\").touch()'\n"
+          timeout_env = dict(env, MOLTIS_EMBEDDING_READY_TIMEOUT_SECS="0")
+          result = subprocess.run([bash, "-c", timeout_cmd], env=timeout_env, capture_output=True, text=True, timeout=5)
+          assert result.returncode != 0, (fixture["host"], "expected readiness timeout to fail")
+          assert "moltis-in-fence: timed out waiting for the embedding model" in result.stderr, (fixture["host"], result.stderr)
+          assert not (root / "reached-cleanup").exists(), (fixture["host"], "launcher continued after readiness timeout")
+          data_dir = root / ".moltis"
+          data_dir.mkdir(exist_ok=True)
+          db_path = data_dir / "memory.db"
+          with sqlite3.connect(db_path) as conn:
+              conn.executescript("""
+                  CREATE TABLE files (
+                      path TEXT NOT NULL PRIMARY KEY,
+                      source TEXT NOT NULL,
+                      hash TEXT NOT NULL,
+                      mtime INTEGER NOT NULL,
+                      size INTEGER NOT NULL
+                  );
+                  CREATE TABLE chunks (
+                      id TEXT NOT NULL PRIMARY KEY,
+                      path TEXT NOT NULL,
+                      source TEXT NOT NULL,
+                      start_line INTEGER NOT NULL,
+                      end_line INTEGER NOT NULL,
+                      hash TEXT NOT NULL,
+                      model TEXT NOT NULL,
+                      text TEXT NOT NULL,
+                      embedding BLOB,
+                      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+                  );
+                  CREATE TABLE embedding_cache (
+                      provider TEXT NOT NULL,
+                      model TEXT NOT NULL,
+                      provider_key TEXT NOT NULL,
+                      hash TEXT NOT NULL,
+                      embedding BLOB NOT NULL,
+                      dims INTEGER NOT NULL,
+                      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+                      PRIMARY KEY (provider, model, provider_key, hash)
+                  );
+                  CREATE VIRTUAL TABLE chunks_fts USING fts5(
+                      text,
+                      content=chunks,
+                      content_rowid=rowid
+                  );
+                  CREATE TRIGGER chunks_ai AFTER INSERT ON chunks BEGIN
+                      INSERT INTO chunks_fts(rowid, text) VALUES (new.rowid, new.text);
+                  END;
+                  INSERT INTO files VALUES
+                      ('stale.md', 'memory', 'h1', 1, 10),
+                      ('null.md', 'memory', 'h2', 1, 10),
+                      ('orphan.md', 'memory', 'h3', 1, 10),
+                      ('empty.md', 'memory', 'h4', 1, 0),
+                      ('valid.md', 'memory', 'h5', 1, 10);
+                  INSERT INTO chunks (id, path, source, start_line, end_line, hash, model, text, embedding) VALUES
+                      ('c-stale', 'stale.md', 'memory', 1, 1, 'h1', 'stale-model', 'stale text', X'01'),
+                      ('c-null', 'null.md', 'memory', 1, 1, 'h2', 'qwen3-embedding-0.6b', 'null text', NULL),
+                      ('c-valid', 'valid.md', 'memory', 1, 1, 'h5', 'qwen3-embedding-0.6b', 'valid text', X'02');
+                  INSERT INTO chunks_fts(rowid, text) VALUES (999, 'orphanfts');
+                  INSERT INTO embedding_cache (provider, model, provider_key, hash, embedding, dims) VALUES
+                      ('custom', 'stale-model', 'k', 'h1', X'01', 1),
+                      ('custom', 'qwen3-embedding-0.6b', 'k', 'h5', X'02', 1);
+              """)
+          cleanup_block = 'if [[ -f "$MOLTIS_DATA_DIR/memory.db" ]]; then' + inner.split('if [[ -f "$MOLTIS_DATA_DIR/memory.db" ]]; then', 1)[1].split("printf '[\"dcg-guard\"]\\n'", 1)[0]
+          cleanup_env = dict(env, MOLTIS_DATA_DIR=str(data_dir), PATH=f"{sqlite_bin}:{os.defpath}")
+          result = subprocess.run([bash, "-c", "set -euo pipefail\n" + cleanup_block], env=cleanup_env, capture_output=True, text=True, timeout=5)
+          assert result.returncode == 0, (fixture["host"], result.stderr)
+          with sqlite3.connect(db_path) as conn:
+              assert [r[0] for r in conn.execute("SELECT path FROM files ORDER BY path")] == ["empty.md", "valid.md"], fixture["host"]
+              assert [r[0] for r in conn.execute("SELECT id FROM chunks ORDER BY id")] == ["c-valid"], fixture["host"]
+              assert [r[0] for r in conn.execute("SELECT text FROM chunks_fts WHERE chunks_fts MATCH 'orphanfts'")] == [], fixture["host"]
+              assert [r[0] for r in conn.execute("SELECT text FROM chunks_fts WHERE chunks_fts MATCH 'valid'")] == ["valid text"], fixture["host"]
+              assert [r[0] for r in conn.execute("SELECT model FROM embedding_cache")] == ["qwen3-embedding-0.6b"], fixture["host"]
   print("Moltis launcher checks passed for all three hosts.")
   PY
   ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/assistants/owned-files}/test_deploy.py
