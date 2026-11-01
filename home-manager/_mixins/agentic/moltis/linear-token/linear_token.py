@@ -165,6 +165,8 @@ def run_linear_server(arguments):
         signal.alarm(0)
     environment = os.environ.copy()
     environment.pop("LINEAR_API_KEY", None)
+    for var in ("PYTHONPATH", "PYTHONHOME", "_PYTHON_HOST_PLATFORM", "_PYTHON_SYSCONFIGDATA_NAME"):
+        environment.pop(var, None)
     environment["API_ACCESS_TOKEN"] = token
     os.execve(binary, [binary, "--transport", "streamablehttp", url], environment)
 

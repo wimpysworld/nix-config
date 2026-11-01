@@ -64,6 +64,9 @@ let
     configPath = "/synthetic/mcporter.json";
     linearUrl = "https://example.invalid/mcp";
   };
+  cloudflareWrapper = pkgs.callPackage ../../home-manager/_mixins/agentic/mcp/cloudflare-api {
+    apiTokenPath = "/synthetic/cloudflare-token";
+  };
   checkRestartInputs =
     host:
     let
@@ -391,6 +394,7 @@ assert builtins.all checkHost hosts;
 pkgs.runCommand "moltis-tools" { } ''
   test -x ${linearWrapper}/bin/mcporter
   test -x ${lib.getExe linearWrapper.linearServer}
+  test -x ${lib.getExe cloudflareWrapper}
   ${pkgs.python3}/bin/python3 - ${builtins.toFile "moltis-launcher-fixtures.json" (builtins.unsafeDiscardStringContext (builtins.toJSON launcherFixtures))} ${pkgs.bash}/bin/bash ${pkgs.sqlite}/bin <<'PY'
   import json
   import os
@@ -525,5 +529,77 @@ pkgs.runCommand "moltis-tools" { } ''
   PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis/mcp-cli-migration}/test_mcporter.py ${lib.getExe mcporter}
   PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis/linear-token}/test_linear_token.py
   PYTHONPATH=${../../home-manager/_mixins/agentic/moltis/mcp-cli-migration} PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis/linear-token}/test_linear_token.py ${lib.getExe mcporter} ${lib.getExe pkgs.mcp-proxy}
+  PYTHONPATH=${../../home-manager/_mixins/agentic/moltis/mcp-cli-migration} PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 - ${lib.getExe cloudflareWrapper} ${lib.getExe mcporter} ${lib.getExe pkgs.mcp-proxy} <<'PY'
+  import http.server
+  import json
+  import os
+  from pathlib import Path
+  import subprocess
+  import sys
+  import tempfile
+  import threading
+  from test_mcporter import HttpServer, check_server
+
+  cloudflare_bin, mcporter_bin, proxy_bin = sys.argv[1:4]
+  template = Path(cloudflare_bin).read_text()
+  with tempfile.TemporaryDirectory() as directory:
+      root = Path(directory)
+      token_file = root / "cloudflare-token"
+      token_file.write_text("synthetic-cloudflare")
+      poison = root / "poison-site-packages" / "pydantic_core"
+      poison.mkdir(parents=True)
+      (poison / "__init__.py").write_text("raise RuntimeError('poisoned PYTHONPATH')\n")
+      probe = root / "probe"
+      probe.write_text(
+          f"#!{sys.executable}\nimport json, os, sys\n"
+          "print(json.dumps({k: os.environ.get(k) for k in ("
+          "'API_ACCESS_TOKEN', 'PYTHONPATH', 'PYTHONHOME', '_PYTHON_HOST_PLATFORM', '_PYTHON_SYSCONFIGDATA_NAME')}))\n"
+      )
+      probe.chmod(0o700)
+      probe_wrapper = root / "cloudflare-probe"
+      probe_wrapper.write_text(
+          template.replace("/synthetic/cloudflare-token", str(token_file)).replace(proxy_bin, str(probe))
+      )
+      probe_wrapper.chmod(0o700)
+      ambient = {
+          "HOME": directory,
+          "PATH": os.defpath,
+          "PYTHONPATH": f"/nonexistent/python3.14/site-packages:{poison.parent}",
+          "PYTHONHOME": "/nonexistent/python3.14",
+          "_PYTHON_HOST_PLATFORM": "linux-x86_64",
+          "_PYTHON_SYSCONFIGDATA_NAME": "_sysconfigdata__linux_x86_64-linux-gnu",
+      }
+      probe_result = subprocess.run([str(probe_wrapper)], env=ambient, capture_output=True, text=True, timeout=5, check=True)
+      observed = json.loads(probe_result.stdout)
+      assert observed == {
+          "API_ACCESS_TOKEN": "synthetic-cloudflare",
+          "PYTHONPATH": None,
+          "PYTHONHOME": None,
+          "_PYTHON_HOST_PLATFORM": None,
+          "_PYTHON_SYSCONFIGDATA_NAME": None,
+      }, observed
+      HttpServer.credentials["/cloudflare"] = "synthetic-cloudflare"
+      with http.server.ThreadingHTTPServer(("127.0.0.1", 0), HttpServer) as httpd:
+          wrapper = root / "cloudflare-api"
+          wrapper.write_text(
+              template.replace("/synthetic/cloudflare-token", str(token_file)).replace(
+                  "https://mcp.cloudflare.com/mcp", f"http://127.0.0.1:{httpd.server_port}/cloudflare"
+              )
+          )
+          wrapper.chmod(0o700)
+          config = root / "mcporter.json"
+          config.write_text(json.dumps({
+              "imports": [],
+              "mcpServers": {"cloudflare-api": {"command": str(wrapper)}},
+          }))
+          thread = threading.Thread(target=httpd.serve_forever)
+          thread.start()
+          try:
+              check_server(mcporter_bin, config, root, ambient, "cloudflare-api")
+          finally:
+              httpd.shutdown()
+              thread.join()
+  print("cloudflare-api PYTHONPATH isolation and transport checks passed.")
+  PY
   touch "$out"
 ''
