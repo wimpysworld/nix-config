@@ -63,7 +63,6 @@ The `[env]` table injects sops placeholders into the Moltis process environment 
 | `GH_TOKEN`               | `secrets/moltis.yaml` | `GITHUB_TOKEN_<AGENT>`             |
 | `GIT_AUTHOR_EMAIL`       | `secrets/moltis.yaml` | `GITHUB_EMAIL_<AGENT>`             |
 | `CONTEXT7_API_KEY`       | `secrets/mcp.yaml`    | `CONTEXT7_API_KEY`                 |
-| `LINEAR_API_KEY`         | `secrets/linear.yaml` | `chainguard` or `wimpysworld`      |
 | `MATRIX_PASSWORD`        | `secrets/matrix.yaml` | `MATRIX_PASSWORD_<AGENT>`         |
 
 ## MCP through MCPorter
@@ -71,6 +70,16 @@ The `[env]` table injects sops placeholders into the Moltis process environment 
 Skrye, Zannah, and Traya use MCPorter through `exec` for Model Context Protocol (MCP) access, in main and spawned agents. All three receive the five configured servers, including Linear. Other clients keep their native MCP configuration unchanged.
 
 Nix generates a dedicated MCPorter configuration from the Moltis-filtered shared registry, with `imports = []`. Its path is `moltis/mcporter.json` relative to `config.xdg.configHome`. The runtime supplies its absolute path through `MCPORTER_CONFIG` and explicitly selects the pinned MCPorter binary. No editor configuration imports or automatic OAuth login are part of this route. Credentials reach MCPorter through SOPS-managed environment variables and runtime wrappers, never command arguments.
+
+Linear uses a separate application for each agent: Zannah, Skrye, and Traya (`momin`). SOPS reads `moltis/<agent>/client_id` and `moltis/<agent>/client_secret` from `secrets/linear.yaml` into Moltis-only files with mode `0400`. These credentials do not enter the TOML environment or the Nix store. Interactive clients retain their existing personal or work credentials.
+
+The Moltis-only `mcporter` wrapper removes inherited `LINEAR_API_KEY` and starts MCPorter without requesting a Linear token. Only the Linear server entry starts the dedicated `moltis-linear-server` child. This child reads the credential files and resolves a cached or new `client_credentials` token from `https://api.linear.app/oauth/token`. It then runs `mcp-proxy --transport streamablehttp` with the configured Linear URL and supplies the token through `API_ACCESS_TOKEN`. The proxy sends the token as a Bearer header. Neither MCPorter nor unrelated servers receive this app token, and unrelated servers remain available during a Linear issuer failure.
+
+The fixed scope is `read,write`, without `admin`. Project and document changes, plus comment edits in the projected tracker workflows, need `write` rather than the narrower creation scopes.
+
+The Linear child caches the token under `${XDG_STATE_HOME}/moltis/linear-<agent>/token.json`, using a private directory, mode `0600`, a lock, and atomic replacement. Each new Linear connection checks the cache and renews the token when it is within one day of expiry. Renewal is lazy, including during unattended gateway operation, rather than scheduled or required for every MCPorter invocation. Linear uses an ephemeral connection, so a shared daemon cannot retain an older token. Credential or scope changes invalidate the cache identity.
+
+Credential resolution has a 30-second deadline, with a 20-second HTTP timeout and no redirect support. If renewal fails, the Linear child uses the previous app token only while more than one hour remains. Otherwise, the Linear child stops before the proxy starts, without a personal-token fallback. The wrapper never retries an MCP operation. If Linear revokes a token early without a local credential change, remove only that agent's `token.json` before the next authorised call. Verify remote state before you retry a failed write.
 
 Moltis no longer registers these servers directly with the model. This avoids exposing Linear's URI tool schemas to Traya's Codex provider. Main and spawned agents use the same CLI recipe in [TOOLS.md](TOOLS.md). The CLI adds process and connection work. Latency is unmeasured, and no token savings or performance measurements are established.
 
