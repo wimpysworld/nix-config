@@ -1,6 +1,6 @@
 ## Make PR
 
-Draft the pull request title and body with the inline contract below. Then create a pull request for the current branch. On a work repository, open the body with a bold why line and append a reviewer orientation block, both before creation. A work pull request also carries a review request for the work review team and the `ai-review` label.
+Draft the pull request title and body with the inline contract below. Then create a pull request for the current branch. On a work repository, open the body with a bold why line and append a reviewer orientation block, both before creation. A work pull request also carries a review request for the work review team and the `ai-review` label. A personal pull request carries a review request for `sith-skrye`, `sith-traya`, and `sith-zannah`.
 
 Run the pull request creation flow in the current context. Do not launch a sub-agent or a Task for any step. The current context holds the change intent, validation results, and non-goals that the pull request message needs. The watch handover after successful creation is separate and may invoke `babysit-pr` when the user selects it.
 
@@ -33,9 +33,9 @@ Produce the title, a blank line, the body, and any footers inside one fenced Mar
 
 ### Pull request template
 
-Load `contribution-templates` and apply it to the base repository before drafting. It resolves the base repository, reads its pull request templates, selects one, and owns the fill rules. When it finds a template, that template replaces the prose body above. Prose inside each section still follows `communication-rules` and `contribution-voice`. When it reports a trap or an open question, stop before creation and return the question to the user or the parent.
+Load `contribution-templates` and apply it to `<base>` before drafting. It resolves the base repository, reads its pull request templates, selects one, and owns the fill rules. When it finds a template, that template replaces the prose body above. Prose inside each section still follows `communication-rules` and `contribution-voice`. When it reports a trap or an open question, stop before creation and return the question to the user or the parent.
 
-On a personal or community repository whose base repository owner is not the authenticated user, load `how-to-contribute` and apply it before drafting. When it reports a pre-approval gate, a required prior discussion, an AI-assisted contribution ban, or a trap, report the policy and stop before any push.
+On a community repository, load `how-to-contribute` and apply it to `<base>` before drafting. When `how-to-contribute` reports a pre-approval gate, required discussion, AI-contribution ban, or trap, report the policy and stop before pushing.
 
 ### Working tree handling
 
@@ -52,28 +52,41 @@ Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
 1. Inspect branch state with `git status --short --branch`, `git rev-parse --abbrev-ref HEAD`, `git log main..HEAD --oneline`, `git log main..HEAD --format=full`, `git log -20 main --oneline`, and `git diff main..HEAD --stat`.
 2. Stop if the current branch is `main`, or if there are no commits in `main..HEAD`.
 3. If staged files or unstaged files exist, leave them unchanged. Note that they are excluded because only committed branch changes are used.
-4. Classify the repository once, following **Work repository classification** below. Reuse that one result for the reviewer orientation, the review metadata, and the Linear workspace guard. Then resolve the linked issues and their tracker, following **Tracker transition** below, so the draft can carry the right footers. Then apply **Pull request template** below.
+4. Resolve `<base>`, `<default branch>`, and `<head>` with **Base and head** below. Classify the repository once as `work`, `personal`, or `community` with **Repository classification** below. Reuse those values for the contribution gate, orientation, review metadata, Linear guard, and pull request lookup and creation. Resolve linked issues and their tracker with **Tracker transition** below for the draft footers. Apply **Pull request template** above.
 5. Apply **Pull request draft** above. Preserve its fenced pull request message verbatim as the pull request source.
 6. Strip only the Markdown fence lines. Use the first remaining line as the pull request title. Write the remaining body text unchanged to a temporary file.
-7. Insert the bold why line at the top of that temporary file and append the reviewer orientation block to its end, following **Reviewer orientation** below. When a template applies, put both inside its summary or description section instead, as `contribution-templates` describes. Both are part of the pull request from the moment it exists, so never add either later by editing the pull request.
+7. On a work repository, insert the bold why line and append the orientation block with **Reviewer orientation** below. When a template applies, place both inside its summary or description section, as `contribution-templates` describes. Both belong in the initial pull request, so never add either later by editing the pull request.
 8. Push with an explicit refspec: `git push origin <branch>`. A bare `git push` depends on tracking configuration that may be absent, and pushes nothing when it is. Never pass `-u`: a sandbox mounts `.git/config` read-only, so the upstream write fails after the push has already landed. Stop if the push requires force, deletion, tags, or a non-fast-forward update.
 9. Verify the push landed. Run `git fetch origin <branch>`, then compare `git rev-parse HEAD` against `git rev-parse FETCH_HEAD`. Report a mismatch and stop rather than creating the pull request. Never trust the exit status alone: a push that matches nothing reports success while doing nothing.
-10. Resolve `<base>`, `<default branch>`, and `<head>`, following **Base and head** below. Then look for an existing pull request, following **Pull request lookup and verification** below.
-11. On a work repository, resolve the owner with `gh repo view --json owner` and build the team handle, following **Work review metadata** below. Do this before the pull request is created or existing work metadata is repaired.
-12. If no pull request exists, create one with the dedicated GitHub CLI command: `gh pr create --repo <base> --base <default branch> --head <head> --title <title> --body-file <temp-file>`. On a work repository, add `--reviewer <owner>/fulfillment-automation-team-write` and `--label ai-review`.
-13. Verify the pull request URL and title on every repository. On a work repository, also verify and repair the review metadata, following **Work review metadata** below. Never report success from `gh pr create` alone.
+10. Look for an existing pull request with `<base>` and `<head>`, following **Pull request lookup and verification** below.
+11. On a work repository, resolve the owner with `gh repo view --json owner` and build the team handle. Do this before creating the pull request or repairing existing work metadata.
+12. If no pull request exists, create one with `gh pr create --repo <base> --base <default branch> --head <head> --title <title> --body-file <temp-file>`. On a work repository, add `--reviewer <owner>/fulfillment-automation-team-write` and `--label ai-review`. On a personal repository, add `--reviewer sith-skrye,sith-traya,sith-zannah`.
+13. Verify the pull request URL and title on every repository. On a work or personal repository, verify and repair the review metadata with **Review metadata** below. Never report success from `gh pr create` alone.
 14. Move each linked issue to the `in review` role, following **Tracker transition** below. A tracker failure never stops this command.
-15. Report the verified pull request URL, title, the template used, whether the why line and the orientation block were included, the review metadata outcome on a work repository, each tracker outcome, and any uncommitted files left out.
+15. Report the verified pull request URL, title, template, orientation status, review metadata outcome, tracker outcomes, and excluded uncommitted files.
 
-### Work repository classification
+### Base and head
 
-Run `git config user.email`. An address on the `chainguard.dev` domain means work. Anything else means personal or community, including an empty address and a malformed one.
+Resolve these values once at Step 4, and reuse them for classification, the contribution gate, lookup, and creation:
 
-Classify once, at the step after branch inspection, and reuse that one result. The reviewer orientation, the review metadata, and the Linear workspace guard all read the same answer.
+- Run `gh repo view --json nameWithOwner,isFork,parent,owner` on the origin.
+- `<base>` is `nameWithOwner`. When `isFork` is true, `<base>` is `<parent.owner.login>/<parent.name>`, the repository that receives the pull request.
+- `<default branch>` comes from `gh repo view <base> --json defaultBranchRef`. Never assume `main`.
+- `<head>` is `<owner.login>:<branch>`, so that a fork branch resolves against the base repository.
+
+### Repository classification
+
+Classify the repository once at Step 4 as `work`, `personal`, or `community` from `git config user.email` and `<base>` owner:
+
+- `work` - `git config user.email` is on the `chainguard.dev` domain.
+- `personal` - `git config user.email` is not on `chainguard.dev`, and the `<base>` owner matches `wimpysworld`, `Oval-Tutu`, `noughtylinux`, `quickemu-project`, or `linuxmatters` case-insensitively.
+- `community` - `git config user.email` is not on `chainguard.dev`, and `<base>` has any other owner. An empty or malformed email address is also non-work.
+
+Reuse that classification for the contribution gate, the reviewer orientation, the review metadata, and the Linear workspace guard.
 
 ### Reviewer orientation
 
-Work pull requests only, as decided in **Work repository classification** above. A personal or community pull request gets no block and no mention of one.
+Work pull requests only, as decided in **Repository classification** above. A personal or community pull request gets no block and no mention of one.
 
 Insert the why line as the first line of the body file, followed by a blank line, so the benefit reads before anything else:
 
@@ -106,50 +119,46 @@ Filling it in:
 - Omit an empty bullet. Never stub one with "N/A" or "None".
 - Omit the why line when it would only restate the pull request title. Skip the details block when no bullet adds anything; noise trains reviewers to collapse it unread. Say in the report what was skipped, and why.
 
-### Base and head
-
-Resolve these values once, after the push, and reuse them for every lookup and for creation:
-
-- Run `gh repo view --json nameWithOwner,isFork,parent,owner` on the origin.
-- `<base>` is `nameWithOwner`. When `isFork` is true, `<base>` is `<parent.owner.login>/<parent.name>`, the repository that receives the pull request.
-- `<default branch>` comes from `gh repo view <base> --json defaultBranchRef`. Never assume `main`.
-- `<head>` is `<owner.login>:<branch>`, so that a fork branch resolves against the base repository.
-
 ### Pull request lookup and verification
 
 These rules apply to work, personal, and community repositories.
 
-- Before creation, run `gh pr view <head> --repo <base> --json url,title`. If it returns a pull request, do not run `gh pr create`; use that object and continue with work metadata only on a work repository.
+- Before creation, run `gh pr view <head> --repo <base> --json url,title`. If it returns a pull request, do not run `gh pr create`. Use that pull request and continue with **Review metadata** on a work or personal repository.
 - Create a pull request only when the lookup unambiguously says that none exists. If authentication, network access, or another lookup failure makes the outcome unclear, report the failure and stop before creation.
-- If `gh pr create` reports a failure, run `gh pr view <head> --repo <base> --json url,title` before deciding what happened. If the pull request exists, never create it again. If none exists, stop on a personal or community repository; on a work repository, apply the bounded metadata retry below only when one reviewer or label argument caused the failure.
-- After creation, discovery, and any work metadata repair, fetch the final object by URL. Run `gh pr view <url> --json url,title` on a personal or community repository. Add `labels,reviewRequests` to the fields on a work repository.
+- If `gh pr create` fails, run `gh pr view <head> --repo <base> --json url,title` first. If the pull request exists, never create it again. If none exists, stop on a community repository. On a work or personal repository, apply the retry in **Review metadata** only when a reviewer or label failed.
+- After creation, discovery, and any metadata repair, fetch the final pull request by URL. Run `gh pr view <url> --json url,title` on a community repository. Run `gh pr view <url> --json url,title,reviewRequests` on a personal repository, and `gh pr view <url> --json url,title,labels,reviewRequests` on a work repository.
 - Verify that the returned URL matches the created or discovered URL and that the title is present. For a newly created pull request, also verify that the returned title exactly matches the draft title. For an existing pull request, report its verified title unchanged, even when it differs from the new draft.
 - If the URL or title cannot be verified, report the mismatch or lookup failure and do not report a successful pull request.
 
-### Work review metadata
+### Review metadata
 
-Work pull requests only, as decided in **Work repository classification** above. On a personal or community repository, run `gh pr create` with the existing arguments alone when creation is needed. Name no team and no label, look neither one up, and report neither one. Skip the rest of this section.
+Work and personal pull requests only, as decided in **Repository classification** above. On a community repository, run `gh pr create` with the base arguments alone when creation is needed. Name no reviewer and no label, look neither one up, and report neither one. Skip the rest of this section.
 
-The review request and the label are repository metadata. Never write either into the pull request body. The why line and the reviewer orientation block stand on their own and do not change.
+The review request and the label are repository metadata. Never write either into the pull request body. The why line and the reviewer orientation block on a work pull request stand on their own and do not change.
 
-Resolving the team handle:
+Resolving the work team handle:
 
-- Run `gh repo view --json owner` before creating the pull request, then build the handle `<owner>/fulfillment-automation-team-write`. Never hard-code an organisation, because a work repository may sit under more than one.
+- On a work repository, run `gh repo view --json owner` before creating the pull request, then build the handle `<owner>/fulfillment-automation-team-write`. Never hard-code an organisation, because a work repository can sit under more than one.
 - Where the owner is a user account rather than an organisation, or the lookup fails, create the pull request without `--reviewer` and report the missing prerequisite. The label still applies.
 
-Creating and checking work metadata:
+Creating and checking review metadata:
 
-- Create with `gh pr create --repo <base> --base <default branch> --head <head> --title <title> --body-file <temp-file> --reviewer <owner>/fulfillment-automation-team-write --label ai-review`.
-- Where `gh pr create` fails on the reviewer or the label, look for the pull request first with `gh pr view <head> --repo <base> --json url,title`. Where one exists, the failure came after creation, so repair the field instead, following the repair rules below. Where none exists, retry `gh pr create` once with only the failing argument removed, then report the dropped argument and the reason. Never retry on a failure whose outcome is unclear until that lookup answers it.
-- Verify the work metadata with the universal final lookup in **Pull request lookup and verification**. Never report success from `gh pr create` alone.
-- The label matches when `ai-review` appears in `labels`. The review request matches when a `Team` entry in `reviewRequests` carries the `slug` `fulfillment-automation-team-write`. A team carries `name` and `slug` and never a `login`, so a match on `login` finds nothing and reports a false failure.
+- On a work repository, create with `gh pr create --repo <base> --base <default branch> --head <head> --title <title> --body-file <temp-file> --reviewer <owner>/fulfillment-automation-team-write --label ai-review`.
+- On a personal repository, create with `gh pr create --repo <base> --base <default branch> --head <head> --title <title> --body-file <temp-file> --reviewer sith-skrye,sith-traya,sith-zannah`. Never pass `--label ai-review` on a personal repository.
+- When `gh pr create` fails on `--reviewer` or `--label`, check `gh pr view <head> --repo <base> --json url,title` first. Never retry while the outcome is unclear.
+- On a work repository, when no pull request exists, retry `gh pr create` once without the failing argument. Report the dropped argument and the reason. When the pull request exists, repair the missing field once with the repair rules below.
+- On a personal repository, when no pull request exists after a `--reviewer` failure, retry `gh pr create` once without `--reviewer`. Then repair each missing reviewer individually with `gh pr edit <url> --add-reviewer <login>` for `sith-skrye`, `sith-traya`, and `sith-zannah`. One failing account does not block the other two.
+- Verify the review metadata with the universal final lookup in **Pull request lookup and verification**. Never report success from `gh pr create` alone.
+- On a work repository, the label matches when `ai-review` appears in `labels`. The team review request matches when a `Team` entry in `reviewRequests` carries the `slug` `fulfillment-automation-team-write`. A team carries `name` and `slug` and never a `login`, so a match on `login` finds nothing and reports a false failure.
+- On a personal repository, a user review request matches when a `User` entry in `reviewRequests` has `login` equal to `sith-skrye`, `sith-traya`, or `sith-zannah`.
 - Use dedicated `gh` subcommands only. Never call `gh api`.
 
-Repairing one missing field:
+Repairing missing metadata:
 
-- Where the pull request exists and a field is missing, discover the existing pull request with `gh pr view <head> --repo <base> --json url,title`. Never run `gh pr create` again. A duplicate pull request is never created after an ambiguous partial success.
-- Make one focused attempt for the missing field only, with `gh pr edit <url> --add-reviewer <owner>/fulfillment-automation-team-write` or `gh pr edit <url> --add-label ai-review`.
-- Fetch the final object by URL with the fields in **Pull request lookup and verification**, then report the exact field that is still missing. Stop after that one attempt.
+- Where the pull request exists and metadata is missing, discover the existing pull request with `gh pr view <head> --repo <base> --json url,title`. Never run `gh pr create` again. A duplicate pull request is never created after an ambiguous partial success.
+- On a work repository, run one repair for the missing field: `gh pr edit <url> --add-reviewer <owner>/fulfillment-automation-team-write` or `gh pr edit <url> --add-label ai-review`.
+- On a personal repository, run one `gh pr edit <url> --add-reviewer <login>` command for each missing reviewer among `sith-skrye`, `sith-traya`, and `sith-zannah`.
+- Fetch the final object by URL with the fields in **Pull request lookup and verification**, then report the exact reviewer or label that is still missing. Stop after that one repair pass.
 - A reviewer or label failure never rewrites the branch, force-pushes, closes the pull request, or rolls a Linear issue back. The pull request is the deliverable and it stays open.
 - Never create the label, the team, a repository permission, or an organisation membership. Report the missing prerequisite and who must supply it.
 
@@ -159,9 +168,10 @@ Named failures, and what each one means:
 - The team handle needs organisation qualification. A bare `fulfillment-automation-team-write` does not resolve, which is why the handle always carries the `<owner>/` prefix.
 - The team is not visible to the authenticated account. The handle does not resolve. Report that the account needs to see the team, and never guess another handle.
 - The team has no access to the repository. The request is refused. Report that an administrator must grant the team access to the repository.
+- A personal reviewer account lacks access to the repository. When `gh pr edit <url> --add-reviewer <login>` fails for one account, report that account and the reason. Keep the other requested reviewers.
 - The token cannot request reviewers or apply labels. Creation fails on the argument, or the field comes back empty. Report the missing permission and the argument it blocked.
 - The author is also in the requested team. GitHub may drop the author from the request, so `reviewRequests` can come back without the team after a call that succeeded. Report the request as made, name the author's membership as the reason, and never retry in a loop.
-- The branch already has an open pull request. Creation fails. Discover that pull request, repair the missing field once, and report its URL.
+- The branch already has an open pull request. Creation fails. Discover that pull request, repair any missing metadata once, and report its URL. When an agent already reviewed an existing personal pull request, GitHub removes that login from `reviewRequests`. Report the remaining `reviewRequests` entries and any repair failure without retrying in a loop.
 - Creation succeeds but the metadata fails. Report the pull request as created, name the field that failed, and finish. The command still succeeded.
 - `gh pr view` returns a different representation for the team. Where `reviewRequests` carries neither a matching `slug` nor a recognisable `Team` entry, report the field as unverified rather than failed, and print what came back.
 
@@ -169,7 +179,7 @@ Named failures, and what each one means:
 
 Load the `task-tracker` skill. Two things link an issue, and nothing else does: an issue-key token in the branch name, and a `Refs:` trailer on any commit in `main..HEAD`. Resolve each hit's tracker by the shape rules in the skill, then read that tracker's reference. Its `branch link` section says which tokens count and what the trailer and the pull request body must carry. Never take a key from the pull request body or a commit subject. A key mentioned in prose is not a link.
 
-Workspace guard, Linear only: take the repository classification from **Work repository classification** above and apply the guard in the Linear reference's `Identity and lookup` section. If the classification and the visible instance disagree, skip the transition and report one line saying the profile does not match the repository.
+Workspace guard, Linear only: take the repository classification from **Repository classification** above and apply the guard in the Linear reference's `Identity and lookup` section. `work` requires the work Linear workspace, and `personal` or `community` requires the personal Linear workspace. If the classification and the visible instance disagree, skip the transition and report one line saying that the profile does not match the repository.
 
 Handle each linked issue on its own, and report each one. A branch may carry more than one `Refs:` trailer, and a cohort may span more than one tracker.
 
@@ -187,7 +197,7 @@ Pull request: <url>
 Title: <title>
 Template: <base repository and template file name, or none>
 Reviewer orientation: <why line and block included, or what was skipped and the reason>
-Review requested: fulfillment-automation-team-write, applied or failed with reason
+Review requested: <fulfillment-automation-team-write on work, or sith-skrye, sith-traya, sith-zannah on personal, applied or failed with reason>
 Label: ai-review, applied or failed with reason
 Tracker:
 - <issue key or reference and its new status, the reason it was skipped, or none>
@@ -195,7 +205,11 @@ Excluded:
 - <uncommitted file left out, or none>
 ````
 
-The `Review requested` and `Label` lines belong to a work pull request. Omit both lines on a personal or community repository, so that no work name reaches a report that is not a work report.
+Match the review metadata lines to the repository classification:
+
+- On `work`, include `Review requested: fulfillment-automation-team-write, applied or failed with reason` and `Label: ai-review, applied or failed with reason`.
+- On `personal`, include `Review requested: sith-skrye, sith-traya, sith-zannah, applied or failed with reason` and omit `Label`.
+- On `community`, omit both `Review requested` and `Label`.
 
 ### Watch choice
 
