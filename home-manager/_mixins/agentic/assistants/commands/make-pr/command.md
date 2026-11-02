@@ -123,10 +123,10 @@ Filling it in:
 
 These rules apply to work, personal, and community repositories.
 
-- Before creation, run `gh pr view <head> --repo <base> --json url,title`. If it returns a pull request, do not run `gh pr create`. Use that pull request and continue with **Review metadata** on a work or personal repository.
+- Before creation, run `gh pr view <head> --repo <base> --json url,title,reviewRequests,reviews`. If it returns a pull request, do not run `gh pr create`. Use that pull request and continue with **Review metadata** on a work or personal repository.
 - Create a pull request only when the lookup unambiguously says that none exists. If authentication, network access, or another lookup failure makes the outcome unclear, report the failure and stop before creation.
 - If `gh pr create` fails, run `gh pr view <head> --repo <base> --json url,title` first. If the pull request exists, never create it again. If none exists, stop on a community repository. On a work or personal repository, apply the retry in **Review metadata** only when a reviewer or label failed.
-- After creation, discovery, and any metadata repair, fetch the final pull request by URL. Run `gh pr view <url> --json url,title` on a community repository. Run `gh pr view <url> --json url,title,reviewRequests` on a personal repository, and `gh pr view <url> --json url,title,labels,reviewRequests` on a work repository.
+- After creation, discovery, and any metadata repair, fetch the final pull request by URL. Run `gh pr view <url> --json url,title` on a community repository. Run `gh pr view <url> --json url,title,reviewRequests,reviews` on a personal repository, and `gh pr view <url> --json url,title,labels,reviewRequests` on a work repository.
 - Verify that the returned URL matches the created or discovered URL and that the title is present. For a newly created pull request, also verify that the returned title exactly matches the draft title. For an existing pull request, report its verified title unchanged, even when it differs from the new draft.
 - If the URL or title cannot be verified, report the mismatch or lookup failure and do not report a successful pull request.
 
@@ -150,14 +150,14 @@ Creating and checking review metadata:
 - On a personal repository, when no pull request exists after a `--reviewer` failure, retry `gh pr create` once without `--reviewer`. Then repair each missing reviewer individually with `gh pr edit <url> --add-reviewer <login>` for `sith-skrye`, `sith-traya`, and `sith-zannah`. One failing account does not block the other two.
 - Verify the review metadata with the universal final lookup in **Pull request lookup and verification**. Never report success from `gh pr create` alone.
 - On a work repository, the label matches when `ai-review` appears in `labels`. The team review request matches when a `Team` entry in `reviewRequests` carries the `slug` `fulfillment-automation-team-write`. A team carries `name` and `slug` and never a `login`, so a match on `login` finds nothing and reports a false failure.
-- On a personal repository, a user review request matches when a `User` entry in `reviewRequests` has `login` equal to `sith-skrye`, `sith-traya`, or `sith-zannah`.
+- On a personal repository, a user review request matches when a `User` entry in `reviewRequests` or an `author` in `reviews` has `login` equal to `sith-skrye`, `sith-traya`, or `sith-zannah`.
 - Use dedicated `gh` subcommands only. Never call `gh api`.
 
 Repairing missing metadata:
 
-- Where the pull request exists and metadata is missing, discover the existing pull request with `gh pr view <head> --repo <base> --json url,title`. Never run `gh pr create` again. A duplicate pull request is never created after an ambiguous partial success.
+- Where the pull request exists and metadata is missing, discover the existing pull request with `gh pr view <head> --repo <base> --json url,title,reviewRequests,reviews`. Never run `gh pr create` again. A duplicate pull request is never created after an ambiguous partial success.
 - On a work repository, run one repair for the missing field: `gh pr edit <url> --add-reviewer <owner>/fulfillment-automation-team-write` or `gh pr edit <url> --add-label ai-review`.
-- On a personal repository, run one `gh pr edit <url> --add-reviewer <login>` command for each missing reviewer among `sith-skrye`, `sith-traya`, and `sith-zannah`.
+- On a personal repository, run one `gh pr edit <url> --add-reviewer <login>` command for each missing reviewer among `sith-skrye`, `sith-traya`, and `sith-zannah` that did not already review the pull request.
 - Fetch the final object by URL with the fields in **Pull request lookup and verification**, then report the exact reviewer or label that is still missing. Stop after that one repair pass.
 - A reviewer or label failure never rewrites the branch, force-pushes, closes the pull request, or rolls a Linear issue back. The pull request is the deliverable and it stays open.
 - Never create the label, the team, a repository permission, or an organisation membership. Report the missing prerequisite and who must supply it.
@@ -171,7 +171,7 @@ Named failures, and what each one means:
 - A personal reviewer account lacks access to the repository. When `gh pr edit <url> --add-reviewer <login>` fails for one account, report that account and the reason. Keep the other requested reviewers.
 - The token cannot request reviewers or apply labels. Creation fails on the argument, or the field comes back empty. Report the missing permission and the argument it blocked.
 - The author is also in the requested team. GitHub may drop the author from the request, so `reviewRequests` can come back without the team after a call that succeeded. Report the request as made, name the author's membership as the reason, and never retry in a loop.
-- The branch already has an open pull request. Creation fails. Discover that pull request, repair any missing metadata once, and report its URL. When an agent already reviewed an existing personal pull request, GitHub removes that login from `reviewRequests`. Report the remaining `reviewRequests` entries and any repair failure without retrying in a loop.
+- The branch already has an open pull request. Creation fails. Discover that pull request, repair any missing metadata once, and report its URL. When an agent already reviewed an existing personal pull request, GitHub removes that login from `reviewRequests` and keeps it in `reviews`. Report the remaining `reviewRequests` entries and any repair failure without retrying in a loop.
 - Creation succeeds but the metadata fails. Report the pull request as created, name the field that failed, and finish. The command still succeeded.
 - `gh pr view` returns a different representation for the team. Where `reviewRequests` carries neither a matching `slug` nor a recognisable `Team` entry, report the field as unverified rather than failed, and print what came back.
 
