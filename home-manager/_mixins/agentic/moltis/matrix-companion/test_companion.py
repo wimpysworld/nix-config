@@ -17,6 +17,7 @@ import textwrap
 import threading
 import unittest
 import urllib.parse
+from collections.abc import Callable
 from pathlib import Path
 from unittest.mock import patch
 
@@ -195,9 +196,9 @@ class LoopbackTestServer(http.server.ThreadingHTTPServer):
         self.rpc_requests: list[dict] = []
         self.peek_active: bool = True
         self.peek_responses: list[dict] = []
-        self.peek_handler = None
+        self.peek_handler: Callable[[dict], dict] | None = None
         self.assess_responses: list[dict] = []
-        self.assess_handler = None
+        self.assess_handler: Callable[[dict], dict] | None = None
         self.put_requests: list[dict] = []
         self.reactions_sent: list[dict] = []
         self.redactions_sent: list[dict] = []
@@ -245,6 +246,7 @@ class CompanionTestBase(unittest.TestCase):
         agent_name: str = "skrye",
         main_model: str = "gemini::gemini-4-argon",
         started_at_ms: int | None = None,
+        async_assessments: bool = False,
     ):
         self_uid = f"@{agent_name}:{companion.SERVER_DOMAIN}"
         start_ms = started_at_ms if started_at_ms is not None else self.current_time_ms
@@ -280,8 +282,10 @@ class CompanionTestBase(unittest.TestCase):
             agent_name=agent_name,
             data_dir=self.data_dir,
             clock=self.clock,
-            async_assessments=False,
+            async_assessments=async_assessments,
         )
+        if async_assessments:
+            self.addCleanup(engine.stop_background_workers)
         return store, resolver, mclient, rpc, engine
 
     def write_history(
@@ -1095,6 +1099,117 @@ class Criterion3AssessmentOutputValidationTests(CompanionTestBase):
         self.assertEqual(rpc_params["_session_key"], "companion:matrix-assess")
         self.assertIs(rpc_params["_ephemeral"], True)
         self.assertEqual(rpc_params["active_tools"], [])
+
+    def test_async_assessment_worker_non_blocking_sync_and_queue_eviction(self) -> None:
+        store, _, _, _, engine = self.make_components(
+            agent_name="skrye",
+            main_model="gemini::gemini-4-argon",
+            async_assessments=True,
+        )
+        engine.assessment_worker.max_queue_size = 2
+        engine.process_sync_batch({"next_batch": "s_init", "rooms": {"join": {}}})
+
+        rpc_started = threading.Event()
+        release_first_rpc = threading.Event()
+        all_completed = threading.Event()
+        completed_ids: list[str] = []
+
+        orig_callback = engine.assessment_worker.on_assessment_complete
+
+        def tracked_complete(rec: dict) -> None:
+            if orig_callback is not None:
+                orig_callback(rec)
+            completed_ids.append(str(rec["event_id"]))
+            if len(completed_ids) >= 3:
+                all_completed.set()
+
+        engine.assessment_worker.on_assessment_complete = tracked_complete
+
+        def blocked_assess(_params: dict) -> dict:
+            if not rpc_started.is_set():
+                rpc_started.set()
+                self.assertTrue(release_first_rpc.wait(timeout=5.0))
+            return {"ok": True, "result": {"text": "✋🏻"}}
+
+        self.httpd.assess_handler = blocked_assess
+        engine.start_background_workers()
+
+        # Enqueue first job; process_sync_batch returns without waiting for chat.send_sync.
+        sync_res1 = engine.process_sync_batch(
+            {
+                "next_batch": "s_async_1",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$async_1",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": self.current_time_ms + 10,
+                                        "content": {"msgtype": "m.text", "body": "Async message 1"},
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        self.assertEqual(sync_res1["enqueued_assessments"], 1)
+        self.assertEqual(sync_res1["assessment_results"], [])
+        self.assertTrue(rpc_started.wait(timeout=5.0))
+        self.assertIsNone(store.get_assessed_event("$async_1"))
+
+        # While $async_1 is in flight on the worker thread, another /sync batch arrives with 3 events.
+        # Because max_queue_size=2, $async_2 is evicted and [$async_3, $async_4] remain queued.
+        sync_res2 = engine.process_sync_batch(
+            {
+                "next_batch": "s_async_2",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": f"$async_{idx}",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": self.current_time_ms + idx * 10,
+                                        "content": {"msgtype": "m.text", "body": f"Async message {idx}"},
+                                    }
+                                    for idx in (2, 3, 4)
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        self.assertEqual(sync_res2["enqueued_assessments"], 3)
+        self.assertEqual(
+            [j["event_id"] for j in engine.assessment_worker.pending_jobs()],
+            ["$async_3", "$async_4"],
+        )
+
+        # Unblock worker and wait for $async_1, $async_3, and $async_4 to finish.
+        release_first_rpc.set()
+        self.assertTrue(all_completed.wait(timeout=5.0))
+        engine.stop_background_workers()
+        self.assertIsNone(engine.assessment_worker._thread)
+
+        self.assertEqual(completed_ids, ["$async_1", "$async_3", "$async_4"])
+        self.assertIsNone(store.get_assessed_event("$async_2"))
+        for ev_id in ("$async_1", "$async_3", "$async_4"):
+            rec = store.get_assessed_event(ev_id)
+            assert rec is not None
+            self.assertEqual(rec["status"], "posted")
+            self.assertEqual(rec["badge"], "✋🏻")
+        # _on_local_assessment_complete also reconciled wake-ups on skrye for the latest message.
+        targets = store.read_companion_state()["wakeups"]["targets"]
+        self.assertEqual(targets["$async_1"]["status"], "suppressed")
+        self.assertEqual(targets["$async_4"]["active_badges"].get(companion.SKRYE_ID), "✋🏻")
 
 
 class Criterion4ThinkingDwellAntiChurnTests(CompanionTestBase):
