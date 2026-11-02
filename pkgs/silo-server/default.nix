@@ -8,6 +8,7 @@
   nodejs_24,
   pkg-config,
   pnpm_10_latest,
+  pnpmConfigHook,
   stdenvNoCC,
   unstable,
   vips,
@@ -39,7 +40,7 @@ buildGoModule (finalAttrs: {
     nativeBuildInputs = [
       nodejs_24
       pnpm_10_latest
-      pnpm_10_latest.configHook
+      pnpmConfigHook
     ];
 
     # `scripts/typecheck.mjs` runs the prebuilt `@tsrs/linux-*-gnu` binary when

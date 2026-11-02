@@ -47,6 +47,8 @@ lib.mkIf (noughtyLib.hostHasTag "silo") {
     ];
   };
 
+  programs.nix-ld.enable = true;
+
   sops = {
     secrets.SILO_SECRET_KEY = {
       sopsFile = ../../../../secrets/silo.yaml;
@@ -143,6 +145,7 @@ lib.mkIf (noughtyLib.hostHasTag "silo") {
       StateDirectory = [
         "silo"
         "silo/artwork"
+        "silo/backups"
         "silo/compat"
         "silo/compat/jellyfin-web"
         "silo/plugins"
