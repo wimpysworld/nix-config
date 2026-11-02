@@ -713,6 +713,261 @@ class Gate1HookSerializationAndBindingTests(CompanionTestBase):
         self.assertTrue(run_state["binding_ambiguous"])
         self.assertEqual(len(self.httpd.reactions_sent), 0)
 
+    def test_nested_channel_sender_id_missing_sender_refusal_and_audio_suffix(self) -> None:
+        store, resolver, _, _, engine = self.make_components(agent_name="zannah")
+        session_key = resolver.default_session_key
+        hook_script = self.write_hook_script(agent_name="zannah")
+
+        engine.process_sync_batch({"next_batch": "s_init", "rooms": {"join": {}}})
+
+        shared_body = "@zannah:matrix.wimpys.world check status"
+
+        # 1. Missing sender identity in both history.jsonl and active-turn.json must refuse to bind.
+        self.write_history(
+            session_key,
+            [
+                {
+                    "role": "user",
+                    "run_id": "run-no-sender",
+                    "content": shared_body,
+                    "created_at": self.current_time_ms,
+                }
+            ],
+            agent_name="zannah",
+        )
+        self.invoke_hook(
+            {
+                "event": "BeforeLLMCall",
+                "session_key": session_key,
+                "iteration": 1,
+                "messages": [{"role": "system", "content": "Sys"}],
+            },
+            "zannah",
+            hook_script,
+        )
+        engine.process_sync_batch(
+            {
+                "next_batch": "s_no_sender",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$ev_martin_same",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": self.current_time_ms,
+                                        "content": {"msgtype": "m.text", "body": shared_body},
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$ack_martin_same",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": self.current_time_ms + 5,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$ev_martin_same",
+                                                "key": "👀",
+                                            }
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        no_sender_state = store.get_run_state(session_key, "run-no-sender")
+        assert no_sender_state is not None
+        self.assertIsNone(no_sender_state["bound_event_id"])
+        self.assertEqual(len(self.httpd.reactions_sent), 0)
+
+        # 2. Identical text from two different senders (@martin and @traya), with nested channel.sender_id
+        # and trailing [Audio message]: suffix on @traya's turn -> binds uniquely to @traya's event.
+        self.current_time_ms += 100
+        self.write_history(
+            session_key,
+            [
+                {
+                    "role": "user",
+                    "run_id": "run-traya-nested",
+                    "channel": {
+                        "channel_type": "matrix",
+                        "sender_id": companion.TRAYA_ID,
+                        "sender_name": "Traya",
+                    },
+                    "content": f"{shared_body}\n\n[Audio message]: Spoken version of check status.",
+                    "created_at": self.current_time_ms,
+                }
+            ],
+            agent_name="zannah",
+        )
+        self.invoke_hook(
+            {
+                "event": "BeforeLLMCall",
+                "session_key": session_key,
+                "iteration": 1,
+                "messages": [{"role": "system", "content": "Sys"}],
+            },
+            "zannah",
+            hook_script,
+        )
+        active_turn = store.read_active_turn()
+        assert active_turn is not None
+        self.assertEqual(active_turn["user_sender_id"], companion.TRAYA_ID)
+
+        engine.process_sync_batch(
+            {
+                "next_batch": "s_traya_same",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$ev_traya_same",
+                                        "sender": companion.TRAYA_ID,
+                                        "origin_server_ts": self.current_time_ms,
+                                        "content": {"msgtype": "m.text", "body": shared_body},
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$ack_traya_same",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": self.current_time_ms + 5,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$ev_traya_same",
+                                                "key": "👀",
+                                            }
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        traya_state = store.get_run_state(session_key, "run-traya-nested")
+        assert traya_state is not None
+        self.assertEqual(traya_state["bound_event_id"], "$ev_traya_same")
+        self.assertFalse(traya_state["binding_ambiguous"])
+        self.assertEqual(traya_state["active_reaction_key"], "✍🏻")
+        self.assertEqual(
+            self.httpd.reactions_sent[-1]["body"]["m.relates_to"],
+            {"rel_type": "m.annotation", "event_id": "$ev_traya_same", "key": "✍🏻"},
+        )
+
+    def test_ambiguous_same_sender_retry_after_failed_unbound_run_stays_unbound(self) -> None:
+        store, resolver, _, _, engine = self.make_components(agent_name="skrye")
+        session_key = resolver.default_session_key
+        hook_script = self.write_hook_script(agent_name="skrye")
+
+        engine.process_sync_batch({"next_batch": "s_init", "rooms": {"join": {}}})
+
+        retry_body = "@skrye:matrix.wimpys.world retry check"
+        t_first = self.current_time_ms
+        t_retry = self.current_time_ms + 5_000
+
+        # Run 1 failed before binding, leaving $retry_1 acknowledged (👀) but unbound in recent_events.
+        # Run 2 is a same-sender retry with identical text $retry_2, also acknowledged (👀).
+        self.write_history(
+            session_key,
+            [
+                {
+                    "role": "user",
+                    "run_id": "run-failed-1",
+                    "channel": {"sender_id": companion.MARTIN_ID},
+                    "content": retry_body,
+                    "created_at": t_first,
+                },
+                {
+                    "role": "user",
+                    "run_id": "run-retry-2",
+                    "channel": {"sender_id": companion.MARTIN_ID},
+                    "content": retry_body,
+                    "created_at": t_retry,
+                },
+            ],
+        )
+        self.current_time_ms = t_retry
+        self.invoke_hook(
+            {
+                "event": "BeforeLLMCall",
+                "session_key": session_key,
+                "iteration": 1,
+                "messages": [{"role": "system", "content": "Sys"}],
+            },
+            "skrye",
+            hook_script,
+        )
+        engine.process_sync_batch(
+            {
+                "next_batch": "s_retry_ambig",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$retry_1",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": t_first + 100,
+                                        "content": {"msgtype": "m.text", "body": retry_body},
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$ack_retry_1",
+                                        "sender": companion.SKRYE_ID,
+                                        "origin_server_ts": t_first + 110,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$retry_1",
+                                                "key": "👀",
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$retry_2",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": t_retry + 100,
+                                        "content": {"msgtype": "m.text", "body": retry_body},
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$ack_retry_2",
+                                        "sender": companion.SKRYE_ID,
+                                        "origin_server_ts": t_retry + 110,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$retry_2",
+                                                "key": "👀",
+                                            }
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        retry_state = store.get_run_state(session_key, "run-retry-2")
+        assert retry_state is not None
+        self.assertIsNone(retry_state["bound_event_id"])
+        self.assertTrue(retry_state["binding_ambiguous"])
+        self.assertEqual(len(self.httpd.reactions_sent), 0)
+
 
 class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
     """Gate 2: chat.peek completion/abort reconciliation, 45s progress notices, and ✌🏻 gating."""
@@ -811,8 +1066,8 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         assert run_state is not None
         self.assertEqual(run_state["active_reaction_key"], "🔧")
 
-        # Advance to 45s -> creates single m.notice progress message with empty m.mentions.
-        self.current_time_ms += 44_000
+        # Advance to 30s -> creates single m.notice progress message with empty m.mentions and no phase.
+        self.current_time_ms += 29_000
         engine.tick(now_override_ms=self.current_time_ms)
         run_state = store.get_run_state(session_key, "run-200")
         assert run_state is not None
@@ -823,10 +1078,11 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         self.assertEqual(first_notice["msgtype"], "m.notice")
         self.assertEqual(first_notice["m.mentions"], {})
         self.assertNotIn("@", first_notice["body"])
-        self.assertIn("45s elapsed", first_notice["body"])
+        self.assertNotIn("phase", first_notice["body"].lower())
+        self.assertEqual(first_notice["body"], "⏳ 30 seconds elapsed · Iteration 2")
 
-        # Advance another 45s (90s total) -> edits in place via m.replace.
-        self.current_time_ms += 45_000
+        # Advance another 60s (90s total) -> edits in place via m.replace with minutes and seconds.
+        self.current_time_ms += 60_000
         engine.tick(now_override_ms=self.current_time_ms)
         self.assertEqual(len(self.httpd.messages_sent), 2)
         edit_notice = self.httpd.messages_sent[1]["body"]
@@ -834,7 +1090,17 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
             edit_notice["m.relates_to"],
             {"rel_type": "m.replace", "event_id": prog_id},
         )
-        self.assertIn("90s elapsed", edit_notice["m.new_content"]["body"])
+        self.assertEqual(
+            edit_notice["m.new_content"]["body"],
+            "⏳ 1 minute 30 seconds elapsed · Iteration 2",
+        )
+
+        # Verify elapsed-duration helper across singular/plural seconds and minutes.
+        self.assertEqual(companion.format_elapsed_duration(30), "30 seconds")
+        self.assertEqual(companion.format_elapsed_duration(60), "1 minute")
+        self.assertEqual(companion.format_elapsed_duration(61), "1 minute 1 second")
+        self.assertEqual(companion.format_elapsed_duration(90), "1 minute 30 seconds")
+        self.assertEqual(companion.format_elapsed_duration(125), "2 minutes 5 seconds")
 
         # Now chat.peek reports active == False, but final assistant reply is NOT yet in history/sync.
         self.httpd.peek_active = False
@@ -972,8 +1238,8 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
                 },
             }
         )
-        # Create 45s progress notice first.
-        self.current_time_ms += 45_000
+        # Create 30s progress notice first.
+        self.current_time_ms += 30_000
         engine.tick(now_override_ms=self.current_time_ms)
         run_state = store.get_run_state(session_key, "run-abort")
         assert run_state is not None
@@ -1267,6 +1533,48 @@ class Criterion4ThinkingDwellAntiChurnTests(CompanionTestBase):
         engine.tick(now_override_ms=self.current_time_ms + 3_000)
         self.assertEqual(store.get_run_state(session_key, "run-dwell")["active_reaction_key"], "✍🏻")  # type: ignore[index]
 
+        # Fast tool call test: BeforeToolCall (Read -> 🔧) followed 15ms later by BeforeLLMCall (iteration 4)
+        # before companion ticks -> companion still surfaces 🔧 during the 3s dwell window, then ✍🏻 at >= 3s.
+        self.current_time_ms += 4_000
+        self.invoke_hook(
+            {
+                "event": "BeforeToolCall",
+                "session_key": session_key,
+                "iteration": 3,
+                "tool_name": "Read",
+            },
+            "skrye",
+            hook_script,
+        )
+        self.invoke_hook(
+            {
+                "event": "BeforeLLMCall",
+                "session_key": session_key,
+                "iteration": 4,
+                "messages": [{"role": "system", "content": "Sys"}],
+            },
+            "skrye",
+            hook_script,
+        )
+        turn_data = store.read_active_turn()
+        assert turn_data is not None
+        self.assertEqual(turn_data["phase"], "thinking")
+        self.assertEqual(turn_data["last_tool_phase"], "tool")
+        turn_data["phase_updated_at_ms"] = self.current_time_ms + 15
+        turn_data["last_tool_at_ms"] = self.current_time_ms
+        with store._locked_dir(companion.ACTIVE_TURN_LOCK_FILENAME) as dfd:
+            fd = os.open(companion.ACTIVE_TURN_FILENAME, os.O_WRONLY | os.O_TRUNC, 0o600, dir_fd=dfd)
+            with os.fdopen(fd, "wb") as f:
+                f.write((json.dumps(turn_data) + "\n").encode("utf-8"))
+
+        # Companion polls at +500ms (< 3s): replaces ✍🏻 with 🔧 even though phase is already "thinking".
+        engine.tick(now_override_ms=self.current_time_ms + 500)
+        self.assertEqual(store.get_run_state(session_key, "run-dwell")["active_reaction_key"], "🔧")  # type: ignore[index]
+
+        # At +3015ms (>= 3s dwell in thinking): transitions back to ✍🏻.
+        engine.tick(now_override_ms=self.current_time_ms + 3_015)
+        self.assertEqual(store.get_run_state(session_key, "run-dwell")["active_reaction_key"], "✍🏻")  # type: ignore[index]
+
 
 class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
     """Criterion 5: Moderator wake-up rules on skrye."""
@@ -1408,10 +1716,20 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
         wakeup_msg = self.httpd.messages_sent[-1]["body"]
         self.assertEqual(wakeup_msg["msgtype"], "m.notice")
         self.assertEqual(wakeup_msg["m.mentions"], {"user_ids": [companion.TRAYA_ID]})
-        self.assertIn("Zannah", wakeup_msg["body"])
+        self.assertEqual(
+            wakeup_msg["body"],
+            f"🛎️ Inviting {companion.TRAYA_ID} to the floor as Zannah has a raised hand ✋🏻",
+        )
+        self.assertNotIn("$m_opt_a", wakeup_msg["body"])
         self.assertNotIn(companion.ZANNAH_ID, wakeup_msg["body"])
         self.assertTrue(
             companion.extract_mentioned_bots(wakeup_msg["body"], wakeup_msg) == {companion.TRAYA_ID}
+        )
+        self.assertEqual(
+            companion.format_moderator_wakeup_notice(
+                [companion.SKRYE_ID, companion.ZANNAH_ID], "raised_hand"
+            ),
+            f"🛎️ Inviting {companion.TRAYA_ID} to the floor. Raised hands: Skrye and Zannah ✋🏻",
         )
         # Re-evaluating must never send a second wake-up for the same target event.
         engine.wakeup_coordinator.ingest_and_reconcile(generation=gen, now_override_ms=self.current_time_ms + 20_000)
@@ -1525,6 +1843,7 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
         self.assertEqual(fb_target["status"], "notified")
         self.assertEqual(fb_target["wake_reason"], "moderator_fallback")
         self.assertIn("moderator assessment fallback after 15s", self.httpd.messages_sent[-1]["body"]["body"])
+        self.assertNotIn("$m_fallback", self.httpd.messages_sent[-1]["body"]["body"])
 
         # Case C: Silent closure at 15s when @traya returned 👌🏻/👍🏻 and only a peer is missing.
         self.current_time_ms += 20_000
@@ -2191,6 +2510,27 @@ class Criterion6RoomEventsDurabilityAndNewIsolationTests(CompanionTestBase):
         self.assertEqual(flushed[0]["txn_id"], saved_txn_id)
         self.assertEqual(store.read_outbox()["pending"], {})
         self.assertIn(saved_txn_id, self.httpd.reactions_sent[-1]["path"])
+
+        # Verify companion-state.json pruning at COMPANION_STATE_ENTRY_CAP (100).
+        for idx in range(110):
+            store.record_assessed_event(
+                event_id=f"$prune_ev_{idx}",
+                session_key="session:prune",
+                status="posted",
+                badge="👌🏻",
+                assessed_at_ms=1000 + idx,
+            )
+            store.update_run_state(
+                "session:prune",
+                f"run-prune-{idx}",
+                cleaned_up=True,
+                updated_at_ms=1000 + idx,
+            )
+        pruned_state = store.read_companion_state()
+        self.assertLessEqual(len(pruned_state["assessed_events"]), companion.COMPANION_STATE_ENTRY_CAP)
+        self.assertLessEqual(len(pruned_state["runs"]), companion.COMPANION_STATE_ENTRY_CAP)
+        self.assertIn("$prune_ev_109", pruned_state["assessed_events"])
+        self.assertNotIn("$prune_ev_0", pruned_state["assessed_events"])
 
 
 if __name__ == "__main__":

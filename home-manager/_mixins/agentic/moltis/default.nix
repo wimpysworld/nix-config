@@ -1119,6 +1119,32 @@ let
         return ""
 
 
+    def strip_audio_message_suffix(text: str) -> str:
+        cleaned = (text or "").strip()
+        for marker in ("\n\n[Audio message]:", "\n[Audio message]:"):
+            if marker in cleaned:
+                prefix = cleaned.split(marker, 1)[0].strip()
+                if prefix:
+                    return prefix
+        return cleaned
+
+
+    def extract_record_sender(rec: dict) -> str:
+        if not isinstance(rec, dict):
+            return ""
+        channel = rec.get("channel")
+        if isinstance(channel, dict):
+            for key in ("sender_id", "sender", "peer_id", "user_id", "username"):
+                val = channel.get(key)
+                if isinstance(val, str) and val.strip():
+                    return val.strip()
+        for key in ("sender_id", "sender", "peer_id", "user_id", "username"):
+            val = rec.get(key)
+            if isinstance(val, str) and val.strip():
+                return val.strip()
+        return ""
+
+
     def encoded_key_components(key: str) -> list[str]:
         encoded = key.encode("utf-8").hex()
         if not encoded:
@@ -1179,13 +1205,7 @@ let
                 continue
             run_id = str(rec.get("run_id") or "").strip()
             _, created_at_ms = normalize_ts(rec.get("created_at"))
-            sender_id = str(
-                rec.get("sender_id")
-                or rec.get("sender")
-                or rec.get("peer_id")
-                or rec.get("user_id")
-                or ""
-            ).strip()
+            sender_id = extract_record_sender(rec)
             content = extract_text_content(rec.get("content")).strip()
             if run_id or content:
                 return (
@@ -1203,6 +1223,7 @@ let
                 str(existing_turn.get("user_content") or ""),
             )
 
+        payload_sender = extract_record_sender(payload)
         messages = payload.get("messages")
         if isinstance(messages, list):
             for msg in reversed(messages):
@@ -1212,10 +1233,10 @@ let
                         return (
                             str(payload.get("run_id") or "run-unknown"),
                             now_ms(),
-                            "",
+                            extract_record_sender(msg) or payload_sender,
                             content,
                         )
-        return str(payload.get("run_id") or "run-unknown"), now_ms(), "", ""
+        return str(payload.get("run_id") or "run-unknown"), now_ms(), payload_sender, ""
 
 
     def extract_tool_name(payload: dict) -> str:
@@ -1266,13 +1287,16 @@ let
                         records, payload, existing
                     )
 
+                    same_run = (
+                        isinstance(existing, dict)
+                        and existing.get("session_key") == session_key
+                        and existing.get("run_id") == run_id
+                    )
                     if event_name == "BeforeLLMCall":
                         iteration = max(1, safe_int(payload.get("iteration"), 1))
                         phase = "thinking"
                         if (
-                            isinstance(existing, dict)
-                            and existing.get("session_key") == session_key
-                            and existing.get("run_id") == run_id
+                            same_run
                             and existing.get("phase") == "thinking"
                             and safe_int(existing.get("iteration"), 0) == iteration
                             and safe_int(existing.get("phase_updated_at_ms"), 0) > 0
@@ -1280,21 +1304,21 @@ let
                             phase_updated_at_ms = safe_int(existing.get("phase_updated_at_ms"), stamp_ms)
                         else:
                             phase_updated_at_ms = stamp_ms
+                        last_tool_phase = str(existing.get("last_tool_phase") or "") if same_run else ""
+                        last_tool_at_ms = safe_int(existing.get("last_tool_at_ms"), 0) if same_run else 0
                     else:
                         raw_iter = payload.get("iteration")
                         if raw_iter is not None:
                             iteration = max(1, safe_int(raw_iter, 1))
-                        elif (
-                            isinstance(existing, dict)
-                            and existing.get("session_key") == session_key
-                            and existing.get("run_id") == run_id
-                        ):
+                        elif same_run:
                             iteration = max(1, safe_int(existing.get("iteration"), 1))
                         else:
                             iteration = 1
                         tool_name = extract_tool_name(payload).lower()
                         phase = "shell" if tool_name in ("exec", "process") else "tool"
                         phase_updated_at_ms = stamp_ms
+                        last_tool_phase = phase
+                        last_tool_at_ms = stamp_ms
 
                     turn_data = {
                         "session_key": session_key,
@@ -1305,6 +1329,8 @@ let
                         "iteration": iteration,
                         "phase": phase,
                         "phase_updated_at_ms": phase_updated_at_ms,
+                        "last_tool_phase": last_tool_phase,
+                        "last_tool_at_ms": last_tool_at_ms,
                     }
                     atomic_write_json_in_dir(dir_fd, ACTIVE_TURN_FILENAME, turn_data)
                     return turn_data
@@ -1364,8 +1390,8 @@ let
     def sender_matches(event_sender: str, history_sender: str) -> bool:
         s_ev = (event_sender or "").strip()
         s_hist = (history_sender or "").strip()
-        if not s_hist:
-            return True
+        if not s_ev or not s_hist:
+            return False
         if s_ev == s_hist:
             return True
         if not s_hist.startswith("@") and s_ev == f"@{s_hist}:matrix.wimpys.world":
@@ -1381,6 +1407,7 @@ let
         ev_body = str(event.get("body") or "").strip()
         if not ev_body:
             return False
+        ev_body_stripped = strip_audio_message_suffix(ev_body)
         ev_sender = str(event.get("sender") or "").strip()
         for rec in history_records:
             if not isinstance(rec, dict):
@@ -1394,19 +1421,19 @@ let
             rec_content = extract_text_content(rec.get("content")).strip()
             if not rec_content:
                 continue
+            rec_stripped = strip_audio_message_suffix(rec_content)
             if role == "assistant":
-                if ev_sender == SELF_USER_ID and rec_content == ev_body:
+                if ev_sender == SELF_USER_ID and (
+                    rec_content == ev_body or rec_stripped == ev_body_stripped
+                ):
                     return True
             else:
-                rec_sender = str(
-                    rec.get("sender_id")
-                    or rec.get("sender")
-                    or rec.get("peer_id")
-                    or rec.get("user_id")
-                    or ""
-                ).strip()
+                rec_sender = extract_record_sender(rec)
                 if sender_matches(ev_sender, rec_sender) and (
-                    rec_content == ev_body or rec_content.endswith(ev_body)
+                    rec_content == ev_body
+                    or rec_content.endswith(ev_body)
+                    or rec_stripped == ev_body_stripped
+                    or rec_stripped.endswith(ev_body_stripped)
                 ):
                     return True
         return False
@@ -1493,12 +1520,7 @@ let
                 if extract_text_content(rec.get("content")).strip():
                     bot_turns += 1
             elif role == "user":
-                sender = str(
-                    rec.get("sender_id")
-                    or rec.get("sender")
-                    or rec.get("peer_id")
-                    or ""
-                ).strip()
+                sender = extract_record_sender(rec)
                 if is_martin_sender(sender):
                     break
                 if is_bot_sender(sender):

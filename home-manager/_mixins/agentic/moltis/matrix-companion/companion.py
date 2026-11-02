@@ -89,7 +89,7 @@ ASSESSMENT_MAX_TARGET_CHARS = 1600
 ASSESSMENT_TIMEOUT_SECS = 25.0
 
 THINKING_DWELL_MS = 3000
-PROGRESS_NOTICE_INTERVAL_MS = 45000
+PROGRESS_NOTICE_INTERVAL_MS = 30000
 COMPLETION_RECONCILE_WINDOW_MS = 5000
 WAKEUP_DEADLINE_MS = 15000
 MAX_WAKEUPS_PER_MARTIN_ROOT = 3
@@ -97,6 +97,7 @@ MAX_BOT_TURNS_SINCE_MARTIN = 9
 
 RECENT_EVENTS_CAP = 50
 UNMENTIONED_EVENTS_CAP = 50
+COMPANION_STATE_ENTRY_CAP = 100
 ENCODED_COMPONENT_BYTES = 120
 MAX_RESPONSE_BYTES = 1048576
 
@@ -519,11 +520,77 @@ def sanitize_no_matrix_mentions(text: str) -> str:
     return cleaned
 
 
+def strip_audio_message_suffix(text: str) -> str:
+    """Strip Moltis's appended [Audio message]: transcript suffix when matching text."""
+    cleaned = (text or "").strip()
+    for marker in ("\n\n[Audio message]:", "\n[Audio message]:"):
+        if marker in cleaned:
+            prefix = cleaned.split(marker, 1)[0].strip()
+            if prefix:
+                return prefix
+    return cleaned
+
+
+def extract_record_sender(rec: dict) -> str:
+    """Extract sender identity from nested channel.sender_id or top-level history fields."""
+    if not isinstance(rec, dict):
+        return ""
+    channel = rec.get("channel")
+    if isinstance(channel, dict):
+        for key in ("sender_id", "sender", "peer_id", "user_id", "username"):
+            val = channel.get(key)
+            if isinstance(val, str) and val.strip():
+                return val.strip()
+    for key in ("sender_id", "sender", "peer_id", "user_id", "username"):
+        val = rec.get(key)
+        if isinstance(val, str) and val.strip():
+            return val.strip()
+    return ""
+
+
+def format_elapsed_duration(elapsed_sec: int) -> str:
+    """Format elapsed seconds as seconds below 1 minute, then minutes and seconds."""
+    total_sec = max(0, _safe_int(elapsed_sec, 0))
+    if total_sec < 60:
+        return "1 second" if total_sec == 1 else f"{total_sec} seconds"
+    minutes, seconds = divmod(total_sec, 60)
+    min_part = "1 minute" if minutes == 1 else f"{minutes} minutes"
+    if seconds == 0:
+        return min_part
+    sec_part = "1 second" if seconds == 1 else f"{seconds} seconds"
+    return f"{min_part} {sec_part}"
+
+
+def format_progress_notice(elapsed_sec: int, iteration: int) -> str:
+    """Format the 30-second progress notice without phase or Matrix mentions."""
+    clean_iter = max(1, _safe_int(iteration, 1))
+    return sanitize_no_matrix_mentions(
+        f"⏳ {format_elapsed_duration(elapsed_sec)} elapsed · Iteration {clean_iter}"
+    )
+
+
+def format_moderator_wakeup_notice(
+    raised_hands: list[str],
+    wake_reason: str = "raised_hand",
+) -> str:
+    """Format the moderator invitation notice without exposing raw Matrix event IDs."""
+    if wake_reason == "raised_hand" and raised_hands:
+        names = [display_name_for_user_id(uid) for uid in raised_hands]
+        if len(names) == 1:
+            return f"🛎️ Inviting {TRAYA_ID} to the floor as {names[0]} has a raised hand ✋🏻"
+        if len(names) == 2:
+            joined = f"{names[0]} and {names[1]}"
+        else:
+            joined = f"{', '.join(names[:-1])}, and {names[-1]}"
+        return f"🛎️ Inviting {TRAYA_ID} to the floor. Raised hands: {joined} ✋🏻"
+    return f"🛎️ Inviting {TRAYA_ID} to the floor (moderator assessment fallback after 15s)."
+
+
 def _sender_matches(event_sender: str, turn_sender: str) -> bool:
     s_ev = (event_sender or "").strip()
     s_turn = (turn_sender or "").strip()
-    if not s_turn:
-        return True
+    if not s_ev or not s_turn:
+        return False
     if s_ev == s_turn:
         return True
     if not s_turn.startswith("@") and s_ev == f"@{s_turn}:{SERVER_DOMAIN}":
@@ -540,7 +607,11 @@ def _content_matches(event_body: str, turn_content: object) -> bool:
     body = (event_body or "").strip()
     if not extracted or not body:
         return False
-    return body == extracted
+    if body == extracted:
+        return True
+    stripped_turn = strip_audio_message_suffix(extracted)
+    stripped_body = strip_audio_message_suffix(body)
+    return bool(stripped_turn and stripped_body and stripped_turn == stripped_body)
 
 
 def make_run_state_key(session_key: str, run_id: str) -> str:
@@ -729,10 +800,63 @@ class CompanionStateStore:
         with self._locked_dir() as dir_fd:
             return self._read_companion_state_unlocked(dir_fd)
 
+    def _prune_companion_state_unlocked(
+        self,
+        state: dict,
+        cap: int = COMPANION_STATE_ENTRY_CAP,
+    ) -> None:
+        max_entries = max(1, _safe_int(cap, COMPANION_STATE_ENTRY_CAP))
+        assessed = state.get("assessed_events")
+        if isinstance(assessed, dict) and len(assessed) > max_entries:
+            ordered_keys = sorted(
+                assessed.keys(),
+                key=lambda k: _safe_int(_as_dict(assessed.get(k)).get("assessed_at_ms"), 0),
+            )
+            for k in ordered_keys[: len(assessed) - max_entries]:
+                assessed.pop(k, None)
+
+        runs = state.get("runs")
+        if isinstance(runs, dict) and len(runs) > max_entries:
+            evictable_keys = sorted(
+                (
+                    k
+                    for k, v in runs.items()
+                    if isinstance(v, dict) and bool(v.get("cleaned_up"))
+                ),
+                key=lambda k: _safe_int(_as_dict(runs.get(k)).get("updated_at_ms"), 0),
+            )
+            excess = len(runs) - max_entries
+            for k in evictable_keys[:excess]:
+                runs.pop(k, None)
+
+        wakeups = state.get("wakeups")
+        if isinstance(wakeups, dict):
+            targets = wakeups.get("targets")
+            if isinstance(targets, dict) and len(targets) > max_entries:
+                evictable_targets = sorted(
+                    (
+                        k
+                        for k, v in targets.items()
+                        if isinstance(v, dict) and v.get("status") != "pending"
+                    ),
+                    key=lambda k: _safe_int(_as_dict(targets.get(k)).get("origin_server_ts"), 0),
+                )
+                for k in evictable_targets[: len(targets) - max_entries]:
+                    targets.pop(k, None)
+            roots = wakeups.get("martin_roots")
+            if isinstance(roots, dict) and len(roots) > max_entries:
+                ordered_roots = sorted(
+                    roots.keys(),
+                    key=lambda k: _safe_int(_as_dict(roots.get(k)).get("updated_at_ms"), 0),
+                )
+                for k in ordered_roots[: len(roots) - max_entries]:
+                    roots.pop(k, None)
+
     def write_companion_state(self, state_data: dict) -> None:
         with self._locked_dir() as dir_fd:
             current = self._read_companion_state_unlocked(dir_fd)
             current.update(state_data)
+            self._prune_companion_state_unlocked(current)
             current["updated_at_ms"] = now_ms()
             atomic_write_json_in_dir(dir_fd, COMPANION_STATE_FILENAME, current)
 
@@ -758,6 +882,7 @@ class CompanionStateStore:
             entry.update(fields)
             entry["updated_at_ms"] = now_ms()
             runs[key] = entry
+            self._prune_companion_state_unlocked(state)
             state["updated_at_ms"] = entry["updated_at_ms"]
             atomic_write_json_in_dir(dir_fd, COMPANION_STATE_FILENAME, state)
             return dict(entry)
@@ -790,6 +915,7 @@ class CompanionStateStore:
             state = self._read_companion_state_unlocked(dir_fd)
             assessed = state.setdefault("assessed_events", {})
             assessed[event_id] = record
+            self._prune_companion_state_unlocked(state)
             state["updated_at_ms"] = ts_val
             atomic_write_json_in_dir(dir_fd, COMPANION_STATE_FILENAME, state)
         return record
@@ -2213,16 +2339,19 @@ class TurnStatusReconciler:
             and str(r.get("run_id") or "").strip() == run_id
         ]
         if len(user_records_for_run) > 1:
-            contents = {extract_text_content(r.get("content")).strip() for r in user_records_for_run}
+            contents = {
+                strip_audio_message_suffix(extract_text_content(r.get("content")).strip())
+                for r in user_records_for_run
+            }
             if len(contents) > 1:
                 return turn_sender, turn_content, turn_ts_ms, True
 
         if len(user_records_for_run) == 1:
             hist_rec = user_records_for_run[0]
             hist_content = extract_text_content(hist_rec.get("content")).strip()
-            hist_sender = str(hist_rec.get("sender_id") or hist_rec.get("sender") or "").strip()
+            hist_sender = extract_record_sender(hist_rec)
             _, hist_ts_ms = normalize_ts(hist_rec.get("created_at"))
-            if turn_content and hist_content and turn_content != hist_content:
+            if turn_content and hist_content and not _content_matches(turn_content, hist_content):
                 return turn_sender, turn_content, turn_ts_ms, True
             if turn_sender and hist_sender and not _sender_matches(hist_sender, turn_sender) and not _sender_matches(turn_sender, hist_sender):
                 return turn_sender, turn_content, turn_ts_ms, True
@@ -2248,7 +2377,7 @@ class TurnStatusReconciler:
         )
         if is_conflict:
             return None, True
-        if not user_content:
+        if not user_content or not sender_id:
             return None, False
 
         comp_state = self.state_store.read_companion_state()
@@ -2281,7 +2410,7 @@ class TurnStatusReconciler:
             )
             if not has_self_ack:
                 continue
-            if sender_id and not _sender_matches(str(ev.get("sender") or ""), sender_id):
+            if not _sender_matches(str(ev.get("sender") or ""), sender_id):
                 continue
             if not _content_matches(str(ev.get("body") or ""), user_content):
                 continue
@@ -2312,6 +2441,11 @@ class TurnStatusReconciler:
                 return PHASE_WRITING_KEY, "thinking", iteration
             if current_ms - phase_updated_at_ms >= self.thinking_dwell_ms:
                 return PHASE_WRITING_KEY, "thinking", iteration
+            last_tool_phase = str(active_turn.get("last_tool_phase") or "").strip().lower()
+            if last_tool_phase == "shell":
+                return PHASE_SHELL_KEY, "shell", iteration
+            if last_tool_phase == "tool":
+                return PHASE_TOOL_KEY, "tool", iteration
             return None, "thinking", iteration
         return None, raw_phase, iteration
 
@@ -2618,16 +2752,13 @@ class TurnStatusReconciler:
                 active_reaction_key=desired_key,
             )
 
-        # Progress notice every 45s while active == True.
+        # Progress notice every 30s while active == True.
         if peek_active is True:
             started_at_ms = _safe_int(run_entry.get("started_at_ms"), current_ms)
             elapsed_ms = current_ms - started_at_ms
             if elapsed_ms >= self.progress_interval_ms:
                 elapsed_sec = max(self.progress_interval_ms // 1000, elapsed_ms // 1000)
-                notice_text = sanitize_no_matrix_mentions(
-                    f"⏳ {self.agent_display_name} working: phase={norm_phase or 'thinking'}, "
-                    f"iteration={iteration} ({elapsed_sec}s elapsed)."
-                )
+                notice_text = format_progress_notice(elapsed_sec=elapsed_sec, iteration=iteration)
                 progress_id = run_entry.get("progress_event_id")
                 if not isinstance(progress_id, str) or not progress_id:
                     new_prog_id = self.matrix_client.send_notice(
@@ -3026,17 +3157,10 @@ class ModeratorWakeupCoordinator:
                     target["budget_exhausted_at_ms"] = current_ms
                     continue
 
-                if wake_reason == "raised_hand":
-                    peer_names = ", ".join(display_name_for_user_id(uid) for uid in raised_hands)
-                    notice_body = (
-                        f"🔔 Moderator wake-up for {TRAYA_ID} on {tid}: "
-                        f"raised hand (✋🏻) from {peer_names}."
-                    )
-                else:
-                    notice_body = (
-                        f"🔔 Moderator wake-up for {TRAYA_ID} on {tid}: "
-                        "moderator assessment fallback after 15s."
-                    )
+                notice_body = format_moderator_wakeup_notice(
+                    raised_hands=raised_hands,
+                    wake_reason=wake_reason,
+                )
 
                 notice_event_id = self.matrix_client.send_notice(
                     body_text=notice_body,
