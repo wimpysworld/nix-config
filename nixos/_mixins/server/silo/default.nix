@@ -34,11 +34,18 @@ lib.mkIf (noughtyLib.hostHasTag "silo") {
     ];
   };
 
-  networking.firewall.allowedTCPPorts = [
-    siloPort
-    siloJellyfinPort
-    siloAudiobookshelfPort
-  ];
+  networking.firewall = {
+    allowedTCPPorts = [
+      siloPort
+      siloJellyfinPort
+      siloAudiobookshelfPort
+    ];
+    allowedUDPPorts = [
+      1900
+      5353
+      7359
+    ];
+  };
 
   sops = {
     secrets.SILO_SECRET_KEY = {
@@ -90,6 +97,11 @@ lib.mkIf (noughtyLib.hostHasTag "silo") {
       "postgresql-setup.service"
     ];
     wantedBy = [ "multi-user.target" ];
+
+    unitConfig = {
+      RequiresMountsFor = [ "/srv/pool" ];
+      ConditionPathIsMountPoint = "/srv/pool";
+    };
 
     path = lib.optional config.noughty.host.gpu.hasNvidia config.hardware.nvidia.package.bin;
 
@@ -149,7 +161,7 @@ lib.mkIf (noughtyLib.hostHasTag "silo") {
       ProtectKernelModules = true;
       ProtectKernelTunables = true;
       ProtectSystem = "strict";
-      ReadWritePaths = [ "-/srv/pool" ];
+      ReadOnlyPaths = [ "/srv/pool" ];
       RestrictAddressFamilies = [
         "AF_INET"
         "AF_INET6"

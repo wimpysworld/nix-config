@@ -72,6 +72,11 @@ lib.mkIf (noughtyLib.hostHasTag "postgres") {
     compression = "zstd";
   };
 
+  systemd.services.${if hasSilo then "postgresqlBackup-silo" else "postgresqlBackup"}.unitConfig = {
+    RequiresMountsFor = [ "/mnt/snapshot" ];
+    ConditionPathIsMountPoint = "/mnt/snapshot";
+  };
+
   systemd.tmpfiles.rules = [
     "d /mnt/snapshot/backup-postgres 0700 postgres postgres -"
   ];
