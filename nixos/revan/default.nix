@@ -65,6 +65,7 @@ in
   };
 
   hardware = {
+    intelgpu.computeRuntime = "legacy";
     nvidia = {
       open = false;
       prime = {

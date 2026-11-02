@@ -91,6 +91,8 @@ lib.mkIf (noughtyLib.hostHasTag "silo") {
     ];
     wantedBy = [ "multi-user.target" ];
 
+    path = lib.optional config.noughty.host.gpu.hasNvidia config.hardware.nvidia.package.bin;
+
     environment = {
       ABS_PORT = toString siloAudiobookshelfPort;
       DATABASE_URL = "postgres://silo@/silo?host=/run/postgresql&sslmode=disable";
