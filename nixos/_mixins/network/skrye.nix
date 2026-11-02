@@ -22,7 +22,11 @@ lib.mkIf (noughtyLib.isHost [ "skrye" ]) (
             type = "ethernet";
             interface-name = "enp191s0";
           };
+          ipv4 = {
+            method = "auto";
+          };
           ipv6 = {
+            method = "auto";
             never-default = true;
           };
         };
