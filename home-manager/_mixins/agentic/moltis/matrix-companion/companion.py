@@ -818,12 +818,11 @@ class CompanionStateStore:
         runs = state.get("runs")
         if isinstance(runs, dict) and len(runs) > max_entries:
             evictable_keys = sorted(
-                (
-                    k
-                    for k, v in runs.items()
-                    if isinstance(v, dict) and bool(v.get("cleaned_up"))
+                runs.keys(),
+                key=lambda k: (
+                    0 if bool(_as_dict(runs.get(k)).get("cleaned_up")) else 1,
+                    _safe_int(_as_dict(runs.get(k)).get("updated_at_ms"), 0),
                 ),
-                key=lambda k: _safe_int(_as_dict(runs.get(k)).get("updated_at_ms"), 0),
             )
             excess = len(runs) - max_entries
             for k in evictable_keys[:excess]:
@@ -834,12 +833,11 @@ class CompanionStateStore:
             targets = wakeups.get("targets")
             if isinstance(targets, dict) and len(targets) > max_entries:
                 evictable_targets = sorted(
-                    (
-                        k
-                        for k, v in targets.items()
-                        if isinstance(v, dict) and v.get("status") != "pending"
+                    targets.keys(),
+                    key=lambda k: (
+                        0 if _as_dict(targets.get(k)).get("status") != "pending" else 1,
+                        _safe_int(_as_dict(targets.get(k)).get("origin_server_ts"), 0),
                     ),
-                    key=lambda k: _safe_int(_as_dict(targets.get(k)).get("origin_server_ts"), 0),
                 )
                 for k in evictable_targets[: len(targets) - max_entries]:
                     targets.pop(k, None)

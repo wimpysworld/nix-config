@@ -1211,7 +1211,7 @@ let
                 return (
                     run_id or str(payload.get("run_id") or (existing_turn or {}).get("run_id") or ""),
                     created_at_ms or safe_int((existing_turn or {}).get("user_created_at_ms"), now_ms()),
-                    sender_id or str((existing_turn or {}).get("user_sender_id") or ""),
+                    sender_id,
                     content or str((existing_turn or {}).get("user_content") or ""),
                 )
 
