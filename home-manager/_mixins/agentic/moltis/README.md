@@ -109,14 +109,17 @@ A bounded single-worker queue (depth 32) assesses unmentioned `m.text` room mess
 - `👍🏻` - agreement, no contribution requested.
 - `✋🏻` - a response, question, objection, or moderator action is needed.
 
-Turn status uses an Option 1A writer split across `active-turn.json` and `companion-state.json`. The `matrix-council-context` hook (`moltis-matrix-council-hook`) is the sole writer of `active-turn.json` (under `active-turn.lock`) on `BeforeLLMCall` and `BeforeToolCall`. The companion is the sole writer of `companion-state.json`. It binds a turn to the room event that holds the agent's `👀` acknowledgement reaction and a unique unbound `(sender, body)` match, then reconciles live phase reactions:
+Turn status uses an Option 1A writer split across `active-turn.json` and `companion-state.json`. The `matrix-council-context` hook (`moltis-matrix-council-hook`) is the sole writer of `active-turn.json` (under `active-turn.lock`) on `BeforeLLMCall` and `BeforeToolCall`. The companion is the sole writer of `companion-state.json`. It binds a turn to the room event that holds the agent's `👀` acknowledgement reaction and a unique unbound `(sender, body)` match, posts a static `🐝` reaction while the turn is active, and removes `🐝` when the turn ends.
 
-- `✍🏻` - thinking or writing (`BeforeLLMCall` on iteration 1, or after a 3-second dwell on later iterations).
-- `🐚` - shell execution (`BeforeToolCall` for `exec` or `process`).
-- `🔧` - other tool calls (`BeforeToolCall`).
-- `✌🏻` - turn completion, posted after `chat.peek` reports `active = false` and `history.jsonl` plus the room timeline confirm a single final reply within the 5-second reconciliation window.
+While `chat.peek` reports `active = true`, the companion posts an `m.notice` progress message after 30 seconds. It edits that notice in place (`m.replace`) at most once every 3 seconds when the activity phase changes, and every 30 seconds when the phase is unchanged. Each notice shows an activity icon, the elapsed time, and the iteration count, without `@...:matrix.wimpys.world` mentions:
 
-While `chat.peek` reports `active = true`, the companion posts an `m.notice` progress message after 30 seconds and edits it in place every 30 seconds. Each notice shows the elapsed time (in seconds below one minute, then minutes and seconds) and the iteration count, without phase text or `@...:matrix.wimpys.world` mentions. When the turn finishes or is superseded, the companion redacts the active phase reaction and any progress notice.
+- `💭` - model activity (`BeforeLLMCall` on iteration 1, or after a 3-second dwell on later iterations).
+- `🔎` - reading or searching (`Read`, `Grep`, `Glob`, `web_fetch`, `read_skill`, `memory_search`, `memory_get`, `sessions_history`, `sessions_search`, `sessions_list`, `codebase_peek`, `codebase_search`, `codebase_status`).
+- `✍️` - writing or editing (`Write`, `Edit`, `MultiEdit`, `create_skill`, `update_skill`, `patch_skill`, `delete_skill`, `memory_save`, `memory_delete`, `memory_forget`, `checkpoint_restore`).
+- `🐚` - shell commands (`exec` or `process`).
+- `🔧` - other tool calls.
+
+When a turn that posted a progress notice finishes, the companion edits the notice in place instead of redacting it. Confirmed completion becomes `🏁 <Agent> finished in <elapsed time>` (measured to the first observed inactive state). Unverified or aborted turns become `⚠️ <Agent> ended after <elapsed time> · Completion unverified`. Short turns under 30 seconds do not create a progress or terminal notice.
 
 Only `skrye`'s companion runs the moderator wake-up coordinator for untagged `m.text` room messages. It tracks expected assessors (`BOT_IDS` minus the sender) over a 15-second deadline:
 

@@ -477,7 +477,7 @@ class Gate1HookSerializationAndBindingTests(CompanionTestBase):
         self.assertIsNone(run1_state["bound_event_id"])
         self.assertEqual(len(self.httpd.reactions_sent), 0)
 
-        # Now Moltis's 👀 reaction on $ev_turn1 arrives via /sync -> binds uniquely and posts ✍🏻.
+        # Now Moltis's 👀 reaction on $ev_turn1 arrives via /sync -> binds uniquely and posts static 🐝.
         engine.process_sync_batch(
             {
                 "next_batch": "s_turn1_ack",
@@ -509,14 +509,14 @@ class Gate1HookSerializationAndBindingTests(CompanionTestBase):
         run1_state = store.get_run_state(session_key, "run-101")
         assert run1_state is not None
         self.assertEqual(run1_state["bound_event_id"], "$ev_turn1")
-        self.assertEqual(run1_state["active_reaction_key"], "✍🏻")
+        self.assertEqual(run1_state["active_reaction_key"], "🐝")
         self.assertEqual(len(self.httpd.reactions_sent), 1)
         self.assertEqual(
             self.httpd.reactions_sent[-1]["body"]["m.relates_to"],
-            {"rel_type": "m.annotation", "event_id": "$ev_turn1", "key": "✍🏻"},
+            {"rel_type": "m.annotation", "event_id": "$ev_turn1", "key": "🐝"},
         )
 
-        # BeforeToolCall transitions phase to shell (🐚) for exec tool.
+        # BeforeToolCall transitions phase to shell (🐚) for exec tool, while 🐝 reaction remains static.
         self.current_time_ms += 100
         tool_out = self.invoke_hook(
             {
@@ -533,13 +533,15 @@ class Gate1HookSerializationAndBindingTests(CompanionTestBase):
         self.assertEqual(active_turn["run_id"], "run-101")
         self.assertEqual(active_turn["phase"], "shell")
 
-        engine.tick(now_override_ms=self.current_time_ms)
+        tick1 = engine.tick(now_override_ms=self.current_time_ms)
+        self.assertEqual(tick1["turn_status"]["activity_phase"], "shell")
         run1_state = store.get_run_state(session_key, "run-101")
         assert run1_state is not None
-        self.assertEqual(run1_state["active_reaction_key"], "🐚")
-        self.assertEqual(len(self.httpd.redactions_sent), 1)
+        self.assertEqual(run1_state["active_reaction_key"], "🐝")
+        self.assertEqual(len(self.httpd.reactions_sent), 1)
+        self.assertEqual(len(self.httpd.redactions_sent), 0)
 
-        # Consecutive mention (Turn 2) arrives and supersedes Turn 1.
+        # Consecutive mention (Turn 2) arrives and supersedes Turn 1 (redacting Turn 1's 🐝 without creating a notice).
         self.current_time_ms += 500
         turn2_msg = "@skrye:matrix.wimpys.world now check systemd service"
         self.write_history(
@@ -612,13 +614,14 @@ class Gate1HookSerializationAndBindingTests(CompanionTestBase):
                 },
             }
         )
-        # Turn 1 must be cleaned up and Turn 2 bound to $ev_turn2.
+        # Turn 1 must be cleaned up (redacting its 🐝) and Turn 2 bound to $ev_turn2 with static 🐝.
         run1_after = store.get_run_state(session_key, "run-101")
         run2_after = store.get_run_state(session_key, "run-102")
         assert run1_after is not None and run2_after is not None
         self.assertTrue(run1_after["cleaned_up"])
+        self.assertEqual(len(self.httpd.redactions_sent), 1)
         self.assertEqual(run2_after["bound_event_id"], "$ev_turn2")
-        self.assertEqual(run2_after["active_reaction_key"], "✍🏻")
+        self.assertEqual(run2_after["active_reaction_key"], "🐝")
 
     def test_ambiguous_candidate_events_remain_unbound(self) -> None:
         store, resolver, _, _, engine = self.make_components(agent_name="skrye")
@@ -858,10 +861,10 @@ class Gate1HookSerializationAndBindingTests(CompanionTestBase):
         assert traya_state is not None
         self.assertEqual(traya_state["bound_event_id"], "$ev_traya_same")
         self.assertFalse(traya_state["binding_ambiguous"])
-        self.assertEqual(traya_state["active_reaction_key"], "✍🏻")
+        self.assertEqual(traya_state["active_reaction_key"], "🐝")
         self.assertEqual(
             self.httpd.reactions_sent[-1]["body"]["m.relates_to"],
-            {"rel_type": "m.annotation", "event_id": "$ev_traya_same", "key": "✍🏻"},
+            {"rel_type": "m.annotation", "event_id": "$ev_traya_same", "key": "🐝"},
         )
 
     def test_ambiguous_same_sender_retry_after_failed_unbound_run_stays_unbound(self) -> None:
@@ -1049,7 +1052,7 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         )
         self.assertEqual(len(self.httpd.messages_sent), 0)
 
-        # Transition to BeforeToolCall (non-shell tool -> 🔧).
+        # Transition to BeforeToolCall (read_file -> search phase 🔎, while 🐝 stays static).
         self.current_time_ms += 1_000
         self.invoke_hook(
             {
@@ -1061,12 +1064,15 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
             "skrye",
             hook_script,
         )
-        engine.tick(now_override_ms=self.current_time_ms)
+        tick_tool = engine.tick(now_override_ms=self.current_time_ms)
+        self.assertEqual(tick_tool["turn_status"]["activity_phase"], "search")
         run_state = store.get_run_state(session_key, "run-200")
         assert run_state is not None
-        self.assertEqual(run_state["active_reaction_key"], "🔧")
+        self.assertEqual(run_state["active_reaction_key"], "🐝")
+        bee_rxn_id = run_state["active_reaction_event_id"]
+        self.assertIsNotNone(bee_rxn_id)
 
-        # Advance to 30s -> creates single m.notice progress message with empty m.mentions and no phase.
+        # Advance to 30s -> creates single m.notice progress message with 🔎 icon and empty m.mentions.
         self.current_time_ms += 29_000
         engine.tick(now_override_ms=self.current_time_ms)
         run_state = store.get_run_state(session_key, "run-200")
@@ -1078,37 +1084,65 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         self.assertEqual(first_notice["msgtype"], "m.notice")
         self.assertEqual(first_notice["m.mentions"], {})
         self.assertNotIn("@", first_notice["body"])
-        self.assertNotIn("phase", first_notice["body"].lower())
-        self.assertEqual(first_notice["body"], "⏳ 30 seconds elapsed · Iteration 2")
+        self.assertEqual(first_notice["body"], "🔎 30 seconds elapsed · Iteration 2")
 
-        # Advance another 60s (90s total) -> edits in place via m.replace with minutes and seconds.
-        self.current_time_ms += 60_000
+        # Phase change to Write (✍️): throttled before 3s, then edits in place at >= 3s.
+        self.invoke_hook(
+            {
+                "event": "BeforeToolCall",
+                "session_key": session_key,
+                "iteration": 2,
+                "tool_name": "Edit",
+            },
+            "skrye",
+            hook_script,
+        )
+        engine.tick(now_override_ms=self.current_time_ms + 2_000)
+        self.assertEqual(len(self.httpd.messages_sent), 1)
+
+        self.current_time_ms += 3_000
         engine.tick(now_override_ms=self.current_time_ms)
         self.assertEqual(len(self.httpd.messages_sent), 2)
-        edit_notice = self.httpd.messages_sent[1]["body"]
+        phase_edit_notice = self.httpd.messages_sent[1]["body"]
+        self.assertEqual(
+            phase_edit_notice["m.new_content"]["body"],
+            "✍️ 33 seconds elapsed · Iteration 2",
+        )
+
+        # Advance another 57s (90s total, >= 30s unchanged phase) -> edits in place with minutes and seconds.
+        self.current_time_ms += 57_000
+        engine.tick(now_override_ms=self.current_time_ms)
+        self.assertEqual(len(self.httpd.messages_sent), 3)
+        edit_notice = self.httpd.messages_sent[2]["body"]
         self.assertEqual(
             edit_notice["m.relates_to"],
             {"rel_type": "m.replace", "event_id": prog_id},
         )
         self.assertEqual(
             edit_notice["m.new_content"]["body"],
-            "⏳ 1 minute 30 seconds elapsed · Iteration 2",
+            "✍️ 1 minute 30 seconds elapsed · Iteration 2",
         )
 
-        # Verify elapsed-duration helper across singular/plural seconds and minutes.
+        # Verify elapsed-duration and explicit tool classification helpers.
         self.assertEqual(companion.format_elapsed_duration(30), "30 seconds")
         self.assertEqual(companion.format_elapsed_duration(60), "1 minute")
         self.assertEqual(companion.format_elapsed_duration(61), "1 minute 1 second")
         self.assertEqual(companion.format_elapsed_duration(90), "1 minute 30 seconds")
         self.assertEqual(companion.format_elapsed_duration(125), "2 minutes 5 seconds")
+        self.assertEqual(companion.classify_tool_phase("sessions_history"), "search")
+        self.assertEqual(companion.classify_tool_phase("sessions_send"), "tool")
+        self.assertEqual(companion.classify_tool_phase("read_skill"), "search")
+        self.assertEqual(companion.classify_tool_phase("update_skill"), "write")
+        self.assertEqual(companion.classify_tool_phase("exec"), "shell")
 
-        # Now chat.peek reports active == False, but final assistant reply is NOT yet in history/sync.
+        # Now chat.peek reports active == False at 91s, before final assistant reply arrives in /sync.
         self.httpd.peek_active = False
         self.current_time_ms += 1_000
         tick_res = engine.tick(now_override_ms=self.current_time_ms)
         self.assertEqual(tick_res["turn_status"]["status"], "reconciling_completion")
 
-        # Final assistant record lands in history.jsonl AND matching m.text arrives via /sync within 5s.
+        # Final assistant record lands in history.jsonl AND matching m.text arrives via /sync 4s later (at 95s).
+        # Terminal notice must report 1 minute 31 seconds (measured to inactive_since_ms at 91s, not 95s!).
         final_reply = "Audit complete: all checks passed."
         self.write_history(
             session_key,
@@ -1135,7 +1169,7 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
                 },
             ],
         )
-        self.current_time_ms += 1_000
+        self.current_time_ms += 4_000
         sync_res = engine.process_sync_batch(
             {
                 "next_batch": "s_done",
@@ -1164,14 +1198,25 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         self.assertTrue(run_state["cleaned_up"])
         self.assertIsNone(run_state["active_reaction_event_id"])
         self.assertIsNone(run_state["progress_event_id"])
-        self.assertIsNotNone(run_state["completed_reaction_event_id"])
+        self.assertIsNone(run_state["completed_reaction_event_id"])
+        self.assertEqual(run_state["terminal_notice_event_id"], prog_id)
         self.assertEqual(
-            self.httpd.reactions_sent[-1]["body"]["m.relates_to"],
-            {"rel_type": "m.annotation", "event_id": "$ev_200", "key": "✌🏻"},
+            run_state["terminal_notice_text"],
+            "🏁 Skrye finished in 1 minute 31 seconds",
         )
-        # Progress notice and active 🔧 reaction were both redacted.
+        # Verify terminal notice was edited in place (not redacted!) and 🐝 was redacted.
+        terminal_edit = self.httpd.messages_sent[-1]["body"]
+        self.assertEqual(
+            terminal_edit["m.relates_to"],
+            {"rel_type": "m.replace", "event_id": prog_id},
+        )
+        self.assertEqual(
+            terminal_edit["m.new_content"]["body"],
+            "🏁 Skrye finished in 1 minute 31 seconds",
+        )
         redacted_targets = [r["path"].split("/redact/")[1].split("/")[0] for r in self.httpd.redactions_sent]
-        self.assertIn(prog_id, redacted_targets)
+        self.assertIn(bee_rxn_id, redacted_targets)
+        self.assertNotIn(prog_id, redacted_targets)
 
     def test_aborted_turn_cleans_up_within_5s_without_victory_reaction(self) -> None:
         store, resolver, _, _, engine = self.make_components(agent_name="skrye")
@@ -1243,16 +1288,17 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         engine.tick(now_override_ms=self.current_time_ms)
         run_state = store.get_run_state(session_key, "run-abort")
         assert run_state is not None
-        self.assertIsNotNone(run_state["progress_event_id"])
-        self.assertEqual(run_state["active_reaction_key"], "✍🏻")
+        prog_id = run_state["progress_event_id"]
+        self.assertIsNotNone(prog_id)
+        self.assertEqual(run_state["active_reaction_key"], "🐝")
 
-        # Turn aborts: chat.peek becomes active == False with no final assistant record.
+        # Turn aborts at 31s: chat.peek becomes active == False with no final assistant record.
         self.httpd.peek_active = False
         self.current_time_ms += 1_000
         res1 = engine.tick(now_override_ms=self.current_time_ms)
         self.assertEqual(res1["turn_status"]["status"], "reconciling_completion")
 
-        # After 5s window expires, active reaction and progress notice are redacted without posting ✌🏻.
+        # After 5s window expires, 🐝 reaction is redacted and the progress notice is edited in place to ⚠️.
         self.current_time_ms += 5_000
         res2 = engine.tick(now_override_ms=self.current_time_ms)
         self.assertEqual(res2["turn_status"]["status"], "cleaned_up_incomplete")
@@ -1260,8 +1306,17 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         assert run_state is not None
         self.assertTrue(run_state["cleaned_up"])
         self.assertIsNone(run_state["completed_reaction_event_id"])
-        sent_keys = [r["body"]["m.relates_to"]["key"] for r in self.httpd.reactions_sent]
-        self.assertNotIn("✌🏻", sent_keys)
+        self.assertEqual(
+            run_state["terminal_notice_text"],
+            "⚠️ Skrye ended after 31 seconds · Completion unverified",
+        )
+        terminal_edit = self.httpd.messages_sent[-1]["body"]
+        self.assertEqual(
+            terminal_edit["m.new_content"]["body"],
+            "⚠️ Skrye ended after 31 seconds · Completion unverified",
+        )
+        redacted_targets = [r["path"].split("/redact/")[1].split("/")[0] for r in self.httpd.redactions_sent]
+        self.assertNotIn(prog_id, redacted_targets)
 
 
 class Criterion3AssessmentOutputValidationTests(CompanionTestBase):
@@ -1364,7 +1419,7 @@ class Criterion3AssessmentOutputValidationTests(CompanionTestBase):
 
 
 class Criterion4ThinkingDwellAntiChurnTests(CompanionTestBase):
-    """Criterion 4: 3-second ✍🏻 dwell on iteration > 1."""
+    """Criterion 4: Static 🐝 reaction and 3-second 💭 dwell on iteration > 1."""
 
     def test_thinking_dwell_and_anti_churn(self) -> None:
         store, resolver, _, _, engine = self.make_components(agent_name="skrye")
@@ -1386,7 +1441,7 @@ class Criterion4ThinkingDwellAntiChurnTests(CompanionTestBase):
                 }
             ],
         )
-        # Iteration 1: ✍🏻 posts immediately.
+        # Iteration 1: static 🐝 reaction posts immediately, activity_phase is "thinking" (💭).
         self.invoke_hook(
             {
                 "event": "BeforeLLMCall",
@@ -1397,7 +1452,7 @@ class Criterion4ThinkingDwellAntiChurnTests(CompanionTestBase):
             "skrye",
             hook_script,
         )
-        engine.process_sync_batch(
+        sync1 = engine.process_sync_batch(
             {
                 "next_batch": "s_dwell_1",
                 "rooms": {
@@ -1432,12 +1487,14 @@ class Criterion4ThinkingDwellAntiChurnTests(CompanionTestBase):
                 },
             }
         )
+        self.assertEqual(sync1["turn_status"]["activity_phase"], "thinking")
         run_state = store.get_run_state(session_key, "run-dwell")
         assert run_state is not None
-        self.assertEqual(run_state["active_reaction_key"], "✍🏻")
+        self.assertEqual(run_state["active_reaction_key"], "🐝")
+        bee_rxn_id = run_state["active_reaction_event_id"]
         self.assertEqual(len(self.httpd.reactions_sent), 1)
 
-        # Tool call (exec -> 🐚) replaces ✍🏻 immediately.
+        # Tool call (exec -> shell 🐚) updates activity_phase immediately while keeping 🐝 static.
         self.current_time_ms += 200
         self.invoke_hook(
             {
@@ -1449,14 +1506,15 @@ class Criterion4ThinkingDwellAntiChurnTests(CompanionTestBase):
             "skrye",
             hook_script,
         )
-        engine.tick(now_override_ms=self.current_time_ms)
+        tick_shell = engine.tick(now_override_ms=self.current_time_ms)
+        self.assertEqual(tick_shell["turn_status"]["activity_phase"], "shell")
         run_state = store.get_run_state(session_key, "run-dwell")
         assert run_state is not None
-        self.assertEqual(run_state["active_reaction_key"], "🐚")
-        shell_rxn_id = run_state["active_reaction_event_id"]
-        self.assertEqual(len(self.httpd.reactions_sent), 2)
+        self.assertEqual(run_state["active_reaction_key"], "🐝")
+        self.assertEqual(run_state["active_reaction_event_id"], bee_rxn_id)
+        self.assertEqual(len(self.httpd.reactions_sent), 1)
 
-        # Iteration 2 BeforeLLMCall arrives. Within < 3s, 🐚 stays active and ✍🏻 is NOT posted.
+        # Iteration 2 BeforeLLMCall arrives. Within < 3s, activity_phase stays "shell" (🐚).
         with patch("time.time", return_value=self.current_time_ms / 1000.0):
             self.invoke_hook(
                 {
@@ -1465,10 +1523,9 @@ class Criterion4ThinkingDwellAntiChurnTests(CompanionTestBase):
                     "iteration": 2,
                     "messages": [{"role": "system", "content": "Sys"}],
                 },
-                "skrye",
-                hook_script,
-            )
-        # Manually set phase_updated_at_ms to deterministic current_time_ms.
+            "skrye",
+            hook_script,
+        )
         turn_data = store.read_active_turn()
         assert turn_data is not None
         turn_data["phase_updated_at_ms"] = self.current_time_ms
@@ -1478,15 +1535,12 @@ class Criterion4ThinkingDwellAntiChurnTests(CompanionTestBase):
             with os.fdopen(fd, "wb") as f:
                 f.write(payload)
 
-        # At +1.5s (< 3s): still 🐚, no churn.
-        engine.tick(now_override_ms=self.current_time_ms + 1_500)
-        run_state = store.get_run_state(session_key, "run-dwell")
-        assert run_state is not None
-        self.assertEqual(run_state["active_reaction_key"], "🐚")
-        self.assertEqual(run_state["active_reaction_event_id"], shell_rxn_id)
-        self.assertEqual(len(self.httpd.reactions_sent), 2)
+        # At +1.5s (< 3s): still "shell" (🐚), static 🐝 untouched.
+        tick_dwell = engine.tick(now_override_ms=self.current_time_ms + 1_500)
+        self.assertEqual(tick_dwell["turn_status"]["activity_phase"], "shell")
+        self.assertEqual(len(self.httpd.reactions_sent), 1)
 
-        # Next tool call (read_file -> 🔧) arrives at +2.0s (< 3s): skips ✍🏻 completely and transitions 🐚 -> 🔧.
+        # Next tool call (read_file -> search 🔎) arrives at +2.0s (< 3s): transitions shell -> search.
         self.current_time_ms += 2_000
         self.invoke_hook(
             {
@@ -1498,17 +1552,11 @@ class Criterion4ThinkingDwellAntiChurnTests(CompanionTestBase):
             "skrye",
             hook_script,
         )
-        engine.tick(now_override_ms=self.current_time_ms)
-        run_state = store.get_run_state(session_key, "run-dwell")
-        assert run_state is not None
-        self.assertEqual(run_state["active_reaction_key"], "🔧")
-        self.assertEqual(len(self.httpd.reactions_sent), 3)
-        self.assertEqual(
-            [r["body"]["m.relates_to"]["key"] for r in self.httpd.reactions_sent],
-            ["✍🏻", "🐚", "🔧"],
-        )
+        tick_search = engine.tick(now_override_ms=self.current_time_ms)
+        self.assertEqual(tick_search["turn_status"]["activity_phase"], "search")
+        self.assertEqual(len(self.httpd.reactions_sent), 1)
 
-        # Iteration 3 BeforeLLMCall arrives and dwells >= 3.0s -> transitions 🔧 -> ✍🏻.
+        # Iteration 3 BeforeLLMCall arrives and dwells >= 3.0s -> transitions search (🔎) -> thinking (💭).
         self.invoke_hook(
             {
                 "event": "BeforeLLMCall",
@@ -1527,14 +1575,14 @@ class Criterion4ThinkingDwellAntiChurnTests(CompanionTestBase):
             with os.fdopen(fd, "wb") as f:
                 f.write((json.dumps(turn_data) + "\n").encode("utf-8"))
 
-        engine.tick(now_override_ms=self.current_time_ms + 2_900)
-        self.assertEqual(store.get_run_state(session_key, "run-dwell")["active_reaction_key"], "🔧")  # type: ignore[index]
+        t_before = engine.tick(now_override_ms=self.current_time_ms + 2_900)
+        self.assertEqual(t_before["turn_status"]["activity_phase"], "search")
 
-        engine.tick(now_override_ms=self.current_time_ms + 3_000)
-        self.assertEqual(store.get_run_state(session_key, "run-dwell")["active_reaction_key"], "✍🏻")  # type: ignore[index]
+        t_after = engine.tick(now_override_ms=self.current_time_ms + 3_000)
+        self.assertEqual(t_after["turn_status"]["activity_phase"], "thinking")
 
-        # Fast tool call test: BeforeToolCall (Read -> 🔧) followed 15ms later by BeforeLLMCall (iteration 4)
-        # before companion ticks -> companion still surfaces 🔧 during the 3s dwell window, then ✍🏻 at >= 3s.
+        # Fast tool call test: BeforeToolCall (Read -> search 🔎) followed 15ms later by BeforeLLMCall (iteration 4)
+        # before companion ticks -> companion still surfaces search (🔎) during the 3s dwell window, then thinking (💭) at >= 3s.
         self.current_time_ms += 4_000
         self.invoke_hook(
             {
@@ -1559,7 +1607,7 @@ class Criterion4ThinkingDwellAntiChurnTests(CompanionTestBase):
         turn_data = store.read_active_turn()
         assert turn_data is not None
         self.assertEqual(turn_data["phase"], "thinking")
-        self.assertEqual(turn_data["last_tool_phase"], "tool")
+        self.assertEqual(turn_data["last_tool_phase"], "search")
         turn_data["phase_updated_at_ms"] = self.current_time_ms + 15
         turn_data["last_tool_at_ms"] = self.current_time_ms
         with store._locked_dir(companion.ACTIVE_TURN_LOCK_FILENAME) as dfd:
@@ -1567,13 +1615,12 @@ class Criterion4ThinkingDwellAntiChurnTests(CompanionTestBase):
             with os.fdopen(fd, "wb") as f:
                 f.write((json.dumps(turn_data) + "\n").encode("utf-8"))
 
-        # Companion polls at +500ms (< 3s): replaces ✍🏻 with 🔧 even though phase is already "thinking".
-        engine.tick(now_override_ms=self.current_time_ms + 500)
-        self.assertEqual(store.get_run_state(session_key, "run-dwell")["active_reaction_key"], "🔧")  # type: ignore[index]
+        t_fast = engine.tick(now_override_ms=self.current_time_ms + 500)
+        self.assertEqual(t_fast["turn_status"]["activity_phase"], "search")
 
-        # At +3015ms (>= 3s dwell in thinking): transitions back to ✍🏻.
-        engine.tick(now_override_ms=self.current_time_ms + 3_015)
-        self.assertEqual(store.get_run_state(session_key, "run-dwell")["active_reaction_key"], "✍🏻")  # type: ignore[index]
+        t_fast_done = engine.tick(now_override_ms=self.current_time_ms + 3_015)
+        self.assertEqual(t_fast_done["turn_status"]["activity_phase"], "thinking")
+        self.assertEqual(len(self.httpd.reactions_sent), 1)
 
 
 class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):

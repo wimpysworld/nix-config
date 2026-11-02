@@ -55,10 +55,68 @@ BARE_ASSESSMENT_BADGE_MAP = {
 }
 
 ACK_REACTION_KEY = "👀"
+ACTIVE_BEE_KEY = "🐝"
 PHASE_WRITING_KEY = "✍🏻"
 PHASE_SHELL_KEY = "🐚"
 PHASE_TOOL_KEY = "🔧"
 COMPLETION_KEY = "✌🏻"
+
+NOTICE_THINKING_ICON = "💭"
+NOTICE_SEARCH_ICON = "🔎"
+NOTICE_WRITE_ICON = "✍️"
+NOTICE_SHELL_ICON = "🐚"
+NOTICE_TOOL_ICON = "🔧"
+NOTICE_FINISHED_ICON = "🏁"
+NOTICE_UNVERIFIED_ICON = "⚠️"
+
+SHELL_TOOLS = frozenset({"exec", "process"})
+SEARCH_TOOLS = frozenset(
+    {
+        "read",
+        "read_file",
+        "grep",
+        "glob",
+        "web_fetch",
+        "read_skill",
+        "memory_search",
+        "memory_get",
+        "sessions_history",
+        "sessions_search",
+        "sessions_list",
+        "codebase_peek",
+        "codebase_search",
+        "codebase_status",
+        "checkpoints_list",
+        "nodes_list",
+        "nodes_describe",
+        "sandbox_packages",
+        "spawn_list",
+        "spawn_status",
+        "spawn_result",
+        "gmail_connector",
+        "himalaya_connector",
+        "connectors",
+        "teams_read_message",
+        "teams_search_messages",
+        "teams_member_info",
+    }
+)
+WRITE_TOOLS = frozenset(
+    {
+        "write",
+        "write_file",
+        "edit",
+        "multiedit",
+        "create_skill",
+        "update_skill",
+        "patch_skill",
+        "delete_skill",
+        "memory_save",
+        "memory_delete",
+        "memory_forget",
+        "checkpoint_restore",
+    }
+)
 
 ROLE_SUMMARIES = {
     "traya": (
@@ -89,6 +147,7 @@ ASSESSMENT_MAX_TARGET_CHARS = 1600
 ASSESSMENT_TIMEOUT_SECS = 25.0
 
 THINKING_DWELL_MS = 3000
+PHASE_EDIT_INTERVAL_MS = 3000
 PROGRESS_NOTICE_INTERVAL_MS = 30000
 COMPLETION_RECONCILE_WINDOW_MS = 5000
 WAKEUP_DEADLINE_MS = 15000
@@ -561,11 +620,58 @@ def format_elapsed_duration(elapsed_sec: int) -> str:
     return f"{min_part} {sec_part}"
 
 
-def format_progress_notice(elapsed_sec: int, iteration: int) -> str:
-    """Format the 30-second progress notice without phase or Matrix mentions."""
+def classify_tool_phase(tool_name: str) -> str:
+    """Classify a BeforeToolCall tool name into shell, search, write, or tool."""
+    norm = (tool_name or "").strip().lower()
+    if norm in SHELL_TOOLS:
+        return "shell"
+    if norm in SEARCH_TOOLS:
+        return "search"
+    if norm in WRITE_TOOLS:
+        return "write"
+    return "tool"
+
+
+def notice_icon_for_phase(phase: str) -> str:
+    """Map a normalised activity phase to its progress-notice icon."""
+    norm = (phase or "").strip().lower()
+    if norm == "shell":
+        return NOTICE_SHELL_ICON
+    if norm == "search":
+        return NOTICE_SEARCH_ICON
+    if norm == "write":
+        return NOTICE_WRITE_ICON
+    if norm == "tool":
+        return NOTICE_TOOL_ICON
+    return NOTICE_THINKING_ICON
+
+
+def format_progress_notice(
+    elapsed_sec: int,
+    iteration: int,
+    phase: str = "thinking",
+) -> str:
+    """Format the 30-second progress notice with activity icon, elapsed time, and iteration."""
     clean_iter = max(1, _safe_int(iteration, 1))
+    icon = notice_icon_for_phase(phase)
     return sanitize_no_matrix_mentions(
-        f"⏳ {format_elapsed_duration(elapsed_sec)} elapsed · Iteration {clean_iter}"
+        f"{icon} {format_elapsed_duration(elapsed_sec)} elapsed · Iteration {clean_iter}"
+    )
+
+
+def format_terminal_notice(
+    agent_display_name: str,
+    elapsed_sec: int,
+    verified: bool = True,
+) -> str:
+    """Format the terminal notice edited in place when a turn with a progress notice ends."""
+    duration = format_elapsed_duration(max(1, _safe_int(elapsed_sec, 1)))
+    if verified:
+        return sanitize_no_matrix_mentions(
+            f"{NOTICE_FINISHED_ICON} {agent_display_name} finished in {duration}"
+        )
+    return sanitize_no_matrix_mentions(
+        f"{NOTICE_UNVERIFIED_ICON} {agent_display_name} ended after {duration} · Completion unverified"
     )
 
 
@@ -2222,7 +2328,7 @@ class AssessmentWorker:
 
 
 class TurnStatusReconciler:
-    """Option 1A event-to-turn binding, anti-churn phase status reactions, and chat.peek reconciliation."""
+    """Option 1A event-to-turn binding, static 🐝 reaction, dynamic progress notices, and chat.peek reconciliation."""
 
     def __init__(
         self,
@@ -2235,6 +2341,7 @@ class TurnStatusReconciler:
         self_user_id: str,
         room_id: str = DEFAULT_ROOM_ID,
         thinking_dwell_ms: int = THINKING_DWELL_MS,
+        phase_edit_interval_ms: int = PHASE_EDIT_INTERVAL_MS,
         progress_interval_ms: int = PROGRESS_NOTICE_INTERVAL_MS,
         completion_window_ms: int = COMPLETION_RECONCILE_WINDOW_MS,
         clock: Callable[[], int] = now_ms,
@@ -2250,6 +2357,7 @@ class TurnStatusReconciler:
         self.self_user_id = self_user_id
         self.room_id = room_id
         self.thinking_dwell_ms = max(0, _safe_int(thinking_dwell_ms, THINKING_DWELL_MS))
+        self.phase_edit_interval_ms = max(0, _safe_int(phase_edit_interval_ms, PHASE_EDIT_INTERVAL_MS))
         self.progress_interval_ms = max(1000, _safe_int(progress_interval_ms, PROGRESS_NOTICE_INTERVAL_MS))
         self.completion_window_ms = max(0, _safe_int(completion_window_ms, COMPLETION_RECONCILE_WINDOW_MS))
         self.clock = clock
@@ -2259,46 +2367,52 @@ class TurnStatusReconciler:
         session_key: str,
         run_id: str,
         run_entry: dict,
-        post_completion_on_event_id: str | None = None,
+        verified_completion: bool = False,
         reply_event_id: str | None = None,
         current_ms: int | None = None,
     ) -> dict:
         stamp_ms = _safe_int(current_ms, self.clock()) if current_ms is not None else self.clock()
         progress_id = run_entry.get("progress_event_id")
+        terminal_notice_id: str | None = None
+        terminal_notice_text: str | None = None
         if isinstance(progress_id, str) and progress_id:
-            self.matrix_client.redact_event(
-                progress_id,
-                scope_id=f"progress-cleanup:{session_key}:{run_id}:{progress_id}",
+            started_at_ms = _safe_int(run_entry.get("started_at_ms"), stamp_ms)
+            inactive_ms = run_entry.get("inactive_since_ms")
+            end_ms = (
+                _safe_int(inactive_ms, stamp_ms)
+                if isinstance(inactive_ms, int) and inactive_ms > 0
+                else stamp_ms
             )
-            self.state_store.record_local_redaction(progress_id, ts_ms=stamp_ms)
+            elapsed_sec = max(1, (end_ms - started_at_ms) // 1000)
+            terminal_notice_text = format_terminal_notice(
+                agent_display_name=self.agent_display_name,
+                elapsed_sec=elapsed_sec,
+                verified=verified_completion,
+            )
+            terminal_notice_id = progress_id
+            try:
+                self.matrix_client.edit_notice(
+                    target_event_id=progress_id,
+                    body_text=terminal_notice_text,
+                    scope_id=f"progress-terminal:{session_key}:{run_id}:{progress_id}",
+                )
+            except MatrixAPIError as exc:
+                if exc.status != 429 and exc.errcode != "M_LIMIT_EXCEEDED":
+                    raise
+                sys.stderr.write(f"moltis-matrix-companion rate limit on terminal notice edit: {exc}\n")
 
         active_rxn_id = run_entry.get("active_reaction_event_id")
         if isinstance(active_rxn_id, str) and active_rxn_id:
-            self.matrix_client.redact_event(
-                active_rxn_id,
-                scope_id=f"phase-cleanup:{session_key}:{run_id}:{active_rxn_id}",
-            )
-            self.state_store.record_local_redaction(active_rxn_id, ts_ms=stamp_ms)
-
-        completed_rxn_id = run_entry.get("completed_reaction_event_id")
-        if (
-            isinstance(post_completion_on_event_id, str)
-            and post_completion_on_event_id
-            and not completed_rxn_id
-        ):
-            completed_rxn_id = self.matrix_client.send_reaction(
-                target_event_id=post_completion_on_event_id,
-                key=COMPLETION_KEY,
-                scope_id=f"complete:{session_key}:{run_id}:{post_completion_on_event_id}",
-            )
-            if isinstance(completed_rxn_id, str) and completed_rxn_id:
-                self.state_store.record_local_reaction(
-                    target_event_id=post_completion_on_event_id,
-                    reaction_event_id=completed_rxn_id,
-                    sender=self.self_user_id,
-                    key=COMPLETION_KEY,
-                    ts_ms=stamp_ms,
+            try:
+                self.matrix_client.redact_event(
+                    active_rxn_id,
+                    scope_id=f"phase-cleanup:{session_key}:{run_id}:{active_rxn_id}",
                 )
+                self.state_store.record_local_redaction(active_rxn_id, ts_ms=stamp_ms)
+            except MatrixAPIError as exc:
+                if exc.status != 429 and exc.errcode != "M_LIMIT_EXCEEDED":
+                    raise
+                sys.stderr.write(f"moltis-matrix-companion rate limit on reaction redact: {exc}\n")
 
         return self.state_store.update_run_state(
             session_key,
@@ -2306,10 +2420,12 @@ class TurnStatusReconciler:
             active_reaction_event_id=None,
             active_reaction_key=None,
             progress_event_id=None,
+            terminal_notice_event_id=terminal_notice_id,
+            terminal_notice_text=terminal_notice_text,
             cleaned_up=True,
             cleaned_up_at_ms=stamp_ms,
             reply_event_id=reply_event_id,
-            completed_reaction_event_id=completed_rxn_id,
+            completed_reaction_event_id=None,
         )
 
     def _resolve_user_record_for_run(
@@ -2420,32 +2536,30 @@ class TurnStatusReconciler:
             return None, True
         return None, False
 
-    def _desired_phase_reaction(
+    def _desired_activity_phase(
         self,
         active_turn: dict,
         current_ms: int,
-    ) -> tuple[str | None, str, int]:
+    ) -> tuple[str, int]:
         raw_phase = str(active_turn.get("phase") or "").strip().lower()
         tool_name = str(active_turn.get("tool_name") or "").strip().lower()
         iteration = max(1, _safe_int(active_turn.get("iteration"), 1))
         phase_updated_at_ms = _safe_int(active_turn.get("phase_updated_at_ms"), current_ms)
 
-        if raw_phase in ("shell",) or tool_name in ("exec", "process"):
-            return PHASE_SHELL_KEY, "shell", iteration
-        if raw_phase in ("tool", "before_tool_call", "beforetoolcall") or bool(tool_name):
-            return PHASE_TOOL_KEY, "tool", iteration
+        if tool_name:
+            return classify_tool_phase(tool_name), iteration
+        if raw_phase in ("shell", "search", "write", "tool"):
+            return raw_phase, iteration
+        if raw_phase in ("before_tool_call", "beforetoolcall"):
+            return "tool", iteration
         if raw_phase in ("thinking", "before_llm_call", "beforellmcall", "llm", ""):
-            if iteration == 1:
-                return PHASE_WRITING_KEY, "thinking", iteration
-            if current_ms - phase_updated_at_ms >= self.thinking_dwell_ms:
-                return PHASE_WRITING_KEY, "thinking", iteration
+            if iteration == 1 or current_ms - phase_updated_at_ms >= self.thinking_dwell_ms:
+                return "thinking", iteration
             last_tool_phase = str(active_turn.get("last_tool_phase") or "").strip().lower()
-            if last_tool_phase == "shell":
-                return PHASE_SHELL_KEY, "shell", iteration
-            if last_tool_phase == "tool":
-                return PHASE_TOOL_KEY, "tool", iteration
-            return None, "thinking", iteration
-        return None, raw_phase, iteration
+            if last_tool_phase in ("shell", "search", "write", "tool"):
+                return last_tool_phase, iteration
+            return "thinking", iteration
+        return "thinking", iteration
 
     def _find_committed_final_assistant_reply(
         self,
@@ -2554,7 +2668,7 @@ class TurnStatusReconciler:
                     session_key=r_sess,
                     run_id=r_id,
                     run_entry=entry,
-                    post_completion_on_event_id=None,
+                    verified_completion=False,
                     current_ms=current_ms,
                 )
 
@@ -2579,7 +2693,7 @@ class TurnStatusReconciler:
                     session_key=r_sess,
                     run_id=r_id,
                     run_entry=entry,
-                    post_completion_on_event_id=None,
+                    verified_completion=False,
                     current_ms=current_ms,
                 )
 
@@ -2680,14 +2794,11 @@ class TurnStatusReconciler:
             window_expired = (current_ms - inactive_since_ms) >= self.completion_window_ms
 
             if unambiguous_complete or window_expired:
-                target_for_victory = (
-                    str(bound_event_id) if unambiguous_complete and isinstance(bound_event_id, str) else None
-                )
                 updated = self._cleanup_run_artifacts(
                     session_key=active_session_key,
                     run_id=run_id,
                     run_entry=run_entry,
-                    post_completion_on_event_id=target_for_victory,
+                    verified_completion=unambiguous_complete,
                     reply_event_id=reply_event_id if unambiguous_complete else None,
                     current_ms=current_ms,
                 )
@@ -2696,6 +2807,7 @@ class TurnStatusReconciler:
                     "run_id": run_id,
                     "bound_event_id": bound_event_id,
                     "completed_reaction_event_id": updated.get("completed_reaction_event_id"),
+                    "terminal_notice_event_id": updated.get("terminal_notice_event_id"),
                 }
 
             return {
@@ -2713,50 +2825,44 @@ class TurnStatusReconciler:
                 inactive_since_ms=None,
             )
 
-        desired_key, norm_phase, iteration = self._desired_phase_reaction(active_turn, current_ms)
+        norm_phase, iteration = self._desired_activity_phase(active_turn, current_ms)
         if (
             isinstance(bound_event_id, str)
             and bound_event_id
             and not binding_ambiguous
-            and desired_key is not None
-            and desired_key != run_entry.get("active_reaction_key")
+            and run_entry.get("active_reaction_key") != ACTIVE_BEE_KEY
         ):
-            old_rxn_id = run_entry.get("active_reaction_event_id")
-            if isinstance(old_rxn_id, str) and old_rxn_id:
-                self.matrix_client.redact_event(
-                    old_rxn_id,
-                    scope_id=f"phase-replace:{active_session_key}:{run_id}:{old_rxn_id}",
-                )
-                self.state_store.record_local_redaction(old_rxn_id, ts_ms=current_ms)
-
-            phase_ts = _safe_int(active_turn.get("phase_updated_at_ms"), current_ms)
             new_rxn_id = self.matrix_client.send_reaction(
                 target_event_id=bound_event_id,
-                key=desired_key,
-                scope_id=f"phase:{active_session_key}:{run_id}:{iteration}:{norm_phase}:{phase_ts}",
+                key=ACTIVE_BEE_KEY,
+                scope_id=f"bee:{active_session_key}:{run_id}:{bound_event_id}",
             )
             if isinstance(new_rxn_id, str) and new_rxn_id:
                 self.state_store.record_local_reaction(
                     target_event_id=bound_event_id,
                     reaction_event_id=new_rxn_id,
                     sender=self.self_user_id,
-                    key=desired_key,
+                    key=ACTIVE_BEE_KEY,
                     ts_ms=current_ms,
                 )
             run_entry = self.state_store.update_run_state(
                 active_session_key,
                 run_id,
                 active_reaction_event_id=new_rxn_id,
-                active_reaction_key=desired_key,
+                active_reaction_key=ACTIVE_BEE_KEY,
             )
 
-        # Progress notice every 30s while active == True.
+        # Progress notice after 30s while active == True, edited every 3s on phase change or 30s unchanged.
         if peek_active is True:
             started_at_ms = _safe_int(run_entry.get("started_at_ms"), current_ms)
             elapsed_ms = current_ms - started_at_ms
             if elapsed_ms >= self.progress_interval_ms:
                 elapsed_sec = max(self.progress_interval_ms // 1000, elapsed_ms // 1000)
-                notice_text = format_progress_notice(elapsed_sec=elapsed_sec, iteration=iteration)
+                notice_text = format_progress_notice(
+                    elapsed_sec=elapsed_sec,
+                    iteration=iteration,
+                    phase=norm_phase,
+                )
                 progress_id = run_entry.get("progress_event_id")
                 if not isinstance(progress_id, str) or not progress_id:
                     new_prog_id = self.matrix_client.send_notice(
@@ -2769,29 +2875,46 @@ class TurnStatusReconciler:
                         run_id,
                         progress_event_id=new_prog_id,
                         last_progress_at_ms=current_ms,
+                        last_progress_phase=norm_phase,
                         progress_edit_count=0,
                     )
                 else:
                     last_prog_ms = _safe_int(run_entry.get("last_progress_at_ms"), started_at_ms)
-                    if current_ms - last_prog_ms >= self.progress_interval_ms:
+                    last_prog_phase = str(run_entry.get("last_progress_phase") or "thinking")
+                    phase_changed = norm_phase != last_prog_phase
+                    due_by_phase = (
+                        phase_changed
+                        and (current_ms - last_prog_ms) >= self.phase_edit_interval_ms
+                    )
+                    due_by_timer = (current_ms - last_prog_ms) >= self.progress_interval_ms
+                    if due_by_phase or due_by_timer:
                         edit_count = _safe_int(run_entry.get("progress_edit_count"), 0) + 1
-                        self.matrix_client.edit_notice(
-                            target_event_id=progress_id,
-                            body_text=notice_text,
-                            scope_id=f"progress-edit:{active_session_key}:{run_id}:{edit_count}",
-                        )
-                        run_entry = self.state_store.update_run_state(
-                            active_session_key,
-                            run_id,
-                            last_progress_at_ms=current_ms,
-                            progress_edit_count=edit_count,
-                        )
+                        try:
+                            self.matrix_client.edit_notice(
+                                target_event_id=progress_id,
+                                body_text=notice_text,
+                                scope_id=f"progress-edit:{active_session_key}:{run_id}:{edit_count}",
+                            )
+                            run_entry = self.state_store.update_run_state(
+                                active_session_key,
+                                run_id,
+                                last_progress_at_ms=current_ms,
+                                last_progress_phase=norm_phase,
+                                progress_edit_count=edit_count,
+                            )
+                        except MatrixAPIError as exc:
+                            if exc.status != 429 and exc.errcode != "M_LIMIT_EXCEEDED":
+                                raise
+                            sys.stderr.write(
+                                f"moltis-matrix-companion rate limit on progress notice edit: {exc}\n"
+                            )
 
         return {
             "status": "active",
             "run_id": run_id,
             "bound_event_id": run_entry.get("bound_event_id"),
             "active_reaction_key": run_entry.get("active_reaction_key"),
+            "activity_phase": norm_phase,
             "progress_event_id": run_entry.get("progress_event_id"),
         }
 

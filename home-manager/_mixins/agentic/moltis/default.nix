@@ -1239,6 +1239,63 @@ let
         return str(payload.get("run_id") or "run-unknown"), now_ms(), payload_sender, ""
 
 
+    SHELL_TOOLS = {"exec", "process"}
+    SEARCH_TOOLS = {
+        "read",
+        "read_file",
+        "grep",
+        "glob",
+        "web_fetch",
+        "read_skill",
+        "memory_search",
+        "memory_get",
+        "sessions_history",
+        "sessions_search",
+        "sessions_list",
+        "codebase_peek",
+        "codebase_search",
+        "codebase_status",
+        "checkpoints_list",
+        "nodes_list",
+        "nodes_describe",
+        "sandbox_packages",
+        "spawn_list",
+        "spawn_status",
+        "spawn_result",
+        "gmail_connector",
+        "himalaya_connector",
+        "connectors",
+        "teams_read_message",
+        "teams_search_messages",
+        "teams_member_info",
+    }
+    WRITE_TOOLS = {
+        "write",
+        "write_file",
+        "edit",
+        "multiedit",
+        "create_skill",
+        "update_skill",
+        "patch_skill",
+        "delete_skill",
+        "memory_save",
+        "memory_delete",
+        "memory_forget",
+        "checkpoint_restore",
+    }
+
+
+    def classify_tool_phase(tool_name: str) -> str:
+        norm = (tool_name or "").strip().lower()
+        if norm in SHELL_TOOLS:
+            return "shell"
+        if norm in SEARCH_TOOLS:
+            return "search"
+        if norm in WRITE_TOOLS:
+            return "write"
+        return "tool"
+
+
     def extract_tool_name(payload: dict) -> str:
         for key in ("tool_name", "tool", "name"):
             val = payload.get(key)
@@ -1295,6 +1352,7 @@ let
                     if event_name == "BeforeLLMCall":
                         iteration = max(1, safe_int(payload.get("iteration"), 1))
                         phase = "thinking"
+                        tool_name = ""
                         if (
                             same_run
                             and existing.get("phase") == "thinking"
@@ -1315,7 +1373,7 @@ let
                         else:
                             iteration = 1
                         tool_name = extract_tool_name(payload).lower()
-                        phase = "shell" if tool_name in ("exec", "process") else "tool"
+                        phase = classify_tool_phase(tool_name)
                         phase_updated_at_ms = stamp_ms
                         last_tool_phase = phase
                         last_tool_at_ms = stamp_ms
@@ -1328,6 +1386,7 @@ let
                         "user_content": user_content,
                         "iteration": iteration,
                         "phase": phase,
+                        "tool_name": tool_name,
                         "phase_updated_at_ms": phase_updated_at_ms,
                         "last_tool_phase": last_tool_phase,
                         "last_tool_at_ms": last_tool_at_ms,
