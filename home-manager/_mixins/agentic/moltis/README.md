@@ -47,7 +47,7 @@ Fence command controls on Darwin are weaker than the Linux controls. The user ac
 - `tools.agent_max_auto_continues` is `0`, which disables auto-continue `done` replies for all agents, so heartbeat runs that call several tools still return `HEARTBEAT_OK`. `tools.exec` sets `approval_mode = "never"` and `sandbox.mode = "off"` (Moltis runs inside `moltis-fenced`), and `tools.fs` sets `workspace_root` to `$HOME` with `track_reads = true` and `must_read_before_write = true`.
 - `moltis-in-fence` exports per-agent GitHub and Git identity variables (`GH_TOKEN`, `GIT_AUTHOR_NAME`, `GIT_COMMITTER_NAME`, `GIT_AUTHOR_EMAIL`, and `GIT_COMMITTER_EMAIL`), disables commit and tag signing (`commit.gpgSign = false`, `tag.gpgSign = false`) via `GIT_CONFIG_*`, and rewrites GitHub SSH URLs (`git@github.com:` and `ssh://git@github.com/`) to `https://github.com/` authenticated through `gh auth git-credential`.
 - `memory` uses `provider = "custom"` with `base_url = "http://127.0.0.1:8080/v1"` and `model = "qwen3-embedding-0.6b"`. Before `moltis` starts, `moltis-in-fence` deletes rows from `chunks`, `files`, and `embedding_cache` in `memory.db` when any chunk uses a different embedding model.
-- `heartbeat` runs every `30m` on `gemini::gemini-4-argon` (`sandbox_enabled = false`, `deliver = true`) and delivers to `channel = "moltis"` (`to = "${TELEGRAM_ALLOWED_USERS}"`).
+- `heartbeat` disables the internal 30-minute timer (`heartbeat.enabled = false`) when `agentic.moltis.githubCompanion.enable` is true, while preserving `model`, `sandbox_enabled = false`, `deliver = true`, and `channel = "moltis"` (`to = "${TELEGRAM_ALLOWED_USERS}"`) for fallback runs if the companion is disabled. `moltis-github-companion` replaces the internal timer and drives targeted notification turns, 30-minute reconciliation sweeps, and weekly sweeps through `chat.send_sync` on `companion:github`. Those RPC turns do not trigger `heartbeat.deliver`. `moltis-github-companion` forwards non-`HEARTBEAT_OK` terminal assistant replies to Telegram (`sendMessage`), while Step 5 sends the voice briefing through `moltis-telegram-voice`.
 - `voice.tts` selects the `openai` provider pointed at a local OpenAI-compatible shim (`base_url = "http://127.0.0.1:13139/v1"`) started inside `moltis-fenced`, with `model = "gemini-3.8-flash-tts"`. Traya on `momin` uses `voice = "en-gb-tutor-13"`. `skrye` uses `voice = "en-gb-commercial-6"` and `zannah` uses `voice = "en-gb-concierge-6"`. The shim reads `GEMINI_API_KEY` from the sops secret file, calls Google's `gemini-3.8-flash-tts` `generateContent` endpoint, and transcodes the returned WAV audio to Ogg Opus (`audio/ogg`) via `ffmpeg` so Moltis sends native Telegram voice notes without setting `voice.tts.openai.api_key`.
 - `moltis-telegram-voice` (`<text>` or `--body-file <path>`) is installed in `home.packages` and `moltis-in-fence` `runtimeInputs`. It posts text to the local TTS shim (`http://127.0.0.1:13139/v1/audio/speech`) for Ogg Opus synthesis and uploads the voice note to Telegram `sendVoice` using `TELEGRAM_BOT_TOKEN` and `TELEGRAM_ALLOWED_USERS`.
 - `voice.stt` selects the `whisper` provider pointed at the same local shim (`base_url = "http://127.0.0.1:13139/v1"`) with `model = "gemini-3.8-flash"`. On `POST /v1/audio/transcriptions`, the shim parses the `multipart/form-data` audio upload, normalizes or transcodes unsupported formats to `audio/ogg` via `ffmpeg`, calls `gemini-3.8-flash:generateContent` with `GEMINI_API_KEY`, and returns `{"text": "..."}` without setting `voice.stt.whisper.api_key`.
@@ -133,6 +133,49 @@ The `matrix-council-context` hook runs on `BeforeLLMCall` and `BeforeToolCall` w
 
 FluffyChat is included for Linux desktop chat. The user configures the phone client separately. Both clients use the public homeserver URL above. See the [server deployment documentation](../../../../nixos/_mixins/server/private-matrix/README.md) for automatic provisioning and the accepted consequences of database loss. Live client checks require deployment.
 
+## GitHub companion
+
+When `agentic.moltis.githubCompanion.enable` is true (default on `skrye`, `zannah`, and `momin`), `moltis-in-fence` starts `moltis-github-companion` beside the gateway. Each companion stores durable state with mode `0600` in directory mode `0700` under `$XDG_STATE_HOME/moltis/github-companion-<agent>/` (`~/.local/state/moltis/github-companion-<agent>/`): `poll-state.json`, `notifications-state.json`, `watermarks.json`, `security-ownership.json`, `active-dispatch.json`, `security-events.jsonl`, `coordinator.lock`, `companion.lock`, `auth.json`, `outbox.json`, and `snapshots/<snapshot_id>.json`.
+
+### Poll timing and crash recovery
+
+Each agent uses a staggered initial poll offset (`pollOffsetSecs`): `skrye` uses `0s`, `traya` (`momin`) uses `20s`, and `zannah` uses `40s`. On startup, the companion reads `next_poll_at_ms` from `poll-state.json` and sleeps until that timestamp when it is in the future, or applies the initial offset on first boot.
+
+Before each HTTP poll, the companion adds a random jitter of `5` to `35` seconds to the `60s` base interval and writes the provisional `next_poll_at_ms` to `poll-state.json`. If this write fails, the companion aborts the poll before sending a request. After the response arrives, the companion computes the longest wait from `60s`, `X-Poll-Interval`, `Retry-After`, or `max(0, X-RateLimit-Reset - now_sec)`, adds a new `5` to `35` second jitter, and updates `poll-state.json` atomically.
+
+### Conditional notification polling and watermarks
+
+The companion polls `gh-api-safe notifications --paginate -i` and sends `If-Modified-Since` when `last_modified` exists in `poll-state.json`. On `HTTP 304 Not Modified`, watermarks do not advance.
+
+The companion filters notifications to six owners: `wimpysworld`, `linuxmatters`, `quickemu-project`, `noughtylinux`, `oval-tutu`, and `flexiondotorg`. It writes notification records to `notifications-state.json` and `(repo, subject_type, number, comment_id, updated_at)` watermarks to `watermarks.json` before advancing `last_modified` in `poll-state.json`. Each thread tracks `seen_revision`, `in_flight_revision`, and `pending_followup_revision`. When a thread receives a newer `updated_at` or `comment_id` during an active review turn, the companion sets `pending_followup = true` and queues a follow-up turn before `gh-notification-dismiss` marks the thread done. Pass `--read-only-trial` to test poll timing, pagination, conditional headers, and watermarks without dispatching turns or dismissing notifications.
+
+### Pre-dispatch trust filtering and coercion alerts
+
+Before dispatching a targeted turn, the companion fetches the full issue or pull request bundle (`issues/{number}`, `issues/{number}/comments`, `pulls/{number}`, `pulls/{number}/reviews`, and `pulls/{number}/comments`) through `gh-api-safe --paginate`. It strips HTML comment blocks (`<!-- ... -->`) and checks every author against the trusted actor allowlist: `flexiondotorg`, `sith-skrye`, `sith-traya`, `sith-zannah`, `dependabot[bot]` (`app/dependabot`), `github-actions[bot]` (`app/github-actions`), and `cubic-dev-ai[bot]`. Only `flexiondotorg`, `sith-skrye`, `sith-traya`, and `sith-zannah` can issue instructions in `trusted_request`.
+
+The companion strips untrusted comments and reviews before writing a mode `0600` JSON snapshot in `snapshots/<snapshot_id>.json`. When a trusted actor mentions the agent on an issue opened by an untrusted author, the snapshot keeps the trusted comment in `trusted_request` and isolates the stripped external title and body in `untrusted_issue_data`. Notifications without a verified trusted trigger do not start a model turn.
+
+When the filter detects untrusted actor activity or coercion patterns (such as prompt overrides, `ignore previous instructions`, HTML comments, tool invocation directives, merge or dismiss commands, or role spoofing), it appends a record to `security-events.jsonl` (mode `0600`). It also sends a sanitised Matrix `m.notice` to `!the-cauldron:matrix.wimpys.world` with device ID `MOLTIS_GH_COMPANION_<AGENT>`, omitting raw untrusted excerpts and `@...:matrix.wimpys.world` mentions. Targeted mentions alert through the mentioned agent, and repository-wide events alert through `skrye` only.
+
+### Single-flight execution coordinator
+
+The companion serialises targeted notification turns, 30-minute reconciliation sweeps, and weekly sweeps under an exclusive `fcntl.flock` lock on `coordinator.lock`. Before calling `chat.send_sync` (`https://127.0.0.1:13131/api/rpc`, session `companion:github`), it generates a `dispatch_id` and writes `active-dispatch.json` (`0600`).
+
+The coordinator holds the lock until `chat.peek` reports `active == false` and `~/.moltis/sessions/v1/<encoded_key>/history.jsonl` contains the user record for `dispatch_id` followed by a terminal assistant record. When a completed turn produces a non-`HEARTBEAT_OK` terminal assistant reply, the companion forwards that text to the first allowed Telegram chat ID from `TELEGRAM_ALLOWED_USERS` (`sendMessage`), while `moltis-telegram-voice` sends the voice briefing. On startup or after an RPC error, recovery checks `active-dispatch.json` against `chat.peek` and `history.jsonl`. If the outcome remains unknown after the recovery deadline, the companion marks `active-dispatch.json` as `blocked_unknown_outcome`, halts further dispatches, and sends one sanitised Matrix `m.notice` blocker alert.
+
+### Security alert ownership and rejected-fix guard
+
+During 30-minute and weekly sweeps, the companion polls open Dependabot and CodeQL alerts through `gh-api-safe --paginate` across five organisations: `wimpysworld`, `linuxmatters`, `quickemu-project`, `noughtylinux`, and `oval-tutu`. It never polls `flexiondotorg` for Dependabot or CodeQL alerts.
+
+Alerts group by `<owner>/<repo>:dependabot:<ecosystem>:<package>` or `<owner>/<repo>:code-scanning:<tool>:<rule_id>:<file_path>`. The companion assigns each group to `skrye`, `traya`, or `zannah` using `sha256("v1:" + group_key) mod 3` and derives a deterministic `security/*` fix branch. Before dispatching an owned group, the companion checks remote heads (`git ls-remote --heads`) and pull requests (`gh pr list --state all --head <branch>`):
+
+- When an open `security/*` branch or pull request exists, it marks the group `open_in_progress` in `security-ownership.json` and skips dispatch.
+- When a closed and unmerged `security/*` pull request exists, it marks the group `blocked_human_decision` in `security-ownership.json`, skips dispatch, and sends one sanitised Matrix `m.notice` for that pull request.
+
+### Commit-pinned merge verification in `gh-bot-merge`
+
+`gh-bot-merge` reads `headRefOid` on every pull request and requires commit-pinned approvals (`commit.oid == headRefOid`) in `latestOpinionatedReviews`. Stale peer approvals or stale `flexiondotorg` approvals on sensitive packages (`herdr-ctx-bar`, `herdr-disp-model`, and `roamgate`) fail verification with exit code `64`. Every `gh pr merge` call passes `--match-head-commit <headRefOid>` so that GitHub rejects the merge if the branch head changes after verification.
+
 ## Projection surfaces
 
 | Destination                          | Source                                                                  | Notes                                                                                                                           |
@@ -151,7 +194,7 @@ FluffyChat is included for Linux desktop chat. The user configures the phone cli
 | `~/.moltis/agents/main/SOUL.md`      | `assistant-moltis-soul` sops template (`SOUL_<AGENT>` + `SOUL_ALL`)     | Same soul deployed into the `main` agent workspace via `ownedFiles` so Moltis's first-run seed copy never goes stale.           |
 | `~/.moltis/USER.md`                  | `assistant-moltis-user` sops template (`USER` in `secrets/moltis.yaml`) | User profile deployed via `ownedFiles` (`kind = "file"`, mode `0600`).                                                          |
 | `~/.moltis/agents/main/USER.md`      | `assistant-moltis-user` sops template (`USER` in `secrets/moltis.yaml`) | Same user profile deployed into the `main` agent workspace via `ownedFiles`.                                                    |
-| `~/.moltis/HEARTBEAT.md`             | `moltis/HEARTBEAT.md` (per-host schedule substituted)                   | 30-minute GitHub notification inbox triage plus weekly maintenance sweep (`skrye` Wednesday, `zannah` Saturday, `traya` Sunday). |
+| `~/.moltis/HEARTBEAT.md`             | `moltis/HEARTBEAT.md` (per-host schedule substituted)                   | Targeted notification snapshots, 30-minute reconciliation sweeps, and weekly sweeps (`skrye` Wednesday, `zannah` Saturday, `traya` Sunday).             |
 | `~/.moltis/agents/main/HEARTBEAT.md` | `moltis/HEARTBEAT.md` (per-host schedule substituted)                   | Same heartbeat specification deployed into the `main` agent workspace via `ownedFiles` (`kind = "file"`, mode `0600`).          |
 
 Generated agent frontmatter contains `name`, `theme`, and `deny_tools`. Moltis has no `description` field, so `theme` carries the agent description (Moltis `AgentFrontmatter`, `crates/config/src/agent_defs.rs`). The body becomes the preset's `system_prompt_suffix`.

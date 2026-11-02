@@ -28,6 +28,8 @@ let
               "MOLTIS_TEST_INNER_START${package.text}MOLTIS_TEST_INNER_END"
             else if (package.name or "") == "moltis-matrix-companion" then
               "MOLTIS_TEST_COMPANION_START${package.text}MOLTIS_TEST_COMPANION_END${lib.getExe package}"
+            else if (package.name or "") == "moltis-github-companion" then
+              "MOLTIS_TEST_GITHUB_COMPANION_START${package.text}MOLTIS_TEST_GITHUB_COMPANION_END${lib.getExe package}"
             else
               lib.getExe package;
         };
@@ -39,12 +41,17 @@ let
       rawInner = builtins.head (lib.splitString "MOLTIS_TEST_INNER_END" (builtins.elemAt parts 1));
       companionParts = lib.splitString "MOLTIS_TEST_COMPANION_START" rawInner;
       companionTail = lib.splitString "MOLTIS_TEST_COMPANION_END" (builtins.elemAt companionParts 1);
+      afterMatrixInner = "${builtins.head companionParts}${builtins.elemAt companionTail 1}";
+      githubParts = lib.splitString "MOLTIS_TEST_GITHUB_COMPANION_START" afterMatrixInner;
+      githubTail = lib.splitString "MOLTIS_TEST_GITHUB_COMPANION_END" (builtins.elemAt githubParts 1);
     in
     assert builtins.length companionParts == 2;
+    assert builtins.length githubParts == 2;
     {
       outer = builtins.head parts;
-      inner = "${builtins.head companionParts}${builtins.elemAt companionTail 1}";
+      inner = "${builtins.head githubParts}${builtins.elemAt githubTail 1}";
       companion = builtins.head companionTail;
+      githubCompanion = builtins.head githubTail;
     };
   launcherFixtures = map (
     host:
@@ -81,6 +88,17 @@ let
     dataDir = "/synthetic/moltis";
     stateDir = "/synthetic/state";
   };
+  githubCompanionWrapper =
+    pkgs.callPackage ../../home-manager/_mixins/agentic/moltis/github-companion
+      {
+        agentName = "skrye";
+        mainModel = "gemini::gemini-4-argon";
+        passwordPath = "/synthetic/matrix-password";
+        telegramBotTokenPath = "/synthetic/telegram-bot-token";
+        telegramAllowedUsersPath = "/synthetic/telegram-allowed-users";
+        dataDir = "/synthetic/moltis";
+        stateDir = "/synthetic/github-state";
+      };
   checkRestartInputs =
     host:
     let
@@ -263,9 +281,22 @@ let
       );
     assert context.mainModel == expectedMainModel;
     assert c.agentic.moltis.matrix.enable;
+    assert c.agentic.moltis.githubCompanion.enable;
+    assert
+      c.agentic.moltis.githubCompanion.pollOffsetSecs == (
+        if host == "skrye" then
+          0
+        else if host == "zannah" then
+          40
+        else
+          20
+      );
+    assert settings.heartbeat.enabled == false;
     assert lib.hasInfix "/bin/moltis-matrix-companion &" scripts.inner;
     assert lib.hasInfix "/bin/moltis-matrix-companion &\nchildren+=(\"$!\")" scripts.inner == darwin;
-    assert lib.hasInfix "/bin/moltis-matrix-companion &\n\nexec " scripts.inner == !darwin;
+    assert lib.hasInfix "/bin/moltis-github-companion &" scripts.inner;
+    assert lib.hasInfix "/bin/moltis-github-companion &\nchildren+=(\"$!\")" scripts.inner == darwin;
+    assert lib.hasInfix "/bin/moltis-github-companion &\n\nexec " scripts.inner == !darwin;
     assert lib.hasInfix "export MOLTIS_COMPANION_AGENT_NAME=${lib.escapeShellArg agentName}"
       scripts.companion;
     assert lib.hasInfix "export MOLTIS_COMPANION_MAIN_MODEL=${lib.escapeShellArg expectedMainModel}"
@@ -289,6 +320,42 @@ let
       "export MOLTIS_COMPANION_RPC_URL=${lib.escapeShellArg "https://127.0.0.1:13131/api/rpc"}"
       scripts.companion;
     assert lib.hasInfix "companion.py" scripts.companion;
+    assert lib.hasInfix "export MOLTIS_GITHUB_COMPANION_AGENT_NAME=${lib.escapeShellArg agentName}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_MAIN_MODEL=${lib.escapeShellArg expectedMainModel}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_POLL_OFFSET_SECS=${lib.escapeShellArg (toString c.agentic.moltis.githubCompanion.pollOffsetSecs)}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_MATRIX_SELF_USER_ID=${lib.escapeShellArg "@${agentName}:matrix.wimpys.world"}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_MATRIX_ROOM_ID=${lib.escapeShellArg c.agentic.moltis.matrix.roomId}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_MATRIX_PASSWORD_PATH=${lib.escapeShellArg c.sops.secrets.MATRIX_PASSWORD.path}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_TELEGRAM_BOT_TOKEN_PATH=${lib.escapeShellArg c.sops.secrets.TELEGRAM_BOT_TOKEN.path}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_TELEGRAM_ALLOWED_USERS_PATH=${lib.escapeShellArg c.sops.secrets.TELEGRAM_ALLOWED_USERS.path}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_TELEGRAM_API_URL=${lib.escapeShellArg "https://api.telegram.org"}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_DATA_DIR=${lib.escapeShellArg "${c.home.homeDirectory}/.moltis"}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_STATE_DIR=${lib.escapeShellArg "${c.xdg.stateHome}/moltis/github-companion-${agentName}"}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_RPC_URL=${lib.escapeShellArg "https://127.0.0.1:13131/api/rpc"}"
+      scripts.githubCompanion;
+    assert lib.hasInfix "companion.py" scripts.githubCompanion;
     assert !(lib.hasInfix "CLOUDFLARE_API_TOKEN" scripts.inner);
     assert !(lib.hasInfix "export CLOUDFLARE_API_TOKEN" scripts.outer);
     assert !(lib.hasInfix "export LINEAR_API_KEY" scripts.inner);
@@ -442,6 +509,7 @@ pkgs.runCommand "moltis-tools" { } ''
   test -x ${lib.getExe linearWrapper.linearServer}
   test -x ${lib.getExe cloudflareWrapper}
   test -x ${lib.getExe companionWrapper}
+  test -x ${lib.getExe githubCompanionWrapper}
   ${pkgs.python3}/bin/python3 - ${builtins.toFile "moltis-launcher-fixtures.json" (builtins.unsafeDiscardStringContext (builtins.toJSON launcherFixtures))} ${pkgs.bash}/bin/bash ${pkgs.sqlite}/bin <<'PY'
   import json
   import os
@@ -576,6 +644,13 @@ pkgs.runCommand "moltis-tools" { } ''
   PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis/mcp-cli-migration}/test_mcporter.py ${lib.getExe mcporter}
   PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis/linear-token}/test_linear_token.py
   PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis}/matrix-companion/test_companion.py
+  PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis}/github-companion/test_companion.py
+  PATH=${
+    lib.makeBinPath [
+      pkgs.coreutils
+      pkgs.jq
+    ]
+  }:$PATH ${pkgs.bash}/bin/bash ${../../home-manager/_mixins/development/github/gh-bot-merge}/gh-bot-merge-tests.sh
   PYTHONPATH=${../../home-manager/_mixins/agentic/moltis/mcp-cli-migration} PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis/linear-token}/test_linear_token.py ${lib.getExe mcporter} ${lib.getExe pkgs.mcp-proxy}
   PYTHONPATH=${../../home-manager/_mixins/agentic/moltis/mcp-cli-migration} PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 - ${lib.getExe cloudflareWrapper} ${lib.getExe mcporter} ${lib.getExe pkgs.mcp-proxy} <<'PY'
   import http.server
