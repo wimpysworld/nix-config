@@ -177,6 +177,7 @@ let
       fence_log_agent="opencode"
       ${fenceLogging.setupShell}
       ${fenceMemoryCap.setupShell}
+      cd -- "$fence_empty_cwd"
       "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" ${lib.getExe opencodeLauncherPackage} "$@"
     '';
   };

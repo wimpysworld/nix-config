@@ -105,7 +105,15 @@ class ServiceTierTests(unittest.TestCase):
                 with self.subTest(args=args, bypass=bypass):
                     expected = (
                         DEFAULT_ARGS
-                        + (["--dangerously-bypass-approvals-and-sandbox"] if bypass else [])
+                        + (
+                            [
+                                "--dangerously-bypass-approvals-and-sandbox",
+                                "-c",
+                                f'projects."{self.home.resolve()}".trust_level="trusted"',
+                            ]
+                            if bypass
+                            else []
+                        )
                         + args
                     )
                     self.assertEqual(
@@ -135,16 +143,21 @@ class ServiceTierTests(unittest.TestCase):
         if "${" in shell.replace("''${", ""):
             self.fail("Unresolved Nix interpolation in fenced fixture")
         fixture = self.home / "fenced.sh"
+        empty_cwd = self.home / ".local/state/fence/empty-cwd"
+        empty_cwd.mkdir(parents=True)
         fixture.write_text(
             "set -euo pipefail\n"
             "fence_args=(--fixture)\n"
             "fence_env=(FENCE_SANDBOX=1)\n"
+            f"fence_empty_cwd={shlex.quote(str(empty_cwd))}\n"
             "fence_direnv=(env)\n"
             "fence() {\n"
             "  [[ ${NOUGHTY_CODEX_BYPASS:-0} == 0 && $HERDR_AGENT == codex ]]\n"
+            f"  [[ $PWD == {shlex.quote(str(empty_cwd))} ]]\n"
             "  [[ $1 == --fixture && $2 == -- ]]\n"
             "  printf 'fence\\n' >&2\n"
             "  shift 2\n"
+            f"  cd -- {shlex.quote(str(self.home))}\n"
             '  env "$@"\n'
             "}\n"
             + textwrap.dedent(shell.replace("''${", "${"))
@@ -157,6 +170,7 @@ class ServiceTierTests(unittest.TestCase):
                     result = subprocess.run(
                         ["bash", str(fixture), "--noughty-fresh", *args],
                         env={"PATH": os.defpath, "FENCE_SANDBOX": sandbox},
+                        cwd=self.home,
                         capture_output=True,
                         text=True,
                         check=True,
@@ -166,7 +180,11 @@ class ServiceTierTests(unittest.TestCase):
                     self.assertEqual(
                         json.loads(result.stdout)["args"],
                         DEFAULT_ARGS
-                        + ["--dangerously-bypass-approvals-and-sandbox"]
+                        + [
+                            "--dangerously-bypass-approvals-and-sandbox",
+                            "-c",
+                            f'projects."{self.home.resolve()}".trust_level="trusted"',
+                        ]
                         + args,
                     )
 
@@ -209,6 +227,8 @@ class ServiceTierTests(unittest.TestCase):
             DEFAULT_ARGS
             + [
                 "--dangerously-bypass-approvals-and-sandbox",
+                "-c",
+                f'projects."{self.home.resolve()}".trust_level="trusted"',
                 "resume",
                 "--last",
                 "hello",
