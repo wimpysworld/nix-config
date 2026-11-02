@@ -123,10 +123,15 @@ fail() {
 	fi
 }
 
+readonly DEFAULT_HEAD_OID='0123456789abcdef0123456789abcdef01234567'
+readonly STALE_HEAD_OID='fedcba9876543210fedcba9876543210fedcba98'
+
 write_graphql_json() {
 	local extra_jq="${1:-.}"
 
-	jq -n '
+	jq -n \
+		--arg default_oid "${DEFAULT_HEAD_OID}" \
+		'
 		{
 			data: {
 				repository: {
@@ -148,7 +153,14 @@ write_graphql_json() {
 					}
 				}
 			}
-		} | '"${extra_jq}" >"${state_dir}/graphql.json"
+		} | '"${extra_jq}"'
+		| .data.repository.pullRequest.latestOpinionatedReviews.nodes |= map(
+			if (type == "object") and (has("commit") | not) then
+				. + { commit: { oid: $default_oid } }
+			else
+				.
+			end
+		)' >"${state_dir}/graphql.json"
 }
 
 reset_stub() {
@@ -169,6 +181,7 @@ write_pr_json() {
 		--arg owner "${owner}" \
 		--arg author "${author}" \
 		--arg head_ref "${head_ref}" \
+		--arg head_oid "${DEFAULT_HEAD_OID}" \
 		'{
 			number: 42,
 			state: "OPEN",
@@ -177,6 +190,7 @@ write_pr_json() {
 			mergeStateStatus: "BLOCKED",
 			author: { login: $author },
 			headRefName: $head_ref,
+			headRefOid: $head_oid,
 			headRepositoryOwner: { login: $owner },
 			isCrossRepository: false,
 			labels: [
@@ -312,6 +326,10 @@ assert_pr_rejected 'reject fork PR (mismatched headRepositoryOwner)' "${url_ww}"
 reset_stub
 write_pr_json wimpysworld 'app/dependabot' 'dependabot/nix/nixpkgs-3ec6363' '.mergeable = "CONFLICTING"'
 assert_pr_rejected 'reject conflicting PR' "${url_ww}" 'not mergeable'
+
+reset_stub
+write_pr_json wimpysworld 'app/dependabot' 'dependabot/nix/nixpkgs-3ec6363' '.headRefOid = ""'
+assert_pr_rejected 'reject PR with empty headRefOid' "${url_ww}" 'no headRefOid'
 
 reset_stub
 write_pr_json wimpysworld 'app/dependabot' 'dependabot/nix/nixpkgs-3ec6363' '.statusCheckRollup = []'
@@ -455,7 +473,7 @@ GH_STUB_VIEWER=sith-skrye assert_pr_rejected \
 
 reset_stub
 write_pr_json wimpysworld 'sith-skrye' 'fix/self-merge-approved' '.files = [{path: "Cargo.lock"}] | .reviewDecision = "APPROVED"'
-write_graphql_json '.data.repository.pullRequest.latestOpinionatedReviews.nodes = [{author: {login: "sith-zannah"}, state: "APPROVED"}]'
+write_graphql_json '.data.repository.pullRequest.latestOpinionatedReviews.nodes = [{author: {login: "sith-zannah"}, state: "APPROVED", commit: {oid: "'"${DEFAULT_HEAD_OID}"'"}}]'
 GH_STUB_VIEWER=sith-skrye run_helper "${url_ww}"
 if [[ ${status} -ne 0 ]]; then
 	fail 'accept trusted-peer self-merge when approved by sith-zannah' "status ${status}: ${stderr}"
@@ -464,6 +482,26 @@ elif [[ $(review_count) -ne 0 || $(merge_count) -ne 1 ]]; then
 		"reviews=$(review_count) merges=$(merge_count)"
 else
 	pass 'accept trusted-peer self-merge when another trusted peer (sith-zannah) has APPROVED it'
+fi
+
+reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/self-merge-stale-approval' '.files = [{path: "Cargo.lock"}] | .reviewDecision = "APPROVED"'
+write_graphql_json '.data.repository.pullRequest.latestOpinionatedReviews.nodes = [{author: {login: "sith-zannah"}, state: "APPROVED", commit: {oid: "'"${STALE_HEAD_OID}"'"}}]'
+GH_STUB_VIEWER=sith-skrye assert_pr_rejected \
+	'reject trusted-peer self-merge when peer approval commit.oid is stale' "${url_ww}" \
+	"stale peer approval on commit ${STALE_HEAD_OID} (expected headRefOid ${DEFAULT_HEAD_OID})"
+
+reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/peer-viewer-stale-approval' '.files = [{path: "Cargo.lock"}] | .reviewDecision = "APPROVED"'
+write_graphql_json '.data.repository.pullRequest.latestOpinionatedReviews.nodes = [{author: {login: "sith-traya"}, state: "APPROVED", commit: {oid: "'"${STALE_HEAD_OID}"'"}}]'
+GH_STUB_VIEWER=sith-zannah run_helper "${url_ww}"
+if [[ ${status} -ne 0 ]]; then
+	fail 'trusted-peer viewer re-approves when prior peer approval commit.oid is stale' "status ${status}: ${stderr}"
+elif [[ $(review_count) -ne 1 || $(merge_count) -ne 1 ]]; then
+	fail 'trusted-peer viewer issues fresh --approve when prior approval is stale' \
+		"reviews=$(review_count) merges=$(merge_count)"
+else
+	pass 'trusted-peer viewer issues fresh --approve when prior peer approval is on an older commit'
 fi
 
 reset_stub
@@ -487,13 +525,21 @@ GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
 reset_stub
 write_pr_json wimpysworld 'sith-skrye' 'fix/roamgate-approved-by-flexion' \
 	'.files = [{path: "pkgs/roamgate/default.nix"}] | .reviewDecision = "APPROVED"'
-write_graphql_json '.data.repository.pullRequest.latestOpinionatedReviews.nodes = [{author: {login: "flexiondotorg"}, state: "APPROVED"}]'
+write_graphql_json '.data.repository.pullRequest.latestOpinionatedReviews.nodes = [{author: {login: "flexiondotorg"}, state: "APPROVED", commit: {oid: "'"${DEFAULT_HEAD_OID}"'"}}]'
 GH_STUB_VIEWER=sith-zannah run_helper "${url_ww}"
 if [[ ${status} -ne 0 ]]; then
 	fail 'accept sensitive package PR when approved by flexiondotorg' "status ${status}: ${stderr}"
 else
 	pass 'accept sensitive package PR when flexiondotorg approved it'
 fi
+
+reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/roamgate-stale-flexion-approval' \
+	'.files = [{path: "pkgs/roamgate/default.nix"}] | .reviewDecision = "APPROVED"'
+write_graphql_json '.data.repository.pullRequest.latestOpinionatedReviews.nodes = [{author: {login: "flexiondotorg"}, state: "APPROVED", commit: {oid: "'"${STALE_HEAD_OID}"'"}}]'
+GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
+	'reject sensitive package PR when flexiondotorg approval commit.oid is stale' "${url_ww}" \
+	"stale flexiondotorg approval on commit ${STALE_HEAD_OID} (expected headRefOid ${DEFAULT_HEAD_OID})"
 
 reset_stub
 write_pr_json wimpysworld 'sith-skrye' 'fix/rename-sensitive-package' \
@@ -616,8 +662,10 @@ elif [[ $(review_count) -ne 1 || $(merge_count) -ne 1 ]]; then
 	fail 'merge app/dependabot PR calls review once and merge once' "reviews=$(review_count) merges=$(merge_count)"
 elif grep -q -- '--admin' "${state_dir}/merges"; then
 	fail 'merge app/dependabot PR tries non-admin squash merge first' "$(cat "${state_dir}/merges")"
+elif ! grep -q -- "--squash --delete-branch --match-head-commit ${DEFAULT_HEAD_OID}" "${state_dir}/merges"; then
+	fail 'merge app/dependabot PR passes --match-head-commit' "$(cat "${state_dir}/merges")"
 else
-	pass 'merge app/dependabot PR approves and squash-merges without --admin when allowed'
+	pass 'merge app/dependabot PR approves and squash-merges with --match-head-commit without --admin when allowed'
 fi
 
 # 7. Fallback to --admin when ruleset rejects non-admin merge after approval
@@ -628,10 +676,12 @@ if [[ ${status} -ne 0 ]]; then
 	fail 'fallback to --admin merge' "status ${status}: ${stderr}"
 elif [[ $(review_count) -ne 1 || $(merge_count) -ne 2 ]]; then
 	fail 'fallback to --admin merge tries standard then --admin' "reviews=$(review_count) merges=$(merge_count)"
-elif ! tail -n 1 "${state_dir}/merges" | grep -q -- '--admin --squash --delete-branch'; then
-	fail 'fallback second merge call uses --admin' "$(cat "${state_dir}/merges")"
+elif ! head -n 1 "${state_dir}/merges" | grep -q -- "--squash --delete-branch --match-head-commit ${DEFAULT_HEAD_OID}"; then
+	fail 'fallback first merge call uses --match-head-commit' "$(cat "${state_dir}/merges")"
+elif ! tail -n 1 "${state_dir}/merges" | grep -q -- "--admin --squash --delete-branch --match-head-commit ${DEFAULT_HEAD_OID}"; then
+	fail 'fallback second merge call uses --admin and --match-head-commit' "$(cat "${state_dir}/merges")"
 else
-	pass 'fallback to --admin succeeds when repository ruleset blocks standard merge'
+	pass 'fallback to --admin passes --match-head-commit on both standard and --admin merge calls'
 fi
 
 # 8. Valid GitHub Actions automated update branches
@@ -673,10 +723,10 @@ if [[ ${status} -ne 0 ]]; then
 elif [[ $(review_count) -ne 0 || $(merge_count) -ne 1 ]]; then
 	fail 'freshener merge skips self-approval and runs admin merge once' \
 		"reviews=$(review_count) merges=$(merge_count)"
-elif ! grep -q -- '--admin --squash --delete-branch' "${state_dir}/merges"; then
-	fail 'freshener merge uses --admin --squash --delete-branch' "$(cat "${state_dir}/merges")"
+elif ! grep -q -- "--admin --squash --delete-branch --match-head-commit ${DEFAULT_HEAD_OID}" "${state_dir}/merges"; then
+	fail 'freshener merge uses --admin --squash --delete-branch --match-head-commit' "$(cat "${state_dir}/merges")"
 else
-	pass 'freshener PR by viewer skips self-approval and merges with --admin'
+	pass 'freshener PR by viewer skips self-approval and merges with --admin and --match-head-commit'
 fi
 
 reset_stub

@@ -9,6 +9,7 @@
 let
   inherit (config.noughty) host;
   matrixCfg = config.agentic.moltis.matrix;
+  githubCompanionCfg = config.agentic.moltis.githubCompanion;
 
   isMartin = noughtyLib.isUser [ "martin" ];
   moltisEnabled = isMartin && (host.is.linux || host.is.darwin) && noughtyLib.hostHasTag "moltis";
@@ -38,7 +39,7 @@ let
     mcpRequiredSecrets
     ++ linearSecrets
     ++ lib.optional (mcpServerDefs.moltisCapabilities ? cloudflare-api) "CLOUDFLARE_API_TOKEN"
-    ++ lib.optional matrixCfg.enable "MATRIX_PASSWORD";
+    ++ lib.optional (matrixCfg.enable || githubCompanionCfg.enable) "MATRIX_PASSWORD";
   mcpInstructions = ''
     For all MCP operations, use only `mcporter --config "$MCPORTER_CONFIG" ...` through `exec`, with `--no-oauth`.
     Never use native MCP tools or management controls.
@@ -67,6 +68,27 @@ let
       "Traya"
     else
       "Skrye";
+  defaultPollOffsetSecs =
+    if agentName == "zannah" then
+      40
+    else if agentName == "traya" then
+      20
+    else
+      0;
+  scheduleDow =
+    if agentName == "zannah" then
+      6
+    else if agentName == "traya" then
+      7
+    else
+      3;
+  scheduleDayName =
+    if agentName == "zannah" then
+      "Saturday"
+    else if agentName == "traya" then
+      "Sunday"
+    else
+      "Wednesday";
 
   moltisSopsFile = ../../../../secrets/moltis.yaml;
   matrixSopsFile = ../../../../secrets/matrix.yaml;
@@ -201,7 +223,9 @@ let
     GEMINI_API_KEY = aiSopsFile;
     CONTEXT7_API_KEY = mcpSopsFile;
   }
-  // lib.optionalAttrs matrixCfg.enable { MATRIX_PASSWORD = matrixSopsFile; };
+  // lib.optionalAttrs (matrixCfg.enable || githubCompanionCfg.enable) {
+    MATRIX_PASSWORD = matrixSopsFile;
+  };
 
   secretConfig =
     name:
@@ -802,6 +826,24 @@ let
     passwordPath = config.sops.secrets.MATRIX_PASSWORD.path;
     dataDir = "${homeDir}/.moltis";
     stateDir = "${stateDir}/matrix-companion-${agentName}";
+    rpcUrl = "https://127.0.0.1:13131/api/rpc";
+  };
+
+  moltisGithubCompanion = pkgs.callPackage ./github-companion {
+    inherit
+      agentName
+      agentDisplayName
+      mainModel
+      scheduleDow
+      scheduleDayName
+      ;
+    inherit (githubCompanionCfg) pollOffsetSecs;
+    selfUserId = matrixCfg.userId or "@${agentName}:matrix.wimpys.world";
+    roomId = matrixCfg.roomId or "!the-cauldron:matrix.wimpys.world";
+    homeserverUrl = "https://matrix.wimpys.world";
+    passwordPath = config.sops.secrets.MATRIX_PASSWORD.path;
+    dataDir = "${homeDir}/.moltis";
+    stateDir = "${stateDir}/github-companion-${agentName}";
     rpcUrl = "https://127.0.0.1:13131/api/rpc";
   };
 
@@ -1958,6 +2000,9 @@ let
         ${lib.optionalString matrixCfg.enable ''
           ${lib.getExe moltisMatrixCompanion} &
         ''}
+        ${lib.optionalString githubCompanionCfg.enable ''
+          ${lib.getExe moltisGithubCompanion} &
+        ''}
         exec ${lib.getExe pkgs.moltis} "$@"
       ''}
       ${lib.optionalString host.is.darwin ''
@@ -1976,6 +2021,10 @@ let
         children+=("$!")
         ${lib.optionalString matrixCfg.enable ''
           ${lib.getExe moltisMatrixCompanion} &
+          children+=("$!")
+        ''}
+        ${lib.optionalString githubCompanionCfg.enable ''
+          ${lib.getExe moltisGithubCompanion} &
           children+=("$!")
         ''}
         ${lib.getExe pkgs.moltis} "$@" &
@@ -2083,6 +2132,23 @@ in
         type = lib.types.nullOr lib.types.str;
         default = "!the-cauldron:matrix.wimpys.world";
         description = "Provisioned unencrypted Matrix room ID. Room aliases are not accepted.";
+      };
+    };
+
+    githubCompanion = {
+      enable = lib.mkEnableOption "the Moltis GitHub notification and security companion" // {
+        default =
+          moltisEnabled
+          && noughtyLib.isHost [
+            "skrye"
+            "zannah"
+            "momin"
+          ];
+      };
+      pollOffsetSecs = lib.mkOption {
+        type = lib.types.ints.unsigned;
+        default = defaultPollOffsetSecs;
+        description = "Initial poll offset in seconds for this agent (0 for skrye, 20 for traya, 40 for zannah).";
       };
     };
 
@@ -2374,7 +2440,7 @@ in
         };
 
         heartbeat = {
-          enabled = true;
+          enabled = !config.agentic.moltis.githubCompanion.enable;
           every = "30m";
           model = mainModel;
           sandbox_enabled = false;

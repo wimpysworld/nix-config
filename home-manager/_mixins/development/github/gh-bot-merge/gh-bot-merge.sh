@@ -96,7 +96,7 @@ readonly GH_BOT_MERGE_GH_BIN
 export GH_PROMPT_DISABLED=true
 export GH_TELEMETRY=false
 
-readonly PR_VIEW_FIELDS='number,state,isDraft,mergeable,mergeStateStatus,author,headRefName,headRepositoryOwner,isCrossRepository,labels,changedFiles,files,statusCheckRollup,reviewDecision'
+readonly PR_VIEW_FIELDS='number,state,isDraft,mergeable,mergeStateStatus,author,headRefName,headRefOid,headRepositoryOwner,isCrossRepository,labels,changedFiles,files,statusCheckRollup,reviewDecision'
 
 set +e
 pr_json="$("${GH_BOT_MERGE_GH_BIN}" pr view "${pr_url}" --json "${PR_VIEW_FIELDS}" </dev/null)"
@@ -230,6 +230,8 @@ elif (.isCrossRepository != false) or (((.headRepositoryOwner.login // "") | asc
   "ERR\u001fpull request #" + $pr_number + " is a fork or cross-repository pull request (isCrossRepository=" + (.isCrossRepository | tostring) + ", headRepositoryOwner=" + (.headRepositoryOwner.login // "UNKNOWN") + ")"
 elif .mergeable != "MERGEABLE" then
   "ERR\u001fpull request #" + $pr_number + " is not mergeable (mergeable=" + (.mergeable // "UNKNOWN") + ")"
+elif ((.headRefOid | type) != "string") or ((.headRefOid | length) == 0) then
+  "ERR\u001fpull request #" + $pr_number + " has no headRefOid"
 elif ((.changedFiles // ((.files // []) | length)) > ((.files // []) | length)) then
   "ERR\u001fpull request #" + $pr_number + " changed file list is incomplete (changedFiles=" + (.changedFiles | tostring) + ", files=" + (((.files // []) | length) | tostring) + ")"
 elif ((.statusCheckRollup // []) | length) == 0 then
@@ -239,13 +241,13 @@ else
   | if ($bad_checks | length) > 0 then
       "ERR\u001fpull request #" + $pr_number + " has failing or pending status checks: " + ($bad_checks | join(", "))
     elif is_dependabot then
-      ["OK", "dependabot", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package($owner; $repo) | tostring)] | join("\u001f")
+      ["OK", "dependabot", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package($owner; $repo) | tostring), .headRefOid] | join("\u001f")
     elif is_github_actions then
-      ["OK", "github-actions", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package($owner; $repo) | tostring)] | join("\u001f")
+      ["OK", "github-actions", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package($owner; $repo) | tostring), .headRefOid] | join("\u001f")
     elif is_freshener($owner; $repo) then
-      ["OK", "freshener", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package($owner; $repo) | tostring)] | join("\u001f")
+      ["OK", "freshener", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package($owner; $repo) | tostring), .headRefOid] | join("\u001f")
     elif is_trusted_peer($owner; $repo) then
-      ["OK", "trusted-peer", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package($owner; $repo) | tostring)] | join("\u001f")
+      ["OK", "trusted-peer", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package($owner; $repo) | tostring), .headRefOid] | join("\u001f")
     else
       "ERR\u001fpull request #" + $pr_number + " (author=" + (.author.login // "UNKNOWN") + ", headRefName=" + (.headRefName // "UNKNOWN") + ") does not match any permitted PR policy"
     end
@@ -265,7 +267,7 @@ if [[ ${jq_status} -ne 0 ]]; then
 	exit "${jq_status}"
 fi
 
-IFS=$'\x1f' read -r verdict field1 field2 field3 field4 field5 <<<"${verify_out}"
+IFS=$'\x1f' read -r verdict field1 field2 field3 field4 field5 field6 <<<"${verify_out}"
 if [[ ${verdict} != "OK" ]]; then
 	die "${field1:-verification failed}"
 fi
@@ -275,6 +277,10 @@ author_login="${field2}"
 review_decision="${field3}"
 merge_state_status="${field4}"
 touches_sensitive="${field5:-false}"
+head_ref_oid="${field6:-}"
+if [[ -z ${head_ref_oid} ]]; then
+	die "pull request #${pr_number} has no headRefOid"
+fi
 
 set +e
 viewer="$("${GH_BOT_MERGE_GH_BIN}" api user --jq .login </dev/null)"
@@ -316,6 +322,9 @@ if [[ ${pr_class} == "trusted-peer" ]]; then
             login
           }
           state
+          commit {
+            oid
+          }
         }
       }
     }
@@ -344,20 +353,49 @@ def is_trusted_peer_login($login):
         .state == "APPROVED"
         and (.author.login // "") != $author_login
         and is_trusted_peer_login(.author.login // "")
+        and (.commit.oid // "") == $head_ref_oid
       ) as $has_peer_approval
+    | ([
+        $reviews[]
+        | select(
+            .state == "APPROVED"
+            and (.author.login // "") != $author_login
+            and is_trusted_peer_login(.author.login // "")
+            and (.commit.oid // "") != $head_ref_oid
+          )
+        | (.commit.oid // "UNKNOWN")
+      ]) as $stale_peer_oids
     | any(
         $reviews[];
         .state == "APPROVED"
         and (.author.login // "") == "flexiondotorg"
+        and (.commit.oid // "") == $head_ref_oid
       ) as $has_flexion_approval
+    | ([
+        $reviews[]
+        | select(
+            .state == "APPROVED"
+            and (.author.login // "") == "flexiondotorg"
+            and (.commit.oid // "") != $head_ref_oid
+          )
+        | (.commit.oid // "UNKNOWN")
+      ]) as $stale_flexion_oids
     | if $unresolved > 0 then
         "ERR\u001fpull request #" + $pr_number + " has " + ($unresolved | tostring) + " unresolved review thread(s)"
       elif ($review_decision == "CHANGES_REQUESTED") or $changes_requested then
         "ERR\u001fpull request #" + $pr_number + " has a review requesting changes"
       elif ($touches_sensitive == "true") and ($author_login != "flexiondotorg") and ($has_flexion_approval | not) then
-        "ERR\u001fpull request #" + $pr_number + " touches a sensitive package and requires flexiondotorg as author or approver"
+        if ($stale_flexion_oids | length) > 0 then
+          "ERR\u001fpull request #" + $pr_number + " touches a sensitive package and has a stale flexiondotorg approval on commit " + $stale_flexion_oids[0] + " (expected headRefOid " + $head_ref_oid + ")"
+        else
+          "ERR\u001fpull request #" + $pr_number + " touches a sensitive package and requires flexiondotorg as author or approver"
+        end
       elif ($viewer == $author_login) and ($has_peer_approval | not) then
-        "ERR\u001fpull request #" + $pr_number + " authored by " + $viewer + " requires an APPROVED review from another trusted peer before merging"
+        if ($stale_peer_oids | length) > 0 then
+          "ERR\u001fpull request #" + $pr_number + " authored by " + $viewer + " has a stale peer approval on commit " + $stale_peer_oids[0] + " (expected headRefOid " + $head_ref_oid + ") and requires an APPROVED review on the head commit from another trusted peer before merging"
+        else
+          "ERR\u001fpull request #" + $pr_number + " authored by " + $viewer + " requires an APPROVED review from another trusted peer before merging"
+        end
       else
         ["OK", ($has_peer_approval | tostring)] | join("\u001f")
       end
@@ -384,6 +422,7 @@ def is_trusted_peer_login($login):
 		--arg viewer "${viewer}" \
 		--arg review_decision "${review_decision}" \
 		--arg touches_sensitive "${touches_sensitive}" \
+		--arg head_ref_oid "${head_ref_oid}" \
 		"${JQ_VERIFY_TRUSTED_PEER}" <<<"${graphql_json}")"
 	peer_jq_status=$?
 	set -e
@@ -440,7 +479,7 @@ fi
 
 if [[ ${author_login} == "${viewer}" && ${peer_approved} != "true" && ${review_decision} == "REVIEW_REQUIRED" ]]; then
 	set +e
-	"${GH_BOT_MERGE_GH_BIN}" pr merge "${pr_url}" --admin --squash --delete-branch </dev/null
+	"${GH_BOT_MERGE_GH_BIN}" pr merge "${pr_url}" --admin --squash --delete-branch --match-head-commit "${head_ref_oid}" </dev/null
 	merge_status=$?
 	set -e
 	if [[ ${merge_status} -ne 0 ]]; then
@@ -449,12 +488,12 @@ if [[ ${author_login} == "${viewer}" && ${peer_approved} != "true" && ${review_d
 	fi
 else
 	set +e
-	"${GH_BOT_MERGE_GH_BIN}" pr merge "${pr_url}" --squash --delete-branch </dev/null
+	"${GH_BOT_MERGE_GH_BIN}" pr merge "${pr_url}" --squash --delete-branch --match-head-commit "${head_ref_oid}" </dev/null
 	merge_status=$?
 	set -e
 	if [[ ${merge_status} -ne 0 ]]; then
 		set +e
-		"${GH_BOT_MERGE_GH_BIN}" pr merge "${pr_url}" --admin --squash --delete-branch </dev/null
+		"${GH_BOT_MERGE_GH_BIN}" pr merge "${pr_url}" --admin --squash --delete-branch --match-head-commit "${head_ref_oid}" </dev/null
 		admin_status=$?
 		set -e
 		if [[ ${admin_status} -ne 0 ]]; then
