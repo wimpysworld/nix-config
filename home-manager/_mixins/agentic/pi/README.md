@@ -36,12 +36,12 @@ The `llm-agents` package wrapper disables Pi's version check and telemetry at ru
 
 Home Manager owns `~/.pi/agent/settings.json` completely. Project-specific or mutable package settings should live in `.pi/settings.json`, which Pi merges over the global settings. Nested objects merge.
 
-The managed settings use OpenAI Codex by default:
+The managed settings use Google by default:
 
 ```json
 {
-  "defaultProvider": "openai-codex",
-  "defaultModel": "gpt-6-astra",
+  "defaultProvider": "google",
+  "defaultModel": "gemini-4-argon",
   "defaultThinkingLevel": "medium",
   "hideThinkingBlock": true,
   "enabledModels": [
@@ -273,7 +273,7 @@ This module writes `~/.pi/agent/themes/catppuccin-mocha.json` from the repositor
 
 Home Manager owns `~/.pi/agent/models.json` on every developer host. On hosts without the `cg` tag, both `providers.opencode.apiKey` and `providers.opencode-go.apiKey` reference `$OPENCODE_API_KEY`. Pi resolves the reference from the wrapper's environment and keeps its built-in models. The configuration contains no secret value. See Pi's [authentication and provider overrides](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/models.md).
 
-The scoped GLM models use `opencode-go/glm-5.3-flash` and `opencode-go/glm-5.3`. These entries control model cycling, not workspace access. The default remains `openai-codex/gpt-6-astra`. The `opencode` provider uses pay-as-you-go billing, while `opencode-go` selects the workspace's Go plan. See the [OpenCode Pi setup](https://opencode.ai/v2/docs/console/harnesses/pi/).
+The scoped GLM models use `opencode-go/glm-5.3-flash` and `opencode-go/glm-5.3`. These entries control model cycling, not workspace access. The default remains `google/gemini-4-argon`. The `opencode` provider uses pay-as-you-go billing, while `opencode-go` selects the workspace's Go plan. See the [OpenCode Pi setup](https://opencode.ai/v2/docs/console/harnesses/pi/).
 
 Stored Pi credentials take priority over `models.json`, and resumed sessions restore their earlier provider choice. If an old credential masks the managed key, use `/logout` for that provider. Start a fresh session and select `opencode-go` to use Go.
 

@@ -342,8 +342,8 @@ let
   };
 
   piSettings = {
-    defaultProvider = "openai-codex";
-    defaultModel = "gpt-6-astra";
+    defaultProvider = "google";
+    defaultModel = "gemini-4-argon";
     defaultThinkingLevel = "medium";
     thinkingBudgets = {
       minimal = 1024;

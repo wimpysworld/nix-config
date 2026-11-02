@@ -300,14 +300,14 @@ OpenCode `permissions` headers are not mapped to Pi. Pi supports an explicit `to
 
 Pi routes subagents through inference-provider tables in each agent's `header.toml`. See the [agent catalogue](agents/README.md) for the current agent routes.
 
-The inference-provider name must match Pi exactly, including hyphens. The default provider is `openai-codex`, not `openai`.
+The inference-provider name must match Pi exactly, including hyphens. The default provider is `google`. OpenAI Codex routes use `openai-codex`, not `openai`.
 
 `thinking` accepts `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`. Invalid values fail evaluation. The runtime also checks that the selected model supports the thinking level.
 
 `Agent` receives `model: provider/modelId` and a separate `thinking` field. Workflow children receive `model` and `effort`.
 A thinking-only entry reuses the active session model ID. Model and effort pins are independent. An omitted table preserves session inheritance.
 
-Pi's global `defaultThinkingLevel = "medium"` and `defaultModel = "gpt-6-astra"`
+Pi's global `defaultThinkingLevel = "medium"` and `defaultModel = "gemini-4-argon"`
 set the session default for the unnamed global prompt. Agents that omit a
 header do not fall back to them per-agent; they inherit whatever model the
 session is running.
