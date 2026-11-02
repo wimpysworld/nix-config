@@ -141,7 +141,7 @@ lib.mkIf (noughtyLib.hostHasTag "silo") {
     };
 
     preStart = ''
-      install -d -m 0750 /tmp/silo-transcode /tmp/silo-download-artifacts
+      install -d -m 0750 /tmp/silo-transcode
       install -d -m 0700 /tmp/silo-ebook-epub
     ''
     + lib.optionalString hasInference ''
@@ -201,10 +201,12 @@ lib.mkIf (noughtyLib.hostHasTag "silo") {
         "silo/backups"
         "silo/compat"
         "silo/compat/jellyfin-web"
+        "silo/download-artifacts"
         "silo/plugins"
         "silo/userdb"
       ];
       StateDirectoryMode = "0750";
+      BindPaths = [ "${siloStateDir}/download-artifacts:/tmp/silo-download-artifacts" ];
 
       # Hardening while preserving GPU device access (/dev/dri, /dev/nvidia*)
       # for VA-API, QSV, and NVENC hardware transcoding and /srv/pool access.
