@@ -176,6 +176,15 @@ class FakeAPI:
                 if "avatar_url" not in self.users[token]:
                     return {}
                 return {"avatar_url": self.users[token]["avatar_url"]}
+        if path.startswith("/_synapse/admin/v1/rooms/"):
+            assert method == "DELETE"
+            assert token == b.USERS[0]
+            assert body == {"purge": True}
+            room_id = urllib.parse.unquote(
+                path.removeprefix("/_synapse/admin/v1/rooms/")
+            )
+            del self.rooms[room_id]
+            return {}
         if path.startswith("/_synapse/admin/v1/users/"):
             assert token == b.USERS[0]
             target = urllib.parse.unquote(path.split("/")[-2]).split(":")[0][1:]
@@ -267,6 +276,13 @@ class FakeAPI:
                 raise b.APIError(403, "M_FORBIDDEN")
             room_events = self.rooms[room_id]
             if suffix == "/state":
+                if (
+                    room_events.get(("m.room.member", b.user_id(token)), {}).get(
+                        "membership"
+                    )
+                    != "join"
+                ):
+                    raise b.APIError(403, "M_FORBIDDEN")
                 sender = (
                     b.user_id(b.CONDUIT_USER)
                     if room_id == ADMIN_ROOM
@@ -322,7 +338,7 @@ class BootstrapTests(unittest.TestCase):
         return [
             (method, path)
             for method, path, _ in self.api.calls
-            if method in ("POST", "PUT")
+            if method in ("DELETE", "POST", "PUT")
             and path not in (b.CLIENT + "/login", b.CLIENT + "/logout")
         ]
 
@@ -620,6 +636,40 @@ class BootstrapTests(unittest.TestCase):
         with self.assertRaises(b.Stop):
             self.run_bootstrap()
         self.assertEqual(self.writes(), [])
+
+    def test_abandoned_dm_room_is_purged_and_recreated(self):
+        self.run_bootstrap()
+        dm_skrye = b.dm_room_id("skrye")
+        self.api.rooms[dm_skrye][("m.room.member", b.user_id("martin"))] = {
+            "membership": "leave"
+        }
+        self.assertEqual(
+            self.api.rooms[dm_skrye][("m.room.member", b.user_id("skrye"))][
+                "membership"
+            ],
+            "join",
+        )
+        self.api.calls.clear()
+        self.assertEqual(self.run_bootstrap(), b.ROOM)
+        self.assertEqual(
+            self.writes(),
+            [
+                ("POST", b.CLIENT + "/createRoom"),
+                ("DELETE", f"/_synapse/admin/v1/rooms/{b.quoted(dm_skrye)}"),
+                ("POST", b.CLIENT + "/createRoom"),
+                ("POST", f"{b.CLIENT}/rooms/{b.quoted(dm_skrye)}/join"),
+            ],
+        )
+        self.assertEqual(
+            self.api.rooms[dm_skrye][("m.room.member", b.user_id("martin"))],
+            {"membership": "join", "is_direct": True},
+        )
+        self.assertEqual(
+            self.api.rooms[dm_skrye][("m.room.member", b.user_id("skrye"))][
+                "membership"
+            ],
+            "join",
+        )
 
 
 if __name__ == "__main__":

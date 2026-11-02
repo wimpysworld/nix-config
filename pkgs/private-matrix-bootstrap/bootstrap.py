@@ -550,6 +550,22 @@ class Bootstrap:
         if content("avatar").get("url"):
             self.call("PUT", prefix + "/state/m.room.avatar/", {})
 
+    def create_dm_room(self, agent, room):
+        body = dm_room_body(agent)
+        try:
+            created = self.call("POST", CLIENT + "/createRoom", body).get("room_id")
+        except APIError as error:
+            if error.code != "M_ROOM_IN_USE":
+                raise
+            self.call(
+                "DELETE",
+                f"/_synapse/admin/v1/rooms/{quoted(room)}",
+                {"purge": True},
+            )
+            created = self.call("POST", CLIENT + "/createRoom", body).get("room_id")
+        if created != room:
+            raise Stop("Matrix returned an unexpected direct message room.") from None
+
     def dm_rooms(self):
         for agent in AGENTS:
             room = dm_room_id(agent)
@@ -559,13 +575,7 @@ class Bootstrap:
             except APIError as error:
                 if error.code not in ("M_FORBIDDEN", "M_NOT_FOUND"):
                     raise
-                created = self.call(
-                    "POST", CLIENT + "/createRoom", dm_room_body(agent)
-                ).get("room_id")
-                if created != room:
-                    raise Stop(
-                        "Matrix returned an unexpected direct message room."
-                    ) from None
+                self.create_dm_room(agent, room)
                 events = self.call("GET", prefix + "/state")
             state = {(event["type"], event["state_key"]): event for event in events}
             self.check_private_room(room, state, ("martin", agent))
