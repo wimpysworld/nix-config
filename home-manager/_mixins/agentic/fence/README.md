@@ -137,18 +137,20 @@ Commands are allowed or denied.
 
 ## Empty launch directory and Git push defaults
 
-When `fence` is invoked directly in a repository, it scopes mandatory
-dangerous-file and directory denies (`.git/config`, `.git/hooks`, `.mcp.json`,
-`.vscode`, `.idea`) to its initial working directory: Linux bind-mounts
-existing targets read-only and macOS Seatbelt emits recursive `deny file-write*`
-patterns under that launch directory. Because the fenced wrappers (`claude-fenced`,
-`codex-fenced`, `opencode-fenced`, `pi-fenced`, and `moltis-fenced`) change to
+When `fence` runs directly in a repository, it scopes mandatory dangerous-file
+and directory denies (`.git/config`, `.git/hooks`, `.mcp.json`, `.vscode`,
+`.idea`) to its initial working directory. Linux bind-mounts existing targets
+read-only, and macOS Seatbelt emits recursive `deny file-write*` patterns under
+that launch directory. The fenced wrappers (`claude-fenced`, `codex-fenced`,
+`opencode-fenced`, `pi-fenced`, and `moltis-fenced`) change to
 `${XDG_STATE_HOME:-$HOME/.local/state}/fence/empty-cwd` before starting `fence`
-and restore `FENCE_LAUNCH_PWD` inside `fence-direnv-exec`, those workspace-scoped
-mandatory denies apply only to `empty-cwd`. That keeps `git clone`, `gh repo clone`,
-`git worktree add`, and `.mcp.json` creation working across writable workspaces on
-both Linux and macOS, while the command-level `git config` deny in `default.nix`
-continues to guard configuration writes.
+and restore `FENCE_LAUNCH_PWD` inside `fence-direnv-exec`. Those mandatory denies
+apply only to `empty-cwd`, so `git clone`, `gh repo clone`, `git worktree add`,
+and `.mcp.json` creation work across writable workspaces. As a result, wrapper
+launches do not mount-protect `.git/config` or `.git/hooks` in workspace
+repositories. Under `runtimeExecPolicy = "path"`, the multi-token `git config`
+deny in `default.nix` checks only the initial `fence-direnv-exec` command at
+preflight, not child `git config` writes.
 
 When `fence` is run directly without the wrapper, `<repo>/.git/config` and
 `<repo>/.git/hooks` are bind-mounted read-only on Linux (and write-denied by
