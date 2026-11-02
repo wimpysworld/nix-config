@@ -650,7 +650,7 @@ for ga_branch in update_flake_lock_action ci/update-electron-toolchain tailor-al
 done
 
 # 9. Valid wimpysworld/nix-config Freshener PRs (self-authored by flexiondotorg)
-for pkg in chainctl claude-themes-catppuccin defold handy lan-mouse manuscript moltis openusage weave wolfictl yam; do
+for pkg in chainctl claude-themes-catppuccin defold handy lan-mouse manuscript moltis openusage silo-server weave wolfictl yam; do
 	reset_stub
 	write_pr_json wimpysworld 'flexiondotorg' "${pkg}-1.2.3" \
 		'.files = [{path: ("pkgs/" + "'"${pkg}"'" + "/default.nix")}, {path: "flake.lock"}]'

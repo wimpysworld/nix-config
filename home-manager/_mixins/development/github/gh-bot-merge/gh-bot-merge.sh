@@ -187,7 +187,7 @@ def has_freshener_labels:
   ((.labels // []) | map(.name)) | (any(. == "automated") and any(. == "dependencies"));
 
 def is_freshener_branch:
-  ((.headRefName // "") | test("^freshen/|^(chainctl|claude-themes-catppuccin|defold|handy|herdr-ctx-bar|herdr-disp-model|lan-mouse|manuscript|moltis|openusage|roamgate|weave|wolfictl|yam)-[0-9A-Za-z._-]+$"));
+  ((.headRefName // "") | test("^freshen/|^(chainctl|claude-themes-catppuccin|defold|handy|herdr-ctx-bar|herdr-disp-model|lan-mouse|manuscript|moltis|openusage|roamgate|silo-server|weave|wolfictl|yam)-[0-9A-Za-z._-]+$"));
 
 def is_trusted_peer($owner; $repo):
   (
@@ -210,7 +210,7 @@ def is_freshener($owner; $repo):
   (($owner | ascii_downcase) == "wimpysworld" and ($repo | ascii_downcase) == "nix-config")
   and (.author.login == "flexiondotorg")
   and has_freshener_labels
-  and ((.headRefName // "") | test("^(chainctl|claude-themes-catppuccin|defold|handy|lan-mouse|manuscript|moltis|openusage|weave|wolfictl|yam)-[0-9A-Za-z._-]+$"))
+  and ((.headRefName // "") | test("^(chainctl|claude-themes-catppuccin|defold|handy|lan-mouse|manuscript|moltis|openusage|silo-server|weave|wolfictl|yam)-[0-9A-Za-z._-]+$"))
   and (touches_sensitive_package($owner; $repo) | not)
   and (((.files // []) | length) > 0)
   and all(
