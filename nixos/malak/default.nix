@@ -18,7 +18,6 @@ in
 {
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-intel
-    inputs.nixos-hardware.nixosModules.common-gpu-intel
     inputs.nixos-hardware.nixosModules.common-pc
     inputs.nixos-hardware.nixosModules.common-pc-ssd
     ./disks.nix
@@ -59,6 +58,8 @@ in
       mdadmConf = "MAILADDR=${username}@wimpys.world";
     };
   };
+
+  hardware.intelgpu.computeRuntime = "legacy";
 
   services.privateMatrix.enable = true;
 
