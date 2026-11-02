@@ -970,7 +970,7 @@ class Gate1HookSerializationAndBindingTests(CompanionTestBase):
 
 
 class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
-    """Gate 2: chat.peek completion/abort reconciliation, 45s progress notices, and ✌🏻 gating."""
+    """Gate 2: chat.peek completion/abort reconciliation, 30s progress notices, and ✌🏻 gating."""
 
     def test_commentary_then_tool_progress_notices_and_normal_completion(self) -> None:
         store, resolver, _, _, engine = self.make_components(agent_name="skrye")
@@ -2531,6 +2531,19 @@ class Criterion6RoomEventsDurabilityAndNewIsolationTests(CompanionTestBase):
         self.assertLessEqual(len(pruned_state["runs"]), companion.COMPANION_STATE_ENTRY_CAP)
         self.assertIn("$prune_ev_109", pruned_state["assessed_events"])
         self.assertNotIn("$prune_ev_0", pruned_state["assessed_events"])
+
+        # Verify hard cap also evicts oldest un-cleaned runs when active runs exceed COMPANION_STATE_ENTRY_CAP.
+        for idx in range(110):
+            store.update_run_state(
+                "session:prune-active",
+                f"run-active-{idx}",
+                cleaned_up=False,
+                updated_at_ms=5000 + idx,
+            )
+        pruned_active = store.read_companion_state()
+        self.assertLessEqual(len(pruned_active["runs"]), companion.COMPANION_STATE_ENTRY_CAP)
+        self.assertIn("session:prune-active::run-active-109", pruned_active["runs"])
+        self.assertNotIn("session:prune-active::run-active-0", pruned_active["runs"])
 
 
 if __name__ == "__main__":
