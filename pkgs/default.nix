@@ -21,6 +21,7 @@ pkgs: {
   openusage = pkgs.callPackage ./openusage { };
   private-matrix-bootstrap = pkgs.callPackage ./private-matrix-bootstrap { };
   roamgate = pkgs.callPackage ./roamgate { };
+  silo-server = pkgs.callPackage ./silo-server { };
   tcount = pkgs.callPackage ./tcount { };
   vecdecor = pkgs.callPackage ./vecdecor { };
   weave = pkgs.callPackage ./weave { };
