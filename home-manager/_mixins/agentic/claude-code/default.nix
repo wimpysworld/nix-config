@@ -761,6 +761,7 @@ let
       ${fenceMemoryCap.setupShell}
 
       width="$(tput cols 2>/dev/null || true)"
+      cd -- "$fence_empty_cwd"
       case "$width" in
         "" | *[!0-9]*)
           if [[ -n "$tmp_mcp_config" ]]; then

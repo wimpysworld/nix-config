@@ -37,22 +37,30 @@ The Fence mixin owns the shared policy and runtime dependencies. Each fenced
 command is declared by the corresponding agent mixin so it appears only when
 the standard agent entry point is also installed.
 
-The wrappers use `fence -- direnv exec "$PWD" env <agent>` so project devShell
-tools are available and any following flags are passed to the agent rather than
-parsed as Fence flags. They also set `BASH_ENV` to load direnv for each
-non-interactive Bash command. This activates the environment for the command's
-working directory when an agent server starts elsewhere and later enters a
-project. Direnv runs inside Fence, so project-controlled `.envrc` files never
-execute outside the sandbox. `claude-fenced` runs Claude with
-`--dangerously-skip-permissions`. Fence supplies the remaining local accident
-guards for that entry point. `codex-fenced` runs Codex with
-`--dangerously-bypass-approvals-and-sandbox`, leaving Fence as the only sandbox
-and command filter for that entry point. This sandbox is still an accident
-guard, not hostile-agent containment. `opencode-fenced` runs the normal OpenCode
-TUI entry point with broad tool permission, while `webfetch` and `websearch`
-remain denied so web access uses the Exa MCP server. It loads the same
-configuration path as plain `opencode` while leaving Fence as the local accident
-guard. `pi-fenced` runs the standard `pi` wrapper under Fence.
+The wrappers capture the caller's canonical working directory in
+`FENCE_LAUNCH_PWD`, switch to an empty launch directory at
+`${XDG_STATE_HOME:-$HOME/.local/state}/fence/empty-cwd`, and run `fence -- ...
+fence-direnv-exec <agent>`. Inside the sandbox, `fence-direnv-exec` restores
+`FENCE_LAUNCH_PWD` before running `direnv exec "$PWD" env <agent>` so project
+devShell tools are available and any following flags are passed to the agent
+rather than parsed as Fence flags. Starting Fence from `empty-cwd` keeps
+Fence's mandatory workspace-scoped dangerous-file and directory denies
+(`.git/hooks`, `.git/config`, `.mcp.json`, `.vscode`, `.idea`) confined to that
+empty directory instead of the caller's launch tree. They also set `BASH_ENV`
+to load direnv for each non-interactive Bash command. This activates the
+environment for the command's working directory when an agent server starts
+elsewhere and later enters a project. Direnv runs inside Fence, so
+project-controlled `.envrc` files never execute outside the sandbox.
+`claude-fenced` runs Claude with `--dangerously-skip-permissions`. Fence
+supplies the remaining local accident guards for that entry point.
+`codex-fenced` runs Codex with `--dangerously-bypass-approvals-and-sandbox`,
+leaving Fence as the only sandbox and command filter for that entry point. This
+sandbox is still an accident guard, not hostile-agent containment.
+`opencode-fenced` runs the normal OpenCode TUI entry point with broad tool
+permission, while `webfetch` and `websearch` remain denied so web access uses
+the Exa MCP server. It loads the same configuration path as plain `opencode`
+while leaving Fence as the local accident guard. `pi-fenced` runs the standard
+`pi` wrapper under Fence.
 
 On Wayland, the fenced wrappers create a private per-launch runtime directory
 with a symlink to the host Wayland socket for clipboard access. They expose
@@ -127,44 +135,41 @@ development commands.
 Git commits and workflow edits are allowed. Fence has no approval or ask mode.
 Commands are allowed or denied.
 
-## Local Git configuration is read-only
+## Empty launch directory and Git push defaults
 
-Fence bind-mounts `<repo>/.git/config` and `<repo>/.git/hooks` read-only for the
-repository the agent launches in. Fence does this itself. It is not part of this
-policy, `filesystem.denyWrite` is empty, and Fence exposes no switch for it. The
-`allowGitConfig` option is unrelated: it controls read access to the user's own
-`~/.gitconfig`.
+When `fence` is invoked directly in a repository, it scopes mandatory
+dangerous-file and directory denies (`.git/config`, `.git/hooks`, `.mcp.json`,
+`.vscode`, `.idea`) to its initial working directory: Linux bind-mounts
+existing targets read-only and macOS Seatbelt emits recursive `deny file-write*`
+patterns under that launch directory. Because the fenced wrappers (`claude-fenced`,
+`codex-fenced`, `opencode-fenced`, `pi-fenced`, and `moltis-fenced`) change to
+`${XDG_STATE_HOME:-$HOME/.local/state}/fence/empty-cwd` before starting `fence`
+and restore `FENCE_LAUNCH_PWD` inside `fence-direnv-exec`, those workspace-scoped
+mandatory denies apply only to `empty-cwd`. That keeps `git clone`, `gh repo clone`,
+`git worktree add`, and `.mcp.json` creation working across writable workspaces on
+both Linux and macOS, while the command-level `git config` deny in `default.nix`
+continues to guard configuration writes.
 
-Confirm it with `findmnt`, from inside a fenced agent:
+When `fence` is run directly without the wrapper, `<repo>/.git/config` and
+`<repo>/.git/hooks` are bind-mounted read-only on Linux (and write-denied by
+Seatbelt on macOS) for the repository `fence` starts in. Confirm the Linux
+mounts with `findmnt`:
 
 ```console
 findmnt -rno TARGET,OPTIONS | grep '\.git'
 ```
 
-Every local Git configuration write therefore fails:
+Under a direct `fence` invocation on Linux, local Git configuration writes in
+the launch repository fail with `EBUSY` (`Device or resource busy`) because Git
+writes `config.lock` and renames it onto a mount point.
 
-```console
-$ git config --local fence.probe 1
-error: could not write config file .git/config: Device or resource busy
-```
-
-The error is `EBUSY`, not a permission error. Git writes `config.lock` and then
-renames it over `config`, and the kernel refuses a rename onto a mount point.
-`fence --expose-host-path-rw` does not help, because a read-write bind is still
-a mount point. The same applies to any tool that rewrites the file, so a fenced
-agent cannot repoint a remote, a credential helper, or `core.hooksPath` this
-way.
-
-What an agent loses is branch tracking. `git push -u origin <branch>` pushes the
-branch and then fails on the upstream write. Nothing else about pushing is
-affected: `git push` is not denied, and pushing as the user is intended.
-
-[`git.nix`](./git.nix) sets `push.default = current` for fenced agents so this
-costs nothing in practice. A bare `git push` sends the current branch to the
-branch of the same name on the remote and creates it when missing, without an
-upstream and without a local write. This matters because the base configuration
-uses `push.default = matching`, under which a bare push of a branch the remote
-does not have yet pushes nothing and still exits zero.
+[`git.nix`](./git.nix) sets `push.default = current` for fenced agents so
+pushing a branch does not depend on recording an upstream in `.git/config`. A
+bare `git push` sends the current branch to the branch of the same name on the
+remote and creates it when missing, without an upstream and without a local
+write. This matters because the base configuration uses `push.default =
+matching`, under which a bare push of a branch the remote does not have yet
+pushes nothing and still exits zero.
 
 Guidance for agent prompts:
 

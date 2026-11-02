@@ -183,6 +183,7 @@ let
       # Pass the bypass through as an env token so the launcher sees the real
       # first user argument and resumes the most recent session by default.
       ${fenceMemoryCap.setupShell}
+      cd -- "$fence_empty_cwd"
       "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_CODEX_BYPASS=1" ${lib.getExe' codexLauncherPackage "codex"} "$@"
     '';
   };

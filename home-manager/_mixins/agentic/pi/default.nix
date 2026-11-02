@@ -337,6 +337,7 @@ let
 
       export NOUGHTY_AGENT_LAUNCH_COMMAND="pi-fenced"
       ${fenceMemoryCap.setupShell}
+      cd -- "$fence_empty_cwd"
       "''${fence_launch[@]}" "''${fence_mount[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" ${lib.getExe' piWrapperPackage "pi"} "$@"
     '';
   };

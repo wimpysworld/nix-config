@@ -1967,8 +1967,9 @@ let
       # the local Gemini TTS shim in the same Fence sandbox and network
       # namespace before replacing the shell
       # with `moltis`, so the gateway stays the foreground daemon and satisfies
-      # the unit's `Type = "simple"` contract. The `fence_direnv` launcher is
-      # inert here: the unit runs at $HOME, away from any project `.envrc`.
+      # the unit's `Type = "simple"` contract. `fence-direnv-exec` restores the
+      # unit's launch directory ($HOME) after Fence starts in `$fence_empty_cwd`.
+      cd -- "$fence_empty_cwd"
       exec fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" ${lib.getExe moltisInFenceLauncher} "$@"
     '';
   };

@@ -1,13 +1,18 @@
-# Shared per-launch logging helper for the fenced agent wrappers.
+# Shared per-launch logging and working-directory helper for the fenced agent
+# wrappers.
 #
 # Sourced after `wayland-bridge.nix` so `fence_args` is already declared as a
 # bash array. The helper sets up a private log directory under
 # `${XDG_STATE_HOME:-$HOME/.local/state}/fence`, picks a per-launch filename
 # of the form `<agent>-<timestamp>-<pid>.log`, refreshes a
 # `<agent>-current.log` symlink, and appends `-m --fence-log-file <file>` to
-# `fence_args`. It also prepares the `direnv exec` prefix and a `BASH_ENV` hook
-# used to load the project devShell inside Fence. The agent name is taken from
-# the wrapper-local variable `fence_log_agent`; only literal
+# `fence_args`. It also prepares an empty launch working directory at
+# `${XDG_STATE_HOME:-$HOME/.local/state}/fence/empty-cwd` so Fence's mandatory
+# workspace-scoped dangerous-file and directory denies (`.git/hooks`,
+# `.git/config`, `.mcp.json`, `.vscode`, `.idea`) apply only to that empty
+# directory, then restores the caller's original working directory inside
+# `fence-direnv-exec` before running `direnv exec`. The agent name is taken
+# from the wrapper-local variable `fence_log_agent`; only literal
 # `claude|codex|moltis|opencode|pi` should be set.
 #
 # Permissions: the directory is created 0700; Fence opens the file 0600 via
@@ -42,6 +47,10 @@ let
       pkgs.direnv
     ];
     text = ''
+      if [[ -n "''${FENCE_LAUNCH_PWD:-}" ]]; then
+        cd -- "$FENCE_LAUNCH_PWD"
+        unset FENCE_LAUNCH_PWD
+      fi
       unset DIRENV_DIFF DIRENV_DIR DIRENV_FILE DIRENV_IN_ENVRC DIRENV_WATCHES
       exec direnv exec "$PWD" env "BASH_ENV=${fenceDirenvBashEnv}" "$@"
     '';
@@ -51,6 +60,7 @@ in
   runtimeInputs = [
     pkgs.coreutils
     pkgs.direnv
+    pkgs.findutils
   ];
 
   setupShell = ''
@@ -80,7 +90,55 @@ in
       fence_args+=(-m --fence-log-file "$fence_log_file")
     }
 
+    setup_fence_empty_cwd() {
+      local state_base_dir
+      local fence_state_dir
+      local current_uid
+      local owner_uid
+
+      fence_launch_pwd="$(pwd -P)"
+
+      state_base_dir="''${XDG_STATE_HOME:-$HOME/.local/state}"
+      install -d -m 0700 -- "$state_base_dir"
+      if [[ -L "$state_base_dir" || ! -d "$state_base_dir" ]]; then
+        echo "fence empty cwd: $state_base_dir must be a real directory" >&2
+        return 1
+      fi
+      state_base_dir="$(realpath -e -- "$state_base_dir")"
+
+      fence_state_dir="$state_base_dir/fence"
+      if [[ -L "$fence_state_dir" ]]; then
+        echo "fence empty cwd: $fence_state_dir must not be a symlink" >&2
+        return 1
+      fi
+      install -d -m 0700 -- "$fence_state_dir"
+
+      fence_empty_cwd="$fence_state_dir/empty-cwd"
+      if [[ -L "$fence_empty_cwd" ]]; then
+        echo "fence empty cwd: $fence_empty_cwd must not be a symlink" >&2
+        return 1
+      fi
+      if [[ -e "$fence_empty_cwd" && ! -d "$fence_empty_cwd" ]]; then
+        echo "fence empty cwd: $fence_empty_cwd must be a directory" >&2
+        return 1
+      fi
+      install -d -m 0700 -- "$fence_empty_cwd"
+
+      current_uid="$(id -u)"
+      owner_uid="$(stat -c %u -- "$fence_empty_cwd" 2>/dev/null || stat -f %u -- "$fence_empty_cwd")"
+      if [[ "$owner_uid" != "$current_uid" ]]; then
+        echo "fence empty cwd: $fence_empty_cwd is not owned by the current user" >&2
+        return 1
+      fi
+
+      chmod 0700 -- "$fence_empty_cwd"
+      find "$fence_empty_cwd" -mindepth 1 -delete
+
+      fence_env+=("FENCE_LAUNCH_PWD=$fence_launch_pwd")
+    }
+
     setup_fence_logging
+    setup_fence_empty_cwd
 
     fence_direnv=(
       ${pkgs.lib.getExe fenceDirenvLauncher}
