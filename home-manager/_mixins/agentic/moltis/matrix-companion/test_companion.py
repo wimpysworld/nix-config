@@ -2168,7 +2168,7 @@ class Criterion6RoomEventsDurabilityAndNewIsolationTests(CompanionTestBase):
         )
         prompt = hook_res["data"]["messages"][0]["content"]
         ctx_body = prompt.split("<room_context>\n", 1)[1].split("\n</room_context>", 1)[0]
-        self.assertLessEqual(len(ctx_body), 6200)
+        self.assertLessEqual(len(ctx_body), 6000)
         self.assertIn("earlier unmentioned room message(s) omitted since session start", ctx_body)
         self.assertIn("MSG_10_", ctx_body)
         self.assertNotIn("MSG_1_", ctx_body)

@@ -1587,10 +1587,9 @@ let
         candidates = eligible_unmentioned[-MAX_UNMENTIONED_MESSAGES:]
         dropped_by_msg_cap = total_eligible - len(candidates)
 
-        formatted_reversed = []
+        formatted_entries = []
         used_chars = 0
         dropped_by_char_cap = 0
-        included_event_ids = set()
 
         for ev in reversed(candidates):
             ts_ms = safe_int(ev.get("origin_server_ts"), 0)
@@ -1607,47 +1606,54 @@ let
             )
             rxn_suffix = f" {reactions_by_event_id[ev_id]}" if ev_id in reactions_by_event_id else ""
             line = f"- [{ts_str}] {sender}: {body_json}{rxn_suffix}"
-            line_cost = len(line) + (1 if formatted_reversed else 0)
+            line_cost = len(line) + (1 if formatted_entries else 0)
             if used_chars + line_cost > MAX_UNMENTIONED_CHARS:
                 dropped_by_char_cap += 1
                 continue
-            formatted_reversed.append(line)
+            formatted_entries.append((ev_id, line))
             used_chars += line_cost
-            if ev_id:
-                included_event_ids.add(ev_id)
 
-        formatted_lines = list(reversed(formatted_reversed))
+        formatted_entries.reverse()
         omitted_total = evicted_count + dropped_by_msg_cap + dropped_by_char_cap
 
-        output_lines = []
-        if omitted_total > 0:
-            output_lines.append(
-                f"- ({omitted_total} earlier unmentioned room message(s) omitted since session start)"
-            )
-        if formatted_lines:
-            output_lines.extend(formatted_lines)
-        else:
-            output_lines.append("- (No unmentioned room messages since session start.)")
+        def render_context_block(entries: list[tuple[str, str]], omitted: int) -> str:
+            included_ids = {ev_id for ev_id, _ in entries if ev_id}
+            standalone_reactions = []
+            for ev_id, ev, summary in latest_reaction_targets:
+                if ev_id in included_ids:
+                    continue
+                sender = str(ev.get("sender") or "unknown")
+                snippet = str(ev.get("body") or "").strip()
+                if len(snippet) > 120:
+                    snippet = snippet[:117] + "..."
+                snippet_json = json.dumps(snippet, ensure_ascii=False).replace(
+                    "</room_context>", "<\\/room_context>"
+                )
+                standalone_reactions.append(f"- {ev_id} ({sender}: {snippet_json}) {summary}")
 
-        standalone_reactions = []
-        for ev_id, ev, summary in latest_reaction_targets:
-            if ev_id in included_event_ids:
-                continue
-            sender = str(ev.get("sender") or "unknown")
-            snippet = str(ev.get("body") or "").strip()
-            if len(snippet) > 120:
-                snippet = snippet[:117] + "..."
-            snippet_json = json.dumps(snippet, ensure_ascii=False).replace(
-                "</room_context>", "<\\/room_context>"
-            )
-            standalone_reactions.append(f"- {ev_id} ({sender}: {snippet_json}) {summary}")
+            out = []
+            if omitted > 0:
+                out.append(
+                    f"- ({omitted} earlier unmentioned room message(s) omitted since session start)"
+                )
+            if entries:
+                out.extend(line for _, line in entries)
+            else:
+                out.append("- (No unmentioned room messages since session start.)")
+            if standalone_reactions:
+                out.append("Recent message reactions:")
+                out.extend(standalone_reactions)
+            return "\n".join(out)
 
-        if standalone_reactions:
-            output_lines.append("Recent message reactions:")
-            output_lines.extend(standalone_reactions)
+        context_text = render_context_block(formatted_entries, omitted_total)
+        while formatted_entries and len(context_text) > MAX_UNMENTIONED_CHARS:
+            formatted_entries.pop(0)
+            dropped_by_char_cap += 1
+            omitted_total = evicted_count + dropped_by_msg_cap + dropped_by_char_cap
+            context_text = render_context_block(formatted_entries, omitted_total)
 
         bot_turns = compute_bot_turns_since_martin(recent_events, history_records, cutoff_ms)
-        return "\n".join(output_lines), bot_turns
+        return context_text, bot_turns
 
 
     def build_council_section(
