@@ -155,6 +155,8 @@ lib.mkIf (noughtyLib.hostHasTag "silo") {
           SELECT 1
           FROM public.server_settings
           WHERE key IN (
+            'ai.providers',
+            'recommendations.enabled',
             'recommendations.embedding_provider_id',
             'ai.text_provider_id',
             'ai.speech_provider_id'
@@ -169,8 +171,7 @@ lib.mkIf (noughtyLib.hostHasTag "silo") {
             ('recommendations.enabled', 'true')
           ON CONFLICT (key) DO UPDATE
             SET value = EXCLUDED.value
-            WHERE public.server_settings.key = 'ai.providers'
-               OR length(public.server_settings.value) = 0;
+            WHERE length(public.server_settings.value) = 0;
         END IF;
       END
       $$;
