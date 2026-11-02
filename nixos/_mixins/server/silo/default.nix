@@ -6,12 +6,31 @@
   ...
 }:
 let
+  hasInference = noughtyLib.hostHasTag "inference";
+  psql = "${config.services.postgresql.package}/bin/psql";
   siloStateDir = "/var/lib/silo";
   # Port 8080 is used by llama-swap on inference hosts (including revan), so
   # bind Silo's web UI and API to 8090, matching upstream's default host port.
   siloPort = 8090;
   siloJellyfinPort = 8096;
   siloAudiobookshelfPort = 13378;
+  llamaSwapProviderId = "custom-llama-swap";
+  llamaSwapEmbeddingModel = "qwen3-embedding-0.6b";
+  llamaSwapProvidersJson = builtins.toJSON {
+    version = 2;
+    providers = [
+      {
+        id = llamaSwapProviderId;
+        type = "custom";
+        name = "llama-swap";
+        base_url = "http://127.0.0.1:8080/v1";
+        capabilities = [
+          "chat"
+          "embeddings"
+        ];
+      }
+    ];
+  };
 in
 lib.mkIf (noughtyLib.hostHasTag "silo") {
   assertions = [
@@ -89,11 +108,13 @@ lib.mkIf (noughtyLib.hostHasTag "silo") {
       "postgresql-setup.service"
       "sops-nix.service"
       "srv-pool.mount"
-    ];
+    ]
+    ++ lib.optional hasInference "llama-swap.service";
     wants = [
       "network-online.target"
       "sops-nix.service"
-    ];
+    ]
+    ++ lib.optional hasInference "llama-swap.service";
     requires = [
       "postgresql.service"
       "postgresql-setup.service"
@@ -122,6 +143,38 @@ lib.mkIf (noughtyLib.hostHasTag "silo") {
     preStart = ''
       install -d -m 0750 /tmp/silo-transcode /tmp/silo-download-artifacts
       install -d -m 0700 /tmp/silo-ebook-epub
+    ''
+    + lib.optionalString hasInference ''
+      if [ "$(${psql} -h /run/postgresql -d silo --no-psqlrc -tAc "SELECT to_regclass('public.server_settings') IS NOT NULL;")" != "t" ]; then
+        ${lib.getExe pkgs.silo-server} --migrate-only
+      fi
+      ${psql} -h /run/postgresql -d silo --no-psqlrc -v ON_ERROR_STOP=1 <<'SQL'
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM public.server_settings
+          WHERE key IN (
+            'recommendations.embedding_provider_id',
+            'ai.text_provider_id',
+            'ai.speech_provider_id'
+          )
+            AND length(value) > 0
+        ) THEN
+          INSERT INTO public.server_settings (key, value)
+          VALUES
+            ('ai.providers', '${llamaSwapProvidersJson}'),
+            ('recommendations.embedding_provider_id', '${llamaSwapProviderId}'),
+            ('recommendations.embedding_model', '${llamaSwapEmbeddingModel}'),
+            ('recommendations.enabled', 'true')
+          ON CONFLICT (key) DO UPDATE
+            SET value = EXCLUDED.value
+            WHERE public.server_settings.key = 'ai.providers'
+               OR length(public.server_settings.value) = 0;
+        END IF;
+      END
+      $$;
+      SQL
     '';
 
     serviceConfig = {
