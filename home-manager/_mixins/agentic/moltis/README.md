@@ -116,11 +116,11 @@ Turn status uses an Option 1A writer split across `active-turn.json` and `compan
 - `🔧` - other tool calls (`BeforeToolCall`).
 - `✌🏻` - turn completion, posted after `chat.peek` reports `active = false` and `history.jsonl` plus the room timeline confirm a single final reply within the 5-second reconciliation window.
 
-While `chat.peek` reports `active = true`, the companion posts an `m.notice` progress message after 45 seconds and edits it in place every 45 seconds. All progress notices strip `@...:matrix.wimpys.world` strings so they never wake peers. When the turn finishes or is superseded, the companion redacts the active phase reaction and any progress notice.
+While `chat.peek` reports `active = true`, the companion posts an `m.notice` progress message after 30 seconds and edits it in place every 30 seconds. Each notice shows the elapsed time (in seconds below one minute, then minutes and seconds) and the iteration count, without phase text or `@...:matrix.wimpys.world` mentions. When the turn finishes or is superseded, the companion redacts the active phase reaction and any progress notice.
 
 Only `skrye`'s companion runs the moderator wake-up coordinator for untagged `m.text` room messages. It tracks expected assessors (`BOT_IDS` minus the sender) over a 15-second deadline:
 
-- Early resolution: when at least one expected assessor reacts with `✋🏻` and all expected assessors have reacted, or when the 15-second deadline expires with a `✋🏻`, `skrye` posts a `🔔 Moderator wake-up` `m.notice` that mentions `@traya:matrix.wimpys.world`.
+- Early resolution: when at least one expected assessor reacts with `✋🏻` and all expected assessors have reacted, or when the 15-second deadline expires with a `✋🏻`, `skrye` posts a `🛎️ Inviting @traya:matrix.wimpys.world to the floor` `m.notice` that names the peers with raised hands and omits raw event IDs.
 - Silent closure: when all expected assessors return `👌🏻` or `👍🏻` with zero `✋🏻`, the target closes silently without waiting 15 seconds. A late `✋🏻` reopens the target.
 - Moderator fallback: if `@martin:matrix.wimpys.world` posts an untagged message and `@traya:matrix.wimpys.world` has not reacted when the 15-second deadline expires, `skrye` wakes `@traya:matrix.wimpys.world`.
 - Suppression and caps: any newer allowlisted `m.text` message suppresses pending wake-ups for older targets. Wake-ups cap at 3 per `@martin:matrix.wimpys.world` root message and 9 bot turns since `@martin:matrix.wimpys.world`'s last message.
