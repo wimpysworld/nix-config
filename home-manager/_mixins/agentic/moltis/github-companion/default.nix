@@ -39,6 +39,10 @@
   roomId ? "!the-cauldron:matrix.wimpys.world",
   homeserverUrl ? "https://matrix.wimpys.world",
   passwordPath,
+  telegramBotTokenPath ? "",
+  telegramAllowedUsersPath ? "",
+  telegramApiBaseUrl ? "https://api.telegram.org",
+  telegramApiUrl ? telegramApiBaseUrl,
   dataDir,
   stateDir,
   rpcUrl ? "https://127.0.0.1:13131/api/rpc",
@@ -65,6 +69,10 @@ pkgs.writeShellApplication {
       roomId
       homeserverUrl
       passwordPath
+      telegramBotTokenPath
+      telegramAllowedUsersPath
+      telegramApiBaseUrl
+      telegramApiUrl
       dataDir
       stateDir
       rpcUrl
@@ -82,6 +90,9 @@ pkgs.writeShellApplication {
     export MOLTIS_GITHUB_COMPANION_MATRIX_ROOM_ID=${lib.escapeShellArg roomId}
     export MOLTIS_GITHUB_COMPANION_MATRIX_HOMESERVER_URL=${lib.escapeShellArg homeserverUrl}
     export MOLTIS_GITHUB_COMPANION_MATRIX_PASSWORD_PATH=${lib.escapeShellArg passwordPath}
+    export MOLTIS_GITHUB_COMPANION_TELEGRAM_BOT_TOKEN_PATH=${lib.escapeShellArg telegramBotTokenPath}
+    export MOLTIS_GITHUB_COMPANION_TELEGRAM_ALLOWED_USERS_PATH=${lib.escapeShellArg telegramAllowedUsersPath}
+    export MOLTIS_GITHUB_COMPANION_TELEGRAM_API_URL=${lib.escapeShellArg telegramApiUrl}
     export MOLTIS_GITHUB_COMPANION_DATA_DIR=${lib.escapeShellArg dataDir}
     export MOLTIS_GITHUB_COMPANION_STATE_DIR=${lib.escapeShellArg stateDir}
     export MOLTIS_GITHUB_COMPANION_RPC_URL=${lib.escapeShellArg rpcUrl}

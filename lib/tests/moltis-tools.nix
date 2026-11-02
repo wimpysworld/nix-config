@@ -94,6 +94,8 @@ let
         agentName = "skrye";
         mainModel = "gemini::gemini-4-argon";
         passwordPath = "/synthetic/matrix-password";
+        telegramBotTokenPath = "/synthetic/telegram-bot-token";
+        telegramAllowedUsersPath = "/synthetic/telegram-allowed-users";
         dataDir = "/synthetic/moltis";
         stateDir = "/synthetic/github-state";
       };
@@ -334,6 +336,15 @@ let
       scripts.githubCompanion;
     assert lib.hasInfix
       "export MOLTIS_GITHUB_COMPANION_MATRIX_PASSWORD_PATH=${lib.escapeShellArg c.sops.secrets.MATRIX_PASSWORD.path}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_TELEGRAM_BOT_TOKEN_PATH=${lib.escapeShellArg c.sops.secrets.TELEGRAM_BOT_TOKEN.path}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_TELEGRAM_ALLOWED_USERS_PATH=${lib.escapeShellArg c.sops.secrets.TELEGRAM_ALLOWED_USERS.path}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_TELEGRAM_API_URL=${lib.escapeShellArg "https://api.telegram.org"}"
       scripts.githubCompanion;
     assert lib.hasInfix
       "export MOLTIS_GITHUB_COMPANION_DATA_DIR=${lib.escapeShellArg "${c.home.homeDirectory}/.moltis"}"

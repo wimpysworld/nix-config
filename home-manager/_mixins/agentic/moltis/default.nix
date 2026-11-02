@@ -842,6 +842,8 @@ let
     roomId = matrixCfg.roomId or "!the-cauldron:matrix.wimpys.world";
     homeserverUrl = "https://matrix.wimpys.world";
     passwordPath = config.sops.secrets.MATRIX_PASSWORD.path;
+    telegramBotTokenPath = config.sops.secrets.TELEGRAM_BOT_TOKEN.path;
+    telegramAllowedUsersPath = config.sops.secrets.TELEGRAM_ALLOWED_USERS.path;
     dataDir = "${homeDir}/.moltis";
     stateDir = "${stateDir}/github-companion-${agentName}";
     rpcUrl = "https://127.0.0.1:13131/api/rpc";

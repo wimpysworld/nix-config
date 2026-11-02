@@ -29,6 +29,7 @@ SERVER_DOMAIN = "matrix.wimpys.world"
 DEFAULT_ROOM_ID = f"!the-cauldron:{SERVER_DOMAIN}"
 DEFAULT_HOMESERVER_URL = f"https://{SERVER_DOMAIN}"
 DEFAULT_RPC_URL = "https://127.0.0.1:13131/api/rpc"
+DEFAULT_TELEGRAM_API_URL = "https://api.telegram.org"
 
 MARTIN_ID = f"@martin:{SERVER_DOMAIN}"
 SKRYE_ID = f"@skrye:{SERVER_DOMAIN}"
@@ -73,8 +74,11 @@ JITTER_MIN_MS = JITTER_MIN_SECS * 1000
 JITTER_MAX_MS = JITTER_MAX_SECS * 1000
 
 RECONCILE_SWEEP_INTERVAL_MS = 30 * 60 * 1000
-DEFAULT_COMPLETION_TIMEOUT_MS = 10_000
-DEFAULT_RECOVERY_DEADLINE_MS = 10_000
+DEFAULT_RPC_TIMEOUT_SECS = 3600.0
+DEFAULT_COMPLETION_WAIT_TIMEOUT_SECS = 3600.0
+DEFAULT_RECOVERY_WAIT_TIMEOUT_SECS = 3600.0
+DEFAULT_COMPLETION_TIMEOUT_MS = 3_600_000
+DEFAULT_RECOVERY_DEADLINE_MS = 3_600_000
 DEFAULT_COMPLETION_POLL_INTERVAL_MS = 250
 
 ALLOWED_NOTIFICATION_OWNERS = frozenset(
@@ -633,6 +637,63 @@ def extract_text_content(value: object) -> str:
     return ""
 
 
+def is_heartbeat_ok_reply(text: str | None) -> bool:
+    """Return True when text is empty or consists solely of HEARTBEAT_OK tokens."""
+    if not isinstance(text, str):
+        return True
+    stripped = text.strip()
+    if not stripped:
+        return True
+    tokens = [tok.strip("`").strip() for tok in stripped.split() if tok.strip("`").strip()]
+    if not tokens:
+        return True
+    return all(tok == "HEARTBEAT_OK" for tok in tokens)
+
+
+def extract_rpc_reply_text(rpc_response: object) -> str:
+    """Extract assistant reply text from a chat.send_sync RPC response envelope."""
+    if not isinstance(rpc_response, dict):
+        return ""
+    if rpc_response.get("error") is not None or rpc_response.get("ok") is False:
+        return ""
+    for container in (
+        rpc_response.get("result"),
+        rpc_response.get("payload"),
+        rpc_response,
+    ):
+        txt = extract_text_content(container).strip()
+        if txt:
+            return txt
+    return ""
+
+
+def extract_terminal_reply_text(
+    rpc_response: object = None,
+    assistant_record: dict | None = None,
+) -> str:
+    """Extract terminal assistant reply text from history.jsonl assistant record or chat.send_sync response."""
+    history_text = ""
+    if isinstance(assistant_record, dict):
+        raw_content = (
+            assistant_record.get("content")
+            if "content" in assistant_record
+            else assistant_record
+        )
+        history_text = extract_text_content(raw_content).strip()
+
+    rpc_text = extract_rpc_reply_text(rpc_response)
+
+    if history_text and is_heartbeat_ok_reply(history_text):
+        return "HEARTBEAT_OK"
+    if rpc_text and is_heartbeat_ok_reply(rpc_text):
+        return "HEARTBEAT_OK"
+    if history_text and history_text.lower() != "done":
+        return history_text
+    if rpc_text:
+        return rpc_text
+    return history_text
+
+
 def parse_chat_peek_active(rpc_response: object) -> bool | None:
     """Extract boolean active flag from a chat.peek RPC response, or None if unavailable."""
     if not isinstance(rpc_response, dict):
@@ -775,6 +836,35 @@ def read_credential(path: Path | str | None = None, env_var: str = "") -> str:
     if env_val and len(env_val) <= 16384 and "\x00" not in env_val:
         return env_val
     raise ValueError("Missing Matrix password credential")
+
+
+def read_telegram_bot_token(path: Path | str | None = None) -> str:
+    if path is not None and str(path).strip():
+        target = Path(str(path).strip())
+        if target.is_file():
+            raw = target.read_text(encoding="utf-8", errors="replace").strip()
+            if raw and len(raw) <= 16384 and "\x00" not in raw:
+                return raw.splitlines()[0].strip()
+    env_val = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+    if env_val and len(env_val) <= 16384 and "\x00" not in env_val:
+        return env_val.splitlines()[0].strip()
+    raise ValueError("Missing Telegram bot token")
+
+
+def read_telegram_allowed_chat_id(path: Path | str | None = None) -> str:
+    raw = ""
+    if path is not None and str(path).strip():
+        target = Path(str(path).strip())
+        if target.is_file():
+            raw = target.read_text(encoding="utf-8", errors="replace").strip()
+    if not raw:
+        raw = os.environ.get("TELEGRAM_ALLOWED_USERS", "").strip()
+    if raw and len(raw) <= 16384 and "\x00" not in raw:
+        for candidate in re.split(r"[\s,]+", raw):
+            cleaned = candidate.strip()
+            if cleaned:
+                return cleaned
+    raise ValueError("Missing Telegram allowed chat ID")
 
 
 def atomic_write_json_in_dir(dir_fd: int, filename: str, data: object) -> None:
@@ -1063,6 +1153,46 @@ def build_revision_token(updated_at: str | None, comment_id: int | str | None) -
     clean_updated = (updated_at or "").strip()
     clean_comment = str(comment_id).strip() if comment_id is not None and str(comment_id).strip() else "0"
     return f"{clean_updated}::{clean_comment}"
+
+
+def parse_revision_token(revision: str | None) -> tuple[str, int]:
+    if not isinstance(revision, str) or not revision.strip():
+        return "", 0
+    if "::" in revision:
+        u_part, c_part = revision.rsplit("::", 1)
+        return u_part.strip(), _safe_int(c_part, 0)
+    return revision.strip(), 0
+
+
+def _is_item_newer_than_handled(
+    item_updated_at: str | None,
+    item_id: int | str | None,
+    handled_updated_at: str | None,
+    handled_comment_id: int | None,
+) -> bool:
+    h_u = (handled_updated_at or "").strip()
+    h_cid = _safe_int(handled_comment_id, 0) if handled_comment_id is not None else 0
+    if not h_u and h_cid <= 0:
+        return True
+
+    cand_u = (item_updated_at or "").strip()
+    cand_cid = _safe_int(item_id, 0) if item_id is not None else 0
+
+    if cand_u and h_u:
+        _, cand_ms = normalize_ts(cand_u)
+        _, h_ms = normalize_ts(h_u)
+        if cand_ms > 0 and h_ms > 0:
+            if cand_ms > h_ms:
+                return True
+            if cand_ms < h_ms:
+                return False
+        elif cand_u != h_u:
+            return cand_u > h_u
+
+    if h_cid > 0 and cand_cid > 0:
+        return cand_cid > h_cid
+
+    return False
 
 
 def is_newer_revision(
@@ -1594,9 +1724,15 @@ class CompanionStateStore:
 
             seen_rev = entry.get("seen_revision")
             pending_rev = entry.get("pending_followup_revision")
-            if entry.get("pending_followup") or (isinstance(seen_rev, str) and seen_rev != finished_rev):
+            has_newer_unhandled = (
+                (isinstance(pending_rev, str) and bool(pending_rev) and pending_rev != finished_rev)
+                or (isinstance(seen_rev, str) and bool(seen_rev) and seen_rev != finished_rev)
+            )
+            if has_newer_unhandled:
                 entry["pending_followup"] = True
-                entry["pending_followup_revision"] = pending_rev or seen_rev
+                entry["pending_followup_revision"] = (
+                    pending_rev if (isinstance(pending_rev, str) and pending_rev != finished_rev) else seen_rev
+                )
                 entry["dismiss_ready"] = False
             else:
                 entry["pending_followup"] = False
@@ -1947,13 +2083,71 @@ class MatrixClient:
         )
 
 
+class TelegramClient:
+    """Telegram Bot API HTTP client for forwarding non-HEARTBEAT_OK terminal assistant replies."""
+
+    def __init__(
+        self,
+        bot_token_path: Path | str | None = None,
+        allowed_users_path: Path | str | None = None,
+        api_url: str = DEFAULT_TELEGRAM_API_URL,
+        timeout: float = 20.0,
+    ):
+        self.bot_token_path = bot_token_path
+        self.allowed_users_path = allowed_users_path
+        self.api_url = (api_url or DEFAULT_TELEGRAM_API_URL).strip().rstrip("/")
+        _validate_http_url(self.api_url)
+        self.timeout = timeout
+
+    def send_message(self, text: str) -> dict:
+        clean_text = (text or "").strip()
+        if not clean_text or is_heartbeat_ok_reply(clean_text):
+            return {"ok": True, "skipped": True}
+        bot_cred = read_telegram_bot_token(self.bot_token_path)
+        chat_id = read_telegram_allowed_chat_id(self.allowed_users_path)
+        url = f"{self.api_url}/bot{bot_cred}/sendMessage"
+        payload = {
+            "chat_id": chat_id,
+            "text": clean_text,
+        }
+        status, raw = _http_json_request(
+            url=url,
+            method="POST",
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            raw_body=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            timeout=self.timeout,
+            allow_loopback_self_signed=False,
+        )
+        if status >= 400:
+            raise RuntimeError(f"Telegram sendMessage HTTP {status}")
+        if not raw.strip():
+            return {"ok": True}
+        try:
+            data = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, ValueError) as exc:
+            raise ValueError("Invalid JSON in Telegram API response") from exc
+        if isinstance(data, dict) and data.get("ok") is False:
+            desc = str(data.get("description") or f"Telegram API error {data.get('error_code') or ''}").strip()
+            raise RuntimeError(desc or "Telegram sendMessage returned ok=false")
+        return data if isinstance(data, dict) else {"ok": True}
+
+
 class MoltisRpcClient:
     """Loopback JSON-RPC client for Moltis POST /api/rpc (chat.send_sync and chat.peek)."""
 
-    def __init__(self, rpc_url: str = DEFAULT_RPC_URL, timeout: float = 30.0):
+    def __init__(
+        self,
+        rpc_url: str = DEFAULT_RPC_URL,
+        timeout: float = DEFAULT_RPC_TIMEOUT_SECS,
+        send_sync_timeout: float = DEFAULT_RPC_TIMEOUT_SECS,
+    ):
         self.rpc_url = rpc_url
         _validate_http_url(self.rpc_url)
         self.timeout = timeout
+        self.send_sync_timeout = send_sync_timeout
 
     def call(self, method: str, params: dict, timeout: float | None = None) -> dict:
         req_id = f"rpc-{uuid.uuid4().hex}"
@@ -1992,7 +2186,7 @@ class MoltisRpcClient:
         session_key: str = DEFAULT_GH_SESSION_KEY,
         ephemeral: bool = False,
         active_tools: list[str] | None = None,
-        timeout: float = 120.0,
+        timeout: float | None = None,
     ) -> dict:
         params: dict[str, object] = {
             "model": model,
@@ -2002,7 +2196,8 @@ class MoltisRpcClient:
         }
         if active_tools is not None:
             params["active_tools"] = list(active_tools)
-        return self.call("chat.send_sync", params, timeout=timeout)
+        effective_timeout = self.send_sync_timeout if timeout is None else timeout
+        return self.call("chat.send_sync", params, timeout=effective_timeout)
 
 
 class GhApiSafeClient:
@@ -2182,7 +2377,16 @@ class TrustFilterAndSnapshotBuilder:
         self.matrix_client = matrix_client
         self.agent_name = normalize_agent_name(agent_name or state_store.agent_name)
         self.agent_github_login = GITHUB_AGENT_LOGINS[self.agent_name]
+        self.self_github_login = self.agent_github_login
         self.clock = clock
+
+    def _is_self_actor(self, actor_norm: str) -> bool:
+        if not actor_norm:
+            return False
+        return (
+            actor_norm == self.self_github_login
+            or LOGIN_TO_AGENT_NAME.get(actor_norm) == self.agent_name
+        )
 
     def _extract_item_actor(self, item: dict) -> str:
         if not isinstance(item, dict):
@@ -2314,6 +2518,9 @@ class TrustFilterAndSnapshotBuilder:
         notification: dict,
         bundle: dict,
         now_override_ms: int | None = None,
+        handled_revision: str | None = None,
+        handled_updated_at: str | None = None,
+        handled_comment_id: int | None = None,
     ) -> dict:
         """Filter a fetched thread bundle, persist a 0600 snapshot when a verified trusted trigger exists, and return evaluation details."""
         stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
@@ -2325,6 +2532,39 @@ class TrustFilterAndSnapshotBuilder:
         revision = str(
             notification.get("revision")
             or build_revision_token(notification.get("updated_at"), notification.get("comment_id"))
+        )
+
+        eff_handled_rev = (
+            handled_revision
+            if handled_revision is not None
+            else notification.get("handled_revision")
+        )
+        if (
+            eff_handled_rev is None
+            and handled_updated_at is None
+            and handled_comment_id is None
+            and thread_id
+        ):
+            wm = self.state_store.get_thread_watermark(thread_id)
+            if isinstance(wm, dict) and wm.get("handled_revision"):
+                eff_handled_rev = str(wm.get("handled_revision"))
+        parsed_hu, parsed_hcid = parse_revision_token(
+            str(eff_handled_rev) if eff_handled_rev is not None else None
+        )
+        eff_handled_u = (
+            str(handled_updated_at).strip()
+            if handled_updated_at is not None
+            else str(notification.get("handled_updated_at") or parsed_hu).strip()
+        )
+        eff_handled_cid = (
+            _safe_int(handled_comment_id, 0)
+            if handled_comment_id is not None
+            else _safe_int(notification.get("handled_comment_id"), parsed_hcid)
+        )
+        has_handled_watermark = bool(
+            (isinstance(eff_handled_rev, str) and eff_handled_rev.strip())
+            or eff_handled_u
+            or eff_handled_cid > 0
         )
 
         is_pr = subject_type.lower() in ("pullrequest", "pull_request", "pr")
@@ -2339,6 +2579,20 @@ class TrustFilterAndSnapshotBuilder:
         root_actor_norm = normalize_github_actor(root_actor)
         root_trusted = is_trusted_github_actor(root_actor_norm)
         root_instruction_trusted = is_trusted_instruction_actor(root_actor_norm)
+        root_is_self = self._is_self_actor(root_actor_norm)
+        root_updated_at = str(
+            root_obj.get("updated_at")
+            or root_obj.get("created_at")
+            or issue_obj.get("updated_at")
+            or issue_obj.get("created_at")
+            or ""
+        )
+        root_newer_than_handled = (not has_handled_watermark) or _is_item_newer_than_handled(
+            root_updated_at,
+            0,
+            eff_handled_u,
+            eff_handled_cid,
+        )
 
         raw_root_title = str(
             root_obj.get("title")
@@ -2355,6 +2609,10 @@ class TrustFilterAndSnapshotBuilder:
         trusted_reviews: list[dict] = []
         trusted_review_comments: list[dict] = []
         untrusted_issue_data: dict | None = None
+        has_newer_non_self_pr_activity = False
+        has_newer_ignored_activity = False
+        ignored_comment_ids: set[int] = set()
+        accepted_trigger_comment_ids: set[int] = set()
 
         if root_obj or issue_obj or raw_root_title or raw_root_body:
             if not root_trusted:
@@ -2397,11 +2655,16 @@ class TrustFilterAndSnapshotBuilder:
                     security_events_out=security_events,
                     notices_out=notices,
                 )
-                if root_instruction_trusted and not coercive:
+                if root_instruction_trusted and not coercive and not root_is_self and root_newer_than_handled:
                     mentioned_in_root = extract_mentioned_github_agents(
-                        f"{ stripped_root_title }\n{ stripped_root_body }"
+                        f"{stripped_root_title}\n{stripped_root_body}"
                     )
-                    if is_pr or self.agent_name in mentioned_in_root or not mentioned_in_root:
+                    root_mention_match = (
+                        (self.agent_name in mentioned_in_root or not mentioned_in_root)
+                        if is_pr
+                        else (self.agent_name in mentioned_in_root)
+                    )
+                    if root_mention_match:
                         trusted_requests.append(
                             {
                                 "source": "pull_request" if is_pr else "issue",
@@ -2423,8 +2686,15 @@ class TrustFilterAndSnapshotBuilder:
             c_actor = self._extract_item_actor(comment)
             c_actor_norm = normalize_github_actor(c_actor)
             c_id = comment.get("id") or f"issue-comment-{idx}"
+            c_id_int = _safe_int(comment.get("id"), 0)
+            c_ts_raw = str(comment.get("updated_at") or comment.get("created_at") or "")
+            c_newer = _is_item_newer_than_handled(c_ts_raw, comment.get("id"), eff_handled_u, eff_handled_cid)
             raw_body = str(comment.get("body") or "")
             if not is_trusted_github_actor(c_actor_norm):
+                if c_id_int > 0:
+                    ignored_comment_ids.add(c_id_int)
+                if has_handled_watermark and c_newer:
+                    has_newer_ignored_activity = True
                 res = self._record_security_event_and_alert(
                     repo=repo,
                     subject_type=subject_type,
@@ -2455,6 +2725,10 @@ class TrustFilterAndSnapshotBuilder:
                 notices_out=notices,
             )
             if coercive:
+                if c_id_int > 0:
+                    ignored_comment_ids.add(c_id_int)
+                if has_handled_watermark and c_newer:
+                    has_newer_ignored_activity = True
                 continue
 
             clean_body = strip_html_comments(raw_body).strip()
@@ -2471,9 +2745,27 @@ class TrustFilterAndSnapshotBuilder:
             }
             trusted_comments.append(sanitised_comment)
 
-            if is_trusted_instruction_actor(c_actor_norm) and (
-                self.agent_name in mentioned_agents or not mentioned_agents
-            ):
+            c_is_self = self._is_self_actor(c_actor_norm)
+            if c_is_self:
+                if c_id_int > 0:
+                    ignored_comment_ids.add(c_id_int)
+                if has_handled_watermark and c_newer:
+                    has_newer_ignored_activity = True
+                continue
+
+            c_mention_match = (
+                (self.agent_name in mentioned_agents or not mentioned_agents)
+                if is_pr
+                else (self.agent_name in mentioned_agents)
+            )
+            if c_newer and is_pr and c_mention_match:
+                has_newer_non_self_pr_activity = True
+                if c_id_int > 0:
+                    accepted_trigger_comment_ids.add(c_id_int)
+
+            if is_trusted_instruction_actor(c_actor_norm) and c_newer and c_mention_match:
+                if c_id_int > 0:
+                    accepted_trigger_comment_ids.add(c_id_int)
                 trusted_requests.append(
                     {
                         "source": "issue_comment",
@@ -2495,8 +2787,15 @@ class TrustFilterAndSnapshotBuilder:
             r_actor = self._extract_item_actor(review)
             r_actor_norm = normalize_github_actor(r_actor)
             r_id = review.get("id") or f"review-{idx}"
+            r_id_int = _safe_int(review.get("id"), 0)
+            r_ts_raw = str(review.get("submitted_at") or "")
+            r_newer = _is_item_newer_than_handled(r_ts_raw, review.get("id"), eff_handled_u, eff_handled_cid)
             raw_body = str(review.get("body") or "")
             if not is_trusted_github_actor(r_actor_norm):
+                if r_id_int > 0:
+                    ignored_comment_ids.add(r_id_int)
+                if has_handled_watermark and r_newer:
+                    has_newer_ignored_activity = True
                 res = self._record_security_event_and_alert(
                     repo=repo,
                     subject_type=subject_type,
@@ -2527,6 +2826,10 @@ class TrustFilterAndSnapshotBuilder:
                 notices_out=notices,
             )
             if coercive:
+                if r_id_int > 0:
+                    ignored_comment_ids.add(r_id_int)
+                if has_handled_watermark and r_newer:
+                    has_newer_ignored_activity = True
                 continue
 
             clean_body = strip_html_comments(raw_body).strip()
@@ -2544,10 +2847,25 @@ class TrustFilterAndSnapshotBuilder:
             }
             trusted_reviews.append(sanitised_review)
 
+            r_is_self = self._is_self_actor(r_actor_norm)
+            if r_is_self:
+                if r_id_int > 0:
+                    ignored_comment_ids.add(r_id_int)
+                if has_handled_watermark and r_newer:
+                    has_newer_ignored_activity = True
+                continue
+
+            r_mention_match = self.agent_name in mentioned_agents or not mentioned_agents
+            if r_newer and r_mention_match:
+                has_newer_non_self_pr_activity = True
+                if r_id_int > 0:
+                    accepted_trigger_comment_ids.add(r_id_int)
+
             if (
                 is_trusted_instruction_actor(r_actor_norm)
                 and clean_body
-                and (self.agent_name in mentioned_agents or not mentioned_agents)
+                and r_newer
+                and r_mention_match
             ):
                 trusted_requests.append(
                     {
@@ -2571,8 +2889,15 @@ class TrustFilterAndSnapshotBuilder:
             rc_actor = self._extract_item_actor(rc)
             rc_actor_norm = normalize_github_actor(rc_actor)
             rc_id = rc.get("id") or f"review-comment-{idx}"
+            rc_id_int = _safe_int(rc.get("id"), 0)
+            rc_ts_raw = str(rc.get("updated_at") or rc.get("created_at") or "")
+            rc_newer = _is_item_newer_than_handled(rc_ts_raw, rc.get("id"), eff_handled_u, eff_handled_cid)
             raw_body = str(rc.get("body") or "")
             if not is_trusted_github_actor(rc_actor_norm):
+                if rc_id_int > 0:
+                    ignored_comment_ids.add(rc_id_int)
+                if has_handled_watermark and rc_newer:
+                    has_newer_ignored_activity = True
                 res = self._record_security_event_and_alert(
                     repo=repo,
                     subject_type=subject_type,
@@ -2603,6 +2928,10 @@ class TrustFilterAndSnapshotBuilder:
                 notices_out=notices,
             )
             if coercive:
+                if rc_id_int > 0:
+                    ignored_comment_ids.add(rc_id_int)
+                if has_handled_watermark and rc_newer:
+                    has_newer_ignored_activity = True
                 continue
 
             clean_body = strip_html_comments(raw_body).strip()
@@ -2623,10 +2952,25 @@ class TrustFilterAndSnapshotBuilder:
             }
             trusted_review_comments.append(sanitised_rc)
 
+            rc_is_self = self._is_self_actor(rc_actor_norm)
+            if rc_is_self:
+                if rc_id_int > 0:
+                    ignored_comment_ids.add(rc_id_int)
+                if has_handled_watermark and rc_newer:
+                    has_newer_ignored_activity = True
+                continue
+
+            rc_mention_match = self.agent_name in mentioned_agents or not mentioned_agents
+            if rc_newer and rc_mention_match:
+                has_newer_non_self_pr_activity = True
+                if rc_id_int > 0:
+                    accepted_trigger_comment_ids.add(rc_id_int)
+
             if (
                 is_trusted_instruction_actor(rc_actor_norm)
                 and clean_body
-                and (self.agent_name in mentioned_agents or not mentioned_agents)
+                and rc_newer
+                and rc_mention_match
             ):
                 trusted_requests.append(
                     {
@@ -2644,6 +2988,22 @@ class TrustFilterAndSnapshotBuilder:
                     }
                 )
 
+        # Skip closed, merged, or draft pull requests before dispatching
+        if is_pr:
+            pr_state = str(pull_obj.get("state") or "").strip().lower()
+            pr_is_draft = bool(pull_obj.get("draft", False))
+            pr_is_merged = bool(pull_obj.get("merged", False)) or bool(pull_obj.get("merged_at"))
+            if pr_state != "open" or pr_is_draft or pr_is_merged:
+                return {
+                    "should_dispatch": False,
+                    "skip_reason": "closed_or_draft_pr",
+                    "snapshot_id": None,
+                    "snapshot_path": None,
+                    "snapshot": None,
+                    "security_events": security_events,
+                    "notices": notices,
+                }
+
         # Check trusted requested_reviewers on pull requests
         requested_reviewer_logins: list[str] = []
         if is_pr and isinstance(pull_obj.get("requested_reviewers"), list):
@@ -2652,42 +3012,60 @@ class TrustFilterAndSnapshotBuilder:
                 if rr_login:
                     requested_reviewer_logins.append(rr_login)
 
+        notif_comment_id = _safe_int(notification.get("comment_id"), 0)
+        notif_points_to_ignored_comment = (
+            notif_comment_id > 0
+            and notif_comment_id in ignored_comment_ids
+            and notif_comment_id not in accepted_trigger_comment_ids
+        )
+        already_at_handled_revision = bool(
+            has_handled_watermark
+            and isinstance(eff_handled_rev, str)
+            and eff_handled_rev.strip()
+            and revision == eff_handled_rev.strip()
+        )
+
         # Determine whether a verified trusted trigger exists for this notification
         has_verified_trusted_trigger = False
-        if is_pr:
-            if root_trusted:
-                if (
-                    bool(trusted_requests)
-                    or bool(trusted_comments)
-                    or bool(trusted_reviews)
-                    or bool(trusted_review_comments)
-                    or self.agent_github_login in requested_reviewer_logins
-                    or reason in ("review_requested", "mention", "author", "assign", "state_change", "subscribed")
-                ):
-                    has_verified_trusted_trigger = True
+        if not already_at_handled_revision and not notif_points_to_ignored_comment:
+            if is_pr:
+                if root_trusted:
+                    has_pr_root_trigger = (
+                        not root_is_self
+                        and not has_newer_ignored_activity
+                        and root_newer_than_handled
+                        and (
+                            self.agent_github_login in requested_reviewer_logins
+                            or reason
+                            in (
+                                "review_requested",
+                                "mention",
+                                "author",
+                                "assign",
+                                "state_change",
+                                "subscribed",
+                            )
+                        )
+                    )
+                    if bool(trusted_requests) or has_newer_non_self_pr_activity or has_pr_root_trigger:
+                        has_verified_trusted_trigger = True
+                else:
+                    # Untrusted PR author: only dispatch if a verified instruction actor explicitly mentioned this agent
+                    has_verified_trusted_trigger = any(
+                        self.agent_name in req.get("mentioned_agents", [])
+                        for req in trusted_requests
+                    )
             else:
-                # Untrusted PR author: only dispatch if a verified instruction actor explicitly mentioned this agent
+                # Issue thread: require an explicit mention of self.agent_name by a non-self trusted instruction actor
                 has_verified_trusted_trigger = any(
                     self.agent_name in req.get("mentioned_agents", [])
                     for req in trusted_requests
-                )
-        else:
-            if root_trusted:
-                has_verified_trusted_trigger = bool(trusted_requests)
-            else:
-                # External untrusted issue author: only dispatch when a trusted instruction actor mentions this agent
-                # (or issues a verified instruction comment on the thread).
-                trusted_comment_requests = [
-                    req for req in trusted_requests if req.get("source") != "issue"
-                ]
-                has_verified_trusted_trigger = any(
-                    self.agent_name in req.get("mentioned_agents", []) or not req.get("mentioned_agents")
-                    for req in trusted_comment_requests
                 )
 
         if not has_verified_trusted_trigger:
             return {
                 "should_dispatch": False,
+                "skip_reason": "no_verified_trusted_trigger",
                 "snapshot_id": None,
                 "snapshot_path": None,
                 "snapshot": None,
@@ -2698,11 +3076,11 @@ class TrustFilterAndSnapshotBuilder:
         # Select primary trusted_request summary alongside full verified items
         latest_trusted_req = trusted_requests[-1] if trusted_requests else None
         trusted_request_payload = {
-            "verified": True,
+            "verified": bool(latest_trusted_req is not None),
             "allowed_instruction_actors": sorted(TRUSTED_INSTRUCTION_ACTORS),
-            "primary_author": latest_trusted_req.get("author") if latest_trusted_req else (root_actor if root_trusted else ""),
-            "primary_source": latest_trusted_req.get("source") if latest_trusted_req else ("pull_request" if is_pr else "issue"),
-            "primary_text": latest_trusted_req.get("body") if latest_trusted_req else (stripped_root_body if root_trusted else ""),
+            "primary_author": str(latest_trusted_req.get("author") or "") if latest_trusted_req else "",
+            "primary_source": str(latest_trusted_req.get("source") or "") if latest_trusted_req else "",
+            "primary_text": str(latest_trusted_req.get("body") or "") if latest_trusted_req else "",
             "items": trusted_requests,
         }
 
@@ -2752,6 +3130,7 @@ class TrustFilterAndSnapshotBuilder:
 
         return {
             "should_dispatch": True,
+            "skip_reason": None,
             "snapshot_id": snapshot_id,
             "snapshot_path": snapshot_path,
             "snapshot": snapshot_payload,
@@ -2763,6 +3142,9 @@ class TrustFilterAndSnapshotBuilder:
         self,
         notification: dict,
         now_override_ms: int | None = None,
+        handled_revision: str | None = None,
+        handled_updated_at: str | None = None,
+        handled_comment_id: int | None = None,
     ) -> dict:
         """Fetch full thread items via gh-api-safe --paginate and run pre-dispatch trust filtering."""
         repo = str(notification.get("repo") or "").strip()
@@ -2771,6 +3153,7 @@ class TrustFilterAndSnapshotBuilder:
         if not repo or number <= 0:
             return {
                 "should_dispatch": False,
+                "skip_reason": "invalid_target",
                 "snapshot_id": None,
                 "snapshot_path": None,
                 "snapshot": None,
@@ -2786,6 +3169,9 @@ class TrustFilterAndSnapshotBuilder:
             notification=notification,
             bundle=bundle,
             now_override_ms=now_override_ms,
+            handled_revision=handled_revision,
+            handled_updated_at=handled_updated_at,
+            handled_comment_id=handled_comment_id,
         )
 
 
@@ -3517,12 +3903,19 @@ class LocalExecutionCoordinator:
         agent_display_name: str = "",
         main_model: str = "",
         matrix_client: MatrixClient | None = None,
+        telegram_client: TelegramClient | None = None,
+        telegram_bot_token_path: Path | str | None = None,
+        telegram_allowed_users_path: Path | str | None = None,
+        telegram_api_url: str = DEFAULT_TELEGRAM_API_URL,
         session_key: str = DEFAULT_GH_SESSION_KEY,
         room_id: str = DEFAULT_ROOM_ID,
         schedule_dow: int | None = None,
         schedule_day_name: str = "",
-        completion_timeout_ms: int = DEFAULT_COMPLETION_TIMEOUT_MS,
-        recovery_deadline_ms: int = DEFAULT_RECOVERY_DEADLINE_MS,
+        completion_timeout_ms: int | None = None,
+        recovery_deadline_ms: int | None = None,
+        completion_wait_timeout_secs: float | None = None,
+        recovery_wait_timeout_secs: float | None = None,
+        rpc_timeout_secs: float = DEFAULT_RPC_TIMEOUT_SECS,
         poll_interval_ms: int = DEFAULT_COMPLETION_POLL_INTERVAL_MS,
         clock: Callable[[], int] = now_ms,
         sleeper: Callable[[float], None] = time.sleep,
@@ -3534,13 +3927,40 @@ class LocalExecutionCoordinator:
         self.agent_display_name = derive_display_name(self.agent_name, agent_display_name)
         self.main_model = (main_model or "").strip()
         self.matrix_client = matrix_client
+        if telegram_client is not None:
+            self.telegram_client: TelegramClient | None = telegram_client
+        elif telegram_bot_token_path or telegram_allowed_users_path:
+            self.telegram_client = TelegramClient(
+                bot_token_path=telegram_bot_token_path,
+                allowed_users_path=telegram_allowed_users_path,
+                api_url=telegram_api_url,
+            )
+        else:
+            self.telegram_client = None
         self.session_key = (session_key or DEFAULT_GH_SESSION_KEY).strip()
         self.room_id = room_id
         default_dow, default_day_name = AGENT_DEFAULT_SCHEDULES[self.agent_name]
         self.schedule_dow = _safe_int(schedule_dow, default_dow) if schedule_dow is not None else default_dow
         self.schedule_day_name = (schedule_day_name or default_day_name).strip()
-        self.completion_timeout_ms = max(0, _safe_int(completion_timeout_ms, DEFAULT_COMPLETION_TIMEOUT_MS))
-        self.recovery_deadline_ms = max(0, _safe_int(recovery_deadline_ms, DEFAULT_RECOVERY_DEADLINE_MS))
+        if completion_timeout_ms is not None:
+            resolved_completion_ms = _safe_int(completion_timeout_ms, DEFAULT_COMPLETION_TIMEOUT_MS)
+        elif isinstance(completion_wait_timeout_secs, (int, float)):
+            resolved_completion_ms = _safe_int(completion_wait_timeout_secs * 1000, DEFAULT_COMPLETION_TIMEOUT_MS)
+        else:
+            resolved_completion_ms = DEFAULT_COMPLETION_TIMEOUT_MS
+        if recovery_deadline_ms is not None:
+            resolved_recovery_ms = _safe_int(recovery_deadline_ms, DEFAULT_RECOVERY_DEADLINE_MS)
+        elif isinstance(recovery_wait_timeout_secs, (int, float)):
+            resolved_recovery_ms = _safe_int(recovery_wait_timeout_secs * 1000, DEFAULT_RECOVERY_DEADLINE_MS)
+        else:
+            resolved_recovery_ms = DEFAULT_RECOVERY_DEADLINE_MS
+        self.completion_timeout_ms = max(0, resolved_completion_ms)
+        self.recovery_deadline_ms = max(0, resolved_recovery_ms)
+        self.rpc_timeout_secs = (
+            max(0.1, rpc_timeout_secs * 1.0)
+            if isinstance(rpc_timeout_secs, (int, float))
+            else DEFAULT_RPC_TIMEOUT_SECS
+        )
         self.poll_interval_ms = max(10, _safe_int(poll_interval_ms, DEFAULT_COMPLETION_POLL_INTERVAL_MS))
         self.clock = clock
         self.sleeper = sleeper
@@ -3584,6 +4004,21 @@ class LocalExecutionCoordinator:
         blocks = [header, "\n".join(meta_lines), mode_line]
         if extra_instructions.strip():
             blocks.append(extra_instructions.strip())
+
+        heartbeat_md = ""
+        heartbeat_path = self.data_dir / "HEARTBEAT.md"
+        if heartbeat_path.is_file():
+            with contextlib.suppress(OSError):
+                heartbeat_md = heartbeat_path.read_text(encoding="utf-8", errors="replace").strip()
+        if heartbeat_md:
+            blocks.append(
+                "Follow the `HEARTBEAT.md` procedure appended below for the active mode.\n\n"
+                + heartbeat_md
+            )
+        else:
+            blocks.append(
+                "Read and follow `~/.moltis/HEARTBEAT.md` for the active mode procedure."
+            )
         return "\n\n".join(blocks) + "\n"
 
     def _check_completion_once(
@@ -3636,6 +4071,27 @@ class LocalExecutionCoordinator:
             remaining_ms = max(1, deadline_ms - current_ms)
             sleep_ms = min(self.poll_interval_ms, remaining_ms)
             self.sleeper(sleep_ms / 1000.0)
+
+    _wait_for_turn_completion = _poll_until_completed
+
+    def _forward_terminal_reply_to_telegram(
+        self,
+        reply_text: str,
+    ) -> tuple[bool, str | None]:
+        clean_text = (reply_text or "").strip()
+        if not clean_text or is_heartbeat_ok_reply(clean_text):
+            return False, None
+        if self.telegram_client is None:
+            return False, None
+        try:
+            self.telegram_client.send_message(clean_text)
+            return True, None
+        except Exception as exc:
+            err_msg = str(exc)
+            sys.stderr.write(
+                f"moltis-github-companion telegram delivery warning ({self.agent_name}): {err_msg}\n"
+            )
+            return False, err_msg
 
     def _finalize_completed_dispatch(
         self,
@@ -3757,6 +4213,10 @@ class LocalExecutionCoordinator:
         check = self._poll_until_completed(session_key, dispatch_id, deadline_ms=deadline_ms)
 
         if check["completed"]:
+            reply_text = extract_terminal_reply_text(
+                assistant_record=check.get("assistant_record"),
+            )
+            telegram_forwarded, telegram_error = self._forward_terminal_reply_to_telegram(reply_text)
             fin = self._finalize_completed_dispatch(active, now_override_ms=self.clock())
             return {
                 "status": "recovered_completed",
@@ -3765,6 +4225,9 @@ class LocalExecutionCoordinator:
                 "session_key": session_key,
                 "kind": active.get("kind"),
                 "thread_id": active.get("thread_id"),
+                "reply_text": reply_text,
+                "telegram_forwarded": telegram_forwarded,
+                "telegram_error": telegram_error,
                 "queued_followup": fin["queued_followup"],
                 "watermark": fin["watermark"],
             }
@@ -3856,6 +4319,7 @@ class LocalExecutionCoordinator:
                     message=prompt_message,
                     session_key=resolved_session_key,
                     ephemeral=False,
+                    timeout=self.rpc_timeout_secs,
                 )
             except Exception as exc:
                 rpc_error = exc
@@ -3870,6 +4334,11 @@ class LocalExecutionCoordinator:
             )
 
             if check["completed"]:
+                reply_text = extract_terminal_reply_text(
+                    rpc_response=rpc_response,
+                    assistant_record=check.get("assistant_record"),
+                )
+                telegram_forwarded, telegram_error = self._forward_terminal_reply_to_telegram(reply_text)
                 fin = self._finalize_completed_dispatch(active_record, now_override_ms=self.clock())
                 return {
                     "status": "completed",
@@ -3879,6 +4348,9 @@ class LocalExecutionCoordinator:
                     "kind": kind,
                     "thread_id": thread_id,
                     "revision": revision,
+                    "reply_text": reply_text,
+                    "telegram_forwarded": telegram_forwarded,
+                    "telegram_error": telegram_error,
                     "rpc_response": rpc_response,
                     "rpc_error": str(rpc_error) if rpc_error is not None else None,
                     "queued_followup": fin["queued_followup"],
@@ -4001,23 +4473,36 @@ class GithubCompanionRunner:
 
         candidate_thread_ids: list[str] = list(poll_result.get("actionable_threads") or [])
         for tid, wm in wm_threads.items():
-            if isinstance(wm, dict) and wm.get("pending_followup") and tid not in candidate_thread_ids:
+            if not isinstance(wm, dict) or tid in candidate_thread_ids:
+                continue
+            if wm.get("pending_followup") or (
+                wm.get("seen_revision") is not None
+                and wm.get("seen_revision") != wm.get("handled_revision")
+            ):
                 candidate_thread_ids.append(tid)
 
         for tid in candidate_thread_ids:
-            notif = _as_dict(notif_threads.get(tid))
+            wm_entry = _as_dict(wm_threads.get(tid))
+            notif = dict(_as_dict(notif_threads.get(tid)) or wm_entry)
             if not notif:
                 continue
-            wm_entry = _as_dict(wm_threads.get(tid))
+            if wm_entry.get("updated_at"):
+                notif["updated_at"] = wm_entry["updated_at"]
+            if wm_entry.get("comment_id") is not None:
+                notif["comment_id"] = wm_entry["comment_id"]
             target_rev = str(
                 wm_entry.get("pending_followup_revision")
                 or wm_entry.get("seen_revision")
                 or notif.get("revision")
                 or ""
             )
+            if target_rev:
+                notif["revision"] = target_rev
+            prior_handled_rev = str(wm_entry.get("handled_revision") or "").strip() or None
             prep = self.trust_filter.fetch_and_prepare_notification(
                 notif,
                 now_override_ms=now_override_ms,
+                handled_revision=prior_handled_rev,
             )
             if not prep.get("should_dispatch") or not prep.get("snapshot_path"):
                 with contextlib.suppress(KeyError):
@@ -4048,18 +4533,27 @@ class GithubCompanionRunner:
 
             # If a newer revision arrived during the review turn, run the follow-up turn before dismissal.
             if disp.get("queued_followup"):
-                latest_notif = _as_dict(
-                    self.state_store.read_notifications_state().get("threads", {}).get(tid)
-                ) or notif
                 latest_wm = _as_dict(self.state_store.get_thread_watermark(tid))
+                latest_notif = dict(
+                    _as_dict(self.state_store.read_notifications_state().get("threads", {}).get(tid))
+                    or notif
+                )
                 followup_rev = str(
                     latest_wm.get("pending_followup_revision")
                     or latest_wm.get("seen_revision")
                     or ""
                 )
+                if latest_wm.get("updated_at"):
+                    latest_notif["updated_at"] = latest_wm["updated_at"]
+                if latest_wm.get("comment_id") is not None:
+                    latest_notif["comment_id"] = latest_wm["comment_id"]
+                if followup_rev:
+                    latest_notif["revision"] = followup_rev
+                followup_handled_rev = str(latest_wm.get("handled_revision") or "").strip() or None
                 followup_prep = self.trust_filter.fetch_and_prepare_notification(
                     latest_notif,
                     now_override_ms=now_override_ms,
+                    handled_revision=followup_handled_rev,
                 )
                 if followup_prep.get("should_dispatch") and followup_prep.get("snapshot_path"):
                     followup_disp = self.execution_coordinator.execute_dispatch(
@@ -4079,6 +4573,13 @@ class GithubCompanionRunner:
                             "security_reconcile": None,
                             "sweep_dispatch": None,
                         }
+                else:
+                    with contextlib.suppress(KeyError):
+                        self.state_store.complete_thread_review(
+                            tid,
+                            completed_revision=followup_rev,
+                            now_override_ms=now_override_ms,
+                        )
 
         security_reconcile: dict | None = None
         sweep_dispatch: dict | None = None
@@ -4167,6 +4668,21 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Path to Matrix password secret file",
     )
     parser.add_argument(
+        "--telegram-bot-token-path",
+        default=os.environ.get("MOLTIS_GITHUB_COMPANION_TELEGRAM_BOT_TOKEN_PATH", ""),
+        help="Path to Telegram bot token secret file",
+    )
+    parser.add_argument(
+        "--telegram-allowed-users-path",
+        default=os.environ.get("MOLTIS_GITHUB_COMPANION_TELEGRAM_ALLOWED_USERS_PATH", ""),
+        help="Path to Telegram allowed users secret file",
+    )
+    parser.add_argument(
+        "--telegram-api-url",
+        default=os.environ.get("MOLTIS_GITHUB_COMPANION_TELEGRAM_API_URL", DEFAULT_TELEGRAM_API_URL),
+        help="Telegram Bot API base URL",
+    )
+    parser.add_argument(
         "--data-dir",
         default=os.environ.get("MOLTIS_GITHUB_COMPANION_DATA_DIR")
         or os.environ.get("MOLTIS_COMPANION_DATA_DIR")
@@ -4242,6 +4758,19 @@ def resolve_runtime_config(args: argparse.Namespace) -> dict:
     room_id = (args.room_id or DEFAULT_ROOM_ID).strip()
     homeserver_url = (args.homeserver_url or DEFAULT_HOMESERVER_URL).strip()
     password_path = (args.password_path or "").strip() or None
+    telegram_bot_token_path = (
+        getattr(args, "telegram_bot_token_path", "")
+        or os.environ.get("MOLTIS_GITHUB_COMPANION_TELEGRAM_BOT_TOKEN_PATH", "")
+    ).strip() or None
+    telegram_allowed_users_path = (
+        getattr(args, "telegram_allowed_users_path", "")
+        or os.environ.get("MOLTIS_GITHUB_COMPANION_TELEGRAM_ALLOWED_USERS_PATH", "")
+    ).strip() or None
+    telegram_api_url = (
+        getattr(args, "telegram_api_url", "")
+        or os.environ.get("MOLTIS_GITHUB_COMPANION_TELEGRAM_API_URL", "")
+        or DEFAULT_TELEGRAM_API_URL
+    ).strip()
     data_dir = Path(args.data_dir).expanduser()
     state_dir_raw = (args.state_dir or "").strip()
     if state_dir_raw:
@@ -4263,6 +4792,9 @@ def resolve_runtime_config(args: argparse.Namespace) -> dict:
         "room_id": room_id,
         "homeserver_url": homeserver_url,
         "password_path": password_path,
+        "telegram_bot_token_path": telegram_bot_token_path,
+        "telegram_allowed_users_path": telegram_allowed_users_path,
+        "telegram_api_url": telegram_api_url,
         "data_dir": data_dir,
         "state_dir": state_dir,
         "rpc_url": rpc_url,
@@ -4297,6 +4829,21 @@ def main(argv: list[str] | None = None) -> int:
         if has_matrix_creds
         else None
     )
+    has_telegram_creds = bool(
+        cfg["telegram_bot_token_path"]
+        or cfg["telegram_allowed_users_path"]
+        or os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+        or os.environ.get("TELEGRAM_ALLOWED_USERS", "").strip()
+    )
+    telegram_client = (
+        TelegramClient(
+            bot_token_path=cfg["telegram_bot_token_path"],
+            allowed_users_path=cfg["telegram_allowed_users_path"],
+            api_url=cfg["telegram_api_url"],
+        )
+        if has_telegram_creds
+        else None
+    )
     rpc_client = MoltisRpcClient(rpc_url=cfg["rpc_url"])
     poller = NotificationPoller(
         state_store=store,
@@ -4323,6 +4870,7 @@ def main(argv: list[str] | None = None) -> int:
         agent_display_name=cfg["agent_display_name"],
         main_model=cfg["main_model"],
         matrix_client=matrix_client,
+        telegram_client=telegram_client,
         room_id=cfg["room_id"],
         schedule_dow=cfg["schedule_dow"],
         schedule_day_name=cfg["schedule_day_name"],
