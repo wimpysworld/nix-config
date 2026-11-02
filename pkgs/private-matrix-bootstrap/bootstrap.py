@@ -15,7 +15,6 @@ from pathlib import Path
 
 SERVER = "matrix.wimpys.world"
 USERS = ("martin", "skrye", "zannah", "traya")
-AGENTS = USERS[1:]
 CONDUIT_USER = "conduit"
 CONDUIT_DISPLAY_NAME = "Holocron"
 DISPLAY_NAMES = {
@@ -67,10 +66,6 @@ class APIError(Stop):
 
 def user_id(name):
     return f"@{name}:{SERVER}"
-
-
-def dm_room_id(agent):
-    return f"!dm-martin-{agent}:{SERVER}"
 
 
 def quoted(value):
@@ -180,13 +175,16 @@ def powers():
     }
 
 
-def base_room_body(room_id, preset="private_chat"):
+def room_body():
     return {
         "visibility": "private",
-        "preset": preset,
+        "room_alias_name": "the-cauldron",
+        "name": ROOM_NAME,
+        "topic": ROOM_TOPIC,
+        "preset": "private_chat",
         # Tuwunel's supported custom ID removes any cross-host provisioning handoff.
         "room_version": "11",
-        "room_id": room_id,
+        "room_id": "the-cauldron",
         "creation_content": {"m.federate": False},
         "power_level_content_override": powers(),
         "initial_state": [
@@ -206,23 +204,6 @@ def base_room_body(room_id, preset="private_chat"):
                 "content": {"join_rule": "invite"},
             },
         ],
-    }
-
-
-def room_body():
-    return {
-        **base_room_body("the-cauldron"),
-        "name": ROOM_NAME,
-        "topic": ROOM_TOPIC,
-        "room_alias_name": "the-cauldron",
-    }
-
-
-def dm_room_body(agent):
-    return {
-        **base_room_body(f"dm-martin-{agent}", preset="trusted_private_chat"),
-        "invite": [user_id(agent)],
-        "is_direct": True,
     }
 
 
@@ -441,7 +422,7 @@ class Bootstrap:
             prefix, state, ADMIN_ROOM_NAME, ADMIN_ROOM_TOPIC, "admins"
         )
 
-    def check_private_room(self, room, state, participants, alias=None):
+    def check_private_room(self, room, state):
         def content(kind):
             return state.get(("m.room." + kind, ""), {}).get("content", {})
 
@@ -455,7 +436,7 @@ class Bootstrap:
             or type(create.get("m.federate")) is not bool
             or create["m.federate"]
             or content("power_levels") != powers()
-            or content("canonical_alias").get("alias") != alias
+            or content("canonical_alias").get("alias") != ALIAS
             or content("join_rules").get("join_rule") != "invite"
             or content("guest_access").get("guest_access") != "forbidden"
             or content("history_visibility").get("history_visibility") != "joined"
@@ -472,14 +453,14 @@ class Bootstrap:
             for (kind, key), event in state.items()
             if kind == "m.room.member"
         }
-        allowed = set(map(user_id, participants))
+        allowed = set(map(user_id, USERS))
         if members.get(user_id("martin")) != "join" or any(
             uid not in allowed and membership != "leave"
             for uid, membership in members.items()
         ):
             raise Stop("Unexpected Matrix room membership.")
         prefix = CLIENT + "/rooms/" + quoted(room)
-        for user in participants[1:]:
+        for user in USERS[1:]:
             membership = members.get(user_id(user))
             if membership == "join":
                 continue
@@ -504,96 +485,17 @@ class Bootstrap:
         prefix = CLIENT + "/rooms/" + quoted(room)
         events = self.call("GET", prefix + "/state")
         state = {(event["type"], event["state_key"]): event for event in events}
-        self.check_private_room(room, state, USERS, alias=ALIAS)
+        self.check_private_room(room, state)
         self.reconcile_room_metadata(
             prefix, state, ROOM_NAME, ROOM_TOPIC, "the-cauldron"
         )
         return room
 
-    def reconcile_direct_account_data(self, user, expected_peers):
-        path = f"{CLIENT}/user/{quoted(user_id(user))}/account_data/m.direct"
-        try:
-            direct = self.call("GET", path, user=user)
-        except APIError as error:
-            if error.code != "M_NOT_FOUND":
-                raise
-            direct = {}
-        if not isinstance(direct, dict):
-            raise Stop("Existing Matrix direct message account data is invalid.")
-        updated = {}
-        changed = False
-        for peer, rooms in direct.items():
-            if (
-                not isinstance(peer, str)
-                or not isinstance(rooms, list)
-                or not all(isinstance(item, str) for item in rooms)
-            ):
-                raise Stop("Existing Matrix direct message account data is invalid.")
-            updated[peer] = list(rooms)
-        for peer_id, dm_room in expected_peers.items():
-            rooms = updated.setdefault(peer_id, [])
-            if dm_room not in rooms:
-                rooms.append(dm_room)
-                changed = True
-        if changed:
-            self.call("PUT", path, updated, user=user)
-
-    def reconcile_dm_room_metadata(self, prefix, state):
-        def content(kind):
-            return state.get(("m.room." + kind, ""), {}).get("content", {})
-
-        if content("name").get("name"):
-            self.call("PUT", prefix + "/state/m.room.name/", {"name": ""})
-        topic = content("topic")
-        if topic.get("topic") or topic.get("m.topic"):
-            self.call("PUT", prefix + "/state/m.room.topic/", {"topic": ""})
-        if content("avatar").get("url"):
-            self.call("PUT", prefix + "/state/m.room.avatar/", {})
-
-    def create_dm_room(self, agent, room):
-        body = dm_room_body(agent)
-        try:
-            created = self.call("POST", CLIENT + "/createRoom", body).get("room_id")
-        except APIError as error:
-            if error.code != "M_ROOM_IN_USE":
-                raise
-            self.call(
-                "DELETE",
-                f"/_synapse/admin/v1/rooms/{quoted(room)}",
-                {"purge": True},
-            )
-            created = self.call("POST", CLIENT + "/createRoom", body).get("room_id")
-        if created != room:
-            raise Stop("Matrix returned an unexpected direct message room.") from None
-
-    def dm_rooms(self):
-        for agent in AGENTS:
-            room = dm_room_id(agent)
-            prefix = CLIENT + "/rooms/" + quoted(room)
-            try:
-                events = self.call("GET", prefix + "/state")
-            except APIError as error:
-                if error.code not in ("M_FORBIDDEN", "M_NOT_FOUND"):
-                    raise
-                self.create_dm_room(agent, room)
-                events = self.call("GET", prefix + "/state")
-            state = {(event["type"], event["state_key"]): event for event in events}
-            self.check_private_room(room, state, ("martin", agent))
-            self.reconcile_dm_room_metadata(prefix, state)
-            self.reconcile_direct_account_data(
-                agent, {user_id("martin"): room}
-            )
-        self.reconcile_direct_account_data(
-            "martin", {user_id(agent): dm_room_id(agent) for agent in AGENTS}
-        )
-
     def run(self):
         try:
             self.accounts()
             self.admin_room()
-            room = self.room()
-            self.dm_rooms()
-            return room
+            return self.room()
         finally:
             for user in self.tokens:
                 try:

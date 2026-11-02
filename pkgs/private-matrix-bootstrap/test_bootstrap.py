@@ -41,7 +41,6 @@ class FakeAPI:
                 "admin": True,
             }
         }
-        self.account_data = {}
         self.rooms = {
             ADMIN_ROOM: {
                 ("m.room.create", ""): {
@@ -176,15 +175,6 @@ class FakeAPI:
                 if "avatar_url" not in self.users[token]:
                     return {}
                 return {"avatar_url": self.users[token]["avatar_url"]}
-        if path.startswith("/_synapse/admin/v1/rooms/"):
-            assert method == "DELETE"
-            assert token == b.USERS[0]
-            assert body == {"purge": True}
-            room_id = urllib.parse.unquote(
-                path.removeprefix("/_synapse/admin/v1/rooms/")
-            )
-            del self.rooms[room_id]
-            return {}
         if path.startswith("/_synapse/admin/v1/users/"):
             assert token == b.USERS[0]
             target = urllib.parse.unquote(path.split("/")[-2]).split(":")[0][1:]
@@ -199,21 +189,6 @@ class FakeAPI:
             if "avatar_url" in body:
                 self.users[target]["avatar_url"] = body["avatar_url"]
             return {"name": b.user_id(target)}
-        if path.startswith(b.CLIENT + "/user/") and path.endswith(
-            "/account_data/m.direct"
-        ):
-            target = (
-                urllib.parse.unquote(path.removeprefix(b.CLIENT + "/user/").split("/")[0])
-                .split(":")[0][1:]
-            )
-            assert target == token
-            if method == "GET":
-                if target not in self.account_data:
-                    raise b.APIError(404, "M_NOT_FOUND")
-                return copy.deepcopy(self.account_data[target])
-            assert method == "PUT"
-            self.account_data[target] = copy.deepcopy(body)
-            return {}
         if path == b.CLIENT + "/logout":
             return {}
         if path.startswith(b.CLIENT + "/directory/room/"):
@@ -237,30 +212,12 @@ class FakeAPI:
                         **body["creation_content"],
                         "room_version": body["room_version"],
                     },
+                    ("m.room.name", ""): {"name": body["name"]},
+                    ("m.room.topic", ""): {"topic": body["topic"]},
                     ("m.room.power_levels", ""): body["power_level_content_override"],
-                    ("m.room.member", b.user_id("martin")): {
-                        "membership": "join",
-                        **(
-                            {"is_direct": True}
-                            if body.get("is_direct")
-                            else {}
-                        ),
-                    },
+                    ("m.room.member", b.user_id("martin")): {"membership": "join"},
                 }
             )
-            if "name" in body:
-                events[("m.room.name", "")] = {"name": body["name"]}
-            if "topic" in body:
-                events[("m.room.topic", "")] = {"topic": body["topic"]}
-            for invitee in body.get("invite", []):
-                events[("m.room.member", invitee)] = {
-                    "membership": "invite",
-                    **(
-                        {"is_direct": True}
-                        if body.get("is_direct")
-                        else {}
-                    ),
-                }
             if "room_alias_name" in body:
                 alias = f"#{body['room_alias_name']}:{b.SERVER}"
                 assert alias not in self.aliases
@@ -338,7 +295,7 @@ class BootstrapTests(unittest.TestCase):
         return [
             (method, path)
             for method, path, _ in self.api.calls
-            if method in ("DELETE", "POST", "PUT")
+            if method in ("POST", "PUT")
             and path not in (b.CLIENT + "/login", b.CLIENT + "/logout")
         ]
 
@@ -395,32 +352,6 @@ class BootstrapTests(unittest.TestCase):
             self.media_bytes(self.api.events[("m.room.avatar", "")]["url"]),
             self.avatars["the-cauldron"],
         )
-        for agent in b.AGENTS:
-            dm_room = b.dm_room_id(agent)
-            dm_events = self.api.rooms[dm_room]
-            self.assertNotIn(("m.room.name", ""), dm_events)
-            self.assertNotIn(("m.room.topic", ""), dm_events)
-            self.assertNotIn(("m.room.avatar", ""), dm_events)
-            self.assertEqual(
-                dm_events[("m.room.member", b.user_id("martin"))],
-                {"membership": "join", "is_direct": True},
-            )
-            self.assertEqual(
-                dm_events[("m.room.member", b.user_id(agent))]["membership"],
-                "join",
-            )
-            self.assertNotIn(
-                ("POST", f"{b.CLIENT}/rooms/{b.quoted(dm_room)}/invite"),
-                self.writes(),
-            )
-            self.assertEqual(
-                self.api.account_data[agent],
-                {b.user_id("martin"): [dm_room]},
-            )
-        self.assertEqual(
-            self.api.account_data["martin"],
-            {b.user_id(agent): [b.dm_room_id(agent)] for agent in b.AGENTS},
-        )
         self.api.calls.clear()
         self.assertEqual(self.run_bootstrap(), b.ROOM)
         self.assertEqual(self.writes(), [])
@@ -437,17 +368,6 @@ class BootstrapTests(unittest.TestCase):
         del self.api.rooms[ADMIN_ROOM][("m.room.topic", "")]
         self.api.events[("m.room.name", "")] = {"name": "the-cauldron"}
         del self.api.events[("m.room.topic", "")]
-        dm_skrye = b.dm_room_id("skrye")
-        self.api.rooms[dm_skrye][("m.room.name", "")] = {"name": "Skrye"}
-        self.api.rooms[dm_skrye][("m.room.topic", "")] = {
-            "topic": "Legacy direct channel topic",
-            "m.topic": {"m.text": [{"body": "Legacy direct channel topic"}]},
-        }
-        self.api.rooms[dm_skrye][("m.room.avatar", "")] = {
-            "url": f"mxc://{b.SERVER}/legacy-dm-avatar"
-        }
-        self.api.account_data["martin"][b.user_id("skrye")] = ["!legacy:matrix.wimpys.world"]
-        del self.api.account_data["skrye"]
         self.api.calls.clear()
         self.assertEqual(self.run_bootstrap(), b.ROOM)
         for user in b.USERS:
@@ -475,26 +395,6 @@ class BootstrapTests(unittest.TestCase):
             {"topic": b.ROOM_TOPIC},
         )
         self.assertEqual(
-            self.api.rooms[dm_skrye][("m.room.name", "")],
-            {"name": ""},
-        )
-        self.assertEqual(
-            self.api.rooms[dm_skrye][("m.room.topic", "")],
-            {"topic": ""},
-        )
-        self.assertEqual(
-            self.api.rooms[dm_skrye][("m.room.avatar", "")],
-            {},
-        )
-        self.assertEqual(
-            self.api.account_data["martin"][b.user_id("skrye")],
-            ["!legacy:matrix.wimpys.world", dm_skrye],
-        )
-        self.assertEqual(
-            self.api.account_data["skrye"],
-            {b.user_id("martin"): [dm_skrye]},
-        )
-        self.assertEqual(
             self.writes(),
             [
                 *(
@@ -509,17 +409,6 @@ class BootstrapTests(unittest.TestCase):
                 ("PUT", f"{b.CLIENT}/rooms/{b.quoted(ADMIN_ROOM)}/state/m.room.topic/"),
                 ("PUT", f"{b.CLIENT}/rooms/{b.quoted(b.ROOM)}/state/m.room.name/"),
                 ("PUT", f"{b.CLIENT}/rooms/{b.quoted(b.ROOM)}/state/m.room.topic/"),
-                ("PUT", f"{b.CLIENT}/rooms/{b.quoted(dm_skrye)}/state/m.room.name/"),
-                ("PUT", f"{b.CLIENT}/rooms/{b.quoted(dm_skrye)}/state/m.room.topic/"),
-                ("PUT", f"{b.CLIENT}/rooms/{b.quoted(dm_skrye)}/state/m.room.avatar/"),
-                (
-                    "PUT",
-                    f"{b.CLIENT}/user/{b.quoted(b.user_id('skrye'))}/account_data/m.direct",
-                ),
-                (
-                    "PUT",
-                    f"{b.CLIENT}/user/{b.quoted(b.user_id('martin'))}/account_data/m.direct",
-                ),
             ],
         )
         self.api.calls.clear()
@@ -583,16 +472,7 @@ class BootstrapTests(unittest.TestCase):
                         len([body for body in posts if body["username"] == "martin"]), 1
                     )
                 else:
-                    self.assertEqual(
-                        len(
-                            [
-                                body
-                                for body in posts
-                                if body["room_id"] == "the-cauldron"
-                            ]
-                        ),
-                        1,
-                    )
+                    self.assertEqual(len(posts), 1)
 
     def test_existing_password_is_not_reset(self):
         self.run_bootstrap()
@@ -636,40 +516,6 @@ class BootstrapTests(unittest.TestCase):
         with self.assertRaises(b.Stop):
             self.run_bootstrap()
         self.assertEqual(self.writes(), [])
-
-    def test_abandoned_dm_room_is_purged_and_recreated(self):
-        self.run_bootstrap()
-        dm_skrye = b.dm_room_id("skrye")
-        self.api.rooms[dm_skrye][("m.room.member", b.user_id("martin"))] = {
-            "membership": "leave"
-        }
-        self.assertEqual(
-            self.api.rooms[dm_skrye][("m.room.member", b.user_id("skrye"))][
-                "membership"
-            ],
-            "join",
-        )
-        self.api.calls.clear()
-        self.assertEqual(self.run_bootstrap(), b.ROOM)
-        self.assertEqual(
-            self.writes(),
-            [
-                ("POST", b.CLIENT + "/createRoom"),
-                ("DELETE", f"/_synapse/admin/v1/rooms/{b.quoted(dm_skrye)}"),
-                ("POST", b.CLIENT + "/createRoom"),
-                ("POST", f"{b.CLIENT}/rooms/{b.quoted(dm_skrye)}/join"),
-            ],
-        )
-        self.assertEqual(
-            self.api.rooms[dm_skrye][("m.room.member", b.user_id("martin"))],
-            {"membership": "join", "is_direct": True},
-        )
-        self.assertEqual(
-            self.api.rooms[dm_skrye][("m.room.member", b.user_id("skrye"))][
-                "membership"
-            ],
-            "join",
-        )
 
 
 if __name__ == "__main__":
