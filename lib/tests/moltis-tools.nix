@@ -26,6 +26,8 @@ let
             package:
             if (package.name or "") == "moltis-in-fence" then
               "MOLTIS_TEST_INNER_START${package.text}MOLTIS_TEST_INNER_END"
+            else if (package.name or "") == "moltis-matrix-companion" then
+              "MOLTIS_TEST_COMPANION_START${package.text}MOLTIS_TEST_COMPANION_END${lib.getExe package}"
             else
               lib.getExe package;
         };
@@ -34,10 +36,15 @@ let
         package: package.name == "moltis-fenced"
       ) (throw "Missing Moltis launcher") module.config.content.home.packages;
       parts = lib.splitString "MOLTIS_TEST_INNER_START" outer.text;
+      rawInner = builtins.head (lib.splitString "MOLTIS_TEST_INNER_END" (builtins.elemAt parts 1));
+      companionParts = lib.splitString "MOLTIS_TEST_COMPANION_START" rawInner;
+      companionTail = lib.splitString "MOLTIS_TEST_COMPANION_END" (builtins.elemAt companionParts 1);
     in
+    assert builtins.length companionParts == 2;
     {
       outer = builtins.head parts;
-      inner = builtins.head (lib.splitString "MOLTIS_TEST_INNER_END" (builtins.elemAt parts 1));
+      inner = "${builtins.head companionParts}${builtins.elemAt companionTail 1}";
+      companion = builtins.head companionTail;
     };
   launcherFixtures = map (
     host:
@@ -66,6 +73,13 @@ let
   };
   cloudflareWrapper = pkgs.callPackage ../../home-manager/_mixins/agentic/mcp/cloudflare-api {
     apiTokenPath = "/synthetic/cloudflare-token";
+  };
+  companionWrapper = pkgs.callPackage ../../home-manager/_mixins/agentic/moltis/matrix-companion {
+    agentName = "skrye";
+    mainModel = "gemini::gemini-4-argon";
+    passwordPath = "/synthetic/matrix-password";
+    dataDir = "/synthetic/moltis";
+    stateDir = "/synthetic/state";
   };
   checkRestartInputs =
     host:
@@ -161,6 +175,9 @@ let
       body = builtins.readFile root.source;
       darwin = context.platform == "darwin";
       gemini = context.provider == "gemini";
+      agentName = if host == "momin" then "traya" else host;
+      expectedMainModel =
+        if host == "momin" then "openai-codex::gpt-6-astra" else "gemini::gemini-4-argon";
       settings = c.agentic.moltis.settings;
       cli = builtins.fromJSON (
         builtins.unsafeDiscardStringContext c.xdg.configFile."moltis/mcporter.json".text
@@ -241,8 +258,37 @@ let
           "MOLTIS_LINEAR_CLIENT_ID"
           "MOLTIS_LINEAR_CLIENT_SECRET"
           "CLOUDFLARE_API_TOKEN"
+          "MATRIX_PASSWORD"
         ]
       );
+    assert context.mainModel == expectedMainModel;
+    assert c.agentic.moltis.matrix.enable;
+    assert lib.hasInfix "/bin/moltis-matrix-companion &" scripts.inner;
+    assert lib.hasInfix "/bin/moltis-matrix-companion &\nchildren+=(\"$!\")" scripts.inner == darwin;
+    assert lib.hasInfix "/bin/moltis-matrix-companion &\n\nexec " scripts.inner == !darwin;
+    assert lib.hasInfix "export MOLTIS_COMPANION_AGENT_NAME=${lib.escapeShellArg agentName}"
+      scripts.companion;
+    assert lib.hasInfix "export MOLTIS_COMPANION_MAIN_MODEL=${lib.escapeShellArg expectedMainModel}"
+      scripts.companion;
+    assert lib.hasInfix
+      "export MOLTIS_COMPANION_SELF_USER_ID=${lib.escapeShellArg "@${agentName}:matrix.wimpys.world"}"
+      scripts.companion;
+    assert lib.hasInfix
+      "export MOLTIS_COMPANION_ROOM_ID=${lib.escapeShellArg c.agentic.moltis.matrix.roomId}"
+      scripts.companion;
+    assert lib.hasInfix
+      "export MOLTIS_COMPANION_PASSWORD_PATH=${lib.escapeShellArg c.sops.secrets.MATRIX_PASSWORD.path}"
+      scripts.companion;
+    assert lib.hasInfix
+      "export MOLTIS_COMPANION_DATA_DIR=${lib.escapeShellArg "${c.home.homeDirectory}/.moltis"}"
+      scripts.companion;
+    assert lib.hasInfix
+      "export MOLTIS_COMPANION_STATE_DIR=${lib.escapeShellArg "${c.xdg.stateHome}/moltis/matrix-companion-${agentName}"}"
+      scripts.companion;
+    assert lib.hasInfix
+      "export MOLTIS_COMPANION_RPC_URL=${lib.escapeShellArg "https://127.0.0.1:13131/api/rpc"}"
+      scripts.companion;
+    assert lib.hasInfix "companion.py" scripts.companion;
     assert !(lib.hasInfix "CLOUDFLARE_API_TOKEN" scripts.inner);
     assert !(lib.hasInfix "export CLOUDFLARE_API_TOKEN" scripts.outer);
     assert !(lib.hasInfix "export LINEAR_API_KEY" scripts.inner);
@@ -395,6 +441,7 @@ pkgs.runCommand "moltis-tools" { } ''
   test -x ${linearWrapper}/bin/mcporter
   test -x ${lib.getExe linearWrapper.linearServer}
   test -x ${lib.getExe cloudflareWrapper}
+  test -x ${lib.getExe companionWrapper}
   ${pkgs.python3}/bin/python3 - ${builtins.toFile "moltis-launcher-fixtures.json" (builtins.unsafeDiscardStringContext (builtins.toJSON launcherFixtures))} ${pkgs.bash}/bin/bash ${pkgs.sqlite}/bin <<'PY'
   import json
   import os
@@ -436,7 +483,7 @@ pkgs.runCommand "moltis-tools" { } ''
           marker.unlink()
           ready = re.search(r"(\[\[ -r .*?\]\]) && break", outer).group(1)
           failed = re.search(r"if (\[\[ ! -r .*?\]\]); then", outer).group(1)
-          for missing in (None, "MOLTIS_LINEAR_CLIENT_ID", "MOLTIS_LINEAR_CLIENT_SECRET", "CONTEXT7_API_KEY", "CLOUDFLARE_API_TOKEN"):
+          for missing in (None, "MOLTIS_LINEAR_CLIENT_ID", "MOLTIS_LINEAR_CLIENT_SECRET", "CONTEXT7_API_KEY", "CLOUDFLARE_API_TOKEN", "MATRIX_PASSWORD"):
               if missing:
                   paths[missing].unlink()
               for condition, expected in ((ready, missing is None), (failed, missing is not None)):
@@ -528,6 +575,7 @@ pkgs.runCommand "moltis-tools" { } ''
   PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis/mcp-cli-migration}/test_migrate.py
   PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis/mcp-cli-migration}/test_mcporter.py ${lib.getExe mcporter}
   PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis/linear-token}/test_linear_token.py
+  PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis}/matrix-companion/test_companion.py
   PYTHONPATH=${../../home-manager/_mixins/agentic/moltis/mcp-cli-migration} PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis/linear-token}/test_linear_token.py ${lib.getExe mcporter} ${lib.getExe pkgs.mcp-proxy}
   PYTHONPATH=${../../home-manager/_mixins/agentic/moltis/mcp-cli-migration} PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 - ${lib.getExe cloudflareWrapper} ${lib.getExe mcporter} ${lib.getExe pkgs.mcp-proxy} <<'PY'
   import http.server

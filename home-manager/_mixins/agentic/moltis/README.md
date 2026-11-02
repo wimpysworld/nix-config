@@ -91,17 +91,42 @@ Keep configuration and instructions in their Nix-managed sources, not installed 
 
 ## Shared Matrix room
 
-Normal deployment enables Matrix on `skrye`, `zannah`, and `momin`. Malak automatically provisions the accounts and `the-cauldron`. All three agents use the fixed room ID `!the-cauldron:matrix.wimpys.world`, so deployment needs no room-ID handoff. Setting `agentic.moltis.matrix.enable = false` removes the channel and its runtime secret. Keep Telegram direct messages for operator work and voice.
+Normal deployment enables Matrix on `skrye`, `zannah`, and `momin`. Malak automatically provisions the accounts and `the-cauldron`. All three agents use the fixed room ID `!the-cauldron:matrix.wimpys.world`, so deployment needs no room-ID handoff. Setting `agentic.moltis.matrix.enable = false` removes the channel, its runtime secret, the companion, and the council hook. Keep Telegram direct messages for operator work and voice.
 
 Each agent reads its password from `secrets/matrix.yaml`: `MATRIX_PASSWORD_SKRYE`, `MATRIX_PASSWORD_ZANNAH`, or `MATRIX_PASSWORD_TRAYA`. SOPS renders the agent's `MATRIX_PASSWORD` placeholder at runtime. Never put plaintext passwords in Nix values, command arguments, or logs.
 
-The channel uses `https://matrix.wimpys.world`, `auth_mode = "password"`, and `ownership_mode = "user_managed"`. Stable device IDs are `MOLTIS_SKRYE`, `MOLTIS_ZANNAH`, and `MOLTIS_TRAYA`. The default `userId` follows the agent identity, including `@traya:matrix.wimpys.world` on Momin.
+The channel (`channels.matrix.matrix-<agent>`) uses `https://matrix.wimpys.world`, `auth_mode = "password"`, `ownership_mode = "user_managed"`, and `private_instance = true`. Stable gateway device IDs are `MOLTIS_SKRYE`, `MOLTIS_ZANNAH`, and `MOLTIS_TRAYA`. The default `userId` follows the agent identity, including `@traya:matrix.wimpys.world` on Momin.
 
-The room allowlist and automatic joining permit only `roomId`. Direct messages permit only `@martin:matrix.wimpys.world`. Operators are empty, streaming is off, and one-time-password self-approval is disabled.
+The room allowlist and automatic joining permit only `roomId`. The user allowlist permits `@martin:matrix.wimpys.world`, `@skrye:matrix.wimpys.world`, `@zannah:matrix.wimpys.world`, and `@traya:matrix.wimpys.world`. Operators contain only `@martin:matrix.wimpys.world`. Streaming is off, and one-time-password self-approval is disabled. See the [pinned Matrix documentation](https://github.com/moltis-org/moltis/blob/20261023.01/docs/src/matrix.md).
 
-Room replies require mentions. Mention checks also accept `@room` and mentions from other bots, so mention gating does not prevent response loops. The human controls each hand-off. Do not configure automatic prompts that ask peers to continue without a stopping point.
+Room replies require explicit full Matrix ID mentions (`@traya:matrix.wimpys.world`, `@skrye:matrix.wimpys.world`, or `@zannah:matrix.wimpys.world`). Mention checks also accept `@room` and mentions from other bots, so mention gating alone does not prevent response loops. The council hook injects anti-sycophancy rules, single-peer tagging limits, and a 9-turn bot budget per message from `@martin:matrix.wimpys.world`.
 
-Matrix rooms and Martin's direct messages are conversation-only. They expose neither tools nor private owner context. Operator execution needs a separate future patch. Keep Telegram for operator work. See the [pinned Matrix documentation](https://github.com/moltis-org/moltis/blob/20261023.01/docs/src/matrix.md).
+When `agentic.moltis.matrix.enable` is true, `moltis-in-fence` starts `moltis-matrix-companion` beside the gateway. Each companion signs in with device ID `MOLTIS_COMPANION_<AGENT>` (`MOLTIS_COMPANION_SKRYE`, `MOLTIS_COMPANION_ZANNAH`, and `MOLTIS_COMPANION_TRAYA`) and stores durable state with mode `0600` under `~/.local/state/moltis/matrix-companion-<agent>/` (`${XDG_STATE_HOME}/moltis/matrix-companion-<agent>/`): `auth.json`, `sync-state.json`, `outbox.json`, `companion-state.json`, `room-events.json`, and `active-turn.json`.
+
+A bounded single-worker queue (depth 32) assesses unmentioned `m.text` room messages from allowlisted peers after the active `/new` cutoff. The worker calls local JSON-RPC `chat.send_sync` (`https://127.0.0.1:13131/api/rpc`) on the agent's `mainModel` (`gemini::gemini-4-argon` on `skrye` and `zannah`, `openai-codex::gpt-6-astra` on `momin`) in ephemeral session `companion:matrix-assess` with `active_tools = []`. It rechecks the active session generation and cutoff before the RPC call and again before posting `m.reaction`. Each assessment posts one badge:
+
+- `👌🏻` - acknowledged, no contribution requested (does not indicate agreement).
+- `👍🏻` - agreement, no contribution requested.
+- `✋🏻` - a response, question, objection, or moderator action is needed.
+
+Turn status uses an Option 1A writer split across `active-turn.json` and `companion-state.json`. The `matrix-council-context` hook (`moltis-matrix-council-hook`) is the sole writer of `active-turn.json` (under `active-turn.lock`) on `BeforeLLMCall` and `BeforeToolCall`. The companion is the sole writer of `companion-state.json`. It binds a turn to the room event that holds the agent's `👀` acknowledgement reaction and a unique unbound `(sender, body)` match, then reconciles live phase reactions:
+
+- `✍🏻` - thinking or writing (`BeforeLLMCall` on iteration 1, or after a 3-second dwell on later iterations).
+- `🐚` - shell execution (`BeforeToolCall` for `exec` or `process`).
+- `🔧` - other tool calls (`BeforeToolCall`).
+- `✌🏻` - turn completion, posted after `chat.peek` reports `active = false` and `history.jsonl` plus the room timeline confirm a single final reply within the 5-second reconciliation window.
+
+While `chat.peek` reports `active = true`, the companion posts an `m.notice` progress message after 45 seconds and edits it in place every 45 seconds. All progress notices strip `@...:matrix.wimpys.world` strings so they never wake peers. When the turn finishes or is superseded, the companion redacts the active phase reaction and any progress notice.
+
+Only `skrye`'s companion runs the moderator wake-up coordinator for untagged `m.text` room messages. It tracks expected assessors (`BOT_IDS` minus the sender) over a 15-second deadline:
+
+- Early resolution: when at least one expected assessor reacts with `✋🏻` and all expected assessors have reacted, or when the 15-second deadline expires with a `✋🏻`, `skrye` posts a `🔔 Moderator wake-up` `m.notice` that mentions `@traya:matrix.wimpys.world`.
+- Silent closure: when all expected assessors return `👌🏻` or `👍🏻` with zero `✋🏻`, the target closes silently without waiting 15 seconds. A late `✋🏻` reopens the target.
+- Moderator fallback: if `@martin:matrix.wimpys.world` posts an untagged message and `@traya:matrix.wimpys.world` has not reacted when the 15-second deadline expires, `skrye` wakes `@traya:matrix.wimpys.world`.
+- Suppression and caps: any newer allowlisted `m.text` message suppresses pending wake-ups for older targets. Wake-ups cap at 3 per `@martin:matrix.wimpys.world` root message and 9 bot turns since `@martin:matrix.wimpys.world`'s last message.
+- `/new` cancellation: an untagged `/new` or a `/new` that mentions `@traya:matrix.wimpys.world`, `@skrye`'s own session change, or target redaction cancels pending wake-ups at or before the reset timestamp.
+
+The `matrix-council-context` hook runs on `BeforeLLMCall` and `BeforeToolCall` with a 10-second timeout. It skips `companion:matrix-assess*` sessions and inactive sessions. On `BeforeToolCall`, it updates `active-turn.json` and exits. On `BeforeLLMCall`, it also restores private workspace persona files (`SOUL.md`, `USER.md`, `AGENTS.md`, `GUIDELINES.md`, and `TOOLS.md` when `tool_count > 0`) if absent from the system prompt, and appends the council protocol plus a `<room_context>` block. The `<room_context>` block is bounded by the active session's `/new` cutoff (resolved from `moltis.db` `channel_sessions` and `sessions.created_at`, or the companion's `provisional_cutoff_ms`) and includes up to 12 unmentioned allowlisted `m.text` messages (6,000 characters) and reactions on the latest 10 post-cutoff events.
 
 FluffyChat is included for Linux desktop chat. The user configures the phone client separately. Both clients use the public homeserver URL above. See the [server deployment documentation](../../../../nixos/_mixins/server/private-matrix/README.md) for automatic provisioning and the accepted consequences of database loss. Live client checks require deployment.
 

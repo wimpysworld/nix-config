@@ -28,6 +28,8 @@ let
     assert matrix.enable;
     assert channel.room_allowlist == [ matrix.roomId ];
     assert !channel.reply_to_message;
+    assert channel.mention_mode == "mention";
+    assert channel.device_id == "MOLTIS_${lib.toUpper agent}";
     assert channel.operators == [ "@martin:matrix.wimpys.world" ];
     assert channel.private_instance;
     assert
@@ -39,7 +41,11 @@ let
       ];
     assert builtins.length hooks == 1;
     assert (builtins.head hooks).name == "matrix-council-context";
-    assert (builtins.head hooks).events == [ "BeforeLLMCall" ];
+    assert
+      (builtins.head hooks).events == [
+        "BeforeLLMCall"
+        "BeforeToolCall"
+      ];
     assert secret.sopsFile == config.sops.secrets.${secret.key}.sopsFile;
     assert !(home.sops.secrets ? MATRIX_REGISTRATION_SHARED_SECRET);
     channel.device_id;
