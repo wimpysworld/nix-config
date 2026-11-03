@@ -960,6 +960,150 @@ class WatermarksAndRevisionTrackingTests(GithubCompanionTestBase):
         assert wm_816 is not None
         self.assertEqual(wm_816["handled_revision"], "2023-11-16T09:31:00Z::3002")
         self.assertTrue(wm_816["dismiss_ready"])
+        self.assertEqual(cycle["dismissed_threads"], ["816"])
+        self.assertIn(["gh-notification-dismiss", "816"], self.gh_commands)
+        self.assertNotIn(["gh-notification-dismiss", "815"], self.gh_commands)
+
+    def test_run_cycle_dismisses_closed_merged_and_draft_prs_and_retains_on_dismiss_error(self) -> None:
+        store = self.make_store("skrye")
+        mclient = self.make_matrix_client(store, "skrye")
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+
+        notifications = [
+            {
+                "id": "821",
+                "reason": "state_change",
+                "updated_at": "2023-11-16T09:40:00Z",
+                "repository": {"full_name": "wimpysworld/nix-config", "owner": {"login": "wimpysworld"}},
+                "subject": {
+                    "type": "PullRequest",
+                    "title": "Closed PR",
+                    "url": "https://api.github.com/repos/wimpysworld/nix-config/pulls/821",
+                    "latest_comment_url": None,
+                },
+            },
+            {
+                "id": "822",
+                "reason": "state_change",
+                "updated_at": "2023-11-16T09:41:00Z",
+                "repository": {"full_name": "wimpysworld/nix-config", "owner": {"login": "wimpysworld"}},
+                "subject": {
+                    "type": "PullRequest",
+                    "title": "Merged PR",
+                    "url": "https://api.github.com/repos/wimpysworld/nix-config/pulls/822",
+                    "latest_comment_url": None,
+                },
+            },
+            {
+                "id": "823",
+                "reason": "review_requested",
+                "updated_at": "2023-11-16T09:42:00Z",
+                "repository": {"full_name": "wimpysworld/nix-config", "owner": {"login": "wimpysworld"}},
+                "subject": {
+                    "type": "PullRequest",
+                    "title": "Draft PR",
+                    "url": "https://api.github.com/repos/wimpysworld/nix-config/pulls/823",
+                    "latest_comment_url": None,
+                },
+            },
+        ]
+        store.record_polled_notifications(notifications, now_override_ms=self.current_time_ms)
+        store.write_poll_state({"last_modified": "Thu, 16 Nov 2023 09:42:00 GMT"})
+
+        fail_dismiss_823 = True
+
+        def fake_gh_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            self.gh_commands.append(list(cmd))
+            if cmd[0] == "gh-notification-dismiss":
+                tid = cmd[-1]
+                if tid == "823" and fail_dismiss_823:
+                    return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="network timeout")
+                return subprocess.CompletedProcess(cmd, 0, stdout=f"marked {tid} done\n", stderr="")
+            ep = cmd[1]
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            pr_states = {
+                "821": {"state": "closed", "draft": False, "merged": False},
+                "822": {"state": "closed", "draft": False, "merged": True, "merged_at": "2023-11-16T09:41:00Z"},
+                "823": {"state": "open", "draft": True, "merged": False},
+            }
+            for num_str, pr_meta in pr_states.items():
+                if ep == f"repos/wimpysworld/nix-config/issues/{num_str}":
+                    return subprocess.CompletedProcess(
+                        cmd,
+                        0,
+                        stdout=json.dumps(
+                            {
+                                "id": int(num_str),
+                                "number": int(num_str),
+                                "title": f"PR {num_str}",
+                                "state": pr_meta["state"],
+                                "user": {"login": "sith-zannah"},
+                            }
+                        ),
+                        stderr="",
+                    )
+                if ep == f"repos/wimpysworld/nix-config/pulls/{num_str}":
+                    return subprocess.CompletedProcess(
+                        cmd,
+                        0,
+                        stdout=json.dumps(
+                            {
+                                "id": int(num_str),
+                                "number": int(num_str),
+                                "title": f"PR {num_str}",
+                                "user": {"login": "sith-zannah"},
+                                "requested_reviewers": [{"login": "sith-skrye"}],
+                                **pr_meta,
+                            }
+                        ),
+                        stderr="",
+                    )
+            return subprocess.CompletedProcess(cmd, 0, stdout="[]", stderr="")
+
+        gh_client = companion.GhApiSafeClient(runner=fake_gh_runner)
+        poller = companion.NotificationPoller(state_store=store, gh_client=gh_client, clock=self.clock, sleeper=self.sleeper)
+        tf = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store, gh_client=gh_client, matrix_client=mclient, agent_name="skrye", clock=self.clock
+        )
+        sec_coord = companion.SecurityAlertCoordinator(
+            state_store=store, gh_client=gh_client, matrix_client=mclient, agent_name="skrye", clock=self.clock
+        )
+        exec_coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="skrye",
+            matrix_client=mclient,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+        runner = companion.GithubCompanionRunner(
+            state_store=store,
+            gh_client=gh_client,
+            poller=poller,
+            trust_filter=tf,
+            security_coordinator=sec_coord,
+            execution_coordinator=exec_coord,
+            matrix_client=mclient,
+            clock=self.clock,
+        )
+
+        cycle1 = runner.run_cycle(run_sweeps_if_due=False)
+        self.assertEqual(cycle1["targeted_dispatches"], [])
+        self.assertEqual(cycle1["dismissed_threads"], ["821", "822"])
+        self.assertIn(["gh-notification-dismiss", "821"], self.gh_commands)
+        self.assertIn(["gh-notification-dismiss", "822"], self.gh_commands)
+        self.assertIn(["gh-notification-dismiss", "823"], self.gh_commands)
+        self.assertEqual(store.get_thread_watermark("821")["handled_revision"], "2023-11-16T09:40:00Z::0")
+        self.assertEqual(store.get_thread_watermark("822")["handled_revision"], "2023-11-16T09:41:00Z::0")
+        # Thread 823 dismissal failed, so its handled_revision remains None for retry on the next cycle
+        self.assertIsNone(store.get_thread_watermark("823")["handled_revision"])
+
+        fail_dismiss_823 = False
+        cycle2 = runner.run_cycle(run_sweeps_if_due=False)
+        self.assertEqual(cycle2["dismissed_threads"], ["823"])
+        self.assertEqual(store.get_thread_watermark("823")["handled_revision"], "2023-11-16T09:42:00Z::0")
 
 
 class TrustBoundaryAndCoercionTests(GithubCompanionTestBase):
@@ -1849,6 +1993,233 @@ class CoordinatorAndCrashRecoveryTests(GithubCompanionTestBase):
         self.assertFalse(res_err["telegram_forwarded"])
         self.assertIn("502", str(res_err["telegram_error"]))
         self.assertEqual(len(self.httpd.telegram_requests), 2)
+
+    def test_failed_turn_replies_retain_targeted_watermarks_sweep_schedules_and_suppress_telegram(self) -> None:
+        store = self.make_store("traya")
+        mclient = self.make_matrix_client(store, "traya")
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+
+        bot_cred_file = self.root / "telegram-bot-cred-fail"
+        bot_cred_file.write_text("123456:SYNTHETIC-TELEGRAM-CRED\n", encoding="utf-8")
+        bot_cred_file.chmod(0o400)
+
+        allowed_users_file = self.root / "telegram-allowed-users-fail"
+        allowed_users_file.write_text("987654321\n", encoding="utf-8")
+        allowed_users_file.chmod(0o400)
+
+        store.record_polled_notifications(
+            [
+                {
+                    "id": "950",
+                    "reason": "mention",
+                    "updated_at": "2023-11-16T14:00:00Z",
+                    "repository": {"full_name": "wimpysworld/nix-config", "owner": {"login": "wimpysworld"}},
+                    "subject": {
+                        "type": "Issue",
+                        "title": "Issue 95",
+                        "url": "https://api.github.com/repos/wimpysworld/nix-config/issues/95",
+                        "latest_comment_url": "https://api.github.com/repos/wimpysworld/nix-config/issues/comments/5001",
+                    },
+                }
+            ],
+            now_override_ms=self.current_time_ms,
+        )
+        store.write_poll_state({"last_modified": "Thu, 16 Nov 2023 14:00:00 GMT"})
+
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="traya",
+            main_model="gemini::gemini-4-argon",
+            matrix_client=mclient,
+            telegram_bot_token_path=bot_cred_file,
+            telegram_allowed_users_path=allowed_users_file,
+            telegram_api_url=self.httpd.base_url,
+            completion_timeout_ms=1_000,
+            recovery_deadline_ms=1_000,
+            poll_interval_ms=20,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+
+        # 1. Targeted turn with explicit tool failure reply: execution terminates, but task_succeeded is False,
+        # handled_revision stays None, pending_followup stays True, and Telegram receives nothing.
+        tg_before = len(self.httpd.telegram_requests)
+        snap_path = store.write_snapshot("snap-950", {"ok": True})
+
+        def make_reply_handler(reply_msg: str, extra_fields: dict | None = None):
+            def _handler(params: dict) -> dict:
+                msg = str(params.get("message") or "")
+                disp_id = [line.split(": ", 1)[1] for line in msg.splitlines() if line.startswith("dispatch_id: ")][0]
+                rec = {"role": "assistant", "content": reply_msg, "stop_reason": "end_turn"}
+                if extra_fields:
+                    rec.update(extra_fields)
+                self.write_history(
+                    companion.DEFAULT_GH_SESSION_KEY,
+                    [
+                        {"role": "user", "dispatch_id": disp_id, "content": msg},
+                        rec,
+                    ],
+                    agent_name="traya",
+                )
+                return {"ok": True, "result": {"text": reply_msg}}
+
+            return _handler
+
+        self.httpd.peek_active = False
+        self.httpd.send_sync_handler = make_reply_handler("The GitHub tool failed while reading issue #95.")
+        failed_targeted = coord.execute_dispatch(
+            kind="targeted",
+            thread_id="950",
+            revision="2023-11-16T14:00:00Z::5001",
+            snapshot_path=snap_path,
+            dispatch_id="ghd-traya-fail-targeted",
+        )
+        self.assertEqual(failed_targeted["status"], "failed")
+        self.assertTrue(failed_targeted["execution_terminated"])
+        self.assertFalse(failed_targeted["task_succeeded"])
+        self.assertFalse(failed_targeted["telegram_forwarded"])
+        self.assertEqual(len(self.httpd.telegram_requests), tg_before)
+        self.assertIsNone(store.read_active_dispatch()["active"])
+
+        wm_after_fail = store.get_thread_watermark("950")
+        assert wm_after_fail is not None
+        self.assertIsNone(wm_after_fail["handled_revision"])
+        self.assertIsNone(wm_after_fail["in_flight_revision"])
+        self.assertFalse(wm_after_fail["dismiss_ready"])
+        self.assertTrue(wm_after_fail["pending_followup"])
+        self.assertEqual(wm_after_fail["pending_followup_revision"], "2023-11-16T14:00:00Z::5001")
+        self.assertEqual(wm_after_fail["last_failed_revision"], "2023-11-16T14:00:00Z::5001")
+
+        # 2. Failed 30-minute reconciliation sweep and failed weekly sweep must NOT advance sweep timestamps/dates.
+        self.httpd.send_sync_handler = make_reply_handler("HEARTBEAT_ERROR: gh-api-safe rate limit exceeded")
+        failed_reconcile = coord.execute_dispatch(
+            kind="reconcile_sweep",
+            dispatch_id="ghd-traya-fail-reconcile",
+        )
+        self.assertEqual(failed_reconcile["status"], "failed")
+        self.assertFalse(failed_reconcile["task_succeeded"])
+        self.assertFalse(failed_reconcile["telegram_forwarded"])
+        self.assertIsNone(store.read_poll_state().get("last_reconcile_sweep_at_ms"))
+
+        self.httpd.send_sync_handler = make_reply_handler(
+            "Unable to complete the weekly organisation sweep.",
+            extra_fields={"stop_reason": "error"},
+        )
+        failed_weekly = coord.execute_dispatch(
+            kind="weekly_sweep",
+            sweep_date="2023-11-19",
+            dispatch_id="ghd-traya-fail-weekly",
+        )
+        self.assertEqual(failed_weekly["status"], "failed")
+        self.assertFalse(failed_weekly["task_succeeded"])
+        self.assertFalse(failed_weekly["telegram_forwarded"])
+        self.assertIsNone(store.read_poll_state().get("last_weekly_sweep_date"))
+        self.assertIsNone(store.read_poll_state().get("last_reconcile_sweep_at_ms"))
+        self.assertEqual(len(self.httpd.telegram_requests), tg_before)
+
+        # 3. Recovery of an interrupted turn that ended with a failure reply also preserves unhandled state.
+        store.mark_thread_in_flight("950", revision="2023-11-16T14:00:00Z::5001", now_override_ms=self.current_time_ms)
+        store.write_active_dispatch(
+            {
+                "dispatch_id": "ghd-traya-rec-fail",
+                "session_key": companion.DEFAULT_GH_SESSION_KEY,
+                "kind": "targeted",
+                "thread_id": "950",
+                "revision": "2023-11-16T14:00:00Z::5001",
+                "started_at_ms": self.current_time_ms,
+                "status": "in_flight",
+            },
+            now_override_ms=self.current_time_ms,
+        )
+        self.write_history(
+            companion.DEFAULT_GH_SESSION_KEY,
+            [
+                {"role": "user", "dispatch_id": "ghd-traya-rec-fail", "content": "dispatch_id: ghd-traya-rec-fail"},
+                {"role": "assistant", "content": "The gh command failed with HTTP 502.", "stop_reason": "end_turn"},
+            ],
+            agent_name="traya",
+        )
+        rec_fail = coord.recover_active_dispatch()
+        self.assertEqual(rec_fail["status"], "recovered_failed")
+        self.assertTrue(rec_fail["can_dispatch"])
+        self.assertTrue(rec_fail["execution_terminated"])
+        self.assertFalse(rec_fail["task_succeeded"])
+        self.assertFalse(rec_fail["telegram_forwarded"])
+        self.assertIsNone(store. get_thread_watermark("950")["handled_revision"])
+        self.assertEqual(len(self.httpd.telegram_requests), tg_before)
+
+        # 4. Subsequent run_cycle with 304 Not Modified retries the retained revision for thread 950 and completes it.
+        def fake_gh_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1]
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "repos/wimpysworld/nix-config/issues/95":
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps(
+                        {
+                            "id": 9500,
+                            "number": 95,
+                            "title": "Issue 95",
+                            "body": "Details",
+                            "state": "open",
+                            "user": {"login": "external-user"},
+                        }
+                    ),
+                    stderr="",
+                )
+            if ep == "repos/wimpysworld/nix-config/issues/95/comments":
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps(
+                        [
+                            {
+                                "id": 5001,
+                                "user": {"login": "flexiondotorg"},
+                                "body": "@sith-traya please investigate issue #95.",
+                                "created_at": "2023-11-16T14:00:00Z",
+                                "updated_at": "2023-11-16T14:00:00Z",
+                            }
+                        ]
+                    ),
+                    stderr="",
+                )
+            return subprocess.CompletedProcess(cmd, 0, stdout="[]", stderr="")
+
+        gh_client = companion.GhApiSafeClient(runner=fake_gh_runner)
+        poller = companion.NotificationPoller(state_store=store, gh_client=gh_client, clock=self.clock, sleeper=self.sleeper)
+        tf = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store, gh_client=gh_client, matrix_client=mclient, agent_name="traya", clock=self.clock
+        )
+        sec_coord = companion.SecurityAlertCoordinator(
+            state_store=store, gh_client=gh_client, matrix_client=mclient, agent_name="traya", clock=self.clock
+        )
+        runner = companion.GithubCompanionRunner(
+            state_store=store,
+            gh_client=gh_client,
+            poller=poller,
+            trust_filter=tf,
+            security_coordinator=sec_coord,
+            execution_coordinator=coord,
+            matrix_client=mclient,
+            clock=self.clock,
+        )
+
+        self.httpd.send_sync_handler = make_reply_handler("Replied on issue #95 with root cause.")
+        retry_cycle = runner.run_cycle(run_sweeps_if_due=False)
+        self.assertEqual(len(retry_cycle["targeted_dispatches"]), 1)
+        self.assertEqual(retry_cycle["targeted_dispatches"][0]["status"], "completed")
+        self.assertTrue(retry_cycle["targeted_dispatches"][0]["task_succeeded"])
+        self.assertTrue(retry_cycle["targeted_dispatches"][0]["telegram_forwarded"])
+        self.assertEqual(len(self.httpd.telegram_requests), tg_before + 1)
+        wm_after_retry = store.get_thread_watermark("950")
+        assert wm_after_retry is not None
+        self.assertEqual(wm_after_retry["handled_revision"], "2023-11-16T14:00:00Z::5001")
+        self.assertTrue(wm_after_retry["dismiss_ready"])
 
 
 class SecurityAlertOwnershipAndRejectedFixGuardTests(GithubCompanionTestBase):
