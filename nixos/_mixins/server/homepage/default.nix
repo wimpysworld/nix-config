@@ -11,6 +11,7 @@ let
   homepagePort = 8082;
 
   registry = builtins.fromTOML (builtins.readFile ../../../../lib/registry-systems.toml);
+  syncDefs = import ../../../../home-manager/_mixins/filesync/syncthing-devices.nix;
 
   hostsWithTag =
     tag: lib.attrNames (lib.filterAttrs (_name: entry: lib.elem tag (entry.tags or [ ])) registry);
@@ -28,6 +29,7 @@ let
     && !(lib.elem "openstack" tags);
 
   tailnetHosts = lib.attrNames (lib.filterAttrs isNixOSTailnetHost registry);
+  syncthingHosts = lib.filter (node: builtins.hasAttr node syncDefs.devices) tailnetHosts;
   roamgateHosts = hostsWithTag "roamgate";
   reframeHosts = hostsWithTag "reframe";
   remoteInferenceHosts = lib.filter (name: name != host.name) (hostsWithTag "inference");
@@ -86,7 +88,7 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
     caddy.virtualHosts."${tailnetHost}".extraConfig =
       lib.mkIf (config.services.caddy.enable && config.services.tailscale.enable)
         ''
-          @homepage not path /socket /uploads /uploads/*
+          @homepage not path /syncthing /syncthing/* /socket /uploads /uploads/*
           handle @homepage {
             reverse_proxy 127.0.0.1:${toString homepagePort}
           }
@@ -261,7 +263,7 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
             }
             {
               "Weave Notes" = {
-                icon = "markdown.svg";
+                icon = "mdi-language-markdown";
                 href = "https://notes.wimpys.world";
                 description = "Zettelkasten notebook web interface";
                 siteMonitor = "http://127.0.0.1:8000";
@@ -352,7 +354,7 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
             }
             {
               "Soju IRC Bouncer" = {
-                icon = "irc.svg";
+                icon = "mdi-forum-outline";
                 href = "https://${tailnetHost}";
                 description = "Multi-network IRC bouncer on revan (:6667)";
                 ping = "127.0.0.1";
@@ -397,13 +399,16 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
             }
             {
               "GoToSocial" = {
-                icon = "mastodon.svg";
+                icon = "gotosocial.svg";
                 href = "https://wimpysworld.social";
                 description = "Fediverse instance on malak";
-                siteMonitor = "https://wimpysworld.social/api/v1/instance";
+                siteMonitor = "https://ip.wimpysworld.social";
                 widget = {
                   type = "customapi";
                   url = "https://wimpysworld.social/api/v1/instance";
+                  headers = {
+                    "User-Agent" = "Homepage";
+                  };
                   mappings = [
                     {
                       field = "version";
@@ -471,7 +476,7 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
             }
             {
               "Wimpy's World" = {
-                icon = "globe.svg";
+                icon = "mdi-web";
                 href = "https://wimpysworld.com";
                 description = "Personal blog and notes";
                 siteMonitor = "https://wimpysworld.com";
@@ -479,7 +484,7 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
             }
             {
               "Wimpy's Links" = {
-                icon = "link.svg";
+                icon = "mdi-link-variant";
                 href = "https://wimpysworld.link";
                 description = "Social and project links";
                 siteMonitor = "https://wimpysworld.link";
@@ -487,7 +492,7 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
             }
             {
               "Linux Matters" = {
-                icon = "podcast.svg";
+                icon = "mdi-podcast";
                 href = "https://linuxmatters.sh";
                 description = "Linux Matters podcast website";
                 siteMonitor = "https://linuxmatters.sh";
@@ -507,7 +512,7 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
             }) roamgateHosts)
             ++ (map (node: {
               "ReFrame noVNC (${node})" = {
-                icon = "vnc.svg";
+                icon = "novnc.svg";
                 href = "https://${node}.${tailNet}/novnc";
                 description = "Browser remote desktop on ${node}";
                 ping = "${node}.${tailNet}";
@@ -546,12 +551,36 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
             }
             // lib.optionalAttrs (node == host.name) {
               widget = {
-                type = "syncthing";
-                url = "http://127.0.0.1:8384";
-                key = "{{HOMEPAGE_VAR_SYNCTHING_API_KEY}}";
+                type = "customapi";
+                url = "http://127.0.0.1:8384/rest/db/completion";
+                headers = {
+                  "X-API-Key" = "{{HOMEPAGE_VAR_SYNCTHING_API_KEY}}";
+                };
+                mappings = [
+                  {
+                    field = "completion";
+                    label = "Completion";
+                    format = "percent";
+                  }
+                  {
+                    field = "globalItems";
+                    label = "Items";
+                    format = "number";
+                  }
+                  {
+                    field = "globalBytes";
+                    label = "Size";
+                    format = "bytes";
+                  }
+                  {
+                    field = "needItems";
+                    label = "Pending";
+                    format = "number";
+                  }
+                ];
               };
             };
-          }) tailnetHosts;
+          }) syncthingHosts;
         }
       ];
     };
@@ -560,6 +589,9 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
   systemd.services.homepage-dashboard = {
     after = [ "sops-nix.service" ];
     wants = [ "sops-nix.service" ];
+    environment = {
+      HOMEPAGE_PROXY_DISABLE_IPV6 = "true";
+    };
     unitConfig = {
       RequiresMountsFor = [
         "/srv/pool"
