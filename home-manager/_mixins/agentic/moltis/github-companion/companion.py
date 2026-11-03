@@ -853,8 +853,11 @@ _READ_ONLY_EXEC_SEGMENT_RE = re.compile(
     r")"
 )
 _EXEC_SEGMENT_SPLIT_RE = re.compile(r"&&|\|\||[;|\n]")
-_LEADING_ENV_ASSIGNMENT_RE = re.compile(r"^(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)+")
+_LEADING_ENV_ASSIGNMENT_RE = re.compile(r"^(?:(?:LANG|LC_[A-Za-z0-9_]+|TZ)=\S*\s+)+")
 _STANDARD_STDERR_REDIRECTION_RE = re.compile(r"(?<!\d)2>/dev/null(?=$|\s|[;&|\n])")
+_GIT_UNSAFE_OPTION_RE = re.compile(
+    r"(?:^|\s)(?:--(?:output|ext-diff|textconv|exec-path|git-dir|work-tree)(?:=|\s|$)|-[cO](?:\s|$))"
+)
 
 
 def _tool_call_name_and_arguments(tool_call: object) -> tuple[str, object]:
@@ -897,6 +900,7 @@ def _tool_invokes_external_mutation(name: str, arguments: object) -> bool:
             ">" in command_without_stderr_redirect
             or "$(" in command
             or "`" in command
+            or "<(" in command
             or re.search(r"(?<!&)&(?!&)", command) is not None
         ):
             return True
@@ -909,6 +913,8 @@ def _tool_invokes_external_mutation(name: str, arguments: object) -> bool:
             has_segment = True
             segment = _LEADING_ENV_ASSIGNMENT_RE.sub("", segment).strip()
             if not segment or _READ_ONLY_EXEC_SEGMENT_RE.fullmatch(segment) is None:
+                return True
+            if segment.startswith("git ") and _GIT_UNSAFE_OPTION_RE.search(segment) is not None:
                 return True
         return not has_segment
     return True
