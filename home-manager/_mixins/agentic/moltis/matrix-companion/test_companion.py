@@ -2205,6 +2205,92 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
             "budget_exhausted",
         )
 
+    def test_interrupted_wakeups_are_cancelled_before_recovery_after_reset_boundaries(self) -> None:
+        for agent_name in ("skrye", "traya"):
+            for boundary in ("cutoff", "moderator_reset"):
+                with self.subTest(agent_name=agent_name, boundary=boundary):
+                    self.state_dir = self.root / f"state-{agent_name}-{boundary}"
+                    self.state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+                    store, resolver, _, _, engine = self.make_components(agent_name=agent_name, main_model="")
+                    selection_id = f"$old-{agent_name}-{boundary}:seq1"
+                    txn_id = f"mc-{agent_name}-{boundary}"
+                    record = {
+                        "selection_id": selection_id,
+                        "target_event_id": f"$old-{agent_name}-{boundary}",
+                        "selected_speaker": companion.SKRYE_ID if agent_name == "traya" else companion.TRAYA_ID,
+                        "sending_account": f"@{agent_name}:{companion.SERVER_DOMAIN}",
+                        "txn_id": txn_id,
+                        "path": f"/_matrix/client/v3/rooms/room/send/m.room.message/{txn_id}",
+                        "payload": {"msgtype": "m.notice", "body": "stale invitation"},
+                        "created_at_ms": self.current_time_ms + 100,
+                        "status": "sending",
+                    }
+                    wakeups = {
+                        "targets": {},
+                        "martin_roots": {},
+                        "selections": {},
+                        "relayed_selections": {},
+                        "last_moderator_reset_ts_ms": 0,
+                    }
+                    map_key = "relayed_selections" if agent_name == "traya" else "selections"
+                    wakeups[map_key][selection_id] = record
+                    if agent_name == "skrye":
+                        wakeups["targets"][record["target_event_id"]] = {
+                            "event_id": record["target_event_id"],
+                            "origin_server_ts": self.current_time_ms + 100,
+                            "session_key": resolver.default_session_key,
+                            "status": "pending",
+                            "notified": False,
+                        }
+                    store.write_companion_state({"wakeups": wakeups})
+                    store.write_outbox(
+                        {
+                            "pending": {
+                                txn_id: {
+                                    "kind": "wakeup_notice" if agent_name == "traya" else "relay_notice",
+                                    "path": record["path"],
+                                    "body": record["payload"],
+                                }
+                            }
+                        }
+                    )
+                    reset_ts = self.current_time_ms + 200
+                    actionable_events = []
+                    cutoff_ms = reset_ts if boundary == "cutoff" else 0
+                    if boundary == "moderator_reset":
+                        actionable_events = [
+                            {
+                                "type": "m.room.message",
+                                "event_id": f"$new-{agent_name}",
+                                "sender": companion.MARTIN_ID,
+                                "origin_server_ts": reset_ts,
+                                "msgtype": "m.text",
+                                "body": "/new",
+                            }
+                        ]
+
+                    sent_before = len(self.httpd.messages_sent)
+                    engine.wakeup_coordinator.ingest_and_reconcile(
+                        actionable_events=actionable_events,
+                        generation={
+                            "active_session_key": resolver.default_session_key,
+                            "cutoff_ms": cutoff_ms,
+                        },
+                        now_override_ms=reset_ts + 100,
+                    )
+
+                    saved_wakeups = store.read_companion_state()["wakeups"]
+                    self.assertEqual(len(self.httpd.messages_sent), sent_before)
+                    self.assertEqual(saved_wakeups[map_key][selection_id]["status"], "cancelled")
+                    self.assertEqual(
+                        saved_wakeups[map_key][selection_id]["cancel_reason"],
+                        "reset_boundary",
+                    )
+                    self.assertEqual(store.read_outbox()["pending"], {})
+                    if agent_name == "skrye":
+                        target = saved_wakeups["targets"][record["target_event_id"]]
+                        self.assertEqual(target["status"], "cancelled")
+
     def test_single_selector_traya_relay_pending_hands_queue_and_uncertain_blocked_recovery(self) -> None:
         skrye_store, _, _, _, skrye_engine = self.make_components(agent_name="skrye", main_model="")
         traya_state_dir = self.root / "state-traya"
