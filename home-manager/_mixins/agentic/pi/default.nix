@@ -791,6 +791,10 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
       chmod 700 \
         "${config.home.homeDirectory}/.pi-lens" \
         "${config.home.homeDirectory}/.pi/agent/state"
+      if [[ -L "${config.home.homeDirectory}/.pi/agent/mcp.json" ]] \
+        && [[ "$(readlink -- "${config.home.homeDirectory}/.pi/agent/mcp.json")" == "${config.xdg.configHome}/sops-nix/secrets/rendered/pi-mcp-config" ]]; then
+        rm -f -- "${config.home.homeDirectory}/.pi/agent/mcp.json"
+      fi
     '';
 
     packages = [
