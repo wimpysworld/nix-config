@@ -650,18 +650,20 @@ def is_heartbeat_ok_reply(text: str | None) -> bool:
     return all(tok == "HEARTBEAT_OK" for tok in tokens)
 
 
+MAX_THREAD_FAILURE_RETRIES = 3
+
 TURN_FAILURE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "explicit_error_token",
         re.compile(
-            r"^\s*`?(?:HEARTBEAT_ERROR|HEARTBEAT_FAILED|COMPANION_RESULT:\s*(?:ERROR|FAILED)|TURN_FAILED|ERROR:|FAILED:)\b",
+            r"^\s*`?(?:(?:HEARTBEAT_ERROR|HEARTBEAT_FAILED|TURN_FAILED|COMPANION_RESULT:\s*(?:ERROR|FAILED))\b|(?:ERROR|FAILED)\s*:)",
             re.IGNORECASE,
         ),
     ),
     (
         "tool_or_turn_failed",
         re.compile(
-            r"\b(?:the\s+)?(?:github|gh|gh-api-safe|gh-bot-merge|gh-review-inline|gh-review-reply|gh-review-resolve|gh-notification-dismiss|git|exec|shell|rpc|model|provider|api|command|request|turn|dispatch|tool)\s+"
+            r"^\s*(?:the\s+)?(?:github|gh|gh-api-safe|gh-bot-merge|gh-review-inline|gh-review-reply|gh-review-resolve|gh-notification-dismiss|git|exec|shell|rpc|model|provider|api|command|request|turn|dispatch|tool)\s+"
             r"(?:tool\s+|command\s+|call\s+|request\s+|execution\s+|turn\s+|helper\s+)?"
             r"(?:failed|errored|timed\s+out|aborted|crashed|was\s+blocked|is\s+unavailable)\b",
             re.IGNORECASE,
@@ -670,15 +672,8 @@ TURN_FAILURE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "unable_to_complete",
         re.compile(
-            r"\b(?:failed|unable|could\s+not|cannot|can\s+not)\s+(?:to\s+)?"
+            r"^\s*(?:i\s+(?:was\s+|am\s+)?)?(?:failed|unable|could\s+not|cannot|can\s+not)\s+(?:to\s+)?"
             r"(?:complete|finish|run|execute|fetch|query|read|inspect|review|merge|dismiss|post|reply|process|reach|connect|authenticate|proceed|continue)\b",
-            re.IGNORECASE,
-        ),
-    ),
-    (
-        "transport_or_auth_failure",
-        re.compile(
-            r"\b(?:rate[\s-]+limit(?:ed|\s+exceeded)|authentication\s+failed|permission\s+denied|http\s+5\d\d|502\s+bad\s+gateway|503\s+service\s+unavailable|504\s+gateway\s+timeout)\b",
             re.IGNORECASE,
         ),
     ),
@@ -1724,6 +1719,9 @@ class CompanionStateStore:
                         existing_wm["comment_id"] = comment_id
                         existing_wm["updated_at"] = updated_at
                         existing_wm["seen_revision"] = revision
+                        if newer:
+                            existing_wm["failure_count"] = 0
+                            existing_wm["retry_exhausted"] = False
 
                     if isinstance(in_flight_rev, str) and in_flight_rev:
                         if revision != in_flight_rev and (
@@ -1734,7 +1732,13 @@ class CompanionStateStore:
                             existing_wm["dismiss_ready"] = False
                             queued_followups.append(thread_id)
                     else:
-                        if existing_wm.get("pending_followup") or existing_wm.get("seen_revision") != handled_rev:
+                        is_exhausted_same_rev = (
+                            bool(existing_wm.get("retry_exhausted"))
+                            and existing_wm.get("seen_revision") == existing_wm.get("last_failed_revision")
+                        )
+                        if not is_exhausted_same_rev and (
+                            existing_wm.get("pending_followup") or existing_wm.get("seen_revision") != handled_rev
+                        ):
                             existing_wm["dismiss_ready"] = False
                             actionable_threads.append(thread_id)
 
@@ -1792,6 +1796,8 @@ class CompanionStateStore:
             finished_rev = completed_revision or entry.get("in_flight_revision") or entry.get("seen_revision")
             entry["handled_revision"] = finished_rev
             entry["in_flight_revision"] = None
+            entry["failure_count"] = 0
+            entry["retry_exhausted"] = False
 
             seen_rev = entry.get("seen_revision")
             pending_rev = entry.get("pending_followup_revision")
@@ -1820,10 +1826,12 @@ class CompanionStateStore:
         thread_id: str,
         failed_revision: str | None = None,
         failure_reason: str | None = None,
+        max_retries: int = MAX_THREAD_FAILURE_RETRIES,
         now_override_ms: int | None = None,
     ) -> dict:
-        """Release an in-flight thread review after a failed turn without advancing handled_revision."""
+        """Release an in-flight thread review after a failed turn without advancing handled_revision, with a bounded retry counter."""
         stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
+        retry_limit = max(1, _safe_int(max_retries, MAX_THREAD_FAILURE_RETRIES))
         with self._locked_dir() as dir_fd:
             wm_state = self._read_watermarks_unlocked(dir_fd)
             wm_threads = wm_state["threads"]
@@ -1836,10 +1844,19 @@ class CompanionStateStore:
                 or entry.get("pending_followup_revision")
                 or entry.get("seen_revision")
             )
+            prior_failed_rev = entry.get("last_failed_revision")
+            if prior_failed_rev == attempted_rev:
+                failure_count = _safe_int(entry.get("failure_count"), 0) + 1
+            else:
+                failure_count = 1
+            retry_exhausted = failure_count >= retry_limit
+
             entry["in_flight_revision"] = None
             entry["dismiss_ready"] = False
             entry["last_failed_revision"] = attempted_rev
             entry["last_failure_reason"] = (failure_reason or "turn_failed").strip()
+            entry["failure_count"] = failure_count
+            entry["retry_exhausted"] = retry_exhausted
 
             seen_rev = entry.get("seen_revision")
             handled_rev = entry.get("handled_revision")
@@ -1849,9 +1866,12 @@ class CompanionStateStore:
                 if (isinstance(pending_rev, str) and bool(pending_rev) and pending_rev != handled_rev)
                 else (seen_rev if (isinstance(seen_rev, str) and bool(seen_rev) and seen_rev != handled_rev) else attempted_rev)
             )
-            if isinstance(retry_rev, str) and bool(retry_rev) and retry_rev != handled_rev:
+            if not retry_exhausted and isinstance(retry_rev, str) and bool(retry_rev) and retry_rev != handled_rev:
                 entry["pending_followup"] = True
                 entry["pending_followup_revision"] = retry_rev
+            else:
+                entry["pending_followup"] = False
+                entry["pending_followup_revision"] = None
 
             entry["updated_at_ms"] = stamp_ms
             wm_state["updated_at_ms"] = stamp_ms
@@ -4743,6 +4763,8 @@ class GithubCompanionRunner:
         for tid, wm in wm_threads.items():
             if not isinstance(wm, dict) or tid in candidate_thread_ids:
                 continue
+            if wm.get("retry_exhausted") and wm.get("seen_revision") == wm.get("last_failed_revision"):
+                continue
             if wm.get("pending_followup") or (
                 wm.get("seen_revision") is not None
                 and wm.get("seen_revision") != wm.get("handled_revision")
@@ -4764,6 +4786,8 @@ class GithubCompanionRunner:
                 or notif.get("revision")
                 or ""
             )
+            if wm_entry.get("retry_exhausted") and target_rev and target_rev == wm_entry.get("last_failed_revision"):
+                continue
             if target_rev:
                 notif["revision"] = target_rev
             prior_handled_rev = str(wm_entry.get("handled_revision") or "").strip() or None
