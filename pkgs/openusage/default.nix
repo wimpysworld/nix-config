@@ -10,7 +10,7 @@
 
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "openusage";
-  version = "0.26.1";
+  version = "0.26.3";
 
   src =
     finalAttrs.passthru.sources.${stdenvNoCC.hostPlatform.system}
@@ -50,19 +50,19 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     {
       x86_64-linux = fetchurl {
         url = "${base}/openusage_${finalAttrs.version}_linux_amd64.tar.gz";
-        hash = "sha256-v99G0l0paNeqZINmwO19ey0ueMPx0x5o1enUQR5atvk=";
+        hash = "sha256-FxquIQ/5P0I7Cntr4nahzNogRcU+vp22NiNkuEEiWWA=";
       };
       aarch64-linux = fetchurl {
         url = "${base}/openusage_${finalAttrs.version}_linux_arm64.tar.gz";
-        hash = "sha256-TflkXFS9iilFyPX9g9mh4JHSv5QY3IpEhef7Mtx0DCM=";
+        hash = "sha256-z4rHRi0sJyeN7GpJMfxDA1wok/Ld+QvnyWNgrqCbXnU=";
       };
       x86_64-darwin = fetchurl {
         url = "${base}/openusage_${finalAttrs.version}_darwin_amd64.tar.gz";
-        hash = "sha256-qqki9HUAEPe616oLaCae0r99/7/n4Bs1/N1hEhdrXgU=";
+        hash = "sha256-JNGYM0KInK6xonwye4iwsgalUk7FiwjOFOjnRiP0T4E=";
       };
       aarch64-darwin = fetchurl {
         url = "${base}/openusage_${finalAttrs.version}_darwin_arm64.tar.gz";
-        hash = "sha256-UTjc9/oBMvLuJgk7gtMdceFXaLf3YoO6sDj+2QHBeV4=";
+        hash = "sha256-pQ8ENLncQXePnyHZrM1smrZdcgvqgrmonUnnvV/Y8Qc=";
       };
     };
 
