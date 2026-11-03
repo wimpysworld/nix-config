@@ -69,16 +69,25 @@ lib.mkIf (noughtyLib.hostHasTag "silo") {
   programs.nix-ld.enable = true;
 
   sops = {
-    secrets.SILO_SECRET_KEY = {
-      sopsFile = ../../../../secrets/silo.yaml;
-      owner = "root";
-      group = "root";
-      mode = "0400";
+    secrets = {
+      HOMEPAGE_VAR_SILO_API_KEY = {
+        sopsFile = ../../../../secrets/homepage.yaml;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
+      SILO_SECRET_KEY = {
+        sopsFile = ../../../../secrets/silo.yaml;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
     };
 
     templates."silo.env" = {
       content = ''
         SECRET_KEY=${config.sops.placeholder.SILO_SECRET_KEY}
+        SILO_HOMEPAGE_API_KEY=${config.sops.placeholder.HOMEPAGE_VAR_SILO_API_KEY}
       '';
       owner = "silo";
       group = "silo";
@@ -176,6 +185,32 @@ lib.mkIf (noughtyLib.hostHasTag "silo") {
       END
       $$;
       SQL
+    ''
+    + ''
+      if [ "$(${psql} -h /run/postgresql -d silo --no-psqlrc -tAc "SELECT to_regclass('public.api_keys') IS NOT NULL AND to_regclass('public.users') IS NOT NULL;")" = "t" ]; then
+        ${psql} -h /run/postgresql -d silo --no-psqlrc -v ON_ERROR_STOP=1 <<'SQL'
+      \getenv homepage_api_key SILO_HOMEPAGE_API_KEY
+      INSERT INTO public.api_keys (user_id, label, key_hash, key_prefix, rate_tier, scopes)
+      SELECT
+        u.id,
+        'Homepage',
+        encode(sha256(convert_to(:'homepage_api_key', 'UTF8')), 'hex'),
+        left(:'homepage_api_key', 11),
+        'elevated',
+        '{}'::text[]
+      FROM public.users u
+      WHERE u.role = 'admin'
+        AND u.enabled = true
+        AND :'homepage_api_key' ~ '^sa_[0-9a-f]{64}$'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM public.api_keys ak
+          WHERE ak.key_hash = encode(sha256(convert_to(:'homepage_api_key', 'UTF8')), 'hex')
+        )
+      ORDER BY u.is_owner DESC, u.id ASC
+      LIMIT 1;
+      SQL
+      fi
     '';
 
     serviceConfig = {
