@@ -2755,6 +2755,27 @@ class TrustFilterAndSnapshotBuilder:
             if isinstance(number, int) and number > 0
             else f"{repo}:{subject_type}"
         )
+        str_item_id = str(item_id) if item_id is not None else None
+        for existing in self.state_store.read_security_events():
+            if (
+                isinstance(existing, dict)
+                and existing.get("repo") == repo
+                and existing.get("subject_type") == subject_type
+                and existing.get("number") == number
+                and existing.get("item_kind") == item_kind
+                and existing.get("item_id") == str_item_id
+                and existing.get("event_kind") == event_kind
+                and existing.get("rule_matched") == rule_matched
+            ):
+                return {
+                    "event": existing,
+                    "notice_should_emit": False,
+                    "notice_sent": False,
+                    "notice_event_id": None,
+                    "notice_body": None,
+                    "deduplicated": True,
+                }
+
         event_record = self.state_store.append_security_event(
             {
                 "timestamp_ms": stamp_ms,
@@ -2766,7 +2787,7 @@ class TrustFilterAndSnapshotBuilder:
                 "number": number,
                 "thread_id": thread_id,
                 "item_kind": item_kind,
-                "item_id": str(item_id) if item_id is not None else None,
+                "item_id": str_item_id,
                 "actor": actor or "unknown",
                 "event_kind": event_kind,
                 "rule_matched": rule_matched,
@@ -2807,6 +2828,7 @@ class TrustFilterAndSnapshotBuilder:
             "notice_sent": notice_sent,
             "notice_event_id": notice_event_id,
             "notice_body": notice_body,
+            "deduplicated": False,
         }
 
     def _inspect_trusted_item_for_coercion(
@@ -2823,13 +2845,16 @@ class TrustFilterAndSnapshotBuilder:
         stamp_ms: int,
         security_events_out: list[dict],
         notices_out: list[dict],
+        should_alert: bool = True,
     ) -> list[str]:
+        if is_trusted_instruction_actor(actor):
+            return []
         combined_raw = "\n".join(t for t in raw_texts if isinstance(t, str) and t)
-        # On trusted items, strip HTML comments silently unless a non-HTML-comment coercion rule matches.
+        # On trusted bot items, strip HTML comments silently unless a non-HTML-comment coercion rule matches.
         coercion_rules = [
             rule for rule in detect_coercion_patterns(combined_raw) if rule != "html_comment_block"
         ]
-        if coercion_rules:
+        if coercion_rules and should_alert:
             res = self._record_security_event_and_alert(
                 repo=repo,
                 subject_type=subject_type,
@@ -2841,9 +2866,10 @@ class TrustFilterAndSnapshotBuilder:
                 raw_texts=raw_texts,
                 stamp_ms=stamp_ms,
             )
-            security_events_out.append(res["event"])
-            if res["notice_body"]:
-                notices_out.append(res)
+            if not res.get("deduplicated"):
+                security_events_out.append(res["event"])
+                if res["notice_body"]:
+                    notices_out.append(res)
         return coercion_rules
 
     def evaluate_thread_bundle(
@@ -2949,20 +2975,22 @@ class TrustFilterAndSnapshotBuilder:
 
         if root_obj or issue_obj or raw_root_title or raw_root_body:
             if not root_trusted:
-                res = self._record_security_event_and_alert(
-                    repo=repo,
-                    subject_type=subject_type,
-                    number=number,
-                    thread_id=thread_id,
-                    item_kind="pull_request" if is_pr else "issue",
-                    item_id=root_obj.get("id") or number,
-                    actor=root_actor or "unknown",
-                    raw_texts=[raw_root_title, raw_root_body],
-                    stamp_ms=stamp_ms,
-                )
-                security_events.append(res["event"])
-                if res["notice_body"]:
-                    notices.append(res)
+                if root_newer_than_handled:
+                    res = self._record_security_event_and_alert(
+                        repo=repo,
+                        subject_type=subject_type,
+                        number=number,
+                        thread_id=thread_id,
+                        item_kind="pull_request" if is_pr else "issue",
+                        item_id=root_obj.get("id") or number,
+                        actor=root_actor or "unknown",
+                        raw_texts=[raw_root_title, raw_root_body],
+                        stamp_ms=stamp_ms,
+                    )
+                    if not res.get("deduplicated"):
+                        security_events.append(res["event"])
+                        if res["notice_body"]:
+                            notices.append(res)
                 if not is_pr:
                     untrusted_issue_data = {
                         "author": root_actor or "unknown",
@@ -2987,6 +3015,7 @@ class TrustFilterAndSnapshotBuilder:
                     stamp_ms=stamp_ms,
                     security_events_out=security_events,
                     notices_out=notices,
+                    should_alert=root_newer_than_handled,
                 )
                 if root_instruction_trusted and not coercive and not root_is_self and root_newer_than_handled:
                     mentioned_in_root = extract_mentioned_github_agents(
@@ -3028,20 +3057,22 @@ class TrustFilterAndSnapshotBuilder:
                     ignored_comment_ids.add(c_id_int)
                 if has_handled_watermark and c_newer:
                     has_newer_ignored_activity = True
-                res = self._record_security_event_and_alert(
-                    repo=repo,
-                    subject_type=subject_type,
-                    number=number,
-                    thread_id=thread_id,
-                    item_kind="issue_comment",
-                    item_id=c_id,
-                    actor=c_actor or "unknown",
-                    raw_texts=[raw_body],
-                    stamp_ms=stamp_ms,
-                )
-                security_events.append(res["event"])
-                if res["notice_body"]:
-                    notices.append(res)
+                if c_newer:
+                    res = self._record_security_event_and_alert(
+                        repo=repo,
+                        subject_type=subject_type,
+                        number=number,
+                        thread_id=thread_id,
+                        item_kind="issue_comment",
+                        item_id=c_id,
+                        actor=c_actor or "unknown",
+                        raw_texts=[raw_body],
+                        stamp_ms=stamp_ms,
+                    )
+                    if not res.get("deduplicated"):
+                        security_events.append(res["event"])
+                        if res["notice_body"]:
+                            notices.append(res)
                 continue
 
             coercive = self._inspect_trusted_item_for_coercion(
@@ -3056,6 +3087,7 @@ class TrustFilterAndSnapshotBuilder:
                 stamp_ms=stamp_ms,
                 security_events_out=security_events,
                 notices_out=notices,
+                should_alert=c_newer,
             )
             if coercive:
                 if c_id_int > 0:
@@ -3129,20 +3161,22 @@ class TrustFilterAndSnapshotBuilder:
                     ignored_comment_ids.add(r_id_int)
                 if has_handled_watermark and r_newer:
                     has_newer_ignored_activity = True
-                res = self._record_security_event_and_alert(
-                    repo=repo,
-                    subject_type=subject_type,
-                    number=number,
-                    thread_id=thread_id,
-                    item_kind="pull_request_review",
-                    item_id=r_id,
-                    actor=r_actor or "unknown",
-                    raw_texts=[raw_body],
-                    stamp_ms=stamp_ms,
-                )
-                security_events.append(res["event"])
-                if res["notice_body"]:
-                    notices.append(res)
+                if r_newer:
+                    res = self._record_security_event_and_alert(
+                        repo=repo,
+                        subject_type=subject_type,
+                        number=number,
+                        thread_id=thread_id,
+                        item_kind="pull_request_review",
+                        item_id=r_id,
+                        actor=r_actor or "unknown",
+                        raw_texts=[raw_body],
+                        stamp_ms=stamp_ms,
+                    )
+                    if not res.get("deduplicated"):
+                        security_events.append(res["event"])
+                        if res["notice_body"]:
+                            notices.append(res)
                 continue
 
             coercive = self._inspect_trusted_item_for_coercion(
@@ -3157,6 +3191,7 @@ class TrustFilterAndSnapshotBuilder:
                 stamp_ms=stamp_ms,
                 security_events_out=security_events,
                 notices_out=notices,
+                should_alert=r_newer,
             )
             if coercive:
                 if r_id_int > 0:
@@ -3231,20 +3266,22 @@ class TrustFilterAndSnapshotBuilder:
                     ignored_comment_ids.add(rc_id_int)
                 if has_handled_watermark and rc_newer:
                     has_newer_ignored_activity = True
-                res = self._record_security_event_and_alert(
-                    repo=repo,
-                    subject_type=subject_type,
-                    number=number,
-                    thread_id=thread_id,
-                    item_kind="pull_request_review_comment",
-                    item_id=rc_id,
-                    actor=rc_actor or "unknown",
-                    raw_texts=[raw_body],
-                    stamp_ms=stamp_ms,
-                )
-                security_events.append(res["event"])
-                if res["notice_body"]:
-                    notices.append(res)
+                if rc_newer:
+                    res = self._record_security_event_and_alert(
+                        repo=repo,
+                        subject_type=subject_type,
+                        number=number,
+                        thread_id=thread_id,
+                        item_kind="pull_request_review_comment",
+                        item_id=rc_id,
+                        actor=rc_actor or "unknown",
+                        raw_texts=[raw_body],
+                        stamp_ms=stamp_ms,
+                    )
+                    if not res.get("deduplicated"):
+                        security_events.append(res["event"])
+                        if res["notice_body"]:
+                            notices.append(res)
                 continue
 
             coercive = self._inspect_trusted_item_for_coercion(
@@ -3259,6 +3296,7 @@ class TrustFilterAndSnapshotBuilder:
                 stamp_ms=stamp_ms,
                 security_events_out=security_events,
                 notices_out=notices,
+                should_alert=rc_newer,
             )
             if coercive:
                 if rc_id_int > 0:
