@@ -13,6 +13,7 @@ import math
 import os
 import random
 import re
+import shlex
 import ssl
 import stat
 import subprocess
@@ -854,9 +855,10 @@ _READ_ONLY_EXEC_SEGMENT_RE = re.compile(
 )
 _EXEC_SEGMENT_SPLIT_RE = re.compile(r"&&|\|\||[;|\n]")
 _LEADING_ENV_ASSIGNMENT_RE = re.compile(r"^(?:(?:LANG|LC_[A-Za-z0-9_]+|TZ)=\S*\s+)+")
+_ALLOWED_ENV_TOKEN_RE = re.compile(r"^(?:LANG|LC_[A-Za-z0-9_]+|TZ)=")
 _STANDARD_STDERR_REDIRECTION_RE = re.compile(r"(?<!\d)2>/dev/null(?=$|\s|[;&|\n])")
-_GIT_UNSAFE_OPTION_RE = re.compile(
-    r"(?:^|\s)(?:--(?:output|ext-diff|textconv|exec-path|git-dir|work-tree)(?:=|\s|$)|-[cO](?:\s|$))"
+_GIT_UNSAFE_TOKEN_RE = re.compile(
+    r"^(?:--(?:output|ext-diff|textconv|exec-path|git-dir|work-tree)(?:=|$)|-[cO])"
 )
 
 
@@ -898,15 +900,15 @@ def _tool_invokes_external_mutation(name: str, arguments: object) -> bool:
         command_without_stderr_redirect = _STANDARD_STDERR_REDIRECTION_RE.sub("", command)
         if (
             ">" in command_without_stderr_redirect
+            or "<" in command
             or "$(" in command
             or "`" in command
-            or "<(" in command
             or re.search(r"(?<!&)&(?!&)", command) is not None
         ):
             return True
 
         has_segment = False
-        for raw_segment in _EXEC_SEGMENT_SPLIT_RE.split(command):
+        for raw_segment in _EXEC_SEGMENT_SPLIT_RE.split(command_without_stderr_redirect):
             segment = raw_segment.strip()
             if not segment:
                 continue
@@ -914,8 +916,19 @@ def _tool_invokes_external_mutation(name: str, arguments: object) -> bool:
             segment = _LEADING_ENV_ASSIGNMENT_RE.sub("", segment).strip()
             if not segment or _READ_ONLY_EXEC_SEGMENT_RE.fullmatch(segment) is None:
                 return True
-            if segment.startswith("git ") and _GIT_UNSAFE_OPTION_RE.search(segment) is not None:
+            try:
+                tokens = shlex.split(segment, posix=True)
+            except ValueError:
                 return True
+            while tokens and _ALLOWED_ENV_TOKEN_RE.match(tokens[0]):
+                tokens = tokens[1:]
+            if not tokens:
+                return True
+            if tokens[0] == "git":
+                if len(tokens) < 2 or tokens[1] not in ("status", "diff", "log", "show", "rev-parse"):
+                    return True
+                if any(_GIT_UNSAFE_TOKEN_RE.match(tok) is not None for tok in tokens[1:]):
+                    return True
         return not has_segment
     return True
 
