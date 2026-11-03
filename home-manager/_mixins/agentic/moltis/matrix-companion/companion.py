@@ -3410,6 +3410,26 @@ class ModeratorWakeupCoordinator:
         record["reconciled_at_ms"] = current_ms
         return "sent", resolved_ev_id
 
+    def _cancel_stale_sending_record(
+        self,
+        record: dict,
+        cutoff_ms: int,
+        last_moderator_reset_ts_ms: int,
+        current_ms: int,
+    ) -> bool:
+        created_at_ms = _safe_int(record.get("created_at_ms"), 0)
+        if created_at_ms >= cutoff_ms and (
+            last_moderator_reset_ts_ms <= 0 or created_at_ms > last_moderator_reset_ts_ms
+        ):
+            return False
+        txn_id = str(record.get("txn_id") or "")
+        if txn_id:
+            self.matrix_client._complete_outbox(txn_id)
+        record["status"] = "cancelled"
+        record["cancel_reason"] = "reset_boundary"
+        record["cancelled_at_ms"] = current_ms
+        return True
+
     def _dispatch_selection_or_relay_notice(
         self,
         *,
@@ -3571,9 +3591,16 @@ class ModeratorWakeupCoordinator:
 
         sent_wakeups: list[dict] = []
 
-        # 1. Reconcile any interrupted status == 'sending' relay records first.
+        # 1. Cancel stale relay records before retrying interrupted sends.
         for sel_id, r_entry in list(relayed_selections.items()):
             if not isinstance(r_entry, dict) or r_entry.get("status") != "sending":
+                continue
+            if self._cancel_stale_sending_record(
+                r_entry,
+                cutoff_ms,
+                last_mod_reset_ts,
+                current_ms,
+            ):
                 continue
             status_out, ev_id = self._reconcile_sending_record(r_entry, recent_events, current_ms)
             if status_out == "sent":
@@ -3784,13 +3811,23 @@ class ModeratorWakeupCoordinator:
 
         sent_wakeups: list[dict] = []
 
-        # 1B. Reconcile any interrupted status == 'sending' selection records before new evaluations.
+        # 1B. Cancel stale selection records before retrying interrupted sends.
         for sel_id, sel_entry in list(selections.items()):
             if not isinstance(sel_entry, dict) or sel_entry.get("status") != "sending":
                 continue
-            status_out, ev_id = self._reconcile_sending_record(sel_entry, recent_events, current_ms)
             tid_ref = str(sel_entry.get("target_event_id") or "")
             t_ref = targets.get(tid_ref)
+            if self._cancel_stale_sending_record(
+                sel_entry,
+                cutoff_ms,
+                last_mod_reset_ts,
+                current_ms,
+            ):
+                if isinstance(t_ref, dict):
+                    t_ref["status"] = "cancelled"
+                    t_ref["cancel_reason"] = "reset_boundary"
+                continue
+            status_out, ev_id = self._reconcile_sending_record(sel_entry, recent_events, current_ms)
             if status_out == "sent":
                 if isinstance(t_ref, dict):
                     t_ref["notified"] = True
