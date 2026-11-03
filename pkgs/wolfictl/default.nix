@@ -6,7 +6,7 @@
 
 stdenv.mkDerivation rec {
   pname = "wolfictl";
-  version = "0.39.29";
+  version = "0.39.30";
 
   src = fetchurl (
     let
@@ -25,10 +25,10 @@ stdenv.mkDerivation rec {
       # SHA256 sums from the release checksums.txt
       # https://github.com/wolfi-dev/wolfictl/releases/download/v${version}/wolfictl_checksums.txt
       sha256s = {
-        "darwin_amd64" = "ace852e2877b333e555df178aff7d80d91521759d4733e1453b9f0328a7595a4";
-        "darwin_arm64" = "cd3c87d662fca3eaef40ed4dab86b924cbaeafc97456b2dac025553301a62051";
-        "linux_amd64" = "6b3d350e4b845de53a4e17c2ab816e2d045eed594a88d88ec966d6792ceb2de5";
-        "linux_arm64" = "9b0dc187655d36cb2c767daebdc4faf5d104219b848103e8203a00896d8a21aa";
+        "darwin_amd64" = "06b362cb92e2c998a77c6787c4bcf5e2a513a58b5e50bf50a3cf732508cabee3";
+        "darwin_arm64" = "27ddcd665bfd3df34ebfff96cc684c35aedec77fe7f49f4108c652e6ad8187a6";
+        "linux_amd64" = "5052fb573b339ff6ad5dc2dab495f1f600e007f294988add2a558d905a0ce216";
+        "linux_arm64" = "a4aeb660625e34f1e60fd56f5c0d526cfcf2156cec7dd79ab0d1daa4ca4559ca";
       };
       platformKey = "${currentSystem}_${archSuffix}";
     in
