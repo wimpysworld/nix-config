@@ -15,13 +15,13 @@
 }:
 buildGoModule (finalAttrs: {
   pname = "silo-server";
-  version = "0-unstable-2026-11-02";
+  version = "0-unstable-2026-11-03";
 
   src = fetchFromGitHub {
     owner = "Silo-Server";
     repo = "silo-server";
-    rev = "baf9d4267043a2fa5f41f4fdebc4a175e564e793";
-    hash = "sha256-Zve/15g7D1ozO3Zm6fAEfy5K7HmmWnjfjASYEmrygDI=";
+    rev = "bb1ee4352b1bec38b4a6441ba81e61a92da81d54";
+    hash = "sha256-uaVdZ+thkfeRmkl5AB+MiIzPDTXMXAGi2vOU44a8lEs=";
   };
 
   web = stdenvNoCC.mkDerivation (webAttrs: {
