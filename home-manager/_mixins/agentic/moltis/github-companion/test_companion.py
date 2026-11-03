@@ -1921,6 +1921,159 @@ class CoordinatorAndCrashRecoveryTests(GithubCompanionTestBase):
         self.assertTrue(recovered["can_dispatch"])
         self.assertIsNone(store.read_active_dispatch()["active"])
 
+    def test_interrupted_turn_recovery_distinguishes_side_effect_free_and_mutating_tools(self) -> None:
+        store = self.make_store("traya")
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="traya",
+            main_model="gemini::gemini-4-argon",
+            recovery_deadline_ms=3_600_000,
+            poll_interval_ms=100,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+        self.httpd.peek_active = False
+
+        def set_active(dispatch_id: str) -> None:
+            store.write_active_dispatch(
+                {
+                    "dispatch_id": dispatch_id,
+                    "session_key": companion.DEFAULT_GH_SESSION_KEY,
+                    "kind": "targeted",
+                    "started_at_ms": self.current_time_ms,
+                    "status": "in_flight",
+                },
+                now_override_ms=self.current_time_ms,
+            )
+
+        set_active("ghd-traya-read-only")
+        self.write_history(
+            companion.DEFAULT_GH_SESSION_KEY,
+            [
+                {"role": "user", "dispatch_id": "ghd-traya-read-only", "content": "dispatch_id: ghd-traya-read-only"},
+                {
+                    "role": "assistant",
+                    "tool_calls": [
+                        {"id": "read-1", "name": "Read", "arguments": {"file_path": "/tmp/example"}},
+                        {
+                            "id": "exec-1",
+                            "name": "exec",
+                            "arguments": json.dumps(
+                                {"command": "TZ=Europe/London gh pr view 42 2>/dev/null && gh-api-safe graphql -f query='{viewer{login}}'"}
+                            ),
+                        },
+                    ],
+                },
+                {"type": "tool_result", "toolName": "Read", "toolCallId": "read-1", "content": "data"},
+            ],
+            agent_name="traya",
+        )
+        sleep_count = len(self.sleep_calls_secs)
+        recovered = coord.recover_active_dispatch()
+        self.assertEqual(recovered["status"], "recovered_failed")
+        self.assertTrue(recovered["can_dispatch"])
+        self.assertEqual(recovered["failure_reason"], "interrupted_turn_without_terminal_reply")
+        self.assertIsNone(store.read_active_dispatch()["active"])
+        self.assertEqual(len(self.sleep_calls_secs) - sleep_count, 1)
+
+        for suffix, command in (
+            ("python", "python3 -c 'print(1)'"),
+            ("git-commit", "git commit -m test"),
+        ):
+            dispatch_id = f"ghd-traya-unknown-{suffix}"
+            set_active(dispatch_id)
+            self.write_history(
+                companion.DEFAULT_GH_SESSION_KEY,
+                [
+                    {"role": "user", "dispatch_id": dispatch_id, "content": f"dispatch_id: {dispatch_id}"},
+                    {
+                        "role": "assistant",
+                        "tool_calls": [
+                            {"id": f"exec-{suffix}", "name": "exec", "arguments": {"command": command}},
+                        ],
+                    },
+                ],
+                agent_name="traya",
+            )
+            blocked_unknown = coord.recover_active_dispatch()
+            self.assertEqual(blocked_unknown["status"], "blocked_unknown_outcome")
+            self.assertFalse(blocked_unknown["can_dispatch"])
+
+        set_active("ghd-traya-unattributed-result")
+        self.write_history(
+            companion.DEFAULT_GH_SESSION_KEY,
+            [
+                {
+                    "role": "user",
+                    "dispatch_id": "ghd-traya-unattributed-result",
+                    "content": "dispatch_id: ghd-traya-unattributed-result",
+                },
+                {"type": "tool_result", "content": "unattributed"},
+            ],
+            agent_name="traya",
+        )
+        blocked_unattributed = coord.recover_active_dispatch()
+        self.assertEqual(blocked_unattributed["status"], "blocked_unknown_outcome")
+        self.assertFalse(blocked_unattributed["can_dispatch"])
+
+        set_active("ghd-traya-mutating")
+        self.write_history(
+            companion.DEFAULT_GH_SESSION_KEY,
+            [
+                {"role": "user", "dispatch_id": "ghd-traya-mutating", "content": "dispatch_id: ghd-traya-mutating"},
+                {
+                    "role": "assistant",
+                    "tool_calls": [
+                        {"id": "exec-2", "name": "exec", "arguments": {"command": "git push origin fix/recovery"}},
+                    ],
+                },
+            ],
+            agent_name="traya",
+        )
+        blocked = coord.recover_active_dispatch()
+        self.assertEqual(blocked["status"], "blocked_unknown_outcome")
+        self.assertFalse(blocked["can_dispatch"])
+        self.assertEqual(store.read_active_dispatch()["active"]["status"], "blocked_unknown_outcome")
+
+    def test_execute_dispatch_retries_side_effect_free_turn_without_terminal_reply(self) -> None:
+        store = self.make_store("skrye")
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="skrye",
+            completion_timeout_ms=3_600_000,
+            poll_interval_ms=100,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+        self.httpd.peek_active = False
+
+        def interrupted_send(params: dict) -> dict:
+            message = str(params.get("message") or "")
+            self.write_history(
+                companion.DEFAULT_GH_SESSION_KEY,
+                [
+                    {"role": "user", "dispatch_id": "ghd-skrye-interrupted", "content": message},
+                    {"role": "assistant", "tool_calls": []},
+                ],
+                agent_name="skrye",
+            )
+            return {"ok": True, "result": {}}
+
+        self.httpd.send_sync_handler = interrupted_send
+        result = coord.execute_dispatch(kind="reconcile_sweep", dispatch_id="ghd-skrye-interrupted")
+        self.assertEqual(result["status"], "failed")
+        self.assertTrue(result["dispatched"])
+        self.assertTrue(result["execution_terminated"])
+        self.assertEqual(result["failure_reason"], "interrupted_turn_without_terminal_reply")
+        self.assertIsNone(store.read_active_dispatch()["active"])
+        self.assertIsNone(store.read_poll_state().get("last_reconcile_sweep_at_ms"))
+
     def test_build_dispatch_prompt_includes_heartbeat_md_and_fallback(self) -> None:
         store = self.make_store("skrye")
         rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
