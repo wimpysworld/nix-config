@@ -425,13 +425,50 @@ class PollTimingAndReadOnlyTrialTests(GithubCompanionTestBase):
         )
         self.assertEqual((base_sec, wait_ms), (180, 190_000))
 
-        # X-RateLimit-Reset > Retry-After
+        # Normal HTTP 200/304 with X-RateLimit-Reset and remaining quota > 0 does not sleep until hour reset
+        wait_ms, base_sec, _ = companion.compute_backoff_wait_ms(
+            {
+                "X-Poll-Interval": "60",
+                "X-RateLimit-Remaining": "4999",
+                "X-RateLimit-Reset": str(now_sec + 3600),
+            },
+            now_ms_val,
+            rng=fixed_rng,
+            status=200,
+        )
+        self.assertEqual((base_sec, wait_ms), (60, 70_000))
+
+        wait_ms, base_sec, _ = companion.compute_backoff_wait_ms(
+            {"X-Poll-Interval": "60", "X-RateLimit-Reset": str(now_sec + 3600)},
+            now_ms_val,
+            rng=fixed_rng,
+            status=304,
+        )
+        self.assertEqual((base_sec, wait_ms), (60, 70_000))
+
+        # X-RateLimit-Reset > Retry-After when rate-limited
         wait_ms, base_sec, _ = companion.compute_backoff_wait_ms(
             {"Retry-After": "120", "X-RateLimit-Reset": str(now_sec + 300)},
             now_ms_val,
             rng=fixed_rng,
         )
         self.assertEqual((base_sec, wait_ms), (300, 310_000))
+
+        wait_ms, base_sec, _ = companion.compute_backoff_wait_ms(
+            {"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": str(now_sec + 420)},
+            now_ms_val,
+            rng=fixed_rng,
+            status=200,
+        )
+        self.assertEqual((base_sec, wait_ms), (420, 430_000))
+
+        wait_ms, base_sec, _ = companion.compute_backoff_wait_ms(
+            {"X-RateLimit-Remaining": "10", "X-RateLimit-Reset": str(now_sec + 480)},
+            now_ms_val,
+            rng=fixed_rng,
+            status=429,
+        )
+        self.assertEqual((base_sec, wait_ms), (480, 490_000))
 
         # Pagination + If-Modified-Since + HTTP 304 Not Modified
         store = self.make_store("traya")
@@ -536,6 +573,23 @@ class PollTimingAndReadOnlyTrialTests(GithubCompanionTestBase):
         self.assertEqual(second["last_modified"], "Wed, 15 Nov 2023 11:00:00 GMT")
         self.assertEqual(second["actionable_threads"], [])
         self.assertEqual(store.read_watermarks()["updated_at_ms"], wm_before_304["updated_at_ms"])
+
+        # Stale 1-hour next_poll_at_ms persisted from a non-rate-limited HTTP 200 poll is clamped
+        completed_ms = self.current_time_ms
+        store.write_poll_state(
+            {
+                "last_poll_completed_at_ms": completed_ms,
+                "last_status": 200,
+                "poll_interval_secs": 60,
+                "retry_after_secs": 0,
+                "ratelimit_reset_epoch": (completed_ms // 1000) + 3600,
+                "last_jitter_ms": 7_095,
+                "next_poll_at_ms": completed_ms + 3_600_000 + 7_095,
+            },
+            now_override_ms=completed_ms,
+        )
+        self.assertEqual(poller.wait_until_next_poll(now_override_ms=completed_ms), 67_095)
+        self.assertEqual(poller.wait_for_startup_slot(now_override_ms=completed_ms), 67_095)
 
     def test_read_only_trial_zero_dispatch_and_zero_dismiss_guarantee(self) -> None:
         store = self.make_store("skrye")

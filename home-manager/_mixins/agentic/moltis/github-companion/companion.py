@@ -1158,6 +1158,7 @@ def compute_backoff_wait_ms(
     headers: dict[str, str] | None,
     now_ms_val: int,
     rng: Callable[[int, int], int] | None = None,
+    status: int | None = None,
 ) -> tuple[int, int, int]:
     """Return (total_wait_ms, base_wait_secs, jitter_ms) from GitHub response headers."""
     lower_headers: dict[str, str] = {}
@@ -1169,9 +1170,20 @@ def compute_backoff_wait_ms(
     now_sec = max(0, now_ms_val // 1000)
     poll_interval_sec = max(0, _safe_int(lower_headers.get("x-poll-interval"), 0))
     retry_after_sec = parse_retry_after_seconds(lower_headers.get("retry-after"), now_sec)
+    remaining_raw = lower_headers.get("x-ratelimit-remaining")
+    remaining_exhausted = (
+        remaining_raw is not None
+        and remaining_raw != ""
+        and _safe_int(remaining_raw, 1) <= 0
+    )
+    is_rate_limited = (
+        status in (403, 429)
+        or remaining_exhausted
+        or (retry_after_sec > 0 and remaining_raw is None)
+    )
     rate_reset_raw = lower_headers.get("x-ratelimit-reset")
     rate_reset_wait_sec = 0
-    if rate_reset_raw is not None:
+    if is_rate_limited and rate_reset_raw is not None:
         reset_epoch = _safe_int(rate_reset_raw, 0)
         if reset_epoch > 0:
             rate_reset_wait_sec = max(0, reset_epoch - now_sec)
@@ -2495,6 +2507,12 @@ class GhApiSafeClient:
             status, headers, items = parse_gh_api_paginated_http_output(stdout)
             if status == 304:
                 return 304, headers, []
+            if status in (403, 429) and (
+                str(headers.get("x-ratelimit-remaining", "")).strip() == "0"
+                or "retry-after" in headers
+                or "x-ratelimit-reset" in headers
+            ):
+                return status, headers, []
             if proc.returncode != 0 and status >= 400:
                 raise RuntimeError(
                     f"gh-api-safe notifications failed with HTTP {status}: {stderr.strip() or stdout.strip()}"
@@ -3362,11 +3380,37 @@ class NotificationPoller:
         self.jitter_rng = jitter_rng
         self.on_actionable_threads = on_actionable_threads
 
+    @staticmethod
+    def _effective_next_poll_at_ms(poll_state: dict) -> int | None:
+        next_poll_at_ms = poll_state.get("next_poll_at_ms")
+        if not isinstance(next_poll_at_ms, int):
+            return None
+        last_status = poll_state.get("last_status")
+        last_completed_ms = poll_state.get("last_poll_completed_at_ms")
+        retry_after_secs = _safe_int(poll_state.get("retry_after_secs"), 0)
+        if (
+            last_status in (200, 304)
+            and retry_after_secs <= 0
+            and isinstance(last_completed_ms, int)
+        ):
+            poll_interval_secs = max(
+                BASE_POLL_INTERVAL_SECS,
+                _safe_int(poll_state.get("poll_interval_secs"), BASE_POLL_INTERVAL_SECS),
+            )
+            jitter_ms = max(
+                JITTER_MIN_MS,
+                min(JITTER_MAX_MS, _safe_int(poll_state.get("last_jitter_ms"), JITTER_MAX_MS)),
+            )
+            max_normal_next_ms = last_completed_ms + (poll_interval_secs * 1000) + jitter_ms
+            if next_poll_at_ms > max_normal_next_ms:
+                return max_normal_next_ms
+        return next_poll_at_ms
+
     def wait_for_startup_slot(self, now_override_ms: int | None = None) -> int:
         """Sleep until persisted next_poll_at_ms or apply the per-agent initial offset on first boot."""
         current_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         poll_state = self.state_store.read_poll_state()
-        next_poll_at_ms = poll_state.get("next_poll_at_ms")
+        next_poll_at_ms = self._effective_next_poll_at_ms(poll_state)
         initial_applied = bool(poll_state.get("initial_offset_applied", False))
 
         if isinstance(next_poll_at_ms, int) and next_poll_at_ms > current_ms:
@@ -3399,7 +3443,7 @@ class NotificationPoller:
     def wait_until_next_poll(self, now_override_ms: int | None = None) -> int:
         current_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         poll_state = self.state_store.read_poll_state()
-        next_poll_at_ms = poll_state.get("next_poll_at_ms")
+        next_poll_at_ms = self._effective_next_poll_at_ms(poll_state)
         if isinstance(next_poll_at_ms, int) and next_poll_at_ms > current_ms:
             sleep_ms = next_poll_at_ms - current_ms
             self.sleeper(sleep_ms / 1000.0)
@@ -3439,6 +3483,7 @@ class NotificationPoller:
             headers=headers,
             now_ms_val=finish_ms,
             rng=self.jitter_rng,
+            status=status,
         )
         computed_next_poll_ms = finish_ms + wait_ms
 
@@ -3446,7 +3491,7 @@ class NotificationPoller:
         actionable_threads: list[str] = []
         queued_followups: list[str] = []
 
-        if status != 304:
+        if 200 <= status < 300:
             for item in raw_items:
                 norm = normalize_notification_record(item)
                 if norm is not None:
@@ -3461,14 +3506,24 @@ class NotificationPoller:
             queued_followups = ingest_result["queued_followups"]
 
         new_last_modified = prior_last_modified
-        if status != 304:
+        if 200 <= status < 300:
             header_lm = headers.get("last-modified")
             if isinstance(header_lm, str) and header_lm.strip():
                 new_last_modified = header_lm.strip()
 
         poll_interval_hdr = _safe_int(headers.get("x-poll-interval"), BASE_POLL_INTERVAL_SECS)
         retry_after_hdr = parse_retry_after_seconds(headers.get("retry-after"), finish_ms // 1000)
-        ratelimit_reset_hdr = _safe_int(headers.get("x-ratelimit-reset"), 0) or None
+        remaining_hdr = headers.get("x-ratelimit-remaining")
+        remaining_exhausted = (
+            remaining_hdr is not None
+            and str(remaining_hdr).strip() != ""
+            and _safe_int(remaining_hdr, 1) <= 0
+        )
+        ratelimit_reset_hdr = (
+            (_safe_int(headers.get("x-ratelimit-reset"), 0) or None)
+            if (status in (403, 429) or remaining_exhausted or retry_after_hdr > 0)
+            else None
+        )
 
         self.state_store.write_poll_state(
             {
