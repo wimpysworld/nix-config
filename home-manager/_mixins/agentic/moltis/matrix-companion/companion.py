@@ -120,16 +120,17 @@ WRITE_TOOLS = frozenset(
 
 ROLE_SUMMARIES = {
     "traya": (
-        "Traya (@traya:matrix.wimpys.world): Council Chair & Synthesiser - "
-        "frames architecture, weighs trade-offs, challenges assumptions, and synthesises action plans."
+        "Traya (@traya:matrix.wimpys.world): General collaborator - "
+        "plans, researches, designs, implements, tests, reviews, and challenges proposals."
     ),
     "skrye": (
-        "Skrye (@skrye:matrix.wimpys.world): Systems & Implementation Lead - "
-        "grounds proposals in NixOS, Linux, hardware, and concrete implementation reality."
+        "Skrye (@skrye:matrix.wimpys.world): General collaborator, first responder, and chat moderator - "
+        "plans, researches, designs, implements, tests, reviews, and challenges proposals. "
+        "Coordinates invitations through the companion and speaks after other raised hands."
     ),
     "zannah": (
-        "Zannah (@zannah:matrix.wimpys.world): Adversarial Critic & Edge-Case Hunter - "
-        "probes failure modes, security/sandbox boundaries, operational traps, and simpler alternatives."
+        "Zannah (@zannah:matrix.wimpys.world): General collaborator - "
+        "plans, researches, designs, implements, tests, reviews, and challenges proposals."
     ),
 }
 
@@ -748,12 +749,13 @@ def select_raised_hand_speaker(
     recent_events: list[dict] | None = None,
     target_event_id: str = "",
 ) -> str:
-    """Select the raised-hand agent who posted least recently in recent_events, breaking ties by sha256."""
+    """Select peers before Skrye, then use least-recent speech and sha256 tie-breaking."""
     candidates = sorted({uid for uid in raised_hands if isinstance(uid, str) and uid in BOT_IDS})
     if not candidates:
-        return TRAYA_ID
+        return SKRYE_ID
     if len(candidates) == 1:
         return candidates[0]
+    candidates = [uid for uid in candidates if uid != SKRYE_ID]
 
     last_msg_index: dict[str, int] = {uid: -1 for uid in candidates}
     for idx, ev in enumerate(recent_events or []):
@@ -801,7 +803,7 @@ def format_moderator_wakeup_notice(
     elif wake_reason == "raised_hand" and clean_hands:
         invited_id = clean_hands[0]
     else:
-        invited_id = TRAYA_ID
+        invited_id = SKRYE_ID
 
     sender_display = display_name_for_user_id(target_sender) if target_sender else ""
     preview = format_target_message_preview(target_body) if target_body else ""
@@ -823,7 +825,7 @@ def format_moderator_wakeup_notice(
             return f"🛎️ Inviting {invited_id} to the floor as {invited_name} has a raised hand ✋🏻"
         joined_rem = _join_display_names(remaining)
         return f"🛎️ Inviting {invited_id} to the floor{context_clause}. Remaining raised hands: {joined_rem} ✋🏻"
-    return f"🛎️ Inviting {TRAYA_ID} to the floor{context_clause} (moderator assessment fallback after 15s)."
+    return f"🛎️ Inviting {invited_id} to the floor{context_clause} (moderator assessment fallback after 15s)."
 
 
 def format_companion_relay_notice(
@@ -3805,7 +3807,7 @@ class ModeratorWakeupCoordinator:
                 continue
             if is_conversational_room_message(ev) and ev.get("sender") in ALLOWLIST_USER_IDS:
                 body = str(ev.get("body") or "")
-                if is_new_command_targeting(body, TRAYA_ID):
+                if is_new_command_targeting(body, SKRYE_ID) or is_new_command_targeting(body, TRAYA_ID):
                     ev_ts = _safe_int(ev.get("origin_server_ts"), current_ms)
                     last_mod_reset_ts = max(last_mod_reset_ts, ev_ts)
                     for t_entry in targets.values():
@@ -4112,7 +4114,7 @@ class ModeratorWakeupCoordinator:
                 uid for uid, b in badges_by_assessor.items() if b == "✋🏻"
             )
             all_reacted = (reacted_set == set(expected)) and len(expected) > 0
-            traya_reacted = TRAYA_ID in reacted_set
+            moderator_reacted = SKRYE_ID in reacted_set
 
             target["active_badges"] = badges_by_assessor
 
@@ -4144,11 +4146,11 @@ class ModeratorWakeupCoordinator:
                     target["closed_at_ms"] = current_ms
                     continue
                 if deadline_expired:
-                    if target.get("sender") == MARTIN_ID and not traya_reacted:
+                    if target.get("sender") == MARTIN_ID and not moderator_reacted:
                         should_wake = True
                         wake_reason = "moderator_fallback"
                     else:
-                        # @traya returned 👌🏻 or 👍🏻 (or non-Martin target) and a peer is missing with zero ✋🏻.
+                        # Skrye returned 👌🏻 or 👍🏻 (or non-Martin target) and a peer is missing with zero ✋🏻.
                         target["status"] = "closed_silent"
                         target["closed_at_ms"] = current_ms
                         continue
@@ -4198,7 +4200,7 @@ class ModeratorWakeupCoordinator:
                 selected_speaker = (
                     select_raised_hand_speaker(raised_hands, latest_recent, tid)
                     if wake_reason == "raised_hand" and raised_hands
-                    else TRAYA_ID
+                    else SKRYE_ID
                 )
                 remaining_hands = [uid for uid in raised_hands if uid != selected_speaker]
                 target_sender_str = str(target.get("sender") or "")

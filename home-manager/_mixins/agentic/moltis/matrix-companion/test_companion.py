@@ -1648,6 +1648,32 @@ class Criterion4ThinkingDwellAntiChurnTests(CompanionTestBase):
 class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
     """Criterion 5: Moderator wake-up rules on skrye."""
 
+    def test_general_roles_and_moderator_last_selection(self) -> None:
+        for role in companion.ROLE_SUMMARIES.values():
+            self.assertIn("General collaborator", role)
+            self.assertIn("plans, researches, designs, implements, tests, reviews, and challenges proposals", role)
+        self.assertIn("chat moderator", companion.ROLE_SUMMARIES["skrye"])
+        events = [
+            {"sender": companion.TRAYA_ID, "msgtype": "m.text", "body": "Earlier reply"},
+            {"sender": companion.ZANNAH_ID, "msgtype": "m.text", "body": "Later reply"},
+        ]
+        hands = [companion.SKRYE_ID, companion.ZANNAH_ID, companion.TRAYA_ID]
+        order = []
+        while hands:
+            selected = companion.select_raised_hand_speaker(hands, events, "$order")
+            order.append(selected)
+            hands.remove(selected)
+        self.assertEqual(order, [companion.TRAYA_ID, companion.ZANNAH_ID, companion.SKRYE_ID])
+        self.assertEqual(companion.select_raised_hand_speaker([companion.SKRYE_ID]), companion.SKRYE_ID)
+        peers = [companion.TRAYA_ID, companion.ZANNAH_ID]
+        self.assertEqual(
+            companion.select_raised_hand_speaker(peers, [], "$tie"),
+            companion.select_raised_hand_speaker(list(reversed(peers)), [], "$tie"),
+        )
+        fallback = companion.format_moderator_wakeup_notice([], "moderator_fallback")
+        self.assertIn(companion.SKRYE_ID, fallback)
+        self.assertNotIn(companion.TRAYA_ID, fallback)
+
     def test_non_skrye_never_sends_wakeups(self) -> None:
         _, _, _, _, zannah_engine = self.make_components(agent_name="zannah")
         zannah_engine.process_sync_batch({"next_batch": "s0", "rooms": {"join": {}}})
@@ -1868,7 +1894,7 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
             "notified",
         )
 
-        # Case B: 15s fallback wake-up on untagged Martin message when @traya's assessment is missing.
+        # Case B: 15s fallback when Skrye's assessment is missing.
         self.current_time_ms += 1_000
         engine.process_sync_batch(
             {
@@ -1888,7 +1914,7 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
                                     {
                                         "type": "m.reaction",
                                         "event_id": "$rx_s_fb",
-                                        "sender": companion.SKRYE_ID,
+                                        "sender": companion.TRAYA_ID,
                                         "origin_server_ts": self.current_time_ms + 10,
                                         "content": {
                                             "m.relates_to": {
@@ -1911,15 +1937,21 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
             store.read_companion_state()["wakeups"]["targets"]["$m_fallback"]["status"],
             "pending",
         )
-        # At 15s -> wakes @traya with moderator_fallback.
+        # At 15s, request Skrye through the relay.
         engine.tick(now_override_ms=self.current_time_ms + 15_000)
         fb_target = store.read_companion_state()["wakeups"]["targets"]["$m_fallback"]
         self.assertEqual(fb_target["status"], "notified")
         self.assertEqual(fb_target["wake_reason"], "moderator_fallback")
-        self.assertIn("moderator assessment fallback after 15s", self.httpd.messages_sent[-1]["body"]["body"])
+        fallback_notice = self.httpd.messages_sent[-1]["body"]
+        self.assertEqual(fallback_notice["m.mentions"], {})
+        self.assertEqual(fallback_notice[companion.COMPANION_RELAY_KEY]["selected_speaker"], companion.SKRYE_ID)
+        self.assertEqual(fallback_notice[companion.COMPANION_RELAY_KEY]["wake_reason"], "moderator_fallback")
+        self.assertIn("moderator assessment fallback after 15s", companion.format_moderator_wakeup_notice(
+            [], "moderator_fallback", selected_speaker=companion.SKRYE_ID,
+        ))
         self.assertNotIn("$m_fallback", self.httpd.messages_sent[-1]["body"]["body"])
 
-        # Case C: Silent closure at 15s when @traya returned 👌🏻/👍🏻 and only a peer is missing.
+        # Case C: Silent closure when Skrye reacted and only a peer is missing.
         self.current_time_ms += 20_000
         engine.process_sync_batch(
             {
@@ -1939,7 +1971,7 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
                                     {
                                         "type": "m.reaction",
                                         "event_id": "$rx_t_pm",
-                                        "sender": companion.TRAYA_ID,
+                                        "sender": companion.SKRYE_ID,
                                         "origin_server_ts": self.current_time_ms + 10,
                                         "content": {
                                             "m.relates_to": {
@@ -2419,10 +2451,8 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
         skrye_engine.process_sync_batch({"next_batch": "s0", "rooms": {"join": {}}})
         traya_engine.process_sync_batch({"next_batch": "t0", "rooms": {"join": {}}})
 
-        # 1. Suppose Zannah spoke recently, then Martin posts an untagged message with @traya:matrix.wimpys.world in text;
-        # wait - test an untagged Martin message where Skrye and Zannah both raise ✋🏻 and Traya reacts 👌🏻.
-        # Because Zannah spoke more recently than Skrye, Skrye is selected first!
-        # Skrye emits a non-mentioning relay m.notice, and Traya's companion relays the floor invitation to @skrye:matrix.wimpys.world.
+        # Zannah speaks before Skrye even though Zannah spoke more recently.
+        # After Zannah replies, the queue requests Skrye through Traya's relay.
         skrye_engine.process_sync_batch(
             {
                 "next_batch": "s_prior",
@@ -2495,6 +2525,20 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
             }
         )
         self.assertEqual(len(self.httpd.messages_sent), 1)
+        first_invite = self.httpd.messages_sent[-1]["body"]
+        self.assertEqual(first_invite["m.mentions"], {"user_ids": [companion.ZANNAH_ID]})
+        self.assertNotIn(companion.COMPANION_RELAY_KEY, first_invite)
+        self.assertEqual(skrye_store.read_companion_state()["wakeups"]["martin_roots"]["$m_multi"]["pending_hands"], [companion.SKRYE_ID])
+        self.current_time_ms += 1_000
+        skrye_engine.process_sync_batch({
+            "next_batch": "s_zannah_reply",
+            "rooms": {"join": {companion.DEFAULT_ROOM_ID: {"timeline": {"events": [{
+                "type": "m.room.message", "event_id": "$zannah_reply_1",
+                "sender": companion.ZANNAH_ID, "origin_server_ts": self.current_time_ms,
+                "content": {"msgtype": "m.text", "body": "The unit uses the expected configuration."},
+            }]}}}},
+        })
+        self.assertEqual(len(self.httpd.messages_sent), 2)
         relay_notice = self.httpd.messages_sent[-1]["body"]
         self.assertEqual(relay_notice["msgtype"], "m.notice")
         self.assertEqual(relay_notice["m.mentions"], {})
@@ -2505,7 +2549,7 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
         )
         self.assertEqual(
             relay_notice[companion.COMPANION_RELAY_KEY]["remaining_hands"],
-            [companion.ZANNAH_ID],
+            [],
         )
 
         # Traya's companion ingests the relay m.notice and posts the single floor invitation to @skrye:matrix.wimpys.world.
@@ -2541,15 +2585,15 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
                 },
             }
         )
-        self.assertEqual(len(self.httpd.messages_sent), 2)
+        self.assertEqual(len(self.httpd.messages_sent), 3)
         traya_invite = self.httpd.messages_sent[-1]["body"]
         self.assertEqual(traya_invite["m.mentions"], {"user_ids": [companion.SKRYE_ID]})
         self.assertEqual(
             traya_invite["body"],
-            f'🛎️ Inviting {companion.SKRYE_ID} to the floor on Martin\'s message: "Can you all check the NixOS systemd unit?". Remaining raised hands: Zannah ✋🏻',
+            f'🛎️ Inviting {companion.SKRYE_ID} to the floor on Martin\'s message: "Can you all check the NixOS systemd unit?" ✋🏻',
         )
 
-        # 2. Now Skrye finishes her turn with an untagged reply -> pending_hands automatically invites Zannah next!
+        # Skrye finishes last, so no further invitation is needed.
         self.current_time_ms += 1_000
         skrye_engine.process_sync_batch(
             {
@@ -2577,12 +2621,6 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
             }
         )
         self.assertEqual(len(self.httpd.messages_sent), 3)
-        zannah_invite = self.httpd.messages_sent[-1]["body"]
-        self.assertEqual(zannah_invite["m.mentions"], {"user_ids": [companion.ZANNAH_ID]})
-        self.assertEqual(
-            zannah_invite["body"],
-            f'🛎️ Inviting {companion.ZANNAH_ID} to the floor on Martin\'s message: "Can you all check the NixOS systemd unit?" ✋🏻',
-        )
         root_state = skrye_store.read_companion_state()["wakeups"]["martin_roots"]["$m_multi"]
         self.assertEqual(root_state["pending_hands"], [])
 
