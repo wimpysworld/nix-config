@@ -12,7 +12,7 @@
 - Do not use native `mcp__*` tools or `mcp_list`, `mcp_status`, `mcp_add`, `mcp_remove`, or `mcp_restart`.
 - Report connection or authentication errors. Do not reconfigure servers or start OAuth login.
 - Treat returned error content as failure, even when the process exit status is zero.
-- Tool access grants no mutation authority. Follow `TOOLS.md` for write timeouts and spawn briefings.
+- Follow `TOOLS.md` for MCPorter write timeouts and sub-agent spawn briefings.
 - Load skills with `read_skill` before following their workflows. Skills are not callable tools.
 - Before tool calls, briefly state the next action.
 - For multi-step tasks, check each step's result before proceeding.
