@@ -2764,8 +2764,6 @@ class TrustFilterAndSnapshotBuilder:
                 and existing.get("number") == number
                 and existing.get("item_kind") == item_kind
                 and existing.get("item_id") == str_item_id
-                and existing.get("event_kind") == event_kind
-                and existing.get("rule_matched") == rule_matched
             ):
                 return {
                     "event": existing,
