@@ -825,6 +825,139 @@ def verify_history_dispatch_completion(
     return True, False, None
 
 
+_READ_ONLY_INTERRUPTED_TURN_TOOLS = {
+    "read",
+    "glob",
+    "grep",
+    "read_skill",
+    "memory_search",
+    "memory_get",
+    "sessions_list",
+    "sessions_history",
+    "sessions_search",
+    "codebase_peek",
+    "codebase_search",
+    "codebase_status",
+}
+_READ_ONLY_EXEC_SEGMENT_RE = re.compile(
+    r"(?:"
+    r"gh-api-safe(?:\s+.*)?|"
+    r"gh\s+pr\s+(?:view|diff|list|checks|status)(?:\s+.*)?|"
+    r"gh\s+issue\s+(?:view|list|status)(?:\s+.*)?|"
+    r"gh\s+run\s+(?:view|list)(?:\s+.*)?|"
+    r"gh\s+repo\s+view(?:\s+.*)?|"
+    r"gh\s+search(?:\s+.*)?|"
+    r"gh\s+status(?:\s+.*)?|"
+    r"git\s+(?:status|diff|log|show|rev-parse)(?:\s+.*)?|"
+    r"(?:cat|head|tail|wc|ls|printf|date|true)(?:\s+.*)?"
+    r")"
+)
+_EXEC_SEGMENT_SPLIT_RE = re.compile(r"&&|\|\||[;|\n]")
+_LEADING_ENV_ASSIGNMENT_RE = re.compile(r"^(?:[A-Za-z_][A-Za-z0-9_]*=\S*\s+)+")
+_STANDARD_STDERR_REDIRECTION_RE = re.compile(r"(?<!\d)2>/dev/null(?=$|\s|[;&|\n])")
+
+
+def _tool_call_name_and_arguments(tool_call: object) -> tuple[str, object]:
+    if not isinstance(tool_call, dict):
+        return "", None
+    function = _as_dict(tool_call.get("function"))
+    name = str(
+        tool_call.get("name")
+        or tool_call.get("tool_name")
+        or tool_call.get("toolName")
+        or function.get("name")
+        or ""
+    ).strip()
+    arguments = tool_call.get("arguments")
+    if arguments is None:
+        arguments = tool_call.get("input")
+    if arguments is None:
+        arguments = function.get("arguments")
+    return name, arguments
+
+
+def _tool_invokes_external_mutation(name: str, arguments: object) -> bool:
+    clean_name = name.rsplit(".", 1)[-1].strip().lower()
+    if clean_name in _READ_ONLY_INTERRUPTED_TURN_TOOLS:
+        return False
+    if clean_name == "exec":
+        if isinstance(arguments, str):
+            try:
+                arguments = json.loads(arguments)
+            except (TypeError, ValueError):
+                return True
+        if not isinstance(arguments, dict):
+            return True
+        command = arguments.get("command")
+        if not isinstance(command, str) or not command.strip():
+            return True
+
+        command_without_stderr_redirect = _STANDARD_STDERR_REDIRECTION_RE.sub("", command)
+        if (
+            ">" in command_without_stderr_redirect
+            or "$(" in command
+            or "`" in command
+            or re.search(r"(?<!&)&(?!&)", command) is not None
+        ):
+            return True
+
+        has_segment = False
+        for raw_segment in _EXEC_SEGMENT_SPLIT_RE.split(command):
+            segment = raw_segment.strip()
+            if not segment:
+                continue
+            has_segment = True
+            segment = _LEADING_ENV_ASSIGNMENT_RE.sub("", segment).strip()
+            if not segment or _READ_ONLY_EXEC_SEGMENT_RE.fullmatch(segment) is None:
+                return True
+        return not has_segment
+    return True
+
+
+def history_dispatch_has_external_mutation(records: list[dict], dispatch_id: str) -> bool:
+    """Return whether records after the dispatch user record include an external mutation tool call."""
+    clean_id = (dispatch_id or "").strip()
+    user_idx: int | None = None
+    for idx, rec in enumerate(records if isinstance(records, list) else []):
+        if not isinstance(rec, dict) or str(rec.get("role") or "").strip().lower() != "user":
+            continue
+        rec_dispatch_id = str(rec.get("dispatch_id") or _as_dict(rec.get("metadata")).get("dispatch_id") or "").strip()
+        content_text = extract_text_content(rec.get("content") if "content" in rec else rec)
+        if rec_dispatch_id == clean_id or (clean_id and clean_id in content_text):
+            user_idx = idx
+    if user_idx is None:
+        return False
+
+    known_tool_calls: dict[str, bool] = {}
+    for rec in records[user_idx + 1 :]:
+        if not isinstance(rec, dict):
+            continue
+        tool_calls = rec.get("tool_calls")
+        if isinstance(tool_calls, list):
+            for tool_call in tool_calls:
+                name, arguments = _tool_call_name_and_arguments(tool_call)
+                mutates = _tool_invokes_external_mutation(name, arguments)
+                if isinstance(tool_call, dict):
+                    call_id = str(tool_call.get("id") or tool_call.get("tool_call_id") or "").strip()
+                    if call_id:
+                        known_tool_calls[call_id] = mutates
+                if mutates:
+                    return True
+        rec_type = str(rec.get("type") or rec.get("role") or "").strip().lower()
+        if rec_type in ("tool_result", "tool"):
+            call_id = str(rec.get("toolCallId") or rec.get("tool_call_id") or "").strip()
+            if call_id in known_tool_calls:
+                if known_tool_calls[call_id]:
+                    return True
+                continue
+            name, arguments = _tool_call_name_and_arguments(rec)
+            if not name:
+                return True
+            if _tool_invokes_external_mutation(name, arguments):
+                return True
+    return False
+
+
 def check_private(fd: int, directory: bool = False) -> os.stat_result:
     info = os.fstat(fd)
     valid_type = stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode)
@@ -4269,6 +4402,7 @@ class LocalExecutionCoordinator:
             records,
             dispatch_id,
         )
+        has_external_mutation = has_user and history_dispatch_has_external_mutation(records, dispatch_id)
         completed = (peek_active is False) and has_user and has_terminal_assistant
         task_succeeded = False
         failure_reason: str | None = None
@@ -4287,6 +4421,7 @@ class LocalExecutionCoordinator:
             "peek_error": peek_error,
             "has_user_record": has_user,
             "has_terminal_assistant_record": has_terminal_assistant,
+            "has_external_mutation": has_external_mutation,
             "assistant_record": assistant_rec,
         }
 
@@ -4296,10 +4431,17 @@ class LocalExecutionCoordinator:
         dispatch_id: str,
         deadline_ms: int,
     ) -> dict:
+        inactive_checks = 0
         while True:
             check = self._check_completion_once(session_key, dispatch_id)
             if check["completed"]:
                 return check
+            if check.get("peek_active") is False:
+                inactive_checks += 1
+                if inactive_checks >= 2:
+                    return check
+            else:
+                inactive_checks = 0
             current_ms = self.clock()
             if current_ms >= deadline_ms:
                 return check
@@ -4526,6 +4668,35 @@ class LocalExecutionCoordinator:
                 "watermark": fin["watermark"],
             }
 
+        if (
+            check.get("peek_active") is False
+            and check.get("has_user_record")
+            and not check.get("has_terminal_assistant_record")
+            and not check.get("has_external_mutation")
+        ):
+            failure_reason = "interrupted_turn_without_terminal_reply"
+            fin = self._finalize_failed_dispatch(
+                active,
+                failure_reason=failure_reason,
+                now_override_ms=self.clock(),
+            )
+            return {
+                "status": "recovered_failed",
+                "can_dispatch": True,
+                "execution_terminated": True,
+                "task_succeeded": False,
+                "failure_reason": failure_reason,
+                "dispatch_id": dispatch_id,
+                "session_key": session_key,
+                "kind": active.get("kind"),
+                "thread_id": active.get("thread_id"),
+                "reply_text": "",
+                "telegram_forwarded": False,
+                "telegram_error": None,
+                "queued_followup": fin["queued_followup"],
+                "watermark": fin["watermark"],
+            }
+
         blocked = self._mark_blocked_unknown_outcome(
             active,
             check,
@@ -4679,6 +4850,39 @@ class LocalExecutionCoordinator:
                     "reply_text": reply_text,
                     "telegram_forwarded": telegram_forwarded,
                     "telegram_error": telegram_error,
+                    "rpc_response": rpc_response,
+                    "rpc_error": str(rpc_error) if rpc_error is not None else None,
+                    "queued_followup": fin["queued_followup"],
+                    "watermark": fin["watermark"],
+                    "recovery": recovery,
+                }
+
+            if (
+                check.get("peek_active") is False
+                and check.get("has_user_record")
+                and not check.get("has_terminal_assistant_record")
+                and not check.get("has_external_mutation")
+            ):
+                failure_reason = "interrupted_turn_without_terminal_reply"
+                fin = self._finalize_failed_dispatch(
+                    active_record,
+                    failure_reason=failure_reason,
+                    now_override_ms=self.clock(),
+                )
+                return {
+                    "status": "failed",
+                    "dispatched": True,
+                    "execution_terminated": True,
+                    "task_succeeded": False,
+                    "failure_reason": failure_reason,
+                    "dispatch_id": resolved_dispatch_id,
+                    "session_key": resolved_session_key,
+                    "kind": kind,
+                    "thread_id": thread_id,
+                    "revision": revision,
+                    "reply_text": "",
+                    "telegram_forwarded": False,
+                    "telegram_error": None,
                     "rpc_response": rpc_response,
                     "rpc_error": str(rpc_error) if rpc_error is not None else None,
                     "queued_followup": fin["queued_followup"],
