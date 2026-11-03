@@ -3407,11 +3407,27 @@ class ModeratorWakeupCoordinator:
         cutoff_ms: int,
         last_moderator_reset_ts_ms: int,
         current_ms: int,
+        active_session_key: str,
+        target_record: dict | None = None,
     ) -> bool:
+        target = target_record if isinstance(target_record, dict) else {}
         created_at_ms = _safe_int(record.get("created_at_ms"), 0)
-        if created_at_ms >= cutoff_ms and (
+        target_ts_ms = _safe_int(
+            target.get("origin_server_ts", record.get("target_origin_server_ts")),
+            0,
+        )
+        target_session_key = str(target.get("session_key") or record.get("session_key") or "")
+        target_status = str(target.get("status") or "")
+        record_is_current = created_at_ms >= cutoff_ms and (
             last_moderator_reset_ts_ms <= 0 or created_at_ms > last_moderator_reset_ts_ms
-        ):
+        )
+        target_is_current = (
+            target_status != "cancelled"
+            and target_session_key == active_session_key
+            and target_ts_ms >= cutoff_ms
+            and (last_moderator_reset_ts_ms <= 0 or target_ts_ms > last_moderator_reset_ts_ms)
+        )
+        if record_is_current and target_is_current:
             return False
         txn_id = str(record.get("txn_id") or "")
         if txn_id:
@@ -3435,6 +3451,8 @@ class ModeratorWakeupCoordinator:
         target_body: str,
         root_id: str,
         current_ms: int,
+        session_key: str,
+        target_origin_server_ts: int,
         is_relay_hop: bool = False,
         after_event_id: str = "",
     ) -> tuple[str, str | None, dict]:
@@ -3460,6 +3478,8 @@ class ModeratorWakeupCoordinator:
                 "target_body": format_target_message_preview(target_body),
                 "remaining_hands": remaining,
                 "martin_root_id": root_id,
+                "session_key": session_key,
+                "target_origin_server_ts": target_origin_server_ts,
             }
             extra_content: dict | None = {COMPANION_RELAY_KEY: relay_meta}
         else:
@@ -3503,6 +3523,8 @@ class ModeratorWakeupCoordinator:
             "selected_speaker": selected_speaker,
             "wake_reason": wake_reason,
             "martin_root_id": root_id,
+            "session_key": session_key,
+            "target_origin_server_ts": target_origin_server_ts,
             "sending_account": self.matrix_client.self_user_id,
             "token_generation_id": token_gen_id,
             "scope_id": scope_id,
@@ -3573,6 +3595,11 @@ class ModeratorWakeupCoordinator:
 
         room_data = self.state_store.read_room_events()
         recent_events: list[dict] = room_data.get("recent_events", [])
+        recent_by_id = {
+            str(ev.get("event_id")): ev
+            for ev in recent_events
+            if isinstance(ev, dict) and isinstance(ev.get("event_id"), str)
+        }
         _, live_bot_turns, _ = self._compute_timeline_discussion_state(
             recent_events=recent_events,
             active_session_key=active_session_key,
@@ -3591,6 +3618,8 @@ class ModeratorWakeupCoordinator:
                 cutoff_ms,
                 last_mod_reset_ts,
                 current_ms,
+                active_session_key,
+                recent_by_id.get(str(r_entry.get("target_event_id") or "")),
             ):
                 continue
             status_out, ev_id = self._reconcile_sending_record(r_entry, recent_events, current_ms)
@@ -3631,7 +3660,18 @@ class ModeratorWakeupCoordinator:
 
             relay_ts_ms = _safe_int(ev.get("origin_server_ts"), 0)
             relay_ev_id = str(ev.get("event_id") or "")
-            if relay_ts_ms < cutoff_ms or (last_mod_reset_ts > 0 and relay_ts_ms <= last_mod_reset_ts):
+            target_ev = recent_by_id.get(target_ev_id, {})
+            target_ts_ms = _safe_int(
+                relay_meta.get("target_origin_server_ts"),
+                _safe_int(target_ev.get("origin_server_ts"), 0),
+            )
+            target_session_key = active_session_key
+            if (
+                relay_ts_ms < cutoff_ms
+                or (last_mod_reset_ts > 0 and relay_ts_ms <= last_mod_reset_ts)
+                or target_ts_ms < cutoff_ms
+                or (last_mod_reset_ts > 0 and target_ts_ms <= last_mod_reset_ts)
+            ):
                 relayed_selections[sel_id] = {
                     "selection_id": sel_id,
                     "target_event_id": target_ev_id,
@@ -3705,6 +3745,8 @@ class ModeratorWakeupCoordinator:
                 target_body=str(relay_meta.get("target_body") or ""),
                 root_id=str(relay_meta.get("martin_root_id") or ""),
                 current_ms=current_ms,
+                session_key=target_session_key,
+                target_origin_server_ts=target_ts_ms,
                 is_relay_hop=True,
                 after_event_id=relay_ev_id,
             )
@@ -3813,6 +3855,8 @@ class ModeratorWakeupCoordinator:
                 cutoff_ms,
                 last_mod_reset_ts,
                 current_ms,
+                active_session_key,
+                t_ref,
             ):
                 if isinstance(t_ref, dict):
                     t_ref["status"] = "cancelled"
@@ -3939,6 +3983,11 @@ class ModeratorWakeupCoordinator:
                     target_body=target_body_str,
                     root_id=current_root_id,
                     current_ms=current_ms,
+                    session_key=str(source_target.get("session_key") or active_session_key),
+                    target_origin_server_ts=_safe_int(
+                        source_target.get("origin_server_ts"),
+                        _safe_int(source_ev.get("origin_server_ts"), 0) if isinstance(source_ev, dict) else 0,
+                    ),
                     is_relay_hop=False,
                     after_event_id=finished_ev_id or source_tid,
                 )
@@ -4186,6 +4235,8 @@ class ModeratorWakeupCoordinator:
                     target_body=target_body_str,
                     root_id=root_id,
                     current_ms=current_ms,
+                    session_key=active_session_key,
+                    target_origin_server_ts=t_ts_ms,
                     is_relay_hop=False,
                     after_event_id=tid,
                 )

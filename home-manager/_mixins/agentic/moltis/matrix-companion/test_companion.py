@@ -2291,22 +2291,25 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
 
     def test_interrupted_wakeups_are_cancelled_before_recovery_after_reset_boundaries(self) -> None:
         for agent_name in ("skrye", "traya"):
-            for boundary in ("cutoff", "moderator_reset"):
+            for boundary in ("cutoff", "moderator_reset", "session"):
                 with self.subTest(agent_name=agent_name, boundary=boundary):
                     self.state_dir = self.root / f"state-{agent_name}-{boundary}"
                     self.state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
                     store, resolver, _, _, engine = self.make_components(agent_name=agent_name, main_model="")
                     selection_id = f"$old-{agent_name}-{boundary}:seq1"
                     txn_id = f"mc-{agent_name}-{boundary}"
+                    reset_ts = self.current_time_ms + 200
                     record = {
                         "selection_id": selection_id,
                         "target_event_id": f"$old-{agent_name}-{boundary}",
                         "selected_speaker": companion.SKRYE_ID if agent_name == "traya" else companion.TRAYA_ID,
                         "sending_account": f"@{agent_name}:{companion.SERVER_DOMAIN}",
+                        "session_key": resolver.default_session_key,
+                        "target_origin_server_ts": self.current_time_ms + 100,
                         "txn_id": txn_id,
                         "path": f"/_matrix/client/v3/rooms/room/send/m.room.message/{txn_id}",
                         "payload": {"msgtype": "m.notice", "body": "stale invitation"},
-                        "created_at_ms": self.current_time_ms + 100,
+                        "created_at_ms": reset_ts + 50,
                         "status": "sending",
                     }
                     wakeups = {
@@ -2338,7 +2341,9 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
                             }
                         }
                     )
-                    reset_ts = self.current_time_ms + 200
+                    active_session_key = resolver.default_session_key
+                    if boundary == "session":
+                        active_session_key = f"{resolver.default_session_key}:new"
                     actionable_events = []
                     cutoff_ms = reset_ts if boundary == "cutoff" else 0
                     if boundary == "moderator_reset":
@@ -2357,7 +2362,7 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
                     engine.wakeup_coordinator.ingest_and_reconcile(
                         actionable_events=actionable_events,
                         generation={
-                            "active_session_key": resolver.default_session_key,
+                            "active_session_key": active_session_key,
                             "cutoff_ms": cutoff_ms,
                         },
                         now_override_ms=reset_ts + 100,
