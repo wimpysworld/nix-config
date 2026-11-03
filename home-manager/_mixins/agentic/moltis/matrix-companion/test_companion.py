@@ -4,12 +4,17 @@
 from __future__ import annotations
 
 import concurrent.futures
+import contextlib
+import errno
 import fcntl
 import http.server
+import importlib.util
+import io
 import json
 import os
 import re
 import sqlite3
+import stat
 import subprocess
 import sys
 import tempfile
@@ -47,6 +52,11 @@ def load_hook_source(
     body = "\n".join(lines)
     uid = self_user_id or f"@{agent_name}:{companion.SERVER_DOMAIN}"
     replacements = {
+        "${./matrix-companion}": str(Path(__file__).resolve().parent),
+        "${toString ./matrix-companion}": str(Path(__file__).resolve().parent),
+        "${builtins.toJSON (toString ./matrix-companion)}": json.dumps(
+            str(Path(__file__).resolve().parent)
+        ),
         "${builtins.toJSON agentName}": json.dumps(agent_name),
         "${builtins.toJSON agentDisplayName}": json.dumps(agent_display_name),
         '${builtins.toJSON (matrixCfg.userId or "@${agentName}:matrix.wimpys.world")}': json.dumps(uid),
@@ -56,6 +66,57 @@ def load_hook_source(
     for placeholder, val in replacements.items():
         body = body.replace(placeholder, val)
     return body
+
+
+def load_tts_shim_source(
+    agent_name: str = "skrye",
+    google_tts_model: str = "gemini-3.8-flash-tts",
+    google_stt_model: str = "gemini-3.8-flash",
+    google_tts_voice: str = "en-gb-commercial-6",
+    ffmpeg_bin: str = "ffmpeg",
+    gemini_key_path: str = "",
+    default_matrix_state_path: str = "",
+    tts_shim_port: int = 13139,
+) -> str:
+    nix_path = Path(__file__).resolve().parent.parent / "default.nix"
+    nix_text = nix_path.read_text(encoding="utf-8")
+    match = re.search(
+        r'moltisTtsShim\s*=\s*pkgs\.writeScript\s*"moltis-tts-shim"\s*\'\'\n(.*?)\n  \'\';',
+        nix_text,
+        re.DOTALL,
+    )
+    if not match:
+        raise RuntimeError("Unable to extract moltisTtsShim from default.nix")
+    raw = textwrap.dedent(match.group(1))
+    lines = raw.splitlines()
+    if lines and lines[0].startswith("#!"):
+        lines = lines[1:]
+    body = "\n".join(lines)
+    replacements = {
+        "${builtins.toJSON googleTtsModel}": json.dumps(google_tts_model),
+        "${builtins.toJSON googleSttModel}": json.dumps(google_stt_model),
+        "${builtins.toJSON googleTtsVoice}": json.dumps(google_tts_voice),
+        "${builtins.toJSON (lib.getExe pkgs.ffmpeg-headless)}": json.dumps(ffmpeg_bin),
+        "${builtins.toJSON geminiKeyPath}": json.dumps(gemini_key_path),
+        '${builtins.toJSON "${stateDir}/matrix-companion-${agentName}/state.json"}': json.dumps(
+            default_matrix_state_path
+        ),
+        "${builtins.toJSON (toString ttsShimPort)}": json.dumps(str(tts_shim_port)),
+    }
+    for placeholder, val in replacements.items():
+        body = body.replace(placeholder, val)
+    return body
+
+
+def load_tts_shim_module(tmp_dir: Path, default_matrix_state_path: str = ""):
+    src = load_tts_shim_source(default_matrix_state_path=default_matrix_state_path)
+    mod_path = tmp_dir / "moltis_tts_shim_test.py"
+    mod_path.write_text(src, encoding="utf-8")
+    spec = importlib.util.spec_from_file_location("moltis_tts_shim_test", mod_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class MockMatrixAndRpcHandler(http.server.BaseHTTPRequestHandler):
@@ -332,7 +393,7 @@ class CompanionTestBase(unittest.TestCase):
         db_path = self.data_dir / "moltis.db"
         account_id = f"matrix-{agent_name}"
         default_key = f"matrix:matrix-{agent_name}:{companion.DEFAULT_ROOM_ID}"
-        with sqlite3.connect(db_path) as conn:
+        with contextlib.closing(sqlite3.connect(db_path)) as conn, conn:
             conn.executescript(
                 """
                 CREATE TABLE IF NOT EXISTS channel_sessions (
@@ -1240,7 +1301,8 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         self.assertIn(bee_rxn_id, redacted_targets)
         self.assertNotIn(prog_id, redacted_targets)
 
-    def test_aborted_turn_cleans_up_within_5s_without_victory_reaction(self) -> None:
+    def test_aborted_turn_cleans_up_within_30s_without_victory_reaction(self) -> None:
+        self.assertEqual(companion.COMPLETION_RECONCILE_WINDOW_MS, 30_000)
         store, resolver, _, _, engine = self.make_components(agent_name="skrye")
         session_key = resolver.default_session_key
         hook_script = self.write_hook_script(agent_name="skrye")
@@ -1320,8 +1382,12 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         res1 = engine.tick(now_override_ms=self.current_time_ms)
         self.assertEqual(res1["turn_status"]["status"], "reconciling_completion")
 
-        # After 5s window expires, 🐝 reaction is redacted and the progress notice is edited in place to ⚠️.
-        self.current_time_ms += 5_000
+        # At 25s into the 30s window, reconciliation is still waiting.
+        res_mid = engine.tick(now_override_ms=self.current_time_ms + 25_000)
+        self.assertEqual(res_mid["turn_status"]["status"], "reconciling_completion")
+
+        # After 30s window expires, 🐝 reaction is redacted and the progress notice is edited in place to ⚠️.
+        self.current_time_ms += 30_000
         res2 = engine.tick(now_override_ms=self.current_time_ms)
         self.assertEqual(res2["turn_status"]["status"], "cleaned_up_incomplete")
         run_state = store.get_run_state(session_key, "run-abort")
@@ -1339,6 +1405,183 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         )
         redacted_targets = [r["path"].split("/redact/")[1].split("/")[0] for r in self.httpd.redactions_sent]
         self.assertNotIn(prog_id, redacted_targets)
+
+    def test_back_to_back_run_id_transition_verifies_prior_run_completion(self) -> None:
+        store, resolver, _, _, engine = self.make_components(agent_name="skrye")
+        session_key = resolver.default_session_key
+        hook_script = self.write_hook_script(agent_name="skrye")
+
+        engine.process_sync_batch({"next_batch": "s_init", "rooms": {"join": {}}})
+
+        t_run1 = self.current_time_ms
+        turn1_msg = "@skrye:matrix.wimpys.world run first task"
+        self.write_history(
+            session_key,
+            [
+                {
+                    "role": "user",
+                    "run_id": "run-1",
+                    "sender_id": companion.MARTIN_ID,
+                    "content": turn1_msg,
+                    "created_at": t_run1,
+                }
+            ],
+        )
+        self.invoke_hook(
+            {
+                "event": "BeforeLLMCall",
+                "session_key": session_key,
+                "iteration": 1,
+                "messages": [{"role": "system", "content": "Sys"}],
+            },
+            "skrye",
+            hook_script,
+        )
+        engine.process_sync_batch(
+            {
+                "next_batch": "s_run1_start",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$ev_run1",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": t_run1,
+                                        "content": {"msgtype": "m.text", "body": turn1_msg},
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$ack_run1",
+                                        "sender": companion.SKRYE_ID,
+                                        "origin_server_ts": t_run1 + 5,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$ev_run1",
+                                                "key": "👀",
+                                            }
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+
+        # Advance 10s so run-1 posts a progress notice while chat.peek stays True.
+        self.current_time_ms = t_run1 + 10_000
+        engine.tick(now_override_ms=self.current_time_ms)
+        run1_state = store.get_run_state(session_key, "run-1")
+        assert run1_state is not None
+        prog_id_1 = run1_state["progress_event_id"]
+        self.assertIsNotNone(prog_id_1)
+
+        # At 12s, run-1 finishes and posts its outbound Matrix reply, and run-2 starts immediately at 14s
+        # so chat.peek remains True across the run_id transition (even before run-1's assistant record flushes to history.jsonl).
+        t_reply1 = t_run1 + 12_000
+        t_run2 = t_run1 + 14_000
+        turn2_msg = "@skrye:matrix.wimpys.world run second task"
+        self.write_history(
+            session_key,
+            [
+                {
+                    "role": "user",
+                    "run_id": "run-1",
+                    "sender_id": companion.MARTIN_ID,
+                    "content": turn1_msg,
+                    "created_at": t_run1,
+                },
+                {
+                    "role": "user",
+                    "run_id": "run-2",
+                    "sender_id": companion.MARTIN_ID,
+                    "content": turn2_msg,
+                    "created_at": t_run2,
+                },
+            ],
+        )
+        self.current_time_ms = t_run2
+        self.invoke_hook(
+            {
+                "event": "BeforeLLMCall",
+                "session_key": session_key,
+                "iteration": 1,
+                "messages": [{"role": "system", "content": "Sys"}],
+            },
+            "skrye",
+            hook_script,
+        )
+        self.httpd.peek_active = True
+        engine.process_sync_batch(
+            {
+                "next_batch": "s_run2_supersedes_run1",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$ev_run1_reply",
+                                        "sender": companion.SKRYE_ID,
+                                        "origin_server_ts": t_reply1,
+                                        "content": {
+                                            "msgtype": "m.text",
+                                            "body": "First task completed cleanly.",
+                                        },
+                                    },
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$ev_run2",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": t_run2,
+                                        "content": {"msgtype": "m.text", "body": turn2_msg},
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$ack_run2",
+                                        "sender": companion.SKRYE_ID,
+                                        "origin_server_ts": t_run2 + 5,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$ev_run2",
+                                                "key": "👀",
+                                            }
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+
+        run1_after = store.get_run_state(session_key, "run-1")
+        assert run1_after is not None
+        self.assertTrue(run1_after["cleaned_up"])
+        self.assertEqual(run1_after["reply_event_id"], "$ev_run1_reply")
+        self.assertEqual(run1_after["terminal_notice_event_id"], prog_id_1)
+        self.assertEqual(
+            run1_after["terminal_notice_text"],
+            "🏁 Skrye finished in 00:14",
+        )
+        self.assertNotIn("Completion unverified", run1_after["terminal_notice_text"])
+        terminal_edit = self.httpd.messages_sent[-1]["body"]
+        self.assertEqual(
+            terminal_edit["m.relates_to"],
+            {"rel_type": "m.replace", "event_id": prog_id_1},
+        )
+        self.assertEqual(
+            terminal_edit["m.new_content"]["body"],
+            "🏁 Skrye finished in 00:14",
+        )
 
 
 class Criterion3AssessmentOutputValidationTests(CompanionTestBase):
@@ -1378,7 +1621,7 @@ class Criterion3AssessmentOutputValidationTests(CompanionTestBase):
                 self.assertIsNone(companion.parse_assessment_rpc_response(payload))
 
     def test_assessment_worker_posts_only_valid_badges(self) -> None:
-        store, resolver, _, _, engine = self.make_components(
+        store, _, _, _, engine = self.make_components(
             agent_name="zannah",
             main_model="gemini::gemini-4-argon",
         )
@@ -1438,6 +1681,229 @@ class Criterion3AssessmentOutputValidationTests(CompanionTestBase):
         self.assertEqual(rpc_params["_session_key"], "companion:matrix-assess")
         self.assertIs(rpc_params["_ephemeral"], True)
         self.assertEqual(rpc_params["active_tools"], [])
+
+    def test_assessment_prompts_and_role_summaries_strip_voice_triggers(self) -> None:
+        for agent_key, summary in companion.ROLE_SUMMARIES.items():
+            with self.subTest(agent_key=agent_key):
+                self.assertNotIn("speak", summary.lower())
+
+        store, resolver, _, _, engine = self.make_components(
+            agent_name="skrye",
+            main_model="gemini::gemini-4-argon",
+        )
+        session_key = resolver.default_session_key
+        engine.process_sync_batch({"next_batch": "s_init", "rooms": {"join": {}}})
+        store.apply_timeline_events(
+            events=[
+                {
+                    "type": "m.room.message",
+                    "event_id": "$ctx_voice",
+                    "sender": companion.ZANNAH_ID,
+                    "origin_server_ts": self.current_time_ms + 10,
+                    "content": {
+                        "msgtype": "m.text",
+                        "body": "Who is the next speaker to speak or speaking now? Talk to me or reply with voice.",
+                    },
+                },
+                {
+                    "type": "m.room.message",
+                    "event_id": "$target_voice",
+                    "sender": companion.MARTIN_ID,
+                    "origin_server_ts": self.current_time_ms + 20,
+                    "content": {
+                        "msgtype": "m.text",
+                        "body": "Skrye speaks after each speaker finishes speaking. Please speak up or send a voice message.",
+                    },
+                },
+            ],
+            active_session_key=session_key,
+            cutoff_ms=self.current_time_ms,
+            self_user_id=companion.SKRYE_ID,
+            seed_only=False,
+        )
+        prompt = engine.assessment_worker.build_assessment_prompt(
+            {
+                "event_id": "$target_voice",
+                "sender": companion.MARTIN_ID,
+                "body": "Skrye speaks after each speaker finishes speaking. Please speak up or send a voice message.",
+                "origin_server_ts": self.current_time_ms + 20,
+                "active_session_key": session_key,
+            },
+            cutoff_ms=self.current_time_ms,
+        )
+        self.assertNotIn("speak", prompt.lower())
+        self.assertNotIn("voice message", prompt.lower())
+        self.assertNotIn("reply with voice", prompt.lower())
+        self.assertNotIn("talk to me", prompt.lower())
+
+    def test_tts_shim_ogg_gating_and_opus_passthrough(self) -> None:
+        state_file = self.state_dir / companion.STATE_FILENAME
+        shim = load_tts_shim_module(self.root, default_matrix_state_path=str(state_file))
+
+        synth_calls: list[tuple[str, str, str]] = []
+
+        def fake_load_api_key() -> str:
+            return "test-gemini-key"
+
+        def fake_synthesize_gemini(api_key: str, model: str, voice: str, text: str, instructions=None):
+            synth_calls.append((model, voice, text))
+            return b"RIFF-fake-wav", "audio/wav"
+
+        def fake_transcode_audio(raw_bytes: bytes, response_format: str):
+            return b"OggS-fake-opus", "audio/ogg"
+
+        def invoke_speech(payload: dict) -> tuple[int, bytes, str]:
+            raw = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+            handler = shim.TtsHandler.__new__(shim.TtsHandler)
+            handler.headers = {"Content-Length": str(len(raw)), "Content-Type": "application/json"}
+            handler.rfile = io.BytesIO(raw)
+            handler.wfile = io.BytesIO()
+            status_holder = {"code": 0, "headers": {}}
+
+            def send_response(code: int, message: str | None = None) -> None:
+                del message
+                status_holder["code"] = code
+
+            def send_header(k: str, v: str) -> None:
+                status_holder["headers"][k] = v
+
+            def end_headers() -> None:
+                return None
+
+            handler.send_response = send_response
+            handler.send_header = send_header
+            handler.end_headers = end_headers
+            with (
+                patch.object(shim, "load_api_key", fake_load_api_key),
+                patch.object(shim, "synthesize_gemini", fake_synthesize_gemini),
+                patch.object(shim, "transcode_audio", fake_transcode_audio),
+                patch.dict(os.environ, {"MOLTIS_TTS_MATRIX_STATE_PATH": str(state_file)}),
+            ):
+                handler._handle_speech()
+            return (
+                status_holder["code"],
+                handler.wfile.getvalue(),
+                status_holder["headers"].get("Content-Type", ""),
+            )
+
+        store, _, _, _, _ = self.make_components(agent_name="skrye")
+
+        # 1. "ogg" with "✋🏻" or len(text.strip()) <= 16 -> HTTP 400 without calling Gemini TTS.
+        code_badge, body_badge, _ = invoke_speech({"input": "✋🏻", "response_format": "ogg"})
+        self.assertEqual(code_badge, 400)
+        self.assertIn("short assessment badge", json.loads(body_badge.decode("utf-8"))["error"]["message"])
+        self.assertEqual(len(synth_calls), 0)
+
+        code_short, _, _ = invoke_speech({"input": "Short reply.", "response_format": "ogg"})
+        self.assertEqual(code_short, 400)
+        self.assertEqual(len(synth_calls), 0)
+
+        # 2. "ogg" with normal reply text when Martin's latest message in state.json has no voice/audio request -> HTTP 400.
+        store.apply_timeline_events(
+            events=[
+                {
+                    "type": "m.room.message",
+                    "event_id": "$m_text_only",
+                    "sender": companion.MARTIN_ID,
+                    "origin_server_ts": self.current_time_ms + 10,
+                    "content": {
+                        "msgtype": "m.text",
+                        "body": "Can you review the systemd service configuration in default.nix?",
+                    },
+                }
+            ],
+            active_session_key="matrix:matrix-skrye:!the-cauldron:matrix.wimpys.world",
+            cutoff_ms=self.current_time_ms,
+            self_user_id=companion.SKRYE_ID,
+            seed_only=False,
+        )
+        code_no_voice, body_no_voice, _ = invoke_speech(
+            {
+                "input": "The systemd service configuration in default.nix looks clean and ready.",
+                "response_format": "ogg",
+            }
+        )
+        self.assertEqual(code_no_voice, 400)
+        self.assertIn(
+            "Martin did not request audio/voice",
+            json.loads(body_no_voice.decode("utf-8"))["error"]["message"],
+        )
+        self.assertEqual(len(synth_calls), 0)
+
+        # 3. "opus" from moltis-telegram-voice -> HTTP 200 regardless of Matrix state.
+        code_opus, body_opus, ctype_opus = invoke_speech(
+            {
+                "input": "Telegram voice note synthesis succeeds even when Matrix is text-only.",
+                "response_format": "opus",
+            }
+        )
+        self.assertEqual(code_opus, 200)
+        self.assertEqual(ctype_opus, "audio/ogg")
+        self.assertEqual(body_opus, b"OggS-fake-opus")
+        self.assertEqual(len(synth_calls), 1)
+
+        # 4. "ogg" with normal reply text when Martin's latest message in state.json asks for a voice note -> HTTP 200.
+        store.apply_timeline_events(
+            events=[
+                {
+                    "type": "m.room.message",
+                    "event_id": "$m_voice_req",
+                    "sender": companion.MARTIN_ID,
+                    "origin_server_ts": self.current_time_ms + 20,
+                    "content": {
+                        "msgtype": "m.text",
+                        "body": "Please reply with a voice note summarising the rollout plan.",
+                    },
+                }
+            ],
+            active_session_key="matrix:matrix-skrye:!the-cauldron:matrix.wimpys.world",
+            cutoff_ms=self.current_time_ms,
+            self_user_id=companion.SKRYE_ID,
+            seed_only=False,
+        )
+        code_voice_ok, body_voice_ok, ctype_voice_ok = invoke_speech(
+            {
+                "input": "Here is the requested spoken summary of the rollout plan.",
+                "response_format": "ogg",
+            }
+        )
+        self.assertEqual(code_voice_ok, 200)
+        self.assertEqual(ctype_voice_ok, "audio/ogg")
+        self.assertEqual(body_voice_ok, b"OggS-fake-opus")
+        self.assertEqual(len(synth_calls), 2)
+
+        # 5. "ogg" when Martin's latest message explicitly refuses voice ("Do not speak aloud; reply in text only") -> martin_requested_voice returns False and HTTP 400.
+        store.apply_timeline_events(
+            events=[
+                {
+                    "type": "m.room.message",
+                    "event_id": "$m_voice_refusal",
+                    "sender": companion.MARTIN_ID,
+                    "origin_server_ts": self.current_time_ms + 30,
+                    "content": {
+                        "msgtype": "m.text",
+                        "body": "Do not speak aloud; reply in text only",
+                    },
+                }
+            ],
+            active_session_key="matrix:matrix-skrye:!the-cauldron:matrix.wimpys.world",
+            cutoff_ms=self.current_time_ms,
+            self_user_id=companion.SKRYE_ID,
+            seed_only=False,
+        )
+        self.assertFalse(shim.martin_requested_voice(str(state_file)))
+        code_refusal, body_refusal, _ = invoke_speech(
+            {
+                "input": "Here is the text-only summary that you asked for.",
+                "response_format": "ogg",
+            }
+        )
+        self.assertEqual(code_refusal, 400)
+        self.assertIn(
+            "Martin did not request audio/voice",
+            json.loads(body_refusal.decode("utf-8"))["error"]["message"],
+        )
+        self.assertEqual(len(synth_calls), 2)
 
 
 class Criterion4ThinkingDwellAntiChurnTests(CompanionTestBase):
@@ -2366,63 +2832,85 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
             "$reply",
         )
 
-    def test_interrupted_wakeups_are_cancelled_before_recovery_after_reset_boundaries(self) -> None:
+    def test_reset_boundaries_cancel_pending_targets_and_stateless_traya_relay(self) -> None:
         for agent_name in ("skrye", "traya"):
             for boundary in ("cutoff", "moderator_reset", "session"):
                 with self.subTest(agent_name=agent_name, boundary=boundary):
                     self.state_dir = self.root / f"state-{agent_name}-{boundary}"
                     self.state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
                     store, resolver, _, _, engine = self.make_components(agent_name=agent_name, main_model="")
-                    selection_id = f"$old-{agent_name}-{boundary}:seq1"
-                    txn_id = f"mc-{agent_name}-{boundary}"
+                    target_id = f"$old-{agent_name}-{boundary}"
+                    selection_id = f"{target_id}:seq1"
                     reset_ts = self.current_time_ms + 200
-                    record = {
-                        "selection_id": selection_id,
-                        "target_event_id": f"$old-{agent_name}-{boundary}",
-                        "selected_speaker": companion.SKRYE_ID if agent_name == "traya" else companion.TRAYA_ID,
-                        "sending_account": f"@{agent_name}:{companion.SERVER_DOMAIN}",
-                        "session_key": resolver.default_session_key,
-                        "target_origin_server_ts": self.current_time_ms + 100,
-                        "txn_id": txn_id,
-                        "path": f"/_matrix/client/v3/rooms/room/send/m.room.message/{txn_id}",
-                        "payload": {"msgtype": "m.notice", "body": "stale invitation"},
-                        "created_at_ms": reset_ts + 50,
-                        "status": "sending",
-                    }
-                    wakeups = {
-                        "targets": {},
-                        "martin_roots": {},
-                        "selections": {},
-                        "relayed_selections": {},
-                        "last_moderator_reset_ts_ms": 0,
-                    }
-                    map_key = "relayed_selections" if agent_name == "traya" else "selections"
-                    wakeups[map_key][selection_id] = record
-                    if agent_name == "skrye":
-                        wakeups["targets"][record["target_event_id"]] = {
-                            "event_id": record["target_event_id"],
-                            "origin_server_ts": self.current_time_ms + 100,
-                            "session_key": resolver.default_session_key,
-                            "status": "pending",
-                            "notified": False,
-                        }
-                    store.write_companion_state({"wakeups": wakeups})
-                    store.write_outbox(
-                        {
-                            "pending": {
-                                txn_id: {
-                                    "kind": "wakeup_notice" if agent_name == "traya" else "relay_notice",
-                                    "path": record["path"],
-                                    "body": record["payload"],
-                                }
-                            }
-                        }
-                    )
                     active_session_key = resolver.default_session_key
                     if boundary == "session":
                         active_session_key = f"{resolver.default_session_key}:new"
+                    cutoff_ms = reset_ts if boundary in ("cutoff", "session") else 0
+
+                    if agent_name == "skrye":
+                        wakeups = {
+                            "targets": {
+                                target_id: {
+                                    "event_id": target_id,
+                                    "origin_server_ts": self.current_time_ms + 100,
+                                    "session_key": resolver.default_session_key,
+                                    "status": "pending",
+                                    "notified": False,
+                                }
+                            },
+                            "martin_roots": {
+                                target_id: {
+                                    "count": 1,
+                                    "pending_hands": [companion.ZANNAH_ID],
+                                    "active_speaker": companion.SKRYE_ID,
+                                }
+                            },
+                            "selections": {},
+                            "relayed_selections": {},
+                            "last_moderator_reset_ts_ms": 0,
+                        }
+                        store.write_companion_state({"wakeups": wakeups})
+                    else:
+                        store.apply_timeline_events(
+                            events=[
+                                {
+                                    "type": "m.room.message",
+                                    "event_id": target_id,
+                                    "sender": companion.MARTIN_ID,
+                                    "origin_server_ts": self.current_time_ms + 100,
+                                    "content": {"msgtype": "m.text", "body": "Old question"},
+                                },
+                                {
+                                    "type": "m.room.message",
+                                    "event_id": f"$relay-{boundary}",
+                                    "sender": companion.SKRYE_ID,
+                                    "origin_server_ts": self.current_time_ms + 150,
+                                    "content": {
+                                        "msgtype": "m.notice",
+                                        "body": "🔔 Relaying floor invitation for Skrye ✋🏻",
+                                        companion.COMPANION_RELAY_KEY: {
+                                            "selection_id": selection_id,
+                                            "target_event_id": target_id,
+                                            "selection_seq": 1,
+                                            "selected_speaker": companion.SKRYE_ID,
+                                            "wake_reason": "raised_hand",
+                                            "target_sender": companion.MARTIN_ID,
+                                            "target_body": "Old question",
+                                            "remaining_hands": [],
+                                            "martin_root_id": target_id,
+                                            "session_key": resolver.default_session_key,
+                                            "target_origin_server_ts": self.current_time_ms + 100,
+                                        },
+                                    },
+                                },
+                            ],
+                            active_session_key=resolver.default_session_key,
+                            cutoff_ms=0,
+                            self_user_id=companion.TRAYA_ID,
+                            seed_only=False,
+                        )
+
                     actionable_events = []
-                    cutoff_ms = reset_ts if boundary == "cutoff" else 0
                     if boundary == "moderator_reset":
                         actionable_events = [
                             {
@@ -2447,17 +2935,23 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
 
                     saved_wakeups = store.read_companion_state()["wakeups"]
                     self.assertEqual(len(self.httpd.messages_sent), sent_before)
-                    self.assertEqual(saved_wakeups[map_key][selection_id]["status"], "cancelled")
-                    self.assertEqual(
-                        saved_wakeups[map_key][selection_id]["cancel_reason"],
-                        "reset_boundary",
-                    )
-                    self.assertEqual(store.read_outbox()["pending"], {})
                     if agent_name == "skrye":
-                        target = saved_wakeups["targets"][record["target_event_id"]]
+                        target = saved_wakeups["targets"][target_id]
                         self.assertEqual(target["status"], "cancelled")
+                        if boundary == "moderator_reset":
+                            self.assertEqual(target["cancel_reason"], "moderator_reset")
+                            self.assertEqual(
+                                saved_wakeups["martin_roots"][target_id]["pending_hands"],
+                                [],
+                            )
+                        else:
+                            self.assertEqual(target["cancel_reason"], "reset_boundary")
+                    else:
+                        relayed = saved_wakeups["relayed_selections"][selection_id]
+                        self.assertEqual(relayed["status"], "cancelled")
+                        self.assertEqual(relayed["cancel_reason"], "reset_boundary")
 
-    def test_single_selector_traya_relay_pending_hands_queue_and_uncertain_blocked_recovery(self) -> None:
+    def test_single_selector_traya_relay_and_multi_hand_queue_retention_across_peer_mentions(self) -> None:
         skrye_store, _, _, _, skrye_engine = self.make_components(agent_name="skrye", main_model="")
         traya_state_dir = self.root / "state-traya"
         traya_state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -2496,8 +2990,8 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
         skrye_engine.process_sync_batch({"next_batch": "s0", "rooms": {"join": {}}})
         traya_engine.process_sync_batch({"next_batch": "t0", "rooms": {"join": {}}})
 
-        # Zannah speaks before Skrye even though Zannah spoke more recently.
-        # After Zannah replies, the queue requests Skrye through Traya's relay.
+        # Skrye and Zannah both raise ✋🏻 on Martin's message; Traya reacts 👌🏻.
+        # Skrye's companion invites Zannah first (peers before Skrye) and queues Skrye in pending_hands.
         skrye_engine.process_sync_batch(
             {
                 "next_batch": "s_prior",
@@ -2573,16 +3067,72 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
         first_invite = self.httpd.messages_sent[-1]["body"]
         self.assertEqual(first_invite["m.mentions"], {"user_ids": [companion.ZANNAH_ID]})
         self.assertNotIn(companion.COMPANION_RELAY_KEY, first_invite)
-        self.assertEqual(skrye_store.read_companion_state()["wakeups"]["martin_roots"]["$m_multi"]["pending_hands"], [companion.SKRYE_ID])
+        self.assertEqual(
+            skrye_store.read_companion_state()["wakeups"]["martin_roots"]["$m_multi"]["pending_hands"],
+            [companion.SKRYE_ID],
+        )
+
+        # Zannah replies and mentions @traya:matrix.wimpys.world.
+        # pending_hands MUST retain Skrye instead of wiping the queue, and active_speaker shifts to Traya.
         self.current_time_ms += 1_000
-        skrye_engine.process_sync_batch({
-            "next_batch": "s_zannah_reply",
-            "rooms": {"join": {companion.DEFAULT_ROOM_ID: {"timeline": {"events": [{
-                "type": "m.room.message", "event_id": "$zannah_reply_1",
-                "sender": companion.ZANNAH_ID, "origin_server_ts": self.current_time_ms,
-                "content": {"msgtype": "m.text", "body": "The unit uses the expected configuration."},
-            }]}}}},
-        })
+        skrye_engine.process_sync_batch(
+            {
+                "next_batch": "s_zannah_tags_traya",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$zannah_reply_tag_traya",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": self.current_time_ms,
+                                        "content": {
+                                            "msgtype": "m.text",
+                                            "body": f"The unit uses the expected configuration; {companion.TRAYA_ID} can you confirm the timer?",
+                                        },
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        # No relay notice yet because Traya was tagged and hasn't finished her turn, while Skrye stays in pending_hands.
+        self.assertEqual(len(self.httpd.messages_sent), 1)
+        root_mid = skrye_store.read_companion_state()["wakeups"]["martin_roots"]["$m_multi"]
+        self.assertEqual(root_mid["pending_hands"], [companion.SKRYE_ID])
+        self.assertEqual(root_mid["active_speaker"], companion.TRAYA_ID)
+
+        # Now Traya posts her reply without tagging another peer -> queue advances to the remaining raised hand (Skrye) via relay.
+        self.current_time_ms += 1_000
+        skrye_engine.process_sync_batch(
+            {
+                "next_batch": "s_traya_reply_settles",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$traya_reply_1",
+                                        "sender": companion.TRAYA_ID,
+                                        "origin_server_ts": self.current_time_ms,
+                                        "content": {
+                                            "msgtype": "m.text",
+                                            "body": "Confirmed, the timer fires every 20 seconds.",
+                                        },
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
         self.assertEqual(len(self.httpd.messages_sent), 2)
         relay_notice = self.httpd.messages_sent[-1]["body"]
         self.assertEqual(relay_notice["msgtype"], "m.notice")
@@ -2610,7 +3160,7 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
                                         "type": "m.room.message",
                                         "event_id": "$m_multi",
                                         "sender": companion.MARTIN_ID,
-                                        "origin_server_ts": self.current_time_ms + 20,
+                                        "origin_server_ts": self.current_time_ms - 1_980,
                                         "content": {
                                             "msgtype": "m.text",
                                             "body": "Can you all check the NixOS systemd unit?",
@@ -2638,7 +3188,7 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
             f'🛎️ Inviting {companion.SKRYE_ID} to the floor on Martin\'s message: "Can you all check the NixOS systemd unit?" ✋🏻',
         )
 
-        # Skrye finishes last, so no further invitation is needed.
+        # Skrye finishes last, so pending_hands is empty and no further invitation is needed.
         self.current_time_ms += 1_000
         skrye_engine.process_sync_batch(
             {
@@ -2668,56 +3218,6 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
         self.assertEqual(len(self.httpd.messages_sent), 3)
         root_state = skrye_store.read_companion_state()["wakeups"]["martin_roots"]["$m_multi"]
         self.assertEqual(root_state["pending_hands"], [])
-
-        # 3. Verify uncertain_blocked hold when a send crashes, token_generation_id rotates, and timeline lacks the notice.
-        comp_state = skrye_store.read_companion_state()
-        wakeups = comp_state["wakeups"]
-        wakeups["selections"]["$m_uncertain:seq1"] = {
-            "selection_id": "$m_uncertain:seq1",
-            "target_event_id": "$m_uncertain",
-            "after_event_id": "$m_uncertain",
-            "selection_seq": 1,
-            "selected_speaker": companion.ZANNAH_ID,
-            "wake_reason": "raised_hand",
-            "martin_root_id": "$m_multi",
-            "sending_account": companion.SKRYE_ID,
-            "token_generation_id": "tgen-old-before-rotation",
-            "scope_id": "wakeup:$m_uncertain",
-            "txn_id": "mc-skrye-uncertain",
-            "path": "/_matrix/client/v3/rooms/!the-cauldron%3Amatrix.wimpys.world/send/m.room.message/mc-skrye-uncertain",
-            "payload": {"msgtype": "m.notice", "body": "invite", "m.mentions": {"user_ids": [companion.ZANNAH_ID]}},
-            "kind": "wakeup_notice",
-            "created_at_ms": self.current_time_ms,
-            "status": "sending",
-            "wakeup_event_id": None,
-        }
-        wakeups["targets"]["$m_uncertain"] = {
-            "event_id": "$m_uncertain",
-            "sender": companion.MARTIN_ID,
-            "origin_server_ts": self.current_time_ms,
-            "session_key": skrye_engine.resolver.default_session_key,
-            "cutoff_ms": 0,
-            "martin_root_id": "$m_multi",
-            "expected_assessors": [companion.TRAYA_ID, companion.ZANNAH_ID],
-            "created_at_ms": self.current_time_ms,
-            "deadline_ms": self.current_time_ms + 15_000,
-            "status": "pending",
-            "notified": False,
-            "wakeup_event_id": None,
-        }
-        skrye_store.write_companion_state({"wakeups": wakeups})
-        sent_before = len(self.httpd.messages_sent)
-        skrye_engine.wakeup_coordinator.ingest_and_reconcile(now_override_ms=self.current_time_ms + 500)
-        self.assertEqual(len(self.httpd.messages_sent), sent_before)
-        after_comp = skrye_store.read_companion_state()["wakeups"]
-        self.assertEqual(
-            after_comp["selections"]["$m_uncertain:seq1"]["status"],
-            "uncertain_blocked",
-        )
-        self.assertEqual(
-            after_comp["targets"]["$m_uncertain"]["status"],
-            "uncertain_blocked",
-        )
 
     def test_caption_bearing_bot_audio_events_pass_all_six_checks_and_bare_filename_audio_is_skipped(self) -> None:
         store, resolver, _, _, engine = self.make_components(agent_name="skrye", main_model="gemini::gemini-4-argon")
@@ -3228,6 +3728,332 @@ class Criterion6RoomEventsDurabilityAndNewIsolationTests(CompanionTestBase):
         self.assertLessEqual(len(pruned_active["runs"]), companion.COMPANION_STATE_ENTRY_CAP)
         self.assertIn("session:prune-active::run-active-109", pruned_active["runs"])
         self.assertNotIn("session:prune-active::run-active-0", pruned_active["runs"])
+
+    def test_unified_state_json_migration_unlinks_legacy_files_and_protects_recent_events_buffer(self) -> None:
+        legacy_dir = self.root / "state-legacy-migration"
+        legacy_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+
+        legacy_payloads = {
+            companion.AUTH_STATE_FILENAME: {
+                "access_token": "tok-legacy-migrated",
+                "device_id": "MOLTIS_COMPANION_SKRYE",
+                "user_id": companion.SKRYE_ID,
+                "identity": "legacy-hash",
+            },
+            companion.SYNC_STATE_FILENAME: {
+                "next_batch": "s_legacy_batch_42",
+                "updated_at_ms": self.current_time_ms - 500,
+            },
+            companion.OUTBOX_FILENAME: {
+                "pending": {
+                    "mc-skrye-legacy-txn": {
+                        "txn_id": "mc-skrye-legacy-txn",
+                        "kind": "reaction",
+                        "method": "PUT",
+                        "path": "/_matrix/client/v3/rooms/!the-cauldron%3Amatrix.wimpys.world/send/m.reaction/mc-skrye-legacy-txn",
+                        "body": {
+                            "m.relates_to": {
+                                "rel_type": "m.annotation",
+                                "event_id": "$legacy_ev",
+                                "key": "👌🏻",
+                            }
+                        },
+                    }
+                }
+            },
+            companion.COMPANION_STATE_FILENAME: {
+                "version": 1,
+                "agent_name": "skrye",
+                "room_id": companion.DEFAULT_ROOM_ID,
+                "active_session_key": "matrix:matrix-skrye:!the-cauldron:matrix.wimpys.world",
+                "cutoff_ms": self.current_time_ms - 1000,
+                "assessed_events": {
+                    "$legacy_ev": {
+                        "event_id": "$legacy_ev",
+                        "session_key": "matrix:matrix-skrye:!the-cauldron:matrix.wimpys.world",
+                        "status": "posted",
+                        "badge": "👌🏻",
+                        "assessed_at_ms": self.current_time_ms - 400,
+                    }
+                },
+            },
+            companion.ROOM_EVENTS_FILENAME: {
+                "version": 1,
+                "room_id": companion.DEFAULT_ROOM_ID,
+                "recent_events": [
+                    {
+                        "event_id": "$legacy_ev",
+                        "sender": companion.MARTIN_ID,
+                        "msgtype": "m.text",
+                        "body": "Legacy migrated message",
+                        "origin_server_ts": self.current_time_ms - 600,
+                        "mentioned_bots": [],
+                        "mentions_self": False,
+                        "is_new_command": False,
+                        "seed": False,
+                        "reactions": {},
+                    }
+                ],
+                "reaction_index": {},
+                "unmentioned_by_session": {},
+            },
+        }
+        for fname, data in legacy_payloads.items():
+            fpath = legacy_dir / fname
+            fpath.write_text(json.dumps(data), encoding="utf-8")
+            fpath.chmod(0o600)
+
+        migrated_store = companion.CompanionStateStore(
+            state_dir=legacy_dir,
+            agent_name="skrye",
+            room_id=companion.DEFAULT_ROOM_ID,
+            started_at_ms=self.current_time_ms,
+        )
+        state_file = legacy_dir / companion.STATE_FILENAME
+        self.assertTrue(state_file.is_file())
+        self.assertEqual(stat.S_IMODE(state_file.stat().st_mode), 0o600)
+        for legacy_fname in companion.LEGACY_STATE_FILENAMES:
+            self.assertFalse((legacy_dir / legacy_fname).exists(), f"{legacy_fname} was not unlinked")
+
+        self.assertEqual(migrated_store.read_auth()["access_token"], "tok-legacy-migrated")
+        self.assertEqual(migrated_store.get_next_batch(), "s_legacy_batch_42")
+        self.assertIn("mc-skrye-legacy-txn", migrated_store.read_outbox()["pending"])
+        self.assertIsNotNone(migrated_store.get_assessed_event("$legacy_ev"))
+        self.assertEqual(
+            [e["event_id"] for e in migrated_store.read_room_events()["recent_events"]],
+            ["$legacy_ev"],
+        )
+
+        # Fill recent_events to RECENT_EVENTS_CAP (100) conversational messages.
+        session_key = "matrix:matrix-skrye:!the-cauldron:matrix.wimpys.world"
+        fill_events = []
+        for idx in range(1, companion.RECENT_EVENTS_CAP):
+            fill_events.append(
+                {
+                    "type": "m.room.message",
+                    "event_id": f"$conv_{idx}",
+                    "sender": companion.MARTIN_ID if idx % 2 else companion.ZANNAH_ID,
+                    "origin_server_ts": self.current_time_ms + idx * 10,
+                    "content": {"msgtype": "m.text", "body": f"Conversational message {idx}"},
+                }
+            )
+        migrated_store.apply_timeline_events(
+            events=fill_events,
+            active_session_key=session_key,
+            cutoff_ms=self.current_time_ms - 1000,
+            self_user_id=companion.SKRYE_ID,
+            seed_only=False,
+        )
+        before_ids = [e["event_id"] for e in migrated_store.read_room_events()["recent_events"]]
+        self.assertEqual(len(before_ids), companion.RECENT_EVENTS_CAP)
+        self.assertEqual(before_ids[0], "$legacy_ev")
+
+        # Apply progress m.notice events, terminal m.notice events, and m.replace edits -> must NOT evict any of the 100 conversational messages.
+        noise_events = []
+        for idx in range(1, 25):
+            noise_events.append(
+                {
+                    "type": "m.room.message",
+                    "event_id": f"$prog_notice_{idx}",
+                    "sender": companion.SKRYE_ID,
+                    "origin_server_ts": self.current_time_ms + 2_000 + idx * 10,
+                    "content": {
+                        "msgtype": "m.notice",
+                        "body": f"🔎 00:{idx:02d} elapsed - Step {idx}",
+                    },
+                }
+            )
+            noise_events.append(
+                {
+                    "type": "m.room.message",
+                    "event_id": f"$prog_edit_{idx}",
+                    "sender": companion.SKRYE_ID,
+                    "origin_server_ts": self.current_time_ms + 2_005 + idx * 10,
+                    "content": {
+                        "msgtype": "m.notice",
+                        "body": f"* ✍️ 00:{idx + 3:02d} elapsed - Step {idx}",
+                        "m.new_content": {
+                            "msgtype": "m.notice",
+                            "body": f"✍️ 00:{idx + 3:02d} elapsed - Step {idx}",
+                        },
+                        "m.relates_to": {
+                            "rel_type": "m.replace",
+                            "event_id": f"$prog_notice_{idx}",
+                        },
+                    },
+                }
+            )
+        # Also edit an existing conversational message in place via m.replace.
+        noise_events.append(
+            {
+                "type": "m.room.message",
+                "event_id": "$conv_edit_1",
+                "sender": companion.MARTIN_ID,
+                "origin_server_ts": self.current_time_ms + 5_000,
+                "content": {
+                    "msgtype": "m.text",
+                    "body": "* Conversational message 1 (edited)",
+                    "m.new_content": {
+                        "msgtype": "m.text",
+                        "body": "Conversational message 1 (edited)",
+                    },
+                    "m.relates_to": {
+                        "rel_type": "m.replace",
+                        "event_id": "$conv_1",
+                    },
+                },
+            }
+        )
+        migrated_store.apply_timeline_events(
+            events=noise_events,
+            active_session_key=session_key,
+            cutoff_ms=self.current_time_ms - 1000,
+            self_user_id=companion.SKRYE_ID,
+            seed_only=False,
+        )
+        after_events = migrated_store.read_room_events()["recent_events"]
+        after_ids = [e["event_id"] for e in after_events]
+        self.assertEqual(after_ids, before_ids)
+        by_id = {e["event_id"]: e for e in after_events}
+        self.assertEqual(by_id["$conv_1"]["body"], "Conversational message 1 (edited)")
+
+    def test_migration_preserves_legacy_files_on_enospc_write_failure(self) -> None:
+        legacy_dir = self.root / "state-legacy-enospc"
+        legacy_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        auth_path = legacy_dir / companion.AUTH_STATE_FILENAME
+        sync_path = legacy_dir / companion.SYNC_STATE_FILENAME
+        auth_path.write_text(
+            json.dumps(
+                {
+                    "access_token": "tok-survives-enospc",
+                    "device_id": "MOLTIS_COMPANION_SKRYE",
+                    "user_id": companion.SKRYE_ID,
+                }
+            ),
+            encoding="utf-8",
+        )
+        auth_path.chmod(0o600)
+        sync_path.write_text(
+            json.dumps({"next_batch": "s_survives_enospc", "updated_at_ms": self.current_time_ms}),
+            encoding="utf-8",
+        )
+        sync_path.chmod(0o600)
+
+        with (
+            patch.object(
+                companion,
+                "atomic_write_json_in_dir",
+                side_effect=OSError(errno.ENOSPC, "No space left on device"),
+            ),
+            self.assertRaises(OSError),
+        ):
+            companion.CompanionStateStore(
+                state_dir=legacy_dir,
+                agent_name="skrye",
+                room_id=companion.DEFAULT_ROOM_ID,
+                started_at_ms=self.current_time_ms,
+            )
+
+        self.assertTrue(auth_path.is_file(), "legacy auth.json must survive failed state.json write")
+        self.assertTrue(sync_path.is_file(), "legacy sync-state.json must survive failed state.json write")
+        self.assertFalse((legacy_dir / companion.STATE_FILENAME).exists())
+
+        recovered_store = companion.CompanionStateStore(
+            state_dir=legacy_dir,
+            agent_name="skrye",
+            room_id=companion.DEFAULT_ROOM_ID,
+            started_at_ms=self.current_time_ms,
+        )
+        self.assertEqual(recovered_store.read_auth()["access_token"], "tok-survives-enospc")
+        self.assertEqual(recovered_store.get_next_batch(), "s_survives_enospc")
+        self.assertFalse(auth_path.exists())
+        self.assertFalse(sync_path.exists())
+        self.assertTrue((legacy_dir / companion.STATE_FILENAME).is_file())
+
+    def test_state_size_bounded_and_unreadable_state_not_silently_reset(self) -> None:
+        bounded_dir = self.root / "state-size-bounded"
+        store = companion.CompanionStateStore(
+            state_dir=bounded_dir,
+            agent_name="skrye",
+            room_id=companion.DEFAULT_ROOM_ID,
+            started_at_ms=self.current_time_ms,
+        )
+        store.write_auth(
+            {
+                "access_token": "tok-persistent-auth",
+                "device_id": "MOLTIS_COMPANION_SKRYE",
+                "user_id": companion.SKRYE_ID,
+            }
+        )
+        store.advance_next_batch("s_cursor_before_large_batch")
+
+        session_key = "matrix:matrix-skrye:!the-cauldron:matrix.wimpys.world"
+        large_events = [
+            {
+                "type": "m.room.message",
+                "event_id": f"$large_{idx}",
+                "sender": companion.ZANNAH_ID if idx % 2 else companion.MARTIN_ID,
+                "origin_server_ts": self.current_time_ms + idx * 10,
+                "content": {
+                    "msgtype": "m.text",
+                    "body": f"LARGE_{idx}_" + ("M" * 12_000),
+                },
+            }
+            for idx in range(1, 44)
+        ]
+        store.apply_timeline_events(
+            events=large_events,
+            active_session_key=session_key,
+            cutoff_ms=self.current_time_ms - 1000,
+            self_user_id=companion.SKRYE_ID,
+            seed_only=False,
+        )
+
+        state_file = bounded_dir / companion.STATE_FILENAME
+        self.assertLessEqual(state_file.stat().st_size, companion.MAX_STATE_FILE_BYTES)
+        reloaded = store.read_state()
+        self.assertEqual(reloaded["auth"]["access_token"], "tok-persistent-auth")
+        self.assertEqual(store.get_next_batch(), "s_cursor_before_large_batch")
+        recent_events = reloaded["room_events"]["recent_events"]
+        self.assertEqual(len(recent_events), 43)
+        self.assertTrue(
+            all(len(ev["body"]) <= companion.MAX_STORED_MESSAGE_BODY_CHARS for ev in recent_events)
+        )
+
+        # Verify pre-existing oversized valid state.json (> 1 MiB) recovers and compacts without losing auth or sync cursor.
+        oversized_raw = dict(reloaded)
+        oversized_raw["room_events"] = dict(reloaded["room_events"])
+        oversized_raw["room_events"]["recent_events"] = [
+            {
+                "event_id": f"$pre_oversized_{idx}",
+                "sender": companion.MARTIN_ID,
+                "msgtype": "m.text",
+                "body": "X" * 15_000,
+                "origin_server_ts": self.current_time_ms + idx,
+                "mentioned_bots": [],
+                "mentions_self": False,
+                "is_new_command": False,
+                "seed": False,
+                "reactions": {},
+            }
+            for idx in range(90)
+        ]
+        state_file.write_text(json.dumps(oversized_raw, indent=2), encoding="utf-8")
+        state_file.chmod(0o600)
+        self.assertGreater(state_file.stat().st_size, companion.MAX_STATE_FILE_BYTES)
+
+        recovered = store.read_state()
+        self.assertEqual(recovered["auth"]["access_token"], "tok-persistent-auth")
+        self.assertEqual(store.get_next_batch(), "s_cursor_before_large_batch")
+        store.write_sync_state({"next_batch": "s_cursor_compacted", "updated_at_ms": self.current_time_ms})
+        self.assertLessEqual(state_file.stat().st_size, companion.MAX_STATE_FILE_BYTES)
+
+        # Verify corrupt state.json raises ValueError instead of silently overwriting it with empty defaults.
+        state_file.write_text("{corrupt-json", encoding="utf-8")
+        state_file.chmod(0o600)
+        with self.assertRaises(ValueError):
+            store.read_state()
+        self.assertEqual(state_file.read_text(encoding="utf-8"), "{corrupt-json")
 
 
 if __name__ == "__main__":

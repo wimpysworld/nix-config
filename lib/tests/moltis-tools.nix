@@ -17,7 +17,19 @@ let
       home = homeConfigurations."martin@${host}";
       module = import ../../home-manager/_mixins/agentic/moltis {
         inherit (home) config;
-        inherit (home) pkgs;
+        pkgs = home.pkgs // {
+          writeScript =
+            name: text:
+            let
+              drv = home.pkgs.writeScript name text;
+            in
+            if name == "moltis-tts-shim" then
+              "MOLTIS_TEST_TTS_SHIM_START${text}MOLTIS_TEST_TTS_SHIM_END${drv}"
+            else if name == "moltis-matrix-council-hook" then
+              "MOLTIS_TEST_COUNCIL_HOOK_START${text}MOLTIS_TEST_COUNCIL_HOOK_END${drv}"
+            else
+              drv;
+        };
         inherit (home._module.specialArgs) inputs;
         inherit (home._module.args) noughtyLib;
         lib = lib // {
@@ -39,17 +51,30 @@ let
       ) (throw "Missing Moltis launcher") module.config.content.home.packages;
       parts = lib.splitString "MOLTIS_TEST_INNER_START" outer.text;
       rawInner = builtins.head (lib.splitString "MOLTIS_TEST_INNER_END" (builtins.elemAt parts 1));
-      companionParts = lib.splitString "MOLTIS_TEST_COMPANION_START" rawInner;
+      ttsParts = lib.splitString "MOLTIS_TEST_TTS_SHIM_START" rawInner;
+      ttsTail = lib.splitString "MOLTIS_TEST_TTS_SHIM_END" (builtins.elemAt ttsParts 1);
+      afterTtsInner = "${builtins.head ttsParts}${builtins.elemAt ttsTail 1}";
+      companionParts = lib.splitString "MOLTIS_TEST_COMPANION_START" afterTtsInner;
       companionTail = lib.splitString "MOLTIS_TEST_COMPANION_END" (builtins.elemAt companionParts 1);
       afterMatrixInner = "${builtins.head companionParts}${builtins.elemAt companionTail 1}";
       githubParts = lib.splitString "MOLTIS_TEST_GITHUB_COMPANION_START" afterMatrixInner;
       githubTail = lib.splitString "MOLTIS_TEST_GITHUB_COMPANION_END" (builtins.elemAt githubParts 1);
+      councilHookEntry =
+        lib.findFirst (entry: (entry.name or "") == "matrix-council-context")
+          (throw "Missing matrix-council-context hook")
+          module.config.content.agentic.moltis.settings.hooks.hooks;
+      hookParts = lib.splitString "MOLTIS_TEST_COUNCIL_HOOK_START" councilHookEntry.command;
+      hookTail = lib.splitString "MOLTIS_TEST_COUNCIL_HOOK_END" (builtins.elemAt hookParts 1);
     in
+    assert builtins.length ttsParts == 2;
     assert builtins.length companionParts == 2;
     assert builtins.length githubParts == 2;
+    assert builtins.length hookParts == 2;
     {
       outer = builtins.head parts;
       inner = "${builtins.head githubParts}${builtins.elemAt githubTail 1}";
+      ttsShim = builtins.head ttsTail;
+      councilHook = builtins.head hookTail;
       companion = builtins.head companionTail;
       githubCompanion = builtins.head githubTail;
     };
@@ -294,6 +319,19 @@ let
     assert settings.heartbeat.enabled == false;
     assert settings.heartbeat.every == "60m";
     assert lib.hasInfix "/bin/moltis-matrix-companion &" scripts.inner;
+    assert lib.hasInfix "def martin_requested_voice" scripts.ttsShim;
+    assert lib.hasInfix "fmt == \"ogg\"" scripts.ttsShim;
+    assert lib.hasInfix "ogg TTS rejected for short assessment badge" scripts.ttsShim;
+    assert lib.hasInfix "ogg TTS rejected: Martin did not request audio/voice in Matrix"
+      scripts.ttsShim;
+    assert lib.hasInfix "${c.xdg.stateHome}/moltis/matrix-companion-${agentName}/state.json"
+      scripts.ttsShim;
+    assert lib.hasInfix "import companion" scripts.councilHook;
+    assert lib.hasInfix "STATE_FILENAME = companion.STATE_FILENAME" scripts.councilHook;
+    assert lib.hasInfix "companion.run_council_hook_cli(" scripts.councilHook;
+    assert lib.hasInfix
+      "DEFAULT_STATE_DIR = ${builtins.toJSON "${c.xdg.stateHome}/moltis/matrix-companion-${agentName}"}"
+      scripts.councilHook;
     assert lib.hasInfix "/bin/moltis-matrix-companion &\nchildren+=(\"$!\")" scripts.inner == darwin;
     assert lib.hasInfix "/bin/moltis-github-companion &" scripts.inner;
     assert lib.hasInfix "/bin/moltis-github-companion &\nchildren+=(\"$!\")" scripts.inner == darwin;
