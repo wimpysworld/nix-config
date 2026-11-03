@@ -358,6 +358,17 @@ let
         r"\b(?:voice|audio|spoken|speak|aloud|tts|read\s+this\s+out|say\s+this|say\s+it)\b",
         re.IGNORECASE,
     )
+    VOICE_REFUSAL_RE = re.compile(
+        r"\b(?:"
+        r"text[- ]only|"
+        r"(?:reply|respond)(?:\s+only)?\s+in\s+text|"
+        r"no\s+(?:voice|audio|spoken|speech|tts)|"
+        r"without\s+(?:voice|audio|spoken|speech|tts)|"
+        r"(?:do\s+not|don['’]?t|never)\s+(?:speak|say|read(?:\s+this|\s+it)?\s+out|use\s+(?:voice|audio|tts)|send\s+(?:a\s+)?(?:voice|audio))|"
+        r"not\s+(?:aloud|out\s+loud|in\s+voice|with\s+(?:voice|audio))"
+        r")\b",
+        re.IGNORECASE,
+    )
     HOST = os.environ.get("MOLTIS_TTS_SHIM_HOST", "127.0.0.1")
     PORT = int(os.environ.get("MOLTIS_TTS_SHIM_PORT", ${builtins.toJSON (toString ttsShimPort)}))
     SUPPORTED_AUDIO_MIMES = {
@@ -427,6 +438,8 @@ let
             body = str(ev.get("body") if "body" in ev else content.get("body") or "").strip()
             if not body or ev.get("is_new_command") or _is_martin_new_command(body):
                 continue
+            if VOICE_REFUSAL_RE.search(body):
+                return False
             return bool(VOICE_REQUEST_RE.search(body))
         return False
 

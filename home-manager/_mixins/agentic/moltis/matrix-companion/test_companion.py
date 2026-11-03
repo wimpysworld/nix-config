@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import contextlib
+import errno
 import fcntl
 import http.server
 import importlib.util
@@ -1869,6 +1870,39 @@ class Criterion3AssessmentOutputValidationTests(CompanionTestBase):
         self.assertEqual(code_voice_ok, 200)
         self.assertEqual(ctype_voice_ok, "audio/ogg")
         self.assertEqual(body_voice_ok, b"OggS-fake-opus")
+        self.assertEqual(len(synth_calls), 2)
+
+        # 5. "ogg" when Martin's latest message explicitly refuses voice ("Do not speak aloud; reply in text only") -> martin_requested_voice returns False and HTTP 400.
+        store.apply_timeline_events(
+            events=[
+                {
+                    "type": "m.room.message",
+                    "event_id": "$m_voice_refusal",
+                    "sender": companion.MARTIN_ID,
+                    "origin_server_ts": self.current_time_ms + 30,
+                    "content": {
+                        "msgtype": "m.text",
+                        "body": "Do not speak aloud; reply in text only",
+                    },
+                }
+            ],
+            active_session_key="matrix:matrix-skrye:!the-cauldron:matrix.wimpys.world",
+            cutoff_ms=self.current_time_ms,
+            self_user_id=companion.SKRYE_ID,
+            seed_only=False,
+        )
+        self.assertFalse(shim.martin_requested_voice(str(state_file)))
+        code_refusal, body_refusal, _ = invoke_speech(
+            {
+                "input": "Here is the text-only summary that you asked for.",
+                "response_format": "ogg",
+            }
+        )
+        self.assertEqual(code_refusal, 400)
+        self.assertIn(
+            "Martin did not request audio/voice",
+            json.loads(body_refusal.decode("utf-8"))["error"]["message"],
+        )
         self.assertEqual(len(synth_calls), 2)
 
 
@@ -3882,6 +3916,144 @@ class Criterion6RoomEventsDurabilityAndNewIsolationTests(CompanionTestBase):
         self.assertEqual(after_ids, before_ids)
         by_id = {e["event_id"]: e for e in after_events}
         self.assertEqual(by_id["$conv_1"]["body"], "Conversational message 1 (edited)")
+
+    def test_migration_preserves_legacy_files_on_enospc_write_failure(self) -> None:
+        legacy_dir = self.root / "state-legacy-enospc"
+        legacy_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        auth_path = legacy_dir / companion.AUTH_STATE_FILENAME
+        sync_path = legacy_dir / companion.SYNC_STATE_FILENAME
+        auth_path.write_text(
+            json.dumps(
+                {
+                    "access_token": "tok-survives-enospc",
+                    "device_id": "MOLTIS_COMPANION_SKRYE",
+                    "user_id": companion.SKRYE_ID,
+                }
+            ),
+            encoding="utf-8",
+        )
+        auth_path.chmod(0o600)
+        sync_path.write_text(
+            json.dumps({"next_batch": "s_survives_enospc", "updated_at_ms": self.current_time_ms}),
+            encoding="utf-8",
+        )
+        sync_path.chmod(0o600)
+
+        with (
+            patch.object(
+                companion,
+                "atomic_write_json_in_dir",
+                side_effect=OSError(errno.ENOSPC, "No space left on device"),
+            ),
+            self.assertRaises(OSError),
+        ):
+            companion.CompanionStateStore(
+                state_dir=legacy_dir,
+                agent_name="skrye",
+                room_id=companion.DEFAULT_ROOM_ID,
+                started_at_ms=self.current_time_ms,
+            )
+
+        self.assertTrue(auth_path.is_file(), "legacy auth.json must survive failed state.json write")
+        self.assertTrue(sync_path.is_file(), "legacy sync-state.json must survive failed state.json write")
+        self.assertFalse((legacy_dir / companion.STATE_FILENAME).exists())
+
+        recovered_store = companion.CompanionStateStore(
+            state_dir=legacy_dir,
+            agent_name="skrye",
+            room_id=companion.DEFAULT_ROOM_ID,
+            started_at_ms=self.current_time_ms,
+        )
+        self.assertEqual(recovered_store.read_auth()["access_token"], "tok-survives-enospc")
+        self.assertEqual(recovered_store.get_next_batch(), "s_survives_enospc")
+        self.assertFalse(auth_path.exists())
+        self.assertFalse(sync_path.exists())
+        self.assertTrue((legacy_dir / companion.STATE_FILENAME).is_file())
+
+    def test_state_size_bounded_and_unreadable_state_not_silently_reset(self) -> None:
+        bounded_dir = self.root / "state-size-bounded"
+        store = companion.CompanionStateStore(
+            state_dir=bounded_dir,
+            agent_name="skrye",
+            room_id=companion.DEFAULT_ROOM_ID,
+            started_at_ms=self.current_time_ms,
+        )
+        store.write_auth(
+            {
+                "access_token": "tok-persistent-auth",
+                "device_id": "MOLTIS_COMPANION_SKRYE",
+                "user_id": companion.SKRYE_ID,
+            }
+        )
+        store.advance_next_batch("s_cursor_before_large_batch")
+
+        session_key = "matrix:matrix-skrye:!the-cauldron:matrix.wimpys.world"
+        large_events = [
+            {
+                "type": "m.room.message",
+                "event_id": f"$large_{idx}",
+                "sender": companion.ZANNAH_ID if idx % 2 else companion.MARTIN_ID,
+                "origin_server_ts": self.current_time_ms + idx * 10,
+                "content": {
+                    "msgtype": "m.text",
+                    "body": f"LARGE_{idx}_" + ("M" * 12_000),
+                },
+            }
+            for idx in range(1, 44)
+        ]
+        store.apply_timeline_events(
+            events=large_events,
+            active_session_key=session_key,
+            cutoff_ms=self.current_time_ms - 1000,
+            self_user_id=companion.SKRYE_ID,
+            seed_only=False,
+        )
+
+        state_file = bounded_dir / companion.STATE_FILENAME
+        self.assertLessEqual(state_file.stat().st_size, companion.MAX_STATE_FILE_BYTES)
+        reloaded = store.read_state()
+        self.assertEqual(reloaded["auth"]["access_token"], "tok-persistent-auth")
+        self.assertEqual(store.get_next_batch(), "s_cursor_before_large_batch")
+        recent_events = reloaded["room_events"]["recent_events"]
+        self.assertEqual(len(recent_events), 43)
+        self.assertTrue(
+            all(len(ev["body"]) <= companion.MAX_STORED_MESSAGE_BODY_CHARS for ev in recent_events)
+        )
+
+        # Verify pre-existing oversized valid state.json (> 1 MiB) recovers and compacts without losing auth or sync cursor.
+        oversized_raw = dict(reloaded)
+        oversized_raw["room_events"] = dict(reloaded["room_events"])
+        oversized_raw["room_events"]["recent_events"] = [
+            {
+                "event_id": f"$pre_oversized_{idx}",
+                "sender": companion.MARTIN_ID,
+                "msgtype": "m.text",
+                "body": "X" * 15_000,
+                "origin_server_ts": self.current_time_ms + idx,
+                "mentioned_bots": [],
+                "mentions_self": False,
+                "is_new_command": False,
+                "seed": False,
+                "reactions": {},
+            }
+            for idx in range(90)
+        ]
+        state_file.write_text(json.dumps(oversized_raw, indent=2), encoding="utf-8")
+        state_file.chmod(0o600)
+        self.assertGreater(state_file.stat().st_size, companion.MAX_STATE_FILE_BYTES)
+
+        recovered = store.read_state()
+        self.assertEqual(recovered["auth"]["access_token"], "tok-persistent-auth")
+        self.assertEqual(store.get_next_batch(), "s_cursor_before_large_batch")
+        store.write_sync_state({"next_batch": "s_cursor_compacted", "updated_at_ms": self.current_time_ms})
+        self.assertLessEqual(state_file.stat().st_size, companion.MAX_STATE_FILE_BYTES)
+
+        # Verify corrupt state.json raises ValueError instead of silently overwriting it with empty defaults.
+        state_file.write_text("{corrupt-json", encoding="utf-8")
+        state_file.chmod(0o600)
+        with self.assertRaises(ValueError):
+            store.read_state()
+        self.assertEqual(state_file.read_text(encoding="utf-8"), "{corrupt-json")
 
 
 if __name__ == "__main__":

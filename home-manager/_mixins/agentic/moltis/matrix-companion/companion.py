@@ -180,6 +180,8 @@ UNMENTIONED_EVENTS_CAP = 50
 COMPANION_STATE_ENTRY_CAP = 100
 ENCODED_COMPONENT_BYTES = 120
 MAX_RESPONSE_BYTES = 1048576
+MAX_STATE_FILE_BYTES = MAX_RESPONSE_BYTES
+MAX_STORED_MESSAGE_BODY_CHARS = 4096
 
 STATE_FILENAME = "state.json"
 AUTH_STATE_FILENAME = "auth.json"
@@ -381,15 +383,21 @@ def atomic_write_json_in_dir(dir_fd: int, filename: str, data: object) -> None:
             os.unlink(temp_name, dir_fd=dir_fd)
 
 
-def read_json_in_dir(dir_fd: int, filename: str, default: object = None) -> object:
+def read_json_in_dir(
+    dir_fd: int,
+    filename: str,
+    default: object = None,
+    max_bytes: int = MAX_STATE_FILE_BYTES,
+) -> object:
     try:
         fd = os.open(filename, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=dir_fd)
     except FileNotFoundError:
         return default
+    limit = max(1, _safe_int(max_bytes, MAX_STATE_FILE_BYTES))
     with os.fdopen(fd, "rb") as stream:
         check_private(stream.fileno(), directory=False)
-        raw = stream.read(MAX_RESPONSE_BYTES + 1)
-    if len(raw) > MAX_RESPONSE_BYTES:
+        raw = stream.read(limit + 1)
+    if len(raw) > limit:
         raise ValueError(f"Oversized state file: {filename}")
     if not raw.strip():
         return default
@@ -937,11 +945,18 @@ def _content_matches(event_body: str, turn_content: object) -> bool:
     body = (event_body or "").strip()
     if not extracted or not body:
         return False
-    if body == extracted:
+    if body == extracted or body == extracted[:MAX_STORED_MESSAGE_BODY_CHARS].strip():
         return True
     stripped_turn = strip_audio_message_suffix(extracted)
     stripped_body = strip_audio_message_suffix(body)
-    return bool(stripped_turn and stripped_body and stripped_turn == stripped_body)
+    return bool(
+        stripped_turn
+        and stripped_body
+        and (
+            stripped_turn == stripped_body
+            or stripped_body == stripped_turn[:MAX_STORED_MESSAGE_BODY_CHARS].strip()
+        )
+    )
 
 
 def make_run_state_key(session_key: str, run_id: str) -> str:
@@ -1004,11 +1019,39 @@ class CompanionStateStore:
         self.ensure_directory()
 
     @staticmethod
-    def _try_read_json(dir_fd: int, filename: str) -> dict | None:
+    def _try_read_json(
+        dir_fd: int,
+        filename: str,
+        max_bytes: int = MAX_STATE_FILE_BYTES,
+    ) -> dict | None:
         with contextlib.suppress(Exception):
-            data = read_json_in_dir(dir_fd, filename, default=None)
+            data = read_json_in_dir(dir_fd, filename, default=None, max_bytes=max_bytes)
             return data if isinstance(data, dict) else None
         return None
+
+    @staticmethod
+    def _state_file_exists_unlocked(dir_fd: int, filename: str) -> bool:
+        try:
+            fd = os.open(
+                filename,
+                os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                dir_fd=dir_fd,
+            )
+        except FileNotFoundError:
+            return False
+        except OSError:
+            return True
+        os.close(fd)
+        return True
+
+    @staticmethod
+    def _unlink_legacy_files_unlocked(dir_fd: int) -> None:
+        for legacy_fname in LEGACY_STATE_FILENAMES:
+            try:
+                os.unlink(legacy_fname, dir_fd=dir_fd)
+            except OSError as exc:
+                if exc.errno is None:
+                    raise
 
     def _default_companion_state(self) -> dict:
         return {
@@ -1154,13 +1197,6 @@ class CompanionStateStore:
         elif isinstance(comp_nb, str) and comp_nb.strip() and not sync_nb:
             state["sync_state"]["next_batch"] = comp_nb.strip()
 
-        for legacy_fname in LEGACY_STATE_FILENAMES:
-            try:
-                os.unlink(legacy_fname, dir_fd=dir_fd)
-            except OSError as exc:
-                if exc.errno is None:
-                    raise
-
         return state
 
     def _has_legacy_files_unlocked(self, dir_fd: int) -> bool:
@@ -1177,11 +1213,96 @@ class CompanionStateStore:
             return True
         return False
 
+    def _bound_unified_state_unlocked(
+        self,
+        state: dict,
+        max_bytes: int = MAX_STATE_FILE_BYTES,
+    ) -> None:
+        limit = max(1024, _safe_int(max_bytes, MAX_STATE_FILE_BYTES))
+        room_events = state.get("room_events")
+        if isinstance(room_events, dict):
+            recent_events = room_events.get("recent_events")
+            if isinstance(recent_events, list):
+                for ev in recent_events:
+                    if (
+                        isinstance(ev, dict)
+                        and isinstance(ev.get("body"), str)
+                        and len(ev["body"]) > MAX_STORED_MESSAGE_BODY_CHARS
+                    ):
+                        ev["body"] = ev["body"][:MAX_STORED_MESSAGE_BODY_CHARS]
+            partitions = room_events.get("unmentioned_by_session")
+            if isinstance(partitions, dict):
+                for part in partitions.values():
+                    if isinstance(part, dict) and isinstance(part.get("events"), list):
+                        for u_ev in part["events"]:
+                            if (
+                                isinstance(u_ev, dict)
+                                and isinstance(u_ev.get("body"), str)
+                                and len(u_ev["body"]) > MAX_STORED_MESSAGE_BODY_CHARS
+                            ):
+                                u_ev["body"] = u_ev["body"][:MAX_STORED_MESSAGE_BODY_CHARS]
+
+        comp_state = state.get("companion_state")
+        if isinstance(comp_state, dict):
+            self._prune_companion_state_unlocked(comp_state)
+
+        def _encoded_size() -> int:
+            return len(
+                (json.dumps(state, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode("utf-8")
+            )
+
+        if _encoded_size() <= limit:
+            return
+
+        if isinstance(room_events, dict):
+            partitions = room_events.get("unmentioned_by_session")
+            if isinstance(partitions, dict):
+                active_key = (
+                    comp_state.get("active_session_key") if isinstance(comp_state, dict) else None
+                )
+                for sess_key in list(partitions.keys()):
+                    if sess_key != active_key and _encoded_size() > limit:
+                        partitions.pop(sess_key, None)
+                for part in partitions.values():
+                    if not isinstance(part, dict) or not isinstance(part.get("events"), list):
+                        continue
+                    while part["events"] and _encoded_size() > limit:
+                        part["events"].pop(0)
+                        part["evicted_unmentioned_count"] = (
+                            _safe_int(part.get("evicted_unmentioned_count"), 0) + 1
+                        )
+
+            recent_events = room_events.get("recent_events")
+            reaction_index = room_events.get("reaction_index")
+            if isinstance(recent_events, list):
+                while len(recent_events) > 1 and _encoded_size() > limit:
+                    evicted = recent_events.pop(0)
+                    if isinstance(evicted, dict) and isinstance(reaction_index, dict):
+                        for rxn_id in list(_as_dict(evicted.get("reactions")).keys()):
+                            reaction_index.pop(rxn_id, None)
+
+        if isinstance(comp_state, dict) and _encoded_size() > limit:
+            for cap in (50, 20, 5, 1):
+                self._prune_companion_state_unlocked(comp_state, cap=cap)
+                if _encoded_size() <= limit:
+                    break
+
     def _read_unified_state_unlocked(self, dir_fd: int) -> dict:
         existing = self._try_read_json(dir_fd, STATE_FILENAME)
-        if existing is None or self._has_legacy_files_unlocked(dir_fd):
+        has_legacy = self._has_legacy_files_unlocked(dir_fd)
+        if existing is None and not has_legacy and self._state_file_exists_unlocked(dir_fd, STATE_FILENAME):
+            oversized = self._try_read_json(
+                dir_fd,
+                STATE_FILENAME,
+                max_bytes=MAX_STATE_FILE_BYTES * 16,
+            )
+            if isinstance(oversized, dict):
+                existing = oversized
+            else:
+                read_json_in_dir(dir_fd, STATE_FILENAME, default=None)
+        if existing is None or has_legacy:
             migrated = self._migrate_legacy_state_unlocked(dir_fd, existing_state=existing)
-            atomic_write_json_in_dir(dir_fd, STATE_FILENAME, migrated)
+            self._write_unified_state_unlocked(dir_fd, migrated)
             return migrated
         state = self._default_unified_state()
         if isinstance(existing.get("auth"), dict):
@@ -1205,16 +1326,13 @@ class CompanionStateStore:
         state["room_events"] = self._normalize_room_events(room_raw)
         if isinstance(existing.get("updated_at_ms"), int):
             state["updated_at_ms"] = existing["updated_at_ms"]
+        self._bound_unified_state_unlocked(state)
         return state
 
     def _write_unified_state_unlocked(self, dir_fd: int, state: dict) -> None:
-        for legacy_fname in LEGACY_STATE_FILENAMES:
-            try:
-                os.unlink(legacy_fname, dir_fd=dir_fd)
-            except OSError as exc:
-                if exc.errno is None:
-                    raise
+        self._bound_unified_state_unlocked(state)
         atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
+        self._unlink_legacy_files_unlocked(dir_fd)
 
     def ensure_directory(self) -> None:
         with self._locked_dir() as dir_fd:
@@ -1624,9 +1742,10 @@ class CompanionStateStore:
                         new_body = new_content.get("body")
                         new_msgtype = new_content.get("msgtype")
                         if isinstance(target_id, str) and isinstance(new_body, str):
+                            stored_new_body = new_body[:MAX_STORED_MESSAGE_BODY_CHARS]
                             target_ev = recent_by_id.get(target_id)
                             if isinstance(target_ev, dict) and target_ev.get("sender") == sender:
-                                target_ev["body"] = new_body
+                                target_ev["body"] = stored_new_body
                                 if isinstance(new_msgtype, str) and new_msgtype in (
                                     "m.text",
                                     "m.notice",
@@ -1649,7 +1768,7 @@ class CompanionStateStore:
                                         and u_ev.get("event_id") == target_id
                                         and u_ev.get("sender") == sender
                                     ):
-                                        u_ev["body"] = new_body
+                                        u_ev["body"] = stored_new_body
                                         u_ev["edited_at_ms"] = ts_ms
                         continue
 
@@ -1672,6 +1791,7 @@ class CompanionStateStore:
                     mentions_self = self_user_id in mentioned_bots
                     relay_payload = content.get(COMPANION_RELAY_KEY)
                     has_relay_payload = msgtype == "m.notice" and isinstance(relay_payload, dict)
+                    stored_body = body[:MAX_STORED_MESSAGE_BODY_CHARS]
 
                     if msgtype == "m.notice" and not has_relay_payload and is_progress_status_notice_body(body):
                         processed.append(
@@ -1679,7 +1799,7 @@ class CompanionStateStore:
                                 "event_id": event_id,
                                 "sender": sender,
                                 "msgtype": msgtype,
-                                "body": body,
+                                "body": stored_body,
                                 "origin_server_ts": ts_ms,
                                 "mentioned_bots": mentioned_bots,
                                 "mentions_self": mentions_self,
@@ -1694,7 +1814,7 @@ class CompanionStateStore:
                         "event_id": event_id,
                         "sender": sender,
                         "msgtype": msgtype,
-                        "body": body,
+                        "body": stored_body,
                         "origin_server_ts": ts_ms,
                         "mentioned_bots": mentioned_bots,
                         "mentions_self": mentions_self,
@@ -1736,7 +1856,7 @@ class CompanionStateStore:
                                 "event_id": event_id,
                                 "sender": sender,
                                 "msgtype": msgtype,
-                                "body": body,
+                                "body": stored_body,
                                 "origin_server_ts": ts_ms,
                                 "mentioned_bots": mentioned_bots,
                                 "seed": bool(seed_only),
