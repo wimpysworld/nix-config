@@ -650,6 +650,77 @@ def is_heartbeat_ok_reply(text: str | None) -> bool:
     return all(tok == "HEARTBEAT_OK" for tok in tokens)
 
 
+TURN_FAILURE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    (
+        "explicit_error_token",
+        re.compile(
+            r"^\s*`?(?:HEARTBEAT_ERROR|HEARTBEAT_FAILED|COMPANION_RESULT:\s*(?:ERROR|FAILED)|TURN_FAILED|ERROR:|FAILED:)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "tool_or_turn_failed",
+        re.compile(
+            r"\b(?:the\s+)?(?:github|gh|gh-api-safe|gh-bot-merge|gh-review-inline|gh-review-reply|gh-review-resolve|gh-notification-dismiss|git|exec|shell|rpc|model|provider|api|command|request|turn|dispatch|tool)\s+"
+            r"(?:tool\s+|command\s+|call\s+|request\s+|execution\s+|turn\s+|helper\s+)?"
+            r"(?:failed|errored|timed\s+out|aborted|crashed|was\s+blocked|is\s+unavailable)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "unable_to_complete",
+        re.compile(
+            r"\b(?:failed|unable|could\s+not|cannot|can\s+not)\s+(?:to\s+)?"
+            r"(?:complete|finish|run|execute|fetch|query|read|inspect|review|merge|dismiss|post|reply|process|reach|connect|authenticate|proceed|continue)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "transport_or_auth_failure",
+        re.compile(
+            r"\b(?:rate[\s-]+limit(?:ed|\s+exceeded)|authentication\s+failed|permission\s+denied|http\s+5\d\d|502\s+bad\s+gateway|503\s+service\s+unavailable|504\s+gateway\s+timeout)\b",
+            re.IGNORECASE,
+        ),
+    ),
+)
+
+
+def classify_terminal_turn_outcome(
+    reply_text: str | None,
+    *,
+    assistant_record: dict | None = None,
+    rpc_response: object = None,
+) -> tuple[bool, str | None]:
+    """Separate execution termination from task success; return (task_succeeded, failure_reason)."""
+    if isinstance(assistant_record, dict):
+        if bool(assistant_record.get("error")) or assistant_record.get("is_error") is True:
+            err_val = str(assistant_record.get("error") or "is_error=true").strip()
+            return False, f"assistant record error: {err_val}"
+        rec_status = str(assistant_record.get("status") or "").strip().lower()
+        if rec_status in ("error", "failed", "aborted", "cancelled", "canceled"):
+            return False, f"assistant record status={rec_status}"
+        stop_reason = str(assistant_record.get("stop_reason") or "").strip().lower()
+        if stop_reason in ("error", "failed", "aborted", "cancelled", "canceled", "tool_error"):
+            return False, f"assistant record stop_reason={stop_reason}"
+
+    clean_text = (reply_text or "").strip()
+    if not clean_text:
+        if isinstance(rpc_response, dict) and (
+            rpc_response.get("error") is not None or rpc_response.get("ok") is False
+        ):
+            return False, "empty terminal assistant reply after RPC error"
+        return True, None
+
+    if is_heartbeat_ok_reply(clean_text):
+        return True, None
+
+    for rule_name, pattern in TURN_FAILURE_PATTERNS:
+        if pattern.search(clean_text):
+            return False, f"terminal reply indicates task failure ({rule_name})"
+
+    return True, None
+
+
 def extract_rpc_reply_text(rpc_response: object) -> str:
     """Extract assistant reply text from a chat.send_sync RPC response envelope."""
     if not isinstance(rpc_response, dict):
@@ -1744,6 +1815,49 @@ class CompanionStateStore:
             atomic_write_json_in_dir(dir_fd, WATERMARKS_FILENAME, wm_state)
             return dict(entry)
 
+    def fail_thread_review(
+        self,
+        thread_id: str,
+        failed_revision: str | None = None,
+        failure_reason: str | None = None,
+        now_override_ms: int | None = None,
+    ) -> dict:
+        """Release an in-flight thread review after a failed turn without advancing handled_revision."""
+        stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
+        with self._locked_dir() as dir_fd:
+            wm_state = self._read_watermarks_unlocked(dir_fd)
+            wm_threads = wm_state["threads"]
+            entry = wm_threads.get(thread_id)
+            if not isinstance(entry, dict):
+                raise KeyError(f"Unknown notification thread watermark: {thread_id}")
+            attempted_rev = (
+                failed_revision
+                or entry.get("in_flight_revision")
+                or entry.get("pending_followup_revision")
+                or entry.get("seen_revision")
+            )
+            entry["in_flight_revision"] = None
+            entry["dismiss_ready"] = False
+            entry["last_failed_revision"] = attempted_rev
+            entry["last_failure_reason"] = (failure_reason or "turn_failed").strip()
+
+            seen_rev = entry.get("seen_revision")
+            handled_rev = entry.get("handled_revision")
+            pending_rev = entry.get("pending_followup_revision")
+            retry_rev = (
+                pending_rev
+                if (isinstance(pending_rev, str) and bool(pending_rev) and pending_rev != handled_rev)
+                else (seen_rev if (isinstance(seen_rev, str) and bool(seen_rev) and seen_rev != handled_rev) else attempted_rev)
+            )
+            if isinstance(retry_rev, str) and bool(retry_rev) and retry_rev != handled_rev:
+                entry["pending_followup"] = True
+                entry["pending_followup_revision"] = retry_rev
+
+            entry["updated_at_ms"] = stamp_ms
+            wm_state["updated_at_ms"] = stamp_ms
+            atomic_write_json_in_dir(dir_fd, WATERMARKS_FILENAME, wm_state)
+            return dict(entry)
+
     def get_thread_watermark(self, thread_id: str) -> dict | None:
         wm = self.read_watermarks()
         entry = wm.get("threads", {}).get(thread_id)
@@ -2201,15 +2315,17 @@ class MoltisRpcClient:
 
 
 class GhApiSafeClient:
-    """Subprocess wrapper around `gh-api-safe`."""
+    """Subprocess wrapper around `gh-api-safe` and `gh-notification-dismiss`."""
 
     def __init__(
         self,
         gh_api_safe_bin: str = "gh-api-safe",
+        gh_notification_dismiss_bin: str = "gh-notification-dismiss",
         runner: Callable[..., subprocess.CompletedProcess] | None = None,
         timeout: float = 45.0,
     ):
         self.gh_api_safe_bin = gh_api_safe_bin
+        self.gh_notification_dismiss_bin = gh_notification_dismiss_bin
         self.runner = runner or subprocess.run
         self.timeout = timeout
 
@@ -2222,6 +2338,36 @@ class GhApiSafeClient:
             timeout=timeout or self.timeout,
             check=False,
         )
+
+    def dismiss_notification(
+        self,
+        thread_id: str,
+        *,
+        read_only: bool = False,
+        timeout: float | None = None,
+    ) -> subprocess.CompletedProcess:
+        """Invoke `gh-notification-dismiss [--read] <thread-id>` for positive decimal thread IDs."""
+        clean_tid = (thread_id or "").strip()
+        if not clean_tid or not clean_tid.isdigit() or int(clean_tid) <= 0:
+            raise ValueError(f"Invalid notification thread_id for dismissal: {thread_id!r}")
+        cmd = [self.gh_notification_dismiss_bin]
+        if read_only:
+            cmd.append("--read")
+        cmd.append(clean_tid)
+        proc = self.runner(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout or self.timeout,
+            check=False,
+        )
+        if proc.returncode != 0:
+            stderr = (proc.stderr or "").strip()
+            stdout = (proc.stdout or "").strip()
+            raise RuntimeError(
+                f"gh-notification-dismiss {clean_tid} exited {proc.returncode}: {stderr or stdout}"
+            )
+        return proc
 
     def fetch_json_items(
         self,
@@ -4046,8 +4192,19 @@ class LocalExecutionCoordinator:
             dispatch_id,
         )
         completed = (peek_active is False) and has_user and has_terminal_assistant
+        task_succeeded = False
+        failure_reason: str | None = None
+        if completed:
+            reply_preview = extract_terminal_reply_text(assistant_record=assistant_rec)
+            task_succeeded, failure_reason = classify_terminal_turn_outcome(
+                reply_preview,
+                assistant_record=assistant_rec,
+            )
         return {
             "completed": completed,
+            "execution_terminated": completed,
+            "task_succeeded": task_succeeded,
+            "failure_reason": failure_reason,
             "peek_active": peek_active,
             "peek_error": peek_error,
             "has_user_record": has_user,
@@ -4126,6 +4283,36 @@ class LocalExecutionCoordinator:
             if sweep_date:
                 updates["last_weekly_sweep_date"] = sweep_date
             self.state_store.write_poll_state(updates, now_override_ms=stamp_ms)
+
+        self.state_store.write_active_dispatch(None, now_override_ms=stamp_ms)
+        return {
+            "watermark": watermark_result,
+            "queued_followup": queued_followup,
+        }
+
+    def _finalize_failed_dispatch(
+        self,
+        active_record: dict,
+        failure_reason: str | None = None,
+        now_override_ms: int | None = None,
+    ) -> dict:
+        """Clear active-dispatch.json after a terminated turn that reported failure, retaining unhandled watermarks and sweep schedules."""
+        stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
+        thread_id = str(active_record.get("thread_id") or "").strip()
+        revision = str(active_record.get("revision") or "").strip() or None
+
+        watermark_result: dict | None = None
+        queued_followup = False
+        if thread_id:
+            with contextlib.suppress(KeyError):
+                watermark_result = self.state_store.fail_thread_review(
+                    thread_id,
+                    failed_revision=revision,
+                    failure_reason=failure_reason,
+                    now_override_ms=stamp_ms,
+                )
+                if isinstance(watermark_result, dict) and watermark_result.get("pending_followup"):
+                    queued_followup = True
 
         self.state_store.write_active_dispatch(None, now_override_ms=stamp_ms)
         return {
@@ -4216,11 +4403,40 @@ class LocalExecutionCoordinator:
             reply_text = extract_terminal_reply_text(
                 assistant_record=check.get("assistant_record"),
             )
+            task_succeeded, failure_reason = classify_terminal_turn_outcome(
+                reply_text,
+                assistant_record=check.get("assistant_record"),
+            )
+            if not task_succeeded:
+                fin = self._finalize_failed_dispatch(
+                    active,
+                    failure_reason=failure_reason,
+                    now_override_ms=self.clock(),
+                )
+                return {
+                    "status": "recovered_failed",
+                    "can_dispatch": True,
+                    "execution_terminated": True,
+                    "task_succeeded": False,
+                    "failure_reason": failure_reason,
+                    "dispatch_id": dispatch_id,
+                    "session_key": session_key,
+                    "kind": active.get("kind"),
+                    "thread_id": active.get("thread_id"),
+                    "reply_text": reply_text,
+                    "telegram_forwarded": False,
+                    "telegram_error": None,
+                    "queued_followup": fin["queued_followup"],
+                    "watermark": fin["watermark"],
+                }
             telegram_forwarded, telegram_error = self._forward_terminal_reply_to_telegram(reply_text)
             fin = self._finalize_completed_dispatch(active, now_override_ms=self.clock())
             return {
                 "status": "recovered_completed",
                 "can_dispatch": True,
+                "execution_terminated": True,
+                "task_succeeded": True,
+                "failure_reason": None,
                 "dispatch_id": dispatch_id,
                 "session_key": session_key,
                 "kind": active.get("kind"),
@@ -4338,11 +4554,45 @@ class LocalExecutionCoordinator:
                     rpc_response=rpc_response,
                     assistant_record=check.get("assistant_record"),
                 )
+                task_succeeded, failure_reason = classify_terminal_turn_outcome(
+                    reply_text,
+                    assistant_record=check.get("assistant_record"),
+                    rpc_response=rpc_response,
+                )
+                if not task_succeeded:
+                    fin = self._finalize_failed_dispatch(
+                        active_record,
+                        failure_reason=failure_reason,
+                        now_override_ms=self.clock(),
+                    )
+                    return {
+                        "status": "failed",
+                        "dispatched": True,
+                        "execution_terminated": True,
+                        "task_succeeded": False,
+                        "failure_reason": failure_reason,
+                        "dispatch_id": resolved_dispatch_id,
+                        "session_key": resolved_session_key,
+                        "kind": kind,
+                        "thread_id": thread_id,
+                        "revision": revision,
+                        "reply_text": reply_text,
+                        "telegram_forwarded": False,
+                        "telegram_error": None,
+                        "rpc_response": rpc_response,
+                        "rpc_error": str(rpc_error) if rpc_error is not None else None,
+                        "queued_followup": fin["queued_followup"],
+                        "watermark": fin["watermark"],
+                        "recovery": recovery,
+                    }
                 telegram_forwarded, telegram_error = self._forward_terminal_reply_to_telegram(reply_text)
                 fin = self._finalize_completed_dispatch(active_record, now_override_ms=self.clock())
                 return {
                     "status": "completed",
                     "dispatched": True,
+                    "execution_terminated": True,
+                    "task_succeeded": True,
+                    "failure_reason": None,
                     "dispatch_id": resolved_dispatch_id,
                     "session_key": resolved_session_key,
                     "kind": kind,
@@ -4468,8 +4718,26 @@ class GithubCompanionRunner:
             }
 
         targeted_dispatches: list[dict] = []
+        dismissed_threads: list[str] = []
         notif_threads = _as_dict(self.state_store.read_notifications_state().get("threads"))
         wm_threads = _as_dict(self.state_store.read_watermarks().get("threads"))
+
+        def _complete_skipped_thread(tid_val: str, prep_res: dict, rev_val: str) -> None:
+            if prep_res.get("skip_reason") == "closed_or_draft_pr" and not self.read_only_trial:
+                try:
+                    self.gh_client.dismiss_notification(tid_val)
+                    dismissed_threads.append(tid_val)
+                except Exception as exc:
+                    sys.stderr.write(
+                        f"moltis-github-companion dismiss warning ({self.execution_coordinator.agent_name} thread {tid_val}): {exc}\n"
+                    )
+                    return
+            with contextlib.suppress(KeyError):
+                self.state_store.complete_thread_review(
+                    tid_val,
+                    completed_revision=rev_val,
+                    now_override_ms=now_override_ms,
+                )
 
         candidate_thread_ids: list[str] = list(poll_result.get("actionable_threads") or [])
         for tid, wm in wm_threads.items():
@@ -4505,12 +4773,7 @@ class GithubCompanionRunner:
                 handled_revision=prior_handled_rev,
             )
             if not prep.get("should_dispatch") or not prep.get("snapshot_path"):
-                with contextlib.suppress(KeyError):
-                    self.state_store.complete_thread_review(
-                        tid,
-                        completed_revision=target_rev,
-                        now_override_ms=now_override_ms,
-                    )
+                _complete_skipped_thread(tid, prep, target_rev)
                 continue
 
             disp = self.execution_coordinator.execute_dispatch(
@@ -4527,12 +4790,13 @@ class GithubCompanionRunner:
                     "recovery": recovery,
                     "poll_result": poll_result,
                     "targeted_dispatches": targeted_dispatches,
+                    "dismissed_threads": dismissed_threads,
                     "security_reconcile": None,
                     "sweep_dispatch": None,
                 }
 
-            # If a newer revision arrived during the review turn, run the follow-up turn before dismissal.
-            if disp.get("queued_followup"):
+            # If a newer revision arrived during a successful review turn, run the follow-up turn before dismissal.
+            if disp.get("status") == "completed" and disp.get("queued_followup"):
                 latest_wm = _as_dict(self.state_store.get_thread_watermark(tid))
                 latest_notif = dict(
                     _as_dict(self.state_store.read_notifications_state().get("threads", {}).get(tid))
@@ -4570,16 +4834,12 @@ class GithubCompanionRunner:
                             "recovery": recovery,
                             "poll_result": poll_result,
                             "targeted_dispatches": targeted_dispatches,
+                            "dismissed_threads": dismissed_threads,
                             "security_reconcile": None,
                             "sweep_dispatch": None,
                         }
                 else:
-                    with contextlib.suppress(KeyError):
-                        self.state_store.complete_thread_review(
-                            tid,
-                            completed_revision=followup_rev,
-                            now_override_ms=now_override_ms,
-                        )
+                    _complete_skipped_thread(tid, followup_prep, followup_rev)
 
         security_reconcile: dict | None = None
         sweep_dispatch: dict | None = None
@@ -4602,6 +4862,7 @@ class GithubCompanionRunner:
                         "recovery": recovery,
                         "poll_result": poll_result,
                         "targeted_dispatches": targeted_dispatches,
+                        "dismissed_threads": dismissed_threads,
                         "security_reconcile": security_reconcile,
                         "sweep_dispatch": sweep_dispatch,
                     }
@@ -4611,6 +4872,7 @@ class GithubCompanionRunner:
             "recovery": recovery,
             "poll_result": poll_result,
             "targeted_dispatches": targeted_dispatches,
+            "dismissed_threads": dismissed_threads,
             "security_reconcile": security_reconcile,
             "sweep_dispatch": sweep_dispatch,
         }
