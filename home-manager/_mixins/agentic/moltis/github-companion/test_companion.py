@@ -1982,6 +1982,10 @@ class CoordinatorAndCrashRecoveryTests(GithubCompanionTestBase):
         for suffix, command in (
             ("python", "python3 -c 'print(1)'"),
             ("git-commit", "git commit -m test"),
+            ("git-log-output", "git log -1 --output=review.txt"),
+            ("git-diff-output", "git diff --output /tmp/review.patch"),
+            ("proc-subst", "cat <(gh issue create --title test)"),
+            ("unsafe-env", "PATH=/tmp gh pr view 42"),
         ):
             dispatch_id = f"ghd-traya-unknown-{suffix}"
             set_active(dispatch_id)
