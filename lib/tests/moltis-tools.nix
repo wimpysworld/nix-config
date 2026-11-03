@@ -292,6 +292,7 @@ let
           20
       );
     assert settings.heartbeat.enabled == false;
+    assert settings.heartbeat.every == "60m";
     assert lib.hasInfix "/bin/moltis-matrix-companion &" scripts.inner;
     assert lib.hasInfix "/bin/moltis-matrix-companion &\nchildren+=(\"$!\")" scripts.inner == darwin;
     assert lib.hasInfix "/bin/moltis-github-companion &" scripts.inner;
@@ -328,6 +329,26 @@ let
     assert lib.hasInfix
       "export MOLTIS_GITHUB_COMPANION_POLL_OFFSET_SECS=${lib.escapeShellArg (toString c.agentic.moltis.githubCompanion.pollOffsetSecs)}"
       scripts.githubCompanion;
+    assert lib.hasInfix "export MOLTIS_GITHUB_COMPANION_SCHEDULE_DOW=${
+      lib.escapeShellArg (
+        if host == "skrye" then
+          "1"
+        else if host == "zannah" then
+          "3"
+        else
+          "5"
+      )
+    }" scripts.githubCompanion;
+    assert lib.hasInfix "export MOLTIS_GITHUB_COMPANION_SCHEDULE_DAY_NAME=${
+      lib.escapeShellArg (
+        if host == "skrye" then
+          "Monday"
+        else if host == "zannah" then
+          "Wednesday"
+        else
+          "Friday"
+      )
+    }" scripts.githubCompanion;
     assert lib.hasInfix
       "export MOLTIS_GITHUB_COMPANION_MATRIX_SELF_USER_ID=${lib.escapeShellArg "@${agentName}:matrix.wimpys.world"}"
       scripts.githubCompanion;
