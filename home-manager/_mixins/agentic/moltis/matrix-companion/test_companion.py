@@ -112,6 +112,7 @@ class MockMatrixAndRpcHandler(http.server.BaseHTTPRequestHandler):
         parsed = urllib.parse.urlsplit(self.path)
         body = self._read_json()
         if parsed.path == "/_matrix/client/v3/login":
+            user_id = body.get("identifier", {}).get("user", companion.SKRYE_ID)
             with srv.lock:
                 srv.login_requests.append(body)
                 if srv.fail_login_once:
@@ -121,13 +122,17 @@ class MockMatrixAndRpcHandler(http.server.BaseHTTPRequestHandler):
                 srv.login_count += 1
                 bearer = f"tok-{srv.login_count}"
                 srv.active_bearer = bearer
+                previous_bearer = srv.active_bearers_by_user.get(user_id)
+                if previous_bearer is not None:
+                    srv.valid_bearers.discard(previous_bearer)
+                srv.active_bearers_by_user[user_id] = bearer
                 srv.valid_bearers.add(bearer)
             self._send_json(
                 200,
                 {
                     "access_token": bearer,
                     "device_id": body.get("device_id", "MOLTIS_COMPANION_SKRYE"),
-                    "user_id": body.get("identifier", {}).get("user", companion.SKRYE_ID),
+                    "user_id": user_id,
                 },
             )
             return
@@ -177,6 +182,7 @@ class MockMatrixAndRpcHandler(http.server.BaseHTTPRequestHandler):
                 "path": urllib.parse.unquote(parsed.path),
                 "raw_path": parsed.path,
                 "body": body,
+                "headers": dict(self.headers),
                 "event_id": ev_id,
             }
             srv.put_requests.append(record)
@@ -198,6 +204,7 @@ class LoopbackTestServer(http.server.ThreadingHTTPServer):
         self.lock = threading.Lock()
         self.active_bearer = "tok-1"
         self.valid_bearers: set[str] = {"tok-1"}
+        self.active_bearers_by_user: dict[str, str] = {}
         self.login_count = 0
         self.fail_login_once = False
         self.fail_next_put = False
@@ -3098,6 +3105,7 @@ class Criterion6RoomEventsDurabilityAndNewIsolationTests(CompanionTestBase):
         self.assertEqual(flushed[0]["txn_id"], saved_txn_id)
         self.assertEqual(store.read_outbox()["pending"], {})
         self.assertIn(saved_txn_id, self.httpd.reactions_sent[-1]["path"])
+        self.assertEqual(self.httpd.reactions_sent[-1]["headers"]["Authorization"], "Bearer tok-2")
 
         # Verify companion-state.json pruning at COMPANION_STATE_ENTRY_CAP (100).
         for idx in range(110):
