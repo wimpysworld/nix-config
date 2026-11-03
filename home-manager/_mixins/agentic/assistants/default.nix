@@ -398,20 +398,20 @@ let
     if moltisAgentName == "skrye" then
       {
         agentDisplayName = "Skrye";
-        dayName = "Wednesday";
-        dow = "3";
+        dayName = "Monday";
+        dow = "1";
       }
     else if moltisAgentName == "zannah" then
       {
         agentDisplayName = "Zannah";
-        dayName = "Saturday";
-        dow = "6";
+        dayName = "Wednesday";
+        dow = "3";
       }
     else
       {
         agentDisplayName = "Traya";
-        dayName = "Sunday";
-        dow = "7";
+        dayName = "Friday";
+        dow = "5";
       };
   moltisHeartbeat =
     lib.replaceStrings
@@ -457,21 +457,6 @@ let
     "350523c09ee47d15c880d3ed280deca5ebc28b196140dc9d188353efe3d758af"
     "ed164d29077d19de1680b8435290924a47842ea1f4bc3e9c6d4bf8b38673a481"
     "279100f3b2209a9334c0ac764fad8540d79ce7187e45163412e24eb6be44970f"
-    "ebacf9283ef52935dec5100796e073afd88bd1f212e4c03b61768bed8c1358ba"
-    "30ad83558826a732e73629ed6b39dd39813552ebfcfdabebe3c59705ae267c6a"
-    "c0dda3e22f9689033c428841c1148ac604837084b51ac5950cca2fd0a33ce6bc"
-    "5ddcdc2af874f4feb8074bbdde010cf03d910e82257928f23bb20b26cc94c893"
-    "02245d9e3d778bc053153e93721885aa7e201c65ad0ac16a371ed394365ead04"
-    "471a80adebf6512cc493133d51fe94227553ca129f43fad6489b13c4a9c5a6c6"
-    "39ec86bbc74ffd56748753bcfcce2dee46540e3767f14cdcb05c2688327393a1"
-    "eee950ea74b76130fd08018483d3e84e68976e97b439c643325eb5690ca3662f"
-    "88e5873b9f1b4906d92f79330b596109f1c6349879a7a2bd47204947f9133cdd"
-    "d2c730ff1a820ac4e6fe1dad8ea253e4a354a6026d7b0f879976b904273d4ed6"
-    "dc20bdcaa1b87f2b7734e67cafca7c96bd249627870bc034c6912a244ffb8017"
-    "d98a5256ea01f35025cd02cb583518842c58d9a9c00b039057dffbbc4a0b5d62"
-    "f077069a08f9076bda43b793b47a2b65be9692baf01ca7aae86604569194ffb8"
-    "2aba808309db23a563ff24868fe53eb3b5d6e3c692693be21765c04221428fd1"
-    "0fbe59ed29d77b01b1fab5e3f5d429a78749d334e1fb05f78a0020f65b078d3d"
     "f5fbea7130a450caa5acdedadce24aa16a08d4bc2ed42c7ed056612cb790bf5d"
     "2a637af01a613be9b3e6566acf00e2e03573d56cdd30a35c563506a1ba3c4704"
     "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"

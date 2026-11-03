@@ -21,19 +21,19 @@
   ),
   scheduleDow ? (
     if agentName == "zannah" then
-      6
-    else if agentName == "traya" then
-      7
-    else
       3
+    else if agentName == "traya" then
+      5
+    else
+      1
   ),
   scheduleDayName ? (
     if agentName == "zannah" then
-      "Saturday"
-    else if agentName == "traya" then
-      "Sunday"
-    else
       "Wednesday"
+    else if agentName == "traya" then
+      "Friday"
+    else
+      "Monday"
   ),
   selfUserId ? "@${agentName}:matrix.wimpys.world",
   roomId ? "!the-cauldron:matrix.wimpys.world",

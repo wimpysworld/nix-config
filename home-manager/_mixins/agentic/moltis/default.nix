@@ -77,18 +77,18 @@ let
       0;
   scheduleDow =
     if agentName == "zannah" then
-      6
+      3
     else if agentName == "traya" then
-      7
+      5
     else
-      3;
+      1;
   scheduleDayName =
     if agentName == "zannah" then
-      "Saturday"
+      "Wednesday"
     else if agentName == "traya" then
-      "Sunday"
+      "Friday"
     else
-      "Wednesday";
+      "Monday";
 
   moltisSopsFile = ../../../../secrets/moltis.yaml;
   matrixSopsFile = ../../../../secrets/matrix.yaml;
@@ -2491,7 +2491,7 @@ in
 
         heartbeat = {
           enabled = !config.agentic.moltis.githubCompanion.enable;
-          every = "30m";
+          every = "60m";
           model = mainModel;
           sandbox_enabled = false;
           deliver = true;
