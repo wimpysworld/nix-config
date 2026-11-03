@@ -208,7 +208,18 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
               "[DOMAIN_EXPIRATION] > 168h"
             ];
           }
-        ];
+        ]
+        ++ lib.optional (noughtyLib.hostHasTag "silo") {
+          name = "Silo";
+          group = "Wimpy's World";
+          url = "http://127.0.0.1:8090/api/v1/health";
+          interval = "30s";
+          ui.hide-hostname = true;
+          conditions = [
+            "[STATUS] == 200"
+            "[BODY].status == ok"
+          ];
+        };
       };
     };
   };

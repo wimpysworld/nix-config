@@ -50,12 +50,6 @@ lib.mkIf (!host.is.iso && (host.is.workstation || host.gpu.hasAny)) {
     graphics = {
       enable = true;
       enable32Bit = lib.mkForce host.is.workstation;
-      extraPackages =
-        with pkgs;
-        lib.optionals host.gpu.hasIntel [
-          intel-compute-runtime
-          intel-media-driver
-        ];
     };
     nvidia = lib.mkIf host.gpu.hasNvidia {
       nvidiaSettings = lib.mkDefault host.is.workstation;

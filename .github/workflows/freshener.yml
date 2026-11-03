@@ -73,6 +73,9 @@ jobs:
           - id: openusage
             name: OpenUsage
             changelog: https://github.com/janekbaraniewski/openusage/releases
+          - id: silo-server
+            name: Silo Server
+            changelog: https://github.com/Silo-Server/silo-server/commits/main
           - id: weave
             name: Weave
             changelog: https://github.com/matze/weave/releases
