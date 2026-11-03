@@ -1837,7 +1837,7 @@ let
         elif current_bot_turn == MAX_BOT_TURNS - 1:
             budget_block = (
                 f"Council turn budget: bot turn {current_bot_turn} of {MAX_BOT_TURNS} since `{MARTIN_ID}`'s last message. "
-                "If a final synthesis is needed, hand off to `@traya:matrix.wimpys.world` for the turn-9 synthesis, or wrap up directly without tagging."
+                "Wrap up directly without tagging. Invite a relevant peer only when a specific question needs the final turn."
             )
         else:
             budget_block = (
