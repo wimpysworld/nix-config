@@ -1946,10 +1946,55 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
         self.assertEqual(fallback_notice["m.mentions"], {})
         self.assertEqual(fallback_notice[companion.COMPANION_RELAY_KEY]["selected_speaker"], companion.SKRYE_ID)
         self.assertEqual(fallback_notice[companion.COMPANION_RELAY_KEY]["wake_reason"], "moderator_fallback")
-        self.assertIn("moderator assessment fallback after 15s", companion.format_moderator_wakeup_notice(
-            [], "moderator_fallback", selected_speaker=companion.SKRYE_ID,
-        ))
-        self.assertNotIn("$m_fallback", self.httpd.messages_sent[-1]["body"]["body"])
+        self.assertEqual(
+            fallback_notice["body"],
+            '🔔 Relaying floor invitation for Skrye on Martin\'s message: "Should we switch kernel?" ✋🏻',
+        )
+        traya_store = companion.CompanionStateStore(
+            state_dir=self.root / "state-traya-fallback",
+            agent_name="traya",
+            room_id=companion.DEFAULT_ROOM_ID,
+            started_at_ms=self.current_time_ms,
+        )
+        traya_engine = companion.MatrixSyncEngine(
+            state_store=traya_store,
+            resolver=companion.SessionGenerationResolver(
+                data_dir=self.data_dir, state_store=traya_store,
+                agent_name="traya", room_id=companion.DEFAULT_ROOM_ID,
+            ),
+            matrix_client=companion.MatrixClient(
+                homeserver_url=self.httpd.base_url, self_user_id=companion.TRAYA_ID,
+                agent_name="traya", room_id=companion.DEFAULT_ROOM_ID,
+                password_path=self.password_file, state_store=traya_store,
+            ),
+            self_user_id=companion.TRAYA_ID, room_id=companion.DEFAULT_ROOM_ID,
+            agent_name="traya", data_dir=self.data_dir, clock=self.clock,
+            async_assessments=False,
+        )
+        traya_engine.process_sync_batch({"next_batch": "t0", "rooms": {"join": {}}})
+        sent_before = len(self.httpd.messages_sent)
+        traya_engine.process_sync_batch({
+            "next_batch": "t_fallback",
+            "rooms": {"join": {companion.DEFAULT_ROOM_ID: {"timeline": {"events": [
+                {
+                    "type": "m.room.message", "event_id": "$m_fallback",
+                    "sender": companion.MARTIN_ID, "origin_server_ts": self.current_time_ms,
+                    "content": {"msgtype": "m.text", "body": "Should we switch kernel?"},
+                },
+                {
+                    "type": "m.room.message", "event_id": "$fallback_relay",
+                    "sender": companion.SKRYE_ID, "origin_server_ts": self.current_time_ms + 15_000,
+                    "content": fallback_notice,
+                },
+            ]}}}},
+        })
+        self.assertEqual(len(self.httpd.messages_sent), sent_before + 1)
+        emitted_invitation = self.httpd.messages_sent[-1]["body"]
+        self.assertEqual(emitted_invitation["m.mentions"], {"user_ids": [companion.SKRYE_ID]})
+        self.assertEqual(
+            emitted_invitation["body"],
+            f'🛎️ Inviting {companion.SKRYE_ID} to the floor on Martin\'s message: "Should we switch kernel?" (moderator assessment fallback after 15s).',
+        )
 
         # Case C: Silent closure when Skrye reacted and only a peer is missing.
         self.current_time_ms += 20_000
