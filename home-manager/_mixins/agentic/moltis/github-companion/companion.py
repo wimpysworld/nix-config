@@ -1179,7 +1179,7 @@ def compute_backoff_wait_ms(
     is_rate_limited = (
         status in (403, 429)
         or remaining_exhausted
-        or (retry_after_sec > 0 and remaining_raw is None)
+        or retry_after_sec > 0
     )
     rate_reset_raw = lower_headers.get("x-ratelimit-reset")
     rate_reset_wait_sec = 0
@@ -1547,6 +1547,7 @@ class CompanionStateStore:
             "last_modified": None,
             "poll_interval_secs": BASE_POLL_INTERVAL_SECS,
             "retry_after_secs": 0,
+            "last_poll_rate_limited": False,
             "ratelimit_reset_epoch": None,
             "last_jitter_ms": None,
             "last_reconcile_sweep_at_ms": None,
@@ -2507,11 +2508,7 @@ class GhApiSafeClient:
             status, headers, items = parse_gh_api_paginated_http_output(stdout)
             if status == 304:
                 return 304, headers, []
-            if status in (403, 429) and (
-                str(headers.get("x-ratelimit-remaining", "")).strip() == "0"
-                or "retry-after" in headers
-                or "x-ratelimit-reset" in headers
-            ):
+            if status in (403, 429):
                 return status, headers, []
             if proc.returncode != 0 and status >= 400:
                 raise RuntimeError(
@@ -3388,8 +3385,10 @@ class NotificationPoller:
         last_status = poll_state.get("last_status")
         last_completed_ms = poll_state.get("last_poll_completed_at_ms")
         retry_after_secs = _safe_int(poll_state.get("retry_after_secs"), 0)
+        last_rate_limited = bool(poll_state.get("last_poll_rate_limited", False))
         if (
             last_status in (200, 304)
+            and not last_rate_limited
             and retry_after_secs <= 0
             and isinstance(last_completed_ms, int)
         ):
@@ -3519,9 +3518,12 @@ class NotificationPoller:
             and str(remaining_hdr).strip() != ""
             and _safe_int(remaining_hdr, 1) <= 0
         )
+        is_rate_limited = bool(
+            status in (403, 429) or remaining_exhausted or retry_after_hdr > 0
+        )
         ratelimit_reset_hdr = (
             (_safe_int(headers.get("x-ratelimit-reset"), 0) or None)
-            if (status in (403, 429) or remaining_exhausted or retry_after_hdr > 0)
+            if is_rate_limited
             else None
         )
 
@@ -3533,6 +3535,7 @@ class NotificationPoller:
                 "next_poll_at_ms": computed_next_poll_ms,
                 "poll_interval_secs": max(BASE_POLL_INTERVAL_SECS, poll_interval_hdr),
                 "retry_after_secs": retry_after_hdr,
+                "last_poll_rate_limited": is_rate_limited,
                 "ratelimit_reset_epoch": ratelimit_reset_hdr,
                 "last_jitter_ms": post_jitter_ms,
             },
