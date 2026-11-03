@@ -1983,6 +1983,8 @@ class CoordinatorAndCrashRecoveryTests(GithubCompanionTestBase):
             ("python", "python3 -c 'print(1)'"),
             ("git-commit", "git commit -m test"),
             ("git-log-output", "git log -1 --output=review.txt"),
+            ("git-log-quoted-output", 'git log -1 "--output=review.txt"'),
+            ("git-log-tab-output", "git\tlog -1 --output=review.txt"),
             ("git-diff-output", "git diff --output /tmp/review.patch"),
             ("proc-subst", "cat <(gh issue create --title test)"),
             ("unsafe-env", "PATH=/tmp gh pr view 42"),
