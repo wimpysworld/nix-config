@@ -425,19 +425,62 @@ class PollTimingAndReadOnlyTrialTests(GithubCompanionTestBase):
         )
         self.assertEqual((base_sec, wait_ms), (180, 190_000))
 
-        # X-RateLimit-Reset > Retry-After
+        # Normal HTTP 200/304 with X-RateLimit-Reset and remaining quota > 0 does not sleep until hour reset
         wait_ms, base_sec, _ = companion.compute_backoff_wait_ms(
-            {"Retry-After": "120", "X-RateLimit-Reset": str(now_sec + 300)},
+            {
+                "X-Poll-Interval": "60",
+                "X-RateLimit-Remaining": "4999",
+                "X-RateLimit-Reset": str(now_sec + 3600),
+            },
             now_ms_val,
             rng=fixed_rng,
+            status=200,
+        )
+        self.assertEqual((base_sec, wait_ms), (60, 70_000))
+
+        wait_ms, base_sec, _ = companion.compute_backoff_wait_ms(
+            {"X-Poll-Interval": "60", "X-RateLimit-Reset": str(now_sec + 3600)},
+            now_ms_val,
+            rng=fixed_rng,
+            status=304,
+        )
+        self.assertEqual((base_sec, wait_ms), (60, 70_000))
+
+        # X-RateLimit-Reset > Retry-After when rate-limited (including with positive remaining quota)
+        wait_ms, base_sec, _ = companion.compute_backoff_wait_ms(
+            {
+                "Retry-After": "120",
+                "X-RateLimit-Remaining": "50",
+                "X-RateLimit-Reset": str(now_sec + 300),
+            },
+            now_ms_val,
+            rng=fixed_rng,
+            status=200,
         )
         self.assertEqual((base_sec, wait_ms), (300, 310_000))
 
-        # Pagination + If-Modified-Since + HTTP 304 Not Modified
+        wait_ms, base_sec, _ = companion.compute_backoff_wait_ms(
+            {"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": str(now_sec + 420)},
+            now_ms_val,
+            rng=fixed_rng,
+            status=200,
+        )
+        self.assertEqual((base_sec, wait_ms), (420, 430_000))
+
+        wait_ms, base_sec, _ = companion.compute_backoff_wait_ms(
+            {"X-RateLimit-Remaining": "10", "X-RateLimit-Reset": str(now_sec + 480)},
+            now_ms_val,
+            rng=fixed_rng,
+            status=429,
+        )
+        self.assertEqual((base_sec, wait_ms), (480, 490_000))
+
+        # Pagination + If-Modified-Since + HTTP 304 Not Modified + rate-limited 200/429 paths
         store = self.make_store("traya")
-        responses: list[str] = [
+        responses: list[tuple[int, str]] = [
             # Poll 1: 2-page HTTP 200 response with allowed and disallowed owners
             (
+                0,
                 "HTTP/2.0 200 OK\r\n"
                 "Last-Modified: Wed, 15 Nov 2023 11:00:00 GMT\r\n"
                 "X-Poll-Interval: 90\r\n"
@@ -487,20 +530,38 @@ class PollTimingAndReadOnlyTrialTests(GithubCompanionTestBase):
                             },
                         }
                     ]
-                )
+                ),
             ),
             # Poll 2: HTTP 304 Not Modified
             (
+                0,
                 "HTTP/2.0 304 Not Modified\r\n"
                 "X-Poll-Interval: 75\r\n"
+                "\r\n",
+            ),
+            # Poll 3: HTTP 200 that exhausts rate-limit quota preserves full reset wait
+            (
+                0,
+                "HTTP/2.0 200 OK\r\n"
+                "X-Poll-Interval: 60\r\n"
+                "X-RateLimit-Remaining: 0\r\n"
+                f"X-RateLimit-Reset: {(self.current_time_ms + 200_000) // 1000 + 3600}\r\n"
                 "\r\n"
+                "[]\r\n",
+            ),
+            # Poll 4: HTTP 429 without optional rate-limit headers applies status-based backoff without raising
+            (
+                1,
+                "HTTP/2.0 429 Too Many Requests\r\n"
+                "\r\n"
+                '{"message":"API rate limit exceeded"}\r\n',
             ),
         ]
 
         def fake_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
             self.gh_commands.append(list(cmd))
-            out = responses.pop(0)
-            return subprocess.CompletedProcess(cmd, 0, stdout=out, stderr="")
+            rc, out = responses.pop(0)
+            return subprocess.CompletedProcess(cmd, rc, stdout=out, stderr="")
 
         gh_client = companion.GhApiSafeClient(runner=fake_runner)
         poller = companion.NotificationPoller(
@@ -536,6 +597,40 @@ class PollTimingAndReadOnlyTrialTests(GithubCompanionTestBase):
         self.assertEqual(second["last_modified"], "Wed, 15 Nov 2023 11:00:00 GMT")
         self.assertEqual(second["actionable_threads"], [])
         self.assertEqual(store.read_watermarks()["updated_at_ms"], wm_before_304["updated_at_ms"])
+
+        # Complete poll-to-wait path: HTTP 200 with X-RateLimit-Remaining: 0 preserves reset wait
+        self.current_time_ms += 100_000
+        rate_limited_completed_ms = self.current_time_ms
+        third = poller.poll_once()
+        self.assertEqual(third["status"], 200)
+        self.assertEqual(third["base_wait_secs"], 3600)
+        self.assertTrue(store.read_poll_state()["last_poll_rate_limited"])
+        self.assertEqual(poller.wait_until_next_poll(now_override_ms=rate_limited_completed_ms), 3_610_000)
+        self.assertEqual(poller.wait_for_startup_slot(now_override_ms=rate_limited_completed_ms), 3_610_000)
+
+        # HTTP 429 without optional headers returns status 429 instead of raising RuntimeError
+        fourth = poller.poll_once()
+        self.assertEqual(fourth["status"], 429)
+        self.assertEqual(fourth["base_wait_secs"], 60)
+        self.assertTrue(store.read_poll_state()["last_poll_rate_limited"])
+
+        # Legacy stale 1-hour next_poll_at_ms persisted from a non-rate-limited HTTP 200 poll is clamped
+        completed_ms = self.current_time_ms
+        store.write_poll_state(
+            {
+                "last_poll_completed_at_ms": completed_ms,
+                "last_status": 200,
+                "last_poll_rate_limited": False,
+                "poll_interval_secs": 60,
+                "retry_after_secs": 0,
+                "ratelimit_reset_epoch": (completed_ms // 1000) + 3600,
+                "last_jitter_ms": 7_095,
+                "next_poll_at_ms": completed_ms + 3_600_000 + 7_095,
+            },
+            now_override_ms=completed_ms,
+        )
+        self.assertEqual(poller.wait_until_next_poll(now_override_ms=completed_ms), 67_095)
+        self.assertEqual(poller.wait_for_startup_slot(now_override_ms=completed_ms), 67_095)
 
     def test_read_only_trial_zero_dispatch_and_zero_dismiss_guarantee(self) -> None:
         store = self.make_store("skrye")
