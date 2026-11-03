@@ -1,39 +1,37 @@
 diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
-@@ -48,0 +49,2 @@
+@@ -55,0 +56,2 @@
 +pub(crate) const UI_SCALE: f64 = 1.5;
 +
-@@ -943,8 +945,8 @@ pub fn run(cli_args: CliArgs) {
-             let mut win_builder =
+@@ -1000,6 +1002,6 @@ pub fn run(cli_args: CliArgs) {
                  tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("/".into()))
                      .title("Handy")
--                    .inner_size(680.0, 570.0)
--                    .min_inner_size(680.0, 570.0)
-+                    .inner_size(1020.0, 855.0)
-+                    .min_inner_size(1020.0, 855.0)
+-                    .inner_size(utils::MAIN_WINDOW_SIZE.0, utils::MAIN_WINDOW_SIZE.1)
+-                    .min_inner_size(utils::MAIN_WINDOW_SIZE.0, utils::MAIN_WINDOW_SIZE.1)
++                    .inner_size(1080.0, 900.0)
++                    .min_inner_size(1080.0, 900.0)
                      .resizable(true)
                      .maximizable(true)
-                     .visible(false);
-@@ -957,2 +959,3 @@ pub fn run(cli_args: CliArgs) {
-             #[cfg_attr(not(target_os = "windows"), allow(unused_variables))]
+@@ -1018,2 +1020,3 @@ pub fn run(cli_args: CliArgs) {
              let main_window = win_builder.build()?;
 +            main_window.set_zoom(UI_SCALE)?;
+ 
 diff --git a/src-tauri/src/overlay.rs b/src-tauri/src/overlay.rs
 --- a/src-tauri/src/overlay.rs
 +++ b/src-tauri/src/overlay.rs
-@@ -49,2 +49,2 @@
--const OVERLAY_WIDTH: f64 = 256.0;
+@@ -51,2 +51,2 @@
+-const OVERLAY_WIDTH: f64 = 266.0;
 -const OVERLAY_HEIGHT: f64 = 50.0;
-+const OVERLAY_WIDTH: f64 = 384.0;
++const OVERLAY_WIDTH: f64 = 399.0;
 +const OVERLAY_HEIGHT: f64 = 75.0;
-@@ -52,3 +52,2 @@
+@@ -54,3 +54,2 @@
 -// Actual is 394x118, just a little extra
 -const OVERLAY_STREAM_WIDTH: f64 = 400.0;
 -const OVERLAY_STREAM_HEIGHT: f64 = 120.0;
 +const OVERLAY_STREAM_WIDTH: f64 = 600.0;
 +const OVERLAY_STREAM_HEIGHT: f64 = 180.0;
-@@ -429,6 +428,10 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
+@@ -451,6 +450,10 @@ pub fn create_recording_overlay(app_handle: &AppHandle) {
      #[allow(unused_variables)]
      match builder.build() {
          Ok(window) => {
@@ -44,82 +42,28 @@ diff --git a/src-tauri/src/overlay.rs b/src-tauri/src/overlay.rs
              #[cfg(target_os = "linux")]
              {
                  // Try to initialize GTK layer shell, ignore errors if compositor doesn't support it
-diff --git a/src/App.css b/src/App.css
---- a/src/App.css
-+++ b/src/App.css
-@@ -102,3 +102,3 @@
- .logo-primary {
--  fill: var(--color-logo-primary);
-+  fill: #faa2ca;
- }
-@@ -106,5 +106,34 @@
- .logo-stroke {
--  fill: var(--color-logo-stroke);
--  stroke: var(--color-logo-stroke);
-+  fill: #382731;
-+  stroke: #382731;
-   stroke-width: 1;
- }
-+
-+@media (prefers-color-scheme: dark) {
-+  .logo-primary {
-+    fill: #f28cbb;
-+  }
-+
-+  .logo-stroke {
-+    fill: #fad1ed;
-+    stroke: #fad1ed;
-+  }
-+}
-+
-+:root[data-theme="light"] .logo-primary {
-+  fill: #faa2ca;
-+}
-+
-+:root[data-theme="light"] .logo-stroke {
-+  fill: #382731;
-+  stroke: #382731;
-+}
-+
-+:root[data-theme="dark"] .logo-primary {
-+  fill: #f28cbb;
-+}
-+
-+:root[data-theme="dark"] .logo-stroke {
-+  fill: #fad1ed;
-+  stroke: #fad1ed;
-+}
-diff --git a/src/overlay/RecordingOverlay.css b/src/overlay/RecordingOverlay.css
---- a/src/overlay/RecordingOverlay.css
-+++ b/src/overlay/RecordingOverlay.css
-@@ -28,4 +28,4 @@
-   --light-s-muted: #6e6e6e;
--  --dark-s-muted: #a3a09a;
-+  --dark-s-muted: @mochaSubtext0@;
-   --light-s-faint: #9a9a9a;
--  --dark-s-faint: #6f6c66;
-+  --dark-s-faint: @mochaOverlay0@;
 diff --git a/src/styles/theme.css b/src/styles/theme.css
 --- a/src/styles/theme.css
 +++ b/src/styles/theme.css
-@@ -12,4 +12,4 @@
+@@ -17,3 +17,3 @@
 -  --dark-color-text: #fbfbfb;
 -  --dark-color-background: #2c2b29;
 -  --dark-color-logo-primary: #f28cbb;
--  --dark-color-logo-stroke: #fad1ed;
 +  --dark-color-text: @mochaText@;
 +  --dark-color-background: @mochaBase@;
 +  --dark-color-logo-primary: @mochaBlue@;
-+  --dark-color-logo-stroke: @mochaLavender@;
-@@ -22,2 +22,2 @@
+@@ -24,2 +24,2 @@
 -  --dark-color-warning: #fbbf24;
 -  --dark-color-error: #f87171;
 +  --dark-color-warning: @mochaYellow@;
 +  --dark-color-error: @mochaRed@;
-@@ -26,3 +26,3 @@
+@@ -78,2 +78,2 @@
+-  --dark-color-wordmark: var(--dark-color-logo-primary);
+-  --dark-color-wordmark-stroke: var(--dark-color-text);
++  --dark-color-wordmark: #f28cbb;
++  --dark-color-wordmark-stroke: #fad1ed;
+@@ -127,2 +127,2 @@
 -  --color-background-ui: #da5893;
--  --color-text-stroke: #f6f6f6;
 -  --color-mid-gray: #808080;
 +  --color-background-ui: @mochaBlue@;
-+  --color-text-stroke: @mochaCrust@;
 +  --color-mid-gray: @mochaOverlay0@;
