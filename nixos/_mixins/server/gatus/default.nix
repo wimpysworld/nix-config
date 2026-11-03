@@ -133,16 +133,6 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
               "[BODY] == OK"
             ];
           }
-          ++ lib.optional config.services.owncast.enable {
-            name = "Owncast (Test)";
-            group = "Media & AI (Revan)";
-            url = "http://127.0.0.1:8383/api/status";
-            interval = "30s";
-            ui.hide-hostname = true;
-            conditions = [
-              "[STATUS] == 200"
-            ];
-          }
           ++ [
             {
               name = "Fibre Router";

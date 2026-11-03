@@ -7,10 +7,8 @@
 }:
 let
   prodOn = [ "malak" ];
-  testOn = [ "revan" ];
-  listen = if noughtyLib.isHost prodOn then "127.0.0.1" else "0.0.0.0";
 in
-lib.mkIf (noughtyLib.isHost (prodOn ++ testOn)) {
+lib.mkIf (noughtyLib.isHost prodOn) {
   environment = {
     shellAliases = {
       owncast-log = "journalctl _SYSTEMD_UNIT=owncast.service";
@@ -20,7 +18,7 @@ lib.mkIf (noughtyLib.isHost (prodOn ++ testOn)) {
     ];
   };
   services = {
-    caddy = lib.mkIf (config.services.owncast.enable && noughtyLib.isHost prodOn) {
+    caddy = lib.mkIf config.services.owncast.enable {
       # Reverse proxy to the Owncast instance
       virtualHosts."wimpysworld.live" = {
         extraConfig = ''
@@ -46,7 +44,7 @@ lib.mkIf (noughtyLib.isHost (prodOn ++ testOn)) {
     };
     owncast = {
       enable = true;
-      inherit listen;
+      listen = "127.0.0.1";
       openFirewall = true;
       port = 8383;
     };

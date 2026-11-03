@@ -127,7 +127,7 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
           };
           "Monitoring & Infrastructure" = {
             style = "row";
-            columns = 3;
+            columns = 2;
           };
           "Websites" = {
             style = "row";
@@ -269,40 +269,6 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
                 };
               };
             }
-            {
-              "Owncast (Test)" = {
-                icon = "owncast.svg";
-                href = "http://${tailnetHost}:8383";
-                description = "Staging Owncast instance on revan";
-                siteMonitor = "http://127.0.0.1:8383/api/status";
-                widget = {
-                  type = "customapi";
-                  url = "http://127.0.0.1:8383/api/status";
-                  mappings = [
-                    {
-                      field = "online";
-                      label = "Stream";
-                      format = "text";
-                      remap = [
-                        {
-                          value = true;
-                          to = "Live";
-                        }
-                        {
-                          value = false;
-                          to = "Offline";
-                        }
-                      ];
-                    }
-                    {
-                      field = "versionNumber";
-                      label = "Version";
-                      format = "text";
-                    }
-                  ];
-                };
-              };
-            }
           ];
         }
         {
@@ -318,6 +284,39 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
                   accountid = "{{HOMEPAGE_VAR_CLOUDFLARE_ACCOUNT_ID}}";
                   tunnelid = "1efaa599-51f7-4825-b2fa-3df1233883e6";
                   key = "{{HOMEPAGE_VAR_CLOUDFLARE_API_TOKEN}}";
+                };
+              };
+            }
+            {
+              "The Cauldron (Matrix)" = {
+                icon = "matrix.svg";
+                href = "https://matrix.wimpys.world";
+                description = "Tuwunel Matrix homeserver on malak";
+                siteMonitor = "https://matrix.wimpys.world/_matrix/client/versions";
+                widget = {
+                  type = "customapi";
+                  url = "https://matrix.wimpys.world/_matrix/client/versions";
+                  mappings = [
+                    {
+                      field = {
+                        "net.zemos.msc4383.server" = "name";
+                      };
+                      label = "Server";
+                      format = "text";
+                    }
+                    {
+                      field = {
+                        "net.zemos.msc4383.server" = "version";
+                      };
+                      label = "Version";
+                      format = "text";
+                    }
+                    {
+                      field = "versions";
+                      label = "Specs";
+                      format = "size";
+                    }
+                  ];
                 };
               };
             }
@@ -378,14 +377,6 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
                 href = "https://goaccess.wimpys.world";
                 description = "Real-time web log analytics on malak";
                 ping = "malak.${tailNet}";
-              };
-            }
-            {
-              "Soju IRC Bouncer" = {
-                icon = "mdi-forum-outline";
-                href = "https://${tailnetHost}";
-                description = "Multi-network IRC bouncer on revan (:6667)";
-                ping = "127.0.0.1";
               };
             }
           ];
@@ -474,39 +465,6 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
         {
           "Social & Streaming" = [
             {
-              "The Cauldron (Matrix)" = {
-                icon = "matrix.svg";
-                href = "https://matrix.wimpys.world";
-                description = "Tuwunel Matrix homeserver on malak";
-                siteMonitor = "https://matrix.wimpys.world/_matrix/client/versions";
-                widget = {
-                  type = "customapi";
-                  url = "https://matrix.wimpys.world/_matrix/client/versions";
-                  mappings = [
-                    {
-                      field = {
-                        "net.zemos.msc4383.server" = "name";
-                      };
-                      label = "Server";
-                      format = "text";
-                    }
-                    {
-                      field = {
-                        "net.zemos.msc4383.server" = "version";
-                      };
-                      label = "Version";
-                      format = "text";
-                    }
-                    {
-                      field = "versions";
-                      label = "Specs";
-                      format = "size";
-                    }
-                  ];
-                };
-              };
-            }
-            {
               "GoToSocial" = {
                 icon = "gotosocial.svg";
                 href = "https://wimpysworld.social";
@@ -581,6 +539,14 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
                     }
                   ];
                 };
+              };
+            }
+            {
+              "Soju IRC Bouncer" = {
+                icon = "mdi-forum-outline";
+                href = "https://${tailnetHost}";
+                description = "Multi-network IRC bouncer on revan (:6667)";
+                ping = "127.0.0.1";
               };
             }
           ];
