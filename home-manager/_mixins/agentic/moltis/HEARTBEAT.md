@@ -118,4 +118,4 @@ When all three conditions hold, run the full weekly sweep across `wimpysworld`, 
 moltis-telegram-voice --body-file <summary-txt-path>
 ```
 
-- Return a concise written summary with pull request and alert links as the final response in `companion:github`. `moltis-github-companion` forwards non-`HEARTBEAT_OK` terminal assistant replies to Telegram while `moltis-telegram-voice` sends the voice briefing. When no action was taken in any step, reply `HEARTBEAT_OK` with no other text.
+- Return a concise written summary with pull request and alert links as the final response in `companion:github`. `moltis-github-companion` forwards non-`HEARTBEAT_OK` terminal assistant replies to Telegram while `moltis-telegram-voice` sends the voice briefing. When no action was taken in any step, reply `HEARTBEAT_OK` with no other text. When an unrecoverable tool or API failure prevents completing the turn, start the final response with `HEARTBEAT_ERROR:` followed by the failure reason so that `moltis-github-companion` retains the revision or sweep for retry without sending a routine Telegram summary.

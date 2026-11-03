@@ -2220,6 +2220,66 @@ class CoordinatorAndCrashRecoveryTests(GithubCompanionTestBase):
         assert wm_after_retry is not None
         self.assertEqual(wm_after_retry["handled_revision"], "2023-11-16T14:00:00Z::5001")
         self.assertTrue(wm_after_retry["dismiss_ready"])
+        self.assertEqual(wm_after_retry["failure_count"], 0)
+        self.assertFalse(wm_after_retry["retry_exhausted"])
+
+        # 5. Verify ERROR: / FAILED: prefixes match and multi-sentence summaries do not false-positive.
+        for fail_prefix_reply in (
+            "ERROR: unexpected response",
+            "FAILED: unexpected response",
+            "HEARTBEAT_ERROR: rate limit exceeded",
+            "COMPANION_RESULT: ERROR",
+        ):
+            ok_flag, reason_val = companion.classify_terminal_turn_outcome(fail_prefix_reply)
+            self.assertFalse(ok_flag, msg=f"Expected failure for {fail_prefix_reply!r}")
+            self.assertIsNotNone(reason_val)
+
+        for valid_summary in (
+            "Approved #1163. Cannot merge yet while CI checks are in progress.",
+            "Reviewed PR #12; cannot merge #12 because CI is red.",
+            "Reviewed #1163 and verified the turn failed and permission denied tests.",
+        ):
+            ok_flag, reason_val = companion.classify_terminal_turn_outcome(valid_summary)
+            self.assertTrue(ok_flag, msg=f"Expected success for {valid_summary!r}, got {reason_val!r}")
+            self.assertIsNone(reason_val)
+
+        # 6. Verify bounded consecutive retry cap (MAX_THREAD_FAILURE_RETRIES = 3) stops re-queuing until a newer revision arrives.
+        store.record_polled_notifications(
+            [
+                {
+                    "id": "951",
+                    "reason": "mention",
+                    "updated_at": "2023-11-16T14:10:00Z",
+                    "repository": {"full_name": "wimpysworld/nix-config", "owner": {"login": "wimpysworld"}},
+                    "subject": {
+                        "type": "Issue",
+                        "title": "Issue 95",
+                        "url": "https://api.github.com/repos/wimpysworld/nix-config/issues/95",
+                        "latest_comment_url": "https://api.github.com/repos/wimpysworld/nix-config/issues/comments/5001",
+                    },
+                }
+            ],
+            now_override_ms=self.current_time_ms,
+        )
+        self.httpd.send_sync_handler = make_reply_handler("ERROR: unexpected response from upstream")
+        for attempt in range(1, companion.MAX_THREAD_FAILURE_RETRIES + 1):
+            c_res = runner.run_cycle(run_sweeps_if_due=False)
+            self.assertEqual(len(c_res["targeted_dispatches"]), 1)
+            self.assertEqual(c_res["targeted_dispatches"][0]["status"], "failed")
+            wm_951 = store.get_thread_watermark("951")
+            assert wm_951 is not None
+            self.assertEqual(wm_951["failure_count"], attempt)
+            if attempt < companion.MAX_THREAD_FAILURE_RETRIES:
+                self.assertFalse(wm_951["retry_exhausted"])
+                self.assertTrue(wm_951["pending_followup"])
+            else:
+                self.assertTrue(wm_951["retry_exhausted"])
+                self.assertFalse(wm_951["pending_followup"])
+                self.assertIsNone(wm_951["pending_followup_revision"])
+
+        # 4th cycle on the same revision must be skipped because retry_exhausted is True
+        exhausted_cycle = runner.run_cycle(run_sweeps_if_due=False)
+        self.assertEqual(exhausted_cycle["targeted_dispatches"], [])
 
 
 class SecurityAlertOwnershipAndRejectedFixGuardTests(GithubCompanionTestBase):
