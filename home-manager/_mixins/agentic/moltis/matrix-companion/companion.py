@@ -148,11 +148,24 @@ ASSESSMENT_TIMEOUT_SECS = 25.0
 
 THINKING_DWELL_MS = 3000
 PHASE_EDIT_INTERVAL_MS = 3000
-PROGRESS_NOTICE_INTERVAL_MS = 30000
+INITIAL_PROGRESS_NOTICE_DELAY_MS = 5000
+PROGRESS_NOTICE_INTERVAL_MS = 3000
 COMPLETION_RECONCILE_WINDOW_MS = 5000
 WAKEUP_DEADLINE_MS = 15000
 MAX_WAKEUPS_PER_MARTIN_ROOT = 3
 MAX_BOT_TURNS_SINCE_MARTIN = 9
+TARGET_PREVIEW_MAX_CHARS = 120
+COMPANION_RELAY_KEY = "org.wimpysworld.companion_relay"
+AUDIO_FILENAME_EXTENSIONS = (
+    ".ogg",
+    ".mp3",
+    ".wav",
+    ".m4a",
+    ".opus",
+    ".aac",
+    ".flac",
+    ".webm",
+)
 
 RECENT_EVENTS_CAP = 50
 UNMENTIONED_EVENTS_CAP = 50
@@ -590,6 +603,49 @@ def strip_audio_message_suffix(text: str) -> str:
     return cleaned
 
 
+def is_conversational_room_message(
+    msgtype_or_event: object,
+    body: object = None,
+    *,
+    sender: str | None = None,
+    content: dict | None = None,
+) -> bool:
+    """Return True for m.text or caption-bearing bot m.audio events across all six companion checks."""
+    if isinstance(msgtype_or_event, dict):
+        ev = msgtype_or_event
+        ev_content = _as_dict(ev.get("content"))
+        resolved_msgtype = ev.get("msgtype") or ev_content.get("msgtype")
+        resolved_body = ev.get("body") if "body" in ev else ev_content.get("body")
+        resolved_sender = str(ev.get("sender") or "")
+        resolved_content = dict(ev_content)
+        if "filename" in ev and "filename" not in resolved_content:
+            resolved_content["filename"] = ev.get("filename")
+    else:
+        resolved_msgtype = msgtype_or_event
+        resolved_body = body
+        resolved_sender = sender or ""
+        resolved_content = _as_dict(content)
+
+    if not isinstance(resolved_body, str) or not resolved_body.strip():
+        return False
+    clean_body = resolved_body.strip()
+    if resolved_msgtype == "m.text":
+        return True
+    if resolved_msgtype != "m.audio":
+        return False
+    clean_sender = (resolved_sender or "").strip()
+    if clean_sender not in BOT_IDS:
+        return False
+    filename = str(resolved_content.get("filename") or "").strip()
+    if filename and clean_body.lower() == filename.lower():
+        return False
+    if " " not in clean_body and "\n" not in clean_body:
+        lower_body = clean_body.lower()
+        if any(lower_body.endswith(ext) for ext in AUDIO_FILENAME_EXTENSIONS):
+            return False
+    return True
+
+
 def extract_record_sender(rec: dict) -> str:
     """Extract sender identity from nested channel.sender_id or top-level history fields."""
     if not isinstance(rec, dict):
@@ -608,16 +664,14 @@ def extract_record_sender(rec: dict) -> str:
 
 
 def format_elapsed_duration(elapsed_sec: int) -> str:
-    """Format elapsed seconds as seconds below 1 minute, then minutes and seconds."""
+    """Format elapsed seconds as MM:SS (or HH:MM:SS at 3600 seconds and above)."""
     total_sec = max(0, _safe_int(elapsed_sec, 0))
-    if total_sec < 60:
-        return "1 second" if total_sec == 1 else f"{total_sec} seconds"
+    if total_sec >= 3600:
+        hours, rem = divmod(total_sec, 3600)
+        minutes, seconds = divmod(rem, 60)
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
     minutes, seconds = divmod(total_sec, 60)
-    min_part = "1 minute" if minutes == 1 else f"{minutes} minutes"
-    if seconds == 0:
-        return min_part
-    sec_part = "1 second" if seconds == 1 else f"{seconds} seconds"
-    return f"{min_part} {sec_part}"
+    return f"{minutes:02d}:{seconds:02d}"
 
 
 def classify_tool_phase(tool_name: str) -> str:
@@ -651,11 +705,11 @@ def format_progress_notice(
     iteration: int,
     phase: str = "thinking",
 ) -> str:
-    """Format the 30-second progress notice with activity icon, elapsed time, and iteration."""
+    """Format the 3-second progress notice with activity icon, MM:SS elapsed time, and step count."""
     clean_iter = max(1, _safe_int(iteration, 1))
     icon = notice_icon_for_phase(phase)
     return sanitize_no_matrix_mentions(
-        f"{icon} {format_elapsed_duration(elapsed_sec)} elapsed · Iteration {clean_iter}"
+        f"{icon} {format_elapsed_duration(elapsed_sec)} elapsed - Step {clean_iter}"
     )
 
 
@@ -675,21 +729,135 @@ def format_terminal_notice(
     )
 
 
+def format_target_message_preview(
+    body: str,
+    max_chars: int = TARGET_PREVIEW_MAX_CHARS,
+) -> str:
+    """Sanitise and format a single-line target message preview without Matrix mentions."""
+    stripped = strip_audio_message_suffix(body or "")
+    sanitised = sanitize_no_matrix_mentions(stripped).replace('"', "'")
+    single_line = " ".join(sanitised.split())
+    limit = max(16, _safe_int(max_chars, TARGET_PREVIEW_MAX_CHARS))
+    if len(single_line) > limit:
+        return single_line[: limit - 3].rstrip() + "..."
+    return single_line
+
+
+def select_raised_hand_speaker(
+    raised_hands: list[str],
+    recent_events: list[dict] | None = None,
+    target_event_id: str = "",
+) -> str:
+    """Select the raised-hand agent who posted least recently in recent_events, breaking ties by sha256."""
+    candidates = sorted({uid for uid in raised_hands if isinstance(uid, str) and uid in BOT_IDS})
+    if not candidates:
+        return TRAYA_ID
+    if len(candidates) == 1:
+        return candidates[0]
+
+    last_msg_index: dict[str, int] = {uid: -1 for uid in candidates}
+    for idx, ev in enumerate(recent_events or []):
+        if not isinstance(ev, dict):
+            continue
+        sender = str(ev.get("sender") or "")
+        if sender not in last_msg_index:
+            continue
+        if not is_conversational_room_message(ev):
+            continue
+        body = str(ev.get("body") or "")
+        if ev.get("is_new_command") or is_new_command_message(body):
+            continue
+        last_msg_index[sender] = idx
+
+    def _sort_key(uid: str) -> tuple[int, str, str]:
+        tie_digest = hashlib.sha256(f"{target_event_id}:{uid}".encode("utf-8")).hexdigest()
+        return (last_msg_index.get(uid, -1), tie_digest, uid)
+
+    return min(candidates, key=_sort_key)
+
+
+def _join_display_names(names: list[str]) -> str:
+    if not names:
+        return ""
+    if len(names) == 1:
+        return names[0]
+    if len(names) == 2:
+        return f"{names[0]} and {names[1]}"
+    return f"{', '.join(names[:-1])}, and {names[-1]}"
+
+
 def format_moderator_wakeup_notice(
     raised_hands: list[str],
     wake_reason: str = "raised_hand",
+    *,
+    selected_speaker: str | None = None,
+    target_sender: str = "",
+    target_body: str = "",
 ) -> str:
-    """Format the moderator invitation notice without exposing raw Matrix event IDs."""
-    if wake_reason == "raised_hand" and raised_hands:
-        names = [display_name_for_user_id(uid) for uid in raised_hands]
-        if len(names) == 1:
-            return f"🛎️ Inviting {TRAYA_ID} to the floor as {names[0]} has a raised hand ✋🏻"
-        if len(names) == 2:
-            joined = f"{names[0]} and {names[1]}"
-        else:
-            joined = f"{', '.join(names[:-1])}, and {names[-1]}"
-        return f"🛎️ Inviting {TRAYA_ID} to the floor. Raised hands: {joined} ✋🏻"
-    return f"🛎️ Inviting {TRAYA_ID} to the floor (moderator assessment fallback after 15s)."
+    """Format the direct floor invitation notice with sanitised target preview and no raw event IDs."""
+    clean_hands = [uid for uid in raised_hands if isinstance(uid, str) and uid]
+    if selected_speaker and selected_speaker in ALLOWLIST_USER_IDS:
+        invited_id = selected_speaker
+    elif wake_reason == "raised_hand" and clean_hands:
+        invited_id = clean_hands[0]
+    else:
+        invited_id = TRAYA_ID
+
+    sender_display = display_name_for_user_id(target_sender) if target_sender else ""
+    preview = format_target_message_preview(target_body) if target_body else ""
+    if sender_display and preview:
+        context_clause = f' on {sender_display}\'s message: "{preview}"'
+    elif preview:
+        context_clause = f' on message: "{preview}"'
+    elif sender_display:
+        context_clause = f" on {sender_display}'s message"
+    else:
+        context_clause = ""
+
+    if wake_reason == "raised_hand" and clean_hands:
+        remaining = [display_name_for_user_id(uid) for uid in clean_hands if uid != invited_id]
+        if not remaining:
+            if context_clause:
+                return f"🛎️ Inviting {invited_id} to the floor{context_clause} ✋🏻"
+            invited_name = display_name_for_user_id(invited_id)
+            return f"🛎️ Inviting {invited_id} to the floor as {invited_name} has a raised hand ✋🏻"
+        joined_rem = _join_display_names(remaining)
+        return f"🛎️ Inviting {invited_id} to the floor{context_clause}. Remaining raised hands: {joined_rem} ✋🏻"
+    return f"🛎️ Inviting {TRAYA_ID} to the floor{context_clause} (moderator assessment fallback after 15s)."
+
+
+def format_companion_relay_notice(
+    *,
+    selected_speaker: str = SKRYE_ID,
+    target_sender: str = "",
+    target_body: str = "",
+    remaining_hands: list[str] | None = None,
+) -> str:
+    """Format Skrye's non-mentioning relay notice so Traya's companion sends the floor invitation for Skrye."""
+    speaker_name = display_name_for_user_id(selected_speaker)
+    sender_display = display_name_for_user_id(target_sender) if target_sender else ""
+    preview = format_target_message_preview(target_body) if target_body else ""
+    if sender_display and preview:
+        context_clause = f' on {sender_display}\'s message: "{preview}"'
+    elif preview:
+        context_clause = f' on message: "{preview}"'
+    elif sender_display:
+        context_clause = f" on {sender_display}'s message"
+    else:
+        context_clause = ""
+    rem_names = [
+        display_name_for_user_id(uid)
+        for uid in (remaining_hands or [])
+        if isinstance(uid, str) and uid and uid != selected_speaker
+    ]
+    if rem_names:
+        joined_rem = _join_display_names(rem_names)
+        return sanitize_no_matrix_mentions(
+            f"🔔 Relaying floor invitation for {speaker_name}{context_clause}. Remaining raised hands: {joined_rem} ✋🏻"
+        )
+    return sanitize_no_matrix_mentions(
+        f"🔔 Relaying floor invitation for {speaker_name}{context_clause} ✋🏻"
+    )
 
 
 def _sender_matches(event_sender: str, turn_sender: str) -> bool:
@@ -1216,7 +1384,11 @@ class CompanionStateStore:
                             target_ev = recent_by_id.get(target_id)
                             if isinstance(target_ev, dict) and target_ev.get("sender") == sender:
                                 target_ev["body"] = new_body
-                                if isinstance(new_msgtype, str) and new_msgtype in ("m.text", "m.notice"):
+                                if isinstance(new_msgtype, str) and new_msgtype in (
+                                    "m.text",
+                                    "m.notice",
+                                    "m.audio",
+                                ):
                                     target_ev["msgtype"] = new_msgtype
                                 target_ev["edited_at_ms"] = ts_ms
                                 target_ev["mentioned_bots"] = sorted(
@@ -1240,7 +1412,13 @@ class CompanionStateStore:
 
                     msgtype = content.get("msgtype")
                     body = content.get("body")
-                    if msgtype not in ("m.text", "m.notice") or not isinstance(body, str):
+                    is_conv_msg = is_conversational_room_message(
+                        msgtype,
+                        body,
+                        sender=sender,
+                        content=content,
+                    )
+                    if (msgtype != "m.notice" and not is_conv_msg) or not isinstance(body, str):
                         continue
 
                     if event_id in recent_by_id:
@@ -1250,7 +1428,7 @@ class CompanionStateStore:
                     is_new_cmd = is_new_command_message(body, content)
                     mentions_self = self_user_id in mentioned_bots
 
-                    record = {
+                    record: dict[str, object] = {
                         "event_id": event_id,
                         "sender": sender,
                         "msgtype": msgtype,
@@ -1262,6 +1440,11 @@ class CompanionStateStore:
                         "seed": bool(seed_only),
                         "reactions": {},
                     }
+                    if msgtype == "m.audio" and isinstance(content.get("filename"), str):
+                        record["filename"] = content["filename"]
+                    relay_payload = content.get(COMPANION_RELAY_KEY)
+                    if msgtype == "m.notice" and isinstance(relay_payload, dict):
+                        record["companion_relay"] = dict(relay_payload)
                     recent_events.append(record)
                     recent_by_id[event_id] = record
                     processed.append(dict(record))
@@ -1275,7 +1458,7 @@ class CompanionStateStore:
                                 reaction_index.pop(rxn_id, None)
 
                     is_eligible_unmentioned = (
-                        msgtype == "m.text"
+                        is_conv_msg
                         and sender in ALLOWLIST_USER_IDS
                         and sender != self_user_id
                         and not mentions_self
@@ -1288,7 +1471,7 @@ class CompanionStateStore:
                             isinstance(e, dict) and e.get("event_id") == event_id
                             for e in u_events
                         ):
-                            u_record = {
+                            u_record: dict[str, object] = {
                                 "event_id": event_id,
                                 "sender": sender,
                                 "msgtype": msgtype,
@@ -1297,6 +1480,8 @@ class CompanionStateStore:
                                 "mentioned_bots": mentioned_bots,
                                 "seed": bool(seed_only),
                             }
+                            if msgtype == "m.audio" and isinstance(content.get("filename"), str):
+                                u_record["filename"] = content["filename"]
                             u_events.append(u_record)
                             while len(u_events) > unmentioned_cap:
                                 u_events.pop(0)
@@ -1640,6 +1825,10 @@ class MatrixClient:
                 and cached.get("device_id") == self.device_id
                 and cached.get("user_id") == self.self_user_id
             ):
+                if not isinstance(cached.get("token_generation_id"), str) or not cached.get("token_generation_id"):
+                    cached = dict(cached)
+                    cached["token_generation_id"] = f"tgen-{uuid.uuid4().hex}"
+                    self.state_store.write_auth(cached)
                 return token.strip()
 
         login_body = {
@@ -1657,6 +1846,7 @@ class MatrixClient:
             raise ValueError("Matrix login response missing access_token")
         auth_record = {
             "access_token": token.strip(),
+            "token_generation_id": f"tgen-{uuid.uuid4().hex}",
             "device_id": resp.get("device_id") or self.device_id,
             "user_id": resp.get("user_id") or self.self_user_id,
             "identity": identity_hash,
@@ -1665,6 +1855,19 @@ class MatrixClient:
         self.state_store.write_auth(auth_record)
         return auth_record["access_token"]
 
+    def get_token_generation_id(self) -> str:
+        """Return the current opaque token_generation_id from auth.json without exposing access_token."""
+        self.login(force=False)
+        cached = self.state_store.read_auth()
+        tgen = cached.get("token_generation_id")
+        if isinstance(tgen, str) and tgen.strip():
+            return tgen.strip()
+        new_tgen = f"tgen-{uuid.uuid4().hex}"
+        cached = dict(cached)
+        cached["token_generation_id"] = new_tgen
+        self.state_store.write_auth(cached)
+        return new_tgen
+
     def _authenticated_request(
         self,
         method: str,
@@ -1672,12 +1875,13 @@ class MatrixClient:
         query: dict | None = None,
         body: dict | None = None,
         timeout: float | None = None,
+        allow_relogin_retry: bool = True,
     ) -> dict:
         token = self.login(force=False)
         try:
             return self._request(method, path, query=query, body=body, token=token, timeout=timeout)
         except MatrixAPIError as exc:
-            if exc.status == 401 or exc.errcode == "M_UNKNOWN_TOKEN":
+            if (exc.status == 401 or exc.errcode == "M_UNKNOWN_TOKEN") and allow_relogin_retry:
                 token = self.login(force=True)
                 return self._request(method, path, query=query, body=body, token=token, timeout=timeout)
             raise
@@ -1717,6 +1921,10 @@ class MatrixClient:
             if not isinstance(item, dict):
                 self._complete_outbox(txn_id)
                 continue
+            if item.get("kind") in ("wakeup_notice", "relay_notice"):
+                # Wakeup and relay notices are reconciled by ModeratorWakeupCoordinator after /sync
+                # so token rotation with incomplete timeline evidence holds uncertain sends safely.
+                continue
             method = item.get("method", "PUT")
             path = item.get("path")
             body = item.get("body")
@@ -1735,6 +1943,7 @@ class MatrixClient:
         txn_id: str,
         kind: str,
         metadata: dict | None = None,
+        allow_relogin_retry: bool = True,
     ) -> str | None:
         item = {
             "txn_id": txn_id,
@@ -1746,7 +1955,13 @@ class MatrixClient:
             "created_at_ms": now_ms(),
         }
         self._enqueue_outbox(txn_id, item)
-        resp = self._authenticated_request("PUT", path, body=body, timeout=20.0)
+        resp = self._authenticated_request(
+            "PUT",
+            path,
+            body=body,
+            timeout=20.0,
+            allow_relogin_retry=allow_relogin_retry,
+        )
         self._complete_outbox(txn_id)
         event_id = resp.get("event_id")
         return event_id if isinstance(event_id, str) else None
@@ -1814,6 +2029,10 @@ class MatrixClient:
         body_text: str,
         scope_id: str,
         mentions_user_ids: list[str] | None = None,
+        extra_content: dict | None = None,
+        kind: str = "notice",
+        metadata: dict | None = None,
+        allow_relogin_retry: bool = True,
     ) -> str | None:
         txn_id = make_deterministic_txn_id(
             self.agent_name,
@@ -1832,12 +2051,20 @@ class MatrixClient:
             "body": body_text,
             "m.mentions": mentions_obj,
         }
+        if isinstance(extra_content, dict):
+            for k, v in extra_content.items():
+                if k not in ("msgtype", "body", "m.mentions"):
+                    body[k] = v
+        merged_meta = {"scope_id": scope_id}
+        if isinstance(metadata, dict):
+            merged_meta.update(metadata)
         return self.send_event_with_txn(
             path,
             body,
             txn_id,
-            kind="notice",
-            metadata={"scope_id": scope_id},
+            kind=kind,
+            metadata=merged_meta,
+            allow_relogin_retry=allow_relogin_retry,
         )
 
     def edit_notice(
@@ -2016,7 +2243,7 @@ class AssessmentWorker:
     ) -> bool:
         if not isinstance(event, dict) or event.get("seed"):
             return False
-        if event.get("msgtype") != "m.text":
+        if not is_conversational_room_message(event):
             return False
         event_id = event.get("event_id")
         sender = event.get("sender")
@@ -2342,6 +2569,7 @@ class TurnStatusReconciler:
         room_id: str = DEFAULT_ROOM_ID,
         thinking_dwell_ms: int = THINKING_DWELL_MS,
         phase_edit_interval_ms: int = PHASE_EDIT_INTERVAL_MS,
+        initial_progress_delay_ms: int = INITIAL_PROGRESS_NOTICE_DELAY_MS,
         progress_interval_ms: int = PROGRESS_NOTICE_INTERVAL_MS,
         completion_window_ms: int = COMPLETION_RECONCILE_WINDOW_MS,
         clock: Callable[[], int] = now_ms,
@@ -2358,6 +2586,9 @@ class TurnStatusReconciler:
         self.room_id = room_id
         self.thinking_dwell_ms = max(0, _safe_int(thinking_dwell_ms, THINKING_DWELL_MS))
         self.phase_edit_interval_ms = max(0, _safe_int(phase_edit_interval_ms, PHASE_EDIT_INTERVAL_MS))
+        self.initial_progress_delay_ms = max(
+            1000, _safe_int(initial_progress_delay_ms, INITIAL_PROGRESS_NOTICE_DELAY_MS)
+        )
         self.progress_interval_ms = max(1000, _safe_int(progress_interval_ms, PROGRESS_NOTICE_INTERVAL_MS))
         self.completion_window_ms = max(0, _safe_int(completion_window_ms, COMPLETION_RECONCILE_WINDOW_MS))
         self.clock = clock
@@ -2511,7 +2742,7 @@ class TurnStatusReconciler:
             ev_id = ev.get("event_id")
             if not isinstance(ev_id, str) or not ev_id or ev_id in already_bound_ids:
                 continue
-            if ev.get("msgtype") != "m.text":
+            if not is_conversational_room_message(ev):
                 continue
             if _safe_int(ev.get("origin_server_ts"), 0) < cutoff_ms:
                 continue
@@ -2627,18 +2858,22 @@ class TurnStatusReconciler:
                     break
 
         matches: list[str] = []
+        norm_final = strip_audio_message_suffix(final_content).strip()
         for ev in recent_events:
             if not isinstance(ev, dict):
                 continue
             ev_id = ev.get("event_id")
             if not isinstance(ev_id, str) or not ev_id or ev_id in claimed_reply_ids:
                 continue
-            if ev.get("sender") != self.self_user_id or ev.get("msgtype") != "m.text":
+            if ev.get("sender") != self.self_user_id or not is_conversational_room_message(ev):
                 continue
             ts_ms = _safe_int(ev.get("origin_server_ts"), 0)
             if ts_ms < cutoff_ms or (bound_ts_ms > 0 and ts_ms < bound_ts_ms):
                 continue
-            if str(ev.get("body") or "").strip() == final_content.strip():
+            ev_body = str(ev.get("body") or "").strip()
+            if ev_body == final_content.strip() or (
+                norm_final and strip_audio_message_suffix(ev_body).strip() == norm_final
+            ):
                 matches.append(ev_id)
 
         if len(matches) == 1:
@@ -2852,12 +3087,12 @@ class TurnStatusReconciler:
                 active_reaction_key=ACTIVE_BEE_KEY,
             )
 
-        # Progress notice after 30s while active == True, edited every 3s on phase change or 30s unchanged.
+        # Progress notice after 5s while active == True, edited every 3s with wall-clock MM:SS - Step X.
         if peek_active is True:
             started_at_ms = _safe_int(run_entry.get("started_at_ms"), current_ms)
             elapsed_ms = current_ms - started_at_ms
-            if elapsed_ms >= self.progress_interval_ms:
-                elapsed_sec = max(self.progress_interval_ms // 1000, elapsed_ms // 1000)
+            if elapsed_ms >= self.initial_progress_delay_ms:
+                elapsed_sec = max(self.initial_progress_delay_ms // 1000, elapsed_ms // 1000)
                 notice_text = format_progress_notice(
                     elapsed_sec=elapsed_sec,
                     iteration=iteration,
@@ -2920,7 +3155,7 @@ class TurnStatusReconciler:
 
 
 class ModeratorWakeupCoordinator:
-    """Skrye-only moderator wake-up coordinator with early resolution, Option A silent closure, and finite caps."""
+    """Single-selector floor invitation coordinator on Skrye with Traya relay, pending_hands queue, and crash recovery."""
 
     def __init__(
         self,
@@ -2954,6 +3189,10 @@ class ModeratorWakeupCoordinator:
     def is_designated_sender(self) -> bool:
         return self.agent_name == "skrye"
 
+    @property
+    def is_relay_sender(self) -> bool:
+        return self.agent_name == "traya"
+
     def _compute_timeline_discussion_state(
         self,
         recent_events: list[dict],
@@ -2972,7 +3211,7 @@ class ModeratorWakeupCoordinator:
             ev_id = ev.get("event_id")
             if not isinstance(ev_id, str) or not ev_id:
                 continue
-            if ev.get("msgtype") != "m.text":
+            if not is_conversational_room_message(ev):
                 continue
             sender = ev.get("sender")
             if sender not in ALLOWLIST_USER_IDS:
@@ -3032,7 +3271,7 @@ class ModeratorWakeupCoordinator:
                 continue
             if not seen_target:
                 continue
-            if ev.get("msgtype") != "m.text":
+            if not is_conversational_room_message(ev):
                 continue
             sender = ev.get("sender")
             if sender not in ALLOWLIST_USER_IDS:
@@ -3044,16 +3283,451 @@ class ModeratorWakeupCoordinator:
                 return ev_id
         return None
 
+    def _timeline_has_delivery_or_speaker_activity(
+        self,
+        recent_events: list[dict],
+        *,
+        after_event_id: str = "",
+        after_ts_ms: int = 0,
+        sending_account: str,
+        notice_body: str,
+        selection_id: str,
+        selected_speaker: str,
+    ) -> str | None:
+        """Return matching event_id if the notice or selected_speaker activity already appears in recent_events."""
+        seen_anchor = not bool(after_event_id)
+        for ev in recent_events:
+            if not isinstance(ev, dict):
+                continue
+            ev_id = str(ev.get("event_id") or "")
+            if not seen_anchor:
+                if ev_id == after_event_id:
+                    seen_anchor = True
+                continue
+            ev_ts = _safe_int(ev.get("origin_server_ts"), 0)
+            if after_ts_ms > 0 and ev_ts < after_ts_ms:
+                continue
+            sender = str(ev.get("sender") or "")
+            msgtype = ev.get("msgtype")
+            body = str(ev.get("body") or "")
+            relay_meta = _as_dict(ev.get("companion_relay"))
+            if msgtype == "m.notice" and sender == sending_account:
+                if relay_meta.get("selection_id") == selection_id or (notice_body and body == notice_body):
+                    return ev_id or "matched_notice"
+            if sender == selected_speaker and is_conversational_room_message(ev):
+                if not ev.get("is_new_command") and not is_new_command_message(body):
+                    return ev_id or "speaker_replied"
+            rxns = _as_dict(ev.get("reactions"))
+            for rxn in rxns.values():
+                if (
+                    isinstance(rxn, dict)
+                    and rxn.get("sender") == selected_speaker
+                    and rxn.get("key") in (ACK_REACTION_KEY, ACTIVE_BEE_KEY)
+                    and _safe_int(rxn.get("ts_ms"), 0) >= after_ts_ms
+                ):
+                    return ev_id or "speaker_reacted"
+        return None
+
+    def _reconcile_sending_record(
+        self,
+        record: dict,
+        recent_events: list[dict],
+        current_ms: int,
+    ) -> tuple[str, str | None]:
+        """Reconcile an interrupted status=='sending' selection or relay record against timeline and token_generation_id."""
+        selection_id = str(record.get("selection_id") or "")
+        sending_account = str(record.get("sending_account") or self.matrix_client.self_user_id)
+        selected_speaker = str(record.get("selected_speaker") or TRAYA_ID)
+        payload = _as_dict(record.get("payload"))
+        notice_body = str(payload.get("body") or "")
+        after_ev_id = str(record.get("after_event_id") or record.get("target_event_id") or "")
+        after_ts_ms = _safe_int(record.get("created_at_ms"), 0)
+        txn_id = str(record.get("txn_id") or "")
+
+        matched_ev_id = self._timeline_has_delivery_or_speaker_activity(
+            recent_events,
+            after_event_id=after_ev_id,
+            after_ts_ms=after_ts_ms,
+            sending_account=sending_account,
+            notice_body=notice_body,
+            selection_id=selection_id,
+            selected_speaker=selected_speaker,
+        )
+        if matched_ev_id:
+            if txn_id:
+                self.matrix_client._complete_outbox(txn_id)
+            record["status"] = "sent"
+            record["wakeup_event_id"] = matched_ev_id
+            record["reconciled_at_ms"] = current_ms
+            return "sent", matched_ev_id
+
+        current_tgen = self.matrix_client.get_token_generation_id()
+        saved_tgen = str(record.get("token_generation_id") or "")
+        if saved_tgen and current_tgen != saved_tgen:
+            if txn_id:
+                self.matrix_client._complete_outbox(txn_id)
+            record["status"] = "uncertain_blocked"
+            record["blocked_reason"] = "token_rotated_without_timeline_evidence"
+            record["blocked_at_ms"] = current_ms
+            return "uncertain_blocked", None
+
+        outbox = self.state_store.read_outbox()
+        pending_item = _as_dict(outbox.get("pending", {})).get(txn_id) if txn_id else None
+        path = str(
+            (pending_item.get("path") if isinstance(pending_item, dict) else None)
+            or record.get("path")
+            or ""
+        )
+        if not path and txn_id:
+            room_q = urllib.parse.quote(self.room_id, safe="")
+            txn_q = urllib.parse.quote(txn_id, safe="")
+            path = f"/_matrix/client/v3/rooms/{room_q}/send/m.room.message/{txn_q}"
+        try:
+            resp = self.matrix_client._authenticated_request(
+                "PUT",
+                path,
+                body=payload,
+                timeout=20.0,
+                allow_relogin_retry=False,
+            )
+        except MatrixAPIError as exc:
+            if exc.status == 401 or exc.errcode == "M_UNKNOWN_TOKEN":
+                self.matrix_client.login(force=True)
+                if txn_id:
+                    self.matrix_client._complete_outbox(txn_id)
+                record["status"] = "uncertain_blocked"
+                record["blocked_reason"] = "token_expired_during_recovery_put"
+                record["blocked_at_ms"] = current_ms
+                return "uncertain_blocked", None
+            raise
+
+        if txn_id:
+            self.matrix_client._complete_outbox(txn_id)
+        ev_id = resp.get("event_id") if isinstance(resp, dict) else None
+        resolved_ev_id = ev_id if isinstance(ev_id, str) else None
+        record["status"] = "sent"
+        record["wakeup_event_id"] = resolved_ev_id
+        record["reconciled_at_ms"] = current_ms
+        return "sent", resolved_ev_id
+
+    def _dispatch_selection_or_relay_notice(
+        self,
+        *,
+        selections_map: dict[str, dict],
+        selection_id: str,
+        target_event_id: str,
+        selection_seq: int,
+        selected_speaker: str,
+        wake_reason: str,
+        raised_hands: list[str],
+        target_sender: str,
+        target_body: str,
+        root_id: str,
+        current_ms: int,
+        is_relay_hop: bool = False,
+        after_event_id: str = "",
+    ) -> tuple[str, str | None, dict]:
+        """Persist pre-send selection metadata (without raw token) and send direct or relay notice."""
+        if not is_relay_hop and selected_speaker == SKRYE_ID and self.is_designated_sender:
+            scope_id = f"relay-request:{selection_id}"
+            kind = "relay_notice"
+            remaining = [uid for uid in raised_hands if uid != SKRYE_ID]
+            notice_body = format_companion_relay_notice(
+                selected_speaker=SKRYE_ID,
+                target_sender=target_sender,
+                target_body=target_body,
+                remaining_hands=remaining,
+            )
+            mentions_ids: list[str] = []
+            relay_meta = {
+                "selection_id": selection_id,
+                "target_event_id": target_event_id,
+                "selection_seq": selection_seq,
+                "selected_speaker": SKRYE_ID,
+                "wake_reason": wake_reason,
+                "target_sender": target_sender,
+                "target_body": format_target_message_preview(target_body),
+                "remaining_hands": remaining,
+                "martin_root_id": root_id,
+            }
+            extra_content: dict | None = {COMPANION_RELAY_KEY: relay_meta}
+        else:
+            scope_id = f"relay-wakeup:{selection_id}" if is_relay_hop else (
+                f"wakeup:{target_event_id}" if selection_seq == 1 else f"wakeup:{selection_id}"
+            )
+            kind = "wakeup_notice"
+            notice_body = format_moderator_wakeup_notice(
+                raised_hands=raised_hands,
+                wake_reason=wake_reason,
+                selected_speaker=selected_speaker,
+                target_sender=target_sender,
+                target_body=target_body,
+            )
+            mentions_ids = [selected_speaker]
+            extra_content = None
+
+        txn_id = make_deterministic_txn_id(
+            self.agent_name,
+            "notice",
+            self.room_id,
+            scope_id,
+        )
+        room_q = urllib.parse.quote(self.room_id, safe="")
+        txn_q = urllib.parse.quote(txn_id, safe="")
+        path = f"/_matrix/client/v3/rooms/{room_q}/send/m.room.message/{txn_q}"
+        payload_body: dict[str, object] = {
+            "msgtype": "m.notice",
+            "body": notice_body,
+            "m.mentions": {"user_ids": list(mentions_ids)} if mentions_ids else {},
+        }
+        if extra_content:
+            payload_body.update(extra_content)
+
+        token_gen_id = self.matrix_client.get_token_generation_id()
+        send_record: dict[str, object] = {
+            "selection_id": selection_id,
+            "target_event_id": target_event_id,
+            "after_event_id": after_event_id or target_event_id,
+            "selection_seq": selection_seq,
+            "selected_speaker": selected_speaker,
+            "wake_reason": wake_reason,
+            "martin_root_id": root_id,
+            "sending_account": self.matrix_client.self_user_id,
+            "token_generation_id": token_gen_id,
+            "scope_id": scope_id,
+            "txn_id": txn_id,
+            "path": path,
+            "payload": payload_body,
+            "kind": kind,
+            "created_at_ms": current_ms,
+            "status": "sending",
+            "wakeup_event_id": None,
+        }
+        selections_map[selection_id] = send_record
+        comp_state = self.state_store.read_companion_state()
+        wakeups = dict(_as_dict(comp_state.get("wakeups")))
+        map_key = "relayed_selections" if is_relay_hop else "selections"
+        wakeups[map_key] = selections_map
+        self.state_store.write_companion_state({"wakeups": wakeups})
+
+        try:
+            ev_id = self.matrix_client.send_notice(
+                body_text=notice_body,
+                scope_id=scope_id,
+                mentions_user_ids=mentions_ids,
+                extra_content=extra_content,
+                kind=kind,
+                metadata={"selection_id": selection_id, "token_generation_id": token_gen_id},
+                allow_relogin_retry=False,
+            )
+        except MatrixAPIError as exc:
+            if exc.status == 401 or exc.errcode == "M_UNKNOWN_TOKEN":
+                self.matrix_client.login(force=True)
+                self.matrix_client._complete_outbox(txn_id)
+                send_record["status"] = "uncertain_blocked"
+                send_record["blocked_reason"] = "token_expired_during_send"
+                send_record["blocked_at_ms"] = current_ms
+                return "uncertain_blocked", None, send_record
+            raise
+
+        send_record["status"] = "sent"
+        send_record["sent_at_ms"] = current_ms
+        send_record["wakeup_event_id"] = ev_id
+        return "sent", ev_id, send_record
+
+    def _ingest_and_reconcile_relay(
+        self,
+        actionable_events: list[dict] | None,
+        generation: dict | None,
+        current_ms: int,
+    ) -> dict:
+        """Traya-only relay for explicit Skrye speaker selections emitted by Skrye's companion."""
+        gen = generation if isinstance(generation, dict) else self.resolver.resolve(now_override_ms=current_ms)
+        active_session_key = str(gen["active_session_key"])
+        cutoff_ms = _safe_int(gen["cutoff_ms"], 0)
+
+        comp_state = self.state_store.read_companion_state()
+        wakeups = _as_dict(comp_state.get("wakeups"))
+        relayed_selections: dict[str, dict] = dict(_as_dict(wakeups.get("relayed_selections")))
+        last_mod_reset_ts = _safe_int(wakeups.get("last_moderator_reset_ts_ms"), 0)
+
+        for ev in actionable_events or []:
+            if not isinstance(ev, dict) or ev.get("seed"):
+                continue
+            if is_conversational_room_message(ev) and ev.get("sender") in ALLOWLIST_USER_IDS:
+                body = str(ev.get("body") or "")
+                if is_new_command_targeting(body, TRAYA_ID) or is_new_command_targeting(body, SKRYE_ID):
+                    ev_ts = _safe_int(ev.get("origin_server_ts"), current_ms)
+                    last_mod_reset_ts = max(last_mod_reset_ts, ev_ts)
+
+        room_data = self.state_store.read_room_events()
+        recent_events: list[dict] = room_data.get("recent_events", [])
+        _, live_bot_turns, _ = self._compute_timeline_discussion_state(
+            recent_events=recent_events,
+            active_session_key=active_session_key,
+            cutoff_ms=cutoff_ms,
+            last_moderator_reset_ts_ms=last_mod_reset_ts,
+        )
+
+        sent_wakeups: list[dict] = []
+
+        # 1. Reconcile any interrupted status == 'sending' relay records first.
+        for sel_id, r_entry in list(relayed_selections.items()):
+            if not isinstance(r_entry, dict) or r_entry.get("status") != "sending":
+                continue
+            status_out, ev_id = self._reconcile_sending_record(r_entry, recent_events, current_ms)
+            if status_out == "sent":
+                sent_wakeups.append(
+                    {
+                        "selection_id": sel_id,
+                        "target_event_id": r_entry.get("target_event_id"),
+                        "wakeup_event_id": ev_id,
+                        "selected_speaker": SKRYE_ID,
+                        "relayed": True,
+                    }
+                )
+
+        # 2. Scan recent_events for non-seed relay notices from SKRYE_ID targeting SKRYE_ID.
+        for idx, ev in enumerate(recent_events):
+            if not isinstance(ev, dict) or ev.get("seed"):
+                continue
+            if ev.get("msgtype") != "m.notice" or ev.get("sender") != SKRYE_ID:
+                continue
+            relay_meta = ev.get("companion_relay")
+            if not isinstance(relay_meta, dict):
+                continue
+            if relay_meta.get("selected_speaker") != SKRYE_ID:
+                continue
+            sel_id = str(relay_meta.get("selection_id") or "").strip()
+            target_ev_id = str(relay_meta.get("target_event_id") or "").strip()
+            if not sel_id or not target_ev_id:
+                continue
+            existing_rel = relayed_selections.get(sel_id)
+            if isinstance(existing_rel, dict) and existing_rel.get("status") in (
+                "sent",
+                "uncertain_blocked",
+                "suppressed",
+                "cancelled",
+            ):
+                continue
+
+            relay_ts_ms = _safe_int(ev.get("origin_server_ts"), 0)
+            relay_ev_id = str(ev.get("event_id") or "")
+            if relay_ts_ms < cutoff_ms or (last_mod_reset_ts > 0 and relay_ts_ms <= last_mod_reset_ts):
+                relayed_selections[sel_id] = {
+                    "selection_id": sel_id,
+                    "target_event_id": target_ev_id,
+                    "status": "cancelled",
+                    "cancel_reason": "reset_boundary",
+                }
+                continue
+
+            if live_bot_turns >= self.max_bot_turns_since_martin:
+                relayed_selections[sel_id] = {
+                    "selection_id": sel_id,
+                    "target_event_id": target_ev_id,
+                    "status": "budget_exhausted",
+                }
+                continue
+
+            # Check no newer conversational message, /new reset, or Skrye 👀/🐝 reaction arrived after the relay notice.
+            superseded = False
+            for later_ev in recent_events[idx + 1 :]:
+                if not isinstance(later_ev, dict):
+                    continue
+                l_sender = str(later_ev.get("sender") or "")
+                l_body = str(later_ev.get("body") or "")
+                if is_conversational_room_message(later_ev) and l_sender in ALLOWLIST_USER_IDS:
+                    superseded = True
+                    break
+                if later_ev.get("msgtype") == "m.notice" and l_sender == TRAYA_ID:
+                    if SKRYE_ID in (later_ev.get("mentioned_bots") or []):
+                        superseded = True
+                        break
+                if later_ev.get("is_new_command") or is_new_command_message(l_body):
+                    superseded = True
+                    break
+            if not superseded:
+                for msg_ev in recent_events:
+                    if not isinstance(msg_ev, dict):
+                        continue
+                    for rxn in _as_dict(msg_ev.get("reactions")).values():
+                        if (
+                            isinstance(rxn, dict)
+                            and rxn.get("sender") == SKRYE_ID
+                            and rxn.get("key") in (ACK_REACTION_KEY, ACTIVE_BEE_KEY)
+                            and _safe_int(rxn.get("ts_ms"), 0) >= relay_ts_ms
+                        ):
+                            superseded = True
+                            break
+                    if superseded:
+                        break
+
+            if superseded:
+                relayed_selections[sel_id] = {
+                    "selection_id": sel_id,
+                    "target_event_id": target_ev_id,
+                    "status": "suppressed",
+                }
+                continue
+
+            rem_hands = [
+                str(u) for u in (relay_meta.get("remaining_hands") or []) if isinstance(u, str)
+            ]
+            all_hands = [SKRYE_ID, *[u for u in rem_hands if u != SKRYE_ID]]
+            status_out, wakeup_ev_id, _ = self._dispatch_selection_or_relay_notice(
+                selections_map=relayed_selections,
+                selection_id=sel_id,
+                target_event_id=target_ev_id,
+                selection_seq=_safe_int(relay_meta.get("selection_seq"), 1),
+                selected_speaker=SKRYE_ID,
+                wake_reason=str(relay_meta.get("wake_reason") or "raised_hand"),
+                raised_hands=all_hands,
+                target_sender=str(relay_meta.get("target_sender") or ""),
+                target_body=str(relay_meta.get("target_body") or ""),
+                root_id=str(relay_meta.get("martin_root_id") or ""),
+                current_ms=current_ms,
+                is_relay_hop=True,
+                after_event_id=relay_ev_id,
+            )
+            if status_out == "sent":
+                sent_wakeups.append(
+                    {
+                        "selection_id": sel_id,
+                        "target_event_id": target_ev_id,
+                        "wakeup_event_id": wakeup_ev_id,
+                        "selected_speaker": SKRYE_ID,
+                        "relayed": True,
+                    }
+                )
+
+        self.state_store.write_companion_state(
+            {
+                "wakeups": {
+                    **wakeups,
+                    "relayed_selections": relayed_selections,
+                    "last_moderator_reset_ts_ms": last_mod_reset_ts,
+                }
+            }
+        )
+        return {
+            "status": "ok",
+            "sent_wakeups": sent_wakeups,
+            "relayed_selections": relayed_selections,
+        }
+
     def ingest_and_reconcile(
         self,
         actionable_events: list[dict] | None = None,
         generation: dict | None = None,
         now_override_ms: int | None = None,
     ) -> dict:
+        current_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
+        if self.is_relay_sender:
+            return self._ingest_and_reconcile_relay(actionable_events, generation, current_ms)
         if not self.is_designated_sender:
             return {"status": "disabled_non_skrye", "sent_wakeups": []}
 
-        current_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         gen = generation if isinstance(generation, dict) else self.resolver.resolve(now_override_ms=current_ms)
         active_session_key = str(gen["active_session_key"])
         cutoff_ms = _safe_int(gen["cutoff_ms"], 0)
@@ -3062,13 +3736,14 @@ class ModeratorWakeupCoordinator:
         wakeups = _as_dict(comp_state.get("wakeups"))
         targets: dict[str, dict] = dict(_as_dict(wakeups.get("targets")))
         martin_roots: dict[str, dict] = dict(_as_dict(wakeups.get("martin_roots")))
+        selections: dict[str, dict] = dict(_as_dict(wakeups.get("selections")))
         last_mod_reset_ts = _safe_int(wakeups.get("last_moderator_reset_ts_ms"), 0)
 
         # 1. Inspect actionable events for moderator /new resets (targeting @traya or untagged /new).
         for ev in actionable_events or []:
             if not isinstance(ev, dict) or ev.get("seed"):
                 continue
-            if ev.get("msgtype") == "m.text" and ev.get("sender") in ALLOWLIST_USER_IDS:
+            if is_conversational_room_message(ev) and ev.get("sender") in ALLOWLIST_USER_IDS:
                 body = str(ev.get("body") or "")
                 if is_new_command_targeting(body, TRAYA_ID):
                     ev_ts = _safe_int(ev.get("origin_server_ts"), current_ms)
@@ -3081,6 +3756,10 @@ class ModeratorWakeupCoordinator:
                         ):
                             t_entry["status"] = "cancelled"
                             t_entry["cancel_reason"] = "moderator_reset"
+                    for r_entry in martin_roots.values():
+                        if isinstance(r_entry, dict):
+                            r_entry["pending_hands"] = []
+                            r_entry["active_speaker"] = None
 
         room_data = self.state_store.read_room_events()
         recent_events: list[dict] = room_data.get("recent_events", [])
@@ -3090,14 +3769,175 @@ class ModeratorWakeupCoordinator:
             if isinstance(ev, dict) and isinstance(ev.get("event_id"), str)
         }
 
-        current_root_id, _, event_root_map = self._compute_timeline_discussion_state(
+        current_root_id, live_bot_turns_initial, event_root_map = self._compute_timeline_discussion_state(
             recent_events=recent_events,
             active_session_key=active_session_key,
             cutoff_ms=cutoff_ms,
             last_moderator_reset_ts_ms=last_mod_reset_ts,
         )
 
-        # 2. Register new eligible untagged m.text messages from actionable_events.
+        # Clear pending_hands on any superseded martin_root_id when Martin posts a new message.
+        for r_key, r_entry in list(martin_roots.items()):
+            if isinstance(r_entry, dict) and r_key != current_root_id and r_entry.get("pending_hands"):
+                r_entry["pending_hands"] = []
+                r_entry["active_speaker"] = None
+
+        sent_wakeups: list[dict] = []
+
+        # 1B. Reconcile any interrupted status == 'sending' selection records before new evaluations.
+        for sel_id, sel_entry in list(selections.items()):
+            if not isinstance(sel_entry, dict) or sel_entry.get("status") != "sending":
+                continue
+            status_out, ev_id = self._reconcile_sending_record(sel_entry, recent_events, current_ms)
+            tid_ref = str(sel_entry.get("target_event_id") or "")
+            t_ref = targets.get(tid_ref)
+            if status_out == "sent":
+                if isinstance(t_ref, dict):
+                    t_ref["notified"] = True
+                    t_ref["status"] = "notified"
+                    t_ref["wakeup_event_id"] = ev_id
+                sent_wakeups.append(
+                    {
+                        "selection_id": sel_id,
+                        "target_event_id": tid_ref,
+                        "wakeup_event_id": ev_id,
+                        "reason": sel_entry.get("wake_reason", "raised_hand"),
+                        "selected_speaker": sel_entry.get("selected_speaker"),
+                        "martin_root_id": sel_entry.get("martin_root_id"),
+                    }
+                )
+            elif status_out == "uncertain_blocked" and isinstance(t_ref, dict):
+                t_ref["status"] = "uncertain_blocked"
+
+        # 1C. Reconcile companion-managed pending_hands queue for current_root_id.
+        handled_by_queue_event_ids: set[str] = set()
+        active_root_entry = dict(_as_dict(martin_roots.get(current_root_id)))
+        pending_hands = [
+            str(u)
+            for u in (active_root_entry.get("pending_hands") or [])
+            if isinstance(u, str) and u in BOT_IDS
+        ]
+        source_tid = str(active_root_entry.get("source_target_event_id") or "")
+        if pending_hands and source_tid:
+            source_ev = recent_by_id.get(source_tid)
+            invited_at_ms = _safe_int(active_root_entry.get("invited_at_ms"), 0)
+            active_speaker = str(active_root_entry.get("active_speaker") or "")
+            root_count = _safe_int(active_root_entry.get("count"), 0)
+
+            # Check if any hand-raiser withdrew ✋🏻 or replaced it with 👌🏻/👍🏻 on source_ev.
+            if isinstance(source_ev, dict):
+                source_target = _as_dict(targets.get(source_tid))
+                expected_for_source = [
+                    str(x)
+                    for x in (source_target.get("expected_assessors") or sorted(BOT_IDS))
+                    if isinstance(x, str)
+                ]
+                current_badges = self._active_badges_for_target(source_ev, expected_for_source)
+                pending_hands = [uid for uid in pending_hands if current_badges.get(uid) == "✋🏻"]
+            else:
+                pending_hands = []
+
+            # Inspect messages after source_tid in recent_events.
+            seen_source = False
+            speaker_finished_untagged_ev: dict | None = None
+            peer_tagged_or_martin_spoke = False
+            for ev in recent_events:
+                if not isinstance(ev, dict):
+                    continue
+                ev_id = str(ev.get("event_id") or "")
+                if not seen_source:
+                    if ev_id == source_tid:
+                        seen_source = True
+                    continue
+                if not is_conversational_room_message(ev):
+                    continue
+                sender = str(ev.get("sender") or "")
+                body = str(ev.get("body") or "")
+                ev_ts = _safe_int(ev.get("origin_server_ts"), 0)
+                if ev.get("is_new_command") or is_new_command_message(body) or sender == MARTIN_ID:
+                    peer_tagged_or_martin_spoke = True
+                    break
+                if sender in pending_hands:
+                    pending_hands = [u for u in pending_hands if u != sender]
+                mentioned = ev.get("mentioned_bots")
+                has_bot_mention = (
+                    len(mentioned) > 0
+                    if isinstance(mentioned, list)
+                    else len(extract_mentioned_bots(body)) > 0
+                )
+                if ev_ts >= invited_at_ms and sender in BOT_IDS:
+                    if has_bot_mention:
+                        peer_tagged_or_martin_spoke = True
+                        break
+                    if sender == active_speaker:
+                        speaker_finished_untagged_ev = ev
+
+            if (
+                peer_tagged_or_martin_spoke
+                or live_bot_turns_initial >= self.max_bot_turns_since_martin
+                or root_count >= self.max_wakeups_per_martin_root
+            ):
+                pending_hands = []
+                active_root_entry["pending_hands"] = []
+                active_root_entry["active_speaker"] = None
+                martin_roots[current_root_id] = active_root_entry
+            elif speaker_finished_untagged_ev is not None and pending_hands:
+                finished_ev_id = str(speaker_finished_untagged_ev.get("event_id") or "")
+                if finished_ev_id:
+                    handled_by_queue_event_ids.add(finished_ev_id)
+                next_speaker = select_raised_hand_speaker(pending_hands, recent_events, source_tid)
+                remaining_after = [u for u in pending_hands if u != next_speaker]
+                seq_num = _safe_int(active_root_entry.get("selection_seq"), 1) + 1
+                sel_id = f"{source_tid}:seq{seq_num}"
+                target_sender_str = str(
+                    active_root_entry.get("target_sender")
+                    or (source_ev.get("sender") if isinstance(source_ev, dict) else "")
+                    or ""
+                )
+                target_body_str = str(
+                    active_root_entry.get("target_body")
+                    or (source_ev.get("body") if isinstance(source_ev, dict) else "")
+                    or ""
+                )
+                status_out, notice_ev_id, _ = self._dispatch_selection_or_relay_notice(
+                    selections_map=selections,
+                    selection_id=sel_id,
+                    target_event_id=source_tid,
+                    selection_seq=seq_num,
+                    selected_speaker=next_speaker,
+                    wake_reason="raised_hand",
+                    raised_hands=[next_speaker, *remaining_after],
+                    target_sender=target_sender_str,
+                    target_body=target_body_str,
+                    root_id=current_root_id,
+                    current_ms=current_ms,
+                    is_relay_hop=False,
+                    after_event_id=finished_ev_id or source_tid,
+                )
+                active_root_entry["count"] = root_count + 1
+                active_root_entry["selection_seq"] = seq_num
+                active_root_entry["pending_hands"] = remaining_after if status_out == "sent" else pending_hands
+                active_root_entry["active_speaker"] = next_speaker if status_out == "sent" else active_speaker
+                active_root_entry["invited_at_ms"] = current_ms
+                active_root_entry["updated_at_ms"] = current_ms
+                martin_roots[current_root_id] = active_root_entry
+                if status_out == "sent":
+                    sent_wakeups.append(
+                        {
+                            "selection_id": sel_id,
+                            "target_event_id": source_tid,
+                            "wakeup_event_id": notice_ev_id,
+                            "reason": "raised_hand",
+                            "selected_speaker": next_speaker,
+                            "martin_root_id": current_root_id,
+                            "queued_hand_advance": True,
+                        }
+                    )
+            else:
+                active_root_entry["pending_hands"] = pending_hands
+                martin_roots[current_root_id] = active_root_entry
+
+        # 2. Register new eligible untagged conversational messages from actionable_events.
         for ev in actionable_events or []:
             if not isinstance(ev, dict) or ev.get("seed"):
                 continue
@@ -3105,13 +3945,13 @@ class ModeratorWakeupCoordinator:
                 continue
             ev_id = ev.get("event_id")
             sender = ev.get("sender")
-            msgtype = ev.get("msgtype")
             body = str(ev.get("body") or "")
             ts_ms = _safe_int(ev.get("origin_server_ts"), 0)
             if (
                 not isinstance(ev_id, str)
                 or not ev_id
-                or msgtype != "m.text"
+                or ev_id in handled_by_queue_event_ids
+                or not is_conversational_room_message(ev)
                 or sender not in ALLOWLIST_USER_IDS
                 or ev.get("is_new_command")
                 or is_new_command_message(body)
@@ -3146,7 +3986,6 @@ class ModeratorWakeupCoordinator:
                 }
 
         # 3. Evaluate all targets in chronological order.
-        sent_wakeups: list[dict] = []
         sorted_target_ids = sorted(
             targets.keys(),
             key=lambda tid: _safe_int(_as_dict(targets.get(tid)).get("origin_server_ts"), 0),
@@ -3161,6 +4000,7 @@ class ModeratorWakeupCoordinator:
                 "cancelled",
                 "suppressed",
                 "budget_exhausted",
+                "uncertain_blocked",
             ):
                 continue
 
@@ -3278,19 +4118,58 @@ class ModeratorWakeupCoordinator:
                     target["budget_exhausted_at_ms"] = current_ms
                     continue
 
-                notice_body = format_moderator_wakeup_notice(
-                    raised_hands=raised_hands,
-                    wake_reason=wake_reason,
+                selected_speaker = (
+                    select_raised_hand_speaker(raised_hands, latest_recent, tid)
+                    if wake_reason == "raised_hand" and raised_hands
+                    else TRAYA_ID
                 )
+                remaining_hands = [uid for uid in raised_hands if uid != selected_speaker]
+                target_sender_str = str(target.get("sender") or "")
+                target_body_str = str(target_ev.get("body") or "")
+                selection_id = f"{tid}:seq1"
 
-                notice_event_id = self.matrix_client.send_notice(
-                    body_text=notice_body,
-                    scope_id=f"wakeup:{tid}",
-                    mentions_user_ids=[TRAYA_ID],
+                # Abort before sending if an invitation or reply for this selection already exists in latest_recent.
+                already_present = self._timeline_has_delivery_or_speaker_activity(
+                    latest_recent,
+                    after_event_id=tid,
+                    after_ts_ms=t_ts_ms,
+                    sending_account=self.matrix_client.self_user_id,
+                    notice_body="",
+                    selection_id=selection_id,
+                    selected_speaker=selected_speaker,
                 )
+                if already_present:
+                    target["notified"] = True
+                    target["status"] = "notified"
+                    target["wake_reason"] = wake_reason
+                    target["selected_speaker"] = selected_speaker
+                    target["wakeup_event_id"] = already_present
+                    continue
+
+                status_out, notice_event_id, _ = self._dispatch_selection_or_relay_notice(
+                    selections_map=selections,
+                    selection_id=selection_id,
+                    target_event_id=tid,
+                    selection_seq=1,
+                    selected_speaker=selected_speaker,
+                    wake_reason=wake_reason,
+                    raised_hands=raised_hands,
+                    target_sender=target_sender_str,
+                    target_body=target_body_str,
+                    root_id=root_id,
+                    current_ms=current_ms,
+                    is_relay_hop=False,
+                    after_event_id=tid,
+                )
+                if status_out == "uncertain_blocked":
+                    target["status"] = "uncertain_blocked"
+                    continue
+
                 target["notified"] = True
                 target["status"] = "notified"
                 target["wake_reason"] = wake_reason
+                target["selected_speaker"] = selected_speaker
+                target["remaining_hands"] = remaining_hands
                 target["notified_at_ms"] = current_ms
                 target["wakeup_event_id"] = notice_event_id
 
@@ -3300,13 +4179,24 @@ class ModeratorWakeupCoordinator:
                 martin_roots[root_id] = {
                     "count": root_count + 1,
                     "events": events_list,
+                    "pending_hands": remaining_hands,
+                    "source_target_event_id": tid,
+                    "target_sender": target_sender_str,
+                    "target_body": target_body_str,
+                    "active_speaker": selected_speaker,
+                    "selection_seq": 1,
+                    "invited_at_ms": current_ms,
                     "updated_at_ms": current_ms,
                 }
                 sent_wakeups.append(
                     {
+                        "selection_id": selection_id,
                         "target_event_id": tid,
                         "wakeup_event_id": notice_event_id,
                         "reason": wake_reason,
+                        "selected_speaker": selected_speaker,
+                        "remaining_hands": remaining_hands,
+                        "relayed_via_traya": selected_speaker == SKRYE_ID,
                         "martin_root_id": root_id,
                     }
                 )
@@ -3314,8 +4204,10 @@ class ModeratorWakeupCoordinator:
         self.state_store.write_companion_state(
             {
                 "wakeups": {
+                    **wakeups,
                     "targets": targets,
                     "martin_roots": martin_roots,
+                    "selections": selections,
                     "last_moderator_reset_ts_ms": last_mod_reset_ts,
                 }
             }
@@ -3325,6 +4217,7 @@ class ModeratorWakeupCoordinator:
             "sent_wakeups": sent_wakeups,
             "targets": targets,
             "martin_roots": martin_roots,
+            "selections": selections,
         }
 
 

@@ -55,6 +55,11 @@ When a pull request that you authored receives review comments from `flexiondoto
 
 After you complete the action for any GitHub notification thread, mark the notification thread as **Done** with `gh-notification-dismiss <thread-id>` so that the inbox holds only new, unhandled items.
 
+## Channel Voice and Mention Rules
+
+- Use voice notes in Telegram direct messages and Matrix direct messages to Martin when appropriate. Keep Matrix group chats (`!the-cauldron:matrix.wimpys.world`) text-only unless Martin explicitly asks for a voice note.
+- In Matrix group chats, write agent display names (`Skrye`, `Traya`, `Zannah`) in prose and inline code spans whenever you do not intend to wake that peer, because the Matrix mention parser matches full Matrix identifiers inside code backticks.
+
 ## Safety
 
 - Never destroy what cannot be recovered. Do not delete or overwrite data or backups, and do not disrupt or take down production services, without explicit consent. Confirm before irreversible or destructive commands. Routine local file edits in trusted directories need no confirmation.

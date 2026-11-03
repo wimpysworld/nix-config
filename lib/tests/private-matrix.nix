@@ -23,6 +23,8 @@ let
       matrix = home.agentic.moltis.matrix;
       channel = home.agentic.moltis.settings.channels.matrix."matrix-${agent}";
       hooks = home.agentic.moltis.settings.hooks.hooks;
+      hookCmd = (builtins.head hooks).command;
+      agentsMd = builtins.readFile ../../home-manager/_mixins/agentic/moltis/AGENTS.md;
       secret = home.sops.secrets.MATRIX_PASSWORD;
     in
     assert matrix.enable;
@@ -46,14 +48,21 @@ let
         "BeforeLLMCall"
         "BeforeToolCall"
       ];
+    assert lib.hasInfix "Keep Matrix group chats (`!the-cauldron:matrix.wimpys.world`) text-only unless Martin explicitly asks for a voice note." agentsMd;
+    assert lib.hasInfix "write agent display names (`Skrye`, `Traya`, `Zannah`) in prose and inline code spans" agentsMd;
     assert secret.sopsFile == config.sops.secrets.${secret.key}.sopsFile;
     assert !(home.sops.secrets ? MATRIX_REGISTRATION_SHARED_SECRET);
-    channel.device_id;
-  devices = map checkHome [
+    {
+      deviceId = channel.device_id;
+      inherit hookCmd;
+    };
+  checkedHomes = map checkHome [
     "skrye"
     "zannah"
     "momin"
   ];
+  devices = map (h: h.deviceId) checkedHomes;
+  skryeHook = (builtins.head checkedHomes).hookCmd;
 in
 assert config.services.privateMatrix.enable;
 assert
@@ -84,6 +93,7 @@ pkgs.runCommand "private-matrix"
     indexHtml = ../../nixos/_mixins/server/private-matrix/index.html;
     cauldronCss = ../../nixos/_mixins/server/private-matrix/cauldron.css;
     cauldronJs = ../../nixos/_mixins/server/private-matrix/cauldron.js;
+    inherit skryeHook;
   }
   ''
     test -e "$bootstrapTests"
@@ -108,6 +118,8 @@ pkgs.runCommand "private-matrix"
     grep -q '/.well-known/matrix/client' "$cauldronJs"
     grep -q '/.well-known/matrix/support' "$cauldronJs"
     grep -q '/_matrix/federation/v1/version' "$cauldronJs"
+    grep -q 'is_conversational_room_message' "$skryeHook"
+    grep -q 'Keep this Matrix group chat text-only unless Martin explicitly asks for a voice note' "$skryeHook"
     ${lib.getExe config.services.caddy.package} adapt --adapter caddyfile \
       --config ${config.services.caddy.configFile} > /dev/null
     touch "$out"

@@ -77,12 +77,23 @@ class MockMatrixAndRpcHandler(http.server.BaseHTTPRequestHandler):
         raw = self.rfile.read(length) if length > 0 else b"{}"
         return json.loads(raw.decode("utf-8"))
 
+    def _is_valid_auth(self, auth_header: str) -> bool:
+        srv = self.server
+        if srv.active_bearer == "expired":
+            return False
+        if auth_header == f"Bearer {srv.active_bearer}":
+            return True
+        if auth_header.startswith("Bearer "):
+            tok = auth_header.split(" ", 1)[1].strip()
+            return tok in srv.valid_bearers
+        return False
+
     def do_GET(self) -> None:
         srv = self.server
         parsed = urllib.parse.urlsplit(self.path)
         if parsed.path == "/_matrix/client/v3/sync":
             auth = self.headers.get("Authorization", "")
-            if auth != f"Bearer {srv.active_bearer}":
+            if not self._is_valid_auth(auth):
                 self._send_json(401, {"errcode": "M_UNKNOWN_TOKEN", "error": "Invalid token"})
                 return
             query = urllib.parse.parse_qs(parsed.query)
@@ -110,6 +121,7 @@ class MockMatrixAndRpcHandler(http.server.BaseHTTPRequestHandler):
                 srv.login_count += 1
                 bearer = f"tok-{srv.login_count}"
                 srv.active_bearer = bearer
+                srv.valid_bearers.add(bearer)
             self._send_json(
                 200,
                 {
@@ -149,7 +161,7 @@ class MockMatrixAndRpcHandler(http.server.BaseHTTPRequestHandler):
     def do_PUT(self) -> None:
         srv = self.server
         auth = self.headers.get("Authorization", "")
-        if auth != f"Bearer {srv.active_bearer}":
+        if not self._is_valid_auth(auth):
             self._send_json(401, {"errcode": "M_UNKNOWN_TOKEN", "error": "Invalid token"})
             return
         parsed = urllib.parse.urlsplit(self.path)
@@ -185,6 +197,7 @@ class LoopbackTestServer(http.server.ThreadingHTTPServer):
         super().__init__(("127.0.0.1", 0), MockMatrixAndRpcHandler)
         self.lock = threading.Lock()
         self.active_bearer = "tok-1"
+        self.valid_bearers: set[str] = {"tok-1"}
         self.login_count = 0
         self.fail_login_once = False
         self.fail_next_put = False
@@ -1072,8 +1085,8 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         bee_rxn_id = run_state["active_reaction_event_id"]
         self.assertIsNotNone(bee_rxn_id)
 
-        # Advance to 30s -> creates single m.notice progress message with 🔎 icon and empty m.mentions.
-        self.current_time_ms += 29_000
+        # Advance to 5s -> creates single m.notice progress message with 🔎 icon, MM:SS elapsed - Step 2, and empty m.mentions.
+        self.current_time_ms += 4_000
         engine.tick(now_override_ms=self.current_time_ms)
         run_state = store.get_run_state(session_key, "run-200")
         assert run_state is not None
@@ -1084,9 +1097,9 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         self.assertEqual(first_notice["msgtype"], "m.notice")
         self.assertEqual(first_notice["m.mentions"], {})
         self.assertNotIn("@", first_notice["body"])
-        self.assertEqual(first_notice["body"], "🔎 30 seconds elapsed · Iteration 2")
+        self.assertEqual(first_notice["body"], "🔎 00:05 elapsed - Step 2")
 
-        # Phase change to Write (✍️): throttled before 3s, then edits in place at >= 3s.
+        # Phase change to Write (✍️): throttled before 3s, then edits in place at >= 3s (8s total -> 00:08).
         self.invoke_hook(
             {
                 "event": "BeforeToolCall",
@@ -1106,11 +1119,11 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         phase_edit_notice = self.httpd.messages_sent[1]["body"]
         self.assertEqual(
             phase_edit_notice["m.new_content"]["body"],
-            "✍️ 33 seconds elapsed · Iteration 2",
+            "✍️ 00:08 elapsed - Step 2",
         )
 
-        # Advance another 57s (90s total, >= 30s unchanged phase) -> edits in place with minutes and seconds.
-        self.current_time_ms += 57_000
+        # Advance another 82s (90s total, >= 3s periodic tick) -> edits in place with MM:SS.
+        self.current_time_ms += 82_000
         engine.tick(now_override_ms=self.current_time_ms)
         self.assertEqual(len(self.httpd.messages_sent), 3)
         edit_notice = self.httpd.messages_sent[2]["body"]
@@ -1120,15 +1133,17 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         )
         self.assertEqual(
             edit_notice["m.new_content"]["body"],
-            "✍️ 1 minute 30 seconds elapsed · Iteration 2",
+            "✍️ 01:30 elapsed - Step 2",
         )
 
-        # Verify elapsed-duration and explicit tool classification helpers.
-        self.assertEqual(companion.format_elapsed_duration(30), "30 seconds")
-        self.assertEqual(companion.format_elapsed_duration(60), "1 minute")
-        self.assertEqual(companion.format_elapsed_duration(61), "1 minute 1 second")
-        self.assertEqual(companion.format_elapsed_duration(90), "1 minute 30 seconds")
-        self.assertEqual(companion.format_elapsed_duration(125), "2 minutes 5 seconds")
+        # Verify MM:SS elapsed-duration and explicit tool classification helpers.
+        self.assertEqual(companion.format_elapsed_duration(5), "00:05")
+        self.assertEqual(companion.format_elapsed_duration(30), "00:30")
+        self.assertEqual(companion.format_elapsed_duration(60), "01:00")
+        self.assertEqual(companion.format_elapsed_duration(61), "01:01")
+        self.assertEqual(companion.format_elapsed_duration(90), "01:30")
+        self.assertEqual(companion.format_elapsed_duration(125), "02:05")
+        self.assertEqual(companion.format_elapsed_duration(3661), "01:01:01")
         self.assertEqual(companion.classify_tool_phase("sessions_history"), "search")
         self.assertEqual(companion.classify_tool_phase("sessions_send"), "tool")
         self.assertEqual(companion.classify_tool_phase("read_skill"), "search")
@@ -1142,7 +1157,7 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         self.assertEqual(tick_res["turn_status"]["status"], "reconciling_completion")
 
         # Final assistant record lands in history.jsonl AND matching m.text arrives via /sync 4s later (at 95s).
-        # Terminal notice must report 1 minute 31 seconds (measured to inactive_since_ms at 91s, not 95s!).
+        # Terminal notice must report 01:31 (measured to inactive_since_ms at 91s, not 95s!).
         final_reply = "Audit complete: all checks passed."
         self.write_history(
             session_key,
@@ -1202,7 +1217,7 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         self.assertEqual(run_state["terminal_notice_event_id"], prog_id)
         self.assertEqual(
             run_state["terminal_notice_text"],
-            "🏁 Skrye finished in 1 minute 31 seconds",
+            "🏁 Skrye finished in 01:31",
         )
         # Verify terminal notice was edited in place (not redacted!) and 🐝 was redacted.
         terminal_edit = self.httpd.messages_sent[-1]["body"]
@@ -1212,7 +1227,7 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         )
         self.assertEqual(
             terminal_edit["m.new_content"]["body"],
-            "🏁 Skrye finished in 1 minute 31 seconds",
+            "🏁 Skrye finished in 01:31",
         )
         redacted_targets = [r["path"].split("/redact/")[1].split("/")[0] for r in self.httpd.redactions_sent]
         self.assertIn(bee_rxn_id, redacted_targets)
@@ -1308,12 +1323,12 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         self.assertIsNone(run_state["completed_reaction_event_id"])
         self.assertEqual(
             run_state["terminal_notice_text"],
-            "⚠️ Skrye ended after 31 seconds · Completion unverified",
+            "⚠️ Skrye ended after 00:31 · Completion unverified",
         )
         terminal_edit = self.httpd.messages_sent[-1]["body"]
         self.assertEqual(
             terminal_edit["m.new_content"]["body"],
-            "⚠️ Skrye ended after 31 seconds · Completion unverified",
+            "⚠️ Skrye ended after 00:31 · Completion unverified",
         )
         redacted_targets = [r["path"].split("/redact/")[1].split("/")[0] for r in self.httpd.redactions_sent]
         self.assertNotIn(prog_id, redacted_targets)
@@ -1759,24 +1774,29 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
         target = comp["wakeups"]["targets"]["$m_opt_a"]
         self.assertEqual(target["status"], "notified")
         self.assertEqual(target["wake_reason"], "raised_hand")
+        self.assertEqual(target["selected_speaker"], companion.ZANNAH_ID)
         self.assertEqual(len(self.httpd.messages_sent), 1)
         wakeup_msg = self.httpd.messages_sent[-1]["body"]
         self.assertEqual(wakeup_msg["msgtype"], "m.notice")
-        self.assertEqual(wakeup_msg["m.mentions"], {"user_ids": [companion.TRAYA_ID]})
+        self.assertEqual(wakeup_msg["m.mentions"], {"user_ids": [companion.ZANNAH_ID]})
         self.assertEqual(
             wakeup_msg["body"],
-            f"🛎️ Inviting {companion.TRAYA_ID} to the floor as Zannah has a raised hand ✋🏻",
+            f'🛎️ Inviting {companion.ZANNAH_ID} to the floor on Martin\'s message: "FYI deployment finished." ✋🏻',
         )
         self.assertNotIn("$m_opt_a", wakeup_msg["body"])
-        self.assertNotIn(companion.ZANNAH_ID, wakeup_msg["body"])
+        self.assertNotIn(companion.TRAYA_ID, wakeup_msg["body"])
         self.assertTrue(
-            companion.extract_mentioned_bots(wakeup_msg["body"], wakeup_msg) == {companion.TRAYA_ID}
+            companion.extract_mentioned_bots(wakeup_msg["body"], wakeup_msg) == {companion.ZANNAH_ID}
         )
         self.assertEqual(
             companion.format_moderator_wakeup_notice(
-                [companion.SKRYE_ID, companion.ZANNAH_ID], "raised_hand"
+                [companion.SKRYE_ID, companion.ZANNAH_ID],
+                "raised_hand",
+                selected_speaker=companion.ZANNAH_ID,
+                target_sender=companion.MARTIN_ID,
+                target_body="Check @skrye:matrix.wimpys.world status",
             ),
-            f"🛎️ Inviting {companion.TRAYA_ID} to the floor. Raised hands: Skrye and Zannah ✋🏻",
+            f'🛎️ Inviting {companion.ZANNAH_ID} to the floor on Martin\'s message: "Check Skrye status". Remaining raised hands: Skrye ✋🏻',
         )
         # Re-evaluating must never send a second wake-up for the same target event.
         engine.wakeup_coordinator.ingest_and_reconcile(generation=gen, now_override_ms=self.current_time_ms + 20_000)
@@ -2184,6 +2204,364 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
             store.read_companion_state()["wakeups"]["targets"]["$bturn_9"]["status"],
             "budget_exhausted",
         )
+
+    def test_single_selector_traya_relay_pending_hands_queue_and_uncertain_blocked_recovery(self) -> None:
+        skrye_store, _, _, _, skrye_engine = self.make_components(agent_name="skrye", main_model="")
+        traya_state_dir = self.root / "state-traya"
+        traya_state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        traya_store = companion.CompanionStateStore(
+            state_dir=traya_state_dir,
+            agent_name="traya",
+            room_id=companion.DEFAULT_ROOM_ID,
+            started_at_ms=self.current_time_ms,
+        )
+        traya_resolver = companion.SessionGenerationResolver(
+            data_dir=self.data_dir,
+            state_store=traya_store,
+            agent_name="traya",
+            room_id=companion.DEFAULT_ROOM_ID,
+        )
+        traya_mclient = companion.MatrixClient(
+            homeserver_url=self.httpd.base_url,
+            self_user_id=companion.TRAYA_ID,
+            agent_name="traya",
+            room_id=companion.DEFAULT_ROOM_ID,
+            password_path=self.password_file,
+            state_store=traya_store,
+        )
+        traya_engine = companion.MatrixSyncEngine(
+            state_store=traya_store,
+            resolver=traya_resolver,
+            matrix_client=traya_mclient,
+            self_user_id=companion.TRAYA_ID,
+            room_id=companion.DEFAULT_ROOM_ID,
+            agent_name="traya",
+            data_dir=self.data_dir,
+            clock=self.clock,
+            async_assessments=False,
+        )
+
+        skrye_engine.process_sync_batch({"next_batch": "s0", "rooms": {"join": {}}})
+        traya_engine.process_sync_batch({"next_batch": "t0", "rooms": {"join": {}}})
+
+        # 1. Suppose Zannah spoke recently, then Martin posts an untagged message with @traya:matrix.wimpys.world in text;
+        # wait - test an untagged Martin message where Skrye and Zannah both raise ✋🏻 and Traya reacts 👌🏻.
+        # Because Zannah spoke more recently than Skrye, Skrye is selected first!
+        # Skrye emits a non-mentioning relay m.notice, and Traya's companion relays the floor invitation to @skrye:matrix.wimpys.world.
+        skrye_engine.process_sync_batch(
+            {
+                "next_batch": "s_prior",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$z_prior",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": self.current_time_ms + 5,
+                                        "content": {"msgtype": "m.text", "body": "Prior Zannah note"},
+                                    },
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$m_multi",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": self.current_time_ms + 20,
+                                        "content": {
+                                            "msgtype": "m.text",
+                                            "body": "Can you all check the NixOS systemd unit?",
+                                        },
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$rx_s_hand",
+                                        "sender": companion.SKRYE_ID,
+                                        "origin_server_ts": self.current_time_ms + 30,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$m_multi",
+                                                "key": "✋🏻",
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$rx_z_hand",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": self.current_time_ms + 40,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$m_multi",
+                                                "key": "✋🏻",
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$rx_t_ok",
+                                        "sender": companion.TRAYA_ID,
+                                        "origin_server_ts": self.current_time_ms + 50,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$m_multi",
+                                                "key": "👌🏻",
+                                            }
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        self.assertEqual(len(self.httpd.messages_sent), 1)
+        relay_notice = self.httpd.messages_sent[-1]["body"]
+        self.assertEqual(relay_notice["msgtype"], "m.notice")
+        self.assertEqual(relay_notice["m.mentions"], {})
+        self.assertIn(companion.COMPANION_RELAY_KEY, relay_notice)
+        self.assertEqual(
+            relay_notice[companion.COMPANION_RELAY_KEY]["selected_speaker"],
+            companion.SKRYE_ID,
+        )
+        self.assertEqual(
+            relay_notice[companion.COMPANION_RELAY_KEY]["remaining_hands"],
+            [companion.ZANNAH_ID],
+        )
+
+        # Traya's companion ingests the relay m.notice and posts the single floor invitation to @skrye:matrix.wimpys.world.
+        traya_engine.process_sync_batch(
+            {
+                "next_batch": "t_relay",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$m_multi",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": self.current_time_ms + 20,
+                                        "content": {
+                                            "msgtype": "m.text",
+                                            "body": "Can you all check the NixOS systemd unit?",
+                                        },
+                                    },
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$relay_ev_1",
+                                        "sender": companion.SKRYE_ID,
+                                        "origin_server_ts": self.current_time_ms + 60,
+                                        "content": relay_notice,
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        self.assertEqual(len(self.httpd.messages_sent), 2)
+        traya_invite = self.httpd.messages_sent[-1]["body"]
+        self.assertEqual(traya_invite["m.mentions"], {"user_ids": [companion.SKRYE_ID]})
+        self.assertEqual(
+            traya_invite["body"],
+            f'🛎️ Inviting {companion.SKRYE_ID} to the floor on Martin\'s message: "Can you all check the NixOS systemd unit?". Remaining raised hands: Zannah ✋🏻',
+        )
+
+        # 2. Now Skrye finishes her turn with an untagged reply -> pending_hands automatically invites Zannah next!
+        self.current_time_ms += 1_000
+        skrye_engine.process_sync_batch(
+            {
+                "next_batch": "s_skrye_reply",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$skrye_reply_1",
+                                        "sender": companion.SKRYE_ID,
+                                        "origin_server_ts": self.current_time_ms,
+                                        "content": {
+                                            "msgtype": "m.text",
+                                            "body": "The systemd unit is configured in default.nix.",
+                                        },
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        self.assertEqual(len(self.httpd.messages_sent), 3)
+        zannah_invite = self.httpd.messages_sent[-1]["body"]
+        self.assertEqual(zannah_invite["m.mentions"], {"user_ids": [companion.ZANNAH_ID]})
+        self.assertEqual(
+            zannah_invite["body"],
+            f'🛎️ Inviting {companion.ZANNAH_ID} to the floor on Martin\'s message: "Can you all check the NixOS systemd unit?" ✋🏻',
+        )
+        root_state = skrye_store.read_companion_state()["wakeups"]["martin_roots"]["$m_multi"]
+        self.assertEqual(root_state["pending_hands"], [])
+
+        # 3. Verify uncertain_blocked hold when a send crashes, token_generation_id rotates, and timeline lacks the notice.
+        comp_state = skrye_store.read_companion_state()
+        wakeups = comp_state["wakeups"]
+        wakeups["selections"]["$m_uncertain:seq1"] = {
+            "selection_id": "$m_uncertain:seq1",
+            "target_event_id": "$m_uncertain",
+            "after_event_id": "$m_uncertain",
+            "selection_seq": 1,
+            "selected_speaker": companion.ZANNAH_ID,
+            "wake_reason": "raised_hand",
+            "martin_root_id": "$m_multi",
+            "sending_account": companion.SKRYE_ID,
+            "token_generation_id": "tgen-old-before-rotation",
+            "scope_id": "wakeup:$m_uncertain",
+            "txn_id": "mc-skrye-uncertain",
+            "path": "/_matrix/client/v3/rooms/!the-cauldron%3Amatrix.wimpys.world/send/m.room.message/mc-skrye-uncertain",
+            "payload": {"msgtype": "m.notice", "body": "invite", "m.mentions": {"user_ids": [companion.ZANNAH_ID]}},
+            "kind": "wakeup_notice",
+            "created_at_ms": self.current_time_ms,
+            "status": "sending",
+            "wakeup_event_id": None,
+        }
+        wakeups["targets"]["$m_uncertain"] = {
+            "event_id": "$m_uncertain",
+            "sender": companion.MARTIN_ID,
+            "origin_server_ts": self.current_time_ms,
+            "session_key": skrye_engine.resolver.default_session_key,
+            "cutoff_ms": 0,
+            "martin_root_id": "$m_multi",
+            "expected_assessors": [companion.TRAYA_ID, companion.ZANNAH_ID],
+            "created_at_ms": self.current_time_ms,
+            "deadline_ms": self.current_time_ms + 15_000,
+            "status": "pending",
+            "notified": False,
+            "wakeup_event_id": None,
+        }
+        skrye_store.write_companion_state({"wakeups": wakeups})
+        sent_before = len(self.httpd.messages_sent)
+        skrye_engine.wakeup_coordinator.ingest_and_reconcile(now_override_ms=self.current_time_ms + 500)
+        self.assertEqual(len(self.httpd.messages_sent), sent_before)
+        after_comp = skrye_store.read_companion_state()["wakeups"]
+        self.assertEqual(
+            after_comp["selections"]["$m_uncertain:seq1"]["status"],
+            "uncertain_blocked",
+        )
+        self.assertEqual(
+            after_comp["targets"]["$m_uncertain"]["status"],
+            "uncertain_blocked",
+        )
+
+    def test_caption_bearing_bot_audio_events_pass_all_six_checks_and_bare_filename_audio_is_skipped(self) -> None:
+        store, resolver, _, _, engine = self.make_components(agent_name="skrye", main_model="gemini::gemini-4-argon")
+        session_key = resolver.default_session_key
+        hook_script = self.write_hook_script(agent_name="skrye")
+        engine.process_sync_batch({"next_batch": "s0", "rooms": {"join": {}}})
+
+        # 1. Bare filename audio ("voice-note.ogg" or matching content.filename) and human m.audio are rejected.
+        self.assertFalse(
+            companion.is_conversational_room_message(
+                "m.audio",
+                "voice-note.ogg",
+                sender=companion.TRAYA_ID,
+                content={"msgtype": "m.audio", "body": "voice-note.ogg", "filename": "voice-note.ogg"},
+            )
+        )
+        self.assertFalse(
+            companion.is_conversational_room_message(
+                "m.audio",
+                "recording.opus",
+                sender=companion.TRAYA_ID,
+                content={"msgtype": "m.audio", "body": "recording.opus"},
+            )
+        )
+        self.assertFalse(
+            companion.is_conversational_room_message(
+                "m.audio",
+                "Spoken human note",
+                sender=companion.MARTIN_ID,
+                content={"msgtype": "m.audio", "body": "Spoken human note"},
+            )
+        )
+        self.assertTrue(
+            companion.is_conversational_room_message(
+                "m.audio",
+                "Traya's spoken architectural synthesis for WW-296.",
+                sender=companion.TRAYA_ID,
+                content={"msgtype": "m.audio", "body": "Traya's spoken architectural synthesis for WW-296.", "filename": "reply.ogg"},
+            )
+        )
+
+        # 2. Ingest a caption-bearing bot m.audio event and a bare filename m.audio event.
+        self.httpd.assess_responses = [{"ok": True, "result": {"text": "👍🏻"}}]
+        res = engine.process_sync_batch(
+            {
+                "next_batch": "s_audio",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$audio_bare",
+                                        "sender": companion.TRAYA_ID,
+                                        "origin_server_ts": self.current_time_ms + 10,
+                                        "content": {
+                                            "msgtype": "m.audio",
+                                            "body": "voice.ogg",
+                                            "filename": "voice.ogg",
+                                        },
+                                    },
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$audio_caption",
+                                        "sender": companion.TRAYA_ID,
+                                        "origin_server_ts": self.current_time_ms + 20,
+                                        "content": {
+                                            "msgtype": "m.audio",
+                                            "body": "Traya's caption-bearing m.audio synthesis.",
+                                            "filename": "speech.ogg",
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        room_events = store.read_room_events()
+        recent_ids = [e["event_id"] for e in room_events["recent_events"]]
+        self.assertIn("$audio_caption", recent_ids)
+        self.assertNotIn("$audio_bare", recent_ids)
+        self.assertEqual(res["enqueued_assessments"], 1)
+        self.assertIn("$audio_caption", store.read_companion_state()["wakeups"]["targets"])
+
+        # Verify <room_context> in moltisMatrixCouncilHook includes $audio_caption and increments bot_turns.
+        hook_out = self.invoke_hook(
+            {
+                "event": "BeforeLLMCall",
+                "session_key": session_key,
+                "iteration": 1,
+                "tool_count": 1,
+                "messages": [{"role": "system", "content": "Base"}],
+            },
+            "skrye",
+            hook_script,
+        )
+        injected = hook_out["data"]["messages"][0]["content"]
+        self.assertIn("Traya's caption-bearing m.audio synthesis.", injected)
+        self.assertIn("bot turn 2 of 9", injected)
 
 
 class Criterion6RoomEventsDurabilityAndNewIsolationTests(CompanionTestBase):
