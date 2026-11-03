@@ -2205,6 +2205,83 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
             "budget_exhausted",
         )
 
+    def test_sending_recovery_ignores_selected_speaker_turn_status_reactions(self) -> None:
+        _, _, _, _, engine = self.make_components(agent_name="skrye", main_model="")
+        coordinator = engine.wakeup_coordinator
+        selection_id = "$target:seq1"
+        notice_body = f"Invite {companion.ZANNAH_ID}"
+        common_args = {
+            "after_event_id": "$target",
+            "after_ts_ms": self.current_time_ms,
+            "sending_account": companion.SKRYE_ID,
+            "notice_body": notice_body,
+            "selection_id": selection_id,
+            "selected_speaker": companion.ZANNAH_ID,
+        }
+        target = {
+            "event_id": "$target",
+            "sender": companion.MARTIN_ID,
+            "origin_server_ts": self.current_time_ms,
+            "msgtype": "m.text",
+            "body": "Please review this change.",
+        }
+        unrelated_reactions = {
+            "event_id": "$unrelated",
+            "sender": companion.MARTIN_ID,
+            "origin_server_ts": self.current_time_ms + 100,
+            "msgtype": "m.text",
+            "body": "An unrelated turn.",
+            "reactions": {
+                "$ack": {
+                    "sender": companion.ZANNAH_ID,
+                    "key": companion.ACK_REACTION_KEY,
+                    "ts_ms": self.current_time_ms + 110,
+                },
+                "$bee": {
+                    "sender": companion.ZANNAH_ID,
+                    "key": companion.ACTIVE_BEE_KEY,
+                    "ts_ms": self.current_time_ms + 120,
+                },
+            },
+        }
+
+        self.assertIsNone(
+            coordinator._timeline_has_delivery_or_speaker_activity(
+                [target, unrelated_reactions],
+                **common_args,
+            )
+        )
+
+        matching_notice = {
+            "event_id": "$invite",
+            "sender": companion.SKRYE_ID,
+            "origin_server_ts": self.current_time_ms + 200,
+            "msgtype": "m.notice",
+            "body": notice_body,
+        }
+        self.assertEqual(
+            coordinator._timeline_has_delivery_or_speaker_activity(
+                [target, matching_notice],
+                **common_args,
+            ),
+            "$invite",
+        )
+
+        speaker_reply = {
+            "event_id": "$reply",
+            "sender": companion.ZANNAH_ID,
+            "origin_server_ts": self.current_time_ms + 300,
+            "msgtype": "m.text",
+            "body": "I reviewed the change.",
+        }
+        self.assertEqual(
+            coordinator._timeline_has_delivery_or_speaker_activity(
+                [target, speaker_reply],
+                **common_args,
+            ),
+            "$reply",
+        )
+
     def test_interrupted_wakeups_are_cancelled_before_recovery_after_reset_boundaries(self) -> None:
         for agent_name in ("skrye", "traya"):
             for boundary in ("cutoff", "moderator_reset"):

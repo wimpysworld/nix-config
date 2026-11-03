@@ -3294,7 +3294,7 @@ class ModeratorWakeupCoordinator:
         selection_id: str,
         selected_speaker: str,
     ) -> str | None:
-        """Return matching event_id if the notice or selected_speaker activity already appears in recent_events."""
+        """Return the matching notice or selected speaker reply event_id from recent_events."""
         seen_anchor = not bool(after_event_id)
         for ev in recent_events:
             if not isinstance(ev, dict):
@@ -3317,15 +3317,6 @@ class ModeratorWakeupCoordinator:
             if sender == selected_speaker and is_conversational_room_message(ev):
                 if not ev.get("is_new_command") and not is_new_command_message(body):
                     return ev_id or "speaker_replied"
-            rxns = _as_dict(ev.get("reactions"))
-            for rxn in rxns.values():
-                if (
-                    isinstance(rxn, dict)
-                    and rxn.get("sender") == selected_speaker
-                    and rxn.get("key") in (ACK_REACTION_KEY, ACTIVE_BEE_KEY)
-                    and _safe_int(rxn.get("ts_ms"), 0) >= after_ts_ms
-                ):
-                    return ev_id or "speaker_reacted"
         return None
 
     def _reconcile_sending_record(
