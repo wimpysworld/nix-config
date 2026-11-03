@@ -117,7 +117,11 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
         statusStyle = "dot";
         hideVersion = true;
         layout = {
-          "Media & AI (Revan)" = {
+          "Media & Notes (Revan)" = {
+            style = "row";
+            columns = 4;
+          };
+          "AI & Agents" = {
             style = "row";
             columns = 4;
           };
@@ -125,13 +129,17 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
             style = "row";
             columns = 3;
           };
-          "Social & Websites" = {
+          "Websites" = {
             style = "row";
-            columns = 4;
+            columns = 3;
+          };
+          "Social & Streaming" = {
+            style = "row";
+            columns = 3;
           };
           "Tailnet Fleet & Remote Access" = {
             style = "row";
-            columns = 4;
+            columns = 3;
           };
           "Syncthing Fleet" = {
             style = "row";
@@ -175,7 +183,7 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
 
       services = [
         {
-          "Media & AI (Revan)" = [
+          "Media & Notes (Revan)" = [
             {
               "Silo" = {
                 icon = "jellyfin.svg";
@@ -248,20 +256,6 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
               };
             }
             {
-              "LibreChat" = {
-                icon = "librechat.svg";
-                href = "https://librechat.wimpys.world";
-                description = "Self-hosted AI chat platform";
-                siteMonitor = "http://127.0.0.1:3080";
-                widget = {
-                  type = "cloudflared";
-                  accountid = "{{HOMEPAGE_VAR_CLOUDFLARE_ACCOUNT_ID}}";
-                  tunnelid = "1efaa599-51f7-4825-b2fa-3df1233883e6";
-                  key = "{{HOMEPAGE_VAR_CLOUDFLARE_API_TOKEN}}";
-                };
-              };
-            }
-            {
               "Weave Notes" = {
                 icon = "mdi-language-markdown";
                 href = "https://notes.wimpys.world";
@@ -272,25 +266,6 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
                   accountid = "{{HOMEPAGE_VAR_CLOUDFLARE_ACCOUNT_ID}}";
                   tunnelid = "49acf03b-9085-4d78-a60c-154b54d02406";
                   key = "{{HOMEPAGE_VAR_CLOUDFLARE_API_TOKEN}}";
-                };
-              };
-            }
-            {
-              "llama-swap (revan)" = {
-                icon = "ollama.svg";
-                href = "http://${tailnetHost}:8080";
-                description = "Local LLM router and embeddings on revan";
-                siteMonitor = "http://127.0.0.1:8080/health";
-                widget = {
-                  type = "customapi";
-                  url = "http://127.0.0.1:8080/running";
-                  mappings = [
-                    {
-                      field = "running";
-                      label = "Loaded Models";
-                      format = "size";
-                    }
-                  ];
                 };
               };
             }
@@ -331,6 +306,59 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
           ];
         }
         {
+          "AI & Agents" = [
+            {
+              "LibreChat" = {
+                icon = "librechat.svg";
+                href = "https://librechat.wimpys.world";
+                description = "Self-hosted AI chat platform";
+                siteMonitor = "http://127.0.0.1:3080";
+                widget = {
+                  type = "cloudflared";
+                  accountid = "{{HOMEPAGE_VAR_CLOUDFLARE_ACCOUNT_ID}}";
+                  tunnelid = "1efaa599-51f7-4825-b2fa-3df1233883e6";
+                  key = "{{HOMEPAGE_VAR_CLOUDFLARE_API_TOKEN}}";
+                };
+              };
+            }
+            {
+              "llama-swap (revan)" = {
+                icon = "ollama.svg";
+                href = "http://${tailnetHost}:8080";
+                description = "Local LLM router and embeddings on revan";
+                siteMonitor = "http://127.0.0.1:8080/health";
+                widget = {
+                  type = "customapi";
+                  url = "http://127.0.0.1:8080/running";
+                  mappings = [
+                    {
+                      field = "running";
+                      label = "Loaded Models";
+                      format = "size";
+                    }
+                  ];
+                };
+              };
+            }
+          ]
+          ++ (map (node: {
+            "llama-swap (${node})" = {
+              icon = "ollama.svg";
+              href = "http://${node}.${tailNet}:8080";
+              description = "LLM inference router on ${node}";
+              ping = "${node}.${tailNet}";
+            };
+          }) remoteInferenceHosts)
+          ++ (map (node: {
+            "Roamgate (${node})" = {
+              icon = "terminal.svg";
+              href = "https://${node}.${tailNet}:10000/";
+              description = "Herdr Roamgate web terminal on ${node}";
+              ping = "${node}.${tailNet}";
+            };
+          }) roamgateHosts);
+        }
+        {
           "Monitoring & Infrastructure" = [
             {
               "Gatus" = {
@@ -363,7 +391,88 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
           ];
         }
         {
-          "Social & Websites" = [
+          "Websites" = [
+            {
+              "Wimpy's World" = {
+                icon = "mdi-web";
+                href = "https://wimpysworld.com";
+                description = "Personal blog and notes";
+                siteMonitor = "https://wimpysworld.com";
+                widget = {
+                  type = "customapi";
+                  url = "https://wimpysworld.com/index.json";
+                  refreshInterval = 3600000;
+                  mappings = [
+                    {
+                      label = "Posts";
+                      format = "size";
+                    }
+                    {
+                      field = {
+                        "0" = "title";
+                      };
+                      label = "Latest";
+                      format = "text";
+                    }
+                  ];
+                };
+              };
+            }
+            {
+              "Linux Matters" = {
+                icon = "mdi-podcast";
+                href = "https://linuxmatters.sh";
+                description = "Linux Matters podcast website";
+                siteMonitor = "https://linuxmatters.sh";
+                widget = {
+                  type = "customapi";
+                  url = "https://itunes.apple.com/lookup?id=1682797246";
+                  refreshInterval = 3600000;
+                  mappings = [
+                    {
+                      field = {
+                        results = {
+                          "0" = "trackCount";
+                        };
+                      };
+                      label = "Episodes";
+                      format = "number";
+                    }
+                    {
+                      field = {
+                        results = {
+                          "0" = "releaseDate";
+                        };
+                      };
+                      label = "Latest";
+                      format = "date";
+                      dateStyle = "medium";
+                    }
+                    {
+                      field = {
+                        results = {
+                          "0" = "trackTimeMillis";
+                        };
+                      };
+                      label = "Runtime";
+                      format = "duration";
+                    }
+                  ];
+                };
+              };
+            }
+            {
+              "Wimpy's Links" = {
+                icon = "mdi-link-variant";
+                href = "https://wimpysworld.link";
+                description = "Social and project links";
+                siteMonitor = "https://wimpysworld.link";
+              };
+            }
+          ];
+        }
+        {
+          "Social & Streaming" = [
             {
               "The Cauldron (Matrix)" = {
                 icon = "matrix.svg";
@@ -474,43 +583,11 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
                 };
               };
             }
-            {
-              "Wimpy's World" = {
-                icon = "mdi-web";
-                href = "https://wimpysworld.com";
-                description = "Personal blog and notes";
-                siteMonitor = "https://wimpysworld.com";
-              };
-            }
-            {
-              "Wimpy's Links" = {
-                icon = "mdi-link-variant";
-                href = "https://wimpysworld.link";
-                description = "Social and project links";
-                siteMonitor = "https://wimpysworld.link";
-              };
-            }
-            {
-              "Linux Matters" = {
-                icon = "mdi-podcast";
-                href = "https://linuxmatters.sh";
-                description = "Linux Matters podcast website";
-                siteMonitor = "https://linuxmatters.sh";
-              };
-            }
           ];
         }
         {
           "Tailnet Fleet & Remote Access" =
             (map (node: {
-              "Roamgate (${node})" = {
-                icon = "terminal.svg";
-                href = "https://${node}.${tailNet}:10000/";
-                description = "Herdr Roamgate web terminal on ${node}";
-                ping = "${node}.${tailNet}";
-              };
-            }) roamgateHosts)
-            ++ (map (node: {
               "ReFrame noVNC (${node})" = {
                 icon = "novnc.svg";
                 href = "https://${node}.${tailNet}/novnc";
@@ -531,15 +608,7 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
                   };
                 };
               }
-            ]
-            ++ (map (node: {
-              "llama-swap (${node})" = {
-                icon = "ollama.svg";
-                href = "http://${node}.${tailNet}:8080";
-                description = "LLM inference router on ${node}";
-                ping = "${node}.${tailNet}";
-              };
-            }) remoteInferenceHosts);
+            ];
         }
         {
           "Syncthing Fleet" = map (node: {
