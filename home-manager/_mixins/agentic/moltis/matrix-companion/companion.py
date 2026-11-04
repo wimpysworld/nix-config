@@ -44,6 +44,29 @@ DISPLAY_NAMES = {
     "momin": "Traya",
 }
 
+DISPLAY_NAME_TO_BOT_ID = {
+    "skrye": SKRYE_ID,
+    "@skrye": SKRYE_ID,
+    "traya": TRAYA_ID,
+    "@traya": TRAYA_ID,
+    "zannah": ZANNAH_ID,
+    "@zannah": ZANNAH_ID,
+}
+NEW_COMMAND_STRIP_TOKENS = frozenset(
+    {
+        *ALLOWLIST_USER_IDS,
+        "skrye",
+        "@skrye",
+        "traya",
+        "@traya",
+        "zannah",
+        "@zannah",
+        "martin",
+        "@martin",
+    }
+)
+NEW_COMMAND_MENTION_TOKENS = NEW_COMMAND_STRIP_TOKENS
+
 ASSESSMENT_SESSION_KEY = "companion:matrix-assess"
 ASSESSMENT_BADGES = frozenset({"👌🏻", "👍🏻", "✋🏻"})
 BARE_ASSESSMENT_BADGE_MAP = {
@@ -146,14 +169,14 @@ ASSESSMENT_QUEUE_MAX_DEPTH = 32
 ASSESSMENT_MAX_PRECEDING_MESSAGES = 6
 ASSESSMENT_MAX_CONTEXT_CHARS = 2400
 ASSESSMENT_MAX_TARGET_CHARS = 1600
-ASSESSMENT_TIMEOUT_SECS = 25.0
+ASSESSMENT_TIMEOUT_SECS = 45.0
 
 THINKING_DWELL_MS = 3000
 PHASE_EDIT_INTERVAL_MS = 3000
 INITIAL_PROGRESS_NOTICE_DELAY_MS = 5000
 PROGRESS_NOTICE_INTERVAL_MS = 3000
 COMPLETION_RECONCILE_WINDOW_MS = 30000
-WAKEUP_DEADLINE_MS = 15000
+WAKEUP_DEADLINE_MS = 25000
 MAX_WAKEUPS_PER_MARTIN_ROOT = 3
 MAX_BOT_TURNS_SINCE_MARTIN = 9
 MAX_BOT_TURNS = MAX_BOT_TURNS_SINCE_MARTIN
@@ -190,7 +213,6 @@ OUTBOX_FILENAME = "outbox.json"
 COMPANION_STATE_FILENAME = "companion-state.json"
 ROOM_EVENTS_FILENAME = "room-events.json"
 LEGACY_STATE_FILENAMES = (
-    AUTH_STATE_FILENAME,
     SYNC_STATE_FILENAME,
     OUTBOX_FILENAME,
     COMPANION_STATE_FILENAME,
@@ -492,24 +514,79 @@ def extract_mentioned_bots(body: str, content: dict | None = None) -> set[str]:
 
 
 def is_new_command_message(body: str, content: dict | None = None) -> bool:
+    del content
     text = (body or "").strip()
     if not text:
         return False
     tokens = text.split()
-    cleaned = [tok for tok in tokens if tok.rstrip(":,") not in ALLOWLIST_USER_IDS]
+    cleaned = [
+        tok
+        for tok in tokens
+        if tok.rstrip(":,.;").lower() not in NEW_COMMAND_STRIP_TOKENS
+        and tok.rstrip(":,.;") not in ALLOWLIST_USER_IDS
+    ]
     if not cleaned:
         return False
     first = cleaned[0].lower()
     return bool(first == "/new" and len(cleaned) == 1)
 
 
-def is_new_command_targeting(body: str, target_user_id: str, content: dict | None = None) -> bool:
+def extract_new_command_mentioned_bots(body: str, content: dict | None = None) -> set[str]:
+    mentioned = set(extract_mentioned_bots(body, content))
+    for tok in (body or "").split():
+        mapped = DISPLAY_NAME_TO_BOT_ID.get(tok.rstrip(":,.;").lower())
+        if mapped:
+            mentioned.add(mapped)
+    return mentioned
+
+
+def is_new_command_targeting(
+    body: str,
+    target_user_id: str,
+    content: dict | None = None,
+    mentioned_bots: list[str] | set[str] | None = None,
+) -> bool:
     if not is_new_command_message(body, content):
         return False
-    mentioned = extract_mentioned_bots(body, content)
+    mentioned = set(extract_new_command_mentioned_bots(body, content))
+    if isinstance(mentioned_bots, (list, set, tuple, frozenset)):
+        for uid in mentioned_bots:
+            if isinstance(uid, str) and uid in BOT_IDS:
+                mentioned.add(uid)
     if not mentioned:
         return True
     return target_user_id in mentioned
+
+
+def find_latest_targeted_new_command_ts_ms(
+    recent_events: list[dict],
+    target_user_id: str,
+) -> int | None:
+    latest_ts_ms: int | None = None
+    for ev in recent_events or []:
+        if not isinstance(ev, dict) or ev.get("seed"):
+            continue
+        if ev.get("sender") not in ALLOWLIST_USER_IDS:
+            continue
+        body = str(ev.get("body") or "")
+        is_new_cmd = bool(ev.get("is_new_command")) or is_new_command_message(body)
+        if not is_new_cmd:
+            continue
+        raw_mentioned = ev.get("mentioned_bots")
+        if isinstance(raw_mentioned, list) and raw_mentioned:
+            targets_self = target_user_id in raw_mentioned
+        else:
+            targets_self = is_new_command_targeting(
+                body,
+                target_user_id,
+                mentioned_bots=raw_mentioned if isinstance(raw_mentioned, list) else None,
+            )
+        if not targets_self:
+            continue
+        _, ts_ms = normalize_ts(ev.get("origin_server_ts"))
+        if ts_ms > 0 and (latest_ts_ms is None or ts_ms > latest_ts_ms):
+            latest_ts_ms = ts_ms
+    return latest_ts_ms
 
 
 def normalize_assessment_badge(raw_text: str | None) -> str | None:
@@ -1062,6 +1139,9 @@ class CompanionStateStore:
             "provisional_cutoff_ms": None,
             "active_session_key": None,
             "cutoff_ms": None,
+            "last_new_origin_server_ts_ms": None,
+            "last_assess_reset_session_key": None,
+            "last_assess_reset_cutoff_ms": None,
             "is_provisional": False,
             "runs": {},
             "assessed_events": {},
@@ -1088,7 +1168,6 @@ class CompanionStateStore:
             "version": 2,
             "agent_name": self.agent_name,
             "room_id": self.room_id,
-            "auth": {},
             "sync_state": {},
             "outbox": {"pending": {}},
             "companion_state": self._default_companion_state(),
@@ -1132,6 +1211,23 @@ class CompanionStateStore:
             merged["unmentioned_by_session"] = {}
         return merged
 
+    def _migrate_embedded_auth_unlocked(
+        self,
+        dir_fd: int,
+        embedded_auth: dict | None,
+    ) -> None:
+        if not isinstance(embedded_auth, dict) or not embedded_auth:
+            return
+        existing_auth = self._try_read_json(dir_fd, AUTH_STATE_FILENAME)
+        if isinstance(existing_auth, dict) and existing_auth.get("access_token"):
+            existing_ts = _safe_int(existing_auth.get("updated_at_ms"), 0)
+            embedded_ts = _safe_int(embedded_auth.get("updated_at_ms"), 0)
+            if existing_ts >= embedded_ts:
+                return
+        migrated_auth = dict(existing_auth) if isinstance(existing_auth, dict) else {}
+        migrated_auth.update(embedded_auth)
+        atomic_write_json_in_dir(dir_fd, AUTH_STATE_FILENAME, migrated_auth)
+
     def _migrate_legacy_state_unlocked(
         self,
         dir_fd: int,
@@ -1139,8 +1235,8 @@ class CompanionStateStore:
     ) -> dict:
         state = self._default_unified_state()
         if isinstance(existing_state, dict):
-            if isinstance(existing_state.get("auth"), dict):
-                state["auth"] = dict(existing_state["auth"])
+            if isinstance(existing_state.get("auth"), dict) and existing_state["auth"]:
+                self._migrate_embedded_auth_unlocked(dir_fd, existing_state["auth"])
             if isinstance(existing_state.get("sync_state"), dict):
                 state["sync_state"] = dict(existing_state["sync_state"])
             if isinstance(existing_state.get("outbox"), dict):
@@ -1165,10 +1261,6 @@ class CompanionStateStore:
                 state["room_events"] = self._normalize_room_events(existing_state)
             if isinstance(existing_state.get("updated_at_ms"), int):
                 state["updated_at_ms"] = existing_state["updated_at_ms"]
-
-        legacy_auth = self._try_read_json(dir_fd, AUTH_STATE_FILENAME)
-        if isinstance(legacy_auth, dict) and legacy_auth:
-            state["auth"] = dict(legacy_auth)
 
         legacy_sync = self._try_read_json(dir_fd, SYNC_STATE_FILENAME)
         if isinstance(legacy_sync, dict) and legacy_sync:
@@ -1305,8 +1397,9 @@ class CompanionStateStore:
             self._write_unified_state_unlocked(dir_fd, migrated)
             return migrated
         state = self._default_unified_state()
-        if isinstance(existing.get("auth"), dict):
-            state["auth"] = dict(existing["auth"])
+        had_embedded_auth = "auth" in existing
+        if isinstance(existing.get("auth"), dict) and existing["auth"]:
+            self._migrate_embedded_auth_unlocked(dir_fd, existing["auth"])
         if isinstance(existing.get("sync_state"), dict):
             state["sync_state"] = dict(existing["sync_state"])
         outbox_raw = existing.get("outbox")
@@ -1327,9 +1420,12 @@ class CompanionStateStore:
         if isinstance(existing.get("updated_at_ms"), int):
             state["updated_at_ms"] = existing["updated_at_ms"]
         self._bound_unified_state_unlocked(state)
+        if had_embedded_auth:
+            self._write_unified_state_unlocked(dir_fd, state)
         return state
 
     def _write_unified_state_unlocked(self, dir_fd: int, state: dict) -> None:
+        state.pop("auth", None)
         self._bound_unified_state_unlocked(state)
         atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
         self._unlink_legacy_files_unlocked(dir_fd)
@@ -1364,16 +1460,100 @@ class CompanionStateStore:
 
     def read_auth(self) -> dict:
         with self._locked_dir() as dir_fd:
-            state = self._read_unified_state_unlocked(dir_fd)
-            auth = state.get("auth")
+            self._read_unified_state_unlocked(dir_fd)
+            auth = self._try_read_json(dir_fd, AUTH_STATE_FILENAME)
             return dict(auth) if isinstance(auth, dict) else {}
 
     def write_auth(self, auth_data: dict) -> None:
         with self._locked_dir() as dir_fd:
-            state = self._read_unified_state_unlocked(dir_fd)
-            state["auth"] = dict(auth_data) if isinstance(auth_data, dict) else {}
-            state["updated_at_ms"] = now_ms()
-            self._write_unified_state_unlocked(dir_fd, state)
+            payload = dict(auth_data) if isinstance(auth_data, dict) else {}
+            payload["updated_at_ms"] = now_ms()
+            atomic_write_json_in_dir(dir_fd, AUTH_STATE_FILENAME, payload)
+
+    def build_status_summary(self, resolver: "SessionGenerationResolver | None" = None) -> dict:
+        gen: dict | None = None
+        if resolver is not None:
+            db_path = Path(resolver.data_dir) / "moltis.db"
+            if db_path.is_file():
+                with contextlib.suppress(Exception):
+                    gen = resolver.resolve()
+        state = self.read_state()
+        auth = self.read_auth()
+        active_turn_raw = self.read_active_turn()
+        comp = self._normalize_companion_state(_as_dict(state.get("companion_state")))
+        room_events = self._normalize_room_events(_as_dict(state.get("room_events")))
+        outbox_pending = _as_dict(_as_dict(state.get("outbox")).get("pending"))
+        wakeups = _as_dict(comp.get("wakeups"))
+        wakeup_targets = _as_dict(wakeups.get("targets"))
+
+        active_session_key = (
+            gen.get("active_session_key")
+            if isinstance(gen, dict) and gen.get("active_session_key")
+            else comp.get("active_session_key")
+        )
+        cutoff_ms = (
+            gen.get("cutoff_ms")
+            if isinstance(gen, dict) and gen.get("cutoff_ms") is not None
+            else comp.get("cutoff_ms")
+        )
+        provisional_cutoff_ms = (
+            gen.get("provisional_cutoff_ms")
+            if isinstance(gen, dict) and gen.get("provisional_cutoff_ms") is not None
+            else comp.get("provisional_cutoff_ms")
+        )
+        is_provisional = (
+            bool(gen.get("is_provisional"))
+            if isinstance(gen, dict) and gen.get("is_provisional") is not None
+            else bool(comp.get("is_provisional", False))
+        )
+
+        active_turn: dict | None = None
+        if isinstance(active_turn_raw, dict) and active_turn_raw:
+            active_turn = {
+                "session_key": active_turn_raw.get("session_key"),
+                "run_id": active_turn_raw.get("run_id"),
+                "phase": active_turn_raw.get("phase"),
+                "iteration": active_turn_raw.get("iteration"),
+                "tool_name": active_turn_raw.get("tool_name"),
+            }
+
+        recent_list = room_events.get("recent_events")
+        assessed_dict = comp.get("assessed_events")
+        runs_dict = comp.get("runs")
+        counts = {
+            "recent_events": len(recent_list) if isinstance(recent_list, list) else 0,
+            "assessed_events": len(assessed_dict) if isinstance(assessed_dict, dict) else 0,
+            "runs": len(runs_dict) if isinstance(runs_dict, dict) else 0,
+            "pending_outbox": len(outbox_pending),
+            "wakeup_targets": len(wakeup_targets),
+        }
+
+        token = auth.get("access_token")
+        authenticated = isinstance(token, str) and bool(token.strip())
+
+        return {
+            "agent_name": self.agent_name,
+            "room_id": self.room_id,
+            "state_dir": str(self.state_dir),
+            "state_file": str(self.state_dir / STATE_FILENAME),
+            "auth_file": str(self.state_dir / AUTH_STATE_FILENAME),
+            "authenticated": authenticated,
+            "user_id": auth.get("user_id") if isinstance(auth.get("user_id"), str) else None,
+            "device_id": auth.get("device_id") if isinstance(auth.get("device_id"), str) else None,
+            "next_batch": self.get_next_batch(),
+            "active_session_key": active_session_key,
+            "cutoff_ms": cutoff_ms,
+            "provisional_cutoff_ms": provisional_cutoff_ms,
+            "is_provisional": is_provisional,
+            "last_assess_reset_session_key": comp.get("last_assess_reset_session_key"),
+            "last_assess_reset_cutoff_ms": comp.get("last_assess_reset_cutoff_ms"),
+            "active_turn": active_turn,
+            "counts": counts,
+            "recent_events_count": counts["recent_events"],
+            "assessed_events_count": counts["assessed_events"],
+            "pending_outbox_count": counts["pending_outbox"],
+            "updated_at_ms": state.get("updated_at_ms"),
+        }
 
     def read_sync_state(self) -> dict:
         with self._locked_dir() as dir_fd:
@@ -1753,12 +1933,15 @@ class CompanionStateStore:
                                 ):
                                     target_ev["msgtype"] = new_msgtype
                                 target_ev["edited_at_ms"] = ts_ms
-                                target_ev["mentioned_bots"] = sorted(
-                                    extract_mentioned_bots(new_body, new_content)
-                                )
-                                target_ev["is_new_command"] = is_new_command_message(
+                                is_edited_new_cmd = is_new_command_message(
                                     new_body, new_content
                                 )
+                                target_ev["mentioned_bots"] = sorted(
+                                    extract_new_command_mentioned_bots(new_body, new_content)
+                                    if is_edited_new_cmd
+                                    else extract_mentioned_bots(new_body, new_content)
+                                )
+                                target_ev["is_new_command"] = is_edited_new_cmd
                             for part in partitions.values():
                                 if not isinstance(part, dict):
                                     continue
@@ -1786,8 +1969,12 @@ class CompanionStateStore:
                     if event_id in recent_by_id:
                         continue
 
-                    mentioned_bots = sorted(extract_mentioned_bots(body, content))
                     is_new_cmd = is_new_command_message(body, content)
+                    mentioned_bots = sorted(
+                        extract_new_command_mentioned_bots(body, content)
+                        if is_new_cmd
+                        else extract_mentioned_bots(body, content)
+                    )
                     mentions_self = self_user_id in mentioned_bots
                     relay_payload = content.get(COMPANION_RELAY_KEY)
                     has_relay_payload = msgtype == "m.notice" and isinstance(relay_payload, dict)
@@ -1951,6 +2138,18 @@ class CompanionStateStore:
             room_data["updated_at_ms"] = now_ms()
             self._write_room_events_unlocked(dir_fd, room_data)
 
+            latest_new_ts_ms = find_latest_targeted_new_command_ts_ms(
+                recent_events,
+                self_user_id,
+            )
+            if isinstance(latest_new_ts_ms, int) and latest_new_ts_ms > 0:
+                comp_state = self._read_companion_state_unlocked(dir_fd)
+                prev_new_ts_ms = _safe_int(comp_state.get("last_new_origin_server_ts_ms"), 0)
+                if latest_new_ts_ms > prev_new_ts_ms:
+                    comp_state["last_new_origin_server_ts_ms"] = latest_new_ts_ms
+                    comp_state["updated_at_ms"] = now_ms()
+                    self._write_companion_state_unlocked(dir_fd, comp_state)
+
         return processed
 
 
@@ -2064,9 +2263,29 @@ class SessionGenerationResolver:
                 else self.state_store.started_at_ms
             )
 
-        if is_new_key:
-            # /new creates the sessions row immediately; cutoff_ms is sessions.created_at_ms.
-            if session_created_at_ms is not None and session_created_at_ms > 0:
+        norm_agent = (self.agent_name or "skrye").strip().lower()
+        if norm_agent == "momin":
+            norm_agent = "traya"
+        target_user_id = f"@{norm_agent}:{SERVER_DOMAIN}"
+        room_data = self.state_store.read_room_events()
+        recent_events = room_data.get("recent_events")
+        if not isinstance(recent_events, list):
+            recent_events = []
+        timeline_new_ts_ms = find_latest_targeted_new_command_ts_ms(
+            recent_events,
+            target_user_id,
+        )
+        stored_new_ts_ms = _safe_int(state.get("last_new_origin_server_ts_ms"), 0)
+        new_event_ts_ms = max(
+            timeline_new_ts_ms if isinstance(timeline_new_ts_ms, int) and timeline_new_ts_ms > 0 else 0,
+            stored_new_ts_ms if stored_new_ts_ms > 0 else 0,
+        )
+
+        if is_new_key or new_event_ts_ms > 0:
+            if new_event_ts_ms > 0:
+                cutoff_ms = new_event_ts_ms
+                is_provisional = False
+            elif session_created_at_ms is not None and session_created_at_ms > 0:
                 cutoff_ms = session_created_at_ms
                 is_provisional = False
             else:
@@ -2087,11 +2306,13 @@ class SessionGenerationResolver:
             and bool(previous_session_key)
             and previous_session_key != active_session_key
         )
+        persisted_new_ts_ms = new_event_ts_ms if new_event_ts_ms > 0 else state.get("last_new_origin_server_ts_ms")
 
         if (
             state.get("provisional_cutoff_ms") != provisional_cutoff_ms
             or state.get("active_session_key") != active_session_key
             or state.get("cutoff_ms") != cutoff_ms
+            or state.get("last_new_origin_server_ts_ms") != persisted_new_ts_ms
             or state.get("is_provisional") != is_provisional
         ):
             self.state_store.write_companion_state(
@@ -2099,6 +2320,7 @@ class SessionGenerationResolver:
                     "provisional_cutoff_ms": provisional_cutoff_ms,
                     "active_session_key": active_session_key,
                     "cutoff_ms": cutoff_ms,
+                    "last_new_origin_server_ts_ms": persisted_new_ts_ms,
                     "is_provisional": is_provisional,
                 }
             )
@@ -2109,6 +2331,7 @@ class SessionGenerationResolver:
             "cutoff_ms": cutoff_ms,
             "provisional_cutoff_ms": provisional_cutoff_ms,
             "session_created_at_ms": session_created_at_ms,
+            "last_new_origin_server_ts_ms": persisted_new_ts_ms,
             "is_provisional": is_provisional,
             "session_changed": session_changed,
             "previous_session_key": previous_session_key,
@@ -2510,15 +2733,18 @@ class MoltisRpcClient:
         session_key: str = ASSESSMENT_SESSION_KEY,
         ephemeral: bool = True,
         active_tools: list[str] | None = None,
-        timeout: float = 25.0,
+        timeout: float = ASSESSMENT_TIMEOUT_SECS,
+        tool_policy: dict | None = None,
     ) -> dict:
-        params = {
+        params: dict[str, object] = {
             "model": model,
             "message": message,
             "_session_key": session_key,
             "_ephemeral": bool(ephemeral),
             "active_tools": list(active_tools) if active_tools is not None else [],
         }
+        if tool_policy is not None:
+            params["_tool_policy"] = dict(tool_policy)
         return self.call("chat.send_sync", params, timeout=timeout)
 
 
@@ -2593,6 +2819,46 @@ class AssessmentWorker:
                     removed += 1
             self._queue = kept
         return removed
+
+    def reset_assessment_history_if_needed(
+        self,
+        active_session_key: str,
+        cutoff_ms: int,
+    ) -> bool:
+        """Reset companion:matrix-assess history.jsonl when /new advances the session generation."""
+        clean_key = (active_session_key or "").strip()
+        clean_cutoff = _safe_int(cutoff_ms, 0)
+        if not clean_key:
+            return False
+
+        comp_state = self.state_store.read_companion_state()
+        last_key = comp_state.get("last_assess_reset_session_key")
+        last_cutoff = comp_state.get("last_assess_reset_cutoff_ms")
+
+        if last_key is None:
+            self.state_store.write_companion_state(
+                {
+                    "last_assess_reset_session_key": clean_key,
+                    "last_assess_reset_cutoff_ms": clean_cutoff,
+                }
+            )
+            return False
+
+        if clean_key == last_key and clean_cutoff == _safe_int(last_cutoff, 0):
+            return False
+
+        for hist_path in history_paths(self.resolver.data_dir, ASSESSMENT_SESSION_KEY):
+            with contextlib.suppress(OSError):
+                if hist_path.exists():
+                    hist_path.unlink()
+
+        self.state_store.write_companion_state(
+            {
+                "last_assess_reset_session_key": clean_key,
+                "last_assess_reset_cutoff_ms": clean_cutoff,
+            }
+        )
+        return True
 
     def is_eligible_event(
         self,
@@ -2768,6 +3034,10 @@ class AssessmentWorker:
 
         # Recheck 1: BEFORE calling chat.send_sync
         gen_before = self.resolver.resolve(now_override_ms=stamp_ms)
+        self.reset_assessment_history_if_needed(
+            str(gen_before["active_session_key"]),
+            _safe_int(gen_before["cutoff_ms"], 0),
+        )
         if (
             gen_before["active_session_key"] != job_session_key
             or job_ts_ms < _safe_int(gen_before["cutoff_ms"], 0)
@@ -2798,6 +3068,7 @@ class AssessmentWorker:
                 ephemeral=True,
                 active_tools=[],
                 timeout=self.timeout,
+                tool_policy={"deny": ["*"]},
             )
         except Exception as exc:
             sys.stderr.write(f"moltis-matrix-companion assessment RPC error ({event_id}): {exc}\n")
@@ -3875,7 +4146,13 @@ class ModeratorWakeupCoordinator:
                 continue
             if is_conversational_room_message(ev) and ev.get("sender") in ALLOWLIST_USER_IDS:
                 body = str(ev.get("body") or "")
-                if is_new_command_targeting(body, TRAYA_ID) or is_new_command_targeting(body, SKRYE_ID):
+                ev_mentioned = ev.get("mentioned_bots")
+                mentioned_list = ev_mentioned if isinstance(ev_mentioned, list) else None
+                if is_new_command_targeting(
+                    body, TRAYA_ID, mentioned_bots=mentioned_list
+                ) or is_new_command_targeting(
+                    body, SKRYE_ID, mentioned_bots=mentioned_list
+                ):
                     ev_ts = _safe_int(ev.get("origin_server_ts"), current_ms)
                     last_mod_reset_ts = max(last_mod_reset_ts, ev_ts)
 
@@ -4064,7 +4341,13 @@ class ModeratorWakeupCoordinator:
                 continue
             if is_conversational_room_message(ev) and ev.get("sender") in ALLOWLIST_USER_IDS:
                 body = str(ev.get("body") or "")
-                if is_new_command_targeting(body, SKRYE_ID) or is_new_command_targeting(body, TRAYA_ID):
+                ev_mentioned = ev.get("mentioned_bots")
+                mentioned_list = ev_mentioned if isinstance(ev_mentioned, list) else None
+                if is_new_command_targeting(
+                    body, SKRYE_ID, mentioned_bots=mentioned_list
+                ) or is_new_command_targeting(
+                    body, TRAYA_ID, mentioned_bots=mentioned_list
+                ):
                     ev_ts = _safe_int(ev.get("origin_server_ts"), current_ms)
                     last_mod_reset_ts = max(last_mod_reset_ts, ev_ts)
                     for t_entry in targets.values():
@@ -4631,6 +4914,10 @@ class MatrixSyncEngine:
         active_session_key = gen["active_session_key"]
         cutoff_ms = gen["cutoff_ms"]
 
+        self.assessment_worker.reset_assessment_history_if_needed(
+            active_session_key,
+            cutoff_ms,
+        )
         if gen.get("session_changed"):
             self.assessment_worker.cancel_stale(active_session_key, cutoff_ms)
 
@@ -4645,6 +4932,18 @@ class MatrixSyncEngine:
             self_user_id=self.self_user_id,
             seed_only=seed_only,
         )
+        if not seed_only and any(
+            isinstance(ev, dict) and bool(ev.get("is_new_command"))
+            for ev in processed
+        ):
+            gen = self.resolver.resolve(now_override_ms=stamp_ms)
+            active_session_key = gen["active_session_key"]
+            cutoff_ms = gen["cutoff_ms"]
+            self.assessment_worker.reset_assessment_history_if_needed(
+                active_session_key,
+                cutoff_ms,
+            )
+            self.assessment_worker.cancel_stale(active_session_key, cutoff_ms)
 
         next_batch = sync_response.get("next_batch")
         if isinstance(next_batch, str) and next_batch.strip():
@@ -4689,6 +4988,10 @@ class MatrixSyncEngine:
         """Run timer/peek/queue reconciliation without requiring a new /sync batch."""
         stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         gen = self.resolver.resolve(now_override_ms=stamp_ms)
+        self.assessment_worker.reset_assessment_history_if_needed(
+            gen["active_session_key"],
+            gen["cutoff_ms"],
+        )
         if gen.get("session_changed"):
             self.assessment_worker.cancel_stale(gen["active_session_key"], gen["cutoff_ms"])
 
@@ -4878,9 +5181,9 @@ def resolve_hook_session_generation(
     is_new_key = active_session_key.startswith("session:")
 
     comp_state = _read_companion_state_for_hook(state_dir)
+    room_events = _read_room_events_for_hook(state_dir)
     provisional_cutoff_ms = comp_state.get("provisional_cutoff_ms")
     if not isinstance(provisional_cutoff_ms, int) or provisional_cutoff_ms <= 0:
-        room_events = _read_room_events_for_hook(state_dir)
         cand = room_events.get("provisional_cutoff_ms") or room_events.get("updated_at_ms")
         if isinstance(cand, int) and cand > 0:
             provisional_cutoff_ms = cand
@@ -4891,8 +5194,24 @@ def resolve_hook_session_generation(
         else now_ms()
     )
 
-    if is_new_key:
-        if session_created_at_ms is not None and session_created_at_ms > 0:
+    target_user_id = f"@{norm_agent}:{SERVER_DOMAIN}"
+    recent_events = room_events.get("recent_events")
+    if not isinstance(recent_events, list):
+        recent_events = []
+    timeline_new_ts_ms = find_latest_targeted_new_command_ts_ms(
+        recent_events,
+        target_user_id,
+    )
+    stored_new_ts_ms = _safe_int(comp_state.get("last_new_origin_server_ts_ms"), 0)
+    new_event_ts_ms = max(
+        timeline_new_ts_ms if isinstance(timeline_new_ts_ms, int) and timeline_new_ts_ms > 0 else 0,
+        stored_new_ts_ms if stored_new_ts_ms > 0 else 0,
+    )
+
+    if is_new_key or new_event_ts_ms > 0:
+        if new_event_ts_ms > 0:
+            cutoff_ms = new_event_ts_ms
+        elif session_created_at_ms is not None and session_created_at_ms > 0:
             cutoff_ms = session_created_at_ms
         else:
             cutoff_ms = fallback_provisional_ms
@@ -5115,6 +5434,72 @@ def restore_private_persona(
             continue
         sections.append(f"{heading}\n\n{text}")
     return sections
+
+
+_AVAILABLE_SKILLS_BLOCK_RE = re.compile(
+    r"(?:\n[ \t]*)*<available_skills\b[^>]*>.*?</available_skills>(?:[ \t]*\n)*",
+    re.DOTALL | re.IGNORECASE,
+)
+
+_TOOLS_SECTION_HEADINGS = frozenset(
+    {
+        "## tooling context (tools.md)",
+        "## workspace tools (tools.md)",
+        "## tools (tools.md)",
+        "# tools (tools.md)",
+        "# tools",
+        "## available tools",
+        "# available tools",
+        "## host environment",
+        "## files and shell",
+        "## git and execution boundaries",
+        "## github",
+        "## references and mcp",
+        "## voice, history, and connectors",
+    }
+)
+
+
+def strip_assessment_system_prompt(system_content: str) -> str:
+    """Strip <available_skills> and TOOLS.md / tool-catalogue blocks from assessment system prompts."""
+    if not isinstance(system_content, str) or not system_content:
+        return ""
+    cleaned = _AVAILABLE_SKILLS_BLOCK_RE.sub("\n\n", system_content)
+
+    lines = cleaned.splitlines()
+    kept_lines: list[str] = []
+    skipping_level: int | None = None
+    in_fence = False
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            in_fence = not in_fence
+
+        if not in_fence and stripped == "@ENVIRONMENT@":
+            continue
+
+        if not in_fence and stripped.startswith("#"):
+            hashes = len(stripped) - len(stripped.lstrip("#"))
+            heading_norm = stripped.lower()
+            if skipping_level is not None and hashes <= skipping_level:
+                skipping_level = None
+            if (
+                heading_norm in _TOOLS_SECTION_HEADINGS
+                or "(tools.md)" in heading_norm
+                or heading_norm.startswith(("## available tools", "# available tools"))
+            ):
+                skipping_level = hashes
+                continue
+
+        if skipping_level is not None:
+            continue
+
+        kept_lines.append(line)
+
+    result = "\n".join(kept_lines)
+    result = re.sub(r"\n{3,}", "\n\n", result).strip()
+    return f"{result}\n" if result and system_content.endswith("\n") else result
 
 
 def is_in_session_history(
@@ -5480,12 +5865,43 @@ def run_council_hook(
         return {"action": "continue"}
     session_key = session_key.strip()
 
-    if session_key.startswith(ASSESSMENT_SESSION_PREFIX):
-        return {"action": "continue"}
-
     data_dir = Path(
         os.environ.get("MOLTIS_DATA_DIR") or os.path.expanduser("~/.moltis")
     )
+
+    if session_key.startswith(ASSESSMENT_SESSION_PREFIX):
+        if event_name == "BeforeToolCall":
+            return {"action": "continue"}
+        messages = payload.get("messages")
+        if (
+            not isinstance(messages, list)
+            or not messages
+            or not isinstance(messages[0], dict)
+            or messages[0].get("role") != "system"
+        ):
+            return {"action": "continue"}
+        system_content = messages[0].get("content")
+        if not isinstance(system_content, str):
+            return {"action": "continue"}
+        restored_sections = restore_private_persona(
+            data_dir,
+            system_content,
+            tool_count=0,
+        )
+        candidate_content = system_content
+        if restored_sections:
+            candidate_content = (
+                candidate_content.rstrip()
+                + "\n\n"
+                + "\n\n".join(restored_sections)
+                + "\n"
+            )
+        stripped_content = strip_assessment_system_prompt(candidate_content)
+        if stripped_content != system_content:
+            messages[0]["content"] = stripped_content
+            return {"action": "modify", "data": {"messages": messages}}
+        return {"action": "continue"}
+
     env_state_dir = (os.environ.get("MOLTIS_COMPANION_STATE_DIR") or "").strip()
     if env_state_dir:
         state_dir = Path(env_state_dir).expanduser()
@@ -5641,10 +6057,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Run a single sync cycle and exit",
     )
+    parser.add_argument(
+        "--status",
+        action="store_true",
+        help="Print a credential-free JSON status summary and exit",
+    )
     return parser
 
 
 def resolve_runtime_config(args: argparse.Namespace) -> dict:
+    status_mode = bool(getattr(args, "status", False))
     agent_name = (args.agent_name or "").strip().lower()
     if agent_name == "momin":
         agent_name = "traya"
@@ -5653,7 +6075,14 @@ def resolve_runtime_config(args: argparse.Namespace) -> dict:
     agent_display_name = derive_display_name(agent_name, args.agent_display_name)
     main_model = (args.main_model or "").strip()
     if not main_model:
-        raise ValueError("mainModel is required")
+        if status_mode:
+            main_model = (
+                "openai-codex::gpt-6-astra"
+                if agent_name == "traya"
+                else "gemini::gemini-4-argon"
+            )
+        else:
+            raise ValueError("mainModel is required")
     self_user_id = (args.self_user_id or f"@{agent_name}:{SERVER_DOMAIN}").strip()
     room_id = (args.room_id or DEFAULT_ROOM_ID).strip()
     homeserver_url = (args.homeserver_url or DEFAULT_HOMESERVER_URL).strip()
@@ -5678,6 +6107,7 @@ def resolve_runtime_config(args: argparse.Namespace) -> dict:
         "state_dir": state_dir,
         "rpc_url": rpc_url,
         "once": bool(getattr(args, "once", False)),
+        "status": status_mode,
     }
 
 
@@ -5697,6 +6127,11 @@ def main(argv: list[str] | None = None) -> int:
         agent_name=cfg["agent_name"],
         room_id=cfg["room_id"],
     )
+    if cfg["status"]:
+        summary = store.build_status_summary(resolver=resolver)
+        sys.stdout.write(json.dumps(summary, indent=2, sort_keys=True) + "\n")
+        sys.stdout.flush()
+        return 0
     matrix_client = MatrixClient(
         homeserver_url=cfg["homeserver_url"],
         self_user_id=cfg["self_user_id"],

@@ -78,6 +78,11 @@ Cloudflare Docs queries documentation, while `cloudflare-api` accesses the live 
 Use `moltis-telegram-voice` (`<text>` or `--body-file <path>`) through `exec` to send Telegram voice notes.
 Pass plain prose without Markdown or raw URLs.
 
+Use `moltis-matrix-companion --status` through `exec` to inspect a credential-free JSON summary of Matrix companion state.
+Matrix companion runtime files live under `$HOME/.local/state/moltis/matrix-companion-<agent>/` (`$XDG_STATE_HOME/moltis/matrix-companion-<agent>/`): operational `state.json` (`0600`), turn-phase `active-turn.json` (`0600`), and credential `auth.json` (`0600`).
+GitHub companion runtime files live under `$HOME/.local/state/moltis/github-companion-<agent>/` (`$XDG_STATE_HOME/moltis/github-companion-<agent>/`): `state.json`, `active-dispatch.json`, `security-events.jsonl`, `outbox.json`, and `auth.json` (`0600`).
+Use `moltis-matrix-companion --status` or read `state.json` and `active-turn.json` for diagnostics; never read or expose `auth.json`.
+
 The `cron` runs action returns a bounded subset of the latest records in chronological order, with the latest record last.
 Do not mistake the first returned record for the oldest record in the complete history.
 
