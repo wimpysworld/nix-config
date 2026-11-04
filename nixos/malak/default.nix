@@ -12,7 +12,6 @@
   ...
 }:
 let
-  inherit (config.noughty) host;
   username = config.noughty.user.name;
 in
 {
@@ -25,28 +24,8 @@ in
   ];
 
   boot = {
-    initrd = {
-      availableKernelModules = [
-        "e1000e"
-      ];
-      network = {
-        enable = true;
-        ssh = {
-          enable = true;
-          hostKeys = [ "/etc/ssh/initrd_ssh_host_ed25519_key" ];
-          ignoreEmptyHostKeys = true;
-          port = 2222;
-        };
-      };
-    };
     kernelModules = [
       "kvm-intel"
-    ];
-    # Make sure the initrd has the necessary IPv4 configuration
-    # - ip=ip-addr:<ignore>:gw-addr:netmask:hostname:interface:autoconf:dns1-addr:dns2-addr
-    # - https://www.kernel.org/doc/Documentation/filesystems/nfs/nfsroot.txt
-    kernelParams = [
-      "ip=116.202.241.253::116.202.241.193:255.255.255.192:${host.name}-initrd:eth0:off:185.12.64.1:185.12.64.2"
     ];
     # Using GRUB because malak has no EFI boot available
     loader = {

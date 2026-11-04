@@ -237,6 +237,10 @@ in
   # Workaround https://github.com/NixOS/nixpkgs/issues/180175
   systemd.services.NetworkManager-wait-online.enable = lib.mkIf config.networking.networkmanager.enable false;
 
+  systemd.tmpfiles.rules = lib.optionals (!config.networking.useNetworkd) [
+    "R /run/systemd/netif - - - - -"
+  ];
+
   users.users.${username}.extraGroups = lib.optionals config.networking.networkmanager.enable [
     "networkmanager"
   ];
