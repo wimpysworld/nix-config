@@ -1944,10 +1944,88 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         assert s_run is not None
         self.assertEqual(s_run["bound_event_id"], "$relayed_invite_ev")
         self.assertEqual(s_run["active_reaction_key"], "🐝")
+        s_bee_id = s_run["active_reaction_event_id"]
+        self.assertIsNotNone(s_bee_id)
         self.assertEqual(
             self.httpd.reactions_sent[-1]["body"]["m.relates_to"],
             {"rel_type": "m.annotation", "event_id": "$relayed_invite_ev", "key": "🐝"},
         )
+
+        # Advance 6s so progress notice is posted.
+        self.current_time_ms = t_relayed + 6_000
+        s_engine.tick(now_override_ms=self.current_time_ms)
+        s_run = s_store.get_run_state(s_session_key, "run-s-relayed")
+        assert s_run is not None
+        s_prog_id = s_run["progress_event_id"]
+        self.assertIsNotNone(s_prog_id)
+
+        # Skrye finishes turn at +14s: chat.peek is False, final assistant reply is in history.jsonl and recent_events.
+        s_reply = "I verified the relayed invitation binding and completion lifecycle."
+        self.httpd.peek_active = False
+        self.current_time_ms = t_relayed + 14_000
+        self.write_history(
+            s_session_key,
+            [
+                {
+                    "role": "user",
+                    "run_id": "run-s-relayed",
+                    "sender_id": companion.TRAYA_ID,
+                    "content": relayed_invite_body,
+                    "created_at": t_relayed,
+                },
+                {
+                    "role": "assistant",
+                    "run_id": "run-s-relayed",
+                    "content": s_reply,
+                    "created_at": self.current_time_ms,
+                },
+            ],
+            agent_name="skrye",
+        )
+        s_sync_done = s_engine.process_sync_batch(
+            {
+                "next_batch": "s_relayed_invite_done",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$s_relayed_invite_reply",
+                                        "sender": companion.SKRYE_ID,
+                                        "origin_server_ts": self.current_time_ms,
+                                        "content": {"msgtype": "m.text", "body": s_reply},
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        self.assertEqual(s_sync_done["turn_status"]["status"], "completed")
+        s_run = s_store.get_run_state(s_session_key, "run-s-relayed")
+        assert s_run is not None
+        self.assertTrue(s_run["cleaned_up"])
+        self.assertIsNone(s_run["active_reaction_event_id"])
+        self.assertIsNone(s_run["progress_event_id"])
+        self.assertEqual(s_run["reply_event_id"], "$s_relayed_invite_reply")
+        self.assertEqual(s_run["terminal_notice_event_id"], s_prog_id)
+        self.assertEqual(s_run["terminal_notice_text"], "🏁 Skrye finished in 00:14")
+        self.assertNotIn("Completion unverified", s_run["terminal_notice_text"])
+        s_terminal_edit = self.httpd.messages_sent[-1]["body"]
+        self.assertEqual(
+            s_terminal_edit["m.relates_to"],
+            {"rel_type": "m.replace", "event_id": s_prog_id},
+        )
+        self.assertEqual(
+            s_terminal_edit["m.new_content"]["body"],
+            "🏁 Skrye finished in 00:14",
+        )
+        s_redacted_targets = [r["path"].split("/redact/")[1].split("/")[0] for r in self.httpd.redactions_sent]
+        self.assertIn(s_bee_id, s_redacted_targets)
+        self.assertNotIn(s_prog_id, s_redacted_targets)
 
 
 class Criterion3AssessmentOutputValidationTests(CompanionTestBase):
