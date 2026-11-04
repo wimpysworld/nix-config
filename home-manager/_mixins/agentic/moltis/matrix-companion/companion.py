@@ -822,6 +822,27 @@ def is_conversational_room_message(
     return True
 
 
+def is_moderator_wakeup_notice_event(ev: dict) -> bool:
+    """Return True for direct or relayed moderator floor invitation m.notice events."""
+    if not isinstance(ev, dict):
+        return False
+    ev_content = _as_dict(ev.get("content"))
+    msgtype = ev.get("msgtype") or ev_content.get("msgtype")
+    if msgtype != "m.notice":
+        return False
+    sender = str(ev.get("sender") or "").strip()
+    if sender not in (SKRYE_ID, TRAYA_ID):
+        return False
+    if isinstance(ev.get("companion_relay"), dict) or isinstance(
+        ev_content.get(COMPANION_RELAY_KEY), dict
+    ):
+        return False
+    raw_body = ev.get("body") if "body" in ev else ev_content.get("body")
+    if not isinstance(raw_body, str):
+        return False
+    return raw_body.strip().startswith("🛎️ Inviting ")
+
+
 def extract_record_sender(rec: dict) -> str:
     """Extract sender identity from nested channel.sender_id or top-level history fields."""
     if not isinstance(rec, dict):
@@ -905,6 +926,18 @@ def format_terminal_notice(
     )
 
 
+def clip_at_word_boundary(text: str, limit: int = 120) -> str:
+    """Truncate text at the last whitespace boundary at or before limit - 3 with an ellipsis."""
+    if len(text) <= limit:
+        return text
+    cutoff = max(0, limit - 3)
+    prefix = text[:cutoff]
+    parts = prefix.rsplit(None, 1)
+    if len(parts) == 2 and parts[0]:
+        return parts[0] + "..."
+    return prefix.rstrip() + "..."
+
+
 def format_target_message_preview(
     body: str,
     max_chars: int = TARGET_PREVIEW_MAX_CHARS,
@@ -914,9 +947,7 @@ def format_target_message_preview(
     sanitised = sanitize_no_matrix_mentions(stripped).replace('"', "'")
     single_line = " ".join(sanitised.split())
     limit = max(16, _safe_int(max_chars, TARGET_PREVIEW_MAX_CHARS))
-    if len(single_line) > limit:
-        return single_line[: limit - 3].rstrip() + "..."
-    return single_line
+    return clip_at_word_boundary(single_line, limit)
 
 
 def select_raised_hand_speaker(
@@ -3414,7 +3445,7 @@ class TurnStatusReconciler:
             ev_id = ev.get("event_id")
             if not isinstance(ev_id, str) or not ev_id or ev_id in already_bound_ids:
                 continue
-            if not is_conversational_room_message(ev):
+            if not (is_conversational_room_message(ev) or is_moderator_wakeup_notice_event(ev)):
                 continue
             if _safe_int(ev.get("origin_server_ts"), 0) < cutoff_ms:
                 continue
@@ -5724,6 +5755,8 @@ def build_room_context_block(
     for ev in recent_events:
         if not isinstance(ev, dict):
             continue
+        if not is_conversational_room_message(ev):
+            continue
         ts_ms = _safe_int(ev.get("origin_server_ts"), 0)
         if ts_ms < cutoff_ms:
             continue
@@ -5789,9 +5822,7 @@ def build_room_context_block(
         if ev_id in included_event_ids:
             continue
         sender = str(ev.get("sender") or "unknown")
-        snippet = str(ev.get("body") or "").strip()
-        if len(snippet) > 120:
-            snippet = snippet[:117] + "..."
+        snippet = clip_at_word_boundary(str(ev.get("body") or "").strip(), 120)
         snippet_json = json.dumps(snippet, ensure_ascii=False).replace(
             "</room_context>", "<\\/room_context>"
         )

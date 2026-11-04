@@ -1584,6 +1584,371 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
             "🏁 Skrye finished in 00:14",
         )
 
+    def test_moderator_invitation_notice_binding_and_immediate_verified_completion(self) -> None:
+        direct_invite_body = (
+            f'🛎️ Inviting {companion.ZANNAH_ID} to the floor on Martin\'s message: "Review the companion notice binding" ✋🏻'
+        )
+        relayed_invite_body = (
+            f'🛎️ Inviting {companion.SKRYE_ID} to the floor on Martin\'s message: "Review the companion notice binding" ✋🏻'
+        )
+        relay_request_body = (
+            '🔔 Relaying floor invitation for Skrye on Martin\'s message: "Review the companion notice binding" ✋🏻'
+        )
+
+        # Direct and relayed floor invitations match is_moderator_wakeup_notice_event,
+        # while internal companion_relay notices, progress status notices, and conversational m.text do not.
+        self.assertTrue(
+            companion.is_moderator_wakeup_notice_event(
+                {
+                    "sender": companion.SKRYE_ID,
+                    "msgtype": "m.notice",
+                    "body": direct_invite_body,
+                }
+            )
+        )
+        self.assertTrue(
+            companion.is_moderator_wakeup_notice_event(
+                {
+                    "sender": companion.TRAYA_ID,
+                    "msgtype": "m.notice",
+                    "body": relayed_invite_body,
+                }
+            )
+        )
+        self.assertFalse(
+            companion.is_moderator_wakeup_notice_event(
+                {
+                    "sender": companion.SKRYE_ID,
+                    "msgtype": "m.notice",
+                    "body": direct_invite_body,
+                    "companion_relay": {"selection_id": "$m1:seq1", "selected_speaker": companion.SKRYE_ID},
+                }
+            )
+        )
+        self.assertFalse(
+            companion.is_moderator_wakeup_notice_event(
+                {
+                    "sender": companion.SKRYE_ID,
+                    "msgtype": "m.notice",
+                    "body": relay_request_body,
+                    "companion_relay": {"selection_id": "$m1:seq1", "selected_speaker": companion.SKRYE_ID},
+                }
+            )
+        )
+        self.assertFalse(
+            companion.is_moderator_wakeup_notice_event(
+                {
+                    "sender": companion.SKRYE_ID,
+                    "msgtype": "m.notice",
+                    "body": "🔎 00:05 elapsed - Step 1",
+                }
+            )
+        )
+        self.assertFalse(
+            companion.is_conversational_room_message(
+                {
+                    "sender": companion.SKRYE_ID,
+                    "msgtype": "m.notice",
+                    "body": direct_invite_body,
+                }
+            )
+        )
+
+        # 1. Direct moderator invitation notice from SKRYE_ID wakes Zannah -> binds, posts 🐝, edits progress notice,
+        # and completes immediately with 🏁 Zannah finished in ... when Zannah's reply lands (without waiting 30s).
+        z_store, z_resolver, _, _, z_engine = self.make_components(agent_name="zannah")
+        z_session_key = z_resolver.default_session_key
+        z_hook = self.write_hook_script(agent_name="zannah")
+        z_engine.process_sync_batch({"next_batch": "z0", "rooms": {"join": {}}})
+
+        t_invite = self.current_time_ms + 1_000
+        self.current_time_ms = t_invite
+        self.write_history(
+            z_session_key,
+            [
+                {
+                    "role": "user",
+                    "run_id": "run-z-invite",
+                    "sender_id": companion.SKRYE_ID,
+                    "content": direct_invite_body,
+                    "created_at": t_invite,
+                }
+            ],
+            agent_name="zannah",
+        )
+        self.invoke_hook(
+            {
+                "event": "BeforeLLMCall",
+                "session_key": z_session_key,
+                "iteration": 1,
+                "messages": [{"role": "system", "content": "Sys"}],
+            },
+            "zannah",
+            z_hook,
+        )
+        self.httpd.reactions_sent.clear()
+        self.httpd.messages_sent.clear()
+        self.httpd.redactions_sent.clear()
+
+        # Ingest internal companion_relay notice (even with matching body/sender/👀) and progress status notice first:
+        # neither may bind.
+        z_engine.process_sync_batch(
+            {
+                "next_batch": "z_refuse_notices",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$relay_internal",
+                                        "sender": companion.SKRYE_ID,
+                                        "origin_server_ts": t_invite,
+                                        "content": {
+                                            "msgtype": "m.notice",
+                                            "body": direct_invite_body,
+                                            companion.COMPANION_RELAY_KEY: {
+                                                "selection_id": "$m1:seq1",
+                                                "selected_speaker": companion.SKRYE_ID,
+                                            },
+                                        },
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$ack_relay_internal",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": t_invite + 2,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$relay_internal",
+                                                "key": "👀",
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$prog_status_notice",
+                                        "sender": companion.SKRYE_ID,
+                                        "origin_server_ts": t_invite + 3,
+                                        "content": {
+                                            "msgtype": "m.notice",
+                                            "body": "💭 00:05 elapsed - Step 1",
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        z_run = z_store.get_run_state(z_session_key, "run-z-invite")
+        assert z_run is not None
+        self.assertIsNone(z_run["bound_event_id"])
+        self.assertEqual(len(self.httpd.reactions_sent), 0)
+
+        # Now ingest the real direct moderator invitation notice from SKRYE_ID and Zannah's 👀 ack.
+        z_engine.process_sync_batch(
+            {
+                "next_batch": "z_bind_direct_invite",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$direct_invite_ev",
+                                        "sender": companion.SKRYE_ID,
+                                        "origin_server_ts": t_invite + 10,
+                                        "content": {
+                                            "msgtype": "m.notice",
+                                            "body": direct_invite_body,
+                                            "m.mentions": {"user_ids": [companion.ZANNAH_ID]},
+                                        },
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$ack_direct_invite",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": t_invite + 15,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$direct_invite_ev",
+                                                "key": "👀",
+                                            }
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        z_run = z_store.get_run_state(z_session_key, "run-z-invite")
+        assert z_run is not None
+        self.assertEqual(z_run["bound_event_id"], "$direct_invite_ev")
+        self.assertEqual(z_run["active_reaction_key"], "🐝")
+        z_bee_id = z_run["active_reaction_event_id"]
+        self.assertIsNotNone(z_bee_id)
+        self.assertEqual(
+            self.httpd.reactions_sent[-1]["body"]["m.relates_to"],
+            {"rel_type": "m.annotation", "event_id": "$direct_invite_ev", "key": "🐝"},
+        )
+
+        # Advance 6s so progress notice is posted.
+        self.current_time_ms = t_invite + 6_000
+        z_engine.tick(now_override_ms=self.current_time_ms)
+        z_run = z_store.get_run_state(z_session_key, "run-z-invite")
+        assert z_run is not None
+        z_prog_id = z_run["progress_event_id"]
+        self.assertIsNotNone(z_prog_id)
+
+        # Zannah finishes turn at +12s: chat.peek is False, final assistant reply is in history.jsonl and recent_events.
+        z_reply = "I verified the invitation binding and progress lifecycle."
+        self.httpd.peek_active = False
+        self.current_time_ms = t_invite + 12_000
+        self.write_history(
+            z_session_key,
+            [
+                {
+                    "role": "user",
+                    "run_id": "run-z-invite",
+                    "sender_id": companion.SKRYE_ID,
+                    "content": direct_invite_body,
+                    "created_at": t_invite,
+                },
+                {
+                    "role": "assistant",
+                    "run_id": "run-z-invite",
+                    "content": z_reply,
+                    "created_at": self.current_time_ms,
+                },
+            ],
+            agent_name="zannah",
+        )
+        sync_done = z_engine.process_sync_batch(
+            {
+                "next_batch": "z_invite_done",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$z_invite_reply",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": self.current_time_ms,
+                                        "content": {"msgtype": "m.text", "body": z_reply},
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        # Completes immediately on the same sync batch without waiting the 30s window.
+        self.assertEqual(sync_done["turn_status"]["status"], "completed")
+        z_run = z_store.get_run_state(z_session_key, "run-z-invite")
+        assert z_run is not None
+        self.assertTrue(z_run["cleaned_up"])
+        self.assertIsNone(z_run["active_reaction_event_id"])
+        self.assertEqual(z_run["reply_event_id"], "$z_invite_reply")
+        self.assertEqual(z_run["terminal_notice_event_id"], z_prog_id)
+        self.assertEqual(z_run["terminal_notice_text"], "🏁 Zannah finished in 00:12")
+        self.assertNotIn("Completion unverified", z_run["terminal_notice_text"])
+        redacted_targets = [r["path"].split("/redact/")[1].split("/")[0] for r in self.httpd.redactions_sent]
+        self.assertIn(z_bee_id, redacted_targets)
+
+        # 2. Relayed moderator invitation notice from TRAYA_ID wakes Skrye -> binds to $relayed_invite_ev.
+        self.httpd.peek_active = True
+        self.state_dir = self.root / "state-skrye-relayed-bind"
+        self.state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        s_store, s_resolver, _, _, s_engine = self.make_components(agent_name="skrye")
+        s_session_key = s_resolver.default_session_key
+        s_hook = self.write_hook_script(agent_name="skrye")
+        s_engine.process_sync_batch({"next_batch": "s0", "rooms": {"join": {}}})
+
+        t_relayed = self.current_time_ms + 2_000
+        self.current_time_ms = t_relayed
+        self.write_history(
+            s_session_key,
+            [
+                {
+                    "role": "user",
+                    "run_id": "run-s-relayed",
+                    "sender_id": companion.TRAYA_ID,
+                    "content": relayed_invite_body,
+                    "created_at": t_relayed,
+                }
+            ],
+            agent_name="skrye",
+        )
+        self.invoke_hook(
+            {
+                "event": "BeforeLLMCall",
+                "session_key": s_session_key,
+                "iteration": 1,
+                "messages": [{"role": "system", "content": "Sys"}],
+            },
+            "skrye",
+            s_hook,
+        )
+        self.httpd.reactions_sent.clear()
+        s_engine.process_sync_batch(
+            {
+                "next_batch": "s_bind_relayed_invite",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$relayed_invite_ev",
+                                        "sender": companion.TRAYA_ID,
+                                        "origin_server_ts": t_relayed,
+                                        "content": {
+                                            "msgtype": "m.notice",
+                                            "body": relayed_invite_body,
+                                            "m.mentions": {"user_ids": [companion.SKRYE_ID]},
+                                        },
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$ack_relayed_invite",
+                                        "sender": companion.SKRYE_ID,
+                                        "origin_server_ts": t_relayed + 5,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$relayed_invite_ev",
+                                                "key": "👀",
+                                            }
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        s_run = s_store.get_run_state(s_session_key, "run-s-relayed")
+        assert s_run is not None
+        self.assertEqual(s_run["bound_event_id"], "$relayed_invite_ev")
+        self.assertEqual(s_run["active_reaction_key"], "🐝")
+        self.assertEqual(
+            self.httpd.reactions_sent[-1]["body"]["m.relates_to"],
+            {"rel_type": "m.annotation", "event_id": "$relayed_invite_ev", "key": "🐝"},
+        )
+
 
 class Criterion3AssessmentOutputValidationTests(CompanionTestBase):
     """Criterion 3: 👌🏻/👍🏻/✋🏻 output validation and normalisation."""
@@ -3876,6 +4241,138 @@ class Criterion6RoomEventsDurabilityAndNewIsolationTests(CompanionTestBase):
         self.assertIn("earlier unmentioned room message(s) omitted since session start", ctx_body)
         self.assertIn("MSG_10_", ctx_body)
         self.assertNotIn("MSG_1_", ctx_body)
+
+    def test_room_context_excludes_notice_reactions_and_truncates_previews_at_word_boundary(self) -> None:
+        store, resolver, _, _, engine = self.make_components(agent_name="skrye", main_model="")
+        session_key = resolver.default_session_key
+        engine.process_sync_batch({"next_batch": "s0", "rooms": {"join": {}}})
+
+        # 1. Word-boundary truncation in clip_at_word_boundary and format_target_message_preview.
+        long_sentence = (
+            "Good afternoon! All three of us are online and listening. "
+            "How are you doing today, Martin?...So, how does the Matrix council companion work?"
+        )
+        self.assertGreater(len(long_sentence), 120)
+        preview = companion.format_target_message_preview(long_sentence)
+        self.assertLessEqual(len(preview), 120)
+        self.assertTrue(preview.endswith("...So, how does the..."))
+        self.assertNotIn("Matri...", preview)
+
+        # Fallback to hard slice when a single unbroken token exceeds limit - 3.
+        unbroken = "A" * 130
+        unbroken_preview = companion.format_target_message_preview(unbroken)
+        self.assertEqual(unbroken_preview, ("A" * 117) + "...")
+        self.assertEqual(companion.clip_at_word_boundary(unbroken, 120), ("A" * 117) + "...")
+
+        # 2. build_room_context_block excludes m.notice reactions from Recent message reactions:
+        # and uses word-boundary truncation on standalone reaction snippets.
+        self.write_history(
+            session_key,
+            [
+                {
+                    "role": "user",
+                    "run_id": "run-hist-rxn",
+                    "sender_id": companion.MARTIN_ID,
+                    "content": long_sentence,
+                    "created_at": self.current_time_ms + 10,
+                }
+            ],
+        )
+        events = [
+            {
+                "type": "m.room.message",
+                "event_id": "$conv_long",
+                "sender": companion.MARTIN_ID,
+                "origin_server_ts": self.current_time_ms + 10,
+                "content": {"msgtype": "m.text", "body": long_sentence},
+            },
+            {
+                "type": "m.reaction",
+                "event_id": "$rx_conv_ok",
+                "sender": companion.ZANNAH_ID,
+                "origin_server_ts": self.current_time_ms + 15,
+                "content": {
+                    "m.relates_to": {
+                        "rel_type": "m.annotation",
+                        "event_id": "$conv_long",
+                        "key": "👍🏻",
+                    }
+                },
+            },
+        ]
+        # Add 12 m.notice invitation events with 👀 and 🐝 reactions after $conv_long to verify they neither appear
+        # under Recent message reactions: nor evict $conv_long from MAX_REACTION_TARGETS (10).
+        for idx in range(1, 13):
+            notice_id = f"$invite_notice_{idx}"
+            events.append(
+                {
+                    "type": "m.room.message",
+                    "event_id": notice_id,
+                    "sender": companion.SKRYE_ID,
+                    "origin_server_ts": self.current_time_ms + 20 + idx * 10,
+                    "content": {
+                        "msgtype": "m.notice",
+                        "body": f'🛎️ Inviting {companion.ZANNAH_ID} to the floor on Martin\'s message: "Topic {idx}" ✋🏻',
+                    },
+                }
+            )
+            events.append(
+                {
+                    "type": "m.reaction",
+                    "event_id": f"$rx_notice_ack_{idx}",
+                    "sender": companion.ZANNAH_ID,
+                    "origin_server_ts": self.current_time_ms + 21 + idx * 10,
+                    "content": {
+                        "m.relates_to": {
+                            "rel_type": "m.annotation",
+                            "event_id": notice_id,
+                            "key": "👀",
+                        }
+                    },
+                }
+            )
+            events.append(
+                {
+                    "type": "m.reaction",
+                    "event_id": f"$rx_notice_bee_{idx}",
+                    "sender": companion.ZANNAH_ID,
+                    "origin_server_ts": self.current_time_ms + 22 + idx * 10,
+                    "content": {
+                        "m.relates_to": {
+                            "rel_type": "m.annotation",
+                            "event_id": notice_id,
+                            "key": "🐝",
+                        }
+                    },
+                }
+            )
+
+        store.apply_timeline_events(
+            events=events,
+            active_session_key=session_key,
+            cutoff_ms=self.current_time_ms,
+            self_user_id=companion.SKRYE_ID,
+            seed_only=False,
+        )
+        history_records = companion.load_session_history_records(
+            self.data_dir,
+            session_key,
+            agent_name="skrye",
+            room_id=companion.DEFAULT_ROOM_ID,
+        )
+        ctx_block, _ = companion.build_room_context_block(
+            state_dir=self.state_dir,
+            active_session_key=session_key,
+            cutoff_ms=self.current_time_ms,
+            history_records=history_records,
+            self_user_id=companion.SKRYE_ID,
+        )
+        self.assertIn("Recent message reactions:", ctx_block)
+        self.assertIn("$conv_long", ctx_block)
+        self.assertIn("So, how does the...", ctx_block)
+        self.assertNotIn("Matri...", ctx_block)
+        self.assertNotIn("$invite_notice_", ctx_block)
+        self.assertNotIn("🛎️ Inviting", ctx_block)
 
     def test_outbox_idempotent_retry_and_401_relogin(self) -> None:
         store, _, mclient, _, _ = self.make_components(agent_name="skrye")
