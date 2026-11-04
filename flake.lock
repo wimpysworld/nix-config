@@ -946,7 +946,6 @@
         "rust-overlay": "rust-overlay",
         "sidra": "sidra",
         "sops-nix": "sops-nix",
-        "swifteam": "swifteam",
         "systems": "systems_4",
         "veila": "veila",
         "xdg-override": "xdg-override"
@@ -1027,19 +1026,6 @@
         "owner": "Mic92",
         "repo": "sops-nix",
         "type": "github"
-      }
-    },
-    "swifteam": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1792741351,
-        "narHash": "sha256-8YNAMTO7cxqS83bP4+mZuvPoUO9i6UFKjbztjiOsj4E=",
-        "type": "tarball",
-        "url": "https://cdn.swifteam.com/st-agent-linux/v1.421.0/nixos/swifteam.tar.gz"
-      },
-      "original": {
-        "type": "tarball",
-        "url": "https://cdn.swifteam.com/st-agent-linux/v1.421.0/nixos/swifteam.tar.gz"
       }
     },
     "systems": {
