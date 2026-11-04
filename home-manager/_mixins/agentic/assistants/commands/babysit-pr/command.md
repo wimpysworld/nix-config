@@ -6,7 +6,7 @@ Resolve named workflows through the available skill catalogue, configured skill 
 
 ### Authority
 
-Human invocation of this command is the user's consent for: commit, push, `gh-review-reply`, `gh-review-resolve`, `gh run rerun --failed`, `gh pr update-branch` in the one case named under **Triage failures**, `gh pr edit --add-reviewer` to re-request a review, and tracker issue creation and comment.
+Human invocation of this command is the user's consent for: commit, push, `gh-review-reply`, `gh-review-resolve`, `gh-review-unresolve`, `gh run rerun --failed`, `gh pr update-branch` in the one case named under **Triage failures**, `gh pr edit --add-reviewer` to re-request a review, and tracker issue creation and comment.
 
 Forbidden throughout: merge, close, approve, release, force-push, `gh workflow run`, and any change to a PR the user does not own. Never use raw `gh api`; use dedicated subcommands, and `gh-api-safe` for raw reads.
 
@@ -37,7 +37,7 @@ gh pr view <url> --json isDraft,state,reviewDecision,mergeStateStatus,statusChec
 The PR is finished when all of these hold on the current head:
 
 - Every required check in `statusCheckRollup` concludes `SUCCESS`, `NEUTRAL`, or `SKIPPED`. An optional check that fails is reported, not fixed.
-- No review thread remains after the filter under **Answer reviews**.
+- No review thread remains after the filter under **Answer reviews**. No unresolved review thread (`isResolved: false`) and no unaddressed reviewer finding in a resolved thread (`isResolved: true`) can remain before a pull request is considered finished or merged.
 - `reviewDecision` is `APPROVED`, or `null` because the branch protection requires no review.
 
 Being behind the base is not a fault. `mergeStateStatus` `BEHIND` with green checks is finished. Never run `gh pr update-branch` to chase the base: work repositories move fast, and a PR that had to stay current would never finish. `DIRTY` is a merge conflict, which is a code decision for the user: report it and stop.
@@ -96,7 +96,7 @@ Read `contribution-voice` first unless its complete, current instructions are in
 
 ### Answer reviews
 
-Thread filter, used by the shift scan and the review watcher alike: skip resolved threads, threads whose most recent reply came from the user, and outdated threads. This is the same filter `address-code-review` applies.
+Thread filter, used by the shift scan and the review watcher alike: skip resolved threads (`isResolved: true`) unless the most recent comment is a substantive finding from a reviewer after the comment that resolved or refuted the thread, skip threads whose most recent reply came from the user, and skip outdated threads. When a resolved thread carries a newer substantive reviewer finding, run `gh-review-unresolve <review-comment-url>` on it, judge it, and address it like any other open thread. This is the same filter `address-code-review` applies.
 
 When a review or review comment lands, read and follow the `address-code-review` workflow body here with the exact PR URL. Ignore its generated launch wrapper. Keep its orchestration, staging, commits, push, and replies in this context. Set a 30 minute deadline for this single-pass review phase. Only this coordinator dispatches finding workers, with that deadline and no delegation. Report progress when judging ends and fixing starts. At the deadline, collect completed work and report the threads answered. Return to the watcher loop, then resume outstanding threads from live state on the next shift.
 

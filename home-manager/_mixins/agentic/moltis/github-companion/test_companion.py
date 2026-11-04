@@ -833,6 +833,135 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
             },
         )
 
+    def test_ci_green_after_approval_requires_zero_unresolved_review_threads(self) -> None:
+        store = self.make_store("skrye")
+        graphql_batches = [
+            [
+                {
+                    "number": 45,
+                    "title": "PR with unresolved thread",
+                    "url": "https://github.com/wimpysworld/nix-config/pull/45",
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "updatedAt": "2023-11-16T10:10:00Z",
+                    "headRefOid": "sha_pr45_v1",
+                    "reviewDecision": "APPROVED",
+                    "repository": {"nameWithOwner": "wimpysworld/nix-config"},
+                    "author": {"login": "sith-zannah"},
+                    "reviewRequests": {"nodes": []},
+                    "reviewThreads": {"nodes": [{"isResolved": True}, {"isResolved": False}]},
+                    "statusCheckRollup": {
+                        "state": "SUCCESS",
+                        "contexts": {"nodes": [{"__typename": "CheckRun", "status": "COMPLETED", "conclusion": "SUCCESS"}]},
+                    },
+                }
+            ],
+            [
+                {
+                    "number": 45,
+                    "title": "PR with unresolved thread",
+                    "url": "https://github.com/wimpysworld/nix-config/pull/45",
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "updatedAt": "2023-11-16T10:11:00Z",
+                    "headRefOid": "sha_pr45_v1",
+                    "reviewDecision": "APPROVED",
+                    "repository": {"nameWithOwner": "wimpysworld/nix-config"},
+                    "author": {"login": "sith-zannah"},
+                    "reviewRequests": {"nodes": []},
+                    "reviewThreads": {
+                        "pageInfo": {"hasNextPage": True},
+                        "nodes": [{"isResolved": True}, {"isResolved": True}],
+                    },
+                    "statusCheckRollup": {
+                        "state": "SUCCESS",
+                        "contexts": {"nodes": [{"__typename": "CheckRun", "status": "COMPLETED", "conclusion": "SUCCESS"}]},
+                    },
+                }
+            ],
+            [
+                {
+                    "number": 45,
+                    "title": "PR with unresolved thread",
+                    "url": "https://github.com/wimpysworld/nix-config/pull/45",
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "updatedAt": "2023-11-16T10:12:00Z",
+                    "headRefOid": "sha_pr45_v1",
+                    "reviewDecision": "APPROVED",
+                    "repository": {"nameWithOwner": "wimpysworld/nix-config"},
+                    "author": {"login": "sith-zannah"},
+                    "reviewRequests": {"nodes": []},
+                    "reviewThreads": {
+                        "pageInfo": {"hasNextPage": False},
+                        "nodes": [{"isResolved": True}, {"isResolved": True}],
+                    },
+                    "statusCheckRollup": {
+                        "state": "SUCCESS",
+                        "contexts": {"nodes": [{"__typename": "CheckRun", "status": "COMPLETED", "conclusion": "SUCCESS"}]},
+                    },
+                }
+            ],
+        ]
+
+        store.update_thread_state(
+            "wimpysworld/nix-config#45",
+            {
+                "repo": "wimpysworld/nix-config",
+                "number": 45,
+                "handled_updated_at": "2023-11-16T10:00:00Z",
+                "handled_head_sha": "sha_pr45_v1",
+                "handled_ci_state": "PENDING",
+            },
+        )
+
+        def fake_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            self.gh_commands.append(list(cmd))
+            if cmd[1] == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if cmd[1] == "graphql":
+                nodes = graphql_batches.pop(0)
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps({"data": {"search": {"nodes": nodes}}}),
+                    stderr="",
+                )
+            return subprocess.CompletedProcess(cmd, 0, stdout="[]", stderr="")
+
+        gh_client = companion.GhApiSafeClient(runner=fake_runner)
+        poller = companion.NotificationPoller(
+            state_store=store,
+            gh_client=gh_client,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+
+        poll1 = poller.poll_once()
+        self.assertEqual(poll1["actionable_prs"], [])
+        st_45 = store.get_thread_state("wimpysworld/nix-config#45")
+        assert st_45 is not None
+        self.assertEqual(st_45["unresolved_thread_count"], 1)
+        self.assertEqual(st_45["handled_ci_state"], "PENDING")
+
+        self.current_time_ms += 30_000
+        poll_overflow = poller.poll_once()
+        self.assertEqual(poll_overflow["actionable_prs"], [])
+        st_45_overflow = store.get_thread_state("wimpysworld/nix-config#45")
+        assert st_45_overflow is not None
+        self.assertEqual(st_45_overflow["unresolved_thread_count"], 1)
+        self.assertEqual(st_45_overflow["handled_ci_state"], "PENDING")
+
+        self.current_time_ms += 30_000
+        poll2 = poller.poll_once()
+        self.assertEqual(
+            {item["key"]: item["trigger_reason"] for item in poll2["actionable_prs"]},
+            {"wimpysworld/nix-config#45": "ci_green_after_approval"},
+        )
+        st_45_resolved = store.get_thread_state("wimpysworld/nix-config#45")
+        assert st_45_resolved is not None
+        self.assertEqual(st_45_resolved["unresolved_thread_count"], 0)
+
     def test_self_authored_activity_and_unmentioned_peer_approval_advance_state_without_waking_agent(self) -> None:
         store = self.make_store("skrye")
         rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)

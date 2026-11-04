@@ -29,6 +29,14 @@ let
     mkdir -p "$out/bin"
     ln -s ${pkgs.gh}/bin/.gh-wrapped "$out/bin/gh-review-resolve-gh"
   '';
+  gh-review-unresolve-gh = pkgs.runCommand "gh-review-unresolve-gh" { } ''
+    mkdir -p "$out/bin"
+    ln -s ${pkgs.gh}/bin/.gh-wrapped "$out/bin/gh-review-unresolve-gh"
+  '';
+  gh-review-withdraw-approval-gh = pkgs.runCommand "gh-review-withdraw-approval-gh" { } ''
+    mkdir -p "$out/bin"
+    ln -s ${pkgs.gh}/bin/.gh-wrapped "$out/bin/gh-review-withdraw-approval-gh"
+  '';
   gh-bot-merge = pkgs.callPackage ./gh-bot-merge { };
   gh-code-scanning-dismiss = pkgs.callPackage ./gh-code-scanning-dismiss { };
   gh-notification-dismiss = pkgs.callPackage ./gh-notification-dismiss { };
@@ -112,6 +120,36 @@ let
       readonly GH_REVIEW_RESOLVE_GH=${lib.escapeShellArg "${gh-review-resolve-gh}/bin/gh-review-resolve-gh"}
     ''
     + builtins.readFile ./gh-review-resolve.sh;
+  };
+
+  # Fence-friendly helper for marking a pull request review thread as
+  # unresolved. That is a GraphQL mutation only, `gh` has no subcommand for it,
+  # and `gh-api-safe` is read-only, so this covers exactly one mutation:
+  # `unresolveReviewThread`. The script parses the thread out of a review
+  # comment URL, sends every value as a typed GraphQL variable, and holds the
+  # query and the mutation as fixed strings, so no other mutation is
+  # reachable; see `gh-review-unresolve.sh`.
+  gh-review-unresolve = pkgs.writeShellApplication {
+    name = "gh-review-unresolve";
+    runtimeInputs = [ pkgs.jq ];
+    text = ''
+      readonly GH_REVIEW_UNRESOLVE_GH=${lib.escapeShellArg "${gh-review-unresolve-gh}/bin/gh-review-unresolve-gh"}
+    ''
+    + builtins.readFile ./gh-review-unresolve.sh;
+  };
+
+  # Fence-friendly helper for dismissing the authenticated caller's own
+  # APPROVED reviews on a pull request. `gh pr review` has no subcommand flag
+  # to dismiss an earlier approval, and `gh-api-safe` is read-only, so this
+  # covers `dismissPullRequestReview` scoped strictly to reviews where
+  # `author.login == viewer.login`; see `gh-review-withdraw-approval.sh`.
+  gh-review-withdraw-approval = pkgs.writeShellApplication {
+    name = "gh-review-withdraw-approval";
+    runtimeInputs = [ pkgs.jq ];
+    text = ''
+      readonly GH_REVIEW_WITHDRAW_APPROVAL_GH=${lib.escapeShellArg "${gh-review-withdraw-approval-gh}/bin/gh-review-withdraw-approval-gh"}
+    ''
+    + builtins.readFile ./gh-review-withdraw-approval.sh;
   };
 
   ghTokenVariables = [
@@ -262,6 +300,8 @@ lib.mkMerge [
         gh-review-inline
         gh-review-reply
         gh-review-resolve
+        gh-review-unresolve
+        gh-review-withdraw-approval
         ghCredentialSync
       ];
     };

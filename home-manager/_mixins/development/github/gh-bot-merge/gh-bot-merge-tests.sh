@@ -446,6 +446,25 @@ GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
 	'reject trusted-peer PR with unresolved review thread' "${url_ww}" 'has 1 unresolved review thread(s)'
 
 reset_stub
+write_pr_json wimpysworld 'app/dependabot' 'dependabot/nix/nixpkgs-3ec6363'
+write_graphql_json '.data.repository.pullRequest.reviewThreads.nodes = [{isResolved: true}, {isResolved: false}]'
+assert_pr_rejected \
+	'reject dependabot PR with unresolved review thread' "${url_ww}" 'has 1 unresolved review thread(s)'
+
+reset_stub
+write_pr_json wimpysworld 'github-actions[bot]' 'update_flake_lock_action' '.reviewDecision = "APPROVED"'
+write_graphql_json '.data.repository.pullRequest.reviewThreads.nodes = [{isResolved: false}]'
+assert_pr_rejected \
+	'reject github-actions PR with unresolved review thread' "${url_ww}" 'has 1 unresolved review thread(s)'
+
+reset_stub
+write_pr_json wimpysworld 'flexiondotorg' 'chainctl-0.2.391' \
+	'.files = [{path: "pkgs/chainctl/default.nix"}]'
+write_graphql_json '.data.repository.pullRequest.reviewThreads.nodes = [{isResolved: false}]'
+assert_pr_rejected \
+	'reject freshener PR with unresolved review thread' "${url_ww}" 'has 1 unresolved review thread(s)'
+
+reset_stub
 write_pr_json wimpysworld 'sith-skrye' 'fix/too-many-threads' '.files = [{path: "Cargo.lock"}]'
 write_graphql_json '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage = true'
 GH_STUB_VIEWER=sith-zannah assert_pr_rejected \

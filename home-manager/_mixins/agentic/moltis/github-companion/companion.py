@@ -232,7 +232,7 @@ _COERCION_RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("html_comment_block", re.compile(r"<!--")),
     ("ignore_previous_instructions", re.compile(r"\b(?:ignore|disregard|forget|override|bypass)\s+(?:all\s+|any\s+|the\s+)?(?:previous|prior|above|earlier|system|developer|safety|security)\s+(?:instructions?|prompts?|rules?|constraints?|directives?|guardrails?)\b", re.IGNORECASE)),
     ("system_prompt_override", re.compile(r"(?:\[\s*(?:system|inst|admin|developer)\s*\]|<\|\s*(?:im_start|system|user|assistant)\s*\|>|^\s*(?:system\s+prompt|developer\s+message|new\s+system\s+instructions?)\s*:)", re.IGNORECASE | re.MULTILINE)),
-    ("tool_invocation_directive", re.compile(r"\b(?:gh-bot-merge|gh-code-scanning-dismiss|gh-notification-dismiss|gh-review-resolve|gh-review-inline|gh-review-reply|moltis-telegram-voice|chat\.send_sync|exec_command|tool_call)\b", re.IGNORECASE)),
+    ("tool_invocation_directive", re.compile(r"\b(?:gh-bot-merge|gh-code-scanning-dismiss|gh-notification-dismiss|gh-review-resolve|gh-review-unresolve|gh-review-inline|gh-review-reply|moltis-telegram-voice|chat\.send_sync|exec_command|tool_call)\b", re.IGNORECASE)),
     ("unauthorized_merge_or_dismiss_command", re.compile(r"\b(?:gh\s+pr\s+merge|merge\s+this\s+(?:pr|pull\s+request)|approve\s+and\s+merge|dismiss\s+(?:this\s+|all\s+)?(?:alert|notification|review)s?|@dependabot\s+(?:merge|squash\s+and\s+merge|ignore|close))\b", re.IGNORECASE)),
     ("role_spoofing", re.compile(r"\b(?:i\s+am\s+flexiondotorg|speaking\s+as\s+flexiondotorg|on\s+behalf\s+of\s+flexiondotorg|acting\s+as\s+(?:flexiondotorg|sith-skrye|sith-traya|sith-zannah)|from\s+flexiondotorg\s*:|authorized\s+by\s+flexiondotorg)\b", re.IGNORECASE)),
 )
@@ -302,7 +302,7 @@ def is_heartbeat_ok_reply(text: str | None) -> bool:
 
 TURN_FAILURE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("explicit_error_token", re.compile(r"^\s*`?(?:(?:HEARTBEAT_ERROR|HEARTBEAT_FAILED|TURN_FAILED|COMPANION_RESULT:\s*(?:ERROR|FAILED))\b|(?:ERROR|FAILED)\s*:)", re.IGNORECASE)),
-    ("tool_or_turn_failed", re.compile(r"^\s*(?:the\s+)?(?:github|gh|gh-api-safe|gh-bot-merge|gh-review-inline|gh-review-reply|gh-review-resolve|gh-notification-dismiss|git|exec|shell|rpc|model|provider|api|command|request|turn|dispatch|tool)\s+(?:tool\s+|command\s+|call\s+|request\s+|execution\s+|turn\s+|helper\s+)?(?:failed|errored|timed\s+out|aborted|crashed|was\s+blocked|is\s+unavailable)\b", re.IGNORECASE)),
+    ("tool_or_turn_failed", re.compile(r"^\s*(?:the\s+)?(?:github|gh|gh-api-safe|gh-bot-merge|gh-review-inline|gh-review-reply|gh-review-resolve|gh-review-unresolve|gh-notification-dismiss|git|exec|shell|rpc|model|provider|api|command|request|turn|dispatch|tool)\s+(?:tool\s+|command\s+|call\s+|request\s+|execution\s+|turn\s+|helper\s+)?(?:failed|errored|timed\s+out|aborted|crashed|was\s+blocked|is\s+unavailable)\b", re.IGNORECASE)),
     ("unable_to_complete", re.compile(r"^\s*(?:i\s+(?:was\s+|am\s+)?)?(?:failed|unable|could\s+not|cannot|can\s+not)\s+(?:to\s+)?(?:complete|finish|run|execute|fetch|query|read|inspect|review|merge|dismiss|post|reply|process|reach|connect|authenticate|proceed|continue)\b", re.IGNORECASE)),
 )
 
@@ -771,8 +771,17 @@ def extract_review_request_logins(raw_requests: object) -> list[str]:
     return logins
 
 
+def count_unresolved_review_threads(raw_threads: object) -> int:
+    review_threads_obj = _as_dict(raw_threads)
+    nodes = review_threads_obj["nodes"] if isinstance(review_threads_obj.get("nodes"), list) else (raw_threads if isinstance(raw_threads, list) else [])
+    count = sum(1 for item in nodes if isinstance(item, dict) and item.get("isResolved") is not True)
+    if _as_dict(review_threads_obj.get("pageInfo")).get("hasNextPage") is True:
+        count += 1
+    return count
+
+
 def normalize_open_pull_request_record(raw: dict) -> dict | None:
-    if not isinstance(raw, dict) or "subject" in raw or not any(k in raw for k in ("headRefOid", "head", "head_sha", "reviewDecision", "statusCheckRollup", "reviewRequests", "isDraft")):
+    if not isinstance(raw, dict) or "subject" in raw or not any(k in raw for k in ("headRefOid", "head", "head_sha", "reviewDecision", "statusCheckRollup", "reviewRequests", "reviewThreads", "isDraft")):
         return None
     number = _safe_int(raw.get("number"), 0)
     if number <= 0:
@@ -788,7 +797,9 @@ def normalize_open_pull_request_record(raw: dict) -> dict | None:
     ci_raw = raw.get("statusCheckRollup") if "statusCheckRollup" in raw else raw.get("ci_state")
     updated_at = str(raw.get("updatedAt") or raw.get("updated_at") or "").strip()
     review_requests = extract_review_request_logins(raw.get("reviewRequests") if "reviewRequests" in raw else raw.get("requested_reviewers"))
-    return {"pr_key": make_pr_key(repo_full_name, number), "repo": repo_full_name, "owner": repo_full_name.split("/", 1)[0].lower(), "number": number, "author": extract_actor_login(raw.get("author") or raw.get("user")), "head_sha": head_sha, "headRefOid": head_sha, "review_decision": review_decision, "reviewDecision": review_decision, "ci_state": normalize_ci_state(ci_raw), "statusCheckRollup": ci_raw, "updated_at": updated_at, "updatedAt": updated_at, "review_requests": review_requests, "reviewRequests": review_requests, "is_draft": bool(raw.get("isDraft") or raw.get("draft", False)), "state": str(raw.get("state") or "OPEN").strip().upper(), "title": str(raw.get("title") or "").strip(), "body": str(raw.get("body") or "").strip(), "url": str(raw.get("url") or raw.get("html_url") or "").strip()}
+    review_threads = raw.get("reviewThreads") if "reviewThreads" in raw else raw.get("review_threads")
+    unresolved_thread_count = max(0, _safe_int(raw.get("unresolved_thread_count"), 0)) if "unresolved_thread_count" in raw else count_unresolved_review_threads(review_threads)
+    return {"pr_key": make_pr_key(repo_full_name, number), "repo": repo_full_name, "owner": repo_full_name.split("/", 1)[0].lower(), "number": number, "author": extract_actor_login(raw.get("author") or raw.get("user")), "head_sha": head_sha, "headRefOid": head_sha, "review_decision": review_decision, "reviewDecision": review_decision, "ci_state": normalize_ci_state(ci_raw), "statusCheckRollup": ci_raw, "updated_at": updated_at, "updatedAt": updated_at, "review_requests": review_requests, "reviewRequests": review_requests, "review_threads": review_threads, "reviewThreads": review_threads, "unresolved_thread_count": unresolved_thread_count, "is_draft": bool(raw.get("isDraft") or raw.get("draft", False)), "state": str(raw.get("state") or "OPEN").strip().upper(), "title": str(raw.get("title") or "").strip(), "body": str(raw.get("body") or "").strip(), "url": str(raw.get("url") or raw.get("html_url") or "").strip()}
 
 
 _HTTP_STATUS_RE = re.compile(r"^HTTP/\d+(?:\.\d+)?\s+(\d{3})(?:\s+(.*))?$", re.IGNORECASE)
@@ -1172,16 +1183,25 @@ class CompanionStateStore:
                 ci_state = normalize_ci_state(norm_pr.get("ci_state") or norm_pr.get("statusCheckRollup"))
                 updated_at = str(norm_pr.get("updated_at") or norm_pr.get("updatedAt") or "").strip()
                 review_requests = list(norm_pr.get("review_requests") or norm_pr.get("reviewRequests") or [])
+                unresolved_thread_count = (
+                    max(0, _safe_int(norm_pr.get("unresolved_thread_count"), 0))
+                    if "unresolved_thread_count" in norm_pr
+                    else count_unresolved_review_threads(norm_pr.get("reviewThreads") if "reviewThreads" in norm_pr else norm_pr.get("review_threads"))
+                )
                 target_keys, existing = self._load_entry_unlocked(threads, pr_key, repo=repo, number=number)
                 handled_u, handled_sha, handled_ci = existing.get("handled_updated_at"), existing.get("handled_head_sha"), existing.get("handled_ci_state")
                 in_flight, pending_followup = bool(existing.get("in_flight", False)), bool(existing.get("pending_followup", False))
-                changed = (head_sha and head_sha != existing.get("head_sha")) or (ci_state and ci_state != existing.get("ci_state"))
+                changed = (
+                    (head_sha and head_sha != existing.get("head_sha"))
+                    or (ci_state and ci_state != existing.get("ci_state"))
+                    or ("unresolved_thread_count" in existing and unresolved_thread_count != _safe_int(existing.get("unresolved_thread_count"), 0))
+                )
                 retry_count = 0 if changed else _safe_int(existing.get("retry_count"), 0)
                 is_trusted = is_trusted_github_actor(author_norm)
                 is_self = bool(author_norm == self_login_norm or LOGIN_TO_AGENT_NAME.get(author_norm) == self.agent_name)
                 trigger_reason: str | None = None
                 if is_trusted:
-                    if review_decision == "APPROVED" and ci_state == "SUCCESS" and (handled_ci != "SUCCESS" or (head_sha and handled_sha != head_sha)):
+                    if review_decision == "APPROVED" and ci_state == "SUCCESS" and unresolved_thread_count == 0 and (handled_ci != "SUCCESS" or (head_sha and handled_sha != head_sha)):
                         trigger_reason = "ci_green_after_approval"
                     elif not is_self and handled_sha and head_sha and head_sha != handled_sha:
                         trigger_reason = "head_push"
@@ -1197,7 +1217,7 @@ class CompanionStateStore:
                     queued_followups.append(pr_key)
                 elif retry_count < MAX_THREAD_FAILURE_RETRIES:
                     actionable_prs.append({"key": pr_key, "thread_id": existing.get("thread_id"), "repo": repo, "number": number, "kind": "PullRequest", "head_sha": head_sha, "ci_state": ci_state, "updated_at": updated_at, "trigger_reason": trigger_reason})
-                entry = {**existing, "pr_key": pr_key, "repo": repo, "number": number, "subject_type": "PullRequest", "author": author, "head_sha": head_sha, "ci_state": ci_state, "review_decision": review_decision, "review_requests": review_requests, "updated_at": updated_at or existing.get("updated_at"), "handled_updated_at": handled_u, "handled_head_sha": handled_sha, "handled_ci_state": handled_ci, "retry_count": retry_count, "trigger_reason": trigger_reason or existing.get("trigger_reason"), "in_flight": in_flight, "pending_followup": pending_followup, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
+                entry = {**existing, "pr_key": pr_key, "repo": repo, "number": number, "subject_type": "PullRequest", "author": author, "head_sha": head_sha, "ci_state": ci_state, "review_decision": review_decision, "review_requests": review_requests, "unresolved_thread_count": unresolved_thread_count, "updated_at": updated_at or existing.get("updated_at"), "handled_updated_at": handled_u, "handled_head_sha": handled_sha, "handled_ci_state": handled_ci, "retry_count": retry_count, "trigger_reason": trigger_reason or existing.get("trigger_reason"), "in_flight": in_flight, "pending_followup": pending_followup, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
                 for tk in target_keys:
                     threads[tk] = dict(entry)
             state["updated_at_ms"] = stamp_ms
@@ -1439,7 +1459,7 @@ class MoltisRpcClient:
         return self.call("chat.send_sync", params, timeout=self.send_sync_timeout if timeout is None else timeout)
 
 
-OPEN_PRS_GRAPHQL_QUERY_TEMPLATE = "query { search(query: %s, type: ISSUE, first: 100) { nodes { ... on PullRequest { number title url state isDraft updatedAt headRefOid reviewDecision repository { nameWithOwner } author { __typename login } reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } } } } statusCheckRollup { state contexts(first: 100) { nodes { __typename ... on CheckRun { status conclusion } ... on StatusContext { state } } } } } } } }"
+OPEN_PRS_GRAPHQL_QUERY_TEMPLATE = "query { search(query: %s, type: ISSUE, first: 100) { nodes { ... on PullRequest { number title url state isDraft updatedAt headRefOid reviewDecision repository { nameWithOwner } author { __typename login } reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } } } } reviewThreads(first: 100) { pageInfo { hasNextPage } nodes { isResolved } } statusCheckRollup { state contexts(first: 100) { nodes { __typename ... on CheckRun { status conclusion } ... on StatusContext { state } } } } } } } }"
 
 
 def build_open_prs_graphql_query(owners: Iterable[str] = POLL_PR_OWNERS) -> str:

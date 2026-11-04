@@ -4,7 +4,7 @@
 ## Fence policy
 
 Coding agents run fenced. Fence permits the everyday mutations:
-`git push`, `gh pr comment`, `gh-review-inline`, `gh-review-reply`, `gh-review-resolve`, `gh issue create`,
+`git push`, `gh pr comment`, `gh-review-inline`, `gh-review-reply`, `gh-review-resolve`, `gh-review-unresolve`, `gh-review-withdraw-approval`, `gh issue create`,
 `gh issue edit`, `gh issue comment`, `gh issue develop`, `gh project item-add`,
 `gh project item-edit`, `gh run rerun`, `gh run cancel`, `gh pr update-branch`,
 and `gh pr review --approve`. The source policy also permits
@@ -224,6 +224,8 @@ command for the operator to run in an unfenced shell.
 | Submit inline review comments          | `gh-review-inline <pr-url> --commit <sha> ...`       |
 | Reply inside a review comment thread   | `gh-review-reply <review-comment-url>`               |
 | Resolve a review comment thread        | `gh-review-resolve <review-comment-url>`             |
+| Reopen a resolved review thread        | `gh-review-unresolve <review-comment-url>`           |
+| Withdraw caller's own PR approval      | `gh-review-withdraw-approval <pr-url>`               |
 | Dismiss an authorised alert            | `gh-code-scanning-dismiss`                           |
 | Other mutation (POST/PATCH/PUT/DELETE) | `gh api -X ...` in unfenced shell                    |
 | Field input from file (`-F x=@file`)   | raw `gh api` in unfenced shell                       |
@@ -274,14 +276,14 @@ peer-agent pull request must be authored by `sith-skrye`, `sith-traya`, or
 pull requests. Pass `--dry-run` before the pull request URL to verify the
 class and required flags without mutating GitHub state.
 
-`gh-review-reply` and `gh-code-scanning-dismiss` are narrow write helpers
+`gh-review-reply`, `gh-review-resolve`, `gh-review-unresolve`, `gh-review-withdraw-approval`, and `gh-code-scanning-dismiss` are narrow write helpers
 through the raw API surface. Raw `gh api` remains denied under Fence.
 `gh-review-reply` takes the review comment URL and a body file,
 nothing else. Owner, repository, pull request number, and comment id are
 parsed out of the URL, and one endpoint is built from them,
 `POST repos/{owner}/{repo}/pulls/{n}/comments/{id}/replies`. The reply
 body is read from a file so quotes, backticks, and newlines survive
-verbatim. `{owner}` placeholders are not expanded; pass the real URL.
+verbatim. `gh-review-resolve <review-comment-url>` closes a review thread via `resolveReviewThread` and exits `0` when the thread is already resolved. `gh-review-unresolve <review-comment-url>` reopens a resolved review thread via `unresolveReviewThread` and exits `0` when the thread is already unresolved. `gh-review-withdraw-approval <pr-url>` dismisses only the authenticated caller's own `APPROVED` reviews on a pull request via `dismissPullRequestReview` and exits `0` when none exists. `{owner}` placeholders are not expanded; pass the real URL.
 Any other flag (`-X`, `-f`, `-F`, `--input`, or a glued
 `--body-file=PATH`) exits 64 with a single-line reason on stderr.
 

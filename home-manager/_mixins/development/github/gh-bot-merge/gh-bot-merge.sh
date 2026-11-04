@@ -37,6 +37,7 @@ POLICY
       * every statusCheckRollup entry is either a COMPLETED CheckRun with
         conclusion in [SUCCESS, SKIPPED, NEUTRAL] or a StatusContext with
         state SUCCESS
+      * zero unresolved review threads remain on the pull request
       * the author, branch, labels, and changed files match one of the four
         permitted pull request classes:
           - dependabot
@@ -300,9 +301,10 @@ if [[ ${pr_class} == "trusted-peer" ]]; then
 	flexiondotorg | sith-skrye | sith-traya | sith-zannah) ;;
 	*) die "authenticated viewer '${viewer}' is not authorised to merge trusted-peer pull requests" ;;
 	esac
+fi
 
-	# shellcheck disable=SC2016 # $owner, $repo, and $pr are GraphQL variables.
-	readonly TRUSTED_PEER_GRAPHQL_QUERY='query($owner: String!, $repo: String!, $pr: Int!) {
+# shellcheck disable=SC2016 # $owner, $repo, and $pr are GraphQL variables.
+readonly PR_GRAPHQL_QUERY='query($owner: String!, $repo: String!, $pr: Int!) {
   repository(owner: $owner, name: $repo) {
     pullRequest(number: $pr) {
       reviewThreads(first: 100) {
@@ -331,8 +333,8 @@ if [[ ${pr_class} == "trusted-peer" ]]; then
   }
 }'
 
-	# shellcheck disable=SC2016 # jq variables, not shell expansion.
-	readonly JQ_VERIFY_TRUSTED_PEER='
+# shellcheck disable=SC2016 # jq variables, not shell expansion.
+readonly JQ_VERIFY_GRAPHQL='
 def is_trusted_peer_login($login):
   $login == "flexiondotorg"
   or $login == "sith-skrye"
@@ -342,7 +344,7 @@ def is_trusted_peer_login($login):
 (.data.repository.pullRequest // null) as $pr
 | if ($pr | type) != "object" then
     "ERR\u001fGraphQL response did not identify pull request #" + $pr_number
-  elif ($pr.reviewThreads.pageInfo.hasNextPage == true) or ($pr.latestOpinionatedReviews.pageInfo.hasNextPage == true) then
+  elif ($pr.reviewThreads.pageInfo.hasNextPage == true) or (($pr_class == "trusted-peer") and ($pr.latestOpinionatedReviews.pageInfo.hasNextPage == true)) then
     "ERR\u001fpull request #" + $pr_number + " has more than 100 review threads or 50 opinionated reviews; refusing automated merge"
   else
     ([($pr.reviewThreads.nodes // [])[] | select(.isResolved != true)] | length) as $unresolved
@@ -382,6 +384,8 @@ def is_trusted_peer_login($login):
       ]) as $stale_flexion_oids
     | if $unresolved > 0 then
         "ERR\u001fpull request #" + $pr_number + " has " + ($unresolved | tostring) + " unresolved review thread(s)"
+      elif $pr_class != "trusted-peer" then
+        ["OK", "false"] | join("\u001f")
       elif ($review_decision == "CHANGES_REQUESTED") or $changes_requested then
         "ERR\u001fpull request #" + $pr_number + " has a review requesting changes"
       elif ($touches_sensitive == "true") and ($author_login != "flexiondotorg") and ($has_flexion_approval | not) then
@@ -402,41 +406,41 @@ def is_trusted_peer_login($login):
   end
 '
 
-	set +e
-	graphql_json="$("${GH_BOT_MERGE_GH_BIN}" api graphql \
-		-f "query=${TRUSTED_PEER_GRAPHQL_QUERY}" \
-		-f "owner=${owner}" \
-		-f "repo=${repo}" \
-		-F "pr=${pr_number}" </dev/null)"
-	graphql_status=$?
-	set -e
-	if [[ ${graphql_status} -ne 0 ]]; then
-		printf 'gh-bot-merge: gh exited %s while reading review threads and reviews for %s.\n' "${graphql_status}" "${pr_url}" >&2
-		exit "${graphql_status}"
-	fi
-
-	set +e
-	peer_verify_out="$(jq -r \
-		--arg pr_number "${pr_number}" \
-		--arg author_login "${author_login}" \
-		--arg viewer "${viewer}" \
-		--arg review_decision "${review_decision}" \
-		--arg touches_sensitive "${touches_sensitive}" \
-		--arg head_ref_oid "${head_ref_oid}" \
-		"${JQ_VERIFY_TRUSTED_PEER}" <<<"${graphql_json}")"
-	peer_jq_status=$?
-	set -e
-	if [[ ${peer_jq_status} -ne 0 ]]; then
-		printf 'gh-bot-merge: jq exited %s while verifying trusted-peer reviews for %s.\n' "${peer_jq_status}" "${pr_url}" >&2
-		exit "${peer_jq_status}"
-	fi
-
-	IFS=$'\x1f' read -r peer_verdict peer_field1 <<<"${peer_verify_out}"
-	if [[ ${peer_verdict} != "OK" ]]; then
-		die "${peer_field1:-trusted-peer verification failed}"
-	fi
-	peer_approved="${peer_field1}"
+set +e
+graphql_json="$("${GH_BOT_MERGE_GH_BIN}" api graphql \
+	-f "query=${PR_GRAPHQL_QUERY}" \
+	-f "owner=${owner}" \
+	-f "repo=${repo}" \
+	-F "pr=${pr_number}" </dev/null)"
+graphql_status=$?
+set -e
+if [[ ${graphql_status} -ne 0 ]]; then
+	printf 'gh-bot-merge: gh exited %s while reading review threads and reviews for %s.\n' "${graphql_status}" "${pr_url}" >&2
+	exit "${graphql_status}"
 fi
+
+set +e
+peer_verify_out="$(jq -r \
+	--arg pr_class "${pr_class}" \
+	--arg pr_number "${pr_number}" \
+	--arg author_login "${author_login}" \
+	--arg viewer "${viewer}" \
+	--arg review_decision "${review_decision}" \
+	--arg touches_sensitive "${touches_sensitive}" \
+	--arg head_ref_oid "${head_ref_oid}" \
+	"${JQ_VERIFY_GRAPHQL}" <<<"${graphql_json}")"
+peer_jq_status=$?
+set -e
+if [[ ${peer_jq_status} -ne 0 ]]; then
+	printf 'gh-bot-merge: jq exited %s while verifying review threads and reviews for %s.\n' "${peer_jq_status}" "${pr_url}" >&2
+	exit "${peer_jq_status}"
+fi
+
+IFS=$'\x1f' read -r peer_verdict peer_field1 <<<"${peer_verify_out}"
+if [[ ${peer_verdict} != "OK" ]]; then
+	die "${peer_field1:-review thread or trusted-peer verification failed}"
+fi
+peer_approved="${peer_field1}"
 
 needs_approve=false
 if [[ ${pr_class} == "trusted-peer" ]]; then
