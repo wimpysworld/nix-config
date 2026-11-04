@@ -497,8 +497,10 @@ def normalize_ts(raw_ts: object) -> tuple[int, int]:
     return 0, 0
 
 
-_FENCED_CODE_BLOCK_RE = re.compile(r"```[\s\S]*?```|~~~[\s\S]*?~~~")
-_INLINE_CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1)[\s\S])+?\1")
+_FENCED_CODE_BLOCK_RE = re.compile(
+    r"(?<!`)(`{3,})[\s\S]*?(?:(?<!`)\1`*(?!`)|\Z)|(?<!~)(~{3,})[\s\S]*?(?:(?<!~)\2~*(?!~)|\Z)"
+)
+_INLINE_CODE_SPAN_RE = re.compile(r"(?<!`)(`+)(?!`)(?:(?!\1)[\s\S])+?(?<!`)\1(?!`)")
 _BOT_DISPLAY_TOKEN_PATTERNS = {
     bot_id: re.compile(
         rf"(?<![\w@])@?{re.escape(display_name.lower())}(?![\w@])",
