@@ -610,6 +610,9 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
             "reviewRequests",
         ):
             self.assertIn(field, query)
+        for bot_login in ("dependabot", "github-actions", "cubic-dev-ai"):
+            self.assertTrue(companion.is_trusted_bot_actor(bot_login))
+            self.assertTrue(companion.is_trusted_github_actor(bot_login))
 
         store = self.make_store("skrye")
         graphql_batches: list[list[dict]] = [
@@ -617,6 +620,7 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
             # 1) Unrequested trusted PR on wimpysworld -> triggers "unrequested_pr"
             # 2) Review-requested trusted PR on flexiondotorg -> triggers "review_requested"
             # 3) Approved trusted PR on quickemu-project with PENDING CI -> does not trigger yet, records handled_ci_state="PENDING"
+            # 4) Unrequested Dependabot PR with GraphQL author.login == "dependabot" -> triggers "unrequested_pr"
             [
                 {
                     "number": 10,
@@ -665,6 +669,20 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
                         "state": "PENDING",
                         "contexts": {"nodes": [{"__typename": "CheckRun", "status": "QUEUED", "conclusion": ""}]},
                     },
+                },
+                {
+                    "number": 25,
+                    "title": "build(deps): bump the github-actions group with 3 updates",
+                    "url": "https://github.com/wimpysworld/WonKey/pull/25",
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "updatedAt": "2023-11-16T10:00:00Z",
+                    "headRefOid": "sha_pr25_v1",
+                    "reviewDecision": "REVIEW_REQUIRED",
+                    "repository": {"nameWithOwner": "wimpysworld/WonKey"},
+                    "author": {"login": "dependabot"},
+                    "reviewRequests": {"nodes": []},
+                    "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
                 },
             ],
             # Poll 2 (60s later):
@@ -761,9 +779,10 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
             {
                 "wimpysworld/nix-config#10": "unrequested_pr",
                 "flexiondotorg/footloose#20": "review_requested",
+                "wimpysworld/wonkey#25": "unrequested_pr",
             },
         )
-        # Complete initial turns for PR 10 and PR 20
+        # Complete initial turns for PR 10, PR 20, and PR 25
         store.complete_thread_review(
             "wimpysworld/nix-config#10",
             handled_updated_at="2023-11-16T10:00:00Z",
@@ -774,6 +793,12 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
             "flexiondotorg/footloose#20",
             handled_updated_at="2023-11-16T10:00:00Z",
             handled_head_sha="sha_pr20_v1",
+            handled_ci_state="SUCCESS",
+        )
+        store.complete_thread_review(
+            "wimpysworld/wonkey#25",
+            handled_updated_at="2023-11-16T10:00:00Z",
+            handled_head_sha="sha_pr25_v1",
             handled_ci_state="SUCCESS",
         )
 
