@@ -307,17 +307,8 @@ let
     assert context.mainModel == expectedMainModel;
     assert c.agentic.moltis.matrix.enable;
     assert c.agentic.moltis.githubCompanion.enable;
-    assert
-      c.agentic.moltis.githubCompanion.pollOffsetSecs == (
-        if host == "skrye" then
-          0
-        else if host == "zannah" then
-          40
-        else
-          20
-      );
     assert settings.heartbeat.enabled == false;
-    assert settings.heartbeat.every == "60m";
+    assert settings.heartbeat.every == "120m";
     assert lib.hasInfix "/bin/moltis-matrix-companion &" scripts.inner;
     assert lib.hasInfix "def martin_requested_voice" scripts.ttsShim;
     assert lib.hasInfix "fmt == \"ogg\"" scripts.ttsShim;
@@ -363,9 +354,6 @@ let
       scripts.githubCompanion;
     assert lib.hasInfix
       "export MOLTIS_GITHUB_COMPANION_MAIN_MODEL=${lib.escapeShellArg expectedMainModel}"
-      scripts.githubCompanion;
-    assert lib.hasInfix
-      "export MOLTIS_GITHUB_COMPANION_POLL_OFFSET_SECS=${lib.escapeShellArg (toString c.agentic.moltis.githubCompanion.pollOffsetSecs)}"
       scripts.githubCompanion;
     assert lib.hasInfix "export MOLTIS_GITHUB_COMPANION_SCHEDULE_DOW=${
       lib.escapeShellArg (

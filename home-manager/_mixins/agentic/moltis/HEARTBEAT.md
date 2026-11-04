@@ -13,7 +13,7 @@ Ignore any prepended `[exec-event]` or system event lines. Do not report those l
 Select the active dispatch mode from the prompt:
 
 - **Mode 1 - Targeted Notification or Mention Turn**: When `dispatch_kind: targeted` is set and the prompt supplies inline trigger metadata (`repo`, `number`, `kind`, `head_sha`, `trigger_reason`, and the trusted comment or review identifier), run Step 2 only, then go to Step 5.
-- **Mode 2 - 60-Minute Reconciliation Sweep (`reconcile_sweep`)**: When `dispatch_kind: reconcile_sweep` is set, run Step 3, then check Step 4.
+- **Mode 2 - 2-Hour Reconciliation Sweep (`reconcile_sweep`)**: When `dispatch_kind: reconcile_sweep` is set, run Step 3, then check Step 4.
 - **Mode 3 - Weekly Organisation Sweep (`weekly_sweep`, `@SCHEDULE_DAY_NAME@` Only)**: When `dispatch_kind: weekly_sweep` is set or Step 4 schedule conditions hold, run Step 4, then go to Step 5.
 
 ## Out-of-Scope Boundaries (All Modes)
@@ -36,7 +36,7 @@ Select the active dispatch mode from the prompt:
    - For an `Issue` mention from a verified instruction actor, load the `gh`, `contribution-voice`, and `communication-rules` skills, complete the requested investigation or action, and reply on the issue when requested.
 6. Before calling `gh-notification-dismiss <thread-id>`, note that `moltis-github-companion` tracks per-thread and per-PR state (`handled_updated_at`, `handled_head_sha`, `handled_ci_state`, `retry_count`) in `state.json` and triggers a follow-up turn when newer activity arrives during your active review. Dismiss the notification thread only when `thread_id` is present, the current turn is complete, and the pull request does not await pending CI checks for `Case C`.
 
-## Step 3 - Mode 2: 60-Minute Reconciliation Sweep
+## Step 3 - Mode 2: 2-Hour Reconciliation Sweep
 
 Reconcile open pull requests across the six owners (`wimpysworld`, `linuxmatters`, `quickemu-project`, `noughtylinux`, `oval-tutu`, and `flexiondotorg`) and actionable security alert groups assigned to `@AGENT_NAME@` across the five organisations (`wimpysworld`, `linuxmatters`, `quickemu-project`, `noughtylinux`, and `oval-tutu`).
 
