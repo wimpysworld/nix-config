@@ -45,7 +45,7 @@ DEFAULT_COMPLETION_POLL_INTERVAL_MS = 250
 POLL_PR_OWNERS = ("wimpysworld", "linuxmatters", "quickemu-project", "noughtylinux", "oval-tutu", "flexiondotorg")
 ALLOWED_NOTIFICATION_OWNERS = frozenset(POLL_PR_OWNERS)
 TRUSTED_INSTRUCTION_ACTORS = frozenset({"flexiondotorg", "sith-skrye", "sith-traya", "sith-zannah"})
-TRUSTED_BOT_ACTORS = frozenset({"dependabot", "dependabot[bot]", "app/dependabot", "github-actions", "github-actions[bot]", "app/github-actions", "cubic-dev-ai", "cubic-dev-ai[bot]"})
+TRUSTED_BOT_ACTORS = frozenset({"dependabot[bot]", "app/dependabot", "github-actions[bot]", "app/github-actions", "cubic-dev-ai[bot]"})
 TRUSTED_GITHUB_ACTORS = TRUSTED_INSTRUCTION_ACTORS | TRUSTED_BOT_ACTORS
 GITHUB_AGENT_LOGINS: dict[str, str] = {"skrye": "sith-skrye", "traya": "sith-traya", "zannah": "sith-zannah"}
 LOGIN_TO_AGENT_NAME: dict[str, str] = {"sith-skrye": "skrye", "skrye": "skrye", "sith-traya": "traya", "traya": "traya", "momin": "traya", "sith-zannah": "zannah", "zannah": "zannah"}
@@ -186,10 +186,14 @@ def extract_actor_login(actor_obj: object) -> str:
     if isinstance(actor_obj, str):
         return actor_obj.strip()
     if isinstance(actor_obj, dict):
+        is_bot = str(actor_obj.get("__typename") or actor_obj.get("type") or "").strip().lower() == "bot"
         for key in ("login", "name", "slug"):
             val = actor_obj.get(key)
             if isinstance(val, str) and val.strip():
-                return val.strip()
+                login = val.strip()
+                if is_bot and not login.lower().endswith("[bot]") and not login.lower().startswith("app/"):
+                    return f"{login}[bot]"
+                return login
     return ""
 
 
@@ -1435,7 +1439,7 @@ class MoltisRpcClient:
         return self.call("chat.send_sync", params, timeout=self.send_sync_timeout if timeout is None else timeout)
 
 
-OPEN_PRS_GRAPHQL_QUERY_TEMPLATE = "query { search(query: %s, type: ISSUE, first: 100) { nodes { ... on PullRequest { number title url state isDraft updatedAt headRefOid reviewDecision repository { nameWithOwner } author { login } reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } } } } statusCheckRollup { state contexts(first: 100) { nodes { __typename ... on CheckRun { status conclusion } ... on StatusContext { state } } } } } } } }"
+OPEN_PRS_GRAPHQL_QUERY_TEMPLATE = "query { search(query: %s, type: ISSUE, first: 100) { nodes { ... on PullRequest { number title url state isDraft updatedAt headRefOid reviewDecision repository { nameWithOwner } author { __typename login } reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } } } } statusCheckRollup { state contexts(first: 100) { nodes { __typename ... on CheckRun { status conclusion } ... on StatusContext { state } } } } } } } }"
 
 
 def build_open_prs_graphql_query(owners: Iterable[str] = POLL_PR_OWNERS) -> str:

@@ -602,7 +602,7 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
             self.assertIn(f"user:{owner}", query)
         for field in (
             "number",
-            "author",
+            "author { __typename login }",
             "headRefOid",
             "reviewDecision",
             "statusCheckRollup",
@@ -611,8 +611,13 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
         ):
             self.assertIn(field, query)
         for bot_login in ("dependabot", "github-actions", "cubic-dev-ai"):
-            self.assertTrue(companion.is_trusted_bot_actor(bot_login))
-            self.assertTrue(companion.is_trusted_github_actor(bot_login))
+            self.assertFalse(companion.is_trusted_bot_actor(bot_login))
+            self.assertFalse(companion.is_trusted_github_actor(bot_login))
+            self.assertFalse(companion.is_trusted_bot_actor({"login": bot_login, "type": "User"}))
+            self.assertFalse(companion.is_trusted_github_actor({"login": bot_login, "__typename": "User"}))
+            self.assertFalse(companion.is_trusted_github_actor({"login": bot_login, "__typename": "Organization"}))
+            self.assertTrue(companion.is_trusted_bot_actor({"login": bot_login, "__typename": "Bot"}))
+            self.assertTrue(companion.is_trusted_github_actor({"login": bot_login, "type": "Bot"}))
 
         store = self.make_store("skrye")
         graphql_batches: list[list[dict]] = [
@@ -620,7 +625,8 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
             # 1) Unrequested trusted PR on wimpysworld -> triggers "unrequested_pr"
             # 2) Review-requested trusted PR on flexiondotorg -> triggers "review_requested"
             # 3) Approved trusted PR on quickemu-project with PENDING CI -> does not trigger yet, records handled_ci_state="PENDING"
-            # 4) Unrequested Dependabot PR with GraphQL author.login == "dependabot" -> triggers "unrequested_pr"
+            # 4) Unrequested Dependabot PR with GraphQL author.__typename == "Bot" and login == "dependabot" -> triggers "unrequested_pr"
+            # 5) Spoofed User PR with login == "cubic-dev-ai" and __typename == "User" -> untrusted, does not trigger
             [
                 {
                     "number": 10,
@@ -632,7 +638,7 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
                     "headRefOid": "sha_pr10_v1",
                     "reviewDecision": "REVIEW_REQUIRED",
                     "repository": {"nameWithOwner": "wimpysworld/nix-config"},
-                    "author": {"login": "flexiondotorg"},
+                    "author": {"__typename": "User", "login": "flexiondotorg"},
                     "reviewRequests": {"nodes": []},
                     "statusCheckRollup": {
                         "state": "PENDING",
@@ -649,7 +655,7 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
                     "headRefOid": "sha_pr20_v1",
                     "reviewDecision": "",
                     "repository": {"nameWithOwner": "flexiondotorg/footloose"},
-                    "author": {"login": "sith-zannah"},
+                    "author": {"__typename": "User", "login": "sith-zannah"},
                     "reviewRequests": {"nodes": [{"requestedReviewer": {"login": "sith-skrye"}}]},
                     "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
                 },
@@ -663,7 +669,7 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
                     "headRefOid": "sha_pr30_v1",
                     "reviewDecision": "APPROVED",
                     "repository": {"nameWithOwner": "quickemu-project/quickemu"},
-                    "author": {"login": "sith-traya"},
+                    "author": {"__typename": "User", "login": "sith-traya"},
                     "reviewRequests": {"nodes": []},
                     "statusCheckRollup": {
                         "state": "PENDING",
@@ -680,7 +686,21 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
                     "headRefOid": "sha_pr25_v1",
                     "reviewDecision": "REVIEW_REQUIRED",
                     "repository": {"nameWithOwner": "wimpysworld/WonKey"},
-                    "author": {"login": "dependabot"},
+                    "author": {"__typename": "Bot", "login": "dependabot"},
+                    "reviewRequests": {"nodes": []},
+                    "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
+                },
+                {
+                    "number": 26,
+                    "title": "Untrusted user with bare bot login",
+                    "url": "https://github.com/wimpysworld/WonKey/pull/26",
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "updatedAt": "2023-11-16T10:00:00Z",
+                    "headRefOid": "sha_pr26_v1",
+                    "reviewDecision": "REVIEW_REQUIRED",
+                    "repository": {"nameWithOwner": "wimpysworld/WonKey"},
+                    "author": {"__typename": "User", "login": "cubic-dev-ai"},
                     "reviewRequests": {"nodes": []},
                     "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
                 },
