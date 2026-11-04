@@ -1532,5 +1532,549 @@ class InterruptedTurnRecoveryDecoupledPollingAndStartNoticeTests(GithubCompanion
         )
 
 
+class SweepRetryBackoffRecoveryAndScheduleTests(GithubCompanionTestBase):
+    """WW-302 Phase 2.1: Deterministic clock regression tests for sweep failures, recovery, restarts, and legacy state."""
+
+    def _build_runner_stack(
+        self,
+        *,
+        agent_name: str = "skrye",
+        state_dir: Path | None = None,
+        gh_runner: Callable[..., subprocess.CompletedProcess] | None = None,
+        schedule_dow: int | None = None,
+        schedule_day_name: str = "",
+    ) -> tuple[
+        companion.CompanionStateStore,
+        companion.LocalExecutionCoordinator,
+        companion.GithubCompanionRunner,
+    ]:
+        store = self.make_store(agent_name, state_dir=state_dir)
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+
+        def default_gh_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            self.gh_commands.append(list(cmd))
+            if cmd[1] == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if cmd[1] == "graphql":
+                return subprocess.CompletedProcess(
+                    cmd, 0, stdout=json.dumps({"data": {"search": {"nodes": []}}}), stderr=""
+                )
+            return subprocess.CompletedProcess(cmd, 0, stdout="{}", stderr="")
+
+        gh_client = companion.GhApiSafeClient(runner=gh_runner or default_gh_runner)
+        poller = companion.NotificationPoller(
+            state_store=store,
+            gh_client=gh_client,
+            clock=self.clock,
+            sleeper=self.sleeper,
+            jitter_rng=lambda _lo, _hi: 5_000,
+        )
+        tf = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store,
+            gh_client=gh_client,
+            agent_name=agent_name,
+            clock=self.clock,
+        )
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name=agent_name,
+            schedule_dow=schedule_dow,
+            schedule_day_name=schedule_day_name,
+            completion_timeout_ms=300,
+            recovery_deadline_ms=300,
+            poll_interval_ms=50,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+        runner = companion.GithubCompanionRunner(
+            state_store=store,
+            gh_client=gh_client,
+            poller=poller,
+            trust_filter=tf,
+            execution_coordinator=coord,
+            clock=self.clock,
+        )
+        return store, coord, runner
+
+    def test_failed_reconcile_sweep_suppresses_60s_polls_while_targeted_notifications_dispatch_and_exponential_backoff_caps(
+        self,
+    ) -> None:
+        # 2023-11-15 10:00:00 UTC is Wednesday (ISO weekday 3); Skrye weekly sweep is Monday (1)
+        self.current_time_ms = 1_700_042_400_000
+        self.httpd.peek_active = False
+
+        self.assertEqual(companion.SWEEP_RETRY_BASE_DELAY_MS, 15 * 60 * 1000)
+        self.assertEqual(companion.SWEEP_RETRY_MAX_DELAY_MS, 60 * 60 * 1000)
+        self.assertEqual(companion.compute_sweep_retry_delay_ms(1), 15 * 60 * 1000)
+        self.assertEqual(companion.compute_sweep_retry_delay_ms(2), 30 * 60 * 1000)
+        self.assertEqual(companion.compute_sweep_retry_delay_ms(3), 60 * 60 * 1000)
+        self.assertEqual(companion.compute_sweep_retry_delay_ms(4), 60 * 60 * 1000)
+
+        emit_targeted_notification = False
+
+        def gh_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            self.gh_commands.append(list(cmd))
+            ep = cmd[1]
+            if ep == "notifications":
+                if emit_targeted_notification:
+                    raw_http = (
+                        "HTTP/2.0 200 OK\r\n"
+                        "Last-Modified: Wed, 15 Nov 2023 10:01:00 GMT\r\n"
+                        "\r\n"
+                        + json.dumps(
+                            [
+                                {
+                                    "id": "810",
+                                    "reason": "mention",
+                                    "updated_at": "2023-11-15T10:01:00Z",
+                                    "repository": {
+                                        "full_name": "wimpysworld/nix-config",
+                                        "owner": {"login": "wimpysworld"},
+                                    },
+                                    "subject": {
+                                        "type": "PullRequest",
+                                        "title": "Actionable targeted PR during sweep backoff",
+                                        "url": "https://api.github.com/repos/wimpysworld/nix-config/pulls/81",
+                                        "latest_comment_url": "https://api.github.com/repos/wimpysworld/nix-config/issues/comments/8101",
+                                    },
+                                }
+                            ]
+                        )
+                    )
+                    return subprocess.CompletedProcess(cmd, 0, stdout=raw_http, stderr="")
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(
+                    cmd, 0, stdout=json.dumps({"data": {"search": {"nodes": []}}}), stderr=""
+                )
+            if ep.endswith("repos/wimpysworld/nix-config/pulls/81"):
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps(
+                        {
+                            "id": 8100,
+                            "number": 81,
+                            "state": "open",
+                            "draft": False,
+                            "user": {"login": "flexiondotorg"},
+                            "head": {"sha": "sha_pr81"},
+                        }
+                    ),
+                    stderr="",
+                )
+            if ep.endswith("repos/wimpysworld/nix-config/issues/comments/8101"):
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps(
+                        {
+                            "id": 8101,
+                            "user": {"login": "flexiondotorg"},
+                            "body": "@sith-skrye please review this change.",
+                        }
+                    ),
+                    stderr="",
+                )
+            return subprocess.CompletedProcess(cmd, 0, stdout="{}", stderr="")
+
+        store, _coord, runner = self._build_runner_stack(agent_name="skrye", gh_runner=gh_runner)
+        dispatched_kinds: list[str] = []
+        sweep_should_fail = True
+
+        def send_sync_handler(params: dict) -> dict:
+            msg = str(params.get("message") or "")
+            disp_id = [line.split(": ", 1)[1] for line in msg.splitlines() if line.startswith("dispatch_id: ")][0]
+            disp_kind = [line.split(": ", 1)[1] for line in msg.splitlines() if line.startswith("dispatch_kind: ")][0]
+            dispatched_kinds.append(disp_kind)
+            if disp_kind == "reconcile_sweep" and sweep_should_fail:
+                self.write_history(
+                    companion.DEFAULT_GH_SESSION_KEY,
+                    [
+                        {"role": "user", "dispatch_id": disp_id, "content": msg},
+                        {"role": "assistant", "content": "HEARTBEAT_ERROR: sweep failed", "stop_reason": "end_turn"},
+                    ],
+                    agent_name="skrye",
+                )
+                return {"ok": True, "result": {"text": "HEARTBEAT_ERROR: sweep failed"}}
+            self.write_history(
+                companion.DEFAULT_GH_SESSION_KEY,
+                [
+                    {"role": "user", "dispatch_id": disp_id, "content": msg},
+                    {"role": "assistant", "content": "HEARTBEAT_OK", "stop_reason": "end_turn"},
+                ],
+                agent_name="skrye",
+            )
+            return {"ok": True, "result": {"text": "HEARTBEAT_OK"}}
+
+        self.httpd.send_sync_handler = send_sync_handler
+
+        # Cycle 1: initial reconciliation sweep fails (last_reconcile_sweep_at_ms remains None)
+        t0 = self.current_time_ms
+        cycle1 = runner.run_cycle()
+        self.assertIsNotNone(cycle1["sweep_dispatch"])
+        self.assertEqual(cycle1["sweep_dispatch"]["status"], "failed")
+        st1 = store.read_state()
+        self.assertIsNone(st1["last_reconcile_sweep_at_ms"])
+        self.assertEqual(st1["last_reconcile_sweep_attempt_at_ms"], t0)
+        self.assertEqual(st1["reconcile_sweep_failure_count"], 1)
+        first_retry_deadline = t0 + (15 * 60 * 1000)
+        self.assertEqual(st1["reconcile_sweep_retry_after_ms"], first_retry_deadline)
+        self.assertIsNotNone(st1["last_reconcile_sweep_failure_reason"])
+
+        # Subsequent 60-second polls before first_retry_deadline do NOT dispatch a sweep,
+        # while actionable targeted notifications still dispatch.
+        for minute in range(1, 15):
+            self.current_time_ms = t0 + (minute * 60_000)
+            emit_targeted_notification = minute == 1
+            cycle_poll = runner.run_cycle()
+            self.assertIsNone(cycle_poll["sweep_dispatch"], f"Unexpected sweep at minute {minute}")
+            if minute == 1:
+                self.assertEqual(len(cycle_poll["targeted_dispatches"]), 1)
+                self.assertEqual(cycle_poll["targeted_dispatches"][0]["status"], "completed")
+                self.assertEqual(cycle_poll["targeted_dispatches"][0]["thread_id"], "810")
+            else:
+                self.assertEqual(cycle_poll["targeted_dispatches"], [])
+        self.assertEqual(dispatched_kinds, ["reconcile_sweep", "targeted"])
+
+        # Once the 15m retry deadline expires, exactly one sweep starts; a second failure schedules 30m backoff.
+        self.current_time_ms = first_retry_deadline
+        emit_targeted_notification = False
+        cycle_retry_2 = runner.run_cycle()
+        self.assertIsNotNone(cycle_retry_2["sweep_dispatch"])
+        self.assertEqual(cycle_retry_2["sweep_dispatch"]["status"], "failed")
+        st2 = store.read_state()
+        self.assertIsNone(st2["last_reconcile_sweep_at_ms"])
+        self.assertEqual(st2["reconcile_sweep_failure_count"], 2)
+        second_retry_deadline = first_retry_deadline + (30 * 60 * 1000)
+        self.assertEqual(st2["reconcile_sweep_retry_after_ms"], second_retry_deadline)
+
+        # 60s before second_retry_deadline: still blocked
+        self.current_time_ms = second_retry_deadline - 60_000
+        self.assertIsNone(runner.run_cycle()["sweep_dispatch"])
+
+        # At second_retry_deadline: third failure caps retry delay at 60m (3,600,000 ms)
+        self.current_time_ms = second_retry_deadline
+        cycle_retry_3 = runner.run_cycle()
+        self.assertIsNotNone(cycle_retry_3["sweep_dispatch"])
+        self.assertEqual(cycle_retry_3["sweep_dispatch"]["status"], "failed")
+        st3 = store.read_state()
+        self.assertEqual(st3["reconcile_sweep_failure_count"], 3)
+        third_retry_deadline = second_retry_deadline + (60 * 60 * 1000)
+        self.assertEqual(st3["reconcile_sweep_retry_after_ms"], third_retry_deadline)
+
+        # Fourth failure also stays capped at 60m
+        self.current_time_ms = third_retry_deadline
+        cycle_retry_4 = runner.run_cycle()
+        self.assertIsNotNone(cycle_retry_4["sweep_dispatch"])
+        self.assertEqual(cycle_retry_4["sweep_dispatch"]["status"], "failed")
+        st4 = store.read_state()
+        self.assertEqual(st4["reconcile_sweep_failure_count"], 4)
+        self.assertEqual(st4["reconcile_sweep_retry_after_ms"], third_retry_deadline + (60 * 60 * 1000))
+
+    def test_companion_restart_preserves_retry_deadline_recovers_interrupted_sweep_and_dispatches_pending_targeted_work(
+        self,
+    ) -> None:
+        self.current_time_ms = 1_700_042_400_000  # Wednesday 10:00 UTC
+        self.httpd.peek_active = False
+        restart_state_dir = self.state_dir / "restart-skrye"
+
+        def gh_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            self.gh_commands.append(list(cmd))
+            ep = cmd[1]
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(
+                    cmd, 0, stdout=json.dumps({"data": {"search": {"nodes": []}}}), stderr=""
+                )
+            if ep.endswith("repos/wimpysworld/nix-config/pulls/92"):
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps(
+                        {
+                            "id": 9200,
+                            "number": 92,
+                            "state": "open",
+                            "draft": False,
+                            "user": {"login": "flexiondotorg"},
+                            "head": {"sha": "sha_pr92"},
+                        }
+                    ),
+                    stderr="",
+                )
+            if ep.endswith("repos/wimpysworld/nix-config/issues/comments/9201"):
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps(
+                        {
+                            "id": 9201,
+                            "user": {"login": "flexiondotorg"},
+                            "body": "@sith-skrye please check this after restart.",
+                        }
+                    ),
+                    stderr="",
+                )
+            return subprocess.CompletedProcess(cmd, 0, stdout="{}", stderr="")
+
+        # First companion instance: seed an interrupted in-flight reconcile_sweep in active-dispatch.json
+        # and a pending targeted notification in state.json
+        store1, _coord1, _runner1 = self._build_runner_stack(
+            agent_name="skrye", state_dir=restart_state_dir, gh_runner=gh_runner
+        )
+        attempt_started_ms = self.current_time_ms - 30_000
+        store1.record_sweep_attempt("reconcile_sweep", now_override_ms=attempt_started_ms)
+        store1.write_active_dispatch(
+            {
+                "dispatch_id": "ghd-skrye-interrupted-sweep",
+                "session_key": companion.DEFAULT_GH_SESSION_KEY,
+                "kind": "reconcile_sweep",
+                "started_at_ms": attempt_started_ms,
+                "status": "in_flight",
+            },
+            now_override_ms=attempt_started_ms,
+        )
+        self.write_history(
+            companion.DEFAULT_GH_SESSION_KEY,
+            [
+                {
+                    "role": "user",
+                    "dispatch_id": "ghd-skrye-interrupted-sweep",
+                    "content": "dispatch_id: ghd-skrye-interrupted-sweep",
+                },
+                {
+                    "role": "assistant",
+                    "tool_calls": [{"id": "call-1", "name": "exec", "arguments": {"command": "gh pr list"}}],
+                },
+            ],
+            agent_name="skrye",
+        )
+        store1.record_polled_notifications(
+            [
+                {
+                    "id": "920",
+                    "reason": "mention",
+                    "updated_at": "2023-11-15T10:00:00Z",
+                    "repository": {"full_name": "wimpysworld/nix-config", "owner": {"login": "wimpysworld"}},
+                    "subject": {
+                        "type": "PullRequest",
+                        "title": "Pending targeted PR",
+                        "url": "https://api.github.com/repos/wimpysworld/nix-config/pulls/92",
+                        "latest_comment_url": "https://api.github.com/repos/wimpysworld/nix-config/issues/comments/9201",
+                    },
+                }
+            ],
+            now_override_ms=attempt_started_ms,
+        )
+
+        def send_sync_ok(params: dict) -> dict:
+            msg = str(params.get("message") or "")
+            disp_id = [line.split(": ", 1)[1] for line in msg.splitlines() if line.startswith("dispatch_id: ")][0]
+            self.write_history(
+                companion.DEFAULT_GH_SESSION_KEY,
+                [
+                    {"role": "user", "dispatch_id": disp_id, "content": msg},
+                    {"role": "assistant", "content": "HEARTBEAT_OK", "stop_reason": "end_turn"},
+                ],
+                agent_name="skrye",
+            )
+            return {"ok": True, "result": {"text": "HEARTBEAT_OK"}}
+
+        self.httpd.send_sync_handler = send_sync_ok
+
+        # Restart 1: re-instantiate store, coordinator, and runner against restart_state_dir
+        store2, _coord2, runner2 = self._build_runner_stack(
+            agent_name="skrye", state_dir=restart_state_dir, gh_runner=gh_runner
+        )
+        recovery_time_ms = self.current_time_ms
+        cycle_after_restart1 = runner2.run_cycle(now_override_ms=recovery_time_ms)
+
+        self.assertEqual(cycle_after_restart1["recovery"]["status"], "recovered_failed")
+        self.assertEqual(cycle_after_restart1["recovery"]["kind"], "reconcile_sweep")
+        self.assertIsNone(store2.read_active_dispatch()["active"])
+        # Interrupted sweep recovery sets retry deadline in the same cycle, so no new sweep starts
+        self.assertIsNone(cycle_after_restart1["sweep_dispatch"])
+        # Pending targeted notification work still dispatches and completes
+        self.assertEqual(len(cycle_after_restart1["targeted_dispatches"]), 1)
+        self.assertEqual(cycle_after_restart1["targeted_dispatches"][0]["thread_id"], "920")
+        self.assertEqual(cycle_after_restart1["targeted_dispatches"][0]["status"], "completed")
+
+        st_recovered = store2.read_state()
+        expected_retry_after = recovery_time_ms + (15 * 60 * 1000)
+        self.assertIsNone(st_recovered["last_reconcile_sweep_at_ms"])
+        self.assertEqual(st_recovered["last_reconcile_sweep_attempt_at_ms"], attempt_started_ms)
+        self.assertEqual(st_recovered["reconcile_sweep_failure_count"], 1)
+        self.assertEqual(st_recovered["reconcile_sweep_retry_after_ms"], expected_retry_after)
+
+        # Restart 2 (60s later): active retry deadline is preserved across companion restart
+        self.current_time_ms = recovery_time_ms + 60_000
+        store3, _coord3, runner3 = self._build_runner_stack(
+            agent_name="skrye", state_dir=restart_state_dir, gh_runner=gh_runner
+        )
+        self.assertEqual(store3.read_state()["reconcile_sweep_retry_after_ms"], expected_retry_after)
+        self.assertFalse(runner3.is_reconcile_sweep_due())
+        cycle_after_restart2 = runner3.run_cycle()
+        self.assertIsNone(cycle_after_restart2["sweep_dispatch"])
+
+    def test_successful_reconcile_and_weekly_sweep_schedules_and_failed_weekly_sweep_retry(self) -> None:
+        # Monday 2023-11-13 10:00:00 UTC (ISO weekday 1, hour 10 in Europe/London)
+        monday_10am_ms = 1_699_869_600_000
+        self.current_time_ms = monday_10am_ms
+        self.httpd.peek_active = False
+
+        store, _coord, runner = self._build_runner_stack(
+            agent_name="skrye", schedule_dow=1, schedule_day_name="Monday"
+        )
+        should_fail_turn = True
+
+        def send_sync_handler(params: dict) -> dict:
+            msg = str(params.get("message") or "")
+            disp_id = [line.split(": ", 1)[1] for line in msg.splitlines() if line.startswith("dispatch_id: ")][0]
+            reply = "HEARTBEAT_ERROR: weekly sweep failure" if should_fail_turn else "HEARTBEAT_OK"
+            self.write_history(
+                companion.DEFAULT_GH_SESSION_KEY,
+                [
+                    {"role": "user", "dispatch_id": disp_id, "content": msg},
+                    {"role": "assistant", "content": reply, "stop_reason": "end_turn"},
+                ],
+                agent_name="skrye",
+            )
+            return {"ok": True, "result": {"text": reply}}
+
+        self.httpd.send_sync_handler = send_sync_handler
+
+        # 1) Failed weekly sweep does not set last_weekly_sweep_date or fall through to reconcile_sweep 60s later
+        cycle_weekly_fail = runner.run_cycle()
+        self.assertIsNotNone(cycle_weekly_fail["sweep_dispatch"])
+        self.assertEqual(cycle_weekly_fail["sweep_dispatch"]["kind"], "weekly_sweep")
+        self.assertEqual(cycle_weekly_fail["sweep_dispatch"]["status"], "failed")
+        st_wf = store.read_state()
+        self.assertIsNone(st_wf["last_weekly_sweep_date"])
+        self.assertIsNone(st_wf["last_reconcile_sweep_at_ms"])
+        self.assertEqual(st_wf["weekly_sweep_failure_count"], 1)
+        weekly_retry_deadline = monday_10am_ms + (15 * 60 * 1000)
+        self.assertEqual(st_wf["weekly_sweep_retry_after_ms"], weekly_retry_deadline)
+
+        # 60 seconds later: neither weekly_sweep nor reconcile_sweep dispatches
+        self.current_time_ms = monday_10am_ms + 60_000
+        self.assertEqual(runner.is_weekly_sweep_due(), (False, "2023-11-13"))
+        self.assertFalse(runner.is_reconcile_sweep_due())
+        cycle_60s = runner.run_cycle()
+        self.assertIsNone(cycle_60s["sweep_dispatch"])
+
+        # 2) Once the weekly retry deadline expires, weekly_sweep retries and succeeds,
+        # setting both last_weekly_sweep_date and last_reconcile_sweep_at_ms and clearing retry state.
+        should_fail_turn = False
+        self.current_time_ms = weekly_retry_deadline
+        self.assertEqual(runner.is_weekly_sweep_due(), (True, "2023-11-13"))
+        cycle_weekly_ok = runner.run_cycle()
+        self.assertIsNotNone(cycle_weekly_ok["sweep_dispatch"])
+        self.assertEqual(cycle_weekly_ok["sweep_dispatch"]["kind"], "weekly_sweep")
+        self.assertEqual(cycle_weekly_ok["sweep_dispatch"]["status"], "completed")
+        st_wo = store.read_state()
+        self.assertEqual(st_wo["last_weekly_sweep_date"], "2023-11-13")
+        self.assertEqual(st_wo["last_reconcile_sweep_at_ms"], weekly_retry_deadline)
+        self.assertEqual(st_wo["weekly_sweep_failure_count"], 0)
+        self.assertIsNone(st_wo["weekly_sweep_retry_after_ms"])
+        self.assertIsNone(st_wo["last_weekly_sweep_failure_reason"])
+        self.assertEqual(st_wo["reconcile_sweep_failure_count"], 0)
+        self.assertIsNone(st_wo["reconcile_sweep_retry_after_ms"])
+
+        # 3) Successful reconciliation retains the 60-minute (3,600,000 ms) schedule and clears retry state
+        self.current_time_ms = weekly_retry_deadline + 3_600_000 - 1
+        self.assertFalse(runner.is_reconcile_sweep_due())
+        self.assertIsNone(runner.run_cycle()["sweep_dispatch"])
+
+        # Seed a failed reconcile attempt first, then succeed after retry to verify retry state clears and 60m schedule holds
+        should_fail_turn = True
+        self.current_time_ms = weekly_retry_deadline + 3_600_000
+        cycle_rec_fail = runner.run_cycle()
+        self.assertEqual(cycle_rec_fail["sweep_dispatch"]["kind"], "reconcile_sweep")
+        self.assertEqual(cycle_rec_fail["sweep_dispatch"]["status"], "failed")
+        self.assertEqual(store.read_state()["reconcile_sweep_failure_count"], 1)
+
+        should_fail_turn = False
+        rec_retry_ms = self.current_time_ms + (15 * 60 * 1000)
+        self.current_time_ms = rec_retry_ms
+        cycle_rec_ok = runner.run_cycle()
+        self.assertIsNotNone(cycle_rec_ok["sweep_dispatch"])
+        self.assertEqual(cycle_rec_ok["sweep_dispatch"]["kind"], "reconcile_sweep")
+        self.assertEqual(cycle_rec_ok["sweep_dispatch"]["status"], "completed")
+        st_ro = store.read_state()
+        self.assertEqual(st_ro["last_reconcile_sweep_at_ms"], rec_retry_ms)
+        self.assertEqual(st_ro["reconcile_sweep_failure_count"], 0)
+        self.assertIsNone(st_ro["reconcile_sweep_retry_after_ms"])
+        self.assertIsNone(st_ro["last_reconcile_sweep_failure_reason"])
+
+        # Next reconciliation sweep is not due until 3,600,000 ms later
+        self.current_time_ms = rec_retry_ms + 3_600_000 - 60_000
+        self.assertFalse(runner.is_reconcile_sweep_due())
+        self.assertIsNone(runner.run_cycle()["sweep_dispatch"])
+        self.current_time_ms = rec_retry_ms + 3_600_000
+        self.assertTrue(runner.is_reconcile_sweep_due())
+
+    def test_existing_state_json_without_sweep_retry_fields_loads_safely_and_allows_initial_sweep(self) -> None:
+        self.current_time_ms = 1_700_042_400_000  # Wednesday 10:00 UTC
+        self.httpd.peek_active = False
+
+        existing_dir = self.state_dir / "pre-ww302-skrye"
+        existing_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        dir_fd = companion.open_private_directory(existing_dir, create=True)
+        try:
+            companion.atomic_write_json_in_dir(
+                dir_fd,
+                companion.STATE_FILENAME,
+                {
+                    "version": 2,
+                    "agent_name": "skrye",
+                    "poll_offset_secs": 0,
+                    "initial_offset_applied": True,
+                    "last_reconcile_sweep_at_ms": None,
+                    "last_weekly_sweep_date": None,
+                    "threads": {},
+                },
+            )
+        finally:
+            companion.os.close(dir_fd)
+
+        store, _coord, runner = self._build_runner_stack(agent_name="skrye", state_dir=existing_dir)
+        loaded = store.read_state()
+        self.assertIsNone(loaded["last_reconcile_sweep_at_ms"])
+        self.assertIsNone(loaded["last_reconcile_sweep_attempt_at_ms"])
+        self.assertIsNone(loaded["reconcile_sweep_retry_after_ms"])
+        self.assertEqual(loaded["reconcile_sweep_failure_count"], 0)
+        self.assertIsNone(loaded["last_reconcile_sweep_failure_reason"])
+        self.assertIsNone(loaded["last_weekly_sweep_date"])
+        self.assertIsNone(loaded["last_weekly_sweep_attempt_at_ms"])
+        self.assertIsNone(loaded["weekly_sweep_retry_after_ms"])
+        self.assertEqual(loaded["weekly_sweep_failure_count"], 0)
+        self.assertIsNone(loaded["last_weekly_sweep_failure_reason"])
+        self.assertTrue(runner.is_reconcile_sweep_due())
+
+        def send_sync_ok(params: dict) -> dict:
+            msg = str(params.get("message") or "")
+            disp_id = [line.split(": ", 1)[1] for line in msg.splitlines() if line.startswith("dispatch_id: ")][0]
+            self.write_history(
+                companion.DEFAULT_GH_SESSION_KEY,
+                [
+                    {"role": "user", "dispatch_id": disp_id, "content": msg},
+                    {"role": "assistant", "content": "HEARTBEAT_OK", "stop_reason": "end_turn"},
+                ],
+                agent_name="skrye",
+            )
+            return {"ok": True, "result": {"text": "HEARTBEAT_OK"}}
+
+        self.httpd.send_sync_handler = send_sync_ok
+        cycle = runner.run_cycle()
+        self.assertIsNotNone(cycle["sweep_dispatch"])
+        self.assertEqual(cycle["sweep_dispatch"]["kind"], "reconcile_sweep")
+        self.assertEqual(cycle["sweep_dispatch"]["status"], "completed")
+        self.assertEqual(store.read_state()["last_reconcile_sweep_at_ms"], self.current_time_ms)
+
+
 if __name__ == "__main__":
     unittest.main()
