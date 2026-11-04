@@ -29,11 +29,11 @@ Requesting your two Sith peers alongside `cubic-dev-ai[bot]` ensures that every 
 - Load and follow the `review-code` skill with the **colleague** lens (defect-only: report only concrete bugs, security issues, regressions, or missing tests, with no style nits or praise).
 - Apply `contribution-voice` and `communication-rules` to every review comment and thread reply.
 - Query and paginate all existing `reviewThreads` on the pull request with `gh-api-safe graphql` (follow `pageInfo.endCursor` while `pageInfo.hasNextPage` is true, and stop without posting if pagination is incomplete):
-  - When an existing inline thread already covers a valid finding, reply inside that thread with `gh-review-reply <comment-url> --body-file <file>` to reinforce the finding with your independent proof instead of posting a duplicate comment.
+  - When an existing inline thread already covers a valid finding, reply inside that thread with `gh-review-reply <comment-url> --body-file <file>` to reinforce the finding with your independent proof instead of posting a duplicate comment. When another reviewer already marked that thread resolved, run `gh-review-unresolve <comment-url>` so the thread stays open until fixed.
   - When an existing unresolved inline thread is a false positive, reply inside that thread with `gh-review-reply <comment-url> --body-file <file>` stating the counter-evidence, and resolve bot threads (`cubic-dev-ai[bot]`) with `gh-review-resolve <comment-url>`.
   - When net-new findings remain on diff lines without an existing thread, submit them inline with `gh-review-inline <pr-url> --commit <head-sha> --event COMMENT [--body-file <file>] --comment <repo-path>:<line> --comment-file <file> ...` and tag `@<author>`.
   - When net-new findings cannot anchor to a diff line, submit them with `gh pr review <pr-url> --comment --body-file <file>` and tag `@<author>`.
-- When there are zero blocking findings, submit an approval with `gh pr review <pr-url> --approve --body-file <file>`. When Continuous Integration (CI) checks are green and zero unresolved review threads remain from `cubic-dev-ai[bot]` or other reviewers, approve and merge directly with `gh-bot-merge <pr-url>`.
+- Never approve or call `gh-bot-merge` while any review thread is unresolved (`isResolved == false`). When there are zero blocking findings and zero unresolved review threads, submit an approval with `gh pr review <pr-url> --approve --body-file <file>`. When Continuous Integration (CI) checks are green and zero unresolved review threads remain from `cubic-dev-ai[bot]` or other reviewers, approve and merge directly with `gh-bot-merge <pr-url>`.
 
 ### Addressing Review Comments on Your Own Pull Request
 
@@ -48,8 +48,8 @@ When a pull request that you authored receives review comments from `flexiondoto
 
 - When tagged for a follow-up review on a pull request that you previously reviewed, or when new commits land after your review, load and follow the `review-code-follow-up`, `contribution-voice`, and `communication-rules` skills.
 - Verify each prior finding (`resolved`, `partly resolved`, `unresolved`, `withdrawn`) and inspect the new diff delta.
-- Resolve verified threads with `gh-review-resolve <review-comment-url>`.
-- When all findings are resolved, approve with `gh pr review <pr-url> --approve --body-file <file>`. When all CI checks are green and zero unresolved threads remain, merge with `gh-bot-merge <pr-url>`.
+- Resolve verified threads with `gh-review-resolve <review-comment-url>`. When a follow-up check finds a thread still `unresolved` or `partly resolved` and another reviewer already marked it resolved, reply with `gh-review-reply <review-comment-url> --body-file <file>` and run `gh-review-unresolve <review-comment-url>` so the thread stays open until fixed.
+- Never approve or call `gh-bot-merge` while any review thread is unresolved (`isResolved == false`). When all findings are resolved and zero unresolved review threads remain, approve with `gh pr review <pr-url> --approve --body-file <file>`. When all CI checks are green and zero unresolved threads remain, merge with `gh-bot-merge <pr-url>`.
 
 ### Notification Hygiene
 

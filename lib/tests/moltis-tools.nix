@@ -304,6 +304,12 @@ let
           "MATRIX_PASSWORD"
         ]
       );
+    assert builtins.all
+      (pkgName: lib.any (package: (package.name or package.pname or "") == pkgName) c.home.packages)
+      [
+        "gh-review-resolve"
+        "gh-review-unresolve"
+      ];
     assert context.mainModel == expectedMainModel;
     assert c.agentic.moltis.matrix.enable;
     assert c.agentic.moltis.githubCompanion.enable;

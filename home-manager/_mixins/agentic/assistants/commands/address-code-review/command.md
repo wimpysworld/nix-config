@@ -16,7 +16,7 @@ Thread filtering, replying, and resolving apply to the pull request case only. A
 
 ### Authority
 
-Human invocation of this command is the user's consent for: commit, push, `gh-review-reply`, and `gh-review-resolve`.
+Human invocation of this command is the user's consent for: commit, push, `gh-review-reply`, `gh-review-resolve`, and `gh-review-unresolve`.
 
 Forbidden throughout: merge, close, approve, release, and force-push. Follow the `gh` skill for every GitHub route.
 
@@ -24,13 +24,15 @@ Restate this authority in every worker packet, as `delegate-task` requires.
 
 ### Skip handled feedback
 
-Assign thread retrieval and filtering to a bounded read-only worker before judging anything. The worker uses `gh-api-safe graphql` to read each thread's resolved state, outdated state, and most recent comment's author.
+Assign thread retrieval and filtering to a bounded read-only worker before judging anything. The worker uses `gh-api-safe graphql` to read each thread's resolved state, outdated state, and comment history.
 
 Skip a thread when any of these holds:
 
-- It is resolved.
+- It is resolved (`isResolved: true`), unless its most recent comment is a substantive finding from a reviewer posted after the comment that resolved or refuted the thread (for example, when a reviewer replied with a finding into a thread that a bot or another reviewer had already resolved).
 - Its most recent reply came from the user.
 - It is outdated, meaning it is anchored to a line the current diff no longer contains.
+
+When a resolved thread (`isResolved: true`) has a newer substantive reviewer finding after the resolution or rebuttal comment, do not skip it. Run `gh-review-unresolve <review-comment-url>` to reopen it, then judge and address it like any other open thread.
 
 Report how many threads you skipped and why. Without this filter, a second run re-replies to everything.
 

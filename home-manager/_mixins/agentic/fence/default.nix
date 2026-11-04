@@ -397,6 +397,17 @@ let
         # The family-wide `gh api` deny below is unaffected, and
         # `gh-api-safe` stays read-only.
         "gh-review-resolve"
+        # gh-review-unresolve is a fixed GitHub write path allowed under Fence.
+        # It reaches exactly one GraphQL mutation,
+        # `unresolveReviewThread`, so an agent can reopen a review thread that
+        # still holds an active finding. The helper builds the request itself
+        # from a review comment URL and takes no query, mutation, or endpoint
+        # from argv; every value travels as a typed GraphQL variable. Fence
+        # allow rules are token-prefix matches, so trailing arguments are
+        # permitted; that is safe here because the helper accepts one URL and
+        # rejects every other token itself, exiting 64. The family-wide
+        # `gh api` deny below is unaffected, and `gh-api-safe` stays read-only.
+        "gh-review-unresolve"
         # gh extension discovery reads. These pair with the family-wide
         # `gh extension`, `gh extensions`, and `gh ext` denies below so
         # the agent can search and browse without being able to install,

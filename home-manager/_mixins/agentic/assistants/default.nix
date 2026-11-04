@@ -458,6 +458,9 @@ let
   ];
   moltisHeartbeatLegacyHashes = [
     moltisCurrentHeartbeatHash
+    "e6c360758bfe646b0f64077eb12d3dac755b2a23d125e64ba1dc8712a2d6dd38"
+    "32e471e042008cddac29dcddb12162a079c108e23befa5919c808409bbf4203e"
+    "dea30de289a819243d2b12862889c605d05a1fedaf7e59606ccfe734ee8644e5"
     "0cc55f96520a8e1a6db049117736dea6b603daf7fdfc2874ea93f388b1eaa8d8"
     "ff0f0a51d965c0173b915c140ce7deb2965a1ebe892583ee4e2efab4d5aa1c11"
     "1ffcb86666b1282e55482ebda9278eaceed8104a9ed5c268cd885618a91e4c12"
@@ -494,6 +497,7 @@ let
             "4210d71edfc6902e037c6592f0933a6c4929970bc3cf20cad9cce16be652c2de",
             ${builtins.toJSON moltisLegacyInstructionsHash},
             ${builtins.toJSON moltisCurrentInstructionsHash},
+            "028d2d6269fe570dea3c461de1da18479c3184a1f7d1699cd761c8319a5edb85",
             "e2e457bdbe915fac3aa33513b9c6a541501e9b82b38c43131cfc41c2e6032ed7",
             "4b28f77dbdcfb4fb650e8e4624d51c094057901f0a9549603cc5ca6a19183512",
             "b49b0d17217e3362d3095907f33f9ca2765e7465095cdc08d44a0ad5470679ea",
@@ -507,6 +511,7 @@ let
             "4210d71edfc6902e037c6592f0933a6c4929970bc3cf20cad9cce16be652c2de",
             ${builtins.toJSON moltisLegacyInstructionsHash},
             ${builtins.toJSON moltisCurrentInstructionsHash},
+            "028d2d6269fe570dea3c461de1da18479c3184a1f7d1699cd761c8319a5edb85",
             "e2e457bdbe915fac3aa33513b9c6a541501e9b82b38c43131cfc41c2e6032ed7",
             "4b28f77dbdcfb4fb650e8e4624d51c094057901f0a9549603cc5ca6a19183512",
             "b49b0d17217e3362d3095907f33f9ca2765e7465095cdc08d44a0ad5470679ea",
