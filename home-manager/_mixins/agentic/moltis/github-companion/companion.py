@@ -38,6 +38,8 @@ AGENT_DEFAULT_SCHEDULES: dict[str, tuple[int, str]] = {"skrye": (1, "Monday"), "
 BASE_POLL_INTERVAL_SECS, BASE_POLL_INTERVAL_MS = 60, 60_000
 JITTER_MIN_SECS, JITTER_MAX_SECS, JITTER_MIN_MS, JITTER_MAX_MS = 5, 35, 5_000, 35_000
 RECONCILE_SWEEP_INTERVAL_MS = 60 * 60 * 1000
+SWEEP_RETRY_BASE_DELAY_MS = RECONCILE_SWEEP_RETRY_DELAY_MS = 15 * 60 * 1000
+SWEEP_RETRY_MAX_DELAY_MS = RECONCILE_SWEEP_INTERVAL_MS
 DEFAULT_RPC_TIMEOUT_SECS = DEFAULT_COMPLETION_WAIT_TIMEOUT_SECS = DEFAULT_RECOVERY_WAIT_TIMEOUT_SECS = 3600.0
 DEFAULT_COMPLETION_TIMEOUT_MS = DEFAULT_RECOVERY_DEADLINE_MS = 3_600_000
 DEFAULT_COMPLETION_POLL_INTERVAL_MS = 250
@@ -619,6 +621,11 @@ def compute_jitter_ms(rng: Callable[[int, int], int] | None = None) -> int:
     return max(JITTER_MIN_MS, min(JITTER_MAX_MS, _safe_int(picker(JITTER_MIN_MS, JITTER_MAX_MS), JITTER_MIN_MS)))
 
 
+def compute_sweep_retry_delay_ms(failure_count: int) -> int:
+    count = max(1, _safe_int(failure_count, 1))
+    return min(SWEEP_RETRY_MAX_DELAY_MS, SWEEP_RETRY_BASE_DELAY_MS * (2 ** max(0, count - 1)))
+
+
 def parse_retry_after_seconds(raw_value: str | int | None, now_sec: int) -> int:
     if raw_value is None:
         return 0
@@ -867,7 +874,7 @@ class CompanionStateStore:
         return {"handled_updated_at": handled_updated_at, "handled_head_sha": handled_head_sha, "handled_ci_state": handled_ci_state, "retry_count": max(0, _safe_int(retry_count, 0))}
 
     def _default_state(self) -> dict:
-        return {"version": 2, "agent_name": self.agent_name, "poll_offset_secs": self.poll_offset_secs, "initial_offset_applied": False, "next_poll_at_ms": None, "last_poll_started_at_ms": None, "last_poll_completed_at_ms": None, "last_status": None, "last_modified": None, "poll_interval_secs": BASE_POLL_INTERVAL_SECS, "retry_after_secs": 0, "last_poll_rate_limited": False, "ratelimit_reset_epoch": None, "last_jitter_ms": None, "last_reconcile_sweep_at_ms": None, "last_weekly_sweep_date": None, "threads": {}, "updated_at_ms": self.started_at_ms}
+        return {"version": 2, "agent_name": self.agent_name, "poll_offset_secs": self.poll_offset_secs, "initial_offset_applied": False, "next_poll_at_ms": None, "last_poll_started_at_ms": None, "last_poll_completed_at_ms": None, "last_status": None, "last_modified": None, "poll_interval_secs": BASE_POLL_INTERVAL_SECS, "retry_after_secs": 0, "last_poll_rate_limited": False, "ratelimit_reset_epoch": None, "last_jitter_ms": None, "last_reconcile_sweep_at_ms": None, "last_reconcile_sweep_attempt_at_ms": None, "reconcile_sweep_retry_after_ms": None, "reconcile_sweep_failure_count": 0, "last_reconcile_sweep_failure_reason": None, "last_weekly_sweep_date": None, "last_weekly_sweep_attempt_at_ms": None, "weekly_sweep_retry_after_ms": None, "weekly_sweep_failure_count": 0, "last_weekly_sweep_failure_reason": None, "threads": {}, "updated_at_ms": self.started_at_ms}
 
     def _default_active_dispatch(self) -> dict:
         return {"version": 1, "agent_name": self.agent_name, "active": None, "updated_at_ms": self.started_at_ms}
@@ -883,7 +890,7 @@ class CompanionStateStore:
         state = self._default_state()
         legacy_poll = self._try_read_json(dir_fd, LEGACY_POLL_STATE_FILENAME)
         if legacy_poll:
-            for key in ("initial_offset_applied", "next_poll_at_ms", "last_poll_started_at_ms", "last_poll_completed_at_ms", "last_status", "last_modified", "poll_interval_secs", "retry_after_secs", "last_poll_rate_limited", "ratelimit_reset_epoch", "last_jitter_ms", "last_reconcile_sweep_at_ms", "last_weekly_sweep_date"):
+            for key in ("initial_offset_applied", "next_poll_at_ms", "last_poll_started_at_ms", "last_poll_completed_at_ms", "last_status", "last_modified", "poll_interval_secs", "retry_after_secs", "last_poll_rate_limited", "ratelimit_reset_epoch", "last_jitter_ms", "last_reconcile_sweep_at_ms", "last_reconcile_sweep_attempt_at_ms", "reconcile_sweep_retry_after_ms", "reconcile_sweep_failure_count", "last_reconcile_sweep_failure_reason", "last_weekly_sweep_date", "last_weekly_sweep_attempt_at_ms", "weekly_sweep_retry_after_ms", "weekly_sweep_failure_count", "last_weekly_sweep_failure_reason"):
                 if key in legacy_poll:
                     state[key] = legacy_poll[key]
 
@@ -950,12 +957,24 @@ class CompanionStateStore:
         with self._locked_dir(COORDINATOR_LOCK_FILENAME, blocking=blocking) as dir_fd:
             yield dir_fd
 
+    @staticmethod
+    def _normalize_sweep_fields(state: dict) -> None:
+        for ts_key in ("last_reconcile_sweep_at_ms", "last_reconcile_sweep_attempt_at_ms", "reconcile_sweep_retry_after_ms", "last_weekly_sweep_attempt_at_ms", "weekly_sweep_retry_after_ms"):
+            val = _safe_int(state.get(ts_key), 0)
+            state[ts_key] = val if val > 0 else None
+        for count_key in ("reconcile_sweep_failure_count", "weekly_sweep_failure_count"):
+            state[count_key] = max(0, _safe_int(state.get(count_key), 0))
+        for str_key in ("last_weekly_sweep_date", "last_reconcile_sweep_failure_reason", "last_weekly_sweep_failure_reason"):
+            raw = state.get(str_key)
+            state[str_key] = raw.strip() if isinstance(raw, str) and raw.strip() else None
+
     def _read_state_unlocked(self, dir_fd: int) -> dict:
         default = self._default_state()
         data = self._try_read_json(dir_fd, STATE_FILENAME)
         if not data:
             return default
         merged = {**default, **data, "agent_name": self.agent_name, "poll_offset_secs": self.poll_offset_secs}
+        self._normalize_sweep_fields(merged)
         raw_threads = merged.get("threads")
         norm_threads: dict[str, dict] = {}
         if isinstance(raw_threads, dict):
@@ -986,6 +1005,50 @@ class CompanionStateStore:
                 state["threads"] = merged_threads
             else:
                 state.update(updates)
+            self._normalize_sweep_fields(state)
+            state.update({"agent_name": self.agent_name, "poll_offset_secs": self.poll_offset_secs, "updated_at_ms": stamp_ms})
+            atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
+            return dict(state)
+
+    def record_sweep_attempt(self, kind: str, *, now_override_ms: int | None = None) -> dict:
+        stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
+        if kind == "reconcile_sweep":
+            return self.write_state({"last_reconcile_sweep_attempt_at_ms": stamp_ms}, now_override_ms=stamp_ms)
+        if kind == "weekly_sweep":
+            return self.write_state({"last_weekly_sweep_attempt_at_ms": stamp_ms}, now_override_ms=stamp_ms)
+        return self.read_state()
+
+    def complete_sweep(self, kind: str, *, sweep_date: str | None = None, now_override_ms: int | None = None) -> dict:
+        stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
+        if kind == "reconcile_sweep":
+            return self.write_state({"last_reconcile_sweep_at_ms": stamp_ms, "reconcile_sweep_retry_after_ms": None, "reconcile_sweep_failure_count": 0, "last_reconcile_sweep_failure_reason": None}, now_override_ms=stamp_ms)
+        if kind == "weekly_sweep":
+            updates: dict[str, object] = {"last_reconcile_sweep_at_ms": stamp_ms, "reconcile_sweep_retry_after_ms": None, "reconcile_sweep_failure_count": 0, "last_reconcile_sweep_failure_reason": None, "weekly_sweep_retry_after_ms": None, "weekly_sweep_failure_count": 0, "last_weekly_sweep_failure_reason": None}
+            if sweep_date and str(sweep_date).strip():
+                updates["last_weekly_sweep_date"] = str(sweep_date).strip()
+            return self.write_state(updates, now_override_ms=stamp_ms)
+        return self.read_state()
+
+    def fail_sweep(self, kind: str, *, failure_reason: str | None = None, attempt_at_ms: int | None = None, now_override_ms: int | None = None) -> dict:
+        stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
+        clean_reason = (failure_reason or "turn_failed").strip() or "turn_failed"
+        with self._locked_dir() as dir_fd:
+            state = self._read_state_unlocked(dir_fd)
+            eff_attempt_ms = _safe_int(attempt_at_ms, 0)
+            if kind == "reconcile_sweep":
+                failure_count = max(0, _safe_int(state.get("reconcile_sweep_failure_count"), 0)) + 1
+                retry_after_ms = stamp_ms + compute_sweep_retry_delay_ms(failure_count)
+                prior_attempt = _safe_int(state.get("last_reconcile_sweep_attempt_at_ms"), 0)
+                state.update({"last_reconcile_sweep_attempt_at_ms": eff_attempt_ms or prior_attempt or stamp_ms, "reconcile_sweep_failure_count": failure_count, "reconcile_sweep_retry_after_ms": retry_after_ms, "last_reconcile_sweep_failure_reason": clean_reason})
+            elif kind == "weekly_sweep":
+                failure_count = max(0, _safe_int(state.get("weekly_sweep_failure_count"), 0)) + 1
+                retry_after_ms = stamp_ms + compute_sweep_retry_delay_ms(failure_count)
+                prior_attempt = _safe_int(state.get("last_weekly_sweep_attempt_at_ms"), 0)
+                prior_reconcile_retry = _safe_int(state.get("reconcile_sweep_retry_after_ms"), 0)
+                state.update({"last_weekly_sweep_attempt_at_ms": eff_attempt_ms or prior_attempt or stamp_ms, "weekly_sweep_failure_count": failure_count, "weekly_sweep_retry_after_ms": retry_after_ms, "last_weekly_sweep_failure_reason": clean_reason, "reconcile_sweep_retry_after_ms": max(prior_reconcile_retry, retry_after_ms)})
+            else:
+                return dict(state)
+            self._normalize_sweep_fields(state)
             state.update({"agent_name": self.agent_name, "poll_offset_secs": self.poll_offset_secs, "updated_at_ms": stamp_ms})
             atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
             return dict(state)
@@ -1857,23 +1920,24 @@ class LocalExecutionCoordinator:
         kind = str(active_record.get("kind") or "")
         state_key = str(active_record.get("state_key") or active_record.get("thread_id") or "").strip()
         watermark_result = self.state_store.complete_thread_review(state_key, handled_updated_at=active_record.get("updated_at"), handled_head_sha=active_record.get("head_sha"), handled_ci_state=active_record.get("ci_state"), completed_revision=active_record.get("revision"), now_override_ms=stamp_ms) if state_key else None
-        if kind == "reconcile_sweep":
-            self.state_store.write_state({"last_reconcile_sweep_at_ms": stamp_ms}, now_override_ms=stamp_ms)
-        elif kind == "weekly_sweep":
-            updates: dict[str, object] = {"last_reconcile_sweep_at_ms": stamp_ms, **({"last_weekly_sweep_date": str(active_record["sweep_date"]).strip()} if active_record.get("sweep_date") else {})}
-            self.state_store.write_state(updates, now_override_ms=stamp_ms)
+        if kind in ("reconcile_sweep", "weekly_sweep"):
+            self.state_store.complete_sweep(kind, sweep_date=str(active_record["sweep_date"]).strip() if active_record.get("sweep_date") else None, now_override_ms=stamp_ms)
         self.state_store.write_active_dispatch(None, now_override_ms=stamp_ms)
         return {"watermark": watermark_result, "queued_followup": bool(_as_dict(watermark_result).get("pending_followup"))}
 
     def _finalize_failed_dispatch(self, active_record: dict, failure_reason: str | None = None, now_override_ms: int | None = None) -> dict:
         """Clear active-dispatch.json after a failed or interrupted turn and increment retry_count up to 3."""
         stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
+        kind = str(active_record.get("kind") or "")
         state_key = str(active_record.get("state_key") or active_record.get("thread_id") or "").strip()
         watermark_result = self.state_store.fail_thread_review(state_key, failure_reason=failure_reason, now_override_ms=stamp_ms) if state_key else None
+        if kind in ("reconcile_sweep", "weekly_sweep"):
+            self.state_store.fail_sweep(kind, failure_reason=failure_reason, attempt_at_ms=_safe_int(active_record.get("started_at_ms"), 0) or None, now_override_ms=stamp_ms)
         self.state_store.write_active_dispatch(None, now_override_ms=stamp_ms)
         return {"watermark": watermark_result, "queued_followup": bool(_as_dict(watermark_result).get("pending_followup"))}
 
-    def _resolve_turn_outcome(self, active_record: dict, check: dict, *, rpc_response: dict | None = None, rpc_error: Exception | None = None, recovery: dict | None = None, start_notice: tuple[bool, str, str | None] | None = None, is_recovery: bool = False) -> dict:
+    def _resolve_turn_outcome(self, active_record: dict, check: dict, *, rpc_response: dict | None = None, rpc_error: Exception | None = None, recovery: dict | None = None, start_notice: tuple[bool, str, str | None] | None = None, is_recovery: bool = False, now_override_ms: int | None = None) -> dict:
+        stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         dispatch_id = str(active_record.get("dispatch_id") or "")
         session_key = str(active_record.get("session_key") or self.session_key)
         reply_text = ""
@@ -1883,13 +1947,13 @@ class LocalExecutionCoordinator:
             task_succeeded, failure_reason = classify_terminal_turn_outcome(reply_text, assistant_record=check.get("assistant_record"), rpc_response=rpc_response)
             if task_succeeded:
                 tg_ok, tg_err = self._send_telegram_safe(reply_text)
-                fin = self._finalize_completed_dispatch(active_record, now_override_ms=self.clock())
+                fin = self._finalize_completed_dispatch(active_record, now_override_ms=stamp_ms)
             else:
-                fin = self._finalize_failed_dispatch(active_record, failure_reason=failure_reason, now_override_ms=self.clock())
+                fin = self._finalize_failed_dispatch(active_record, failure_reason=failure_reason, now_override_ms=stamp_ms)
         else:
             default_timeout = "turn_recovery_timeout" if is_recovery else (f"rpc_error: {rpc_error}" if rpc_error is not None else "turn_completion_timeout")
             failure_reason = "interrupted_turn_without_terminal_reply" if check.get("peek_active") is False else default_timeout
-            fin = self._finalize_failed_dispatch(active_record, failure_reason=failure_reason, now_override_ms=self.clock())
+            fin = self._finalize_failed_dispatch(active_record, failure_reason=failure_reason, now_override_ms=stamp_ms)
 
         status = ("recovered_completed" if task_succeeded else "recovered_failed") if is_recovery else ("completed" if task_succeeded else "failed")
         res: dict[str, object] = {"status": status, "execution_terminated": bool(check.get("completed") or check.get("peek_active") is False), "task_succeeded": task_succeeded, "failure_reason": failure_reason, "dispatch_id": dispatch_id, "session_key": session_key, "kind": active_record.get("kind"), "thread_id": active_record.get("thread_id"), "state_key": active_record.get("state_key"), "reply_text": reply_text, "telegram_forwarded": tg_ok, "telegram_error": tg_err, "queued_followup": fin["queued_followup"], "watermark": fin["watermark"]}
@@ -1906,7 +1970,8 @@ class LocalExecutionCoordinator:
         if not isinstance(active, dict) or not active.get("dispatch_id"):
             return {"status": "idle", "can_dispatch": True}
         check = self._poll_until_completed(str(active.get("session_key") or self.session_key), str(active.get("dispatch_id") or ""), deadline_ms=stamp_ms + self.recovery_deadline_ms)
-        return self._resolve_turn_outcome(active, check, is_recovery=True)
+        finish_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
+        return self._resolve_turn_outcome(active, check, is_recovery=True, now_override_ms=finish_ms)
 
     def recover_active_dispatch(self, now_override_ms: int | None = None) -> dict:
         """Acquire coordinator.lock and recover any in-flight or interrupted active-dispatch.json."""
@@ -1926,6 +1991,8 @@ class LocalExecutionCoordinator:
             if eff_state_key:
                 wm_entry = self.state_store.mark_thread_in_flight(eff_state_key, updated_at=updated_at, head_sha=head_sha, ci_state=ci_state, now_override_ms=start_ms)
                 updated_at, head_sha, ci_state = updated_at or wm_entry.get("in_flight_updated_at"), head_sha or wm_entry.get("in_flight_head_sha"), ci_state or wm_entry.get("in_flight_ci_state")
+            if kind in ("reconcile_sweep", "weekly_sweep"):
+                self.state_store.record_sweep_attempt(kind, now_override_ms=start_ms)
 
             active_record: dict[str, object] = {"dispatch_id": resolved_dispatch_id, "session_key": resolved_session_key, "kind": kind, "started_at_ms": start_ms, "status": "in_flight"}
             for k, v in (("thread_id", thread_id), ("state_key", eff_state_key), ("repo", repo), ("number", number), ("subject_kind", subject_kind), ("head_sha", head_sha), ("ci_state", ci_state), ("updated_at", updated_at), ("trigger_reason", trigger_reason), ("revision", revision), ("sweep_date", sweep_date)):
@@ -1944,9 +2011,11 @@ class LocalExecutionCoordinator:
             except Exception as exc:
                 rpc_error = exc
 
-            deadline_ms = self.clock() + (self.recovery_deadline_ms if rpc_error is not None else self.completion_timeout_ms)
+            poll_base_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
+            deadline_ms = poll_base_ms + (self.recovery_deadline_ms if rpc_error is not None else self.completion_timeout_ms)
             check = self._poll_until_completed(resolved_session_key, resolved_dispatch_id, deadline_ms=deadline_ms)
-            return self._resolve_turn_outcome(active_record, check, rpc_response=rpc_response, rpc_error=rpc_error, recovery=recovery, start_notice=(start_notice_sent, start_notice_text, start_notice_error), is_recovery=False)
+            finish_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
+            return self._resolve_turn_outcome(active_record, check, rpc_response=rpc_response, rpc_error=rpc_error, recovery=recovery, start_notice=(start_notice_sent, start_notice_text, start_notice_error), is_recovery=False, now_override_ms=finish_ms)
 
 
 class GithubCompanionRunner:
@@ -1967,7 +2036,12 @@ class GithubCompanionRunner:
 
     def is_reconcile_sweep_due(self, now_override_ms: int | None = None) -> bool:
         current_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
-        last_sweep = self.state_store.read_state().get("last_reconcile_sweep_at_ms")
+        state = self.state_store.read_state()
+        reconcile_retry_ms = _safe_int(state.get("reconcile_sweep_retry_after_ms"), 0)
+        weekly_retry_ms = _safe_int(state.get("weekly_sweep_retry_after_ms"), 0)
+        if (reconcile_retry_ms > 0 and current_ms < reconcile_retry_ms) or (weekly_retry_ms > 0 and current_ms < weekly_retry_ms):
+            return False
+        last_sweep = state.get("last_reconcile_sweep_at_ms")
         return not isinstance(last_sweep, int) or last_sweep <= 0 or (current_ms - last_sweep) >= self.reconcile_interval_ms
 
     def is_weekly_sweep_due(self, now_override_ms: int | None = None) -> tuple[bool, str]:
@@ -1980,7 +2054,11 @@ class GithubCompanionRunner:
             tz = datetime.timezone.utc
         dt = datetime.datetime.fromtimestamp(current_ms / 1000.0, tz=tz)
         today_str = dt.strftime("%Y-%m-%d")
-        if dt.isoweekday() != self.execution_coordinator.schedule_dow or dt.hour < 9 or self.state_store.read_state().get("last_weekly_sweep_date") == today_str:
+        state = self.state_store.read_state()
+        weekly_retry_ms = _safe_int(state.get("weekly_sweep_retry_after_ms"), 0)
+        if weekly_retry_ms > 0 and current_ms < weekly_retry_ms:
+            return False, today_str
+        if dt.isoweekday() != self.execution_coordinator.schedule_dow or dt.hour < 9 or state.get("last_weekly_sweep_date") == today_str:
             return False, today_str
         last_maint_file = self.execution_coordinator.data_dir / "state" / "last-maintenance-date"
         if last_maint_file.is_file():
