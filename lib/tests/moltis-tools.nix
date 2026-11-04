@@ -418,6 +418,10 @@ let
     assert !(disabled.sops.secrets ? MOLTIS_LINEAR_CLIENT_SECRET);
     assert c.sops.secrets.LINEAR_API_KEY.key == disabled.sops.secrets.LINEAR_API_KEY.key;
     assert lib.hasInfix "-systemd-" scripts.inner == !darwin;
+    assert
+      lib.hasInfix "-moltis-matrix-companion/bin" (
+        builtins.head (lib.splitString "export MCPORTER_CONFIG=" scripts.inner)
+      ) == c.agentic.moltis.matrix.enable;
     assert lib.hasInfix c.home.homeDirectory body;
     assert lib.hasInfix context.platform body;
     assert context.system == homeConfigurations."martin@${host}".pkgs.stdenv.hostPlatform.system;
@@ -523,7 +527,7 @@ let
     assert lib.hasInfix "xcrun --find" body == darwin;
     assert lib.hasInfix "target volume's case sensitivity" body == darwin;
     assert lib.hasInfix "Bash executable's version" body == darwin;
-    assert lib.hasInfix "systemctl --user" body == !darwin;
+    assert !(lib.hasInfix "systemctl --user" body);
     assert lib.hasInfix "journalctl --user" body == !darwin;
     assert lib.hasInfix "Linux Fence mounts" body == !darwin;
     assert
