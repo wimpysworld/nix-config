@@ -388,6 +388,9 @@ let
   moltisGuidelines = readFileTrim ../moltis/GUIDELINES.md + "\n";
   moltisToolsLegacyHashes = [
     (builtins.hashString "sha256" moltisTools)
+    "00d4680ff552af1fd714a7738dc0d3a4876cc12371f5b4133fef8ccb711ddf19"
+    "88a96c0ca9f50ac4ac09e4483f3cf40b5020fff57487d970a831a2e2f17c3e04"
+    "0fa75554b1208be1a3a2dd9f6e0ae920d580d4a630fe20dcf51eb6ebc396377b"
     "7098878d7dd47c5d98acf8c9a07a2fe81e0eeb557c735a673107b68510cbd6f9"
     "a5cc8d28b8453645e19f6eee1b65b5fd58855d0de4c970548fd1b7ac4ea04624"
     "616a0d0cea1cef13af4e471e9ce463039b2ddeffcdc3a41f346d9845b417dede"

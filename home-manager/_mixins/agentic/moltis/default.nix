@@ -407,11 +407,26 @@ let
         return []
 
 
+    NEW_COMMAND_STRIP_TOKENS = frozenset(
+        {
+            "skrye",
+            "@skrye",
+            "traya",
+            "@traya",
+            "zannah",
+            "@zannah",
+            "martin",
+            "@martin",
+        }
+    )
+
+
     def _is_martin_new_command(body: str) -> bool:
         tokens = [
             tok
             for tok in (body or "").strip().split()
-            if not tok.rstrip(":,").endswith(":matrix.wimpys.world")
+            if not tok.rstrip(":,.;").endswith(":matrix.wimpys.world")
+            and tok.rstrip(":,.;").lower() not in NEW_COMMAND_STRIP_TOKENS
         ]
         return len(tokens) == 1 and tokens[0].lower() == "/new"
 
