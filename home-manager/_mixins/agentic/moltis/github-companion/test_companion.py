@@ -863,13 +863,39 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
                     "url": "https://github.com/wimpysworld/nix-config/pull/45",
                     "state": "OPEN",
                     "isDraft": False,
+                    "updatedAt": "2023-11-16T10:11:00Z",
+                    "headRefOid": "sha_pr45_v1",
+                    "reviewDecision": "APPROVED",
+                    "repository": {"nameWithOwner": "wimpysworld/nix-config"},
+                    "author": {"login": "sith-zannah"},
+                    "reviewRequests": {"nodes": []},
+                    "reviewThreads": {
+                        "pageInfo": {"hasNextPage": True},
+                        "nodes": [{"isResolved": True}, {"isResolved": True}],
+                    },
+                    "statusCheckRollup": {
+                        "state": "SUCCESS",
+                        "contexts": {"nodes": [{"__typename": "CheckRun", "status": "COMPLETED", "conclusion": "SUCCESS"}]},
+                    },
+                }
+            ],
+            [
+                {
+                    "number": 45,
+                    "title": "PR with unresolved thread",
+                    "url": "https://github.com/wimpysworld/nix-config/pull/45",
+                    "state": "OPEN",
+                    "isDraft": False,
                     "updatedAt": "2023-11-16T10:12:00Z",
                     "headRefOid": "sha_pr45_v1",
                     "reviewDecision": "APPROVED",
                     "repository": {"nameWithOwner": "wimpysworld/nix-config"},
                     "author": {"login": "sith-zannah"},
                     "reviewRequests": {"nodes": []},
-                    "reviewThreads": {"nodes": [{"isResolved": True}, {"isResolved": True}]},
+                    "reviewThreads": {
+                        "pageInfo": {"hasNextPage": False},
+                        "nodes": [{"isResolved": True}, {"isResolved": True}],
+                    },
                     "statusCheckRollup": {
                         "state": "SUCCESS",
                         "contexts": {"nodes": [{"__typename": "CheckRun", "status": "COMPLETED", "conclusion": "SUCCESS"}]},
@@ -918,7 +944,15 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
         self.assertEqual(st_45["unresolved_thread_count"], 1)
         self.assertEqual(st_45["handled_ci_state"], "PENDING")
 
-        self.current_time_ms += 60_000
+        self.current_time_ms += 30_000
+        poll_overflow = poller.poll_once()
+        self.assertEqual(poll_overflow["actionable_prs"], [])
+        st_45_overflow = store.get_thread_state("wimpysworld/nix-config#45")
+        assert st_45_overflow is not None
+        self.assertEqual(st_45_overflow["unresolved_thread_count"], 1)
+        self.assertEqual(st_45_overflow["handled_ci_state"], "PENDING")
+
+        self.current_time_ms += 30_000
         poll2 = poller.poll_once()
         self.assertEqual(
             {item["key"]: item["trigger_reason"] for item in poll2["actionable_prs"]},

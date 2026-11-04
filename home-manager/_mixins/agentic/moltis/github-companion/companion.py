@@ -772,8 +772,12 @@ def extract_review_request_logins(raw_requests: object) -> list[str]:
 
 
 def count_unresolved_review_threads(raw_threads: object) -> int:
-    nodes = raw_threads["nodes"] if isinstance(raw_threads, dict) and isinstance(raw_threads.get("nodes"), list) else (raw_threads if isinstance(raw_threads, list) else [])
-    return sum(1 for item in nodes if isinstance(item, dict) and item.get("isResolved") is not True)
+    review_threads_obj = _as_dict(raw_threads)
+    nodes = review_threads_obj["nodes"] if isinstance(review_threads_obj.get("nodes"), list) else (raw_threads if isinstance(raw_threads, list) else [])
+    count = sum(1 for item in nodes if isinstance(item, dict) and item.get("isResolved") is not True)
+    if _as_dict(review_threads_obj.get("pageInfo")).get("hasNextPage") is True:
+        count += 1
+    return count
 
 
 def normalize_open_pull_request_record(raw: dict) -> dict | None:
@@ -1455,7 +1459,7 @@ class MoltisRpcClient:
         return self.call("chat.send_sync", params, timeout=self.send_sync_timeout if timeout is None else timeout)
 
 
-OPEN_PRS_GRAPHQL_QUERY_TEMPLATE = "query { search(query: %s, type: ISSUE, first: 100) { nodes { ... on PullRequest { number title url state isDraft updatedAt headRefOid reviewDecision repository { nameWithOwner } author { __typename login } reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } } } } reviewThreads(first: 50) { nodes { isResolved } } statusCheckRollup { state contexts(first: 100) { nodes { __typename ... on CheckRun { status conclusion } ... on StatusContext { state } } } } } } } }"
+OPEN_PRS_GRAPHQL_QUERY_TEMPLATE = "query { search(query: %s, type: ISSUE, first: 100) { nodes { ... on PullRequest { number title url state isDraft updatedAt headRefOid reviewDecision repository { nameWithOwner } author { __typename login } reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } } } } reviewThreads(first: 100) { pageInfo { hasNextPage } nodes { isResolved } } statusCheckRollup { state contexts(first: 100) { nodes { __typename ... on CheckRun { status conclusion } ... on StatusContext { state } } } } } } } }"
 
 
 def build_open_prs_graphql_query(owners: Iterable[str] = POLL_PR_OWNERS) -> str:

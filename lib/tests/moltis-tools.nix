@@ -708,6 +708,118 @@ pkgs.runCommand "moltis-tools" { } ''
       pkgs.jq
     ]
   }:$PATH ${pkgs.bash}/bin/bash ${../../home-manager/_mixins/development/github/gh-bot-merge}/gh-bot-merge-tests.sh
+  PATH=${
+    lib.makeBinPath [
+      pkgs.coreutils
+      pkgs.gnugrep
+      pkgs.jq
+    ]
+  }:$PATH ${pkgs.python3}/bin/python3 - ${pkgs.bash}/bin/bash ${../../home-manager/_mixins/development/github/gh-review-unresolve.sh} ${../../home-manager/_mixins/development/github/gh-review-resolve.sh} <<'PY'
+  import json
+  import os
+  from pathlib import Path
+  import subprocess
+  import sys
+  import tempfile
+
+  bash_bin, unresolve_script, resolve_script = sys.argv[1:4]
+  url = "https://github.com/owner/repo/pull/42#discussion_r987654"
+
+  def check_pagination(script: str, initial_resolved: bool, mutation_field: str, expected_msg: str) -> None:
+      with tempfile.TemporaryDirectory() as directory:
+          root = Path(directory)
+          stub = root / "gh"
+          stub.write_text(
+              f"#!{bash_bin}\n"
+              "set -euo pipefail\n"
+              "call=$(($(wc -l <\"$GH_STUB_DIR/calls\") + 1))\n"
+              "printf 'call\\n' >>\"$GH_STUB_DIR/calls\"\n"
+              ": >\"$GH_STUB_DIR/argv-$call\"\n"
+              "for arg in \"$@\"; do printf '%s\\n' \"$arg\" >>\"$GH_STUB_DIR/argv-$call\"; done\n"
+              "cat \"$GH_STUB_DIR/response-$call\"\n"
+          )
+          stub.chmod(0o700)
+          (root / "calls").write_text("")
+          # Page 1 of reviewThreads: hasNextPage=true and a thread whose comments also have hasNextPage=true.
+          (root / "response-1").write_text(json.dumps({
+              "data": {
+                  "repository": {
+                      "pullRequest": {
+                          "reviewThreads": {
+                              "pageInfo": {"hasNextPage": True, "endCursor": "T1"},
+                              "nodes": [{
+                                  "id": "PRRT_page1",
+                                  "isResolved": initial_resolved,
+                                  "comments": {
+                                      "pageInfo": {"hasNextPage": True, "endCursor": "C1"},
+                                      "nodes": [{"databaseId": 111}],
+                                  },
+                              }],
+                          },
+                      },
+                  },
+              },
+          }))
+          # Page 2 of PRRT_page1 comments: no match, hasNextPage=false.
+          (root / "response-2").write_text(json.dumps({
+              "data": {
+                  "node": {
+                      "id": "PRRT_page1",
+                      "isResolved": initial_resolved,
+                      "comments": {
+                          "pageInfo": {"hasNextPage": False, "endCursor": ""},
+                          "nodes": [{"databaseId": 222}],
+                      },
+                  },
+              },
+          }))
+          # Page 2 of reviewThreads: contains the target comment 987654.
+          (root / "response-3").write_text(json.dumps({
+              "data": {
+                  "repository": {
+                      "pullRequest": {
+                          "reviewThreads": {
+                              "pageInfo": {"hasNextPage": False, "endCursor": ""},
+                              "nodes": [{
+                                  "id": "PRRT_page2",
+                                  "isResolved": initial_resolved,
+                                  "comments": {
+                                      "pageInfo": {"hasNextPage": False, "endCursor": ""},
+                                      "nodes": [{"databaseId": 987654}],
+                                  },
+                              }],
+                          },
+                      },
+                  },
+              },
+          }))
+          # Mutation reply for PRRT_page2.
+          (root / "response-4").write_text(json.dumps({
+              "data": {
+                  mutation_field: {
+                      "thread": {"id": "PRRT_page2", "isResolved": not initial_resolved},
+                  },
+              },
+          }))
+          env = dict(
+              os.environ,
+              GH_STUB_DIR=str(root),
+              GH_REVIEW_UNRESOLVE_GH=str(stub),
+              GH_REVIEW_RESOLVE_GH=str(stub),
+          )
+          res = subprocess.run([bash_bin, "-eu", "-o", "pipefail", script, url], env=env, capture_output=True, text=True, timeout=5)
+          assert res.returncode == 0, (script, res.returncode, res.stderr)
+          assert expected_msg in res.stdout, (script, res.stdout)
+          assert len((root / "calls").read_text().splitlines()) == 4, script
+          argv3 = (root / "argv-3").read_text().splitlines()
+          assert "cursor=T1" in argv3, (script, argv3)
+          argv4 = (root / "argv-4").read_text().splitlines()
+          assert "threadId=PRRT_page2" in argv4, (script, argv4)
+
+  check_pagination(unresolve_script, True, "unresolveReviewThread", "unresolved review thread PRRT_page2")
+  check_pagination(resolve_script, False, "resolveReviewThread", "resolved review thread PRRT_page2")
+  print("gh-review-unresolve and gh-review-resolve multi-page comment+thread pagination checks passed.")
+  PY
   PYTHONPATH=${../../home-manager/_mixins/agentic/moltis/mcp-cli-migration} PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis/linear-token}/test_linear_token.py ${lib.getExe mcporter} ${lib.getExe pkgs.mcp-proxy}
   PYTHONPATH=${../../home-manager/_mixins/agentic/moltis/mcp-cli-migration} PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 - ${lib.getExe cloudflareWrapper} ${lib.getExe mcporter} ${lib.getExe pkgs.mcp-proxy} <<'PY'
   import http.server

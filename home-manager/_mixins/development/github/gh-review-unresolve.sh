@@ -291,7 +291,7 @@ jq_read() {
 # Walks the remaining comment pages of one thread and sets thread_id when the
 # comment id turns up, because the URL may name any comment in the thread.
 scan_thread_comments() {
-	local id="$1" cursor="$2" match page
+	local id="$1" cursor="$2" match page response
 	while :; do
 		gh_graphql "reading the comments of review thread ${id}" \
 			-f "query=${THREAD_COMMENTS_QUERY}" \
@@ -333,6 +333,8 @@ while :; do
 		break
 	fi
 
+	page="$(jq_read "${THREAD_PAGE_FILTER}")"
+
 	# A thread can also hold more comments than one page returns, so follow
 	# every comment cursor on this page before moving on.
 	deferred_text="$(jq_read "${DEFERRED_THREADS_FILTER}")"
@@ -351,7 +353,6 @@ while :; do
 		break
 	fi
 
-	page="$(jq_read "${THREAD_PAGE_FILTER}")"
 	if [[ ${page%% *} != true ]]; then
 		break
 	fi
