@@ -457,6 +457,9 @@ let
   ];
   moltisHeartbeatLegacyHashes = [
     moltisCurrentHeartbeatHash
+    "0cc55f96520a8e1a6db049117736dea6b603daf7fdfc2874ea93f388b1eaa8d8"
+    "ff0f0a51d965c0173b915c140ce7deb2965a1ebe892583ee4e2efab4d5aa1c11"
+    "1ffcb86666b1282e55482ebda9278eaceed8104a9ed5c268cd885618a91e4c12"
     "33d0858f09b665ce79b076f71196f7d00a84debdc89d19c6b7af44dfea2c6111"
     "7ab30c7f0ad920e3174dca1fb5cd30c8774eaf8ad46a9febc1c3070af4b0b123"
     "e0a269284acaee25e099759569259b3c194212a9837e4a94b977a43deae7f476"
