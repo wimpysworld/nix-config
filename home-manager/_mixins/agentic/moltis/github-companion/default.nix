@@ -11,14 +11,6 @@
       "Skrye"
   ),
   mainModel,
-  pollOffsetSecs ? (
-    if agentName == "zannah" then
-      40
-    else if agentName == "traya" then
-      20
-    else
-      0
-  ),
   scheduleDow ? (
     if agentName == "zannah" then
       3
@@ -62,7 +54,6 @@ pkgs.writeShellApplication {
       agentName
       agentDisplayName
       mainModel
-      pollOffsetSecs
       scheduleDow
       scheduleDayName
       selfUserId
@@ -83,7 +74,6 @@ pkgs.writeShellApplication {
     export MOLTIS_GITHUB_COMPANION_AGENT_NAME=${lib.escapeShellArg agentName}
     export MOLTIS_GITHUB_COMPANION_AGENT_DISPLAY_NAME=${lib.escapeShellArg agentDisplayName}
     export MOLTIS_GITHUB_COMPANION_MAIN_MODEL=${lib.escapeShellArg mainModel}
-    export MOLTIS_GITHUB_COMPANION_POLL_OFFSET_SECS=${lib.escapeShellArg (toString pollOffsetSecs)}
     export MOLTIS_GITHUB_COMPANION_SCHEDULE_DOW=${lib.escapeShellArg (toString scheduleDow)}
     export MOLTIS_GITHUB_COMPANION_SCHEDULE_DAY_NAME=${lib.escapeShellArg scheduleDayName}
     export MOLTIS_GITHUB_COMPANION_MATRIX_SELF_USER_ID=${lib.escapeShellArg selfUserId}

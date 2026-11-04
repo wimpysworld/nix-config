@@ -68,13 +68,6 @@ let
       "Traya"
     else
       "Skrye";
-  defaultPollOffsetSecs =
-    if agentName == "zannah" then
-      40
-    else if agentName == "traya" then
-      20
-    else
-      0;
   scheduleDow =
     if agentName == "zannah" then
       3
@@ -944,7 +937,6 @@ let
       scheduleDow
       scheduleDayName
       ;
-    inherit (githubCompanionCfg) pollOffsetSecs;
     selfUserId = matrixCfg.userId or "@${agentName}:matrix.wimpys.world";
     roomId = matrixCfg.roomId or "!the-cauldron:matrix.wimpys.world";
     homeserverUrl = "https://matrix.wimpys.world";
@@ -1341,11 +1333,6 @@ in
             "momin"
           ];
       };
-      pollOffsetSecs = lib.mkOption {
-        type = lib.types.ints.unsigned;
-        default = defaultPollOffsetSecs;
-        description = "Initial poll offset in seconds for this agent (0 for skrye, 20 for traya, 40 for zannah).";
-      };
     };
 
     envPlumbing = lib.mkOption {
@@ -1637,7 +1624,7 @@ in
 
         heartbeat = {
           enabled = !config.agentic.moltis.githubCompanion.enable;
-          every = "60m";
+          every = "120m";
           model = mainModel;
           sandbox_enabled = false;
           deliver = true;

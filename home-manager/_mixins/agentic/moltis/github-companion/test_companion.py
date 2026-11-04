@@ -237,14 +237,12 @@ class GithubCompanionTestBase(unittest.TestCase):
         self,
         agent_name: str = "skrye",
         state_dir: Path | None = None,
-        poll_offset_secs: int | None = None,
     ) -> companion.CompanionStateStore:
         target_dir = state_dir or (self.state_dir / f"github-companion-{companion.normalize_agent_name(agent_name)}")
         return companion.CompanionStateStore(
             state_dir=target_dir,
             agent_name=agent_name,
             room_id=companion.DEFAULT_ROOM_ID,
-            poll_offset_secs=poll_offset_secs,
             started_at_ms=self.current_time_ms,
         )
 
@@ -298,24 +296,25 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
         self.assertEqual(companion.normalize_agent_name("momin"), "traya")
         self.assertEqual(companion.normalize_agent_name("zannah"), "zannah")
 
-        self.assertEqual(companion.get_agent_poll_offset_secs("skrye"), 0)
-        self.assertEqual(companion.get_agent_poll_offset_secs("traya"), 20)
-        self.assertEqual(companion.get_agent_poll_offset_secs("momin"), 20)
-        self.assertEqual(companion.get_agent_poll_offset_secs("zannah"), 40)
+        self.assertEqual(companion.BASE_POLL_INTERVAL_SECS, 120)
+        self.assertEqual(companion.BASE_POLL_INTERVAL_MS, 120_000)
+        self.assertEqual(companion.JITTER_MIN_SECS, 5)
+        self.assertEqual(companion.JITTER_MAX_SECS, 30)
+        self.assertEqual(companion.JITTER_MIN_MS, 5_000)
+        self.assertEqual(companion.JITTER_MAX_MS, 30_000)
         self.assertEqual(
             companion.AGENT_DEFAULT_SCHEDULES,
             {"skrye": (1, "Monday"), "traya": (5, "Friday"), "zannah": (3, "Wednesday")},
         )
-        self.assertEqual(companion.RECONCILE_SWEEP_INTERVAL_MS, 3_600_000)
+        self.assertEqual(companion.RECONCILE_SWEEP_INTERVAL_MS, 7_200_000)
 
         store_skrye = self.make_store("skrye")
         store_momin = self.make_store("momin")
         store_zannah = self.make_store("zannah")
 
-        self.assertEqual(store_skrye.poll_offset_secs, 0)
+        self.assertEqual(store_skrye.agent_name, "skrye")
         self.assertEqual(store_momin.agent_name, "traya")
-        self.assertEqual(store_momin.poll_offset_secs, 20)
-        self.assertEqual(store_zannah.poll_offset_secs, 40)
+        self.assertEqual(store_zannah.agent_name, "zannah")
 
         self.assertEqual(stat.S_IMODE(store_skrye.state_dir.stat().st_mode), 0o700)
         self.assertFalse((store_skrye.state_dir / "snapshots").exists())
@@ -331,6 +330,8 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
             self.assertEqual(stat.S_IMODE(fpath.stat().st_mode), 0o600)
 
         for removed_attr in (
+            "AGENT_POLL_OFFSETS_SECS",
+            "get_agent_poll_offset_secs",
             "SecurityAlertCoordinator",
             "_tool_invokes_external_mutation",
             "history_dispatch_has_external_mutation",
@@ -404,7 +405,8 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
 
         migrated_store = self.make_store("skrye", state_dir=legacy_dir)
         state = migrated_store.read_state()
-        self.assertTrue(state["initial_offset_applied"])
+        self.assertNotIn("poll_offset_secs", state)
+        self.assertNotIn("initial_offset_applied", state)
         self.assertEqual(state["last_modified"], "Wed, 15 Nov 2023 10:00:00 GMT")
         self.assertEqual(state["poll_interval_secs"], 90)
         self.assertEqual(state["last_reconcile_sweep_at_ms"], 1_699_999_000_000)
@@ -441,8 +443,8 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
         fallback_store = self.make_store("traya", state_dir=corrupt_dir)
         clean_state = fallback_store.read_state()
         self.assertEqual(clean_state["agent_name"], "traya")
-        self.assertEqual(clean_state["poll_offset_secs"], 20)
-        self.assertFalse(clean_state["initial_offset_applied"])
+        self.assertNotIn("poll_offset_secs", clean_state)
+        self.assertNotIn("initial_offset_applied", clean_state)
         self.assertIsNone(clean_state["last_modified"])
         self.assertEqual(clean_state["threads"], {})
 
@@ -545,7 +547,7 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
         self.assertEqual(entry["handled_ci_state"], "PENDING")
         self.assertEqual(entry["retry_count"], 0)
 
-    def test_poll_timing_startup_offsets_backoff_and_304(self) -> None:
+    def test_poll_timing_wait_until_due_backoff_and_304(self) -> None:
         gh_client = companion.GhApiSafeClient(runner=lambda *a, **k: subprocess.CompletedProcess(a[0], 0, "", ""))
         store_zannah = self.make_store("zannah")
         poller_zannah = companion.NotificationPoller(
@@ -554,12 +556,23 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
             clock=self.clock,
             sleeper=self.sleeper,
         )
-        slept_ms = poller_zannah.wait_for_startup_slot()
-        self.assertEqual(slept_ms, 40_000)
-        self.assertEqual(store_zannah.read_state()["next_poll_at_ms"], 1_700_000_040_000)
+        slept_ms = poller_zannah.wait_until_due()
+        self.assertEqual(slept_ms, 0)
+        self.assertIsNone(store_zannah.read_state()["next_poll_at_ms"])
+
+        store_zannah.write_state({"next_poll_at_ms": 1_700_000_040_000})
+        slept_future_ms = poller_zannah.wait_until_due()
+        self.assertEqual(slept_future_ms, 40_000)
 
         now_ms_val = 1_700_000_000_000
         now_sec = now_ms_val // 1000
+        wait_ms_default, base_sec_default, jitter_ms_default = companion.compute_backoff_wait_ms(
+            {"X-Poll-Interval": "60"},
+            now_ms_val,
+            rng=lambda _lo, _hi: 10_000,
+        )
+        self.assertEqual((base_sec_default, jitter_ms_default, wait_ms_default), (120, 10_000, 130_000))
+
         wait_ms, base_sec, jitter_ms = companion.compute_backoff_wait_ms(
             {"X-Poll-Interval": "90", "Retry-After": "150"},
             now_ms_val,
@@ -1145,11 +1158,11 @@ class InlinePromptSecurityDeduplicationAndAlertTests(GithubCompanionTestBase):
         self.assertEqual(len(self.httpd.telegram_requests), 2)
         self.assertIn("targeting Zannah", self.httpd.messages_sent[1]["body"]["body"])
 
-        # 4) Secondary pollers (traya: poll_offset==20, zannah: poll_offset==40) log to their own
+        # 4) Secondary pollers (traya and zannah) log to their own
         # security-events.jsonl but NEVER send Matrix or Telegram alerts.
         for secondary_agent in ("traya", "zannah"):
             sec_store = self.make_store(secondary_agent)
-            self.assertGreater(sec_store.poll_offset_secs, 0)
+            self.assertNotEqual(sec_store.agent_name, "skrye")
             sec_mclient = self.make_matrix_client(sec_store, secondary_agent)
             sec_tf = companion.TrustFilterAndSnapshotBuilder(
                 state_store=sec_store,
@@ -1505,12 +1518,12 @@ class InterruptedTurnRecoveryDecoupledPollingAndStartNoticeTests(GithubCompanion
         )
         self.assertEqual(res_reconcile["status"], "completed")
         self.assertTrue(res_reconcile["start_notice_sent"])
-        self.assertEqual(res_reconcile["start_notice_text"], "⚙️ Skrye starting 60-minute reconciliation sweep.")
+        self.assertEqual(res_reconcile["start_notice_text"], "⚙️ Skrye starting 2-hour reconciliation sweep.")
         self.assertFalse(res_reconcile["telegram_forwarded"])
         self.assertEqual(len(self.httpd.telegram_requests), 3)
         self.assertEqual(
             self.httpd.telegram_requests[2]["body"]["text"],
-            "⚙️ Skrye starting 60-minute reconciliation sweep.",
+            "⚙️ Skrye starting 2-hour reconciliation sweep.",
         )
 
         # 3) Weekly sweep sends 1 one-line start-of-work notice
@@ -1606,11 +1619,12 @@ class SweepRetryBackoffRecoveryAndScheduleTests(GithubCompanionTestBase):
         self.httpd.peek_active = False
 
         self.assertEqual(companion.SWEEP_RETRY_BASE_DELAY_MS, 15 * 60 * 1000)
-        self.assertEqual(companion.SWEEP_RETRY_MAX_DELAY_MS, 60 * 60 * 1000)
+        self.assertEqual(companion.SWEEP_RETRY_MAX_DELAY_MS, 2 * 60 * 60 * 1000)
         self.assertEqual(companion.compute_sweep_retry_delay_ms(1), 15 * 60 * 1000)
         self.assertEqual(companion.compute_sweep_retry_delay_ms(2), 30 * 60 * 1000)
         self.assertEqual(companion.compute_sweep_retry_delay_ms(3), 60 * 60 * 1000)
-        self.assertEqual(companion.compute_sweep_retry_delay_ms(4), 60 * 60 * 1000)
+        self.assertEqual(companion.compute_sweep_retry_delay_ms(4), 120 * 60 * 1000)
+        self.assertEqual(companion.compute_sweep_retry_delay_ms(5), 120 * 60 * 1000)
 
         emit_targeted_notification = False
 
@@ -1755,7 +1769,7 @@ class SweepRetryBackoffRecoveryAndScheduleTests(GithubCompanionTestBase):
         self.current_time_ms = second_retry_deadline - 60_000
         self.assertIsNone(runner.run_cycle()["sweep_dispatch"])
 
-        # At second_retry_deadline: third failure caps retry delay at 60m (3,600,000 ms)
+        # At second_retry_deadline: third failure schedules 60m (3,600,000 ms)
         self.current_time_ms = second_retry_deadline
         cycle_retry_3 = runner.run_cycle()
         self.assertIsNotNone(cycle_retry_3["sweep_dispatch"])
@@ -1765,14 +1779,24 @@ class SweepRetryBackoffRecoveryAndScheduleTests(GithubCompanionTestBase):
         third_retry_deadline = second_retry_deadline + (60 * 60 * 1000)
         self.assertEqual(st3["reconcile_sweep_retry_after_ms"], third_retry_deadline)
 
-        # Fourth failure also stays capped at 60m
+        # Fourth failure caps retry delay at 120m (7,200,000 ms)
         self.current_time_ms = third_retry_deadline
         cycle_retry_4 = runner.run_cycle()
         self.assertIsNotNone(cycle_retry_4["sweep_dispatch"])
         self.assertEqual(cycle_retry_4["sweep_dispatch"]["status"], "failed")
         st4 = store.read_state()
         self.assertEqual(st4["reconcile_sweep_failure_count"], 4)
-        self.assertEqual(st4["reconcile_sweep_retry_after_ms"], third_retry_deadline + (60 * 60 * 1000))
+        fourth_retry_deadline = third_retry_deadline + (120 * 60 * 1000)
+        self.assertEqual(st4["reconcile_sweep_retry_after_ms"], fourth_retry_deadline)
+
+        # Fifth failure also stays capped at 120m
+        self.current_time_ms = fourth_retry_deadline
+        cycle_retry_5 = runner.run_cycle()
+        self.assertIsNotNone(cycle_retry_5["sweep_dispatch"])
+        self.assertEqual(cycle_retry_5["sweep_dispatch"]["status"], "failed")
+        st5 = store.read_state()
+        self.assertEqual(st5["reconcile_sweep_failure_count"], 5)
+        self.assertEqual(st5["reconcile_sweep_retry_after_ms"], fourth_retry_deadline + (120 * 60 * 1000))
 
     def test_companion_restart_preserves_retry_deadline_recovers_interrupted_sweep_and_dispatches_pending_targeted_work(
         self,
@@ -1984,14 +2008,14 @@ class SweepRetryBackoffRecoveryAndScheduleTests(GithubCompanionTestBase):
         self.assertEqual(st_wo["reconcile_sweep_failure_count"], 0)
         self.assertIsNone(st_wo["reconcile_sweep_retry_after_ms"])
 
-        # 3) Successful reconciliation retains the 60-minute (3,600,000 ms) schedule and clears retry state
-        self.current_time_ms = weekly_retry_deadline + 3_600_000 - 1
+        # 3) Successful reconciliation retains the 2-hour (7,200,000 ms) schedule and clears retry state
+        self.current_time_ms = weekly_retry_deadline + 7_200_000 - 1
         self.assertFalse(runner.is_reconcile_sweep_due())
         self.assertIsNone(runner.run_cycle()["sweep_dispatch"])
 
-        # Seed a failed reconcile attempt first, then succeed after retry to verify retry state clears and 60m schedule holds
+        # Seed a failed reconcile attempt first, then succeed after retry to verify retry state clears and 2h schedule holds
         should_fail_turn = True
-        self.current_time_ms = weekly_retry_deadline + 3_600_000
+        self.current_time_ms = weekly_retry_deadline + 7_200_000
         cycle_rec_fail = runner.run_cycle()
         self.assertEqual(cycle_rec_fail["sweep_dispatch"]["kind"], "reconcile_sweep")
         self.assertEqual(cycle_rec_fail["sweep_dispatch"]["status"], "failed")
@@ -2010,11 +2034,11 @@ class SweepRetryBackoffRecoveryAndScheduleTests(GithubCompanionTestBase):
         self.assertIsNone(st_ro["reconcile_sweep_retry_after_ms"])
         self.assertIsNone(st_ro["last_reconcile_sweep_failure_reason"])
 
-        # Next reconciliation sweep is not due until 3,600,000 ms later
-        self.current_time_ms = rec_retry_ms + 3_600_000 - 60_000
+        # Next reconciliation sweep is not due until 7,200,000 ms later
+        self.current_time_ms = rec_retry_ms + 7_200_000 - 60_000
         self.assertFalse(runner.is_reconcile_sweep_due())
         self.assertIsNone(runner.run_cycle()["sweep_dispatch"])
-        self.current_time_ms = rec_retry_ms + 3_600_000
+        self.current_time_ms = rec_retry_ms + 7_200_000
         self.assertTrue(runner.is_reconcile_sweep_due())
 
     def test_existing_state_json_without_sweep_retry_fields_loads_safely_and_allows_initial_sweep(self) -> None:

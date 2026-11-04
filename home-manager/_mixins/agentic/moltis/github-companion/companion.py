@@ -33,11 +33,10 @@ ALLOWLIST_USER_IDS = frozenset({MARTIN_ID, SKRYE_ID, ZANNAH_ID, TRAYA_ID})
 DISPLAY_NAMES = {"skrye": "Skrye", "zannah": "Zannah", "traya": "Traya", "momin": "Traya"}
 USER_ID_DISPLAY_NAMES = {MARTIN_ID: "Martin", SKRYE_ID: "Skrye", ZANNAH_ID: "Zannah", TRAYA_ID: "Traya"}
 AGENT_ORDER = ("skrye", "traya", "zannah")
-AGENT_POLL_OFFSETS_SECS: dict[str, int] = {"skrye": 0, "traya": 20, "zannah": 40}
 AGENT_DEFAULT_SCHEDULES: dict[str, tuple[int, str]] = {"skrye": (1, "Monday"), "traya": (5, "Friday"), "zannah": (3, "Wednesday")}
-BASE_POLL_INTERVAL_SECS, BASE_POLL_INTERVAL_MS = 60, 60_000
-JITTER_MIN_SECS, JITTER_MAX_SECS, JITTER_MIN_MS, JITTER_MAX_MS = 5, 35, 5_000, 35_000
-RECONCILE_SWEEP_INTERVAL_MS = 60 * 60 * 1000
+BASE_POLL_INTERVAL_SECS, BASE_POLL_INTERVAL_MS = 120, 120_000
+JITTER_MIN_SECS, JITTER_MAX_SECS, JITTER_MIN_MS, JITTER_MAX_MS = 5, 30, 5_000, 30_000
+RECONCILE_SWEEP_INTERVAL_MS = 2 * 60 * 60 * 1000
 SWEEP_RETRY_BASE_DELAY_MS = RECONCILE_SWEEP_RETRY_DELAY_MS = 15 * 60 * 1000
 SWEEP_RETRY_MAX_DELAY_MS = RECONCILE_SWEEP_INTERVAL_MS
 DEFAULT_RPC_TIMEOUT_SECS = DEFAULT_COMPLETION_WAIT_TIMEOUT_SECS = DEFAULT_RECOVERY_WAIT_TIMEOUT_SECS = 3600.0
@@ -135,16 +134,9 @@ def normalize_agent_name(agent_name: str) -> str:
     norm = (agent_name or "").strip().lower()
     if norm == "momin":
         return "traya"
-    if norm not in AGENT_POLL_OFFSETS_SECS:
+    if norm not in AGENT_ORDER:
         raise ValueError(f"Unsupported agent_name: {agent_name!r}")
     return norm
-
-
-def get_agent_poll_offset_secs(agent_name: str, explicit_offset_secs: int | None = None) -> int:
-    norm = normalize_agent_name(agent_name)
-    if explicit_offset_secs is not None and not isinstance(explicit_offset_secs, bool):
-        return max(0, _safe_int(explicit_offset_secs, AGENT_POLL_OFFSETS_SECS[norm]))
-    return AGENT_POLL_OFFSETS_SECS[norm]
 
 
 def derive_display_name(agent_name: str, explicit: str | None = None) -> str:
@@ -278,7 +270,7 @@ def format_start_of_work_notice(*, agent_display_name: str, kind: str, repo: str
     elif kind == "weekly_sweep":
         line = f"⚙️ {display} starting weekly organisation sweep ({(sweep_date or schedule_day_name or 'scheduled').strip()})."
     else:
-        line = f"⚙️ {display} starting 60-minute reconciliation sweep."
+        line = f"⚙️ {display} starting 2-hour reconciliation sweep."
     return sanitize_no_matrix_mentions(" ".join(line.splitlines()).strip())
 
 
@@ -862,11 +854,10 @@ def parse_gh_api_paginated_http_output(raw_output: str) -> tuple[int, dict[str, 
 class CompanionStateStore:
     """Durable 0600 unified state store (state.json) in ~/.local/state/moltis/github-companion-<agent>/."""
 
-    def __init__(self, state_dir: Path | str, agent_name: str, room_id: str = DEFAULT_ROOM_ID, poll_offset_secs: int | None = None, started_at_ms: int | None = None):
+    def __init__(self, state_dir: Path | str, agent_name: str, room_id: str = DEFAULT_ROOM_ID, started_at_ms: int | None = None):
         self.state_dir = Path(state_dir)
         self.agent_name = normalize_agent_name(agent_name)
         self.room_id = room_id
-        self.poll_offset_secs = get_agent_poll_offset_secs(self.agent_name, poll_offset_secs)
         self.started_at_ms = _safe_int(started_at_ms, now_ms()) if started_at_ms is not None else now_ms()
         self.ensure_directory()
 
@@ -874,7 +865,7 @@ class CompanionStateStore:
         return {"handled_updated_at": handled_updated_at, "handled_head_sha": handled_head_sha, "handled_ci_state": handled_ci_state, "retry_count": max(0, _safe_int(retry_count, 0))}
 
     def _default_state(self) -> dict:
-        return {"version": 2, "agent_name": self.agent_name, "poll_offset_secs": self.poll_offset_secs, "initial_offset_applied": False, "next_poll_at_ms": None, "last_poll_started_at_ms": None, "last_poll_completed_at_ms": None, "last_status": None, "last_modified": None, "poll_interval_secs": BASE_POLL_INTERVAL_SECS, "retry_after_secs": 0, "last_poll_rate_limited": False, "ratelimit_reset_epoch": None, "last_jitter_ms": None, "last_reconcile_sweep_at_ms": None, "last_reconcile_sweep_attempt_at_ms": None, "reconcile_sweep_retry_after_ms": None, "reconcile_sweep_failure_count": 0, "last_reconcile_sweep_failure_reason": None, "last_weekly_sweep_date": None, "last_weekly_sweep_attempt_at_ms": None, "weekly_sweep_retry_after_ms": None, "weekly_sweep_failure_count": 0, "last_weekly_sweep_failure_reason": None, "threads": {}, "updated_at_ms": self.started_at_ms}
+        return {"version": 2, "agent_name": self.agent_name, "next_poll_at_ms": None, "last_poll_started_at_ms": None, "last_poll_completed_at_ms": None, "last_status": None, "last_modified": None, "poll_interval_secs": BASE_POLL_INTERVAL_SECS, "retry_after_secs": 0, "last_poll_rate_limited": False, "ratelimit_reset_epoch": None, "last_jitter_ms": None, "last_reconcile_sweep_at_ms": None, "last_reconcile_sweep_attempt_at_ms": None, "reconcile_sweep_retry_after_ms": None, "reconcile_sweep_failure_count": 0, "last_reconcile_sweep_failure_reason": None, "last_weekly_sweep_date": None, "last_weekly_sweep_attempt_at_ms": None, "weekly_sweep_retry_after_ms": None, "weekly_sweep_failure_count": 0, "last_weekly_sweep_failure_reason": None, "threads": {}, "updated_at_ms": self.started_at_ms}
 
     def _default_active_dispatch(self) -> dict:
         return {"version": 1, "agent_name": self.agent_name, "active": None, "updated_at_ms": self.started_at_ms}
@@ -890,7 +881,7 @@ class CompanionStateStore:
         state = self._default_state()
         legacy_poll = self._try_read_json(dir_fd, LEGACY_POLL_STATE_FILENAME)
         if legacy_poll:
-            for key in ("initial_offset_applied", "next_poll_at_ms", "last_poll_started_at_ms", "last_poll_completed_at_ms", "last_status", "last_modified", "poll_interval_secs", "retry_after_secs", "last_poll_rate_limited", "ratelimit_reset_epoch", "last_jitter_ms", "last_reconcile_sweep_at_ms", "last_reconcile_sweep_attempt_at_ms", "reconcile_sweep_retry_after_ms", "reconcile_sweep_failure_count", "last_reconcile_sweep_failure_reason", "last_weekly_sweep_date", "last_weekly_sweep_attempt_at_ms", "weekly_sweep_retry_after_ms", "weekly_sweep_failure_count", "last_weekly_sweep_failure_reason"):
+            for key in ("next_poll_at_ms", "last_poll_started_at_ms", "last_poll_completed_at_ms", "last_status", "last_modified", "poll_interval_secs", "retry_after_secs", "last_poll_rate_limited", "ratelimit_reset_epoch", "last_jitter_ms", "last_reconcile_sweep_at_ms", "last_reconcile_sweep_attempt_at_ms", "reconcile_sweep_retry_after_ms", "reconcile_sweep_failure_count", "last_reconcile_sweep_failure_reason", "last_weekly_sweep_date", "last_weekly_sweep_attempt_at_ms", "weekly_sweep_retry_after_ms", "weekly_sweep_failure_count", "last_weekly_sweep_failure_reason"):
                 if key in legacy_poll:
                     state[key] = legacy_poll[key]
 
@@ -973,7 +964,7 @@ class CompanionStateStore:
         data = self._try_read_json(dir_fd, STATE_FILENAME)
         if not data:
             return default
-        merged = {**default, **data, "agent_name": self.agent_name, "poll_offset_secs": self.poll_offset_secs}
+        merged = {**default, **{k: v for k, v in data.items() if k not in ("poll_offset_secs", "initial_offset_applied")}, "agent_name": self.agent_name}
         self._normalize_sweep_fields(merged)
         raw_threads = merged.get("threads")
         norm_threads: dict[str, dict] = {}
@@ -1006,7 +997,7 @@ class CompanionStateStore:
             else:
                 state.update(updates)
             self._normalize_sweep_fields(state)
-            state.update({"agent_name": self.agent_name, "poll_offset_secs": self.poll_offset_secs, "updated_at_ms": stamp_ms})
+            state.update({"agent_name": self.agent_name, "updated_at_ms": stamp_ms})
             atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
             return dict(state)
 
@@ -1049,7 +1040,7 @@ class CompanionStateStore:
             else:
                 return dict(state)
             self._normalize_sweep_fields(state)
-            state.update({"agent_name": self.agent_name, "poll_offset_secs": self.poll_offset_secs, "updated_at_ms": stamp_ms})
+            state.update({"agent_name": self.agent_name, "updated_at_ms": stamp_ms})
             atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
             return dict(state)
 
@@ -1306,9 +1297,10 @@ class MatrixClient:
         raw_body = json.dumps(body, ensure_ascii=False).encode("utf-8") if body is not None else None
         status, raw = _http_json_request(url=url, method=method, headers=headers, raw_body=raw_body, timeout=timeout or self.timeout, allow_loopback_self_signed=False)
         if status >= 400:
-            err_payload = None
-            with contextlib.suppress(UnicodeDecodeError, ValueError):
+            try:
                 err_payload = json.loads(raw.decode("utf-8", errors="replace"))
+            except (UnicodeDecodeError, ValueError):
+                err_payload = None
             raise MatrixAPIError(status, err_payload.get("errcode") if isinstance(err_payload, dict) else None, str(err_payload.get("error") or "") if isinstance(err_payload, dict) else "")
         if not raw.strip():
             return {}
@@ -1573,7 +1565,7 @@ class TrustFilterAndSnapshotBuilder:
         subject_label = f"{repo}#{norm_number}" if isinstance(norm_number, int) and norm_number > 0 else f"{repo}:{subject_type}"
         event_record = self.state_store.append_security_event({"timestamp_ms": stamp_ms, "agent": self.agent_name, "agent_name": self.agent_name, "repo": repo, "subject": subject_label, "subject_type": subject_type, "number": norm_number, "thread_id": thread_id, "item_kind": item_kind, "item_id": str_item_id, "actor": actor or "unknown", "event_kind": event_kind, "rule_matched": rule_matched, "rules_matched": rules_list, "targeted_agents": targeted_agents}, now_override_ms=stamp_ms)
         notice_sent, notice_event_id, notice_body, telegram_sent = False, None, None, False
-        if is_coercive_or_injection and self.state_store.poll_offset_secs == 0:
+        if is_coercive_or_injection and self.agent_name == "skrye":
             notice_body = format_security_alert_notice(event_kind=event_kind, repo=repo, subject_type=subject_type, number=norm_number, actor=actor or "unknown", rules_matched=rules_list, targeted_agents=targeted_agents)
             if self.matrix_client is not None:
                 notice_event_id = self.matrix_client.send_notice(body_text=notice_body, scope_id=f"sec:{repo}:{norm_number or 0}:{item_kind}:{str_item_id or stamp_ms}:{event_kind}:{rule_matched}", mentions_user_ids=None)
@@ -1709,7 +1701,7 @@ class TrustFilterAndSnapshotBuilder:
 
 
 class NotificationPoller:
-    """Manage per-agent initial offsets, provisional next_poll_at_ms crash recovery, /notifications, and 6-owner open PR polling."""
+    """Manage provisional next_poll_at_ms crash recovery, /notifications, and 6-owner open PR polling."""
 
     def __init__(self, state_store: CompanionStateStore, gh_client: GhApiSafeClient, read_only_trial: bool = False, clock: Callable[[], int] = now_ms, sleeper: Callable[[float], None] = time.sleep, jitter_rng: Callable[[int, int], int] | None = None, on_actionable_threads: Callable[[list[str]], None] | None = None):
         self.state_store = state_store
@@ -1732,27 +1724,8 @@ class NotificationPoller:
             return min(next_poll_at_ms, last_completed_ms + (poll_interval_secs * 1000) + jitter_ms)
         return next_poll_at_ms
 
-    def wait_for_startup_slot(self, now_override_ms: int | None = None) -> int:
-        """Sleep until persisted next_poll_at_ms or apply the per-agent initial offset on first boot."""
-        current_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
-        poll_state = self.state_store.read_state()
-        next_poll_at_ms = self._effective_next_poll_at_ms(poll_state)
-        initial_applied = bool(poll_state.get("initial_offset_applied", False))
-        if isinstance(next_poll_at_ms, int) and next_poll_at_ms > current_ms:
-            sleep_ms = next_poll_at_ms - current_ms
-            self.sleeper(sleep_ms / 1000.0)
-            return sleep_ms
-        if not initial_applied and next_poll_at_ms is None:
-            offset_ms = self.state_store.poll_offset_secs * 1000
-            self.state_store.write_state({"initial_offset_applied": True, "next_poll_at_ms": current_ms + offset_ms}, now_override_ms=current_ms)
-            if offset_ms > 0:
-                self.sleeper(offset_ms / 1000.0)
-            return offset_ms
-        if not initial_applied:
-            self.state_store.write_state({"initial_offset_applied": True}, now_override_ms=current_ms)
-        return 0
-
-    def wait_until_next_poll(self, now_override_ms: int | None = None) -> int:
+    def wait_until_due(self, now_override_ms: int | None = None) -> int:
+        """Sleep until persisted next_poll_at_ms when in the future, or return 0 immediately on first boot."""
         current_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         next_poll_at_ms = self._effective_next_poll_at_ms(self.state_store.read_state())
         if isinstance(next_poll_at_ms, int) and next_poll_at_ms > current_ms:
@@ -1761,10 +1734,12 @@ class NotificationPoller:
             return sleep_ms
         return 0
 
+    wait_for_startup_slot = wait_until_next_poll = wait_until_due
+
     def _persist_provisional_next_poll(self, current_ms: int) -> tuple[int, int]:
         jitter_ms = compute_jitter_ms(self.jitter_rng)
         provisional_next_ms = current_ms + BASE_POLL_INTERVAL_MS + jitter_ms
-        self.state_store.write_state({"initial_offset_applied": True, "last_poll_started_at_ms": current_ms, "next_poll_at_ms": provisional_next_ms, "last_jitter_ms": jitter_ms}, now_override_ms=current_ms)
+        self.state_store.write_state({"last_poll_started_at_ms": current_ms, "next_poll_at_ms": provisional_next_ms, "last_jitter_ms": jitter_ms}, now_override_ms=current_ms)
         return provisional_next_ms, jitter_ms
 
     def poll_once(self, now_override_ms: int | None = None, poll_open_prs: bool = True) -> dict:
@@ -1817,7 +1792,7 @@ class NotificationPoller:
 
 
 class LocalExecutionCoordinator:
-    """Serialise all targeted turns, 60m reconciliation sweeps, and weekly sweeps under coordinator.lock and active-dispatch.json."""
+    """Serialise all targeted turns, 2h reconciliation sweeps, and weekly sweeps under coordinator.lock and active-dispatch.json."""
 
     def __init__(self, state_store: CompanionStateStore, rpc_client: MoltisRpcClient, data_dir: Path | str, agent_name: str, agent_display_name: str = "", main_model: str = "", matrix_client: MatrixClient | None = None, telegram_client: TelegramClient | None = None, telegram_bot_token_path: Path | str | None = None, telegram_allowed_users_path: Path | str | None = None, telegram_api_url: str = DEFAULT_TELEGRAM_API_URL, session_key: str = DEFAULT_GH_SESSION_KEY, room_id: str = DEFAULT_ROOM_ID, schedule_dow: int | None = None, schedule_day_name: str = "", completion_timeout_ms: int | None = None, recovery_deadline_ms: int | None = None, completion_wait_timeout_secs: float | None = None, recovery_wait_timeout_secs: float | None = None, rpc_timeout_secs: float = DEFAULT_RPC_TIMEOUT_SECS, poll_interval_ms: int = DEFAULT_COMPLETION_POLL_INTERVAL_MS, clock: Callable[[], int] = now_ms, sleeper: Callable[[float], None] = time.sleep):
         self.state_store = state_store
@@ -1862,7 +1837,7 @@ class LocalExecutionCoordinator:
         elif kind == "weekly_sweep":
             mode_line = f"Mode 3 - Weekly Organisation Sweep ({self.schedule_day_name} Only, dow == {self.schedule_dow})."
         else:
-            mode_line = "Mode 2 - 60-Minute Reconciliation Sweep."
+            mode_line = "Mode 2 - 2-Hour Reconciliation Sweep."
 
         blocks = [header, "\n".join(meta_lines), mode_line, *([extra_instructions.strip()] if extra_instructions.strip() else [])]
         heartbeat_md = ""
@@ -2019,7 +1994,7 @@ class LocalExecutionCoordinator:
 
 
 class GithubCompanionRunner:
-    """Orchestrate 60s notification and open-PR polling, inline trigger evaluation, and serialised turns."""
+    """Orchestrate 120s notification and open-PR polling, inline trigger evaluation, and serialised turns."""
 
     def __init__(self, state_store: CompanionStateStore, gh_client: GhApiSafeClient, poller: NotificationPoller, trust_filter: TrustFilterAndSnapshotBuilder, execution_coordinator: LocalExecutionCoordinator, matrix_client: MatrixClient | None = None, read_only_trial: bool = False, reconcile_interval_ms: int = RECONCILE_SWEEP_INTERVAL_MS, clock: Callable[[], int] = now_ms):
         self.state_store = state_store
@@ -2145,7 +2120,6 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--agent-name", default=os.environ.get("MOLTIS_GITHUB_COMPANION_AGENT_NAME") or os.environ.get("MOLTIS_COMPANION_AGENT_NAME", ""))
     parser.add_argument("--agent-display-name", default=os.environ.get("MOLTIS_GITHUB_COMPANION_AGENT_DISPLAY_NAME") or os.environ.get("MOLTIS_COMPANION_AGENT_DISPLAY_NAME", ""))
     parser.add_argument("--main-model", default=os.environ.get("MOLTIS_GITHUB_COMPANION_MAIN_MODEL") or os.environ.get("MOLTIS_COMPANION_MAIN_MODEL", ""))
-    parser.add_argument("--poll-offset-secs", type=int, default=None)
     parser.add_argument("--self-user-id", default=os.environ.get("MOLTIS_GITHUB_COMPANION_MATRIX_SELF_USER_ID") or os.environ.get("MOLTIS_COMPANION_SELF_USER_ID", ""))
     parser.add_argument("--room-id", default=os.environ.get("MOLTIS_GITHUB_COMPANION_MATRIX_ROOM_ID") or os.environ.get("MOLTIS_COMPANION_ROOM_ID", DEFAULT_ROOM_ID))
     parser.add_argument("--homeserver-url", default=os.environ.get("MOLTIS_GITHUB_COMPANION_MATRIX_HOMESERVER_URL") or os.environ.get("MOLTIS_COMPANION_HOMESERVER_URL", DEFAULT_HOMESERVER_URL))
@@ -2167,8 +2141,6 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 def resolve_runtime_config(args: argparse.Namespace) -> dict:
     agent_name = normalize_agent_name(args.agent_name)
-    env_offset = os.environ.get("MOLTIS_GITHUB_COMPANION_POLL_OFFSET_SECS", "").strip()
-    explicit_offset = args.poll_offset_secs if args.poll_offset_secs is not None else (_safe_int(env_offset, AGENT_POLL_OFFSETS_SECS[agent_name]) if env_offset else None)
     default_dow, default_day_name = AGENT_DEFAULT_SCHEDULES[agent_name]
     env_dow = os.environ.get("MOLTIS_GITHUB_COMPANION_SCHEDULE_DOW", "").strip()
     explicit_dow = getattr(args, "schedule_dow", None)
@@ -2178,7 +2150,7 @@ def resolve_runtime_config(args: argparse.Namespace) -> dict:
     xdg_state = os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state")
     return {
         "agent_name": agent_name, "agent_display_name": derive_display_name(agent_name, args.agent_display_name),
-        "main_model": (args.main_model or "").strip(), "poll_offset_secs": get_agent_poll_offset_secs(agent_name, explicit_offset),
+        "main_model": (args.main_model or "").strip(),
         "schedule_dow": _safe_int(explicit_dow, default_dow) if explicit_dow is not None else default_dow,
         "schedule_day_name": (getattr(args, "schedule_day_name", "") or os.environ.get("MOLTIS_GITHUB_COMPANION_SCHEDULE_DAY_NAME", "") or default_day_name).strip(),
         "self_user_id": (args.self_user_id or f"@{agent_name}:{SERVER_DOMAIN}").strip(), "room_id": (args.room_id or DEFAULT_ROOM_ID).strip(),
@@ -2194,7 +2166,7 @@ def resolve_runtime_config(args: argparse.Namespace) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     cfg = resolve_runtime_config(build_arg_parser().parse_args(argv))
-    store = CompanionStateStore(state_dir=cfg["state_dir"], agent_name=cfg["agent_name"], room_id=cfg["room_id"], poll_offset_secs=cfg["poll_offset_secs"])
+    store = CompanionStateStore(state_dir=cfg["state_dir"], agent_name=cfg["agent_name"], room_id=cfg["room_id"])
     gh_client = GhApiSafeClient(gh_api_safe_bin=cfg["gh_api_safe_bin"])
     has_matrix_creds = bool(cfg["password_path"] or os.environ.get("MATRIX" + "_PASSWORD", "").strip())
     matrix_client = MatrixClient(homeserver_url=cfg["homeserver_url"], self_user_id=cfg["self_user_id"], agent_name=cfg["agent_name"], room_id=cfg["room_id"], password_path=cfg["password_path"], state_store=store) if has_matrix_creds else None
@@ -2206,14 +2178,14 @@ def main(argv: list[str] | None = None) -> int:
     trust_filter = TrustFilterAndSnapshotBuilder(state_store=store, gh_client=gh_client, matrix_client=matrix_client, telegram_client=telegram_client, agent_name=cfg["agent_name"])
     execution_coordinator = LocalExecutionCoordinator(state_store=store, rpc_client=rpc_client, data_dir=cfg["data_dir"], agent_name=cfg["agent_name"], agent_display_name=cfg["agent_display_name"], main_model=cfg["main_model"], matrix_client=matrix_client, telegram_client=telegram_client, room_id=cfg["room_id"], schedule_dow=cfg["schedule_dow"], schedule_day_name=cfg["schedule_day_name"])
     runner = GithubCompanionRunner(state_store=store, gh_client=gh_client, poller=poller, trust_filter=trust_filter, execution_coordinator=execution_coordinator, matrix_client=matrix_client, read_only_trial=cfg["read_only_trial"])
-    poller.wait_for_startup_slot()
     if cfg["once"]:
+        poller.wait_until_due()
         runner.run_cycle()
         return 0
     backoff = 5.0
     while True:
         try:
-            poller.wait_until_next_poll()
+            poller.wait_until_due()
             runner.run_cycle()
             backoff = 5.0
         except KeyboardInterrupt:
