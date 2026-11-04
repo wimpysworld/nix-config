@@ -309,6 +309,7 @@ let
       [
         "gh-review-resolve"
         "gh-review-unresolve"
+        "gh-review-withdraw-approval"
       ];
     assert context.mainModel == expectedMainModel;
     assert c.agentic.moltis.matrix.enable;
@@ -714,7 +715,7 @@ pkgs.runCommand "moltis-tools" { } ''
       pkgs.gnugrep
       pkgs.jq
     ]
-  }:$PATH ${pkgs.python3}/bin/python3 - ${pkgs.bash}/bin/bash ${../../home-manager/_mixins/development/github/gh-review-unresolve.sh} ${../../home-manager/_mixins/development/github/gh-review-resolve.sh} <<'PY'
+  }:$PATH ${pkgs.python3}/bin/python3 - ${pkgs.bash}/bin/bash ${../../home-manager/_mixins/development/github/gh-review-unresolve.sh} ${../../home-manager/_mixins/development/github/gh-review-resolve.sh} ${../../home-manager/_mixins/development/github/gh-review-withdraw-approval.sh} <<'PY'
   import json
   import os
   from pathlib import Path
@@ -722,7 +723,7 @@ pkgs.runCommand "moltis-tools" { } ''
   import sys
   import tempfile
 
-  bash_bin, unresolve_script, resolve_script = sys.argv[1:4]
+  bash_bin, unresolve_script, resolve_script, withdraw_script = sys.argv[1:5]
   url = "https://github.com/owner/repo/pull/42#discussion_r987654"
 
   def check_pagination(script: str, initial_resolved: bool, mutation_field: str, expected_msg: str) -> None:
@@ -816,9 +817,130 @@ pkgs.runCommand "moltis-tools" { } ''
           argv4 = (root / "argv-4").read_text().splitlines()
           assert "threadId=PRRT_page2" in argv4, (script, argv4)
 
+  def check_withdraw_approval() -> None:
+      # 1. Dismisses only viewer's own APPROVED review (ignoring another user's APPROVED review).
+      with tempfile.TemporaryDirectory() as directory:
+          root = Path(directory)
+          stub = root / "gh"
+          stub.write_text(
+              f"#!{bash_bin}\n"
+              "set -euo pipefail\n"
+              "call=$(($(wc -l <\"$GH_STUB_DIR/calls\") + 1))\n"
+              "printf 'call\\n' >>\"$GH_STUB_DIR/calls\"\n"
+              ": >\"$GH_STUB_DIR/argv-$call\"\n"
+              "for arg in \"$@\"; do printf '%s\\n' \"$arg\" >>\"$GH_STUB_DIR/argv-$call\"; done\n"
+              "cat \"$GH_STUB_DIR/response-$call\"\n"
+          )
+          stub.chmod(0o700)
+          (root / "calls").write_text("")
+          (root / "response-1").write_text(json.dumps({
+              "data": {
+                  "viewer": {"login": "sith-zannah"},
+                  "repository": {
+                      "pullRequest": {
+                          "reviews": {
+                              "pageInfo": {"hasNextPage": False, "endCursor": ""},
+                              "nodes": [
+                                  {
+                                      "id": "PRR_other",
+                                      "databaseId": 1001,
+                                      "author": {"login": "sith-skrye"},
+                                      "state": "APPROVED",
+                                  },
+                                  {
+                                      "id": "PRR_self",
+                                      "databaseId": 1002,
+                                      "author": {"login": "sith-zannah"},
+                                      "state": "APPROVED",
+                                  },
+                              ],
+                          },
+                      },
+                  },
+              },
+          }))
+          (root / "response-2").write_text(json.dumps({
+              "data": {
+                  "dismissPullRequestReview": {
+                      "pullRequestReview": {"id": "PRR_self", "state": "DISMISSED"},
+                  },
+              },
+          }))
+          env = dict(
+              os.environ,
+              GH_STUB_DIR=str(root),
+              GH_REVIEW_WITHDRAW_APPROVAL_GH=str(stub),
+          )
+          res = subprocess.run(
+              [bash_bin, "-eu", "-o", "pipefail", withdraw_script, "https://github.com/owner/repo/pull/42", "--message", "Custom withdrawal reason"],
+              env=env,
+              capture_output=True,
+              text=True,
+              timeout=5,
+          )
+          assert res.returncode == 0, (res.returncode, res.stderr)
+          assert "dismissed APPROVED review PRR_self by sith-zannah" in res.stdout, res.stdout
+          assert len((root / "calls").read_text().splitlines()) == 2
+          argv2 = (root / "argv-2").read_text().splitlines()
+          assert "reviewId=PRR_self" in argv2, argv2
+          assert "reviewId=PRR_other" not in argv2, argv2
+          assert "message=Custom withdrawal reason" in argv2, argv2
+
+      # 2. Exits 0 without mutating when viewer has no APPROVED review (even if another user has one).
+      with tempfile.TemporaryDirectory() as directory:
+          root = Path(directory)
+          stub = root / "gh"
+          stub.write_text(
+              f"#!{bash_bin}\n"
+              "set -euo pipefail\n"
+              "call=$(($(wc -l <\"$GH_STUB_DIR/calls\") + 1))\n"
+              "printf 'call\\n' >>\"$GH_STUB_DIR/calls\"\n"
+              ": >\"$GH_STUB_DIR/argv-$call\"\n"
+              "for arg in \"$@\"; do printf '%s\\n' \"$arg\" >>\"$GH_STUB_DIR/argv-$call\"; done\n"
+              "cat \"$GH_STUB_DIR/response-$call\"\n"
+          )
+          stub.chmod(0o700)
+          (root / "calls").write_text("")
+          (root / "response-1").write_text(json.dumps({
+              "data": {
+                  "viewer": {"login": "sith-zannah"},
+                  "repository": {
+                      "pullRequest": {
+                          "reviews": {
+                              "pageInfo": {"hasNextPage": False, "endCursor": ""},
+                              "nodes": [
+                                  {
+                                      "id": "PRR_other",
+                                      "databaseId": 1001,
+                                      "author": {"login": "sith-skrye"},
+                                      "state": "APPROVED",
+                                  },
+                              ],
+                          },
+                      },
+                  },
+              },
+          }))
+          env = dict(
+              os.environ,
+              GH_STUB_DIR=str(root),
+              GH_REVIEW_WITHDRAW_APPROVAL_GH=str(stub),
+          )
+          res = subprocess.run(
+              [bash_bin, "-eu", "-o", "pipefail", withdraw_script, "owner/repo#42"],
+              env=env,
+              capture_output=True,
+              text=True,
+              timeout=5,
+          )
+          assert res.returncode == 0, (res.returncode, res.stderr)
+          assert "sith-zannah has no APPROVED reviews on owner/repo pull request 42" in res.stdout, res.stdout
+          assert len((root / "calls").read_text().splitlines()) == 1
+
   check_pagination(unresolve_script, True, "unresolveReviewThread", "unresolved review thread PRRT_page2")
   check_pagination(resolve_script, False, "resolveReviewThread", "resolved review thread PRRT_page2")
-  print("gh-review-unresolve and gh-review-resolve multi-page comment+thread pagination checks passed.")
+  check_withdraw_approval()
+  print("gh-review-unresolve, gh-review-resolve, and gh-review-withdraw-approval checks passed.")
   PY
   PYTHONPATH=${../../home-manager/_mixins/agentic/moltis/mcp-cli-migration} PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis/linear-token}/test_linear_token.py ${lib.getExe mcporter} ${lib.getExe pkgs.mcp-proxy}
   PYTHONPATH=${../../home-manager/_mixins/agentic/moltis/mcp-cli-migration} PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 - ${lib.getExe cloudflareWrapper} ${lib.getExe mcporter} ${lib.getExe pkgs.mcp-proxy} <<'PY'

@@ -33,6 +33,10 @@ let
     mkdir -p "$out/bin"
     ln -s ${pkgs.gh}/bin/.gh-wrapped "$out/bin/gh-review-unresolve-gh"
   '';
+  gh-review-withdraw-approval-gh = pkgs.runCommand "gh-review-withdraw-approval-gh" { } ''
+    mkdir -p "$out/bin"
+    ln -s ${pkgs.gh}/bin/.gh-wrapped "$out/bin/gh-review-withdraw-approval-gh"
+  '';
   gh-bot-merge = pkgs.callPackage ./gh-bot-merge { };
   gh-code-scanning-dismiss = pkgs.callPackage ./gh-code-scanning-dismiss { };
   gh-notification-dismiss = pkgs.callPackage ./gh-notification-dismiss { };
@@ -132,6 +136,20 @@ let
       readonly GH_REVIEW_UNRESOLVE_GH=${lib.escapeShellArg "${gh-review-unresolve-gh}/bin/gh-review-unresolve-gh"}
     ''
     + builtins.readFile ./gh-review-unresolve.sh;
+  };
+
+  # Fence-friendly helper for dismissing the authenticated caller's own
+  # APPROVED reviews on a pull request. `gh pr review` has no subcommand flag
+  # to dismiss an earlier approval, and `gh-api-safe` is read-only, so this
+  # covers `dismissPullRequestReview` scoped strictly to reviews where
+  # `author.login == viewer.login`; see `gh-review-withdraw-approval.sh`.
+  gh-review-withdraw-approval = pkgs.writeShellApplication {
+    name = "gh-review-withdraw-approval";
+    runtimeInputs = [ pkgs.jq ];
+    text = ''
+      readonly GH_REVIEW_WITHDRAW_APPROVAL_GH=${lib.escapeShellArg "${gh-review-withdraw-approval-gh}/bin/gh-review-withdraw-approval-gh"}
+    ''
+    + builtins.readFile ./gh-review-withdraw-approval.sh;
   };
 
   ghTokenVariables = [
@@ -283,6 +301,7 @@ lib.mkMerge [
         gh-review-reply
         gh-review-resolve
         gh-review-unresolve
+        gh-review-withdraw-approval
         ghCredentialSync
       ];
     };

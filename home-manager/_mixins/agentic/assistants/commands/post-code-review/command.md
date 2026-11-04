@@ -33,6 +33,7 @@ Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
    - For each `Reply:` entry, run `gh-review-reply <review-comment-url> --body-file <temp-file>` and then `gh-review-unresolve <review-comment-url>`, so that posting a finding reopens any thread that another reviewer resolved prematurely
    - For each `Refute:` or `Refute-Resolve:` entry, run `gh-review-reply <review-comment-url> --body-file <temp-file>`. Keep `Refute:` threads as-is. For `Refute-Resolve:`, also run `gh-review-resolve <review-comment-url>`
    - When one or more `Inline:` entries exist, submit them in one call with `gh-review-inline <pr-url> --commit <head-sha> --event <COMMENT|APPROVE> [--body-file <general-temp-file>] --comment <spec> --comment-file <temp-file> ...`
+   - When the review posts any `Inline:` or `Reply:` finding (as opposed to an approval or pure `Refute:`, `Refute-Resolve:`, or `Resolve:` entries), run `gh-review-withdraw-approval <pr-url>` so any prior approval by the caller on that pull request is withdrawn
    - When no `Inline:` entries exist, run `gh pr review <pr-url> --approve` for an `approve` verdict (adding `--body-file <general-temp-file>` when a general temporary file exists), or run `gh pr review <pr-url> --comment --body-file <general-temp-file>` when a general temporary file remains for a `comment` verdict
 10. Report the pull request URL, the verdict posted, and each inline comment or thread reply posted
 

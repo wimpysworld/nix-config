@@ -408,6 +408,14 @@ let
         # rejects every other token itself, exiting 64. The family-wide
         # `gh api` deny below is unaffected, and `gh-api-safe` stays read-only.
         "gh-review-unresolve"
+        # gh-review-withdraw-approval is a fixed GitHub write path allowed
+        # under Fence. It reaches `dismissPullRequestReview` scoped strictly to
+        # `APPROVED` reviews authored by the authenticated caller (`viewer`),
+        # so an agent can withdraw its own prior approval when raising or
+        # confirming a finding without dismissing another reviewer's approval.
+        # The family-wide `gh api` deny below is unaffected, and `gh-api-safe`
+        # stays read-only.
+        "gh-review-withdraw-approval"
         # gh extension discovery reads. These pair with the family-wide
         # `gh extension`, `gh extensions`, and `gh ext` denies below so
         # the agent can search and browse without being able to install,

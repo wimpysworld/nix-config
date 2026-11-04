@@ -27,6 +27,7 @@ NEVER execute while drafting:
 - `gh-review-reply` - this step produces the thread replies, the caller posts them
 - `gh-review-resolve` - this step produces the resolution directives, the caller runs them
 - `gh-review-unresolve` - this step produces the thread replies, the caller reopens resolved threads
+- `gh-review-withdraw-approval` - this step produces the review findings, the caller withdraws prior approval when findings exist
 - `gh pr comment` - this step produces the comment, the caller posts it
 - `gh pr merge` - never change pull request state
 - `gh pr close` - never change pull request state
