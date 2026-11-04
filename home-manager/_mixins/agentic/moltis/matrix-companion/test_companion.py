@@ -2460,7 +2460,7 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
         self.assertEqual(emitted_invitation["m.mentions"], {"user_ids": [companion.SKRYE_ID]})
         self.assertEqual(
             emitted_invitation["body"],
-            f'🛎️ Inviting {companion.SKRYE_ID} to the floor on Martin\'s message: "Should we switch kernel?" (moderator assessment fallback after 15s).',
+            f'🛎️ Inviting {companion.SKRYE_ID} to the floor on Martin\'s message: "Should we switch kernel?" (moderator assessment fallback after 25s).',
         )
 
         # Case C: Silent closure when Skrye reacted and only a peer is missing.
@@ -3219,6 +3219,173 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
         self.assertEqual(len(self.httpd.messages_sent), 3)
         root_state = skrye_store.read_companion_state()["wakeups"]["martin_roots"]["$m_multi"]
         self.assertEqual(root_state["pending_hands"], [])
+
+    def test_code_span_bot_id_does_not_count_as_mention_or_hijack_pending_hands(self) -> None:
+        skrye_mentions = {"m.mentions": {"user_ids": [companion.SKRYE_ID]}}
+        traya_mentions = {"m.mentions": {"user_ids": [companion.TRAYA_ID]}}
+        inline_code_body = (
+            f"The trace showed `user_sender_id: \"{companion.SKRYE_ID}\"` in the session record."
+        )
+        fenced_backtick_body = (
+            f"Here is the config:\n```json\n{{\"user_ids\": [\"{companion.SKRYE_ID}\"]}}\n```"
+        )
+        fenced_tilde_body = (
+            f"Here is the log:\n~~~text\nsender={companion.TRAYA_ID}\n~~~"
+        )
+        for code_body, content in (
+            (inline_code_body, None),
+            (inline_code_body, skrye_mentions),
+            (fenced_backtick_body, None),
+            (fenced_backtick_body, skrye_mentions),
+            (fenced_tilde_body, None),
+            (fenced_tilde_body, traya_mentions),
+        ):
+            with self.subTest(body=code_body, content=content):
+                self.assertEqual(companion.extract_mentioned_bots(code_body, content), set())
+
+        self.assertEqual(
+            companion.extract_mentioned_bots(f"Please check this {companion.SKRYE_ID}"),
+            {companion.SKRYE_ID},
+        )
+        self.assertEqual(
+            companion.extract_mentioned_bots("@Skrye please look", skrye_mentions),
+            {companion.SKRYE_ID},
+        )
+        self.assertEqual(
+            companion.extract_mentioned_bots(
+                f"`user_sender_id: \"{companion.SKRYE_ID}\"` - @Skrye please look",
+                skrye_mentions,
+            ),
+            {companion.SKRYE_ID},
+        )
+
+        skrye_store, _, _, _, skrye_engine = self.make_components(agent_name="skrye", main_model="")
+        skrye_engine.process_sync_batch({"next_batch": "s0", "rooms": {"join": {}}})
+
+        skrye_engine.process_sync_batch(
+            {
+                "next_batch": "s_hands",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$z_early",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": self.current_time_ms + 5,
+                                        "content": {"msgtype": "m.text", "body": "Earlier Zannah message"},
+                                    },
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$t_later",
+                                        "sender": companion.TRAYA_ID,
+                                        "origin_server_ts": self.current_time_ms + 10,
+                                        "content": {"msgtype": "m.text", "body": "Later Traya message"},
+                                    },
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$m_code_root",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": self.current_time_ms + 20,
+                                        "content": {
+                                            "msgtype": "m.text",
+                                            "body": "What happened in the session trace?",
+                                        },
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$rx_z_code",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": self.current_time_ms + 30,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$m_code_root",
+                                                "key": "✋🏻",
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$rx_t_code",
+                                        "sender": companion.TRAYA_ID,
+                                        "origin_server_ts": self.current_time_ms + 40,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$m_code_root",
+                                                "key": "✋🏻",
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$rx_s_code",
+                                        "sender": companion.SKRYE_ID,
+                                        "origin_server_ts": self.current_time_ms + 50,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$m_code_root",
+                                                "key": "✋🏻",
+                                            }
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        self.assertEqual(len(self.httpd.messages_sent), 1)
+        first_invite = self.httpd.messages_sent[-1]["body"]
+        self.assertEqual(first_invite["m.mentions"], {"user_ids": [companion.ZANNAH_ID]})
+        root_initial = skrye_store.read_companion_state()["wakeups"]["martin_roots"]["$m_code_root"]
+        self.assertEqual(root_initial["active_speaker"], companion.ZANNAH_ID)
+        self.assertEqual(
+            set(root_initial["pending_hands"]),
+            {companion.TRAYA_ID, companion.SKRYE_ID},
+        )
+
+        self.current_time_ms += 1_000
+        skrye_engine.process_sync_batch(
+            {
+                "next_batch": "s_zannah_code_span",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$8n9MY9N8FllK7MsDlGdkQMl2sxXIMjAG7hSRaczdofQ",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": self.current_time_ms,
+                                        "content": {
+                                            "msgtype": "m.text",
+                                            "body": (
+                                                f"The payload recorded `user_sender_id: \"{companion.SKRYE_ID}\"` "
+                                                "during the relay hop."
+                                            ),
+                                            "m.mentions": {"user_ids": [companion.SKRYE_ID]},
+                                        },
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        self.assertEqual(len(self.httpd.messages_sent), 2)
+        second_invite = self.httpd.messages_sent[-1]["body"]
+        self.assertEqual(second_invite["m.mentions"], {"user_ids": [companion.TRAYA_ID]})
+        root_after_zannah = skrye_store.read_companion_state()["wakeups"]["martin_roots"]["$m_code_root"]
+        self.assertEqual(root_after_zannah["active_speaker"], companion.TRAYA_ID)
+        self.assertEqual(root_after_zannah["pending_hands"], [companion.SKRYE_ID])
 
     def test_caption_bearing_bot_audio_events_pass_all_six_checks_and_bare_filename_audio_is_skipped(self) -> None:
         store, resolver, _, _, engine = self.make_components(agent_name="skrye", main_model="gemini::gemini-4-argon")

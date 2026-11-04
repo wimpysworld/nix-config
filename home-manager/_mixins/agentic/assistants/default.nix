@@ -368,7 +368,6 @@ let
         ''
       else
         ''
-          Inspect the gateway with `systemctl --user status moltis.service`.
           Read logs with `journalctl --user -u moltis.service`.
           Linux Fence mounts `.git` read-only in protected checkouts. Do Git mutations only in an authorised maintenance checkout.
           Fence also mounts `.git/config` and `.git/hooks` read-only, including in maintenance checkouts.
@@ -388,6 +387,8 @@ let
   moltisGuidelines = readFileTrim ../moltis/GUIDELINES.md + "\n";
   moltisToolsLegacyHashes = [
     (builtins.hashString "sha256" moltisTools)
+    "31dd18302b4e986c34dfd33bde7261918ad5112cf9136241fd2426a7e6d2fbcb"
+    "385112e9ff6ce66b24c3a37326d149dd78d2a962e7dd79e512210d58b2474e79"
     "00d4680ff552af1fd714a7738dc0d3a4876cc12371f5b4133fef8ccb711ddf19"
     "88a96c0ca9f50ac4ac09e4483f3cf40b5020fff57487d970a831a2e2f17c3e04"
     "0fa75554b1208be1a3a2dd9f6e0ae920d580d4a630fe20dcf51eb6ebc396377b"

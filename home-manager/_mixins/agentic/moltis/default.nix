@@ -1139,6 +1139,7 @@ let
       pkgs.python3
       pkgs.sqlite
     ]
+    ++ lib.optional matrixCfg.enable moltisMatrixCompanion
     ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.systemd ];
     text = ''
       export MCPORTER_CONFIG=${lib.escapeShellArg mcporterConfig}

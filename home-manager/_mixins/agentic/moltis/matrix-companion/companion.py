@@ -497,9 +497,37 @@ def normalize_ts(raw_ts: object) -> tuple[int, int]:
     return 0, 0
 
 
+_FENCED_CODE_BLOCK_RE = re.compile(r"```[\s\S]*?```|~~~[\s\S]*?~~~")
+_INLINE_CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1)[\s\S])+?\1")
+_BOT_DISPLAY_TOKEN_PATTERNS = {
+    bot_id: re.compile(
+        rf"(?<![\w@])@?{re.escape(display_name.lower())}(?![\w@])",
+        re.IGNORECASE,
+    )
+    for bot_id, display_name in (
+        (SKRYE_ID, "skrye"),
+        (ZANNAH_ID, "zannah"),
+        (TRAYA_ID, "traya"),
+    )
+}
+
+
+def strip_markdown_code_regions(text: str) -> str:
+    if not text:
+        return ""
+    without_fences = _FENCED_CODE_BLOCK_RE.sub(" ", text)
+    return _INLINE_CODE_SPAN_RE.sub(" ", without_fences)
+
+
+def _has_bot_display_token(text: str, bot_id: str) -> bool:
+    pattern = _BOT_DISPLAY_TOKEN_PATTERNS.get(bot_id)
+    return bool(pattern and pattern.search(text))
+
+
 def extract_mentioned_bots(body: str, content: dict | None = None) -> set[str]:
     mentioned: set[str] = set()
-    text = body or ""
+    raw_text = body or ""
+    text = strip_markdown_code_regions(raw_text)
     for bot_id in BOT_IDS:
         if bot_id in text:
             mentioned.add(bot_id)
@@ -508,8 +536,14 @@ def extract_mentioned_bots(body: str, content: dict | None = None) -> set[str]:
         user_ids = m_mentions.get("user_ids")
         if isinstance(user_ids, list):
             for uid in user_ids:
-                if isinstance(uid, str) and uid in BOT_IDS:
+                if not isinstance(uid, str) or uid not in BOT_IDS:
+                    continue
+                if uid in mentioned or _has_bot_display_token(text, uid):
                     mentioned.add(uid)
+                    continue
+                if uid in raw_text or _has_bot_display_token(raw_text, uid):
+                    continue
+                mentioned.add(uid)
     return mentioned
 
 
@@ -964,7 +998,10 @@ def format_moderator_wakeup_notice(
             return f"🛎️ Inviting {invited_id} to the floor as {invited_name} has a raised hand ✋🏻"
         joined_rem = _join_display_names(remaining)
         return f"🛎️ Inviting {invited_id} to the floor{context_clause}. Remaining raised hands: {joined_rem} ✋🏻"
-    return f"🛎️ Inviting {invited_id} to the floor{context_clause} (moderator assessment fallback after 15s)."
+    return (
+        f"🛎️ Inviting {invited_id} to the floor{context_clause} "
+        f"(moderator assessment fallback after {WAKEUP_DEADLINE_MS // 1000}s)."
+    )
 
 
 def format_companion_relay_notice(
