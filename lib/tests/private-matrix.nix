@@ -19,7 +19,7 @@ let
     host:
     let
       home = homeConfigurations."martin@${host}".config;
-      agent = if host == "momin" then "traya" else host;
+      agent = host;
       matrix = home.agentic.moltis.matrix;
       channel = home.agentic.moltis.settings.channels.matrix."matrix-${agent}";
       hooks = home.agentic.moltis.settings.hooks.hooks;
@@ -63,7 +63,7 @@ let
   checkedHomes = map checkHome [
     "skrye"
     "zannah"
-    "momin"
+    "traya"
   ];
   devices = map (h: h.deviceId) checkedHomes;
   skryeHook = (builtins.head checkedHomes).hookCmd;

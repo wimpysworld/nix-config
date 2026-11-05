@@ -11,7 +11,7 @@ Caddy provides public HTTPS on port 443 and forwards Matrix traffic to Tuwunel a
 | `martin` | Server administrator and room owner | FluffyChat |
 | `skrye` | Ordinary user | Moltis on Skrye |
 | `zannah` | Ordinary user | Moltis on Zannah |
-| `traya` | Ordinary user | Moltis on Momin |
+| `traya` | Ordinary user | Moltis on Traya |
 
 The private, invite-only room is `the-cauldron`, with alias `#the-cauldron:matrix.wimpys.world` and ID `!the-cauldron:matrix.wimpys.world`.
 

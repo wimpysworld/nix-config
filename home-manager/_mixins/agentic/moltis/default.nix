@@ -16,7 +16,7 @@ let
 
   username = config.noughty.user.name;
   homeDir = config.home.homeDirectory;
-  agentName = if host.name == "momin" then "traya" else host.name;
+  agentName = host.name;
   isTraya = agentName == "traya";
   mainProvider = if isTraya then "openai-codex" else "gemini";
   mainModelName = if isTraya then "gpt-6-astra" else "gemini-4-argon";
@@ -1324,7 +1324,7 @@ in
           && noughtyLib.isHost [
             "skrye"
             "zannah"
-            "momin"
+            "traya"
           ];
       };
       userId = lib.mkOption {
@@ -1346,7 +1346,7 @@ in
           && noughtyLib.isHost [
             "skrye"
             "zannah"
-            "momin"
+            "traya"
           ];
       };
     };

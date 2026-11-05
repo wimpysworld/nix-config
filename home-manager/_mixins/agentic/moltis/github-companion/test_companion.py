@@ -293,7 +293,6 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
     def test_state_json_permissions_and_removed_legacy_components(self) -> None:
         self.assertEqual(companion.normalize_agent_name("skrye"), "skrye")
         self.assertEqual(companion.normalize_agent_name("traya"), "traya")
-        self.assertEqual(companion.normalize_agent_name("momin"), "traya")
         self.assertEqual(companion.normalize_agent_name("zannah"), "zannah")
 
         self.assertEqual(companion.BASE_POLL_INTERVAL_SECS, 120)
@@ -309,11 +308,11 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
         self.assertEqual(companion.RECONCILE_SWEEP_INTERVAL_MS, 7_200_000)
 
         store_skrye = self.make_store("skrye")
-        store_momin = self.make_store("momin")
+        store_traya = self.make_store("traya")
         store_zannah = self.make_store("zannah")
 
         self.assertEqual(store_skrye.agent_name, "skrye")
-        self.assertEqual(store_momin.agent_name, "traya")
+        self.assertEqual(store_traya.agent_name, "traya")
         self.assertEqual(store_zannah.agent_name, "zannah")
 
         self.assertEqual(stat.S_IMODE(store_skrye.state_dir.stat().st_mode), 0o700)

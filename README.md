@@ -26,7 +26,7 @@ These computers are managed by this Nix flake ❄️
 |  `felkor`   |     [ThinkPad X13 Gen 2]      |    [AMD Ryzen 5 PRO 5650U]     | 16GB  |      AMD Radeon Vega 7      |                          |  💻️   | ❄️  |  🚧   |
 |   `shaa`    |     [ThinkPad T14s Gen 1]     |    [AMD Ryzen 5 PRO 4650U]     | 16GB  |    AMD Radeon RX Vega 6     |                          |  💻️   | ❄️  |  ✅   |
 |  `nihilus`  |               -               |               -                |   -   |              -              |            -             |   💿   | ❄️  |  ✅   |
-|   `momin`   | [Mac Mini M2 Pro]     |       Apple M2 Pro chip        | 32GB  |      Apple M2 Pro GPU       |                          |   🖥️  | 🍏  |  ✅   |
+|   `traya`   | [Mac Mini M2 Pro]     |       Apple M2 Pro chip        | 32GB  |      Apple M2 Pro GPU       |                          |   🖥️  | 🍏  |  ✅   |
 |   `revan`   |       [Z390-DESIGNARE]        |     [Intel Core i9-9900K]      | 64GB  |   Intel UHD Graphics 630    |      [NVIDIA T1000]      |   ☁️   | ❄️  |  🚧   |
 |   `malak`   |        [B360 HD3P-LM]         |      [Intel Core i7-8700]      | 128GB |   Intel UHD Graphics 630    |            -             |   ☁️   | ❄️  |  ✅   |
 |  `cognus`   |          GandiCloud           |               -                |   -   |              -              |            -             |  🐄☁️  | ❄️  |  ✅   |
@@ -103,7 +103,7 @@ The full noughty option reference, helper functions, and usage patterns are docu
 │  ├── _mixins
 │  │  ├── desktop
 │  │  └── features
-│  ├── momin
+│  ├── traya
 │  └── default.nix
 ├── home-manager
 │  ├── _mixins

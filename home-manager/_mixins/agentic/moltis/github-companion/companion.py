@@ -30,7 +30,7 @@ DEFAULT_RPC_URL, DEFAULT_TELEGRAM_API_URL = "https://127.0.0.1:13131/api/rpc", "
 MARTIN_ID, SKRYE_ID, ZANNAH_ID, TRAYA_ID = f"@martin:{SERVER_DOMAIN}", f"@skrye:{SERVER_DOMAIN}", f"@zannah:{SERVER_DOMAIN}", f"@traya:{SERVER_DOMAIN}"
 BOT_IDS = frozenset({SKRYE_ID, ZANNAH_ID, TRAYA_ID})
 ALLOWLIST_USER_IDS = frozenset({MARTIN_ID, SKRYE_ID, ZANNAH_ID, TRAYA_ID})
-DISPLAY_NAMES = {"skrye": "Skrye", "zannah": "Zannah", "traya": "Traya", "momin": "Traya"}
+DISPLAY_NAMES = {"skrye": "Skrye", "zannah": "Zannah", "traya": "Traya"}
 USER_ID_DISPLAY_NAMES = {MARTIN_ID: "Martin", SKRYE_ID: "Skrye", ZANNAH_ID: "Zannah", TRAYA_ID: "Traya"}
 AGENT_ORDER = ("skrye", "traya", "zannah")
 AGENT_DEFAULT_SCHEDULES: dict[str, tuple[int, str]] = {"skrye": (1, "Monday"), "traya": (5, "Friday"), "zannah": (3, "Wednesday")}
@@ -48,7 +48,7 @@ TRUSTED_INSTRUCTION_ACTORS = frozenset({"flexiondotorg", "sith-skrye", "sith-tra
 TRUSTED_BOT_ACTORS = frozenset({"dependabot[bot]", "app/dependabot", "github-actions[bot]", "app/github-actions", "cubic-dev-ai[bot]"})
 TRUSTED_GITHUB_ACTORS = TRUSTED_INSTRUCTION_ACTORS | TRUSTED_BOT_ACTORS
 GITHUB_AGENT_LOGINS: dict[str, str] = {"skrye": "sith-skrye", "traya": "sith-traya", "zannah": "sith-zannah"}
-LOGIN_TO_AGENT_NAME: dict[str, str] = {"sith-skrye": "skrye", "skrye": "skrye", "sith-traya": "traya", "traya": "traya", "momin": "traya", "sith-zannah": "zannah", "zannah": "zannah"}
+LOGIN_TO_AGENT_NAME: dict[str, str] = {"sith-skrye": "skrye", "skrye": "skrye", "sith-traya": "traya", "traya": "traya", "sith-zannah": "zannah", "zannah": "zannah"}
 STATE_FILENAME, ACTIVE_DISPATCH_FILENAME, SECURITY_EVENTS_FILENAME = "state.json", "active-dispatch.json", "security-events.jsonl"
 LEGACY_POLL_STATE_FILENAME, LEGACY_NOTIFICATIONS_STATE_FILENAME = "poll-state.json", "notifications-state.json"
 LEGACY_WATERMARKS_FILENAME, LEGACY_SECURITY_OWNERSHIP_FILENAME = "watermarks.json", "security-ownership.json"
@@ -132,8 +132,6 @@ def now_ms() -> int:
 
 def normalize_agent_name(agent_name: str) -> str:
     norm = (agent_name or "").strip().lower()
-    if norm == "momin":
-        return "traya"
     if norm not in AGENT_ORDER:
         raise ValueError(f"Unsupported agent_name: {agent_name!r}")
     return norm

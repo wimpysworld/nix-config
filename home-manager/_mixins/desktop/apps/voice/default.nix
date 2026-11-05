@@ -111,7 +111,6 @@ let
       "Maestral"
       "mobile-depot"
       "Moltis"
-      "Momin"
       "Nix"
       "nix-darwin"
       "NixOS"

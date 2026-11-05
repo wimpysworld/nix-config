@@ -9,6 +9,7 @@ in
   networking = {
     hostName = host.name;
     computerName = host.name;
+    localHostName = host.name;
     # extraHosts = ''
     #   127.0.0.3      k3d-k3d.localhost
     #   10.10.10.1     router

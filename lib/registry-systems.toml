@@ -340,16 +340,16 @@ tags = ["wsl"]
 
 # Darwin - platform drives isDarwin; desktop defaults to "aqua"
 
-[momin]
+[traya]
 kind = "computer"
 platform = "aarch64-darwin"
 formFactor = "desktop"
 tags = ["moltis"]
 
-[momin.gpu]
+[traya.gpu]
 vendors = ["apple"]
 
-[momin.gpu.compute]
+[traya.gpu.compute]
 vendor = "apple"
 vram = 32
 unified = true
