@@ -227,6 +227,8 @@ class MockMatrixAndRpcHandler(http.server.BaseHTTPRequestHandler):
                         resp = {"ok": True, "result": {"tokenUsage": dict(srv.context_token_usage)}}
                     else:
                         resp = {"ok": False, "error": "chat.context unconfigured"}
+                elif method in ("chat.cancel_queued", "chat.abort", "chat.clear"):
+                    resp = {"ok": True, "result": {}}
                 else:
                     resp = {"ok": False, "error": f"Unknown method {method}"}
             self._send_json(200, resp)
@@ -5799,6 +5801,955 @@ class Criterion6RoomEventsDurabilityAndNewIsolationTests(CompanionTestBase):
         self.assertIn("state_file", parsed)
         self.assertIn("auth_file", parsed)
         self.assertNotIn("access_token", parsed)
+
+
+class Criterion7CommandsRecoveryWithdrawalAndModeratorTests(CompanionTestBase):
+    """Room-wide /stop and /new commands, queue recovery, hand withdrawal (🫳🏻), and manual /moderator selection."""
+
+    def test_room_wide_stop_and_new_commands_abort_runs_and_acknowledge(self) -> None:
+        store, resolver, _, _, engine = self.make_components(
+            agent_name="skrye",
+            main_model="gemini::gemini-4-argon",
+        )
+        session_key = resolver.default_session_key
+        hook_script = self.write_hook_script(agent_name="skrye")
+        engine.process_sync_batch({"next_batch": "s0", "rooms": {"join": {}}})
+
+        # Verify command parsing helpers for /stop, /new, and /moderator.
+        for stop_body in ("/stop", "/stop @Skrye", "@Skrye /stop", "@skrye:matrix.wimpys.world /stop"):
+            self.assertTrue(companion.is_stop_command_message(stop_body), stop_body)
+            self.assertTrue(companion.is_control_command_message(stop_body), stop_body)
+            self.assertTrue(companion.is_stop_command_targeting(stop_body, companion.SKRYE_ID), stop_body)
+        self.assertFalse(companion.is_stop_command_targeting("/stop @Skrye", companion.ZANNAH_ID))
+
+        # Start an active turn on Skrye with a bound 🐝 reaction and progress notice, plus a pending wakeup target.
+        user_msg = "@skrye:matrix.wimpys.world investigate build"
+        self.write_history(
+            session_key,
+            [
+                {
+                    "role": "user",
+                    "run_id": "run-stop-1",
+                    "sender_id": companion.MARTIN_ID,
+                    "content": user_msg,
+                    "created_at": self.current_time_ms,
+                }
+            ],
+        )
+        self.invoke_hook(
+            {
+                "event": "BeforeLLMCall",
+                "session_key": session_key,
+                "iteration": 1,
+                "messages": [{"role": "system", "content": "Sys"}],
+            },
+            "skrye",
+            hook_script,
+        )
+        engine.process_sync_batch(
+            {
+                "next_batch": "s_active_turn",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$ev_active",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": self.current_time_ms,
+                                        "content": {"msgtype": "m.text", "body": user_msg},
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$ack_active",
+                                        "sender": companion.SKRYE_ID,
+                                        "origin_server_ts": self.current_time_ms + 5,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$ev_active",
+                                                "key": "👀",
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$untagged_pending",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": self.current_time_ms + 10,
+                                        "content": {"msgtype": "m.text", "body": "Untagged question"},
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        self.current_time_ms += 6_000
+        engine.tick(now_override_ms=self.current_time_ms)
+        run_before = store.get_run_state(session_key, "run-stop-1")
+        assert run_before is not None
+        self.assertEqual(run_before["active_reaction_key"], "🐝")
+        self.assertIsNotNone(run_before["progress_event_id"])
+
+        # Send untagged "/stop" from Martin.
+        self.httpd.rpc_requests.clear()
+        self.httpd.reactions_sent.clear()
+        self.httpd.redactions_sent.clear()
+        self.current_time_ms += 1_000
+        engine.process_sync_batch(
+            {
+                "next_batch": "s_stop",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$ev_stop",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": self.current_time_ms,
+                                        "content": {"msgtype": "m.text", "body": "/stop"},
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        rpc_methods = [(r["method"], r["params"].get("sessionKey")) for r in self.httpd.rpc_requests]
+        self.assertIn(("chat.cancel_queued", session_key), rpc_methods)
+        self.assertIn(("chat.abort", session_key), rpc_methods)
+        self.assertIn(("chat.abort", companion.ASSESSMENT_SESSION_KEY), rpc_methods)
+        self.assertEqual(engine.assessment_worker.queue_depth(), 0)
+
+        run_after = store.get_run_state(session_key, "run-stop-1")
+        assert run_after is not None
+        self.assertTrue(run_after["cleaned_up"])
+        self.assertEqual(len(self.httpd.redactions_sent), 1)
+        self.assertEqual(
+            self.httpd.reactions_sent[-1]["body"]["m.relates_to"],
+            {"rel_type": "m.annotation", "event_id": "$ev_stop", "key": "🛑"},
+        )
+        wake_target = store.read_companion_state()["wakeups"]["targets"]["$untagged_pending"]
+        self.assertEqual(wake_target["status"], "cancelled")
+        self.assertEqual(wake_target["cancel_reason"], "explicit_stop")
+
+        # Send untagged "/new" from Martin -> calls chat.clear, unlinks session and assessment history, updates cutoff_ms, and reacts 🧹.
+        assess_hist = self.write_history(
+            companion.ASSESSMENT_SESSION_KEY,
+            [{"role": "user", "content": "old assessment"}],
+            agent_name="skrye",
+        )
+        sess_hist = companion.history_paths(self.data_dir, session_key, agent_name="skrye")[0]
+        self.assertTrue(sess_hist.is_file())
+        self.assertTrue(assess_hist.is_file())
+
+        self.httpd.rpc_requests.clear()
+        self.httpd.reactions_sent.clear()
+        t_new_ms = self.current_time_ms + 5_000
+        self.current_time_ms = t_new_ms
+        res_new = engine.process_sync_batch(
+            {
+                "next_batch": "s_untagged_new",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$ev_untagged_new",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": t_new_ms,
+                                        "content": {"msgtype": "m.text", "body": "/new"},
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        new_rpc_methods = [(r["method"], r["params"].get("sessionKey")) for r in self.httpd.rpc_requests]
+        self.assertIn(("chat.cancel_queued", session_key), new_rpc_methods)
+        self.assertIn(("chat.abort", session_key), new_rpc_methods)
+        self.assertIn(("chat.clear", session_key), new_rpc_methods)
+        self.assertFalse(sess_hist.is_file())
+        self.assertFalse(assess_hist.is_file())
+        self.assertEqual(res_new["generation"]["cutoff_ms"], t_new_ms)
+        self.assertEqual(
+            self.httpd.reactions_sent[-1]["body"]["m.relates_to"],
+            {"rel_type": "m.annotation", "event_id": "$ev_untagged_new", "key": "🧹"},
+        )
+
+    def test_queue_recovery_advances_on_unverified_completion_and_timeout_but_never_after_stop(self) -> None:
+        store, _, _, _, engine = self.make_components(agent_name="skrye", main_model="")
+        engine.process_sync_batch({"next_batch": "s0", "rooms": {"join": {}}})
+
+        # 1. Zannah and Traya both raise ✋🏻 on Martin's question; Zannah is invited first and Traya is queued in pending_hands.
+        engine.process_sync_batch(
+            {
+                "next_batch": "s_q1",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$z_early",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": self.current_time_ms + 5,
+                                        "content": {"msgtype": "m.text", "body": "Earlier Zannah note"},
+                                    },
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$t_later",
+                                        "sender": companion.TRAYA_ID,
+                                        "origin_server_ts": self.current_time_ms + 10,
+                                        "content": {"msgtype": "m.text", "body": "Later Traya note"},
+                                    },
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$m_recover_1",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": self.current_time_ms + 20,
+                                        "content": {"msgtype": "m.text", "body": "Review the service restart."},
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$rx_z_1",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": self.current_time_ms + 30,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$m_recover_1",
+                                                "key": "✋🏻",
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$rx_t_1",
+                                        "sender": companion.TRAYA_ID,
+                                        "origin_server_ts": self.current_time_ms + 40,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$m_recover_1",
+                                                "key": "✋🏻",
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$rx_s_1",
+                                        "sender": companion.SKRYE_ID,
+                                        "origin_server_ts": self.current_time_ms + 50,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$m_recover_1",
+                                                "key": "👌🏻",
+                                            }
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        self.assertEqual(len(self.httpd.messages_sent), 1)
+        self.assertEqual(self.httpd.messages_sent[-1]["body"]["m.mentions"], {"user_ids": [companion.ZANNAH_ID]})
+        root1 = store.read_companion_state()["wakeups"]["martin_roots"]["$m_recover_1"]
+        self.assertEqual(root1["active_speaker"], companion.ZANNAH_ID)
+        self.assertEqual(root1["pending_hands"], [companion.TRAYA_ID])
+
+        # Zannah's progress notice is edited in-place to "⚠️ Zannah ended after 00:18 · Completion unverified" -> queue advances to Traya!
+        self.current_time_ms += 18_000
+        res_unverified = engine.process_sync_batch(
+            {
+                "next_batch": "s_z_failed",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$z_prog_edit",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": self.current_time_ms,
+                                        "content": {
+                                            "msgtype": "m.notice",
+                                            "body": "* ⚠️ Zannah ended after 00:18 · Completion unverified",
+                                            "m.new_content": {
+                                                "msgtype": "m.notice",
+                                                "body": "⚠️ Zannah ended after 00:18 · Completion unverified",
+                                            },
+                                            "m.relates_to": {
+                                                "rel_type": "m.replace",
+                                                "event_id": "$z_prog_orig",
+                                            },
+                                        },
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        self.assertEqual(len(self.httpd.messages_sent), 2)
+        self.assertEqual(self.httpd.messages_sent[-1]["body"]["m.mentions"], {"user_ids": [companion.TRAYA_ID]})
+        self.assertEqual(
+            res_unverified["wakeup_status"]["sent_wakeups"][-1]["recovery_reason"],
+            "unverified_completion",
+        )
+        root1_after = store.read_companion_state()["wakeups"]["martin_roots"]["$m_recover_1"]
+        self.assertEqual(root1_after["active_speaker"], companion.TRAYA_ID)
+        self.assertEqual(root1_after["pending_hands"], [])
+
+        # 2. Timeout recovery (>= 45s without a reply from active_speaker).
+        self.current_time_ms += 5_000
+        engine.process_sync_batch(
+            {
+                "next_batch": "s_q2",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$m_recover_2",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": self.current_time_ms,
+                                        "content": {"msgtype": "m.text", "body": "Second question for timeout test."},
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$rx_z_2",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": self.current_time_ms + 10,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$m_recover_2",
+                                                "key": "✋🏻",
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$rx_t_2",
+                                        "sender": companion.TRAYA_ID,
+                                        "origin_server_ts": self.current_time_ms + 20,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$m_recover_2",
+                                                "key": "✋🏻",
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$rx_s_2",
+                                        "sender": companion.SKRYE_ID,
+                                        "origin_server_ts": self.current_time_ms + 30,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$m_recover_2",
+                                                "key": "👌🏻",
+                                            }
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        self.assertEqual(len(self.httpd.messages_sent), 3)
+        self.assertEqual(self.httpd.messages_sent[-1]["body"]["m.mentions"], {"user_ids": [companion.ZANNAH_ID]})
+
+        # At +44s (< 45s timeout), queue does NOT advance yet.
+        engine.tick(now_override_ms=self.current_time_ms + 44_000)
+        self.assertEqual(len(self.httpd.messages_sent), 3)
+
+        # At +45s (>= SPEAKER_RECOVERY_TIMEOUT_MS), queue advances to Traya!
+        self.current_time_ms += 45_000
+        tick_timeout = engine.tick(now_override_ms=self.current_time_ms)
+        self.assertEqual(len(self.httpd.messages_sent), 4)
+        self.assertEqual(self.httpd.messages_sent[-1]["body"]["m.mentions"], {"user_ids": [companion.TRAYA_ID]})
+        self.assertEqual(
+            tick_timeout["wakeup_status"]["sent_wakeups"][-1]["recovery_reason"],
+            "speaker_timeout",
+        )
+
+        # 3. Explicit /stop must cancel pending_hands so neither ⚠️ nor timeout advances the queue!
+        self.current_time_ms += 5_000
+        engine.process_sync_batch(
+            {
+                "next_batch": "s_q3",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$m_stop_q",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": self.current_time_ms,
+                                        "content": {"msgtype": "m.text", "body": "Third question stopped by Martin."},
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$rx_z_3",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": self.current_time_ms + 10,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$m_stop_q",
+                                                "key": "✋🏻",
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$rx_t_3",
+                                        "sender": companion.TRAYA_ID,
+                                        "origin_server_ts": self.current_time_ms + 20,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$m_stop_q",
+                                                "key": "✋🏻",
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$rx_s_3",
+                                        "sender": companion.SKRYE_ID,
+                                        "origin_server_ts": self.current_time_ms + 30,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$m_stop_q",
+                                                "key": "👌🏻",
+                                            }
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        self.assertEqual(len(self.httpd.messages_sent), 5)
+        self.current_time_ms += 2_000
+        engine.process_sync_batch(
+            {
+                "next_batch": "s_explicit_stop",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$m_explicit_stop",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": self.current_time_ms,
+                                        "content": {"msgtype": "m.text", "body": "/stop"},
+                                    },
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$z_stopped_notice",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": self.current_time_ms + 10,
+                                        "content": {
+                                            "msgtype": "m.notice",
+                                            "body": "⚠️ Zannah ended after 00:02 · Completion unverified",
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        engine.tick(now_override_ms=self.current_time_ms + 60_000)
+        self.assertEqual(len(self.httpd.messages_sent), 5)
+        root3 = store.read_companion_state()["wakeups"]["martin_roots"]["$m_stop_q"]
+        self.assertEqual(root3["pending_hands"], [])
+        self.assertIsNone(root3["active_speaker"])
+
+    def test_hand_withdrawal_posts_palm_down_redacts_raised_hand_and_updates_moderator_queue(self) -> None:
+        # Verify TTS shim ASSESSMENT_BADGES includes 🫳 and 🫳🏻.
+        shim = load_tts_shim_module(self.root, default_matrix_state_path=str(self.state_dir / "state.json"))
+        self.assertIn("🫳", shim.ASSESSMENT_BADGES)
+        self.assertIn("🫳🏻", shim.ASSESSMENT_BADGES)
+        self.assertEqual(companion.normalize_assessment_badge("🫳"), "🫳🏻")
+        self.assertEqual(companion.normalize_assessment_badge("🫳🏻"), "🫳🏻")
+
+        # Set up Traya's companion (with AssessmentWorker) and Skrye's companion (moderator).
+        traya_dir = self.root / "state-traya-withdraw"
+        traya_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        self.state_dir = traya_dir
+        traya_store, _, _, _, traya_engine = self.make_components(
+            agent_name="traya",
+            main_model="openai-codex::gpt-6-astra",
+        )
+        skrye_dir = self.root / "state-skrye-withdraw"
+        skrye_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        self.state_dir = skrye_dir
+        skrye_store, _, _, _, skrye_engine = self.make_components(
+            agent_name="skrye",
+            main_model="",
+        )
+
+        traya_engine.process_sync_batch({"next_batch": "t0", "rooms": {"join": {}}})
+        skrye_engine.process_sync_batch({"next_batch": "s0", "rooms": {"join": {}}})
+
+        # 1. Martin posts an untagged question; Traya assesses it and raises ✋🏻.
+        self.httpd.assess_responses = [{"ok": True, "result": {"text": "✋🏻"}}]
+        traya_engine.process_sync_batch(
+            {
+                "next_batch": "t1",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$m_q_withdraw",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": self.current_time_ms + 10,
+                                        "content": {
+                                            "msgtype": "m.text",
+                                            "body": "What port does the local TTS shim listen on?",
+                                        },
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        t_assessed_1 = traya_store.get_assessed_event("$m_q_withdraw")
+        assert t_assessed_1 is not None
+        self.assertEqual(t_assessed_1["badge"], "✋🏻")
+        traya_hand_rxn_id = t_assessed_1["reaction_event_id"]
+        self.assertIsNotNone(traya_hand_rxn_id)
+
+        # Skrye sees Zannah and Traya both raise ✋🏻, invites Zannah first, and puts Traya in pending_hands.
+        skrye_engine.process_sync_batch(
+            {
+                "next_batch": "s1",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$z_early_w",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": self.current_time_ms + 2,
+                                        "content": {"msgtype": "m.text", "body": "Earlier Zannah note"},
+                                    },
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$t_later_w",
+                                        "sender": companion.TRAYA_ID,
+                                        "origin_server_ts": self.current_time_ms + 5,
+                                        "content": {"msgtype": "m.text", "body": "Later Traya note"},
+                                    },
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$m_q_withdraw",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": self.current_time_ms + 10,
+                                        "content": {
+                                            "msgtype": "m.text",
+                                            "body": "What port does the local TTS shim listen on?",
+                                        },
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$rx_z_hand_w",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": self.current_time_ms + 20,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$m_q_withdraw",
+                                                "key": "✋🏻",
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": str(traya_hand_rxn_id),
+                                        "sender": companion.TRAYA_ID,
+                                        "origin_server_ts": self.current_time_ms + 30,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$m_q_withdraw",
+                                                "key": "✋🏻",
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$rx_s_ok_w",
+                                        "sender": companion.SKRYE_ID,
+                                        "origin_server_ts": self.current_time_ms + 40,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$m_q_withdraw",
+                                                "key": "👌🏻",
+                                            }
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        self.assertEqual(len(self.httpd.messages_sent), 1)
+        self.assertEqual(self.httpd.messages_sent[-1]["body"]["m.mentions"], {"user_ids": [companion.ZANNAH_ID]})
+        self.assertEqual(
+            skrye_store.read_companion_state()["wakeups"]["martin_roots"]["$m_q_withdraw"]["pending_hands"],
+            [companion.TRAYA_ID],
+        )
+
+        # 2. Zannah posts the complete answer; Traya re-assesses her raised hand, returns "🫳" (normalised to "🫳🏻"),
+        # posts 🫳🏻 on $m_q_withdraw, and redacts her ✋🏻 reaction!
+        self.current_time_ms += 1_000
+        self.httpd.reactions_sent.clear()
+        self.httpd.redactions_sent.clear()
+        self.httpd.assess_responses = [{"ok": True, "result": {"text": "🫳"}}]
+        traya_engine.process_sync_batch(
+            {
+                "next_batch": "t2",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$z_complete_answer",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": self.current_time_ms,
+                                        "content": {
+                                            "msgtype": "m.text",
+                                            "body": "The local TTS shim listens on 127.0.0.1:13139.",
+                                        },
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        t_assessed_2 = traya_store.get_assessed_event("$m_q_withdraw")
+        assert t_assessed_2 is not None
+        self.assertEqual(t_assessed_2["badge"], "🫳🏻")
+        self.assertEqual(len(self.httpd.reactions_sent), 1)
+        self.assertEqual(
+            self.httpd.reactions_sent[-1]["body"]["m.relates_to"],
+            {"rel_type": "m.annotation", "event_id": "$m_q_withdraw", "key": "🫳🏻"},
+        )
+        redacted_ids = [r["path"].split("/redact/")[1].split("/")[0] for r in self.httpd.redactions_sent]
+        self.assertIn(traya_hand_rxn_id, redacted_ids)
+
+        # 3. Skrye ingests Zannah's reply and Traya's 🫳🏻 withdrawal -> removes Traya from pending_hands without inviting her.
+        skrye_engine.process_sync_batch(
+            {
+                "next_batch": "s2",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$rx_t_withdraw",
+                                        "sender": companion.TRAYA_ID,
+                                        "origin_server_ts": self.current_time_ms + 5,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$m_q_withdraw",
+                                                "key": "🫳🏻",
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$z_complete_answer",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": self.current_time_ms + 10,
+                                        "content": {
+                                            "msgtype": "m.text",
+                                            "body": "The local TTS shim listens on 127.0.0.1:13139.",
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        self.assertEqual(len(self.httpd.messages_sent), 1)
+        self.assertEqual(
+            skrye_store.read_companion_state()["wakeups"]["martin_roots"]["$m_q_withdraw"]["pending_hands"],
+            [],
+        )
+
+    def test_manual_moderator_selection_switches_between_skrye_and_traya_with_peer_relay(self) -> None:
+        for cmd_body, expected_mod in (
+            ("/moderator @Traya", companion.TRAYA_ID),
+            ("/moderator traya", companion.TRAYA_ID),
+            ("@Traya /moderator", companion.TRAYA_ID),
+            ("/moderator @Skrye", companion.SKRYE_ID),
+            ("/moderator skrye", companion.SKRYE_ID),
+            ("@Skrye /moderator", companion.SKRYE_ID),
+            ("/moderator @Zannah", None),
+            ("/moderator", None),
+        ):
+            with self.subTest(cmd_body=cmd_body):
+                self.assertEqual(companion.parse_moderator_command_target(cmd_body), expected_mod)
+
+        skrye_dir = self.root / "state-skrye-mod"
+        traya_dir = self.root / "state-traya-mod"
+        skrye_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        traya_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+
+        self.state_dir = skrye_dir
+        skrye_store, _, _, _, skrye_engine = self.make_components(agent_name="skrye", main_model="")
+        self.state_dir = traya_dir
+        traya_store, _, _, _, traya_engine = self.make_components(agent_name="traya", main_model="")
+
+        skrye_engine.process_sync_batch({"next_batch": "s0", "rooms": {"join": {}}})
+        traya_engine.process_sync_batch({"next_batch": "t0", "rooms": {"join": {}}})
+
+        # 1. Martin sends "/moderator @Traya" -> Traya becomes active moderator and posts confirmation notice.
+        self.current_time_ms += 100
+        mod_traya_ev = {
+            "type": "m.room.message",
+            "event_id": "$cmd_mod_traya",
+            "sender": companion.MARTIN_ID,
+            "origin_server_ts": self.current_time_ms,
+            "content": {
+                "msgtype": "m.text",
+                "body": "/moderator @Traya",
+                "m.mentions": {"user_ids": [companion.TRAYA_ID]},
+            },
+        }
+        skrye_engine.process_sync_batch(
+            {
+                "next_batch": "s_mod_traya",
+                "rooms": {"join": {companion.DEFAULT_ROOM_ID: {"timeline": {"events": [mod_traya_ev]}}}},
+            }
+        )
+        traya_engine.process_sync_batch(
+            {
+                "next_batch": "t_mod_traya",
+                "rooms": {"join": {companion.DEFAULT_ROOM_ID: {"timeline": {"events": [mod_traya_ev]}}}},
+            }
+        )
+        self.assertFalse(skrye_engine.wakeup_coordinator.is_designated_sender)
+        self.assertTrue(skrye_engine.wakeup_coordinator.is_relay_sender)
+        self.assertTrue(traya_engine.wakeup_coordinator.is_designated_sender)
+        self.assertFalse(traya_engine.wakeup_coordinator.is_relay_sender)
+        self.assertEqual(len(self.httpd.messages_sent), 1)
+        self.assertEqual(
+            self.httpd.messages_sent[-1]["body"]["body"],
+            "🎙️ Traya is now moderating the room",
+        )
+
+        # 2. Martin posts an untagged question; Skrye and Traya both raise ✋🏻, Zannah reacts 👌🏻.
+        # Because Traya is the moderator, Traya invites Skrye first (peers before moderator) and queues Traya in pending_hands!
+        self.current_time_ms += 1_000
+        q_events = [
+            {
+                "type": "m.room.message",
+                "event_id": "$m_under_traya",
+                "sender": companion.MARTIN_ID,
+                "origin_server_ts": self.current_time_ms,
+                "content": {"msgtype": "m.text", "body": "How should we structure the module?"},
+            },
+            {
+                "type": "m.reaction",
+                "event_id": "$rx_s_hand_m",
+                "sender": companion.SKRYE_ID,
+                "origin_server_ts": self.current_time_ms + 10,
+                "content": {
+                    "m.relates_to": {
+                        "rel_type": "m.annotation",
+                        "event_id": "$m_under_traya",
+                        "key": "✋🏻",
+                    }
+                },
+            },
+            {
+                "type": "m.reaction",
+                "event_id": "$rx_t_hand_m",
+                "sender": companion.TRAYA_ID,
+                "origin_server_ts": self.current_time_ms + 20,
+                "content": {
+                    "m.relates_to": {
+                        "rel_type": "m.annotation",
+                        "event_id": "$m_under_traya",
+                        "key": "✋🏻",
+                    }
+                },
+            },
+            {
+                "type": "m.reaction",
+                "event_id": "$rx_z_ok_m",
+                "sender": companion.ZANNAH_ID,
+                "origin_server_ts": self.current_time_ms + 30,
+                "content": {
+                    "m.relates_to": {
+                        "rel_type": "m.annotation",
+                        "event_id": "$m_under_traya",
+                        "key": "👌🏻",
+                    }
+                },
+            },
+        ]
+        skrye_engine.process_sync_batch(
+            {
+                "next_batch": "s_q_traya",
+                "rooms": {"join": {companion.DEFAULT_ROOM_ID: {"timeline": {"events": q_events}}}},
+            }
+        )
+        # Skrye is not the moderator, so Skrye sends nothing yet.
+        self.assertEqual(len(self.httpd.messages_sent), 1)
+
+        traya_engine.process_sync_batch(
+            {
+                "next_batch": "t_q_traya",
+                "rooms": {"join": {companion.DEFAULT_ROOM_ID: {"timeline": {"events": q_events}}}},
+            }
+        )
+        self.assertEqual(len(self.httpd.messages_sent), 2)
+        traya_first_invite = self.httpd.messages_sent[-1]["body"]
+        self.assertEqual(traya_first_invite["m.mentions"], {"user_ids": [companion.SKRYE_ID]})
+        self.assertEqual(
+            traya_store.read_companion_state()["wakeups"]["martin_roots"]["$m_under_traya"]["pending_hands"],
+            [companion.TRAYA_ID],
+        )
+
+        # 3. Skrye replies -> Traya selects herself (remaining hand) via companion_relay notice, and Skrye relays the invitation to Traya!
+        self.current_time_ms += 1_000
+        skrye_reply_ev = {
+            "type": "m.room.message",
+            "event_id": "$skrye_ans_1",
+            "sender": companion.SKRYE_ID,
+            "origin_server_ts": self.current_time_ms,
+            "content": {"msgtype": "m.text", "body": "We can split the options submodule."},
+        }
+        traya_engine.process_sync_batch(
+            {
+                "next_batch": "t_skrye_replied",
+                "rooms": {"join": {companion.DEFAULT_ROOM_ID: {"timeline": {"events": [skrye_reply_ev]}}}},
+            }
+        )
+        self.assertEqual(len(self.httpd.messages_sent), 3)
+        traya_relay_notice = self.httpd.messages_sent[-1]["body"]
+        self.assertEqual(traya_relay_notice["m.mentions"], {})
+        self.assertEqual(
+            traya_relay_notice[companion.COMPANION_RELAY_KEY]["selected_speaker"],
+            companion.TRAYA_ID,
+        )
+
+        skrye_engine.process_sync_batch(
+            {
+                "next_batch": "s_relay_for_traya",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    skrye_reply_ev,
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$traya_relay_ev",
+                                        "sender": companion.TRAYA_ID,
+                                        "origin_server_ts": self.current_time_ms + 20,
+                                        "content": traya_relay_notice,
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        self.assertEqual(len(self.httpd.messages_sent), 4)
+        skrye_relayed_invite = self.httpd.messages_sent[-1]["body"]
+        self.assertEqual(skrye_relayed_invite["m.mentions"], {"user_ids": [companion.TRAYA_ID]})
+        self.assertIn(f"🛎️ Inviting {companion.TRAYA_ID} to the floor", skrye_relayed_invite["body"])
+
+        # 4. Martin sends "/moderator @Skrye" -> switches moderator back to Skrye and posts confirmation notice.
+        self.current_time_ms += 1_000
+        mod_skrye_ev = {
+            "type": "m.room.message",
+            "event_id": "$cmd_mod_skrye",
+            "sender": companion.MARTIN_ID,
+            "origin_server_ts": self.current_time_ms,
+            "content": {"msgtype": "m.text", "body": "/moderator @Skrye"},
+        }
+        traya_engine.process_sync_batch(
+            {
+                "next_batch": "t_mod_skrye",
+                "rooms": {"join": {companion.DEFAULT_ROOM_ID: {"timeline": {"events": [mod_skrye_ev]}}}},
+            }
+        )
+        skrye_engine.process_sync_batch(
+            {
+                "next_batch": "s_mod_skrye",
+                "rooms": {"join": {companion.DEFAULT_ROOM_ID: {"timeline": {"events": [mod_skrye_ev]}}}},
+            }
+        )
+        self.assertTrue(skrye_engine.wakeup_coordinator.is_designated_sender)
+        self.assertTrue(traya_engine.wakeup_coordinator.is_relay_sender)
+        self.assertEqual(len(self.httpd.messages_sent), 5)
+        self.assertEqual(
+            self.httpd.messages_sent[-1]["body"]["body"],
+            "🎙️ Skrye is now moderating the room",
+        )
 
 
 if __name__ == "__main__":
