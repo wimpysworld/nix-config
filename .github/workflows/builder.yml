@@ -41,6 +41,7 @@ jobs:
       - uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
+            build-dir = /nix/build
             eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - name: Inventory
@@ -73,6 +74,7 @@ jobs:
       - uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
+            ${{ runner.os == 'Linux' && 'build-dir = /nix/build' || '' }}
             eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - name: Build checks, devShells & formatter
@@ -163,10 +165,11 @@ jobs:
       - uses: wimpysworld/nothing-but-nix@main
         if: contains(matrix.target.system, 'linux')
         with:
-          hatchet-protocol: "holster"
+          hatchet-protocol: "cleave"
       - uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
+            ${{ runner.os == 'Linux' && 'build-dir = /nix/build' || '' }}
             eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - name: Build packages
@@ -253,11 +256,13 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: wimpysworld/nothing-but-nix@main
+        if: runner.os == 'Linux'
         with:
-          hatchet-protocol: "holster"
+          hatchet-protocol: "cleave"
       - uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
+            build-dir = /nix/build
             eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - name: Build NixOS ${{ matrix.target.name }}
@@ -312,11 +317,14 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: wimpysworld/nothing-but-nix@main
+        if: runner.os == 'Linux'
         with:
-          hatchet-protocol: "holster"
+          hatchet-protocol: "cleave"
+          witness-carnage: "true"
       - uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
+            ${{ runner.os == 'Linux' && 'build-dir = /nix/build' || '' }}
             eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
       - name: Build Home ${{ matrix.target.name }}
@@ -434,6 +442,7 @@ jobs:
         if: steps.check-release.outputs.exists == 'false'
         with:
           extra-conf: |
+            build-dir = /nix/build
             eval-cores = 0
       - uses: DeterminateSystems/flakehub-cache-action@v3
         if: steps.check-release.outputs.exists == 'false'
