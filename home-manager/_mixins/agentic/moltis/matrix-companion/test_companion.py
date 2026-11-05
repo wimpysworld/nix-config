@@ -5895,10 +5895,11 @@ class Criterion7CommandsRecoveryWithdrawalAndModeratorTests(CompanionTestBase):
         self.assertEqual(run_before["active_reaction_key"], "🐝")
         self.assertIsNotNone(run_before["progress_event_id"])
 
-        # Send untagged "/stop" from Martin.
+        # Send untagged "/stop" from Martin in the same /sync batch as an earlier question.
         self.httpd.rpc_requests.clear()
         self.httpd.reactions_sent.clear()
         self.httpd.redactions_sent.clear()
+        self.httpd.assess_responses = [{"ok": True, "result": {"text": "✋🏻"}}]
         self.current_time_ms += 1_000
         engine.process_sync_batch(
             {
@@ -5910,11 +5911,21 @@ class Criterion7CommandsRecoveryWithdrawalAndModeratorTests(CompanionTestBase):
                                 "events": [
                                     {
                                         "type": "m.room.message",
+                                        "event_id": "$q_before_stop",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": self.current_time_ms - 10,
+                                        "content": {
+                                            "msgtype": "m.text",
+                                            "body": "Question sent just before stop in the same batch?",
+                                        },
+                                    },
+                                    {
+                                        "type": "m.room.message",
                                         "event_id": "$ev_stop",
                                         "sender": companion.MARTIN_ID,
                                         "origin_server_ts": self.current_time_ms,
                                         "content": {"msgtype": "m.text", "body": "/stop"},
-                                    }
+                                    },
                                 ]
                             }
                         }
@@ -5926,12 +5937,15 @@ class Criterion7CommandsRecoveryWithdrawalAndModeratorTests(CompanionTestBase):
         self.assertIn(("chat.cancel_queued", session_key), rpc_methods)
         self.assertIn(("chat.abort", session_key), rpc_methods)
         self.assertIn(("chat.abort", companion.ASSESSMENT_SESSION_KEY), rpc_methods)
+        self.assertNotIn("chat.send_sync", [r["method"] for r in self.httpd.rpc_requests])
         self.assertEqual(engine.assessment_worker.queue_depth(), 0)
+        self.assertIsNone(store.get_assessed_event("$q_before_stop"))
 
         run_after = store.get_run_state(session_key, "run-stop-1")
         assert run_after is not None
         self.assertTrue(run_after["cleaned_up"])
         self.assertEqual(len(self.httpd.redactions_sent), 1)
+        self.assertEqual(len(self.httpd.reactions_sent), 1)
         self.assertEqual(
             self.httpd.reactions_sent[-1]["body"]["m.relates_to"],
             {"rel_type": "m.annotation", "event_id": "$ev_stop", "key": "🛑"},
@@ -5939,6 +5953,73 @@ class Criterion7CommandsRecoveryWithdrawalAndModeratorTests(CompanionTestBase):
         wake_target = store.read_companion_state()["wakeups"]["targets"]["$untagged_pending"]
         self.assertEqual(wake_target["status"], "cancelled")
         self.assertEqual(wake_target["cancel_reason"], "explicit_stop")
+
+        # An in-flight assessment RPC that finishes after a targeted /stop is discarded before posting ✋🏻.
+        self.current_time_ms += 1_000
+        inflight_ts = self.current_time_ms
+        store.apply_timeline_events(
+            events=[
+                {
+                    "type": "m.room.message",
+                    "event_id": "$q_inflight_stop",
+                    "sender": companion.MARTIN_ID,
+                    "origin_server_ts": inflight_ts,
+                    "content": {"msgtype": "m.text", "body": "Question assessed while stop arrives?"},
+                }
+            ],
+            active_session_key=session_key,
+            cutoff_ms=resolver.resolve(now_override_ms=inflight_ts)["cutoff_ms"],
+            self_user_id=companion.SKRYE_ID,
+        )
+        self.assertTrue(
+            engine.assessment_worker.enqueue(
+                {
+                    "event_id": "$q_inflight_stop",
+                    "sender": companion.MARTIN_ID,
+                    "msgtype": "m.text",
+                    "body": "Question assessed while stop arrives?",
+                    "origin_server_ts": inflight_ts,
+                },
+                active_session_key=session_key,
+                cutoff_ms=resolver.resolve(now_override_ms=inflight_ts)["cutoff_ms"],
+                now_override_ms=inflight_ts,
+            )
+        )
+        rpc_client = engine.assessment_worker.rpc_client
+        assert rpc_client is not None
+        orig_chat_send_sync = rpc_client.chat_send_sync
+
+        def _stop_during_inflight_rpc(*args, **kwargs):
+            engine._handle_room_control_commands(
+                actionable_events=[
+                    {
+                        "event_id": "$ev_stop_inflight",
+                        "sender": companion.MARTIN_ID,
+                        "msgtype": "m.text",
+                        "body": "/stop @Skrye",
+                        "origin_server_ts": inflight_ts + 5,
+                    }
+                ],
+                active_session_key=session_key,
+                stamp_ms=inflight_ts + 5,
+            )
+            return orig_chat_send_sync(*args, **kwargs)
+
+        self.httpd.reactions_sent.clear()
+        self.httpd.assess_responses = [{"ok": True, "result": {"text": "✋🏻"}}]
+        with patch.object(
+            rpc_client,
+            "chat_send_sync",
+            side_effect=_stop_during_inflight_rpc,
+        ):
+            inflight_res = engine.assessment_worker.process_one(now_override_ms=inflight_ts + 10)
+        assert inflight_res is not None
+        self.assertEqual(inflight_res["status"], "stale_before_reaction")
+        self.assertIsNone(store.get_assessed_event("$q_inflight_stop"))
+        self.assertEqual(
+            [r["body"]["m.relates_to"] for r in self.httpd.reactions_sent],
+            [{"rel_type": "m.annotation", "event_id": "$ev_stop_inflight", "key": "🛑"}],
+        )
 
         # Send untagged "/new" from Martin -> calls chat.clear, unlinks session and assessment history, updates cutoff_ms, and reacts 🧹.
         assess_hist = self.write_history(

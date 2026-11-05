@@ -695,6 +695,39 @@ def find_latest_targeted_new_command_ts_ms(
     return latest_ts_ms
 
 
+def find_latest_targeted_stop_command_ts_ms(
+    recent_events: list[dict],
+    target_user_id: str,
+) -> int | None:
+    latest_ts_ms: int | None = None
+    max_seen_ts_ms = 0
+    for ev in recent_events or []:
+        if not isinstance(ev, dict) or ev.get("seed"):
+            continue
+        _, ev_ts_ms = normalize_ts(ev.get("origin_server_ts"))
+        if ev_ts_ms > max_seen_ts_ms:
+            max_seen_ts_ms = ev_ts_ms
+        if ev.get("sender") != MARTIN_ID or not is_conversational_room_message(ev):
+            continue
+        body = str(ev.get("body") or "")
+        if not is_stop_command_message(body):
+            continue
+        raw_mentioned = ev.get("mentioned_bots")
+        mentioned_list = raw_mentioned if isinstance(raw_mentioned, list) else None
+        if not is_stop_command_targeting(
+            body,
+            target_user_id,
+            mentioned_bots=mentioned_list,
+        ):
+            continue
+        effective_stop_ts_ms = max(ev_ts_ms, max_seen_ts_ms)
+        if effective_stop_ts_ms > 0 and (
+            latest_ts_ms is None or effective_stop_ts_ms > latest_ts_ms
+        ):
+            latest_ts_ms = effective_stop_ts_ms
+    return latest_ts_ms
+
+
 def normalize_assessment_badge(raw_text: str | None) -> str | None:
     if not isinstance(raw_text, str):
         return None
@@ -1454,6 +1487,7 @@ class CompanionStateStore:
             "active_session_key": None,
             "cutoff_ms": None,
             "last_new_origin_server_ts_ms": None,
+            "last_stop_origin_server_ts_ms": None,
             "last_assess_reset_session_key": None,
             "last_assess_reset_cutoff_ms": None,
             "is_provisional": False,
@@ -2502,11 +2536,28 @@ class CompanionStateStore:
                 recent_events,
                 self_user_id,
             )
-            if isinstance(latest_new_ts_ms, int) and latest_new_ts_ms > 0:
+            latest_stop_ts_ms = find_latest_targeted_stop_command_ts_ms(
+                recent_events,
+                self_user_id,
+            )
+            if (isinstance(latest_new_ts_ms, int) and latest_new_ts_ms > 0) or (
+                isinstance(latest_stop_ts_ms, int) and latest_stop_ts_ms > 0
+            ):
                 comp_state = self._read_companion_state_unlocked(dir_fd)
-                prev_new_ts_ms = _safe_int(comp_state.get("last_new_origin_server_ts_ms"), 0)
-                if latest_new_ts_ms > prev_new_ts_ms:
-                    comp_state["last_new_origin_server_ts_ms"] = latest_new_ts_ms
+                changed_comp = False
+                if isinstance(latest_new_ts_ms, int) and latest_new_ts_ms > 0:
+                    prev_new_ts_ms = _safe_int(comp_state.get("last_new_origin_server_ts_ms"), 0)
+                    if latest_new_ts_ms > prev_new_ts_ms:
+                        comp_state["last_new_origin_server_ts_ms"] = latest_new_ts_ms
+                        changed_comp = True
+                if isinstance(latest_stop_ts_ms, int) and latest_stop_ts_ms > 0:
+                    prev_stop_ts_ms = _safe_int(
+                        comp_state.get("last_stop_origin_server_ts_ms"), 0
+                    )
+                    if latest_stop_ts_ms > prev_stop_ts_ms:
+                        comp_state["last_stop_origin_server_ts_ms"] = latest_stop_ts_ms
+                        changed_comp = True
+                if changed_comp:
                     comp_state["updated_at_ms"] = now_ms()
                     self._write_companion_state_unlocked(dir_fd, comp_state)
 
@@ -3172,6 +3223,8 @@ class AssessmentWorker:
         self._lock = threading.Lock()
         self._cond = threading.Condition(self._lock)
         self._queue: collections.deque[dict] = collections.deque()
+        self._clear_epoch = 0
+        self._last_reassessed_peer_event_ids: set[str] = set()
         self._running = False
         self._thread: threading.Thread | None = None
 
@@ -3187,23 +3240,70 @@ class AssessmentWorker:
         with self._lock:
             return [dict(job) for job in self._queue]
 
+    def _latest_stop_ts_ms(self) -> int:
+        comp_state = self.state_store.read_companion_state()
+        stored_stop_ts_ms = _safe_int(comp_state.get("last_stop_origin_server_ts_ms"), 0)
+        room_data = self.state_store.read_room_events()
+        recent_events = room_data.get("recent_events")
+        timeline_stop_ts_ms = (
+            find_latest_targeted_stop_command_ts_ms(recent_events, self.self_user_id)
+            if isinstance(recent_events, list)
+            else None
+        )
+        return max(
+            stored_stop_ts_ms if stored_stop_ts_ms > 0 else 0,
+            timeline_stop_ts_ms
+            if isinstance(timeline_stop_ts_ms, int) and timeline_stop_ts_ms > 0
+            else 0,
+        )
+
+    def _observe_stop_events(self, events: list[dict] | None) -> int:
+        latest_stop_ts_ms = self._latest_stop_ts_ms()
+        observed_stop_ts_ms = find_latest_targeted_stop_command_ts_ms(
+            events or [],
+            self.self_user_id,
+        )
+        if isinstance(observed_stop_ts_ms, int) and observed_stop_ts_ms > latest_stop_ts_ms:
+            latest_stop_ts_ms = observed_stop_ts_ms
+            self.state_store.write_companion_state(
+                {"last_stop_origin_server_ts_ms": latest_stop_ts_ms}
+            )
+        return latest_stop_ts_ms
+
     def clear_all(self) -> int:
-        """Clear all queued assessment jobs."""
+        """Clear all queued assessment jobs and invalidate any in-flight job."""
         with self._lock:
+            self._clear_epoch += 1
             removed = len(self._queue)
             self._queue.clear()
         return removed
 
-    def cancel_stale(self, active_session_key: str, cutoff_ms: int) -> int:
-        """Drop queued jobs that belong to an older session or fall before cutoff_ms."""
+    def cancel_stale(
+        self,
+        active_session_key: str,
+        cutoff_ms: int,
+        last_stop_ts_ms: int | None = None,
+    ) -> int:
+        """Drop queued jobs that belong to an older session, fall before cutoff_ms, or precede a targeted /stop."""
+        stop_ts_ms = (
+            _safe_int(last_stop_ts_ms, 0)
+            if last_stop_ts_ms is not None
+            else self._latest_stop_ts_ms()
+        )
         removed = 0
         with self._lock:
             kept: collections.deque[dict] = collections.deque()
             while self._queue:
                 job = self._queue.popleft()
+                job_ts_ms = _safe_int(job.get("origin_server_ts"), 0)
+                trigger_ts_ms = _safe_int(job.get("trigger_origin_server_ts"), job_ts_ms)
+                stopped = stop_ts_ms > 0 and (
+                    job_ts_ms <= stop_ts_ms or trigger_ts_ms <= stop_ts_ms
+                )
                 if (
                     job.get("active_session_key") == active_session_key
-                    and _safe_int(job.get("origin_server_ts"), 0) >= cutoff_ms
+                    and job_ts_ms >= cutoff_ms
+                    and not stopped
                 ):
                     kept.append(job)
                 else:
@@ -3282,6 +3382,9 @@ class AssessmentWorker:
         ts_ms = _safe_int(event.get("origin_server_ts"), 0)
         if ts_ms < cutoff_ms:
             return False
+        last_stop_ts_ms = self._latest_stop_ts_ms()
+        if last_stop_ts_ms > 0 and ts_ms <= last_stop_ts_ms:
+            return False
 
         prior = self.state_store.get_assessed_event(event_id)
         return not (isinstance(prior, dict) and prior.get("session_key") == active_session_key)
@@ -3297,18 +3400,19 @@ class AssessmentWorker:
             return False
         event_id = str(event["event_id"])
         stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
-        job = {
-            "active_session_key": active_session_key,
-            "cutoff_ms": cutoff_ms,
-            "event_id": event_id,
-            "sender": str(event["sender"]),
-            "body": str(event["body"]),
-            "origin_server_ts": _safe_int(event.get("origin_server_ts"), 0),
-            "enqueued_at_ms": stamp_ms,
-        }
         with self._cond:
             if any(j.get("event_id") == event_id for j in self._queue):
                 return False
+            job = {
+                "active_session_key": active_session_key,
+                "cutoff_ms": cutoff_ms,
+                "event_id": event_id,
+                "sender": str(event["sender"]),
+                "body": str(event["body"]),
+                "origin_server_ts": _safe_int(event.get("origin_server_ts"), 0),
+                "enqueued_at_ms": stamp_ms,
+                "clear_epoch": self._clear_epoch,
+            }
             while len(self._queue) >= self.max_queue_size:
                 self._queue.popleft()
             self._queue.append(job)
@@ -3322,6 +3426,7 @@ class AssessmentWorker:
         cutoff_ms: int,
         now_override_ms: int | None = None,
     ) -> int:
+        self._observe_stop_events(events)
         count = 0
         for ev in events:
             if self.enqueue(ev, active_session_key, cutoff_ms, now_override_ms=now_override_ms):
@@ -3363,6 +3468,8 @@ class AssessmentWorker:
         cutoff_ms: int,
         now_override_ms: int | None = None,
     ) -> int:
+        self._last_reassessed_peer_event_ids = set()
+        last_stop_ts_ms = self._observe_stop_events(actionable_events)
         peer_events: list[dict] = []
         for ev in actionable_events or []:
             if not isinstance(ev, dict) or ev.get("seed"):
@@ -3376,6 +3483,9 @@ class AssessmentWorker:
             if sender not in BOT_IDS or sender == self.self_user_id:
                 continue
             if ev.get("is_new_command") or is_control_command_message(body):
+                continue
+            peer_ts_ms = _safe_int(ev.get("origin_server_ts"), 0)
+            if peer_ts_ms < cutoff_ms or (last_stop_ts_ms > 0 and peer_ts_ms <= last_stop_ts_ms):
                 continue
             mentioned = ev.get("mentioned_bots")
             if isinstance(mentioned, list):
@@ -3397,6 +3507,7 @@ class AssessmentWorker:
         stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         latest_peer_ev = peer_events[-1]
         latest_peer_ev_id = str(latest_peer_ev.get("event_id") or "")
+        latest_peer_ts_ms = _safe_int(latest_peer_ev.get("origin_server_ts"), 0)
 
         enqueued = 0
         for idx, target_ev in enumerate(recent_events):
@@ -3408,7 +3519,7 @@ class AssessmentWorker:
             if not is_conversational_room_message(target_ev):
                 continue
             target_ts = _safe_int(target_ev.get("origin_server_ts"), 0)
-            if target_ts < cutoff_ms:
+            if target_ts < cutoff_ms or (last_stop_ts_ms > 0 and target_ts <= last_stop_ts_ms):
                 continue
 
             prior = self.state_store.get_assessed_event(target_id)
@@ -3455,25 +3566,6 @@ class AssessmentWorker:
             if superseded_or_self_spoke or not subsequent_replies:
                 continue
 
-            job = {
-                "active_session_key": active_session_key,
-                "cutoff_ms": cutoff_ms,
-                "event_id": target_id,
-                "sender": str(target_ev.get("sender") or ""),
-                "body": str(target_ev.get("body") or ""),
-                "origin_server_ts": target_ts,
-                "enqueued_at_ms": stamp_ms,
-                "reassess_hand": True,
-                "trigger_event_id": latest_peer_ev_id,
-                "prior_reaction_event_id": hand_rxn_id,
-                "subsequent_replies": [
-                    {
-                        "sender": str(r.get("sender") or ""),
-                        "body": str(r.get("body") or ""),
-                    }
-                    for r in subsequent_replies
-                ],
-            }
             with self._cond:
                 if any(
                     j.get("event_id") == target_id
@@ -3482,10 +3574,37 @@ class AssessmentWorker:
                     for j in self._queue
                 ):
                     continue
+                job = {
+                    "active_session_key": active_session_key,
+                    "cutoff_ms": cutoff_ms,
+                    "event_id": target_id,
+                    "sender": str(target_ev.get("sender") or ""),
+                    "body": str(target_ev.get("body") or ""),
+                    "origin_server_ts": target_ts,
+                    "enqueued_at_ms": stamp_ms,
+                    "clear_epoch": self._clear_epoch,
+                    "reassess_hand": True,
+                    "trigger_event_id": latest_peer_ev_id,
+                    "trigger_origin_server_ts": latest_peer_ts_ms,
+                    "prior_reaction_event_id": hand_rxn_id,
+                    "subsequent_replies": [
+                        {
+                            "sender": str(r.get("sender") or ""),
+                            "body": str(r.get("body") or ""),
+                        }
+                        for r in subsequent_replies
+                    ],
+                }
                 while len(self._queue) >= self.max_queue_size:
                     self._queue.popleft()
                 self._queue.append(job)
                 self._cond.notify()
+            for r in subsequent_replies:
+                r_id = r.get("event_id")
+                if isinstance(r_id, str) and r_id:
+                    self._last_reassessed_peer_event_ids.add(r_id)
+            if latest_peer_ev_id:
+                self._last_reassessed_peer_event_ids.add(latest_peer_ev_id)
             enqueued += 1
 
         return enqueued
@@ -3608,14 +3727,17 @@ class AssessmentWorker:
             if not self._queue:
                 return None
             job = self._queue.popleft()
+            job_clear_epoch = _safe_int(job.get("clear_epoch"), self._clear_epoch)
 
         stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         event_id = job["event_id"]
         job_session_key = job["active_session_key"]
         job_ts_ms = _safe_int(job.get("origin_server_ts"), 0)
+        trigger_ts_ms = _safe_int(job.get("trigger_origin_server_ts"), job_ts_ms)
 
         # Recheck 1: BEFORE calling chat.send_sync
         gen_before = self.resolver.resolve(now_override_ms=stamp_ms)
+        stop_before_ts_ms = self._latest_stop_ts_ms()
         self.reset_assessment_history_if_needed(
             str(gen_before["active_session_key"]),
             _safe_int(gen_before["cutoff_ms"], 0),
@@ -3623,9 +3745,18 @@ class AssessmentWorker:
         if (
             gen_before["active_session_key"] != job_session_key
             or job_ts_ms < _safe_int(gen_before["cutoff_ms"], 0)
+            or (
+                stop_before_ts_ms > 0
+                and (job_ts_ms <= stop_before_ts_ms or trigger_ts_ms <= stop_before_ts_ms)
+            )
+            or self._clear_epoch != job_clear_epoch
             or not self._target_exists_in_room_events(event_id)
         ):
-            self.cancel_stale(gen_before["active_session_key"], _safe_int(gen_before["cutoff_ms"], 0))
+            self.cancel_stale(
+                gen_before["active_session_key"],
+                _safe_int(gen_before["cutoff_ms"], 0),
+                last_stop_ts_ms=stop_before_ts_ms,
+            )
             return {
                 "event_id": event_id,
                 "status": "stale_before_rpc",
@@ -3687,12 +3818,22 @@ class AssessmentWorker:
         # Recheck 2: AGAIN before posting m.reaction
         after_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         gen_after = self.resolver.resolve(now_override_ms=after_ms)
+        stop_after_ts_ms = self._latest_stop_ts_ms()
         if (
             gen_after["active_session_key"] != job_session_key
             or job_ts_ms < _safe_int(gen_after["cutoff_ms"], 0)
+            or (
+                stop_after_ts_ms > 0
+                and (job_ts_ms <= stop_after_ts_ms or trigger_ts_ms <= stop_after_ts_ms)
+            )
+            or self._clear_epoch != job_clear_epoch
             or not self._target_exists_in_room_events(event_id)
         ):
-            self.cancel_stale(gen_after["active_session_key"], _safe_int(gen_after["cutoff_ms"], 0))
+            self.cancel_stale(
+                gen_after["active_session_key"],
+                _safe_int(gen_after["cutoff_ms"], 0),
+                last_stop_ts_ms=stop_after_ts_ms,
+            )
             return {
                 "event_id": event_id,
                 "status": "stale_before_reaction",
@@ -5893,9 +6034,13 @@ class MatrixSyncEngine:
     ) -> bool:
         """Execute targeted /stop and /new room commands from Martin."""
         saw_targeted_new = False
+        max_seen_ts_ms = 0
         for ev in actionable_events or []:
             if not isinstance(ev, dict) or ev.get("seed"):
                 continue
+            ev_ts_ms = _safe_int(ev.get("origin_server_ts"), 0)
+            if ev_ts_ms > max_seen_ts_ms:
+                max_seen_ts_ms = ev_ts_ms
             if ev.get("type") in ("m.reaction", "m.room.redaction"):
                 continue
             if ev.get("sender") != MARTIN_ID or not is_conversational_room_message(ev):
@@ -5908,6 +6053,15 @@ class MatrixSyncEngine:
             if is_stop_command_targeting(
                 body, self.self_user_id, mentioned_bots=mentioned_list
             ):
+                stop_ts_ms = max(ev_ts_ms if ev_ts_ms > 0 else stamp_ms, max_seen_ts_ms)
+                prev_stop_ts_ms = _safe_int(
+                    self.state_store.read_companion_state().get("last_stop_origin_server_ts_ms"),
+                    0,
+                )
+                if stop_ts_ms > prev_stop_ts_ms:
+                    self.state_store.write_companion_state(
+                        {"last_stop_origin_server_ts_ms": stop_ts_ms}
+                    )
                 if self.rpc_client is not None:
                     with contextlib.suppress(Exception):
                         self.rpc_client.chat_cancel_queued(active_session_key)
@@ -6065,17 +6219,19 @@ class MatrixSyncEngine:
                 cutoff_ms=cutoff_ms,
                 now_override_ms=stamp_ms,
             )
+            reassessed_peer_ids = getattr(
+                self.assessment_worker, "_last_reassessed_peer_event_ids", set()
+            )
             eligible_inputs = (
                 [
                     ev
                     for ev in actionable_events
                     if not (
                         isinstance(ev, dict)
-                        and ev.get("sender") in BOT_IDS
-                        and ev.get("sender") != self.self_user_id
+                        and ev.get("event_id") in reassessed_peer_ids
                     )
                 ]
-                if reassessed_count > 0
+                if reassessed_count > 0 and reassessed_peer_ids
                 else actionable_events
             )
             enqueued_count = reassessed_count + self.assessment_worker.enqueue_eligible_events(
