@@ -2128,8 +2128,79 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
             "🏁 Skrye finished in 00:42 · 🟢 25% (246k / 1.0M)",
         )
 
-        # 2. Sub-5s verified turn sends a new terminal m.notice with requestInputTokens from history.jsonl
-        # and contextWindow from chat.context.
+        # 1b. Cached token extraction and chat.context tokenUsage parsing.
+        self.assertEqual(
+            companion.extract_record_input_tokens(
+                {
+                    "role": "assistant",
+                    "requestInputTokens": 2605,
+                    "requestCacheReadTokens": 179165,
+                    "requestCacheWriteTokens": 0,
+                    "requestOutputTokens": 918,
+                    "inputTokens": 369352,
+                }
+            ),
+            182688,
+        )
+        self.assertIsNone(
+            companion.extract_record_input_tokens(
+                {
+                    "role": "assistant",
+                    "requestInputTokens": 0,
+                    "requestCacheReadTokens": 0,
+                    "inputTokens": 369352,
+                }
+            )
+        )
+        self.assertEqual(
+            companion.extract_record_input_tokens(
+                {
+                    "role": "assistant",
+                    "inputTokens": 3060,
+                    "cacheReadTokens": 267962,
+                    "cacheWriteTokens": 0,
+                    "outputTokens": 811,
+                }
+            ),
+            271833,
+        )
+        self.assertEqual(
+            companion.parse_chat_context_token_usage(
+                {
+                    "ok": True,
+                    "result": {
+                        "tokenUsage": {
+                            "currentInputTokens": 3060,
+                            "currentCacheReadTokens": 267962,
+                            "currentOutputTokens": 811,
+                            "currentTotal": 271833,
+                            "contextWindow": 1_000_000,
+                        }
+                    },
+                }
+            ),
+            (271833, 1_000_000),
+        )
+        self.assertEqual(
+            companion.parse_chat_context_token_usage(
+                {
+                    "ok": True,
+                    "result": {
+                        "tokenUsage": {
+                            "currentInputTokens": 3060,
+                            "currentCacheReadTokens": 267962,
+                            "currentCacheWriteTokens": 0,
+                            "currentOutputTokens": 811,
+                            "contextWindow": 1_000_000,
+                        }
+                    },
+                }
+            ),
+            (271833, 1_000_000),
+        )
+
+        # 2. Sub-5s verified cached turn sends a new terminal m.notice summing request*Tokens
+        # from history.jsonl and contextWindow from chat.context.
         store, resolver, _, _, engine = self.make_components(agent_name="zannah")
         session_key = resolver.default_session_key
         hook_script = self.write_hook_script(agent_name="zannah")
@@ -2153,8 +2224,11 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
                     "role": "assistant",
                     "run_id": "run-fast-verified",
                     "content": fast_reply,
-                    "inputTokens": 300_000,
-                    "requestInputTokens": 14_200,
+                    "inputTokens": 540_000,
+                    "requestInputTokens": 3_060,
+                    "requestCacheReadTokens": 267_962,
+                    "requestCacheWriteTokens": 0,
+                    "requestOutputTokens": 811,
                     "created_at": t_fast + 3_000,
                 },
             ],
@@ -2172,7 +2246,10 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         )
         self.httpd.peek_active = False
         self.httpd.context_token_usage = {
-            "currentInputTokens": 14_200,
+            "currentInputTokens": 3_060,
+            "currentCacheReadTokens": 267_962,
+            "currentOutputTokens": 811,
+            "currentTotal": 271_833,
             "contextWindow": 1_000_000,
         }
         self.httpd.messages_sent.clear()
@@ -2226,7 +2303,7 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         self.assertIsNotNone(fast_run["terminal_notice_event_id"])
         self.assertEqual(
             fast_run["terminal_notice_text"],
-            "🏁 Zannah finished in 00:03 · 🟢 1% (14.2k / 1.0M)",
+            "🏁 Zannah finished in 00:03 · 🟡 27% (272k / 1.0M)",
         )
         self.assertEqual(len(self.httpd.messages_sent), 1)
         sent_terminal = self.httpd.messages_sent[0]["body"]
@@ -2235,13 +2312,55 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         self.assertNotIn("m.relates_to", sent_terminal)
         self.assertEqual(
             sent_terminal["body"],
-            "🏁 Zannah finished in 00:03 · 🟢 1% (14.2k / 1.0M)",
+            "🏁 Zannah finished in 00:03 · 🟡 27% (272k / 1.0M)",
         )
         ctx_calls = [r for r in self.httpd.rpc_requests if r.get("method") == "chat.context"]
         self.assertTrue(ctx_calls)
         self.assertEqual(
             ctx_calls[-1]["params"],
             {"_session_key": session_key, "sessionKey": session_key},
+        )
+
+        # 2b. When the active run_id has no per-record token fields, _resolve_turn_context_telemetry
+        # falls back to chat.context first, then to the prior completed assistant record.
+        self.write_history(
+            session_key,
+            [
+                {
+                    "role": "assistant",
+                    "run_id": "run-prior-completed",
+                    "content": "Prior turn output.",
+                    "requestInputTokens": 2_605,
+                    "requestCacheReadTokens": 179_165,
+                    "requestCacheWriteTokens": 0,
+                    "requestOutputTokens": 918,
+                    "inputTokens": 369_352,
+                    "created_at": t_fast - 10_000,
+                },
+                {
+                    "role": "assistant",
+                    "run_id": "run-missing-tokens",
+                    "content": "Current turn without token fields.",
+                    "created_at": t_fast,
+                },
+            ],
+            agent_name="zannah",
+        )
+        self.httpd.context_token_usage = {
+            "currentInputTokens": 3_060,
+            "currentCacheReadTokens": 267_962,
+            "currentOutputTokens": 811,
+            "currentTotal": 271_833,
+            "contextWindow": 1_000_000,
+        }
+        self.assertEqual(
+            engine.turn_reconciler._resolve_turn_context_telemetry(session_key, "run-missing-tokens"),
+            (271_833, 1_000_000),
+        )
+        self.httpd.context_token_usage = None
+        self.assertEqual(
+            engine.turn_reconciler._resolve_turn_context_telemetry(session_key, "run-missing-tokens"),
+            (182_688, 1_000_000),
         )
 
         # 3. >= 5s turn edits its existing progress m.notice in place with context usage,
