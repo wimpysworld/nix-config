@@ -19,16 +19,17 @@ lib.mkIf config.noughty.host.is.workstation {
       #0x36b0 0x300e Evoworks EVO80
       KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="36b0", ATTRS{idProduct}=="300e", TAG+="uaccess", TAG+="udev-acl", GROUP="input", MODE="0660", SYMLINK+="evo80"
       #0xaf88 0x6688 XFKey One Key Max
+      SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="af88", ATTR{idProduct}=="6688", TAG+="uaccess", GROUP="input", MODE="0660"
       KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="af88", ATTRS{idProduct}=="6688", TAG+="uaccess", TAG+="udev-acl", GROUP="input", MODE="0660", SYMLINK+="xfkey"
-      #0x1189 0x8890, 0x8840, 0x8842, 0x8850 WCH CH57x Macropad (wonkey, ch57x-keyboard-tool)
-      SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="1189", ATTR{idProduct}=="8890", TAG+="uaccess", GROUP="input", MODE="0660"
-      SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="1189", ATTR{idProduct}=="8840", TAG+="uaccess", GROUP="input", MODE="0660"
-      SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="1189", ATTR{idProduct}=="8842", TAG+="uaccess", GROUP="input", MODE="0660"
-      SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="1189", ATTR{idProduct}=="8850", TAG+="uaccess", GROUP="input", MODE="0660"
-      KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1189", ATTRS{idProduct}=="8890", TAG+="uaccess", TAG+="udev-acl", GROUP="input", MODE="0660"
-      KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1189", ATTRS{idProduct}=="8840", TAG+="uaccess", TAG+="udev-acl", GROUP="input", MODE="0660"
-      KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1189", ATTRS{idProduct}=="8842", TAG+="uaccess", TAG+="udev-acl", GROUP="input", MODE="0660"
-      KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1189", ATTRS{idProduct}=="8850", TAG+="uaccess", TAG+="udev-acl", GROUP="input", MODE="0660"
+      #0x1189 0x8840, 0x8842, 0x8850, 0x8890 WCH CH57x Macropads (wonkey, ch57x-keyboard-tool)
+      SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="1189", ATTR{idProduct}=="8840|8842|8850|8890", TAG+="uaccess", GROUP="input", MODE="0660"
+      KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1189", ATTRS{idProduct}=="8840|8842|8850|8890", TAG+="uaccess", TAG+="udev-acl", GROUP="input", MODE="0660"
+      #0x514c 0x8840, 0x8842, 0x8850, 0x8851 CH57x Macropads
+      SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="514c", ATTR{idProduct}=="8840|8842|8850|8851", TAG+="uaccess", GROUP="input", MODE="0660"
+      KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="514c", ATTRS{idProduct}=="8840|8842|8850|8851", TAG+="uaccess", TAG+="udev-acl", GROUP="input", MODE="0660"
+      #0x8089 0x000c SayoDevice 2x3P Macropad
+      SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="8089", ATTR{idProduct}=="000c", TAG+="uaccess", GROUP="input", MODE="0660"
+      KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="8089", ATTRS{idProduct}=="000c", TAG+="uaccess", TAG+="udev-acl", GROUP="input", MODE="0660"
     '';
 
     keyd = {
