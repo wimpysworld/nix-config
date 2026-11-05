@@ -218,6 +218,15 @@ class MockMatrixAndRpcHandler(http.server.BaseHTTPRequestHandler):
                         resp = srv.assess_responses.pop(0)
                     else:
                         resp = {"ok": True, "result": {"text": "👌🏻"}}
+                elif method == "chat.context":
+                    if srv.context_handler is not None:
+                        resp = srv.context_handler(params)
+                    elif srv.context_responses:
+                        resp = srv.context_responses.pop(0)
+                    elif srv.context_token_usage is not None:
+                        resp = {"ok": True, "result": {"tokenUsage": dict(srv.context_token_usage)}}
+                    else:
+                        resp = {"ok": False, "error": "chat.context unconfigured"}
                 else:
                     resp = {"ok": False, "error": f"Unknown method {method}"}
             self._send_json(200, resp)
@@ -280,6 +289,9 @@ class LoopbackTestServer(http.server.ThreadingHTTPServer):
         self.peek_handler = None
         self.assess_responses: list[dict] = []
         self.assess_handler = None
+        self.context_responses: list[dict] = []
+        self.context_handler = None
+        self.context_token_usage: dict | None = None
         self.put_requests: list[dict] = []
         self.reactions_sent: list[dict] = []
         self.redactions_sent: list[dict] = []
@@ -2026,6 +2038,350 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         s_redacted_targets = [r["path"].split("/redact/")[1].split("/")[0] for r in self.httpd.redactions_sent]
         self.assertIn(s_bee_id, s_redacted_targets)
         self.assertNotIn(s_prog_id, s_redacted_targets)
+
+    def test_terminal_notice_context_formatting_and_turn_telemetry(self) -> None:
+        # 1. Compact token formatting and five-band thresholds (🟢 <25%, 🟡 25-<50%, 🟠 50-<75%, 🔴 75-<90%, 🛟 >=90%).
+        self.assertEqual(companion.format_compact_tokens(0), "0")
+        self.assertEqual(companion.format_compact_tokens(950), "950")
+        self.assertEqual(companion.format_compact_tokens(14_200), "14.2k")
+        self.assertEqual(companion.format_compact_tokens(142_400), "142k")
+        self.assertEqual(companion.format_compact_tokens(384_000), "384k")
+        self.assertEqual(companion.format_compact_tokens(1_000_000), "1.0M")
+
+        self.assertEqual(
+            companion.format_terminal_notice("Zannah", 18, verified=True),
+            "🏁 Zannah finished in 00:18",
+        )
+        self.assertEqual(
+            companion.format_terminal_notice("Zannah", 18, verified=False),
+            "⚠️ Zannah ended after 00:18 · Completion unverified",
+        )
+        self.assertEqual(
+            companion.format_terminal_notice(
+                "Zannah",
+                18,
+                verified=True,
+                used_tokens=142_400,
+                context_window=1_000_000,
+            ),
+            "🏁 Zannah finished in 00:18 · 🟢 14% (142k / 1.0M)",
+        )
+        self.assertEqual(
+            companion.format_terminal_notice(
+                "Zannah",
+                18,
+                verified=False,
+                used_tokens=142_400,
+                context_window=1_000_000,
+            ),
+            "⚠️ Zannah ended after 00:18 · Completion unverified · 🟢 14% (142k / 1.0M)",
+        )
+        self.assertEqual(
+            companion.format_terminal_notice(
+                "Traya",
+                9,
+                verified=True,
+                used_tokens=96_000,
+                context_window=384_000,
+            ),
+            "🏁 Traya finished in 00:09 · 🟡 25% (96.0k / 384k)",
+        )
+        self.assertEqual(
+            companion.format_terminal_notice(
+                "Traya",
+                9,
+                verified=True,
+                used_tokens=192_000,
+                context_window=384_000,
+            ),
+            "🏁 Traya finished in 00:09 · 🟠 50% (192k / 384k)",
+        )
+        self.assertEqual(
+            companion.format_terminal_notice(
+                "Traya",
+                9,
+                verified=True,
+                used_tokens=288_000,
+                context_window=384_000,
+            ),
+            "🏁 Traya finished in 00:09 · 🔴 75% (288k / 384k)",
+        )
+        self.assertEqual(
+            companion.format_terminal_notice(
+                "Skrye",
+                42,
+                verified=True,
+                used_tokens=900_000,
+                context_window=1_000_000,
+            ),
+            "🏁 Skrye finished in 00:42 · 🛟 90% (900k / 1.0M)",
+        )
+
+        # 2. Sub-5s verified turn sends a new terminal m.notice with requestInputTokens from history.jsonl
+        # and contextWindow from chat.context.
+        store, resolver, _, _, engine = self.make_components(agent_name="zannah")
+        session_key = resolver.default_session_key
+        hook_script = self.write_hook_script(agent_name="zannah")
+        engine.process_sync_batch({"next_batch": "z_ctx_0", "rooms": {"join": {}}})
+
+        t_fast = self.current_time_ms + 1_000
+        self.current_time_ms = t_fast
+        fast_user_msg = "@zannah:matrix.wimpys.world quick check"
+        fast_reply = "Everything is in place."
+        self.write_history(
+            session_key,
+            [
+                {
+                    "role": "user",
+                    "run_id": "run-fast-verified",
+                    "sender_id": companion.MARTIN_ID,
+                    "content": fast_user_msg,
+                    "created_at": t_fast,
+                },
+                {
+                    "role": "assistant",
+                    "run_id": "run-fast-verified",
+                    "content": fast_reply,
+                    "inputTokens": 300_000,
+                    "requestInputTokens": 14_200,
+                    "created_at": t_fast + 3_000,
+                },
+            ],
+            agent_name="zannah",
+        )
+        self.invoke_hook(
+            {
+                "event": "BeforeLLMCall",
+                "session_key": session_key,
+                "iteration": 1,
+                "messages": [{"role": "system", "content": "Sys"}],
+            },
+            "zannah",
+            hook_script,
+        )
+        self.httpd.peek_active = False
+        self.httpd.context_token_usage = {
+            "currentInputTokens": 14_200,
+            "contextWindow": 1_000_000,
+        }
+        self.httpd.messages_sent.clear()
+        self.current_time_ms = t_fast + 3_000
+        fast_res = engine.process_sync_batch(
+            {
+                "next_batch": "z_ctx_fast",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$ev_fast_user",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": t_fast,
+                                        "content": {"msgtype": "m.text", "body": fast_user_msg},
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$ack_fast_user",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": t_fast + 5,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$ev_fast_user",
+                                                "key": "👀",
+                                            }
+                                        },
+                                    },
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$ev_fast_reply",
+                                        "sender": companion.ZANNAH_ID,
+                                        "origin_server_ts": t_fast + 3_000,
+                                        "content": {"msgtype": "m.text", "body": fast_reply},
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        self.assertEqual(fast_res["turn_status"]["status"], "completed")
+        fast_run = store.get_run_state(session_key, "run-fast-verified")
+        assert fast_run is not None
+        self.assertTrue(fast_run["cleaned_up"])
+        self.assertIsNotNone(fast_run["terminal_notice_event_id"])
+        self.assertEqual(
+            fast_run["terminal_notice_text"],
+            "🏁 Zannah finished in 00:03 · 🟢 1% (14.2k / 1.0M)",
+        )
+        self.assertEqual(len(self.httpd.messages_sent), 1)
+        sent_terminal = self.httpd.messages_sent[0]["body"]
+        self.assertEqual(sent_terminal["msgtype"], "m.notice")
+        self.assertEqual(sent_terminal["m.mentions"], {})
+        self.assertNotIn("m.relates_to", sent_terminal)
+        self.assertEqual(
+            sent_terminal["body"],
+            "🏁 Zannah finished in 00:03 · 🟢 1% (14.2k / 1.0M)",
+        )
+        ctx_calls = [r for r in self.httpd.rpc_requests if r.get("method") == "chat.context"]
+        self.assertTrue(ctx_calls)
+        self.assertEqual(
+            ctx_calls[-1]["params"],
+            {"_session_key": session_key, "sessionKey": session_key},
+        )
+
+        # 3. >= 5s turn edits its existing progress m.notice in place with context usage,
+        # falling back to agent_name default context window (384k for traya) when chat.context is unavailable.
+        self.httpd.context_token_usage = None
+        self.httpd.peek_active = True
+        self.state_dir = self.root / "state-traya-ctx-edit"
+        self.state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        t_store, t_resolver, _, _, t_engine = self.make_components(
+            agent_name="traya",
+            main_model="openai-codex::gpt-6-astra",
+        )
+        t_session_key = t_resolver.default_session_key
+        t_hook = self.write_hook_script(agent_name="traya")
+        t_engine.process_sync_batch({"next_batch": "t_ctx_0", "rooms": {"join": {}}})
+
+        t_long = self.current_time_ms + 5_000
+        self.current_time_ms = t_long
+        long_user_msg = "@traya:matrix.wimpys.world review context telemetry"
+        long_reply = "Context telemetry looks good."
+        self.write_history(
+            t_session_key,
+            [
+                {
+                    "role": "user",
+                    "run_id": "run-traya-long",
+                    "sender_id": companion.MARTIN_ID,
+                    "content": long_user_msg,
+                    "created_at": t_long,
+                }
+            ],
+            agent_name="traya",
+        )
+        self.invoke_hook(
+            {
+                "event": "BeforeLLMCall",
+                "session_key": t_session_key,
+                "iteration": 1,
+                "messages": [{"role": "system", "content": "Sys"}],
+            },
+            "traya",
+            t_hook,
+        )
+        self.httpd.messages_sent.clear()
+        t_engine.process_sync_batch(
+            {
+                "next_batch": "t_ctx_start",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$ev_traya_long",
+                                        "sender": companion.MARTIN_ID,
+                                        "origin_server_ts": t_long,
+                                        "content": {"msgtype": "m.text", "body": long_user_msg},
+                                    },
+                                    {
+                                        "type": "m.reaction",
+                                        "event_id": "$ack_traya_long",
+                                        "sender": companion.TRAYA_ID,
+                                        "origin_server_ts": t_long + 5,
+                                        "content": {
+                                            "m.relates_to": {
+                                                "rel_type": "m.annotation",
+                                                "event_id": "$ev_traya_long",
+                                                "key": "👀",
+                                            }
+                                        },
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        # Advance 6s so initial progress notice is posted.
+        self.current_time_ms = t_long + 6_000
+        t_engine.tick(now_override_ms=self.current_time_ms)
+        t_run = t_store.get_run_state(t_session_key, "run-traya-long")
+        assert t_run is not None
+        t_prog_id = t_run["progress_event_id"]
+        self.assertIsNotNone(t_prog_id)
+        self.assertEqual(len(self.httpd.messages_sent), 1)
+
+        # Complete turn at 18s with inputTokens fallback in history.jsonl and default 384k window for Traya.
+        self.httpd.peek_active = False
+        self.current_time_ms = t_long + 18_000
+        self.write_history(
+            t_session_key,
+            [
+                {
+                    "role": "user",
+                    "run_id": "run-traya-long",
+                    "sender_id": companion.MARTIN_ID,
+                    "content": long_user_msg,
+                    "created_at": t_long,
+                },
+                {
+                    "role": "assistant",
+                    "run_id": "run-traya-long",
+                    "content": long_reply,
+                    "inputTokens": 288_000,
+                    "created_at": self.current_time_ms,
+                },
+            ],
+            agent_name="traya",
+        )
+        t_done = t_engine.process_sync_batch(
+            {
+                "next_batch": "t_ctx_done",
+                "rooms": {
+                    "join": {
+                        companion.DEFAULT_ROOM_ID: {
+                            "timeline": {
+                                "events": [
+                                    {
+                                        "type": "m.room.message",
+                                        "event_id": "$ev_traya_long_reply",
+                                        "sender": companion.TRAYA_ID,
+                                        "origin_server_ts": self.current_time_ms,
+                                        "content": {"msgtype": "m.text", "body": long_reply},
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        )
+        self.assertEqual(t_done["turn_status"]["status"], "completed")
+        t_run = t_store.get_run_state(t_session_key, "run-traya-long")
+        assert t_run is not None
+        self.assertEqual(t_run["terminal_notice_event_id"], t_prog_id)
+        self.assertEqual(
+            t_run["terminal_notice_text"],
+            "🏁 Traya finished in 00:18 · 🔴 75% (288k / 384k)",
+        )
+        self.assertEqual(len(self.httpd.messages_sent), 2)
+        t_edit = self.httpd.messages_sent[-1]["body"]
+        self.assertEqual(
+            t_edit["m.relates_to"],
+            {"rel_type": "m.replace", "event_id": t_prog_id},
+        )
+        self.assertEqual(
+            t_edit["m.new_content"]["body"],
+            "🏁 Traya finished in 00:18 · 🔴 75% (288k / 384k)",
+        )
 
 
 class Criterion3AssessmentOutputValidationTests(CompanionTestBase):

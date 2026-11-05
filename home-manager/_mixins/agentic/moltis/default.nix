@@ -1704,6 +1704,12 @@ in
               );
         };
 
+        models = {
+          gemini-4-argon.context_window = 1000000;
+          gpt-6-astra.context_window = 384000;
+          gpt-6-luna.context_window = 384000;
+        };
+
         # No inline `api_key`: the provider reads `GEMINI_API_KEY` from
         # Moltis' internal `[env]` configuration.
         providers = {

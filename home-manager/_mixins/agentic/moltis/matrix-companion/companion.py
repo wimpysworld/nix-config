@@ -93,6 +93,13 @@ NOTICE_TOOL_ICON = "🔧"
 NOTICE_FINISHED_ICON = "🏁"
 NOTICE_UNVERIFIED_ICON = "⚠️"
 
+DEFAULT_CONTEXT_WINDOWS: dict[str, int] = {
+    "skrye": 1_000_000,
+    "zannah": 1_000_000,
+    "traya": 384_000,
+    "momin": 384_000,
+}
+
 SHELL_TOOLS = frozenset({"exec", "process"})
 SEARCH_TOOLS = frozenset(
     {
@@ -711,6 +718,56 @@ def parse_chat_peek_active(rpc_response: object) -> bool | None:
     return None
 
 
+def default_context_window_for_agent(agent_name: str) -> int:
+    """Return the default model context window for agent_name."""
+    norm = (agent_name or "").strip().lower()
+    return DEFAULT_CONTEXT_WINDOWS.get(norm, 1_000_000)
+
+
+def parse_chat_context_token_usage(rpc_response: object) -> tuple[int | None, int | None]:
+    """Extract (current_input_tokens, context_window) from a chat.context RPC response."""
+    if not isinstance(rpc_response, dict):
+        return None, None
+    if rpc_response.get("error") is not None or rpc_response.get("ok") is False:
+        return None, None
+    for container in (
+        rpc_response.get("result"),
+        rpc_response.get("payload"),
+        rpc_response,
+    ):
+        if not isinstance(container, dict):
+            continue
+        token_usage = container.get("tokenUsage")
+        if not isinstance(token_usage, dict):
+            token_usage = container.get("token_usage")
+        if not isinstance(token_usage, dict):
+            token_usage = container
+        raw_input = token_usage.get("currentInputTokens")
+        if raw_input is None:
+            raw_input = token_usage.get("current_input_tokens")
+        if raw_input is None:
+            raw_input = token_usage.get("requestInputTokens")
+        raw_window = token_usage.get("contextWindow")
+        if raw_window is None:
+            raw_window = token_usage.get("context_window")
+        used = _safe_int(raw_input, -1) if raw_input is not None else -1
+        window = _safe_int(raw_window, 0) if raw_window is not None else 0
+        if used >= 0 or window > 0:
+            return (used if used > 0 else None), (window if window > 0 else None)
+    return None, None
+
+
+def extract_record_input_tokens(record: dict) -> int | None:
+    """Extract requestInputTokens (falling back to inputTokens) from an assistant history record."""
+    if not isinstance(record, dict):
+        return None
+    for key in ("requestInputTokens", "request_input_tokens", "inputTokens", "input_tokens"):
+        val = _safe_int(record.get(key), 0)
+        if val > 0:
+            return val
+    return None
+
+
 def display_name_for_user_id(user_id: str) -> str:
     if user_id in USER_ID_DISPLAY_NAMES:
         return USER_ID_DISPLAY_NAMES[user_id]
@@ -910,20 +967,69 @@ def format_progress_notice(
     )
 
 
+def format_compact_tokens(tokens: int) -> str:
+    """Format a token count compactly (e.g. 0 -> 0, 950 -> 950, 14200 -> 14.2k, 142400 -> 142k, 1000000 -> 1.0M)."""
+    count = max(0, _safe_int(tokens, 0))
+    if count < 1_000:
+        return str(count)
+    if count < 100_000:
+        k_tenths = round(count / 100)
+        if k_tenths >= 1_000:
+            return "100k"
+        return f"{k_tenths / 10:.1f}k"
+    if count < 1_000_000:
+        k_whole = round(count / 1_000)
+        if k_whole >= 1_000:
+            return "1.0M"
+        return f"{k_whole}k"
+    if count < 100_000_000:
+        m_tenths = round(count / 100_000)
+        if m_tenths >= 1_000:
+            return "100M"
+        return f"{m_tenths / 10:.1f}M"
+    return f"{round(count / 1_000_000)}M"
+
+
+def context_traffic_light_dot(pct: int | float) -> str:
+    """Return the five-band indicator (🟢, 🟡, 🟠, 🔴, 🛟) for a context usage percentage."""
+    if pct < 25:
+        return "🟢"
+    if pct < 50:
+        return "🟡"
+    if pct < 75:
+        return "🟠"
+    if pct < 90:
+        return "🔴"
+    return "🛟"
+
+
 def format_terminal_notice(
     agent_display_name: str,
     elapsed_sec: int,
     verified: bool = True,
+    used_tokens: int | None = None,
+    context_window: int | None = None,
 ) -> str:
-    """Format the terminal notice edited in place when a turn with a progress notice ends."""
+    """Format the terminal notice posted or edited in place when a turn ends."""
     duration = format_elapsed_duration(max(1, _safe_int(elapsed_sec, 1)))
     if verified:
-        return sanitize_no_matrix_mentions(
-            f"{NOTICE_FINISHED_ICON} {agent_display_name} finished in {duration}"
-        )
-    return sanitize_no_matrix_mentions(
-        f"{NOTICE_UNVERIFIED_ICON} {agent_display_name} ended after {duration} · Completion unverified"
-    )
+        base = f"{NOTICE_FINISHED_ICON} {agent_display_name} finished in {duration}"
+    else:
+        base = f"{NOTICE_UNVERIFIED_ICON} {agent_display_name} ended after {duration} · Completion unverified"
+    if (
+        isinstance(used_tokens, int)
+        and not isinstance(used_tokens, bool)
+        and used_tokens >= 0
+        and isinstance(context_window, int)
+        and not isinstance(context_window, bool)
+        and context_window > 0
+    ):
+        pct = max(0, round((used_tokens * 100) / context_window))
+        dot = context_traffic_light_dot(pct)
+        used_str = format_compact_tokens(used_tokens)
+        window_str = format_compact_tokens(context_window)
+        base = f"{base} · {dot} {pct}% ({used_str} / {window_str})"
+    return sanitize_no_matrix_mentions(base)
 
 
 def clip_at_word_boundary(text: str, limit: int = 120) -> str:
@@ -2796,6 +2902,13 @@ class MoltisRpcClient:
     def chat_peek(self, session_key: str, timeout: float = 5.0) -> dict:
         return self.call("chat.peek", {"sessionKey": session_key}, timeout=timeout)
 
+    def chat_context(self, session_key: str, timeout: float = 5.0) -> dict:
+        return self.call(
+            "chat.context",
+            {"_session_key": session_key, "sessionKey": session_key},
+            timeout=timeout,
+        )
+
     def chat_send_sync(
         self,
         model: str,
@@ -3296,6 +3409,60 @@ class TurnStatusReconciler:
         self.completion_window_ms = max(0, _safe_int(completion_window_ms, COMPLETION_RECONCILE_WINDOW_MS))
         self.clock = clock
 
+    def _resolve_turn_context_telemetry(
+        self,
+        session_key: str,
+        run_id: str,
+    ) -> tuple[int | None, int | None]:
+        """Resolve (used_tokens, context_window) for (session_key, run_id) at turn completion."""
+        used_tokens: int | None = None
+        records = load_session_history_records(
+            self.data_dir,
+            session_key,
+            agent_name=self.agent_name,
+            room_id=self.room_id,
+        )
+        assistant_records = [
+            r for r in records if isinstance(r, dict) and r.get("role") == "assistant"
+        ]
+        clean_run_id = (run_id or "").strip()
+        if clean_run_id:
+            run_assistants = [
+                r for r in assistant_records if str(r.get("run_id") or "").strip() == clean_run_id
+            ]
+            final_run_assistants = [r for r in run_assistants if not r.get("tool_calls")]
+            for candidate in reversed(final_run_assistants or run_assistants):
+                tokens = extract_record_input_tokens(candidate)
+                if tokens is not None:
+                    used_tokens = tokens
+                    break
+
+        if used_tokens is None:
+            for candidate in reversed(assistant_records):
+                tokens = extract_record_input_tokens(candidate)
+                if tokens is not None:
+                    used_tokens = tokens
+                    break
+
+        rpc_input_tokens: int | None = None
+        rpc_context_window: int | None = None
+        if self.rpc_client is not None and session_key:
+            try:
+                ctx_resp = self.rpc_client.chat_context(session_key)
+                rpc_input_tokens, rpc_context_window = parse_chat_context_token_usage(ctx_resp)
+            except Exception as exc:
+                sys.stderr.write(f"moltis-matrix-companion chat.context warning: {exc}\n")
+
+        if used_tokens is None and rpc_input_tokens is not None and rpc_input_tokens > 0:
+            used_tokens = rpc_input_tokens
+
+        context_window = (
+            rpc_context_window
+            if rpc_context_window is not None and rpc_context_window > 0
+            else default_context_window_for_agent(self.agent_name)
+        )
+        return used_tokens, context_window
+
     def _cleanup_run_artifacts(
         self,
         session_key: str,
@@ -3307,9 +3474,10 @@ class TurnStatusReconciler:
     ) -> dict:
         stamp_ms = _safe_int(current_ms, self.clock()) if current_ms is not None else self.clock()
         progress_id = run_entry.get("progress_event_id")
+        has_progress_id = isinstance(progress_id, str) and bool(progress_id)
         terminal_notice_id: str | None = None
         terminal_notice_text: str | None = None
-        if isinstance(progress_id, str) and progress_id:
+        if has_progress_id or verified_completion:
             started_at_ms = _safe_int(run_entry.get("started_at_ms"), stamp_ms)
             inactive_ms = run_entry.get("inactive_since_ms")
             end_ms = (
@@ -3318,22 +3486,40 @@ class TurnStatusReconciler:
                 else stamp_ms
             )
             elapsed_sec = max(1, (end_ms - started_at_ms) // 1000)
+            used_tokens, context_window = self._resolve_turn_context_telemetry(
+                session_key=session_key,
+                run_id=run_id,
+            )
             terminal_notice_text = format_terminal_notice(
                 agent_display_name=self.agent_display_name,
                 elapsed_sec=elapsed_sec,
                 verified=verified_completion,
+                used_tokens=used_tokens,
+                context_window=context_window,
             )
-            terminal_notice_id = progress_id
-            try:
-                self.matrix_client.edit_notice(
-                    target_event_id=progress_id,
-                    body_text=terminal_notice_text,
-                    scope_id=f"progress-terminal:{session_key}:{run_id}:{progress_id}",
-                )
-            except MatrixAPIError as exc:
-                if exc.status != 429 and exc.errcode != "M_LIMIT_EXCEEDED":
-                    raise
-                sys.stderr.write(f"moltis-matrix-companion rate limit on terminal notice edit: {exc}\n")
+            if has_progress_id:
+                terminal_notice_id = str(progress_id)
+                try:
+                    self.matrix_client.edit_notice(
+                        target_event_id=terminal_notice_id,
+                        body_text=terminal_notice_text,
+                        scope_id=f"progress-terminal:{session_key}:{run_id}:{terminal_notice_id}",
+                    )
+                except MatrixAPIError as exc:
+                    if exc.status != 429 and exc.errcode != "M_LIMIT_EXCEEDED":
+                        raise
+                    sys.stderr.write(f"moltis-matrix-companion rate limit on terminal notice edit: {exc}\n")
+            else:
+                try:
+                    terminal_notice_id = self.matrix_client.send_notice(
+                        body_text=terminal_notice_text,
+                        scope_id=f"progress-terminal:{session_key}:{run_id}:send",
+                        mentions_user_ids=[],
+                    )
+                except MatrixAPIError as exc:
+                    if exc.status != 429 and exc.errcode != "M_LIMIT_EXCEEDED":
+                        raise
+                    sys.stderr.write(f"moltis-matrix-companion rate limit on terminal notice send: {exc}\n")
 
         active_rxn_id = run_entry.get("active_reaction_event_id")
         if isinstance(active_rxn_id, str) and active_rxn_id:
