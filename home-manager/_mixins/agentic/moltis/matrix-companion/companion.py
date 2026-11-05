@@ -722,8 +722,46 @@ def default_context_window_for_agent(agent_name: str) -> int:
     return DEFAULT_CONTEXT_WINDOWS.get(norm, 1_000_000)
 
 
+_REQUEST_TOKEN_KEY_PAIRS: tuple[tuple[str, str], ...] = (
+    ("requestInputTokens", "request_input_tokens"),
+    ("requestCacheReadTokens", "request_cache_read_tokens"),
+    ("requestCacheWriteTokens", "request_cache_write_tokens"),
+    ("requestOutputTokens", "request_output_tokens"),
+)
+_TOTAL_TOKEN_KEY_PAIRS: tuple[tuple[str, str], ...] = (
+    ("inputTokens", "input_tokens"),
+    ("cacheReadTokens", "cache_read_tokens"),
+    ("cacheWriteTokens", "cache_write_tokens"),
+    ("outputTokens", "output_tokens"),
+)
+_CURRENT_TOKEN_KEY_PAIRS: tuple[tuple[str, str], ...] = (
+    ("currentInputTokens", "current_input_tokens"),
+    ("currentCacheReadTokens", "current_cache_read_tokens"),
+    ("currentCacheWriteTokens", "current_cache_write_tokens"),
+    ("currentOutputTokens", "current_output_tokens"),
+)
+
+
+def _sum_token_key_pairs(
+    mapping: dict,
+    key_pairs: tuple[tuple[str, str], ...],
+) -> tuple[bool, int]:
+    """Return (has_any_key, non_negative_sum) for key_pairs on mapping."""
+    has_any = False
+    total = 0
+    for camel_key, snake_key in key_pairs:
+        if camel_key in mapping or snake_key in mapping:
+            has_any = True
+        raw = mapping.get(camel_key)
+        if raw is None:
+            raw = mapping.get(snake_key)
+        if raw is not None:
+            total += max(0, _safe_int(raw, 0))
+    return has_any, total
+
+
 def parse_chat_context_token_usage(rpc_response: object) -> tuple[int | None, int | None]:
-    """Extract (current_input_tokens, context_window) from a chat.context RPC response."""
+    """Extract (used_context_tokens, context_window) from a chat.context RPC response."""
     if not isinstance(rpc_response, dict):
         return None, None
     if rpc_response.get("error") is not None or rpc_response.get("ok") is False:
@@ -740,30 +778,42 @@ def parse_chat_context_token_usage(rpc_response: object) -> tuple[int | None, in
             token_usage = container.get("token_usage")
         if not isinstance(token_usage, dict):
             token_usage = container
-        raw_input = token_usage.get("currentInputTokens")
-        if raw_input is None:
-            raw_input = token_usage.get("current_input_tokens")
-        if raw_input is None:
-            raw_input = token_usage.get("requestInputTokens")
+
+        raw_total = token_usage.get("currentTotal")
+        if raw_total is None:
+            raw_total = token_usage.get("current_total")
+        total_val = _safe_int(raw_total, 0) if raw_total is not None else 0
+
+        has_current, current_sum = _sum_token_key_pairs(token_usage, _CURRENT_TOKEN_KEY_PAIRS)
+        has_request, request_sum = _sum_token_key_pairs(token_usage, _REQUEST_TOKEN_KEY_PAIRS)
+
+        used: int | None = None
+        if total_val > 0:
+            used = total_val
+        elif has_current and current_sum > 0:
+            used = current_sum
+        elif has_request and request_sum > 0:
+            used = request_sum
+
         raw_window = token_usage.get("contextWindow")
         if raw_window is None:
             raw_window = token_usage.get("context_window")
-        used = _safe_int(raw_input, -1) if raw_input is not None else -1
         window = _safe_int(raw_window, 0) if raw_window is not None else 0
-        if used >= 0 or window > 0:
-            return (used if used > 0 else None), (window if window > 0 else None)
+
+        if used is not None or raw_total is not None or has_current or has_request or window > 0:
+            return used, (window if window > 0 else None)
     return None, None
 
 
 def extract_record_input_tokens(record: dict) -> int | None:
-    """Extract requestInputTokens (falling back to inputTokens) from an assistant history record."""
+    """Extract per-request or turn context tokens (including cached reads/writes and output) from an assistant history record."""
     if not isinstance(record, dict):
         return None
-    for key in ("requestInputTokens", "request_input_tokens", "inputTokens", "input_tokens"):
-        val = _safe_int(record.get(key), 0)
-        if val > 0:
-            return val
-    return None
+    has_request, request_sum = _sum_token_key_pairs(record, _REQUEST_TOKEN_KEY_PAIRS)
+    if has_request:
+        return request_sum if request_sum > 0 else None
+    _, total_sum = _sum_token_key_pairs(record, _TOTAL_TOKEN_KEY_PAIRS)
+    return total_sum if total_sum > 0 else None
 
 
 def display_name_for_user_id(user_id: str) -> str:
@@ -3424,16 +3474,13 @@ class TurnStatusReconciler:
                 r for r in assistant_records if str(r.get("run_id") or "").strip() == clean_run_id
             ]
             final_run_assistants = [r for r in run_assistants if not r.get("tool_calls")]
-            for candidate in reversed(final_run_assistants or run_assistants):
-                tokens = extract_record_input_tokens(candidate)
-                if tokens is not None:
-                    used_tokens = tokens
-                    break
-        else:
-            for candidate in reversed(assistant_records):
-                tokens = extract_record_input_tokens(candidate)
-                if tokens is not None:
-                    used_tokens = tokens
+            for group in (final_run_assistants, run_assistants):
+                for candidate in reversed(group):
+                    tokens = extract_record_input_tokens(candidate)
+                    if tokens is not None and tokens > 0:
+                        used_tokens = tokens
+                        break
+                if used_tokens is not None:
                     break
 
         rpc_input_tokens: int | None = None
@@ -3445,8 +3492,15 @@ class TurnStatusReconciler:
             except Exception as exc:
                 sys.stderr.write(f"moltis-matrix-companion chat.context warning: {exc}\n")
 
-        if not clean_run_id and used_tokens is None and rpc_input_tokens is not None and rpc_input_tokens > 0:
+        if used_tokens is None and rpc_input_tokens is not None and rpc_input_tokens > 0:
             used_tokens = rpc_input_tokens
+
+        if used_tokens is None:
+            for candidate in reversed(assistant_records):
+                tokens = extract_record_input_tokens(candidate)
+                if tokens is not None and tokens > 0:
+                    used_tokens = tokens
+                    break
 
         context_window = (
             rpc_context_window
