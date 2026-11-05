@@ -67,14 +67,16 @@ NEW_COMMAND_STRIP_TOKENS = frozenset(
 NEW_COMMAND_MENTION_TOKENS = NEW_COMMAND_STRIP_TOKENS
 
 ASSESSMENT_SESSION_KEY = "companion:matrix-assess"
-ASSESSMENT_BADGES = frozenset({"👌🏻", "👍🏻", "✋🏻"})
+ASSESSMENT_BADGES = frozenset({"👌🏻", "👍🏻", "✋🏻", "🫳🏻"})
 BARE_ASSESSMENT_BADGE_MAP = {
     "👌": "👌🏻",
     "👍": "👍🏻",
     "✋": "✋🏻",
+    "🫳": "🫳🏻",
     "👌🏻": "👌🏻",
     "👍🏻": "👍🏻",
     "✋🏻": "✋🏻",
+    "🫳🏻": "🫳🏻",
 }
 
 ACK_REACTION_KEY = "👀"
@@ -83,6 +85,10 @@ PHASE_WRITING_KEY = "✍🏻"
 PHASE_SHELL_KEY = "🐚"
 PHASE_TOOL_KEY = "🔧"
 COMPLETION_KEY = "✌🏻"
+NEW_SESSION_REACTION_KEY = "🧹"
+STOP_REACTION_KEY = "🛑"
+MODERATOR_NOMINATED_ICON = "🎙️"
+SPEAKER_RECOVERY_TIMEOUT_MS = 45_000
 
 NOTICE_THINKING_ICON = "💭"
 NOTICE_SEARCH_ICON = "🔎"
@@ -554,28 +560,41 @@ def extract_mentioned_bots(body: str, content: dict | None = None) -> set[str]:
     return mentioned
 
 
-def is_new_command_message(body: str, content: dict | None = None) -> bool:
-    del content
+def _strip_command_mention_tokens(body: str) -> list[str]:
     text = (body or "").strip()
     if not text:
-        return False
-    tokens = text.split()
-    cleaned = [
+        return []
+    return [
         tok
-        for tok in tokens
+        for tok in text.split()
         if tok.rstrip(":,.;").lower() not in NEW_COMMAND_STRIP_TOKENS
         and tok.rstrip(":,.;") not in ALLOWLIST_USER_IDS
     ]
-    if not cleaned:
+
+
+def is_new_command_message(body: str, content: dict | None = None) -> bool:
+    del content
+    cleaned = _strip_command_mention_tokens(body)
+    if len(cleaned) != 1:
         return False
-    first = cleaned[0].lower()
-    return bool(first == "/new" and len(cleaned) == 1)
+    return cleaned[0].rstrip(":,.;").lower() == "/new"
+
+
+def is_stop_command_message(body: str, content: dict | None = None) -> bool:
+    del content
+    cleaned = _strip_command_mention_tokens(body)
+    if len(cleaned) != 1:
+        return False
+    return cleaned[0].rstrip(":,.;").lower() == "/stop"
 
 
 def extract_new_command_mentioned_bots(body: str, content: dict | None = None) -> set[str]:
     mentioned = set(extract_mentioned_bots(body, content))
     for tok in (body or "").split():
-        mapped = DISPLAY_NAME_TO_BOT_ID.get(tok.rstrip(":,.;").lower())
+        clean_tok = tok.rstrip(":,.;")
+        if clean_tok in BOT_IDS:
+            mentioned.add(clean_tok)
+        mapped = DISPLAY_NAME_TO_BOT_ID.get(clean_tok.lower())
         if mapped:
             mentioned.add(mapped)
     return mentioned
@@ -597,6 +616,52 @@ def is_new_command_targeting(
     if not mentioned:
         return True
     return target_user_id in mentioned
+
+
+def is_stop_command_targeting(
+    body: str,
+    target_user_id: str,
+    content: dict | None = None,
+    mentioned_bots: list[str] | set[str] | None = None,
+) -> bool:
+    if not is_stop_command_message(body, content):
+        return False
+    mentioned = set(extract_new_command_mentioned_bots(body, content))
+    if isinstance(mentioned_bots, (list, set, tuple, frozenset)):
+        for uid in mentioned_bots:
+            if isinstance(uid, str) and uid in BOT_IDS:
+                mentioned.add(uid)
+    if not mentioned:
+        return True
+    return target_user_id in mentioned
+
+
+def parse_moderator_command_target(
+    body: str,
+    content: dict | None = None,
+    mentioned_bots: list[str] | set[str] | None = None,
+) -> str | None:
+    cleaned = _strip_command_mention_tokens(body)
+    if len(cleaned) != 1 or cleaned[0].rstrip(":,.;").lower() != "/moderator":
+        return None
+    mentioned = set(extract_new_command_mentioned_bots(body, content))
+    if isinstance(mentioned_bots, (list, set, tuple, frozenset)):
+        for uid in mentioned_bots:
+            if isinstance(uid, str) and uid in BOT_IDS:
+                mentioned.add(uid)
+    if len(mentioned) != 1:
+        return None
+    target = next(iter(mentioned))
+    return target if target in (SKRYE_ID, TRAYA_ID) else None
+
+
+def is_control_command_message(body: str, content: dict | None = None) -> bool:
+    if is_new_command_message(body, content) or is_stop_command_message(body, content):
+        return True
+    if parse_moderator_command_target(body, content) is not None:
+        return True
+    cleaned = _strip_command_mention_tokens(body)
+    return len(cleaned) == 1 and cleaned[0].rstrip(":,.;").lower() == "/moderator"
 
 
 def find_latest_targeted_new_command_ts_ms(
@@ -627,6 +692,39 @@ def find_latest_targeted_new_command_ts_ms(
         _, ts_ms = normalize_ts(ev.get("origin_server_ts"))
         if ts_ms > 0 and (latest_ts_ms is None or ts_ms > latest_ts_ms):
             latest_ts_ms = ts_ms
+    return latest_ts_ms
+
+
+def find_latest_targeted_stop_command_ts_ms(
+    recent_events: list[dict],
+    target_user_id: str,
+) -> int | None:
+    latest_ts_ms: int | None = None
+    max_seen_ts_ms = 0
+    for ev in recent_events or []:
+        if not isinstance(ev, dict) or ev.get("seed"):
+            continue
+        _, ev_ts_ms = normalize_ts(ev.get("origin_server_ts"))
+        if ev_ts_ms > max_seen_ts_ms:
+            max_seen_ts_ms = ev_ts_ms
+        if ev.get("sender") != MARTIN_ID or not is_conversational_room_message(ev):
+            continue
+        body = str(ev.get("body") or "")
+        if not is_stop_command_message(body):
+            continue
+        raw_mentioned = ev.get("mentioned_bots")
+        mentioned_list = raw_mentioned if isinstance(raw_mentioned, list) else None
+        if not is_stop_command_targeting(
+            body,
+            target_user_id,
+            mentioned_bots=mentioned_list,
+        ):
+            continue
+        effective_stop_ts_ms = max(ev_ts_ms, max_seen_ts_ms)
+        if effective_stop_ts_ms > 0 and (
+            latest_ts_ms is None or effective_stop_ts_ms > latest_ts_ms
+        ):
+            latest_ts_ms = effective_stop_ts_ms
     return latest_ts_ms
 
 
@@ -854,6 +952,22 @@ def sanitize_no_voice_triggers(text: str) -> str:
     return cleaned
 
 
+def is_unverified_terminal_notice_body(body: str) -> bool:
+    """Return True if body is an unverified terminal notice (⚠️ ...)."""
+    trimmed = (body or "").strip()
+    if trimmed.startswith("* "):
+        trimmed = trimmed[2:].strip()
+    return trimmed.startswith(NOTICE_UNVERIFIED_ICON)
+
+
+def is_moderator_nomination_notice_body(body: str) -> bool:
+    """Return True if body is a moderator nomination notice (🎙️ ...)."""
+    trimmed = (body or "").strip()
+    if trimmed.startswith("* "):
+        trimmed = trimmed[2:].strip()
+    return trimmed.startswith(MODERATOR_NOMINATED_ICON)
+
+
 def is_progress_status_notice_body(body: str) -> bool:
     """Return True if body is a companion progress or terminal status notice."""
     trimmed = (body or "").strip()
@@ -869,6 +983,7 @@ def is_progress_status_notice_body(body: str) -> bool:
             NOTICE_TOOL_ICON,
             NOTICE_FINISHED_ICON,
             NOTICE_UNVERIFIED_ICON,
+            MODERATOR_NOMINATED_ICON,
         )
     )
 
@@ -1109,14 +1224,18 @@ def select_raised_hand_speaker(
     raised_hands: list[str],
     recent_events: list[dict] | None = None,
     target_event_id: str = "",
+    moderator_id: str = SKRYE_ID,
 ) -> str:
-    """Select peers before Skrye, then use least-recent speech and sha256 tie-breaking."""
+    """Select peers before the active moderator, then use least-recent speech and sha256 tie-breaking."""
+    norm_mod = moderator_id if moderator_id in (SKRYE_ID, TRAYA_ID) else SKRYE_ID
     candidates = sorted({uid for uid in raised_hands if isinstance(uid, str) and uid in BOT_IDS})
     if not candidates:
-        return SKRYE_ID
+        return norm_mod
     if len(candidates) == 1:
         return candidates[0]
-    candidates = [uid for uid in candidates if uid != SKRYE_ID]
+    non_mod = [uid for uid in candidates if uid != norm_mod]
+    if non_mod:
+        candidates = non_mod
 
     last_msg_index: dict[str, int] = {uid: -1 for uid in candidates}
     for idx, ev in enumerate(recent_events or []):
@@ -1128,7 +1247,7 @@ def select_raised_hand_speaker(
         if not is_conversational_room_message(ev):
             continue
         body = str(ev.get("body") or "")
-        if ev.get("is_new_command") or is_new_command_message(body):
+        if ev.get("is_new_command") or is_control_command_message(body):
             continue
         last_msg_index[sender] = idx
 
@@ -1156,6 +1275,7 @@ def format_moderator_wakeup_notice(
     selected_speaker: str | None = None,
     target_sender: str = "",
     target_body: str = "",
+    moderator_id: str = SKRYE_ID,
 ) -> str:
     """Format the direct floor invitation notice with sanitised target preview and no raw event IDs."""
     clean_hands = [uid for uid in raised_hands if isinstance(uid, str) and uid]
@@ -1163,6 +1283,8 @@ def format_moderator_wakeup_notice(
         invited_id = selected_speaker
     elif wake_reason == "raised_hand" and clean_hands:
         invited_id = clean_hands[0]
+    elif moderator_id in ALLOWLIST_USER_IDS:
+        invited_id = moderator_id
     else:
         invited_id = SKRYE_ID
 
@@ -1365,6 +1487,7 @@ class CompanionStateStore:
             "active_session_key": None,
             "cutoff_ms": None,
             "last_new_origin_server_ts_ms": None,
+            "last_stop_origin_server_ts_ms": None,
             "last_assess_reset_session_key": None,
             "last_assess_reset_cutoff_ms": None,
             "is_provisional": False,
@@ -1374,6 +1497,9 @@ class CompanionStateStore:
                 "targets": {},
                 "martin_roots": {},
                 "last_moderator_reset_ts_ms": 0,
+                "last_moderator_stop_ts_ms": 0,
+                "active_moderator_id": SKRYE_ID,
+                "moderator_set_at_ts_ms": 0,
             },
             "updated_at_ms": self.started_at_ms,
         }
@@ -1415,11 +1541,17 @@ class CompanionStateStore:
                 "targets": {},
                 "martin_roots": {},
                 "last_moderator_reset_ts_ms": 0,
+                "last_moderator_stop_ts_ms": 0,
+                "active_moderator_id": SKRYE_ID,
+                "moderator_set_at_ts_ms": 0,
             }
         else:
             merged["wakeups"].setdefault("targets", {})
             merged["wakeups"].setdefault("martin_roots", {})
             merged["wakeups"].setdefault("last_moderator_reset_ts_ms", 0)
+            merged["wakeups"].setdefault("last_moderator_stop_ts_ms", 0)
+            merged["wakeups"].setdefault("active_moderator_id", SKRYE_ID)
+            merged["wakeups"].setdefault("moderator_set_at_ts_ms", 0)
         return merged
 
     def _normalize_room_events(self, data: dict | None) -> dict:
@@ -2161,12 +2293,43 @@ class CompanionStateStore:
                                 is_edited_new_cmd = is_new_command_message(
                                     new_body, new_content
                                 )
+                                is_edited_ctrl_cmd = is_control_command_message(
+                                    new_body, new_content
+                                )
                                 target_ev["mentioned_bots"] = sorted(
                                     extract_new_command_mentioned_bots(new_body, new_content)
-                                    if is_edited_new_cmd
+                                    if is_edited_ctrl_cmd
                                     else extract_mentioned_bots(new_body, new_content)
                                 )
                                 target_ev["is_new_command"] = is_edited_new_cmd
+                            elif (
+                                target_ev is None
+                                and (new_msgtype == "m.notice" or content.get("msgtype") == "m.notice")
+                                and is_unverified_terminal_notice_body(new_body)
+                            ):
+                                unverified_rec: dict[str, object] = {
+                                    "event_id": target_id,
+                                    "sender": sender,
+                                    "msgtype": "m.notice",
+                                    "body": stored_new_body,
+                                    "origin_server_ts": ts_ms,
+                                    "edited_at_ms": ts_ms,
+                                    "mentioned_bots": [],
+                                    "mentions_self": False,
+                                    "is_new_command": False,
+                                    "seed": bool(seed_only),
+                                    "reactions": {},
+                                }
+                                recent_events.append(unverified_rec)
+                                recent_by_id[target_id] = unverified_rec
+                                processed.append(dict(unverified_rec))
+                                while len(recent_events) > recent_cap:
+                                    evicted = recent_events.pop(0)
+                                    evicted_id = evicted.get("event_id")
+                                    if isinstance(evicted_id, str):
+                                        recent_by_id.pop(evicted_id, None)
+                                        for rxn_id in list(_as_dict(evicted.get("reactions")).keys()):
+                                            reaction_index.pop(rxn_id, None)
                             for part in partitions.values():
                                 if not isinstance(part, dict):
                                     continue
@@ -2195,9 +2358,10 @@ class CompanionStateStore:
                         continue
 
                     is_new_cmd = is_new_command_message(body, content)
+                    is_ctrl_cmd = is_control_command_message(body, content)
                     mentioned_bots = sorted(
                         extract_new_command_mentioned_bots(body, content)
-                        if is_new_cmd
+                        if is_ctrl_cmd
                         else extract_mentioned_bots(body, content)
                     )
                     mentions_self = self_user_id in mentioned_bots
@@ -2205,7 +2369,12 @@ class CompanionStateStore:
                     has_relay_payload = msgtype == "m.notice" and isinstance(relay_payload, dict)
                     stored_body = body[:MAX_STORED_MESSAGE_BODY_CHARS]
 
-                    if msgtype == "m.notice" and not has_relay_payload and is_progress_status_notice_body(body):
+                    if (
+                        msgtype == "m.notice"
+                        and not has_relay_payload
+                        and is_progress_status_notice_body(body)
+                        and not is_unverified_terminal_notice_body(body)
+                    ):
                         processed.append(
                             {
                                 "event_id": event_id,
@@ -2255,7 +2424,7 @@ class CompanionStateStore:
                         and sender in ALLOWLIST_USER_IDS
                         and sender != self_user_id
                         and not mentions_self
-                        and not is_new_cmd
+                        and not is_ctrl_cmd
                         and ts_ms >= cutoff_ms
                     )
                     if is_eligible_unmentioned:
@@ -2367,11 +2536,28 @@ class CompanionStateStore:
                 recent_events,
                 self_user_id,
             )
-            if isinstance(latest_new_ts_ms, int) and latest_new_ts_ms > 0:
+            latest_stop_ts_ms = find_latest_targeted_stop_command_ts_ms(
+                recent_events,
+                self_user_id,
+            )
+            if (isinstance(latest_new_ts_ms, int) and latest_new_ts_ms > 0) or (
+                isinstance(latest_stop_ts_ms, int) and latest_stop_ts_ms > 0
+            ):
                 comp_state = self._read_companion_state_unlocked(dir_fd)
-                prev_new_ts_ms = _safe_int(comp_state.get("last_new_origin_server_ts_ms"), 0)
-                if latest_new_ts_ms > prev_new_ts_ms:
-                    comp_state["last_new_origin_server_ts_ms"] = latest_new_ts_ms
+                changed_comp = False
+                if isinstance(latest_new_ts_ms, int) and latest_new_ts_ms > 0:
+                    prev_new_ts_ms = _safe_int(comp_state.get("last_new_origin_server_ts_ms"), 0)
+                    if latest_new_ts_ms > prev_new_ts_ms:
+                        comp_state["last_new_origin_server_ts_ms"] = latest_new_ts_ms
+                        changed_comp = True
+                if isinstance(latest_stop_ts_ms, int) and latest_stop_ts_ms > 0:
+                    prev_stop_ts_ms = _safe_int(
+                        comp_state.get("last_stop_origin_server_ts_ms"), 0
+                    )
+                    if latest_stop_ts_ms > prev_stop_ts_ms:
+                        comp_state["last_stop_origin_server_ts_ms"] = latest_stop_ts_ms
+                        changed_comp = True
+                if changed_comp:
                     comp_state["updated_at_ms"] = now_ms()
                     self._write_companion_state_unlocked(dir_fd, comp_state)
 
@@ -2956,6 +3142,27 @@ class MoltisRpcClient:
             timeout=timeout,
         )
 
+    def chat_cancel_queued(self, session_key: str, timeout: float = 5.0) -> dict:
+        return self.call(
+            "chat.cancel_queued",
+            {"sessionKey": session_key, "_session_key": session_key},
+            timeout=timeout,
+        )
+
+    def chat_abort(self, session_key: str, timeout: float = 5.0) -> dict:
+        return self.call(
+            "chat.abort",
+            {"sessionKey": session_key, "_session_key": session_key},
+            timeout=timeout,
+        )
+
+    def chat_clear(self, session_key: str, timeout: float = 5.0) -> dict:
+        return self.call(
+            "chat.clear",
+            {"sessionKey": session_key, "_session_key": session_key},
+            timeout=timeout,
+        )
+
     def chat_send_sync(
         self,
         model: str,
@@ -3014,8 +3221,11 @@ class AssessmentWorker:
         self.on_assessment_complete = on_assessment_complete
 
         self._lock = threading.Lock()
+        self._delivery_lock = threading.Lock()
         self._cond = threading.Condition(self._lock)
         self._queue: collections.deque[dict] = collections.deque()
+        self._clear_epoch = 0
+        self._last_reassessed_peer_event_ids: set[str] = set()
         self._running = False
         self._thread: threading.Thread | None = None
 
@@ -3031,16 +3241,70 @@ class AssessmentWorker:
         with self._lock:
             return [dict(job) for job in self._queue]
 
-    def cancel_stale(self, active_session_key: str, cutoff_ms: int) -> int:
-        """Drop queued jobs that belong to an older session or fall before cutoff_ms."""
+    def _latest_stop_ts_ms(self) -> int:
+        comp_state = self.state_store.read_companion_state()
+        stored_stop_ts_ms = _safe_int(comp_state.get("last_stop_origin_server_ts_ms"), 0)
+        room_data = self.state_store.read_room_events()
+        recent_events = room_data.get("recent_events")
+        timeline_stop_ts_ms = (
+            find_latest_targeted_stop_command_ts_ms(recent_events, self.self_user_id)
+            if isinstance(recent_events, list)
+            else None
+        )
+        return max(
+            stored_stop_ts_ms if stored_stop_ts_ms > 0 else 0,
+            timeline_stop_ts_ms
+            if isinstance(timeline_stop_ts_ms, int) and timeline_stop_ts_ms > 0
+            else 0,
+        )
+
+    def _observe_stop_events(self, events: list[dict] | None) -> int:
+        latest_stop_ts_ms = self._latest_stop_ts_ms()
+        observed_stop_ts_ms = find_latest_targeted_stop_command_ts_ms(
+            events or [],
+            self.self_user_id,
+        )
+        if isinstance(observed_stop_ts_ms, int) and observed_stop_ts_ms > latest_stop_ts_ms:
+            latest_stop_ts_ms = observed_stop_ts_ms
+            self.state_store.write_companion_state(
+                {"last_stop_origin_server_ts_ms": latest_stop_ts_ms}
+            )
+        return latest_stop_ts_ms
+
+    def clear_all(self) -> int:
+        """Clear all queued assessment jobs and invalidate any in-flight job."""
+        with self._delivery_lock, self._lock:
+            self._clear_epoch += 1
+            removed = len(self._queue)
+            self._queue.clear()
+        return removed
+
+    def cancel_stale(
+        self,
+        active_session_key: str,
+        cutoff_ms: int,
+        last_stop_ts_ms: int | None = None,
+    ) -> int:
+        """Drop queued jobs that belong to an older session, fall before cutoff_ms, or precede a targeted /stop."""
+        stop_ts_ms = (
+            _safe_int(last_stop_ts_ms, 0)
+            if last_stop_ts_ms is not None
+            else self._latest_stop_ts_ms()
+        )
         removed = 0
         with self._lock:
             kept: collections.deque[dict] = collections.deque()
             while self._queue:
                 job = self._queue.popleft()
+                job_ts_ms = _safe_int(job.get("origin_server_ts"), 0)
+                trigger_ts_ms = _safe_int(job.get("trigger_origin_server_ts"), job_ts_ms)
+                stopped = stop_ts_ms > 0 and (
+                    job_ts_ms <= stop_ts_ms or trigger_ts_ms <= stop_ts_ms
+                )
                 if (
                     job.get("active_session_key") == active_session_key
-                    and _safe_int(job.get("origin_server_ts"), 0) >= cutoff_ms
+                    and job_ts_ms >= cutoff_ms
+                    and not stopped
                 ):
                     kept.append(job)
                 else:
@@ -3107,7 +3371,7 @@ class AssessmentWorker:
             return False
         if not isinstance(body, str) or not body.strip():
             return False
-        if event.get("is_new_command") or is_new_command_message(body):
+        if event.get("is_new_command") or is_control_command_message(body):
             return False
         mentioned_bots = event.get("mentioned_bots")
         if isinstance(mentioned_bots, list):
@@ -3118,6 +3382,9 @@ class AssessmentWorker:
             return False
         ts_ms = _safe_int(event.get("origin_server_ts"), 0)
         if ts_ms < cutoff_ms:
+            return False
+        last_stop_ts_ms = self._latest_stop_ts_ms()
+        if last_stop_ts_ms > 0 and ts_ms <= last_stop_ts_ms:
             return False
 
         prior = self.state_store.get_assessed_event(event_id)
@@ -3134,18 +3401,19 @@ class AssessmentWorker:
             return False
         event_id = str(event["event_id"])
         stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
-        job = {
-            "active_session_key": active_session_key,
-            "cutoff_ms": cutoff_ms,
-            "event_id": event_id,
-            "sender": str(event["sender"]),
-            "body": str(event["body"]),
-            "origin_server_ts": _safe_int(event.get("origin_server_ts"), 0),
-            "enqueued_at_ms": stamp_ms,
-        }
         with self._cond:
             if any(j.get("event_id") == event_id for j in self._queue):
                 return False
+            job = {
+                "active_session_key": active_session_key,
+                "cutoff_ms": cutoff_ms,
+                "event_id": event_id,
+                "sender": str(event["sender"]),
+                "body": str(event["body"]),
+                "origin_server_ts": _safe_int(event.get("origin_server_ts"), 0),
+                "enqueued_at_ms": stamp_ms,
+                "clear_epoch": self._clear_epoch,
+            }
             while len(self._queue) >= self.max_queue_size:
                 self._queue.popleft()
             self._queue.append(job)
@@ -3159,11 +3427,188 @@ class AssessmentWorker:
         cutoff_ms: int,
         now_override_ms: int | None = None,
     ) -> int:
+        self._observe_stop_events(events)
         count = 0
         for ev in events:
             if self.enqueue(ev, active_session_key, cutoff_ms, now_override_ms=now_override_ms):
                 count += 1
         return count
+
+    def _find_self_hand_reaction_id(self, target_ev: dict, target_id: str, active_session_key: str) -> str | None:
+        prior = self.state_store.get_assessed_event(target_id)
+        if (
+            isinstance(prior, dict)
+            and prior.get("session_key") == active_session_key
+            and prior.get("badge") == "✋🏻"
+            and isinstance(prior.get("reaction_event_id"), str)
+            and prior.get("reaction_event_id")
+        ):
+            return str(prior["reaction_event_id"])
+        reactions = _as_dict(target_ev.get("reactions"))
+        latest_hand_id: str | None = None
+        latest_hand_ts = -1
+        latest_withdraw_ts = -1
+        for rxn_id, rxn in reactions.items():
+            if not isinstance(rxn, dict) or rxn.get("sender") != self.self_user_id:
+                continue
+            badge = normalize_assessment_badge(rxn.get("key"))
+            ts_ms = _safe_int(rxn.get("ts_ms"), 0)
+            if badge == "✋🏻" and ts_ms >= latest_hand_ts:
+                latest_hand_ts = ts_ms
+                latest_hand_id = str(rxn_id)
+            elif badge == "🫳🏻" and ts_ms >= latest_withdraw_ts:
+                latest_withdraw_ts = ts_ms
+        if latest_hand_id is not None and latest_hand_ts > latest_withdraw_ts:
+            return latest_hand_id
+        return None
+
+    def enqueue_hand_reassessments(
+        self,
+        actionable_events: list[dict],
+        active_session_key: str,
+        cutoff_ms: int,
+        now_override_ms: int | None = None,
+    ) -> int:
+        self._last_reassessed_peer_event_ids = set()
+        last_stop_ts_ms = self._observe_stop_events(actionable_events)
+        peer_events: list[dict] = []
+        for ev in actionable_events or []:
+            if not isinstance(ev, dict) or ev.get("seed"):
+                continue
+            if ev.get("type") in ("m.reaction", "m.room.redaction"):
+                continue
+            if not is_conversational_room_message(ev):
+                continue
+            sender = str(ev.get("sender") or "")
+            body = str(ev.get("body") or "")
+            if sender not in BOT_IDS or sender == self.self_user_id:
+                continue
+            if ev.get("is_new_command") or is_control_command_message(body):
+                continue
+            peer_ts_ms = _safe_int(ev.get("origin_server_ts"), 0)
+            if peer_ts_ms < cutoff_ms or (last_stop_ts_ms > 0 and peer_ts_ms <= last_stop_ts_ms):
+                continue
+            mentioned = ev.get("mentioned_bots")
+            if isinstance(mentioned, list):
+                mentions_self = self.self_user_id in mentioned
+            else:
+                mentions_self = self.self_user_id in extract_mentioned_bots(body)
+            if ev.get("mentions_self") or mentions_self:
+                continue
+            peer_events.append(ev)
+
+        if not peer_events:
+            return 0
+
+        room_data = self.state_store.read_room_events()
+        recent_events = room_data.get("recent_events", [])
+        if not isinstance(recent_events, list) or not recent_events:
+            return 0
+
+        stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
+        latest_peer_ev = peer_events[-1]
+        latest_peer_ev_id = str(latest_peer_ev.get("event_id") or "")
+        latest_peer_ts_ms = _safe_int(latest_peer_ev.get("origin_server_ts"), 0)
+
+        enqueued = 0
+        for idx, target_ev in enumerate(recent_events):
+            if not isinstance(target_ev, dict):
+                continue
+            target_id = str(target_ev.get("event_id") or "")
+            if not target_id or target_id == latest_peer_ev_id:
+                continue
+            if not is_conversational_room_message(target_ev):
+                continue
+            target_ts = _safe_int(target_ev.get("origin_server_ts"), 0)
+            if target_ts < cutoff_ms or (last_stop_ts_ms > 0 and target_ts <= last_stop_ts_ms):
+                continue
+
+            prior = self.state_store.get_assessed_event(target_id)
+            if isinstance(prior, dict) and prior.get("session_key") == active_session_key and prior.get("badge") == "🫳🏻":
+                continue
+            hand_rxn_id = self._find_self_hand_reaction_id(target_ev, target_id, active_session_key)
+            has_recorded_hand = (
+                isinstance(prior, dict)
+                and prior.get("session_key") == active_session_key
+                and prior.get("badge") == "✋🏻"
+                and _safe_int(prior.get("assessed_at_ms"), 0) >= cutoff_ms
+            )
+            if not has_recorded_hand and hand_rxn_id is None:
+                continue
+
+            # Inspect events after target_ev to verify this agent has not spoken, Martin has not superseded it,
+            # and at least one peer bot has replied after target_ev.
+            superseded_or_self_spoke = False
+            subsequent_replies: list[dict] = []
+            for later_ev in recent_events[idx + 1 :]:
+                if not isinstance(later_ev, dict):
+                    continue
+                l_sender = str(later_ev.get("sender") or "")
+                l_body = str(later_ev.get("body") or "")
+                if is_moderator_wakeup_notice_event(later_ev):
+                    l_mentions = later_ev.get("mentioned_bots")
+                    if isinstance(l_mentions, list) and self.self_user_id in l_mentions:
+                        superseded_or_self_spoke = True
+                        break
+                    continue
+                if not is_conversational_room_message(later_ev):
+                    continue
+                if later_ev.get("is_new_command") or is_new_command_message(l_body) or is_stop_command_message(l_body):
+                    superseded_or_self_spoke = True
+                    break
+                if is_control_command_message(l_body):
+                    continue
+                if l_sender in (MARTIN_ID, self.self_user_id):
+                    superseded_or_self_spoke = True
+                    break
+                if l_sender in BOT_IDS:
+                    subsequent_replies.append(later_ev)
+
+            if superseded_or_self_spoke or not subsequent_replies:
+                continue
+
+            with self._cond:
+                if any(
+                    j.get("event_id") == target_id
+                    and j.get("reassess_hand")
+                    and j.get("trigger_event_id") == latest_peer_ev_id
+                    for j in self._queue
+                ):
+                    continue
+                job = {
+                    "active_session_key": active_session_key,
+                    "cutoff_ms": cutoff_ms,
+                    "event_id": target_id,
+                    "sender": str(target_ev.get("sender") or ""),
+                    "body": str(target_ev.get("body") or ""),
+                    "origin_server_ts": target_ts,
+                    "enqueued_at_ms": stamp_ms,
+                    "clear_epoch": self._clear_epoch,
+                    "reassess_hand": True,
+                    "trigger_event_id": latest_peer_ev_id,
+                    "trigger_origin_server_ts": latest_peer_ts_ms,
+                    "prior_reaction_event_id": hand_rxn_id,
+                    "subsequent_replies": [
+                        {
+                            "sender": str(r.get("sender") or ""),
+                            "body": str(r.get("body") or ""),
+                        }
+                        for r in subsequent_replies
+                    ],
+                }
+                while len(self._queue) >= self.max_queue_size:
+                    self._queue.popleft()
+                self._queue.append(job)
+                self._cond.notify()
+            for r in subsequent_replies:
+                r_id = r.get("event_id")
+                if isinstance(r_id, str) and r_id:
+                    self._last_reassessed_peer_event_ids.add(r_id)
+            if latest_peer_ev_id:
+                self._last_reassessed_peer_event_ids.add(latest_peer_ev_id)
+            enqueued += 1
+
+        return enqueued
 
     def build_preceding_context(self, target_event_id: str, cutoff_ms: int) -> list[dict]:
         room_data = self.state_store.read_room_events()
@@ -3183,7 +3628,7 @@ class AssessmentWorker:
             body = ev.get("body")
             if not isinstance(body, str) or not body.strip():
                 continue
-            if ev.get("is_new_command") or is_new_command_message(body):
+            if ev.get("is_new_command") or is_control_command_message(body):
                 continue
             ts_ms = _safe_int(ev.get("origin_server_ts"), 0)
             if ts_ms < cutoff_ms:
@@ -3225,6 +3670,35 @@ class AssessmentWorker:
         target_sender = str(job.get("sender") or "unknown")
         target_json = json.dumps(target_body, ensure_ascii=False)
 
+        if job.get("reassess_hand"):
+            reply_lines: list[str] = []
+            for rep in job.get("subsequent_replies") or []:
+                if not isinstance(rep, dict):
+                    continue
+                rep_sender = str(rep.get("sender") or "unknown")
+                rep_body = sanitize_no_voice_triggers(
+                    str(rep.get("body") or "").strip()[:ASSESSMENT_MAX_TARGET_CHARS]
+                )
+                reply_lines.append(f"- {rep_sender}: {json.dumps(rep_body, ensure_ascii=False)}")
+            replies_block = "\n".join(reply_lines) if reply_lines else "- (none)"
+            return (
+                f"You previously raised your hand (✋🏻) on a message in the Matrix council room ({self.room_id}), "
+                "and a peer has since replied.\n"
+                f"Your council role: {sanitize_no_voice_triggers(self.role_summary)}\n\n"
+                "Preceding room context (post-/new messages only, for reference):\n"
+                f"<preceding_messages>\n{preceding_block}\n</preceding_messages>\n\n"
+                "Target message where your hand is raised:\n"
+                f"<target_message sender={json.dumps(target_sender)} event_id={json.dumps(job['event_id'])}>\n"
+                f"{target_json}\n"
+                "</target_message>\n\n"
+                "Subsequent peer replies after the target message:\n"
+                f"<subsequent_replies>\n{replies_block}\n</subsequent_replies>\n\n"
+                "Choose whether to keep or withdraw your raised hand:\n"
+                "- ✋🏻 : Keep your raised hand because your distinct contribution, correction, or perspective is still needed.\n"
+                "- 🫳🏻 : Withdraw your raised hand because the peer reply settled the point and no further turn is needed.\n\n"
+                "Reply with ONLY the single badge (✋🏻 or 🫳🏻) and no other text."
+            )
+
         return (
             f"You are assessing an unmentioned message in the Matrix council room ({self.room_id}).\n"
             f"Your council role: {sanitize_no_voice_triggers(self.role_summary)}\n\n"
@@ -3254,14 +3728,17 @@ class AssessmentWorker:
             if not self._queue:
                 return None
             job = self._queue.popleft()
+            job_clear_epoch = _safe_int(job.get("clear_epoch"), self._clear_epoch)
 
         stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         event_id = job["event_id"]
         job_session_key = job["active_session_key"]
         job_ts_ms = _safe_int(job.get("origin_server_ts"), 0)
+        trigger_ts_ms = _safe_int(job.get("trigger_origin_server_ts"), job_ts_ms)
 
         # Recheck 1: BEFORE calling chat.send_sync
         gen_before = self.resolver.resolve(now_override_ms=stamp_ms)
+        stop_before_ts_ms = self._latest_stop_ts_ms()
         self.reset_assessment_history_if_needed(
             str(gen_before["active_session_key"]),
             _safe_int(gen_before["cutoff_ms"], 0),
@@ -3269,9 +3746,18 @@ class AssessmentWorker:
         if (
             gen_before["active_session_key"] != job_session_key
             or job_ts_ms < _safe_int(gen_before["cutoff_ms"], 0)
+            or (
+                stop_before_ts_ms > 0
+                and (job_ts_ms <= stop_before_ts_ms or trigger_ts_ms <= stop_before_ts_ms)
+            )
+            or self._clear_epoch != job_clear_epoch
             or not self._target_exists_in_room_events(event_id)
         ):
-            self.cancel_stale(gen_before["active_session_key"], _safe_int(gen_before["cutoff_ms"], 0))
+            self.cancel_stale(
+                gen_before["active_session_key"],
+                _safe_int(gen_before["cutoff_ms"], 0),
+                last_stop_ts_ms=stop_before_ts_ms,
+            )
             return {
                 "event_id": event_id,
                 "status": "stale_before_rpc",
@@ -3330,43 +3816,102 @@ class AssessmentWorker:
                 "reaction_event_id": None,
             }
 
-        # Recheck 2: AGAIN before posting m.reaction
-        after_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
-        gen_after = self.resolver.resolve(now_override_ms=after_ms)
-        if (
-            gen_after["active_session_key"] != job_session_key
-            or job_ts_ms < _safe_int(gen_after["cutoff_ms"], 0)
-            or not self._target_exists_in_room_events(event_id)
-        ):
-            self.cancel_stale(gen_after["active_session_key"], _safe_int(gen_after["cutoff_ms"], 0))
-            return {
-                "event_id": event_id,
-                "status": "stale_before_reaction",
-                "badge": None,
-                "reaction_event_id": None,
-            }
+        # Recheck 2: AGAIN before posting m.reaction (serialised under _delivery_lock with clear_all)
+        with self._delivery_lock:
+            after_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
+            gen_after = self.resolver.resolve(now_override_ms=after_ms)
+            stop_after_ts_ms = self._latest_stop_ts_ms()
+            with self._lock:
+                epoch_changed = self._clear_epoch != job_clear_epoch
+            if (
+                gen_after["active_session_key"] != job_session_key
+                or job_ts_ms < _safe_int(gen_after["cutoff_ms"], 0)
+                or (
+                    stop_after_ts_ms > 0
+                    and (job_ts_ms <= stop_after_ts_ms or trigger_ts_ms <= stop_after_ts_ms)
+                )
+                or epoch_changed
+                or not self._target_exists_in_room_events(event_id)
+            ):
+                self.cancel_stale(
+                    gen_after["active_session_key"],
+                    _safe_int(gen_after["cutoff_ms"], 0),
+                    last_stop_ts_ms=stop_after_ts_ms,
+                )
+                return {
+                    "event_id": event_id,
+                    "status": "stale_before_reaction",
+                    "badge": None,
+                    "reaction_event_id": None,
+                }
 
-        rxn_event_id = self.matrix_client.send_reaction(
-            target_event_id=event_id,
-            key=badge,
-            scope_id=f"assess:{job_session_key}:{event_id}",
-        )
-        if isinstance(rxn_event_id, str) and rxn_event_id:
-            self.state_store.record_local_reaction(
-                target_event_id=event_id,
-                reaction_event_id=rxn_event_id,
-                sender=self.self_user_id,
-                key=badge,
-                ts_ms=after_ms,
-            )
-        rec = self.state_store.record_assessed_event(
-            event_id=event_id,
-            session_key=job_session_key,
-            status="posted",
-            badge=badge,
-            reaction_event_id=rxn_event_id,
-            assessed_at_ms=after_ms,
-        )
+            is_reassess = bool(job.get("reassess_hand"))
+            prior_rec = self.state_store.get_assessed_event(event_id)
+            prior_hand_rxn_id = job.get("prior_reaction_event_id")
+            if not isinstance(prior_hand_rxn_id, str) or not prior_hand_rxn_id:
+                if (
+                    isinstance(prior_rec, dict)
+                    and prior_rec.get("badge") == "✋🏻"
+                    and isinstance(prior_rec.get("reaction_event_id"), str)
+                ):
+                    prior_hand_rxn_id = prior_rec.get("reaction_event_id")
+                else:
+                    room_data = self.state_store.read_room_events()
+                    for ev in room_data.get("recent_events", []):
+                        if isinstance(ev, dict) and ev.get("event_id") == event_id:
+                            prior_hand_rxn_id = self._find_self_hand_reaction_id(
+                                ev, event_id, job_session_key
+                            )
+                            break
+
+            if is_reassess and badge == "✋🏻":
+                rec = self.state_store.record_assessed_event(
+                    event_id=event_id,
+                    session_key=job_session_key,
+                    status="posted",
+                    badge="✋🏻",
+                    reaction_event_id=(
+                        str(prior_hand_rxn_id) if isinstance(prior_hand_rxn_id, str) else None
+                    ),
+                    assessed_at_ms=after_ms,
+                )
+            else:
+                trigger_ev_id = str(job.get("trigger_event_id") or "withdraw")
+                rxn_scope = (
+                    f"assess-withdraw:{job_session_key}:{event_id}:{trigger_ev_id}"
+                    if badge == "🫳🏻"
+                    else f"assess:{job_session_key}:{event_id}"
+                )
+                rxn_event_id = self.matrix_client.send_reaction(
+                    target_event_id=event_id,
+                    key=badge,
+                    scope_id=rxn_scope,
+                )
+                if isinstance(rxn_event_id, str) and rxn_event_id:
+                    self.state_store.record_local_reaction(
+                        target_event_id=event_id,
+                        reaction_event_id=rxn_event_id,
+                        sender=self.self_user_id,
+                        key=badge,
+                        ts_ms=after_ms,
+                    )
+                if badge == "🫳🏻" and isinstance(prior_hand_rxn_id, str) and prior_hand_rxn_id:
+                    with contextlib.suppress(MatrixAPIError):
+                        self.matrix_client.redact_event(
+                            prior_hand_rxn_id,
+                            scope_id=f"assess-withdraw-redact:{job_session_key}:{event_id}:{prior_hand_rxn_id}",
+                        )
+                    self.state_store.record_local_redaction(prior_hand_rxn_id, ts_ms=after_ms)
+
+                rec = self.state_store.record_assessed_event(
+                    event_id=event_id,
+                    session_key=job_session_key,
+                    status="posted",
+                    badge=badge,
+                    reaction_event_id=rxn_event_id,
+                    assessed_at_ms=after_ms,
+                )
+
         if self.on_assessment_complete is not None:
             with contextlib.suppress(Exception):
                 self.on_assessment_complete(rec)
@@ -3594,6 +4139,54 @@ class TurnStatusReconciler:
             completed_reaction_event_id=None,
         )
 
+    def abort_active_runs(
+        self,
+        session_key: str | None = None,
+        current_ms: int | None = None,
+    ) -> list[dict]:
+        """Force-clean any active run in companion state (and mark current active-turn.json cleaned up)."""
+        stamp_ms = _safe_int(current_ms, self.clock()) if current_ms is not None else self.clock()
+        cleaned: list[dict] = []
+        comp_state = self.state_store.read_companion_state()
+        for entry in list(_as_dict(comp_state.get("runs")).values()):
+            if not isinstance(entry, dict) or entry.get("cleaned_up"):
+                continue
+            r_sess = str(entry.get("session_key") or "")
+            r_id = str(entry.get("run_id") or "")
+            if not r_sess or not r_id:
+                continue
+            if session_key is not None and r_sess != session_key:
+                continue
+            updated = self._cleanup_run_artifacts(
+                session_key=r_sess,
+                run_id=r_id,
+                run_entry=entry,
+                verified_completion=False,
+                current_ms=stamp_ms,
+            )
+            cleaned.append(updated)
+
+        active_turn = self.state_store.read_active_turn()
+        if isinstance(active_turn, dict):
+            t_sess = str(active_turn.get("session_key") or "").strip()
+            t_run = str(active_turn.get("run_id") or "").strip()
+            if t_sess and t_run and (session_key is None or t_sess == session_key):
+                existing = self.state_store.get_run_state(t_sess, t_run)
+                if existing is None or not existing.get("cleaned_up"):
+                    updated = self._cleanup_run_artifacts(
+                        session_key=t_sess,
+                        run_id=t_run,
+                        run_entry=existing or {
+                            "session_key": t_sess,
+                            "run_id": t_run,
+                            "started_at_ms": _safe_int(active_turn.get("user_created_at_ms"), stamp_ms),
+                        },
+                        verified_completion=False,
+                        current_ms=stamp_ms,
+                    )
+                    cleaned.append(updated)
+        return cleaned
+
     def _resolve_user_record_for_run(
         self,
         session_key: str,
@@ -3808,7 +4401,7 @@ class TurnStatusReconciler:
             if ev.get("sender") != self.self_user_id or not is_conversational_room_message(ev):
                 continue
             ev_body = str(ev.get("body") or "").strip()
-            if ev.get("is_new_command") or is_new_command_message(ev_body):
+            if ev.get("is_new_command") or is_control_command_message(ev_body):
                 continue
             ts_ms = _safe_int(ev.get("origin_server_ts"), 0)
             if ts_ms < min_ts_ms:
@@ -4174,7 +4767,7 @@ class TurnStatusReconciler:
 
 
 class ModeratorWakeupCoordinator:
-    """Single-selector floor invitation coordinator on Skrye with Traya relay, pending_hands queue, and crash recovery."""
+    """Single-selector floor invitation coordinator on Skrye or Traya with peer relay, pending_hands queue, and crash recovery."""
 
     def __init__(
         self,
@@ -4186,6 +4779,7 @@ class ModeratorWakeupCoordinator:
         deadline_ms: int = WAKEUP_DEADLINE_MS,
         max_wakeups_per_martin_root: int = MAX_WAKEUPS_PER_MARTIN_ROOT,
         max_bot_turns_since_martin: int = MAX_BOT_TURNS_SINCE_MARTIN,
+        speaker_recovery_timeout_ms: int = SPEAKER_RECOVERY_TIMEOUT_MS,
         clock: Callable[[], int] = now_ms,
     ):
         self.state_store = state_store
@@ -4200,15 +4794,87 @@ class ModeratorWakeupCoordinator:
         self.max_bot_turns_since_martin = max(
             1, _safe_int(max_bot_turns_since_martin, MAX_BOT_TURNS_SINCE_MARTIN)
         )
+        self.speaker_recovery_timeout_ms = max(
+            1000, _safe_int(speaker_recovery_timeout_ms, SPEAKER_RECOVERY_TIMEOUT_MS)
+        )
         self.clock = clock
 
     @property
+    def active_moderator_id(self) -> str:
+        with contextlib.suppress(Exception):
+            comp_state = self.state_store.read_companion_state()
+            wakeups = _as_dict(comp_state.get("wakeups"))
+            mod_id = wakeups.get("active_moderator_id")
+            if mod_id in (SKRYE_ID, TRAYA_ID):
+                return str(mod_id)
+        return SKRYE_ID
+
+    @property
+    def moderator_user_id(self) -> str:
+        return self.active_moderator_id
+
+    @property
+    def relay_user_id(self) -> str:
+        return TRAYA_ID if self.active_moderator_id == SKRYE_ID else SKRYE_ID
+
+    @property
     def is_designated_sender(self) -> bool:
-        return self.agent_name == "skrye"
+        mod_id = self.active_moderator_id
+        return (self.agent_name == "skrye" and mod_id == SKRYE_ID) or (
+            self.agent_name == "traya" and mod_id == TRAYA_ID
+        )
 
     @property
     def is_relay_sender(self) -> bool:
-        return self.agent_name == "traya"
+        mod_id = self.active_moderator_id
+        return (self.agent_name == "traya" and mod_id == SKRYE_ID) or (
+            self.agent_name == "skrye" and mod_id == TRAYA_ID
+        )
+
+    def _resolve_active_moderator_id(
+        self,
+        actionable_events: list[dict] | None,
+        recent_events: list[dict],
+        wakeups: dict,
+        current_ms: int,
+    ) -> tuple[str, int, str | None]:
+        active_mod = str(wakeups.get("active_moderator_id") or SKRYE_ID)
+        if active_mod not in (SKRYE_ID, TRAYA_ID):
+            active_mod = SKRYE_ID
+        set_at_ts = _safe_int(wakeups.get("moderator_set_at_ts_ms"), 0)
+        nominated_cmd_ev_id: str | None = None
+
+        for ev in [*(recent_events or []), *(actionable_events or [])]:
+            if not isinstance(ev, dict) or ev.get("seed"):
+                continue
+            if ev.get("sender") != MARTIN_ID or not is_conversational_room_message(ev):
+                continue
+            body = str(ev.get("body") or "")
+            raw_mentioned = ev.get("mentioned_bots")
+            mentioned_list = raw_mentioned if isinstance(raw_mentioned, list) else None
+            target_mod = parse_moderator_command_target(body, mentioned_bots=mentioned_list)
+            if target_mod not in (SKRYE_ID, TRAYA_ID):
+                continue
+            ev_ts = _safe_int(ev.get("origin_server_ts"), current_ms)
+            if ev_ts >= set_at_ts:
+                active_mod = target_mod
+                set_at_ts = ev_ts
+
+        for ev in actionable_events or []:
+            if not isinstance(ev, dict) or ev.get("seed"):
+                continue
+            if ev.get("sender") != MARTIN_ID or not is_conversational_room_message(ev):
+                continue
+            body = str(ev.get("body") or "")
+            raw_mentioned = ev.get("mentioned_bots")
+            mentioned_list = raw_mentioned if isinstance(raw_mentioned, list) else None
+            target_mod = parse_moderator_command_target(body, mentioned_bots=mentioned_list)
+            if target_mod in (SKRYE_ID, TRAYA_ID):
+                ev_id = str(ev.get("event_id") or "").strip()
+                if ev_id:
+                    nominated_cmd_ev_id = ev_id
+
+        return active_mod, set_at_ts, nominated_cmd_ev_id
 
     def _compute_timeline_discussion_state(
         self,
@@ -4234,7 +4900,7 @@ class ModeratorWakeupCoordinator:
             if sender not in ALLOWLIST_USER_IDS:
                 continue
             body = str(ev.get("body") or "")
-            if ev.get("is_new_command") or is_new_command_message(body):
+            if ev.get("is_new_command") or is_control_command_message(body):
                 continue
             ts_ms = _safe_int(ev.get("origin_server_ts"), 0)
             if ts_ms < cutoff_ms or (last_moderator_reset_ts_ms > 0 and ts_ms <= last_moderator_reset_ts_ms):
@@ -4256,7 +4922,9 @@ class ModeratorWakeupCoordinator:
     ) -> dict[str, str]:
         expected_set = set(expected_assessors)
         reactions = _as_dict(target_ev.get("reactions"))
-        by_sender: dict[str, tuple[int, str]] = {}
+        latest_hand_ts: dict[str, int] = {}
+        latest_withdraw_ts: dict[str, int] = {}
+        latest_other: dict[str, tuple[int, str]] = {}
         for rxn in reactions.values():
             if not isinstance(rxn, dict):
                 continue
@@ -4267,10 +4935,29 @@ class ModeratorWakeupCoordinator:
             if badge not in ASSESSMENT_BADGES:
                 continue
             ts_ms = _safe_int(rxn.get("ts_ms"), 0)
-            prev = by_sender.get(sender)
-            if prev is None or badge == "✋🏻" or (prev[1] != "✋🏻" and ts_ms >= prev[0]):
-                by_sender[sender] = (ts_ms, badge)
-        return {sender: item[1] for sender, item in by_sender.items()}
+            if badge == "✋🏻":
+                if ts_ms >= latest_hand_ts.get(sender, -1):
+                    latest_hand_ts[sender] = ts_ms
+            elif badge == "🫳🏻":
+                if ts_ms >= latest_withdraw_ts.get(sender, -1):
+                    latest_withdraw_ts[sender] = ts_ms
+            else:
+                prev_other = latest_other.get(sender)
+                if prev_other is None or ts_ms >= prev_other[0]:
+                    latest_other[sender] = (ts_ms, badge)
+
+        resolved: dict[str, str] = {}
+        for sender in expected_set:
+            h_ts = latest_hand_ts.get(sender)
+            w_ts = latest_withdraw_ts.get(sender)
+            o_item = latest_other.get(sender)
+            if w_ts is not None and (h_ts is None or w_ts >= h_ts):
+                resolved[sender] = "🫳🏻"
+            elif h_ts is not None:
+                resolved[sender] = "✋🏻"
+            elif o_item is not None:
+                resolved[sender] = o_item[1]
+        return resolved
 
     def _has_newer_allowlisted_message(
         self,
@@ -4294,7 +4981,7 @@ class ModeratorWakeupCoordinator:
             if sender not in ALLOWLIST_USER_IDS:
                 continue
             body = str(ev.get("body") or "")
-            if ev.get("is_new_command") or is_new_command_message(body):
+            if ev.get("is_new_command") or is_control_command_message(body):
                 continue
             if _safe_int(ev.get("origin_server_ts"), 0) >= target_ts_ms and isinstance(ev_id, str):
                 return ev_id
@@ -4332,7 +5019,7 @@ class ModeratorWakeupCoordinator:
                 if relay_meta.get("selection_id") == selection_id or (notice_body and body == notice_body):
                     return ev_id or "matched_notice"
             if sender == selected_speaker and is_conversational_room_message(ev):
-                if not ev.get("is_new_command") and not is_new_command_message(body):
+                if not ev.get("is_new_command") and not is_control_command_message(body):
                     return ev_id or "speaker_replied"
         return None
 
@@ -4354,14 +5041,16 @@ class ModeratorWakeupCoordinator:
         target_origin_server_ts: int,
         is_relay_hop: bool = False,
         after_event_id: str = "",
+        moderator_id: str = SKRYE_ID,
     ) -> tuple[str, str | None, dict]:
-        """Send direct floor invitation or Skrye relay notice using a deterministic txnId."""
-        if not is_relay_hop and selected_speaker == SKRYE_ID and self.is_designated_sender:
+        """Send direct floor invitation or moderator self-relay notice using a deterministic txnId."""
+        norm_mod = moderator_id if moderator_id in (SKRYE_ID, TRAYA_ID) else SKRYE_ID
+        if not is_relay_hop and selected_speaker == norm_mod and self.matrix_client.self_user_id == norm_mod:
             scope_id = f"relay-request:{selection_id}"
             kind = "relay_notice"
-            remaining = [uid for uid in raised_hands if uid != SKRYE_ID]
+            remaining = [uid for uid in raised_hands if uid != selected_speaker]
             notice_body = format_companion_relay_notice(
-                selected_speaker=SKRYE_ID,
+                selected_speaker=selected_speaker,
                 target_sender=target_sender,
                 target_body=target_body,
                 remaining_hands=remaining,
@@ -4371,7 +5060,7 @@ class ModeratorWakeupCoordinator:
                 "selection_id": selection_id,
                 "target_event_id": target_event_id,
                 "selection_seq": selection_seq,
-                "selected_speaker": SKRYE_ID,
+                "selected_speaker": selected_speaker,
                 "wake_reason": wake_reason,
                 "target_sender": target_sender,
                 "target_body": format_target_message_preview(target_body),
@@ -4392,6 +5081,7 @@ class ModeratorWakeupCoordinator:
                 selected_speaker=selected_speaker,
                 target_sender=target_sender,
                 target_body=target_body,
+                moderator_id=norm_mod,
             )
             mentions_ids = [selected_speaker]
             extra_content = None
@@ -4431,7 +5121,7 @@ class ModeratorWakeupCoordinator:
         generation: dict | None,
         current_ms: int,
     ) -> dict:
-        """Stateless Traya relay for explicit Skrye speaker selections emitted by Skrye's companion."""
+        """Stateless peer relay for moderator self-selections emitted by the active moderator's companion."""
         gen = generation if isinstance(generation, dict) else self.resolver.resolve(now_override_ms=current_ms)
         active_session_key = str(gen["active_session_key"])
         cutoff_ms = _safe_int(gen["cutoff_ms"], 0)
@@ -4440,8 +5130,15 @@ class ModeratorWakeupCoordinator:
         wakeups = _as_dict(comp_state.get("wakeups"))
         relayed_selections: dict[str, dict] = dict(_as_dict(wakeups.get("relayed_selections")))
         last_mod_reset_ts = _safe_int(wakeups.get("last_moderator_reset_ts_ms"), 0)
+        last_mod_stop_ts = _safe_int(wakeups.get("last_moderator_stop_ts_ms"), 0)
 
-        for ev in actionable_events or []:
+        room_data = self.state_store.read_room_events()
+        recent_events: list[dict] = room_data.get("recent_events", [])
+        active_mod_id, mod_set_at_ts, _ = self._resolve_active_moderator_id(
+            actionable_events, recent_events, wakeups, current_ms
+        )
+
+        for ev in [*(recent_events or []), *(actionable_events or [])]:
             if not isinstance(ev, dict) or ev.get("seed"):
                 continue
             if is_conversational_room_message(ev) and ev.get("sender") in ALLOWLIST_USER_IDS:
@@ -4455,9 +5152,13 @@ class ModeratorWakeupCoordinator:
                 ):
                     ev_ts = _safe_int(ev.get("origin_server_ts"), current_ms)
                     last_mod_reset_ts = max(last_mod_reset_ts, ev_ts)
+                if ev.get("sender") == MARTIN_ID and (
+                    is_stop_command_targeting(body, TRAYA_ID, mentioned_bots=mentioned_list)
+                    or is_stop_command_targeting(body, SKRYE_ID, mentioned_bots=mentioned_list)
+                ):
+                    ev_ts = _safe_int(ev.get("origin_server_ts"), current_ms)
+                    last_mod_stop_ts = max(last_mod_stop_ts, ev_ts)
 
-        room_data = self.state_store.read_room_events()
-        recent_events: list[dict] = room_data.get("recent_events", [])
         recent_by_id = {
             str(ev.get("event_id")): ev
             for ev in recent_events
@@ -4471,16 +5172,19 @@ class ModeratorWakeupCoordinator:
         )
 
         sent_wakeups: list[dict] = []
+        self_uid = self.matrix_client.self_user_id
 
         for idx, ev in enumerate(recent_events):
             if not isinstance(ev, dict) or ev.get("seed"):
                 continue
-            if ev.get("msgtype") != "m.notice" or ev.get("sender") != SKRYE_ID:
+            ev_sender = str(ev.get("sender") or "")
+            if ev.get("msgtype") != "m.notice" or ev_sender not in (SKRYE_ID, TRAYA_ID) or ev_sender == self_uid:
                 continue
             relay_meta = ev.get("companion_relay")
             if not isinstance(relay_meta, dict):
                 continue
-            if relay_meta.get("selected_speaker") != SKRYE_ID:
+            relay_speaker = str(relay_meta.get("selected_speaker") or "")
+            if relay_speaker != ev_sender:
                 continue
             sel_id = str(relay_meta.get("selection_id") or "").strip()
             target_ev_id = str(relay_meta.get("target_event_id") or "").strip()
@@ -4502,6 +5206,16 @@ class ModeratorWakeupCoordinator:
                 relay_meta.get("target_origin_server_ts"),
                 _safe_int(target_ev.get("origin_server_ts"), 0),
             )
+            if (last_mod_stop_ts > 0 and relay_ts_ms <= last_mod_stop_ts) or (
+                last_mod_stop_ts > 0 and target_ts_ms <= last_mod_stop_ts
+            ):
+                relayed_selections[sel_id] = {
+                    "selection_id": sel_id,
+                    "target_event_id": target_ev_id,
+                    "status": "cancelled",
+                    "cancel_reason": "explicit_stop",
+                }
+                continue
             if (
                 relay_ts_ms < cutoff_ms
                 or (last_mod_reset_ts > 0 and relay_ts_ms <= last_mod_reset_ts)
@@ -4524,21 +5238,30 @@ class ModeratorWakeupCoordinator:
                 }
                 continue
 
-            # Check no newer conversational message, /new reset, or Skrye 👀/🐝 reaction arrived after the relay notice.
+            # Check no newer conversational message, /new or /stop reset, or speaker 👀/🐝 reaction arrived after the relay notice.
             superseded = False
             for later_ev in recent_events[idx + 1 :]:
                 if not isinstance(later_ev, dict):
                     continue
                 l_sender = str(later_ev.get("sender") or "")
                 l_body = str(later_ev.get("body") or "")
+                if (
+                    later_ev.get("is_new_command")
+                    or is_new_command_message(l_body)
+                    or is_stop_command_message(l_body)
+                ):
+                    superseded = True
+                    break
+                if is_control_command_message(l_body):
+                    continue
                 if is_conversational_room_message(later_ev) and l_sender in ALLOWLIST_USER_IDS:
                     superseded = True
                     break
-                if later_ev.get("msgtype") == "m.notice" and l_sender == TRAYA_ID:
-                    if SKRYE_ID in (later_ev.get("mentioned_bots") or []):
-                        superseded = True
-                        break
-                if later_ev.get("is_new_command") or is_new_command_message(l_body):
+                if (
+                    later_ev.get("msgtype") == "m.notice"
+                    and l_sender == self_uid
+                    and relay_speaker in (later_ev.get("mentioned_bots") or [])
+                ):
                     superseded = True
                     break
             if not superseded:
@@ -4548,7 +5271,7 @@ class ModeratorWakeupCoordinator:
                     for rxn in _as_dict(msg_ev.get("reactions")).values():
                         if (
                             isinstance(rxn, dict)
-                            and rxn.get("sender") == SKRYE_ID
+                            and rxn.get("sender") == relay_speaker
                             and rxn.get("key") in (ACK_REACTION_KEY, ACTIVE_BEE_KEY)
                             and _safe_int(rxn.get("ts_ms"), 0) >= relay_ts_ms
                         ):
@@ -4568,13 +5291,13 @@ class ModeratorWakeupCoordinator:
             rem_hands = [
                 str(u) for u in (relay_meta.get("remaining_hands") or []) if isinstance(u, str)
             ]
-            all_hands = [SKRYE_ID, *[u for u in rem_hands if u != SKRYE_ID]]
+            all_hands = [relay_speaker, *[u for u in rem_hands if u != relay_speaker]]
             status_out, wakeup_ev_id, _ = self._dispatch_selection_or_relay_notice(
                 selections_map=relayed_selections,
                 selection_id=sel_id,
                 target_event_id=target_ev_id,
                 selection_seq=_safe_int(relay_meta.get("selection_seq"), 1),
-                selected_speaker=SKRYE_ID,
+                selected_speaker=relay_speaker,
                 wake_reason=str(relay_meta.get("wake_reason") or "raised_hand"),
                 raised_hands=all_hands,
                 target_sender=str(relay_meta.get("target_sender") or ""),
@@ -4585,6 +5308,7 @@ class ModeratorWakeupCoordinator:
                 target_origin_server_ts=target_ts_ms,
                 is_relay_hop=True,
                 after_event_id=relay_ev_id,
+                moderator_id=active_mod_id,
             )
             if status_out == "sent":
                 sent_wakeups.append(
@@ -4592,7 +5316,7 @@ class ModeratorWakeupCoordinator:
                         "selection_id": sel_id,
                         "target_event_id": target_ev_id,
                         "wakeup_event_id": wakeup_ev_id,
-                        "selected_speaker": SKRYE_ID,
+                        "selected_speaker": relay_speaker,
                         "relayed": True,
                     }
                 )
@@ -4603,6 +5327,9 @@ class ModeratorWakeupCoordinator:
                     **wakeups,
                     "relayed_selections": relayed_selections,
                     "last_moderator_reset_ts_ms": last_mod_reset_ts,
+                    "last_moderator_stop_ts_ms": last_mod_stop_ts,
+                    "active_moderator_id": active_mod_id,
+                    "moderator_set_at_ts_ms": mod_set_at_ts,
                 }
             }
         )
@@ -4610,6 +5337,7 @@ class ModeratorWakeupCoordinator:
             "status": "ok",
             "sent_wakeups": sent_wakeups,
             "relayed_selections": relayed_selections,
+            "active_moderator_id": active_mod_id,
         }
 
     def ingest_and_reconcile(
@@ -4619,10 +5347,22 @@ class ModeratorWakeupCoordinator:
         now_override_ms: int | None = None,
     ) -> dict:
         current_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
-        if self.is_relay_sender:
-            return self._ingest_and_reconcile_relay(actionable_events, generation, current_ms)
-        if not self.is_designated_sender:
+        if self.agent_name not in ("skrye", "traya"):
             return {"status": "disabled_non_skrye", "sent_wakeups": []}
+
+        room_data_initial = self.state_store.read_room_events()
+        recent_initial: list[dict] = room_data_initial.get("recent_events", [])
+        comp_initial = self.state_store.read_companion_state()
+        wakeups_initial = _as_dict(comp_initial.get("wakeups"))
+        active_mod_id, mod_set_at_ts, nominated_cmd_ev_id = self._resolve_active_moderator_id(
+            actionable_events, recent_initial, wakeups_initial, current_ms
+        )
+
+        is_designated = (self.agent_name == "skrye" and active_mod_id == SKRYE_ID) or (
+            self.agent_name == "traya" and active_mod_id == TRAYA_ID
+        )
+        if not is_designated:
+            return self._ingest_and_reconcile_relay(actionable_events, generation, current_ms)
 
         gen = generation if isinstance(generation, dict) else self.resolver.resolve(now_override_ms=current_ms)
         active_session_key = str(gen["active_session_key"])
@@ -4634,9 +5374,21 @@ class ModeratorWakeupCoordinator:
         martin_roots: dict[str, dict] = dict(_as_dict(wakeups.get("martin_roots")))
         selections: dict[str, dict] = dict(_as_dict(wakeups.get("selections")))
         last_mod_reset_ts = _safe_int(wakeups.get("last_moderator_reset_ts_ms"), 0)
+        last_mod_stop_ts = _safe_int(wakeups.get("last_moderator_stop_ts_ms"), 0)
+        last_nominated_cmd_id = wakeups.get("last_nominated_command_event_id")
 
-        # 1. Inspect actionable events for moderator /new resets (targeting @traya or untagged /new).
-        for ev in actionable_events or []:
+        if nominated_cmd_ev_id and nominated_cmd_ev_id != last_nominated_cmd_id:
+            mod_display = display_name_for_user_id(active_mod_id)
+            nomination_text = f"{MODERATOR_NOMINATED_ICON} {mod_display} is now moderating the room"
+            self.matrix_client.send_notice(
+                body_text=nomination_text,
+                scope_id=f"moderator-nomination:{nominated_cmd_ev_id}",
+                mentions_user_ids=[],
+            )
+            last_nominated_cmd_id = nominated_cmd_ev_id
+
+        # 1. Inspect actionable and recent events for moderator /new resets and /stop commands.
+        for ev in [*(recent_initial or []), *(actionable_events or [])]:
             if not isinstance(ev, dict) or ev.get("seed"):
                 continue
             if is_conversational_room_message(ev) and ev.get("sender") in ALLOWLIST_USER_IDS:
@@ -4649,19 +5401,36 @@ class ModeratorWakeupCoordinator:
                     body, TRAYA_ID, mentioned_bots=mentioned_list
                 ):
                     ev_ts = _safe_int(ev.get("origin_server_ts"), current_ms)
-                    last_mod_reset_ts = max(last_mod_reset_ts, ev_ts)
-                    for t_entry in targets.values():
-                        if (
-                            isinstance(t_entry, dict)
-                            and not t_entry.get("notified")
-                            and _safe_int(t_entry.get("origin_server_ts"), 0) <= ev_ts
-                        ):
-                            t_entry["status"] = "cancelled"
-                            t_entry["cancel_reason"] = "moderator_reset"
-                    for r_entry in martin_roots.values():
-                        if isinstance(r_entry, dict):
-                            r_entry["pending_hands"] = []
-                            r_entry["active_speaker"] = None
+                    if ev_ts > last_mod_reset_ts:
+                        last_mod_reset_ts = ev_ts
+                        for t_entry in targets.values():
+                            if (
+                                isinstance(t_entry, dict)
+                                and not t_entry.get("notified")
+                                and _safe_int(t_entry.get("origin_server_ts"), 0) <= ev_ts
+                            ):
+                                t_entry["status"] = "cancelled"
+                                t_entry["cancel_reason"] = "moderator_reset"
+                        for r_entry in martin_roots.values():
+                            if isinstance(r_entry, dict):
+                                r_entry["pending_hands"] = []
+                                r_entry["active_speaker"] = None
+                if ev.get("sender") == MARTIN_ID and is_stop_command_message(body):
+                    ev_ts = _safe_int(ev.get("origin_server_ts"), current_ms)
+                    if ev_ts > last_mod_stop_ts:
+                        last_mod_stop_ts = ev_ts
+                        for t_entry in targets.values():
+                            if (
+                                isinstance(t_entry, dict)
+                                and not t_entry.get("notified")
+                                and _safe_int(t_entry.get("origin_server_ts"), 0) <= ev_ts
+                            ):
+                                t_entry["status"] = "cancelled"
+                                t_entry["cancel_reason"] = "explicit_stop"
+                        for r_entry in martin_roots.values():
+                            if isinstance(r_entry, dict):
+                                r_entry["pending_hands"] = []
+                                r_entry["active_speaker"] = None
 
         room_data = self.state_store.read_room_events()
         recent_events: list[dict] = room_data.get("recent_events", [])
@@ -4695,14 +5464,14 @@ class ModeratorWakeupCoordinator:
             if isinstance(u, str) and u in BOT_IDS
         ]
         source_tid = str(active_root_entry.get("source_target_event_id") or "")
-        if pending_hands and source_tid:
+        if (pending_hands or active_root_entry.get("active_speaker")) and source_tid:
             source_ev = recent_by_id.get(source_tid)
             source_target = _as_dict(targets.get(source_tid))
             invited_at_ms = _safe_int(active_root_entry.get("invited_at_ms"), 0)
             active_speaker = str(active_root_entry.get("active_speaker") or "")
             root_count = _safe_int(active_root_entry.get("count"), 0)
 
-            # Check if any hand-raiser withdrew ✋🏻 or replaced it with 👌🏻/👍🏻 on source_ev.
+            # Check if any hand-raiser withdrew ✋🏻 or replaced it with 👌🏻/👍🏻/🫳🏻 on source_ev.
             if isinstance(source_ev, dict):
                 expected_for_source = [
                     str(x)
@@ -4714,10 +5483,13 @@ class ModeratorWakeupCoordinator:
             else:
                 pending_hands = []
 
-            # Inspect messages after source_tid in recent_events.
+            # Inspect messages and notices after source_tid in recent_events and actionable_events.
             seen_source = False
             speaker_finished_untagged_ev: dict | None = None
-            martin_or_reset_spoke = False
+            speaker_failed_ev: dict | None = None
+            martin_or_reset_spoke = bool(
+                last_mod_stop_ts > 0 and invited_at_ms > 0 and last_mod_stop_ts >= invited_at_ms
+            )
             tracked_speaker = active_speaker
             for ev in recent_events:
                 if not isinstance(ev, dict):
@@ -4727,12 +5499,33 @@ class ModeratorWakeupCoordinator:
                     if ev_id == source_tid:
                         seen_source = True
                     continue
-                if not is_conversational_room_message(ev):
-                    continue
                 sender = str(ev.get("sender") or "")
                 body = str(ev.get("body") or "")
-                ev_ts = _safe_int(ev.get("origin_server_ts"), 0)
-                if ev.get("is_new_command") or is_new_command_message(body) or sender == MARTIN_ID:
+                ev_ts = max(
+                    _safe_int(ev.get("origin_server_ts"), 0),
+                    _safe_int(ev.get("edited_at_ms"), 0),
+                )
+                if (
+                    ev.get("msgtype") == "m.notice"
+                    and tracked_speaker
+                    and sender == tracked_speaker
+                    and ev_ts >= invited_at_ms
+                    and is_unverified_terminal_notice_body(body)
+                ):
+                    speaker_failed_ev = ev
+                    continue
+                if not is_conversational_room_message(ev):
+                    continue
+                if (
+                    ev.get("is_new_command")
+                    or is_new_command_message(body)
+                    or is_stop_command_message(body)
+                ):
+                    martin_or_reset_spoke = True
+                    break
+                if is_control_command_message(body):
+                    continue
+                if sender == MARTIN_ID:
                     martin_or_reset_spoke = True
                     break
                 if sender in pending_hands:
@@ -4748,24 +5541,57 @@ class ModeratorWakeupCoordinator:
                     if mentioned_peers:
                         tracked_speaker = mentioned_peers[0]
                         speaker_finished_untagged_ev = None
+                        speaker_failed_ev = None
                     elif not tracked_speaker or sender == tracked_speaker:
                         speaker_finished_untagged_ev = ev
+                        speaker_failed_ev = None
+
+            if speaker_failed_ev is None and tracked_speaker:
+                for ev in actionable_events or []:
+                    if not isinstance(ev, dict) or ev.get("seed"):
+                        continue
+                    ev_ts = max(
+                        _safe_int(ev.get("origin_server_ts"), 0),
+                        _safe_int(ev.get("edited_at_ms"), 0),
+                    )
+                    if (
+                        ev.get("msgtype") == "m.notice"
+                        and ev.get("sender") == tracked_speaker
+                        and ev_ts >= invited_at_ms
+                        and is_unverified_terminal_notice_body(str(ev.get("body") or ""))
+                    ):
+                        speaker_failed_ev = ev
+                        break
+
+            speaker_timed_out = bool(
+                tracked_speaker
+                and invited_at_ms > 0
+                and speaker_finished_untagged_ev is None
+                and (current_ms - invited_at_ms) >= self.speaker_recovery_timeout_ms
+            )
+            speaker_recovered = (speaker_failed_ev is not None) or speaker_timed_out
 
             active_speaker = tracked_speaker
             if (
                 martin_or_reset_spoke
                 or live_bot_turns_initial >= self.max_bot_turns_since_martin
-                or root_count >= self.max_wakeups_per_martin_root
+                or (root_count >= self.max_wakeups_per_martin_root and not speaker_recovered)
             ):
                 pending_hands = []
                 active_root_entry["pending_hands"] = []
                 active_root_entry["active_speaker"] = None
                 martin_roots[current_root_id] = active_root_entry
-            elif speaker_finished_untagged_ev is not None and pending_hands:
-                finished_ev_id = str(speaker_finished_untagged_ev.get("event_id") or "")
-                if finished_ev_id:
-                    handled_by_queue_event_ids.add(finished_ev_id)
-                next_speaker = select_raised_hand_speaker(pending_hands, recent_events, source_tid)
+            elif (speaker_finished_untagged_ev is not None or speaker_recovered) and pending_hands:
+                finished_ev_id = ""
+                if speaker_finished_untagged_ev is not None:
+                    finished_ev_id = str(speaker_finished_untagged_ev.get("event_id") or "")
+                    if finished_ev_id:
+                        handled_by_queue_event_ids.add(finished_ev_id)
+                elif speaker_failed_ev is not None:
+                    finished_ev_id = str(speaker_failed_ev.get("event_id") or "")
+                next_speaker = select_raised_hand_speaker(
+                    pending_hands, recent_events, source_tid, moderator_id=active_mod_id
+                )
                 remaining_after = [u for u in pending_hands if u != next_speaker]
                 seq_num = _safe_int(active_root_entry.get("selection_seq"), 1) + 1
                 sel_id = f"{source_tid}:seq{seq_num}"
@@ -4798,8 +5624,10 @@ class ModeratorWakeupCoordinator:
                     ),
                     is_relay_hop=False,
                     after_event_id=finished_ev_id or source_tid,
+                    moderator_id=active_mod_id,
                 )
-                active_root_entry["count"] = root_count + 1
+                if not speaker_recovered:
+                    active_root_entry["count"] = root_count + 1
                 active_root_entry["selection_seq"] = seq_num
                 active_root_entry["pending_hands"] = remaining_after if status_out == "sent" else pending_hands
                 active_root_entry["active_speaker"] = next_speaker if status_out == "sent" else active_speaker
@@ -4807,17 +5635,27 @@ class ModeratorWakeupCoordinator:
                 active_root_entry["updated_at_ms"] = current_ms
                 martin_roots[current_root_id] = active_root_entry
                 if status_out == "sent":
-                    sent_wakeups.append(
-                        {
-                            "selection_id": sel_id,
-                            "target_event_id": source_tid,
-                            "wakeup_event_id": notice_ev_id,
-                            "reason": "raised_hand",
-                            "selected_speaker": next_speaker,
-                            "martin_root_id": current_root_id,
-                            "queued_hand_advance": True,
-                        }
-                    )
+                    wakeup_item: dict[str, object] = {
+                        "selection_id": sel_id,
+                        "target_event_id": source_tid,
+                        "wakeup_event_id": notice_ev_id,
+                        "reason": "raised_hand",
+                        "selected_speaker": next_speaker,
+                        "martin_root_id": current_root_id,
+                        "queued_hand_advance": True,
+                    }
+                    if speaker_recovered:
+                        wakeup_item["recovered_from_speaker"] = tracked_speaker
+                        wakeup_item["recovery_reason"] = (
+                            "unverified_completion"
+                            if speaker_failed_ev is not None
+                            else "speaker_timeout"
+                        )
+                    sent_wakeups.append(wakeup_item)
+            elif speaker_finished_untagged_ev is not None or speaker_recovered:
+                active_root_entry["pending_hands"] = []
+                active_root_entry["active_speaker"] = None
+                martin_roots[current_root_id] = active_root_entry
             else:
                 active_root_entry["pending_hands"] = pending_hands
                 active_root_entry["active_speaker"] = active_speaker or None
@@ -4840,9 +5678,10 @@ class ModeratorWakeupCoordinator:
                 or not is_conversational_room_message(ev)
                 or sender not in ALLOWLIST_USER_IDS
                 or ev.get("is_new_command")
-                or is_new_command_message(body)
+                or is_control_command_message(body)
                 or ts_ms < cutoff_ms
                 or (last_mod_reset_ts > 0 and ts_ms <= last_mod_reset_ts)
+                or (last_mod_stop_ts > 0 and ts_ms <= last_mod_stop_ts)
             ):
                 continue
             mentioned = ev.get("mentioned_bots")
@@ -4891,6 +5730,10 @@ class ModeratorWakeupCoordinator:
                 continue
 
             t_ts_ms = _safe_int(target.get("origin_server_ts"), 0)
+            if last_mod_stop_ts > 0 and t_ts_ms <= last_mod_stop_ts:
+                target["status"] = "cancelled"
+                target["cancel_reason"] = "explicit_stop"
+                continue
             if (
                 target.get("session_key") != active_session_key
                 or t_ts_ms < cutoff_ms
@@ -4921,7 +5764,7 @@ class ModeratorWakeupCoordinator:
                 uid for uid, b in badges_by_assessor.items() if b == "✋🏻"
             )
             all_reacted = (reacted_set == set(expected)) and len(expected) > 0
-            moderator_reacted = SKRYE_ID in reacted_set
+            moderator_reacted = active_mod_id in reacted_set
 
             target["active_badges"] = badges_by_assessor
 
@@ -4948,7 +5791,7 @@ class ModeratorWakeupCoordinator:
                     wake_reason = "raised_hand"
             else:
                 if all_reacted:
-                    # Option A silent closure: all expected assessors returned 👌🏻 or 👍🏻 (zero ✋🏻).
+                    # Option A silent closure: all expected assessors returned 👌🏻/👍🏻/🫳🏻 (zero ✋🏻).
                     target["status"] = "closed_silent"
                     target["closed_at_ms"] = current_ms
                     continue
@@ -4957,7 +5800,7 @@ class ModeratorWakeupCoordinator:
                         should_wake = True
                         wake_reason = "moderator_fallback"
                     else:
-                        # Skrye returned 👌🏻 or 👍🏻 (or non-Martin target) and a peer is missing with zero ✋🏻.
+                        # Moderator returned 👌🏻/👍🏻 (or non-Martin target) and a peer is missing with zero ✋🏻.
                         target["status"] = "closed_silent"
                         target["closed_at_ms"] = current_ms
                         continue
@@ -5005,9 +5848,11 @@ class ModeratorWakeupCoordinator:
                     continue
 
                 selected_speaker = (
-                    select_raised_hand_speaker(raised_hands, latest_recent, tid)
+                    select_raised_hand_speaker(
+                        raised_hands, latest_recent, tid, moderator_id=active_mod_id
+                    )
                     if wake_reason == "raised_hand" and raised_hands
-                    else SKRYE_ID
+                    else active_mod_id
                 )
                 remaining_hands = [uid for uid in raised_hands if uid != selected_speaker]
                 target_sender_str = str(target.get("sender") or "")
@@ -5048,6 +5893,7 @@ class ModeratorWakeupCoordinator:
                     target_origin_server_ts=t_ts_ms,
                     is_relay_hop=False,
                     after_event_id=tid,
+                    moderator_id=active_mod_id,
                 )
                 if status_out == "uncertain_blocked":
                     target["status"] = "uncertain_blocked"
@@ -5084,7 +5930,7 @@ class ModeratorWakeupCoordinator:
                         "reason": wake_reason,
                         "selected_speaker": selected_speaker,
                         "remaining_hands": remaining_hands,
-                        "relayed_via_traya": selected_speaker == SKRYE_ID,
+                        "relayed_via_traya": selected_speaker == active_mod_id,
                         "martin_root_id": root_id,
                     }
                 )
@@ -5097,6 +5943,10 @@ class ModeratorWakeupCoordinator:
                     "martin_roots": martin_roots,
                     "selections": selections,
                     "last_moderator_reset_ts_ms": last_mod_reset_ts,
+                    "last_moderator_stop_ts_ms": last_mod_stop_ts,
+                    "active_moderator_id": active_mod_id,
+                    "moderator_set_at_ts_ms": mod_set_at_ts,
+                    "last_nominated_command_event_id": last_nominated_cmd_id,
                 }
             }
         )
@@ -5106,6 +5956,7 @@ class ModeratorWakeupCoordinator:
             "targets": targets,
             "martin_roots": martin_roots,
             "selections": selections,
+            "active_moderator_id": active_mod_id,
         }
 
 
@@ -5173,8 +6024,112 @@ class MatrixSyncEngine:
         )
 
     def _on_local_assessment_complete(self, _assessment_record: dict) -> None:
-        if self.wakeup_coordinator.is_designated_sender:
+        if self.wakeup_coordinator.is_designated_sender or self.wakeup_coordinator.is_relay_sender:
             self.wakeup_coordinator.ingest_and_reconcile(actionable_events=[])
+
+    def _handle_room_control_commands(
+        self,
+        actionable_events: list[dict],
+        active_session_key: str,
+        stamp_ms: int,
+    ) -> bool:
+        """Execute targeted /stop and /new room commands from Martin."""
+        saw_targeted_new = False
+        max_seen_ts_ms = 0
+        for ev in actionable_events or []:
+            if not isinstance(ev, dict) or ev.get("seed"):
+                continue
+            ev_ts_ms = _safe_int(ev.get("origin_server_ts"), 0)
+            if ev_ts_ms > max_seen_ts_ms:
+                max_seen_ts_ms = ev_ts_ms
+            if ev.get("type") in ("m.reaction", "m.room.redaction"):
+                continue
+            if ev.get("sender") != MARTIN_ID or not is_conversational_room_message(ev):
+                continue
+            ev_id = str(ev.get("event_id") or "").strip()
+            body = str(ev.get("body") or "")
+            raw_mentioned = ev.get("mentioned_bots")
+            mentioned_list = raw_mentioned if isinstance(raw_mentioned, list) else None
+
+            if is_stop_command_targeting(
+                body, self.self_user_id, mentioned_bots=mentioned_list
+            ):
+                stop_ts_ms = max(ev_ts_ms if ev_ts_ms > 0 else stamp_ms, max_seen_ts_ms)
+                prev_stop_ts_ms = _safe_int(
+                    self.state_store.read_companion_state().get("last_stop_origin_server_ts_ms"),
+                    0,
+                )
+                if stop_ts_ms > prev_stop_ts_ms:
+                    self.state_store.write_companion_state(
+                        {"last_stop_origin_server_ts_ms": stop_ts_ms}
+                    )
+                if self.rpc_client is not None:
+                    with contextlib.suppress(Exception):
+                        self.rpc_client.chat_cancel_queued(active_session_key)
+                    with contextlib.suppress(Exception):
+                        self.rpc_client.chat_abort(active_session_key)
+                    with contextlib.suppress(Exception):
+                        self.rpc_client.chat_abort(ASSESSMENT_SESSION_KEY)
+                self.assessment_worker.clear_all()
+                self.turn_reconciler.abort_active_runs(active_session_key, current_ms=stamp_ms)
+                if ev_id:
+                    rxn_id = self.matrix_client.send_reaction(
+                        target_event_id=ev_id,
+                        key=STOP_REACTION_KEY,
+                        scope_id=f"stop-ack:{ev_id}",
+                    )
+                    if isinstance(rxn_id, str) and rxn_id:
+                        self.state_store.record_local_reaction(
+                            target_event_id=ev_id,
+                            reaction_event_id=rxn_id,
+                            sender=self.self_user_id,
+                            key=STOP_REACTION_KEY,
+                            ts_ms=stamp_ms,
+                        )
+
+            elif is_new_command_targeting(
+                body, self.self_user_id, mentioned_bots=mentioned_list
+            ):
+                saw_targeted_new = True
+                if self.rpc_client is not None:
+                    with contextlib.suppress(Exception):
+                        self.rpc_client.chat_cancel_queued(active_session_key)
+                    with contextlib.suppress(Exception):
+                        self.rpc_client.chat_abort(active_session_key)
+                    with contextlib.suppress(Exception):
+                        self.rpc_client.chat_abort(ASSESSMENT_SESSION_KEY)
+                    with contextlib.suppress(Exception):
+                        self.rpc_client.chat_clear(active_session_key)
+                self.assessment_worker.clear_all()
+                self.turn_reconciler.abort_active_runs(active_session_key, current_ms=stamp_ms)
+                for hist_path in history_paths(
+                    self.data_dir,
+                    active_session_key,
+                    agent_name=self.agent_name,
+                    room_id=self.room_id,
+                ):
+                    with contextlib.suppress(OSError):
+                        if hist_path.exists():
+                            hist_path.unlink()
+                for assess_hist in history_paths(self.data_dir, ASSESSMENT_SESSION_KEY):
+                    with contextlib.suppress(OSError):
+                        if assess_hist.exists():
+                            assess_hist.unlink()
+                if ev_id:
+                    rxn_id = self.matrix_client.send_reaction(
+                        target_event_id=ev_id,
+                        key=NEW_SESSION_REACTION_KEY,
+                        scope_id=f"new-ack:{ev_id}",
+                    )
+                    if isinstance(rxn_id, str) and rxn_id:
+                        self.state_store.record_local_reaction(
+                            target_event_id=ev_id,
+                            reaction_event_id=rxn_id,
+                            sender=self.self_user_id,
+                            key=NEW_SESSION_REACTION_KEY,
+                            ts_ms=stamp_ms,
+                        )
+        return saw_targeted_new
 
     def start_background_workers(self) -> None:
         if self.async_assessments:
@@ -5230,9 +6185,17 @@ class MatrixSyncEngine:
             self_user_id=self.self_user_id,
             seed_only=seed_only,
         )
-        if not seed_only and any(
-            isinstance(ev, dict) and bool(ev.get("is_new_command"))
-            for ev in processed
+        actionable_events = [] if seed_only else processed
+        saw_targeted_new = False
+        if actionable_events:
+            saw_targeted_new = self._handle_room_control_commands(
+                actionable_events=actionable_events,
+                active_session_key=active_session_key,
+                stamp_ms=stamp_ms,
+            )
+        if not seed_only and (
+            saw_targeted_new
+            or any(isinstance(ev, dict) and bool(ev.get("is_new_command")) for ev in processed)
         ):
             gen = self.resolver.resolve(now_override_ms=stamp_ms)
             active_session_key = gen["active_session_key"]
@@ -5248,13 +6211,32 @@ class MatrixSyncEngine:
             # Durable state in room-events.json and companion-state.json is already flushed on disk.
             self.state_store.advance_next_batch(next_batch)
 
-        actionable_events = [] if seed_only else processed
-
         enqueued_count = 0
         assessment_results: list[dict] = []
         if actionable_events:
-            enqueued_count = self.assessment_worker.enqueue_eligible_events(
+            reassessed_count = self.assessment_worker.enqueue_hand_reassessments(
                 actionable_events,
+                active_session_key=active_session_key,
+                cutoff_ms=cutoff_ms,
+                now_override_ms=stamp_ms,
+            )
+            reassessed_peer_ids = getattr(
+                self.assessment_worker, "_last_reassessed_peer_event_ids", set()
+            )
+            eligible_inputs = (
+                [
+                    ev
+                    for ev in actionable_events
+                    if not (
+                        isinstance(ev, dict)
+                        and ev.get("event_id") in reassessed_peer_ids
+                    )
+                ]
+                if reassessed_count > 0 and reassessed_peer_ids
+                else actionable_events
+            )
+            enqueued_count = reassessed_count + self.assessment_worker.enqueue_eligible_events(
+                eligible_inputs,
                 active_session_key=active_session_key,
                 cutoff_ms=cutoff_ms,
                 now_override_ms=stamp_ms,
@@ -5886,7 +6868,7 @@ def compute_bot_turns_since_martin(
         and _safe_int(ev.get("origin_server_ts"), 0) >= cutoff_ms
         and str(ev.get("body") or "").strip()
         and not ev.get("is_new_command")
-        and not is_new_command_message(str(ev.get("body") or ""))
+        and not is_control_command_message(str(ev.get("body") or ""))
     ]
     if post_cutoff_msgs:
         bot_turns = 0
@@ -5962,7 +6944,7 @@ def build_room_context_block(
         if sender not in ALLOWLIST_USER_IDS or sender == self_user_id:
             continue
         body = str(source_ev.get("body") or "").strip()
-        if not body or source_ev.get("is_new_command") or is_new_command_message(body):
+        if not body or source_ev.get("is_new_command") or is_control_command_message(body):
             continue
         mentioned_bots = source_ev.get("mentioned_bots")
         if isinstance(mentioned_bots, list) and self_user_id in mentioned_bots:

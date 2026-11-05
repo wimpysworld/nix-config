@@ -346,7 +346,7 @@ let
         )
     )
     MARTIN_MATRIX_ID = "@martin:matrix.wimpys.world"
-    ASSESSMENT_BADGES = {"👌", "👌🏻", "👍", "👍🏻", "✋", "✋🏻"}
+    ASSESSMENT_BADGES = {"👌", "👌🏻", "👍", "👍🏻", "✋", "✋🏻", "🫳", "🫳🏻"}
     VOICE_REQUEST_RE = re.compile(
         r"\b(?:voice|audio|spoken|speak|aloud|tts|read\s+this\s+out|say\s+this|say\s+it)\b",
         re.IGNORECASE,
