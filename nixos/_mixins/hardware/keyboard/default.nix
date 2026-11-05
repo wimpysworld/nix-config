@@ -20,6 +20,15 @@ lib.mkIf config.noughty.host.is.workstation {
       KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="36b0", ATTRS{idProduct}=="300e", TAG+="uaccess", TAG+="udev-acl", GROUP="input", MODE="0660", SYMLINK+="evo80"
       #0xaf88 0x6688 XFKey One Key Max
       KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="af88", ATTRS{idProduct}=="6688", TAG+="uaccess", TAG+="udev-acl", GROUP="input", MODE="0660", SYMLINK+="xfkey"
+      #0x1189 0x8890, 0x8840, 0x8842, 0x8850 WCH CH57x Macropad (wonkey, ch57x-keyboard-tool)
+      SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="1189", ATTR{idProduct}=="8890", TAG+="uaccess", GROUP="input", MODE="0660"
+      SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="1189", ATTR{idProduct}=="8840", TAG+="uaccess", GROUP="input", MODE="0660"
+      SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="1189", ATTR{idProduct}=="8842", TAG+="uaccess", GROUP="input", MODE="0660"
+      SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="1189", ATTR{idProduct}=="8850", TAG+="uaccess", GROUP="input", MODE="0660"
+      KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1189", ATTRS{idProduct}=="8890", TAG+="uaccess", TAG+="udev-acl", GROUP="input", MODE="0660"
+      KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1189", ATTRS{idProduct}=="8840", TAG+="uaccess", TAG+="udev-acl", GROUP="input", MODE="0660"
+      KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1189", ATTRS{idProduct}=="8842", TAG+="uaccess", TAG+="udev-acl", GROUP="input", MODE="0660"
+      KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1189", ATTRS{idProduct}=="8850", TAG+="uaccess", TAG+="udev-acl", GROUP="input", MODE="0660"
     '';
 
     keyd = {
