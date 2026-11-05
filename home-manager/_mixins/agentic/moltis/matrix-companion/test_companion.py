@@ -2116,6 +2116,17 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
             ),
             "🏁 Skrye finished in 00:42 · 🛟 90% (900k / 1.0M)",
         )
+        # Values just below a threshold round the displayed percentage without promoting the indicator band.
+        self.assertEqual(
+            companion.format_terminal_notice(
+                "Skrye",
+                42,
+                verified=True,
+                used_tokens=246_000,
+                context_window=1_000_000,
+            ),
+            "🏁 Skrye finished in 00:42 · 🟢 25% (246k / 1.0M)",
+        )
 
         # 2. Sub-5s verified turn sends a new terminal m.notice with requestInputTokens from history.jsonl
         # and contextWindow from chat.context.

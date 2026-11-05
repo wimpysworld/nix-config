@@ -1024,8 +1024,9 @@ def format_terminal_notice(
         and not isinstance(context_window, bool)
         and context_window > 0
     ):
-        pct = max(0, round((used_tokens * 100) / context_window))
-        dot = context_traffic_light_dot(pct)
+        raw_pct = max(0.0, (used_tokens * 100.0) / context_window)
+        pct = max(0, round(raw_pct))
+        dot = context_traffic_light_dot(raw_pct)
         used_str = format_compact_tokens(used_tokens)
         window_str = format_compact_tokens(context_window)
         base = f"{base} · {dot} {pct}% ({used_str} / {window_str})"
@@ -3436,8 +3437,7 @@ class TurnStatusReconciler:
                 if tokens is not None:
                     used_tokens = tokens
                     break
-
-        if used_tokens is None:
+        else:
             for candidate in reversed(assistant_records):
                 tokens = extract_record_input_tokens(candidate)
                 if tokens is not None:
@@ -3453,7 +3453,7 @@ class TurnStatusReconciler:
             except Exception as exc:
                 sys.stderr.write(f"moltis-matrix-companion chat.context warning: {exc}\n")
 
-        if used_tokens is None and rpc_input_tokens is not None and rpc_input_tokens > 0:
+        if not clean_run_id and used_tokens is None and rpc_input_tokens is not None and rpc_input_tokens > 0:
             used_tokens = rpc_input_tokens
 
         context_window = (
