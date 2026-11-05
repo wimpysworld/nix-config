@@ -9,9 +9,6 @@
     skrye = {
       id = "L6J7UDJ-O3WXU6L-HV5ANLQ-ADJJZP6-CFMU6G4-ZKRXUYB-3OWXI5A-TRBMGQ7";
     };
-    momin = {
-      id = "BLSBPMB-XMTHCAA-FJWY57S-XBIH5Y2-25IERPU-7SL3CX3-EWF7HQ7-HYXU6A6";
-    };
     ravi = {
       id = "2TAIMFO-3IWBNDB-NLWY65H-YRNOQZS-G4X7SY7-IRAZRLB-Z2HGNBR-T6DWFQE";
     };
@@ -27,6 +24,9 @@
     tanis = {
       id = "7VNA2SU-UNVYIFI-UQAXBV5-LZ2F2FQ-TARFAMJ-L4IC5OE-UHQJLRC-UKCV7AB";
     };
+    traya = {
+      id = "BLSBPMB-XMTHCAA-FJWY57S-XBIH5Y2-25IERPU-7SL3CX3-EWF7HQ7-HYXU6A6";
+    };
     zannah = {
       id = "W7VBAM3-AC544LE-IF7IB4P-M744YPK-AXBYTYG-5YZHYZ6-PAFT645-ID7QRQ4";
     };
@@ -41,12 +41,12 @@
       devices = [
         "bane"
         "felkor"
-        "momin"
         "ravi"
         "revan"
         "shaa"
         "skrye"
         "tanis"
+        "traya"
         "zannah"
       ];
     };
@@ -56,10 +56,10 @@
       maxConflicts = 10;
       path = "~/Documents";
       devices = [
-        "momin"
         "revan"
         "skrye"
         "tanis"
+        "traya"
         "zannah"
       ];
     };
@@ -69,10 +69,10 @@
       maxConflicts = 10;
       path = "~/Downloads";
       devices = [
-        "momin"
         "revan"
         "skrye"
         "tanis"
+        "traya"
         "zannah"
       ];
     };
@@ -93,10 +93,10 @@
       maxConflicts = 10;
       path = "~/Linux-Matters";
       devices = [
-        "momin"
         "revan"
         "skrye"
         "tanis"
+        "traya"
         "zannah"
       ];
     };
@@ -118,10 +118,10 @@
       maxConflicts = 10;
       path = "~/Notes";
       devices = [
-        "momin"
         "revan"
         "skrye"
         "tanis"
+        "traya"
         "zannah"
       ];
     };
@@ -131,10 +131,10 @@
       maxConflicts = 10;
       path = "~/Oval-Tutu";
       devices = [
-        "momin"
         "revan"
         "skrye"
         "tanis"
+        "traya"
         "zannah"
       ];
     };
@@ -144,10 +144,10 @@
       maxConflicts = 10;
       path = "~/Pictures";
       devices = [
-        "momin"
         "revan"
         "skrye"
         "tanis"
+        "traya"
         "zannah"
       ];
     };
@@ -158,10 +158,10 @@
       path = "~/Studio";
       rescanIntervalS = 21600;
       devices = [
-        "momin"
         "revan"
         "skrye"
         "tanis"
+        "traya"
         "zannah"
       ];
     };
@@ -172,9 +172,9 @@
       path = "~/Videos";
       rescanIntervalS = 21600;
       devices = [
-        "momin"
         "skrye"
         "tanis"
+        "traya"
         "zannah"
       ];
     };

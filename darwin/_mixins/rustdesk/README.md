@@ -25,13 +25,13 @@ The provisioner reads the secret at runtime and suppresses RustDesk command outp
 Build and switch the Mac system configuration through the repository recipes:
 
 ```sh
-just build-host momin
-just switch-host momin
+just build-host traya
+just switch-host traya
 ```
 
 System activation installs the cask, sets root ownership on the app bundle, and applies the secret and settings. Homebrew cask versions are not pinned by `flake.lock`. The service definitions follow RustDesk 1.5.0.
 
-If macOS denies ownership changes, allow the terminal that runs activation in **System Settings > Privacy & Security > App Management**. Then run `just switch-host momin` again. Do not grant Full Disk Access for this error. Activation stops with one error if ownership protection fails. The services and provisioner refuse to execute a user-owned or group-writable app, including after a Homebrew upgrade.
+If macOS denies ownership changes, allow the terminal that runs activation in **System Settings > Privacy & Security > App Management**. Then run `just switch-host traya` again. Do not grant Full Disk Access for this error. Activation stops with one error if ownership protection fails. The services and provisioner refuse to execute a user-owned or group-writable app, including after a Homebrew upgrade.
 
 Activation installs the system-wide agent in `/Library/LaunchAgents` and uses `launchctl bootstrap` in the existing user's GUI domain. It does not load an agent into the root system domain. The same plist starts the agent in future `LoginWindow` and `Aqua` sessions. If no GUI domain exists during activation, the agent waits for the next session.
 

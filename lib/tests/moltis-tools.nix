@@ -8,7 +8,7 @@ let
   hosts = [
     "skrye"
     "zannah"
-    "momin"
+    "traya"
   ];
   # Expose the nested script without building or running either launcher.
   launcherScripts =
@@ -230,9 +230,9 @@ let
       body = builtins.readFile root.source;
       darwin = context.platform == "darwin";
       gemini = context.provider == "gemini";
-      agentName = if host == "momin" then "traya" else host;
+      agentName = host;
       expectedMainModel =
-        if host == "momin" then "openai-codex::gpt-6-astra" else "gemini::gemini-4-argon";
+        if host == "traya" then "openai-codex::gpt-6-astra" else "gemini::gemini-4-argon";
       settings = c.agentic.moltis.settings;
       cli = builtins.fromJSON (
         builtins.unsafeDiscardStringContext c.xdg.configFile."moltis/mcporter.json".text
@@ -438,12 +438,8 @@ let
     assert !(lib.hasInfix "export CLOUDFLARE_API_TOKEN" scripts.outer);
     assert !(lib.hasInfix "export LINEAR_API_KEY" scripts.inner);
     assert lib.hasInfix "unset LINEAR_API_KEY" scripts.inner;
-    assert
-      c.sops.secrets.MOLTIS_LINEAR_CLIENT_ID.key
-      == "moltis/${if host == "momin" then "traya" else host}/client_id";
-    assert
-      c.sops.secrets.MOLTIS_LINEAR_CLIENT_SECRET.key
-      == "moltis/${if host == "momin" then "traya" else host}/client_secret";
+    assert c.sops.secrets.MOLTIS_LINEAR_CLIENT_ID.key == "moltis/${host}/client_id";
+    assert c.sops.secrets.MOLTIS_LINEAR_CLIENT_SECRET.key == "moltis/${host}/client_secret";
     assert c.sops.secrets.MOLTIS_LINEAR_CLIENT_SECRET.mode == "0400";
     assert !(disabled.sops.secrets ? MOLTIS_LINEAR_CLIENT_ID);
     assert !(disabled.sops.secrets ? MOLTIS_LINEAR_CLIENT_SECRET);
@@ -537,7 +533,7 @@ let
           preset = settings.agents.presets.${name};
         in
         preset.model == context.auxiliaryModel
-        && preset.reasoning_effort == (if host == "momin" then "high" else "medium")
+        && preset.reasoning_effort == (if host == "traya" then "high" else "medium")
       )
       [
         "auxiliary"

@@ -41,7 +41,6 @@ DISPLAY_NAMES = {
     "skrye": "Skrye",
     "zannah": "Zannah",
     "traya": "Traya",
-    "momin": "Traya",
 }
 
 DISPLAY_NAME_TO_BOT_ID = {
@@ -97,7 +96,6 @@ DEFAULT_CONTEXT_WINDOWS: dict[str, int] = {
     "skrye": 1_000_000,
     "zannah": 1_000_000,
     "traya": 384_000,
-    "momin": 384_000,
 }
 
 SHELL_TOOLS = frozenset({"exec", "process"})
@@ -2441,8 +2439,6 @@ class SessionGenerationResolver:
             )
 
         norm_agent = (self.agent_name or "skrye").strip().lower()
-        if norm_agent == "momin":
-            norm_agent = "traya"
         target_user_id = f"@{norm_agent}:{SERVER_DOMAIN}"
         room_data = self.state_store.read_room_events()
         recent_events = room_data.get("recent_events")
@@ -2957,8 +2953,6 @@ class AssessmentWorker:
         self.matrix_client = matrix_client
         self.rpc_client = rpc_client
         self.agent_name = (agent_name or "").strip().lower()
-        if self.agent_name == "momin":
-            self.agent_name = "traya"
         self.main_model = (main_model or "").strip()
         self.self_user_id = self_user_id
         self.room_id = room_id
@@ -3396,8 +3390,6 @@ class TurnStatusReconciler:
         self.rpc_client = rpc_client
         self.data_dir = Path(data_dir)
         self.agent_name = (agent_name or "").strip().lower()
-        if self.agent_name == "momin":
-            self.agent_name = "traya"
         self.agent_display_name = derive_display_name(self.agent_name, agent_display_name)
         self.self_user_id = self_user_id
         self.room_id = room_id
@@ -4146,8 +4138,6 @@ class ModeratorWakeupCoordinator:
         self.resolver = resolver
         self.matrix_client = matrix_client
         self.agent_name = (agent_name or "").strip().lower()
-        if self.agent_name == "momin":
-            self.agent_name = "traya"
         self.room_id = room_id
         self.deadline_ms = max(1000, _safe_int(deadline_ms, WAKEUP_DEADLINE_MS))
         self.max_wakeups_per_martin_root = max(
@@ -5091,8 +5081,6 @@ class MatrixSyncEngine:
         self.rpc_client = rpc_client
         self.main_model = (main_model or "").strip()
         self.agent_name = (agent_name or state_store.agent_name or "").strip().lower()
-        if self.agent_name == "momin":
-            self.agent_name = "traya"
         self.agent_display_name = derive_display_name(self.agent_name, agent_display_name)
         self.data_dir = Path(data_dir) if data_dir is not None else resolver.data_dir
         self.clock = clock
@@ -5358,8 +5346,6 @@ def resolve_hook_session_generation(
     room_id: str = DEFAULT_ROOM_ID,
 ) -> tuple[str, int]:
     norm_agent = (agent_name or "skrye").strip().lower()
-    if norm_agent == "momin":
-        norm_agent = "traya"
     default_session_key = f"matrix:matrix-{norm_agent}:{room_id}"
     account_id = f"matrix-{norm_agent}"
     override_key: str | None = None
@@ -6099,8 +6085,6 @@ def run_council_hook(
 ) -> dict:
     del agent_display_name
     norm_agent = (agent_name or "skrye").strip().lower()
-    if norm_agent == "momin":
-        norm_agent = "traya"
     resolved_self_uid = (self_user_id or f"@{norm_agent}:{SERVER_DOMAIN}").strip()
     resolved_room_id = (room_id or DEFAULT_ROOM_ID).strip()
 
@@ -6324,8 +6308,6 @@ def build_arg_parser() -> argparse.ArgumentParser:
 def resolve_runtime_config(args: argparse.Namespace) -> dict:
     status_mode = bool(getattr(args, "status", False))
     agent_name = (args.agent_name or "").strip().lower()
-    if agent_name == "momin":
-        agent_name = "traya"
     if not agent_name:
         raise ValueError("agentName is required")
     agent_display_name = derive_display_name(agent_name, args.agent_display_name)

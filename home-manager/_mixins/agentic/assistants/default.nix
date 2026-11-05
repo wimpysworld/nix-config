@@ -278,7 +278,7 @@ let
     && (config.noughty.host.is.linux || config.noughty.host.is.darwin)
     && noughtyLib.hostHasTag "moltis";
   moltisSopsFile = ../../../../secrets/moltis.yaml;
-  moltisAgentName = if config.noughty.host.name == "momin" then "traya" else config.noughty.host.name;
+  moltisAgentName = config.noughty.host.name;
   moltisSoulKey = "SOUL_${lib.toUpper moltisAgentName}";
   moltisSoulSecrets = lib.optionalAttrs moltisEnabled {
     ${moltisSoulKey} = {
