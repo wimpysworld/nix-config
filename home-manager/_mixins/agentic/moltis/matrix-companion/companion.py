@@ -3221,6 +3221,7 @@ class AssessmentWorker:
         self.on_assessment_complete = on_assessment_complete
 
         self._lock = threading.Lock()
+        self._delivery_lock = threading.Lock()
         self._cond = threading.Condition(self._lock)
         self._queue: collections.deque[dict] = collections.deque()
         self._clear_epoch = 0
@@ -3272,7 +3273,7 @@ class AssessmentWorker:
 
     def clear_all(self) -> int:
         """Clear all queued assessment jobs and invalidate any in-flight job."""
-        with self._lock:
+        with self._delivery_lock, self._lock:
             self._clear_epoch += 1
             removed = len(self._queue)
             self._queue.clear()
@@ -3815,102 +3816,102 @@ class AssessmentWorker:
                 "reaction_event_id": None,
             }
 
-        # Recheck 2: AGAIN before posting m.reaction
-        after_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
-        gen_after = self.resolver.resolve(now_override_ms=after_ms)
-        stop_after_ts_ms = self._latest_stop_ts_ms()
-        if (
-            gen_after["active_session_key"] != job_session_key
-            or job_ts_ms < _safe_int(gen_after["cutoff_ms"], 0)
-            or (
-                stop_after_ts_ms > 0
-                and (job_ts_ms <= stop_after_ts_ms or trigger_ts_ms <= stop_after_ts_ms)
-            )
-            or self._clear_epoch != job_clear_epoch
-            or not self._target_exists_in_room_events(event_id)
-        ):
-            self.cancel_stale(
-                gen_after["active_session_key"],
-                _safe_int(gen_after["cutoff_ms"], 0),
-                last_stop_ts_ms=stop_after_ts_ms,
-            )
-            return {
-                "event_id": event_id,
-                "status": "stale_before_reaction",
-                "badge": None,
-                "reaction_event_id": None,
-            }
-
-        is_reassess = bool(job.get("reassess_hand"))
-        prior_rec = self.state_store.get_assessed_event(event_id)
-        prior_hand_rxn_id = job.get("prior_reaction_event_id")
-        if not isinstance(prior_hand_rxn_id, str) or not prior_hand_rxn_id:
+        # Recheck 2: AGAIN before posting m.reaction (serialised under _delivery_lock with clear_all)
+        with self._delivery_lock:
+            after_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
+            gen_after = self.resolver.resolve(now_override_ms=after_ms)
+            stop_after_ts_ms = self._latest_stop_ts_ms()
+            with self._lock:
+                epoch_changed = self._clear_epoch != job_clear_epoch
             if (
-                isinstance(prior_rec, dict)
-                and prior_rec.get("badge") == "✋🏻"
-                and isinstance(prior_rec.get("reaction_event_id"), str)
-            ):
-                prior_hand_rxn_id = prior_rec.get("reaction_event_id")
-            else:
-                room_data = self.state_store.read_room_events()
-                for ev in room_data.get("recent_events", []):
-                    if isinstance(ev, dict) and ev.get("event_id") == event_id:
-                        prior_hand_rxn_id = self._find_self_hand_reaction_id(
-                            ev, event_id, job_session_key
-                        )
-                        break
-
-        if is_reassess and badge == "✋🏻":
-            rec = self.state_store.record_assessed_event(
-                event_id=event_id,
-                session_key=job_session_key,
-                status="posted",
-                badge="✋🏻",
-                reaction_event_id=(
-                    str(prior_hand_rxn_id) if isinstance(prior_hand_rxn_id, str) else None
-                ),
-                assessed_at_ms=after_ms,
-            )
-            if self.on_assessment_complete is not None:
-                with contextlib.suppress(Exception):
-                    self.on_assessment_complete(rec)
-            return rec
-
-        trigger_ev_id = str(job.get("trigger_event_id") or "withdraw")
-        rxn_scope = (
-            f"assess-withdraw:{job_session_key}:{event_id}:{trigger_ev_id}"
-            if badge == "🫳🏻"
-            else f"assess:{job_session_key}:{event_id}"
-        )
-        rxn_event_id = self.matrix_client.send_reaction(
-            target_event_id=event_id,
-            key=badge,
-            scope_id=rxn_scope,
-        )
-        if isinstance(rxn_event_id, str) and rxn_event_id:
-            self.state_store.record_local_reaction(
-                target_event_id=event_id,
-                reaction_event_id=rxn_event_id,
-                sender=self.self_user_id,
-                key=badge,
-                ts_ms=after_ms,
-            )
-        if badge == "🫳🏻" and isinstance(prior_hand_rxn_id, str) and prior_hand_rxn_id:
-            with contextlib.suppress(MatrixAPIError):
-                self.matrix_client.redact_event(
-                    prior_hand_rxn_id,
-                    scope_id=f"assess-withdraw-redact:{job_session_key}:{event_id}:{prior_hand_rxn_id}",
+                gen_after["active_session_key"] != job_session_key
+                or job_ts_ms < _safe_int(gen_after["cutoff_ms"], 0)
+                or (
+                    stop_after_ts_ms > 0
+                    and (job_ts_ms <= stop_after_ts_ms or trigger_ts_ms <= stop_after_ts_ms)
                 )
-            self.state_store.record_local_redaction(prior_hand_rxn_id, ts_ms=after_ms)
+                or epoch_changed
+                or not self._target_exists_in_room_events(event_id)
+            ):
+                self.cancel_stale(
+                    gen_after["active_session_key"],
+                    _safe_int(gen_after["cutoff_ms"], 0),
+                    last_stop_ts_ms=stop_after_ts_ms,
+                )
+                return {
+                    "event_id": event_id,
+                    "status": "stale_before_reaction",
+                    "badge": None,
+                    "reaction_event_id": None,
+                }
 
-        rec = self.state_store.record_assessed_event(
-            event_id=event_id,
-            session_key=job_session_key,
-            status="posted",
-            badge=badge,
-            reaction_event_id=rxn_event_id,
-            assessed_at_ms=after_ms,
-        )
+            is_reassess = bool(job.get("reassess_hand"))
+            prior_rec = self.state_store.get_assessed_event(event_id)
+            prior_hand_rxn_id = job.get("prior_reaction_event_id")
+            if not isinstance(prior_hand_rxn_id, str) or not prior_hand_rxn_id:
+                if (
+                    isinstance(prior_rec, dict)
+                    and prior_rec.get("badge") == "✋🏻"
+                    and isinstance(prior_rec.get("reaction_event_id"), str)
+                ):
+                    prior_hand_rxn_id = prior_rec.get("reaction_event_id")
+                else:
+                    room_data = self.state_store.read_room_events()
+                    for ev in room_data.get("recent_events", []):
+                        if isinstance(ev, dict) and ev.get("event_id") == event_id:
+                            prior_hand_rxn_id = self._find_self_hand_reaction_id(
+                                ev, event_id, job_session_key
+                            )
+                            break
+
+            if is_reassess and badge == "✋🏻":
+                rec = self.state_store.record_assessed_event(
+                    event_id=event_id,
+                    session_key=job_session_key,
+                    status="posted",
+                    badge="✋🏻",
+                    reaction_event_id=(
+                        str(prior_hand_rxn_id) if isinstance(prior_hand_rxn_id, str) else None
+                    ),
+                    assessed_at_ms=after_ms,
+                )
+            else:
+                trigger_ev_id = str(job.get("trigger_event_id") or "withdraw")
+                rxn_scope = (
+                    f"assess-withdraw:{job_session_key}:{event_id}:{trigger_ev_id}"
+                    if badge == "🫳🏻"
+                    else f"assess:{job_session_key}:{event_id}"
+                )
+                rxn_event_id = self.matrix_client.send_reaction(
+                    target_event_id=event_id,
+                    key=badge,
+                    scope_id=rxn_scope,
+                )
+                if isinstance(rxn_event_id, str) and rxn_event_id:
+                    self.state_store.record_local_reaction(
+                        target_event_id=event_id,
+                        reaction_event_id=rxn_event_id,
+                        sender=self.self_user_id,
+                        key=badge,
+                        ts_ms=after_ms,
+                    )
+                if badge == "🫳🏻" and isinstance(prior_hand_rxn_id, str) and prior_hand_rxn_id:
+                    with contextlib.suppress(MatrixAPIError):
+                        self.matrix_client.redact_event(
+                            prior_hand_rxn_id,
+                            scope_id=f"assess-withdraw-redact:{job_session_key}:{event_id}:{prior_hand_rxn_id}",
+                        )
+                    self.state_store.record_local_redaction(prior_hand_rxn_id, ts_ms=after_ms)
+
+                rec = self.state_store.record_assessed_event(
+                    event_id=event_id,
+                    session_key=job_session_key,
+                    status="posted",
+                    badge=badge,
+                    reaction_event_id=rxn_event_id,
+                    assessed_at_ms=after_ms,
+                )
+
         if self.on_assessment_complete is not None:
             with contextlib.suppress(Exception):
                 self.on_assessment_complete(rec)
