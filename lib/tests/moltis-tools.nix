@@ -290,6 +290,12 @@ let
     assert (c.launchd.agents ? llama-swap) == darwin;
     assert !darwin || c.launchd.agents.llama-swap.config.Label == "org.moltis.llama-swap";
     assert
+      settings.models == {
+        gemini-4-argon.context_window = 1000000;
+        gpt-6-astra.context_window = 384000;
+        gpt-6-luna.context_window = 384000;
+      };
+    assert
       settings.memory == {
         provider = "custom";
         base_url = "http://127.0.0.1:8080/v1";
