@@ -458,6 +458,9 @@ let
   ];
   moltisHeartbeatLegacyHashes = [
     moltisCurrentHeartbeatHash
+    "66697375507062592480edd81db2970ec31fbaf6935191af7850dac3820d2657"
+    "dbbafdb29c65e56e17602cb5abedc1a4245df6ca44a6db8826f3542f19fe7f00"
+    "47518857196ee06948f428d19449542d58a99b53933f8696ae59545650d9faba"
     "47867f17983f19826f0e29d8dd19f070651a90d0894243be6d25aa951455db91"
     "c41ff92a36dec47b7f0ccd729396ac2a3c26a1767028fc21a1bb378b51b850b2"
     "31f85dd59ef0ff247b3dc3418f1e638c9b3db79c62a6a19615915203477df799"
@@ -500,6 +503,7 @@ let
             "4210d71edfc6902e037c6592f0933a6c4929970bc3cf20cad9cce16be652c2de",
             ${builtins.toJSON moltisLegacyInstructionsHash},
             ${builtins.toJSON moltisCurrentInstructionsHash},
+            "54a3478947051b7ceaa314f28105001e7d6685c468e9cb3d6c94925be0e7b27c",
             "cfd44ea95c8a70f493723bb401f234cf0a28d18eb7f80cb8a60a248a997af053",
             "028d2d6269fe570dea3c461de1da18479c3184a1f7d1699cd761c8319a5edb85",
             "e2e457bdbe915fac3aa33513b9c6a541501e9b82b38c43131cfc41c2e6032ed7",
@@ -515,6 +519,7 @@ let
             "4210d71edfc6902e037c6592f0933a6c4929970bc3cf20cad9cce16be652c2de",
             ${builtins.toJSON moltisLegacyInstructionsHash},
             ${builtins.toJSON moltisCurrentInstructionsHash},
+            "54a3478947051b7ceaa314f28105001e7d6685c468e9cb3d6c94925be0e7b27c",
             "cfd44ea95c8a70f493723bb401f234cf0a28d18eb7f80cb8a60a248a997af053",
             "028d2d6269fe570dea3c461de1da18479c3184a1f7d1699cd761c8319a5edb85",
             "e2e457bdbe915fac3aa33513b9c6a541501e9b82b38c43131cfc41c2e6032ed7",
@@ -831,14 +836,36 @@ let
           "${config.home.homeDirectory}/.moltis/docs/moltis/GUIDELINES.md"
           "${config.home.homeDirectory}/.moltis/agents/main/GUIDELINES.md"
         ]
+    ++
+      map
+        (
+          path:
+          (ownedFile path moltisInstructions)
+          // {
+            source = builtins.toFile "moltis-AGENTS.md" moltisInstructions;
+          }
+        )
+        [
+          "${config.home.homeDirectory}/.moltis/AGENTS.md"
+          "${config.home.homeDirectory}/.moltis/agents/main/AGENTS.md"
+        ]
     ++ [
-      (ownedFile "${config.home.homeDirectory}/.moltis/AGENTS.md" moltisInstructions)
-      (ownedFile "${config.home.homeDirectory}/.moltis/agents/main/AGENTS.md" moltisInstructions)
       (ownedFile "${config.home.homeDirectory}/.moltis/IDENTITY.md" moltisIdentity)
       (ownedFile "${config.home.homeDirectory}/.moltis/agents/main/IDENTITY.md" moltisIdentity)
-      (ownedFile "${config.home.homeDirectory}/.moltis/HEARTBEAT.md" moltisHeartbeat)
-      (ownedFile "${config.home.homeDirectory}/.moltis/agents/main/HEARTBEAT.md" moltisHeartbeat)
     ]
+    ++
+      map
+        (
+          path:
+          (ownedFile path moltisHeartbeat)
+          // {
+            source = builtins.toFile "moltis-HEARTBEAT.md" moltisHeartbeat;
+          }
+        )
+        [
+          "${config.home.homeDirectory}/.moltis/HEARTBEAT.md"
+          "${config.home.homeDirectory}/.moltis/agents/main/HEARTBEAT.md"
+        ]
     ++ lib.concatLists (
       lib.mapAttrsToList (
         name: skill:

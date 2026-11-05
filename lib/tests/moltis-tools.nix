@@ -213,7 +213,19 @@ let
         lib.hasSuffix "/GUIDELINES.md" entry.path
         && lib.hasPrefix "${c.home.homeDirectory}/.moltis/" entry.path
       ) files;
+      agents = builtins.filter (
+        entry:
+        lib.hasSuffix "/AGENTS.md" entry.path && lib.hasPrefix "${c.home.homeDirectory}/.moltis/" entry.path
+      ) files;
+      heartbeats = builtins.filter (
+        entry:
+        lib.hasSuffix "/HEARTBEAT.md" entry.path
+        && lib.hasPrefix "${c.home.homeDirectory}/.moltis/" entry.path
+      ) files;
       guidelinesSource = (builtins.head guidelines).source;
+      agentsBody = builtins.readFile (builtins.head agents).source;
+      heartbeatBody = builtins.readFile (builtins.head heartbeats).source;
+      generalFindingWithdrawClause = "post a substantive `General` or unanchored finding (`gh pr review <pr-url> --comment --body-file <file>`, excluding approval text and comments that report no defect)";
       root = builtins.head tools;
       body = builtins.readFile root.source;
       darwin = context.platform == "darwin";
@@ -261,6 +273,12 @@ let
       && entry.source == guidelinesSource
       && (entry.bootstrapSources or [ ]) == [ ]
     ) guidelines;
+    assert builtins.length agents == 2;
+    assert builtins.length heartbeats == 2;
+    assert lib.hasInfix generalFindingWithdrawClause agentsBody;
+    assert lib.hasInfix "gh-review-withdraw-approval <pr-url>" agentsBody;
+    assert lib.hasInfix generalFindingWithdrawClause heartbeatBody;
+    assert lib.hasInfix "gh-review-withdraw-approval <pr-url>" heartbeatBody;
     assert builtins.all (
       entry: !(lib.hasPrefix "${c.home.homeDirectory}/.moltis/" entry.path)
     ) disabled.agentic.assistants.ownedSpec.files;
