@@ -1734,11 +1734,10 @@ class TrustFilterAndSnapshotBuilder:
         with contextlib.suppress(Exception):
             subject_item = self.gh_client.fetch_json_object(subj_endpoint, paginate=False)
         cached = self.state_store.get_thread_state(make_pr_key(repo, number))
-        if isinstance(cached, dict):
-            if _is_archived_record(cached):
-                subject_item = {**subject_item, "archived": True}
-            if is_pr and not subject_item and cached.get("head_sha") and cached.get("author"):
-                subject_item = {"id": number, "number": number, "state": "open", "draft": False, "archived": _is_archived_record(cached, notification), "user": {"login": cached.get("author")}, "head": {"sha": cached.get("head_sha")}, "title": cached.get("subject_title") or ""}
+        if _is_archived_record(notification, cached, subject_item):
+            subject_item = {**subject_item, "archived": True}
+        if not subject_item:
+            return {"should_dispatch": False, "skip_reason": "subject_fetch_failed", "repo": repo, "number": number, "kind": "PullRequest" if is_pr else "Issue", "head_sha": str(notification.get("head_sha") or "").strip() or None, "trigger_reason": str(notification.get("reason") or "notification").strip(), "comment_id": None, "review_id": None, "trusted_item_id": None, "security_events": [], "notices": []}
         if isinstance(latest_comment_url, str) and latest_comment_url.strip() and latest_comment_url.strip() != (subject_url or "").strip():
             with contextlib.suppress(Exception):
                 fetched = self.gh_client.fetch_json_object(latest_comment_url, paginate=False)
@@ -2120,6 +2119,9 @@ class GithubCompanionRunner:
         threads = _as_dict(self.state_store.read_state().get("threads"))
 
         def _complete_skipped(key_val: str, tid_val: str | None, prep_res: dict, entry_val: dict) -> None:
+            if prep_res.get("skip_reason") == "subject_fetch_failed":
+                self.state_store.update_thread_state(key_val, {"pending_followup": True}, now_override_ms=now_override_ms)
+                return
             if prep_res.get("skip_reason") in ("closed_or_draft_pr", "archived_repo") and tid_val and tid_val.isdigit():
                 try:
                     self.gh_client.dismiss_notification(tid_val)
