@@ -713,7 +713,7 @@ def _is_archived_record(*items: object) -> bool:
 
 
 def normalize_notification_record(raw: dict) -> dict | None:
-    if not isinstance(raw, dict) or _is_archived_record(raw):
+    if not isinstance(raw, dict):
         return None
     thread_id = str(raw.get("id") or raw.get("thread_id") or "").strip()
     if not thread_id:
@@ -736,7 +736,7 @@ def normalize_notification_record(raw: dict) -> dict | None:
         "number": _safe_int(raw.get("number"), 0) or extract_subject_number(subject_url),
         "comment_id": _safe_int(raw.get("comment_id"), 0) or extract_comment_id(latest_comment_url),
         "updated_at": str(raw.get("updated_at") or "").strip(), "reason": str(raw.get("reason") or "").strip(),
-        "unread": bool(raw.get("unread", True)),
+        "unread": bool(raw.get("unread", True)), "archived": _is_archived_record(raw),
     }
 
 
@@ -1138,7 +1138,7 @@ class CompanionStateStore:
             threads: dict[str, dict] = state["threads"]
             for item in records:
                 norm = normalize_notification_record(item) if (isinstance(item, dict) and "thread_id" not in item) else (dict(item) if isinstance(item, dict) else None)
-                if not isinstance(norm, dict) or _is_archived_record(item, norm):
+                if not isinstance(norm, dict):
                     continue
                 thread_id = str(norm.get("thread_id") or "").strip()
                 if not thread_id or not is_allowed_notification_repo(norm.get("repo"), norm.get("owner")):
@@ -1151,8 +1151,8 @@ class CompanionStateStore:
                 newer = is_timestamp_newer(updated_at, prior_u) or (updated_at == prior_u and comment_id is not None and comment_id > _safe_int(existing.get("comment_id"), 0))
                 retry_count = 0 if newer else _safe_int(existing.get("retry_count"), 0)
 
-                if subject_type.lower() in ("checksuite", "workflowrun") and not subject_url:
-                    entry = {**existing, **norm, "handled_updated_at": updated_at or handled_u, "handled_head_sha": handled_sha, "handled_ci_state": handled_ci, "retry_count": 0, "in_flight": False, "pending_followup": False, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
+                if norm.get("archived") or _is_archived_record(item, norm) or (subject_type.lower() in ("checksuite", "workflowrun") and not subject_url):
+                    entry = {**existing, **norm, "archived": bool(norm.get("archived") or _is_archived_record(item, norm)), "handled_updated_at": updated_at or handled_u, "handled_head_sha": handled_sha, "handled_ci_state": handled_ci, "retry_count": 0, "in_flight": False, "pending_followup": False, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
                     for tk in target_keys:
                         threads[tk] = dict(entry)
                     auto_dismiss_threads.append(thread_id)
