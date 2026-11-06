@@ -35,7 +35,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: wimpysworld/nothing-but-nix@main
+      - uses: wimpysworld/nothing-but-nix@b2574ec1cf1462bee0a34de0fb6ff11ad3c43cb2 # v12
         with:
           hatchet-protocol: "holster"
       - uses: DeterminateSystems/determinate-nix-action@v3
@@ -67,7 +67,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: wimpysworld/nothing-but-nix@main
+      - uses: wimpysworld/nothing-but-nix@b2574ec1cf1462bee0a34de0fb6ff11ad3c43cb2 # v12
         if: contains(matrix.target.system, 'linux')
         with:
           hatchet-protocol: "holster"
@@ -162,7 +162,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: wimpysworld/nothing-but-nix@main
+      - uses: wimpysworld/nothing-but-nix@b2574ec1cf1462bee0a34de0fb6ff11ad3c43cb2 # v12
         if: contains(matrix.target.system, 'linux')
         with:
           hatchet-protocol: "cleave"
@@ -255,7 +255,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: wimpysworld/nothing-but-nix@main
+      - uses: wimpysworld/nothing-but-nix@b2574ec1cf1462bee0a34de0fb6ff11ad3c43cb2 # v12
         if: runner.os == 'Linux'
         with:
           hatchet-protocol: "cleave"
@@ -316,7 +316,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: wimpysworld/nothing-but-nix@main
+      - uses: wimpysworld/nothing-but-nix@b2574ec1cf1462bee0a34de0fb6ff11ad3c43cb2 # v12
         if: runner.os == 'Linux'
         with:
           hatchet-protocol: "cleave"
@@ -432,7 +432,7 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
             echo "Release v${{ needs.sentinel.outputs.ver }} not found; proceeding with ISO build"
           fi
-      - uses: wimpysworld/nothing-but-nix@main
+      - uses: wimpysworld/nothing-but-nix@b2574ec1cf1462bee0a34de0fb6ff11ad3c43cb2 # v12
         if: steps.check-release.outputs.exists == 'false'
         with:
           hatchet-protocol: "holster"
