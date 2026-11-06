@@ -1250,7 +1250,7 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
         )
 
     def test_archived_repository_excluded_in_notifications_evaluation_and_auto_dismissed_in_run_cycle(self) -> None:
-        # 1) normalize_notification_record rejects repository.archived and repository.isArchived
+        # 1) normalize_notification_record preserves archived=True and record_polled_notifications queues auto-dismissal
         raw_notif_archived = {
             "id": "9101",
             "reason": "mention",
@@ -1275,11 +1275,17 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
                 "owner": {"login": "wimpysworld"},
             },
         }
-        self.assertIsNone(companion.normalize_notification_record(raw_notif_archived))
-        self.assertIsNone(companion.normalize_notification_record(raw_notif_is_archived))
+        norm_9101 = companion.normalize_notification_record(raw_notif_archived)
+        norm_9102 = companion.normalize_notification_record(raw_notif_is_archived)
+        assert norm_9101 is not None and norm_9102 is not None
+        self.assertTrue(norm_9101["archived"])
+        self.assertTrue(norm_9102["archived"])
 
         # 2) evaluate_notification skips PR/Issue subjects from archived repos with skip_reason="archived_repo"
         store = self.make_store("skrye")
+        ingest_archived = store.record_polled_notifications([norm_9101, norm_9102])
+        self.assertEqual(ingest_archived["actionable_threads"], [])
+        self.assertEqual(ingest_archived["auto_dismiss_threads"], ["9101", "9102"])
         rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
 
         def fake_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
