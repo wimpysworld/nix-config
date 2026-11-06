@@ -1723,19 +1723,24 @@ class TrustFilterAndSnapshotBuilder:
         is_pr = subject_type.lower() in ("pullrequest", "pull_request", "pr")
         subject_item: dict = {}
         latest_item: dict | None = None
+        subj_endpoint = subject_url if isinstance(subject_url, str) and subject_url.strip() else f"repos/{repo}/{'pulls' if is_pr else 'issues'}/{number}"
+        with contextlib.suppress(Exception):
+            subject_item = self.gh_client.fetch_json_object(subj_endpoint, paginate=False)
         cached = self.state_store.get_thread_state(make_pr_key(repo, number))
-        if is_pr and isinstance(cached, dict) and cached.get("head_sha") and cached.get("author"):
-            subject_item = {"id": number, "number": number, "state": "open", "draft": False, "user": {"login": cached.get("author")}, "head": {"sha": cached.get("head_sha")}, "title": cached.get("subject_title") or ""}
-        else:
-            subj_endpoint = subject_url if isinstance(subject_url, str) and subject_url.strip() else f"repos/{repo}/{'pulls' if is_pr else 'issues'}/{number}"
-            with contextlib.suppress(Exception):
-                subject_item = self.gh_client.fetch_json_object(subj_endpoint, paginate=False)
+        if isinstance(cached, dict):
+            if _is_archived_record(cached):
+                subject_item = {**subject_item, "archived": True}
+            if is_pr and not subject_item and cached.get("head_sha") and cached.get("author"):
+                subject_item = {"id": number, "number": number, "state": "open", "draft": False, "archived": _is_archived_record(cached, notification), "user": {"login": cached.get("author")}, "head": {"sha": cached.get("head_sha")}, "title": cached.get("subject_title") or ""}
         if isinstance(latest_comment_url, str) and latest_comment_url.strip() and latest_comment_url.strip() != (subject_url or "").strip():
             with contextlib.suppress(Exception):
                 fetched = self.gh_client.fetch_json_object(latest_comment_url, paginate=False)
                 if fetched:
                     latest_item = fetched
-        return self.evaluate_notification(notification, latest_item=latest_item, subject_item=subject_item, now_override_ms=now_override_ms)
+        res = self.evaluate_notification(notification, latest_item=latest_item, subject_item=subject_item, now_override_ms=now_override_ms)
+        if res.get("skip_reason") == "archived_repo" and not (isinstance(cached, dict) and cached.get("archived") is True):
+            self.state_store.update_thread_state(make_pr_key(repo, number), {"repo": repo, "number": number, "archived": True, **({"head_sha": res["head_sha"]} if res.get("head_sha") else {})}, now_override_ms=now_override_ms)
+        return res
 
 
 class NotificationPoller:

@@ -1336,7 +1336,8 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
             self.assertFalse(eval_res["should_dispatch"])
             self.assertEqual(eval_res["skip_reason"], "archived_repo")
 
-        # 3) run_cycle auto-dismisses notifications whose subject repo is archived
+        # 3) run_cycle auto-dismisses notifications whose subject repo is archived, even when
+        # the PR already had cached head_sha and author in state.json from before archiving
         store.update_thread_state(
             "9104",
             {
@@ -1346,6 +1347,8 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
                 "subject_type": "PullRequest",
                 "subject_url": "https://api.github.com/repos/wimpysworld/legacy-box/pulls/12",
                 "number": 12,
+                "author": "flexiondotorg",
+                "head_sha": "sha_legacy_12_cached",
                 "updated_at": "2023-11-16T13:05:00Z",
                 "handled_updated_at": None,
                 "pending_followup": True,
@@ -1379,7 +1382,30 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
         assert st_9104 is not None
         self.assertEqual(st_9104["handled_updated_at"], "2023-11-16T13:05:00Z")
         self.assertEqual(st_9104["handled_head_sha"], "sha_legacy_12")
+        self.assertTrue(st_9104["archived"])
         self.assertFalse(st_9104["pending_followup"])
+
+        # 4) Cached PR entry with persisted archived=True is also rejected even if subject fetch is unavailable
+        store.update_thread_state(
+            "wimpysworld/archived-cached#19",
+            {
+                "repo": "wimpysworld/archived-cached",
+                "number": 19,
+                "author": "flexiondotorg",
+                "head_sha": "sha_cached_19",
+                "archived": True,
+            },
+        )
+        prep_cached_archived = tf.fetch_and_prepare_notification(
+            {
+                "thread_id": "9105",
+                "repo": "wimpysworld/archived-cached",
+                "subject_type": "PullRequest",
+                "number": 19,
+            }
+        )
+        self.assertFalse(prep_cached_archived["should_dispatch"])
+        self.assertEqual(prep_cached_archived["skip_reason"], "archived_repo")
 
 
 class InlinePromptSecurityDeduplicationAndAlertTests(GithubCompanionTestBase):
