@@ -699,8 +699,21 @@ def make_pr_key(repo: str, number: int | str) -> str:
     return f"{repo.strip().lower()}#{int(number)}"
 
 
+def _is_archived_record(*items: object) -> bool:
+    for raw in items:
+        d = _as_dict(raw)
+        if not d:
+            continue
+        if bool(d.get("archived") or d.get("isArchived")):
+            return True
+        for sub in (_as_dict(d.get("repository")), _as_dict(_as_dict(d.get("base")).get("repo"))):
+            if bool(sub.get("archived") or sub.get("isArchived")):
+                return True
+    return False
+
+
 def normalize_notification_record(raw: dict) -> dict | None:
-    if not isinstance(raw, dict):
+    if not isinstance(raw, dict) or _is_archived_record(raw):
         return None
     thread_id = str(raw.get("id") or raw.get("thread_id") or "").strip()
     if not thread_id:
@@ -779,7 +792,7 @@ def count_unresolved_review_threads(raw_threads: object) -> int:
 
 
 def normalize_open_pull_request_record(raw: dict) -> dict | None:
-    if not isinstance(raw, dict) or "subject" in raw or not any(k in raw for k in ("headRefOid", "head", "head_sha", "reviewDecision", "statusCheckRollup", "reviewRequests", "reviewThreads", "isDraft")):
+    if not isinstance(raw, dict) or "subject" in raw or _is_archived_record(raw) or not any(k in raw for k in ("headRefOid", "head", "head_sha", "reviewDecision", "statusCheckRollup", "reviewRequests", "reviewThreads", "isDraft")):
         return None
     number = _safe_int(raw.get("number"), 0)
     if number <= 0:
@@ -1125,7 +1138,7 @@ class CompanionStateStore:
             threads: dict[str, dict] = state["threads"]
             for item in records:
                 norm = normalize_notification_record(item) if (isinstance(item, dict) and "thread_id" not in item) else (dict(item) if isinstance(item, dict) else None)
-                if not isinstance(norm, dict):
+                if not isinstance(norm, dict) or _is_archived_record(item, norm):
                     continue
                 thread_id = str(norm.get("thread_id") or "").strip()
                 if not thread_id or not is_allowed_notification_repo(norm.get("repo"), norm.get("owner")):
@@ -1169,7 +1182,7 @@ class CompanionStateStore:
             threads: dict[str, dict] = state["threads"]
             for raw_pr in pull_requests:
                 norm_pr = normalize_open_pull_request_record(raw_pr) if "pr_key" not in _as_dict(raw_pr) else dict(raw_pr)
-                if not isinstance(norm_pr, dict) or norm_pr.get("is_draft") or str(norm_pr.get("state") or "OPEN").upper() != "OPEN":
+                if not isinstance(norm_pr, dict) or _is_archived_record(raw_pr, norm_pr) or norm_pr.get("is_draft") or str(norm_pr.get("state") or "OPEN").upper() != "OPEN":
                     continue
                 repo, number = str(norm_pr.get("repo") or "").strip(), _safe_int(norm_pr.get("number"), 0)
                 if not repo or number <= 0:
@@ -1236,7 +1249,7 @@ class CompanionStateStore:
             fin_sha = handled_head_sha or entry.get("in_flight_head_sha") or entry.get("head_sha") or entry.get("handled_head_sha")
             fin_ci = handled_ci_state or entry.get("in_flight_ci_state") or entry.get("ci_state") or entry.get("handled_ci_state")
             seen_u, seen_sha = str(entry.get("updated_at") or "").strip(), str(entry.get("head_sha") or "").strip()
-            has_newer = bool(entry.get("pending_followup") or (seen_u and fin_u and is_timestamp_newer(seen_u, fin_u)) or (seen_sha and fin_sha and seen_sha != fin_sha))
+            has_newer = bool((entry.get("in_flight") and entry.get("pending_followup")) or (seen_u and fin_u and is_timestamp_newer(seen_u, fin_u)) or (seen_sha and fin_sha and seen_sha != fin_sha))
             entry.update({"handled_updated_at": fin_u, "handled_head_sha": fin_sha, "handled_ci_state": fin_ci, "retry_count": 0, "in_flight": False, "pending_followup": has_newer, "dismiss_ready": not has_newer})
             if rev_cid > 0 or entry.get("comment_id"):
                 entry["handled_comment_id"] = rev_cid or entry.get("comment_id")
@@ -1457,12 +1470,12 @@ class MoltisRpcClient:
         return self.call("chat.send_sync", params, timeout=self.send_sync_timeout if timeout is None else timeout)
 
 
-OPEN_PRS_GRAPHQL_QUERY_TEMPLATE = "query { search(query: %s, type: ISSUE, first: 100) { nodes { ... on PullRequest { number title url state isDraft updatedAt headRefOid reviewDecision repository { nameWithOwner } author { __typename login } reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } } } } reviewThreads(first: 100) { pageInfo { hasNextPage } nodes { isResolved } } statusCheckRollup { state contexts(first: 100) { nodes { __typename ... on CheckRun { status conclusion } ... on StatusContext { state } } } } } } } }"
+OPEN_PRS_GRAPHQL_QUERY_TEMPLATE = "query($endCursor: String) { search(query: %s, type: ISSUE, first: 100, after: $endCursor) { pageInfo { hasNextPage endCursor } nodes { ... on PullRequest { number title url state isDraft updatedAt headRefOid reviewDecision repository { nameWithOwner isArchived } author { __typename login } reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } } } } reviewThreads(first: 100) { pageInfo { hasNextPage } nodes { isResolved } } statusCheckRollup { state contexts(first: 100) { nodes { __typename ... on CheckRun { status conclusion } ... on StatusContext { state } } } } } } } }"
 
 
 def build_open_prs_graphql_query(owners: Iterable[str] = POLL_PR_OWNERS) -> str:
     owner_clauses = " ".join(f"user:{o.strip()}" for o in owners if str(o).strip())
-    return OPEN_PRS_GRAPHQL_QUERY_TEMPLATE % json.dumps(f"is:pr is:open draft:false {owner_clauses}".strip())
+    return OPEN_PRS_GRAPHQL_QUERY_TEMPLATE % json.dumps(f"is:pr is:open draft:false archived:false {owner_clauses}".strip())
 
 
 class GhApiSafeClient:
@@ -1521,7 +1534,7 @@ class GhApiSafeClient:
 
     def poll_open_pull_requests(self, owners: Iterable[str] = POLL_PR_OWNERS, timeout: float | None = None) -> list[dict]:
         """Query open pull requests across the configured owners via a single GraphQL search query."""
-        proc = self.invoke(["graphql", "-f", f"query={build_open_prs_graphql_query(owners)}"], timeout=timeout)
+        proc = self.invoke(["graphql", "--paginate", "-f", f"query={build_open_prs_graphql_query(owners)}"], timeout=timeout)
         stdout, stderr = (proc.stdout or "").strip(), (proc.stderr or "").strip()
         if proc.returncode != 0:
             raise RuntimeError(f"gh-api-safe graphql open pull requests exited {proc.returncode}: {stderr or stdout}")
@@ -1532,7 +1545,7 @@ class GhApiSafeClient:
             if not isinstance(item, dict):
                 continue
             search_obj = _as_dict(_as_dict(item.get("data")).get("search") or item.get("search"))
-            nodes = search_obj.get("nodes") or item.get("nodes") or item.get("items")
+            nodes = next((cand for cand in (search_obj.get("nodes"), item.get("nodes"), item.get("items")) if isinstance(cand, list)), None)
             raw_nodes.extend([n for n in nodes if isinstance(n, dict)] if isinstance(nodes, list) else [item])
         return [norm for node in raw_nodes if (norm := normalize_open_pull_request_record(node)) is not None]
 
@@ -1659,10 +1672,13 @@ class TrustFilterAndSnapshotBuilder:
             return {"should_dispatch": dispatch, "skip_reason": skip, "repo": repo, "number": number, "kind": kind_label, "head_sha": head_sha, "trigger_reason": trig or reason, "comment_id": cid, "review_id": rid, "trusted_item_id": tid, "security_events": security_events, "notices": notices}
 
         if isinstance(subject_item, dict) and subject_item and is_pr:
+            head_sha = str(subject_item.get("headRefOid") or _as_dict(subject_item.get("head")).get("sha") or head_sha or "").strip() or None
+        if _is_archived_record(notification, subject_item, latest_item):
+            return _eval_res(False, "archived_repo")
+        if isinstance(subject_item, dict) and subject_item and is_pr:
             pr_state = str(subject_item.get("state") or "open").strip().lower()
             pr_draft = bool(subject_item.get("draft") or subject_item.get("isDraft", False))
             pr_merged = bool(subject_item.get("merged", False)) or bool(subject_item.get("merged_at"))
-            head_sha = str(subject_item.get("headRefOid") or _as_dict(subject_item.get("head")).get("sha") or head_sha or "").strip() or None
             if pr_state != "open" or pr_draft or pr_merged:
                 return _eval_res(False, "closed_or_draft_pr")
 
@@ -2089,7 +2105,7 @@ class GithubCompanionRunner:
         threads = _as_dict(self.state_store.read_state().get("threads"))
 
         def _complete_skipped(key_val: str, tid_val: str | None, prep_res: dict, entry_val: dict) -> None:
-            if prep_res.get("skip_reason") == "closed_or_draft_pr" and tid_val and tid_val.isdigit():
+            if prep_res.get("skip_reason") in ("closed_or_draft_pr", "archived_repo") and tid_val and tid_val.isdigit():
                 try:
                     self.gh_client.dismiss_notification(tid_val)
                     if tid_val not in dismissed_threads:
