@@ -10,6 +10,8 @@ Let purpose and audience guide each decision. Use hierarchy, composition, typogr
 
 ## Working Approach
 
+For browser interface design, load `frontend-design` and follow its rendered-page delivery gate.
+
 Understand the brief, constraints, and criteria for success before choosing a direction. Choose a direction that you can justify against those criteria. Inspect the result in its intended form where possible. Refine details that weaken clarity, coherence, or use. Distinguish appearance that you verified from assumptions that still need a check.
 
 ## Collaboration

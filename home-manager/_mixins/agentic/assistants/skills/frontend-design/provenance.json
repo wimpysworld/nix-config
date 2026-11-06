@@ -1,0 +1,111 @@
+[
+  {
+    "repository": "anthropics/skills",
+    "commit": "41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f",
+    "source_path": "skills/frontend-design/SKILL.md",
+    "url": "https://raw.githubusercontent.com/anthropics/skills/41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f/skills/frontend-design/SKILL.md",
+    "sha256": "d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3",
+    "bytes": 9390,
+    "local_destinations": [
+      "SKILL.md",
+      "header.toml"
+    ],
+    "local_changes": "Modified adaptation; see references/provenance.md."
+  },
+  {
+    "repository": "anthropics/skills",
+    "commit": "41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f",
+    "source_path": "skills/frontend-design/LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/anthropics/skills/41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f/skills/frontend-design/LICENSE.txt",
+    "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+    "bytes": 10174,
+    "local_destinations": [
+      "LICENSE-anthropic.txt"
+    ],
+    "local_changes": "Unchanged bytes."
+  },
+  {
+    "repository": "pbakaus/impeccable",
+    "commit": "c3bb418ee38ee49a6b999b7752c1368f3123a2bd",
+    "source_path": "LICENSE",
+    "url": "https://raw.githubusercontent.com/pbakaus/impeccable/c3bb418ee38ee49a6b999b7752c1368f3123a2bd/LICENSE",
+    "sha256": "02bb8c3b4e70190e3986c0404ad2fd8d639b4f534252d82379cc1b502b6d1812",
+    "bytes": 10766,
+    "local_destinations": [
+      "LICENSE-impeccable.txt"
+    ],
+    "local_changes": "Unchanged bytes."
+  },
+  {
+    "repository": "pbakaus/impeccable",
+    "commit": "c3bb418ee38ee49a6b999b7752c1368f3123a2bd",
+    "source_path": "NOTICE.md",
+    "url": "https://raw.githubusercontent.com/pbakaus/impeccable/c3bb418ee38ee49a6b999b7752c1368f3123a2bd/NOTICE.md",
+    "sha256": "c60a093c2845fd9fb82f9c6f742ece31f379f8190b535309d32d66c45ccffdcb",
+    "bytes": 503,
+    "local_destinations": [
+      "NOTICE-impeccable.md"
+    ],
+    "local_changes": "Unchanged bytes."
+  },
+  {
+    "repository": "pbakaus/impeccable",
+    "commit": "c3bb418ee38ee49a6b999b7752c1368f3123a2bd",
+    "source_path": ".agents/skills/impeccable/reference/new-work.md",
+    "url": "https://raw.githubusercontent.com/pbakaus/impeccable/c3bb418ee38ee49a6b999b7752c1368f3123a2bd/.agents/skills/impeccable/reference/new-work.md",
+    "sha256": "4d9410bf9dfdb0890769a2f45e634be809392ac293abd91ee9553e8eabb18fe5",
+    "bytes": 63005,
+    "local_destinations": [
+      "references/new-work.md"
+    ],
+    "local_changes": "Modified adaptation; see references/provenance.md."
+  },
+  {
+    "repository": "pbakaus/impeccable",
+    "commit": "c3bb418ee38ee49a6b999b7752c1368f3123a2bd",
+    "source_path": ".agents/skills/impeccable/reference/polish.md",
+    "url": "https://raw.githubusercontent.com/pbakaus/impeccable/c3bb418ee38ee49a6b999b7752c1368f3123a2bd/.agents/skills/impeccable/reference/polish.md",
+    "sha256": "81666fc7f783b4e3514db6554e713dc0479bd9cdedb06e93d15f8b579aae869a",
+    "bytes": 6646,
+    "local_destinations": [
+      "references/polish.md"
+    ],
+    "local_changes": "Modified adaptation; see references/provenance.md."
+  },
+  {
+    "repository": "pbakaus/impeccable",
+    "commit": "c3bb418ee38ee49a6b999b7752c1368f3123a2bd",
+    "source_path": ".agents/skills/impeccable/reference/typeset.md",
+    "url": "https://raw.githubusercontent.com/pbakaus/impeccable/c3bb418ee38ee49a6b999b7752c1368f3123a2bd/.agents/skills/impeccable/reference/typeset.md",
+    "sha256": "c26c5b4524f3ccb650ed0680c10c25fd18083f8ebfd00a54c4d983c4747aab70",
+    "bytes": 6263,
+    "local_destinations": [
+      "references/typeset.md"
+    ],
+    "local_changes": "Modified adaptation; see references/provenance.md."
+  },
+  {
+    "repository": "pbakaus/impeccable",
+    "commit": "c3bb418ee38ee49a6b999b7752c1368f3123a2bd",
+    "source_path": ".agents/skills/impeccable/reference/critique.md",
+    "url": "https://raw.githubusercontent.com/pbakaus/impeccable/c3bb418ee38ee49a6b999b7752c1368f3123a2bd/.agents/skills/impeccable/reference/critique.md",
+    "sha256": "c210c9506877c6c8d88880a337fddd95d4315daf70ed6bc631ee6520481f1a0c",
+    "bytes": 48958,
+    "local_destinations": [
+      "references/critique.md"
+    ],
+    "local_changes": "Modified adaptation; see references/provenance.md."
+  },
+  {
+    "repository": "pbakaus/impeccable",
+    "commit": "c3bb418ee38ee49a6b999b7752c1368f3123a2bd",
+    "source_path": ".agents/skills/impeccable/reference/layout.md",
+    "url": "https://raw.githubusercontent.com/pbakaus/impeccable/c3bb418ee38ee49a6b999b7752c1368f3123a2bd/.agents/skills/impeccable/reference/layout.md",
+    "sha256": "0bc7d7971b3edf2acd0580e847458dc6d84129d90715b452799ace3bed815c7c",
+    "bytes": 5161,
+    "local_destinations": [
+      "references/layout.md"
+    ],
+    "local_changes": "Modified adaptation; see references/provenance.md."
+  }
+]

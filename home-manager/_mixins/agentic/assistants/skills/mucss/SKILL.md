@@ -8,7 +8,8 @@ Build static project landing pages with Digicreon µCSS while preserving the sit
 2. Identify the audience, the project's main benefit, and the primary action: install, download, or read the documentation.
 3. Confirm the repository, documentation, release, licence, and contribution links from project evidence.
 4. Resolve missing brand assets, deployment paths, or content requirements before making assumptions that change the design.
-5. Load `web-interface-guidelines` for general interface quality and accessibility checks. Do not replace its checks with framework claims.
+5. Load `frontend-design` for visual hierarchy and its rendered-page delivery gate.
+6. Load `web-interface-guidelines` for general interface quality and accessibility checks. Do not replace its checks with framework claims.
 
 ## Preserve the integration
 
@@ -46,6 +47,7 @@ Build static project landing pages with Digicreon µCSS while preserving the sit
 4. Apply `web-interface-guidelines` to the output, including each theme and interactive state that the page supports.
 5. With authorised browser tools, check narrow layouts and both sides of relevant breakpoints against the actual stylesheet.
 6. Test required `:has()` and `color-mix()` behaviour in the project's supported browsers, or supply a suitable fallback.
-7. Report changed sources, version and theme choices, checks performed, and checks that still need a browser.
+7. Complete the `frontend-design` delivery gate before presenting the page as complete or review-ready.
+8. Report changed sources, version and theme choices, verification evidence, and any precise browser blocker.
 
 Do not claim rendered, keyboard, contrast, or browser compatibility results from source inspection alone.

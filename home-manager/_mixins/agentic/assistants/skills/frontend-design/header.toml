@@ -1,0 +1,13 @@
+[common]
+name = "frontend-design"
+description = "Guides visual design for browser interfaces, landing pages, dashboards, and web components. Use when building or redesigning a page, choosing typography or layout, reducing visual clutter, or critiquing and polishing web UI. Preserves the project design system and requires rendered verification before page delivery. Complements web-interface-guidelines and framework skills such as mucss. Excludes backend-only work, terminal interfaces, native apps, standalone diagrams, and logos."
+license = "Apache-2.0"
+
+[common.metadata]
+upstream = "https://github.com/anthropics/skills"
+revision = "41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f"
+source = "skills/frontend-design/SKILL.md"
+supplement-upstream = "https://github.com/pbakaus/impeccable"
+supplement-revision = "c3bb418ee38ee49a6b999b7752c1368f3123a2bd"
+provenance = "references/provenance.md and provenance.json"
+local-changes = "Adapted Anthropic base and selected Impeccable guidance for house style, existing design systems, portable references, and a mandatory rendered-page verification gate. No upstream tools or dispatch workflows."
