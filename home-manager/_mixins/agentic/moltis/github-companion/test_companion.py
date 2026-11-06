@@ -1029,6 +1029,22 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
                 return subprocess.CompletedProcess(
                     cmd, 0, stdout=json.dumps({"data": {"search": {"nodes": nodes}}}), stderr=""
                 )
+            if ep.endswith("repos/wimpysworld/nix-config/pulls/61"):
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps(
+                        {
+                            "id": 6100,
+                            "number": 61,
+                            "state": "open",
+                            "draft": False,
+                            "user": {"login": "sith-skrye"},
+                            "head": {"sha": "sha_self_push_61"},
+                        }
+                    ),
+                    stderr="",
+                )
             if ep.endswith("repos/wimpysworld/nix-config/issues/comments/6101"):
                 return subprocess.CompletedProcess(
                     cmd,
@@ -1326,6 +1342,7 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
         self.assertEqual(ingest_archived["actionable_threads"], [])
         self.assertEqual(ingest_archived["auto_dismiss_threads"], ["9101", "9102"])
         rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        fail_legacy_box_fetch = False
 
         def fake_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
             self.gh_commands.append(list(cmd))
@@ -1339,6 +1356,8 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
                     cmd, 0, stdout=json.dumps({"data": {"search": {"nodes": []}}}), stderr=""
                 )
             if ep.endswith("repos/wimpysworld/legacy-box/pulls/12"):
+                if fail_legacy_box_fetch:
+                    return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="HTTP 502 Bad Gateway")
                 return subprocess.CompletedProcess(
                     cmd,
                     0,
@@ -1375,8 +1394,18 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
             self.assertFalse(eval_res["should_dispatch"])
             self.assertEqual(eval_res["skip_reason"], "archived_repo")
 
-        # 3) run_cycle auto-dismisses notifications whose subject repo is archived, even when
-        # the PR already had cached head_sha and author in state.json from before archiving
+        # 3) When subject fetch fails on a PR with cached unarchived author/head_sha,
+        # fetch_and_prepare_notification does NOT fall back to stale cache and run_cycle
+        # keeps the notification pending for retry until live archive status can be verified.
+        store.update_thread_state(
+            "wimpysworld/legacy-box#12",
+            {
+                "repo": "wimpysworld/legacy-box",
+                "number": 12,
+                "author": "flexiondotorg",
+                "head_sha": "sha_legacy_12_cached",
+            },
+        )
         store.update_thread_state(
             "9104",
             {
@@ -1413,6 +1442,21 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
             clock=self.clock,
         )
 
+        fail_legacy_box_fetch = True
+        prep_fetch_failed = tf.fetch_and_prepare_notification(store.get_thread_state("9104") or {})
+        self.assertFalse(prep_fetch_failed["should_dispatch"])
+        self.assertEqual(prep_fetch_failed["skip_reason"], "subject_fetch_failed")
+
+        cycle_fetch_failed = runner.run_cycle(run_sweeps_if_due=False)
+        self.assertEqual(cycle_fetch_failed["targeted_dispatches"], [])
+        self.assertNotIn("9104", cycle_fetch_failed["dismissed_threads"])
+        st_9104_pending = store.get_thread_state("9104")
+        assert st_9104_pending is not None
+        self.assertIsNone(st_9104_pending["handled_updated_at"])
+        self.assertTrue(st_9104_pending["pending_followup"])
+
+        # Once live fetch succeeds and confirms the repository is archived, run_cycle auto-dismisses it
+        fail_legacy_box_fetch = False
         cycle = runner.run_cycle(run_sweeps_if_due=False)
         self.assertEqual(cycle["targeted_dispatches"], [])
         self.assertIn("9104", cycle["dismissed_threads"])
