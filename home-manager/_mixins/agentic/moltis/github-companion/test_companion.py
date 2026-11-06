@@ -600,6 +600,11 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
         for owner in companion.POLL_PR_OWNERS:
             self.assertIn(f"user:{owner}", query)
         for field in (
+            "archived:false",
+            "$endCursor: String",
+            "after: $endCursor",
+            "pageInfo { hasNextPage endCursor }",
+            "isArchived",
             "number",
             "author { __typename login }",
             "headRefOid",
@@ -1171,6 +1176,204 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
         assert st_9002 is not None
         self.assertEqual(st_9001["handled_updated_at"], "2023-11-16T12:00:00Z")
         self.assertEqual(st_9002["handled_updated_at"], "2023-11-16T12:01:00Z")
+
+    def test_open_prs_graphql_pagination_over_100_results_and_archived_repo_filtering(self) -> None:
+        query = companion.build_open_prs_graphql_query()
+        self.assertIn("query($endCursor: String)", query)
+        self.assertIn("archived:false", query)
+        self.assertIn("after: $endCursor", query)
+        self.assertIn("pageInfo { hasNextPage endCursor }", query)
+        self.assertIn("repository { nameWithOwner isArchived }", query)
+
+        def make_pr_node(num: int, *, is_archived: bool = False) -> dict:
+            return {
+                "number": num,
+                "title": f"PR {num}",
+                "url": f"https://github.com/wimpysworld/nix-config/pull/{num}",
+                "state": "OPEN",
+                "isDraft": False,
+                "updatedAt": "2023-11-16T12:30:00Z",
+                "headRefOid": f"sha_{num}",
+                "reviewDecision": "REVIEW_REQUIRED",
+                "repository": {
+                    "nameWithOwner": "wimpysworld/archived-repo" if is_archived else "wimpysworld/nix-config",
+                    "isArchived": is_archived,
+                },
+                "author": {"__typename": "User", "login": "flexiondotorg"},
+                "reviewRequests": {"nodes": []},
+                "reviewThreads": {"pageInfo": {"hasNextPage": False}, "nodes": []},
+                "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
+            }
+
+        page1 = {
+            "data": {
+                "search": {
+                    "pageInfo": {"hasNextPage": True, "endCursor": "cursor_100"},
+                    "nodes": [make_pr_node(i) for i in range(1, 101)] + [make_pr_node(999, is_archived=True)],
+                }
+            }
+        }
+        page2 = {
+            "data": {
+                "search": {
+                    "pageInfo": {"hasNextPage": False, "endCursor": "cursor_105"},
+                    "nodes": [make_pr_node(i) for i in range(101, 106)] + [make_pr_node(1000, is_archived=True)],
+                }
+            }
+        }
+
+        def fake_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            self.gh_commands.append(list(cmd))
+            if cmd[1] == "graphql":
+                concatenated = json.dumps(page1) + "\n" + json.dumps(page2)
+                return subprocess.CompletedProcess(cmd, 0, stdout=concatenated, stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout="[]", stderr="")
+
+        gh_client = companion.GhApiSafeClient(runner=fake_runner)
+        prs = gh_client.poll_open_pull_requests()
+        self.assertEqual(len(self.gh_commands), 1)
+        self.assertEqual(self.gh_commands[0][:3], ["gh-api-safe", "graphql", "--paginate"])
+        self.assertEqual(len(prs), 105)
+        self.assertEqual([pr["number"] for pr in prs], list(range(1, 106)))
+        self.assertTrue(all(pr["repo"] == "wimpysworld/nix-config" for pr in prs))
+
+        # Direct normalization checks for archived variations
+        self.assertIsNone(
+            companion.normalize_open_pull_request_record(
+                {**make_pr_node(200), "repository": {"nameWithOwner": "wimpysworld/old", "archived": True}}
+            )
+        )
+        self.assertIsNone(
+            companion.normalize_open_pull_request_record(
+                {**make_pr_node(201), "archived": True}
+            )
+        )
+
+    def test_archived_repository_excluded_in_notifications_evaluation_and_auto_dismissed_in_run_cycle(self) -> None:
+        # 1) normalize_notification_record rejects repository.archived and repository.isArchived
+        raw_notif_archived = {
+            "id": "9101",
+            "reason": "mention",
+            "updated_at": "2023-11-16T13:00:00Z",
+            "repository": {
+                "full_name": "wimpysworld/archived-one",
+                "archived": True,
+                "owner": {"login": "wimpysworld"},
+            },
+            "subject": {
+                "type": "Issue",
+                "title": "Old issue",
+                "url": "https://api.github.com/repos/wimpysworld/archived-one/issues/1",
+            },
+        }
+        raw_notif_is_archived = {
+            **raw_notif_archived,
+            "id": "9102",
+            "repository": {
+                "full_name": "wimpysworld/archived-two",
+                "isArchived": True,
+                "owner": {"login": "wimpysworld"},
+            },
+        }
+        self.assertIsNone(companion.normalize_notification_record(raw_notif_archived))
+        self.assertIsNone(companion.normalize_notification_record(raw_notif_is_archived))
+
+        # 2) evaluate_notification skips PR/Issue subjects from archived repos with skip_reason="archived_repo"
+        store = self.make_store("skrye")
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+
+        def fake_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            self.gh_commands.append(list(cmd))
+            if cmd[0] == "gh-notification-dismiss":
+                return subprocess.CompletedProcess(cmd, 0, stdout="dismissed\n", stderr="")
+            ep = cmd[1]
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(
+                    cmd, 0, stdout=json.dumps({"data": {"search": {"nodes": []}}}), stderr=""
+                )
+            if ep.endswith("repos/wimpysworld/legacy-box/pulls/12"):
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps(
+                        {
+                            "id": 1200,
+                            "number": 12,
+                            "state": "open",
+                            "draft": False,
+                            "user": {"login": "flexiondotorg"},
+                            "head": {"sha": "sha_legacy_12"},
+                            "base": {"repo": {"full_name": "wimpysworld/legacy-box", "archived": True}},
+                        }
+                    ),
+                    stderr="",
+                )
+            return subprocess.CompletedProcess(cmd, 0, stdout="{}", stderr="")
+
+        gh_client = companion.GhApiSafeClient(runner=fake_runner)
+        tf = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store, gh_client=gh_client, agent_name="skrye", clock=self.clock
+        )
+
+        for subj_payload in (
+            {"id": 1, "state": "open", "archived": True, "user": {"login": "flexiondotorg"}},
+            {"id": 2, "state": "open", "base": {"repo": {"archived": True}}, "user": {"login": "flexiondotorg"}},
+            {"id": 3, "state": "open", "repository": {"archived": True}, "user": {"login": "flexiondotorg"}},
+            {"id": 4, "state": "open", "repository": {"isArchived": True}, "user": {"login": "flexiondotorg"}},
+        ):
+            eval_res = tf.evaluate_notification(
+                {"thread_id": "9103", "repo": "wimpysworld/legacy-box", "subject_type": "PullRequest", "number": 12},
+                subject_item=subj_payload,
+            )
+            self.assertFalse(eval_res["should_dispatch"])
+            self.assertEqual(eval_res["skip_reason"], "archived_repo")
+
+        # 3) run_cycle auto-dismisses notifications whose subject repo is archived
+        store.update_thread_state(
+            "9104",
+            {
+                "thread_id": "9104",
+                "repo": "wimpysworld/legacy-box",
+                "owner": "wimpysworld",
+                "subject_type": "PullRequest",
+                "subject_url": "https://api.github.com/repos/wimpysworld/legacy-box/pulls/12",
+                "number": 12,
+                "updated_at": "2023-11-16T13:05:00Z",
+                "handled_updated_at": None,
+                "pending_followup": True,
+            },
+        )
+        poller = companion.NotificationPoller(
+            state_store=store, gh_client=gh_client, clock=self.clock, sleeper=self.sleeper
+        )
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="skrye",
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+        runner = companion.GithubCompanionRunner(
+            state_store=store,
+            gh_client=gh_client,
+            poller=poller,
+            trust_filter=tf,
+            execution_coordinator=coord,
+            clock=self.clock,
+        )
+
+        cycle = runner.run_cycle(run_sweeps_if_due=False)
+        self.assertEqual(cycle["targeted_dispatches"], [])
+        self.assertIn("9104", cycle["dismissed_threads"])
+        self.assertIn(["gh-notification-dismiss", "9104"], self.gh_commands)
+        st_9104 = store.get_thread_state("9104")
+        assert st_9104 is not None
+        self.assertEqual(st_9104["handled_updated_at"], "2023-11-16T13:05:00Z")
+        self.assertEqual(st_9104["handled_head_sha"], "sha_legacy_12")
+        self.assertFalse(st_9104["pending_followup"])
 
 
 class InlinePromptSecurityDeduplicationAndAlertTests(GithubCompanionTestBase):
