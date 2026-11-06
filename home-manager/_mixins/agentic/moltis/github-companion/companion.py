@@ -891,7 +891,7 @@ class CompanionStateStore:
         return {"handled_updated_at": handled_updated_at, "handled_head_sha": handled_head_sha, "handled_ci_state": handled_ci_state, "retry_count": max(0, _safe_int(retry_count, 0))}
 
     def _default_state(self) -> dict:
-        return {"version": 2, "agent_name": self.agent_name, "next_poll_at_ms": None, "last_poll_started_at_ms": None, "last_poll_completed_at_ms": None, "last_status": None, "last_modified": None, "poll_interval_secs": BASE_POLL_INTERVAL_SECS, "retry_after_secs": 0, "last_poll_rate_limited": False, "ratelimit_reset_epoch": None, "last_jitter_ms": None, "last_reconcile_sweep_at_ms": None, "last_reconcile_sweep_attempt_at_ms": None, "reconcile_sweep_retry_after_ms": None, "reconcile_sweep_failure_count": 0, "last_reconcile_sweep_failure_reason": None, "last_weekly_sweep_date": None, "last_weekly_sweep_attempt_at_ms": None, "weekly_sweep_retry_after_ms": None, "weekly_sweep_failure_count": 0, "last_weekly_sweep_failure_reason": None, "threads": {}, "updated_at_ms": self.started_at_ms}
+        return {"version": 2, "agent_name": self.agent_name, "next_poll_at_ms": None, "last_poll_started_at_ms": None, "last_poll_completed_at_ms": None, "last_status": None, "last_modified": None, "poll_interval_secs": BASE_POLL_INTERVAL_SECS, "retry_after_secs": 0, "last_poll_rate_limited": False, "ratelimit_reset_epoch": None, "last_jitter_ms": None, "last_open_prs_poll_error": None, "last_reconcile_sweep_at_ms": None, "last_reconcile_sweep_attempt_at_ms": None, "reconcile_sweep_retry_after_ms": None, "reconcile_sweep_failure_count": 0, "last_reconcile_sweep_failure_reason": None, "last_weekly_sweep_date": None, "last_weekly_sweep_attempt_at_ms": None, "weekly_sweep_retry_after_ms": None, "weekly_sweep_failure_count": 0, "last_weekly_sweep_failure_reason": None, "threads": {}, "updated_at_ms": self.started_at_ms}
 
     def _default_active_dispatch(self) -> dict:
         return {"version": 1, "agent_name": self.agent_name, "active": None, "updated_at_ms": self.started_at_ms}
@@ -981,7 +981,7 @@ class CompanionStateStore:
             state[ts_key] = val if val > 0 else None
         for count_key in ("reconcile_sweep_failure_count", "weekly_sweep_failure_count"):
             state[count_key] = max(0, _safe_int(state.get(count_key), 0))
-        for str_key in ("last_weekly_sweep_date", "last_reconcile_sweep_failure_reason", "last_weekly_sweep_failure_reason"):
+        for str_key in ("last_weekly_sweep_date", "last_reconcile_sweep_failure_reason", "last_weekly_sweep_failure_reason", "last_open_prs_poll_error"):
             raw = state.get(str_key)
             state[str_key] = raw.strip() if isinstance(raw, str) and raw.strip() else None
 
@@ -1541,12 +1541,19 @@ class GhApiSafeClient:
         if not stdout:
             return []
         raw_nodes: list[dict] = []
+        last_has_next_page = False
         for item in parse_gh_api_paginated_http_output(stdout)[2]:
             if not isinstance(item, dict):
                 continue
+            if item.get("errors"):
+                raise RuntimeError("Incomplete or failed GraphQL open pull-request pagination")
             search_obj = _as_dict(_as_dict(item.get("data")).get("search") or item.get("search"))
+            if search_obj:
+                last_has_next_page = bool(_as_dict(search_obj.get("pageInfo")).get("hasNextPage"))
             nodes = next((cand for cand in (search_obj.get("nodes"), item.get("nodes"), item.get("items")) if isinstance(cand, list)), None)
             raw_nodes.extend([n for n in nodes if isinstance(n, dict)] if isinstance(nodes, list) else [item])
+        if last_has_next_page:
+            raise RuntimeError("Incomplete or failed GraphQL open pull-request pagination")
         return [norm for node in raw_nodes if (norm := normalize_open_pull_request_record(node)) is not None]
 
 
@@ -1812,9 +1819,12 @@ class NotificationPoller:
         remaining_exhausted = remaining_hdr is not None and str(remaining_hdr).strip() != "" and _safe_int(remaining_hdr, 1) <= 0
         is_rate_limited = bool(status in (403, 429) or remaining_exhausted or retry_after_hdr > 0)
 
+        open_prs_poll_error: str | None = None
         if poll_open_prs and not is_rate_limited:
-            with contextlib.suppress(Exception):
+            try:
                 open_pull_requests = self.gh_client.poll_open_pull_requests()
+            except Exception as exc:
+                open_prs_poll_error = str(exc) or exc.__class__.__name__
             if open_pull_requests:
                 pr_ingest = self.state_store.record_polled_pull_requests(open_pull_requests, self_github_login=GITHUB_AGENT_LOGINS[self.state_store.agent_name], now_override_ms=finish_ms)
                 actionable_prs = list(pr_ingest["actionable_prs"])
@@ -1824,14 +1834,14 @@ class NotificationPoller:
 
         new_last_modified = headers["last-modified"].strip() if (200 <= status < 300 and isinstance(headers.get("last-modified"), str) and headers["last-modified"].strip()) else prior_last_modified
         ratelimit_reset_hdr = (_safe_int(headers.get("x-ratelimit-reset"), 0) or None) if is_rate_limited else None
-        self.state_store.write_state({"last_poll_completed_at_ms": finish_ms, "last_status": status, "last_modified": new_last_modified, "next_poll_at_ms": computed_next_poll_ms, "poll_interval_secs": max(BASE_POLL_INTERVAL_SECS, poll_interval_hdr), "retry_after_secs": retry_after_hdr, "last_poll_rate_limited": is_rate_limited, "ratelimit_reset_epoch": ratelimit_reset_hdr, "last_jitter_ms": post_jitter_ms}, now_override_ms=finish_ms)
+        self.state_store.write_state({"last_poll_completed_at_ms": finish_ms, "last_status": status, "last_modified": new_last_modified, "next_poll_at_ms": computed_next_poll_ms, "poll_interval_secs": max(BASE_POLL_INTERVAL_SECS, poll_interval_hdr), "retry_after_secs": retry_after_hdr, "last_poll_rate_limited": is_rate_limited, "ratelimit_reset_epoch": ratelimit_reset_hdr, "last_jitter_ms": post_jitter_ms, "last_open_prs_poll_error": open_prs_poll_error}, now_override_ms=finish_ms)
 
         dispatched_threads: list[str] = []
         if not self.read_only_trial and actionable_threads and self.on_actionable_threads is not None:
             self.on_actionable_threads(actionable_threads)
             dispatched_threads = list(actionable_threads)
 
-        return {"status": status, "provisional_next_poll_at_ms": provisional_next_ms, "provisional_jitter_ms": provisional_jitter_ms, "next_poll_at_ms": computed_next_poll_ms, "base_wait_secs": base_wait_sec, "jitter_ms": post_jitter_ms, "last_modified": new_last_modified, "filtered_notifications": filtered_records, "open_pull_requests": open_pull_requests, "actionable_threads": actionable_threads, "actionable_prs": actionable_prs, "dismissed_threads": dismissed_threads, "queued_followups": queued_followups, "dispatched_threads": dispatched_threads, "read_only_trial": self.read_only_trial}
+        return {"status": status, "provisional_next_poll_at_ms": provisional_next_ms, "provisional_jitter_ms": provisional_jitter_ms, "next_poll_at_ms": computed_next_poll_ms, "base_wait_secs": base_wait_sec, "jitter_ms": post_jitter_ms, "last_modified": new_last_modified, "filtered_notifications": filtered_records, "open_pull_requests": open_pull_requests, "open_prs_poll_error": open_prs_poll_error, "actionable_threads": actionable_threads, "actionable_prs": actionable_prs, "dismissed_threads": dismissed_threads, "queued_followups": queued_followups, "dispatched_threads": dispatched_threads, "read_only_trial": self.read_only_trial}
 
 
 class LocalExecutionCoordinator:

@@ -1249,6 +1249,45 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
             )
         )
 
+        # Incomplete pagination (final page still has hasNextPage=True) or GraphQL errors raise RuntimeError
+        # and poll_once records open_prs_poll_error / last_open_prs_poll_error without ingesting partial PRs
+        graphql_outputs = [
+            json.dumps(page1),
+            json.dumps(page1) + "\n" + json.dumps({"errors": [{"message": "rate limit exceeded"}]}),
+            json.dumps(page1) + "\n" + json.dumps(page2),
+        ]
+
+        def fake_error_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            if cmd[1] == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if cmd[1] == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=graphql_outputs.pop(0), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout="[]", stderr="")
+
+        store = self.make_store("skrye")
+        err_client = companion.GhApiSafeClient(runner=fake_error_runner)
+        poller = companion.NotificationPoller(
+            state_store=store,
+            gh_client=err_client,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "Incomplete or failed GraphQL open pull-request pagination"):
+            err_client.poll_open_pull_requests()
+
+        poll_err = poller.poll_once()
+        self.assertEqual(poll_err["open_pull_requests"], [])
+        self.assertEqual(poll_err["actionable_prs"], [])
+        self.assertIn("Incomplete or failed GraphQL open pull-request pagination", poll_err["open_prs_poll_error"] or "")
+        self.assertEqual(store.read_state()["last_open_prs_poll_error"], poll_err["open_prs_poll_error"])
+        self.assertIsNone(store.get_thread_state("wimpysworld/nix-config#1"))
+
+        poll_ok = poller.poll_once()
+        self.assertIsNone(poll_ok["open_prs_poll_error"])
+        self.assertIsNone(store.read_state()["last_open_prs_poll_error"])
+        self.assertEqual(len(poll_ok["open_pull_requests"]), 105)
+
     def test_archived_repository_excluded_in_notifications_evaluation_and_auto_dismissed_in_run_cycle(self) -> None:
         # 1) normalize_notification_record preserves archived=True and record_polled_notifications queues auto-dismissal
         raw_notif_archived = {
