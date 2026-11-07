@@ -8,6 +8,16 @@
 let
   username = config.noughty.user.name;
   inherit (config.noughty) host;
+  haberdasherSopsFile = ../../../../secrets/haberdasher.yaml;
+  haberdasherSecrets = [
+    "HD_CLOUDFLARE_S3_API_ENDPOINT"
+    "HD_CLOUDFLARE_ACCESS_KEY_ID"
+    "HD_CLOUDFLARE_SECRET_ACCESS_KEY"
+  ];
+  fishExport =
+    var: "set -gx ${var} (cat ${config.sops.secrets.${var}.path} 2>/dev/null; or echo \"\")";
+  bashExport =
+    var: "export ${var}=$(cat ${config.sops.secrets.${var}.path} 2>/dev/null || echo \"\")";
   syncDefs = import ../../filesync/syncthing-devices.nix;
   hostHasSyncthingFolder = folderName: lib.elem host.name syncDefs.folders.${folderName}.devices;
   hostHasCryptFolder = hostHasSyncthingFolder "crypt";
@@ -35,7 +45,11 @@ in
       asciinema.path = "${config.xdg.configHome}/asciinema/config";
       hueadm.path = "${config.home.homeDirectory}/.hueadm.json";
       transifex.path = "${config.home.homeDirectory}/.transifexrc";
-    };
+    }
+    // lib.genAttrs haberdasherSecrets (_: {
+      sopsFile = haberdasherSopsFile;
+      mode = "0400";
+    });
 
     home = {
       file = {
@@ -53,34 +67,52 @@ in
       };
     };
     programs = {
-      bash.shellAliases = lib.mkIf isLinuxHostWithCryptFolder {
-        lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
-        unlock-armstrong = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Armstrong ~/Vaults/Armstrong";
-        lock-secrets = "fusermount -u ~/Vaults/Secrets";
-        unlock-secrets = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Secrets ~/Vaults/Secrets";
+      bash = {
+        initExtra = ''
+          # Export Haberdasher Cloudflare R2 credentials from sops
+          ${lib.concatMapStringsSep "\n" bashExport haberdasherSecrets}
+        '';
+        shellAliases = lib.mkIf isLinuxHostWithCryptFolder {
+          lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
+          unlock-armstrong = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Armstrong ~/Vaults/Armstrong";
+          lock-secrets = "fusermount -u ~/Vaults/Secrets";
+          unlock-secrets = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Secrets ~/Vaults/Secrets";
+        };
       };
-      fish.loginShellInit = ''
-        # Only show the banner on interactive SSH logins. Gating on
-        # SSH_CONNECTION keeps it off local terminals that start a login
-        # shell (e.g. wezterm), while still greeting remote connections on
-        # any terminal. A non-interactive `fish -lc` (e.g. Codex command
-        # hooks) must not print to stdout, or it corrupts the hook's JSON
-        # output.
-        if status is-interactive; and set -q SSH_CONNECTION
-            ${pkgs.figurine}/bin/figurine -f "DOS Rebel.flf" $hostname
-        end
-      '';
-      fish.shellAliases = lib.mkIf isLinuxHostWithCryptFolder {
-        lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
-        unlock-armstrong = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Armstrong ~/Vaults/Armstrong";
-        lock-secrets = "fusermount -u ~/Vaults/Secrets";
-        unlock-secrets = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Secrets ~/Vaults/Secrets";
+      fish = {
+        loginShellInit = ''
+          # Only show the banner on interactive SSH logins. Gating on
+          # SSH_CONNECTION keeps it off local terminals that start a login
+          # shell (e.g. wezterm), while still greeting remote connections on
+          # any terminal. A non-interactive `fish -lc` (e.g. Codex command
+          # hooks) must not print to stdout, or it corrupts the hook's JSON
+          # output.
+          if status is-interactive; and set -q SSH_CONNECTION
+              ${pkgs.figurine}/bin/figurine -f "DOS Rebel.flf" $hostname
+          end
+        '';
+        shellAliases = lib.mkIf isLinuxHostWithCryptFolder {
+          lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
+          unlock-armstrong = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Armstrong ~/Vaults/Armstrong";
+          lock-secrets = "fusermount -u ~/Vaults/Secrets";
+          unlock-secrets = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Secrets ~/Vaults/Secrets";
+        };
+        shellInitLast = ''
+          # Export Haberdasher Cloudflare R2 credentials from sops
+          ${lib.concatMapStringsSep "\n" fishExport haberdasherSecrets}
+        '';
       };
-      zsh.shellAliases = lib.mkIf isLinuxHostWithCryptFolder {
-        lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
-        unlock-armstrong = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Armstrong ~/Vaults/Armstrong";
-        lock-secrets = "fusermount -u ~/Vaults/Secrets";
-        unlock-secrets = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Secrets ~/Vaults/Secrets";
+      zsh = {
+        initContent = lib.mkOrder 1000 ''
+          # Export Haberdasher Cloudflare R2 credentials from sops
+          ${lib.concatMapStringsSep "\n" bashExport haberdasherSecrets}
+        '';
+        shellAliases = lib.mkIf isLinuxHostWithCryptFolder {
+          lock-armstrong = "fusermount -u ~/Vaults/Armstrong";
+          unlock-armstrong = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Armstrong ~/Vaults/Armstrong";
+          lock-secrets = "fusermount -u ~/Vaults/Secrets";
+          unlock-secrets = "${pkgs.gocryptfs}/bin/gocryptfs ~/Crypt/Secrets ~/Vaults/Secrets";
+        };
       };
     };
     gtk.gtk3.bookmarks = lib.mkIf gtkBookmarksEnabled (
