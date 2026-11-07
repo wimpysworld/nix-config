@@ -42,6 +42,12 @@ in
   config = lib.mkIf (noughtyLib.isUser [ "martin" ]) {
     # User-specific sops secrets
     sops.secrets = {
+      HD_SIGNING_KEY = {
+        sopsFile = haberdasherSopsFile;
+        key = "HD_SIGNING_KEY";
+        format = "yaml";
+        mode = "0400";
+      };
       asciinema.path = "${config.xdg.configHome}/asciinema/config";
       hueadm.path = "${config.home.homeDirectory}/.hueadm.json";
       transifex.path = "${config.home.homeDirectory}/.transifexrc";
@@ -61,6 +67,7 @@ in
         pkgs.gocryptfs # Terminal encrypted filesystem
       ];
       sessionVariables = {
+        HD_SIGNING_KEY_FILE = config.sops.secrets.HD_SIGNING_KEY.path;
         DEBFULLNAME = "Martin Wimpress";
         DEBEMAIL = "code@wimpress.io";
         DEBSIGN_KEYID = "8F04688C17006782143279DA61DF940515E06DA3";
