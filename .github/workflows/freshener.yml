@@ -86,12 +86,12 @@ jobs:
             name: yam
             changelog: https://github.com/chainguard-dev/yam/commits/main
     steps:
-      - uses: actions/checkout@v7
-      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: DeterminateSystems/determinate-nix-action@16f94ba7aae399b9f9077c254b6719ec6de7e3e3 # v3.24.2
         with:
           extra-conf: |
             eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@f00fba8dc0949d63cbbb7d33da7912417d588d75 # v3.24.2
       # Each package's update logic lives in its own script under
       # .github/freshener/. The script decides whether an update is needed,
       # applies it, and prints the following to $GITHUB_OUTPUT:

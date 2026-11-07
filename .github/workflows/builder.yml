@@ -32,18 +32,18 @@ jobs:
       has_darwin: ${{ steps.inventory.outputs.has_darwin }}
       has_homes: ${{ steps.inventory.outputs.has_homes }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: wimpysworld/nothing-but-nix@b2574ec1cf1462bee0a34de0fb6ff11ad3c43cb2 # v12
         with:
           hatchet-protocol: "holster"
-      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/determinate-nix-action@16f94ba7aae399b9f9077c254b6719ec6de7e3e3 # v3.24.2
         with:
           extra-conf: |
             build-dir = /nix/build
             eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@f00fba8dc0949d63cbbb7d33da7912417d588d75 # v3.24.2
       - name: Inventory
         id: inventory
         run: bash home-manager/_mixins/scripts/flake-inventory/flake-inventory.sh
@@ -64,19 +64,19 @@ jobs:
       matrix:
         target: ${{ fromJSON(needs.inventory.outputs.devshells) }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: wimpysworld/nothing-but-nix@b2574ec1cf1462bee0a34de0fb6ff11ad3c43cb2 # v12
         if: contains(matrix.target.system, 'linux')
         with:
           hatchet-protocol: "holster"
-      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/determinate-nix-action@16f94ba7aae399b9f9077c254b6719ec6de7e3e3 # v3.24.2
         with:
           extra-conf: |
             ${{ runner.os == 'Linux' && 'build-dir = /nix/build' || '' }}
             eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@f00fba8dc0949d63cbbb7d33da7912417d588d75 # v3.24.2
       - name: Build checks, devShells & formatter
         env:
           SYSTEM: ${{ matrix.target.system }}
@@ -159,19 +159,19 @@ jobs:
       matrix:
         target: ${{ fromJSON(needs.inventory.outputs.packages) }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: wimpysworld/nothing-but-nix@b2574ec1cf1462bee0a34de0fb6ff11ad3c43cb2 # v12
         if: contains(matrix.target.system, 'linux')
         with:
           hatchet-protocol: "cleave"
-      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/determinate-nix-action@16f94ba7aae399b9f9077c254b6719ec6de7e3e3 # v3.24.2
         with:
           extra-conf: |
             ${{ runner.os == 'Linux' && 'build-dir = /nix/build' || '' }}
             eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@f00fba8dc0949d63cbbb7d33da7912417d588d75 # v3.24.2
       - name: Build packages
         env:
           SYSTEM: ${{ matrix.target.system }}
@@ -252,19 +252,19 @@ jobs:
       matrix:
         target: ${{ fromJSON(needs.inventory.outputs.nixos) }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: wimpysworld/nothing-but-nix@b2574ec1cf1462bee0a34de0fb6ff11ad3c43cb2 # v12
         if: runner.os == 'Linux'
         with:
           hatchet-protocol: "cleave"
-      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/determinate-nix-action@16f94ba7aae399b9f9077c254b6719ec6de7e3e3 # v3.24.2
         with:
           extra-conf: |
             build-dir = /nix/build
             eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@f00fba8dc0949d63cbbb7d33da7912417d588d75 # v3.24.2
       - name: Build NixOS ${{ matrix.target.name }}
         run: |
           nix build ".#nixosConfigurations.${{ matrix.target.name }}.config.system.build.toplevel" --no-link -L
@@ -285,14 +285,14 @@ jobs:
       matrix:
         target: ${{ fromJSON(needs.inventory.outputs.darwin) }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/determinate-nix-action@16f94ba7aae399b9f9077c254b6719ec6de7e3e3 # v3.24.2
         with:
           extra-conf: |
             eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@f00fba8dc0949d63cbbb7d33da7912417d588d75 # v3.24.2
       - name: Build Darwin ${{ matrix.target.name }}
         run: |
           nix build ".#darwinConfigurations.${{ matrix.target.name }}.config.system.build.toplevel" --no-link -L
@@ -313,7 +313,7 @@ jobs:
       matrix:
         target: ${{ fromJSON(needs.inventory.outputs.homes) }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: wimpysworld/nothing-but-nix@b2574ec1cf1462bee0a34de0fb6ff11ad3c43cb2 # v12
@@ -321,12 +321,12 @@ jobs:
         with:
           hatchet-protocol: "cleave"
           witness-carnage: "true"
-      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/determinate-nix-action@16f94ba7aae399b9f9077c254b6719ec6de7e3e3 # v3.24.2
         with:
           extra-conf: |
             ${{ runner.os == 'Linux' && 'build-dir = /nix/build' || '' }}
             eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@f00fba8dc0949d63cbbb7d33da7912417d588d75 # v3.24.2
       - name: Build Home ${{ matrix.target.name }}
         run: |
           nix build ".#homeConfigurations.\"${{ matrix.target.name }}\".activationPackage" --no-link -L
@@ -355,14 +355,14 @@ jobs:
             exit 1
           fi
           echo "✅ All build jobs passed (or were skipped)"
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/determinate-nix-action@16f94ba7aae399b9f9077c254b6719ec6de7e3e3 # v3.24.2
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
           extra-conf: |
             eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@f00fba8dc0949d63cbbb7d33da7912417d588d75 # v3.24.2
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       - name: Derive version
         id: version
@@ -391,16 +391,16 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actionhippie/swap-space@v1
+      - uses: actionhippie/swap-space@0cffa893f224708cfb6b011690d8ba819d69c10f # v1.1.0
         with:
           size: 16G
-      - uses: actions/checkout@v7
-      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: DeterminateSystems/determinate-nix-action@16f94ba7aae399b9f9077c254b6719ec6de7e3e3 # v3.24.2
         with:
           extra-conf: |
             eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@v3
-      - uses: DeterminateSystems/flakehub-push@main
+      - uses: DeterminateSystems/flakehub-cache-action@f00fba8dc0949d63cbbb7d33da7912417d588d75 # v3.24.2
+      - uses: DeterminateSystems/flakehub-push@e001ee821cdb763ef120c01f1048bfb2f938bb9c # v7
         with:
           tag: v${{ needs.sentinel.outputs.publish_ver }}
           visibility: public
@@ -419,7 +419,7 @@ jobs:
       id-token: write
       contents: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Check existing release 🔍
         id: check-release
         env:
@@ -438,13 +438,13 @@ jobs:
           hatchet-protocol: "holster"
           root-safe-haven: "10240"
           mnt-safe-haven: "10240"
-      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/determinate-nix-action@16f94ba7aae399b9f9077c254b6719ec6de7e3e3 # v3.24.2
         if: steps.check-release.outputs.exists == 'false'
         with:
           extra-conf: |
             build-dir = /nix/build
             eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@v3
+      - uses: DeterminateSystems/flakehub-cache-action@f00fba8dc0949d63cbbb7d33da7912417d588d75 # v3.24.2
         if: steps.check-release.outputs.exists == 'false'
       - name: Build ISO 💿️
         if: steps.check-release.outputs.exists == 'false'
@@ -457,7 +457,7 @@ jobs:
           sudo mv "result/iso/${ISO}" "iso/${ISO}"
       - name: Release ISO 🎁
         if: steps.check-release.outputs.exists == 'false'
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           tag_name: v${{ needs.sentinel.outputs.ver }}
           files: iso/*
