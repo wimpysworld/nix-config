@@ -15,6 +15,7 @@ lib.mkIf host.is.workstation {
 
       # JavaScript/TypeScript tooling
       bun
+      oxlint
       prettier
       tsx
       typescript

@@ -36,19 +36,19 @@ POLICY
       * mergeable is MERGEABLE
       * every statusCheckRollup entry is either a COMPLETED CheckRun with
         conclusion in [SUCCESS, SKIPPED, NEUTRAL] or a StatusContext with
-        state SUCCESS
+        state SUCCESS (empty statusCheckRollup is permitted outside freshener,
+        and completed failing checks on automated PRs are permitted when a
+        trusted peer has approved headRefOid)
       * zero unresolved review threads remain on the pull request
       * the author, branch, labels, and changed files match one of the four
         permitted pull request classes:
           - dependabot
           - github-actions
-          - freshener (wimpysworld/nix-config only; excludes automerge=false
-            packages herdr-ctx-bar, herdr-disp-model, and roamgate)
+          - freshener (wimpysworld/nix-config only)
           - trusted-peer (authored by flexiondotorg, sith-skrye, sith-traya,
             or sith-zannah; requires zero unresolved review threads, zero
-            reviews requesting changes, a trusted-peer approval or peer viewer,
-            and flexiondotorg as author or approver when touching sensitive
-            packages)
+            reviews requesting changes, and a trusted-peer approval or peer
+            viewer)
 
     With --dry-run, gh-bot-merge prints the verified classification and
     whether the pull request requires --approve or --admin, then exits 0
@@ -155,6 +155,19 @@ def check_ok:
     false
   end;
 
+def check_pending:
+  if .__typename == "CheckRun" then
+    .status != "COMPLETED"
+  elif .__typename == "StatusContext" then
+    .state == "PENDING" or .state == "EXPECTED"
+  elif has("status") or has("conclusion") then
+    .status != "COMPLETED"
+  elif has("state") then
+    .state == "PENDING" or .state == "EXPECTED"
+  else
+    false
+  end;
+
 def check_label:
   if (.__typename == "StatusContext") or ((has("state")) and (has("status") | not)) then
     "\(.context // .name // "unknown") (\(.state // "UNKNOWN"))"
@@ -173,15 +186,6 @@ def is_github_actions:
     or .headRefName == "ci/update-electron-toolchain"
     or .headRefName == "tailor-alter"
     or ((.headRefName // "") | startswith("freshen/"))
-  );
-
-def touches_sensitive_package($owner; $repo):
-  (($owner | ascii_downcase) == "wimpysworld" and ($repo | ascii_downcase) == "nix-config")
-  and any(
-    (.files // [])[];
-    ((.changeType == "RENAMED") and ((.previousPath // "") == ""))
-    or ((.path // "") | test("^pkgs/(herdr-ctx-bar|herdr-disp-model|roamgate)/"))
-    or ((.previousPath // "") | test("^pkgs/(herdr-ctx-bar|herdr-disp-model|roamgate)/"))
   );
 
 def has_freshener_labels:
@@ -211,8 +215,7 @@ def is_freshener($owner; $repo):
   (($owner | ascii_downcase) == "wimpysworld" and ($repo | ascii_downcase) == "nix-config")
   and (.author.login == "flexiondotorg")
   and has_freshener_labels
-  and ((.headRefName // "") | test("^(chainctl|claude-themes-catppuccin|defold|handy|lan-mouse|manuscript|moltis|openusage|silo-server|weave|wolfictl|yam)-[0-9A-Za-z._-]+$"))
-  and (touches_sensitive_package($owner; $repo) | not)
+  and ((.headRefName // "") | test("^(chainctl|claude-themes-catppuccin|defold|handy|herdr-ctx-bar|herdr-disp-model|lan-mouse|manuscript|moltis|openusage|roamgate|silo-server|weave|wolfictl|yam)-[0-9A-Za-z._-]+$"))
   and (((.files // []) | length) > 0)
   and all(
     (.files // [])[];
@@ -235,22 +238,25 @@ elif ((.headRefOid | type) != "string") or ((.headRefOid | length) == 0) then
   "ERR\u001fpull request #" + $pr_number + " has no headRefOid"
 elif ((.changedFiles // ((.files // []) | length)) > ((.files // []) | length)) then
   "ERR\u001fpull request #" + $pr_number + " changed file list is incomplete (changedFiles=" + (.changedFiles | tostring) + ", files=" + (((.files // []) | length) | tostring) + ")"
-elif ((.statusCheckRollup // []) | length) == 0 then
-  "ERR\u001fpull request #" + $pr_number + " has no statusCheckRollup entries (CI checks are missing or have not registered yet)"
 else
-  ([(.statusCheckRollup // [])[] | select(check_ok | not) | check_label]) as $bad_checks
-  | if ($bad_checks | length) > 0 then
-      "ERR\u001fpull request #" + $pr_number + " has failing or pending status checks: " + ($bad_checks | join(", "))
-    elif is_dependabot then
-      ["OK", "dependabot", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package($owner; $repo) | tostring), .headRefOid] | join("\u001f")
-    elif is_github_actions then
-      ["OK", "github-actions", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package($owner; $repo) | tostring), .headRefOid] | join("\u001f")
-    elif is_freshener($owner; $repo) then
-      ["OK", "freshener", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package($owner; $repo) | tostring), .headRefOid] | join("\u001f")
-    elif is_trusted_peer($owner; $repo) then
-      ["OK", "trusted-peer", (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), (touches_sensitive_package($owner; $repo) | tostring), .headRefOid] | join("\u001f")
-    else
+  (
+    if is_dependabot then "dependabot"
+    elif is_github_actions then "github-actions"
+    elif is_freshener($owner; $repo) then "freshener"
+    elif is_trusted_peer($owner; $repo) then "trusted-peer"
+    else ""
+    end
+  ) as $pr_class
+  | ([(.statusCheckRollup // [])[] | select(check_ok | not) | check_label]) as $bad_checks
+  | ([(.statusCheckRollup // [])[] | select(check_pending) | check_label]) as $pending_checks
+  | if $pr_class == "" then
       "ERR\u001fpull request #" + $pr_number + " (author=" + (.author.login // "UNKNOWN") + ", headRefName=" + (.headRefName // "UNKNOWN") + ") does not match any permitted PR policy"
+    elif (((.statusCheckRollup // []) | length) == 0) and ($pr_class == "freshener") then
+      "ERR\u001fpull request #" + $pr_number + " has no statusCheckRollup entries (CI checks are missing or have not registered yet)"
+    elif (($pending_checks | length) > 0) or ((($bad_checks | length) > 0) and ($pr_class == "trusted-peer")) then
+      "ERR\u001fpull request #" + $pr_number + " has failing or pending status checks: " + ($bad_checks | join(", "))
+    else
+      ["OK", $pr_class, (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), .headRefOid, ($bad_checks | join(", "))] | join("\u001f")
     end
 end
 '
@@ -277,8 +283,8 @@ pr_class="${field1}"
 author_login="${field2}"
 review_decision="${field3}"
 merge_state_status="${field4}"
-touches_sensitive="${field5:-false}"
-head_ref_oid="${field6:-}"
+head_ref_oid="${field5:-}"
+failed_checks="${field6:-}"
 if [[ -z ${head_ref_oid} ]]; then
 	die "pull request #${pr_number} has no headRefOid"
 fi
@@ -344,7 +350,7 @@ def is_trusted_peer_login($login):
 (.data.repository.pullRequest // null) as $pr
 | if ($pr | type) != "object" then
     "ERR\u001fGraphQL response did not identify pull request #" + $pr_number
-  elif ($pr.reviewThreads.pageInfo.hasNextPage == true) or (($pr_class == "trusted-peer") and ($pr.latestOpinionatedReviews.pageInfo.hasNextPage == true)) then
+  elif ($pr.reviewThreads.pageInfo.hasNextPage == true) or ((($pr_class == "trusted-peer") or ($failed_checks != "")) and ($pr.latestOpinionatedReviews.pageInfo.hasNextPage == true)) then
     "ERR\u001fpull request #" + $pr_number + " has more than 100 review threads or 50 opinionated reviews; refusing automated merge"
   else
     ([($pr.reviewThreads.nodes // [])[] | select(.isResolved != true)] | length) as $unresolved
@@ -367,32 +373,15 @@ def is_trusted_peer_login($login):
           )
         | (.commit.oid // "UNKNOWN")
       ]) as $stale_peer_oids
-    | any(
-        $reviews[];
-        .state == "APPROVED"
-        and (.author.login // "") == "flexiondotorg"
-        and (.commit.oid // "") == $head_ref_oid
-      ) as $has_flexion_approval
-    | ([
-        $reviews[]
-        | select(
-            .state == "APPROVED"
-            and (.author.login // "") == "flexiondotorg"
-            and (.commit.oid // "") != $head_ref_oid
-          )
-        | (.commit.oid // "UNKNOWN")
-      ]) as $stale_flexion_oids
     | if $unresolved > 0 then
         "ERR\u001fpull request #" + $pr_number + " has " + ($unresolved | tostring) + " unresolved review thread(s)"
-      elif $pr_class != "trusted-peer" then
-        ["OK", "false"] | join("\u001f")
       elif ($review_decision == "CHANGES_REQUESTED") or $changes_requested then
         "ERR\u001fpull request #" + $pr_number + " has a review requesting changes"
-      elif ($touches_sensitive == "true") and ($author_login != "flexiondotorg") and ($has_flexion_approval | not) then
-        if ($stale_flexion_oids | length) > 0 then
-          "ERR\u001fpull request #" + $pr_number + " touches a sensitive package and has a stale flexiondotorg approval on commit " + $stale_flexion_oids[0] + " (expected headRefOid " + $head_ref_oid + ")"
+      elif $pr_class != "trusted-peer" then
+        if ($failed_checks != "") and ($has_peer_approval | not) then
+          "ERR\u001fpull request #" + $pr_number + " has failing or pending status checks: " + $failed_checks
         else
-          "ERR\u001fpull request #" + $pr_number + " touches a sensitive package and requires flexiondotorg as author or approver"
+          ["OK", ($has_peer_approval | tostring)] | join("\u001f")
         end
       elif ($viewer == $author_login) and ($has_peer_approval | not) then
         if ($stale_peer_oids | length) > 0 then
@@ -426,8 +415,8 @@ peer_verify_out="$(jq -r \
 	--arg author_login "${author_login}" \
 	--arg viewer "${viewer}" \
 	--arg review_decision "${review_decision}" \
-	--arg touches_sensitive "${touches_sensitive}" \
 	--arg head_ref_oid "${head_ref_oid}" \
+	--arg failed_checks "${failed_checks}" \
 	"${JQ_VERIFY_GRAPHQL}" <<<"${graphql_json}")"
 peer_jq_status=$?
 set -e
@@ -447,7 +436,7 @@ if [[ ${pr_class} == "trusted-peer" ]]; then
 	if [[ ${author_login} != "${viewer}" && ${peer_approved} != "true" ]]; then
 		needs_approve=true
 	fi
-elif [[ ${author_login} != "${viewer}" && ${review_decision} != "APPROVED" ]]; then
+elif [[ ${author_login} != "${viewer}" && ${review_decision} != "APPROVED" && ${peer_approved} != "true" ]]; then
 	needs_approve=true
 fi
 

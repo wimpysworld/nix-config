@@ -24,7 +24,7 @@ The first switch that adds the service finds a server started by hand, so the se
 | Package: the plugin tree, with the manifest pinned to the store Python | [pkgs/herdr-ctx-bar/default.nix](../../../../pkgs/herdr-ctx-bar/default.nix) |
 | Plugin link, daemon restart, and the sidebar rows | [home-manager/_mixins/terminal/herdr.nix](../herdr.nix) |
 | Fence read and write denial of the state directory | [home-manager/_mixins/agentic/fence/default.nix](../../../../home-manager/_mixins/agentic/fence/default.nix) |
-| Freshener job, with auto-merge off | [.github/freshener/herdr-ctx-bar.sh](../../../../.github/freshener/herdr-ctx-bar.sh) |
+| Freshener job | [.github/freshener/herdr-ctx-bar.sh](../../../../.github/freshener/herdr-ctx-bar.sh) |
 
 The plugin runs one Python daemon for each Herdr server, outside Fence. The daemon reads the tail of each agent transcript under `~/.claude/projects`, `~/.codex/sessions`, and `~/.pi/agent/sessions`, and Hermes `state.db`, and reports only the bar to Herdr. It makes no network request. The agent-state hooks that the agent modules install give Herdr the session ID, so the daemon reads the correct transcript.
 
@@ -48,7 +48,7 @@ The state directory `~/.local/state/herdr/plugins/herdr-ctx-bar/` holds the daem
 | Claude Code hooks | [home-manager/_mixins/agentic/claude-code/default.nix](../../agentic/claude-code/default.nix) |
 | Codex hooks | [home-manager/_mixins/agentic/codex/default.nix](../../agentic/codex/default.nix) |
 | Pi extension, Linux only, like the Herdr Pi extension | [home-manager/_mixins/agentic/pi/default.nix](../../agentic/pi/default.nix) |
-| Freshener job, with auto-merge off | [.github/freshener/herdr-disp-model.sh](../../../../.github/freshener/herdr-disp-model.sh) |
+| Freshener job | [.github/freshener/herdr-disp-model.sh](../../../../.github/freshener/herdr-disp-model.sh) |
 
 The plugin has no daemon and no state. The hooks run inside each agent session, and inside Fence when the agent is fenced. Each hook reads the model and effort from the hook input, and the Codex hook can also read the tail of the session transcript and `models_cache.json`. It sends them to Herdr with `herdr pane report-metadata`. It makes no network request.
 

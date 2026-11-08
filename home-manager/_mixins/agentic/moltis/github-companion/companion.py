@@ -34,9 +34,9 @@ DISPLAY_NAMES = {"skrye": "Skrye", "zannah": "Zannah", "traya": "Traya"}
 USER_ID_DISPLAY_NAMES = {MARTIN_ID: "Martin", SKRYE_ID: "Skrye", ZANNAH_ID: "Zannah", TRAYA_ID: "Traya"}
 AGENT_ORDER = ("skrye", "traya", "zannah")
 AGENT_DEFAULT_SCHEDULES: dict[str, tuple[int, str]] = {"skrye": (1, "Monday"), "traya": (5, "Friday"), "zannah": (3, "Wednesday")}
-BASE_POLL_INTERVAL_SECS, BASE_POLL_INTERVAL_MS = 120, 120_000
+BASE_POLL_INTERVAL_SECS, BASE_POLL_INTERVAL_MS = 300, 300_000
 JITTER_MIN_SECS, JITTER_MAX_SECS, JITTER_MIN_MS, JITTER_MAX_MS = 5, 30, 5_000, 30_000
-RECONCILE_SWEEP_INTERVAL_MS = 2 * 60 * 60 * 1000
+RECONCILE_SWEEP_INTERVAL_MS = 6 * 60 * 60 * 1000
 SWEEP_RETRY_BASE_DELAY_MS = RECONCILE_SWEEP_RETRY_DELAY_MS = 15 * 60 * 1000
 SWEEP_RETRY_MAX_DELAY_MS = RECONCILE_SWEEP_INTERVAL_MS
 DEFAULT_RPC_TIMEOUT_SECS = DEFAULT_COMPLETION_WAIT_TIMEOUT_SECS = DEFAULT_RECOVERY_WAIT_TIMEOUT_SECS = 3600.0
@@ -272,7 +272,7 @@ def format_start_of_work_notice(*, agent_display_name: str, kind: str, repo: str
     elif kind == "weekly_sweep":
         line = f"⚙️ {display} starting weekly organisation sweep ({(sweep_date or schedule_day_name or 'scheduled').strip()})."
     else:
-        line = f"⚙️ {display} starting 2-hour reconciliation sweep."
+        line = f"⚙️ {display} starting 6-hour reconciliation sweep."
     return sanitize_no_matrix_mentions(" ".join(line.splitlines()).strip())
 
 
@@ -1212,7 +1212,7 @@ class CompanionStateStore:
                 is_self = bool(author_norm == self_login_norm or LOGIN_TO_AGENT_NAME.get(author_norm) == self.agent_name)
                 trigger_reason: str | None = None
                 if is_trusted:
-                    if review_decision == "APPROVED" and ci_state == "SUCCESS" and unresolved_thread_count == 0 and (handled_ci != "SUCCESS" or (head_sha and handled_sha != head_sha)):
+                    if review_decision == "APPROVED" and ci_state in ("SUCCESS", "NONE") and unresolved_thread_count == 0 and (handled_ci != ci_state or (head_sha and handled_sha != head_sha)):
                         trigger_reason = "ci_green_after_approval"
                     elif not is_self and handled_sha and head_sha and head_sha != handled_sha:
                         trigger_reason = "head_push"
@@ -1220,8 +1220,10 @@ class CompanionStateStore:
                         trigger_reason = "review_requested" if self_login_norm in review_requests else "unrequested_pr"
                 if trigger_reason is None:
                     if is_self or not is_trusted:
-                        handled_u, handled_sha, handled_ci = updated_at or handled_u, head_sha or handled_sha, ci_state or handled_ci
-                    elif ci_state != "SUCCESS" and ci_state:
+                        handled_u, handled_sha = updated_at or handled_u, head_sha or handled_sha
+                        if not is_trusted or ci_state not in ("SUCCESS", "NONE"):
+                            handled_ci = ci_state or handled_ci
+                    elif ci_state not in ("SUCCESS", "NONE") and ci_state:
                         handled_ci = ci_state
                 elif in_flight:
                     pending_followup = True
@@ -1844,7 +1846,7 @@ class NotificationPoller:
 
 
 class LocalExecutionCoordinator:
-    """Serialise all targeted turns, 2h reconciliation sweeps, and weekly sweeps under coordinator.lock and active-dispatch.json."""
+    """Serialise all targeted turns, 6-hour reconciliation sweeps, and weekly sweeps under coordinator.lock and active-dispatch.json."""
 
     def __init__(self, state_store: CompanionStateStore, rpc_client: MoltisRpcClient, data_dir: Path | str, agent_name: str, agent_display_name: str = "", main_model: str = "", matrix_client: MatrixClient | None = None, telegram_client: TelegramClient | None = None, telegram_bot_token_path: Path | str | None = None, telegram_allowed_users_path: Path | str | None = None, telegram_api_url: str = DEFAULT_TELEGRAM_API_URL, session_key: str = DEFAULT_GH_SESSION_KEY, room_id: str = DEFAULT_ROOM_ID, schedule_dow: int | None = None, schedule_day_name: str = "", completion_timeout_ms: int | None = None, recovery_deadline_ms: int | None = None, completion_wait_timeout_secs: float | None = None, recovery_wait_timeout_secs: float | None = None, rpc_timeout_secs: float = DEFAULT_RPC_TIMEOUT_SECS, poll_interval_ms: int = DEFAULT_COMPLETION_POLL_INTERVAL_MS, clock: Callable[[], int] = now_ms, sleeper: Callable[[float], None] = time.sleep):
         self.state_store = state_store
@@ -1889,7 +1891,7 @@ class LocalExecutionCoordinator:
         elif kind == "weekly_sweep":
             mode_line = f"Mode 3 - Weekly Organisation Sweep ({self.schedule_day_name} Only, dow == {self.schedule_dow})."
         else:
-            mode_line = "Mode 2 - 2-Hour Reconciliation Sweep."
+            mode_line = "Mode 2 - 6-Hour Reconciliation Sweep."
 
         blocks = [header, "\n".join(meta_lines), mode_line, *([extra_instructions.strip()] if extra_instructions.strip() else [])]
         heartbeat_md = ""
@@ -2046,7 +2048,7 @@ class LocalExecutionCoordinator:
 
 
 class GithubCompanionRunner:
-    """Orchestrate 120s notification and open-PR polling, inline trigger evaluation, and serialised turns."""
+    """Orchestrate 300s notification and open-PR polling, inline trigger evaluation, and serialised turns."""
 
     def __init__(self, state_store: CompanionStateStore, gh_client: GhApiSafeClient, poller: NotificationPoller, trust_filter: TrustFilterAndSnapshotBuilder, execution_coordinator: LocalExecutionCoordinator, matrix_client: MatrixClient | None = None, read_only_trial: bool = False, reconcile_interval_ms: int = RECONCILE_SWEEP_INTERVAL_MS, clock: Callable[[], int] = now_ms):
         self.state_store = state_store

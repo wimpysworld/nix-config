@@ -20,7 +20,7 @@ Never open Roamgate at `http://localhost:8787` or `http://127.0.0.1:8787`, even 
 | Package: built from source, with a fixed-output `node_modules` | [pkgs/roamgate/default.nix](../../../../pkgs/roamgate/default.nix) |
 | User services, sops decryption, the env file, the Ranger provider merge, and the Tailscale Serve unit on port 10000 | [home-manager/_mixins/terminal/herdr.nix](../herdr.nix) |
 | Fence read and write denial | [home-manager/_mixins/agentic/fence/default.nix](../../../../home-manager/_mixins/agentic/fence/default.nix) |
-| Freshener job, with auto-merge off | [.github/freshener/roamgate.sh](../../../../.github/freshener/roamgate.sh) |
+| Freshener job | [.github/freshener/roamgate.sh](../../../../.github/freshener/roamgate.sh) |
 
 The server runs outside Fence as the `roamgate.service` systemd user service, on `127.0.0.1:8787`, with `Restart=on-failure`. It starts after `herdr.service` and connects to the Herdr sockets directly. It is not the Roamgate Herdr plugin, which downloads a prebuilt binary, so do not run `herdr plugin install` or `herdr plugin link` for it. It runs from source on Bun, so the self-updater cannot replace it, and `ROAMGATE_DISABLE_UPDATE_CHECK=1` turns off update checks (see [Browser settings](#browser-settings)). The unit does not set `NODE_ENV`, because `NODE_ENV=development` on a loopback bind turns login off.
 
@@ -85,7 +85,7 @@ Task alerts follow Herdr's own notifications, because `ROAMGATE_NOTIFICATION_SOU
 
 ## Upgrades
 
-The freshener opens a pull request for each upstream `vX.Y.Z` release and does not enable auto-merge. Review the upstream diff before you merge. The release rate is high, so expect several pull requests each week. The build fails when a release changes the hook default lines that the package patches, or when the server imports a package outside the pruned `node_modules`. Add that package to the `prune-node-modules.ts` call in the package.
+The freshener opens a pull request for each upstream `vX.Y.Z` release. The release rate is high, so expect several pull requests each week. The build fails when a release changes the hook default lines that the package patches, or when the server imports a package outside the pruned `node_modules`. Add that package to the `prune-node-modules.ts` call in the package.
 
 Upstream declares Bun 1.4.3. The flake has Bun 1.4.2, and the build and a short run pass with it.
 

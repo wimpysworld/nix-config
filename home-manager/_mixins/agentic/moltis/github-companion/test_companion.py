@@ -295,8 +295,8 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
         self.assertEqual(companion.normalize_agent_name("traya"), "traya")
         self.assertEqual(companion.normalize_agent_name("zannah"), "zannah")
 
-        self.assertEqual(companion.BASE_POLL_INTERVAL_SECS, 120)
-        self.assertEqual(companion.BASE_POLL_INTERVAL_MS, 120_000)
+        self.assertEqual(companion.BASE_POLL_INTERVAL_SECS, 300)
+        self.assertEqual(companion.BASE_POLL_INTERVAL_MS, 300_000)
         self.assertEqual(companion.JITTER_MIN_SECS, 5)
         self.assertEqual(companion.JITTER_MAX_SECS, 30)
         self.assertEqual(companion.JITTER_MIN_MS, 5_000)
@@ -305,7 +305,7 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
             companion.AGENT_DEFAULT_SCHEDULES,
             {"skrye": (1, "Monday"), "traya": (5, "Friday"), "zannah": (3, "Wednesday")},
         )
-        self.assertEqual(companion.RECONCILE_SWEEP_INTERVAL_MS, 7_200_000)
+        self.assertEqual(companion.RECONCILE_SWEEP_INTERVAL_MS, 21_600_000)
 
         store_skrye = self.make_store("skrye")
         store_traya = self.make_store("traya")
@@ -570,14 +570,14 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
             now_ms_val,
             rng=lambda _lo, _hi: 10_000,
         )
-        self.assertEqual((base_sec_default, jitter_ms_default, wait_ms_default), (120, 10_000, 130_000))
+        self.assertEqual((base_sec_default, jitter_ms_default, wait_ms_default), (300, 10_000, 310_000))
 
         wait_ms, base_sec, jitter_ms = companion.compute_backoff_wait_ms(
-            {"X-Poll-Interval": "90", "Retry-After": "150"},
+            {"X-Poll-Interval": "90", "Retry-After": "450"},
             now_ms_val,
             rng=lambda _lo, _hi: 10_000,
         )
-        self.assertEqual((base_sec, jitter_ms, wait_ms), (150, 10_000, 160_000))
+        self.assertEqual((base_sec, jitter_ms, wait_ms), (450, 10_000, 460_000))
 
         wait_ms_rl, base_sec_rl, _ = companion.compute_backoff_wait_ms(
             {"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": str(now_sec + 300)},
@@ -708,11 +708,26 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
                     "reviewRequests": {"nodes": []},
                     "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
                 },
+                {
+                    "number": 35,
+                    "title": "Self-authored PR on repo with no CI checks",
+                    "url": "https://github.com/wimpysworld/nix-packages/pull/35",
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "updatedAt": "2023-11-16T10:00:00Z",
+                    "headRefOid": "sha_pr35_v1",
+                    "reviewDecision": "REVIEW_REQUIRED",
+                    "repository": {"nameWithOwner": "wimpysworld/nix-packages"},
+                    "author": {"__typename": "User", "login": "sith-skrye"},
+                    "reviewRequests": {"nodes": []},
+                    "statusCheckRollup": None,
+                },
             ],
             # Poll 2 (60s later):
             # - PR 10 has a new headRefOid push -> triggers "head_push"
             # - PR 20 is unchanged -> does not re-trigger
             # - PR 30 statusCheckRollup turns green after approval -> triggers "ci_green_after_approval"
+            # - PR 35 on repo with no CI checks (ci_state="NONE") is now APPROVED -> triggers "ci_green_after_approval"
             [
                 {
                     "number": 10,
@@ -758,6 +773,20 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
                         "state": "SUCCESS",
                         "contexts": {"nodes": [{"__typename": "CheckRun", "status": "COMPLETED", "conclusion": "SUCCESS"}]},
                     },
+                },
+                {
+                    "number": 35,
+                    "title": "Self-authored PR on repo with no CI checks",
+                    "url": "https://github.com/wimpysworld/nix-packages/pull/35",
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "updatedAt": "2023-11-16T10:01:00Z",
+                    "headRefOid": "sha_pr35_v1",
+                    "reviewDecision": "APPROVED",
+                    "repository": {"nameWithOwner": "wimpysworld/nix-packages"},
+                    "author": {"__typename": "User", "login": "sith-skrye"},
+                    "reviewRequests": {"nodes": []},
+                    "statusCheckRollup": None,
                 },
             ],
         ]
@@ -834,6 +863,7 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
             {
                 "wimpysworld/nix-config#10": "head_push",
                 "quickemu-project/quickemu#30": "ci_green_after_approval",
+                "wimpysworld/nix-packages#35": "ci_green_after_approval",
             },
         )
 
@@ -2009,12 +2039,12 @@ class InterruptedTurnRecoveryDecoupledPollingAndStartNoticeTests(GithubCompanion
         )
         self.assertEqual(res_reconcile["status"], "completed")
         self.assertTrue(res_reconcile["start_notice_sent"])
-        self.assertEqual(res_reconcile["start_notice_text"], "⚙️ Skrye starting 2-hour reconciliation sweep.")
+        self.assertEqual(res_reconcile["start_notice_text"], "⚙️ Skrye starting 6-hour reconciliation sweep.")
         self.assertFalse(res_reconcile["telegram_forwarded"])
         self.assertEqual(len(self.httpd.telegram_requests), 3)
         self.assertEqual(
             self.httpd.telegram_requests[2]["body"]["text"],
-            "⚙️ Skrye starting 2-hour reconciliation sweep.",
+            "⚙️ Skrye starting 6-hour reconciliation sweep.",
         )
 
         # 3) Weekly sweep sends 1 one-line start-of-work notice
@@ -2110,12 +2140,14 @@ class SweepRetryBackoffRecoveryAndScheduleTests(GithubCompanionTestBase):
         self.httpd.peek_active = False
 
         self.assertEqual(companion.SWEEP_RETRY_BASE_DELAY_MS, 15 * 60 * 1000)
-        self.assertEqual(companion.SWEEP_RETRY_MAX_DELAY_MS, 2 * 60 * 60 * 1000)
+        self.assertEqual(companion.SWEEP_RETRY_MAX_DELAY_MS, 6 * 60 * 60 * 1000)
         self.assertEqual(companion.compute_sweep_retry_delay_ms(1), 15 * 60 * 1000)
         self.assertEqual(companion.compute_sweep_retry_delay_ms(2), 30 * 60 * 1000)
         self.assertEqual(companion.compute_sweep_retry_delay_ms(3), 60 * 60 * 1000)
         self.assertEqual(companion.compute_sweep_retry_delay_ms(4), 120 * 60 * 1000)
-        self.assertEqual(companion.compute_sweep_retry_delay_ms(5), 120 * 60 * 1000)
+        self.assertEqual(companion.compute_sweep_retry_delay_ms(5), 240 * 60 * 1000)
+        self.assertEqual(companion.compute_sweep_retry_delay_ms(6), 360 * 60 * 1000)
+        self.assertEqual(companion.compute_sweep_retry_delay_ms(7), 360 * 60 * 1000)
 
         emit_targeted_notification = False
 
@@ -2270,7 +2302,7 @@ class SweepRetryBackoffRecoveryAndScheduleTests(GithubCompanionTestBase):
         third_retry_deadline = second_retry_deadline + (60 * 60 * 1000)
         self.assertEqual(st3["reconcile_sweep_retry_after_ms"], third_retry_deadline)
 
-        # Fourth failure caps retry delay at 120m (7,200,000 ms)
+        # Fourth failure schedules 120m (7,200,000 ms)
         self.current_time_ms = third_retry_deadline
         cycle_retry_4 = runner.run_cycle()
         self.assertIsNotNone(cycle_retry_4["sweep_dispatch"])
@@ -2280,14 +2312,24 @@ class SweepRetryBackoffRecoveryAndScheduleTests(GithubCompanionTestBase):
         fourth_retry_deadline = third_retry_deadline + (120 * 60 * 1000)
         self.assertEqual(st4["reconcile_sweep_retry_after_ms"], fourth_retry_deadline)
 
-        # Fifth failure also stays capped at 120m
+        # Fifth failure schedules 240m (14,400,000 ms)
         self.current_time_ms = fourth_retry_deadline
         cycle_retry_5 = runner.run_cycle()
         self.assertIsNotNone(cycle_retry_5["sweep_dispatch"])
         self.assertEqual(cycle_retry_5["sweep_dispatch"]["status"], "failed")
         st5 = store.read_state()
         self.assertEqual(st5["reconcile_sweep_failure_count"], 5)
-        self.assertEqual(st5["reconcile_sweep_retry_after_ms"], fourth_retry_deadline + (120 * 60 * 1000))
+        fifth_retry_deadline = fourth_retry_deadline + (240 * 60 * 1000)
+        self.assertEqual(st5["reconcile_sweep_retry_after_ms"], fifth_retry_deadline)
+
+        # Sixth failure caps retry delay at 360m (6 hours / 21,600,000 ms)
+        self.current_time_ms = fifth_retry_deadline
+        cycle_retry_6 = runner.run_cycle()
+        self.assertIsNotNone(cycle_retry_6["sweep_dispatch"])
+        self.assertEqual(cycle_retry_6["sweep_dispatch"]["status"], "failed")
+        st6 = store.read_state()
+        self.assertEqual(st6["reconcile_sweep_failure_count"], 6)
+        self.assertEqual(st6["reconcile_sweep_retry_after_ms"], fifth_retry_deadline + (360 * 60 * 1000))
 
     def test_companion_restart_preserves_retry_deadline_recovers_interrupted_sweep_and_dispatches_pending_targeted_work(
         self,
@@ -2499,14 +2541,14 @@ class SweepRetryBackoffRecoveryAndScheduleTests(GithubCompanionTestBase):
         self.assertEqual(st_wo["reconcile_sweep_failure_count"], 0)
         self.assertIsNone(st_wo["reconcile_sweep_retry_after_ms"])
 
-        # 3) Successful reconciliation retains the 2-hour (7,200,000 ms) schedule and clears retry state
-        self.current_time_ms = weekly_retry_deadline + 7_200_000 - 1
+        # 3) Successful reconciliation retains the 6-hour (21,600,000 ms) schedule and clears retry state
+        self.current_time_ms = weekly_retry_deadline + 21_600_000 - 1
         self.assertFalse(runner.is_reconcile_sweep_due())
         self.assertIsNone(runner.run_cycle()["sweep_dispatch"])
 
-        # Seed a failed reconcile attempt first, then succeed after retry to verify retry state clears and 2h schedule holds
+        # Seed a failed reconcile attempt first, then succeed after retry to verify retry state clears and 6-hour schedule holds
         should_fail_turn = True
-        self.current_time_ms = weekly_retry_deadline + 7_200_000
+        self.current_time_ms = weekly_retry_deadline + 21_600_000
         cycle_rec_fail = runner.run_cycle()
         self.assertEqual(cycle_rec_fail["sweep_dispatch"]["kind"], "reconcile_sweep")
         self.assertEqual(cycle_rec_fail["sweep_dispatch"]["status"], "failed")
@@ -2525,11 +2567,11 @@ class SweepRetryBackoffRecoveryAndScheduleTests(GithubCompanionTestBase):
         self.assertIsNone(st_ro["reconcile_sweep_retry_after_ms"])
         self.assertIsNone(st_ro["last_reconcile_sweep_failure_reason"])
 
-        # Next reconciliation sweep is not due until 7,200,000 ms later
-        self.current_time_ms = rec_retry_ms + 7_200_000 - 60_000
+        # Next reconciliation sweep is not due until 21,600,000 ms later
+        self.current_time_ms = rec_retry_ms + 21_600_000 - 60_000
         self.assertFalse(runner.is_reconcile_sweep_due())
         self.assertIsNone(runner.run_cycle()["sweep_dispatch"])
-        self.current_time_ms = rec_retry_ms + 7_200_000
+        self.current_time_ms = rec_retry_ms + 21_600_000
         self.assertTrue(runner.is_reconcile_sweep_due())
 
     def test_existing_state_json_without_sweep_retry_fields_loads_safely_and_allows_initial_sweep(self) -> None:

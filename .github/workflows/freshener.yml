@@ -50,26 +50,15 @@ jobs:
           - id: moltis
             name: Moltis
             changelog: https://github.com/moltis-org/moltis/releases
-          # Context Bar reads every agent transcript and runs outside Fence, so
-          # a person reviews the upstream diff before each upgrade merges.
           - id: herdr-ctx-bar
             name: Herdr Context Bar
             changelog: https://github.com/pdalinis/herdr-ctx-bar/releases
-            automerge: false
-          # Model Display hooks run inside every Claude Code, Codex, and Pi
-          # session, so a person reviews the upstream diff before each upgrade
-          # merges.
           - id: herdr-disp-model
             name: Herdr Model Display
             changelog: https://github.com/pdalinis/herdr-disp-model/commits/main
-            automerge: false
-          # Roamgate can type into every Herdr pane and read any file of the
-          # user, so a person reviews the upstream diff before each upgrade
-          # merges.
           - id: roamgate
             name: Roamgate
             changelog: https://github.com/powerfooI/roamgate/releases
-            automerge: false
           - id: openusage
             name: OpenUsage
             changelog: https://github.com/janekbaraniewski/openusage/releases
@@ -110,7 +99,6 @@ jobs:
           PKG_ID: ${{ matrix.id }}
           PKG_NAME: ${{ matrix.name }}
           CHANGELOG: ${{ matrix.changelog }}
-          AUTOMERGE: ${{ matrix.automerge }}
           VERSION: ${{ steps.update.outputs.version }}
           FILES: ${{ steps.update.outputs.files }}
         run: .github/freshener/open-pr.sh

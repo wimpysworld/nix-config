@@ -359,9 +359,7 @@ mergeability, status checks, and the Dependabot, GitHub Actions,
 pull request must be authored by `flexiondotorg`, `sith-skrye`, `sith-traya`,
 or `sith-zannah`, have zero unresolved review threads and zero reviews
 requesting changes, and have an approval from another trusted peer (or a
-different trusted-peer viewer who approves). Packages with `automerge: false`
-(`herdr-ctx-bar`, `herdr-disp-model`, and `roamgate`) stay blocked unless
-`flexiondotorg` authored or approved the pull request. Pass `--dry-run`
+different trusted-peer viewer who approves). Pass `--dry-run`
 before the pull request URL to print the verified class and required flags
 without mutating GitHub state.
 

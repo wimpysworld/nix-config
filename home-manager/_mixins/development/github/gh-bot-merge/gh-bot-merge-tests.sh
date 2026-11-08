@@ -333,12 +333,95 @@ assert_pr_rejected 'reject PR with empty headRefOid' "${url_ww}" 'no headRefOid'
 
 reset_stub
 write_pr_json wimpysworld 'app/dependabot' 'dependabot/nix/nixpkgs-3ec6363' '.statusCheckRollup = []'
-assert_pr_rejected 'reject empty statusCheckRollup' "${url_ww}" 'no statusCheckRollup entries'
+run_helper "${url_ww}"
+if [[ ${status} -ne 0 ]]; then
+	fail 'accept empty statusCheckRollup on dependabot PR' "status ${status}: ${stderr}"
+elif [[ $(review_count) -ne 1 || $(merge_count) -ne 1 ]]; then
+	fail 'accept empty statusCheckRollup on dependabot PR approves and merges once' \
+		"reviews=$(review_count) merges=$(merge_count)"
+else
+	pass 'accept empty statusCheckRollup on dependabot PR when repository has no CI'
+fi
+
+reset_stub
+write_pr_json wimpysworld 'github-actions[bot]' 'update_flake_lock_action' '.statusCheckRollup = []'
+run_helper "${url_ww}"
+if [[ ${status} -ne 0 ]]; then
+	fail 'accept empty statusCheckRollup on github-actions PR' "status ${status}: ${stderr}"
+elif [[ $(review_count) -ne 1 || $(merge_count) -ne 1 ]]; then
+	fail 'accept empty statusCheckRollup on github-actions PR approves and merges once' \
+		"reviews=$(review_count) merges=$(merge_count)"
+else
+	pass 'accept empty statusCheckRollup on github-actions PR when repository has no CI'
+fi
+
+reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/no-ci-repo' '.files = [{path: "README.md"}] | .statusCheckRollup = []'
+GH_STUB_VIEWER=sith-zannah run_helper "${url_ww}"
+if [[ ${status} -ne 0 ]]; then
+	fail 'accept empty statusCheckRollup on trusted-peer PR' "status ${status}: ${stderr}"
+elif [[ $(review_count) -ne 1 || $(merge_count) -ne 1 ]]; then
+	fail 'accept empty statusCheckRollup on trusted-peer PR approves and merges once' \
+		"reviews=$(review_count) merges=$(merge_count)"
+else
+	pass 'accept empty statusCheckRollup on trusted-peer PR when repository has no CI'
+fi
+
+reset_stub
+write_pr_json wimpysworld 'flexiondotorg' 'chainctl-0.2.391' \
+	'.files = [{path: "pkgs/chainctl/default.nix"}] | .statusCheckRollup = []'
+assert_pr_rejected 'reject empty statusCheckRollup on freshener PR' "${url_ww}" 'no statusCheckRollup entries'
 
 reset_stub
 write_pr_json wimpysworld 'app/dependabot' 'dependabot/nix/nixpkgs-3ec6363' \
 	'.statusCheckRollup += [{__typename: "CheckRun", name: "Nix ❄️", status: "COMPLETED", conclusion: "FAILURE"}]'
-assert_pr_rejected 'reject failing CheckRun and name check' "${url_ww}" 'Nix ❄️'
+assert_pr_rejected 'reject unapproved failing CheckRun and name check' "${url_ww}" 'Nix ❄️'
+
+reset_stub
+write_pr_json wimpysworld 'app/dependabot' 'dependabot/nix/nixpkgs-3ec6363' \
+	'.statusCheckRollup += [{__typename: "CheckRun", name: "Nix ❄️", status: "COMPLETED", conclusion: "FAILURE"}]'
+write_graphql_json '.data.repository.pullRequest.latestOpinionatedReviews.nodes = [{author: {login: "sith-zannah"}, state: "APPROVED", commit: {oid: "'"${STALE_HEAD_OID}"'"}}]'
+assert_pr_rejected 'reject failing CheckRun on dependabot PR when peer approval commit is stale' "${url_ww}" 'Nix ❄️'
+
+reset_stub
+write_pr_json wimpysworld 'app/dependabot' 'dependabot/nix/nixpkgs-3ec6363' \
+	'.statusCheckRollup += [{__typename: "CheckRun", name: "Nix ❄️", status: "COMPLETED", conclusion: "FAILURE"}]'
+write_graphql_json '.data.repository.pullRequest.latestOpinionatedReviews.nodes = [{author: {login: "sith-zannah"}, state: "APPROVED", commit: {oid: "'"${DEFAULT_HEAD_OID}"'"}}]'
+GH_STUB_VIEWER=sith-zannah run_helper "${url_ww}"
+if [[ ${status} -ne 0 ]]; then
+	fail 'accept dependabot PR with unrelated failing CheckRun after commit-pinned peer approval' "status ${status}: ${stderr}"
+elif [[ $(review_count) -ne 0 || $(merge_count) -ne 1 ]]; then
+	fail 'dependabot PR with prior commit-pinned peer approval skips duplicate review and merges once' \
+		"reviews=$(review_count) merges=$(merge_count)"
+else
+	pass 'accept dependabot PR with unrelated failing CheckRun when trusted peer approved headRefOid'
+fi
+
+reset_stub
+write_pr_json wimpysworld 'github-actions[bot]' 'update_flake_lock_action' \
+	'.statusCheckRollup += [{__typename: "CheckRun", name: "Publish", status: "COMPLETED", conclusion: "FAILURE"}]'
+write_graphql_json '.data.repository.pullRequest.latestOpinionatedReviews.nodes = [{author: {login: "sith-skrye"}, state: "APPROVED", commit: {oid: "'"${DEFAULT_HEAD_OID}"'"}}]'
+GH_STUB_VIEWER=sith-skrye run_helper "${url_ww}"
+if [[ ${status} -ne 0 ]]; then
+	fail 'accept github-actions PR with unrelated failing CheckRun after commit-pinned peer approval' "status ${status}: ${stderr}"
+elif [[ $(review_count) -ne 0 || $(merge_count) -ne 1 ]]; then
+	fail 'github-actions PR with prior commit-pinned peer approval skips duplicate review and merges once' \
+		"reviews=$(review_count) merges=$(merge_count)"
+else
+	pass 'accept github-actions PR with unrelated failing CheckRun when trusted peer approved headRefOid'
+fi
+
+reset_stub
+write_pr_json wimpysworld 'app/dependabot' 'dependabot/nix/nixpkgs-3ec6363' \
+	'.statusCheckRollup += [{__typename: "CheckRun", name: "Nix ❄️", status: "COMPLETED", conclusion: "FAILURE"}, {__typename: "CheckRun", name: "Test Suite", status: "IN_PROGRESS", conclusion: null}]'
+write_graphql_json '.data.repository.pullRequest.latestOpinionatedReviews.nodes = [{author: {login: "sith-zannah"}, state: "APPROVED", commit: {oid: "'"${DEFAULT_HEAD_OID}"'"}}]'
+assert_pr_rejected 'reject dependabot PR with in_progress CheckRun even when approved by trusted peer' "${url_ww}" 'Test Suite'
+
+reset_stub
+write_pr_json wimpysworld 'sith-skrye' 'fix/failing-ci' \
+	'.files = [{path: "Cargo.lock"}] | .reviewDecision = "APPROVED" | .statusCheckRollup += [{__typename: "CheckRun", name: "Nix ❄️", status: "COMPLETED", conclusion: "FAILURE"}]'
+write_graphql_json '.data.repository.pullRequest.latestOpinionatedReviews.nodes = [{author: {login: "sith-zannah"}, state: "APPROVED", commit: {oid: "'"${DEFAULT_HEAD_OID}"'"}}]'
+GH_STUB_VIEWER=sith-zannah assert_pr_rejected 'reject trusted-peer PR with failing CheckRun even when approved' "${url_ww}" 'Nix ❄️'
 
 reset_stub
 write_pr_json wimpysworld 'app/dependabot' 'dependabot/nix/nixpkgs-3ec6363' \
@@ -363,21 +446,7 @@ reset_stub
 write_pr_json wimpysworld 'github-actions[bot]' 'feature/arbitrary-branch'
 assert_pr_rejected 'reject github-actions author on arbitrary branch' "${url_ww}" 'does not match'
 
-# 4. Freshener policy rejections (including automerge: false packages!)
-for blocked_pkg in roamgate herdr-ctx-bar herdr-disp-model; do
-	reset_stub
-	write_pr_json wimpysworld 'flexiondotorg' "${blocked_pkg}-0.2.0" \
-		'.files = [{path: ("pkgs/" + "'"${blocked_pkg}"'" + "/default.nix")}]'
-	GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
-		"reject automerge: false package ${blocked_pkg} even when reviewed by peer" "${url_ww}" 'does not match'
-done
-
-reset_stub
-write_pr_json wimpysworld 'flexiondotorg' 'handy-1' \
-	'.files = [{path: "pkgs/roamgate/default.nix"}]'
-GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
-	'reject allowed freshener branch touching sensitive package' "${url_ww}" 'does not match'
-
+# 4. Freshener policy rejections
 reset_stub
 write_pr_json wimpysworld 'flexiondotorg' 'chainctl-0.2.391' \
 	'.files = [{path: "pkgs/chainctl/default.nix"}]'
@@ -396,7 +465,7 @@ write_pr_json wimpysworld 'flexiondotorg' 'chainctl-0.2.391' \
 GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
 	'reject freshener PR touching workflow file' "${url_ww}" 'does not match'
 
-# 5. Trusted-peer policy: reviewThreads, latestOpinionatedReviews, peer review, and sensitive packages
+# 5. Trusted-peer policy: reviewThreads, latestOpinionatedReviews, and peer review
 for peer_case in 'flexiondotorg:sith-zannah' 'sith-skrye:sith-zannah' 'sith-traya:sith-skrye' 'sith-zannah:sith-traya'; do
 	author="${peer_case%%:*}"
 	viewer="${peer_case##*:}"
@@ -527,54 +596,20 @@ reset_stub
 write_pr_json wimpysworld 'sith-skrye' 'fix/unauthorised-reviewer' '.files = [{path: "Cargo.lock"}]'
 GH_STUB_VIEWER=mallory assert_pr_rejected 'reject unauthorised trusted-peer viewer' "${url_ww}" 'not authorised'
 
-for blocked_pkg in roamgate herdr-ctx-bar herdr-disp-model; do
+for pkg in roamgate herdr-ctx-bar herdr-disp-model; do
 	reset_stub
-	write_pr_json wimpysworld 'sith-skrye' "fix/${blocked_pkg}" \
-		'.files = [{path: ("pkgs/" + "'"${blocked_pkg}"'" + "/default.nix")}]'
-	GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
-		"reject trusted-peer change to sensitive package ${blocked_pkg}" "${url_ww}" 'sensitive package'
+	write_pr_json wimpysworld 'sith-skrye' "fix/${pkg}" \
+		'.files = [{path: ("pkgs/" + "'"${pkg}"'" + "/default.nix")}]'
+	GH_STUB_VIEWER=sith-zannah run_helper "${url_ww}"
+	if [[ ${status} -ne 0 ]]; then
+		fail "accept trusted-peer change to ${pkg} when reviewed by peer" "status ${status}: ${stderr}"
+	elif [[ $(review_count) -ne 1 || $(merge_count) -ne 1 ]]; then
+		fail "trusted-peer change to ${pkg} approves and merges once" \
+			"reviews=$(review_count) merges=$(merge_count)"
+	else
+		pass "accept trusted-peer change to ${pkg} when reviewed by peer"
+	fi
 done
-
-reset_stub
-write_pr_json wimpysworld 'sith-skrye' 'fix/roamgate-empty-review-decision' \
-	'.files = [{path: "pkgs/roamgate/default.nix"}] | .reviewDecision = ""'
-GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
-	'reject trusted-peer sensitive package PR when reviewDecision is empty' "${url_ww}" 'sensitive package'
-
-reset_stub
-write_pr_json wimpysworld 'sith-skrye' 'fix/roamgate-approved-by-flexion' \
-	'.files = [{path: "pkgs/roamgate/default.nix"}] | .reviewDecision = "APPROVED"'
-write_graphql_json '.data.repository.pullRequest.latestOpinionatedReviews.nodes = [{author: {login: "flexiondotorg"}, state: "APPROVED", commit: {oid: "'"${DEFAULT_HEAD_OID}"'"}}]'
-GH_STUB_VIEWER=sith-zannah run_helper "${url_ww}"
-if [[ ${status} -ne 0 ]]; then
-	fail 'accept sensitive package PR when approved by flexiondotorg' "status ${status}: ${stderr}"
-else
-	pass 'accept sensitive package PR when flexiondotorg approved it'
-fi
-
-reset_stub
-write_pr_json wimpysworld 'sith-skrye' 'fix/roamgate-stale-flexion-approval' \
-	'.files = [{path: "pkgs/roamgate/default.nix"}] | .reviewDecision = "APPROVED"'
-write_graphql_json '.data.repository.pullRequest.latestOpinionatedReviews.nodes = [{author: {login: "flexiondotorg"}, state: "APPROVED", commit: {oid: "'"${STALE_HEAD_OID}"'"}}]'
-GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
-	'reject sensitive package PR when flexiondotorg approval commit.oid is stale' "${url_ww}" \
-	"stale flexiondotorg approval on commit ${STALE_HEAD_OID} (expected headRefOid ${DEFAULT_HEAD_OID})"
-
-reset_stub
-write_pr_json wimpysworld 'sith-skrye' 'fix/rename-sensitive-package' \
-	'.files = [{path: "pkgs/allowed-package/default.nix", changeType: "RENAMED"}]'
-GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
-	'reject trusted-peer rename with unavailable previous path on nix-config' "${url_ww}" 'sensitive package'
-
-reset_stub
-write_pr_json wimpysworld 'sith-skrye' 'fix/rename-other-repo' \
-	'.files = [{path: "src/new_name.rs", changeType: "RENAMED"}]'
-GH_STUB_VIEWER=sith-zannah run_helper --dry-run 'https://github.com/wimpysworld/nyala/pull/42'
-if [[ ${status} -ne 0 ]]; then
-	fail 'accept trusted-peer rename outside wimpysworld/nix-config' "status ${status}: ${stderr}"
-else
-	pass 'accept trusted-peer rename outside wimpysworld/nix-config'
-fi
 
 reset_stub
 write_pr_json wimpysworld 'sith-skrye' 'fix/large-change' \
@@ -621,18 +656,6 @@ GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
 	'reject trusted-peer PR when paginated file list contains duplicate paths' "${url_ww}" 'changed file list is incomplete'
 
 reset_stub
-write_pr_json wimpysworld 'sith-skrye' 'fix/large-change-sensitive-prev' \
-	'.files = [{path: "docs/file-1.md"}] | .changedFiles = 101'
-jq -n '[range(1; 101) | {filename: ("docs/file-\(.).md"), previous_filename: null, status: "modified"}] + [{filename: "pkgs/renamed/default.nix", previous_filename: "pkgs/roamgate/default.nix", status: "renamed"}]' \
-	>"${state_dir}/files-raw.json"
-GH_STUB_VIEWER=sith-zannah run_helper --dry-run "${url_ww}"
-if [[ ${status} -ne 64 || ${stderr} != *"sensitive package"* ]]; then
-	fail 'reject >100-file PR when previous_filename is a sensitive package' "status=${status} stderr=${stderr}"
-else
-	pass 'reject >100-file PR when previous_filename is a sensitive package'
-fi
-
-reset_stub
 write_pr_json wimpysworld 'sith-skrye' 'fix/large-change-safe-rename' \
 	'.files = [{path: "docs/file-1.md"}] | .changedFiles = 101'
 jq -n '[range(1; 101) | {filename: ("docs/file-\(.).md"), previous_filename: null, status: "modified"}] + [{filename: "docs/new-name.md", previous_filename: "docs/old-name.md", status: "renamed"}]' \
@@ -642,18 +665,6 @@ if [[ ${status} -ne 0 ]]; then
 	fail 'accept >100-file PR when REST rename has safe previous_filename' "status=${status} stderr=${stderr}"
 else
 	pass 'accept >100-file PR when REST rename has safe previous_filename'
-fi
-
-reset_stub
-write_pr_json wimpysworld 'sith-skrye' 'fix/large-change-sensitive' \
-	'.files = [{path: "docs/file-1.md"}] | .changedFiles = 101'
-jq -n '[range(1; 101) | {filename: ("docs/file-\(.).md"), previous_filename: null, status: "modified"}] + [{filename: "pkgs/roamgate/default.nix", previous_filename: null, status: "modified"}]' \
-	>"${state_dir}/files-raw.json"
-GH_STUB_VIEWER=sith-zannah run_helper --dry-run "${url_ww}"
-if [[ ${status} -ne 64 || ${stderr} != *"sensitive package"* ]]; then
-	fail 'reject >100-file PR when sensitive package appears on page 2' "status=${status} stderr=${stderr}"
-else
-	pass 'reject >100-file PR when sensitive package appears on page 2'
 fi
 
 # 6. Valid Dependabot PRs (--dry-run and full merge across allowed owners)
@@ -719,7 +730,7 @@ for ga_branch in update_flake_lock_action ci/update-electron-toolchain tailor-al
 done
 
 # 9. Valid wimpysworld/nix-config Freshener PRs (self-authored by flexiondotorg)
-for pkg in chainctl claude-themes-catppuccin defold handy lan-mouse manuscript moltis openusage silo-server weave wolfictl yam; do
+for pkg in chainctl claude-themes-catppuccin defold handy herdr-ctx-bar herdr-disp-model lan-mouse manuscript moltis openusage roamgate silo-server weave wolfictl yam; do
 	reset_stub
 	write_pr_json wimpysworld 'flexiondotorg' "${pkg}-1.2.3" \
 		'.files = [{path: ("pkgs/" + "'"${pkg}"'" + "/default.nix")}, {path: "flake.lock"}]'

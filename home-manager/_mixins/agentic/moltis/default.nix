@@ -1640,7 +1640,7 @@ in
 
         heartbeat = {
           enabled = !config.agentic.moltis.githubCompanion.enable;
-          every = "120m";
+          every = "360m";
           model = mainModel;
           sandbox_enabled = false;
           deliver = true;

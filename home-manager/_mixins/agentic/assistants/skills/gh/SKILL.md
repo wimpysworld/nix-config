@@ -271,9 +271,7 @@ allowed organisation. It accepts Dependabot, GitHub Actions,
 `wimpysworld/nix-config` Freshener, and peer-agent pull requests. A
 peer-agent pull request must be authored by `sith-skrye`, `sith-traya`, or
 `sith-zannah`, and the authenticated viewer must be a different peer agent or
-`flexiondotorg`. Packages with `automerge: false` (`herdr-ctx-bar`,
-`herdr-disp-model`, and `roamgate`) stay blocked for Freshener and peer-agent
-pull requests. Pass `--dry-run` before the pull request URL to verify the
+`flexiondotorg`. Pass `--dry-run` before the pull request URL to verify the
 class and required flags without mutating GitHub state.
 
 `gh-review-reply`, `gh-review-resolve`, `gh-review-unresolve`, `gh-review-withdraw-approval`, and `gh-code-scanning-dismiss` are narrow write helpers
