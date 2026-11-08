@@ -36,6 +36,7 @@ AGENT_ORDER = ("skrye", "traya", "zannah")
 AGENT_DEFAULT_SCHEDULES: dict[str, tuple[int, str]] = {"skrye": (1, "Monday"), "traya": (5, "Friday"), "zannah": (3, "Wednesday")}
 BASE_POLL_INTERVAL_SECS, BASE_POLL_INTERVAL_MS = 300, 300_000
 JITTER_MIN_SECS, JITTER_MAX_SECS, JITTER_MIN_MS, JITTER_MAX_MS = 5, 30, 5_000, 30_000
+PR_REVIEW_COOLDOWN_SECS, PR_REVIEW_COOLDOWN_MS = 900, 15 * 60 * 1000
 RECONCILE_SWEEP_INTERVAL_MS = 6 * 60 * 60 * 1000
 SWEEP_RETRY_BASE_DELAY_MS = RECONCILE_SWEEP_RETRY_DELAY_MS = 15 * 60 * 1000
 SWEEP_RETRY_MAX_DELAY_MS = RECONCILE_SWEEP_INTERVAL_MS
@@ -880,11 +881,12 @@ def parse_gh_api_paginated_http_output(raw_output: str) -> tuple[int, dict[str, 
 class CompanionStateStore:
     """Durable 0600 unified state store (state.json) in ~/.local/state/moltis/github-companion-<agent>/."""
 
-    def __init__(self, state_dir: Path | str, agent_name: str, room_id: str = DEFAULT_ROOM_ID, started_at_ms: int | None = None):
+    def __init__(self, state_dir: Path | str, agent_name: str, room_id: str = DEFAULT_ROOM_ID, started_at_ms: int | None = None, followup_cooldown_ms: int = PR_REVIEW_COOLDOWN_MS):
         self.state_dir = Path(state_dir)
         self.agent_name = normalize_agent_name(agent_name)
         self.room_id = room_id
         self.started_at_ms = _safe_int(started_at_ms, now_ms()) if started_at_ms is not None else now_ms()
+        self.followup_cooldown_ms = max(0, _safe_int(followup_cooldown_ms, PR_REVIEW_COOLDOWN_MS))
         self.ensure_directory()
 
     def _default_thread_entry(self, *, handled_updated_at: str | None = None, handled_head_sha: str | None = None, handled_ci_state: str | None = None, retry_count: int = 0) -> dict:
@@ -1132,7 +1134,7 @@ class CompanionStateStore:
     def record_polled_notifications(self, records: list[dict], now_override_ms: int | None = None) -> dict:
         """Persist retrieved notification records into state.json before advancing Last-Modified."""
         stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
-        actionable_threads, queued_followups, auto_dismiss_threads = [], [], []
+        actionable_threads, queued_followups, auto_dismiss_threads, cooled_down_threads = [], [], [], []
         with self._locked_dir() as dir_fd:
             state = self._read_state_unlocked(dir_fd)
             threads: dict[str, dict] = state["threads"]
@@ -1160,23 +1162,30 @@ class CompanionStateStore:
 
                 unhandled = is_timestamp_newer(updated_at, handled_u) or (not handled_u and bool(updated_at)) or (updated_at == (handled_u or "") and comment_id is not None and comment_id > _safe_int(existing.get("handled_comment_id"), 0))
                 in_flight, pending_followup = bool(existing.get("in_flight", False)), bool(existing.get("pending_followup", False))
+                cooldown_until_ms = _safe_int(existing.get("followup_cooldown_until_ms"), 0)
+                is_pr_cooldown = subject_type.lower() in ("pullrequest", "pull_request", "pr") and cooldown_until_ms > stamp_ms
                 if in_flight and unhandled and newer:
                     pending_followup = True
                     queued_followups.append(thread_id)
                 elif not in_flight and unhandled and retry_count < MAX_THREAD_FAILURE_RETRIES:
-                    actionable_threads.append(thread_id)
+                    if is_pr_cooldown:
+                        pending_followup = True
+                        queued_followups.append(thread_id)
+                        cooled_down_threads.append(thread_id)
+                    else:
+                        actionable_threads.append(thread_id)
                 entry = {**existing, **norm, "handled_updated_at": handled_u, "handled_head_sha": handled_sha, "handled_ci_state": handled_ci, "retry_count": retry_count, "in_flight": in_flight, "pending_followup": pending_followup, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
                 for tk in target_keys:
                     threads[tk] = dict(entry)
             state["updated_at_ms"] = stamp_ms
             atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
-        return {"actionable_threads": actionable_threads, "queued_followups": queued_followups, "auto_dismiss_threads": auto_dismiss_threads}
+        return {"actionable_threads": actionable_threads, "queued_followups": queued_followups, "auto_dismiss_threads": auto_dismiss_threads, "cooled_down_threads": cooled_down_threads}
 
     def record_polled_pull_requests(self, pull_requests: list[dict], self_github_login: str = "", now_override_ms: int | None = None) -> dict:
         """Evaluate and persist open pull requests in state.json for 60-second wake detection."""
         stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
         self_login_norm = (self_github_login or GITHUB_AGENT_LOGINS[self.agent_name]).strip().lower()
-        actionable_prs, queued_followups = [], []
+        actionable_prs, queued_followups, cooled_down_prs = [], [], []
         with self._locked_dir() as dir_fd:
             state = self._read_state_unlocked(dir_fd)
             threads: dict[str, dict] = state["threads"]
@@ -1202,6 +1211,7 @@ class CompanionStateStore:
                 target_keys, existing = self._load_entry_unlocked(threads, pr_key, repo=repo, number=number)
                 handled_u, handled_sha, handled_ci = existing.get("handled_updated_at"), existing.get("handled_head_sha"), existing.get("handled_ci_state")
                 in_flight, pending_followup = bool(existing.get("in_flight", False)), bool(existing.get("pending_followup", False))
+                cooldown_until_ms = _safe_int(existing.get("followup_cooldown_until_ms"), 0)
                 changed = (
                     (head_sha and head_sha != existing.get("head_sha"))
                     or (ci_state and ci_state != existing.get("ci_state"))
@@ -1229,13 +1239,18 @@ class CompanionStateStore:
                     pending_followup = True
                     queued_followups.append(pr_key)
                 elif retry_count < MAX_THREAD_FAILURE_RETRIES:
-                    actionable_prs.append({"key": pr_key, "thread_id": existing.get("thread_id"), "repo": repo, "number": number, "kind": "PullRequest", "head_sha": head_sha, "ci_state": ci_state, "updated_at": updated_at, "trigger_reason": trigger_reason})
+                    if trigger_reason != "ci_green_after_approval" and cooldown_until_ms > stamp_ms:
+                        pending_followup = True
+                        queued_followups.append(pr_key)
+                        cooled_down_prs.append(pr_key)
+                    else:
+                        actionable_prs.append({"key": pr_key, "thread_id": existing.get("thread_id"), "repo": repo, "number": number, "kind": "PullRequest", "head_sha": head_sha, "ci_state": ci_state, "updated_at": updated_at, "trigger_reason": trigger_reason})
                 entry = {**existing, "pr_key": pr_key, "repo": repo, "number": number, "subject_type": "PullRequest", "author": author, "head_sha": head_sha, "ci_state": ci_state, "review_decision": review_decision, "review_requests": review_requests, "unresolved_thread_count": unresolved_thread_count, "updated_at": updated_at or existing.get("updated_at"), "handled_updated_at": handled_u, "handled_head_sha": handled_sha, "handled_ci_state": handled_ci, "retry_count": retry_count, "trigger_reason": trigger_reason or existing.get("trigger_reason"), "in_flight": in_flight, "pending_followup": pending_followup, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
                 for tk in target_keys:
                     threads[tk] = dict(entry)
             state["updated_at_ms"] = stamp_ms
             atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
-        return {"actionable_prs": actionable_prs, "queued_followups": queued_followups}
+        return {"actionable_prs": actionable_prs, "queued_followups": queued_followups, "cooled_down_prs": cooled_down_prs}
 
     def mark_thread_in_flight(self, key: str, *, updated_at: str | None = None, head_sha: str | None = None, ci_state: str | None = None, now_override_ms: int | None = None) -> dict:
         def _mark(entry: dict, _: int) -> None:
@@ -1243,16 +1258,21 @@ class CompanionStateStore:
 
         return self._mutate_thread(key, _mark, now_override_ms=now_override_ms)
 
-    def complete_thread_review(self, key: str, *, handled_updated_at: str | None = None, handled_head_sha: str | None = None, handled_ci_state: str | None = None, completed_revision: str | None = None, now_override_ms: int | None = None) -> dict:
+    def complete_thread_review(self, key: str, *, handled_updated_at: str | None = None, handled_head_sha: str | None = None, handled_ci_state: str | None = None, completed_revision: str | None = None, apply_cooldown: bool | None = None, now_override_ms: int | None = None) -> dict:
         rev_u, rev_cid = parse_revision_token(completed_revision)
 
-        def _complete(entry: dict, _: int) -> None:
+        def _complete(entry: dict, stamp_ms: int) -> None:
+            was_in_flight = bool(entry.get("in_flight"))
+            should_cooldown = was_in_flight if apply_cooldown is None else bool(apply_cooldown)
             fin_u = handled_updated_at or rev_u or entry.get("in_flight_updated_at") or entry.get("updated_at") or entry.get("handled_updated_at")
             fin_sha = handled_head_sha or entry.get("in_flight_head_sha") or entry.get("head_sha") or entry.get("handled_head_sha")
             fin_ci = handled_ci_state or entry.get("in_flight_ci_state") or entry.get("ci_state") or entry.get("handled_ci_state")
             seen_u, seen_sha = str(entry.get("updated_at") or "").strip(), str(entry.get("head_sha") or "").strip()
-            has_newer = bool((entry.get("in_flight") and entry.get("pending_followup")) or (seen_u and fin_u and is_timestamp_newer(seen_u, fin_u)) or (seen_sha and fin_sha and seen_sha != fin_sha))
+            has_newer = bool((was_in_flight and entry.get("pending_followup")) or (seen_u and fin_u and is_timestamp_newer(seen_u, fin_u)) or (seen_sha and fin_sha and seen_sha != fin_sha))
             entry.update({"handled_updated_at": fin_u, "handled_head_sha": fin_sha, "handled_ci_state": fin_ci, "retry_count": 0, "in_flight": False, "pending_followup": has_newer, "dismiss_ready": not has_newer})
+            if should_cooldown and self.followup_cooldown_ms > 0:
+                entry["last_review_completed_at_ms"] = stamp_ms
+                entry["followup_cooldown_until_ms"] = stamp_ms + self.followup_cooldown_ms
             if rev_cid > 0 or entry.get("comment_id"):
                 entry["handled_comment_id"] = rev_cid or entry.get("comment_id")
 
@@ -1699,6 +1719,13 @@ class TrustFilterAndSnapshotBuilder:
             notices.extend(insp["notices"])
             if not insp["should_trigger"]:
                 return _eval_res(False, insp["skip_reason"])
+            if is_pr and item_kind in ("pull_request_review", "pull_request_review_comment", "issue_comment"):
+                cached_entry = _as_dict(self.state_store.get_thread_state(make_pr_key(repo, number)) if (repo and number) else None) or _as_dict(self.state_store.get_thread_state(thread_id))
+                handled_sha = str(notification.get("handled_head_sha") or cached_entry.get("handled_head_sha") or "").strip() or None
+                actor_norm = normalize_github_actor(insp.get("actor"))
+                mentioned_agents = insp.get("mentioned_agents") or []
+                if handled_sha and head_sha and handled_sha == head_sha and self.agent_name not in mentioned_agents and (self._is_peer_agent_actor(actor_norm, self.agent_name) or bool(insp.get("bot_trusted"))):
+                    return _eval_res(False, "unmentioned_peer_or_bot_comment_on_handled_sha")
             item_id, is_rev = insp["item_id"], item_kind == "pull_request_review"
             return _eval_res(True, None, reason or ("trusted_review" if is_rev else "trusted_comment"), None if is_rev else item_id, item_id if is_rev else None, item_id)
 
@@ -1948,7 +1975,7 @@ class LocalExecutionCoordinator:
         stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         kind = str(active_record.get("kind") or "")
         state_key = str(active_record.get("state_key") or active_record.get("thread_id") or "").strip()
-        watermark_result = self.state_store.complete_thread_review(state_key, handled_updated_at=active_record.get("updated_at"), handled_head_sha=active_record.get("head_sha"), handled_ci_state=active_record.get("ci_state"), completed_revision=active_record.get("revision"), now_override_ms=stamp_ms) if state_key else None
+        watermark_result = self.state_store.complete_thread_review(state_key, handled_updated_at=active_record.get("updated_at"), handled_head_sha=active_record.get("head_sha"), handled_ci_state=active_record.get("ci_state"), completed_revision=active_record.get("revision"), apply_cooldown=True, now_override_ms=stamp_ms) if state_key else None
         if kind in ("reconcile_sweep", "weekly_sweep"):
             self.state_store.complete_sweep(kind, sweep_date=str(active_record["sweep_date"]).strip() if active_record.get("sweep_date") else None, now_override_ms=stamp_ms)
         self.state_store.write_active_dispatch(None, now_override_ms=stamp_ms)
@@ -2116,6 +2143,7 @@ class GithubCompanionRunner:
             return {"status": "turn_in_progress", "recovery": {"status": "busy", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None}
 
         recovery = self.execution_coordinator.recover_active_dispatch(now_override_ms=now_override_ms)
+        current_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         targeted_dispatches: list[dict] = []
         dispatched_targets: set[str] = set()
         threads = _as_dict(self.state_store.read_state().get("threads"))
@@ -2132,16 +2160,22 @@ class GithubCompanionRunner:
                 except Exception as exc:
                     sys.stderr.write(f"moltis-github-companion dismiss warning ({self.execution_coordinator.agent_name} thread {tid_val}): {exc}\n")
                     return
-            self.state_store.complete_thread_review(key_val, handled_updated_at=entry_val.get("updated_at"), handled_head_sha=prep_res.get("head_sha") or entry_val.get("head_sha"), handled_ci_state=entry_val.get("ci_state"), now_override_ms=now_override_ms)
+            self.state_store.complete_thread_review(key_val, handled_updated_at=entry_val.get("updated_at"), handled_head_sha=prep_res.get("head_sha") or entry_val.get("head_sha"), handled_ci_state=entry_val.get("ci_state"), apply_cooldown=False, now_override_ms=now_override_ms)
 
         candidate_thread_ids: list[str] = list(poll_result.get("actionable_threads") or [])
         for tid, entry in threads.items():
-            if isinstance(entry, dict) and "#" not in tid and tid not in candidate_thread_ids and _safe_int(entry.get("retry_count"), 0) < MAX_THREAD_FAILURE_RETRIES and (entry.get("pending_followup") or is_timestamp_newer(entry.get("updated_at"), entry.get("handled_updated_at"))):
+            if not isinstance(entry, dict) or "#" in tid or tid in candidate_thread_ids or _safe_int(entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
+                continue
+            if str(entry.get("subject_type") or "").strip().lower() in ("pullrequest", "pull_request", "pr") and _safe_int(entry.get("followup_cooldown_until_ms"), 0) > current_ms:
+                continue
+            if entry.get("pending_followup") or is_timestamp_newer(entry.get("updated_at"), entry.get("handled_updated_at")):
                 candidate_thread_ids.append(tid)
 
         for tid in candidate_thread_ids:
             entry = _as_dict(threads.get(tid))
             if not entry or _safe_int(entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
+                continue
+            if str(entry.get("subject_type") or "").strip().lower() in ("pullrequest", "pull_request", "pr") and _safe_int(entry.get("followup_cooldown_until_ms"), 0) > current_ms:
                 continue
             repo, number = str(entry.get("repo") or "").strip(), _safe_int(entry.get("number"), 0) or None
             dedup_key = make_pr_key(repo, number) if (repo and number) else tid
@@ -2158,10 +2192,14 @@ class GithubCompanionRunner:
             if not isinstance(pr_item, dict):
                 continue
             pr_key = str(pr_item.get("key") or "").strip()
-            if not pr_key or pr_key in dispatched_targets or _safe_int(_as_dict(self.state_store.get_thread_state(pr_key)).get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
+            pr_entry = _as_dict(self.state_store.get_thread_state(pr_key))
+            if not pr_key or pr_key in dispatched_targets or _safe_int(pr_entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
+                continue
+            trig_reason = str(pr_item.get("trigger_reason") or "open_pr_poll")
+            if trig_reason != "ci_green_after_approval" and _safe_int(pr_entry.get("followup_cooldown_until_ms"), 0) > current_ms:
                 continue
             dispatched_targets.add(pr_key)
-            targeted_dispatches.append(self.execution_coordinator.execute_dispatch(kind="targeted", thread_id=str(pr_item.get("thread_id") or "").strip() or None, state_key=pr_key, repo=str(pr_item.get("repo") or ""), number=_safe_int(pr_item.get("number"), 0) or None, subject_kind="PullRequest", head_sha=str(pr_item.get("head_sha") or "") or None, ci_state=str(pr_item.get("ci_state") or "") or None, updated_at=str(pr_item.get("updated_at") or "") or None, trigger_reason=str(pr_item.get("trigger_reason") or "open_pr_poll"), now_override_ms=now_override_ms))
+            targeted_dispatches.append(self.execution_coordinator.execute_dispatch(kind="targeted", thread_id=str(pr_item.get("thread_id") or "").strip() or None, state_key=pr_key, repo=str(pr_item.get("repo") or ""), number=_safe_int(pr_item.get("number"), 0) or None, subject_kind="PullRequest", head_sha=str(pr_item.get("head_sha") or "") or None, ci_state=str(pr_item.get("ci_state") or "") or None, updated_at=str(pr_item.get("updated_at") or "") or None, trigger_reason=trig_reason, now_override_ms=now_override_ms))
 
         sweep_dispatch: dict | None = None
         if run_sweeps_if_due:
