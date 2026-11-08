@@ -81,6 +81,7 @@ in
           };
         };
         gvfs.enable = true;
+        snap.enable = true;
         usbmuxd.enable = true;
         xserver = {
           # Disable xterm
@@ -89,7 +90,10 @@ in
         };
       };
 
-      security.polkit.enable = lib.mkDefault true;
+      security = {
+        apparmor.enable = lib.mkDefault true;
+        polkit.enable = lib.mkDefault true;
+      };
     })
     (lib.mkIf (host.is.linux && host.is.workstation && !host.is.iso) {
       programs.veila = {

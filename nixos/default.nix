@@ -28,6 +28,7 @@ in
     inputs.disko.nixosModules.disko
     inputs.kolide-launcher.nixosModules.kolide-launcher
     inputs.nix-flatpak.nixosModules.nix-flatpak
+    inputs.nix-snapd.nixosModules.default
     inputs.sops-nix.nixosModules.sops
     (modulesPath + "/installer/scan/not-detected.nix")
     ./_mixins/console
