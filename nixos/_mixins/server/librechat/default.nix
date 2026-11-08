@@ -8,6 +8,182 @@
 let
   cloudflareSopsFile = ../../../../secrets + "/cloudflare.yaml";
   hasCloudflareSopsFile = builtins.pathExists cloudflareSopsFile;
+  assistantsRoot = ../../../../home-manager/_mixins/agentic/assistants;
+  assistantsCompose = import (assistantsRoot + "/compose.nix") {
+    inherit lib pkgs;
+    basePath = assistantsRoot;
+    gwsEnabled = false;
+  };
+  mcpServerNames = [
+    "exa"
+    "cloudflare-docs"
+    "cloudflare-api"
+    "context7"
+    "linear"
+    "nixos"
+  ];
+  mcpTools = lib.concatMap (server: [
+    "sys__server__sys_mcp_${server}"
+    "sys__all__sys_mcp_${server}"
+  ]) mcpServerNames;
+  excludedSkills = [
+    "agentic-repo-capability"
+    "delegate-task"
+    "gh"
+    "herdr"
+    "review-code"
+    "review-code-follow-up"
+    "review-report-path"
+    "semgrep"
+    "slack"
+    "zk"
+  ];
+  excludedCommands = [
+    "add-agentic-repo-capability"
+    "address-code-review"
+    "address-security-review"
+    "babysit-pr"
+    "daily-update"
+    "draft-code-review"
+    "draft-commit-message"
+    "draft-pr-message"
+    "draft-security-review"
+    "finish-pr"
+    "handover-fork"
+    "handover-fresh"
+    "implement-plan"
+    "implement-task"
+    "make-commit"
+    "make-pr"
+    "post-code-review"
+    "post-comment"
+    "post-issue"
+    "post-security-review"
+    "project-code-review"
+    "project-documentation-review"
+    "project-peer-review"
+    "project-performance-review"
+    "project-polish-comments"
+    "project-smells-review"
+    "project-tests-review"
+    "reflect"
+    "review-code-again"
+    "review-code-colleague"
+    "review-code-community"
+    "review-code-mine"
+  ];
+  collectSkillFiles =
+    skillDir:
+    let
+      walk =
+        prefix: dir:
+        lib.concatLists (
+          lib.mapAttrsToList (
+            entryName: entryType:
+            let
+              relativePath = if prefix == "" then entryName else "${prefix}/${entryName}";
+              fullPath = dir + "/${entryName}";
+            in
+            if
+              prefix == ""
+              && lib.elem entryName [
+                "SKILL.md"
+                "header.toml"
+              ]
+            then
+              [ ]
+            else if entryType == "directory" then
+              walk relativePath fullPath
+            else
+              let
+                content = builtins.readFile fullPath;
+              in
+              [
+                {
+                  inherit relativePath content;
+                  filename = entryName;
+                  filepath = "${fullPath}";
+                  bytes = builtins.stringLength content;
+                  category =
+                    if lib.hasPrefix "references/" relativePath then
+                      "reference"
+                    else if lib.hasPrefix "scripts/" relativePath then
+                      "script"
+                    else if lib.hasPrefix "assets/" relativePath then
+                      "asset"
+                    else
+                      "other";
+                  mimeType =
+                    if lib.hasSuffix ".md" relativePath then
+                      "text/markdown"
+                    else if lib.hasSuffix ".json" relativePath then
+                      "application/json"
+                    else
+                      "text/plain";
+                }
+              ]
+          ) (builtins.readDir dir)
+        );
+    in
+    walk "" skillDir;
+  provisionedSkillNames = lib.sort (a: b: a < b) (
+    lib.filter (name: !(lib.elem name excludedSkills)) (builtins.attrNames assistantsCompose.skillDirs)
+  );
+  provisionedAgentNames = lib.sort (a: b: a < b) (builtins.attrNames assistantsCompose.agentDirs);
+  provisionedCommandNames = lib.sort (a: b: a < b) (
+    lib.filter (name: !(lib.elem name excludedCommands)) (
+      builtins.attrNames (lib.filterAttrs (_: entry: !entry.secret) assistantsCompose.commandRegistry)
+    )
+  );
+  librechatAssistantsManifest = pkgs.writeText "librechat-assistants-manifest.json" (
+    builtins.toJSON {
+      agents = map (
+        name:
+        let
+          agentDir = assistantsRoot + "/agents/${name}";
+          header = assistantsCompose.readHeader agentDir;
+          claudeModel = header.routing.claude.model or "";
+        in
+        {
+          id = "agent_${name}";
+          inherit name mcpServerNames;
+          description = header.common.description;
+          instructions =
+            lib.trim (builtins.readFile (agentDir + "/prompt.md")) + "\n\n" + assistantsCompose.houseStyleBody;
+          provider = "anthropic";
+          model = if claudeModel == "claude-opus-5-5" then "claude-opus-5-5" else "claude-sonnet-5-5";
+          tools = mcpTools;
+        }
+      ) provisionedAgentNames;
+      skills = map (
+        skillName:
+        let
+          skillDir = assistantsRoot + "/skills/${skillName}";
+          header = assistantsCompose.readHeader skillDir;
+        in
+        {
+          name = skillName;
+          displayTitle = skillName;
+          description = header.common.description;
+          body = lib.trim (builtins.readFile (skillDir + "/SKILL.md"));
+          frontmatter = assistantsCompose.headerFor "skill" "claude" skillName skillDir;
+          files = collectSkillFiles skillDir;
+        }
+      ) provisionedSkillNames;
+      commands = map (
+        cmdName:
+        let
+          entry = assistantsCompose.commandRegistry.${cmdName};
+        in
+        {
+          command = cmdName;
+          name = cmdName;
+          oneliner = entry.header.common.description;
+          prompt = lib.trim (builtins.readFile (entry.path + "/command.md"));
+        }
+      ) provisionedCommandNames;
+    }
+  );
   librechatProvisionUsers = pkgs.writeShellApplication {
     name = "librechat-provision-users";
     runtimeInputs = [ pkgs.mongosh ];
@@ -16,6 +192,7 @@ let
     checkPhase = "";
     text = ''
       mongoUri="mongodb://127.0.0.1:27017/librechat"
+      export MANIFEST_FILE="''${MANIFEST_FILE:-${librechatAssistantsManifest}}"
 
       : "''${HASH_MARTIN:?}"
       : "''${HASH_LOUISE:?}"
@@ -136,6 +313,239 @@ let
           },
           { upsert: true },
         );
+
+        const manifest = JSON.parse(fs.readFileSync(process.env.MANIFEST_FILE, "utf8"));
+        const martin = db.users.findOne({ email: "martin@wimpress.org" });
+        if (!martin) {
+          throw new Error("Expected user martin@wimpress.org was not found in db.users");
+        }
+
+        const ensureOwnerRole = (accessRoleId, resourceType) => {
+          db.accessroles.updateOne(
+            { accessRoleId },
+            {
+              $setOnInsert: {
+                accessRoleId,
+                name: "com_ui_role_owner",
+                description: "com_ui_role_owner_desc",
+                resourceType,
+                permBits: 15,
+                createdAt: now,
+                updatedAt: now,
+              },
+            },
+            { upsert: true },
+          );
+          return db.accessroles.findOne({ accessRoleId });
+        };
+
+        const agentOwnerRole = ensureOwnerRole("agent_owner", "agent");
+        const promptGroupOwnerRole = ensureOwnerRole("promptGroup_owner", "promptGroup");
+        const skillOwnerRole = ensureOwnerRole("skill_owner", "skill");
+
+        const upsertOwnerAcl = (resourceType, resourceId, roleId) => {
+          db.aclentries.updateOne(
+            {
+              principalType: "user",
+              principalId: martin._id,
+              resourceType,
+              resourceId,
+            },
+            {
+              $set: {
+                principalType: "user",
+                principalId: martin._id,
+                principalModel: "User",
+                resourceType,
+                resourceId,
+                permBits: 15,
+                roleId,
+                grantedBy: martin._id,
+                grantedAt: now,
+                updatedAt: now,
+              },
+              $setOnInsert: {
+                createdAt: now,
+              },
+            },
+            { upsert: true },
+          );
+        };
+
+        const skillIds = [];
+        for (const skill of manifest.skills) {
+          db.skills.updateOne(
+            { name: skill.name, author: martin._id },
+            {
+              $set: {
+                name: skill.name,
+                displayTitle: skill.displayTitle,
+                description: skill.description,
+                body: skill.body,
+                frontmatter: skill.frontmatter,
+                category: "",
+                disableModelInvocation: false,
+                userInvocable: true,
+                author: martin._id,
+                authorName: martin.name,
+                source: "inline",
+                fileCount: skill.files.length,
+                alwaysApply: false,
+                updatedAt: now,
+              },
+              $setOnInsert: {
+                version: 1,
+                createdAt: now,
+              },
+            },
+            { upsert: true },
+          );
+
+          const skillDoc = db.skills.findOne({ name: skill.name, author: martin._id });
+          skillIds.push(skillDoc._id.toString());
+
+          const currentRelativePaths = [];
+          for (const f of skill.files) {
+            currentRelativePaths.push(f.relativePath);
+            const fileId =
+              "nix-" + skill.name + "-" + f.relativePath.replace(/[^a-zA-Z0-9._-]/g, "_");
+            db.skillfiles.updateOne(
+              { skillId: skillDoc._id, relativePath: f.relativePath },
+              {
+                $set: {
+                  skillId: skillDoc._id,
+                  relativePath: f.relativePath,
+                  file_id: fileId,
+                  filename: f.filename,
+                  filepath: f.filepath,
+                  source: "local",
+                  mimeType: f.mimeType,
+                  bytes: f.bytes,
+                  category: f.category,
+                  isExecutable: false,
+                  isBinary: false,
+                  content: f.content,
+                  author: martin._id,
+                  updatedAt: now,
+                },
+                $setOnInsert: {
+                  createdAt: now,
+                },
+              },
+              { upsert: true },
+            );
+          }
+
+          db.skillfiles.deleteMany({
+            skillId: skillDoc._id,
+            relativePath: { $nin: currentRelativePaths },
+          });
+
+          upsertOwnerAcl("skill", skillDoc._id, skillOwnerRole._id);
+        }
+
+        for (const agent of manifest.agents) {
+          const versionEntry = {
+            name: agent.name,
+            description: agent.description,
+            instructions: agent.instructions,
+            provider: agent.provider,
+            model: agent.model,
+            model_parameters: {},
+            tools: agent.tools,
+            mcpServerNames: agent.mcpServerNames,
+            skills: skillIds,
+            skills_enabled: true,
+            skills_scope: "all",
+            createdAt: now,
+            updatedAt: now,
+          };
+
+          db.agents.updateOne(
+            { id: agent.id },
+            {
+              $set: {
+                id: agent.id,
+                name: agent.name,
+                description: agent.description,
+                instructions: agent.instructions,
+                provider: agent.provider,
+                model: agent.model,
+                model_parameters: {},
+                tools: agent.tools,
+                mcpServerNames: agent.mcpServerNames,
+                skills: skillIds,
+                skills_enabled: true,
+                skills_scope: "all",
+                author: martin._id,
+                authorName: martin.name,
+                category: "general",
+                is_promoted: false,
+                edges: [],
+                conversation_starters: [],
+                tool_resources: {},
+                versions: [versionEntry],
+                updatedAt: now,
+              },
+              $setOnInsert: {
+                createdAt: now,
+              },
+            },
+            { upsert: true },
+          );
+
+          const agentDoc = db.agents.findOne({ id: agent.id });
+          upsertOwnerAcl("agent", agentDoc._id, agentOwnerRole._id);
+        }
+
+        for (const cmd of manifest.commands) {
+          db.promptgroups.updateOne(
+            { command: cmd.command, author: martin._id },
+            {
+              $set: {
+                name: cmd.name,
+                command: cmd.command,
+                oneliner: cmd.oneliner,
+                category: "",
+                author: martin._id,
+                authorName: martin.name,
+                updatedAt: now,
+              },
+              $setOnInsert: {
+                numberOfGenerations: 0,
+                createdAt: now,
+              },
+            },
+            { upsert: true },
+          );
+
+          const groupDoc = db.promptgroups.findOne({ command: cmd.command, author: martin._id });
+
+          db.prompts.updateOne(
+            { groupId: groupDoc._id },
+            {
+              $set: {
+                groupId: groupDoc._id,
+                author: martin._id,
+                prompt: cmd.prompt,
+                type: "text",
+                updatedAt: now,
+              },
+              $setOnInsert: {
+                createdAt: now,
+              },
+            },
+            { upsert: true },
+          );
+
+          const promptDoc = db.prompts.findOne({ groupId: groupDoc._id });
+          db.promptgroups.updateOne(
+            { _id: groupDoc._id },
+            { $set: { productionId: promptDoc._id } },
+          );
+
+          upsertOwnerAcl("promptGroup", groupDoc._id, promptGroupOwnerRole._id);
+        }
       '
     '';
   };
@@ -285,7 +695,10 @@ in
       settings = lib.mkDefault {
         version = "1.3.6";
         endpoints.anthropic = {
-          models = [ "claude-sonnet-5-5" ];
+          models = [
+            "claude-sonnet-5-5"
+            "claude-opus-5-5"
+          ];
           titleConvo = true;
           titleModel = "claude-sonnet-5-5";
         };
@@ -371,6 +784,7 @@ in
         HASH_MARTIN = config.sops.secrets.USER_PW_MARTIN.path;
         HASH_LOUISE = config.sops.secrets.USER_PW_LOUISE.path;
         HASH_AGATHA = config.sops.secrets.USER_PW_AGATHA.path;
+        MANIFEST_FILE = "${librechatAssistantsManifest}";
       };
       serviceConfig = {
         Type = "oneshot";
