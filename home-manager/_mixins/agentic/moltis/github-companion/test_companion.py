@@ -2633,5 +2633,306 @@ class SweepRetryBackoffRecoveryAndScheduleTests(GithubCompanionTestBase):
         self.assertEqual(store.read_state()["last_reconcile_sweep_at_ms"], self.current_time_ms)
 
 
+class PrFollowupCooldownAndSameShaPeerSuppressionTests(GithubCompanionTestBase):
+    """15-minute per-PR follow-up review cooldown and same-SHA unmentioned peer/bot comment suppression."""
+
+    def test_15_minute_pr_followup_cooldown_and_ci_green_after_approval_bypass(self) -> None:
+        self.assertEqual(companion.PR_REVIEW_COOLDOWN_SECS, 900)
+        self.assertEqual(companion.PR_REVIEW_COOLDOWN_MS, 15 * 60 * 1000)
+
+        t0 = 1_700_050_000_000
+        self.current_time_ms = t0
+        self.httpd.peek_active = False
+
+        notif_batches: list[str] = []
+        pr_batches: list[list[dict]] = []
+
+        def fake_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            self.gh_commands.append(list(cmd))
+            ep = cmd[1]
+            if ep == "notifications":
+                raw = notif_batches.pop(0) if notif_batches else "HTTP/2.0 304 Not Modified\r\n\r\n"
+                return subprocess.CompletedProcess(cmd, 0, stdout=raw, stderr="")
+            if ep == "graphql":
+                nodes = pr_batches.pop(0) if pr_batches else []
+                return subprocess.CompletedProcess(
+                    cmd, 0, stdout=json.dumps({"data": {"search": {"nodes": nodes}}}), stderr=""
+                )
+            if ep.endswith("repos/wimpysworld/nix-config/pulls/150"):
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps(
+                        {
+                            "id": 15000,
+                            "number": 150,
+                            "state": "open",
+                            "draft": False,
+                            "user": {"login": "flexiondotorg"},
+                            "head": {"sha": "sha_150_v2"},
+                        }
+                    ),
+                    stderr="",
+                )
+            if ep.endswith("repos/wimpysworld/nix-config/issues/comments/15001"):
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps(
+                        {
+                            "id": 15001,
+                            "user": {"login": "flexiondotorg"},
+                            "body": "@sith-skrye I pushed a fix, PTAL.",
+                        }
+                    ),
+                    stderr="",
+                )
+            return subprocess.CompletedProcess(cmd, 0, stdout="{}", stderr="")
+
+        store = self.make_store("skrye")
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        gh_client = companion.GhApiSafeClient(runner=fake_runner)
+        poller = companion.NotificationPoller(state_store=store, gh_client=gh_client, clock=self.clock, sleeper=self.sleeper)
+        tf = companion.TrustFilterAndSnapshotBuilder(state_store=store, gh_client=gh_client, agent_name="skrye", clock=self.clock)
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="skrye",
+            completion_timeout_ms=300,
+            poll_interval_ms=20,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+        runner = companion.GithubCompanionRunner(
+            state_store=store,
+            gh_client=gh_client,
+            poller=poller,
+            trust_filter=tf,
+            execution_coordinator=coord,
+            clock=self.clock,
+        )
+
+        def send_sync_ok(params: dict) -> dict:
+            msg = str(params.get("message") or "")
+            disp_id = [line.split(": ", 1)[1] for line in msg.splitlines() if line.startswith("dispatch_id: ")][0]
+            self.write_history(
+                companion.DEFAULT_GH_SESSION_KEY,
+                [
+                    {"role": "user", "dispatch_id": disp_id, "content": msg},
+                    {"role": "assistant", "content": "HEARTBEAT_OK", "stop_reason": "end_turn"},
+                ],
+                agent_name="skrye",
+            )
+            return {"ok": True, "result": {"text": "HEARTBEAT_OK"}}
+
+        self.httpd.send_sync_handler = send_sync_handler = send_sync_ok
+        _ = send_sync_handler
+
+        # 1) Initial review on brand-new PR 150 dispatches immediately (never cooled down) and sets 15m cooldown on completion
+        pr_batches.append(
+            [
+                {
+                    "number": 150,
+                    "title": "New feature PR",
+                    "url": "https://github.com/wimpysworld/nix-config/pull/150",
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "updatedAt": "2023-11-16T16:00:00Z",
+                    "headRefOid": "sha_150_v1",
+                    "reviewDecision": "REVIEW_REQUIRED",
+                    "repository": {"nameWithOwner": "wimpysworld/nix-config"},
+                    "author": {"login": "flexiondotorg"},
+                    "reviewRequests": {"nodes": []},
+                    "statusCheckRollup": {"state": "PENDING", "contexts": {"nodes": []}},
+                }
+            ]
+        )
+        cycle1 = runner.run_cycle(run_sweeps_if_due=False)
+        self.assertEqual(len(cycle1["targeted_dispatches"]), 1)
+        self.assertEqual(cycle1["targeted_dispatches"][0]["state_key"], "wimpysworld/nix-config#150")
+        self.assertEqual(cycle1["targeted_dispatches"][0]["status"], "completed")
+
+        st_after_initial = store.get_thread_state("wimpysworld/nix-config#150")
+        assert st_after_initial is not None
+        expected_cooldown_until = t0 + companion.PR_REVIEW_COOLDOWN_MS
+        self.assertEqual(st_after_initial["last_review_completed_at_ms"], t0)
+        self.assertEqual(st_after_initial["followup_cooldown_until_ms"], expected_cooldown_until)
+        self.assertEqual(st_after_initial["handled_head_sha"], "sha_150_v1")
+
+        # 2) 5 minutes later (within 15m cooldown): author pushes sha_150_v2 and comments.
+        # Both notification and open PR poll defer follow-up without advancing handled watermarks or dispatching.
+        self.current_time_ms = t0 + (5 * 60 * 1000)
+        notif_batches.append(
+            "HTTP/2.0 200 OK\r\n"
+            "Last-Modified: Thu, 16 Nov 2023 16:05:00 GMT\r\n"
+            "\r\n"
+            + json.dumps(
+                [
+                    {
+                        "id": "1500",
+                        "reason": "mention",
+                        "updated_at": "2023-11-16T16:05:00Z",
+                        "repository": {"full_name": "wimpysworld/nix-config", "owner": {"login": "wimpysworld"}},
+                        "subject": {
+                            "type": "PullRequest",
+                            "title": "New feature PR",
+                            "url": "https://api.github.com/repos/wimpysworld/nix-config/pulls/150",
+                            "latest_comment_url": "https://api.github.com/repos/wimpysworld/nix-config/issues/comments/15001",
+                        },
+                    }
+                ]
+            )
+        )
+        pr_batches.append(
+            [
+                {
+                    "number": 150,
+                    "title": "New feature PR",
+                    "url": "https://github.com/wimpysworld/nix-config/pull/150",
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "updatedAt": "2023-11-16T16:05:00Z",
+                    "headRefOid": "sha_150_v2",
+                    "reviewDecision": "REVIEW_REQUIRED",
+                    "repository": {"nameWithOwner": "wimpysworld/nix-config"},
+                    "author": {"login": "flexiondotorg"},
+                    "reviewRequests": {"nodes": []},
+                    "statusCheckRollup": {"state": "PENDING", "contexts": {"nodes": []}},
+                }
+            ]
+        )
+        cycle_cooled = runner.run_cycle(run_sweeps_if_due=False)
+        self.assertEqual(cycle_cooled["targeted_dispatches"], [])
+        self.assertEqual(cycle_cooled["poll_result"]["actionable_threads"], [])
+        self.assertEqual(cycle_cooled["poll_result"]["actionable_prs"], [])
+        self.assertIn("1500", cycle_cooled["poll_result"]["queued_followups"])
+        self.assertIn("wimpysworld/nix-config#150", cycle_cooled["poll_result"]["queued_followups"])
+
+        st_during_cooldown = store.get_thread_state("wimpysworld/nix-config#150")
+        assert st_during_cooldown is not None
+        self.assertEqual(st_during_cooldown["handled_head_sha"], "sha_150_v1")
+        self.assertEqual(st_during_cooldown["handled_updated_at"], "2023-11-16T16:00:00Z")
+        self.assertTrue(st_during_cooldown["pending_followup"])
+
+        # 3) At 10 minutes (still within 15m cooldown): if PR becomes APPROVED + CI SUCCESS + 0 unresolved threads,
+        # ci_green_after_approval bypasses cooldown immediately!
+        store.update_thread_state(
+            "wimpysworld/nix-config#151",
+            {
+                "repo": "wimpysworld/nix-config",
+                "number": 151,
+                "subject_type": "PullRequest",
+                "handled_updated_at": "2023-11-16T16:00:00Z",
+                "handled_head_sha": "sha_151_v1",
+                "handled_ci_state": "PENDING",
+                "last_review_completed_at_ms": t0,
+                "followup_cooldown_until_ms": expected_cooldown_until,
+            },
+        )
+        self.current_time_ms = t0 + (10 * 60 * 1000)
+        pr_batches.append(
+            [
+                {
+                    "number": 151,
+                    "title": "Approved green PR",
+                    "url": "https://github.com/wimpysworld/nix-config/pull/151",
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "updatedAt": "2023-11-16T16:10:00Z",
+                    "headRefOid": "sha_151_v1",
+                    "reviewDecision": "APPROVED",
+                    "repository": {"nameWithOwner": "wimpysworld/nix-config"},
+                    "author": {"login": "sith-zannah"},
+                    "reviewRequests": {"nodes": []},
+                    "reviewThreads": {"nodes": []},
+                    "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
+                }
+            ]
+        )
+        cycle_merge_bypass = runner.run_cycle(run_sweeps_if_due=False)
+        self.assertEqual(len(cycle_merge_bypass["targeted_dispatches"]), 1)
+        self.assertEqual(cycle_merge_bypass["targeted_dispatches"][0]["state_key"], "wimpysworld/nix-config#151")
+
+        # 4) At 15 minutes (cooldown expired): queued follow-up on PR 150 dispatches and advances watermarks
+        self.current_time_ms = expected_cooldown_until
+        cycle_after_cooldown = runner.run_cycle(run_sweeps_if_due=False)
+        self.assertEqual(len(cycle_after_cooldown["targeted_dispatches"]), 1)
+        self.assertEqual(cycle_after_cooldown["targeted_dispatches"][0]["thread_id"], "1500")
+        self.assertEqual(cycle_after_cooldown["targeted_dispatches"][0]["status"], "completed")
+        st_after_followup = store.get_thread_state("wimpysworld/nix-config#150")
+        assert st_after_followup is not None
+        self.assertEqual(st_after_followup["handled_head_sha"], "sha_150_v2")
+        self.assertEqual(st_after_followup["handled_updated_at"], "2023-11-16T16:05:00Z")
+        self.assertFalse(st_after_followup["pending_followup"])
+
+    def test_same_sha_unmentioned_peer_and_bot_comments_suppressed_without_starting_cooldown(self) -> None:
+        t0 = 1_700_060_000_000
+        self.current_time_ms = t0
+        store = self.make_store("skrye")
+        gh_client = companion.GhApiSafeClient(runner=lambda *a, **k: subprocess.CompletedProcess(a[0], 0, "{}", ""))
+        tf = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store, gh_client=gh_client, agent_name="skrye", clock=self.clock
+        )
+
+        # On a brand-new PR (handled_head_sha is None), unmentioned peer or bot comments still trigger initial review
+        eval_new_pr = tf.evaluate_notification(
+            {"thread_id": "1600", "repo": "wimpysworld/nix-config", "subject_type": "PullRequest", "number": 160},
+            latest_item={"id": 16001, "user": {"login": "sith-zannah"}, "body": "Initial review comment."},
+            subject_item={"id": 16000, "state": "open", "draft": False, "head": {"sha": "sha_160_v1"}},
+        )
+        self.assertTrue(eval_new_pr["should_dispatch"])
+
+        # Seed PR 160 as already reviewed on sha_160_v1
+        store.update_thread_state(
+            "wimpysworld/nix-config#160",
+            {
+                "thread_id": "1600",
+                "repo": "wimpysworld/nix-config",
+                "number": 160,
+                "subject_type": "PullRequest",
+                "handled_updated_at": "2023-11-16T17:00:00Z",
+                "handled_head_sha": "sha_160_v1",
+            },
+        )
+
+        # Same head_sha: unmentioned peer agent comment/review and cubic-dev-ai[bot] comment are suppressed
+        for actor_obj, item_extra in (
+            ({"login": "sith-zannah"}, {"body": "Looks good to me overall, minor nit."}),
+            ({"login": "sith-traya"}, {"state": "COMMENTED", "submitted_at": "2023-11-16T17:02:00Z", "body": "Checking nix eval."}),
+            ({"login": "cubic-dev-ai[bot]", "type": "Bot"}, {"body": "Automated review summary."}),
+        ):
+            eval_same_sha = tf.evaluate_notification(
+                {"thread_id": "1600", "repo": "wimpysworld/nix-config", "subject_type": "PullRequest", "number": 160},
+                latest_item={"id": 16002, "user": actor_obj, **item_extra},
+                subject_item={"id": 16000, "state": "open", "draft": False, "head": {"sha": "sha_160_v1"}},
+            )
+            self.assertFalse(eval_same_sha["should_dispatch"])
+            self.assertEqual(eval_same_sha["skip_reason"], "unmentioned_peer_or_bot_comment_on_handled_sha")
+
+        # Contrast: on the same head_sha, flexiondotorg comment OR explicit @sith-skrye mention DOES trigger
+        eval_human = tf.evaluate_notification(
+            {"thread_id": "1600", "repo": "wimpysworld/nix-config", "subject_type": "PullRequest", "number": 160},
+            latest_item={"id": 16003, "user": {"login": "flexiondotorg"}, "body": "What do you think about this approach?"},
+            subject_item={"id": 16000, "state": "open", "draft": False, "head": {"sha": "sha_160_v1"}},
+        )
+        self.assertTrue(eval_human["should_dispatch"])
+
+        eval_mentioned_peer = tf.evaluate_notification(
+            {"thread_id": "1600", "repo": "wimpysworld/nix-config", "subject_type": "PullRequest", "number": 160},
+            latest_item={"id": 16004, "user": {"login": "sith-zannah"}, "body": "@sith-skrye can you verify this?"},
+            subject_item={"id": 16000, "state": "open", "draft": False, "head": {"sha": "sha_160_v1"}},
+        )
+        self.assertTrue(eval_mentioned_peer["should_dispatch"])
+
+        # Contrast: when a new commit is pushed (sha_160_v2 != sha_160_v1), evaluation triggers
+        eval_new_sha = tf.evaluate_notification(
+            {"thread_id": "1600", "repo": "wimpysworld/nix-config", "subject_type": "PullRequest", "number": 160},
+            latest_item={"id": 16005, "user": {"login": "sith-zannah"}, "body": "Reviewing new commit."},
+            subject_item={"id": 16000, "state": "open", "draft": False, "head": {"sha": "sha_160_v2"}},
+        )
+        self.assertTrue(eval_new_sha["should_dispatch"])
+
+
 if __name__ == "__main__":
     unittest.main()
