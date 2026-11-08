@@ -26,51 +26,30 @@ let
     "sys__server__sys_mcp_${server}"
     "sys__all__sys_mcp_${server}"
   ]) mcpServerNames;
-  excludedSkills = [
-    "agentic-repo-capability"
-    "delegate-task"
-    "gh"
-    "herdr"
-    "review-code"
-    "review-code-follow-up"
-    "review-report-path"
-    "semgrep"
-    "slack"
-    "zk"
-  ];
-  excludedCommands = [
-    "add-agentic-repo-capability"
-    "address-code-review"
-    "address-security-review"
-    "babysit-pr"
-    "daily-update"
-    "draft-code-review"
-    "draft-commit-message"
-    "draft-pr-message"
-    "draft-security-review"
-    "finish-pr"
-    "handover-fork"
-    "handover-fresh"
-    "implement-plan"
-    "implement-task"
-    "make-commit"
-    "make-pr"
-    "post-code-review"
-    "post-comment"
-    "post-issue"
-    "post-security-review"
-    "project-code-review"
-    "project-documentation-review"
-    "project-peer-review"
-    "project-performance-review"
-    "project-polish-comments"
-    "project-smells-review"
-    "project-tests-review"
-    "reflect"
-    "review-code-again"
-    "review-code-colleague"
-    "review-code-community"
-    "review-code-mine"
+  stripFrontmatter =
+    text:
+    let
+      lines = lib.splitString "\n" text;
+      rest = lib.drop 1 lines;
+      closingIndex = lib.lists.findFirstIndex (line: line == "---") null rest;
+    in
+    if lib.head lines == "---" && closingIndex != null then
+      lib.trim (lib.concatStringsSep "\n" (lib.drop (closingIndex + 1) rest))
+    else
+      lib.trim text;
+  binarySkillExtensions = [
+    ".png"
+    ".jpg"
+    ".jpeg"
+    ".gif"
+    ".webp"
+    ".ico"
+    ".pdf"
+    ".zip"
+    ".woff"
+    ".woff2"
+    ".ttf"
+    ".otf"
   ];
   collectSkillFiles =
     skillDir:
@@ -83,6 +62,12 @@ let
             let
               relativePath = if prefix == "" then entryName else "${prefix}/${entryName}";
               fullPath = dir + "/${entryName}";
+              lowerPath = lib.toLower relativePath;
+              isBinary = lib.any (ext: lib.hasSuffix ext lowerPath) binarySkillExtensions;
+              isExecutable =
+                lib.hasPrefix "scripts/" relativePath
+                || lib.hasSuffix ".sh" relativePath
+                || lib.hasSuffix ".py" relativePath;
             in
             if
               prefix == ""
@@ -96,14 +81,19 @@ let
               walk relativePath fullPath
             else
               let
-                content = builtins.readFile fullPath;
+                content = if isBinary then null else builtins.readFile fullPath;
               in
               [
                 {
-                  inherit relativePath content;
+                  inherit
+                    relativePath
+                    content
+                    isBinary
+                    isExecutable
+                    ;
                   filename = entryName;
                   filepath = "${fullPath}";
-                  bytes = builtins.stringLength content;
+                  bytes = if isBinary then 0 else builtins.stringLength content;
                   category =
                     if lib.hasPrefix "references/" relativePath then
                       "reference"
@@ -118,6 +108,8 @@ let
                       "text/markdown"
                     else if lib.hasSuffix ".json" relativePath then
                       "application/json"
+                    else if isBinary then
+                      "application/octet-stream"
                     else
                       "text/plain";
                 }
@@ -126,14 +118,10 @@ let
         );
     in
     walk "" skillDir;
-  provisionedSkillNames = lib.sort (a: b: a < b) (
-    lib.filter (name: !(lib.elem name excludedSkills)) (builtins.attrNames assistantsCompose.skillDirs)
-  );
+  provisionedSkillNames = lib.sort (a: b: a < b) (builtins.attrNames assistantsCompose.skillDirs);
   provisionedAgentNames = lib.sort (a: b: a < b) (builtins.attrNames assistantsCompose.agentDirs);
   provisionedCommandNames = lib.sort (a: b: a < b) (
-    lib.filter (name: !(lib.elem name excludedCommands)) (
-      builtins.attrNames (lib.filterAttrs (_: entry: !entry.secret) assistantsCompose.commandRegistry)
-    )
+    builtins.attrNames (lib.filterAttrs (_: entry: !entry.secret) assistantsCompose.commandRegistry)
   );
   librechatAssistantsManifest = pkgs.writeText "librechat-assistants-manifest.json" (
     builtins.toJSON {
@@ -152,7 +140,7 @@ let
             lib.trim (builtins.readFile (agentDir + "/prompt.md")) + "\n\n" + assistantsCompose.houseStyleBody;
           provider = "anthropic";
           model = if claudeModel == "claude-opus-5-5" then "claude-opus-5-5" else "claude-sonnet-5-5";
-          tools = mcpTools;
+          tools = [ "execute_code" ] ++ mcpTools;
         }
       ) provisionedAgentNames;
       skills = map (
@@ -165,7 +153,11 @@ let
           name = skillName;
           displayTitle = skillName;
           description = header.common.description;
-          body = lib.trim (builtins.readFile (skillDir + "/SKILL.md"));
+          body =
+            if builtins.pathExists (skillDir + "/SKILL.md") then
+              lib.trim (builtins.readFile (skillDir + "/SKILL.md"))
+            else
+              stripFrontmatter assistantsCompose.composeSkills.${skillName}.content;
           frontmatter = assistantsCompose.headerFor "skill" "claude" skillName skillDir;
           files = collectSkillFiles skillDir;
         }
@@ -422,8 +414,8 @@ let
                   mimeType: f.mimeType,
                   bytes: f.bytes,
                   category: f.category,
-                  isExecutable: false,
-                  isBinary: false,
+                  isExecutable: Boolean(f.isExecutable),
+                  isBinary: Boolean(f.isBinary),
                   content: f.content,
                   author: martin._id,
                   updatedAt: now,
@@ -457,6 +449,7 @@ let
             skills: skillIds,
             skills_enabled: true,
             skills_scope: "all",
+            stateful_code_sessions: true,
             createdAt: now,
             updatedAt: now,
           };
@@ -477,6 +470,7 @@ let
                 skills: skillIds,
                 skills_enabled: true,
                 skills_scope: "all",
+                stateful_code_sessions: true,
                 author: martin._id,
                 authorName: martin.name,
                 category: "general",
@@ -678,6 +672,9 @@ in
         ALLOW_SOCIAL_LOGIN = lib.mkDefault false;
         ALLOW_UNVERIFIED_EMAIL_LOGIN = lib.mkDefault true;
         HOST = lib.mkDefault "0.0.0.0";
+        LIBRECHAT_CODE_API_KEY = lib.mkDefault "local-sandbox";
+        LIBRECHAT_CODE_BASEURL = lib.mkDefault "http://127.0.0.1:3082";
+        LIBRECHAT_CODE_BASEURL_STATEFUL = lib.mkDefault "http://127.0.0.1:3082";
         MONGO_URI = lib.mkIf (noughtyLib.hostHasTag "mongodb") (
           lib.mkDefault "mongodb://localhost:27017/librechat"
         );
@@ -694,6 +691,25 @@ in
       };
       settings = lib.mkDefault {
         version = "1.3.6";
+        endpoints.agents = {
+          capabilities = [
+            "deferred_tools"
+            "execute_code"
+            "stateful_code_sessions"
+            "file_search"
+            "web_search"
+            "artifacts"
+            "subagents"
+            "actions"
+            "context"
+            "skills"
+            "memory"
+            "ask_user_question"
+            "tools"
+            "chain"
+            "ocr"
+          ];
+        };
         endpoints.anthropic = {
           models = [
             "claude-sonnet-5-5"
@@ -706,6 +722,7 @@ in
           allowedAddresses = [
             "127.0.0.1"
             "127.0.0.1:3081"
+            "127.0.0.1:3082"
           ];
         };
         mcpServers = {
@@ -758,8 +775,61 @@ in
       };
     };
 
+    systemd.services.librechat-code-sandbox = {
+      description = "Local Code Interpreter sandbox service for LibreChat";
+      after = [ "network.target" ];
+      wantedBy = [ "multi-user.target" ];
+      path = [
+        pkgs.bash
+        pkgs.coreutils
+        pkgs.curl
+        pkgs.fd
+        pkgs.file
+        pkgs.findutils
+        pkgs.gawk
+        pkgs.git
+        pkgs.gnugrep
+        pkgs.gnused
+        pkgs.gnutar
+        pkgs.gzip
+        pkgs.jq
+        pkgs.nodejs
+        pkgs.python3
+        pkgs.ripgrep
+        pkgs.unzip
+      ];
+      environment = {
+        HOST = "127.0.0.1";
+        PORT = "3082";
+        STATE_DIR = "/var/lib/librechat-code-sandbox";
+      };
+      serviceConfig = {
+        Type = "simple";
+        ExecStart = "${lib.getExe pkgs.python3} ${./code-sandbox.py}";
+        Restart = lib.mkDefault "always";
+        RestartSec = lib.mkDefault 5;
+        DynamicUser = true;
+        StateDirectory = "librechat-code-sandbox";
+        TemporaryFileSystem = "/mnt:mode=0755";
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        ProtectControlGroups = true;
+        ProtectKernelLogs = true;
+        ProtectKernelModules = true;
+        ProtectKernelTunables = true;
+        RestrictAddressFamilies = [
+          "AF_INET"
+          "AF_INET6"
+          "AF_UNIX"
+        ];
+      };
+    };
+
     systemd.services.librechat = {
       after = [
+        "librechat-code-sandbox.service"
         "librechat-mcp-nixos.service"
       ]
       ++ lib.optionals (noughtyLib.hostHasTag "mongodb") [
@@ -767,6 +837,7 @@ in
         "librechat-provision-users.service"
       ];
       wants = [
+        "librechat-code-sandbox.service"
         "librechat-mcp-nixos.service"
       ]
       ++ lib.optionals (noughtyLib.hostHasTag "mongodb") [
