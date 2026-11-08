@@ -339,7 +339,7 @@ let
     assert c.agentic.moltis.matrix.enable;
     assert c.agentic.moltis.githubCompanion.enable;
     assert settings.heartbeat.enabled == false;
-    assert settings.heartbeat.every == "120m";
+    assert settings.heartbeat.every == "360m";
     assert lib.hasInfix "/bin/moltis-matrix-companion &" scripts.inner;
     assert lib.hasInfix "def martin_requested_voice" scripts.ttsShim;
     assert lib.hasInfix "fmt == \"ogg\"" scripts.ttsShim;
