@@ -7,7 +7,7 @@ Help the user run the installed `tailor` binary on their project. Teach the cycl
 - Show the `tailor baste` result and get user approval before you run `tailor alter`. `alter` changes live GitHub settings and overwrites `always` files.
 - Use `tailor alter --recut` only when the user asks for it. It overwrites customised `first-fit` files.
 - Tailor never commits or pushes. Add new Nix files to Git, because flakes ignore untracked files. The user must approve a changed `.envrc` with direnv.
-- Never pass `--adopt-wiki` unless the user approved the import plan in this conversation.
+- `tailor alter` imports an existing wiki automatically, without a prompt. Include the wiki import plan from `tailor baste --verbose` when you ask for approval. Do not pass `--adopt-wiki`, because it has no effect.
 - `fit`, `alter`, and `baste` need a GitHub token (`GH_TOKEN`, `GITHUB_TOKEN`, or `gh auth login`). `measure` and `docket` do not.
 
 ## Commands
@@ -72,13 +72,13 @@ Wiki publishing works only on public repositories.
 
 1. Set `repository.has_wiki: true` in `.tailor.yml`.
 2. Run `tailor baste --verbose` and read the wiki guidance.
-3. Run `tailor alter`. When the wiki is disabled, `alter` enables it first.
-4. When the remote wiki is empty, the user creates and saves the first page in a browser at the repository's exact `https://github.com/<owner>/<repo>/wiki` URL. Then run `tailor alter` again.
-5. When the remote wiki has content, Tailor plans an import. Show the full plan from `tailor baste --verbose`. After the user approves, the user answers the `alter` prompt (default no), or you run `tailor alter --adopt-wiki`.
-6. Tailor preserves existing local `wiki/` pages and backs up any file that an approved import replaces.
+3. When the remote wiki has content, show the import plan from `tailor baste --verbose` with the rest of the preview.
+4. Run `tailor alter` after the user approves. When the wiki is disabled, `alter` enables it first. When the wiki has content, `alter` imports it automatically.
+5. When the wiki has no pages, `alter` still creates missing starter pages and the workflow when their alteration modes permit it, and applies the other changes. `never` skips the starter pages and requires an existing compatible workflow. The user then creates and saves the first page in a browser at the repository's exact `https://github.com/<owner>/<repo>/wiki` URL. Then run `tailor alter` again to import it.
+6. Tailor preserves existing local `wiki/` pages and backs up any file that an import replaces.
 7. Commit `wiki/`, `wiki/.tailor-wiki-base`, and `.github/workflows/tailor-wiki.yml`. Push to the default branch, then check the workflow run.
 
-Access or network blockers are not proof of an empty wiki. Follow the check-and-retry guidance instead.
+Access or network blockers are not proof of an empty wiki. They still stop the run. Follow the check-and-retry guidance instead.
 
 ## Add static Pages
 
