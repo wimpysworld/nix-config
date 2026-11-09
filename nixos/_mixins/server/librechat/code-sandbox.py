@@ -25,6 +25,8 @@ ALPHABET = string.ascii_letters + string.digits
 ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{21}$")
 PAYLOAD_PATTERN = re.compile(r'^(payload\s*=\s*)"([A-Za-z0-9+/=]+)"\s*$', re.MULTILINE)
 EXEC_LOCK = threading.Lock()
+MAX_OUTPUT_BYTES = 1024 * 1024
+MAX_REQUEST_BODY_BYTES = 50 * 1024 * 1024
 
 STATE_DIR = Path(os.environ.get("STATE_DIR", "/var/lib/librechat-code-sandbox"))
 STORAGE_DIR = STATE_DIR / "storage"
@@ -214,39 +216,111 @@ def build_bwrap_cmd(cmd: list[str], workspace_dir: Path) -> list[str] | None:
     ]
 
 
+def _run_process_bounded(
+    cmd: list[str],
+    workspace_dir: Path,
+    env: dict[str, str],
+    timeout_sec: float,
+) -> tuple[subprocess.CompletedProcess[str], bool]:
+    stdout_chunks: list[bytes] = []
+    stderr_chunks: list[bytes] = []
+    stdout_bytes = 0
+    stderr_bytes = 0
+    overflow = False
+
+    def drain_stream(stream: object, chunks: list[bytes], *, is_stdout: bool) -> None:
+        nonlocal stdout_bytes, stderr_bytes, overflow
+        if stream is None:
+            return
+        read_fn = getattr(stream, "read", None)
+        if read_fn is None:
+            return
+        while True:
+            chunk = read_fn(65536)
+            if not chunk:
+                break
+            current = stdout_bytes if is_stdout else stderr_bytes
+            remaining = MAX_OUTPUT_BYTES - current
+            if remaining > 0:
+                if len(chunk) <= remaining:
+                    chunks.append(chunk)
+                    current += len(chunk)
+                else:
+                    chunks.append(chunk[:remaining])
+                    current += remaining
+                    overflow = True
+                if is_stdout:
+                    stdout_bytes = current
+                else:
+                    stderr_bytes = current
+            else:
+                overflow = True
+
+    proc = subprocess.Popen(
+        cmd,
+        cwd=str(workspace_dir),
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    t_out = threading.Thread(
+        target=drain_stream, args=(proc.stdout, stdout_chunks), kwargs={"is_stdout": True}, daemon=True
+    )
+    t_err = threading.Thread(
+        target=drain_stream, args=(proc.stderr, stderr_chunks), kwargs={"is_stdout": False}, daemon=True
+    )
+    t_out.start()
+    t_err.start()
+    try:
+        returncode = proc.wait(timeout=timeout_sec)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        with contextlib.suppress(Exception):
+            proc.wait(timeout=5)
+        t_out.join(timeout=2)
+        t_err.join(timeout=2)
+        raise subprocess.TimeoutExpired(
+            cmd=cmd,
+            timeout=timeout_sec,
+            output=b"".join(stdout_chunks).decode("utf-8", errors="replace"),
+            stderr=b"".join(stderr_chunks).decode("utf-8", errors="replace"),
+        ) from None
+    finally:
+        t_out.join(timeout=2)
+        t_err.join(timeout=2)
+        if proc.stdout is not None:
+            with contextlib.suppress(OSError):
+                proc.stdout.close()
+        if proc.stderr is not None:
+            with contextlib.suppress(OSError):
+                proc.stderr.close()
+
+    completed = subprocess.CompletedProcess(
+        args=cmd,
+        returncode=returncode,
+        stdout=b"".join(stdout_chunks).decode("utf-8", errors="replace"),
+        stderr=b"".join(stderr_chunks).decode("utf-8", errors="replace"),
+    )
+    return completed, overflow
+
+
 def run_sandboxed(
     cmd: list[str],
     workspace_dir: Path,
     env: dict[str, str],
     timeout_sec: float,
-) -> subprocess.CompletedProcess[str]:
+) -> tuple[subprocess.CompletedProcess[str], bool]:
     bwrap_cmd = build_bwrap_cmd(cmd, workspace_dir)
     if bwrap_cmd is not None:
         bwrap_env = env.copy()
         bwrap_env["HOME"] = "/mnt/data"
         bwrap_env["LIBRECHAT_CODE_DATA_DIR"] = "/mnt/data"
-        proc = subprocess.run(
-            bwrap_cmd,
-            cwd=str(workspace_dir),
-            env=bwrap_env,
-            capture_output=True,
-            text=True,
-            errors="replace",
-            timeout=timeout_sec,
-            check=False,
+        proc, overflow = _run_process_bounded(
+            bwrap_cmd, workspace_dir, bwrap_env, timeout_sec
         )
         if not (proc.returncode != 0 and "bwrap:" in proc.stderr):
-            return proc
-    return subprocess.run(
-        cmd,
-        cwd=str(workspace_dir),
-        env=env,
-        capture_output=True,
-        text=True,
-        errors="replace",
-        timeout=timeout_sec,
-        check=False,
-    )
+            return proc, overflow
+    return _run_process_bounded(cmd, workspace_dir, env, timeout_sec)
 
 
 def execute_code_request(
@@ -348,12 +422,13 @@ def execute_code_request(
         stdout = ""
         stderr = ""
         returncode = 0
+        overflow = False
         if cmd is None:
             stderr = f"Unsupported language runtime: {raw_lang}\n"
             returncode = 1
         else:
             try:
-                proc = run_sandboxed(cmd, workspace_dir, env, timeout_sec)
+                proc, overflow = run_sandboxed(cmd, workspace_dir, env, timeout_sec)
                 stdout = proc.stdout
                 stderr = proc.stderr
                 returncode = proc.returncode
@@ -432,6 +507,8 @@ def execute_code_request(
     }
     if programmatic:
         response["status"] = "completed"
+    elif overflow:
+        response["status"] = "OL"
     return response
 
 
@@ -445,8 +522,9 @@ class SandboxHandler(BaseHTTPRequestHandler):
         transfer_encoding = (self.headers.get("Transfer-Encoding") or "").lower()
         if "chunked" in transfer_encoding:
             chunks: list[bytes] = []
+            total = 0
             while True:
-                line = self.rfile.readline()
+                line = self.rfile.readline(65536)
                 if not line:
                     break
                 size_str = line.split(b";", 1)[0].strip()
@@ -456,20 +534,28 @@ class SandboxHandler(BaseHTTPRequestHandler):
                     size = int(size_str, 16)
                 except ValueError:
                     break
+                if size < 0:
+                    break
                 if size == 0:
                     while True:
-                        trailer = self.rfile.readline()
+                        trailer = self.rfile.readline(65536)
                         if not trailer or trailer in (b"\r\n", b"\n"):
                             break
                     break
-                chunks.append(self.rfile.read(size))
-                self.rfile.readline()
+                if total + size > MAX_REQUEST_BODY_BYTES:
+                    raise ValueError("Request body exceeds maximum size")
+                data = self.rfile.read(size)
+                total += len(data)
+                chunks.append(data)
+                self.rfile.readline(65536)
             return b"".join(chunks)
         raw_len = self.headers.get("Content-Length") or "0"
         try:
             length = int(raw_len)
         except ValueError:
             length = 0
+        if length > MAX_REQUEST_BODY_BYTES:
+            raise ValueError("Request body exceeds maximum size")
         return self.rfile.read(length) if length > 0 else b""
 
     def send_json(self, status: int, payload: object) -> None:
@@ -505,7 +591,11 @@ class SandboxHandler(BaseHTTPRequestHandler):
                 400, {"message": "error", "error": "Expected multipart/form-data"}
             )
             return
-        raw_body = self.read_request_body()
+        try:
+            raw_body = self.read_request_body()
+        except ValueError as exc:
+            self.send_json(413, {"message": "error", "error": str(exc)})
+            return
         raw_msg = (
             f"Content-Type: {content_type}\r\nMIME-Version: 1.0\r\n\r\n".encode()
             + raw_body
@@ -664,7 +754,11 @@ class SandboxHandler(BaseHTTPRequestHandler):
         path = parsed.path.rstrip("/") or "/"
 
         if path == "/exec":
-            raw_body = self.read_request_body()
+            try:
+                raw_body = self.read_request_body()
+            except ValueError as exc:
+                self.send_json(413, {"error": str(exc)})
+                return
             try:
                 body = json.loads(raw_body.decode("utf-8")) if raw_body else {}
             except json.JSONDecodeError:
@@ -674,7 +768,11 @@ class SandboxHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/exec/programmatic":
-            raw_body = self.read_request_body()
+            try:
+                raw_body = self.read_request_body()
+            except ValueError as exc:
+                self.send_json(413, {"error": str(exc)})
+                return
             try:
                 body = json.loads(raw_body.decode("utf-8")) if raw_body else {}
             except json.JSONDecodeError:
@@ -684,7 +782,11 @@ class SandboxHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/exec/programmatic/cancel":
-            self.read_request_body()
+            try:
+                self.read_request_body()
+            except ValueError as exc:
+                self.send_json(413, {"error": str(exc)})
+                return
             self.send_json(200, {"status": "cancelled"})
             return
 
