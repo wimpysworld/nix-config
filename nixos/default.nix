@@ -21,6 +21,7 @@ in
     ../common
     ../lib/noughty
     # Use modules this flake exports; from modules/nixos
+    outputs.nixosModules.brave
     outputs.nixosModules.falcon-sensor
     # Use modules from other flakes
     inputs.catppuccin.nixosModules.catppuccin
