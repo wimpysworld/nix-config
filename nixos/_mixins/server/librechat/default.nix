@@ -6,6 +6,42 @@
   ...
 }:
 let
+  inherit (config.noughty.network) tailNet;
+  registry = builtins.fromTOML (builtins.readFile ../../../../lib/registry-systems.toml);
+  llamaRuntime = import ../llama-server/runtime.nix { inherit lib; };
+  remoteInferenceHosts = [
+    "skrye"
+    "zannah"
+  ];
+  mkRemoteLlamaSwapEndpoint =
+    node:
+    let
+      entry = registry.${node};
+      runtimeModels =
+        (llamaRuntime.mkRuntime {
+          acceleration = entry.gpu.compute.acceleration or null;
+          hostVramGiB = entry.gpu.compute.vram or 0;
+        }).selectedRuntimeModels;
+      generationModels = lib.mapAttrsToList (_role: model: model.publicName) (
+        lib.filterAttrs (_role: model: !model.isEmbedding) runtimeModels
+      );
+      titleModel =
+        if runtimeModels ? smallMedia then
+          runtimeModels.smallMedia.publicName
+        else
+          lib.head generationModels;
+    in
+    {
+      name = "LlamaSwap (${node})";
+      apiKey = "none";
+      baseURL = "http://${node}.${tailNet}:8080/v1";
+      models = {
+        default = generationModels;
+        fetch = true;
+      };
+      titleConvo = true;
+      inherit titleModel;
+    };
   cloudflareSopsFile = ../../../../secrets + "/cloudflare.yaml";
   hasCloudflareSopsFile = builtins.pathExists cloudflareSopsFile;
   assistantsRoot = ../../../../home-manager/_mixins/agentic/assistants;
@@ -140,7 +176,11 @@ let
             lib.trim (builtins.readFile (agentDir + "/prompt.md")) + "\n\n" + assistantsCompose.houseStyleBody;
           provider = "anthropic";
           model = if claudeModel == "claude-opus-5-5" then "claude-opus-5-5" else "claude-sonnet-5-5";
-          tools = [ "execute_code" ] ++ mcpTools;
+          tools = [
+            "execute_code"
+            "memory"
+          ]
+          ++ mcpTools;
         }
       ) provisionedAgentNames;
       skills = map (
@@ -436,7 +476,15 @@ let
           upsertOwnerAcl("skill", skillDoc._id, skillOwnerRole._id);
         }
 
+        const allAgentIds = manifest.agents.map((a) => a.id);
+
         for (const agent of manifest.agents) {
+          const otherAgentIds = allAgentIds.filter((id) => id !== agent.id);
+          const subagentsConfig = {
+            enabled: true,
+            allowSelf: false,
+            agent_ids: otherAgentIds,
+          };
           const versionEntry = {
             name: agent.name,
             description: agent.description,
@@ -450,6 +498,8 @@ let
             skills_enabled: true,
             skills_scope: "all",
             stateful_code_sessions: true,
+            subagents: subagentsConfig,
+            edges: [],
             createdAt: now,
             updatedAt: now,
           };
@@ -471,6 +521,7 @@ let
                 skills_enabled: true,
                 skills_scope: "all",
                 stateful_code_sessions: true,
+                subagents: subagentsConfig,
                 author: martin._id,
                 authorName: martin.name,
                 category: "general",
@@ -551,6 +602,14 @@ in
     sops.secrets.ANTHROPIC_API_KEY = {
       sopsFile = ../../../../secrets/ai.yaml;
       path = "/run/secrets/ANTHROPIC_API_KEY";
+      owner = "root";
+      group = "root";
+      mode = "0400";
+    };
+
+    sops.secrets.GEMINI_API_KEY = {
+      sopsFile = ../../../../secrets/ai.yaml;
+      path = "/run/secrets/GEMINI_API_KEY";
       owner = "root";
       group = "root";
       mode = "0400";
@@ -671,6 +730,7 @@ in
         ALLOW_REGISTRATION = lib.mkDefault false;
         ALLOW_SOCIAL_LOGIN = lib.mkDefault false;
         ALLOW_UNVERIFIED_EMAIL_LOGIN = lib.mkDefault true;
+        GOOGLE_MODELS = lib.mkDefault "gemini-4-argon,gemini-3.8-flash";
         HOST = lib.mkDefault "0.0.0.0";
         LIBRECHAT_CODE_API_KEY = lib.mkDefault "local-sandbox";
         LIBRECHAT_CODE_BASEURL = lib.mkDefault "http://127.0.0.1:3082";
@@ -685,42 +745,70 @@ in
         CONTEXT7_API_KEY = config.sops.secrets.CONTEXT7_API_KEY.path;
         CREDS_IV = config.sops.secrets.CREDS_IV.path;
         CREDS_KEY = config.sops.secrets.CREDS_KEY.path;
+        GEMINI_API_KEY = config.sops.secrets.GEMINI_API_KEY.path;
+        GOOGLE_KEY = config.sops.secrets.GEMINI_API_KEY.path;
         JWT_REFRESH_SECRET = config.sops.secrets.JWT_REFRESH_SECRET.path;
         JWT_SECRET = config.sops.secrets.JWT_SECRET.path;
         LINEAR_API_KEY = config.sops.secrets.LINEAR_API_KEY.path;
       };
       settings = lib.mkDefault {
         version = "1.3.6";
-        endpoints.agents = {
-          capabilities = [
-            "deferred_tools"
-            "execute_code"
-            "stateful_code_sessions"
-            "file_search"
-            "web_search"
-            "artifacts"
-            "subagents"
-            "actions"
-            "context"
-            "skills"
-            "memory"
-            "ask_user_question"
-            "tools"
-            "chain"
-            "ocr"
-          ];
+        interface = {
+          agentSelectorLimit = 20;
         };
-        endpoints.anthropic = {
-          models = [
-            "claude-sonnet-5-5"
-            "claude-opus-5-5"
-          ];
-          titleConvo = true;
-          titleModel = "claude-sonnet-5-5";
+        memory = {
+          disabled = false;
+          personalize = true;
+          charLimit = 10000;
+          messageWindowSize = 5;
+          agent = {
+            provider = "anthropic";
+            model = "claude-sonnet-5-5";
+          };
+        };
+        summarization = {
+          enabled = true;
+          provider = "google";
+          model = "gemini-4-argon";
+        };
+        endpoints = {
+          allowedAddresses = map (node: "${node}.${tailNet}:8080") remoteInferenceHosts;
+          agents = {
+            maxSubagents = 12;
+            capabilities = [
+              "deferred_tools"
+              "execute_code"
+              "stateful_code_sessions"
+              "file_search"
+              "web_search"
+              "artifacts"
+              "subagents"
+              "actions"
+              "context"
+              "skills"
+              "memory"
+              "ask_user_question"
+              "tools"
+              "chain"
+              "ocr"
+            ];
+          };
+          anthropic = {
+            models = [
+              "claude-sonnet-5-5"
+              "claude-opus-5-5"
+            ];
+            titleConvo = true;
+            titleModel = "claude-sonnet-5-5";
+          };
+          google = {
+            titleConvo = true;
+            titleModel = "gemini-3.8-flash";
+          };
+          custom = map mkRemoteLlamaSwapEndpoint remoteInferenceHosts;
         };
         mcpSettings = {
           allowedAddresses = [
-            "127.0.0.1"
             "127.0.0.1:3081"
             "127.0.0.1:3082"
           ];
