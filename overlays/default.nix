@@ -124,6 +124,7 @@ in
           inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}.claude-code
         else
           final.unstable.claude-code;
+      inherit (final.unstable) cliproxyapi;
       inherit (final.unstable) librechat;
       inherit (final.unstable) playwright-driver;
 
