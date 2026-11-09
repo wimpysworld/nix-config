@@ -142,7 +142,7 @@ When `agentic.moltis.githubCompanion.enable` is true (default on `skrye`, `zanna
 
 ### Poll timing and crash recovery
 
-On startup, the companion migrates any legacy state into `state.json` or falls back to clean defaults, reads `next_poll_at_ms` from `state.json`, and sleeps until that timestamp when it is in the future, or aligns to the next dedicated 30-minute wall-clock slot when `next_poll_at_ms` is `None` or in the past.
+On startup, the companion migrates any legacy state into `state.json` or falls back to clean defaults, reads `next_poll_at_ms` from `state.json`, and sleeps until that timestamp when it is in the future, or polls immediately on first boot when `next_poll_at_ms` is `None` and aligns subsequent polls to the agent's dedicated 30-minute wall-clock slots.
 
 Each agent polls on dedicated 30-minute (`1800s`) wall-clock slots with a 10-minute stagger between agents:
 
