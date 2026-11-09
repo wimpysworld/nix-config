@@ -1298,8 +1298,8 @@ class CompanionStateStore:
                         queued_followups.append(pr_key)
                         cooled_down_prs.append(pr_key)
                     else:
-                        actionable_prs.append({"key": pr_key, "thread_id": existing.get("thread_id"), "repo": repo, "number": number, "kind": "PullRequest", "head_sha": head_sha, "ci_state": ci_state, "updated_at": updated_at, "trigger_reason": trigger_reason})
-                entry = {**existing, "pr_key": pr_key, "repo": repo, "number": number, "subject_type": "PullRequest", "author": author, "head_sha": head_sha, "ci_state": ci_state, "review_decision": review_decision, "review_requests": review_requests, "unresolved_thread_count": unresolved_thread_count, "updated_at": updated_at or existing.get("updated_at"), "handled_updated_at": handled_u, "handled_head_sha": handled_sha, "handled_ci_state": handled_ci, "retry_count": retry_count, "trigger_reason": trigger_reason or existing.get("trigger_reason"), "in_flight": in_flight, "pending_followup": pending_followup, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
+                        actionable_prs.append({"key": pr_key, "thread_id": existing.get("thread_id"), "repo": repo, "number": number, "kind": "PullRequest", "head_sha": head_sha, "ci_state": ci_state, "updated_at": updated_at, "trigger_reason": trigger_reason, "is_automated_pr": is_auto_update})
+                entry = {**existing, "pr_key": pr_key, "repo": repo, "number": number, "subject_type": "PullRequest", "author": author, "head_sha": head_sha, "ci_state": ci_state, "review_decision": review_decision, "review_requests": review_requests, "unresolved_thread_count": unresolved_thread_count, "updated_at": updated_at or existing.get("updated_at"), "handled_updated_at": handled_u, "handled_head_sha": handled_sha, "handled_ci_state": handled_ci, "retry_count": retry_count, "trigger_reason": trigger_reason or existing.get("trigger_reason"), "is_automated_pr": is_auto_update, "in_flight": in_flight, "pending_followup": pending_followup, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
                 for tk in target_keys:
                     threads[tk] = dict(entry)
             state["updated_at_ms"] = stamp_ms
@@ -1750,9 +1750,10 @@ class TrustFilterAndSnapshotBuilder:
         security_events: list[dict] = []
         notices: list[dict] = []
         head_sha = str(notification.get("head_sha") or "").strip() or None
+        is_auto_pr = False
 
         def _eval_res(dispatch: bool, skip: str | None, trig: str | None = None, cid: object = None, rid: object = None, tid: object = None) -> dict:
-            return {"should_dispatch": dispatch, "skip_reason": skip, "repo": repo, "number": number, "kind": kind_label, "head_sha": head_sha, "trigger_reason": trig or reason, "comment_id": cid, "review_id": rid, "trusted_item_id": tid, "security_events": security_events, "notices": notices}
+            return {"should_dispatch": dispatch, "skip_reason": skip, "repo": repo, "number": number, "kind": kind_label, "head_sha": head_sha, "trigger_reason": trig or reason, "comment_id": cid, "review_id": rid, "trusted_item_id": tid, "is_automated_pr": is_auto_pr, "security_events": security_events, "notices": notices}
 
         if isinstance(subject_item, dict) and subject_item and is_pr:
             head_sha = str(subject_item.get("headRefOid") or _as_dict(subject_item.get("head")).get("sha") or head_sha or "").strip() or None
@@ -1768,16 +1769,25 @@ class TrustFilterAndSnapshotBuilder:
         pr_author_norm = normalize_github_actor(self._extract_item_actor(subject_item)) if isinstance(subject_item, dict) and subject_item else ""
         pr_title = str((subject_item or {}).get("title") or notification.get("subject_title") or "")
         pr_head_ref = str(_as_dict((subject_item or {}).get("head")).get("ref") or (subject_item or {}).get("headRefName") or "")
+        pr_labels: list[str] = []
+        if isinstance(subject_item, dict):
+            raw_lbls = subject_item.get("labels")
+            if isinstance(raw_lbls, list):
+                pr_labels = [str(lbl.get("name") if isinstance(lbl, dict) else lbl).strip() for lbl in raw_lbls if str(lbl.get("name") if isinstance(lbl, dict) else lbl).strip()]
+        is_auto_pr = bool(is_pr and is_automated_update_pr(pr_author_norm, repo=repo, head_ref=pr_head_ref, labels=pr_labels, title=pr_title))
         subj_mentions = extract_mentioned_github_agents(strip_html_comments("\n".join(str((subject_item or {}).get(k) or "") for k in ("title", "body")))) if isinstance(subject_item, dict) else set()
 
         def _check_auto_pr_skip(item_mentions: Iterable[str], fallback_actor: str = "") -> str | None:
+            nonlocal is_auto_pr
             if not is_pr:
                 return None
+            eff_author = pr_author_norm or normalize_github_actor(fallback_actor)
+            if is_automated_update_pr(eff_author, repo=repo, head_ref=pr_head_ref, labels=pr_labels, title=pr_title):
+                is_auto_pr = True
             all_mentions = set(item_mentions) | subj_mentions
             if self.agent_name in all_mentions:
                 return None
-            eff_author = pr_author_norm or normalize_github_actor(fallback_actor)
-            if not is_automated_update_pr(eff_author, repo=repo, head_ref=pr_head_ref, title=pr_title):
+            if not is_auto_pr:
                 return None
             if self.agent_name == "traya":
                 return "bot_update_ignored_for_traya"
@@ -1951,13 +1961,14 @@ class NotificationPoller:
 class LocalExecutionCoordinator:
     """Serialise all targeted turns, 6-hour reconciliation sweeps, and weekly sweeps under coordinator.lock and active-dispatch.json."""
 
-    def __init__(self, state_store: CompanionStateStore, rpc_client: MoltisRpcClient, data_dir: Path | str, agent_name: str, agent_display_name: str = "", main_model: str = "", matrix_client: MatrixClient | None = None, telegram_client: TelegramClient | None = None, telegram_bot_token_path: Path | str | None = None, telegram_allowed_users_path: Path | str | None = None, telegram_api_url: str = DEFAULT_TELEGRAM_API_URL, session_key: str = DEFAULT_GH_SESSION_KEY, room_id: str = DEFAULT_ROOM_ID, schedule_dow: int | None = None, schedule_day_name: str = "", completion_timeout_ms: int | None = None, recovery_deadline_ms: int | None = None, completion_wait_timeout_secs: float | None = None, recovery_wait_timeout_secs: float | None = None, rpc_timeout_secs: float = DEFAULT_RPC_TIMEOUT_SECS, poll_interval_ms: int = DEFAULT_COMPLETION_POLL_INTERVAL_MS, clock: Callable[[], int] = now_ms, sleeper: Callable[[float], None] = time.sleep):
+    def __init__(self, state_store: CompanionStateStore, rpc_client: MoltisRpcClient, data_dir: Path | str, agent_name: str, agent_display_name: str = "", main_model: str = "", review_model: str = "", matrix_client: MatrixClient | None = None, telegram_client: TelegramClient | None = None, telegram_bot_token_path: Path | str | None = None, telegram_allowed_users_path: Path | str | None = None, telegram_api_url: str = DEFAULT_TELEGRAM_API_URL, session_key: str = DEFAULT_GH_SESSION_KEY, room_id: str = DEFAULT_ROOM_ID, schedule_dow: int | None = None, schedule_day_name: str = "", completion_timeout_ms: int | None = None, recovery_deadline_ms: int | None = None, completion_wait_timeout_secs: float | None = None, recovery_wait_timeout_secs: float | None = None, rpc_timeout_secs: float = DEFAULT_RPC_TIMEOUT_SECS, poll_interval_ms: int = DEFAULT_COMPLETION_POLL_INTERVAL_MS, clock: Callable[[], int] = now_ms, sleeper: Callable[[float], None] = time.sleep):
         self.state_store = state_store
         self.rpc_client = rpc_client
         self.data_dir = Path(data_dir)
         self.agent_name = normalize_agent_name(agent_name)
         self.agent_display_name = derive_display_name(self.agent_name, agent_display_name)
         self.main_model = (main_model or "").strip()
+        self.review_model = (review_model or self.main_model).strip()
         self.matrix_client = matrix_client
         self.telegram_client = telegram_client or (TelegramClient(bot_token_path=telegram_bot_token_path, allowed_users_path=telegram_allowed_users_path, api_url=telegram_api_url) if (telegram_bot_token_path or telegram_allowed_users_path) else None)
         self.session_key = (session_key or DEFAULT_GH_SESSION_KEY).strip()
@@ -2110,13 +2121,13 @@ class LocalExecutionCoordinator:
         with self.state_store.coordinator_lock():
             return self._recover_unlocked(now_override_ms=now_override_ms)
 
-    def execute_dispatch(self, *, kind: str, model: str | None = None, session_key: str | None = None, thread_id: str | None = None, state_key: str | None = None, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, head_sha: str | None = None, ci_state: str | None = None, updated_at: str | None = None, trigger_reason: str | None = None, comment_id: int | str | None = None, review_id: int | str | None = None, trusted_item_id: int | str | None = None, revision: str | None = None, sweep_date: str | None = None, extra_instructions: str = "", dispatch_id: str | None = None, now_override_ms: int | None = None, **_ignored: object) -> dict:
+    def execute_dispatch(self, *, kind: str, model: str | None = None, is_automated_pr: bool = False, session_key: str | None = None, thread_id: str | None = None, state_key: str | None = None, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, head_sha: str | None = None, ci_state: str | None = None, updated_at: str | None = None, trigger_reason: str | None = None, comment_id: int | str | None = None, review_id: int | str | None = None, trusted_item_id: int | str | None = None, revision: str | None = None, sweep_date: str | None = None, extra_instructions: str = "", dispatch_id: str | None = None, now_override_ms: int | None = None, **_ignored: object) -> dict:
         """Serialise a model turn under coordinator.lock while allowing state.json updates under companion.lock."""
         with self.state_store.coordinator_lock():
             recovery = self._recover_unlocked(now_override_ms=now_override_ms)
             start_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
             resolved_session_key = (session_key or self.session_key or DEFAULT_GH_SESSION_KEY).strip()
-            resolved_model = (model or self.main_model).strip()
+            resolved_model = (model or ((self.review_model or self.main_model) if (kind == "targeted" and not is_automated_pr) else self.main_model)).strip()
             resolved_dispatch_id = (dispatch_id or f"ghd-{self.agent_name}-{uuid.uuid4().hex}").strip()
             eff_state_key = (state_key or thread_id or (make_pr_key(repo, number) if repo and number else "")).strip()
 
@@ -2273,7 +2284,7 @@ class GithubCompanionRunner:
                 _complete_skipped(tid, tid, prep, entry)
                 continue
             dispatched_targets.add(dedup_key)
-            targeted_dispatches.append(self.execution_coordinator.execute_dispatch(kind="targeted", thread_id=tid, state_key=tid, repo=prep.get("repo") or repo, number=prep.get("number") or number, subject_kind=prep.get("kind") or entry.get("subject_type"), head_sha=prep.get("head_sha") or entry.get("head_sha"), ci_state=entry.get("ci_state"), updated_at=entry.get("updated_at"), trigger_reason=prep.get("trigger_reason") or entry.get("reason"), comment_id=prep.get("comment_id"), review_id=prep.get("review_id"), trusted_item_id=prep.get("trusted_item_id"), now_override_ms=now_override_ms))
+            targeted_dispatches.append(self.execution_coordinator.execute_dispatch(kind="targeted", is_automated_pr=bool(prep.get("is_automated_pr") or entry.get("is_automated_pr")), thread_id=tid, state_key=tid, repo=prep.get("repo") or repo, number=prep.get("number") or number, subject_kind=prep.get("kind") or entry.get("subject_type"), head_sha=prep.get("head_sha") or entry.get("head_sha"), ci_state=entry.get("ci_state"), updated_at=entry.get("updated_at"), trigger_reason=prep.get("trigger_reason") or entry.get("reason"), comment_id=prep.get("comment_id"), review_id=prep.get("review_id"), trusted_item_id=prep.get("trusted_item_id"), now_override_ms=now_override_ms))
 
         for pr_item in poll_result.get("actionable_prs") or []:
             if not isinstance(pr_item, dict):
@@ -2286,7 +2297,7 @@ class GithubCompanionRunner:
             if trig_reason != "ci_green_after_approval" and _safe_int(pr_entry.get("followup_cooldown_until_ms"), 0) > current_ms:
                 continue
             dispatched_targets.add(pr_key)
-            targeted_dispatches.append(self.execution_coordinator.execute_dispatch(kind="targeted", thread_id=str(pr_item.get("thread_id") or "").strip() or None, state_key=pr_key, repo=str(pr_item.get("repo") or ""), number=_safe_int(pr_item.get("number"), 0) or None, subject_kind="PullRequest", head_sha=str(pr_item.get("head_sha") or "") or None, ci_state=str(pr_item.get("ci_state") or "") or None, updated_at=str(pr_item.get("updated_at") or "") or None, trigger_reason=trig_reason, now_override_ms=now_override_ms))
+            targeted_dispatches.append(self.execution_coordinator.execute_dispatch(kind="targeted", is_automated_pr=bool(pr_item.get("is_automated_pr") or pr_entry.get("is_automated_pr")), thread_id=str(pr_item.get("thread_id") or "").strip() or None, state_key=pr_key, repo=str(pr_item.get("repo") or ""), number=_safe_int(pr_item.get("number"), 0) or None, subject_kind="PullRequest", head_sha=str(pr_item.get("head_sha") or "") or None, ci_state=str(pr_item.get("ci_state") or "") or None, updated_at=str(pr_item.get("updated_at") or "") or None, trigger_reason=trig_reason, now_override_ms=now_override_ms))
 
         sweep_dispatch: dict | None = None
         if run_sweeps_if_due:
@@ -2302,6 +2313,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--agent-name", default=os.environ.get("MOLTIS_GITHUB_COMPANION_AGENT_NAME") or os.environ.get("MOLTIS_COMPANION_AGENT_NAME", ""))
     parser.add_argument("--agent-display-name", default=os.environ.get("MOLTIS_GITHUB_COMPANION_AGENT_DISPLAY_NAME") or os.environ.get("MOLTIS_COMPANION_AGENT_DISPLAY_NAME", ""))
     parser.add_argument("--main-model", default=os.environ.get("MOLTIS_GITHUB_COMPANION_MAIN_MODEL") or os.environ.get("MOLTIS_COMPANION_MAIN_MODEL", ""))
+    parser.add_argument("--review-model", default=os.environ.get("MOLTIS_GITHUB_COMPANION_REVIEW_MODEL") or os.environ.get("MOLTIS_COMPANION_REVIEW_MODEL", ""))
     parser.add_argument("--self-user-id", default=os.environ.get("MOLTIS_GITHUB_COMPANION_MATRIX_SELF_USER_ID") or os.environ.get("MOLTIS_COMPANION_SELF_USER_ID", ""))
     parser.add_argument("--room-id", default=os.environ.get("MOLTIS_GITHUB_COMPANION_MATRIX_ROOM_ID") or os.environ.get("MOLTIS_COMPANION_ROOM_ID", DEFAULT_ROOM_ID))
     parser.add_argument("--homeserver-url", default=os.environ.get("MOLTIS_GITHUB_COMPANION_MATRIX_HOMESERVER_URL") or os.environ.get("MOLTIS_COMPANION_HOMESERVER_URL", DEFAULT_HOMESERVER_URL))
@@ -2330,9 +2342,11 @@ def resolve_runtime_config(args: argparse.Namespace) -> dict:
         explicit_dow = _safe_int(env_dow, default_dow)
     state_dir_raw = (args.state_dir or "").strip()
     xdg_state = os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state")
+    main_model = (args.main_model or "").strip()
     return {
         "agent_name": agent_name, "agent_display_name": derive_display_name(agent_name, args.agent_display_name),
-        "main_model": (args.main_model or "").strip(),
+        "main_model": main_model,
+        "review_model": (getattr(args, "review_model", "") or os.environ.get("MOLTIS_GITHUB_COMPANION_REVIEW_MODEL", "") or main_model).strip(),
         "schedule_dow": _safe_int(explicit_dow, default_dow) if explicit_dow is not None else default_dow,
         "schedule_day_name": (getattr(args, "schedule_day_name", "") or os.environ.get("MOLTIS_GITHUB_COMPANION_SCHEDULE_DAY_NAME", "") or default_day_name).strip(),
         "self_user_id": (args.self_user_id or f"@{agent_name}:{SERVER_DOMAIN}").strip(), "room_id": (args.room_id or DEFAULT_ROOM_ID).strip(),
@@ -2358,7 +2372,7 @@ def main(argv: list[str] | None = None) -> int:
     rpc_client = MoltisRpcClient(rpc_url=cfg["rpc_url"])
     poller = NotificationPoller(state_store=store, gh_client=gh_client, read_only_trial=cfg["read_only_trial"])
     trust_filter = TrustFilterAndSnapshotBuilder(state_store=store, gh_client=gh_client, matrix_client=matrix_client, telegram_client=telegram_client, agent_name=cfg["agent_name"])
-    execution_coordinator = LocalExecutionCoordinator(state_store=store, rpc_client=rpc_client, data_dir=cfg["data_dir"], agent_name=cfg["agent_name"], agent_display_name=cfg["agent_display_name"], main_model=cfg["main_model"], matrix_client=matrix_client, telegram_client=telegram_client, room_id=cfg["room_id"], schedule_dow=cfg["schedule_dow"], schedule_day_name=cfg["schedule_day_name"])
+    execution_coordinator = LocalExecutionCoordinator(state_store=store, rpc_client=rpc_client, data_dir=cfg["data_dir"], agent_name=cfg["agent_name"], agent_display_name=cfg["agent_display_name"], main_model=cfg["main_model"], review_model=cfg["review_model"], matrix_client=matrix_client, telegram_client=telegram_client, room_id=cfg["room_id"], schedule_dow=cfg["schedule_dow"], schedule_day_name=cfg["schedule_day_name"])
     runner = GithubCompanionRunner(state_store=store, gh_client=gh_client, poller=poller, trust_filter=trust_filter, execution_coordinator=execution_coordinator, matrix_client=matrix_client, read_only_trial=cfg["read_only_trial"])
     if cfg["once"]:
         poller.wait_until_due()

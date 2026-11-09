@@ -231,8 +231,19 @@ let
       darwin = context.platform == "darwin";
       gemini = context.provider == "gemini";
       agentName = host;
+      expectedMainModelName =
+        if host == "traya" then "gpt-6.1-sol@reasoning-medium" else "gemini-4-argon@reasoning-medium";
       expectedMainModel =
-        if host == "traya" then "openai-codex::gpt-6-astra" else "gemini::gemini-4-argon";
+        if host == "traya" then
+          "openai-codex::gpt-6.1-sol@reasoning-medium"
+        else
+          "gemini::gemini-4-argon@reasoning-medium";
+      expectedReviewModel =
+        if host == "traya" then
+          "openai-codex::gpt-6-astra@reasoning-medium"
+        else
+          "gemini::gemini-4-argon@reasoning-high";
+      expectedReviewReasoningEffort = if host == "traya" then "medium" else "high";
       settings = c.agentic.moltis.settings;
       cli = builtins.fromJSON (
         builtins.unsafeDiscardStringContext c.xdg.configFile."moltis/mcporter.json".text
@@ -292,9 +303,20 @@ let
     assert
       settings.models == {
         gemini-4-argon.context_window = 1000000;
+        "gpt-6.1-sol".context_window = 384000;
         gpt-6-astra.context_window = 384000;
         gpt-6-luna.context_window = 384000;
       };
+    assert
+      !darwin
+      ||
+        settings.providers.openai-codex.models == [
+          "gpt-6.1-sol"
+          "gpt-6-astra"
+          "gpt-6-luna"
+        ];
+    assert settings.channels.telegram.moltis.model == expectedMainModelName;
+    assert settings.channels.matrix."matrix-${agentName}".model == expectedMainModelName;
     assert
       settings.memory == {
         provider = "custom";
@@ -385,6 +407,9 @@ let
       scripts.githubCompanion;
     assert lib.hasInfix
       "export MOLTIS_GITHUB_COMPANION_MAIN_MODEL=${lib.escapeShellArg expectedMainModel}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_REVIEW_MODEL=${lib.escapeShellArg expectedReviewModel}"
       scripts.githubCompanion;
     assert lib.hasInfix "export MOLTIS_GITHUB_COMPANION_SCHEDULE_DOW=${
       lib.escapeShellArg (
@@ -520,8 +545,8 @@ let
         "review"
       ];
     assert settings.agents.presets.coordinator.reasoning_effort == "medium";
-    assert settings.agents.presets.review.model == context.mainModel;
-    assert settings.agents.presets.review.reasoning_effort == "medium";
+    assert settings.agents.presets.review.model == expectedReviewModel;
+    assert settings.agents.presets.review.reasoning_effort == expectedReviewReasoningEffort;
     assert settings.heartbeat.model == context.mainModel;
     assert settings.auxiliary.compaction == context.auxiliaryModel;
     assert settings.auxiliary.title_generation == context.auxiliaryModel;
