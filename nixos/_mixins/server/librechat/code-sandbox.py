@@ -11,6 +11,7 @@ import os
 import re
 import secrets
 import shutil
+import signal
 import string
 import subprocess
 import threading
@@ -25,6 +26,8 @@ ALPHABET = string.ascii_letters + string.digits
 ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{21}$")
 PAYLOAD_PATTERN = re.compile(r'^(payload\s*=\s*)"([A-Za-z0-9+/=]+)"\s*$', re.MULTILINE)
 EXEC_LOCK = threading.Lock()
+ACTIVE_PROCESSES_LOCK = threading.Lock()
+ACTIVE_PROCESSES: dict[str, subprocess.Popen[bytes]] = {}
 MAX_OUTPUT_BYTES = 1024 * 1024
 MAX_REQUEST_BODY_BYTES = 50 * 1024 * 1024
 
@@ -217,11 +220,20 @@ def build_bwrap_cmd(cmd: list[str], workspace_dir: Path) -> list[str] | None:
     ]
 
 
+def _terminate_process_group(proc: subprocess.Popen[bytes]) -> None:
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except OSError:
+        with contextlib.suppress(OSError):
+            proc.kill()
+
+
 def _run_process_bounded(
     cmd: list[str],
     workspace_dir: Path,
     env: dict[str, str],
     timeout_sec: float,
+    tracking_keys: tuple[str, ...] = (),
 ) -> tuple[subprocess.CompletedProcess[str], bool]:
     stdout_chunks: list[bytes] = []
     stderr_chunks: list[bytes] = []
@@ -263,7 +275,13 @@ def _run_process_bounded(
         env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        start_new_session=True,
     )
+    if tracking_keys:
+        with ACTIVE_PROCESSES_LOCK:
+            for key in tracking_keys:
+                if key:
+                    ACTIVE_PROCESSES[key] = proc
     t_out = threading.Thread(
         target=drain_stream, args=(proc.stdout, stdout_chunks), kwargs={"is_stdout": True}, daemon=True
     )
@@ -275,7 +293,7 @@ def _run_process_bounded(
     try:
         returncode = proc.wait(timeout=timeout_sec)
     except subprocess.TimeoutExpired:
-        proc.kill()
+        _terminate_process_group(proc)
         with contextlib.suppress(Exception):
             proc.wait(timeout=5)
         t_out.join(timeout=2)
@@ -287,6 +305,11 @@ def _run_process_bounded(
             stderr=b"".join(stderr_chunks).decode("utf-8", errors="replace"),
         ) from None
     finally:
+        if tracking_keys:
+            with ACTIVE_PROCESSES_LOCK:
+                for key in tracking_keys:
+                    if ACTIVE_PROCESSES.get(key) is proc:
+                        ACTIVE_PROCESSES.pop(key, None)
         t_out.join(timeout=2)
         t_err.join(timeout=2)
         if proc.stdout is not None:
@@ -310,6 +333,7 @@ def run_sandboxed(
     workspace_dir: Path,
     env: dict[str, str],
     timeout_sec: float,
+    tracking_keys: tuple[str, ...] = (),
 ) -> tuple[subprocess.CompletedProcess[str], bool]:
     bwrap_cmd = build_bwrap_cmd(cmd, workspace_dir)
     if bwrap_cmd is not None:
@@ -317,22 +341,36 @@ def run_sandboxed(
         bwrap_env["HOME"] = "/mnt/data"
         bwrap_env["LIBRECHAT_CODE_DATA_DIR"] = "/mnt/data"
         proc, overflow = _run_process_bounded(
-            bwrap_cmd, workspace_dir, bwrap_env, timeout_sec
+            bwrap_cmd, workspace_dir, bwrap_env, timeout_sec, tracking_keys
         )
         if not (proc.returncode != 0 and "bwrap:" in proc.stderr):
             return proc, overflow
-    return _run_process_bounded(cmd, workspace_dir, env, timeout_sec)
+    return _run_process_bounded(cmd, workspace_dir, env, timeout_sec, tracking_keys)
 
 
 def execute_code_request(
-    body: dict[str, object], *, programmatic: bool = False
+    body: dict[str, object],
+    *,
+    programmatic: bool = False,
+    request_id: str | None = None,
 ) -> dict[str, object]:
     raw_lang = str(body.get("lang") or ("bash" if programmatic else "py")).lower().strip()
     code = str(body.get("code") or "")
     raw_args = body.get("args")
     args = [str(a) for a in raw_args] if isinstance(raw_args, list) else []
     raw_session = body.get("session_id") or body.get("runtime_session_hint")
-    session_id = to_nanoid(str(raw_session) if raw_session else None)
+    raw_session_str = str(raw_session).strip() if raw_session else ""
+    session_id = to_nanoid(raw_session_str if raw_session_str else None)
+    effective_request_id = (
+        request_id or str(body.get("request_id") or "").strip() or None
+    )
+    tracking_keys = tuple(
+        dict.fromkeys(
+            key
+            for key in (effective_request_id, raw_session_str, session_id)
+            if key
+        )
+    )
 
     raw_timeout = body.get("timeout")
     timeout_sec = 120.0
@@ -429,7 +467,9 @@ def execute_code_request(
             returncode = 1
         else:
             try:
-                proc, overflow = run_sandboxed(cmd, workspace_dir, env, timeout_sec)
+                proc, overflow = run_sandboxed(
+                    cmd, workspace_dir, env, timeout_sec, tracking_keys
+                )
                 stdout = proc.stdout
                 stderr = proc.stderr
                 returncode = proc.returncode
@@ -774,7 +814,7 @@ class SandboxHandler(BaseHTTPRequestHandler):
         parsed = urlsplit(self.path)
         path = parsed.path.rstrip("/") or "/"
 
-        if path == "/exec":
+        if path in ("/exec", "/exec/programmatic"):
             try:
                 raw_body = self.read_request_body()
             except ValueError as exc:
@@ -785,29 +825,68 @@ class SandboxHandler(BaseHTTPRequestHandler):
             except json.JSONDecodeError:
                 self.send_json(400, {"error": "Invalid JSON"})
                 return
-            self.send_json(200, execute_code_request(body, programmatic=False))
-            return
-
-        if path == "/exec/programmatic":
-            try:
-                raw_body = self.read_request_body()
-            except ValueError as exc:
-                self.send_json(413, {"error": str(exc)})
+            if not isinstance(body, dict):
+                self.send_json(400, {"error": "Expected JSON object"})
                 return
-            try:
-                body = json.loads(raw_body.decode("utf-8")) if raw_body else {}
-            except json.JSONDecodeError:
-                self.send_json(400, {"error": "Invalid JSON"})
-                return
-            self.send_json(200, execute_code_request(body, programmatic=True))
+            req_id = (
+                self.headers.get("X-LibreChat-Code-Request-ID")
+                or self.headers.get("x-librechat-code-request-id")
+                or ""
+            ).strip() or None
+            self.send_json(
+                200,
+                execute_code_request(
+                    body,
+                    programmatic=(path == "/exec/programmatic"),
+                    request_id=req_id,
+                ),
+            )
             return
 
         if path == "/exec/programmatic/cancel":
             try:
-                self.read_request_body()
+                raw_body = self.read_request_body()
             except ValueError as exc:
                 self.send_json(413, {"error": str(exc)})
                 return
+            body: dict[str, object] = {}
+            if raw_body:
+                try:
+                    parsed_body = json.loads(raw_body.decode("utf-8"))
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    parsed_body = None
+                if isinstance(parsed_body, dict):
+                    body = parsed_body
+            header_req_id = (
+                self.headers.get("X-LibreChat-Code-Request-ID")
+                or self.headers.get("x-librechat-code-request-id")
+                or ""
+            ).strip()
+            body_req_id = str(body.get("request_id") or "").strip()
+            raw_session = str(
+                body.get("session_id") or body.get("runtime_session_hint") or ""
+            ).strip()
+            lookup_keys = [
+                key
+                for key in (
+                    header_req_id,
+                    body_req_id,
+                    raw_session,
+                    to_nanoid(raw_session) if raw_session else "",
+                )
+                if key
+            ]
+            targets: list[subprocess.Popen[bytes]] = []
+            with ACTIVE_PROCESSES_LOCK:
+                if lookup_keys:
+                    seen_ids: set[int] = set()
+                    for key in lookup_keys:
+                        proc = ACTIVE_PROCESSES.get(key)
+                        if proc is not None and id(proc) not in seen_ids:
+                            seen_ids.add(id(proc))
+                            targets.append(proc)
+            for proc in targets:
+                _terminate_process_group(proc)
             self.send_json(200, {"status": "cancelled"})
             return
 
