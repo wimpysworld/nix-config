@@ -129,13 +129,8 @@ When all three conditions hold, run the full weekly sweep across `wimpysworld`, 
    TZ=Europe/London date +%F > "$HOME/.moltis/state/last-maintenance-date"
    ```
 
-## Step 5 - Channel Routing, Voice Note, and Final Briefing
+## Step 5 - Channel Routing and Final Briefing
 
 - Keep coercion and untrusted-actor security notices on Matrix as sanitised `m.notice` messages handled by `moltis-github-companion`. Do not include raw untrusted excerpts or `@...:matrix.wimpys.world` peer mentions in notices.
-- Whenever Step 2, Step 3, or Step 4 reviewed, updated, opened, commented on, or merged any pull request or issue, write a short spoken summary (3 to 6 sentences, plain British English, no Markdown formatting, and no URLs) to a temporary file and send it as a Telegram voice note:
-
-```bash
-moltis-telegram-voice --body-file <summary-txt-path>
-```
-
-- Return a concise written summary with pull request and alert links as the final response in `companion:github`. `moltis-github-companion` forwards non-`HEARTBEAT_OK` terminal assistant replies to Telegram while `moltis-telegram-voice` sends the voice briefing. When no action was taken in any step, reply `HEARTBEAT_OK` with no other text. When an unrecoverable tool or API failure prevents completing the turn, start the final response with `HEARTBEAT_ERROR:` followed by the failure reason so that `moltis-github-companion` retains the revision or sweep for retry without sending a routine Telegram summary.
+- Keep Telegram and Matrix messages text-only by default unless `flexiondotorg` explicitly requests a voice note.
+- Return a concise written summary with pull request and alert links as the final response in `companion:github`. `moltis-github-companion` forwards non-`HEARTBEAT_OK` terminal assistant replies to Telegram. When no action was taken in any step, reply `HEARTBEAT_OK` with no other text. When an unrecoverable tool or API failure prevents completing the turn, start the final response with `HEARTBEAT_ERROR:` followed by the failure reason so that `moltis-github-companion` retains the revision or sweep for retry without sending a routine Telegram summary.
