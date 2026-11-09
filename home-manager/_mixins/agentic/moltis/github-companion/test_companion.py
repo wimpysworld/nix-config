@@ -3276,7 +3276,7 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             # Cycle 1 open PRs:
             # - Human PR flexiondotorg (wimpysworld/nix-config#101) -> review_model
             # - Peer PR sith-zannah (wimpysworld/nix-config#102) -> review_model
-            # - Dependabot PR owned by skrye (wimpysworld/nix-config#27 -> wait: compute_automated_pr_owner("wimpysworld/WonKey", 29) -> check)
+            # - Dependabot PR linuxmatters/website#27 owned by skrye -> main_model
             [
                 {
                     "number": 101,
