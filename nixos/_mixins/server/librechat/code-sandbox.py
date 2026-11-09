@@ -189,6 +189,8 @@ def rewrite_mnt_data_in_code(code: str, workspace_dir: Path) -> str:
 
 
 def build_bwrap_cmd(cmd: list[str]) -> list[str] | None:
+    if os.environ.get("SANDBOX_DISABLE_BWRAP") == "1":
+        return None
     bwrap = shutil.which("bwrap")
     if not bwrap:
         return None
@@ -341,20 +343,15 @@ def run_sandboxed(
     env: dict[str, str],
     timeout_sec: float,
     tracking_keys: tuple[str, ...] = (),
-    on_fallback: object = None,
 ) -> tuple[subprocess.CompletedProcess[str], bool]:
     bwrap_cmd = build_bwrap_cmd(cmd)
     if bwrap_cmd is not None:
         bwrap_env = env.copy()
         bwrap_env["HOME"] = "/mnt/data"
         bwrap_env["LIBRECHAT_CODE_DATA_DIR"] = "/mnt/data"
-        proc, overflow = _run_process_bounded(
+        return _run_process_bounded(
             bwrap_cmd, workspace_dir, bwrap_env, timeout_sec, tracking_keys
         )
-        if not (proc.returncode != 0 and "bwrap:" in proc.stderr):
-            return proc, overflow
-        if callable(on_fallback):
-            on_fallback()
     return _run_process_bounded(
         cmd, workspace_dir, env, timeout_sec, tracking_keys
     )
@@ -440,13 +437,20 @@ def execute_code_request(
                     readonly_paths.add(rel_path)
 
         before_snap = snapshot_workspace(workspace_dir)
-        rewritten_code = rewrite_mnt_data_in_code(code, workspace_dir)
-        rewritten_args = [
-            rewrite_mnt_data_in_code(a, workspace_dir) for a in args
-        ]
-        use_bwrap = shutil.which("bwrap") is not None
-        effective_code = code if use_bwrap else rewritten_code
-        effective_args = args if use_bwrap else rewritten_args
+        use_bwrap = (
+            os.environ.get("SANDBOX_DISABLE_BWRAP") != "1"
+            and shutil.which("bwrap") is not None
+        )
+        effective_code = (
+            code
+            if use_bwrap
+            else rewrite_mnt_data_in_code(code, workspace_dir)
+        )
+        effective_args = (
+            args
+            if use_bwrap
+            else [rewrite_mnt_data_in_code(a, workspace_dir) for a in args]
+        )
 
         if raw_lang in ("bash", "sh"):
             cmd = [
@@ -484,13 +488,6 @@ def execute_code_request(
         else:
             script_path = resolve_under(workspace_dir, ".lc-tmp-script")
             args_path = resolve_under(workspace_dir, ".lc-tmp-args.json")
-
-            def write_fallback_inputs() -> None:
-                script_path.write_text(rewritten_code, encoding="utf-8")
-                args_path.write_text(
-                    json.dumps(rewritten_args), encoding="utf-8"
-                )
-
             try:
                 script_path.write_text(effective_code, encoding="utf-8")
                 args_path.write_text(
@@ -502,7 +499,6 @@ def execute_code_request(
                     env,
                     timeout_sec,
                     tracking_keys,
-                    on_fallback=write_fallback_inputs,
                 )
                 stdout = proc.stdout
                 stderr = proc.stderr
