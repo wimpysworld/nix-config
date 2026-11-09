@@ -344,16 +344,19 @@ def run_sandboxed(
     timeout_sec: float,
     tracking_keys: tuple[str, ...] = (),
 ) -> tuple[subprocess.CompletedProcess[str], bool]:
+    clean_env = env.copy()
+    clean_env.pop("LIBRECHAT_CODE_API_KEY", None)
+    clean_env.pop("STATE_DIR", None)
     bwrap_cmd = build_bwrap_cmd(cmd)
     if bwrap_cmd is not None:
-        bwrap_env = env.copy()
+        bwrap_env = clean_env.copy()
         bwrap_env["HOME"] = "/mnt/data"
         bwrap_env["LIBRECHAT_CODE_DATA_DIR"] = "/mnt/data"
         return _run_process_bounded(
             bwrap_cmd, workspace_dir, bwrap_env, timeout_sec, tracking_keys
         )
     return _run_process_bounded(
-        cmd, workspace_dir, env, timeout_sec, tracking_keys
+        cmd, workspace_dir, clean_env, timeout_sec, tracking_keys
     )
 
 
@@ -474,6 +477,8 @@ def execute_code_request(
             cmd = None
 
         env = os.environ.copy()
+        env.pop("LIBRECHAT_CODE_API_KEY", None)
+        env.pop("STATE_DIR", None)
         env["HOME"] = str(workspace_dir)
         env["LIBRECHAT_CODE_DATA_DIR"] = str(workspace_dir)
         env["PYTHONDONTWRITEBYTECODE"] = "1"
