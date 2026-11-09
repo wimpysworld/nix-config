@@ -160,6 +160,23 @@ let
   provisionedCommandNames = lib.sort (a: b: a < b) (
     builtins.attrNames (lib.filterAttrs (_: entry: !entry.secret) assistantsCompose.commandRegistry)
   );
+  sharedAgentNames = [
+    "casper"
+    "morph"
+    "penfold"
+    "velma"
+  ];
+  sharedSkillNames = [
+    "communication-rules"
+    "deep-research"
+    "delegate-task"
+    "diagram-design"
+    "frontend-design"
+    "logo-design"
+    "marp-presentations"
+    "web-interface-guidelines"
+    "writing-well"
+  ];
   librechatAssistantsManifest = pkgs.writeText "librechat-assistants-manifest.json" (
     builtins.toJSON {
       agents = map (
@@ -172,6 +189,7 @@ let
         {
           id = "agent_${name}";
           inherit name mcpServerNames;
+          shared = lib.elem name sharedAgentNames;
           description = header.common.description;
           instructions =
             lib.trim (builtins.readFile (agentDir + "/prompt.md")) + "\n\n" + assistantsCompose.houseStyleBody;
@@ -193,6 +211,7 @@ let
         {
           name = skillName;
           displayTitle = skillName;
+          shared = lib.elem skillName sharedSkillNames;
           description = header.common.description;
           body =
             if builtins.pathExists (skillDir + "/SKILL.md") then
@@ -353,16 +372,16 @@ let
           throw new Error("Expected user martin@wimpress.org was not found in db.users");
         }
 
-        const ensureOwnerRole = (accessRoleId, resourceType) => {
+        const ensureRole = (accessRoleId, resourceType, permBits, name, description) => {
           db.accessroles.updateOne(
             { accessRoleId },
             {
               $setOnInsert: {
                 accessRoleId,
-                name: "com_ui_role_owner",
-                description: "com_ui_role_owner_desc",
+                name,
+                description,
                 resourceType,
-                permBits: 15,
+                permBits,
                 createdAt: now,
                 updatedAt: now,
               },
@@ -372,9 +391,41 @@ let
           return db.accessroles.findOne({ accessRoleId });
         };
 
-        const agentOwnerRole = ensureOwnerRole("agent_owner", "agent");
-        const promptGroupOwnerRole = ensureOwnerRole("promptGroup_owner", "promptGroup");
-        const skillOwnerRole = ensureOwnerRole("skill_owner", "skill");
+        const agentOwnerRole = ensureRole(
+          "agent_owner",
+          "agent",
+          15,
+          "com_ui_role_owner",
+          "com_ui_role_owner_desc",
+        );
+        const agentViewerRole = ensureRole(
+          "agent_viewer",
+          "agent",
+          1,
+          "com_ui_role_viewer",
+          "com_ui_role_viewer_desc",
+        );
+        const promptGroupOwnerRole = ensureRole(
+          "promptGroup_owner",
+          "promptGroup",
+          15,
+          "com_ui_role_owner",
+          "com_ui_role_owner_desc",
+        );
+        const skillOwnerRole = ensureRole(
+          "skill_owner",
+          "skill",
+          15,
+          "com_ui_role_owner",
+          "com_ui_role_owner_desc",
+        );
+        const skillViewerRole = ensureRole(
+          "skill_viewer",
+          "skill",
+          1,
+          "com_ui_role_viewer",
+          "com_ui_role_viewer_desc",
+        );
 
         const upsertOwnerAcl = (resourceType, resourceId, roleId) => {
           db.aclentries.updateOne(
@@ -405,6 +456,40 @@ let
           );
         };
 
+        const syncPublicViewerAcl = (resourceType, resourceId, roleId, isShared) => {
+          if (isShared) {
+            db.aclentries.updateOne(
+              {
+                principalType: "public",
+                resourceType,
+                resourceId,
+              },
+              {
+                $set: {
+                  principalType: "public",
+                  resourceType,
+                  resourceId,
+                  permBits: 1,
+                  roleId,
+                  grantedBy: martin._id,
+                  grantedAt: now,
+                  updatedAt: now,
+                },
+                $setOnInsert: {
+                  createdAt: now,
+                },
+              },
+              { upsert: true },
+            );
+          } else {
+            db.aclentries.deleteMany({
+              principalType: "public",
+              resourceType,
+              resourceId,
+            });
+          }
+        };
+
         const skillIds = [];
         for (const skill of manifest.skills) {
           db.skills.updateOne(
@@ -419,6 +504,7 @@ let
                 category: "",
                 disableModelInvocation: false,
                 userInvocable: true,
+                defaultActiveOnShare: Boolean(skill.shared),
                 author: martin._id,
                 authorName: martin.name,
                 source: "inline",
@@ -475,6 +561,7 @@ let
           });
 
           upsertOwnerAcl("skill", skillDoc._id, skillOwnerRole._id);
+          syncPublicViewerAcl("skill", skillDoc._id, skillViewerRole._id, Boolean(skill.shared));
         }
 
         const allAgentIds = manifest.agents.map((a) => a.id);
@@ -542,6 +629,7 @@ let
 
           const agentDoc = db.agents.findOne({ id: agent.id });
           upsertOwnerAcl("agent", agentDoc._id, agentOwnerRole._id);
+          syncPublicViewerAcl("agent", agentDoc._id, agentViewerRole._id, Boolean(agent.shared));
         }
 
         for (const cmd of manifest.commands) {
