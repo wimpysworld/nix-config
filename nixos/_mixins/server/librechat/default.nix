@@ -1048,6 +1048,7 @@ in
       wantedBy = [ "multi-user.target" ];
       path = [
         pkgs.bash
+        pkgs.bubblewrap
         pkgs.coreutils
         pkgs.curl
         pkgs.fd
