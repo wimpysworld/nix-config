@@ -175,6 +175,80 @@ def rewrite_mnt_data_in_code(code: str, workspace_dir: Path) -> str:
     return re.sub(r"/mnt/data(?![A-Za-z0-9_.-])", ws_str, updated)
 
 
+def build_bwrap_cmd(cmd: list[str], workspace_dir: Path) -> list[str] | None:
+    bwrap = shutil.which("bwrap")
+    if not bwrap:
+        return None
+    return [
+        bwrap,
+        "--unshare-all",
+        "--die-with-parent",
+        "--ro-bind",
+        "/nix/store",
+        "/nix/store",
+        "--ro-bind-try",
+        "/bin",
+        "/bin",
+        "--ro-bind-try",
+        "/usr",
+        "/usr",
+        "--ro-bind-try",
+        "/etc",
+        "/etc",
+        "--ro-bind-try",
+        "/run/current-system",
+        "/run/current-system",
+        "--dev",
+        "/dev",
+        "--proc",
+        "/proc",
+        "--tmpfs",
+        "/tmp",  # noqa: S108
+        "--bind",
+        str(workspace_dir),
+        "/mnt/data",
+        "--chdir",
+        "/mnt/data",
+        "--",
+        *cmd,
+    ]
+
+
+def run_sandboxed(
+    cmd: list[str],
+    workspace_dir: Path,
+    env: dict[str, str],
+    timeout_sec: float,
+) -> subprocess.CompletedProcess[str]:
+    bwrap_cmd = build_bwrap_cmd(cmd, workspace_dir)
+    if bwrap_cmd is not None:
+        bwrap_env = env.copy()
+        bwrap_env["HOME"] = "/mnt/data"
+        bwrap_env["LIBRECHAT_CODE_DATA_DIR"] = "/mnt/data"
+        proc = subprocess.run(
+            bwrap_cmd,
+            cwd=str(workspace_dir),
+            env=bwrap_env,
+            capture_output=True,
+            text=True,
+            errors="replace",
+            timeout=timeout_sec,
+            check=False,
+        )
+        if not (proc.returncode != 0 and "bwrap:" in proc.stderr):
+            return proc
+    return subprocess.run(
+        cmd,
+        cwd=str(workspace_dir),
+        env=env,
+        capture_output=True,
+        text=True,
+        errors="replace",
+        timeout=timeout_sec,
+        check=False,
+    )
+
+
 def execute_code_request(
     body: dict[str, object], *, programmatic: bool = False
 ) -> dict[str, object]:
@@ -279,16 +353,7 @@ def execute_code_request(
             returncode = 1
         else:
             try:
-                proc = subprocess.run(
-                    cmd,
-                    cwd=str(workspace_dir),
-                    env=env,
-                    capture_output=True,
-                    text=True,
-                    errors="replace",
-                    timeout=timeout_sec,
-                    check=False,
-                )
+                proc = run_sandboxed(cmd, workspace_dir, env, timeout_sec)
                 stdout = proc.stdout
                 stderr = proc.stderr
                 returncode = proc.returncode
