@@ -305,7 +305,7 @@ let
         gemini-4-argon.context_window = 1000000;
         "gpt-6.1-sol".context_window = 384000;
         gpt-6-astra.context_window = 384000;
-        "gpt-6.1-luna".context_window = 384000;
+        gpt-6-luna.context_window = 384000;
       };
     assert
       !darwin
@@ -313,7 +313,7 @@ let
         settings.providers.openai-codex.models == [
           "gpt-6.1-sol"
           "gpt-6-astra"
-          "gpt-6.1-luna"
+          "gpt-6-luna"
         ];
     assert settings.channels.telegram.moltis.model == expectedMainModelName;
     assert settings.channels.matrix."matrix-${agentName}".model == expectedMainModelName;

@@ -29,7 +29,7 @@ let
       "gemini::gemini-4-argon@reasoning-high";
   reviewReasoningEffort = if isTraya then "medium" else "high";
   auxiliaryModel =
-    if isTraya then "openai-codex::gpt-6.1-luna@reasoning-high" else "gemini::gemini-3.8-flash";
+    if isTraya then "openai-codex::gpt-6-luna@reasoning-high" else "gemini::gemini-3.8-flash";
   auxiliaryReasoningEffort = if isTraya then "high" else "medium";
   stateDir = "${config.xdg.stateHome}/moltis";
   mcporterConfig = "${config.xdg.configHome}/moltis/mcporter.json";
@@ -1716,7 +1716,7 @@ in
           gemini-4-argon.context_window = 1000000;
           "gpt-6.1-sol".context_window = 384000;
           gpt-6-astra.context_window = 384000;
-          "gpt-6.1-luna".context_window = 384000;
+          gpt-6-luna.context_window = 384000;
         };
 
         # No inline `api_key`: the provider reads `GEMINI_API_KEY` from
@@ -1737,7 +1737,7 @@ in
             models = [
               "gpt-6.1-sol"
               "gpt-6-astra"
-              "gpt-6.1-luna"
+              "gpt-6-luna"
             ];
             fetch_models = false;
           };

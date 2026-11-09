@@ -364,7 +364,7 @@ let
       "openai-codex/gpt-6-astra"
       "openai-codex/gpt-6.1-sol"
       "openai-codex/gpt-6.1-terra"
-      "openai-codex/gpt-6.1-luna"
+      "openai-codex/gpt-6-luna"
       "opencode-go/glm-5.3-flash"
       "opencode-go/glm-5.3"
     ];
@@ -820,7 +820,7 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
                     "gpt-6-astra"
                     "gpt-6.1-sol"
                     "gpt-6.1-terra"
-                    "gpt-6.1-luna"
+                    "gpt-6-luna"
                   ]
                   (_: {
                     contextWindow = 384000;
