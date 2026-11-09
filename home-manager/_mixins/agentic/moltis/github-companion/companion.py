@@ -1500,7 +1500,7 @@ class TelegramClient:
         if not clean_text or is_heartbeat_ok_reply(clean_text):
             return {"ok": True, "skipped": True}
         bot_cred, chat_id = read_telegram_bot_token(self.bot_token_path), read_telegram_allowed_chat_id(self.allowed_users_path)
-        status, raw = _http_json_request(url=f"{self.api_url}/bot{bot_cred}/sendMessage", method="POST", headers={"Content-Type": "application/json", "Accept": "application/json"}, raw_body=json.dumps({"chat_id": chat_id, "text": clean_text}, ensure_ascii=False).encode("utf-8"), timeout=self.timeout, allow_loopback_self_signed=False)
+        status, raw = _http_json_request(url=f"{self.api_url}/bot{bot_cred}/sendMessage", method="POST", headers={"Content-Type": "application/json", "Accept": "application/json"}, raw_body=json.dumps({"chat_id": chat_id, "text": clean_text, "link_preview_options": {"is_disabled": True}}, ensure_ascii=False).encode("utf-8"), timeout=self.timeout, allow_loopback_self_signed=False)
         if status >= 400:
             raise RuntimeError(f"Telegram sendMessage HTTP {status}")
         if not raw.strip():
@@ -2145,7 +2145,7 @@ class LocalExecutionCoordinator:
             self.state_store.write_active_dispatch(active_record, now_override_ms=start_ms)
 
             start_notice_text = format_start_of_work_notice(agent_display_name=self.agent_display_name, kind=kind, repo=repo, number=number, subject_kind=subject_kind, trigger_reason=trigger_reason, sweep_date=sweep_date, schedule_day_name=self.schedule_day_name)
-            start_notice_sent, start_notice_error = self._send_telegram_safe(start_notice_text)
+            start_notice_sent, start_notice_error = False, None
             prompt_message = self.build_dispatch_prompt(dispatch_id=resolved_dispatch_id, kind=kind, thread_id=thread_id, repo=repo, number=number, subject_kind=subject_kind, head_sha=head_sha, trigger_reason=trigger_reason, comment_id=comment_id, review_id=review_id, trusted_item_id=trusted_item_id, extra_instructions=extra_instructions)
 
             rpc_error: Exception | None = None

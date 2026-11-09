@@ -2032,8 +2032,8 @@ class InterruptedTurnRecoveryDecoupledPollingAndStartNoticeTests(GithubCompanion
 
             return _handler
 
-        # 1) Targeted turn sends 1 one-line start-of-work notice + 1 terminal summary when reply is non-HEARTBEAT_OK
-        self.httpd.send_sync_handler = make_reply_handler("Reviewed and merged PR #42.")
+        # 1) Targeted turn sends no start-of-work notice and forwards 1 terminal summary when reply is non-HEARTBEAT_OK
+        self.httpd.send_sync_handler = make_reply_handler("🏁 https://github.com/wimpysworld/nix-config/pull/42 - feat: example")
         res_targeted = coord.execute_dispatch(
             kind="targeted",
             thread_id="420",
@@ -2044,53 +2044,38 @@ class InterruptedTurnRecoveryDecoupledPollingAndStartNoticeTests(GithubCompanion
             dispatch_id="ghd-skrye-start-1",
         )
         self.assertEqual(res_targeted["status"], "completed")
-        self.assertTrue(res_targeted["start_notice_sent"])
-        self.assertEqual(
-            res_targeted["start_notice_text"],
-            "⚙️ Skrye starting targeted PullRequest turn on wimpysworld/nix-config#42 (ci_green_after_approval).",
-        )
-        self.assertNotIn("\n", res_targeted["start_notice_text"])
+        self.assertFalse(res_targeted["start_notice_sent"])
         self.assertTrue(res_targeted["telegram_forwarded"])
-        self.assertEqual(len(self.httpd.telegram_requests), 2)
+        self.assertEqual(len(self.httpd.telegram_requests), 1)
         self.assertEqual(
             self.httpd.telegram_requests[0]["body"]["text"],
-            "⚙️ Skrye starting targeted PullRequest turn on wimpysworld/nix-config#42 (ci_green_after_approval).",
+            "🏁 https://github.com/wimpysworld/nix-config/pull/42 - feat: example",
         )
-        self.assertEqual(self.httpd.telegram_requests[1]["body"]["text"], "Reviewed and merged PR #42.")
+        self.assertEqual(
+            self.httpd.telegram_requests[0]["body"].get("link_preview_options"),
+            {"is_disabled": True},
+        )
 
-        # 2) Reconciliation sweep with HEARTBEAT_OK sends 1 one-line start-of-work notice and suppresses HEARTBEAT_OK reply
+        # 2) Reconciliation sweep with HEARTBEAT_OK sends no start-of-work notice and suppresses HEARTBEAT_OK reply
         self.httpd.send_sync_handler = make_reply_handler("HEARTBEAT_OK")
         res_reconcile = coord.execute_dispatch(
             kind="reconcile_sweep",
             dispatch_id="ghd-skrye-start-2",
         )
         self.assertEqual(res_reconcile["status"], "completed")
-        self.assertTrue(res_reconcile["start_notice_sent"])
-        self.assertEqual(res_reconcile["start_notice_text"], "⚙️ Skrye starting 6-hour reconciliation sweep.")
+        self.assertFalse(res_reconcile["start_notice_sent"])
         self.assertFalse(res_reconcile["telegram_forwarded"])
-        self.assertEqual(len(self.httpd.telegram_requests), 3)
-        self.assertEqual(
-            self.httpd.telegram_requests[2]["body"]["text"],
-            "⚙️ Skrye starting 6-hour reconciliation sweep.",
-        )
+        self.assertEqual(len(self.httpd.telegram_requests), 1)
 
-        # 3) Weekly sweep sends 1 one-line start-of-work notice
+        # 3) Weekly sweep with HEARTBEAT_OK sends no start-of-work notice
         res_weekly = coord.execute_dispatch(
             kind="weekly_sweep",
             sweep_date="2023-11-13",
             dispatch_id="ghd-skrye-start-3",
         )
         self.assertEqual(res_weekly["status"], "completed")
-        self.assertTrue(res_weekly["start_notice_sent"])
-        self.assertEqual(
-            res_weekly["start_notice_text"],
-            "⚙️ Skrye starting weekly organisation sweep (2023-11-13).",
-        )
-        self.assertEqual(len(self.httpd.telegram_requests), 4)
-        self.assertEqual(
-            self.httpd.telegram_requests[3]["body"]["text"],
-            "⚙️ Skrye starting weekly organisation sweep (2023-11-13).",
-        )
+        self.assertFalse(res_weekly["start_notice_sent"])
+        self.assertEqual(len(self.httpd.telegram_requests), 1)
 
 
 class SweepRetryBackoffRecoveryAndScheduleTests(GithubCompanionTestBase):
