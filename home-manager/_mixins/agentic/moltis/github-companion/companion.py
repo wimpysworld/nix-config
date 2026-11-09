@@ -934,7 +934,7 @@ class CompanionStateStore:
         return {"handled_updated_at": handled_updated_at, "handled_head_sha": handled_head_sha, "handled_ci_state": handled_ci_state, "retry_count": max(0, _safe_int(retry_count, 0))}
 
     def _default_state(self) -> dict:
-        return {"version": 2, "agent_name": self.agent_name, "next_poll_at_ms": None, "last_poll_started_at_ms": None, "last_poll_completed_at_ms": None, "last_status": None, "last_modified": None, "poll_interval_secs": BASE_POLL_INTERVAL_SECS, "retry_after_secs": 0, "last_poll_rate_limited": False, "ratelimit_reset_epoch": None, "last_jitter_ms": None, "last_open_prs_poll_error": None, "last_reconcile_sweep_at_ms": None, "last_reconcile_sweep_attempt_at_ms": None, "reconcile_sweep_retry_after_ms": None, "reconcile_sweep_failure_count": 0, "last_reconcile_sweep_failure_reason": None, "last_weekly_sweep_date": None, "last_weekly_sweep_attempt_at_ms": None, "weekly_sweep_retry_after_ms": None, "weekly_sweep_failure_count": 0, "last_weekly_sweep_failure_reason": None, "threads": {}, "updated_at_ms": self.started_at_ms}
+        return {"version": 2, "agent_name": self.agent_name, "next_poll_at_ms": None, "last_poll_started_at_ms": None, "last_poll_completed_at_ms": None, "last_status": None, "last_modified": None, "poll_interval_secs": 0, "retry_after_secs": 0, "last_poll_rate_limited": False, "ratelimit_reset_epoch": None, "last_jitter_ms": None, "last_open_prs_poll_error": None, "last_reconcile_sweep_at_ms": None, "last_reconcile_sweep_attempt_at_ms": None, "reconcile_sweep_retry_after_ms": None, "reconcile_sweep_failure_count": 0, "last_reconcile_sweep_failure_reason": None, "last_weekly_sweep_date": None, "last_weekly_sweep_attempt_at_ms": None, "weekly_sweep_retry_after_ms": None, "weekly_sweep_failure_count": 0, "last_weekly_sweep_failure_reason": None, "threads": {}, "updated_at_ms": self.started_at_ms}
 
     def _default_active_dispatch(self) -> dict:
         return {"version": 1, "agent_name": self.agent_name, "active": None, "updated_at_ms": self.started_at_ms}
@@ -1885,7 +1885,7 @@ class NotificationPoller:
         if last_status in (200, 304) and not bool(poll_state.get("last_poll_rate_limited", False)) and _safe_int(poll_state.get("retry_after_secs"), 0) <= 0 and isinstance(last_completed_ms, int):
             agent_name = str(poll_state.get("agent_name") or "skrye")
             poll_interval_secs = max(0, _safe_int(poll_state.get("poll_interval_secs"), 0))
-            header_floor_ms = (last_completed_ms + (poll_interval_secs * 1000)) if poll_interval_secs > BASE_POLL_INTERVAL_SECS else 0
+            header_floor_ms = (last_completed_ms + (poll_interval_secs * 1000)) if poll_interval_secs > 0 else 0
             slot_ms = max(compute_next_poll_slot_ms(last_completed_ms, agent_name), header_floor_ms)
             return min(next_poll_at_ms, slot_ms)
         return next_poll_at_ms
@@ -1928,7 +1928,7 @@ class NotificationPoller:
                         self.gh_client.dismiss_notification(tid)
                         dismissed_threads.append(tid)
 
-        poll_interval_hdr = _safe_int(headers.get("x-poll-interval"), BASE_POLL_INTERVAL_SECS)
+        poll_interval_hdr = max(0, _safe_int(headers.get("x-poll-interval"), 0))
         retry_after_hdr = parse_retry_after_seconds(headers.get("retry-after"), finish_ms // 1000)
         remaining_hdr = headers.get("x-ratelimit-remaining")
         remaining_exhausted = remaining_hdr is not None and str(remaining_hdr).strip() != "" and _safe_int(remaining_hdr, 1) <= 0
@@ -1949,7 +1949,7 @@ class NotificationPoller:
 
         new_last_modified = headers["last-modified"].strip() if (200 <= status < 300 and isinstance(headers.get("last-modified"), str) and headers["last-modified"].strip()) else prior_last_modified
         ratelimit_reset_hdr = (_safe_int(headers.get("x-ratelimit-reset"), 0) or None) if is_rate_limited else None
-        self.state_store.write_state({"last_poll_completed_at_ms": finish_ms, "last_status": status, "last_modified": new_last_modified, "next_poll_at_ms": computed_next_poll_ms, "poll_interval_secs": max(BASE_POLL_INTERVAL_SECS, poll_interval_hdr), "retry_after_secs": retry_after_hdr, "last_poll_rate_limited": is_rate_limited, "ratelimit_reset_epoch": ratelimit_reset_hdr, "last_jitter_ms": post_jitter_ms, "last_open_prs_poll_error": open_prs_poll_error}, now_override_ms=finish_ms)
+        self.state_store.write_state({"last_poll_completed_at_ms": finish_ms, "last_status": status, "last_modified": new_last_modified, "next_poll_at_ms": computed_next_poll_ms, "poll_interval_secs": poll_interval_hdr, "retry_after_secs": retry_after_hdr, "last_poll_rate_limited": is_rate_limited, "ratelimit_reset_epoch": ratelimit_reset_hdr, "last_jitter_ms": post_jitter_ms, "last_open_prs_poll_error": open_prs_poll_error}, now_override_ms=finish_ms)
 
         dispatched_threads: list[str] = []
         if not self.read_only_trial and actionable_threads and self.on_actionable_threads is not None:
