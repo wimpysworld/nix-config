@@ -3178,6 +3178,332 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
         self.assertEqual(runner_skrye.is_weekly_sweep_due(now_override_ms=thursday_10am_ms), (False, "2023-11-16"))
         self.assertEqual(runner_zannah.is_weekly_sweep_due(now_override_ms=thursday_10am_ms), (True, "2023-11-16"))
 
+    def test_main_and_review_model_selection_for_code_review_vs_automated_pr_and_sweeps(self) -> None:
+        self.httpd.peek_active = False
+
+        # Runtime config resolves --review-model / MOLTIS_GITHUB_COMPANION_REVIEW_MODEL and defaults to main_model
+        parsed_default = companion.build_arg_parser().parse_args(
+            ["--agent-name", "skrye", "--main-model", "gemini::gemini-4-argon@reasoning-medium"]
+        )
+        cfg_default = companion.resolve_runtime_config(parsed_default)
+        self.assertEqual(cfg_default["main_model"], "gemini::gemini-4-argon@reasoning-medium")
+        self.assertEqual(cfg_default["review_model"], "gemini::gemini-4-argon@reasoning-medium")
+
+        parsed_explicit = companion.build_arg_parser().parse_args(
+            [
+                "--agent-name",
+                "traya",
+                "--main-model",
+                "openai-codex::gpt-6.1-sol@reasoning-medium",
+                "--review-model",
+                "openai-codex::gpt-6-astra@reasoning-medium",
+            ]
+        )
+        cfg_explicit = companion.resolve_runtime_config(parsed_explicit)
+        self.assertEqual(cfg_explicit["main_model"], "openai-codex::gpt-6.1-sol@reasoning-medium")
+        self.assertEqual(cfg_explicit["review_model"], "openai-codex::gpt-6-astra@reasoning-medium")
+
+        sent_models: list[tuple[str, str]] = []
+
+        def make_send_sync_handler(agent_label: str) -> Callable[[dict], dict]:
+            def _handler(params: dict) -> dict:
+                msg = str(params.get("message") or "")
+                model_val = str(params.get("model") or "")
+                disp_id = [line.split(": ", 1)[1] for line in msg.splitlines() if line.startswith("dispatch_id: ")][0]
+                disp_kind = [line.split(": ", 1)[1] for line in msg.splitlines() if line.startswith("dispatch_kind: ")][0]
+                sent_models.append((f"{agent_label}:{disp_kind}", model_val))
+                self.write_history(
+                    companion.DEFAULT_GH_SESSION_KEY,
+                    [
+                        {"role": "user", "dispatch_id": disp_id, "content": msg},
+                        {"role": "assistant", "content": "HEARTBEAT_OK", "stop_reason": "end_turn"},
+                    ],
+                    agent_name=agent_label,
+                )
+                return {"ok": True, "result": {"text": "HEARTBEAT_OK"}}
+
+            return _handler
+
+        # 1) Skrye: main_model = gemini::gemini-4-argon@reasoning-medium, review_model = gemini::gemini-4-argon@reasoning-high
+        notif_batches: list[str] = [
+            # Cycle 1 notifications:
+            # - Issue mention (flexiondotorg) -> review_model
+            # - github-actions[bot] automated PR notification (owned by skrye: wimpysworld/WonKey#27) -> main_model
+            # - Freshener automated PR notification on wimpysworld/nix-config#25 (owned by skrye) -> main_model
+            "HTTP/2.0 200 OK\r\n"
+            "Last-Modified: Tue, 14 Nov 2023 10:00:00 GMT\r\n"
+            "\r\n"
+            + json.dumps(
+                [
+                    {
+                        "id": "3101",
+                        "reason": "mention",
+                        "updated_at": "2023-11-14T10:00:00Z",
+                        "repository": {"full_name": "wimpysworld/nix-config", "owner": {"login": "wimpysworld"}},
+                        "subject": {
+                            "type": "Issue",
+                            "title": "Question on module layout",
+                            "url": "https://api.github.com/repos/wimpysworld/nix-config/issues/310",
+                            "latest_comment_url": "https://api.github.com/repos/wimpysworld/nix-config/issues/comments/31011",
+                        },
+                    },
+                    {
+                        "id": "3102",
+                        "reason": "subscribed",
+                        "updated_at": "2023-11-14T10:00:00Z",
+                        "repository": {"full_name": "wimpysworld/WonKey", "owner": {"login": "wimpysworld"}},
+                        "subject": {
+                            "type": "PullRequest",
+                            "title": "chore(deps): automated workflow update",
+                            "url": "https://api.github.com/repos/wimpysworld/WonKey/pulls/27",
+                        },
+                    },
+                    {
+                        "id": "3103",
+                        "reason": "subscribed",
+                        "updated_at": "2023-11-14T10:00:00Z",
+                        "repository": {"full_name": "wimpysworld/nix-config", "owner": {"login": "wimpysworld"}},
+                        "subject": {
+                            "type": "PullRequest",
+                            "title": "chore(packages): update to 2026.04.19",
+                            "url": "https://api.github.com/repos/wimpysworld/nix-config/pulls/25",
+                        },
+                    },
+                ]
+            ),
+        ]
+        pr_batches: list[list[dict]] = [
+            # Cycle 1 open PRs:
+            # - Human PR flexiondotorg (wimpysworld/nix-config#101) -> review_model
+            # - Peer PR sith-zannah (wimpysworld/nix-config#102) -> review_model
+            # - Dependabot PR owned by skrye (wimpysworld/nix-config#27 -> wait: compute_automated_pr_owner("wimpysworld/WonKey", 29) -> check)
+            [
+                {
+                    "number": 101,
+                    "title": "feat: human PR by flexiondotorg",
+                    "url": "https://github.com/wimpysworld/nix-config/pull/101",
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "updatedAt": "2023-11-14T10:00:00Z",
+                    "headRefOid": "sha_101",
+                    "reviewDecision": "REVIEW_REQUIRED",
+                    "repository": {"nameWithOwner": "wimpysworld/nix-config"},
+                    "author": {"__typename": "User", "login": "flexiondotorg"},
+                    "reviewRequests": {"nodes": []},
+                    "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
+                },
+                {
+                    "number": 102,
+                    "title": "feat: peer PR by sith-zannah",
+                    "url": "https://github.com/wimpysworld/nix-config/pull/102",
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "updatedAt": "2023-11-14T10:00:00Z",
+                    "headRefOid": "sha_102",
+                    "reviewDecision": "REVIEW_REQUIRED",
+                    "repository": {"nameWithOwner": "wimpysworld/nix-config"},
+                    "author": {"__typename": "User", "login": "sith-zannah"},
+                    "reviewRequests": {"nodes": [{"requestedReviewer": {"login": "sith-skrye"}}]},
+                    "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
+                },
+                {
+                    "number": 27,
+                    "title": "build(deps): bump actions/checkout",
+                    "url": "https://github.com/linuxmatters/website/pull/27",
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "updatedAt": "2023-11-14T10:00:00Z",
+                    "headRefOid": "sha_lm_27",
+                    "reviewDecision": "REVIEW_REQUIRED",
+                    "repository": {"nameWithOwner": "linuxmatters/website"},
+                    "author": {"__typename": "Bot", "login": "dependabot"},
+                    "reviewRequests": {"nodes": [{"requestedReviewer": {"login": "sith-skrye"}}]},
+                    "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
+                },
+            ],
+        ]
+
+        def fake_gh_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1]
+            if ep == "notifications":
+                raw = notif_batches.pop(0) if notif_batches else "HTTP/2.0 304 Not Modified\r\n\r\n"
+                return subprocess.CompletedProcess(cmd, 0, stdout=raw, stderr="")
+            if ep == "graphql":
+                nodes = pr_batches.pop(0) if pr_batches else []
+                return subprocess.CompletedProcess(
+                    cmd, 0, stdout=json.dumps({"data": {"search": {"nodes": nodes}}}), stderr=""
+                )
+            if ep.endswith("repos/wimpysworld/nix-config/issues/310"):
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps({"id": 31000, "number": 310, "state": "open", "user": {"login": "flexiondotorg"}}),
+                    stderr="",
+                )
+            if ep.endswith("repos/wimpysworld/nix-config/issues/comments/31011"):
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps({"id": 31011, "user": {"login": "flexiondotorg"}, "body": "@sith-skrye thoughts?"}),
+                    stderr="",
+                )
+            if ep.endswith("repos/wimpysworld/WonKey/pulls/27"):
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps(
+                        {
+                            "id": 27000,
+                            "number": 27,
+                            "state": "open",
+                            "draft": False,
+                            "title": "chore(deps): automated workflow update",
+                            "user": {"login": "github-actions[bot]", "type": "Bot"},
+                            "head": {"sha": "sha_wk_27"},
+                        }
+                    ),
+                    stderr="",
+                )
+            if ep.endswith("repos/wimpysworld/nix-config/pulls/25"):
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps(
+                        {
+                            "id": 25000,
+                            "number": 25,
+                            "state": "open",
+                            "draft": False,
+                            "title": "chore(packages): update to 2026.04.19",
+                            "user": {"login": "flexiondotorg"},
+                            "head": {"sha": "sha_nc_25", "ref": "freshener/2026-04-19"},
+                        }
+                    ),
+                    stderr="",
+                )
+            return subprocess.CompletedProcess(cmd, 0, stdout="{}", stderr="")
+
+        # Tuesday 10:00 UTC -> weekly_sweep due on Skrye
+        tuesday_10am_ms = 1_699_956_000_000
+        self.current_time_ms = tuesday_10am_ms
+        store_skrye = self.make_store("skrye")
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        gh_client = companion.GhApiSafeClient(runner=fake_gh_runner)
+        poller_skrye = companion.NotificationPoller(
+            state_store=store_skrye, gh_client=gh_client, clock=self.clock, sleeper=self.sleeper
+        )
+        tf_skrye = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store_skrye, gh_client=gh_client, agent_name="skrye", clock=self.clock
+        )
+        coord_skrye = companion.LocalExecutionCoordinator(
+            state_store=store_skrye,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="skrye",
+            main_model="gemini::gemini-4-argon@reasoning-medium",
+            review_model="gemini::gemini-4-argon@reasoning-high",
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+        runner_skrye = companion.GithubCompanionRunner(
+            state_store=store_skrye,
+            gh_client=gh_client,
+            poller=poller_skrye,
+            trust_filter=tf_skrye,
+            execution_coordinator=coord_skrye,
+            clock=self.clock,
+        )
+
+        self.httpd.send_sync_handler = make_send_sync_handler("skrye")
+        cycle_skrye = runner_skrye.run_cycle(now_override_ms=tuesday_10am_ms)
+        self.assertEqual(len(cycle_skrye["targeted_dispatches"]), 6)
+        self.assertIsNotNone(cycle_skrye["sweep_dispatch"])
+        self.assertEqual(cycle_skrye["sweep_dispatch"]["kind"], "weekly_sweep")
+
+        # Also run a reconcile_sweep 6 hours later on Skrye -> main_model
+        six_hours_later_ms = tuesday_10am_ms + (6 * 3600 * 1000)
+        self.current_time_ms = six_hours_later_ms
+        cycle_skrye_reconcile = runner_skrye.run_cycle(now_override_ms=six_hours_later_ms)
+        self.assertIsNotNone(cycle_skrye_reconcile["sweep_dispatch"])
+        self.assertEqual(cycle_skrye_reconcile["sweep_dispatch"]["kind"], "reconcile_sweep")
+
+        self.assertEqual(
+            sent_models,
+            [
+                # Issue mention (flexiondotorg) -> review_model
+                ("skrye:targeted", "gemini::gemini-4-argon@reasoning-high"),
+                # github-actions[bot] PR notification -> main_model
+                ("skrye:targeted", "gemini::gemini-4-argon@reasoning-medium"),
+                # Freshener PR notification -> main_model
+                ("skrye:targeted", "gemini::gemini-4-argon@reasoning-medium"),
+                # Human PR (flexiondotorg) -> review_model
+                ("skrye:targeted", "gemini::gemini-4-argon@reasoning-high"),
+                # Peer PR (sith-zannah) -> review_model
+                ("skrye:targeted", "gemini::gemini-4-argon@reasoning-high"),
+                # Dependabot PR -> main_model
+                ("skrye:targeted", "gemini::gemini-4-argon@reasoning-medium"),
+                # Weekly sweep -> main_model
+                ("skrye:weekly_sweep", "gemini::gemini-4-argon@reasoning-medium"),
+                # 6-hour reconciliation sweep -> main_model
+                ("skrye:reconcile_sweep", "gemini::gemini-4-argon@reasoning-medium"),
+            ],
+        )
+
+        # 2) Traya: main_model = openai-codex::gpt-6.1-sol@reasoning-medium, review_model = openai-codex::gpt-6-astra@reasoning-medium
+        sent_models.clear()
+        store_traya = self.make_store("traya")
+        coord_traya = companion.LocalExecutionCoordinator(
+            state_store=store_traya,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="traya",
+            main_model="openai-codex::gpt-6.1-sol@reasoning-medium",
+            review_model="openai-codex::gpt-6-astra@reasoning-medium",
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+        self.httpd.send_sync_handler = make_send_sync_handler("traya")
+
+        # Human/peer PR and issue mention turns use review_model (gpt-6-astra@reasoning-medium)
+        coord_traya.execute_dispatch(
+            kind="targeted",
+            is_automated_pr=False,
+            repo="wimpysworld/nix-config",
+            number=101,
+            subject_kind="PullRequest",
+            trigger_reason="unrequested_pr",
+        )
+        coord_traya.execute_dispatch(
+            kind="targeted",
+            is_automated_pr=False,
+            repo="wimpysworld/nix-config",
+            number=310,
+            subject_kind="Issue",
+            trigger_reason="mention",
+        )
+        # Automated PR turn (if explicitly invoked) and sweep turns use main_model (gpt-6.1-sol@reasoning-medium)
+        coord_traya.execute_dispatch(
+            kind="targeted",
+            is_automated_pr=True,
+            repo="wimpysworld/WonKey",
+            number=25,
+            subject_kind="PullRequest",
+            trigger_reason="mention",
+        )
+        coord_traya.execute_dispatch(kind="reconcile_sweep")
+        coord_traya.execute_dispatch(kind="weekly_sweep", sweep_date="2023-11-14")
+
+        self.assertEqual(
+            sent_models,
+            [
+                ("traya:targeted", "openai-codex::gpt-6-astra@reasoning-medium"),
+                ("traya:targeted", "openai-codex::gpt-6-astra@reasoning-medium"),
+                ("traya:targeted", "openai-codex::gpt-6.1-sol@reasoning-medium"),
+                ("traya:reconcile_sweep", "openai-codex::gpt-6.1-sol@reasoning-medium"),
+                ("traya:weekly_sweep", "openai-codex::gpt-6.1-sol@reasoning-medium"),
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
