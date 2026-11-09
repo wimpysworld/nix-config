@@ -276,7 +276,7 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
             {
               "LibreChat" = {
                 icon = "librechat.svg";
-                href = "https://librechat.wimpys.world";
+                href = "https://ai.wimpys.world";
                 description = "Self-hosted AI chat platform";
                 siteMonitor = "http://127.0.0.1:3080";
                 widget = {

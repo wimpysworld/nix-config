@@ -1130,7 +1130,7 @@ in
     };
 
     # Remotely-managed tunnels store published application routing in
-    # Cloudflare. Configure librechat.wimpys.world -> http://localhost:3080
-    # in the Cloudflare dashboard or API for this tunnel.
+    # Cloudflare. Configure ai.wimpys.world and ai.wimpress.org ->
+    # http://127.0.0.1:3080 in the Cloudflare dashboard or API for this tunnel.
   };
 }
