@@ -113,11 +113,11 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | garfield | claude | Unset | claude-haiku-5-5 | high |
 | garfield | opencode | anthropic | claude-haiku-5-5 | high |
 | garfield | opencode | google | gemini-3.8-flash | high |
-| garfield | opencode | openai | gpt-6-luna | Unset |
-| garfield | codex | Unset | gpt-6-luna | high |
+| garfield | opencode | openai | gpt-6.1-luna | Unset |
+| garfield | codex | Unset | gpt-6.1-luna | high |
 | garfield | pi | anthropic | claude-haiku-5-5 | high |
 | garfield | pi | google | gemini-3.8-flash | high |
-| garfield | pi | openai-codex | gpt-6-luna | high |
+| garfield | pi | openai-codex | gpt-6.1-luna | high |
 | gonzales | claude | Unset | claude-opus-5-5 | medium |
 | gonzales | opencode | anthropic | claude-opus-5-5 | Unset |
 | gonzales | opencode | openai | gpt-6.1-sol | Unset |

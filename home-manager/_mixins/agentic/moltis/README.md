@@ -9,11 +9,11 @@ The owned-files deployer tracks `~/.moltis` as an ownership root. Personal, comm
 
 ## Traya on Darwin
 
-Traya uses the ChatGPT subscription through `openai-codex::gpt-6.1-sol@reasoning-medium` for Telegram and Matrix chat, heartbeat, and `coordinator` (`reasoning_effort = "medium"`), and `openai-codex::gpt-6-astra@reasoning-medium` for the `review` preset and GitHub companion code-review turns (`reasoning_effort = "medium"`). The `auxiliary` and `compression` presets use `openai-codex::gpt-6-luna@reasoning-high` with `reasoning_effort = "high"`. Title generation uses the same Luna model with high effort through Moltis's `@reasoning-high` model suffix, independently of presets.
+Traya uses the ChatGPT subscription through `openai-codex::gpt-6.1-sol@reasoning-medium` for Telegram and Matrix chat, heartbeat, and `coordinator` (`reasoning_effort = "medium"`), and `openai-codex::gpt-6-astra@reasoning-medium` for the `review` preset and GitHub companion code-review turns (`reasoning_effort = "medium"`). The `auxiliary` and `compression` presets use `openai-codex::gpt-6.1-luna@reasoning-high` with `reasoning_effort = "high"`. Title generation uses the same Luna model with high effort through Moltis's `@reasoning-high` model suffix, independently of presets.
 
 The `auxiliary.compaction` and `auxiliary.vision` settings also select Luna with high effort, but Moltis 20261023.01 does not connect those settings to callers. Structured compaction still uses the session provider. The [pinned provider registry](https://github.com/moltis-org/moltis/blob/20261023.01/crates/providers/src/registry/registration.rs) applies reasoning suffixes when it resolves models.
 
-The installed Codex catalogue confirms `gpt-6.1-sol`, `gpt-6-astra`, `gpt-6-luna`, and their reasoning effort suffixes. Live availability under the subscription remains unverified. No API-key billing fallback is configured.
+The installed Codex catalogue confirms `gpt-6.1-sol`, `gpt-6-astra`, `gpt-6.1-luna`, and their reasoning effort suffixes. Live availability under the subscription remains unverified. No API-key billing fallback is configured.
 
 After approval and deployment, sign in locally on Traya as the same user that runs Moltis:
 
