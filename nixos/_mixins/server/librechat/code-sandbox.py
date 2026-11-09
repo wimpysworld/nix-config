@@ -188,7 +188,7 @@ def rewrite_mnt_data_in_code(code: str, workspace_dir: Path) -> str:
     return re.sub(r"/mnt/data(?![A-Za-z0-9_.-])", ws_str, updated)
 
 
-def build_bwrap_cmd(cmd: list[str], workspace_dir: Path) -> list[str] | None:
+def build_bwrap_cmd(cmd: list[str]) -> list[str] | None:
     bwrap = shutil.which("bwrap")
     if not bwrap:
         return None
@@ -218,7 +218,7 @@ def build_bwrap_cmd(cmd: list[str], workspace_dir: Path) -> list[str] | None:
         "--tmpfs",
         "/tmp",  # noqa: S108
         "--bind",
-        str(workspace_dir),
+        ".",
         "/mnt/data",
         "--chdir",
         "/mnt/data",
@@ -341,9 +341,9 @@ def run_sandboxed(
     env: dict[str, str],
     timeout_sec: float,
     tracking_keys: tuple[str, ...] = (),
-    fallback_cmd: list[str] | None = None,
+    on_fallback: object = None,
 ) -> tuple[subprocess.CompletedProcess[str], bool]:
-    bwrap_cmd = build_bwrap_cmd(cmd, workspace_dir)
+    bwrap_cmd = build_bwrap_cmd(cmd)
     if bwrap_cmd is not None:
         bwrap_env = env.copy()
         bwrap_env["HOME"] = "/mnt/data"
@@ -353,8 +353,10 @@ def run_sandboxed(
         )
         if not (proc.returncode != 0 and "bwrap:" in proc.stderr):
             return proc, overflow
+        if callable(on_fallback):
+            on_fallback()
     return _run_process_bounded(
-        fallback_cmd or cmd, workspace_dir, env, timeout_sec, tracking_keys
+        cmd, workspace_dir, env, timeout_sec, tracking_keys
     )
 
 
@@ -442,19 +444,30 @@ def execute_code_request(
         rewritten_args = [
             rewrite_mnt_data_in_code(a, workspace_dir) for a in args
         ]
+        use_bwrap = shutil.which("bwrap") is not None
+        effective_code = code if use_bwrap else rewritten_code
+        effective_args = args if use_bwrap else rewritten_args
 
         if raw_lang in ("bash", "sh"):
-            cmd = ["bash", "-c", code, "--", *args]
-            fallback_cmd = ["bash", "-c", rewritten_code, "--", *rewritten_args]
+            cmd = [
+                "bash",
+                "-c",
+                'eval "set -- $(python3 -c \'import json, shlex; print(" ".join(shlex.quote(a) for a in json.load(open(".lc-tmp-args.json"))))\')" && source ./.lc-tmp-script',
+            ]
         elif raw_lang in ("py", "python"):
-            cmd = ["python3", "-c", code, *args]
-            fallback_cmd = ["python3", "-c", rewritten_code, *rewritten_args]
+            cmd = [
+                "python3",
+                "-c",
+                'import json, sys; sys.argv = ["-c", *json.load(open(".lc-tmp-args.json"))]; exec(compile(open(".lc-tmp-script", "rb").read(), "<string>", "exec"), {"__name__": "__main__"})',
+            ]
         elif raw_lang in ("js", "javascript", "ts", "typescript"):
-            cmd = ["node", "-e", code, "--", *args]
-            fallback_cmd = ["node", "-e", rewritten_code, "--", *rewritten_args]
+            cmd = [
+                "node",
+                "-e",
+                'const fs = require("fs"); process.argv = [process.execPath, ...JSON.parse(fs.readFileSync(".lc-tmp-args.json", "utf8"))]; eval(fs.readFileSync(".lc-tmp-script", "utf8"));',
+            ]
         else:
             cmd = None
-            fallback_cmd = None
 
         env = os.environ.copy()
         env["HOME"] = str(workspace_dir)
@@ -469,14 +482,27 @@ def execute_code_request(
             stderr = f"Unsupported language runtime: {raw_lang}\n"
             returncode = 1
         else:
+            script_path = resolve_under(workspace_dir, ".lc-tmp-script")
+            args_path = resolve_under(workspace_dir, ".lc-tmp-args.json")
+
+            def write_fallback_inputs() -> None:
+                script_path.write_text(rewritten_code, encoding="utf-8")
+                args_path.write_text(
+                    json.dumps(rewritten_args), encoding="utf-8"
+                )
+
             try:
+                script_path.write_text(effective_code, encoding="utf-8")
+                args_path.write_text(
+                    json.dumps(effective_args), encoding="utf-8"
+                )
                 proc, overflow = run_sandboxed(
                     cmd,
                     workspace_dir,
                     env,
                     timeout_sec,
                     tracking_keys,
-                    fallback_cmd=fallback_cmd,
+                    on_fallback=write_fallback_inputs,
                 )
                 stdout = proc.stdout
                 stderr = proc.stderr
@@ -499,6 +525,11 @@ def execute_code_request(
             except OSError as exc:
                 stderr = f"Execution failed: {exc}\n"
                 returncode = 1
+            finally:
+                with contextlib.suppress(OSError):
+                    script_path.unlink(missing_ok=True)
+                with contextlib.suppress(OSError):
+                    args_path.unlink(missing_ok=True)
 
         after_snap = snapshot_workspace(workspace_dir)
 
