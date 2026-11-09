@@ -32,6 +32,7 @@ STATE_DIR = Path(os.environ.get("STATE_DIR", "/var/lib/librechat-code-sandbox"))
 STORAGE_DIR = STATE_DIR / "storage"
 WORKSPACES_DIR = STATE_DIR / "workspaces"
 MNT_DATA_PATH = Path("/mnt/data")
+EXPECTED_API_KEY = os.environ.get("LIBRECHAT_CODE_API_KEY", "").strip()
 
 
 def now_iso() -> str:
@@ -518,6 +519,21 @@ class SandboxHandler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args: object) -> None:  # noqa: A002
         return
 
+    def check_auth(self) -> bool:
+        if not EXPECTED_API_KEY:
+            return True
+        provided = (
+            self.headers.get("X-Api-Key") or self.headers.get("x-api-key") or ""
+        ).strip()
+        if not provided:
+            auth_header = (self.headers.get("Authorization") or "").strip()
+            if auth_header.lower().startswith("bearer "):
+                provided = auth_header[7:].strip()
+        if provided and secrets.compare_digest(provided, EXPECTED_API_KEY):
+            return True
+        self.send_json(401, {"error": "Unauthorized"})
+        return False
+
     def read_request_body(self) -> bytes:
         transfer_encoding = (self.headers.get("Transfer-Encoding") or "").lower()
         if "chunked" in transfer_encoding:
@@ -687,6 +703,9 @@ class SandboxHandler(BaseHTTPRequestHandler):
             self.send_json(200, {"status": "ok"})
             return
 
+        if not self.check_auth():
+            return
+
         if len(segments) == 2 and segments[0] == "files":
             session_id = to_nanoid(segments[1])
             session_dir = STORAGE_DIR / session_id
@@ -750,6 +769,8 @@ class SandboxHandler(BaseHTTPRequestHandler):
         self.send_json(404, {"error": "Not found"})
 
     def do_POST(self) -> None:
+        if not self.check_auth():
+            return
         parsed = urlsplit(self.path)
         path = parsed.path.rstrip("/") or "/"
 
@@ -801,6 +822,8 @@ class SandboxHandler(BaseHTTPRequestHandler):
         self.send_json(404, {"error": "Not found"})
 
     def do_DELETE(self) -> None:
+        if not self.check_auth():
+            return
         parsed = urlsplit(self.path)
         segments = [unquote(seg) for seg in parsed.path.strip("/").split("/") if seg]
 

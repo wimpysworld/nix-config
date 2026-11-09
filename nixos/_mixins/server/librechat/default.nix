@@ -1068,6 +1068,7 @@ in
       ];
       environment = {
         HOST = "127.0.0.1";
+        LIBRECHAT_CODE_API_KEY = config.services.librechat.env.LIBRECHAT_CODE_API_KEY;
         PORT = "3082";
         STATE_DIR = "/var/lib/librechat-code-sandbox";
       };
