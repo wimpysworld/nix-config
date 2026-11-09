@@ -25,7 +25,8 @@ from urllib.parse import unquote, urlsplit
 ALPHABET = string.ascii_letters + string.digits
 ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{21}$")
 PAYLOAD_PATTERN = re.compile(r'^(payload\s*=\s*)"([A-Za-z0-9+/=]+)"\s*$', re.MULTILINE)
-EXEC_LOCK = threading.Lock()
+SESSION_LOCKS_GUARD = threading.Lock()
+SESSION_LOCKS: dict[str, threading.Lock] = {}
 ACTIVE_PROCESSES_LOCK = threading.Lock()
 ACTIVE_PROCESSES: dict[str, subprocess.Popen[bytes]] = {}
 MAX_OUTPUT_BYTES = 1024 * 1024
@@ -34,8 +35,16 @@ MAX_REQUEST_BODY_BYTES = 50 * 1024 * 1024
 STATE_DIR = Path(os.environ.get("STATE_DIR", "/var/lib/librechat-code-sandbox"))
 STORAGE_DIR = STATE_DIR / "storage"
 WORKSPACES_DIR = STATE_DIR / "workspaces"
-MNT_DATA_PATH = Path("/mnt/data")
 EXPECTED_API_KEY = os.environ.get("LIBRECHAT_CODE_API_KEY", "").strip()
+
+
+def get_session_lock(session_id: str) -> threading.Lock:
+    with SESSION_LOCKS_GUARD:
+        lock = SESSION_LOCKS.get(session_id)
+        if lock is None:
+            lock = threading.Lock()
+            SESSION_LOCKS[session_id] = lock
+        return lock
 
 
 def now_iso() -> str:
@@ -144,17 +153,6 @@ def load_storage_meta(session_id: str, file_id: str) -> dict[str, object] | None
         return json.loads(meta_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
-
-
-def bind_mnt_data(workspace_dir: Path) -> bool:
-    try:
-        MNT_DATA_PATH.parent.mkdir(parents=True, exist_ok=True)
-        if MNT_DATA_PATH.is_symlink() or MNT_DATA_PATH.exists():
-            MNT_DATA_PATH.unlink()
-        MNT_DATA_PATH.symlink_to(workspace_dir)
-        return True
-    except OSError:
-        return False
 
 
 def rewrite_mnt_data_in_code(code: str, workspace_dir: Path) -> str:
@@ -334,6 +332,7 @@ def run_sandboxed(
     env: dict[str, str],
     timeout_sec: float,
     tracking_keys: tuple[str, ...] = (),
+    fallback_cmd: list[str] | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], bool]:
     bwrap_cmd = build_bwrap_cmd(cmd, workspace_dir)
     if bwrap_cmd is not None:
@@ -345,7 +344,9 @@ def run_sandboxed(
         )
         if not (proc.returncode != 0 and "bwrap:" in proc.stderr):
             return proc, overflow
-    return _run_process_bounded(cmd, workspace_dir, env, timeout_sec, tracking_keys)
+    return _run_process_bounded(
+        fallback_cmd or cmd, workspace_dir, env, timeout_sec, tracking_keys
+    )
 
 
 def execute_code_request(
@@ -385,77 +386,69 @@ def execute_code_request(
             timeout_sec = 120.0
 
     workspace_dir = (WORKSPACES_DIR / session_id).resolve()
-    workspace_dir.mkdir(parents=True, exist_ok=True)
-    (STORAGE_DIR / session_id).mkdir(parents=True, exist_ok=True)
+    with get_session_lock(session_id):
+        workspace_dir.mkdir(parents=True, exist_ok=True)
+        (STORAGE_DIR / session_id).mkdir(parents=True, exist_ok=True)
 
-    readonly_paths: set[str] = set()
-    injected_files = body.get("files")
-    if isinstance(injected_files, list):
-        for entry in injected_files:
-            if not isinstance(entry, dict):
-                continue
-            raw_id = entry.get("id")
-            raw_name = entry.get("name")
-            if not isinstance(raw_id, str) or not isinstance(raw_name, str):
-                continue
-            raw_storage_sid = entry.get("storage_session_id")
-            storage_sid = to_nanoid(
-                str(raw_storage_sid)
-                if isinstance(raw_storage_sid, str) and raw_storage_sid
-                else session_id
-            )
-            file_id = to_nanoid(raw_id)
-            src_blob = STORAGE_DIR / storage_sid / file_id
-            if not src_blob.is_file():
-                continue
-            rel_path = safe_rel_path(raw_name)
-            dest_path = (workspace_dir / rel_path).resolve()
-            if not dest_path.is_relative_to(workspace_dir):
-                continue
-            dest_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(src_blob, dest_path)
-            if is_executable_path(rel_path):
-                with contextlib.suppress(OSError):
-                    dest_path.chmod(0o755)
-            meta = load_storage_meta(storage_sid, file_id)
-            if (
-                entry.get("kind") == "skill"
-                or (meta is not None and bool(meta.get("readOnly")))
-                or rel_path.startswith("skills/")
-            ):
-                readonly_paths.add(rel_path)
-
-    with EXEC_LOCK:
-        before_snap = snapshot_workspace(workspace_dir)
-        mnt_bound = bind_mnt_data(workspace_dir)
-        effective_code = (
-            code if mnt_bound else rewrite_mnt_data_in_code(code, workspace_dir)
-        )
-        effective_args = (
-            args
-            if mnt_bound
-            else [
-                a.replace("/mnt/data/", f"{workspace_dir}/").replace(
-                    "/mnt/data", str(workspace_dir)
+        readonly_paths: set[str] = set()
+        injected_files = body.get("files")
+        if isinstance(injected_files, list):
+            for entry in injected_files:
+                if not isinstance(entry, dict):
+                    continue
+                raw_id = entry.get("id")
+                raw_name = entry.get("name")
+                if not isinstance(raw_id, str) or not isinstance(raw_name, str):
+                    continue
+                raw_storage_sid = entry.get("storage_session_id")
+                storage_sid = to_nanoid(
+                    str(raw_storage_sid)
+                    if isinstance(raw_storage_sid, str) and raw_storage_sid
+                    else session_id
                 )
-                for a in args
-            ]
-        )
+                file_id = to_nanoid(raw_id)
+                src_blob = STORAGE_DIR / storage_sid / file_id
+                if not src_blob.is_file():
+                    continue
+                rel_path = safe_rel_path(raw_name)
+                dest_path = (workspace_dir / rel_path).resolve()
+                if not dest_path.is_relative_to(workspace_dir):
+                    continue
+                dest_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(src_blob, dest_path)
+                if is_executable_path(rel_path):
+                    with contextlib.suppress(OSError):
+                        dest_path.chmod(0o755)
+                meta = load_storage_meta(storage_sid, file_id)
+                if (
+                    entry.get("kind") == "skill"
+                    or (meta is not None and bool(meta.get("readOnly")))
+                    or rel_path.startswith("skills/")
+                ):
+                    readonly_paths.add(rel_path)
+
+        before_snap = snapshot_workspace(workspace_dir)
+        rewritten_code = rewrite_mnt_data_in_code(code, workspace_dir)
+        rewritten_args = [
+            rewrite_mnt_data_in_code(a, workspace_dir) for a in args
+        ]
 
         if raw_lang in ("bash", "sh"):
-            cmd = ["bash", "-c", effective_code, "--", *effective_args]
+            cmd = ["bash", "-c", code, "--", *args]
+            fallback_cmd = ["bash", "-c", rewritten_code, "--", *rewritten_args]
         elif raw_lang in ("py", "python"):
-            cmd = ["python3", "-c", effective_code, *effective_args]
+            cmd = ["python3", "-c", code, *args]
+            fallback_cmd = ["python3", "-c", rewritten_code, *rewritten_args]
         elif raw_lang in ("js", "javascript", "ts", "typescript"):
-            cmd = ["node", "-e", effective_code, "--", *effective_args]
+            cmd = ["node", "-e", code, "--", *args]
+            fallback_cmd = ["node", "-e", rewritten_code, "--", *rewritten_args]
         else:
             cmd = None
+            fallback_cmd = None
 
         env = os.environ.copy()
         env["HOME"] = str(workspace_dir)
-        env["LIBRECHAT_CODE_DATA_DIR"] = (
-            "/mnt/data" if mnt_bound else str(workspace_dir)
-        )
+        env["LIBRECHAT_CODE_DATA_DIR"] = str(workspace_dir)
         env["PYTHONDONTWRITEBYTECODE"] = "1"
 
         stdout = ""
@@ -468,7 +461,12 @@ def execute_code_request(
         else:
             try:
                 proc, overflow = run_sandboxed(
-                    cmd, workspace_dir, env, timeout_sec, tracking_keys
+                    cmd,
+                    workspace_dir,
+                    env,
+                    timeout_sec,
+                    tracking_keys,
+                    fallback_cmd=fallback_cmd,
                 )
                 stdout = proc.stdout
                 stderr = proc.stderr
@@ -494,48 +492,48 @@ def execute_code_request(
 
         after_snap = snapshot_workspace(workspace_dir)
 
-    deleted_files: list[str] = []
-    for rel_path in sorted(before_snap.keys() - after_snap.keys()):
-        if rel_path in readonly_paths:
-            continue
-        deleted_files.append(rel_path)
-        file_id = to_nanoid(f"{session_id}:{rel_path}")
-        for candidate in (
-            STORAGE_DIR / session_id / file_id,
-            STORAGE_DIR / session_id / f"{file_id}.json",
-        ):
-            with contextlib.suppress(OSError):
-                candidate.unlink(missing_ok=True)
-
-    out_files: list[dict[str, object]] = []
-    if returncode == 0:
-        for rel_path, after_state in sorted(after_snap.items()):
+        deleted_files: list[str] = []
+        for rel_path in sorted(before_snap.keys() - after_snap.keys()):
             if rel_path in readonly_paths:
                 continue
-            before_state = before_snap.get(rel_path)
-            if before_state == after_state:
-                continue
-            file_path = workspace_dir / rel_path
-            try:
-                data = file_path.read_bytes()
-            except OSError:
-                continue
+            deleted_files.append(rel_path)
             file_id = to_nanoid(f"{session_id}:{rel_path}")
-            save_storage_object(
-                session_id,
-                file_id,
-                rel_path,
-                data,
-                read_only=False,
-                kind="user",
-            )
-            out_files.append(
-                {
-                    "id": file_id,
-                    "name": rel_path,
-                    "storage_session_id": session_id,
-                }
-            )
+            for candidate in (
+                STORAGE_DIR / session_id / file_id,
+                STORAGE_DIR / session_id / f"{file_id}.json",
+            ):
+                with contextlib.suppress(OSError):
+                    candidate.unlink(missing_ok=True)
+
+        out_files: list[dict[str, object]] = []
+        if returncode == 0:
+            for rel_path, after_state in sorted(after_snap.items()):
+                if rel_path in readonly_paths:
+                    continue
+                before_state = before_snap.get(rel_path)
+                if before_state == after_state:
+                    continue
+                file_path = workspace_dir / rel_path
+                try:
+                    data = file_path.read_bytes()
+                except OSError:
+                    continue
+                file_id = to_nanoid(f"{session_id}:{rel_path}")
+                save_storage_object(
+                    session_id,
+                    file_id,
+                    rel_path,
+                    data,
+                    read_only=False,
+                    kind="user",
+                )
+                out_files.append(
+                    {
+                        "id": file_id,
+                        "name": rel_path,
+                        "storage_session_id": session_id,
+                    }
+                )
 
     response: dict[str, object] = {
         "stdout": stdout,
