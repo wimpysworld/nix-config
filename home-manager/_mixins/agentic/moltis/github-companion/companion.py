@@ -1270,7 +1270,6 @@ class CompanionStateStore:
                 )
                 unowned_auto_update = bool(
                     is_auto_update
-                    and self_login_norm not in review_requests
                     and (self.agent_name == "traya" or compute_automated_pr_owner(repo, number) != self.agent_name)
                 )
                 trigger_reason: str | None = None
