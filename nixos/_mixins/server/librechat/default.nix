@@ -1,5 +1,6 @@
 {
   config,
+  inputs,
   lib,
   noughtyLib,
   pkgs,
@@ -596,8 +597,21 @@ let
   };
 in
 {
+  imports = [
+    "${inputs.nixpkgs-unstable}/nixos/modules/services/misc/cliproxyapi.nix"
+  ];
+
   config = lib.mkIf (noughtyLib.hostHasTag "librechat") {
-    environment.shellAliases.librechat-log = "journalctl _SYSTEMD_UNIT=librechat.service";
+    environment.systemPackages = [
+      config.services.cliproxyapi.package
+    ];
+
+    environment.shellAliases = {
+      cliproxyapi-codex-device-login = "sudo -u cliproxyapi cliproxyapi -config /var/lib/cliproxyapi/config.yaml -codex-device-login";
+      cliproxyapi-codex-login = "sudo -u cliproxyapi cliproxyapi -config /var/lib/cliproxyapi/config.yaml -codex-login -no-browser";
+      cliproxyapi-log = "journalctl _SYSTEMD_UNIT=cliproxyapi.service";
+      librechat-log = "journalctl _SYSTEMD_UNIT=librechat.service";
+    };
 
     sops.secrets.ANTHROPIC_API_KEY = {
       sopsFile = ../../../../secrets/ai.yaml;
@@ -772,7 +786,10 @@ in
           model = "gemini-4-argon";
         };
         endpoints = {
-          allowedAddresses = map (node: "${node}.${tailNet}:8080") remoteInferenceHosts;
+          allowedAddresses = [
+            "127.0.0.1:8317"
+          ]
+          ++ map (node: "${node}.${tailNet}:8080") remoteInferenceHosts;
           agents = {
             maxSubagents = 12;
             capabilities = [
@@ -805,7 +822,25 @@ in
             titleConvo = true;
             titleModel = "gemini-3.8-flash";
           };
-          custom = map mkRemoteLlamaSwapEndpoint remoteInferenceHosts;
+          custom = [
+            {
+              name = "OpenAI (Codex)";
+              apiKey = "cliproxyapi";
+              baseURL = "http://127.0.0.1:8317/v1";
+              models = {
+                default = [
+                  "gpt-6.1-sol"
+                  "gpt-6-astra"
+                  "gpt-6.1-terra"
+                  "gpt-6.1-luna"
+                ];
+                fetch = true;
+              };
+              titleConvo = true;
+              titleModel = "gpt-6.1-luna";
+            }
+          ]
+          ++ map mkRemoteLlamaSwapEndpoint remoteInferenceHosts;
         };
         mcpSettings = {
           allowedAddresses = [
@@ -826,6 +861,20 @@ in
     };
 
     services.meilisearch.masterKeyFile = lib.mkDefault config.sops.secrets.MEILI_MASTER_KEY.path;
+
+    services.cliproxyapi = {
+      enable = true;
+      package = lib.mkDefault pkgs.cliproxyapi;
+      settings = {
+        server = {
+          host = "127.0.0.1";
+          port = 8317;
+        };
+        oauth = {
+          auth-dir = "/var/lib/cliproxyapi";
+        };
+      };
+    };
 
     systemd.services.librechat-mcp-nixos = {
       description = "Local NixOS MCP server for LibreChat";
@@ -917,6 +966,7 @@ in
 
     systemd.services.librechat = {
       after = [
+        "cliproxyapi.service"
         "librechat-code-sandbox.service"
         "librechat-mcp-nixos.service"
       ]
@@ -925,6 +975,7 @@ in
         "librechat-provision-users.service"
       ];
       wants = [
+        "cliproxyapi.service"
         "librechat-code-sandbox.service"
         "librechat-mcp-nixos.service"
       ]
