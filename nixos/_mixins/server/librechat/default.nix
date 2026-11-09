@@ -920,12 +920,12 @@ in
                   "gpt-6.1-sol"
                   "gpt-6-astra"
                   "gpt-6.1-terra"
-                  "gpt-6.1-luna"
+                  "gpt-6-luna"
                 ];
                 fetch = true;
               };
               titleConvo = true;
-              titleModel = "gpt-6.1-luna";
+              titleModel = "gpt-6-luna";
             }
           ]
           ++ map mkRemoteLlamaSwapEndpoint remoteInferenceHosts;
