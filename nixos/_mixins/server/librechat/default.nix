@@ -23,8 +23,17 @@ let
           acceleration = entry.gpu.compute.acceleration or null;
           hostVramGiB = entry.gpu.compute.vram or 0;
         }).selectedRuntimeModels;
-      generationModels = lib.mapAttrsToList (_role: model: model.publicName) (
-        lib.filterAttrs (_role: model: !model.isEmbedding) runtimeModels
+      generationRoles = lib.filterAttrs (_role: model: !model.isEmbedding) runtimeModels;
+      generationModels = lib.mapAttrsToList (_role: model: model.publicName) generationRoles;
+      tokenConfig = builtins.listToAttrs (
+        lib.mapAttrsToList (_role: model: {
+          name = model.publicName;
+          value = {
+            prompt = 0;
+            completion = 0;
+            context = model.maxContext;
+          };
+        }) generationRoles
       );
       titleModel =
         if runtimeModels ? smallMedia then
@@ -40,8 +49,8 @@ let
         default = generationModels;
         fetch = true;
       };
+      inherit tokenConfig titleModel;
       titleConvo = true;
-      inherit titleModel;
     };
   cloudflareSopsFile = ../../../../secrets + "/cloudflare.yaml";
   hasCloudflareSopsFile = builtins.pathExists cloudflareSopsFile;
@@ -568,10 +577,11 @@ let
 
         for (const agent of manifest.agents) {
           const otherAgentIds = allAgentIds.filter((id) => id !== agent.id);
+          const isCoordinator = agent.name === "penfold";
           const subagentsConfig = {
-            enabled: true,
+            enabled: isCoordinator,
             allowSelf: false,
-            agent_ids: otherAgentIds,
+            agent_ids: isCoordinator ? otherAgentIds : [],
           };
           const versionEntry = {
             name: agent.name,
@@ -631,6 +641,15 @@ let
           upsertOwnerAcl("agent", agentDoc._id, agentOwnerRole._id);
           syncPublicViewerAcl("agent", agentDoc._id, agentViewerRole._id, Boolean(agent.shared));
         }
+
+        db.conversations.updateMany(
+          { maxContextTokens: { $lte: 1024 } },
+          { $unset: { maxContextTokens: "" } },
+        );
+        db.presets.updateMany(
+          { maxContextTokens: { $lte: 1024 } },
+          { $unset: { maxContextTokens: "" } },
+        );
 
         for (const cmd of manifest.commands) {
           db.promptgroups.updateOne(
@@ -840,6 +859,7 @@ in
         MONGO_URI = lib.mkIf (noughtyLib.hostHasTag "mongodb") (
           lib.mkDefault "mongodb://localhost:27017/librechat"
         );
+        NODE_OPTIONS = lib.mkDefault "--require ${./preload-tokens.cjs}";
       };
       credentials = {
         ANTHROPIC_API_KEY = config.sops.secrets.ANTHROPIC_API_KEY.path;
@@ -923,6 +943,28 @@ in
                   "gpt-6-luna"
                 ];
                 fetch = true;
+              };
+              tokenConfig = {
+                "gpt-6.1-sol" = {
+                  prompt = 0;
+                  completion = 0;
+                  context = 1050000;
+                };
+                "gpt-6-astra" = {
+                  prompt = 0;
+                  completion = 0;
+                  context = 1050000;
+                };
+                "gpt-6.1-terra" = {
+                  prompt = 0;
+                  completion = 0;
+                  context = 1050000;
+                };
+                "gpt-6-luna" = {
+                  prompt = 0;
+                  completion = 0;
+                  context = 1050000;
+                };
               };
               titleConvo = true;
               titleModel = "gpt-6-luna";
