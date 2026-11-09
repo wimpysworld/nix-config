@@ -389,21 +389,21 @@ let
     assert lib.hasInfix "export MOLTIS_GITHUB_COMPANION_SCHEDULE_DOW=${
       lib.escapeShellArg (
         if host == "skrye" then
-          "1"
+          "2"
         else if host == "zannah" then
-          "3"
+          "4"
         else
-          "5"
+          "0"
       )
     }" scripts.githubCompanion;
     assert lib.hasInfix "export MOLTIS_GITHUB_COMPANION_SCHEDULE_DAY_NAME=${
       lib.escapeShellArg (
         if host == "skrye" then
-          "Monday"
+          "Tuesday"
         else if host == "zannah" then
-          "Wednesday"
+          "Thursday"
         else
-          "Friday"
+          "disabled"
       )
     }" scripts.githubCompanion;
     assert lib.hasInfix

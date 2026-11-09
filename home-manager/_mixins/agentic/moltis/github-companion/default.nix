@@ -13,19 +13,19 @@
   mainModel,
   scheduleDow ? (
     if agentName == "zannah" then
-      3
+      4
     else if agentName == "traya" then
-      5
+      0
     else
-      1
+      2
   ),
   scheduleDayName ? (
     if agentName == "zannah" then
-      "Wednesday"
+      "Thursday"
     else if agentName == "traya" then
-      "Friday"
+      "disabled"
     else
-      "Monday"
+      "Tuesday"
   ),
   selfUserId ? "@${agentName}:matrix.wimpys.world",
   roomId ? "!the-cauldron:matrix.wimpys.world",

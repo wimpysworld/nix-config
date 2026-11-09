@@ -33,11 +33,16 @@ ALLOWLIST_USER_IDS = frozenset({MARTIN_ID, SKRYE_ID, ZANNAH_ID, TRAYA_ID})
 DISPLAY_NAMES = {"skrye": "Skrye", "zannah": "Zannah", "traya": "Traya"}
 USER_ID_DISPLAY_NAMES = {MARTIN_ID: "Martin", SKRYE_ID: "Skrye", ZANNAH_ID: "Zannah", TRAYA_ID: "Traya"}
 AGENT_ORDER = ("skrye", "traya", "zannah")
-AGENT_DEFAULT_SCHEDULES: dict[str, tuple[int, str]] = {"skrye": (1, "Monday"), "traya": (5, "Friday"), "zannah": (3, "Wednesday")}
-BASE_POLL_INTERVAL_SECS, BASE_POLL_INTERVAL_MS = 300, 300_000
+SWEEP_AGENT_ORDER = SWEEP_OWNERS = ("skrye", "zannah")
+AGENT_DEFAULT_SCHEDULES: dict[str, tuple[int, str]] = {"skrye": (2, "Tuesday"), "traya": (0, "disabled"), "zannah": (4, "Thursday")}
+AGENT_POLL_MINUTE_SLOTS: dict[str, tuple[int, int]] = {"skrye": (0, 30), "traya": (10, 40), "zannah": (20, 50)}
+POLL_SLOT_INTERVAL_SECS = BASE_POLL_INTERVAL_SECS = 1800
+POLL_SLOT_INTERVAL_MS = BASE_POLL_INTERVAL_MS = 1_800_000
 JITTER_MIN_SECS, JITTER_MAX_SECS, JITTER_MIN_MS, JITTER_MAX_MS = 5, 30, 5_000, 30_000
 PR_REVIEW_COOLDOWN_SECS, PR_REVIEW_COOLDOWN_MS = 900, 15 * 60 * 1000
 RECONCILE_SWEEP_INTERVAL_MS = 6 * 60 * 60 * 1000
+RECONCILE_SWEEP_AGENT_HOURS: dict[str, tuple[int, ...]] = {"skrye": (0, 6, 12, 18), "zannah": (3, 9, 15, 21), "traya": ()}
+RECONCILE_SWEEP_INITIAL_OFFSET_MS: dict[str, int] = {"skrye": 0, "zannah": 3 * 60 * 60 * 1000, "traya": 0}
 SWEEP_RETRY_BASE_DELAY_MS = RECONCILE_SWEEP_RETRY_DELAY_MS = 15 * 60 * 1000
 SWEEP_RETRY_MAX_DELAY_MS = RECONCILE_SWEEP_INTERVAL_MS
 DEFAULT_RPC_TIMEOUT_SECS = DEFAULT_COMPLETION_WAIT_TIMEOUT_SECS = DEFAULT_RECOVERY_WAIT_TIMEOUT_SECS = 3600.0
@@ -210,6 +215,25 @@ def is_trusted_instruction_actor(actor: object) -> bool:
 
 def is_trusted_bot_actor(actor: object) -> bool:
     return normalize_github_actor(actor) in TRUSTED_BOT_ACTORS
+
+
+def compute_automated_pr_owner(repo: str, number: int) -> str:
+    owner_repo = (repo or "").strip().lower()
+    digest = hashlib.sha256(f"v1:{owner_repo}:pr:{_safe_int(number, 0)}".encode()).digest()
+    return SWEEP_AGENT_ORDER[int.from_bytes(digest, "big") % 2]
+
+
+def is_automated_update_pr(author_norm: str, repo: str = "", head_ref: str = "", labels: list[str] | None = None, title: str = "") -> bool:
+    norm_author = normalize_github_actor(author_norm)
+    if norm_author in TRUSTED_BOT_ACTORS and norm_author != "cubic-dev-ai[bot]":
+        return True
+    if (repo or "").strip().lower() == "wimpysworld/nix-config" and norm_author == "flexiondotorg":
+        clean_title = (title or "").strip().lower()
+        clean_ref = (head_ref or "").strip().lower()
+        norm_labels = {str(lbl).strip().lower() for lbl in (labels or []) if str(lbl).strip()}
+        if "freshener" in clean_ref or "freshener" in norm_labels or (clean_title.startswith("chore(") and "update to" in clean_title):
+            return True
+    return False
 
 
 _AGENT_MENTION_PATTERNS: dict[str, re.Pattern[str]] = {
@@ -642,8 +666,25 @@ def parse_retry_after_seconds(raw_value: str | int | None, now_sec: int) -> int:
     return 0
 
 
-def compute_backoff_wait_ms(headers: dict[str, str] | None, now_ms_val: int, rng: Callable[[int, int], int] | None = None, status: int | None = None) -> tuple[int, int, int]:
-    """Return (total_wait_ms, base_wait_secs, jitter_ms) from GitHub response headers."""
+def compute_next_poll_slot_ms(now_ms_val: int, agent_name: str = "skrye") -> int:
+    norm_agent = normalize_agent_name(agent_name) if (agent_name or "").strip().lower() in AGENT_POLL_MINUTE_SLOTS else "skrye"
+    slots = sorted(AGENT_POLL_MINUTE_SLOTS[norm_agent])
+    safe_now = max(0, _safe_int(now_ms_val, 0))
+    dt = datetime.datetime.fromtimestamp(safe_now / 1000.0, tz=datetime.timezone.utc)
+    hour_start = dt.replace(minute=0, second=0, microsecond=0)
+    for hour_offset in (0, 1):
+        base_hour = hour_start + datetime.timedelta(hours=hour_offset)
+        for slot_min in slots:
+            cand = base_hour.replace(minute=slot_min)
+            cand_ms = math.trunc(cand.timestamp() * 1000)
+            if cand_ms > safe_now:
+                return cand_ms
+    return safe_now + POLL_SLOT_INTERVAL_MS
+
+
+def compute_backoff_wait_ms(headers: dict[str, str] | None, now_ms_val: int, rng: Callable[[int, int], int] | None = None, status: int | None = None, agent_name: str = "skrye") -> tuple[int, int, int]:
+    """Return (total_wait_ms, base_wait_secs, jitter_ms) aligned to the agent's 30-minute wall-clock poll slot."""
+    _ = rng
     lower_headers = {k.strip().lower(): str(v).strip() for k, v in (headers or {}).items() if isinstance(k, str) and v is not None}
     now_sec = max(0, now_ms_val // 1000)
     poll_interval_sec = max(0, _safe_int(lower_headers.get("x-poll-interval"), 0))
@@ -653,9 +694,10 @@ def compute_backoff_wait_ms(headers: dict[str, str] | None, now_ms_val: int, rng
     is_rate_limited = status in (403, 429) or remaining_exhausted or retry_after_sec > 0
     reset_epoch = _safe_int(lower_headers.get("x-ratelimit-reset"), 0) if is_rate_limited else 0
     rate_reset_wait_sec = max(0, reset_epoch - now_sec) if reset_epoch > 0 else 0
-    base_wait_sec = max(BASE_POLL_INTERVAL_SECS, poll_interval_sec, retry_after_sec, rate_reset_wait_sec)
-    jitter_ms = compute_jitter_ms(rng)
-    return (base_wait_sec * 1000) + jitter_ms, base_wait_sec, jitter_ms
+    slot_wait_ms = max(1_000, compute_next_poll_slot_ms(now_ms_val, agent_name) - now_ms_val)
+    header_wait_ms = max(poll_interval_sec, retry_after_sec, rate_reset_wait_sec) * 1000
+    total_wait_ms = max(slot_wait_ms, header_wait_ms)
+    return total_wait_ms, total_wait_ms // 1000, 0
 
 
 _SUBJECT_NUM_RE = re.compile(r"/(?:pulls|issues)/(\d+)(?:$|[/?#])")
@@ -1220,8 +1262,20 @@ class CompanionStateStore:
                 retry_count = 0 if changed else _safe_int(existing.get("retry_count"), 0)
                 is_trusted = is_trusted_github_actor(author_norm)
                 is_self = bool(author_norm == self_login_norm or LOGIN_TO_AGENT_NAME.get(author_norm) == self.agent_name)
+                is_auto_update = is_automated_update_pr(
+                    author_norm,
+                    repo=repo,
+                    head_ref=str(norm_pr.get("head_ref") or _as_dict(norm_pr.get("head")).get("ref") or ""),
+                    labels=norm_pr.get("labels") if isinstance(norm_pr.get("labels"), list) else None,
+                    title=str(norm_pr.get("title") or ""),
+                )
+                unowned_auto_update = bool(
+                    is_auto_update
+                    and self_login_norm not in review_requests
+                    and (self.agent_name == "traya" or compute_automated_pr_owner(repo, number) != self.agent_name)
+                )
                 trigger_reason: str | None = None
-                if is_trusted:
+                if is_trusted and not unowned_auto_update:
                     if review_decision == "APPROVED" and ci_state in ("SUCCESS", "NONE") and unresolved_thread_count == 0 and (handled_ci != ci_state or (head_sha and handled_sha != head_sha)):
                         trigger_reason = "ci_green_after_approval"
                     elif not is_self and handled_sha and head_sha and head_sha != handled_sha:
@@ -1229,9 +1283,9 @@ class CompanionStateStore:
                     elif not is_self and not handled_sha and not handled_u:
                         trigger_reason = "review_requested" if self_login_norm in review_requests else "unrequested_pr"
                 if trigger_reason is None:
-                    if is_self or not is_trusted:
+                    if is_self or not is_trusted or unowned_auto_update:
                         handled_u, handled_sha = updated_at or handled_u, head_sha or handled_sha
-                        if not is_trusted or ci_state not in ("SUCCESS", "NONE"):
+                        if not is_trusted or unowned_auto_update or ci_state not in ("SUCCESS", "NONE"):
                             handled_ci = ci_state or handled_ci
                     elif ci_state not in ("SUCCESS", "NONE") and ci_state:
                         handled_ci = ci_state
@@ -1711,6 +1765,26 @@ class TrustFilterAndSnapshotBuilder:
             if pr_state != "open" or pr_draft or pr_merged:
                 return _eval_res(False, "closed_or_draft_pr")
 
+        pr_author_norm = normalize_github_actor(self._extract_item_actor(subject_item)) if isinstance(subject_item, dict) and subject_item else ""
+        pr_title = str((subject_item or {}).get("title") or notification.get("subject_title") or "")
+        pr_head_ref = str(_as_dict((subject_item or {}).get("head")).get("ref") or (subject_item or {}).get("headRefName") or "")
+        subj_mentions = extract_mentioned_github_agents(strip_html_comments("\n".join(str((subject_item or {}).get(k) or "") for k in ("title", "body")))) if isinstance(subject_item, dict) else set()
+
+        def _check_auto_pr_skip(item_mentions: Iterable[str], fallback_actor: str = "") -> str | None:
+            if not is_pr:
+                return None
+            all_mentions = set(item_mentions) | subj_mentions
+            if self.agent_name in all_mentions:
+                return None
+            eff_author = pr_author_norm or normalize_github_actor(fallback_actor)
+            if not is_automated_update_pr(eff_author, repo=repo, head_ref=pr_head_ref, title=pr_title):
+                return None
+            if self.agent_name == "traya":
+                return "bot_update_ignored_for_traya"
+            if self.agent_name in SWEEP_AGENT_ORDER and repo and number and compute_automated_pr_owner(repo, number) != self.agent_name:
+                return "unowned_automated_pr"
+            return None
+
         if isinstance(latest_item, dict) and latest_item:
             latest_url = str(notification.get("latest_comment_url") or "")
             item_kind = "pull_request_review" if ("/reviews/" in latest_url or "submitted_at" in latest_item) else ("pull_request_review_comment" if ("/pulls/comments/" in latest_url or "pull_request_review_id" in latest_item) else "issue_comment")
@@ -1719,11 +1793,13 @@ class TrustFilterAndSnapshotBuilder:
             notices.extend(insp["notices"])
             if not insp["should_trigger"]:
                 return _eval_res(False, insp["skip_reason"])
+            mentioned_agents = insp.get("mentioned_agents") or []
+            if auto_skip := _check_auto_pr_skip(mentioned_agents, str(insp.get("actor") or "")):
+                return _eval_res(False, auto_skip)
             if is_pr and item_kind in ("pull_request_review", "pull_request_review_comment", "issue_comment"):
                 cached_entry = _as_dict(self.state_store.get_thread_state(make_pr_key(repo, number)) if (repo and number) else None) or _as_dict(self.state_store.get_thread_state(thread_id))
                 handled_sha = str(notification.get("handled_head_sha") or cached_entry.get("handled_head_sha") or "").strip() or None
                 actor_norm = normalize_github_actor(insp.get("actor"))
-                mentioned_agents = insp.get("mentioned_agents") or []
                 if handled_sha and head_sha and handled_sha == head_sha and self.agent_name not in mentioned_agents and (self._is_peer_agent_actor(actor_norm, self.agent_name) or bool(insp.get("bot_trusted"))):
                     return _eval_res(False, "unmentioned_peer_or_bot_comment_on_handled_sha")
             item_id, is_rev = insp["item_id"], item_kind == "pull_request_review"
@@ -1735,6 +1811,8 @@ class TrustFilterAndSnapshotBuilder:
             notices.extend(insp["notices"])
             if not insp["should_trigger"]:
                 return _eval_res(False, insp["skip_reason"])
+            if auto_skip := _check_auto_pr_skip(insp.get("mentioned_agents") or [], str(insp.get("actor") or "")):
+                return _eval_res(False, auto_skip)
             return _eval_res(True, None, reason or ("review_requested" if is_pr else "mention"), None, None, insp["item_id"])
 
         return _eval_res(False, "no_verified_trusted_trigger")
@@ -1797,9 +1875,8 @@ class NotificationPoller:
             return None
         last_status, last_completed_ms = poll_state.get("last_status"), poll_state.get("last_poll_completed_at_ms")
         if last_status in (200, 304) and not bool(poll_state.get("last_poll_rate_limited", False)) and _safe_int(poll_state.get("retry_after_secs"), 0) <= 0 and isinstance(last_completed_ms, int):
-            poll_interval_secs = max(BASE_POLL_INTERVAL_SECS, _safe_int(poll_state.get("poll_interval_secs"), BASE_POLL_INTERVAL_SECS))
-            jitter_ms = max(JITTER_MIN_MS, min(JITTER_MAX_MS, _safe_int(poll_state.get("last_jitter_ms"), JITTER_MAX_MS)))
-            return min(next_poll_at_ms, last_completed_ms + (poll_interval_secs * 1000) + jitter_ms)
+            agent_name = str(poll_state.get("agent_name") or "skrye")
+            return min(next_poll_at_ms, compute_next_poll_slot_ms(last_completed_ms, agent_name))
         return next_poll_at_ms
 
     def wait_until_due(self, now_override_ms: int | None = None) -> int:
@@ -1815,10 +1892,9 @@ class NotificationPoller:
     wait_for_startup_slot = wait_until_next_poll = wait_until_due
 
     def _persist_provisional_next_poll(self, current_ms: int) -> tuple[int, int]:
-        jitter_ms = compute_jitter_ms(self.jitter_rng)
-        provisional_next_ms = current_ms + BASE_POLL_INTERVAL_MS + jitter_ms
-        self.state_store.write_state({"last_poll_started_at_ms": current_ms, "next_poll_at_ms": provisional_next_ms, "last_jitter_ms": jitter_ms}, now_override_ms=current_ms)
-        return provisional_next_ms, jitter_ms
+        provisional_next_ms = compute_next_poll_slot_ms(current_ms, self.state_store.agent_name)
+        self.state_store.write_state({"last_poll_started_at_ms": current_ms, "next_poll_at_ms": provisional_next_ms, "last_jitter_ms": 0}, now_override_ms=current_ms)
+        return provisional_next_ms, 0
 
     def poll_once(self, now_override_ms: int | None = None, poll_open_prs: bool = True) -> dict:
         """Execute one conditional /notifications poll plus the 6-owner open PR poll."""
@@ -1827,7 +1903,7 @@ class NotificationPoller:
         provisional_next_ms, provisional_jitter_ms = self._persist_provisional_next_poll(start_ms)
         status, headers, raw_items = self.gh_client.poll_notifications(last_modified=prior_last_modified if isinstance(prior_last_modified, str) else None)
         finish_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
-        wait_ms, base_wait_sec, post_jitter_ms = compute_backoff_wait_ms(headers=headers, now_ms_val=finish_ms, rng=self.jitter_rng, status=status)
+        wait_ms, base_wait_sec, post_jitter_ms = compute_backoff_wait_ms(headers=headers, now_ms_val=finish_ms, rng=self.jitter_rng, status=status, agent_name=self.state_store.agent_name)
         computed_next_poll_ms = finish_ms + wait_ms
 
         filtered_records, actionable_threads, queued_followups, dismissed_threads, actionable_prs, open_pull_requests = [], [], [], [], [], []
@@ -2091,6 +2167,8 @@ class GithubCompanionRunner:
         self.clock = clock
 
     def is_reconcile_sweep_due(self, now_override_ms: int | None = None) -> bool:
+        if self.state_store.agent_name == "traya" or self.execution_coordinator.schedule_dow <= 0:
+            return False
         current_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         state = self.state_store.read_state()
         reconcile_retry_ms = _safe_int(state.get("reconcile_sweep_retry_after_ms"), 0)
@@ -2098,7 +2176,14 @@ class GithubCompanionRunner:
         if (reconcile_retry_ms > 0 and current_ms < reconcile_retry_ms) or (weekly_retry_ms > 0 and current_ms < weekly_retry_ms):
             return False
         last_sweep = state.get("last_reconcile_sweep_at_ms")
-        return not isinstance(last_sweep, int) or last_sweep <= 0 or (current_ms - last_sweep) >= self.reconcile_interval_ms
+        if not isinstance(last_sweep, int) or last_sweep <= 0:
+            initial_offset_ms = RECONCILE_SWEEP_INITIAL_OFFSET_MS.get(self.state_store.agent_name, 0)
+            if initial_offset_ms > 0:
+                anchor_ms = _safe_int(self.state_store.started_at_ms, 0)
+                if anchor_ms > 0 and (current_ms - anchor_ms) < initial_offset_ms:
+                    return False
+            return True
+        return (current_ms - last_sweep) >= self.reconcile_interval_ms
 
     def is_weekly_sweep_due(self, now_override_ms: int | None = None) -> tuple[bool, str]:
         current_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
@@ -2110,6 +2195,8 @@ class GithubCompanionRunner:
             tz = datetime.timezone.utc
         dt = datetime.datetime.fromtimestamp(current_ms / 1000.0, tz=tz)
         today_str = dt.strftime("%Y-%m-%d")
+        if self.state_store.agent_name == "traya" or self.execution_coordinator.schedule_dow <= 0 or self.execution_coordinator.schedule_day_name.lower() == "disabled":
+            return False, today_str
         state = self.state_store.read_state()
         weekly_retry_ms = _safe_int(state.get("weekly_sweep_retry_after_ms"), 0)
         if weekly_retry_ms > 0 and current_ms < weekly_retry_ms:
@@ -2152,7 +2239,7 @@ class GithubCompanionRunner:
             if prep_res.get("skip_reason") == "subject_fetch_failed":
                 self.state_store.update_thread_state(key_val, {"pending_followup": True}, now_override_ms=now_override_ms)
                 return
-            if prep_res.get("skip_reason") in ("closed_or_draft_pr", "archived_repo") and tid_val and tid_val.isdigit():
+            if prep_res.get("skip_reason") in ("closed_or_draft_pr", "archived_repo", "bot_update_ignored_for_traya", "unowned_automated_pr") and tid_val and tid_val.isdigit():
                 try:
                     self.gh_client.dismiss_notification(tid_val)
                     if tid_val not in dismissed_threads:

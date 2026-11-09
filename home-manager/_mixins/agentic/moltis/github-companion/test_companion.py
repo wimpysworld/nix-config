@@ -295,15 +295,22 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
         self.assertEqual(companion.normalize_agent_name("traya"), "traya")
         self.assertEqual(companion.normalize_agent_name("zannah"), "zannah")
 
-        self.assertEqual(companion.BASE_POLL_INTERVAL_SECS, 300)
-        self.assertEqual(companion.BASE_POLL_INTERVAL_MS, 300_000)
+        self.assertEqual(companion.BASE_POLL_INTERVAL_SECS, 1800)
+        self.assertEqual(companion.BASE_POLL_INTERVAL_MS, 1_800_000)
+        self.assertEqual(companion.POLL_SLOT_INTERVAL_SECS, 1800)
+        self.assertEqual(companion.POLL_SLOT_INTERVAL_MS, 1_800_000)
+        self.assertEqual(
+            companion.AGENT_POLL_MINUTE_SLOTS,
+            {"skrye": (0, 30), "traya": (10, 40), "zannah": (20, 50)},
+        )
+        self.assertEqual(companion.SWEEP_AGENT_ORDER, ("skrye", "zannah"))
         self.assertEqual(companion.JITTER_MIN_SECS, 5)
         self.assertEqual(companion.JITTER_MAX_SECS, 30)
         self.assertEqual(companion.JITTER_MIN_MS, 5_000)
         self.assertEqual(companion.JITTER_MAX_MS, 30_000)
         self.assertEqual(
             companion.AGENT_DEFAULT_SCHEDULES,
-            {"skrye": (1, "Monday"), "traya": (5, "Friday"), "zannah": (3, "Wednesday")},
+            {"skrye": (2, "Tuesday"), "traya": (0, "disabled"), "zannah": (4, "Thursday")},
         )
         self.assertEqual(companion.RECONCILE_SWEEP_INTERVAL_MS, 21_600_000)
 
@@ -563,29 +570,35 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
         slept_future_ms = poller_zannah.wait_until_due()
         self.assertEqual(slept_future_ms, 40_000)
 
-        now_ms_val = 1_700_000_000_000
+        now_ms_val = 1_700_000_000_000  # 2023-11-14 22:13:20 UTC
         now_sec = now_ms_val // 1000
+        # For skrye (:00/:30), next slot from 22:13:20 UTC is 22:30:00 UTC (+1000s, 0 jitter)
         wait_ms_default, base_sec_default, jitter_ms_default = companion.compute_backoff_wait_ms(
             {"X-Poll-Interval": "60"},
             now_ms_val,
             rng=lambda _lo, _hi: 10_000,
+            agent_name="skrye",
         )
-        self.assertEqual((base_sec_default, jitter_ms_default, wait_ms_default), (300, 10_000, 310_000))
+        self.assertEqual((base_sec_default, jitter_ms_default, wait_ms_default), (1000, 0, 1_000_000))
 
+        # For zannah (:20/:50), next slot from 22:13:20 UTC is 22:20:00 UTC (+400s), but Retry-After=450 overrides to 450s
         wait_ms, base_sec, jitter_ms = companion.compute_backoff_wait_ms(
             {"X-Poll-Interval": "90", "Retry-After": "450"},
             now_ms_val,
             rng=lambda _lo, _hi: 10_000,
+            agent_name="zannah",
         )
-        self.assertEqual((base_sec, jitter_ms, wait_ms), (450, 10_000, 460_000))
+        self.assertEqual((base_sec, jitter_ms, wait_ms), (450, 0, 450_000))
 
-        wait_ms_rl, base_sec_rl, _ = companion.compute_backoff_wait_ms(
-            {"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": str(now_sec + 300)},
+        # Rate-limit reset further in the future (+2400s) overrides the 1000s slot wait
+        wait_ms_rl, base_sec_rl, jitter_rl = companion.compute_backoff_wait_ms(
+            {"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": str(now_sec + 2400)},
             now_ms_val,
             rng=lambda _lo, _hi: 10_000,
             status=200,
+            agent_name="skrye",
         )
-        self.assertEqual((base_sec_rl, wait_ms_rl), (300, 310_000))
+        self.assertEqual((base_sec_rl, jitter_rl, wait_ms_rl), (2400, 0, 2_400_000))
 
 
 class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
@@ -681,8 +694,22 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
                     },
                 },
                 {
-                    "number": 25,
+                    "number": 27,
                     "title": "build(deps): bump the github-actions group with 3 updates",
+                    "url": "https://github.com/wimpysworld/WonKey/pull/27",
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "updatedAt": "2023-11-16T10:00:00Z",
+                    "headRefOid": "sha_pr27_v1",
+                    "reviewDecision": "REVIEW_REQUIRED",
+                    "repository": {"nameWithOwner": "wimpysworld/WonKey"},
+                    "author": {"__typename": "Bot", "login": "dependabot"},
+                    "reviewRequests": {"nodes": []},
+                    "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
+                },
+                {
+                    "number": 25,
+                    "title": "build(deps): bump urllib3 owned by zannah",
                     "url": "https://github.com/wimpysworld/WonKey/pull/25",
                     "state": "OPEN",
                     "isDraft": False,
@@ -832,10 +859,10 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
             {
                 "wimpysworld/nix-config#10": "unrequested_pr",
                 "flexiondotorg/footloose#20": "review_requested",
-                "wimpysworld/wonkey#25": "unrequested_pr",
+                "wimpysworld/wonkey#27": "unrequested_pr",
             },
         )
-        # Complete initial turns for PR 10, PR 20, and PR 25
+        # Complete initial turns for PR 10, PR 20, and PR 27
         store.complete_thread_review(
             "wimpysworld/nix-config#10",
             handled_updated_at="2023-11-16T10:00:00Z",
@@ -849,9 +876,9 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
             handled_ci_state="SUCCESS",
         )
         store.complete_thread_review(
-            "wimpysworld/wonkey#25",
+            "wimpysworld/wonkey#27",
             handled_updated_at="2023-11-16T10:00:00Z",
-            handled_head_sha="sha_pr25_v1",
+            handled_head_sha="sha_pr27_v1",
             handled_ci_state="SUCCESS",
         )
 
@@ -2932,6 +2959,224 @@ class PrFollowupCooldownAndSameShaPeerSuppressionTests(GithubCompanionTestBase):
             subject_item={"id": 16000, "state": "open", "draft": False, "head": {"sha": "sha_160_v2"}},
         )
         self.assertTrue(eval_new_sha["should_dispatch"])
+
+
+class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBase):
+    """Staggered 30m poll slots, Traya code-review-only scope, single-owner mod-2 bot PR routing, and staggered sweeps."""
+
+    def test_staggered_30_minute_wall_clock_poll_slots(self) -> None:
+        # 2023-11-14 10:00:00.000 UTC = 1_699_956_000_000
+        t_10_00 = 1_699_956_000_000
+        t_10_05 = t_10_00 + (5 * 60 * 1000) + 12_345
+        t_10_10 = t_10_00 + (10 * 60 * 1000)
+        t_10_20 = t_10_00 + (20 * 60 * 1000)
+        t_10_30 = t_10_00 + (30 * 60 * 1000)
+        t_10_40 = t_10_00 + (40 * 60 * 1000)
+        t_10_50 = t_10_00 + (50 * 60 * 1000)
+        t_11_00 = t_10_00 + (60 * 60 * 1000)
+
+        # Skrye (:00/:30)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_00, "skrye"), t_10_30)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_05, "skrye"), t_10_30)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_30, "skrye"), t_11_00)
+
+        # Traya (:10/:40)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_00, "traya"), t_10_10)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_10, "traya"), t_10_40)
+
+        # Zannah (:20/:50)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_00, "zannah"), t_10_20)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_20, "zannah"), t_10_50)
+
+    def test_single_owner_automated_pr_routing_and_traya_code_review_only_scope(self) -> None:
+        # wimpysworld/WonKey#27 -> skrye (0); wimpysworld/WonKey#25 -> zannah (1)
+        self.assertEqual(companion.compute_automated_pr_owner("wimpysworld/WonKey", 27), "skrye")
+        self.assertEqual(companion.compute_automated_pr_owner("wimpysworld/WonKey", 25), "zannah")
+        self.assertEqual(companion.compute_automated_pr_owner("wimpysworld/nix-config", 25), "skrye")
+        self.assertEqual(companion.compute_automated_pr_owner("wimpysworld/nix-config", 24), "zannah")
+
+        self.assertTrue(companion.is_automated_update_pr("dependabot[bot]"))
+        self.assertTrue(companion.is_automated_update_pr("github-actions[bot]"))
+        self.assertFalse(companion.is_automated_update_pr("cubic-dev-ai[bot]"))
+        self.assertTrue(
+            companion.is_automated_update_pr(
+                "flexiondotorg",
+                repo="wimpysworld/nix-config",
+                title="chore(packages): update to 1.2.3",
+            )
+        )
+        self.assertFalse(
+            companion.is_automated_update_pr(
+                "flexiondotorg",
+                repo="wimpysworld/nix-config",
+                title="feat(moltis): add staggered poll slots",
+            )
+        )
+
+        prs = [
+            {
+                "number": 27,
+                "title": "build(deps): bump actions/checkout",
+                "url": "https://github.com/wimpysworld/WonKey/pull/27",
+                "state": "OPEN",
+                "isDraft": False,
+                "updatedAt": "2023-11-16T10:00:00Z",
+                "headRefOid": "sha_27",
+                "reviewDecision": "REVIEW_REQUIRED",
+                "repository": {"nameWithOwner": "wimpysworld/WonKey"},
+                "author": {"__typename": "Bot", "login": "dependabot"},
+                "reviewRequests": {"nodes": []},
+                "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
+            },
+            {
+                "number": 25,
+                "title": "build(deps): bump urllib3",
+                "url": "https://github.com/wimpysworld/WonKey/pull/25",
+                "state": "OPEN",
+                "isDraft": False,
+                "updatedAt": "2023-11-16T10:00:00Z",
+                "headRefOid": "sha_25",
+                "reviewDecision": "REVIEW_REQUIRED",
+                "repository": {"nameWithOwner": "wimpysworld/WonKey"},
+                "author": {"__typename": "Bot", "login": "dependabot"},
+                "reviewRequests": {"nodes": []},
+                "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
+            },
+            {
+                "number": 24,
+                "title": "chore(packages): update to 2026.04",
+                "url": "https://github.com/wimpysworld/nix-config/pull/24",
+                "state": "OPEN",
+                "isDraft": False,
+                "updatedAt": "2023-11-16T10:00:00Z",
+                "headRefOid": "sha_24",
+                "reviewDecision": "REVIEW_REQUIRED",
+                "repository": {"nameWithOwner": "wimpysworld/nix-config"},
+                "author": {"__typename": "User", "login": "flexiondotorg"},
+                "reviewRequests": {"nodes": []},
+                "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
+            },
+            {
+                "number": 99,
+                "title": "feat: human authored PR",
+                "url": "https://github.com/wimpysworld/nix-config/pull/99",
+                "state": "OPEN",
+                "isDraft": False,
+                "updatedAt": "2023-11-16T10:00:00Z",
+                "headRefOid": "sha_99",
+                "reviewDecision": "REVIEW_REQUIRED",
+                "repository": {"nameWithOwner": "wimpysworld/nix-config"},
+                "author": {"__typename": "User", "login": "flexiondotorg"},
+                "reviewRequests": {"nodes": []},
+                "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
+            },
+        ]
+
+        store_skrye = self.make_store("skrye")
+        store_zannah = self.make_store("zannah")
+        store_traya = self.make_store("traya")
+
+        res_skrye = store_skrye.record_polled_pull_requests(prs)
+        res_zannah = store_zannah.record_polled_pull_requests(prs)
+        res_traya = store_traya.record_polled_pull_requests(prs)
+
+        self.assertEqual(
+            [item["key"] for item in res_skrye["actionable_prs"]],
+            ["wimpysworld/wonkey#27", "wimpysworld/nix-config#99"],
+        )
+        self.assertEqual(
+            [item["key"] for item in res_zannah["actionable_prs"]],
+            ["wimpysworld/wonkey#25", "wimpysworld/nix-config#24", "wimpysworld/nix-config#99"],
+        )
+        # Traya ignores all automated update PRs and only wakes for human/peer code review PR #99
+        self.assertEqual(
+            [item["key"] for item in res_traya["actionable_prs"]],
+            ["wimpysworld/nix-config#99"],
+        )
+
+        # Notification evaluation & auto-dismissal for Traya and non-owning sweep agent
+        gh_client = companion.GhApiSafeClient(runner=lambda *a, **k: subprocess.CompletedProcess(a[0], 0, "{}", ""))
+        tf_traya = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store_traya, gh_client=gh_client, agent_name="traya", clock=self.clock
+        )
+        tf_skrye = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store_skrye, gh_client=gh_client, agent_name="skrye", clock=self.clock
+        )
+        tf_zannah = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store_zannah, gh_client=gh_client, agent_name="zannah", clock=self.clock
+        )
+
+        bot_pr_subj = {
+            "id": 2500,
+            "number": 25,
+            "state": "open",
+            "draft": False,
+            "title": "build(deps): bump urllib3",
+            "user": {"login": "dependabot[bot]", "type": "Bot"},
+            "head": {"sha": "sha_25"},
+        }
+        notif_25 = {"thread_id": "2501", "repo": "wimpysworld/WonKey", "subject_type": "PullRequest", "number": 25}
+
+        eval_traya = tf_traya.evaluate_notification(notif_25, subject_item=bot_pr_subj)
+        self.assertFalse(eval_traya["should_dispatch"])
+        self.assertEqual(eval_traya["skip_reason"], "bot_update_ignored_for_traya")
+
+        eval_skrye = tf_skrye.evaluate_notification(notif_25, subject_item=bot_pr_subj)
+        self.assertFalse(eval_skrye["should_dispatch"])
+        self.assertEqual(eval_skrye["skip_reason"], "unowned_automated_pr")
+
+        eval_zannah = tf_zannah.evaluate_notification(notif_25, subject_item=bot_pr_subj)
+        self.assertTrue(eval_zannah["should_dispatch"])
+
+        # Explicit @sith-traya mention on a bot PR DOES dispatch to Traya
+        eval_traya_mentioned = tf_traya.evaluate_notification(
+            notif_25,
+            latest_item={"id": 2502, "user": {"login": "flexiondotorg"}, "body": "@sith-traya please review this."},
+            subject_item=bot_pr_subj,
+        )
+        self.assertTrue(eval_traya_mentioned["should_dispatch"])
+
+    def test_staggered_reconcile_sweeps_and_tuesday_thursday_weekly_sweeps_with_traya_disabled(self) -> None:
+        # Tuesday 2023-11-14 10:00:00 UTC (ISO weekday 2)
+        tuesday_10am_ms = 1_699_956_000_000
+        # Thursday 2023-11-16 10:00:00 UTC (ISO weekday 4)
+        thursday_10am_ms = 1_700_128_800_000
+
+        self.current_time_ms = tuesday_10am_ms
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        gh_client = companion.GhApiSafeClient(runner=lambda *a, **k: subprocess.CompletedProcess(a[0], 0, "{}", ""))
+
+        def make_runner(agent: str) -> companion.GithubCompanionRunner:
+            st = self.make_store(agent)
+            poller = companion.NotificationPoller(state_store=st, gh_client=gh_client, clock=self.clock, sleeper=self.sleeper)
+            tf = companion.TrustFilterAndSnapshotBuilder(state_store=st, gh_client=gh_client, agent_name=agent, clock=self.clock)
+            coord = companion.LocalExecutionCoordinator(
+                state_store=st, rpc_client=rpc, data_dir=self.data_dir, agent_name=agent, clock=self.clock, sleeper=self.sleeper
+            )
+            return companion.GithubCompanionRunner(
+                state_store=st, gh_client=gh_client, poller=poller, trust_filter=tf, execution_coordinator=coord, clock=self.clock
+            )
+
+        runner_skrye = make_runner("skrye")
+        runner_zannah = make_runner("zannah")
+        runner_traya = make_runner("traya")
+
+        # Traya never runs reconcile or weekly sweeps
+        self.assertFalse(runner_traya.is_reconcile_sweep_due(now_override_ms=tuesday_10am_ms))
+        self.assertEqual(runner_traya.is_weekly_sweep_due(now_override_ms=tuesday_10am_ms), (False, "2023-11-14"))
+        self.assertFalse(runner_traya.is_reconcile_sweep_due(now_override_ms=tuesday_10am_ms + (12 * 3600 * 1000)))
+
+        # Skrye runs initial reconcile sweep immediately at boot; Zannah is staggered by +3 hours
+        self.assertTrue(runner_skrye.is_reconcile_sweep_due(now_override_ms=tuesday_10am_ms))
+        self.assertFalse(runner_zannah.is_reconcile_sweep_due(now_override_ms=tuesday_10am_ms))
+        self.assertFalse(runner_zannah.is_reconcile_sweep_due(now_override_ms=tuesday_10am_ms + (3 * 3600 * 1000) - 1))
+        self.assertTrue(runner_zannah.is_reconcile_sweep_due(now_override_ms=tuesday_10am_ms + (3 * 3600 * 1000)))
+
+        # Weekly sweeps: Tuesday (2) for Skrye, Thursday (4) for Zannah
+        self.assertEqual(runner_skrye.is_weekly_sweep_due(now_override_ms=tuesday_10am_ms), (True, "2023-11-14"))
+        self.assertEqual(runner_zannah.is_weekly_sweep_due(now_override_ms=tuesday_10am_ms), (False, "2023-11-14"))
+        self.assertEqual(runner_skrye.is_weekly_sweep_due(now_override_ms=thursday_10am_ms), (False, "2023-11-16"))
+        self.assertEqual(runner_zannah.is_weekly_sweep_due(now_override_ms=thursday_10am_ms), (True, "2023-11-16"))
 
 
 if __name__ == "__main__":
