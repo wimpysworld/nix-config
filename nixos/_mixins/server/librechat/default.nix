@@ -72,6 +72,11 @@ let
     "sys__server__sys_mcp_${server}"
     "sys__all__sys_mcp_${server}"
   ]) mcpServerNames;
+  sharedMcpServerNames = [ "exa" ];
+  sharedMcpTools = lib.concatMap (server: [
+    "sys__server__sys_mcp_${server}"
+    "sys__all__sys_mcp_${server}"
+  ]) sharedMcpServerNames;
   stripFrontmatter =
     text:
     let
@@ -194,11 +199,13 @@ let
           agentDir = assistantsRoot + "/agents/${name}";
           header = assistantsCompose.readHeader agentDir;
           claudeModel = header.routing.claude.model or "";
+          isShared = lib.elem name sharedAgentNames;
         in
         {
           id = "agent_${name}";
-          inherit name mcpServerNames;
-          shared = lib.elem name sharedAgentNames;
+          inherit name;
+          mcpServerNames = if isShared then sharedMcpServerNames else mcpServerNames;
+          shared = isShared;
           description = header.common.description;
           instructions =
             lib.trim (builtins.readFile (agentDir + "/prompt.md")) + "\n\n" + assistantsCompose.houseStyleBody;
@@ -208,7 +215,7 @@ let
             "execute_code"
             "memory"
           ]
-          ++ mcpTools;
+          ++ (if isShared then sharedMcpTools else mcpTools);
         }
       ) provisionedAgentNames;
       skills = map (
