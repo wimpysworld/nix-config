@@ -86,7 +86,9 @@ in
         patches = (oldAttrs.patches or [ ]) ++ [ ./patches/cage/teardown-order.patch ];
       });
 
-      fresh = final.unstable.fresh-editor;
+      fresh = final.unstable.fresh-editor.overrideAttrs (oldAttrs: {
+        buildInputs = (oldAttrs.buildInputs or [ ]) ++ [ final.unstable.oniguruma ];
+      });
 
       herdr = inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}.herdr;
 
