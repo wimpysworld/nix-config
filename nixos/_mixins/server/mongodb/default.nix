@@ -10,6 +10,10 @@
 # WiredTiger cache cap is set here. Revisit if a host ever runs MongoDB as a
 # primary store with multi-GB working sets.
 lib.mkIf (noughtyLib.hostHasTag "mongodb") {
+  environment.systemPackages = [
+    pkgs.mongosh
+  ];
+
   services.mongodb = {
     enable = true;
     package = lib.mkDefault pkgs.mongodb-ce;
