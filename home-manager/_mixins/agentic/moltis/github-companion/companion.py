@@ -1884,7 +1884,10 @@ class NotificationPoller:
         last_status, last_completed_ms = poll_state.get("last_status"), poll_state.get("last_poll_completed_at_ms")
         if last_status in (200, 304) and not bool(poll_state.get("last_poll_rate_limited", False)) and _safe_int(poll_state.get("retry_after_secs"), 0) <= 0 and isinstance(last_completed_ms, int):
             agent_name = str(poll_state.get("agent_name") or "skrye")
-            return min(next_poll_at_ms, compute_next_poll_slot_ms(last_completed_ms, agent_name))
+            poll_interval_secs = max(0, _safe_int(poll_state.get("poll_interval_secs"), 0))
+            header_floor_ms = (last_completed_ms + (poll_interval_secs * 1000)) if poll_interval_secs > BASE_POLL_INTERVAL_SECS else 0
+            slot_ms = max(compute_next_poll_slot_ms(last_completed_ms, agent_name), header_floor_ms)
+            return min(next_poll_at_ms, slot_ms)
         return next_poll_at_ms
 
     def wait_until_due(self, now_override_ms: int | None = None) -> int:
