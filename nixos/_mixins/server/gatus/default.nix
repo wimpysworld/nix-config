@@ -103,7 +103,7 @@ lib.mkIf (noughtyLib.hostHasTag "gatus") {
           ++ lib.optional (noughtyLib.hostHasTag "librechat") {
             name = "LibreChat";
             group = "Media & AI (Revan)";
-            url = "https://librechat.wimpys.world";
+            url = "https://ai.wimpys.world";
             interval = "30s";
             conditions = [
               "[STATUS] == 200"
