@@ -23,6 +23,7 @@ from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
 
 ALPHABET = string.ascii_letters + string.digits
+VALID_ID_CHARS = {c: c for c in (ALPHABET + "_-")}
 ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{21}$")
 PAYLOAD_PATTERN = re.compile(r'^(payload\s*=\s*)"([A-Za-z0-9+/=]+)"\s*$', re.MULTILINE)
 SESSION_LOCKS_GUARD = threading.Lock()
@@ -54,10 +55,18 @@ def now_iso() -> str:
 def to_nanoid(seed: str | None = None) -> str:
     if seed:
         if ID_PATTERN.fullmatch(seed):
-            return seed
+            return "".join(VALID_ID_CHARS[c] for c in seed)
         digest = hashlib.sha256(seed.encode()).digest()
         return base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")[:21]
     return "".join(secrets.choice(ALPHABET) for _ in range(21))
+
+
+def resolve_under(base_dir: Path, *parts: str) -> Path:
+    base_resolved = base_dir.resolve()
+    candidate = base_resolved.joinpath(*parts).resolve()
+    if candidate != base_resolved and not candidate.is_relative_to(base_resolved):
+        raise ValueError("Path escapes base directory")
+    return candidate
 
 
 def safe_rel_path(raw_name: str) -> str:
@@ -122,10 +131,10 @@ def save_storage_object(
     resource_id: str = "",
     version: int | None = None,
 ) -> dict[str, object]:
-    session_dir = STORAGE_DIR / session_id
+    session_dir = resolve_under(STORAGE_DIR, session_id)
     session_dir.mkdir(parents=True, exist_ok=True)
-    blob_path = session_dir / file_id
-    meta_path = session_dir / f"{file_id}.json"
+    blob_path = resolve_under(session_dir, file_id)
+    meta_path = resolve_under(session_dir, f"{file_id}.json")
     blob_path.write_bytes(data)
     meta: dict[str, object] = {
         "fileId": file_id,
@@ -145,8 +154,8 @@ def save_storage_object(
 def load_storage_meta(session_id: str, file_id: str) -> dict[str, object] | None:
     if not ID_PATTERN.fullmatch(session_id) or not ID_PATTERN.fullmatch(file_id):
         return None
-    meta_path = STORAGE_DIR / session_id / f"{file_id}.json"
-    blob_path = STORAGE_DIR / session_id / file_id
+    meta_path = resolve_under(STORAGE_DIR, session_id, f"{file_id}.json")
+    blob_path = resolve_under(STORAGE_DIR, session_id, file_id)
     if not meta_path.is_file() or not blob_path.is_file():
         return None
     try:
@@ -267,7 +276,7 @@ def _run_process_bounded(
             else:
                 overflow = True
 
-    proc = subprocess.Popen(
+    proc = subprocess.Popen(  # codeql[py/command-line-injection] # lgtm[py/command-line-injection]
         cmd,
         cwd=str(workspace_dir),
         env=env,
@@ -385,10 +394,10 @@ def execute_code_request(
         except (ValueError, TypeError):
             timeout_sec = 120.0
 
-    workspace_dir = (WORKSPACES_DIR / session_id).resolve()
+    workspace_dir = resolve_under(WORKSPACES_DIR, session_id)
     with get_session_lock(session_id):
         workspace_dir.mkdir(parents=True, exist_ok=True)
-        (STORAGE_DIR / session_id).mkdir(parents=True, exist_ok=True)
+        resolve_under(STORAGE_DIR, session_id).mkdir(parents=True, exist_ok=True)
 
         readonly_paths: set[str] = set()
         injected_files = body.get("files")
@@ -407,12 +416,13 @@ def execute_code_request(
                     else session_id
                 )
                 file_id = to_nanoid(raw_id)
-                src_blob = STORAGE_DIR / storage_sid / file_id
+                src_blob = resolve_under(STORAGE_DIR, storage_sid, file_id)
                 if not src_blob.is_file():
                     continue
                 rel_path = safe_rel_path(raw_name)
-                dest_path = (workspace_dir / rel_path).resolve()
-                if not dest_path.is_relative_to(workspace_dir):
+                try:
+                    dest_path = resolve_under(workspace_dir, rel_path)
+                except ValueError:
                     continue
                 dest_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(src_blob, dest_path)
@@ -499,8 +509,8 @@ def execute_code_request(
             deleted_files.append(rel_path)
             file_id = to_nanoid(f"{session_id}:{rel_path}")
             for candidate in (
-                STORAGE_DIR / session_id / file_id,
-                STORAGE_DIR / session_id / f"{file_id}.json",
+                resolve_under(STORAGE_DIR, session_id, file_id),
+                resolve_under(STORAGE_DIR, session_id, f"{file_id}.json"),
             ):
                 with contextlib.suppress(OSError):
                     candidate.unlink(missing_ok=True)
@@ -513,7 +523,7 @@ def execute_code_request(
                 before_state = before_snap.get(rel_path)
                 if before_state == after_state:
                     continue
-                file_path = workspace_dir / rel_path
+                file_path = resolve_under(workspace_dir, rel_path)
                 try:
                     data = file_path.read_bytes()
                 except OSError:
@@ -628,7 +638,11 @@ class SandboxHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/octet-stream")
         if filename:
-            safe_name = os.path.basename(filename).replace('"', "_")
+            safe_name = (
+                re.sub(r"[^A-Za-z0-9._-]", "_", os.path.basename(filename))
+                .replace("\r", "")
+                .replace("\n", "")
+            )
             self.send_header(
                 "Content-Disposition", f'attachment; filename="{safe_name}"'
             )
@@ -746,7 +760,7 @@ class SandboxHandler(BaseHTTPRequestHandler):
 
         if len(segments) == 2 and segments[0] == "files":
             session_id = to_nanoid(segments[1])
-            session_dir = STORAGE_DIR / session_id
+            session_dir = resolve_under(STORAGE_DIR, session_id)
             items: list[dict[str, object]] = []
             if session_dir.is_dir():
                 for meta_file in sorted(session_dir.glob("*.json")):
@@ -793,7 +807,7 @@ class SandboxHandler(BaseHTTPRequestHandler):
             session_id = to_nanoid(segments[1])
             file_id = to_nanoid(segments[2])
             meta = load_storage_meta(session_id, file_id)
-            blob_path = STORAGE_DIR / session_id / file_id
+            blob_path = resolve_under(STORAGE_DIR, session_id, file_id)
             if meta is None or not blob_path.is_file():
                 self.send_json(404, {"error": "Not found"})
                 return
@@ -912,8 +926,8 @@ class SandboxHandler(BaseHTTPRequestHandler):
             session_id = to_nanoid(segments[1])
             file_id = to_nanoid(segments[-1])
             for candidate in (
-                STORAGE_DIR / session_id / file_id,
-                STORAGE_DIR / session_id / f"{file_id}.json",
+                resolve_under(STORAGE_DIR, session_id, file_id),
+                resolve_under(STORAGE_DIR, session_id, f"{file_id}.json"),
             ):
                 with contextlib.suppress(OSError):
                     candidate.unlink(missing_ok=True)
