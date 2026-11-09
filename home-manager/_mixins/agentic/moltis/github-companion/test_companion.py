@@ -2988,6 +2988,29 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
         self.assertEqual(companion.compute_next_poll_slot_ms(t_10_00, "zannah"), t_10_20)
         self.assertEqual(companion.compute_next_poll_slot_ms(t_10_20, "zannah"), t_10_50)
 
+        # Near-boundary X-Poll-Interval at 10:29 (120s -> 10:31 past 10:30 slot) must preserve full header deadline
+        t_10_29 = t_10_00 + (29 * 60 * 1000)
+        t_10_31 = t_10_00 + (31 * 60 * 1000)
+        store_skrye = self.make_store("skrye")
+        gh_client = companion.GhApiSafeClient(
+            runner=lambda cmd, **k: subprocess.CompletedProcess(
+                cmd,
+                0,
+                stdout="HTTP/2.0 200 OK\r\nX-Poll-Interval: 120\r\n\r\n[]",
+                stderr="",
+            )
+        )
+        poller_skrye = companion.NotificationPoller(
+            state_store=store_skrye,
+            gh_client=gh_client,
+            clock=lambda: t_10_29,
+            sleeper=self.sleeper,
+        )
+        poll_res = poller_skrye.poll_once(now_override_ms=t_10_29, poll_open_prs=False)
+        self.assertEqual(poll_res["next_poll_at_ms"], t_10_31)
+        self.assertEqual(store_skrye.read_state()["poll_interval_secs"], 120)
+        self.assertEqual(poller_skrye.wait_until_due(now_override_ms=t_10_29), 120_000)
+
     def test_single_owner_automated_pr_routing_and_traya_code_review_only_scope(self) -> None:
         # wimpysworld/WonKey#27 -> skrye (0); wimpysworld/WonKey#25 -> zannah (1)
         self.assertEqual(companion.compute_automated_pr_owner("wimpysworld/WonKey", 27), "skrye")
