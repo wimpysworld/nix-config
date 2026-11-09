@@ -1782,7 +1782,7 @@ class TrustFilterAndSnapshotBuilder:
             eff_author = pr_author_norm or normalize_github_actor(fallback_actor)
             if is_automated_update_pr(eff_author, repo=repo, head_ref=pr_head_ref, labels=pr_labels, title=pr_title):
                 is_auto_pr = True
-            all_mentions = set(item_mentions) | subj_mentions
+            all_mentions = (set(item_mentions) if is_trusted_instruction_actor(fallback_actor) else set()) | (subj_mentions if is_trusted_instruction_actor(pr_author_norm) else set())
             if self.agent_name in all_mentions:
                 return None
             if not is_auto_pr:
