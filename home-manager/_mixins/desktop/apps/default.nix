@@ -253,6 +253,7 @@ in
     ./chat
     ./media-production
     ./music
+    ./music-production
     ./notes
     ./office
     ./rustdesk

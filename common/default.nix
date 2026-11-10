@@ -34,14 +34,16 @@ in
   environment = {
     # Common packages available on all platforms.
     # Platform-specific packages are added in nixos/default.nix and darwin/default.nix.
-    systemPackages = with pkgs; [
-      fresh
-      git
-      just
-      nix-output-monitor
-      nvd
-      sops
-    ];
+    systemPackages =
+      with pkgs;
+      [
+        git
+        just
+        nix-output-monitor
+        nvd
+        sops
+      ]
+      ++ lib.optional config.noughty.host.is.iso fresh;
 
     variables = {
       EDITOR = "fresh";
