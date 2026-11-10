@@ -25,12 +25,14 @@ lib.mkIf (host.is.workstation || host.is.server) {
     disableUpstreamLogging = !(noughtyLib.hostHasTag "cg");
     enable = true;
     extraUpFlags = [
+      "--accept-routes"
       "--operator=${username}"
       # OAuth clients require at least one tag; all NixOS nodes share a single tag
       "--advertise-tags=tag:nixos"
     ]
     ++ lib.optional (noughtyLib.isHost tsExitNodes) "--advertise-exit-node";
     extraSetFlags = [
+      "--accept-routes"
       "--operator=${username}"
     ]
     ++ lib.optional (noughtyLib.isHost tsExitNodes) "--advertise-exit-node";
