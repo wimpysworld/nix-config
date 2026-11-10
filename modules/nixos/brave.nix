@@ -19,10 +19,10 @@ in
   environment.etc = lib.mkMerge [
     (lib.mkIf cfg.enable {
       "brave/policies/managed/default.json" = lib.mkIf hasDefaultProfile {
-        text = config.environment.etc."chromium/policies/managed/default.json".text;
+        text = lib.mkDefault config.environment.etc."chromium/policies/managed/default.json".text;
       };
       "brave/policies/managed/extra.json" = lib.mkIf (cfg.extraOpts != { }) {
-        text = config.environment.etc."chromium/policies/managed/extra.json".text;
+        text = lib.mkDefault config.environment.etc."chromium/policies/managed/extra.json".text;
       };
     })
     (lib.mkIf config.programs.browserpass.enable {
