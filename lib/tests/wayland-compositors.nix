@@ -126,12 +126,15 @@ let
     nixosConfigurations ? bane
     && nixosConfigurations ? felkor
     && nixosConfigurations ? skrye
+    && nixosConfigurations ? zannah
     && homeConfigurations ? "martin@bane"
     && homeConfigurations ? "martin@felkor"
-    && homeConfigurations ? "martin@skrye";
+    && homeConfigurations ? "martin@skrye"
+    && homeConfigurations ? "martin@zannah";
   baneHome = homeConfigurations."martin@bane".config;
   felkorHome = homeConfigurations."martin@felkor".config;
   skryeHome = homeConfigurations."martin@skrye".config;
+  zannahHome = homeConfigurations."martin@zannah".config;
   packageNamed =
     name: packages:
     let
@@ -338,10 +341,13 @@ assert !enableHostIntegration || !(hasGeneratedPngStatePath baneHomeWayfire);
 assert !enableHostIntegration || baneHomeWayfire.settings.winshadows == expectedWinshadowsSettings;
 assert
   !enableHostIntegration
-  || felkorHome.systemd.user.services.lan-mouse.Unit.PartOf == [ "mango-session.target" ];
+  || !(felkorHome.systemd.user.services ? lan-mouse);
 assert
   !enableHostIntegration
-  || felkorHome.systemd.user.services.lan-mouse.Install.WantedBy == [ "mango-session.target" ];
+  || zannahHome.systemd.user.services.lan-mouse.Unit.PartOf == [ "mango-session.target" ];
+assert
+  !enableHostIntegration
+  || zannahHome.systemd.user.services.lan-mouse.Install.WantedBy == [ "mango-session.target" ];
 assert
   !enableHostIntegration
   || skryeHome.systemd.user.services.reframe-session.Unit.PartOf == [ "mango-session.target" ];
