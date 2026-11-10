@@ -11,8 +11,16 @@ let
     ravi = "10.10.30.84";
     zannah = "10.10.30.193";
   };
-  isLanMouseHost = noughtyLib.isHost (builtins.attrNames lanMouseAddresses);
-  lanMousePeer = if host.name == "zannah" then "ravi" else "zannah";
+  isLanMouseHost = noughtyLib.hostHasTag "lan-mouse";
+  lanMousePeers = {
+    ravi = "zannah";
+    zannah = "ravi";
+  };
+  lanMousePeer = lanMousePeers.${host.name} or null;
+  hasLanMouseConfig =
+    lanMousePeer != null
+    && builtins.hasAttr host.name lanMouseAddresses
+    && builtins.hasAttr lanMousePeer lanMouseAddresses;
   useDoT =
     if host.is.iso then
       "false"
@@ -101,6 +109,11 @@ in
     ./skrye.nix
   ];
 
+  assertions = lib.optional isLanMouseHost {
+    assertion = hasLanMouseConfig;
+    message = "The lan-mouse tag on ${host.name} requires a peer mapping and LAN addresses for both hosts in nixos/_mixins/network/default.nix.";
+  };
+
   networking = {
     hosts = lib.mkIf isLanMouseHost (
       lib.mapAttrs' (name: address: lib.nameValuePair address [ "${name}-lanmouse" ]) lanMouseAddresses
@@ -132,7 +145,7 @@ in
         22000
         21027
       ];
-      extraCommands = lib.mkIf isLanMouseHost ''
+      extraCommands = lib.mkIf (isLanMouseHost && hasLanMouseConfig) ''
         iptables -A nixos-fw -s ${lanMouseAddresses.${lanMousePeer}}/32 \
           -d ${lanMouseAddresses.${host.name}}/32 -p udp --dport 4242 -j nixos-fw-accept
       '';
