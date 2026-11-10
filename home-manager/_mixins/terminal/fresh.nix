@@ -16,7 +16,7 @@ in
   config = {
     programs.fresh-editor = {
       enable = true;
-      package = pkgs.unstable.fresh-editor;
+      package = pkgs.fresh;
       settings.theme = "catppuccin-mocha.json";
     };
 

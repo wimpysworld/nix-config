@@ -43,6 +43,10 @@
     nix-index-database.url = "github:Mic92/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
     nix-flatpak.url = "https://flakehub.com/f/gmodena/nix-flatpak/0.7.0.tar.gz";
+    nix-snapd.url = "github:nix-community/nix-snapd";
+    nix-snapd.inputs.nixpkgs.follows = "nixpkgs";
+    nix-snapd.inputs.flake-parts.follows = "flake-parts";
+    nix-snapd.inputs.flake-compat.follows = "determinate/nix/git-hooks-nix/flake-compat";
     mac-app-util.url = "github:hraban/mac-app-util";
     mac-app-util.inputs.nixpkgs.follows = "nixpkgs-unstable";
     mac-app-util.inputs.cl-nix-lite.inputs.nixpkgs.follows = "nixpkgs-unstable";

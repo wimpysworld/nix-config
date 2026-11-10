@@ -402,20 +402,20 @@ let
     if moltisAgentName == "skrye" then
       {
         agentDisplayName = "Skrye";
-        dayName = "Monday";
-        dow = "1";
+        dayName = "Tuesday";
+        dow = "2";
       }
     else if moltisAgentName == "zannah" then
       {
         agentDisplayName = "Zannah";
-        dayName = "Wednesday";
-        dow = "3";
+        dayName = "Thursday";
+        dow = "4";
       }
     else
       {
         agentDisplayName = "Traya";
-        dayName = "Friday";
-        dow = "5";
+        dayName = "disabled";
+        dow = "0";
       };
   moltisHeartbeat =
     lib.replaceStrings

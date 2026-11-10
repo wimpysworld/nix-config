@@ -103,6 +103,7 @@ let
       "guigui"
       "Hajime"
       "herdr"
+      "Jamon"
       "lan-mouse"
       "Latte"
       "Linux"

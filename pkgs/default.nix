@@ -3,6 +3,7 @@
 pkgs: {
   # Local packages
   blender-agent-bridge = pkgs.callPackage ./blender-agent-bridge { };
+  brave = pkgs.callPackage ./brave { };
   cg-mcp-proxy = pkgs.callPackage ./cg-mcp-proxy { };
   chainctl = pkgs.callPackage ./chainctl { };
   claude-themes-catppuccin = pkgs.callPackage ./claude-themes-catppuccin { };

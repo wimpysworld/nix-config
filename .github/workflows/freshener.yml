@@ -29,6 +29,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - id: brave
+            name: Brave
+            changelog: https://github.com/brave/brave-browser/releases
           - id: defold
             name: Defold
             changelog: https://github.com/defold/defold/releases

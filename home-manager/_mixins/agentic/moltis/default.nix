@@ -19,8 +19,15 @@ let
   agentName = host.name;
   isTraya = agentName == "traya";
   mainProvider = if isTraya then "openai-codex" else "gemini";
-  mainModelName = if isTraya then "gpt-6-astra" else "gemini-4-argon";
+  mainModelName =
+    if isTraya then "gpt-6.1-sol@reasoning-medium" else "gemini-4-argon@reasoning-medium";
   mainModel = "${mainProvider}::${mainModelName}";
+  reviewModel =
+    if isTraya then
+      "openai-codex::gpt-6-astra@reasoning-medium"
+    else
+      "gemini::gemini-4-argon@reasoning-high";
+  reviewReasoningEffort = if isTraya then "medium" else "high";
   auxiliaryModel =
     if isTraya then "openai-codex::gpt-6-luna@reasoning-high" else "gemini::gemini-3.8-flash";
   auxiliaryReasoningEffort = if isTraya then "high" else "medium";
@@ -70,18 +77,18 @@ let
       "Skrye";
   scheduleDow =
     if agentName == "zannah" then
-      3
+      4
     else if agentName == "traya" then
-      5
+      0
     else
-      1;
+      2;
   scheduleDayName =
     if agentName == "zannah" then
-      "Wednesday"
+      "Thursday"
     else if agentName == "traya" then
-      "Friday"
+      "disabled"
     else
-      "Monday";
+      "Tuesday";
 
   moltisSopsFile = ../../../../secrets/moltis.yaml;
   matrixSopsFile = ../../../../secrets/matrix.yaml;
@@ -949,6 +956,7 @@ let
       agentName
       agentDisplayName
       mainModel
+      reviewModel
       scheduleDow
       scheduleDayName
       ;
@@ -1697,8 +1705,8 @@ in
                     reasoning_effort = auxiliaryReasoningEffort;
                   };
                   review = {
-                    model = mainModel;
-                    reasoning_effort = "medium";
+                    model = reviewModel;
+                    reasoning_effort = reviewReasoningEffort;
                   };
                 }
               );
@@ -1706,6 +1714,7 @@ in
 
         models = {
           gemini-4-argon.context_window = 1000000;
+          "gpt-6.1-sol".context_window = 384000;
           gpt-6-astra.context_window = 384000;
           gpt-6-luna.context_window = 384000;
         };
@@ -1726,6 +1735,7 @@ in
           openai-codex = {
             enabled = true;
             models = [
+              "gpt-6.1-sol"
               "gpt-6-astra"
               "gpt-6-luna"
             ];

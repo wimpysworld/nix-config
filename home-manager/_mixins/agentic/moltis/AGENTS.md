@@ -59,7 +59,7 @@ After you complete the action for any GitHub notification thread, mark the notif
 
 ## Channel Voice and Mention Rules
 
-- Use voice notes in Telegram direct messages and Matrix direct messages to Martin when appropriate. Keep Matrix group chats (`!the-cauldron:matrix.wimpys.world`) text-only unless Martin explicitly asks for a voice note.
+- Keep Telegram direct messages, Matrix direct messages, and Matrix group chats (`!the-cauldron:matrix.wimpys.world`) text-only by default. Send a voice note only when Martin explicitly asks for one.
 - In Matrix group chats, write agent display names (`Skrye`, `Traya`, `Zannah`) in prose and inline code spans whenever you do not intend to wake that peer, because the Matrix mention parser matches full Matrix identifiers inside code backticks.
 
 ## Safety

@@ -21,7 +21,6 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.workstation && host.is.linux
 
   programs.lan-mouse = {
     enable = true;
-    package = pkgs.unstable.lan-mouse;
   };
 
   systemd.user.services.lan-mouse = lib.mkIf (compositor != null) {

@@ -295,15 +295,22 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
         self.assertEqual(companion.normalize_agent_name("traya"), "traya")
         self.assertEqual(companion.normalize_agent_name("zannah"), "zannah")
 
-        self.assertEqual(companion.BASE_POLL_INTERVAL_SECS, 300)
-        self.assertEqual(companion.BASE_POLL_INTERVAL_MS, 300_000)
+        self.assertEqual(companion.BASE_POLL_INTERVAL_SECS, 1800)
+        self.assertEqual(companion.BASE_POLL_INTERVAL_MS, 1_800_000)
+        self.assertEqual(companion.POLL_SLOT_INTERVAL_SECS, 1800)
+        self.assertEqual(companion.POLL_SLOT_INTERVAL_MS, 1_800_000)
+        self.assertEqual(
+            companion.AGENT_POLL_MINUTE_SLOTS,
+            {"skrye": (0, 30), "traya": (10, 40), "zannah": (20, 50)},
+        )
+        self.assertEqual(companion.SWEEP_AGENT_ORDER, ("skrye", "zannah"))
         self.assertEqual(companion.JITTER_MIN_SECS, 5)
         self.assertEqual(companion.JITTER_MAX_SECS, 30)
         self.assertEqual(companion.JITTER_MIN_MS, 5_000)
         self.assertEqual(companion.JITTER_MAX_MS, 30_000)
         self.assertEqual(
             companion.AGENT_DEFAULT_SCHEDULES,
-            {"skrye": (1, "Monday"), "traya": (5, "Friday"), "zannah": (3, "Wednesday")},
+            {"skrye": (2, "Tuesday"), "traya": (0, "disabled"), "zannah": (4, "Thursday")},
         )
         self.assertEqual(companion.RECONCILE_SWEEP_INTERVAL_MS, 21_600_000)
 
@@ -563,29 +570,35 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
         slept_future_ms = poller_zannah.wait_until_due()
         self.assertEqual(slept_future_ms, 40_000)
 
-        now_ms_val = 1_700_000_000_000
+        now_ms_val = 1_700_000_000_000  # 2023-11-14 22:13:20 UTC
         now_sec = now_ms_val // 1000
+        # For skrye (:00/:30), next slot from 22:13:20 UTC is 22:30:00 UTC (+1000s, 0 jitter)
         wait_ms_default, base_sec_default, jitter_ms_default = companion.compute_backoff_wait_ms(
             {"X-Poll-Interval": "60"},
             now_ms_val,
             rng=lambda _lo, _hi: 10_000,
+            agent_name="skrye",
         )
-        self.assertEqual((base_sec_default, jitter_ms_default, wait_ms_default), (300, 10_000, 310_000))
+        self.assertEqual((base_sec_default, jitter_ms_default, wait_ms_default), (1000, 0, 1_000_000))
 
+        # For zannah (:20/:50), next slot from 22:13:20 UTC is 22:20:00 UTC (+400s), but Retry-After=450 overrides to 450s
         wait_ms, base_sec, jitter_ms = companion.compute_backoff_wait_ms(
             {"X-Poll-Interval": "90", "Retry-After": "450"},
             now_ms_val,
             rng=lambda _lo, _hi: 10_000,
+            agent_name="zannah",
         )
-        self.assertEqual((base_sec, jitter_ms, wait_ms), (450, 10_000, 460_000))
+        self.assertEqual((base_sec, jitter_ms, wait_ms), (450, 0, 450_000))
 
-        wait_ms_rl, base_sec_rl, _ = companion.compute_backoff_wait_ms(
-            {"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": str(now_sec + 300)},
+        # Rate-limit reset further in the future (+2400s) overrides the 1000s slot wait
+        wait_ms_rl, base_sec_rl, jitter_rl = companion.compute_backoff_wait_ms(
+            {"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": str(now_sec + 2400)},
             now_ms_val,
             rng=lambda _lo, _hi: 10_000,
             status=200,
+            agent_name="skrye",
         )
-        self.assertEqual((base_sec_rl, wait_ms_rl), (300, 310_000))
+        self.assertEqual((base_sec_rl, jitter_rl, wait_ms_rl), (2400, 0, 2_400_000))
 
 
 class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
@@ -681,8 +694,22 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
                     },
                 },
                 {
-                    "number": 25,
+                    "number": 27,
                     "title": "build(deps): bump the github-actions group with 3 updates",
+                    "url": "https://github.com/wimpysworld/WonKey/pull/27",
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "updatedAt": "2023-11-16T10:00:00Z",
+                    "headRefOid": "sha_pr27_v1",
+                    "reviewDecision": "REVIEW_REQUIRED",
+                    "repository": {"nameWithOwner": "wimpysworld/WonKey"},
+                    "author": {"__typename": "Bot", "login": "dependabot"},
+                    "reviewRequests": {"nodes": []},
+                    "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
+                },
+                {
+                    "number": 25,
+                    "title": "build(deps): bump urllib3 owned by zannah",
                     "url": "https://github.com/wimpysworld/WonKey/pull/25",
                     "state": "OPEN",
                     "isDraft": False,
@@ -832,10 +859,10 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
             {
                 "wimpysworld/nix-config#10": "unrequested_pr",
                 "flexiondotorg/footloose#20": "review_requested",
-                "wimpysworld/wonkey#25": "unrequested_pr",
+                "wimpysworld/wonkey#27": "unrequested_pr",
             },
         )
-        # Complete initial turns for PR 10, PR 20, and PR 25
+        # Complete initial turns for PR 10, PR 20, and PR 27
         store.complete_thread_review(
             "wimpysworld/nix-config#10",
             handled_updated_at="2023-11-16T10:00:00Z",
@@ -849,9 +876,9 @@ class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
             handled_ci_state="SUCCESS",
         )
         store.complete_thread_review(
-            "wimpysworld/wonkey#25",
+            "wimpysworld/wonkey#27",
             handled_updated_at="2023-11-16T10:00:00Z",
-            handled_head_sha="sha_pr25_v1",
+            handled_head_sha="sha_pr27_v1",
             handled_ci_state="SUCCESS",
         )
 
@@ -2005,8 +2032,8 @@ class InterruptedTurnRecoveryDecoupledPollingAndStartNoticeTests(GithubCompanion
 
             return _handler
 
-        # 1) Targeted turn sends 1 one-line start-of-work notice + 1 terminal summary when reply is non-HEARTBEAT_OK
-        self.httpd.send_sync_handler = make_reply_handler("Reviewed and merged PR #42.")
+        # 1) Targeted turn sends no start-of-work notice and forwards 1 terminal summary when reply is non-HEARTBEAT_OK
+        self.httpd.send_sync_handler = make_reply_handler("🏁 https://github.com/wimpysworld/nix-config/pull/42 - feat: example")
         res_targeted = coord.execute_dispatch(
             kind="targeted",
             thread_id="420",
@@ -2017,53 +2044,38 @@ class InterruptedTurnRecoveryDecoupledPollingAndStartNoticeTests(GithubCompanion
             dispatch_id="ghd-skrye-start-1",
         )
         self.assertEqual(res_targeted["status"], "completed")
-        self.assertTrue(res_targeted["start_notice_sent"])
-        self.assertEqual(
-            res_targeted["start_notice_text"],
-            "⚙️ Skrye starting targeted PullRequest turn on wimpysworld/nix-config#42 (ci_green_after_approval).",
-        )
-        self.assertNotIn("\n", res_targeted["start_notice_text"])
+        self.assertFalse(res_targeted["start_notice_sent"])
         self.assertTrue(res_targeted["telegram_forwarded"])
-        self.assertEqual(len(self.httpd.telegram_requests), 2)
+        self.assertEqual(len(self.httpd.telegram_requests), 1)
         self.assertEqual(
             self.httpd.telegram_requests[0]["body"]["text"],
-            "⚙️ Skrye starting targeted PullRequest turn on wimpysworld/nix-config#42 (ci_green_after_approval).",
+            "🏁 https://github.com/wimpysworld/nix-config/pull/42 - feat: example",
         )
-        self.assertEqual(self.httpd.telegram_requests[1]["body"]["text"], "Reviewed and merged PR #42.")
+        self.assertEqual(
+            self.httpd.telegram_requests[0]["body"].get("link_preview_options"),
+            {"is_disabled": True},
+        )
 
-        # 2) Reconciliation sweep with HEARTBEAT_OK sends 1 one-line start-of-work notice and suppresses HEARTBEAT_OK reply
+        # 2) Reconciliation sweep with HEARTBEAT_OK sends no start-of-work notice and suppresses HEARTBEAT_OK reply
         self.httpd.send_sync_handler = make_reply_handler("HEARTBEAT_OK")
         res_reconcile = coord.execute_dispatch(
             kind="reconcile_sweep",
             dispatch_id="ghd-skrye-start-2",
         )
         self.assertEqual(res_reconcile["status"], "completed")
-        self.assertTrue(res_reconcile["start_notice_sent"])
-        self.assertEqual(res_reconcile["start_notice_text"], "⚙️ Skrye starting 6-hour reconciliation sweep.")
+        self.assertFalse(res_reconcile["start_notice_sent"])
         self.assertFalse(res_reconcile["telegram_forwarded"])
-        self.assertEqual(len(self.httpd.telegram_requests), 3)
-        self.assertEqual(
-            self.httpd.telegram_requests[2]["body"]["text"],
-            "⚙️ Skrye starting 6-hour reconciliation sweep.",
-        )
+        self.assertEqual(len(self.httpd.telegram_requests), 1)
 
-        # 3) Weekly sweep sends 1 one-line start-of-work notice
+        # 3) Weekly sweep with HEARTBEAT_OK sends no start-of-work notice
         res_weekly = coord.execute_dispatch(
             kind="weekly_sweep",
             sweep_date="2023-11-13",
             dispatch_id="ghd-skrye-start-3",
         )
         self.assertEqual(res_weekly["status"], "completed")
-        self.assertTrue(res_weekly["start_notice_sent"])
-        self.assertEqual(
-            res_weekly["start_notice_text"],
-            "⚙️ Skrye starting weekly organisation sweep (2023-11-13).",
-        )
-        self.assertEqual(len(self.httpd.telegram_requests), 4)
-        self.assertEqual(
-            self.httpd.telegram_requests[3]["body"]["text"],
-            "⚙️ Skrye starting weekly organisation sweep (2023-11-13).",
-        )
+        self.assertFalse(res_weekly["start_notice_sent"])
+        self.assertEqual(len(self.httpd.telegram_requests), 1)
 
 
 class SweepRetryBackoffRecoveryAndScheduleTests(GithubCompanionTestBase):
@@ -2631,6 +2643,874 @@ class SweepRetryBackoffRecoveryAndScheduleTests(GithubCompanionTestBase):
         self.assertEqual(cycle["sweep_dispatch"]["kind"], "reconcile_sweep")
         self.assertEqual(cycle["sweep_dispatch"]["status"], "completed")
         self.assertEqual(store.read_state()["last_reconcile_sweep_at_ms"], self.current_time_ms)
+
+
+class PrFollowupCooldownAndSameShaPeerSuppressionTests(GithubCompanionTestBase):
+    """15-minute per-PR follow-up review cooldown and same-SHA unmentioned peer/bot comment suppression."""
+
+    def test_15_minute_pr_followup_cooldown_and_ci_green_after_approval_bypass(self) -> None:
+        self.assertEqual(companion.PR_REVIEW_COOLDOWN_SECS, 900)
+        self.assertEqual(companion.PR_REVIEW_COOLDOWN_MS, 15 * 60 * 1000)
+
+        t0 = 1_700_050_000_000
+        self.current_time_ms = t0
+        self.httpd.peek_active = False
+
+        notif_batches: list[str] = []
+        pr_batches: list[list[dict]] = []
+
+        def fake_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            self.gh_commands.append(list(cmd))
+            ep = cmd[1]
+            if ep == "notifications":
+                raw = notif_batches.pop(0) if notif_batches else "HTTP/2.0 304 Not Modified\r\n\r\n"
+                return subprocess.CompletedProcess(cmd, 0, stdout=raw, stderr="")
+            if ep == "graphql":
+                nodes = pr_batches.pop(0) if pr_batches else []
+                return subprocess.CompletedProcess(
+                    cmd, 0, stdout=json.dumps({"data": {"search": {"nodes": nodes}}}), stderr=""
+                )
+            if ep.endswith("repos/wimpysworld/nix-config/pulls/150"):
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps(
+                        {
+                            "id": 15000,
+                            "number": 150,
+                            "state": "open",
+                            "draft": False,
+                            "user": {"login": "flexiondotorg"},
+                            "head": {"sha": "sha_150_v2"},
+                        }
+                    ),
+                    stderr="",
+                )
+            if ep.endswith("repos/wimpysworld/nix-config/issues/comments/15001"):
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps(
+                        {
+                            "id": 15001,
+                            "user": {"login": "flexiondotorg"},
+                            "body": "@sith-skrye I pushed a fix, PTAL.",
+                        }
+                    ),
+                    stderr="",
+                )
+            return subprocess.CompletedProcess(cmd, 0, stdout="{}", stderr="")
+
+        store = self.make_store("skrye")
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        gh_client = companion.GhApiSafeClient(runner=fake_runner)
+        poller = companion.NotificationPoller(state_store=store, gh_client=gh_client, clock=self.clock, sleeper=self.sleeper)
+        tf = companion.TrustFilterAndSnapshotBuilder(state_store=store, gh_client=gh_client, agent_name="skrye", clock=self.clock)
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="skrye",
+            completion_timeout_ms=300,
+            poll_interval_ms=20,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+        runner = companion.GithubCompanionRunner(
+            state_store=store,
+            gh_client=gh_client,
+            poller=poller,
+            trust_filter=tf,
+            execution_coordinator=coord,
+            clock=self.clock,
+        )
+
+        def send_sync_ok(params: dict) -> dict:
+            msg = str(params.get("message") or "")
+            disp_id = [line.split(": ", 1)[1] for line in msg.splitlines() if line.startswith("dispatch_id: ")][0]
+            self.write_history(
+                companion.DEFAULT_GH_SESSION_KEY,
+                [
+                    {"role": "user", "dispatch_id": disp_id, "content": msg},
+                    {"role": "assistant", "content": "HEARTBEAT_OK", "stop_reason": "end_turn"},
+                ],
+                agent_name="skrye",
+            )
+            return {"ok": True, "result": {"text": "HEARTBEAT_OK"}}
+
+        self.httpd.send_sync_handler = send_sync_handler = send_sync_ok
+        _ = send_sync_handler
+
+        # 1) Initial review on brand-new PR 150 dispatches immediately (never cooled down) and sets 15m cooldown on completion
+        pr_batches.append(
+            [
+                {
+                    "number": 150,
+                    "title": "New feature PR",
+                    "url": "https://github.com/wimpysworld/nix-config/pull/150",
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "updatedAt": "2023-11-16T16:00:00Z",
+                    "headRefOid": "sha_150_v1",
+                    "reviewDecision": "REVIEW_REQUIRED",
+                    "repository": {"nameWithOwner": "wimpysworld/nix-config"},
+                    "author": {"login": "flexiondotorg"},
+                    "reviewRequests": {"nodes": []},
+                    "statusCheckRollup": {"state": "PENDING", "contexts": {"nodes": []}},
+                }
+            ]
+        )
+        cycle1 = runner.run_cycle(run_sweeps_if_due=False)
+        self.assertEqual(len(cycle1["targeted_dispatches"]), 1)
+        self.assertEqual(cycle1["targeted_dispatches"][0]["state_key"], "wimpysworld/nix-config#150")
+        self.assertEqual(cycle1["targeted_dispatches"][0]["status"], "completed")
+
+        st_after_initial = store.get_thread_state("wimpysworld/nix-config#150")
+        assert st_after_initial is not None
+        expected_cooldown_until = t0 + companion.PR_REVIEW_COOLDOWN_MS
+        self.assertEqual(st_after_initial["last_review_completed_at_ms"], t0)
+        self.assertEqual(st_after_initial["followup_cooldown_until_ms"], expected_cooldown_until)
+        self.assertEqual(st_after_initial["handled_head_sha"], "sha_150_v1")
+
+        # 2) 5 minutes later (within 15m cooldown): author pushes sha_150_v2 and comments.
+        # Both notification and open PR poll defer follow-up without advancing handled watermarks or dispatching.
+        self.current_time_ms = t0 + (5 * 60 * 1000)
+        notif_batches.append(
+            "HTTP/2.0 200 OK\r\n"
+            "Last-Modified: Thu, 16 Nov 2023 16:05:00 GMT\r\n"
+            "\r\n"
+            + json.dumps(
+                [
+                    {
+                        "id": "1500",
+                        "reason": "mention",
+                        "updated_at": "2023-11-16T16:05:00Z",
+                        "repository": {"full_name": "wimpysworld/nix-config", "owner": {"login": "wimpysworld"}},
+                        "subject": {
+                            "type": "PullRequest",
+                            "title": "New feature PR",
+                            "url": "https://api.github.com/repos/wimpysworld/nix-config/pulls/150",
+                            "latest_comment_url": "https://api.github.com/repos/wimpysworld/nix-config/issues/comments/15001",
+                        },
+                    }
+                ]
+            )
+        )
+        pr_batches.append(
+            [
+                {
+                    "number": 150,
+                    "title": "New feature PR",
+                    "url": "https://github.com/wimpysworld/nix-config/pull/150",
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "updatedAt": "2023-11-16T16:05:00Z",
+                    "headRefOid": "sha_150_v2",
+                    "reviewDecision": "REVIEW_REQUIRED",
+                    "repository": {"nameWithOwner": "wimpysworld/nix-config"},
+                    "author": {"login": "flexiondotorg"},
+                    "reviewRequests": {"nodes": []},
+                    "statusCheckRollup": {"state": "PENDING", "contexts": {"nodes": []}},
+                }
+            ]
+        )
+        cycle_cooled = runner.run_cycle(run_sweeps_if_due=False)
+        self.assertEqual(cycle_cooled["targeted_dispatches"], [])
+        self.assertEqual(cycle_cooled["poll_result"]["actionable_threads"], [])
+        self.assertEqual(cycle_cooled["poll_result"]["actionable_prs"], [])
+        self.assertIn("1500", cycle_cooled["poll_result"]["queued_followups"])
+        self.assertIn("wimpysworld/nix-config#150", cycle_cooled["poll_result"]["queued_followups"])
+
+        st_during_cooldown = store.get_thread_state("wimpysworld/nix-config#150")
+        assert st_during_cooldown is not None
+        self.assertEqual(st_during_cooldown["handled_head_sha"], "sha_150_v1")
+        self.assertEqual(st_during_cooldown["handled_updated_at"], "2023-11-16T16:00:00Z")
+        self.assertTrue(st_during_cooldown["pending_followup"])
+
+        # 3) At 10 minutes (still within 15m cooldown): if PR becomes APPROVED + CI SUCCESS + 0 unresolved threads,
+        # ci_green_after_approval bypasses cooldown immediately!
+        store.update_thread_state(
+            "wimpysworld/nix-config#151",
+            {
+                "repo": "wimpysworld/nix-config",
+                "number": 151,
+                "subject_type": "PullRequest",
+                "handled_updated_at": "2023-11-16T16:00:00Z",
+                "handled_head_sha": "sha_151_v1",
+                "handled_ci_state": "PENDING",
+                "last_review_completed_at_ms": t0,
+                "followup_cooldown_until_ms": expected_cooldown_until,
+            },
+        )
+        self.current_time_ms = t0 + (10 * 60 * 1000)
+        pr_batches.append(
+            [
+                {
+                    "number": 151,
+                    "title": "Approved green PR",
+                    "url": "https://github.com/wimpysworld/nix-config/pull/151",
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "updatedAt": "2023-11-16T16:10:00Z",
+                    "headRefOid": "sha_151_v1",
+                    "reviewDecision": "APPROVED",
+                    "repository": {"nameWithOwner": "wimpysworld/nix-config"},
+                    "author": {"login": "sith-zannah"},
+                    "reviewRequests": {"nodes": []},
+                    "reviewThreads": {"nodes": []},
+                    "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
+                }
+            ]
+        )
+        cycle_merge_bypass = runner.run_cycle(run_sweeps_if_due=False)
+        self.assertEqual(len(cycle_merge_bypass["targeted_dispatches"]), 1)
+        self.assertEqual(cycle_merge_bypass["targeted_dispatches"][0]["state_key"], "wimpysworld/nix-config#151")
+
+        # 4) At 15 minutes (cooldown expired): queued follow-up on PR 150 dispatches and advances watermarks
+        self.current_time_ms = expected_cooldown_until
+        cycle_after_cooldown = runner.run_cycle(run_sweeps_if_due=False)
+        self.assertEqual(len(cycle_after_cooldown["targeted_dispatches"]), 1)
+        self.assertEqual(cycle_after_cooldown["targeted_dispatches"][0]["thread_id"], "1500")
+        self.assertEqual(cycle_after_cooldown["targeted_dispatches"][0]["status"], "completed")
+        st_after_followup = store.get_thread_state("wimpysworld/nix-config#150")
+        assert st_after_followup is not None
+        self.assertEqual(st_after_followup["handled_head_sha"], "sha_150_v2")
+        self.assertEqual(st_after_followup["handled_updated_at"], "2023-11-16T16:05:00Z")
+        self.assertFalse(st_after_followup["pending_followup"])
+
+    def test_same_sha_unmentioned_peer_and_bot_comments_suppressed_without_starting_cooldown(self) -> None:
+        t0 = 1_700_060_000_000
+        self.current_time_ms = t0
+        store = self.make_store("skrye")
+        gh_client = companion.GhApiSafeClient(runner=lambda *a, **k: subprocess.CompletedProcess(a[0], 0, "{}", ""))
+        tf = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store, gh_client=gh_client, agent_name="skrye", clock=self.clock
+        )
+
+        # On a brand-new PR (handled_head_sha is None), unmentioned peer or bot comments still trigger initial review
+        eval_new_pr = tf.evaluate_notification(
+            {"thread_id": "1600", "repo": "wimpysworld/nix-config", "subject_type": "PullRequest", "number": 160},
+            latest_item={"id": 16001, "user": {"login": "sith-zannah"}, "body": "Initial review comment."},
+            subject_item={"id": 16000, "state": "open", "draft": False, "head": {"sha": "sha_160_v1"}},
+        )
+        self.assertTrue(eval_new_pr["should_dispatch"])
+
+        # Seed PR 160 as already reviewed on sha_160_v1
+        store.update_thread_state(
+            "wimpysworld/nix-config#160",
+            {
+                "thread_id": "1600",
+                "repo": "wimpysworld/nix-config",
+                "number": 160,
+                "subject_type": "PullRequest",
+                "handled_updated_at": "2023-11-16T17:00:00Z",
+                "handled_head_sha": "sha_160_v1",
+            },
+        )
+
+        # Same head_sha: unmentioned peer agent comment/review and cubic-dev-ai[bot] comment are suppressed
+        for actor_obj, item_extra in (
+            ({"login": "sith-zannah"}, {"body": "Looks good to me overall, minor nit."}),
+            ({"login": "sith-traya"}, {"state": "COMMENTED", "submitted_at": "2023-11-16T17:02:00Z", "body": "Checking nix eval."}),
+            ({"login": "cubic-dev-ai[bot]", "type": "Bot"}, {"body": "Automated review summary."}),
+        ):
+            eval_same_sha = tf.evaluate_notification(
+                {"thread_id": "1600", "repo": "wimpysworld/nix-config", "subject_type": "PullRequest", "number": 160},
+                latest_item={"id": 16002, "user": actor_obj, **item_extra},
+                subject_item={"id": 16000, "state": "open", "draft": False, "head": {"sha": "sha_160_v1"}},
+            )
+            self.assertFalse(eval_same_sha["should_dispatch"])
+            self.assertEqual(eval_same_sha["skip_reason"], "unmentioned_peer_or_bot_comment_on_handled_sha")
+
+        # Contrast: on the same head_sha, flexiondotorg comment OR explicit @sith-skrye mention DOES trigger
+        eval_human = tf.evaluate_notification(
+            {"thread_id": "1600", "repo": "wimpysworld/nix-config", "subject_type": "PullRequest", "number": 160},
+            latest_item={"id": 16003, "user": {"login": "flexiondotorg"}, "body": "What do you think about this approach?"},
+            subject_item={"id": 16000, "state": "open", "draft": False, "head": {"sha": "sha_160_v1"}},
+        )
+        self.assertTrue(eval_human["should_dispatch"])
+
+        eval_mentioned_peer = tf.evaluate_notification(
+            {"thread_id": "1600", "repo": "wimpysworld/nix-config", "subject_type": "PullRequest", "number": 160},
+            latest_item={"id": 16004, "user": {"login": "sith-zannah"}, "body": "@sith-skrye can you verify this?"},
+            subject_item={"id": 16000, "state": "open", "draft": False, "head": {"sha": "sha_160_v1"}},
+        )
+        self.assertTrue(eval_mentioned_peer["should_dispatch"])
+
+        # Contrast: when a new commit is pushed (sha_160_v2 != sha_160_v1), evaluation triggers
+        eval_new_sha = tf.evaluate_notification(
+            {"thread_id": "1600", "repo": "wimpysworld/nix-config", "subject_type": "PullRequest", "number": 160},
+            latest_item={"id": 16005, "user": {"login": "sith-zannah"}, "body": "Reviewing new commit."},
+            subject_item={"id": 16000, "state": "open", "draft": False, "head": {"sha": "sha_160_v2"}},
+        )
+        self.assertTrue(eval_new_sha["should_dispatch"])
+
+
+class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBase):
+    """Staggered 30m poll slots, Traya code-review-only scope, single-owner mod-2 bot PR routing, and staggered sweeps."""
+
+    def test_staggered_30_minute_wall_clock_poll_slots(self) -> None:
+        # 2023-11-14 10:00:00.000 UTC = 1_699_956_000_000
+        t_10_00 = 1_699_956_000_000
+        t_10_05 = t_10_00 + (5 * 60 * 1000) + 12_345
+        t_10_10 = t_10_00 + (10 * 60 * 1000)
+        t_10_20 = t_10_00 + (20 * 60 * 1000)
+        t_10_30 = t_10_00 + (30 * 60 * 1000)
+        t_10_40 = t_10_00 + (40 * 60 * 1000)
+        t_10_50 = t_10_00 + (50 * 60 * 1000)
+        t_11_00 = t_10_00 + (60 * 60 * 1000)
+
+        # Skrye (:00/:30)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_00, "skrye"), t_10_30)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_05, "skrye"), t_10_30)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_30, "skrye"), t_11_00)
+
+        # Traya (:10/:40)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_00, "traya"), t_10_10)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_10, "traya"), t_10_40)
+
+        # Zannah (:20/:50)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_00, "zannah"), t_10_20)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_20, "zannah"), t_10_50)
+
+        # Near-boundary X-Poll-Interval at 10:29 (120s -> 10:31 past 10:30 slot) must preserve full header deadline
+        t_10_29 = t_10_00 + (29 * 60 * 1000)
+        t_10_31 = t_10_00 + (31 * 60 * 1000)
+        store_skrye = self.make_store("skrye")
+        gh_client = companion.GhApiSafeClient(
+            runner=lambda cmd, **k: subprocess.CompletedProcess(
+                cmd,
+                0,
+                stdout="HTTP/2.0 200 OK\r\nX-Poll-Interval: 120\r\n\r\n[]",
+                stderr="",
+            )
+        )
+        poller_skrye = companion.NotificationPoller(
+            state_store=store_skrye,
+            gh_client=gh_client,
+            clock=lambda: t_10_29,
+            sleeper=self.sleeper,
+        )
+        poll_res = poller_skrye.poll_once(now_override_ms=t_10_29, poll_open_prs=False)
+        self.assertEqual(poll_res["next_poll_at_ms"], t_10_31)
+        self.assertEqual(store_skrye.read_state()["poll_interval_secs"], 120)
+        self.assertEqual(poller_skrye.wait_until_due(now_override_ms=t_10_29), 120_000)
+
+    def test_single_owner_automated_pr_routing_and_traya_code_review_only_scope(self) -> None:
+        # wimpysworld/WonKey#27 -> skrye (0); wimpysworld/WonKey#25 -> zannah (1)
+        self.assertEqual(companion.compute_automated_pr_owner("wimpysworld/WonKey", 27), "skrye")
+        self.assertEqual(companion.compute_automated_pr_owner("wimpysworld/WonKey", 25), "zannah")
+        self.assertEqual(companion.compute_automated_pr_owner("wimpysworld/nix-config", 25), "skrye")
+        self.assertEqual(companion.compute_automated_pr_owner("wimpysworld/nix-config", 24), "zannah")
+
+        self.assertTrue(companion.is_automated_update_pr("dependabot[bot]"))
+        self.assertTrue(companion.is_automated_update_pr("github-actions[bot]"))
+        self.assertFalse(companion.is_automated_update_pr("cubic-dev-ai[bot]"))
+        self.assertTrue(
+            companion.is_automated_update_pr(
+                "flexiondotorg",
+                repo="wimpysworld/nix-config",
+                title="chore(packages): update to 1.2.3",
+            )
+        )
+        self.assertFalse(
+            companion.is_automated_update_pr(
+                "flexiondotorg",
+                repo="wimpysworld/nix-config",
+                title="feat(moltis): add staggered poll slots",
+            )
+        )
+
+        prs = [
+            {
+                "number": 27,
+                "title": "build(deps): bump actions/checkout",
+                "url": "https://github.com/wimpysworld/WonKey/pull/27",
+                "state": "OPEN",
+                "isDraft": False,
+                "updatedAt": "2023-11-16T10:00:00Z",
+                "headRefOid": "sha_27",
+                "reviewDecision": "REVIEW_REQUIRED",
+                "repository": {"nameWithOwner": "wimpysworld/WonKey"},
+                "author": {"__typename": "Bot", "login": "dependabot"},
+                "reviewRequests": {"nodes": []},
+                "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
+            },
+            {
+                "number": 25,
+                "title": "build(deps): bump urllib3",
+                "url": "https://github.com/wimpysworld/WonKey/pull/25",
+                "state": "OPEN",
+                "isDraft": False,
+                "updatedAt": "2023-11-16T10:00:00Z",
+                "headRefOid": "sha_25",
+                "reviewDecision": "REVIEW_REQUIRED",
+                "repository": {"nameWithOwner": "wimpysworld/WonKey"},
+                "author": {"__typename": "Bot", "login": "dependabot"},
+                "reviewRequests": {"nodes": []},
+                "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
+            },
+            {
+                "number": 24,
+                "title": "chore(packages): update to 2026.04",
+                "url": "https://github.com/wimpysworld/nix-config/pull/24",
+                "state": "OPEN",
+                "isDraft": False,
+                "updatedAt": "2023-11-16T10:00:00Z",
+                "headRefOid": "sha_24",
+                "reviewDecision": "REVIEW_REQUIRED",
+                "repository": {"nameWithOwner": "wimpysworld/nix-config"},
+                "author": {"__typename": "User", "login": "flexiondotorg"},
+                "reviewRequests": {"nodes": []},
+                "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
+            },
+            {
+                "number": 99,
+                "title": "feat: human authored PR",
+                "url": "https://github.com/wimpysworld/nix-config/pull/99",
+                "state": "OPEN",
+                "isDraft": False,
+                "updatedAt": "2023-11-16T10:00:00Z",
+                "headRefOid": "sha_99",
+                "reviewDecision": "REVIEW_REQUIRED",
+                "repository": {"nameWithOwner": "wimpysworld/nix-config"},
+                "author": {"__typename": "User", "login": "flexiondotorg"},
+                "reviewRequests": {"nodes": []},
+                "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
+            },
+        ]
+
+        store_skrye = self.make_store("skrye")
+        store_zannah = self.make_store("zannah")
+        store_traya = self.make_store("traya")
+
+        res_skrye = store_skrye.record_polled_pull_requests(prs)
+        res_zannah = store_zannah.record_polled_pull_requests(prs)
+        res_traya = store_traya.record_polled_pull_requests(prs)
+
+        self.assertEqual(
+            [item["key"] for item in res_skrye["actionable_prs"]],
+            ["wimpysworld/wonkey#27", "wimpysworld/nix-config#99"],
+        )
+        self.assertEqual(
+            [item["key"] for item in res_zannah["actionable_prs"]],
+            ["wimpysworld/wonkey#25", "wimpysworld/nix-config#24", "wimpysworld/nix-config#99"],
+        )
+        # Traya ignores all automated update PRs and only wakes for human/peer code review PR #99
+        self.assertEqual(
+            [item["key"] for item in res_traya["actionable_prs"]],
+            ["wimpysworld/nix-config#99"],
+        )
+
+        # Notification evaluation & auto-dismissal for Traya and non-owning sweep agent
+        gh_client = companion.GhApiSafeClient(runner=lambda *a, **k: subprocess.CompletedProcess(a[0], 0, "{}", ""))
+        tf_traya = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store_traya, gh_client=gh_client, agent_name="traya", clock=self.clock
+        )
+        tf_skrye = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store_skrye, gh_client=gh_client, agent_name="skrye", clock=self.clock
+        )
+        tf_zannah = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store_zannah, gh_client=gh_client, agent_name="zannah", clock=self.clock
+        )
+
+        bot_pr_subj = {
+            "id": 2500,
+            "number": 25,
+            "state": "open",
+            "draft": False,
+            "title": "build(deps): bump urllib3",
+            "user": {"login": "dependabot[bot]", "type": "Bot"},
+            "head": {"sha": "sha_25"},
+        }
+        notif_25 = {"thread_id": "2501", "repo": "wimpysworld/WonKey", "subject_type": "PullRequest", "number": 25}
+
+        eval_traya = tf_traya.evaluate_notification(notif_25, subject_item=bot_pr_subj)
+        self.assertFalse(eval_traya["should_dispatch"])
+        self.assertEqual(eval_traya["skip_reason"], "bot_update_ignored_for_traya")
+
+        eval_skrye = tf_skrye.evaluate_notification(notif_25, subject_item=bot_pr_subj)
+        self.assertFalse(eval_skrye["should_dispatch"])
+        self.assertEqual(eval_skrye["skip_reason"], "unowned_automated_pr")
+
+        eval_zannah = tf_zannah.evaluate_notification(notif_25, subject_item=bot_pr_subj)
+        self.assertTrue(eval_zannah["should_dispatch"])
+
+        # Explicit @sith-traya mention on a bot PR DOES dispatch to Traya
+        eval_traya_mentioned = tf_traya.evaluate_notification(
+            notif_25,
+            latest_item={"id": 2502, "user": {"login": "flexiondotorg"}, "body": "@sith-traya please review this."},
+            subject_item=bot_pr_subj,
+        )
+        self.assertTrue(eval_traya_mentioned["should_dispatch"])
+
+    def test_staggered_reconcile_sweeps_and_tuesday_thursday_weekly_sweeps_with_traya_disabled(self) -> None:
+        # Tuesday 2023-11-14 10:00:00 UTC (ISO weekday 2)
+        tuesday_10am_ms = 1_699_956_000_000
+        # Thursday 2023-11-16 10:00:00 UTC (ISO weekday 4)
+        thursday_10am_ms = 1_700_128_800_000
+
+        self.current_time_ms = tuesday_10am_ms
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        gh_client = companion.GhApiSafeClient(runner=lambda *a, **k: subprocess.CompletedProcess(a[0], 0, "{}", ""))
+
+        def make_runner(agent: str) -> companion.GithubCompanionRunner:
+            st = self.make_store(agent)
+            poller = companion.NotificationPoller(state_store=st, gh_client=gh_client, clock=self.clock, sleeper=self.sleeper)
+            tf = companion.TrustFilterAndSnapshotBuilder(state_store=st, gh_client=gh_client, agent_name=agent, clock=self.clock)
+            coord = companion.LocalExecutionCoordinator(
+                state_store=st, rpc_client=rpc, data_dir=self.data_dir, agent_name=agent, clock=self.clock, sleeper=self.sleeper
+            )
+            return companion.GithubCompanionRunner(
+                state_store=st, gh_client=gh_client, poller=poller, trust_filter=tf, execution_coordinator=coord, clock=self.clock
+            )
+
+        runner_skrye = make_runner("skrye")
+        runner_zannah = make_runner("zannah")
+        runner_traya = make_runner("traya")
+
+        # Traya never runs reconcile or weekly sweeps
+        self.assertFalse(runner_traya.is_reconcile_sweep_due(now_override_ms=tuesday_10am_ms))
+        self.assertEqual(runner_traya.is_weekly_sweep_due(now_override_ms=tuesday_10am_ms), (False, "2023-11-14"))
+        self.assertFalse(runner_traya.is_reconcile_sweep_due(now_override_ms=tuesday_10am_ms + (12 * 3600 * 1000)))
+
+        # Skrye runs initial reconcile sweep immediately at boot; Zannah is staggered by +3 hours
+        self.assertTrue(runner_skrye.is_reconcile_sweep_due(now_override_ms=tuesday_10am_ms))
+        self.assertFalse(runner_zannah.is_reconcile_sweep_due(now_override_ms=tuesday_10am_ms))
+        self.assertFalse(runner_zannah.is_reconcile_sweep_due(now_override_ms=tuesday_10am_ms + (3 * 3600 * 1000) - 1))
+        self.assertTrue(runner_zannah.is_reconcile_sweep_due(now_override_ms=tuesday_10am_ms + (3 * 3600 * 1000)))
+
+        # Weekly sweeps: Tuesday (2) for Skrye, Thursday (4) for Zannah
+        self.assertEqual(runner_skrye.is_weekly_sweep_due(now_override_ms=tuesday_10am_ms), (True, "2023-11-14"))
+        self.assertEqual(runner_zannah.is_weekly_sweep_due(now_override_ms=tuesday_10am_ms), (False, "2023-11-14"))
+        self.assertEqual(runner_skrye.is_weekly_sweep_due(now_override_ms=thursday_10am_ms), (False, "2023-11-16"))
+        self.assertEqual(runner_zannah.is_weekly_sweep_due(now_override_ms=thursday_10am_ms), (True, "2023-11-16"))
+
+    def test_main_and_review_model_selection_for_code_review_vs_automated_pr_and_sweeps(self) -> None:
+        self.httpd.peek_active = False
+
+        # Runtime config resolves --review-model / MOLTIS_GITHUB_COMPANION_REVIEW_MODEL and defaults to main_model
+        parsed_default = companion.build_arg_parser().parse_args(
+            ["--agent-name", "skrye", "--main-model", "gemini::gemini-4-argon@reasoning-medium"]
+        )
+        cfg_default = companion.resolve_runtime_config(parsed_default)
+        self.assertEqual(cfg_default["main_model"], "gemini::gemini-4-argon@reasoning-medium")
+        self.assertEqual(cfg_default["review_model"], "gemini::gemini-4-argon@reasoning-medium")
+
+        parsed_explicit = companion.build_arg_parser().parse_args(
+            [
+                "--agent-name",
+                "traya",
+                "--main-model",
+                "openai-codex::gpt-6.1-sol@reasoning-medium",
+                "--review-model",
+                "openai-codex::gpt-6-astra@reasoning-medium",
+            ]
+        )
+        cfg_explicit = companion.resolve_runtime_config(parsed_explicit)
+        self.assertEqual(cfg_explicit["main_model"], "openai-codex::gpt-6.1-sol@reasoning-medium")
+        self.assertEqual(cfg_explicit["review_model"], "openai-codex::gpt-6-astra@reasoning-medium")
+
+        sent_models: list[tuple[str, str]] = []
+
+        def make_send_sync_handler(agent_label: str) -> Callable[[dict], dict]:
+            def _handler(params: dict) -> dict:
+                msg = str(params.get("message") or "")
+                model_val = str(params.get("model") or "")
+                disp_id = [line.split(": ", 1)[1] for line in msg.splitlines() if line.startswith("dispatch_id: ")][0]
+                disp_kind = [line.split(": ", 1)[1] for line in msg.splitlines() if line.startswith("dispatch_kind: ")][0]
+                sent_models.append((f"{agent_label}:{disp_kind}", model_val))
+                self.write_history(
+                    companion.DEFAULT_GH_SESSION_KEY,
+                    [
+                        {"role": "user", "dispatch_id": disp_id, "content": msg},
+                        {"role": "assistant", "content": "HEARTBEAT_OK", "stop_reason": "end_turn"},
+                    ],
+                    agent_name=agent_label,
+                )
+                return {"ok": True, "result": {"text": "HEARTBEAT_OK"}}
+
+            return _handler
+
+        # 1) Skrye: main_model = gemini::gemini-4-argon@reasoning-medium, review_model = gemini::gemini-4-argon@reasoning-high
+        notif_batches: list[str] = [
+            # Cycle 1 notifications:
+            # - Issue mention (flexiondotorg) -> review_model
+            # - github-actions[bot] automated PR notification (owned by skrye: wimpysworld/WonKey#27) -> main_model
+            # - Freshener automated PR notification on wimpysworld/nix-config#25 (owned by skrye) -> main_model
+            "HTTP/2.0 200 OK\r\n"
+            "Last-Modified: Tue, 14 Nov 2023 10:00:00 GMT\r\n"
+            "\r\n"
+            + json.dumps(
+                [
+                    {
+                        "id": "3101",
+                        "reason": "mention",
+                        "updated_at": "2023-11-14T10:00:00Z",
+                        "repository": {"full_name": "wimpysworld/nix-config", "owner": {"login": "wimpysworld"}},
+                        "subject": {
+                            "type": "Issue",
+                            "title": "Question on module layout",
+                            "url": "https://api.github.com/repos/wimpysworld/nix-config/issues/310",
+                            "latest_comment_url": "https://api.github.com/repos/wimpysworld/nix-config/issues/comments/31011",
+                        },
+                    },
+                    {
+                        "id": "3102",
+                        "reason": "subscribed",
+                        "updated_at": "2023-11-14T10:00:00Z",
+                        "repository": {"full_name": "wimpysworld/WonKey", "owner": {"login": "wimpysworld"}},
+                        "subject": {
+                            "type": "PullRequest",
+                            "title": "chore(deps): automated workflow update",
+                            "url": "https://api.github.com/repos/wimpysworld/WonKey/pulls/27",
+                        },
+                    },
+                    {
+                        "id": "3103",
+                        "reason": "subscribed",
+                        "updated_at": "2023-11-14T10:00:00Z",
+                        "repository": {"full_name": "wimpysworld/nix-config", "owner": {"login": "wimpysworld"}},
+                        "subject": {
+                            "type": "PullRequest",
+                            "title": "chore(packages): update to 2026.04.19",
+                            "url": "https://api.github.com/repos/wimpysworld/nix-config/pulls/25",
+                        },
+                    },
+                ]
+            ),
+        ]
+        pr_batches: list[list[dict]] = [
+            # Cycle 1 open PRs:
+            # - Human PR flexiondotorg (wimpysworld/nix-config#101) -> review_model
+            # - Peer PR sith-zannah (wimpysworld/nix-config#102) -> review_model
+            # - Dependabot PR linuxmatters/website#27 owned by skrye -> main_model
+            [
+                {
+                    "number": 101,
+                    "title": "feat: human PR by flexiondotorg",
+                    "url": "https://github.com/wimpysworld/nix-config/pull/101",
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "updatedAt": "2023-11-14T10:00:00Z",
+                    "headRefOid": "sha_101",
+                    "reviewDecision": "REVIEW_REQUIRED",
+                    "repository": {"nameWithOwner": "wimpysworld/nix-config"},
+                    "author": {"__typename": "User", "login": "flexiondotorg"},
+                    "reviewRequests": {"nodes": []},
+                    "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
+                },
+                {
+                    "number": 102,
+                    "title": "feat: peer PR by sith-zannah",
+                    "url": "https://github.com/wimpysworld/nix-config/pull/102",
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "updatedAt": "2023-11-14T10:00:00Z",
+                    "headRefOid": "sha_102",
+                    "reviewDecision": "REVIEW_REQUIRED",
+                    "repository": {"nameWithOwner": "wimpysworld/nix-config"},
+                    "author": {"__typename": "User", "login": "sith-zannah"},
+                    "reviewRequests": {"nodes": [{"requestedReviewer": {"login": "sith-skrye"}}]},
+                    "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
+                },
+                {
+                    "number": 27,
+                    "title": "build(deps): bump actions/checkout",
+                    "url": "https://github.com/linuxmatters/website/pull/27",
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "updatedAt": "2023-11-14T10:00:00Z",
+                    "headRefOid": "sha_lm_27",
+                    "reviewDecision": "REVIEW_REQUIRED",
+                    "repository": {"nameWithOwner": "linuxmatters/website"},
+                    "author": {"__typename": "Bot", "login": "dependabot"},
+                    "reviewRequests": {"nodes": [{"requestedReviewer": {"login": "sith-skrye"}}]},
+                    "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
+                },
+            ],
+        ]
+
+        def fake_gh_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1]
+            if ep == "notifications":
+                raw = notif_batches.pop(0) if notif_batches else "HTTP/2.0 304 Not Modified\r\n\r\n"
+                return subprocess.CompletedProcess(cmd, 0, stdout=raw, stderr="")
+            if ep == "graphql":
+                nodes = pr_batches.pop(0) if pr_batches else []
+                return subprocess.CompletedProcess(
+                    cmd, 0, stdout=json.dumps({"data": {"search": {"nodes": nodes}}}), stderr=""
+                )
+            if ep.endswith("repos/wimpysworld/nix-config/issues/310"):
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps({"id": 31000, "number": 310, "state": "open", "user": {"login": "flexiondotorg"}}),
+                    stderr="",
+                )
+            if ep.endswith("repos/wimpysworld/nix-config/issues/comments/31011"):
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps({"id": 31011, "user": {"login": "flexiondotorg"}, "body": "@sith-skrye thoughts?"}),
+                    stderr="",
+                )
+            if ep.endswith("repos/wimpysworld/WonKey/pulls/27"):
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps(
+                        {
+                            "id": 27000,
+                            "number": 27,
+                            "state": "open",
+                            "draft": False,
+                            "title": "chore(deps): automated workflow update",
+                            "user": {"login": "github-actions[bot]", "type": "Bot"},
+                            "head": {"sha": "sha_wk_27"},
+                        }
+                    ),
+                    stderr="",
+                )
+            if ep.endswith("repos/wimpysworld/nix-config/pulls/25"):
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps(
+                        {
+                            "id": 25000,
+                            "number": 25,
+                            "state": "open",
+                            "draft": False,
+                            "title": "chore(packages): update to 2026.04.19",
+                            "user": {"login": "flexiondotorg"},
+                            "head": {"sha": "sha_nc_25", "ref": "freshener/2026-04-19"},
+                        }
+                    ),
+                    stderr="",
+                )
+            return subprocess.CompletedProcess(cmd, 0, stdout="{}", stderr="")
+
+        # Tuesday 10:00 UTC -> weekly_sweep due on Skrye
+        tuesday_10am_ms = 1_699_956_000_000
+        self.current_time_ms = tuesday_10am_ms
+        store_skrye = self.make_store("skrye")
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        gh_client = companion.GhApiSafeClient(runner=fake_gh_runner)
+        poller_skrye = companion.NotificationPoller(
+            state_store=store_skrye, gh_client=gh_client, clock=self.clock, sleeper=self.sleeper
+        )
+        tf_skrye = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store_skrye, gh_client=gh_client, agent_name="skrye", clock=self.clock
+        )
+        coord_skrye = companion.LocalExecutionCoordinator(
+            state_store=store_skrye,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="skrye",
+            main_model="gemini::gemini-4-argon@reasoning-medium",
+            review_model="gemini::gemini-4-argon@reasoning-high",
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+        runner_skrye = companion.GithubCompanionRunner(
+            state_store=store_skrye,
+            gh_client=gh_client,
+            poller=poller_skrye,
+            trust_filter=tf_skrye,
+            execution_coordinator=coord_skrye,
+            clock=self.clock,
+        )
+
+        self.httpd.send_sync_handler = make_send_sync_handler("skrye")
+        cycle_skrye = runner_skrye.run_cycle(now_override_ms=tuesday_10am_ms)
+        self.assertEqual(len(cycle_skrye["targeted_dispatches"]), 6)
+        self.assertIsNotNone(cycle_skrye["sweep_dispatch"])
+        self.assertEqual(cycle_skrye["sweep_dispatch"]["kind"], "weekly_sweep")
+
+        # Also run a reconcile_sweep 6 hours later on Skrye -> main_model
+        six_hours_later_ms = tuesday_10am_ms + (6 * 3600 * 1000)
+        self.current_time_ms = six_hours_later_ms
+        cycle_skrye_reconcile = runner_skrye.run_cycle(now_override_ms=six_hours_later_ms)
+        self.assertIsNotNone(cycle_skrye_reconcile["sweep_dispatch"])
+        self.assertEqual(cycle_skrye_reconcile["sweep_dispatch"]["kind"], "reconcile_sweep")
+
+        self.assertEqual(
+            sent_models,
+            [
+                # Issue mention (flexiondotorg) -> review_model
+                ("skrye:targeted", "gemini::gemini-4-argon@reasoning-high"),
+                # github-actions[bot] PR notification -> main_model
+                ("skrye:targeted", "gemini::gemini-4-argon@reasoning-medium"),
+                # Freshener PR notification -> main_model
+                ("skrye:targeted", "gemini::gemini-4-argon@reasoning-medium"),
+                # Human PR (flexiondotorg) -> review_model
+                ("skrye:targeted", "gemini::gemini-4-argon@reasoning-high"),
+                # Peer PR (sith-zannah) -> review_model
+                ("skrye:targeted", "gemini::gemini-4-argon@reasoning-high"),
+                # Dependabot PR -> main_model
+                ("skrye:targeted", "gemini::gemini-4-argon@reasoning-medium"),
+                # Weekly sweep -> main_model
+                ("skrye:weekly_sweep", "gemini::gemini-4-argon@reasoning-medium"),
+                # 6-hour reconciliation sweep -> main_model
+                ("skrye:reconcile_sweep", "gemini::gemini-4-argon@reasoning-medium"),
+            ],
+        )
+
+        # 2) Traya: main_model = openai-codex::gpt-6.1-sol@reasoning-medium, review_model = openai-codex::gpt-6-astra@reasoning-medium
+        sent_models.clear()
+        store_traya = self.make_store("traya")
+        coord_traya = companion.LocalExecutionCoordinator(
+            state_store=store_traya,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="traya",
+            main_model="openai-codex::gpt-6.1-sol@reasoning-medium",
+            review_model="openai-codex::gpt-6-astra@reasoning-medium",
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+        self.httpd.send_sync_handler = make_send_sync_handler("traya")
+
+        # Human/peer PR and issue mention turns use review_model (gpt-6-astra@reasoning-medium)
+        coord_traya.execute_dispatch(
+            kind="targeted",
+            is_automated_pr=False,
+            repo="wimpysworld/nix-config",
+            number=101,
+            subject_kind="PullRequest",
+            trigger_reason="unrequested_pr",
+        )
+        coord_traya.execute_dispatch(
+            kind="targeted",
+            is_automated_pr=False,
+            repo="wimpysworld/nix-config",
+            number=310,
+            subject_kind="Issue",
+            trigger_reason="mention",
+        )
+        # Automated PR turn (if explicitly invoked) and sweep turns use main_model (gpt-6.1-sol@reasoning-medium)
+        coord_traya.execute_dispatch(
+            kind="targeted",
+            is_automated_pr=True,
+            repo="wimpysworld/WonKey",
+            number=25,
+            subject_kind="PullRequest",
+            trigger_reason="mention",
+        )
+        coord_traya.execute_dispatch(kind="reconcile_sweep")
+        coord_traya.execute_dispatch(kind="weekly_sweep", sweep_date="2023-11-14")
+
+        self.assertEqual(
+            sent_models,
+            [
+                ("traya:targeted", "openai-codex::gpt-6-astra@reasoning-medium"),
+                ("traya:targeted", "openai-codex::gpt-6-astra@reasoning-medium"),
+                ("traya:targeted", "openai-codex::gpt-6.1-sol@reasoning-medium"),
+                ("traya:reconcile_sweep", "openai-codex::gpt-6.1-sol@reasoning-medium"),
+                ("traya:weekly_sweep", "openai-codex::gpt-6.1-sol@reasoning-medium"),
+            ],
+        )
 
 
 if __name__ == "__main__":

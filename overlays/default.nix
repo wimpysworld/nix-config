@@ -86,7 +86,9 @@ in
         patches = (oldAttrs.patches or [ ]) ++ [ ./patches/cage/teardown-order.patch ];
       });
 
-      fresh = final.unstable.fresh-editor;
+      fresh = final.unstable.fresh-editor.overrideAttrs (oldAttrs: {
+        buildInputs = (oldAttrs.buildInputs or [ ]) ++ [ final.unstable.oniguruma ];
+      });
 
       herdr = inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}.herdr;
 
@@ -217,7 +219,11 @@ in
       # fails to build python3.13-fastmcp 3.2.3 from source. Use the cached
       # unstable builds until nixos-26.05 caches the fixes.
       inherit (final.unstable) mcp-nixos;
-      inherit (final.unstable) prowler;
+      prowler = final.unstable.prowler.override {
+        kingfisher = final.unstable.kingfisher.overrideAttrs (oldAttrs: {
+          buildInputs = (oldAttrs.buildInputs or [ ]) ++ [ final.unstable.aws-lc ];
+        });
+      };
 
       # Determinate Nix 3.23 emits unknown activity and result types, which nom
       # 2.2.0 rejects with a ParseNixJSONMessageError. Apply the upstream fix

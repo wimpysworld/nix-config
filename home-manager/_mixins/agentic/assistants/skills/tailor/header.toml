@@ -1,0 +1,10 @@
+[common]
+name = "tailor"
+description = "Operates the Tailor CLI on the user's own project to fit, baste, alter, and measure community health files, dev tooling, and GitHub repository settings. Use when the user mentions Tailor, tailor fit, basting, altering, upgrading Tailor or applying a new Tailor release, editing .tailor.yml, enabling Go, Shell, JavaScript, TypeScript, Rust, or Python support, publishing a GitHub wiki, or adding a GitHub Pages site, even if the user does not name the tailor command."
+license = "BlueOak-1.0.0"
+
+[common.metadata]
+upstream = "https://github.com/wimpysworld/tailor"
+revision = "0fefbd220c9fca15fc69f7018799ee690673e914"
+source = "skills/tailor"
+local-changes = "Moved upstream frontmatter to common metadata. The body is unchanged."
