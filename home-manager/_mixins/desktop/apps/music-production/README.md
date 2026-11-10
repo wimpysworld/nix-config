@@ -2,6 +2,11 @@
 
 This module installs the studio instruments on NixOS workstations with the `studio` tag: `skrye` and `zannah`.
 
+For Ludwig Black Cortex, Virtuosity Drums and Big Rusty Drums, use the [acoustic drum guide](acoustic-drums.md).
+That guide covers templates, presets, note maps, microphone controls and project recall.
+
+For guitar and bass articulations, funk rhythms and wah chains, use the [guitar and bass guide](guitars-and-basses.md).
+
 ## Sample libraries
 
 The libraries are in `$XDG_DATA_HOME/sfz`, normally `~/.local/share/sfz`.
@@ -9,7 +14,7 @@ Home Manager links each complete library, including its samples, SFZ includes an
 Load the entrypoint SFZ file in sfizz. Plug-in scans do not discover SFZ files.
 
 Add **LV2: sfizz** through the track's **FX** window.
-Select a `Karoryfer` or `FreePats` preset from the host preset menu.
+Select a `Karoryfer`, `FreePats` or `Virtuosity Drums` preset from the host preset menu.
 Alternatively, open the corresponding file in sfizz.
 The presets use immutable Nix store paths and load the upstream program defaults.
 
@@ -45,7 +50,7 @@ These plug-ins use the existing profile's `lib/lv2` search path.
 The guitar amplifier processes audio. Put it after sfizz on a MIDI instrument track.
 
 After setting the sound, save the track through **Track > Save tracks as track template**.
-No generated REAPER track templates or project chunks replace your saved tracks.
+No generated REAPER project chunks replace your saved tracks.
 Native sfizz presets supply the sample selection without a custom REAPER state format.
 
 ## Electronic music starting points
