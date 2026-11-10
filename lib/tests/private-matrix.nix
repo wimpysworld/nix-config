@@ -49,7 +49,7 @@ let
         "BeforeToolCall"
       ];
     assert lib.hasInfix
-      "Keep Matrix group chats (`!the-cauldron:matrix.wimpys.world`) text-only unless Martin explicitly asks for a voice note."
+      "Keep Telegram direct messages, Matrix direct messages, and Matrix group chats (`!the-cauldron:matrix.wimpys.world`) text-only by default. Send a voice note only when Martin explicitly asks for one."
       agentsMd;
     assert lib.hasInfix
       "write agent display names (`Skrye`, `Traya`, `Zannah`) in prose and inline code spans"
@@ -124,7 +124,7 @@ pkgs.runCommand "private-matrix"
     grep -q '/.well-known/matrix/support' "$cauldronJs"
     grep -q '/_matrix/federation/v1/version' "$cauldronJs"
     grep -q 'is_conversational_room_message' "$skryeHook"
-    grep -q 'Keep this Matrix group chat text-only unless Martin explicitly asks for a voice note' "$companionPy"
+    grep -q 'Keep this Matrix group chat and Telegram direct messages text-only unless Martin explicitly asks for a voice note' "$companionPy"
     ${lib.getExe config.services.caddy.package} adapt --adapter caddyfile \
       --config ${config.services.caddy.configFile} > /dev/null
     touch "$out"
