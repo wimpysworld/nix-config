@@ -2,6 +2,7 @@
   config,
   lib,
   noughtyLib,
+  pkgs,
   ...
 }:
 let
@@ -21,6 +22,7 @@ let
     lanMousePeer != null
     && builtins.hasAttr host.name lanMouseAddresses
     && builtins.hasAttr lanMousePeer lanMouseAddresses;
+  lanMouseRoutingRule = "priority 2500 to ${lanMouseAddresses.${lanMousePeer}}/32 lookup main";
   useDoT =
     if host.is.iso then
       "false"
@@ -263,6 +265,19 @@ in
 
   # Workaround https://github.com/NixOS/nixpkgs/issues/180175
   systemd.services.NetworkManager-wait-online.enable = lib.mkIf config.networking.networkmanager.enable false;
+
+  systemd.services.lan-mouse-peer-route = lib.mkIf (isLanMouseHost && hasLanMouseConfig) {
+    description = "Prefer the local route to the Lan-mouse peer";
+    after = [ "network.target" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      # Select the peer's LAN route before Tailscale's overlapping subnet routes.
+      ExecStart = "${pkgs.iproute2}/bin/ip -4 rule add ${lanMouseRoutingRule}";
+      ExecStop = "${pkgs.iproute2}/bin/ip -4 rule del ${lanMouseRoutingRule}";
+    };
+  };
 
   systemd.tmpfiles.rules = lib.optionals (!config.networking.useNetworkd) [
     "R /run/systemd/netif - - - - -"
