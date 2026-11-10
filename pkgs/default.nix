@@ -24,6 +24,7 @@ pkgs: {
   roamgate = pkgs.callPackage ./roamgate { };
   silo-server = pkgs.callPackage ./silo-server { };
   tcount = pkgs.callPackage ./tcount { };
+  twelvetake-reaper-mcp = pkgs.callPackage ./twelvetake-reaper-mcp { };
   vecdecor = pkgs.callPackage ./vecdecor { };
   weave = pkgs.callPackage ./weave { };
   defold = pkgs.callPackage ./defold { };

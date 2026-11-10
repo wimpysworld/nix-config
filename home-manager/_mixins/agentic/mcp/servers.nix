@@ -192,6 +192,17 @@ rec {
       };
     };
   }
+  // lib.optionalAttrs (host.is.nixos && host.is.workstation && lib.elem "studio" host.tags) {
+    reaper = {
+      transport = "stdio";
+      command = lib.getExe (
+        pkgs.callPackage ./reaper {
+          bridgeDir = "${config.xdg.configHome}/REAPER/Scripts/mcp_bridge_data";
+        }
+      );
+      consumers.pi.lifecycle = "eager";
+    };
+  }
   // lib.optionalAttrs isWorkHost (
     lib.mapAttrs (_: chainguardServer) {
       cg-apk = "https://apk.cgr.dev/mcp";
