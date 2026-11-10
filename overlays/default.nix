@@ -204,16 +204,6 @@ in
         }
       );
 
-      # Gleam fails to build from source on Linux because a checked test makes a
-      # network request that is unavailable in the sandbox. Append the upstream
-      # skip flag from nixpkgs#529582. Remove this override once the fix reaches
-      # the pinned nixos-26.05 channel.
-      gleam = prev.gleam.overrideAttrs (oldAttrs: {
-        checkFlags = (oldAttrs.checkFlags or [ ]) ++ [
-          "--skip=tests::escript_success_with_dependency"
-        ];
-      });
-
       # Prowler 5.12.3 in nixos-26.05 fails to build because python3.13-imageio
       # 2.37.2 fails two tests against pillow 13.0.0. mcp-nixos in nixos-26.05
       # fails to build python3.13-fastmcp 3.2.3 from source. Use the cached
