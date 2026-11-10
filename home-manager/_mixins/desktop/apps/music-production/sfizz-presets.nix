@@ -4,6 +4,7 @@
   writeText,
   karoryfer-black-and-green-guitars,
   karoryfer-growlybass,
+  freepats-synthesizer-percussion,
 }:
 let
   guitars = "${karoryfer-black-and-green-guitars}/share/sfz/karoryfer-black-and-green-guitars/Programs";
@@ -34,6 +35,12 @@ let
       label = "Karoryfer - Growlybass (dirty)";
       file = "${bass}/growlybass_dirty.sfz";
     }
+    {
+      name = "synthesizer-percussion";
+      namespace = "freepats";
+      label = "FreePats - Synthesizer percussion";
+      file = "${freepats-synthesizer-percussion}/share/sfz/freepats-synthesizer-percussion/SynthesizerPercussion-20220718.sfz";
+    }
   ];
   prefixes = ''
     @prefix atom: <http://lv2plug.in/ns/ext/atom#> .
@@ -45,7 +52,7 @@ let
   manifest =
     prefixes
     + lib.concatMapStringsSep "\n" (preset: ''
-      <urn:karoryfer:sfizz:${preset.name}>
+      <urn:${preset.namespace or "karoryfer"}:sfizz:${preset.name}>
         a pset:Preset ;
         lv2:appliesTo <http://sfztools.github.io/sfizz> ;
         rdfs:label ${builtins.toJSON preset.label} ;
@@ -54,7 +61,7 @@ let
   states =
     prefixes
     + lib.concatMapStringsSep "\n" (preset: ''
-      <urn:karoryfer:sfizz:${preset.name}>
+      <urn:${preset.namespace or "karoryfer"}:sfizz:${preset.name}>
         a pset:Preset ;
         lv2:appliesTo <http://sfztools.github.io/sfizz> ;
         rdfs:label ${builtins.toJSON preset.label} ;

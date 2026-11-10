@@ -10,6 +10,7 @@ pkgs: {
   davinci-resolve = pkgs.callPackage ./davinci-resolve { };
   davinci-resolve-studio = pkgs.callPackage ./davinci-resolve { studioVariant = true; };
   export-agentic-dots = pkgs.callPackage ./export-agentic-dots { };
+  freepats-synthesizer-percussion = pkgs.callPackage ./freepats-synthesizer-percussion { };
   fuzzel-emoji-data = pkgs.callPackage ./fuzzel-emoji-data { };
   herdr-ctx-bar = pkgs.callPackage ./herdr-ctx-bar { };
   herdr-disp-model = pkgs.callPackage ./herdr-disp-model { };
@@ -24,6 +25,7 @@ pkgs: {
   openusage = pkgs.callPackage ./openusage { };
   private-matrix-bootstrap = pkgs.callPackage ./private-matrix-bootstrap { };
   roamgate = pkgs.callPackage ./roamgate { };
+  saike-jsfx = pkgs.callPackage ./saike-jsfx { };
   silo-server = pkgs.callPackage ./silo-server { };
   tcount = pkgs.callPackage ./tcount { };
   twelvetake-reaper-mcp = pkgs.callPackage ./twelvetake-reaper-mcp { };

@@ -9,7 +9,8 @@ Home Manager links each complete library, including its samples, SFZ includes an
 Load the entrypoint SFZ file in sfizz. Plug-in scans do not discover SFZ files.
 
 Add **LV2: sfizz** through the track's **FX** window.
-Select a `Karoryfer` preset from the host preset menu, or open the corresponding file in sfizz.
+Select a `Karoryfer` or `FreePats` preset from the host preset menu.
+Alternatively, open the corresponding file in sfizz.
 The presets use immutable Nix store paths and load the upstream program defaults.
 
 | Preset | File relative to the SFZ library directory |
@@ -19,6 +20,7 @@ The presets use immutable Nix store paths and load the upstream program defaults
 | Karoryfer - Green guitar (twang) | `karoryfer-black-and-green-guitars/Programs/04-green_twang.sfz` |
 | Karoryfer - Growlybass (clean) | `karoryfer-growlybass/growlybass_clean.sfz` |
 | Karoryfer - Growlybass (dirty) | `karoryfer-growlybass/growlybass_dirty.sfz` |
+| FreePats - Synthesizer percussion | `freepats-synthesizer-percussion/SynthesizerPercussion-20220718.sfz` |
 
 Black And Green contains two electric guitars, not acoustic guitars.
 In the keyswitch programs, MIDI notes 36 and 37 select twang and staccato.
@@ -45,6 +47,73 @@ The guitar amplifier processes audio. Put it after sfizz on a MIDI instrument tr
 After setting the sound, save the track through **Track > Save tracks as track template**.
 No generated REAPER track templates or project chunks replace your saved tracks.
 Native sfizz presets supply the sample selection without a custom REAPER state format.
+
+## Electronic music starting points
+
+These self-authored settings start from an initialised synth patch, with other oscillators and effects disabled.
+They are recipes, not extra factory banks or generated host state.
+Save each finished sound as a plug-in preset or track template.
+
+| Sound | Instrument and settings | MIDI starting point |
+| --- | --- | --- |
+| Acid bass | JC303: saw wave, low cutoff, moderate resonance, short decay and moderate envelope modulation. Start with low output gain. | Use a one-bar pattern of short notes around MIDI 36. Add a few accents and slides. |
+| Solid bass | Vital: one saw oscillator, no unison, mono voice mode, low-pass filter. Amplitude envelope: attack 0 ms, decay 150 ms, sustain 70%, release 50 ms. | Use MIDI 28-43 with gaps between notes. Lower the filter cutoff to leave space for the lead. |
+| Chord stab | Surge XT: one saw oscillator, polyphonic voice mode and low-pass filter. Amplitude envelope: attack 5 ms, decay 250 ms, sustain zero, release 100 ms. | Start with a minor triad at MIDI 48, 51 and 55. Use short offbeat chords. |
+| Electronic drums | LV2: sfizz, preset **FreePats - Synthesizer percussion**. The kit contains CC0 synthesised drum samples. | Start at 120 BPM with kick 48 on every beat. Add clap 63 on beats two and four. Add closed hat 52 between beats. |
+
+JC303 comes from the pinned unstable package set because version 0.13.0 includes its 16-step sequencer.
+Its native plug-in metadata still reports 0.12.3 because upstream did not update that version field.
+The other plug-ins retain their existing package versions.
+Use either JC303's sequencer or notes from REAPER when you create the bass line.
+For its sequencer, open **Sequencer** and set **Sync Mode** to **Host**.
+Keep **Length** at 16 and **Start Mode** at **Transport** for a one-bar pattern with REAPER transport control.
+Keep filter sweeps in REAPER automation so that you can edit the movement with the arrangement.
+
+### Drum note map
+
+The FreePats kit does not use the General MIDI drum map.
+Use the following MIDI note numbers, regardless of REAPER's octave-label preference.
+
+| MIDI notes | Sounds |
+| --- | --- |
+| 48, 49 | Kicks |
+| 50, 51 | Snares |
+| 52, 53 | Closed hi-hats |
+| 54 | Open hi-hat |
+| 55, 56 | Cymbals |
+| 57, 58 | Low toms |
+| 59, 60 | Mid toms |
+| 61, 62 | High toms |
+| 63 | Clap |
+| 64 | Shaker |
+| 65 | Long shaker |
+| 66 | Claves |
+
+Geonkick remains available when you need to design a drum sound instead of using the sample kit.
+
+### Filter and distortion effects
+
+Find **Filther (Saike)** and **Squashman (Saike)** in the FX window's JS list.
+Home Manager links their complete directories under `Effects/Saike` in the REAPER resource directory.
+The directories retain the upstream helper files, images and Filther preset bank.
+The configuration does not replace the whole `Effects` directory or your saved presets.
+
+Put Filther after a bass or chord instrument for filter movement and distortion.
+Start with low drive and output gain.
+Raise the effect amount while you compare the bypassed level.
+Automate **Cutoff** and **Reso** for the first filter, or **Filter2 Cutoff** and **Filter2 Reso** for the second.
+Use **PreGain** for input drive and **PostGain** for output level.
+Never automate Filther's **Toggles (DO NOT AUTOMATE)** parameter, slider 35.
+
+Put Squashman after an instrument or on a drum bus for multiband distortion.
+Start with a low **Drive 1 (dB)** value.
+Reduce **Dry/Wet 1** for parallel processing.
+The corresponding controls exist for bands 2-5, with **Frequency 1** through **Frequency 4** for crossover points.
+Squashman's graphical interface has routing and envelope controls that are not all exposed as host parameters.
+Set those controls in its interface before you save the preset.
+
+To try the upstream Filther bank, import `Effects/Saike/Filther/Filther.jsfx.rpl` through REAPER's preset menu.
+The configuration does not merge that bank into your preset files automatically.
 
 ## First use
 

@@ -63,6 +63,7 @@ in
             odin2
             zynaddsubfx
             geonkick
+            unstable.jc303
             x42-avldrums
             sfizz-ui
             guitarix
@@ -81,12 +82,18 @@ in
       "sfz/karoryfer-black-and-green-guitars".source =
         "${pkgs.karoryfer-black-and-green-guitars}/share/sfz/karoryfer-black-and-green-guitars";
       "sfz/karoryfer-growlybass".source = "${pkgs.karoryfer-growlybass}/share/sfz/karoryfer-growlybass";
+      "sfz/freepats-synthesizer-percussion".source =
+        "${pkgs.freepats-synthesizer-percussion}/share/sfz/freepats-synthesizer-percussion";
     };
 
     home.file = {
       "${resourcePath}/Scripts/reaper_mcp_bridge.lua".source = "${assets}/reaper_mcp_bridge.lua";
       "${resourcePath}/Effects/TwelveTake/twelvetake_mcp_analyzer.jsfx".source =
         "${assets}/twelvetake_mcp_analyzer.jsfx";
+      "${resourcePath}/Effects/Saike/Filther".source =
+        "${pkgs.saike-jsfx}/share/reaper/Effects/Saike/Filther";
+      "${resourcePath}/Effects/Saike/Squashman".source =
+        "${pkgs.saike-jsfx}/share/reaper/Effects/Saike/Squashman";
     };
 
     home.activation = {
