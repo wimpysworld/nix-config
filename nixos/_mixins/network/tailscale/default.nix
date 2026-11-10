@@ -33,6 +33,7 @@ lib.mkIf (host.is.workstation || host.is.server) {
     ++ lib.optional (noughtyLib.isHost tsExitNodes) "--advertise-exit-node";
     extraSetFlags = [
       "--accept-routes"
+      "--exit-node-allow-lan-access=true"
       "--operator=${username}"
     ]
     ++ lib.optional (noughtyLib.isHost tsExitNodes) "--advertise-exit-node";

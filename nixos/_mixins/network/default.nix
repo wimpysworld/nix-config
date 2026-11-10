@@ -1,11 +1,18 @@
 {
   config,
   lib,
+  noughtyLib,
   ...
 }:
 let
   inherit (config.noughty) host;
   username = config.noughty.user.name;
+  lanMouseAddresses = {
+    ravi = "10.10.30.84";
+    zannah = "10.10.30.193";
+  };
+  isLanMouseHost = noughtyLib.isHost (builtins.attrNames lanMouseAddresses);
+  lanMousePeer = if host.name == "zannah" then "ravi" else "zannah";
   useDoT =
     if host.is.iso then
       "false"
@@ -95,6 +102,9 @@ in
   ];
 
   networking = {
+    hosts = lib.mkIf isLanMouseHost (
+      lib.mapAttrs' (name: address: lib.nameValuePair address [ "${name}-lanmouse" ]) lanMouseAddresses
+    );
     extraHosts = ''
       127.0.0.3      k3d-k3d.localhost
       10.10.10.1     router
@@ -122,6 +132,10 @@ in
         22000
         21027
       ];
+      extraCommands = lib.mkIf isLanMouseHost ''
+        iptables -A nixos-fw -s ${lanMouseAddresses.${lanMousePeer}}/32 \
+          -d ${lanMouseAddresses.${host.name}}/32 -p udp --dport 4242 -j nixos-fw-accept
+      '';
       inherit trustedInterfaces;
     };
     hostName = host.name;
