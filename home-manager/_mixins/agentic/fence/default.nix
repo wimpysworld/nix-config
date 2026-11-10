@@ -162,6 +162,9 @@ let
         "${config.xdg.configHome}/gws"
         "${config.xdg.configHome}/gws/**"
       ]
+      ++ lib.optionals (host.is.nixos && host.is.workstation && noughtyLib.hostHasTag "studio") [
+        "${config.xdg.configHome}/REAPER/Scripts/mcp_bridge_data"
+      ]
       # The moltis daemon writes its data dir (SQLite database, workspace
       # markdowns, Managed Files) and its config dir (regenerated
       # defaults.toml and TLS certs, which moltis renews near expiry) beside
