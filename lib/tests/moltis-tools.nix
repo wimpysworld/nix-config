@@ -258,7 +258,7 @@ let
         "context7"
         "exa"
         "linear"
-      ];
+      ] ++ lib.optional (!darwin) "reaper";
       envNames = map (entry: entry.name) c.agentic.moltis.envPlumbing;
       builtinPresets = import ../../home-manager/_mixins/agentic/moltis/builtin-presets.nix;
     in
