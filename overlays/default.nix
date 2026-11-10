@@ -108,7 +108,12 @@ in
       inherit (final.unstable) bun;
       inherit (final.unstable) cosign;
       inherit (final.unstable) framework-tool;
-      inherit (final.unstable) framework-tool-tui;
+      # The Cargo setup hook sets LIBGIT2_NO_VENDOR, so libgit2-sys needs the
+      # system libgit2. Remove this override once nixos-unstable contains
+      # https://github.com/NixOS/nixpkgs/pull/585577.
+      framework-tool-tui = final.unstable.framework-tool-tui.overrideAttrs (oldAttrs: {
+        buildInputs = (oldAttrs.buildInputs or [ ]) ++ [ final.unstable.libgit2 ];
+      });
       inherit (final.unstable) mango;
       inherit (final.unstable) zed-editor;
       inherit (final.unstable) markless;
