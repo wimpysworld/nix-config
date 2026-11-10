@@ -16,6 +16,8 @@ pkgs: {
   herdr-integrations = pkgs.callPackage ./herdr-integrations { };
   herdr-home-layout = pkgs.callPackage ./herdr-layout { };
   herdr-work-layout = pkgs.callPackage ./herdr-layout { work = true; };
+  karoryfer-black-and-green-guitars = pkgs.callPackage ./karoryfer-black-and-green-guitars { };
+  karoryfer-growlybass = pkgs.callPackage ./karoryfer-growlybass { };
   manuscript = pkgs.callPackage ./manuscript { };
   moltis = pkgs.callPackage ./moltis { };
   openhue-cli = pkgs.callPackage ./openhue-cli { };

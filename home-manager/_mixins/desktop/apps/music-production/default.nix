@@ -65,11 +65,23 @@ in
             geonkick
             x42-avldrums
             sfizz-ui
+            guitarix
+            setbfree
             lsp-plugins
             dragonfly-reverb
             chow-tape-model
           ]
-        );
+        )
+      ++ lib.optional (
+        lib.meta.availableOn pkgs.stdenv.hostPlatform pkgs.sfizz-ui && !(pkgs.sfizz-ui.meta.broken or false)
+      ) (pkgs.callPackage ./sfizz-presets.nix { });
+
+    xdg.dataFile = {
+      "sfz/README.md".source = ./README.md;
+      "sfz/karoryfer-black-and-green-guitars".source =
+        "${pkgs.karoryfer-black-and-green-guitars}/share/sfz/karoryfer-black-and-green-guitars";
+      "sfz/karoryfer-growlybass".source = "${pkgs.karoryfer-growlybass}/share/sfz/karoryfer-growlybass";
+    };
 
     home.file = {
       "${resourcePath}/Scripts/reaper_mcp_bridge.lua".source = "${assets}/reaper_mcp_bridge.lua";
