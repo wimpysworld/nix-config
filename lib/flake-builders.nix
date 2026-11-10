@@ -67,7 +67,12 @@ let
     { system, overlays }:
     import inputs.nixpkgs {
       inherit system;
-      config.allowUnfree = true;
+      config = {
+        allowUnfree = true;
+        permittedInsecurePackages = [
+          "keybase-gui-6.5.1"
+        ];
+      };
       overlays = builtins.attrValues overlays;
     };
 in

@@ -60,6 +60,9 @@ in
     ];
     config = {
       allowUnfree = true;
+      permittedInsecurePackages = [
+        "keybase-gui-6.5.1"
+      ];
     };
   };
 
