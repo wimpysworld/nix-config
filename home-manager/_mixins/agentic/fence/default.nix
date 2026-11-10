@@ -10,6 +10,13 @@ let
   inherit (config.noughty) host;
   inherit (config.home) homeDirectory profileDirectory;
   fencePackage = import ./package.nix { inherit inputs pkgs; };
+  studioWorkstation = host.is.nixos && host.is.workstation && noughtyLib.hostHasTag "studio";
+  userPluginPaths = map (name: "${homeDirectory}/.${name}") [
+    "lv2"
+    "vst"
+    "vst3"
+    "clap"
+  ];
 
   # Context Bar keeps its daemon lock and preview overrides in its state
   # directory. The lock holds the PID that the `restart` action signals, so a
@@ -162,6 +169,14 @@ let
         "${config.xdg.configHome}/gws"
         "${config.xdg.configHome}/gws/**"
       ]
+      ++ lib.optionals studioWorkstation (
+        [
+          # Bind the live resource tree for presets, scripts, plug-in caches and
+          # the MCP mailbox. Nix-managed assets remain read-only in the store.
+          config.programs.reaper.configPath
+        ]
+        ++ userPluginPaths
+      )
       # The moltis daemon writes its data dir (SQLite database, workspace
       # markdowns, Managed Files) and its config dir (regenerated
       # defaults.toml and TLS certs, which moltis renews near expiry) beside
@@ -236,7 +251,7 @@ let
       ++ herdrCtxBarPaths
       ++ roamgatePaths;
 
-      denyWrite = herdrCtxBarPaths ++ roamgatePaths;
+      denyWrite = herdrCtxBarPaths ++ roamgatePaths ++ lib.optional studioWorkstation "/nix/store";
     };
     command = {
       useDefaults = true;
@@ -713,6 +728,13 @@ in
         ];
 
         xdg.configFile."fence/fence.jsonc".text = builtins.toJSON fenceConfig;
+
+        # Fence skips missing write paths, so create only the user plug-in roots.
+        home.activation.fenceUserPluginDirectories = lib.mkIf studioWorkstation (
+          lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+            run mkdir -p -- ${lib.escapeShellArgs userPluginPaths}
+          ''
+        );
 
         systemd.user.tmpfiles.rules = lib.mkIf host.is.linux [
           # Shared launch directory for fenced agents, used as TMPDIR inside the

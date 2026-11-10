@@ -26,6 +26,9 @@
     lan-mouse.url = "github:feschber/lan-mouse/v0.11.0";
     lan-mouse.inputs.nixpkgs.follows = "nixpkgs";
     lan-mouse.inputs.rust-overlay.follows = "rust-overlay";
+    reaper-flake.url = "github:9Prestidigitator/reaper-flake/e7efd7af128b153a5fdbefe523179e1822299006";
+    reaper-flake.inputs.nixpkgs.follows = "nixpkgs";
+    reaper-flake.inputs.flake-parts.follows = "flake-parts";
     handy.url = "github:cjpais/Handy/v0.10.0";
     handy.inputs.nixpkgs.follows = "nixpkgs";
     catppuccin.url = "github:catppuccin/nix/release-26.05";

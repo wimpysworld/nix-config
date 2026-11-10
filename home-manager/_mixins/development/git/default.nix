@@ -1,5 +1,6 @@
 {
   config,
+  inputs,
   lib,
   pkgs,
   ...
@@ -60,6 +61,15 @@ in
   catppuccin = {
     delta.enable = config.programs.delta.enable;
     lazygit.enable = config.programs.lazygit.enable;
+    sources.lazygit =
+      inputs.catppuccin.packages.${pkgs.stdenv.hostPlatform.system}.lazygit.overrideAttrs
+        (oldAttrs: {
+          postInstall = (oldAttrs.postInstall or "") + ''
+            find "$out" -name '*.yml' -exec sed -i \
+              -e 's/^  authorColors:$/    authorColors:/' \
+              -e 's/^    \x27\*\x27:/      \x27*\x27:/' {} +
+          '';
+        });
   };
 
   home = {
@@ -163,6 +173,15 @@ in
     };
     lazygit = lib.mkIf gitWorkflowToolsEnabled {
       enable = true;
+      package = pkgs.symlinkJoin {
+        name = "lazygit-wrapped";
+        paths = [ pkgs.lazygit ];
+        nativeBuildInputs = [ pkgs.makeWrapper ];
+        postBuild = ''
+          wrapProgram $out/bin/lazygit \
+            --set LG_CONFIG_FILE ${lib.escapeShellArg config.home.sessionVariables.LG_CONFIG_FILE}
+        '';
+      };
       settings = {
         # Skip "Press enter to return to lazygit" after subprocesses
         promptToReturnFromSubprocess = false;
@@ -179,8 +198,8 @@ in
         git = {
           # Auto-fetch from remote periodically
           autoFetch = true;
-          pagers = [
-            { pager = "${pkgs.delta}/bin/delta --dark --paging=never"; }
+          diffRenderers = [
+            { command = "${pkgs.delta}/bin/delta --dark --paging=never"; }
           ];
         };
         gui = {

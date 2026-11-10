@@ -949,6 +949,30 @@
         "type": "github"
       }
     },
+    "reaper-flake": {
+      "inputs": {
+        "flake-parts": [
+          "flake-parts"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1794012591,
+        "narHash": "sha256-yvlzt6TnxNgatV1EueHy8RP0P2DmjjkiQKGEOdM5zX4=",
+        "owner": "9Prestidigitator",
+        "repo": "reaper-flake",
+        "rev": "e7efd7af128b153a5fdbefe523179e1822299006",
+        "type": "github"
+      },
+      "original": {
+        "owner": "9Prestidigitator",
+        "repo": "reaper-flake",
+        "rev": "e7efd7af128b153a5fdbefe523179e1822299006",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "catppuccin": "catppuccin",
@@ -973,6 +997,7 @@
         "nixos-hardware": "nixos-hardware",
         "nixpkgs": "nixpkgs_6",
         "nixpkgs-unstable": "nixpkgs-unstable",
+        "reaper-flake": "reaper-flake",
         "rust-overlay": "rust-overlay",
         "sidra": "sidra",
         "sops-nix": "sops-nix",
