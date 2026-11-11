@@ -108,7 +108,7 @@ in
         auto_reload_config = true;
         tag_num = 8;
         enable_hotarea = false;
-        new_is_master = true;
+        new_is_master = false;
         dwindle_preserve_split = true;
         dwindle_smart_split = false;
         exec_once = [ "wayland-session start" ];
