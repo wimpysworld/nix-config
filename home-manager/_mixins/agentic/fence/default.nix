@@ -174,6 +174,7 @@ let
           # Bind the live resource tree for presets, scripts, plug-in caches and
           # the MCP mailbox. Nix-managed assets remain read-only in the store.
           config.programs.reaper.configPath
+          "${homeDirectory}/Studio/Reaper"
         ]
         ++ userPluginPaths
       )
