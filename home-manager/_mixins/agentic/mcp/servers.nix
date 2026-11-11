@@ -192,7 +192,9 @@ rec {
       };
     };
   }
-  // lib.optionalAttrs (host.is.nixos && host.is.workstation && lib.elem "studio" host.tags) {
+  // lib.optionalAttrs (
+    (host.is.nixos or false) && (host.is.workstation or false) && lib.elem "studio" (host.tags or [ ])
+  ) {
     reaper = {
       transport = "stdio";
       command = lib.getExe (
