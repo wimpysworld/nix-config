@@ -144,6 +144,13 @@
             inherit pkgs;
             inherit (self) nixosConfigurations homeConfigurations;
           };
+          pi-extension-delivery = import ./lib/tests/pi-extension-delivery.nix {
+            inherit pkgs;
+            homeFiles = self.homeConfigurations."martin@zannah".config.home-files;
+            piPackage = (inputs.llm-agents.packages.${system}.pi.override { useBun = false; }).overrideAttrs {
+              dontNpmPrune = true;
+            };
+          };
           wayland-compositors = import ./lib/tests/wayland-compositors.nix {
             inherit (nixpkgs) lib;
             inherit pkgs;

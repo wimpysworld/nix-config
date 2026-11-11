@@ -35,6 +35,8 @@ let
       import ../fence/chromium.nix { inherit pkgs; };
   fenceLogging = import ../fence/logging.nix { inherit pkgs; };
   piShared = import ./shared.nix;
+  # Keep sibling imports valid when Pi resolves extension symlinks.
+  piExtensionSources = "${./extensions}";
   inherit (piShared)
     piMcpAdapterSource
     piSubagentsConfig
@@ -846,14 +848,15 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
         builtins.toJSON piAssistant.providerRouterMap;
       ".pi/agent/extensions/provider-router/thinking.json".text =
         builtins.toJSON piAssistant.providerRouterThinkingMap;
-      ".pi/agent/extensions/provider-router/index.ts".source = ./extensions/provider-router/index.ts;
+      ".pi/agent/extensions/provider-router/index.ts".source =
+        "${piExtensionSources}/provider-router/index.ts";
       ".pi/agent/extensions/provider-router/types.d.ts".source = ./extensions/provider-router/types.d.ts;
       ".pi/agent/extensions/provider-router/LICENSE".source = ./extensions/provider-router/LICENSE;
       ".pi/agent/extensions/provider-router/README.md".source = ./extensions/provider-router/README.md;
       ".pi/agent/extensions/hardware-cursor/index.ts".source = ./extensions/hardware-cursor/index.ts;
       ".pi/agent/extensions/isolation-status/index.ts".text = piIsolationStatusExtension;
       ".pi/agent/extensions/prompt-template-display/index.ts".source =
-        ./extensions/prompt-template-display/index.ts;
+        "${piExtensionSources}/prompt-template-display/index.ts";
       ".pi/agent/extensions/prompt-template-display/types.d.ts".source =
         ./extensions/prompt-template-display/types.d.ts;
       ".pi/agent/extensions/quota-status/index.ts".source = ./extensions/quota-status/index.ts;
