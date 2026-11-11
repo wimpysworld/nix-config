@@ -1,0 +1,32 @@
+desc:Velocity Randomizer (claude-composer-reaper)
+
+// A small MIDI effect. Put it on a track BEFORE a virtual instrument.
+// It randomises the velocity of incoming notes by plus or minus the slider
+// amount, without changing pitch or timing. Good for loosening up programmed
+// parts. This is a starter example: read it, change it, ask the assistant to extend it.
+
+slider1:8<0,48,1>Random velocity amount (+/-)
+
+@init
+// Nothing to set up.
+
+@block
+while (
+  midirecv(offset, msg1, msg2, msg3) ? (
+    status = msg1 & 0xF0;
+    // 0x90 with a non-zero third byte is a note-on.
+    (status == 0x90 && msg3 > 0) ? (
+      delta = floor(rand(slider1 * 2 + 1)) - slider1;
+      newvel = msg3 + delta;
+      newvel < 1 ? newvel = 1;
+      newvel > 127 ? newvel = 127;
+      msg3 = newvel;
+    );
+    midisend(offset, msg1, msg2, msg3);
+    1; // keep looping
+  );
+);
+
+// Idea to ask the assistant for next:
+//  "add a second slider for probability, so only some notes get randomised"
+//  "add humanised timing as well, pushing notes slightly late"

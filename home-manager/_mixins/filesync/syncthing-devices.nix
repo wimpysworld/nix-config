@@ -1,4 +1,20 @@
 {
+  directAddresses = {
+    bane = [ "100.108.29.3" ];
+    felkor = [ "100.127.175.66" ];
+    ravi = [ "100.96.157.127" ];
+    revan = [
+      "100.100.244.109"
+      "10.10.10.10"
+    ];
+    shaa = [ "100.99.178.128" ];
+    sidious = [ "100.75.252.84" ];
+    skrye = [ "100.93.229.12" ];
+    tanis = [ "100.122.41.83" ];
+    traya = [ "100.93.247.47" ];
+    zannah = [ "100.88.39.113" ];
+  };
+
   devices = {
     bane = {
       id = "X7K3SCU-7KN62YR-NKAZQHW-V2JYRXP-JXGNXFO-QPPPPHX-3MQTO6B-XIK72Q3";

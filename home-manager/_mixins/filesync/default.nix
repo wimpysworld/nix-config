@@ -11,6 +11,7 @@ let
 
   # Import Syncthing device and folder definitions
   syncDefs = import ./syncthing-devices.nix;
+  syncNetwork = import ../../../lib/syncthing-network.nix;
 
   # Determine whether this host is a Syncthing cohort member
   isSyncthingHost = builtins.hasAttr host.name syncDefs.devices;
@@ -129,12 +130,32 @@ lib.mkMerge [
           passwordFile = config.sops.secrets.pass.path;
         };
         settings = {
-          devices = otherDevices;
+          devices = lib.mapAttrs (
+            name: device:
+            device
+            // {
+              addresses = [
+                "dynamic"
+              ]
+              ++ lib.concatMap (address: [
+                "tcp://${address}:22000"
+                "quic://${address}:22000"
+              ]) syncDefs.directAddresses.${name}
+              ++ [ syncNetwork.relayUrl ];
+            }
+          ) otherDevices;
           folders = hostFolders;
           gui = {
             theme = "dark";
           };
           options = {
+            listenAddresses = [
+              "tcp://0.0.0.0:22000"
+              "quic://0.0.0.0:22000"
+              syncNetwork.relayUrl
+            ];
+            globalAnnounceEnabled = true;
+            globalAnnounceServers = [ syncNetwork.discoveryUrl ];
             localAnnounceEnabled = true;
             relaysEnabled = true;
             startBrowser = false;

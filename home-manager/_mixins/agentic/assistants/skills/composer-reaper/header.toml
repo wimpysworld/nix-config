@@ -1,0 +1,12 @@
+[common]
+name = "composer-reaper"
+description = "Composes music and supports REAPER production, ReaScript, JSFX effects, MIDI generation, mixing, rendering, and release exports. Use for requests such as 'make me a song', 'build a track around this sample', or 'write a loop'. Also use for REAPER MCP control and music-tool integration. Uses the existing bridge or offline project files. Excludes general audio measurement without a composition or REAPER task."
+license = "MIT"
+compatibility = "Live control needs an existing REAPER MCP connection. Lua starters run inside REAPER. The optional Swift renderer needs macOS, AudioToolbox, and swiftc. Offline MIDI and project authoring work without MCP."
+
+[common.metadata]
+upstream = "https://github.com/JonoGitty/claude-composer-reaper"
+revision = "f8f6d94436ea5fe093658090ea04e09eb36ea597"
+source = "."
+upstream-name = "claude-composer-reaper"
+local-changes = "Renamed for portable skill naming. Moved metadata to header.toml. Adapted prose and references for shared clients, managed TwelveTake MCP, safe recovery, and platform limits. Preserved five Lua starters, Swift renderer, JSFX, and MIT licence. Omitted unsafe shell-based export helper and replaced it with export guidance. Omitted repository README and installer instructions."
