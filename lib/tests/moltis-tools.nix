@@ -242,8 +242,8 @@ let
         if host == "traya" then
           "openai-codex::gpt-6-astra@reasoning-medium"
         else
-          "gemini::gemini-4-argon@reasoning-high";
-      expectedReviewReasoningEffort = if host == "traya" then "medium" else "high";
+          "gemini::gemini-4-carbon@reasoning-medium";
+      expectedReviewReasoningEffort = "medium";
       settings = c.agentic.moltis.settings;
       cli = builtins.fromJSON (
         builtins.unsafeDiscardStringContext c.xdg.configFile."moltis/mcporter.json".text
@@ -303,6 +303,7 @@ let
     assert
       settings.models == {
         gemini-4-argon.context_window = 1000000;
+        gemini-4-carbon.context_window = 1048576;
         "gpt-6.1-sol".context_window = 384000;
         gpt-6-astra.context_window = 384000;
         gpt-6-luna.context_window = 384000;

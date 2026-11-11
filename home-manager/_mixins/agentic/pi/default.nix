@@ -362,6 +362,7 @@ let
       "anthropic/claude-opus-5-5"
       "anthropic/claude-sonnet-5-5"
       "google/gemini-4-argon"
+      "google/gemini-4-carbon"
       "google/gemini-3.8-flash"
       "openai-codex/gpt-6-astra"
       "openai-codex/gpt-6.1-sol"
@@ -816,6 +817,35 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
         text = builtins.toJSON (
           lib.recursiveUpdate
             {
+              providers.google.models = [
+                {
+                  id = "gemini-4-carbon";
+                  name = "Gemini 4 Carbon";
+                  reasoning = true;
+                  thinkingLevelMap = {
+                    off = null;
+                    minimal = "LOW";
+                    low = "LOW";
+                    medium = "MEDIUM";
+                    high = "HIGH";
+                    xhigh = "HIGH";
+                    max = null;
+                  };
+                  input = [
+                    "text"
+                    "image"
+                  ];
+                  # On 1 December 2026, input/output/cacheRead rates become 4/20/0.20 USD per million tokens.
+                  cost = {
+                    input = 2;
+                    output = 10;
+                    cacheRead = 0.10;
+                    cacheWrite = 0;
+                  };
+                  contextWindow = 1048576;
+                  maxTokens = 32768;
+                }
+              ];
               providers."openai-codex".modelOverrides =
                 lib.genAttrs
                   [

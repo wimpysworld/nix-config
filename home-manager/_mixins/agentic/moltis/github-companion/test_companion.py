@@ -3232,7 +3232,7 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
 
             return _handler
 
-        # 1) Skrye: main_model = gemini::gemini-4-argon@reasoning-medium, review_model = gemini::gemini-4-argon@reasoning-high
+        # 1) Skrye: main_model = gemini::gemini-4-argon@reasoning-medium, review_model = gemini::gemini-4-carbon@reasoning-medium
         notif_batches: list[str] = [
             # Cycle 1 notifications:
             # - Issue mention (flexiondotorg) -> review_model
@@ -3409,7 +3409,7 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             data_dir=self.data_dir,
             agent_name="skrye",
             main_model="gemini::gemini-4-argon@reasoning-medium",
-            review_model="gemini::gemini-4-argon@reasoning-high",
+            review_model="gemini::gemini-4-carbon@reasoning-medium",
             clock=self.clock,
             sleeper=self.sleeper,
         )
@@ -3439,15 +3439,15 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             sent_models,
             [
                 # Issue mention (flexiondotorg) -> review_model
-                ("skrye:targeted", "gemini::gemini-4-argon@reasoning-high"),
+                ("skrye:targeted", "gemini::gemini-4-carbon@reasoning-medium"),
                 # github-actions[bot] PR notification -> main_model
                 ("skrye:targeted", "gemini::gemini-4-argon@reasoning-medium"),
                 # Freshener PR notification -> main_model
                 ("skrye:targeted", "gemini::gemini-4-argon@reasoning-medium"),
                 # Human PR (flexiondotorg) -> review_model
-                ("skrye:targeted", "gemini::gemini-4-argon@reasoning-high"),
+                ("skrye:targeted", "gemini::gemini-4-carbon@reasoning-medium"),
                 # Peer PR (sith-zannah) -> review_model
-                ("skrye:targeted", "gemini::gemini-4-argon@reasoning-high"),
+                ("skrye:targeted", "gemini::gemini-4-carbon@reasoning-medium"),
                 # Dependabot PR -> main_model
                 ("skrye:targeted", "gemini::gemini-4-argon@reasoning-medium"),
                 # Weekly sweep -> main_model

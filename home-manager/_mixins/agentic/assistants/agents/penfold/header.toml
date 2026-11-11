@@ -23,6 +23,10 @@ thinking = "high"
 model = "gpt-6-astra"
 thinking = "high"
 
+[routing.pi.google]
+model = "gemini-4-carbon"
+thinking = "high"
+
 [claude]
 disallowedTools = ["Agent"]
 

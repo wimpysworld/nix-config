@@ -109,6 +109,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | donatello | opencode | openai | gpt-6-astra | Unset |
 | donatello | codex | Unset | gpt-6-astra | high |
 | donatello | pi | anthropic | claude-opus-5-5 | medium |
+| donatello | pi | google | gemini-4-carbon | medium |
 | donatello | pi | openai-codex | gpt-6-astra | high |
 | garfield | claude | Unset | claude-haiku-5-5 | high |
 | garfield | opencode | anthropic | claude-haiku-5-5 | high |
@@ -129,12 +130,14 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | morph | opencode | openai | gpt-6-astra | Unset |
 | morph | codex | Unset | gpt-6-astra | medium |
 | morph | pi | anthropic | claude-fable-5-1 | medium |
+| morph | pi | google | gemini-4-carbon | medium |
 | morph | pi | openai-codex | gpt-6-astra | medium |
 | penfold | claude | Unset | claude-fable-5-1 | high |
 | penfold | opencode | anthropic | claude-fable-5-1 | Unset |
 | penfold | opencode | openai | gpt-6-astra | Unset |
 | penfold | codex | Unset | gpt-6-astra | high |
 | penfold | pi | anthropic | claude-fable-5-1 | high |
+| penfold | pi | google | gemini-4-carbon | high |
 | penfold | pi | openai-codex | gpt-6-astra | high |
 | penry | claude | Unset | claude-opus-5-5 | medium |
 | penry | opencode | anthropic | claude-opus-5-5 | Unset |

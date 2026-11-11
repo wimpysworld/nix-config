@@ -26,8 +26,8 @@ let
     if isTraya then
       "openai-codex::gpt-6-astra@reasoning-medium"
     else
-      "gemini::gemini-4-argon@reasoning-high";
-  reviewReasoningEffort = if isTraya then "medium" else "high";
+      "gemini::gemini-4-carbon@reasoning-medium";
+  reviewReasoningEffort = "medium";
   auxiliaryModel =
     if isTraya then "openai-codex::gpt-6-luna@reasoning-high" else "gemini::gemini-3.8-flash";
   auxiliaryReasoningEffort = if isTraya then "high" else "medium";
@@ -1714,6 +1714,7 @@ in
 
         models = {
           gemini-4-argon.context_window = 1000000;
+          gemini-4-carbon.context_window = 1048576;
           "gpt-6.1-sol".context_window = 384000;
           gpt-6-astra.context_window = 384000;
           gpt-6-luna.context_window = 384000;
@@ -1726,6 +1727,7 @@ in
             enabled = !isTraya;
             models = [
               "gemini-4-argon"
+              "gemini-4-carbon"
               "gemini-3.8-flash"
             ];
           };

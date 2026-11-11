@@ -23,6 +23,10 @@ thinking = "medium"
 model = "gpt-6-astra"
 thinking = "medium"
 
+[routing.pi.google]
+model = "gemini-4-carbon"
+thinking = "medium"
+
 [claude]
 disallowedTools = ["Agent"]
 
