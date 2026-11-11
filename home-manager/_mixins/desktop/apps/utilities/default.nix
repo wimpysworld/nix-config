@@ -45,14 +45,14 @@ lib.mkIf (noughtyLib.isUser [ "martin" ] && host.is.workstation && host.is.linux
     settings = lib.mkIf (lanMousePeer != null) {
       port = 4242;
       cert_path = config.sops.secrets.lan_mouse_identity.path;
-      authorized_fingerprints.${lanMousePeer.fingerprint} = lanMousePeer.name;
-      clients = [
-        {
-          hostname = "${lanMousePeer.name}-lanmouse";
-          inherit (lanMousePeer) position;
-          activate_on_startup = true;
-        }
-      ];
+      authorized_fingerprints = lib.optionalAttrs (host.name == "ravi") {
+        ${lanMousePeer.fingerprint} = lanMousePeer.name;
+      };
+      clients = lib.optional (host.name == "zannah") {
+        hostname = "${lanMousePeer.name}-lanmouse";
+        inherit (lanMousePeer) position;
+        activate_on_startup = true;
+      };
     };
   };
 
