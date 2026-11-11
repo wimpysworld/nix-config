@@ -27,7 +27,9 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     runHook preInstall
     mkdir -p "$out/share/sfz/${finalAttrs.pname}"
     unzip -q "$src" -d "$out/share/sfz/${finalAttrs.pname}"
-    ln -s Info_tab.png "$out/share/sfz/${finalAttrs.pname}/GUI/info_tab.png"
+    if [ ! -e "$out/share/sfz/${finalAttrs.pname}/GUI/info_tab.png" ]; then
+      ln -s Info_tab.png "$out/share/sfz/${finalAttrs.pname}/GUI/info_tab.png"
+    fi
     python3 ${./sfizz-programs.py} create "$out/share/sfz/${finalAttrs.pname}"
     runHook postInstall
   '';
