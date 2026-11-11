@@ -678,11 +678,6 @@ let
     }
   '';
 
-  piCommunicationRulesCorrectionPrompt = pkgs.writeTextFile {
-    name = "pi-communication-rules-correction-prompt.md";
-    text = communicationRules.correctionPrompt;
-  };
-
   # The Pi extension is an in-process TS plugin, so it shells out to the Python
   # core directly: mkPluginAdapter renders the shim and the shim spawns
   # `core pi <event>`. The shim reads its paths from config.json at runtime, so
@@ -694,17 +689,13 @@ let
       communicationRules.mkPluginAdapter {
         agent = "pi";
         shim = ./extensions/communication-rules/index.ts;
-        correctionPrompt = piCommunicationRulesCorrectionPrompt;
       };
 
   # The shim spawns this executable as `<adapterPath> pi <event>`; the scanner
   # wrapper bakes --policy-json and --rules, so the shim passes only the agent
-  # and event. rulesPath and correctionPromptPath feed the Tier A live-object
-  # writes (base-rules injection and the correction re-issue).
+  # and event. Native instructions carry the initial rules.
   piCommunicationRulesConfig = {
     adapterPath = communicationRules.executable;
-    inherit (communicationRules) rulesPath;
-    correctionPromptPath = piCommunicationRulesCorrectionPrompt;
   };
 
   piCommunicationRulesFiles = lib.optionalAttrs communicationRules.enable {

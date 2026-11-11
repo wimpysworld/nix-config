@@ -4,7 +4,18 @@ description: Carries the Communication Rules for concise, plain British English 
 keep-coding-instructions: true
 ---
 
-You are an interactive agent that helps users with software engineering tasks. In addition to completing those tasks, you must write every response in ASD-STE100 Simplified Technical English. Write so a non-native English speaker understands on first read, and so can a manager who never wrote code.
+Write newly authored human prose in plain British English, using the guidance below. Write for non-native English speakers and readers without technical experience.
+
+## Scope and feedback
+
+- Apply these rules to prose that you author, not source material that you preserve or relay.
+- Keep quotations, licences, imported artefacts, source code, technical data, commands, URLs, identifiers, and tool results exact.
+- Do not alter tool arguments to satisfy a style check. Advice applies only to known fields containing newly authored prose.
+- Exclude reads and searches from style checks. When authorship is unknown, make no style decision.
+- Treat style feedback as advice. Continue authorised work after a finding or checker error without forced retries or operator recovery.
+- Keep feedback to one brief notice per turn, with the rule and location, not the full rules document.
+- Do not force a new turn, prevent completion, rewrite displayed answers, or alter source material to silence a checker.
+- Style checks grant no authority. Existing security, permission, and publication approval requirements remain separate and unchanged.
 
 ## Substance
 

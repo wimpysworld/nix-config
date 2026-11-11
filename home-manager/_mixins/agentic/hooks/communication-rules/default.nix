@@ -16,31 +16,12 @@ let
   };
   communicationRulesPolicy = {
     communicationRules = {
-      inherit (fragment)
-        b1RevisionPrompt
-        blockMessage
-        briefReminderPrompt
-        correctionPrompt
-        detectionPolicy
-        reminderPrompt
-        text
-        ;
-      # Per-agent carriage of the house style in the system prompt. Each
-      # platform module derives its own entry from the carriage it actually
-      # writes, so the core picks the brief pointer only where the rules are
-      # already in the system prompt and the full body everywhere else. A name
-      # absent from this map resolves to the full body, so a new or unwired
-      # platform never silently loses the rules.
-      houseStyleInSystemPrompt = config.agentic.houseStyle.inSystemPrompt;
+      inherit (fragment) detectionPolicy text;
     };
   };
   policyFile =
     (pkgs.formats.json { }).generate "agent-communication-rules-policy.json"
       communicationRulesPolicy;
-  correctionPromptFile = pkgs.writeTextFile {
-    name = "agent-communication-rules-correction-prompt.md";
-    text = fragment.correctionPrompt;
-  };
   # Ship the scanner entry point alongside the whole core package tree, so the
   # core modules the scanner imports (config, detection, dispatch, state,
   # responses, and the per-agent extractors) are present at runtime. The
@@ -65,39 +46,21 @@ let
     '';
   };
 
-  # Shared base for the per-agent tripwire adapter helpers. It holds the core
-  # package reference, the policy, rules, and default correction-prompt paths,
-  # and the environment every agent needs. The base carries no agent identity,
-  # event names, or shim: those are parameters to the helpers, so adding a
-  # fifth agent never edits the base (acceptance criterion 11).
+  # Shared scanner paths for command and plugin adapters.
   tripwireBase = {
     package = scannerPackage;
     executable = lib.getExe scannerPackage;
-    inherit policyFile correctionPromptFile;
-    rulesFile = communicationRulesFile;
-    # Environment the core reads at runtime. The scanner package already bakes
-    # --policy-json and --rules, so TRIPWIRE_POLICY_JSON is passed for shims
-    # that re-derive paths, and the correction-prompt path is overridable.
-    mkEnvExports =
-      {
-        correctionPrompt ? correctionPromptFile,
-      }:
-      ''
-        export TRIPWIRE_SCANNER="''${TRIPWIRE_SCANNER:-${lib.getExe scannerPackage}}"
-        export TRIPWIRE_POLICY_JSON="''${TRIPWIRE_POLICY_JSON:-${policyFile}}"
-        export TRIPWIRE_CORRECTION_PROMPT="''${TRIPWIRE_CORRECTION_PROMPT:-${correctionPrompt}}"
-      '';
+
   };
 
   # Build a command-style hook adapter for an agent whose runtime feeds JSON on
   # stdin to an external command and reads a JSON decision on stdout (Claude
-  # Code and Codex). The wrapper exports the shared environment and runs
+  # Code and Codex). The wrapper runs
   # `scanner.py <agent> <event>`; the agent supplies its own event list.
   #
   # Parameters:
   #   agent:           the core agent name, passed verbatim as the first arg.
   #   runtimeInputs:   extra packages on the wrapper PATH.
-  #   correctionPrompt: an agent-specific correction-prompt path, optional.
   #   hookEventLabels: an optional event-name to label map. When supplied, the
   #                    returned attrset includes a `trustedHash` builder for
   #                    runtimes that hash the hook identity (Codex). The labels
@@ -106,7 +69,6 @@ let
     {
       agent,
       runtimeInputs ? [ ],
-      correctionPrompt ? correctionPromptFile,
       hookEventLabels ? { },
     }:
     let
@@ -119,8 +81,7 @@ let
         ]
         ++ runtimeInputs;
         text = ''
-          ${tripwireBase.mkEnvExports { inherit correctionPrompt; }}
-          exec ${lib.getExe scannerPackage} ${lib.escapeShellArg agent} "$@"
+          timeout --kill-after=1s 5s ${lib.getExe scannerPackage} ${lib.escapeShellArg agent} "$@" || true
         '';
       };
     in
@@ -171,8 +132,8 @@ let
 
   # Build a plugin adapter for an agent whose runtime loads an in-process TS
   # plugin and cannot call an external command (Pi and OpenCode). The helper
-  # renders the shim text, substituting the core path and config tokens, and
-  # writes the agent's correction prompt. The agent registers the returned
+  # renders the shim text, substituting the core path and config tokens.
+  # The agent registers the returned
   # `pluginText` in its own config tree.
   #
   # Parameters:
@@ -181,13 +142,11 @@ let
   #   substitutions:   token to value map applied to the shim text. Pass an
   #                    empty set to copy the shim verbatim (the agent then holds
   #                    paths in a separate config file).
-  #   correctionPrompt: an agent-specific correction-prompt path, optional.
   mkPluginAdapter =
     {
       agent,
       shim,
       substitutions ? { },
-      correctionPrompt ? correctionPromptFile,
     }:
     let
       tokens = lib.attrNames substitutions;
@@ -198,7 +157,7 @@ let
     in
     {
       inherit (tripwireBase) package executable;
-      inherit agent pluginText correctionPrompt;
+      inherit agent pluginText;
     };
 in
 {
@@ -211,10 +170,8 @@ in
       keyed by the core agent name (claude-code, codex, pi, opencode). Each
       platform module sets its own entry from the carriage it writes: the Claude
       Code output style, the Codex developer instructions, and the OpenCode and
-      Pi global instructions. The Communication Rules tripwire reads this to
-      choose the fresh-context reminder, so a platform that stops carrying the
-      house style gets the full rules back instead of a pointer to a copy that
-      is no longer there.
+      Pi global instructions. This records initial guidance delivery separately
+      from advisory checks.
     '';
   };
 
@@ -224,27 +181,6 @@ in
       default = false;
       internal = true;
       description = "Whether the generated Communication Rules source is available for agentic modules.";
-    };
-
-    reminderPrompt = lib.mkOption {
-      type = lib.types.str;
-      default = "";
-      internal = true;
-      description = "Reminder prompt that embeds the Communication Rules skill body.";
-    };
-
-    blockMessage = lib.mkOption {
-      type = lib.types.str;
-      default = "";
-      internal = true;
-      description = "Block message that embeds the Communication Rules skill body.";
-    };
-
-    correctionPrompt = lib.mkOption {
-      type = lib.types.str;
-      default = "";
-      internal = true;
-      description = "Correction prompt that embeds the Communication Rules skill body.";
     };
 
     detectionPolicy = lib.mkOption {
@@ -329,12 +265,7 @@ in
       policyPath = runtimePolicyPath;
       policyFilePath = "${policyFile}";
       inherit mkCommandHookAdapter mkPluginAdapter;
-      inherit (fragment)
-        blockMessage
-        correctionPrompt
-        detectionPolicy
-        reminderPrompt
-        ;
+      inherit (fragment) detectionPolicy;
     };
 
     home.packages = [

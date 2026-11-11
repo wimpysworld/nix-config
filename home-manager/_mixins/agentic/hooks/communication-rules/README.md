@@ -1,12 +1,12 @@
 # Communication Rules tripwire
 
-One shared Python core, thin per-agent shims, and fixtures enforce the [Communication Rules](../../assistants/styles/house-style/house-style.md) across Claude Code, Codex, Pi, and OpenCode. Nix reads the house style and generates the rules file, the core, and the policy once. Every agent runs the same core; only the wiring differs.
+One shared Python core, thin per-agent shims, and fixtures give advisory feedback on the [Communication Rules](../../assistants/styles/house-style/house-style.md) across Claude Code, Codex, Pi, and OpenCode. Nix reads the house style and generates the rules file, the core, and the policy once. Every agent runs the same core. Only the wiring differs.
 
 ## Status: initial PoC
 
 This is an initial PoC. It is tightly integrated with this repository's Nix configuration, module layout, generated fragments, and per-agent hook wiring. It is not a drop-in tool yet.
 
-A later version may become a stand-alone project with a smaller install path and clearer consumer API.
+A later version can become a stand-alone project with a smaller install path and clearer consumer API.
 
 Example prompt for adapting it:
 
@@ -18,8 +18,10 @@ Reference implementation: https://github.com/wimpysworld/nix-config/tree/main/ho
 Goals:
 - Keep one source of truth for the rules text.
 - Generate or install the scanner and agent-specific hooks from my config system.
-- Preserve the two-tier policy: block world-visible writes and posts before they run; treat final assistant prose as best-effort correction for the next turn.
-- Strip fenced code before scanning.
+- Check only newly authored prose with known provenance.
+- Preserve exact technical content, imported artefacts, tool inputs, and results.
+- Keep style feedback advisory and tool authorisation separate.
+- Fail open on checker errors and send at most one compact notice per turn.
 - Add fixtures for each agent hook I use.
 - Keep the implementation self-contained and document every file I need to copy or replace.
 
@@ -28,19 +30,19 @@ First inspect my repository layout, then propose the smallest patch. Do not edit
 
 ## Layout
 
-- `scanner.py` thin CLI entry. It reads `<agent> <event>` and hands off to the core.
-- `core/` the Python package that owns all logic:
-  - `types.py` shared types.
-  - `detection.py` the deterministic checker for banned words, dashes, and policy disclosure, plus the bash scan. It unwraps `bash -c`/`-lc` wrappers, scans `apply_patch` added lines, and strips leading environment assignments, so prose cannot hide behind any of them. It also owns `GH_POST_COMMANDS`, the shared set of external post command names that all four extractors import, so a new post helper is added in one place.
-  - `config.py` config plus the post-detection lists from `policy.json`.
-  - `state.py` the file-backed strike, tier, and fail-closed machine. The only place the B1 (block-then-allow-revise) and B2 (five-strike) limits live. B2 re-issues the full rules on strikes 1 and 4 and sends a short nudge on the strikes between, since the rules are already in context.
-  - `responses.py` per-agent output formatting.
-  - `dispatch.py` the `<agent> <event>` CLI dispatcher.
-  - `extractors/` the four payload extractors (`claude_code`, `codex`, `opencode`, `pi`). The Pi extractor threads the Pi session id into the strike key, so each session resets fresh rather than sharing one global namespace.
-- `pi/extensions/communication-rules/index.ts` and `opencode/plugins/communication-rules.ts` the two thin TypeScript shims. Each spawns the core and applies the returned decision. They hold no policy.
-- `default.nix` two wiring helpers on a shared agent-free base: `mkCommandHookAdapter` (Claude Code, Codex) and `mkPluginAdapter` (Pi, OpenCode).
-- `fragment.nix` reads the canonical house style and generates the raw rules text, the full and brief reminders, the block and correction prompts, plus the post-detection lists. It feeds `policy.json` and the rules file shared by all four agents.
-- `fixtures/` per-agent fixture data; `tests/` the runnable suites. `run-scanner-fixtures.py` runs 336 fixtures across five agent groups: 80 scanner, 78 claude-code, 74 codex, 54 pi, 50 opencode. The fixtures cover banned words, dashes, fenced code, bash wrappers, `apply_patch` bodies, and env-prefix. The claude-code and codex groups run the fresh-context reminder under a reported carriage, a reported absence, and no policy at all. `test_state_strikes.py` (16), `test_state_b2_reissue.py` (4), and `test_state_gaps.py` (9) cover the strike machine, the B2 re-issue trim, and the closed evasion gaps. `pi-shim.test.ts` and `opencode-shim.test.ts` (6 each) exercise the TypeScript boundaries, including both branches of the reminder selection. The flake check `checks.<system>.communication-rules-hooks` runs every Python suite in the build sandbox, so `just check` and CI run them. The TypeScript shim tests are not in that check.
+- `scanner.py` is the CLI entry point for `<agent> <event>` and helper operations.
+- `core/` holds the shared Python logic:
+  - `types.py` defines shared types.
+  - `detection.py` checks selected words and punctuation after protected content is excluded.
+  - `config.py` reads the generated policy.
+  - `state.py` deduplicates notices and stores pending feedback by session and user turn.
+  - `responses.py` formats native feedback without permission decisions.
+  - `dispatch.py` routes CLI requests and contains runtime failures.
+  - `extractors/` identifies authored prose for Claude Code, Codex, OpenCode, and Pi.
+- `pi/extensions/communication-rules/index.ts` and `opencode/plugins/communication-rules.ts` are thin client shims.
+- `default.nix` provides `mkCommandHookAdapter` for Claude Code and Codex, and `mkPluginAdapter` for Pi and OpenCode.
+- `fragment.nix` reads the canonical house style and generates the shared policy and rules assets.
+- `fixtures/` contains scanner and client payloads. `tests/` contains Python and TypeScript suites.
 
 ## Why this exists
 
@@ -67,160 +69,64 @@ Each row is one query asked twice on Opus 4.8 via Claude Code: before is the def
 | Explain REST vs GraphQL      |   1474 |   379 |  1095 |   74.3% |
 | Explain SQL vs NoSQL         |   1604 |   519 |  1085 |   67.6% |
 
-## Design principles
+## Advisory policy
 
-The gate follows these principles.
+The scanner checks selected lexical patterns, not full style conformance. Context decides whether a word is a precise technical term or a writing fault.
 
-**The sensor is deterministic and independent of the model.** Detection cannot ask another LLM to judge, because LLM output is probabilistic. The gate is a stdlib-only Python scanner with exact, mechanically testable checks: the em and en dash characters, and an exact-match subset of the banned words. The thing that controls the model must not be the model. That keeps the gate testable with fixtures and stops a bad model from talking its way past its own checker.
+The canonical rules remain in [the house style](../../assistants/styles/house-style/house-style.md). Native instructions carry the rules into each client. Feedback names the rule and location instead of repeating the complete rules on each tool call.
 
-**Agent tells are alignment signals.** The em dash and other banned tells are the habits agents drift back to when attention drops or context is stretched. Their emergence means the agent is no longer aligned with the Communication Rules. On blockable output, the hook punches the agent in the face, blocks the transgressed output, re-issues the Communication Rules, and asks it to try again.
+### Scope
 
-**One source of truth feeds the model and the gate.** The house style is canonical. Nix carries its complete body into every platform's system prompt, into the generated `communication-rules` skill, and into every full hook re-issue path. The scanner receives the same raw body.
+The scanner checks current assistant prose and positively identified publication fields. For recognised `gh` publication commands, extraction checks literal body and title arguments.
 
-Where the system prompt already holds the rules, a fresh main-thread context gets a one-line pointer to the house style instead of a second copy. Which platforms those are is derived, not assumed, so the pointer can never point at a copy that is not there. A Codex sub-agent still gets the full body, since neither an output style nor `developer_instructions` reaches a sub-agent context.
+The scanner skips:
 
-### Deriving the fresh-context reminder
+- Reads, searches, incoming tool results, and returned subagent artefacts.
+- Local writes, edits, and patches whose prose provenance is unknown.
+- Imported body files, shell source, and program source.
+- Code, commands, URLs, identifiers, quotations, licences, and templates.
 
-Each platform reports its own carriage through the internal Home Manager option `agentic.houseStyle.inSystemPrompt`, an attrset of core agent name to boolean. Every entry is read back from the thing that does the carrying, in the module that writes it:
+Unknown provenance means no style decision. Exact technical and imported content stays unchanged. A literal word match is not authority to rewrite evidence.
 
-| Agent       | Module                    | Derived from                                                                     |
-| ----------- | ------------------------- | -------------------------------------------------------------------------------- |
-| Claude Code | `claude-code/default.nix` | an enabled Claude Code whose pinned `settings.outputStyle` is `house-style`      |
-| Codex       | `codex/default.nix`       | an enabled Codex whose `codexSettings.developer_instructions` is present and set |
-| OpenCode    | `assistants/default.nix`  | an enabled OpenCode whose composed global instructions end with the house style  |
-| Pi          | `assistants/default.nix`  | the composed `.pi/agent/AGENTS.md` ending with the house style                   |
+### Feedback and recovery
 
-`hooks/communication-rules/default.nix` copies the map into `policy.json` as `houseStyleInSystemPrompt`. `core/config.py` loads it and `Config.fresh_context_reminder` picks the text; `core/dispatch.py` calls that for the command-hook agents, and the Pi and OpenCode shims get the same answer from `scanner.py remind-brief <agent>`.
+Style checks never deny a tool, grant permission, change inputs, replace results, block stopping, or start a correction-only turn. Fence and tool authorisation remain separate and authoritative.
 
-Only an explicit `true` selects the brief pointer. A `false` entry, an agent missing from the map, a malformed entry, and an absent policy all select the full rules, so switching a platform's carriage off restores full enforcement with no build failure and no edit to the hook. A Codex `SubagentStart` keeps the full rules under either value, because no sub-agent context inherits an output style or developer instructions.
+A session receives at most one compact notice per user turn. Notices name the rule and location and stay within 320 characters. Final-message feedback waits for the next normal prompt or context request. Feedback does not force another turn.
 
-One gap stays open: a project-level `.claude/settings.local.json` can override `outputStyle` at runtime. Nix never sees that file, so the flag still reports the carriage this configuration writes. A project that overrides the output style therefore gets the brief pointer while its system prompt no longer carries the house style.
+Checker, extraction, decoding, timeout, and state errors fail open. Unknown sessions and unavailable state suppress feedback rather than risk repeated notices. No operator action is needed to recover authorised work from a style-check failure.
 
-**Each agent uses its own best native mechanism.** The design does not force one shared hook model across the four agents. Each agent uses the hook or extension that fits its platform, so output contracts differ per agent (see the table below). Claude Code and Codex run the core directly from a command hook. Pi and OpenCode force an in-process plugin, so each keeps one thin shim that spawns the core and applies its decision.
+The core returns `pass` or `advisory`. Legacy surface labels remain internal compatibility fields, not enforcement tiers or strike budgets.
 
-## The core constraint
+## Client integration
 
-No agent can block streamed prose before the user sees it. By the time a hook fires on a final message, the words are already on screen.
+| Client | Native events | Advisory delivery |
+| --- | --- | --- |
+| Claude Code | `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `Stop` | Context and user notices without permission decisions. Final feedback waits for the next normal prompt. |
+| Codex | `UserPromptSubmit`, `PreToolUse`, `Stop` | Context and user notices without permission decisions. No style `SessionStart` or `SubagentStart` registration. |
+| OpenCode | V2 session `prompt` and `context`, tool `execute.before`, event `session.step.ended` | Prompt resets the turn. Context carries pending feedback. Final text is observed without replacement or resumed work. |
+| Pi | `before_agent_start`, `context`, `tool_call`, `message_end` | Turn reset, pending context, and non-blocking notices. Only current assistant messages are checked. |
 
-So enforcement is best-effort. It is tuned to keep the model aligned over time, not to perfect a single message. We accept that the odd breach is surfaced, and we correct the next reply.
+Command hooks omit permission decisions, including explicit `allow`. OpenCode and Pi catch style-check failures inside their handlers so that failures cannot reject tool calls.
 
-## The two tiers
+Incoming subagent results are outside style checks. Claude Code and Codex do not register style `SubagentStop` hooks. Pi does not inspect `tool_result`.
 
-Enforcement scales to blast radius. The hook surface decides the tier.
+The implementation does not use display transformations to rewrite assistant messages. The displayed answer, retained text, and returned artefacts stay consistent.
 
-### Tier B: world-visible output
+## Validation
 
-This covers writes, edits, patches, Bash command bodies, and post bodies (gh and MCP). These are intercepted before they run, so a breach can still be stopped.
+Validate advisory behaviour with synthetic inputs and isolated state. Do not activate configurations, contact providers, or publish test messages.
 
-The policy splits by blast radius into two sub-tiers. B1 blocks once then allows-and-corrects; B2 blocks then yields:
+The Python gate is `checks.<system>.communication-rules-hooks`, which CI and `just check` run. Its suites include:
 
-- **B1 (local): writes, edits, patches, and Bash command bodies.** Cheap to retract because they land on disk, not committed. Keyed per tool-call content. One block on strike 1 re-issues the rules; from strike 2 onward the verb is `allow-revise`: the write lands and the response asks the model to revise the named file in place. The strike counter re-emits that request on every later breach to the same target, and a clean scan resets the counter so a fresh breach gets a fresh block.
-- **B2 (external): gh, gh-api-safe, gh-review-reply, MCP posts, and gh posts run through Bash.** Irretractable the instant they yield. Five strikes, keyed on a stable identity (session and tool, no body) so reworded retries of the same post draw down one budget. Strikes 1 to 4 block and re-issue; strike 5 yields with an operator-visible notice that names the tool and target (`Rules breach posted: <target>`).
+- `run-scanner-fixtures.py`.
+- `test_state_strikes.py`, `test_state_b2_reissue.py`, and `test_state_gaps.py`.
+- `test_pi_native_subagents.py` and `test_pi_mcp_adapter.py`.
 
-We block once, then either correct or yield. Blocking automation forever is friction users will not accept. The local path blocks once, then allows each later breach to land and asks for an in-place revision of the named file. The external path tries four times before the irreversible yield. The cost is that imperfect local files are sometimes surfaced and corrected after they land.
+The strike-related filenames are historical. Their tests cover advisory deduplication, pending feedback, and fail-open behaviour, not permission retries.
 
-The canonical [Communication Rules](../../assistants/styles/house-style/house-style.md) carry a short Enforcement note that states this block-then-revise and block-then-yield behaviour, so the model sees it in every reminder and block message.
+`pi-shim.test.ts` and `opencode-shim.test.ts` check client boundaries, unchanged content, and injected failures.
 
-A Bash call is external when its first token is `gh`, `gh-api-safe`, or `gh-review-reply` and it carries a post signal (a body-bearing flag or a POST/PATCH/PUT method); read-only gh calls stay local.
+Required regressions cover reads, exact imported content, known publication fields, interleaved reads, malformed responses, unavailable state, scanner exceptions, and timeouts. None must deny authorised work, replace results, override permissions, or start another turn.
 
-### Tier A: user-facing and agent-facing prose
-
-This covers the final assistant message and subagent or agent-to-agent prose. These cannot be blocked before the reader sees them, so they are never blocked and never re-rolled.
-
-On a flagged final message:
-
-- The model gets a silent re-issue of the rules so it self-corrects on the next turn. The user does not see this.
-- The user sees a short notice that a breach was seen and acted on.
-
-There is no strike loop here. We never block, so each offending turn gets one re-issue plus one notice. We tolerate the odd miss.
-
-## What is inspected
-
-The gate scans only prose the agent emits as its own words:
-
-- File writes.
-- Edits and patch additions.
-- External post bodies (gh, gh-api-safe, gh-review-reply, post-capable MCP).
-- Agent-to-agent and subagent prose.
-- Final replies.
-
-Fenced code blocks are stripped before scanning, so code is never flagged. Quoted dashes or banned words that remain in prose are blocked by design; if the agent writes them as its own text, it owns them.
-
-The gate does not scan:
-
-- Incoming tool output. It may quote external text the agent does not own, so blocking on it would punish the agent for words it did not write.
-- Arbitrary Bash arguments.
-- Read-only gh calls. A query publishes no words, so there is nothing to check.
-- Binary content.
-- Build logs.
-- External text the agent is reading, not posting as its own.
-
-Bash scanning stays narrow on purpose. It covers obvious prose side effects and recognised gh, gh-api-safe, and gh-review-reply post bodies, not a full shell parse. A gh call is scanned only when it names a prose sink: a body flag, a body-file flag, `--input`, or an API field whose key carries prose. A read such as `gh api graphql -f query='{repository(...){...}}'` names none of those, so it is out of scope and runs untouched. A graphql mutation keeps its body inside the document, where the field reader cannot pull it out, so it stays a fail-closed block. It unwraps `bash -c`/`-lc` wrappers and skips leading environment assignments (`FOO=bar gh ...`), so a wrapped or env-prefixed command cannot slip prose past the scan. A Bash post body whose outgoing text cannot be read fails closed, the same as any other uninspectable write, edit, or post.
-
-## Per-agent validation matrix
-
-Each platform uses its native hook surface. Validate the same behaviours per agent: side-effect checks run before the action, final-prose checks never block, and pending re-issue happens once.
-
-Tier B uses the same retry split for every agent:
-
-- B1 local output (`write`, `edit`, `patch`, Bash) blocks once on strike 1, then from strike 2 onward returns `allow-revise`: the write lands and the response carries an in-place revision notice naming the file. A Bash prose write names its redirect or heredoc sink; an `apply_patch` names the patched file. The notice degrades to a generic form only when no path resolves (a dynamic sink).
-- B2 external output (`gh`, `gh-api-safe`, `gh-review-reply`, post-capable MCP tools, gh posts through Bash) blocks four times, then yields on the fifth strike with `Rules breach posted: <target>`.
-- B1 keys use a stable local target when available (`session + tool + path`, plus `turn` on Codex). The path is the file path for `write`/`edit`, the patched file for `apply_patch` (read from the patch body), and the prose sink for a Bash write. Only a genuinely pathless call (a dynamic sink) falls back to `session + tool`. B2 keys use stable `session + tool` identity, plus `turn` on Codex.
-
-| Agent       | Hooks used                                                                                                                            | Detection                                                                                                                                                                                                                                                                     | User notification                                                                                                                                                                                                                                                   | Rules re-issued                                                                                                                                                                                                                                                                                                                                                                            |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Claude Code | `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `Stop`, `SubagentStop`.                                                             | `PreToolUse` scans writes, edits, patches, Bash prose side effects, MCP post bodies, and gh post bodies. `Stop` scans the last main-thread assistant prose and `SubagentStop` the last sub-agent prose, split on the transcript `isSidechain` flag. Extraction failure on Tier B fails closed.                                                      | Tier B deny returns `permissionDecisionReason` to the model. Tier B yield returns an allow reason visible to the user. Tier A breach emits one `systemMessage`: `Communication Rules breach seen, correcting next reply.` In agent-teams mode `SubagentStop` also warns when a worker transcript under a `subagents` directory holds no `SendMessage` call, because the worker's report never reached the orchestrator.                                           | `SessionStart` injects the brief reminder while the pinned house-style output style carries the rules, and the full rules when it does not. Tier B deny re-issues the full block message. Tier A sets a pending flag on `Stop` only; the next `UserPromptSubmit` injects the correction prompt as `additionalContext`, then clears the flag. `SubagentStop` carries the parent session id, so it never sets or clears the flag.                                                                                                                                       |
-| Codex       | `SessionStart`, `SubagentStart`, `UserPromptSubmit`, `PreToolUse`, `Stop`, `SubagentStop`.                                            | `PreToolUse` scans `apply_patch`, `Edit`, `Write`, `Bash`, post-capable MCP tools, gh tools, and gh posts through Bash. `Stop` and `SubagentStop` scan assistant and subagent prose. Extraction failure on Tier B fails closed.                                               | Tier B deny uses `permissionDecisionReason`; Codex `additionalContext` is not used on `PreToolUse`. Tier B yield uses allow reason. Tier A breach emits `systemMessage`: `Communication Rules breach seen, correcting next reply.`                                  | `SessionStart` injects the brief reminder while `developer_instructions` carries the rules, and the full rules when it does not; `SubagentStart` injects the full rules either way, which no sub-agent otherwise receives. Tier B deny re-issues the full block message. Tier A sets a pending flag on `Stop` only; the next `UserPromptSubmit` injects the correction prompt as `additionalContext`, then clears the flag. `SubagentStop` carries the parent session id, so it never sets or clears the flag. Nix pre-seeds hook `trusted_hash` state in `config.toml`, so generated hooks are trusted without a runtime prompt. |
-| OpenCode    | `experimental.chat.system.transform`, `tool.execute.before`, `experimental.text.complete`, `event` for completed subagent tool parts. | `tool.execute.before` scans writes, edits, patches, Bash prose side effects, post bodies, and gh post bodies. `experimental.text.complete` scans final prose. `event` scans completed `task`, `agent`, or `subagent` output. Shim or core errors fail closed under the strike cap. | Tier B blocks by throwing the block message. Tier B yield shows a toast and logs a warning fallback. Tier A breach shows a toast: `Communication Rules breach seen, correcting next reply.`                                                                         | `experimental.chat.system.transform` injects a reminder once per session key: the brief one while the global instructions carry the rules, which reach sub-agent sessions too, and the full rules when they do not. Tier B throw re-issues the full block message. Tier A sets a pending flag; the next system transform appends the correction prompt, then clears the flag.                                                                                                 |
-| Pi          | `context`, `tool_call`, `message_end`, `tool_result`.                                                                                 | `tool_call` scans writes, edits, patches, Bash prose side effects, post bodies, and gh post bodies. `message_end` scans final prose after skipping intermediate `toolUse` turns. `tool_result` scans subagent output as Tier A facing, because the report is a deliverable. Extraction failure on Tier B fails closed.              | Tier B blocks by returning `{ block = true, reason = ... }`. Tier B yield uses `ctx.ui.notify` when UI exists. Tier A breach notifies: `Communication Rules breach seen, correcting next reply.` `tool_result` breaches notify the same way, and the subagent report lands unchanged. | `context` appends a reminder as a hidden custom message once per session: the brief one while the global instructions carry the rules, which reach sub-agent sessions too, and the full rules when they do not. Tier B block re-issues the full block message. Tier A sets a pending flag; the next `context` hook appends a hidden `display:false` correction message, then clears the flag.                                                                                    |
-
-Full Communication Rules injection on a fresh context covers a Codex `SubagentStart` and any platform that reports no house style in its system prompt. Every other fresh context receives the one-line pointer. Retry and final-prose paths use the correction prompt instead, so the model is corrected without repeated prompt injection.
-
-The explicit verbatim disclosure override is part of the scanner policy. A user request to view, repeat, disclose, print, or test the Communication Rules passes when the output is the canonical rules text.
-
-### Validation status
-
-Tested through 2026-06-16. Claude Code and Codex were tested live. The Claude Code Tier A user notice was re-confirmed live on 2026-06-15 after the wire-format fix. OpenCode now has fixture, installed-plugin, live local tool-call, headless final-text, and GitHub post-block coverage. Pi now has live chat, local tool-call, GitHub post-block, and subagent-output coverage. OpenCode TUI toast rendering was not directly observed. Pi live testing confirmed the Tier A notice and next-turn re-issue in chat.
-
-| Behaviour                                    | Claude Code                     | Codex                                           | OpenCode                                        | Pi                                                     |
-| -------------------------------------------- | ------------------------------- | ----------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------ |
-| Hook install and trust                       | Pass (live)                     | Pass (live)                                     | Pass (live: Home Manager activation and reload) | Pass (live: hooks active)                              |
-| Fresh-context rules reminder                 | Pass (live: `SessionStart`)     | Pass (live: `SessionStart` and `SubagentStart`) | Pass (installed plugin)                         | Pass (fixtures)                                        |
-| Quiet prompt hook without pending re-issue   | Pass (live)                     | Pass (live)                                     | Pass (installed plugin)                         | Pass (fixtures)                                        |
-| Tier B clean output                          | Pass (live)                     | Pass (live)                                     | Pass (live: patch and Bash redirect)            | Pass (live: write and Bash)                            |
-| Tier B detection and block                   | Pass (live)                     | Pass (live)                                     | Pass (live: patch, Bash redirect, gh post)      | Pass (live: write, Bash, gh post)                      |
-| Tier B B1 block-then-allow-revise, B2 strike-then-yield | Pass (live: B1 cycle, B2 block) | Pass (live: B1 cycle, B2 block)                 | Pass (live: B2 block; installed plugin: B1)     | Pass (live: B1 cycle, B2 block; fixtures: B2 yield)    |
-| Tier B block notice to user                  | Pass (live)                     | Pass (live)                                     | Partial (live: Bash reason absent; fixtures)    | Pass (live: block reason returned)                     |
-| Tier A detection and pending flag            | Pass (live)                     | Pass (live)                                     | Pass (installed plugin)                         | Pass (live)                                            |
-| Tier A next-turn re-issue                    | Pass (live)                     | Pass (live)                                     | Pass (installed plugin)                         | Pass (live)                                            |
-| Tier A pending flag clear                    | Pass (live)                     | Pass (live)                                     | Pass (installed plugin)                         | Pass (live)                                            |
-| Tier A user notice                           | Pass (live)                     | Pass (live)                                     | Pass (live: final-text append and log fallback) | Pass (live)                                            |
-| Canonical rules disclosure                   | Pass (live)                     | Pass (live)                                     | Pass (installed plugin)                         | Pass (live: canonical write allowed)                   |
-| Subagent prose follows final-prose behaviour | Pass (live: `SubagentStop`)     | Pass (live: `SubagentStop`)                     | Pass (installed plugin)                         | Partial (live: block path; one encoded prompt escaped) |
-
-Notes:
-
-- The Claude Code Tier A user notice now shows. The `Stop` hook emits a top-level `systemMessage`, and Claude Code displays it. The earlier failure was the command hook emitting the raw core decision instead of the agent wire format; the wire-format fix resolved it, confirmed live on 2026-06-15.
-- B2 external block is live-verified on Claude Code: a real gh issue create was denied on strike 1 and never posted. The strike-5 yield stays fixture-only on every agent, since a live yield would post to GitHub irreversibly.
-- B2 external block is live-verified on Codex: `gh repo view owner/private-test-repo --json nameWithOwner,isPrivate` passed, then `gh issue create` with a rule-breaking body was blocked and no issue was created.
-- Codex live validation covered Tier B clean and block paths, the B1 block-then-allow-revise cycle, and a B2 external block. B2 external yield stays fixture-only for the same irreversible-post reason.
-- OpenCode live validation covered 50 scanner fixtures, 15 adapter fixtures, 8 plugin fixtures, clean `apply_patch` with a rule-breaking removed line, blocked `apply_patch` with a rule-breaking added line, clean Bash redirect write, blocked Bash rule-breaking redirect, headless Tier A final-text notice append with log fallback, and a blocked private `gh issue create`; the issue list was unchanged.
-- Pi live validation covered Tier A chat detection, visible notice, next-turn correction re-issue, and pending flag clear. It also covered clean local writes, clean Bash prose output, local write blocks, Bash prose blocks, the B1 local block-then-allow-revise cycle, canonical rules write allowance, and a real private `gh issue create` attempt; the post body was blocked and no issue was created.
-- Pi subagent validation covered the old `tool_result` block behaviour for direct rule-breaking subagent output, including long-dash output. The surface is now Tier A facing (a breach notifies and the report lands), because a blocked result destroyed the subagent's report. One encoded filler-word prompt escaped through a subagent result, so subagent prose coverage is marked partial until that bypass is fixed or explained.
-- OpenCode TUI toast rendering remains unobserved; fixtures verify toast and log calls only. Bash rule-breaking redirect blocked the side effect, but this UI did not show the block reason for that probe.
-- OpenCode B2 yield stays fixture-only because a live yield would post to GitHub irreversibly.
-- The Claude Code B1 cycle was driven with several different bodies to one path: a block on strike 1, then allow-revise on each later breach. This also confirms the stable strike key, since the changed content still drew down one budget.
-- Codex `CODEX_HOME` is set; hooks wired once, including one `UserPromptSubmit`; trust entries enabled
-- Pi per-session strike isolation was added and live-validated on 2026-06-16. A fresh Pi session resets the strike counter, so strike 1 blocks again. Earlier Pi sessions shared one global strike namespace, which let a repeated breach skip the strike-1 block.
-- The fresh-context reminder was cut to the one-line pointer on a main thread after the house style landed in each platform's system prompt, then wired to each platform's reported carriage so it reverts to the full body when that carriage goes. The live rows above predate both changes: they confirm a reminder arrives, and the fixture and shim suites confirm which text. Codex `SubagentStart` always carries the full body.
-- The bash-wrapper, `apply_patch` body, and env-prefix evasion gaps were closed and live-validated on Codex on 2026-06-16. A wrapped or env-prefixed gh post and a banned word inside an `apply_patch` body are now caught; the full canonical rules still write cleanly through `apply_patch` under the disclosure override.
-
-## Fail-closed and disclosure
-
-Tier B stays fail-closed: if extraction fails on a world-output surface, the call is denied under the same strike cap rather than letting unscanned prose through. A write, edit, or post whose outgoing prose cannot be read is treated as a breach, not waved through.
-
-There is no agent bypass. No flag, env var, allow rule, or prompt escape lets an agent skip the gate. The operator can still recover from a false positive: disable hooks through the operator-owned mechanism, or rebuild without this mixin. That recovery sits outside the inspected agent action, so it is operator control, not an agent bypass.
-
-The re-issue hides the trigger. It asks for full Communication Rules compliance and never names the specific dash or word that fired. If the model learned which single trigger it tripped, it could treat that as a cheat code, avoid that one thing, and ignore the rest of the rules.
-
-The scanner allows the rules themselves through, so a request to view or quote the Communication Rules is not flagged as a breach.
+Earlier live checks tested the retired blocking policy. They do not establish live validation of the advisory policy.

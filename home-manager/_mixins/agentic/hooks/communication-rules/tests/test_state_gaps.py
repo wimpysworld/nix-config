@@ -1,350 +1,270 @@
 #!/usr/bin/env python3
-"""Cross-agent gap tests for the core state machine (proposal tests 7, 8, 9).
+"""Check read isolation, preserved material and fail-open boundaries.
 
-These close three named coverage gaps the per-adapter fixtures miss:
-
-- gh-via-Bash B2 for Pi: a ``gh pr comment`` Bash tool_call walks the
-  five-strike external cap with the gh notice. Pi only had a single-shot case.
-- Tier A extraction-failure for OpenCode (final and subagent): an unresolvable
-  facing surface must re-issue, not hard-block.
-- Per-agent broken-scanner fail-closed on a gating surface (the 0b080fb8 fix,
-  reimplemented in ``core/state.py``): a broken scanner returns block or yield,
-  never pass.
-
-Each gating step spawns ``scanner.py <agent> <event>`` fresh with a temp strike
-dir via env, mirroring the multi-process pattern in
-``run-scanner-fixtures.py``. The OpenCode facing extraction-failure case now
-drives the real OpenCode extractor through the dispatcher CLI end to end
-(Phase 7.1 landed the extractor), replacing the earlier state-level assertion.
-
-The breach body must contain a hard-gate banned term to trip detection. The
-source file holds no literal banned term (that would block its own write under
-the tripwire); it reads the canonical term from the loaded policy at runtime.
-
-Stdlib only. British English in comments.
-
-Gate: ``checks.<system>.communication-rules-hooks``, defined in
-``lib/tests/communication-rules-hooks.nix``, runs this file.
+Gate: checks.<system>.communication-rules-hooks runs this suite through
+lib/tests/communication-rules-hooks.nix.
 """
 
 from __future__ import annotations
 
+import fcntl
 import json
-import os
-import subprocess
-import sys
-import tempfile
-from pathlib import Path
+import unittest
+from unittest.mock import patch
 
-from skill_source import materialised_rules_path
-
-
-ROOT = Path(__file__).resolve().parents[1]
-SCANNER = ROOT / "scanner.py"
-RULES = materialised_rules_path()
-
-sys.path.insert(0, str(ROOT))
-from core.config import DEFAULT_POLICY  # noqa: E402
-
-# A canonical hard-gate banned term, read from the policy so this file holds no
-# literal banned word. Used in the breach body so detection trips.
-BANNED_TERM = DEFAULT_POLICY["hardGateBannedTerms"][0]
-
-# A gh post in the Pi tool_call shape, with a banned word in the body. Pi's bash
-# tool is "bash" with the command under "input", and its event arrives on the
-# tool_call handler. The first token is gh and the body flag makes it external
-# (B2), so it walks the five-strike cap. The real Pi extractor (Phase 6) routes
-# this, where the Phase 3 stub keyed on PreToolUse.
-PI_GH_POST_EVENT = {
-    "session_id": "gap-session",
-    "type": "tool_call",
-    "toolName": "bash",
-    "toolCallId": "call-gh-post",
-    "input": {"command": f'gh pr comment 1 --body "Please {BANNED_TERM} this"'},
-}
-
-# A clean local Bash command. With a broken scanner (no readable rules) it cannot
-# be decided, so the gating surface must fail closed rather than pass.
-CLEAN_LOCAL_EVENT = {
-    "session_id": "gap-session",
-    "tool_name": "Bash",
-    "tool_input": {"command": "echo hello"},
-}
-
-# The same clean local Bash command in the Pi tool_call shape. Pi's gating
-# surface is the tool_call handler, not PreToolUse.
-PI_CLEAN_LOCAL_EVENT = {
-    "session_id": "gap-session",
-    "type": "tool_call",
-    "toolName": "bash",
-    "toolCallId": "call-clean",
-    "input": {"command": "echo hello"},
-}
-
-# The same clean local Bash command in the OpenCode tool.execute.before shape.
-# OpenCode's gating surface is the tool.execute.before event with the command
-# under "args".
-OPENCODE_CLEAN_LOCAL_EVENT = {
-    "session_id": "gap-session",
-    "event": "tool.execute.before",
-    "tool": {"name": "bash"},
-    "args": {"command": "echo hello"},
-}
-
-# The B2 external yield notice the state machine bakes. The Pi extractor has no
-# gh-subcommand target, so the notice falls back to the Pi tool name ("bash"),
-# mirroring the old Pi extension's externalTarget.
-B2_GH_NOTICE = "Rules breach posted: bash"
-
-# Per-agent strike-dir env names, from core/state.py:_strike_dir. Pointing every
-# name at the same temp dir keeps the spawn agent-agnostic.
-STRIKE_DIR_ENVS = (
-    "TRIPWIRE_CLAUDE_CODE_STRIKE_DIR",
-    "TRIPWIRE_RETRY_DIR",
-    "TRIPWIRE_PI_STRIKE_DIR",
-    "TRIPWIRE_OPENCODE_STRIKE_DIR",
-    "TRIPWIRE_STRIKE_DIR",
+from advisory_support import (
+    AGENTS,
+    BREACH,
+    FINAL_EVENTS,
+    ROOT,
+    TOOL_EVENTS,
+    AdvisoryCase,
+    assert_no_permission,
+    assert_record,
+    cli,
+    dispatcher,
+    final_payload,
+    invoke,
+    publication,
+    tool_payload,
+    wire,
 )
+from core import state
+from core.types import ExtractorRecord
 
 
-def run_dispatch(
-    agent: str,
-    event: str,
-    payload: dict,
-    strike_dir: str,
-    rules: str | None = None,
-) -> dict:
-    """Spawn ``scanner.py <agent> <event>`` fresh and return its decision dict.
-
-    ``rules`` defaults to the real rules file. Pass an unreadable path to model a
-    broken scanner (``load_config`` returns ``None``, the fail-closed case).
-    """
-    env = dict(os.environ)
-    for name in STRIKE_DIR_ENVS:
-        env[name] = strike_dir
-    args = [sys.executable, str(SCANNER), agent, event]
-    if rules is not None:
-        args += ["--rules", rules]
-    completed = subprocess.run(
-        args,
-        input=json.dumps(payload),
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-        env=env,
-    )
-    if completed.returncode != 0:
-        raise AssertionError(
-            f"{agent} {event}: non-zero exit {completed.returncode}\n"
-            f"stderr: {completed.stderr.strip()}"
-        )
-    try:
-        return json.loads(completed.stdout.strip())
-    except json.JSONDecodeError as exc:
-        raise AssertionError(
-            f"{agent} {event}: bad decision JSON {completed.stdout!r}"
-        ) from exc
-
-
-def expect(label: str, result: dict, **fields: object) -> None:
-    """Assert each named field of the decision equals the expected value."""
-    for key, want in fields.items():
-        got = result.get(key)
-        if got != want:
-            raise AssertionError(
-                f"{label}: expected {key}={want!r}, got {got!r} (full: {result})"
+class ReadIsolation(AdvisoryCase):
+    def test_read_method_overrides_a_publication_tool_name(self):
+        for agent in AGENTS:
+            payload = publication(agent)
+            arguments = payload.get(
+                "tool_input", payload.get("input", payload.get("args"))
             )
+            arguments["method"] = "get"
+            with patch.object(dispatcher, "_run_scan") as scanner:
+                assert_record(self, invoke(agent, TOOL_EVENTS[agent], payload), "pass")
+                scanner.assert_not_called()
 
-
-def test_pi_gh_via_bash_b2_cap() -> int:
-    """Proposal test 7: a Pi gh-via-Bash post walks the B2 five-strike cap.
-
-    Four blocks at surface B2, then a yield on the fifth carrying the gh notice
-    and level error. (Pi had only a single-shot case before.)
-
-    Drives the real Pi extractor via its ``tool_call`` handler and Pi event
-    shape. The Phase 3 version drove ``PreToolUse`` against the event-agnostic
-    stub; the real extractor routes ``tool_call``, so the event moves to the Pi
-    shape. The cap, surface, level, and gh notice are unchanged in substance.
-    """
-    with tempfile.TemporaryDirectory(prefix="tripwire-gap-pi-b2-") as strike_dir:
-        for strike in range(1, 5):
-            decision = run_dispatch(
-                "pi", "tool_call", PI_GH_POST_EVENT, strike_dir, rules=str(RULES)
-            )
-            expect(
-                f"pi gh-via-bash strike {strike}",
-                decision,
-                decision="block",
-                surface="B2",
-                level="error",
-            )
-        decision = run_dispatch(
-            "pi", "tool_call", PI_GH_POST_EVENT, strike_dir, rules=str(RULES)
+    def test_read_search_comment_review_and_identifier_fields_never_reach_scanner(self):
+        names = (
+            "mcp__github__get_pull_request_review",
+            "mcp__github__list_review_comments",
+            "mcp__github__read_comment",
+            "mcp__github__search_issues",
+            "mcp__linear__get_issue",
         )
-        expect(
-            "pi gh-via-bash yield",
-            decision,
-            decision="yield",
-            surface="B2",
-            level="error",
-            notice=B2_GH_NOTICE,
-        )
-    return 1
-
-
-def test_opencode_extraction_failure_reissues() -> int:
-    """Proposal test 8: an OpenCode facing extraction-failure re-issues, not blocks.
-
-    Now driven END TO END through the real OpenCode extractor and the dispatcher
-    CLI (Phase 7.1). A recognised display surface (``message.final`` /
-    ``subagent.final``) whose body cannot be resolved is a Tier A extraction
-    failure: the extractor tags it ``unresolved`` on the facing event, and the
-    state machine fails OPEN to re-issue. So the decision is a Tier A facing
-    block (it sets the pending-reissue flag and carries the facing notice for the
-    next turn), never a hard tool block or yield.
-
-    The contract:
-
-    - final extraction failure -> decision block, surface tierA, with a facing
-      notice and the pending-reissue flag written.
-    - subagent extraction failure -> same.
-
-    A reachable hard block (surface B1/B2) or a yield would be a regression; the
-    test asserts the facing surface and that the flag was set so the next turn
-    re-issues.
-    """
-    checks = 0
-    # An empty display payload: the surface is named but the body cannot be
-    # resolved, so the extractor reports a Tier A extraction failure.
-    events = {
-        "final": ("message.final", "final"),
-        "subagent": ("subagent.final", "subagent"),
-    }
-    for label, (event, surface_value) in events.items():
-        with tempfile.TemporaryDirectory(prefix=f"tripwire-gap-oc-{label}-") as temp_dir:
-            reissue_dir = str(Path(temp_dir) / "reissue")
-            env_name = "TRIPWIRE_OPENCODE_REISSUE_DIR"
-            previous = os.environ.get(env_name)
-            os.environ[env_name] = reissue_dir
-            try:
-                session = f"oc-{label}"
-                payload = {"event": event, "surface": surface_value, "session_id": session}
-                # Use a temp strike dir; the facing path never touches it, but
-                # run_dispatch points every strike env at one dir for hygiene.
-                with tempfile.TemporaryDirectory(prefix=f"tripwire-gap-oc-{label}-strike-") as strike_dir:
-                    decision = run_dispatch(
-                        "opencode", event, payload, strike_dir, rules=str(RULES)
+        for agent in AGENTS:
+            for name in names:
+                with self.subTest(agent=agent, tool=name):
+                    payload = tool_payload(
+                        agent,
+                        name,
+                        {"id": "review-42", "text": BREACH, "filter": BREACH},
                     )
-                # A Tier A extraction failure must re-issue, never hard block or
-                # yield. The decision is a Tier A facing block carrying the notice.
-                if decision.get("decision") == "yield" or (
-                    decision.get("decision") == "block" and decision.get("surface") != "tierA"
+                    with patch.object(dispatcher, "_run_scan") as scanner:
+                        assert_record(
+                            self, invoke(agent, TOOL_EVENTS[agent], payload), "pass"
+                        )
+                        scanner.assert_not_called()
+
+    def test_observed_shell_reads_never_reach_scanner(self):
+        commands = (
+            "gh pr view 42 -t '{{.body}}'",
+            "gh pr view 42 --template '{{.body}}'",
+            "gh-api-safe graphql -f query='query { search(query: \"mutation createIssue\", type: ISSUE) { issueCount } }'",
+            "rg '" + "del" + "ve" + "' README.md",
+            "python -c 'print(\"read comment\")'",
+        )
+        for agent in AGENTS:
+            for command in commands:
+                with self.subTest(agent=agent, command=command):
+                    payload = tool_payload(
+                        agent,
+                        "Bash" if agent in ("claude-code", "codex") else "bash",
+                        {"command": command},
+                    )
+                    with patch.object(dispatcher, "_run_scan") as scanner:
+                        assert_record(
+                            self, invoke(agent, TOOL_EVENTS[agent], payload), "pass"
+                        )
+                        scanner.assert_not_called()
+
+    def test_codex_nested_code_mode_read_calls_never_reach_scanner(self):
+        sources = (
+            "text(await tools.mcp__github__get_pull_request_review({id: 'review-42'}));",
+            "text(await tools.mcp__github__list_review_comments({id: 'review-42', filter: '"
+            + BREACH
+            + "'}));",
+            "text(await tools.exec_command({cmd: \"gh pr view 42 -t '{{.body}}'\"}));",
+        )
+        for source in sources:
+            with self.subTest(source=source):
+                payload = tool_payload("codex", "functions.exec", source)
+                with patch.object(dispatcher, "_run_scan") as scanner:
+                    assert_record(self, invoke("codex", "PreToolUse", payload), "pass")
+                    scanner.assert_not_called()
+
+    def test_unknown_local_files_and_imported_assets_never_reach_scanner(self):
+        for agent in AGENTS:
+            for filename in ("notes.md", "LICENSE", "source.py", "template.md"):
+                for name, arguments in (
+                    ("Write", {"file_path": filename, "content": BREACH}),
+                    ("Edit", {"file_path": filename, "new_string": BREACH}),
+                    (
+                        "apply_patch",
+                        {
+                            "patch": "*** Begin Patch\n*** Add File: "
+                            + filename
+                            + "\n+"
+                            + BREACH
+                            + "\n*** End Patch"
+                        },
+                    ),
                 ):
-                    raise AssertionError(
-                        f"opencode {label} facing: extraction failure must not "
-                        f"hard-block, got {decision.get('decision')}/{decision.get('surface')} "
-                        f"(full: {decision})"
-                    )
-                expect(
-                    f"opencode {label} facing extraction failure",
-                    decision,
-                    decision="block",
-                    surface="tierA",
-                    level="warning",
+                    with self.subTest(agent=agent, file=filename, tool=name):
+                        if agent in ("pi", "opencode"):
+                            name = name.lower()
+                        payload = tool_payload(agent, name, arguments)
+                        with patch.object(dispatcher, "_run_scan") as scanner:
+                            assert_record(
+                                self, invoke(agent, TOOL_EVENTS[agent], payload), "pass"
+                            )
+                            scanner.assert_not_called()
+
+    def test_incoming_tool_results_and_non_assistant_messages_are_not_scanned(self):
+        for agent in AGENTS:
+            events = ("PostToolUse", "tool_result", "subagent.final")
+            for event in events:
+                payload = tool_payload(agent, "Agent", {"text": BREACH})
+                payload.update(
+                    content=[{"type": "text", "text": BREACH}], toolName="Agent"
                 )
-                if not decision.get("notice"):
-                    raise AssertionError(
-                        f"opencode {label} facing: expected a facing re-issue notice, got empty"
+                with self.subTest(agent=agent, event=event):
+                    with patch.object(dispatcher, "_run_scan") as scanner:
+                        assert_record(self, invoke(agent, event, payload), "pass")
+                        scanner.assert_not_called()
+        for agent in ("pi", "opencode"):
+            for role in ("user", "tool", "system"):
+                payload = final_payload(agent)
+                payload["message"]["role"] = role
+                with patch.object(dispatcher, "_run_scan") as scanner:
+                    assert_record(
+                        self, invoke(agent, FINAL_EVENTS[agent], payload), "pass"
                     )
-                checks += 1
+                    scanner.assert_not_called()
 
-                # The facing breach wrote the pending-reissue flag, so the next
-                # turn would re-issue. Verify the flag landed on disk.
-                flags = list(Path(reissue_dir).glob("*.flag"))
-                if not flags:
-                    raise AssertionError(
-                        f"opencode {label} facing: no pending-reissue flag written under {reissue_dir}"
+
+class PreservedContent(AdvisoryCase):
+    def test_preserved_content_does_not_create_advice_or_change_text(self):
+        term = "del" + "ve"
+        texts = (
+            "> " + BREACH,
+            '"' + BREACH + '"',
+            "`" + term + "`",
+            "https://example.org/" + term,
+            "The identifier is `" + term + "_value`.",
+            term + "_value",
+            "const " + term + " = 1",
+            "Copyright 2026 Example\n" + BREACH,
+            "SPDX-License-Identifier: MIT\n" + BREACH,
+            "\n\n```python\n" + term + " = 1\n```",
+        )
+        for agent in AGENTS:
+            for index, text in enumerate(texts):
+                with self.subTest(agent=agent, evidence=index):
+                    payload = final_payload(
+                        agent, text, session=f"evidence-{agent}-{index}"
                     )
-                checks += 1
-            finally:
-                if previous is None:
-                    os.environ.pop(env_name, None)
-                else:
-                    os.environ[env_name] = previous
+                    assert_record(
+                        self, invoke(agent, FINAL_EVENTS[agent], payload), "pass"
+                    )
 
-    return checks
-
-
-# Command-hook agents emit the agent's wire JSON, not the raw core Decision. Pi
-# and OpenCode emit the raw Decision their in-process shim reads.
-_COMMAND_HOOK_AGENTS = {"claude-code", "codex"}
-
-
-def _is_gating_block_or_yield(agent: str, output: dict) -> bool:
-    """True when the dispatch output means a gating block or yield, not a pass.
-
-    For Pi and OpenCode the output is the raw Decision, so the verb is read
-    directly. For the command-hook agents the output is the wire JSON, where a
-    gating block or yield is a PreToolUse ``permissionDecision`` of ``deny`` or
-    ``allow``; an empty output (a pass) is not.
-    """
-    if agent not in _COMMAND_HOOK_AGENTS:
-        return output.get("decision") in {"block", "yield"}
-    specific = output.get("hookSpecificOutput")
-    if not isinstance(specific, dict):
-        return False
-    return specific.get("permissionDecision") in {"deny", "allow"}
+    def test_publication_body_is_advisory_without_changing_authority_or_payload(self):
+        for agent in AGENTS:
+            payload = publication(agent, session=f"security-{agent}")
+            payload["permission_mode"] = "never"
+            decision = invoke(agent, TOOL_EVENTS[agent], payload)
+            assert_record(self, decision, "advisory")
+            assert_no_permission(self, wire(agent, TOOL_EVENTS[agent], decision))
+            self.assertEqual(payload["permission_mode"], "never")
 
 
-def test_per_agent_fail_closed_on_gating_surface() -> int:
-    """Proposal test 9: a broken scanner on a gating surface fails closed.
+class FailOpen(AdvisoryCase):
+    def test_scanner_exceptions_do_not_reject_tools(self):
+        for agent in AGENTS:
+            with self.subTest(agent=agent):
+                with patch.object(
+                    dispatcher,
+                    "_run_scan",
+                    side_effect=RuntimeError("checker unavailable"),
+                ):
+                    decision = invoke(agent, TOOL_EVENTS[agent], publication(agent))
+                assert_record(self, decision)
+                assert_no_permission(self, wire(agent, TOOL_EVENTS[agent], decision))
 
-    One case per agent. A broken scanner (unreadable rules -> config None) on a
-    local Bash gate must return block or yield, NEVER pass. This is the 0b080fb8
-    fix, reimplemented in core/state.py.
+    def test_missing_configuration_and_unresolved_bodies_do_not_reject_tools(self):
+        for agent in AGENTS:
+            for payload in (
+                publication(agent),
+                tool_payload(agent, "mcp__github__create_issue", {"labels": ["bug"]}),
+            ):
+                with self.subTest(agent=agent, payload=payload):
+                    with patch.object(dispatcher, "_run_scan") as scanner:
+                        decision = invoke(
+                            agent, TOOL_EVENTS[agent], payload, config=None
+                        )
+                        scanner.assert_not_called()
+                    assert_record(self, decision)
+                    assert_no_permission(
+                        self, wire(agent, TOOL_EVENTS[agent], decision, config=None)
+                    )
 
-    The command-hook agents (Claude Code, Codex) emit the agent's wire JSON, so
-    the assertion reads the PreToolUse permissionDecision rather than the raw
-    Decision verb; Pi and OpenCode still emit the raw Decision.
-    """
-    checks = 0
-    # Each agent's gating surface and event shape. The real Pi and OpenCode
-    # extractors gate on their own handlers (tool_call, tool.execute.before); the
-    # command agents gate on PreToolUse.
-    gating = {
-        "claude-code": ("PreToolUse", CLEAN_LOCAL_EVENT),
-        "codex": ("PreToolUse", CLEAN_LOCAL_EVENT),
-        "pi": ("tool_call", PI_CLEAN_LOCAL_EVENT),
-        "opencode": ("tool.execute.before", OPENCODE_CLEAN_LOCAL_EVENT),
-    }
-    for agent, (event, payload) in gating.items():
-        with tempfile.TemporaryDirectory(prefix=f"tripwire-gap-fc-{agent}-") as strike_dir:
-            decision = run_dispatch(
-                agent,
-                event,
-                payload,
-                strike_dir,
-                rules="/nonexistent/broken-rules.md",
-            )
-            if not _is_gating_block_or_yield(agent, decision):
-                raise AssertionError(
-                    f"{agent} fail-closed: a broken scanner on a gating surface "
-                    f"must block or yield, got {decision!r}"
-                )
-        checks += 1
-    return checks
+    def test_invalid_input_json_and_missing_rules_fail_open_at_cli_boundary(self):
+        for agent in AGENTS:
+            for body, rules in (
+                ("{", ROOT / "missing-rules.md"),
+                (publication(agent), ROOT / "missing-rules.md"),
+            ):
+                with self.subTest(agent=agent, body=body):
+                    completed = cli(
+                        agent, TOOL_EVENTS[agent], body, self.state_dir, rules
+                    )
+                    self.assertEqual(completed.returncode, 0, completed.stderr)
+                    value = (
+                        json.loads(completed.stdout)
+                        if completed.stdout.strip()
+                        else None
+                    )
+                    assert_no_permission(self, value)
+                    if agent in ("pi", "opencode"):
+                        self.assertIn(value["decision"], ("pass", "advisory"))
+                        if value["decision"] == "advisory":
+                            self.assertIn("check unavailable", value["notice"])
+                            self.assertLessEqual(len(value["notice"]), 320)
 
+    def test_unavailable_state_cannot_restart_a_denial_cycle(self):
+        self.state_dir.write_text("not a directory")
+        for agent in AGENTS:
+            for _ in range(3):
+                with self.subTest(agent=agent):
+                    decision = invoke(agent, TOOL_EVENTS[agent], publication(agent))
+                    assert_record(self, decision, "pass")
+                    assert_no_permission(
+                        self, wire(agent, TOOL_EVENTS[agent], decision)
+                    )
 
-def main() -> int:
-    total = 0
-    total += test_pi_gh_via_bash_b2_cap()
-    total += test_opencode_extraction_failure_reissues()
-    total += test_per_agent_fail_closed_on_gating_surface()
-    print(f"state gap checks passed: {total}")
-    return 0
+    def test_locked_state_fails_open_without_waiting_for_a_counter(self):
+        record = ExtractorRecord("locked-session", "one", "post", None, [])
+        state.start_turn("pi", record)
+        (path,) = self.state_dir.glob("*.json")
+        with path.open("a+") as stream:
+            fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            for _ in range(3):
+                payload = publication("pi", session="locked-session", turn="one")
+                decision = invoke("pi", "tool_call", payload)
+                assert_record(self, decision, "pass")
+                assert_no_permission(self, wire("pi", "tool_call", decision))
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    unittest.main()

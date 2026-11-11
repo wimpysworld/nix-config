@@ -1,428 +1,113 @@
-// Pi shim seam test (Node, run with `node --test`).
-//
-// Imports the REAL reduced shim (`pi/extensions/communication-rules/index.ts`)
-// and drives its handlers. Each handler spawns the REAL Python core
-// (`scanner.py pi <event>`) the same way production does, so this exercises the
-// seam, not a reimplementation. The temp HOME holds the `config.json` the shim
-// reads, with `adapterPath` pointed at a wrapper that execs the core; the strike
-// dir is a temp dir, so the test is hermetic.
-//
-// Two cases per acceptance criterion 8: a B2 yield maps to the right Pi return
-// with `level = error` (and `surface = B2`, asserted against the raw core
-// decision), and a Tier A facing case appends to the live `event.messages` and
-// calls notify.
+// Gate: checks.<system>.communication-rules-hooks runs node --test on this file.
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { breach, diagnostics, loadPi, scannerFixture } from "./shim-support.ts";
 
-import { spawnSync } from "node:child_process";
-import * as assert from "node:assert/strict";
-import * as fs from "node:fs";
-import * as os from "node:os";
-import * as path from "node:path";
-import { after, before, test } from "node:test";
-import { pathToFileURL } from "node:url";
-
-const root = path.resolve(import.meta.dirname, "..");
-const scanner = path.join(root, "scanner.py");
-// The house style is the canonical rules body, the same file `fragment.nix`
-// reads. It carries no frontmatter, so it is used verbatim.
-const rulesSource = path.resolve(
-  root,
-  "../../assistants/styles/house-style/house-style.md",
-);
-const extension = path.resolve(
-  root,
-  "../../pi/extensions/communication-rules/index.ts",
-);
-
-// A banned term, built from character codes so the literal never sits in this
-// source (the core blocks any file that contains a banned word).
-const BANNED = String.fromCharCode(108, 101, 118, 101, 114, 97, 103, 101);
-
-// The short B2 nudge the core emits on the middle blocks of the external cap
-// (strikes 2 .. limit - 2). Byte-identical to `core.state.EXTERNAL_REPEAT_NOTICE`.
-const B2_REPEAT_NOTICE = "Communication Rules still unmet. Revise the body to comply before posting.";
-
-interface Decision {
-  decision: string;
-  surface: string;
-  level: string;
-  notice: string;
-  inject_base_rules: boolean;
-  append_correction: boolean;
-}
-
-let tempHome: string;
-let strikeDir: string;
-
-// Build the temp HOME the shim loads its config from, plus a wrapper the shim
-// spawns as `adapterPath pi <event>`. The wrapper execs the real core with a
-// temp strike dir, so the file-backed counter is hermetic and shared across the
-// shim's repeated spawns within one test.
-before(() => {
-  tempHome = fs.mkdtempSync(path.join(os.tmpdir(), "pi-shim-test-"));
-  strikeDir = path.join(tempHome, "strikes");
-  const configDir = path.join(tempHome, ".pi/agent/extensions/communication-rules");
-  fs.mkdirSync(configDir, { recursive: true });
-
-  const rules = fs.readFileSync(rulesSource, "utf-8").trim();
-  const rulesPath = path.join(tempHome, "rules.md");
-  const correctionPromptPath = path.join(tempHome, "correction-prompt.md");
-  fs.writeFileSync(rulesPath, `${rules}\n`, "utf-8");
-  fs.writeFileSync(
-    correctionPromptPath,
-    `Your previous reply broke the Communication Rules. Apply them to this reply and every reply that follows. Do not resend or rewrite the previous reply.\n\nCommunication Rules:\n${rules}\n`,
-    "utf-8",
-  );
-
-  // The generated policy reports whether Pi carries the house style in its
-  // system prompt, which is what selects the fresh-context reminder. Production
-  // reports it on, because the Pi global instructions carry the body. The
-  // carriage-off file is the same policy with the append gone, used below to
-  // prove the full rules come back.
-  const carriageOn = path.join(tempHome, "policy-pi-on.json");
-  const carriageOff = path.join(tempHome, "policy-pi-off.json");
-  fs.writeFileSync(
-    carriageOn,
-    JSON.stringify({ communicationRules: { houseStyleInSystemPrompt: { pi: true } } }),
-    "utf-8",
-  );
-  fs.writeFileSync(
-    carriageOff,
-    JSON.stringify({ communicationRules: { houseStyleInSystemPrompt: { pi: false } } }),
-    "utf-8",
-  );
-
-  // The wrapper is `adapterPath`: it runs the core with the temp strike dir so
-  // strikes do not leak and survive across the shim's spawns within a test.
-  const q = (value: string): string => `'${value.replaceAll("'", "'\\''")}'`;
-  const writeWrapper = (file: string, policy: string): void => {
-    fs.writeFileSync(
-      file,
-      [
-        "#!/usr/bin/env bash",
-        "set -euo pipefail",
-        `export TRIPWIRE_STRIKE_DIR=${q(strikeDir)}`,
-        `export TRIPWIRE_REISSUE_DIR=${q(path.join(tempHome, "reissue"))}`,
-        // Isolate the once-per-session injected-rules flag too. Without this a
-        // stale flag from an earlier suite leaks in, making the Tier A injection
-        // assertion order-dependent.
-        `export TRIPWIRE_INJECTED_DIR=${q(path.join(tempHome, "injected"))}`,
-        `exec python3 ${q(scanner)} --rules ${q(rulesPath)} --policy-json ${q(policy)} "$@"`,
-        "",
-      ].join("\n"),
-      "utf-8",
-    );
-    fs.chmodSync(file, 0o755);
-  };
-  const wrapper = path.join(tempHome, "core-wrapper");
-  writeWrapper(wrapper, carriageOn);
-  writeWrapper(path.join(tempHome, "core-wrapper-no-carriage"), carriageOff);
-
-  fs.writeFileSync(
-    path.join(configDir, "config.json"),
-    JSON.stringify({ adapterPath: wrapper, rulesPath, correctionPromptPath }),
-    "utf-8",
-  );
-  process.env.HOME = tempHome;
+const publication = () => ({
+  type: "tool_call", toolName: "mcp__github__create_issue",
+  input: { body: breach, title: "Build status" },
 });
 
-after(() => {
-  fs.rmSync(tempHome, { recursive: true, force: true });
-});
-
-type Handler = (event: unknown, ctx: unknown) => unknown;
-interface Loaded {
-  handlers: Map<string, Handler>;
-  notifications: Array<{ text: string; level: string }>;
-  ctx: unknown;
-}
-
-// Load the real shim and capture the handlers it registers on `pi.on`. The ctx
-// is a minimal Pi ExtensionContext whose `ui.notify` records calls, so the test
-// asserts the shim's notify side effect. When `id` is given, the ctx also
-// carries a `sessionManager.getSessionId` returning it, matching Pi's real
-// ExtensionContext, so the shim threads a per-session id to the core.
-async function loadShim(id?: string): Promise<Loaded> {
-  const handlers = new Map<string, Handler>();
-  const notifications: Array<{ text: string; level: string }> = [];
-  const mod = (await import(pathToFileURL(extension).href)) as {
-    default: (pi: { on(event: string, handler: Handler): void }) => void;
-  };
-  mod.default({
-    on(event, handler) {
-      handlers.set(event, handler);
-    },
-  });
-  const ctx = {
-    hasUI: true,
-    ui: {
-      notify(text: string, level: string): void {
-        notifications.push({ text, level });
-      },
-    },
-    ...(id !== undefined ? { sessionManager: { getSessionId: (): string => id } } : {}),
-  };
-  return { handlers, notifications, ctx };
-}
-
-// Load a shim instance whose adapterPath points at a STUB core that always
-// prints the given decision JSON (and answers the `block-message` probe with the
-// rules text). This exercises the tool_call mapping for a value the real core
-// never emits (an unknown decision), so the test can prove the gating surface
-// fails closed. Each call uses its own temp HOME so the module re-reads config.
-async function loadShimWithStubDecision(decisionJson: string): Promise<Loaded> {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), "pi-shim-stub-"));
-  const configDir = path.join(home, ".pi/agent/extensions/communication-rules");
-  fs.mkdirSync(configDir, { recursive: true });
-  const rulesPath = path.join(home, "rules.md");
-  const correctionPromptPath = path.join(home, "correction-prompt.md");
-  fs.writeFileSync(rulesPath, "Communication Rules body.\n", "utf-8");
-  fs.writeFileSync(correctionPromptPath, "Correction.\n", "utf-8");
-  const stub = path.join(home, "stub-core");
-  const q = (value: string): string => `'${value.replaceAll("'", "'\\''")}'`;
-  fs.writeFileSync(
-    stub,
-    [
-      "#!/usr/bin/env bash",
-      'if [ "$1" = "block-message" ]; then printf %s "Communication Rules block message."; exit 0; fi',
-      `printf %s ${q(decisionJson)}`,
-      "",
-    ].join("\n"),
-    "utf-8",
-  );
-  fs.chmodSync(stub, 0o755);
-  fs.writeFileSync(
-    path.join(configDir, "config.json"),
-    JSON.stringify({ adapterPath: stub, rulesPath, correctionPromptPath }),
-    "utf-8",
-  );
-  process.env.HOME = home;
-  const handlers = new Map<string, Handler>();
-  const notifications: Array<{ text: string; level: string }> = [];
-  const mod = (await import(`${pathToFileURL(extension).href}?${Date.now()}`)) as {
-    default: (pi: { on(event: string, handler: Handler): void }) => void;
-  };
-  mod.default({
-    on(event, handler) {
-      handlers.set(event, handler);
-    },
-  });
-  const ctx = {
-    hasUI: true,
-    ui: {
-      notify(text: string, level: string): void {
-        notifications.push({ text, level });
-      },
-    },
-  };
-  process.env.HOME = tempHome;
-  return { handlers, notifications, ctx };
-}
-
-// Probe the raw core decision the same way the shim spawns it, so the test can
-// assert `surface`, which the Pi return shape does not carry.
-function coreDecision(event: string, payload: unknown): Decision {
-  const wrapper = path.join(tempHome, "core-wrapper");
-  const r = spawnSync(wrapper, ["pi", event], { encoding: "utf-8", input: JSON.stringify(payload) });
-  return JSON.parse((r.stdout ?? "").trim()) as Decision;
-}
-
-function b2Payload(): unknown {
-  return {
-    session_id: "shim-b2",
-    type: "tool_call",
-    toolName: "bash",
-    toolCallId: "call-b2",
-    input: { command: `gh issue create --title "Done" --body "This body shows ${BANNED}."` },
-  };
-}
-
-// A B1 local write to a fixed path. Two breaches to the same path share the
-// strike key, so strike 1 blocks and strike 2 onward yields allow-revise.
-const B1_TARGET = "/tmp/donatello-b1.md";
-function b1Payload(): unknown {
-  return {
-    session_id: "shim-b1",
-    type: "tool_call",
-    toolName: "write",
-    toolCallId: "call-b1",
-    input: { path: B1_TARGET, content: `This body uses ${BANNED} here.` },
-  };
-}
-
-test("B2 yield: tool_call walks the cap then yields with level=error and surface=B2", async () => {
-  const loaded = await loadShim();
-  const toolCall = loaded.handlers.get("tool_call");
-  assert.ok(toolCall, "tool_call handler registered");
-
-  // The raw core decision confirms the surface, which the Pi return omits.
-  const firstDecision = coreDecision("tool_call", b2Payload());
-  assert.equal(firstDecision.surface, "B2");
-  assert.equal(firstDecision.level, "error");
-
-  // Strikes two to four block. The probe above consumed strike 1, so the
-  // handler sees strikes 2, 3, 4. The re-issue trim emits the short nudge on the
-  // middle blocks (strikes 2 and 3) and re-issues the full rules on the
-  // penultimate block (strike 4). The shim maps the block reason from the wire
-  // notice, falling back to the full cached rules when the notice is empty.
-  for (let strike = 2; strike <= 4; strike += 1) {
-    const result = toolCall!(b2Payload(), loaded.ctx) as { block?: boolean; reason?: string } | undefined;
-    assert.equal(result?.block, true, `B2 strike ${strike} should block`);
-    if (strike < 4) {
-      assert.equal(result?.reason, B2_REPEAT_NOTICE, `B2 strike ${strike} should carry the short nudge`);
-    } else {
-      assert.notEqual(result?.reason, B2_REPEAT_NOTICE, "B2 penultimate block should re-issue the full rules");
-      assert.match(result?.reason ?? "", /Communication Rules/, "B2 penultimate block reason is the full rules");
+test("Pi permits repeated publication requests and sends one bounded notice", async () => {
+  const f = scannerFixture();
+  try {
+    const p = await loadPi(f);
+    const event = publication();
+    const original = structuredClone(event);
+    for (let attempt = 0; attempt < 7; attempt += 1) {
+      assert.equal(await p.handlers.get("tool_call")!(event, p.context), undefined);
+      assert.deepEqual(event, original);
+      await p.handlers.get("tool_call")!({
+        toolName: "mcp__github__get_pull_request_review", input: { id: "review-42", text: breach },
+      }, p.context);
     }
-  }
-  // The fifth yields: the shim returns undefined and notifies at error level.
-  const before = loaded.notifications.length;
-  const fifth = toolCall!(b2Payload(), loaded.ctx);
-  assert.equal(fifth, undefined, "B2 strike 5 should yield (undefined), not block");
-  const notice = loaded.notifications.slice(before).find((n) => n.level === "error");
-  assert.ok(notice, "B2 yield should notify at error level");
-  assert.match(notice!.text, /bash/, "B2 yield notice should name the tool");
+    assert.equal(p.notices.length, 1);
+    assert.ok(p.notices[0].text.length <= 320);
+    assert.ok(!p.notices[0].text.includes("## The Cut Pass"));
+  } finally { f.cleanup(); }
 });
 
-test("B1 allow-revise: a second breach to the same target allows the write and notifies", async () => {
-  const loaded = await loadShim();
-  const toolCall = loaded.handlers.get("tool_call");
-  assert.ok(toolCall, "tool_call handler registered");
-
-  // Strike 1 is a cheap block: the shim returns { block: true }.
-  const first = toolCall!(b1Payload(), loaded.ctx) as { block?: boolean } | undefined;
-  assert.equal(first?.block, true, "B1 strike 1 should block");
-
-  // Strike 2 to the same target allows the write: the shim returns undefined
-  // (does NOT block) and notifies with the resolved B1 revision notice.
-  const before = loaded.notifications.length;
-  const second = toolCall!(b1Payload(), loaded.ctx);
-  assert.equal(second, undefined, "B1 strike 2 should allow-revise (undefined), not block");
-  const notice = loaded.notifications.slice(before).find((n) => n.text.includes(B1_TARGET));
-  assert.ok(notice, "B1 allow-revise should notify with the resolved revision notice");
-  assert.ok(notice!.text.includes(B1_TARGET), "notice names the target file");
-
-  // The raw core decision confirms the surface and verb the Pi return omits.
-  const decision = coreDecision("tool_call", b1Payload());
-  assert.equal(decision.surface, "B1", "B1 allow-revise surface is B1");
-  assert.equal(decision.decision, "allow-revise", "B1 strike 2+ decision is allow-revise");
+test("Pi preserves final text and consumes one pending notice on the next normal context", async () => {
+  const f = scannerFixture();
+  try {
+    const p = await loadPi(f);
+    await p.handlers.get("before_agent_start")!({}, p.context);
+    const message = { role: "assistant", content: [{ type: "text", text: breach }], stopReason: "stop" };
+    const original = structuredClone(message);
+    assert.equal(await p.handlers.get("message_end")!({ message }, p.context), undefined);
+    assert.deepEqual(message, original);
+    await p.handlers.get("before_agent_start")!({}, p.context);
+    const imported = [{ role: "tool", content: breach }];
+    const event = { messages: imported };
+    const result = await p.handlers.get("context")!(event, p.context);
+    assert.equal(event.messages, imported);
+    assert.equal(imported.length, 1);
+    assert.equal(result.messages.length, 2);
+    assert.equal(result.messages[0], imported[0]);
+    assert.equal(result.messages[1].display, false);
+    assert.ok(result.messages[1].content.length <= 320);
+    assert.equal(await p.handlers.get("context")!(event, p.context), undefined);
+  } finally { f.cleanup(); }
 });
 
-// The path the live audit breached. A real Pi `tool_call` event carries no
-// `session_id`, so without the shim threading Pi's ctx session id the core
-// would share one strike namespace across every session and never reset.
-const RESET_TARGET = "/tmp/donatello-reset.md";
-function resetPayload(): unknown {
-  return {
-    type: "tool_call",
-    toolName: "write",
-    toolCallId: "call-reset",
-    input: { path: RESET_TARGET, content: `This body uses ${BANNED} here.` },
-  };
+test("Pi never registers incoming-result or rewrite handlers", async () => {
+  const f = scannerFixture();
+  try {
+    const p = await loadPi(f);
+    assert.equal(p.handlers.get("tool_result"), undefined);
+    const originalCalls = f.calls().length;
+    await p.handlers.get("message_end")!({
+      message: { role: "tool", content: [{ type: "text", text: breach }] },
+    }, p.context);
+    assert.equal(f.calls().length, originalCalls);
+    assert.deepEqual([...p.handlers.keys()].sort(),
+      ["before_agent_start", "context", "message_end", "tool_call"].sort());
+  } finally { f.cleanup(); }
+});
+
+test("Pi rejects no tool for legacy, unknown or invalid scanner decisions", () => diagnostics(async (errors) => {
+  const f = scannerFixture();
+  try {
+    const p = await loadPi(f);
+    const event = publication();
+    const original = structuredClone(event);
+    for (const decision of [
+      null, [], { decision: "block" }, { decision: "allow-revise" },
+      { decision: "surprise" }, { decision: "advisory", notice: {} },
+    ]) {
+      f.response(decision);
+      assert.equal(await p.handlers.get("tool_call")!(event, p.context), undefined);
+      assert.deepEqual(event, original);
+    }
+    assert.equal(errors.length, 1);
+    assert.equal(p.notices.length, 0);
+  } finally { f.cleanup(); }
+}));
+
+for (const mode of ["malformed", "exit", "timeout", "overflow"]) {
+  test("Pi checker failure preserves the operation: " + mode, () => diagnostics(async (errors) => {
+    const f = scannerFixture();
+    try {
+      const p = await loadPi(f);
+      f.mode(mode);
+      const event = publication();
+      const original = structuredClone(event);
+      assert.equal(await p.handlers.get("tool_call")!(event, p.context), undefined);
+      assert.deepEqual(event, original);
+      assert.equal(errors.length, 1);
+      assert.equal(p.notices.length, 0);
+    } finally { f.cleanup(); }
+  }));
 }
 
-test("Per-session reset: real-shaped events with no payload session_id strike independently per ctx session", async () => {
-  // Session A, first breach to the target: strike 1 blocks.
-  const a = await loadShim("session-A");
-  const toolCallA = a.handlers.get("tool_call");
-  assert.ok(toolCallA, "tool_call handler registered");
-  const firstA = toolCallA!(resetPayload(), a.ctx) as { block?: boolean } | undefined;
-  assert.equal(firstA?.block, true, "session A strike 1 should block");
-
-  // Session B, SAME breach to the SAME path: strike 1 blocks again because the
-  // ctx session id gives B its own namespace. Before the fix B would share A's
-  // counter and see strike 2 (allow-revise). This guard catches the live bug.
-  const b = await loadShim("session-B");
-  const toolCallB = b.handlers.get("tool_call");
-  assert.ok(toolCallB, "tool_call handler registered");
-  const firstB = toolCallB!(resetPayload(), b.ctx) as { block?: boolean } | undefined;
-  assert.equal(firstB?.block, true, "session B strike 1 should block independently of session A");
-
-  // Session A again, SAME path: strike 2 allows the write (allow-revise), so the
-  // counter still walks within one session.
-  const secondA = toolCallA!(resetPayload(), a.ctx);
-  assert.equal(secondA, undefined, "session A strike 2 should allow-revise (undefined), not block");
-});
-
-test("Default-deny: an unknown tool_call decision blocks, a clean pass allows", async () => {
-  // An unrecognised decision on this gating surface must fail closed: the shim
-  // returns a block object (default-deny), matching Tier B fail-closed.
-  const unknown = await loadShimWithStubDecision(
-    JSON.stringify({ decision: "surprise", notice: "", level: "error", inject_base_rules: false, append_correction: false }),
-  );
-  const unknownCall = unknown.handlers.get("tool_call");
-  assert.ok(unknownCall, "tool_call handler registered");
-  const blocked = unknownCall!(b1Payload(), unknown.ctx) as { block?: boolean } | undefined;
-  assert.equal(blocked?.block, true, "an unknown decision should block (fail closed)");
-
-  // A clean pass still allows the tool to run: the shim returns undefined and
-  // does not notify.
-  const clean = await loadShimWithStubDecision(
-    JSON.stringify({ decision: "pass", notice: "", level: "warning", inject_base_rules: false, append_correction: false }),
-  );
-  const cleanCall = clean.handlers.get("tool_call");
-  assert.ok(cleanCall, "tool_call handler registered");
-  const allowed = cleanCall!(b1Payload(), clean.ctx);
-  assert.equal(allowed, undefined, "a clean pass should allow (undefined), not block");
-  assert.equal(clean.notifications.length, 0, "a clean pass should not notify");
-});
-
-test("Tier A facing: context handler appends to live event.messages", async () => {
-  // A fresh session injects the base rules into the live messages array. The
-  // shim's context handler returns the mutated messages; assert the live object
-  // grew, not only the return verb.
-  const loaded = await loadShim();
-  const context = loaded.handlers.get("context");
-  assert.ok(context, "context handler registered");
-
-  // The rules-injection dedupe is file-backed per session, so the probe and the
-  // handler call must use distinct sessions; otherwise the probe consumes the
-  // once-per-session injection.
-  const decision = coreDecision("context", { type: "context", session_id: "shim-ctx-probe", messages: [] });
-  assert.equal(decision.inject_base_rules, true, "fresh session should inject base rules");
-
-  const event = { type: "context", session_id: "shim-ctx-handler", messages: [] as unknown[] };
-  const result = context!(event, {}) as { messages?: unknown[] } | undefined;
-  assert.ok(result, "context should return a messages payload when injecting");
-  assert.ok(Array.isArray(result!.messages), "context should return a messages array");
-  assert.equal(result!.messages!.length, 1, "context should append one base-rules message");
-  const injected = result!.messages![0] as { content?: string; display?: boolean };
-  // A fresh context gets the brief pointer, not a second copy of the rules:
-  // Pi's global instructions already carry the house style.
-  assert.match(
-    injected.content ?? "",
-    /^Reminder: the house style in your system prompt is the Communication Rules\./,
-    "injected message points at the house style",
-  );
-  assert.ok(
-    !(injected.content ?? "").includes("## The Cut Pass"),
-    "injected message does not repeat the full rules body",
-  );
-  assert.equal(injected.display, false, "injected message is model-only");
-});
-
-test("Fresh-context reminder follows the reported carriage, not an assumption", async () => {
-  // The shim asks the core for `remind-brief pi`, so the reminder text is the
-  // core's answer for Pi. With the carriage reported on, it is the pointer;
-  // with the house style gone from Pi's global instructions, the same call
-  // returns the full rules, so enforcement does not quietly weaken.
-  const onWrapper = path.join(tempHome, "core-wrapper");
-  const offWrapper = path.join(tempHome, "core-wrapper-no-carriage");
-
-  const carried = spawnSync(onWrapper, ["remind-brief", "pi"], { encoding: "utf-8" });
-  assert.equal(carried.status, 0, "remind-brief should exit 0");
-  assert.match(
-    (carried.stdout ?? "").trim(),
-    /^Reminder: the house style in your system prompt is the Communication Rules\./,
-    "a carried house style selects the brief pointer",
-  );
-
-  const dropped = spawnSync(offWrapper, ["remind-brief", "pi"], { encoding: "utf-8" });
-  assert.equal(dropped.status, 0, "remind-brief should exit 0");
-  const text = (dropped.stdout ?? "").trim();
-  assert.match(
-    text,
-    /^Reminder: Follow the Communication Rules/,
-    "no carriage brings the full rules back",
-  );
-  assert.ok(text.includes("## The Cut Pass"), "the full rules body is injected");
-});
+test("Pi missing scanner preserves the tool and never grants authority", () => diagnostics(async (errors) => {
+  const f = scannerFixture();
+  try {
+    const p = await loadPi(f);
+    f.cleanup();
+    const event = publication();
+    assert.equal(await p.handlers.get("tool_call")!(event, p.context), undefined);
+    assert.equal(errors.length, 1);
+    assert.equal(p.notices.length, 0);
+  } finally { f.cleanup(); }
+}));

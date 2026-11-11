@@ -71,11 +71,8 @@ Use LSP diagnostics and navigation when available, including grammar and formatt
 
 ## Communication Rules
 
-Follow the Communication Rules supplied in this context for all prose. If the complete rules are absent, read `communication-rules` before writing. Apply the skill availability rule for incomplete or changed instructions. The Communication Rules hooks enforce file writes, edits, patches, posts, and runtime replies.
+Follow the Communication Rules supplied in this context for newly authored human prose. Preserve exact source material and technical content. If the complete rules are absent, read `communication-rules` before writing. Apply the skill availability rule for incomplete or changed instructions.
 
-### Enforcement
+### Advisory checks
 
-- A breach in a file write, edit, patch, or post is caught before it runs.
-- The first breach is blocked. Revise it to comply.
-- A later write may land with a request to revise the file in place. Treat that as a requirement to fix the file, not as approval.
-- Fix an external post body to comply before it goes out.
+Style findings and checker errors do not block authorised work or require retries, another turn, or operator recovery. Use the bounded feedback policy in `communication-rules`. Never change source material to silence a checker. Style feedback neither grants permission nor replaces security and approval controls.

@@ -248,10 +248,6 @@ let
         "$action" "$count" "$retention_days"
     '';
   };
-  codexTripwireCorrectionPromptFile = pkgs.writeTextFile {
-    name = "codex-communication-rules-correction-prompt.md";
-    text = communicationRules.correctionPrompt;
-  };
   codexHookEventLabels = {
     PreToolUse = "pre_tool_use";
     SessionEnd = "session_end";
@@ -261,15 +257,12 @@ let
     SubagentStop = "subagent_stop";
     UserPromptSubmit = "user_prompt_submit";
   };
-  # Build the command-style hook through the shared helper. The helper exports
-  # the environment the core reads (TRIPWIRE_SCANNER, TRIPWIRE_POLICY_JSON,
-  # TRIPWIRE_CORRECTION_PROMPT) and runs `scanner.py codex <event>`, so
-  # detection, the strike machine, and Tier A re-issue all live in the core.
+  # The shared command adapter runs `scanner.py codex <event>`.
+  # Detection and bounded advisory feedback stay in the core.
   # Passing the event labels gives back a `trustedHash` builder that hashes the
   # same identity JSON Codex trusts, so the hash recomputes from the new command.
   codexTripwireAdapter = communicationRules.mkCommandHookAdapter {
     agent = "codex";
-    correctionPrompt = codexTripwireCorrectionPromptFile;
     hookEventLabels = codexHookEventLabels;
   };
   # Wrap the helper's per-event hook with Codex's timeout and status message.
@@ -281,18 +274,8 @@ let
       inherit statusMessage;
     };
   codexTripwireHookEvents = {
-    # No Communication Rules SessionStart or SubagentStart reminder hook is
-    # registered here on purpose. Codex loads the Communication Rules skill
-    # through the explicit reference in its root instructions. Codex also has no
-    # silent SessionStart hook channel: a hook emitting
-    # hookSpecificOutput.additionalContext is recorded as a visible developer
-    # message in the transcript (see openai/codex#16933), and SubagentStart is
-    # likewise reminder-only and cannot gate. Registering either here would only
-    # add user-visible noise that duplicates the instructions, so both are
-    # omitted. The core shaper keeps its codex_context/remind capability latent.
-    # UserPromptSubmit consumes a pending Tier A re-issue flag set by a Stop or
-    # SubagentStop breach, injecting the rules as model-only additionalContext on
-    # the next turn. Without it the flag is set but never read.
+    # Developer instructions carry the initial rules. A normal prompt starts
+    # the notice budget and receives pending advice without another turn.
     UserPromptSubmit = [
       {
         hooks = [ (codexTripwireHook "UserPromptSubmit" "Loading Communication Rules") ];
@@ -307,11 +290,6 @@ let
     Stop = [
       {
         hooks = [ (codexTripwireHook "Stop" "Checking Communication Rules") ];
-      }
-    ];
-    SubagentStop = [
-      {
-        hooks = [ (codexTripwireHook "SubagentStop" "Checking Communication Rules") ];
       }
     ];
   };
@@ -509,8 +487,8 @@ let
       max_depth = 1;
     };
 
-    # Apply no vendor personality. The Communication Rules skill and tripwire
-    # gate own the prose policy for this setup.
+    # Apply no vendor personality. The Communication Rules skill and advisory
+    # checks define the prose policy for this setup.
     # `personality` is an enum (none/friendly/pragmatic) and cannot carry the
     # rules text, so "none" keeps the vendor tone block from competing.
     personality = "none";
@@ -816,12 +794,8 @@ lib.mkMerge [
       ];
   })
   (lib.mkIf (isDeveloper && !host.is.server) {
-    # Report whether Codex carries the house style in its system prompt. The
-    # `developer_instructions` key in codexSettings is the carriage, so the flag
-    # is read back from it: drop or empty that key and the Communication Rules
-    # tripwire falls back to injecting the full rules on a fresh session. A Codex
-    # sub-agent gets the full rules either way, since no developer instructions
-    # reach a sub-agent context.
+    # Record whether developer instructions carry the initial house style.
+    # Advisory hooks add compact context separately from this guidance.
     agentic.houseStyle.inSystemPrompt.codex =
       config.programs.codex.enable
       && (codexSettings ? developer_instructions)

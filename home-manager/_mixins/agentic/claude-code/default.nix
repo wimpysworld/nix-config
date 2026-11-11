@@ -339,17 +339,10 @@ let
   # `settings.fileSuggestion` below.
   fileSuggestionCommand = pkgs.callPackage ./file-suggestion { };
   communicationRules = config.agentic.communicationRules or { enable = false; };
-  claudeCodeTripwireCorrectionPrompt = pkgs.writeTextFile {
-    name = "claude-code-tripwire-correction-prompt.md";
-    text = communicationRules.correctionPrompt or "";
-  };
-  # Build the command-style hook through the shared helper. The helper exports
-  # the environment the core reads (TRIPWIRE_SCANNER, TRIPWIRE_POLICY_JSON,
-  # TRIPWIRE_CORRECTION_PROMPT) and runs `scanner.py claude-code <event>`, so
-  # detection, the strike machine, and Tier A re-issue all live in the core.
+  # The shared command adapter runs `scanner.py claude-code <event>`.
+  # Detection and bounded advisory feedback stay in the core.
   claudeCodeTripwireAdapter = communicationRules.mkCommandHookAdapter {
     agent = "claude-code";
-    correctionPrompt = claudeCodeTripwireCorrectionPrompt;
   };
   claudeCodeTripwireHook = event: claudeCodeTripwireAdapter.mkHook event;
   # Teammates inherit their parent's depth and omit disallowedTools in Claude
@@ -418,10 +411,7 @@ let
         hooks = [ (claudeCodeTripwireHook "SessionStart") ];
       }
     ];
-    # UserPromptSubmit consumes a pending Tier A re-issue flag set by a Stop or
-    # SubagentStop breach. It injects the rules back to the model on the next
-    # turn without re-rolling the reply the user already saw. Without this, the
-    # flag is set but never read, so the silent re-issue never fires.
+    # A normal prompt starts the notice budget and receives pending advice.
     UserPromptSubmit = lib.mkAfter [
       {
         hooks = [ (claudeCodeTripwireHook "UserPromptSubmit") ];
@@ -436,14 +426,6 @@ let
     Stop = lib.mkAfter [
       {
         hooks = [ (claudeCodeTripwireHook "Stop") ];
-      }
-    ];
-    # SubagentStop scans a subagent's final output and mirrors the Stop path:
-    # same block/correction, 3-strike yield cap, and systemMessage notice. No
-    # matcher, so it applies to every subagent type.
-    SubagentStop = lib.mkAfter [
-      {
-        hooks = [ (claudeCodeTripwireHook "SubagentStop") ];
       }
     ];
   };

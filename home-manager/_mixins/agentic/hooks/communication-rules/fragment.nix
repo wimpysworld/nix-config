@@ -8,45 +8,6 @@ in
 {
   inherit text;
 
-  reminderPrompt = ''
-    Reminder: Follow the Communication Rules for any prose you produce or write.
-
-    Communication Rules:
-    ${text}
-  '';
-
-  # The pointer used on a fresh main thread whose system prompt already carries
-  # this same body, as the Claude Code house-style output style, the Codex
-  # developer_instructions, or the OpenCode and Pi global instructions.
-  # Injecting the full rules again there duplicates them. Which contexts get
-  # this pointer is not assumed: each platform module reports its own carriage
-  # through agentic.houseStyle.inSystemPrompt, and a platform that carries
-  # nothing gets the full reminderPrompt above. A Codex sub-agent always keeps
-  # the full body, because neither an output style nor developer_instructions
-  # reaches a sub-agent context.
-  briefReminderPrompt = "Reminder: the house style in your system prompt is the Communication Rules. Follow it for any prose you produce or write.";
-
-  blockMessage = ''
-    Blocked. Revise this prose to follow the Communication Rules.
-
-    Communication Rules:
-    ${text}
-  '';
-
-  correctionPrompt = ''
-    Your previous reply broke the Communication Rules. Apply them to this reply and every reply that follows. Do not resend or rewrite the previous reply.
-
-    Communication Rules:
-    ${text}
-  '';
-
-  b1RevisionPrompt = ''
-    The file you wrote breaks the Communication Rules. Revise it in place to comply: {target}. Do not rewrite unrelated content.
-
-    Communication Rules:
-    ${text}
-  '';
-
   detectionPolicy = {
     blockedCodepoints = [
       {
@@ -59,7 +20,7 @@ in
       }
     ];
 
-    hardGateBannedTerms = [
+    advisoryTerms = [
       "delve"
       "leverage"
       "tapestry"
@@ -82,154 +43,5 @@ in
       "boasts"
     ];
 
-    # These terms are told to the model but deliberately not hard-gated. Each
-    # has common legitimate uses, such as vital signs, foster care, and landscape
-    # orientation, so gating them would cause false-positive blocks. The same
-    # applies to shape, seam, leg, arm, and load-bearing: they are banned only as
-    # metaphors for code, work, or text, while the literal senses stay legitimate,
-    # so a hard gate would block correct sentences.
-    promptOnlyBannedTerms = [
-      "landscape"
-      "foster"
-      "vital"
-      "shape"
-      "seam"
-      "leg"
-      "arm"
-      "load-bearing"
-    ];
-
-    bannedWordGroups = {
-      filler = [
-        "really"
-        "basically"
-        "actually"
-        "simply"
-      ];
-      pleasantries = [
-        "sure"
-        "certainly"
-        "of course"
-        "happy to"
-      ];
-      hedges = [
-        "perhaps"
-        "might want to"
-        "could possibly"
-        "is likely"
-      ];
-      llmTells = [
-        "pivotal"
-        "crucial"
-        "vital"
-        "testament"
-        "seamless"
-        "robust"
-        "cutting-edge"
-        "delve"
-        "leverage"
-        "multifaceted"
-        "foster"
-        "realm"
-        "tapestry"
-        "vibrant"
-        "nuanced"
-        "intricate"
-        "showcasing"
-        "streamline"
-        "landscape"
-        "garnered"
-        "underpinning"
-        "underscores"
-        "boasts"
-        "shape"
-        "seam"
-        "leg"
-        "arm"
-        "load-bearing"
-      ];
-    };
-
-    # Post-detection data shared by every Tier B adapter. fragment.nix is the
-    # single canonical source; adapters read these via policy.json (TS) or the
-    # TRIPWIRE_POLICY_JSON env (Python) and fall back to baked copies only when
-    # the policy file is absent, such as in the fixture harnesses.
-    postDetection = {
-      # Verb fragments that mark an MCP tool leaf as able to post or mutate
-      # external state. Matched as substrings of the leaf after the final "__".
-      # Linear's "save_" verb is listed per object, not as a bare "save",
-      # because a matched tool with no text key fails closed, and
-      # save_customer carries no text. The issue, project, and initiative
-      # entries also match their "_label" tools, whose description is text.
-      postToolTerms = [
-        "comment"
-        "create"
-        "edit"
-        "post"
-        "publish"
-        "reply"
-        "review"
-        "save_customer_need"
-        "save_document"
-        "save_initiative"
-        "save_issue"
-        "save_milestone"
-        "save_project"
-        "save_release"
-        "send"
-        "submit"
-        "update"
-        "write"
-      ];
-
-      # Text-bearing keys inside a post-capable tool's structured input. Their
-      # string values carry the prose that lands on the external surface.
-      postTextKeys = [
-        "body"
-        "comment"
-        "comments"
-        "content"
-        "description"
-        "message"
-        "messages"
-        "note"
-        "notes"
-        "review"
-        "summary"
-        "text"
-        "title"
-      ];
-
-      # Identifier keys used to name the external post destination in the B2
-      # yield notice, in preference order. The first present value wins.
-      externalTargetKeys = [
-        "url"
-        "pull_number"
-        "issue_number"
-        "number"
-        "pullRequestId"
-        "issueId"
-        "discussionId"
-        "id"
-        "path"
-        "repo"
-        "repository"
-        "owner"
-      ];
-    };
-
-    scan = {
-      stripFencedCodeBlocks = true;
-      userPrompts = "ignore";
-      sessionStart = "remind";
-      incomingToolOutput = "ignore";
-      failureMode = {
-        reminders = "open";
-        writeSurfaces = "closed";
-        editSurfaces = "closed";
-        postSurfaces = "closed";
-        unresolvablePostBodies = "closed";
-      };
-    };
   };
 }

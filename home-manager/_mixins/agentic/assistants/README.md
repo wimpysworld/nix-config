@@ -119,9 +119,11 @@ Each platform takes the body through its own system-prompt channel:
 
 `skills/communication-rules/SKILL.md` contains the checked-in skill body. `compose.nix` adds native frontmatter and checks that the body matches the house style during evaluation. The skill stays for command-driven reinforcement and for surfaces with no system-prompt access, such as Codex Cloud. The `delegate-task` packet tells every worker to load it.
 
-The `hooks/communication-rules` mixin reads the style body directly and writes it to `~/.config/agent-communication-rules/communication-rules.md` with the shared scanner assets. Reminders, block messages, correction prompts, and runtime disclosures embed that body. Do not copy the rules into platform modules.
+The `hooks/communication-rules` mixin reads the style body directly and writes it to `~/.config/agent-communication-rules/communication-rules.md` with the shared scanner assets. Do not copy the rules into platform modules. Runtime feedback names the rule and location without repeating the full body on each tool call.
 
-Agent Tripwire is not an agent bypass system. Blocked write, edit, post, and surfaced prose paths must be revised by the agent or stopped. Operator recovery stays outside the agent path: use the normal config disablement mechanism, such as `disableAllHooks`, or rebuild without the Agent Tripwire mixin when a false positive or broken hook needs human recovery.
+Agent Tripwire gives advisory feedback on newly authored prose. It leaves reads and incoming results outside style checks. Code, commands, identifiers, URLs, quotations, licences, templates, and imported artefacts stay exact. Unknown provenance means no style decision.
+
+Style feedback never denies a tool, changes its inputs or results, blocks stopping, or starts a correction-only turn. Feedback is compact and deduplicated, with at most one notice per turn. Checker, extraction, and state errors fail open. Tool authorisation and security checks remain separate and authoritative.
 
 ### Session Priming
 
@@ -137,7 +139,7 @@ When the coordinator lacks context, it delegates discovery instead of researchin
 
 ### Response Discipline
 
-The house style owns response discipline, every platform carries it in the system prompt, and the hooks enforce it. The parent relays an artefact verbatim and never summarises it in place. The parent delivers a report as the answer plus the recommendations, and a long report goes to a file under the `review-report-path` convention, returned as the conclusion plus the path. The parent intervenes only for safety.
+The house style owns response discipline, every platform carries it in the system prompt, and the hooks give advisory feedback. The parent relays an artefact verbatim and never summarises it in place. The parent delivers a report as the answer plus the recommendations, and a long report goes to a file under the `review-report-path` convention, returned as the conclusion plus the path. The parent intervenes only for safety.
 
 ### Command workflows
 

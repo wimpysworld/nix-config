@@ -1,34 +1,18 @@
-import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
 const scannerPath = "@tripwireScanner@";
-const rulesPath = "@tripwireRules@";
-const correctionPromptPath = "@tripwireCorrectionPrompt@";
-const FALLBACK_BLOCK = "Blocked. Revise this prose to follow the Communication Rules.";
 const skippedFinishes = new Set(["tool-calls", "error", "unknown"]);
 
-function readText(file: string): string {
-  return readFileSync(file, "utf8").trimEnd();
-}
-
 function decide(event: string, payload: unknown) {
-  try {
-    const result = spawnSync(scannerPath, ["opencode", event], {
-      input: JSON.stringify(payload), encoding: "utf8",
-    });
-    if (result.status === 0) {
-      const decision = JSON.parse(result.stdout);
-      if (decision && typeof decision === "object" && typeof decision.decision === "string") return decision;
-    }
-  } catch {
-    // A scanner failure must not authorise a side effect.
+  const result = spawnSync(scannerPath, ["opencode", event], {
+    input: JSON.stringify(payload), encoding: "utf8", timeout: 2000, maxBuffer: 64 * 1024,
+  });
+  if (!result.error && result.status === 0) {
+    const decision = JSON.parse(result.stdout);
+    if (decision && ["pass", "advisory"].includes(decision.decision)
+      && (decision.notice === undefined || typeof decision.notice === "string")) return decision;
   }
-  throw new Error(FALLBACK_BLOCK);
-}
-
-function reminder() {
-  const result = spawnSync(scannerPath, ["remind-brief", "opencode"], { encoding: "utf8" });
-  return (result.status === 0 && result.stdout.trim()) || `Communication Rules:\n${readText(rulesPath)}`;
+  throw new Error("Communication Rules checker unavailable.");
 }
 
 // V2 plugin client methods resolve to the bare value. Older clients wrapped it
@@ -37,17 +21,22 @@ function unwrap(result: any) {
   return result && typeof result === "object" && !Array.isArray(result) && "data" in result ? result.data : result;
 }
 
-function logError(message: string, error: unknown) {
-  console.error(`Communication Rules: ${message}`, error);
-}
-
 export default {
   id: "nix-config.communication-rules",
   async setup(ctx: any) {
     const controller = new AbortController();
+    const noticed = new Set<string>();
+    const diagnosed = new Set<string>();
+    const diagnose = (sessionID: string) => {
+      if (diagnosed.has(sessionID)) return;
+      diagnosed.add(sessionID);
+      console.error("Communication Rules: checker unavailable. The operation is unchanged.");
+    };
     const notify = async (sessionID: string, text: string) => {
-      if (text) await ctx.session.synthetic({
-        sessionID, text, description: "Communication Rules", resume: false,
+      if (!text || noticed.has(sessionID)) return;
+      noticed.add(sessionID);
+      await ctx.session.synthetic({
+        sessionID, text: text.slice(0, 320), description: "Communication Rules", resume: false,
       });
     };
     const inject = (event: any, sections: string[]) => {
@@ -57,42 +46,38 @@ export default {
         }
       }
     };
-    // In V2 a session hook that throws fails the model request and the session
-    // drain, so a session hook logs its error and lets the turn continue.
-    const guard = (name: string, callback: (event: any) => void) => (event: any) => {
+    const guard = (callback: (event: any) => void) => (event: any) => {
       try {
         callback(event);
-      } catch (error) {
-        logError(`${name} hook failed.`, error);
-        try { inject(event, [reminder()]); } catch { /* The turn continues without the rules. */ }
+      } catch {
+        diagnose(event.sessionID);
       }
     };
-    await ctx.session.hook("context", guard("context", (event: any) => {
-      const decision = decide("context", { sessionID: event.sessionID });
-      if (decision.decision !== "pass") throw new Error(`Unexpected context decision: ${decision.decision}`);
-      inject(event, [
-        ...(decision.inject_base_rules ? [reminder()] : []),
-        ...(decision.append_correction ? [readText(correctionPromptPath)] : []),
-      ]);
+    await ctx.session.hook("prompt", guard((event: any) => {
+      noticed.delete(event.sessionID);
+      diagnosed.delete(event.sessionID);
+      decide("turn-start", { sessionID: event.sessionID, turn_id: event.messageID });
     }));
-    for (const name of ["compaction", "generate", "title"]) {
-      await ctx.session.hook(name, guard(name, (event: any) => inject(event, [reminder()])));
-    }
-    // A rejection here fails only the one tool call, so blocks still reject.
-    await ctx.tool.hook("execute.before", async (event: any) => {
-      const tools = unwrap(await ctx.tool.list());
-      const tool = Array.isArray(tools) ? tools.find((item: any) => item.id === event.tool) : undefined;
-      const name = tool?.options?.namespace
-        ? `mcp__${tool.options.namespace}__${tool.name}` : event.tool;
-      const decision = decide("tool.execute.before", {
-        event: "tool.execute.before", sessionID: event.sessionID, tool: name, args: event.input,
-      });
-      if (decision.decision === "pass") return;
-      if (decision.decision === "yield" || decision.decision === "allow-revise") {
-        await notify(event.sessionID, decision.notice);
-        return;
+    await ctx.session.hook("context", guard((event: any) => {
+      const decision = decide("context", { sessionID: event.sessionID });
+      if (decision.notice) {
+        inject(event, [decision.notice.slice(0, 320)]);
+        noticed.add(event.sessionID);
       }
-      throw new Error(decision.notice || decision.block_message || FALLBACK_BLOCK);
+    }));
+    await ctx.tool.hook("execute.before", async (event: any) => {
+      try {
+        const tools = unwrap(await ctx.tool.list());
+        const tool = Array.isArray(tools) ? tools.find((item: any) => item.id === event.tool) : undefined;
+        const name = tool?.options?.namespace
+          ? `mcp__${tool.options.namespace}__${tool.name}` : event.tool;
+        const decision = decide("tool.execute.before", {
+          event: "tool.execute.before", sessionID: event.sessionID, tool: name, args: event.input,
+        });
+        await notify(event.sessionID, decision.notice);
+      } catch {
+        diagnose(event.sessionID);
+      }
     });
     const check = async (event: any) => {
       const session = unwrap(await ctx.session.get({ sessionID: event.data.sessionID }));
@@ -103,12 +88,10 @@ export default {
       if (message?.type !== "assistant") throw new Error("Completed message is unavailable.");
       const text = message.content.filter((part: any) => part.type === "text")
         .map((part: any) => part.text).join("\n");
-      // The scanner treats empty content as a breach, so skip steps with no text.
       if (!text.trim()) return;
       const decision = decide("message.final", {
-        event: "message.final", surface: "final", sessionID: session.id, message: { content: text },
+        event: "message.final", surface: "final", sessionID: session.id, message: { role: "assistant", content: text },
       });
-      if (!["pass", "block"].includes(decision.decision)) throw new Error(`Unexpected final decision: ${decision.decision}`);
       await notify(session.id, decision.notice);
     };
     const observe = async () => {
@@ -119,14 +102,14 @@ export default {
         // One failed check must not stop the checks of later turns.
         try {
           await check(event);
-        } catch (error) {
-          logError("final-message check failed.", error);
+        } catch {
+          diagnose(event.data.sessionID);
         }
       }
       if (!controller.signal.aborted) throw new Error("event stream closed.");
     };
-    const observing = observe().catch((error) => {
-      if (!controller.signal.aborted) logError("event observation stopped.", error);
+    const observing = observe().catch(() => {
+      if (!controller.signal.aborted) diagnose("event-stream");
     });
     return async () => { controller.abort(); await observing; };
   },

@@ -59,10 +59,6 @@ let
     fi
   '';
   communicationRules = config.agentic.communicationRules;
-  opencodeTripwireCorrectionPromptFile = pkgs.writeTextFile {
-    name = "opencode-communication-rules-correction-prompt.md";
-    text = communicationRules.correctionPrompt;
-  };
   opencodeTripwirePlugin =
     if communicationRules.mkPluginAdapter == null then
       null
@@ -70,11 +66,8 @@ let
       communicationRules.mkPluginAdapter {
         agent = "opencode";
         shim = ./plugins/communication-rules.ts;
-        correctionPrompt = opencodeTripwireCorrectionPromptFile;
         substitutions = {
           "@tripwireScanner@" = communicationRules.executable;
-          "@tripwireRules@" = communicationRules.rulesPath;
-          "@tripwireCorrectionPrompt@" = "${opencodeTripwireCorrectionPromptFile}";
         };
       };
   opencodePackage = pkgs.symlinkJoin {
