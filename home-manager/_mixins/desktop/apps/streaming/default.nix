@@ -10,19 +10,10 @@ let
 in
 lib.mkIf (host.is.workstation && noughtyLib.hostHasTag "studio") {
 
-  catppuccin = {
-    obs.enable = config.programs.obs-studio.enable;
-  };
-
-  home = {
-    file = {
-      "/Studio/OBS/config/obs-studio/.keep".text = "";
-    };
-    packages = with pkgs; [
-      obs-cli
-      obs-cmd
-    ];
-  };
+  home.packages = with pkgs; [
+    obs-cli
+    obs-cmd
+  ];
 
   programs.obs-studio = {
     enable = true;
@@ -63,13 +54,6 @@ lib.mkIf (host.is.workstation && noughtyLib.hostHasTag "studio") {
         pkgs.obs-vertical-canvas
         pkgs.obs-webkitgtk
       ];
-  };
-
-  # Linux specific configuration
-  systemd.user.tmpfiles = lib.mkIf host.is.linux {
-    rules = [
-      "L+ ${config.xdg.configHome}/obs-studio/ - - - - ${config.home.homeDirectory}/Studio/OBS/config/obs-studio/"
-    ];
   };
 
 }
