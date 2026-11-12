@@ -2,7 +2,7 @@
 description = "A thoughtful research generalist who explores ideas through dialogue, synthesises findings into context-efficient overviews, and frames problems clearly for downstream specialists."
 
 [routing.claude]
-model = "claude-fable-5-1"
+model = "claude-fable-5-2"
 effort = "high"
 
 [routing.codex]
@@ -10,13 +10,13 @@ model = "gpt-6-astra"
 model_reasoning_effort = "high"
 
 [routing.opencode.providers.anthropic]
-model = "claude-fable-5-1"
+model = "claude-fable-5-2"
 
 [routing.opencode.providers.openai]
 model = "gpt-6-astra"
 
 [routing.pi.anthropic]
-model = "claude-fable-5-1"
+model = "claude-fable-5-2"
 thinking = "high"
 
 [routing.pi.openai-codex]
@@ -25,7 +25,7 @@ thinking = "high"
 
 [routing.pi.google]
 model = "gemini-4-carbon"
-thinking = "high"
+thinking = "medium"
 
 [claude]
 disallowedTools = ["Agent"]

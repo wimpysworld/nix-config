@@ -245,7 +245,7 @@ test("unsupported and unregistered models cannot enable Fast", async () => {
 		model("openai-codex", "gpt-future"),
 		...[
 			"claude-opus-5-5-fast",
-			"claude-fable-5-1",
+			"claude-fable-5-2",
 			"claude-sonnet-5-5",
 			"claude-haiku-5-5",
 		].map((id) => model("anthropic", id)),

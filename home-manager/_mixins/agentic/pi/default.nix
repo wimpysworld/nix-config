@@ -357,7 +357,7 @@ let
     };
     hideThinkingBlock = true;
     enabledModels = [
-      "anthropic/claude-fable-5-1"
+      "anthropic/claude-fable-5-2"
       "anthropic/claude-haiku-5-5"
       "anthropic/claude-opus-5-5"
       "anthropic/claude-sonnet-5-5"
