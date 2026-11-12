@@ -694,9 +694,18 @@ skills = false
             "read the complete `babysit-pr` workflow",
             "Follow the body in this caller's context, without generated launch wrappers.",
             "token does not execute the workflow.",
-            "Wait for the workflow's result, bounded stopping condition, or user stop.",
         ):
             self.assertIn(instruction, handoff)
+        self.assertRegex(
+            handoff,
+            r"Wait for verified merge, exhaustion of the single [^.\n]+ run, "
+            r"or an explicit blocked or cancelled outcome\.",
+        )
+        self.assertRegex(
+            handoff,
+            r"Readiness and completed corrective phases return to babysitting, "
+            r"not this creation report\.",
+        )
         self.assertNotIn("Watch handover:", pr)
         coordinator_paths = {
             "commands/address-code-review": (

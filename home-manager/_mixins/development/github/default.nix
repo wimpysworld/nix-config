@@ -66,6 +66,7 @@ let
     ''
     + builtins.readFile ./gh-api-safe.sh;
   };
+  gh-pr-watch = pkgs.callPackage ./gh-pr-watch { inherit gh-api-safe; };
 
   # Fence cannot enforce multi-token command rules after an agent starts a
   # shell under the path policy. This dispatcher applies the GitHub rules when
@@ -294,6 +295,7 @@ lib.mkMerge [
     home = {
       packages = [
         gh-api-safe
+        gh-pr-watch
         gh-bot-merge
         gh-code-scanning-dismiss
         gh-notification-dismiss

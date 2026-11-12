@@ -157,6 +157,10 @@ The shared `review-code` skill supports direct worker mode and coordinator mode.
 
 The handoff loads and follows the complete `babysit-pr` body in the caller's context before the final report. It carries the verified PR identity and bounded mutation authority. Metadata and tracker failures do not bypass that step. Babysitting preserves clean-tree, author, draft, and work-signing checks. Flake filing requires an existing tracker project. These are prompt instructions, not a runtime guarantee that every model follows the workflow.
 
+Babysitting normally ends at verified merge or exhaustion of one run: 16 shifts or eight hours, whichever comes first. Ready PRs remain `ready-awaiting-merge`. Corrective phases return to the next available shift without renewing the budget. Idle shifts count, and every phase shares the absolute run deadline. Safety failures and missing monitoring capability are blocked outcomes, not success. User stops and closed-unmerged PRs are cancelled outcomes.
+
+Continuous monitoring needs a verified native notification or blocking watch for reviews, approvals, head changes, checks, and merge state. When installed, `gh-pr-watch` provides a bounded native `watch` session through a PTY. A CI watch alone does not provide that coverage. Without a suitable facility, the command checkpoints counters, deadlines, head, and watcher identifiers, and reports that no background monitoring continues. Resumption preserves the existing budget. Prompt delivery does not install the helper, supply a durable scheduler, or guarantee monitoring after interruption.
+
 ---
 
 ## Task Lifecycle
