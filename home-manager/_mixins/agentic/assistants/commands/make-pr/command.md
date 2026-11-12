@@ -2,9 +2,11 @@
 
 Draft the pull request title and body with the inline contract below. Then create a pull request for the current branch. On a work repository, open the body with a bold why line and append a reviewer orientation block, both before creation. A work pull request also carries a review request for the work review team and the `ai-review` label. A personal pull request carries a review request for `sith-skrye`, `sith-traya`, and `sith-zannah`.
 
-Run the pull request creation flow in the current context. Do not launch a sub-agent or a Task for any step. The current context holds the change intent, validation results, and non-goals that the pull request message needs. The watch handover after successful creation is separate and may invoke `babysit-pr` when the user selects it.
+Run the pull request creation flow in the current context. Do not launch a sub-agent or a Task for any creation step. The current context holds the change intent, validation results, and non-goals that the pull request message needs. Complete the babysitting handoff before the final response. That separate workflow retains the caller and its existing delegation authority.
 
 Load the `gh` skill before any GitHub access and follow its GitHub policy. This command mutates remote Git and GitHub state by pushing only when needed, running `gh pr create`, and repairing missing review metadata with `gh pr edit`, and it moves any linked tracked issue, Linear or GitHub Project, to its in-review status. Treat explicit human invocation of this command as consent for those actions.
+
+Invocation also authorises the bounded `babysit-pr` workflow through **Completion and babysitting** on recognised owned, managed, or Chainguard projects. Respect an explicit opt-out or later stop. Reading either command for maintenance does not invoke it or authorise remote actions.
 
 ### Pull request draft
 
@@ -35,7 +37,7 @@ Produce the title, a blank line, the body, and any footers inside one fenced Mar
 
 Load `contribution-templates` and apply it to `<base>` before drafting. It resolves the base repository, reads its pull request templates, selects one, and owns the fill rules. When it finds a template, that template replaces the prose body above. Prose inside each section still follows `communication-rules` and `contribution-voice`. When it reports a trap or an open question, stop before creation and return the question to the user or the parent.
 
-On a community repository, load `how-to-contribute` and apply it to `<base>` before drafting. When `how-to-contribute` reports a pre-approval gate, required discussion, AI-contribution ban, or trap, report the policy and stop before pushing.
+On a community or unknown repository, load `how-to-contribute` and apply it to `<base>` before drafting. When `how-to-contribute` reports a pre-approval gate, required discussion, AI-contribution ban, or trap, report the policy and stop before pushing.
 
 ### Working tree handling
 
@@ -52,18 +54,20 @@ Run each command separately. Do not chain commands with `&&`, `;`, or `|`.
 1. Inspect branch state with `git status --short --branch`, `git rev-parse --abbrev-ref HEAD`, `git log main..HEAD --oneline`, `git log main..HEAD --format=full`, `git log -20 main --oneline`, and `git diff main..HEAD --stat`.
 2. Stop if the current branch is `main`, or if there are no commits in `main..HEAD`.
 3. If staged files or unstaged files exist, leave them unchanged. Note that they are excluded because only committed branch changes are used.
-4. Resolve `<base>`, `<default branch>`, and `<head>` with **Base and head** below. Classify the repository once as `work`, `personal`, or `community` with **Repository classification** below. Reuse those values for the contribution gate, orientation, review metadata, Linear guard, and pull request lookup and creation. Resolve linked issues and their tracker with **Tracker transition** below for the draft footers. Apply **Pull request template** above.
+4. Resolve `<base>`, `<default branch>`, and `<head>` with **Base and head** below. Classify the repository with **Repository classification** below. Reuse those values for the contribution gate, orientation, review metadata, Linear guard, and pull request lookup and creation. Resolve linked issues and their tracker with **Tracker transition** below for the draft footers. Apply **Pull request template** above.
 5. Apply **Pull request draft** above. Preserve its fenced pull request message verbatim as the pull request source.
 6. Strip only the Markdown fence lines. Use the first remaining line as the pull request title. Write the remaining body text unchanged to a temporary file.
 7. On a work repository, insert the bold why line and append the orientation block with **Reviewer orientation** below. When a template applies, place both inside its summary or description section, as `contribution-templates` describes. Both belong in the initial pull request, so never add either later by editing the pull request.
 8. Push with an explicit refspec: `git push origin <branch>`. A bare `git push` depends on tracking configuration that may be absent, and pushes nothing when it is. Never pass `-u`: a sandbox mounts `.git/config` read-only, so the upstream write fails after the push has already landed. Stop if the push requires force, deletion, tags, or a non-fast-forward update.
 9. Verify the push landed. Run `git fetch origin <branch>`, then compare `git rev-parse HEAD` against `git rev-parse FETCH_HEAD`. Report a mismatch and stop rather than creating the pull request. Never trust the exit status alone: a push that matches nothing reports success while doing nothing.
 10. Look for an existing pull request with `<base>` and `<head>`, following **Pull request lookup and verification** below.
-11. On a work repository, resolve the owner with `gh repo view --json owner` and build the team handle. Do this before creating the pull request or repairing existing work metadata.
+11. On a work repository, resolve the owner with `gh repo view <base> --json owner` and build the team handle. Do this before creating the pull request or repairing existing work metadata.
 12. If no pull request exists, create one with `gh pr create --repo <base> --base <default branch> --head <head> --title <title> --body-file <temp-file>`. On a work repository, add `--reviewer <owner>/fulfillment-automation-team-write` and `--label ai-review`. On a personal repository, add `--reviewer sith-skrye,sith-traya,sith-zannah`.
 13. Verify the pull request URL and title on every repository. On a work or personal repository, verify and repair the review metadata with **Review metadata** below. Never report success from `gh pr create` alone.
 14. Move each linked issue to the `in review` role, following **Tracker transition** below. A tracker failure never stops this command.
-15. Report the verified pull request URL, title, template, orientation status, review metadata outcome, tracker outcomes, and excluded uncommitted files.
+15. Prepare the **Output** report. Retain metadata and tracker failures as report entries, not early exits.
+16. Apply **Completion and babysitting**, including any ownership question, before the final response. Follow the authorised babysitting workflow and wait for its result or stated stopping condition.
+17. Return the prepared report and the babysitting outcome, skipped reason, or pending ownership decision.
 
 ### Base and head
 
@@ -76,13 +80,18 @@ Resolve these values once at Step 4, and reuse them for classification, the cont
 
 ### Repository classification
 
-Classify the repository once at Step 4 as `work`, `personal`, or `community` from `git config user.email` and `<base>` owner:
+This section is the shared policy for `make-pr` and `babysit-pr`. Classify the verified receiving repository, not the fork or local checkout. Match exact GitHub owner logins case-insensitively:
 
-- `work` - `git config user.email` is on the `chainguard.dev` domain.
-- `personal` - `git config user.email` is not on `chainguard.dev`, and the `<base>` owner matches `wimpysworld`, `Oval-Tutu`, `noughtylinux`, `quickemu-project`, or `linuxmatters` case-insensitively.
-- `community` - `git config user.email` is not on `chainguard.dev`, and `<base>` has any other owner. An empty or malformed email address is also non-work.
+- `personal`: `wimpysworld`, `Oval-Tutu`, `noughtylinux`, `quickemu-project`, or `linuxmatters`.
+- `work`: `chainguard-dev`.
+- `community`: the user or trusted project instructions explicitly identify this destination as a third-party contribution.
+- `unknown`: none of the above, or the evidence conflicts.
 
-Reuse that classification for the contribution gate, the reviewer orientation, the review metadata, and the Linear workspace guard.
+An explicit user classification for this destination takes precedence. A confirmed owned or managed project is `personal`, and confirmed Chainguard work is `work`. Record the evidence and its scope. Do not extend one repository's answer to its whole organisation or change this allowlist during execution.
+
+Email, checkout location, fork ownership, write access, organisation membership, and a similar owner name do not establish ownership. An unlisted owner is unknown, not automatically third-party.
+
+Reuse the classification for the contribution gate, orientation, review metadata, Linear workspace guard, and babysitting decision. Until resolved, handle `unknown` like `community` for templates, contribution checks, lookup, and review metadata. Skip Linear writes when the workspace classification is unknown. Do not infer automatic babysitting eligibility from that conservative handling.
 
 ### Reviewer orientation
 
@@ -123,6 +132,8 @@ Filling it in:
 
 These rules apply to work, personal, and community repositories.
 
+Before any mutation of a discovered pull request, fetch `author,headRepository,headRepositoryOwner,headRefName,baseRefName,state,isDraft,url` with `gh pr view`. Verify the authenticated user through `gh-api-safe user --jq .login`. Match the author to that user, the head repository and branch to the intended origin and branch, and the URL's base repository to `<base>`. Require an open pull request. An existing non-default base branch is valid when it matches the intended target. Report a mismatch and stop without changing that pull request. Record draft status without changing it. A valid existing draft can complete creation reporting but cannot enter babysitting.
+
 - Before creation, run `gh pr view <head> --repo <base> --json url,title,reviewRequests,reviews`. If it returns a pull request, do not run `gh pr create`. Use that pull request and continue with **Review metadata** on a work or personal repository.
 - Create a pull request only when the lookup unambiguously says that none exists. If authentication, network access, or another lookup failure makes the outcome unclear, report the failure and stop before creation.
 - If `gh pr create` fails, run `gh pr view <head> --repo <base> --json url,title` first. If the pull request exists, never create it again. If none exists, stop on a community repository. On a work or personal repository, apply the retry in **Review metadata** only when a reviewer or label failed.
@@ -138,7 +149,7 @@ The review request and the label are repository metadata. Never write either int
 
 Resolving the work team handle:
 
-- On a work repository, run `gh repo view --json owner` before creating the pull request, then build the handle `<owner>/fulfillment-automation-team-write`. Never hard-code an organisation, because a work repository can sit under more than one.
+- On a work repository, run `gh repo view <base> --json owner` before creating the pull request, then build the handle `<owner>/fulfillment-automation-team-write`. Never hard-code an organisation, because a work repository can sit under more than one.
 - Where the owner is a user account rather than an organisation, or the lookup fails, create the pull request without `--reviewer` and report the missing prerequisite. The label still applies.
 
 Creating and checking review metadata:
@@ -158,7 +169,7 @@ Repairing missing metadata:
 - Where the pull request exists and metadata is missing, discover the existing pull request with `gh pr view <head> --repo <base> --json url,title,reviewRequests,reviews`. Never run `gh pr create` again. A duplicate pull request is never created after an ambiguous partial success.
 - On a work repository, run one repair for the missing field: `gh pr edit <url> --add-reviewer <owner>/fulfillment-automation-team-write` or `gh pr edit <url> --add-label ai-review`.
 - On a personal repository, run one `gh pr edit <url> --add-reviewer <login>` command for each missing reviewer among `sith-skrye`, `sith-traya`, and `sith-zannah` that did not already review the pull request.
-- Fetch the final object by URL with the fields in **Pull request lookup and verification**, then report the exact reviewer or label that is still missing. Stop after that one repair pass.
+- Fetch the final object by URL with the fields in **Pull request lookup and verification**, then record the exact reviewer or label that is still missing. End repairs after that one pass, then continue to completion.
 - A reviewer or label failure never rewrites the branch, force-pushes, closes the pull request, or rolls a Linear issue back. The pull request is the deliverable and it stays open.
 - Never create the label, the team, a repository permission, or an organisation membership. Report the missing prerequisite and who must supply it.
 
@@ -172,7 +183,7 @@ Named failures, and what each one means:
 - The token cannot request reviewers or apply labels. Creation fails on the argument, or the field comes back empty. Report the missing permission and the argument it blocked.
 - The author is also in the requested team. GitHub may drop the author from the request, so `reviewRequests` can come back without the team after a call that succeeded. Report the request as made, name the author's membership as the reason, and never retry in a loop.
 - The branch already has an open pull request. Creation fails. Discover that pull request, repair any missing metadata once, and report its URL. When an agent already reviewed an existing personal pull request, GitHub removes that login from `reviewRequests` and keeps it in `reviews`. Report the remaining `reviewRequests` entries and any repair failure without retrying in a loop.
-- Creation succeeds but the metadata fails. Report the pull request as created, name the field that failed, and finish. The command still succeeded.
+- Creation succeeds but the metadata fails. Record the pull request as created and name the failed field. Continue to completion and babysitting.
 - `gh pr view` returns a different representation for the team. Where `reviewRequests` carries neither a matching `slug` nor a recognisable `Team` entry, report the field as unverified rather than failed, and print what came back.
 
 ### Tracker transition
@@ -186,11 +197,11 @@ Handle each linked issue on its own, and report each one. A branch may carry mor
 - Move the issue to the `in review` role as the reference describes. Never invent a status and never create one.
 - Move forward only. The reference says which states are already at or past `in review`. Leave the issue where it is in those states.
 
-Never fatal. The pull request is the deliverable. If the tracker is unreachable, a key does not resolve, the role has no status, or the write fails, report it in one line and finish successfully. Never block, never retry in a loop, and never undo or amend anything because of a tracker failure.
+Never fatal. The pull request is the deliverable. If the tracker is unreachable, a key does not resolve, the role has no status, or the write fails, record one line. Continue to completion and babysitting. Never block, retry in a loop, undo, or amend anything because of a tracker failure.
 
 ### Output
 
-Return this report to the user:
+Prepare this report, then return it after **Completion and babysitting**:
 
 ````markdown
 Pull request: <url>
@@ -209,25 +220,33 @@ Match the review metadata lines to the repository classification:
 
 - On `work`, include `Review requested: fulfillment-automation-team-write, applied or failed with reason` and `Label: ai-review, applied or failed with reason`.
 - On `personal`, include `Review requested: sith-skrye, sith-traya, sith-zannah, applied or failed with reason` and omit `Label`.
-- On `community`, omit both `Review requested` and `Label`.
+- On `community` or `unknown`, omit both `Review requested` and `Label`.
 
-### Watch choice
+### Completion and babysitting
 
-If the report does not contain a verified pull request URL, finish after the report. Do not ask a question or offer a next action.
+If no pull request URL is verified, report the failure without a babysitting question or next action.
 
-If the report contains a verified pull request URL, define `<watch-command>` with that URL. Codex uses `$babysit-pr <url>`. Slash-command runtimes use `/babysit-pr <url>`. Replace `<url>` and show only the matching form.
+For a verified URL, apply these decisions in order:
 
-In an interactive session, use the available structured user-question tool to ask one single-select question after the report:
+1. Honour an explicit opt-out, decline, cancellation, or stop. Report that babysitting was skipped.
+2. On `community`, finish with the pull request report. Do not offer babysitting or print a babysitting next action.
+3. On `personal` or `work`, continue automatically. Do not ask another permission question.
+4. On `unknown`, ask the ownership question below before completing the response. Do not silently classify it as third-party.
 
-- Header: `Babysit PR`
-- Question: `Babysit this pull request?`
-- `Babysit (Recommended)` - Run `<watch-command>` to fix checks, answer reviews, and wait for approvals.
-- `Stop here` - Finish after the report.
+Use an available structured question tool, including Pi's questionnaire when available. Ask one single-select question:
 
-Use the verified URL from the report. Do not add an `Other` choice. The client can add its own free-text choice.
+- Header: `PR ownership`
+- Question: `Is <base> your own or managed project, Chainguard work, or a third-party contribution?`
+- `Own or managed` - Classify this repository as personal and start babysitting this pull request.
+- `Chainguard work` - Classify this repository as work and start babysitting this pull request.
+- `Third-party` - Report the pull request without babysitting.
 
-If the user selects `Babysit (Recommended)`, invoke the provider-specific command and wait for it to finish. If the user selects `Stop here`, finish without another summary. Treat cancellation, silence, and any other answer as `Stop here`.
+Replace `<base>` with the verified receiving repository. Do not add an `Other` choice. Honour a free-text stop or opt-out. If no structured tool is available, ask the exact question directly, with the same choices and effects. Await the answer before dependent work. Silence, a timeout, an unavailable interaction channel, or an ambiguous answer supplies neither classification nor consent. In a non-interactive run, report the verified pull request and `Babysitting pending: ownership of <base> is unknown`. Require that classification when resuming.
 
-If no structured user-question tool is available in an interactive session, print the same question and choices with the provider-specific command, then wait.
+For an authorised handoff, resolve and read the complete `babysit-pr` workflow from the configured command or skill roots, or repository command source. Codex uses its command-derived `SKILL.md`, Claude Code and OpenCode their command Markdown, and Pi its prompt template. Follow the body in this caller's context, without generated launch wrappers. A printed `$babysit-pr` or `/babysit-pr` token does not execute the workflow.
 
-In a non-interactive session, print `Next action: $babysit-pr <url>` on Codex or `Next action: /babysit-pr <url>` on a slash-command runtime, with the verified URL substituted. Then finish.
+Pass the exact PR URL, verified base and head identities, classification and evidence, user preferences, and this invocation's authority. That authority covers only the actions listed in `babysit-pr`'s **Authority**, subject to its preconditions and prohibitions. Do not merge, close, approve, release, force-push, dispatch workflows, or mutate another author's pull request. A worker retains its role and returns any required coordination to its parent.
+
+Recheck the babysitting preconditions before mutations. A dirty tree, draft, identity mismatch, signing failure, or other precondition failure skips babysitting with a reason. Preserve the successful creation result and excluded files. Never clean, stash, commit excluded work, or mark a draft ready to enable the handoff.
+
+Wait for the workflow's result, bounded stopping condition, or user stop. Return the creation report with its outcome and any required resume action. If the body cannot be loaded, report that blocker, not a completed handoff. Use `$babysit-pr <url>` on Codex and `/babysit-pr <url>` on slash-command runtimes only for user-facing resume instructions.

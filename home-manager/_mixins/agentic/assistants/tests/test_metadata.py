@@ -653,11 +653,50 @@ skills = false
             "Run the pull request creation flow in the current context",
             "State only checks that this session verified",
             "Never report success from `gh pr create` alone",
-            "### Watch choice",
-            "Header: `Babysit PR`",
-            "If the user selects `Babysit (Recommended)`, invoke the provider-specific command and wait for it to finish.",
         ):
             self.assertIn(text, pr)
+        sections = dict(re.findall(r"(?ms)^### ([^\n]+)\n(.*?)(?=^### |\Z)", pr))
+        steps = re.findall(r"(?m)^\d+\. (.+)$", sections["Process"])
+        handoff_steps = [
+            index
+            for index, step in enumerate(steps)
+            if "**Completion and babysitting**" in step
+        ]
+        self.assertEqual(len(handoff_steps), 1)
+        self.assertLess(handoff_steps[0], len(steps) - 1)
+        self.assertIn("before the final response", steps[handoff_steps[0]])
+        self.assertRegex(steps[-1], r"^Return .*babysitting")
+
+        classification = sections["Repository classification"]
+        self.assertEqual(
+            set(re.findall(r"(?m)^- `([^`]+)`:", classification)),
+            {"personal", "work", "community", "unknown"},
+        )
+        self.assertIn("verified receiving repository, not the fork", classification)
+        self.assertIn(
+            "An unlisted owner is unknown, not automatically third-party.",
+            classification,
+        )
+        handoff = sections["Completion and babysitting"]
+        decisions = re.findall(r"(?m)^\d+\. (.+)$", handoff)
+        self.assertRegex(decisions[0], r"explicit opt-out.*skipped")
+        for branch, boundary in (
+            ("`community`", r"Do not offer babysitting"),
+            ("`personal` or `work`", r"continue automatically.*Do not ask"),
+            ("`unknown`", r"ask .*question.*before .*response"),
+        ):
+            self.assertRegex("\n".join(decisions), rf"(?m)^On {branch},.*{boundary}")
+        self.assertRegex(handoff, r"Silence, [^\n]*neither classification nor consent")
+        for instruction in (
+            "structured question tool",
+            "If no structured tool is available, ask the exact question directly",
+            "Await the answer before dependent work.",
+            "read the complete `babysit-pr` workflow",
+            "Follow the body in this caller's context, without generated launch wrappers.",
+            "token does not execute the workflow.",
+            "Wait for the workflow's result, bounded stopping condition, or user stop.",
+        ):
+            self.assertIn(instruction, handoff)
         self.assertNotIn("Watch handover:", pr)
         coordinator_paths = {
             "commands/address-code-review": (

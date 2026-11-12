@@ -6,7 +6,7 @@ Resolve named workflows through the available skill catalogue, configured skill 
 
 ### Authority
 
-Human invocation of this command is the user's consent for: commit, push, `gh-review-reply`, `gh-review-resolve`, `gh-review-unresolve`, `gh run rerun --failed`, `gh pr update-branch` in the one case named under **Triage failures**, `gh pr edit --add-reviewer` to re-request a review, and tracker issue creation and comment.
+Human invocation, or an authorised `make-pr` handoff under its completion policy, supplies consent for: commit, push, `gh-review-reply`, `gh-review-resolve`, `gh-review-unresolve`, `gh run rerun --failed`, `gh pr update-branch` in the one case named under **Triage failures**, `gh pr edit --add-reviewer` to re-request a review, and tracker issue creation and comment. A nested handoff must supply the exact PR URL, classification evidence, and this bounded authority. A command name or a maintenance read supplies no authority. Honour user opt-outs and later stops.
 
 Forbidden throughout: merge, close, approve, release, force-push, `gh workflow run`, and any change to a PR the user does not own. Never use raw `gh api`; use dedicated subcommands, and `gh-api-safe` for raw reads.
 
@@ -19,8 +19,11 @@ Check these before anything else. If one fails, stop and state the reason in one
 - The working tree is clean.
 - The local branch has not diverged from its remote.
 - The PR is open and is not a draft.
+- The authenticated user owns the PR. Fetch the author, head repository and owner, head branch and SHA, base branch, URL, state, and draft status. Match these against the intended PR, local branch, origin, and checked-out commit. Use `gh-api-safe user --jq .login` for the authenticated login. Stop on a mismatch before any mutation. Never mark a draft ready to pass this check.
 
-Classify the repository from `git config user.email` inside it. An address on the `chainguard.dev` domain means work; anything else means personal or community. For a work repository, confirm `$PWD` is under `~/Chainguard/*/` so gitsign applies, and stop if it is not.
+Resolve and read `make-pr`'s **Repository classification** section as policy only. Do not execute its creation workflow. Use the verified PR's base repository and any explicit user classification. Resolve the body from the configured runtime root: Codex's `skills/make-pr/SKILL.md`, Claude Code or OpenCode's `commands/make-pr.md`, or Pi's `prompts/make-pr.md`. Codex follows `home.preferXdgDirectories`. Repository source fallback is `commands/make-pr/command.md` under the shared assistants directory. Stop if the policy cannot be read. Do not copy its allowlist here.
+
+Keep signing checks separate from ownership. When classification is `work` or `git config user.email` is on `chainguard.dev`, require `$PWD` under `~/Chainguard/*/` so gitsign applies. Stop otherwise. An email address alone never grants automatic handoff eligibility. For an unknown classification, skip Linear writes until the destination workspace is established.
 
 ### Link the task
 
@@ -89,7 +92,7 @@ Run `gh run rerun --failed` once per head SHA. A second flake on the same SHA is
 
 Then record it in the tracker that **Link the task** resolved. Search first for an open issue naming the same check and comment on it rather than filing a duplicate.
 
-- **Linear, or no linked issue**: file into the flake bucket project. Call `create-project` to find or create it, then `create-task` with the `new` role to file into it. Apply the Linear reference's creation-assignee policy. One project name, used in both workspaces: `Triage and reduce encountered CI flakiness by 50%`. No cycle in the name, and no cycle on the issue. The project is perpetual and reused. The user closes it and creates its replacement on their own schedule, so this command neither knows nor cares about that rollover. Workspace guard: the connected Linear instance is personal when the `WW` team, Wimpy's World, is visible, and work when `FUL`, Fulfillment Automation, is visible. The guard picks the destination, never the project name. File work into the `FUL` team and personal into the `WW` team. If the repository classification and the visible instance disagree, skip the Linear step, report one line saying the profile does not match the repository, and carry on with the rest of the loop.
+- **Linear, or no linked issue**: find the existing flake bucket project, then follow `create-task` with the `new` role to file into it. Do not create a project. If none exists, report the missing project and continue without filing. Apply the Linear reference's creation-assignee policy. One project name, used in both workspaces: `Triage and reduce encountered CI flakiness by 50%`. No cycle in the name, and no cycle on the issue. The project is perpetual and reused. The user closes it and creates its replacement on their own schedule, so this command neither knows nor cares about that rollover. Workspace guard: the connected Linear instance is personal when the `WW` team, Wimpy's World, is visible, and work when `FUL`, Fulfillment Automation, is visible. The guard picks the destination, never the project name. File work into the `FUL` team and personal into the `WW` team. If the repository classification is unknown or the visible instance disagrees, skip the Linear step, report the missing or mismatched classification, and carry on with the rest of the loop.
 - **GitHub Project**: run `create-task` against the project the linked issue sits on, so the flake lands as a `Bug` issue in the PR's repository on the same board.
 
 Read `contribution-voice` first unless its complete, current instructions are in this context. Apply it before writing that comment, and name it in the worker packet if a worker writes it. The comment publishes under the user's name. State the check, the evidence that it is flaky, and the head SHA. Nothing else.

@@ -151,7 +151,11 @@ The four commands `review-code-community`, `review-code-colleague`, `review-code
 
 The shared `review-code` skill supports direct worker mode and coordinator mode. Coordinator mode retains fan-out and selective verification. The `review-code-follow-up` skill keeps its prior-report and response-delta scope in direct worker mode. A complete-review worker allocates one exclusive report run when none is supplied. Review-lane workers reuse their parent's paths.
 
-`make-commit` and `make-pr` run in the caller's context and inherit the caller's model for message drafting, commit and PR creation, and the `babysit-pr` choice. Only the coordinator can delegate a commit to Garfield for a large staged diff that the session did not author.
+`make-commit` and `make-pr` run in the caller's context and inherit the caller's model for drafting, creation, and the `babysit-pr` handoff. Only the coordinator can delegate a commit to Garfield for a large staged diff that the session did not author.
+
+`make-pr` completes with automatic babysitting for recognised owned, managed, and Chainguard projects, unless the user opts out. Confirmed third-party contributions receive no babysitting offer. Unknown ownership requires a question, not an inferred refusal or consent. The receiving repository decides, not a fork, email address, or write permission. The canonical classification policy lives in [make-pr](commands/make-pr/command.md#repository-classification), which `babysit-pr` reads without executing creation.
+
+The handoff loads and follows the complete `babysit-pr` body in the caller's context before the final report. It carries the verified PR identity and bounded mutation authority. Metadata and tracker failures do not bypass that step. Babysitting preserves clean-tree, author, draft, and work-signing checks. Flake filing requires an existing tracker project. These are prompt instructions, not a runtime guarantee that every model follows the workflow.
 
 ---
 
