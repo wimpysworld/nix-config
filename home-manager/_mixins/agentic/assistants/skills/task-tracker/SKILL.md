@@ -36,7 +36,7 @@ When the input does not match any form, ask which tracker before doing anything 
 | priority | 1 Urgent, 2 High, 3 Medium, 4 Low |
 | estimate | The `sizing` skill's scale |
 | parent and order | A tracking task with children, ordered by its `Child issues` list |
-| assignee | The authenticated user |
+| assignee | Creation defaults and claiming rules in the tracker reference |
 | durable record | The comment a command posts when work lands |
 | long research | Where research over roughly 6,000 characters lives |
 | branch link | How a branch and pull request attach to the task |

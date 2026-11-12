@@ -1,6 +1,6 @@
 # Linear
 
-Tracker mechanics for tasks held in Linear. Use the Linear MCP for every read and write. The wording below is the behaviour the task commands carried before this skill existed, so the Linear path is unchanged.
+Tracker mechanics for tasks held in Linear. Use the Linear MCP for every read and write.
 
 ## Contents
 
@@ -60,7 +60,31 @@ Create children as sub-issues of the parent, in dependency order, so identifiers
 
 ## assignee
 
-Assign every issue, parent and children, to the user creating or claiming it. Resolve that user at run time from the authenticated Linear identity. Never hard-code an identifier.
+### Creation
+
+Apply this policy to standalone issues, parents, children, spikes, and follow-ups.
+An explicit user assignee or explicit no-assignee instruction takes precedence over every default below.
+Resolve named assignees and the authenticated user at run time. Never hard-code a user identifier.
+
+Resolve the destination workspace and team before creation. If the destination is ambiguous, resolve it before writing.
+Classify the resolved destination from visible Linear teams: `FUL` is work and `WW` is personal.
+Repository email alone never determines assignment. Keep the `Identity and lookup` workspace mismatch guard.
+
+| Destination | Default at creation |
+| ----------- | ------------------- |
+| Work (`FUL`) | Unassigned. Omit the `assignee` field |
+| Personal (`WW`) | Set `assignee` to the authenticated Linear user |
+| Resolved but unclassified | Unassigned. Omit `assignee` and report the fallback |
+
+For an explicit no-assignee instruction, omit `assignee` at creation too.
+Inspect the created issue's assignee, reading it back if the creation response omits that field.
+Templates or server automation can assign an issue despite omission. Report any mismatch with the requested or default assignment.
+Do not silently clear or replace ownership after creation.
+
+### Claiming existing work
+
+Creation defaults do not apply to existing issues. Never clear an existing assignee to enforce a creation default.
+When `implement-task` claims an issue, assign it to the authenticated user as that workflow directs.
 
 ## durable record
 

@@ -92,7 +92,7 @@ Before writing any body:
 
 Where the research exceeds roughly 6,000 characters, or will outlive the work, store it where the reference's `long research` section says, link it from the parent, and say so in one line in the parent body. For a local target, write the durable record as a sibling file and link it by relative path.
 
-To a tracker: create children as sub-issues of the parent, in dependency order, so identifiers ascend with the sequence. Assign every issue, parent and children, to the user creating them. Resolve that user at run time from the authenticated identity; never hard-code an identifier.
+To a tracker: create children as sub-issues of the parent, in dependency order, so identifiers ascend with the sequence. Apply the tracker's `assignee` creation policy to every issue, including explicit user overrides and creation-result checks.
 
 To a local file: write one file per task in the confirmed directory. For a cohort, write the parent as `00-<slug>.md` and each child as `NN-<slug>.md`, numbered in dependency order, so the filenames carry the sequence. Start every local task file with the frontmatter block below, then the matching body template unchanged:
 
@@ -229,7 +229,7 @@ Implement in this order:
 - Keep `Why` to one short paragraph. `Problem` and `Context` can use one or two short paragraphs; use bullets elsewhere.
 - The parent holds cohort scope, shared decisions, dependency order, and cohort success. Children hold delivery scope, success criteria, priority, estimate, and labels.
 - Every issue gets a type, labels, priority, and an estimate, drawn from the live taxonomy. Local files carry the same values in frontmatter.
-- Every tracked issue is assigned to the user creating it. Local task files carry no assignee.
+- Follow the tracker reference's creation-assignee policy. Local task files carry no assignee.
 - The body templates are identical for every tracker and for local files. Only the frontmatter differs.
 - Tracker mechanics live in `task-tracker`. Never name a status, type, or field here.
 - British spelling. No hedging language.
