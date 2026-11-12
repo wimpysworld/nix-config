@@ -192,7 +192,7 @@ def has_freshener_labels:
   ((.labels // []) | map(.name)) | (any(. == "automated") and any(. == "dependencies"));
 
 def is_freshener_branch:
-  ((.headRefName // "") | test("^freshen/|^(chainctl|claude-themes-catppuccin|defold|handy|herdr-ctx-bar|herdr-disp-model|lan-mouse|manuscript|moltis|openusage|roamgate|silo-server|weave|wolfictl|yam)-[0-9A-Za-z._-]+$"));
+  ((.headRefName // "") | test("^freshen/|^(brave|chainctl|claude-themes-catppuccin|defold|handy|herdr-ctx-bar|herdr-disp-model|lan-mouse|manuscript|moltis|openusage|roamgate|silo-server|weave|wolfictl|yam)-[0-9A-Za-z._-]+$"));
 
 def is_trusted_peer($owner; $repo):
   (
@@ -215,11 +215,11 @@ def is_freshener($owner; $repo):
   (($owner | ascii_downcase) == "wimpysworld" and ($repo | ascii_downcase) == "nix-config")
   and (.author.login == "flexiondotorg")
   and has_freshener_labels
-  and ((.headRefName // "") | test("^(chainctl|claude-themes-catppuccin|defold|handy|herdr-ctx-bar|herdr-disp-model|lan-mouse|manuscript|moltis|openusage|roamgate|silo-server|weave|wolfictl|yam)-[0-9A-Za-z._-]+$"))
+  and ((.headRefName // "") | test("^(brave|chainctl|claude-themes-catppuccin|defold|handy|herdr-ctx-bar|herdr-disp-model|lan-mouse|manuscript|moltis|openusage|roamgate|silo-server|weave|wolfictl|yam)-[0-9A-Za-z._-]+$"))
   and (((.files // []) | length) > 0)
   and all(
     (.files // [])[];
-    ((.path // "") | test("^(pkgs/[A-Za-z0-9._-]+/default\\.nix|flake\\.nix|flake\\.lock)$"))
+    ((.path // "") | test("^(pkgs/[A-Za-z0-9._-]+/default\\.nix|pkgs/brave/release\\.nix|flake\\.nix|flake\\.lock)$"))
     and (.path != "pkgs/./default.nix")
     and (.path != "pkgs/../default.nix")
   );
