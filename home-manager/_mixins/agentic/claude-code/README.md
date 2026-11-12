@@ -8,15 +8,15 @@ Agents, commands, skills, and global instructions are managed separately in the 
 
 ## Authentication
 
-On personal physical computers, the `claude` launch wrapper reads the managed `ANTHROPIC_API_KEY` secret when Claude Code starts. The wrapper exports the key only to the Claude Code process and its children.
+Claude Code uses the saved Claude subscription login on both personal and work hosts.
 
-The normal and fenced launch paths use the same credential wrapper. The fenced path reads the secret inside Fence, so the key does not enter Fence arguments.
+The normal and fenced launch paths clear `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, and `CLAUDE_CODE_OAUTH_TOKEN` immediately before starting Claude Code. In Fence, this happens after direnv loads the project environment. The wrapper preserves `CLAUDE_CONFIG_DIR` and other environment variables.
 
-Claude Code asks "Do you want to use this API key?" the first time it sees a key and stores the answer in `~/.claude.json` under `customApiKeyResponses`, keyed by the last 20 characters of the key. A rejected key is ignored on every later launch with no message. On personal computers a Home Manager activation step runs after sops-nix decrypts the secret. It approves the key, removes any rejection, sets `hasCompletedOnboarding`, deletes `oauthAccount` from `~/.claude.json`, and removes `~/.claude/.credentials.json`. The API key is then the only credential. Run `/login` to restore the subscription on that host. The status line replaces the 5h and weekly usage segments on personal computers with ccstatusline's `session-cost` widget, the estimated session spend in USD, because the usage segments read the subscription token.
+Home Manager activation does not approve API keys or remove saved login credentials. Existing work logins remain in place. After activating this configuration, run `claude auth login` or `/login` in Claude Code on each host that needs a subscription login. The previous personal-host configuration removed saved logins, so those hosts need a new login. The status line shows the 5h and weekly subscription quota on both host classes.
 
-Do not set `forceLoginMethod`. It restricts the login method and, since Claude Code 2.1.146, blocks sessions authenticated by `ANTHROPIC_API_KEY`.
+Zed's Claude Agent Client Protocol (ACP) entry clears the same three variables before starting `claude-agent-acp`. It preserves `CLAUDE_CONFIG_DIR` and uses the adapter's own login flow, without the terminal launch wrapper.
 
-Work hosts do not receive the API key and keep Claude subscription authentication. The Claude ACP adapter does not use this wrapper.
+The shared Anthropic API key remains available to LibreChat, OpenCode, and Pi. Their authentication and ACP launch paths are unchanged.
 
 ## Package selection
 

@@ -29,8 +29,13 @@ let
     lib.optionalAttrs config.programs.claude-code.enable {
       Claude = {
         type = "custom";
-        command = "${acpPackages.claude-agent-acp}/bin/claude-agent-acp";
-        args = [ ];
+        command = "${pkgs.coreutils}/bin/env";
+        args = [
+          "--unset=ANTHROPIC_API_KEY"
+          "--unset=ANTHROPIC_AUTH_TOKEN"
+          "--unset=CLAUDE_CODE_OAUTH_TOKEN"
+          "${acpPackages.claude-agent-acp}/bin/claude-agent-acp"
+        ];
         env = { };
       };
     }

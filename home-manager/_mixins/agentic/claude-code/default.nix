@@ -451,28 +451,15 @@ let
     else
       claudePackage;
 
-  # Read the managed API key only when a Claude Code process starts. The
-  # wrapper does not put the key in a Nix value, a session variable, or Fence
-  # arguments. Work hosts skip this step and keep subscription authentication.
-  claudePackageWithCredentials =
-    if config.agentic.personalComputer then
-      pkgs.writeShellApplication {
-        name = "claude";
-        text = ''
-          anthropic_api_key_path=${lib.escapeShellArg config.sops.secrets.ANTHROPIC_API_KEY.path}
-          if [[ ! -r "$anthropic_api_key_path" ]]; then
-            echo "claude: Anthropic API key secret is missing or unreadable: $anthropic_api_key_path" >&2
-            exit 1
-          fi
-
-          ANTHROPIC_API_KEY="$(< "$anthropic_api_key_path")"
-          export ANTHROPIC_API_KEY
-
-          exec ${lib.escapeShellArg (lib.getExe' claudePackageWithLsp "claude")} "$@"
-        '';
-      }
-    else
-      claudePackageWithLsp;
+  # Clear inherited credentials after Fence loads the project environment,
+  # so both launch paths use the saved Claude login on personal and work hosts.
+  claudePackageWithCredentials = pkgs.writeShellApplication {
+    name = "claude";
+    text = ''
+      unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN CLAUDE_CODE_OAUTH_TOKEN
+      exec ${lib.escapeShellArg (lib.getExe' claudePackageWithLsp "claude")} "$@"
+    '';
+  };
 
   # Launch defaults shared by the plain and fenced `claude` wrappers. Builds a
   # `claude_defaults` bash array holding Opus 5.5, high effort, and, when
@@ -931,68 +918,6 @@ in
       fi
     '';
 
-    # Make the managed API key the only credential on personal computers.
-    # Claude Code asks "Do you want to use this API key?" the first time it
-    # sees a key in `ANTHROPIC_API_KEY`, and it records the answer in
-    # `~/.claude.json` under `customApiKeyResponses` as the last 20 characters
-    # of the key. A rejected key is ignored on every later launch with no
-    # message, and Claude Code falls back to the sign-in flow. No official
-    # setting skips the prompt, so the approval is seeded here, after sops-nix
-    # has decrypted the secret. The subscription login is removed at the same
-    # time: `oauthAccount` from `~/.claude.json` and the OAuth token file. An
-    # approved key outranks a stored login, but leaving both produces an
-    # "Auth conflict" banner. `/login` restores the subscription if wanted.
-    home.activation.claudeCodeApproveApiKey = lib.mkIf config.agentic.personalComputer (
-      lib.hm.dag.entryAfter
-        [
-          "writeBoundary"
-          "sops-nix"
-        ]
-        ''
-          claude_config=${lib.escapeShellArg "${config.home.homeDirectory}/.claude.json"}
-          claude_credentials=${lib.escapeShellArg "${config.home.homeDirectory}/.claude/.credentials.json"}
-          anthropic_api_key_path=${lib.escapeShellArg config.sops.secrets.ANTHROPIC_API_KEY.path}
-          jq=${lib.getExe pkgs.jq}
-
-          # Skip silently when the secret is not decrypted yet, for example on
-          # the first activation before the sops-nix user service has run.
-          # This step shares one script with every other activation step, so
-          # it must not exit.
-          if [[ ! -r "$anthropic_api_key_path" ]]; then
-            echo "claude-code: Anthropic API key secret is not readable yet, skipping approval"
-          else
-            anthropic_api_key="$(< "$anthropic_api_key_path")"
-            anthropic_api_key_tail="''${anthropic_api_key: -20}"
-            unset anthropic_api_key
-
-            if [[ ! -f "$claude_config" ]]; then
-              ${pkgs.coreutils}/bin/install -m 600 /dev/null "$claude_config"
-              echo '{}' > "$claude_config"
-            fi
-
-            # Skip the rest silently if the file is unreadable as JSON.
-            if "$jq" -e . "$claude_config" >/dev/null 2>&1; then
-              tmp="$(${pkgs.coreutils}/bin/mktemp "$claude_config.XXXXXX")"
-              if "$jq" --arg tail "$anthropic_api_key_tail" '
-                .hasCompletedOnboarding = true
-                | .customApiKeyResponses.approved = ((.customApiKeyResponses.approved // []) + [$tail] | unique)
-                | .customApiKeyResponses.rejected = ((.customApiKeyResponses.rejected // []) | map(select(. != $tail)))
-                | del(.oauthAccount)
-              ' "$claude_config" > "$tmp"; then
-                ${pkgs.coreutils}/bin/mv "$tmp" "$claude_config"
-              else
-                ${pkgs.coreutils}/bin/rm -f "$tmp"
-              fi
-
-              if [[ -f "$claude_credentials" ]]; then
-                echo "claude-code: removing subscription login so the API key is the only credential"
-                ${pkgs.coreutils}/bin/rm -f "$claude_credentials"
-              fi
-            fi
-          fi
-        ''
-    );
-
     # Declarative configuration for ccstatusline.
     # Settings are written to ~/.config/ccstatusline/settings.json, which is the
     # default path the tool reads on startup. The status line command is injected
@@ -1078,20 +1003,7 @@ in
               };
             }
           ]
-          # The 5h and weekly segments read the subscription OAuth token from
-          # `~/.claude/.credentials.json`. Personal computers authenticate with
-          # the API key only and have no token, so the estimated session spend
-          # from Claude Code's `cost.total_cost_usd` field takes that slot
-          # instead. Work hosts keep the subscription and the quota segments.
-          ++ lib.optionals config.agentic.personalComputer [
-            {
-              id = "4";
-              type = "session-cost";
-              color = ccColor "red";
-              rawValue = true;
-            }
-          ]
-          ++ lib.optionals (!config.agentic.personalComputer) [
+          ++ [
             {
               id = "4";
               type = "custom-text";
