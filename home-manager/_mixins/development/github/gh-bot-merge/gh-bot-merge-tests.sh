@@ -730,10 +730,14 @@ for ga_branch in update_flake_lock_action ci/update-electron-toolchain tailor-al
 done
 
 # 9. Valid wimpysworld/nix-config Freshener PRs (self-authored by flexiondotorg)
-for pkg in chainctl claude-themes-catppuccin defold handy herdr-ctx-bar herdr-disp-model lan-mouse manuscript moltis openusage roamgate silo-server weave wolfictl yam; do
+for pkg in brave chainctl claude-themes-catppuccin defold handy herdr-ctx-bar herdr-disp-model lan-mouse manuscript moltis openusage roamgate silo-server weave wolfictl yam; do
 	reset_stub
+	pkg_file="pkgs/${pkg}/default.nix"
+	if [[ ${pkg} == "brave" ]]; then
+		pkg_file="pkgs/brave/release.nix"
+	fi
 	write_pr_json wimpysworld 'flexiondotorg' "${pkg}-1.2.3" \
-		'.files = [{path: ("pkgs/" + "'"${pkg}"'" + "/default.nix")}, {path: "flake.lock"}]'
+		".files = [{path: \"${pkg_file}\"}, {path: \"flake.lock\"}]"
 	run_helper --dry-run "${url_ww}"
 	if [[ ${status} -ne 0 ]]; then
 		fail "freshener dry-run ${pkg}" "status ${status}: ${stderr}"
