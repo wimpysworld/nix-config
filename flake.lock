@@ -733,22 +733,20 @@
     },
     "nix-packages": {
       "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
+        "nixpkgs": "nixpkgs_5"
       },
       "locked": {
-        "lastModified": 1794241228,
-        "narHash": "sha256-tEjFUbPH2CBto4C0A6ZkblkV0Ki/5uePrKIeNb1pErs=",
-        "owner": "wimpysworld",
-        "repo": "nix-packages",
-        "rev": "b2fe01a5d586866adddcbeb7447ddf2c0fb8be14",
-        "type": "github"
+        "lastModified": 1794492603,
+        "narHash": "sha256-AsmD7X6cFOTCmGcLX+Rx0hd5LQD8jF+lV2p7s2YnMr4=",
+        "ref": "refs/heads/main",
+        "rev": "6d4d99737fd14936e82155f3d6fe5e3cf0666f71",
+        "revCount": 1,
+        "type": "git",
+        "url": "https://nix.wimpys.world/packages.git"
       },
       "original": {
-        "owner": "wimpysworld",
-        "repo": "nix-packages",
-        "type": "github"
+        "type": "git",
+        "url": "https://nix.wimpys.world/packages.git"
       }
     },
     "nix-snapd": {
@@ -782,7 +780,7 @@
     },
     "nixos-hardware": {
       "inputs": {
-        "nixpkgs": "nixpkgs_5"
+        "nixpkgs": "nixpkgs_6"
       },
       "locked": {
         "lastModified": 1794222723,
@@ -922,6 +920,22 @@
     },
     "nixpkgs_5": {
       "locked": {
+        "lastModified": 1793826729,
+        "narHash": "sha256-D5H7H+qMoTGI/jJtxKP4u7BdjkFnUyhOovTrf3pTOr0=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "6dadaf4375be35033e1c84395adbd53ff5fded96",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nixos",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_6": {
+      "locked": {
         "lastModified": 1789546076,
         "narHash": "sha256-vWkSk5bbfTqdtMoSgD9FshACO8JCvXTFi+3cqEp0mH0=",
         "rev": "b1b875982b17dabde9b4a37f3e229e74913e6db3",
@@ -933,7 +947,7 @@
         "url": "https://channels.nixos.org/nixos-unstable/nixexprs.tar.xz"
       }
     },
-    "nixpkgs_6": {
+    "nixpkgs_7": {
       "locked": {
         "lastModified": 1794165970,
         "narHash": "sha256-XuAV2cUwaod3Bt4XFVqiXz3v1w2ex16W6Sv4S7EWres=",
@@ -995,7 +1009,7 @@
         "nix-packages": "nix-packages",
         "nix-snapd": "nix-snapd",
         "nixos-hardware": "nixos-hardware",
-        "nixpkgs": "nixpkgs_6",
+        "nixpkgs": "nixpkgs_7",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "reaper-flake": "reaper-flake",
         "rust-overlay": "rust-overlay",

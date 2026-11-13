@@ -72,9 +72,13 @@ in
       # Disable global registry
       flake-registry = "";
       # Use Numtide's cache for llm-agents.nix packages such as Codex.
-      extra-substituters = [ "https://cache.numtide.com" ];
+      extra-substituters = [
+        "https://cache.numtide.com"
+        "https://nix.wimpys.world"
+      ];
       extra-trusted-public-keys = [
         "niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g="
+        "nix.wimpys.world-1:fphFHD2f+iEG5G81lFRgU84MB6N9ScHGFvB6D64tLmo="
       ];
       # Allow wheel users to set client-side Nix options (e.g. netrc-file
       # for FlakeHub Cache authentication via fh apply).

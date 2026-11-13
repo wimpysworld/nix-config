@@ -64,8 +64,7 @@
     mac-app-util.inputs.treefmt-nix.follows = "direnv-instant/treefmt-nix";
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
-    nix-packages.url = "github:wimpysworld/nix-packages";
-    nix-packages.inputs.nixpkgs.follows = "nixpkgs";
+    nix-packages.url = "git+https://nix.wimpys.world/packages.git";
     xdg-override.url = "github:koiuo/xdg-override";
     xdg-override.inputs.nixpkgs.follows = "nixpkgs";
     xdg-override.inputs.flake-parts.follows = "flake-parts";
