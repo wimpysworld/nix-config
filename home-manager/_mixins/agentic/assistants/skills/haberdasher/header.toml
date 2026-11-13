@@ -1,0 +1,8 @@
+[common]
+name = "haberdasher"
+description = "Prepares Martin's projects for publication through Haberdasher to the wimpys.world package repositories (apt, rpm, pkg, apk, flatpak, brew, scoop, and nix), and writes their install instructions. Use when adding a project to Haberdasher or haberdasher.yaml, preparing a project's first release, writing or fixing install instructions in a README, a project website, or a release footer, deciding GoReleaser nfpms, archives, or aurs blocks, choosing electron-builder targets, making `bin install` work, or setting up the Nix `latest` tag and flake package. Complements the tailor skill: Tailor scaffolds Go projects, but its .goreleaser.yaml, build-go.yml, and flake.nix swatches are first-fit, so existing projects need a recut or manual edit."
+license = "BlueOak-1.0.0"
+
+[common.metadata]
+authorship = "Original guidance from the owner's Haberdasher, Tailor, WonKey, and Sidra repositories; no upstream skill is vendored."
+reference-source = "https://github.com/wimpysworld/Haberdasher"
