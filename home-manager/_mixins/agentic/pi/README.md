@@ -50,6 +50,8 @@ The managed settings use Google by default:
     "anthropic/claude-opus-5-5",
     "anthropic/claude-sonnet-5-5",
     "google/gemini-4-argon",
+    "google/gemini-4-carbon",
+    "google/gemini-4-hydrogen",
     "google/gemini-3.8-flash",
     "openai-codex/gpt-6-astra",
     "openai-codex/gpt-6.1-sol",
@@ -62,6 +64,10 @@ The managed settings use Google by default:
   "themes": ["themes/*.json"]
 }
 ```
+
+Argon uses Pi's built-in catalogue. `models.json` registers Carbon and Hydrogen. All three appear in model cycling, with medium thinking as the default.
+
+Hydrogen accepts text and images, with a 1,048,576-token context and 65,536-token output limit. Pi exposes its low, medium, and high thinking levels. Pi's Google adapter does not support Hydrogen's extra-high level.
 
 Compaction and retry are enabled. Retry settings favour longer backoff for transient provider overloads:
 

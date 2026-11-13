@@ -270,6 +270,66 @@ in
               ]
           );
           providers = {
+            google = {
+              settings.thinkingConfig = {
+                includeThoughts = true;
+                thinkingLevel = "medium";
+              };
+              models =
+                lib.mapAttrs
+                  (_: model: {
+                    inherit (model) name cost;
+                    capabilities = {
+                      tools = true;
+                      input = [
+                        "text"
+                        "image"
+                      ];
+                      output = [ "text" ];
+                      reasoning = {
+                        supported = true;
+                        effort = [
+                          "low"
+                          "medium"
+                          "high"
+                        ];
+                      };
+                    };
+                    limit = {
+                      context = 1048576;
+                      output = model.maxTokens;
+                    };
+                  })
+                  {
+                    gemini-4-hydrogen = {
+                      name = "Gemini 4 Hydrogen";
+                      cost = {
+                        input = 1.50;
+                        output = 7.50;
+                        cache.read = 0.075;
+                      };
+                      maxTokens = 65536;
+                    };
+                    gemini-4-argon = {
+                      name = "Gemini 4 Argon";
+                      cost = {
+                        input = 2;
+                        output = 10;
+                        cache.read = 0.10;
+                      };
+                      maxTokens = 32768;
+                    };
+                    gemini-4-carbon = {
+                      name = "Gemini 4 Carbon";
+                      cost = {
+                        input = 2;
+                        output = 10;
+                        cache.read = 0.10;
+                      };
+                      maxTokens = 32768;
+                    };
+                  };
+            };
             opencode = lib.mkIf gatewayEnabled { settings.apiKey = "{env:OPENCODE_API_KEY}"; };
             opencode-go = lib.mkIf gatewayEnabled { settings.apiKey = "{env:OPENCODE_API_KEY}"; };
             openai.models =

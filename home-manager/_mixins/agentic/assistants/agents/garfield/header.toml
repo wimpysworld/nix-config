@@ -19,8 +19,8 @@ model = "claude-haiku-5-5"
 variant = "high"
 
 [routing.opencode.providers.google]
-model = "gemini-3.8-flash"
-variant = "high"
+model = "gemini-4-hydrogen"
+variant = "medium"
 
 [routing.pi]
 
@@ -33,8 +33,8 @@ model = "gpt-6-luna"
 thinking = "high"
 
 [routing.pi.google]
-model = "gemini-3.8-flash"
-thinking = "high"
+model = "gemini-4-hydrogen"
+thinking = "medium"
 
 [claude]
 disallowedTools = ["Agent"]

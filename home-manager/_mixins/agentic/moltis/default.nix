@@ -22,6 +22,7 @@ let
   mainModelName =
     if isTraya then "gpt-6.1-sol@reasoning-medium" else "gemini-4-argon@reasoning-medium";
   mainModel = "${mainProvider}::${mainModelName}";
+  githubMainModel = if isTraya then mainModel else "gemini::gemini-4-hydrogen@reasoning-medium";
   reviewModel =
     if isTraya then
       "openai-codex::gpt-6-astra@reasoning-medium"
@@ -955,11 +956,11 @@ let
     inherit
       agentName
       agentDisplayName
-      mainModel
       reviewModel
       scheduleDow
       scheduleDayName
       ;
+    mainModel = githubMainModel;
     selfUserId = matrixCfg.userId or "@${agentName}:matrix.wimpys.world";
     roomId = matrixCfg.roomId or "!the-cauldron:matrix.wimpys.world";
     homeserverUrl = "https://matrix.wimpys.world";
@@ -1649,7 +1650,7 @@ in
         heartbeat = {
           enabled = !config.agentic.moltis.githubCompanion.enable;
           every = "360m";
-          model = mainModel;
+          model = githubMainModel;
           sandbox_enabled = false;
           deliver = true;
           channel = "moltis";
@@ -1715,6 +1716,7 @@ in
         models = {
           gemini-4-argon.context_window = 1000000;
           gemini-4-carbon.context_window = 1048576;
+          gemini-4-hydrogen.context_window = 1048576;
           "gpt-6.1-sol".context_window = 384000;
           gpt-6-astra.context_window = 384000;
           gpt-6-luna.context_window = 384000;
@@ -1728,6 +1730,7 @@ in
             models = [
               "gemini-4-argon"
               "gemini-4-carbon"
+              "gemini-4-hydrogen"
               "gemini-3.8-flash"
             ];
           };

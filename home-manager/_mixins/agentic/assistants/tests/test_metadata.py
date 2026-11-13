@@ -1232,12 +1232,12 @@ task = "deny"
             {
                 "openai": "gpt-6-luna",
                 "anthropic": "claude-haiku-5-5",
-                "google": "gemini-3.8-flash",
+                "google": "gemini-4-hydrogen",
             },
         )
         self.assertEqual(
             self.evaluate('c.extractOpenCodeProviderVariants "garfield"'),
-            {"anthropic": "high", "google": "high"},
+            {"anthropic": "high", "google": "medium"},
         )
         self.evaluate(
             "h",
@@ -1271,12 +1271,12 @@ task = "deny"
             {
                 "models": {
                     "anthropic": "claude-haiku-5-5",
-                    "google": "gemini-3.8-flash",
+                    "google": "gemini-4-hydrogen",
                     "openai-codex": "gpt-6-luna",
                 },
                 "thinking": {
                     "anthropic": "high",
-                    "google": "high",
+                    "google": "medium",
                     "openai-codex": "high",
                 },
             },

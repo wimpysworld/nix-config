@@ -12,6 +12,10 @@ Server settings use native V2 fields in `opencode.json`. Terminal settings use `
 
 No local model allowlist filters the catalogue. The default model is `opencode-go/glm-5.3-flash`. OpenCode Go and the pay-as-you-go `opencode` provider remain separate providers.
 
+The Google provider explicitly registers `gemini-4-hydrogen`, `gemini-4-argon`, and `gemini-4-carbon`, so their availability does not depend on catalogue downloads. Google models default to medium thinking. The three Gemini 4 entries expose low, medium, and high variants, text and image input, and text output.
+
+Hydrogen has a 1,048,576-token context and a 65,536-token output limit. Argon and Carbon retain their 32,768-token output limits. Their promotional input/output/cache-read prices remain 2/10/0.10 USD per million tokens until 30 November 2026.
+
 Hosts with the `cg` tag use only models that are approved for work. Their default model is `google/gemini-4-argon`, and the built-in `title` agent uses `google/gemini-3.8-flash`. V2 has no `small_model` field, so the module sets the `title` agent model instead. `provider.use` deny policies remove the `opencode` and `opencode-go` providers from these hosts. These policies are the V2 form of `disabled_providers`.
 
 The four OpenAI model limit overrides remain in `default.nix`. Automatic compaction uses V2's resolved input limit and default reserve. The old fixed 345,600-token trigger does not apply.

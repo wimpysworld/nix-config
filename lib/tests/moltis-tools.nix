@@ -244,6 +244,8 @@ let
         else
           "gemini::gemini-4-carbon@reasoning-medium";
       expectedReviewReasoningEffort = "medium";
+      expectedGithubMainModel =
+        if host == "traya" then expectedMainModel else "gemini::gemini-4-hydrogen@reasoning-medium";
       settings = c.agentic.moltis.settings;
       cli = builtins.fromJSON (
         builtins.unsafeDiscardStringContext c.xdg.configFile."moltis/mcporter.json".text
@@ -258,7 +260,8 @@ let
         "context7"
         "exa"
         "linear"
-      ] ++ lib.optional (!darwin) "reaper";
+      ]
+      ++ lib.optional (!darwin) "reaper";
       envNames = map (entry: entry.name) c.agentic.moltis.envPlumbing;
       builtinPresets = import ../../home-manager/_mixins/agentic/moltis/builtin-presets.nix;
     in
@@ -304,6 +307,7 @@ let
       settings.models == {
         gemini-4-argon.context_window = 1000000;
         gemini-4-carbon.context_window = 1048576;
+        gemini-4-hydrogen.context_window = 1048576;
         "gpt-6.1-sol".context_window = 384000;
         gpt-6-astra.context_window = 384000;
         gpt-6-luna.context_window = 384000;
@@ -407,7 +411,7 @@ let
     assert lib.hasInfix "export MOLTIS_GITHUB_COMPANION_AGENT_NAME=${lib.escapeShellArg agentName}"
       scripts.githubCompanion;
     assert lib.hasInfix
-      "export MOLTIS_GITHUB_COMPANION_MAIN_MODEL=${lib.escapeShellArg expectedMainModel}"
+      "export MOLTIS_GITHUB_COMPANION_MAIN_MODEL=${lib.escapeShellArg expectedGithubMainModel}"
       scripts.githubCompanion;
     assert lib.hasInfix
       "export MOLTIS_GITHUB_COMPANION_REVIEW_MODEL=${lib.escapeShellArg expectedReviewModel}"
@@ -548,7 +552,8 @@ let
     assert settings.agents.presets.coordinator.reasoning_effort == "medium";
     assert settings.agents.presets.review.model == expectedReviewModel;
     assert settings.agents.presets.review.reasoning_effort == expectedReviewReasoningEffort;
-    assert settings.heartbeat.model == context.mainModel;
+    assert settings.heartbeat.model == expectedGithubMainModel;
+    assert !gemini || builtins.elem "gemini-4-hydrogen" settings.providers.gemini.models;
     assert settings.auxiliary.compaction == context.auxiliaryModel;
     assert settings.auxiliary.title_generation == context.auxiliaryModel;
     assert settings.auxiliary.vision == context.auxiliaryModel;

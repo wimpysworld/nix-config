@@ -363,6 +363,7 @@ let
       "anthropic/claude-sonnet-5-5"
       "google/gemini-4-argon"
       "google/gemini-4-carbon"
+      "google/gemini-4-hydrogen"
       "google/gemini-3.8-flash"
       "openai-codex/gpt-6-astra"
       "openai-codex/gpt-6.1-sol"
@@ -809,6 +810,32 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
           lib.recursiveUpdate
             {
               providers.google.models = [
+                {
+                  id = "gemini-4-hydrogen";
+                  name = "Gemini 4 Hydrogen";
+                  reasoning = true;
+                  thinkingLevelMap = {
+                    off = null;
+                    minimal = null;
+                    low = "LOW";
+                    medium = "MEDIUM";
+                    high = "HIGH";
+                    xhigh = null;
+                    max = null;
+                  };
+                  input = [
+                    "text"
+                    "image"
+                  ];
+                  cost = {
+                    input = 1.50;
+                    output = 7.50;
+                    cacheRead = 0.075;
+                    cacheWrite = 0;
+                  };
+                  contextWindow = 1048576;
+                  maxTokens = 65536;
+                }
                 {
                   id = "gemini-4-carbon";
                   name = "Gemini 4 Carbon";

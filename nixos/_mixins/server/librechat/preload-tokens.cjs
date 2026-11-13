@@ -1,5 +1,6 @@
 // Preload hook that registers missing model context windows in LibreChat 0.8.8
 // and strips any stale 1024-token floor cached in conversation or preset payloads.
+// Gemini 4 defaults to medium thinking without overriding explicit choices.
 'use strict';
 
 const Module = require('module');
@@ -55,6 +56,8 @@ Module._load = function patchedModuleLoad(request, parent, isMain) {
     const extraModels = {
       'gemini-4': 1048576,
       'gemini-4-argon': 1048576,
+      'gemini-4-carbon': 1048576,
+      'gemini-4-hydrogen': 1048576,
       'gpt-6-terra': 1050000,
       'gpt-6.1-terra': 1050000,
     };
@@ -62,6 +65,27 @@ Module._load = function patchedModuleLoad(request, parent, isMain) {
       if (exported.maxTokensMap[bucket] && typeof exported.maxTokensMap[bucket] === 'object') {
         Object.assign(exported.maxTokensMap[bucket], extraModels);
       }
+    }
+    if (typeof exported.providerConfigMap?.google === 'function') {
+      const originalInitializeGoogle = exported.providerConfigMap.google;
+      exported.providerConfigMap.google = function initializeGoogleWithDefaults(params, ...args) {
+        const modelParameters = params?.model_parameters;
+        if (
+          /^gemini-4-(argon|carbon|hydrogen)$/.test(modelParameters?.model ?? '') &&
+          modelParameters.thinking !== false &&
+          (modelParameters.thinkingLevel == null || modelParameters.thinkingLevel === '')
+        ) {
+          return originalInitializeGoogle.call(
+            this,
+            {
+              ...params,
+              model_parameters: { ...modelParameters, thinkingLevel: 'medium' },
+            },
+            ...args,
+          );
+        }
+        return originalInitializeGoogle.apply(this, arguments);
+      };
     }
   }
 

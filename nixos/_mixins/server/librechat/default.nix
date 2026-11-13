@@ -858,7 +858,7 @@ in
         ALLOW_REGISTRATION = lib.mkDefault false;
         ALLOW_SOCIAL_LOGIN = lib.mkDefault false;
         ALLOW_UNVERIFIED_EMAIL_LOGIN = lib.mkDefault true;
-        GOOGLE_MODELS = lib.mkDefault "gemini-4-argon,gemini-3.8-flash";
+        GOOGLE_MODELS = lib.mkDefault "gemini-4-argon,gemini-4-carbon,gemini-4-hydrogen,gemini-3.8-flash";
         HOST = lib.mkDefault "0.0.0.0";
         LIBRECHAT_CODE_API_KEY = lib.mkDefault "local-sandbox";
         LIBRECHAT_CODE_BASEURL = lib.mkDefault "http://127.0.0.1:3082";
