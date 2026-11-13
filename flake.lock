@@ -736,11 +736,11 @@
         "nixpkgs": "nixpkgs_5"
       },
       "locked": {
-        "lastModified": 1794492603,
-        "narHash": "sha256-AsmD7X6cFOTCmGcLX+Rx0hd5LQD8jF+lV2p7s2YnMr4=",
+        "lastModified": 1794559348,
+        "narHash": "sha256-/7e156UAxpsGKlIC/GptwWRetnKtvxtxnLCk4OfMaqQ=",
         "ref": "refs/heads/main",
-        "rev": "6d4d99737fd14936e82155f3d6fe5e3cf0666f71",
-        "revCount": 1,
+        "rev": "88f36017fcbc3c83c70d3e9d1e2c862a4b3aabc2",
+        "revCount": 2,
         "type": "git",
         "url": "https://nix.wimpys.world/packages.git"
       },
