@@ -186,6 +186,7 @@ def is_github_actions:
     or .headRefName == "ci/update-electron-toolchain"
     or .headRefName == "tailor-alter"
     or ((.headRefName // "") | startswith("freshen/"))
+    or ((.headRefName // "") | test("^ci/nix-hash-[0-9A-Za-z._-]+$"))
   );
 
 def has_freshener_labels:

@@ -715,7 +715,7 @@ else
 fi
 
 # 8. Valid GitHub Actions automated update branches
-for ga_branch in update_flake_lock_action ci/update-electron-toolchain tailor-alter freshen/packages; do
+for ga_branch in update_flake_lock_action ci/update-electron-toolchain ci/nix-hash-1.3.2 tailor-alter freshen/packages; do
 	reset_stub
 	write_pr_json wimpysworld 'github-actions[bot]' "${ga_branch}" '.reviewDecision = "APPROVED"'
 	run_helper "${url_ww}"
