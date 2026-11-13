@@ -59,6 +59,7 @@ Claude Code, OpenCode, and Pi use `/name`. Codex uses manual-only `$name` skills
 | [project-polish-comments](./project-polish-comments/command.toml) | Project Polish Comments ✨ | donatello | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
 | [project-smells-review](./project-smells-review/command.toml) | Project Smells Review 🦨 | penry | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
 | [project-tests-review](./project-tests-review/command.toml) | Project Tests Review 🧪 | brain | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
+| [prune-tasks](./prune-tasks/command.toml) | Cancel or defer Linear tasks that no longer recur | penfold | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
 | [ready](./ready/command.toml) | Get ready 🌱 | Unset | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
 | [reflect](./reflect/command.toml) | Reflect on the session and suggest tooling changes 💭 | Unset | public | Caller context | Caller context, subagent: false | Caller context | Caller context |
 | [review-code-again](./review-code-again/command.toml) | Review Code Again 🔁 | donatello | public | Task worker: donatello | Native subagent: donatello | spawn_agent: donatello | Agent worker: donatello |
@@ -226,6 +227,10 @@ Only description overrides and nonempty argument hints are shown. When any clien
 | [project-polish-comments](./project-polish-comments/command.toml) | opencode | Same as common | Unset |
 | [project-polish-comments](./project-polish-comments/command.toml) | codex | Same as common | Unset |
 | [project-polish-comments](./project-polish-comments/command.toml) | pi | Same as common | [paths] [scope] |
+| [prune-tasks](./prune-tasks/command.toml) | claude | Same as common | &lt;project-name\|URL&gt; |
+| [prune-tasks](./prune-tasks/command.toml) | opencode | Same as common | &lt;project-name\|URL&gt; |
+| [prune-tasks](./prune-tasks/command.toml) | codex | Same as common | Unset |
+| [prune-tasks](./prune-tasks/command.toml) | pi | Same as common | &lt;project-name\|URL&gt; |
 | [ready](./ready/command.toml) | claude | Same as common | [topic] |
 | [ready](./ready/command.toml) | opencode | Same as common | [topic] |
 | [ready](./ready/command.toml) | codex | Same as common | Unset |
