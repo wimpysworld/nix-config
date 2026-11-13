@@ -438,7 +438,7 @@ lib.mkMerge [
           ghorg # Clone all repositories in a GitHub organization
         ])
         ++ [
-          inputs.nix-packages.packages.${pkgs.stdenv.hostPlatform.system}.tailor
+          inputs.tailor.packages.${pkgs.stdenv.hostPlatform.system}.tailor
         ];
       sessionVariables = {
         GHORG_CLONE_PROTOCOL = "https";
