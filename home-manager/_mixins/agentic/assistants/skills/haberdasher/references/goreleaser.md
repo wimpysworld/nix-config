@@ -177,8 +177,9 @@ Before you rename or replace a job, run `gh ruleset list` and keep every job nam
 ## Nix package for cgo
 
 - `github:` flakes omit Git submodules. In `nix/package.nix`, fetch the submodule source with `fetchFromGitHub` and the prebuilt static library with `fetchurl`, both by hash. Copy the submodule into place in `postPatch`.
-- Link the library from the Nix store through `CGO_LDFLAGS`. Go 1.26.11 and later reject an in-tree archive with `.llvmbc` LTO sections, with "disallowed LTO section".
-- Do not bump the project's nixpkgs lock as part of packaging. The newer Go in the dev shell then breaks in-tree builds until the library is rebuilt without embedded bitcode.
+- Link the library from the Nix store through `CGO_LDFLAGS`, because the build sandbox cannot download it.
+- Use `lib-8.1.2.1` or later. Go 1.26.11 and later reject an archive with embedded LLVM bitcode, with "disallowed LTO section", and `lib-8.1.2.0` has it. The submodule can stay at its `v*` tag, because `download-lib` selects the newest `lib-<version>.*` release. An existing checkout keeps its old `lib/<os>_<arch>/libffmpeg.a` until that file is removed.
+- Do not bump the project's nixpkgs lock as part of packaging. Bump it in a separate change.
 - Set `meta.platforms` to the systems that have a prebuilt library.
 - Expose the package only where it can evaluate. Guard the Tailor package hook with `pkgs.lib.meta.availableOn pkgs.stdenv.hostPlatform package`, so that `nix flake check --all-systems` passes when `meta.platforms` is narrower than the flake's systems.
 - Guard x86_64-only dev shell packages, such as `intel-media-driver` and `vpl-gpu-rt`, with `pkgs.stdenv.hostPlatform.isx86_64`.
