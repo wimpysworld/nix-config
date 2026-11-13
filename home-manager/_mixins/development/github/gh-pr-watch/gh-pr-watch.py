@@ -1,4 +1,5 @@
 import argparse
+import contextlib
 import hashlib
 import json
 import os
@@ -172,7 +173,7 @@ def main():
         "--state-dir", str(directory), "--sample",
     ]
     process = subprocess.Popen(
-        command, start_new_session=True, env={**os.environ, "TERM": "xterm"}
+        command, start_new_session=True, stdout=subprocess.DEVNULL, env={**os.environ, "TERM": "xterm"}
     )
     def interrupted(_signum, _frame):
         raise KeyboardInterrupt
@@ -183,14 +184,13 @@ def main():
     except KeyboardInterrupt:
         code = 130
     finally:
-        try:
+        with contextlib.suppress(ProcessLookupError, PermissionError):
             os.killpg(process.pid, signal.SIGTERM)
-        except ProcessLookupError:
-            pass
         try:
             process.wait(timeout=5)
         except subprocess.TimeoutExpired:
-            os.killpg(process.pid, signal.SIGKILL)
+            with contextlib.suppress(ProcessLookupError, PermissionError):
+                os.killpg(process.pid, signal.SIGKILL)
             process.wait()
     result = json.loads((directory / "result.json").read_text())
     result.pop("seed", None)
