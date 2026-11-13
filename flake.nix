@@ -19,8 +19,7 @@
 
     llm-agents.url = "github:numtide/llm-agents.nix";
     llm-agents.inputs.treefmt-nix.follows = "direnv-instant/treefmt-nix";
-    sidra.url = "github:wimpysworld/sidra";
-    sidra.inputs.nixpkgs.follows = "nixpkgs";
+    sidra.url = "github:wimpysworld/sidra/latest";
     veila.url = "github:naurissteins/Veila/0.4.4";
     veila.inputs.nixpkgs.follows = "nixpkgs";
     lan-mouse.url = "github:feschber/lan-mouse/v0.11.0";
