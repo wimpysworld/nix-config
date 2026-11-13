@@ -90,7 +90,7 @@ Check a release by listing its assets and confirming one top candidate per platf
 
 Tailor scaffolds `.goreleaser.yaml`, `.github/workflows/build-go.yml`, and `flake.nix` once. These swatches are first-fit, so an existing project does not receive later swatch changes. Recut the project with Tailor, or edit the files by hand.
 
-The `.goreleaser.yaml` swatch lacks `vendor`, `description`, `license`, and `archlinux`. Add them before the first Haberdasher release. The `build-go.yml` swatch already moves `latest` after a stable release.
+From Tailor 0.6.6, the `.goreleaser.yaml` swatch includes `archlinux` and renders `description` from `repository.description` and `license` from `license` in `.tailor.yml`. Set both in `.tailor.yml` before the first fit, because an empty value omits the field and Haberdasher then rejects the APK. Projects fitted by an older Tailor lack these fields. Add them by hand. The swatch sets no `vendor`. The `build-go.yml` swatch already moves `latest` after a stable release.
 
 ## Nix package
 

@@ -96,7 +96,7 @@ nix path-info --store https://nix.wimpys.world <store-path>
 
 ## Anti-patterns
 
-- Copying Tailor's `.goreleaser.yaml` swatch unchanged. It omits `description`, `license`, `vendor`, and `archlinux`, which Haberdasher needs.
+- Fitting a Go project while `.tailor.yml` has no `repository.description` or `license`. The `.goreleaser.yaml` swatch then omits the package description or licence, and Haberdasher rejects the APK.
 - Shipping macOS tarballs or OS-named Linux tarballs beside bare binaries. bin then prompts on a tie.
 - Letting a portable Electron build update itself.
 - Consumer flake inputs with `follows`.
