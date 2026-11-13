@@ -22,6 +22,7 @@ The hosts, anchors, and per-format inputs are in [references/repositories.md](re
 | Type | Builder | Reference |
 | --- | --- | --- |
 | Go command-line tool | GoReleaser | [references/goreleaser.md](references/goreleaser.md) |
+| Go tool with cgo and native libraries, for example a static FFmpeg library | GoReleaser on native runners | [references/goreleaser.md#cgo-on-native-runners](references/goreleaser.md#cgo-on-native-runners) |
 | Electron desktop app | electron-builder | [references/electron-builder.md](references/electron-builder.md) |
 
 Other types have no proven path yet. Ask the owner before you invent one.
@@ -29,6 +30,7 @@ Other types have no proven path yet. Ask the owner before you invent one.
 ### 2. Produce the release outputs
 
 - Go: bare binaries, Linux packages from nfpm with full metadata, and an optional GHCR image.
+- Go with cgo: the same bare binaries and packages, built on one native runner per target. Leave out `apk` unless a musl build of the native library exists.
 - Electron: Linux packages, a Flatpak bundle, a macOS `.zip` that holds one `.app`, and a portable Windows `.zip` that holds one `.exe`.
 
 Leave out every builder feature that publishes to Homebrew, Scoop, or Nix. Haberdasher publishes those formats.
@@ -49,12 +51,15 @@ For a Go project, add this step after GoReleaser, as in Tailor's `.github/workfl
     git push --force origin refs/tags/latest
 ```
 
+For a cgo project, the publish job moves `latest` after its GoReleaser step.
+
 For an Electron project whose flake fetches release assets by hash, the `nix-hash` job moves `latest` instead. See [references/electron-builder.md](references/electron-builder.md).
 
 ### 4. Flake
 
 - Go: put the derivation in `nix/package.nix`. Tailor's flake swatch exposes it under its `pname` and as `default` when that file exists.
 - Set `meta.platforms` when the tool does not build everywhere. WonKey sets `pkgs.lib.platforms.linux`.
+- For a cgo tool with a native library, follow [references/goreleaser.md#nix-package-for-cgo](references/goreleaser.md#nix-package-for-cgo).
 - In the dev shell, use `tailor.url = "github:wimpysworld/tailor/latest";` with no `follows`.
 - Tell consumers to use `github:wimpysworld/<repo>/latest` with no `follows`.
 

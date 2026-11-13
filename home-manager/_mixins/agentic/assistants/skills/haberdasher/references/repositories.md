@@ -32,3 +32,9 @@ List hosts in this order everywhere: README table, website tiles, and release fo
 - The Nix page shows `github:wimpysworld/<repo>/latest` when the cache holds a build of the `latest` commit, and `github:wimpysworld/<repo>` otherwise.
 
 Haberdasher does not publish Snap, AppImage, or the Windows installer.
+
+## Linux Matters tools
+
+- `jive-vocals`, `jive-encoder`, and `jive-visualiser` are in the `linuxmatters` organisation, so their sources are `linuxmatters/<repo>`.
+- They publish to apt, rpm, pkg, brew, and nix.
+- Their product pages are at `https://linuxmatters.sh/jive/<name>/`, from a shared Hugo template in the `linuxmatters/website` repository. They have no `pages/` site.

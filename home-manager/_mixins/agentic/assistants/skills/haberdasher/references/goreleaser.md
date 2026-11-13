@@ -1,6 +1,8 @@
 # GoReleaser for Haberdasher
 
-Canonical example: `.goreleaser.yaml` in `github.com/wimpysworld/tailor` (cross-platform, with a GHCR image). WonKey is the Linux-only example.
+Canonical example: `.goreleaser.yaml` in `github.com/wimpysworld/tailor` (cross-platform, with a GHCR image). WonKey is the Linux-only example. `github.com/linuxmatters/jive-encoder` is the cgo example.
+
+Contents: Keep, Leave out, Archives, nfpms, bin scoring, Tailor swatches, Nix package, cgo on native runners, Nix package for cgo.
 
 ## Keep
 
@@ -95,3 +97,90 @@ From Tailor 0.6.6, the `.goreleaser.yaml` swatch includes `archlinux` and render
 ## Nix package
 
 `nix/package.nix` takes `{ pkgs, self, ... }` and returns one derivation with a `pname`. Tailor's version uses `0.0.0-<short revision>`, because the flake cannot see its tag. Set `meta.mainProgram`, and set `meta.platforms` for a platform-specific tool.
+
+## cgo on native runners
+
+Use this route when the tool links a native library through cgo, for example the static FFmpeg library of `ffmpeg-statigo`. jive-encoder, jive-vocals, and jive-visualiser follow it.
+
+The cross-compiling template does not fit:
+
+- Tailor's swatch sets `CGO_ENABLED=0`.
+- GoReleaser OSS has no `--single-target` for `release`, and `builds.targets` is not templated.
+- Prebuilt builds and split and merge are GoReleaser Pro only.
+
+### `.goreleaser.yaml`
+
+Declare one build per target. Each build has one entry in `targets` and runs only when `TARGET` names it:
+
+```yaml
+builds:
+  - &build
+    id: linux_amd64
+    main: ./cmd/<tool>
+    binary: <tool>
+    env:
+      - CGO_ENABLED=1
+    targets:
+      - linux_amd64_v1
+    skip: '{{ ne (index .Env "TARGET") "linux_amd64" }}'
+  - <<: *build
+    id: linux_arm64
+    targets:
+      - linux_arm64_v8.0
+    skip: '{{ ne (index .Env "TARGET") "linux_arm64" }}'
+```
+
+Repeat the pattern for `darwin_amd64` and `darwin_arm64`. Also set:
+
+- `git.ignore_tags: [latest]`, so that GoReleaser never takes `latest` as the release tag.
+- `release.extra_files` with `glob: ./artifacts/*`, so that the publish job releases the runner outputs.
+- `checksum.disable: true` when the project forbids checksum generation. Haberdasher then verifies against the GitHub asset digests.
+- `nfpms` formats `deb`, `rpm`, and `archlinux`, with no `apk` unless a musl build of the native library exists.
+
+### glibc floor
+
+The packages need the glibc of the build runner. `ubuntu-24.04` gives `GLIBC_2.38` and `GLIBCXX_3.4.29`. Declare the floor in `nfpms.overrides`:
+
+```yaml
+overrides:
+  deb:
+    dependencies:
+      - libc6 (>= 2.38)
+      - libstdc++6 (>= 11)
+      - libgcc-s1
+  rpm:
+    dependencies:
+      - libc.so.6(GLIBC_2.38)(64bit)
+      - libstdc++.so.6(GLIBCXX_3.4.29)(64bit)
+      - libgcc_s.so.1()(64bit)
+  archlinux:
+    dependencies:
+      - glibc>=2.38
+      - gcc-libs
+```
+
+Add the floor note to the install documentation. See [install-docs.md](install-docs.md).
+
+### Workflow
+
+1. A build matrix runs on one native runner per target (`ubuntu-24.04`, `ubuntu-24.04-arm`, `macos-15-intel`, `macos-15`). Each job sets `TARGET` to `<os>_<arch>`.
+2. Each build job runs `goreleaser release --clean --skip=publish,announce` on a tag, and `goreleaser release --clean --snapshot` otherwise.
+3. Each build job copies the bare binary and packages from `dist/artifacts.json` and uploads them as a workflow artefact.
+4. One publish job, on a tag only, downloads all artefacts into `./artifacts` with `merge-multiple: true`.
+5. The publish job runs `goreleaser release --clean --skip=nfpm` with `TARGET` unset, so every build skips.
+6. The publish job then runs the "Move latest tag" step.
+
+When the publish job omits `--skip=nfpm`, GoReleaser fails with "no linux binaries found".
+
+Before you rename or replace a job, run `gh ruleset list` and keep every job name that a ruleset requires.
+
+## Nix package for cgo
+
+- `github:` flakes omit Git submodules. In `nix/package.nix`, fetch the submodule source with `fetchFromGitHub` and the prebuilt static library with `fetchurl`, both by hash. Copy the submodule into place in `postPatch`.
+- Link the library from the Nix store through `CGO_LDFLAGS`. Go 1.26.11 and later reject an in-tree archive with `.llvmbc` LTO sections, with "disallowed LTO section".
+- Do not bump the project's nixpkgs lock as part of packaging. The newer Go in the dev shell then breaks in-tree builds until the library is rebuilt without embedded bitcode.
+- Set `meta.platforms` to the systems that have a prebuilt library.
+- Expose the package only where it can evaluate. Guard the Tailor package hook with `pkgs.lib.meta.availableOn pkgs.stdenv.hostPlatform package`, so that `nix flake check --all-systems` passes when `meta.platforms` is narrower than the flake's systems.
+- Guard x86_64-only dev shell packages, such as `intel-media-driver` and `vpl-gpu-rt`, with `pkgs.stdenv.hostPlatform.isx86_64`.
+
+jive-encoder's `nix/package.nix` and `flake.nix` are the examples.

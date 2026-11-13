@@ -8,7 +8,7 @@ Use this order:
 
 1. `## Install` with the repository table.
 2. One sentence: `Each repository is signed, and its page gives the setup steps and keeps <Name> up to date.`
-3. `### Any platform` with the bin command, for a Go tool. Use `### Any Linux` for a Linux-only tool.
+3. `### Any platform` with the bin command, for a Go tool. Use `### Any Linux` for a Linux-only tool, and `### Linux and macOS` for a tool with no Windows build.
 4. `### Updates itself` for an Electron app.
 5. `### Container` when the project publishes an image.
 
@@ -32,6 +32,8 @@ bin install github.com/wimpysworld/<repo>
 ~~~
 
 Add one table row per host, in the order of the hosts table. Keep the logo at 32 by 32 with an empty `alt`.
+
+When the packages declare a glibc floor, add one line after the signing sentence, for example: `The Linux packages and binaries need glibc 2.38 or later, for example Ubuntu 24.04, Debian 13, or Fedora 39.` Add the same line to the release footer.
 
 For an Electron app, `### Updates itself` is a table with the columns Format, Get it, and How it updates:
 
