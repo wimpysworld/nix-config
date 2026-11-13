@@ -49,10 +49,24 @@ let
       fi
     '';
   };
-  chargeThresholds = {
-    start = 15;
-    stop = 85;
-  };
+  chargeThresholds =
+    if noughtyLib.isHost [ "tanis" ] then
+      {
+        start = 95;
+        stop = 100;
+      }
+    else
+      {
+        start = 15;
+        stop = 85;
+      };
+  startThresholdRule = ''ATTR{charge_control_start_threshold}="${toString chargeThresholds.start}"'';
+  stopThresholdRule = ''ATTR{charge_control_end_threshold}="${toString chargeThresholds.stop}"'';
+  chargeThresholdRule =
+    if chargeThresholds.stop == 100 then
+      "${stopThresholdRule}, ${startThresholdRule}"
+    else
+      "${startThresholdRule}, ${stopThresholdRule}";
 in
 lib.mkIf (!host.is.iso) {
   # Power Management strategy:
@@ -114,9 +128,10 @@ lib.mkIf (!host.is.iso) {
     # thinkpad_acpi, the attributes normally exist by the time the add event is handled.
     # When thinkpad_acpi loads after the battery, the kernel sends a change event
     # once the attributes exist, so the rule matches both. Later change events
-    # rewrite the same values, which is harmless. The start threshold is written
-    # first because the kernel rejects a start above the current stop and a stop
-    # below the current start, and the firmware defaults keep the stop high.
+    # rewrite the same values, which is harmless. The kernel rejects a start above
+    # the current stop and a stop below the current start. Raise the stop to 100
+    # before raising the start to 95. For 15/85, lower the start first so that
+    # switching back from 95/100 also succeeds.
     #
     # Framework laptops expose only the stop threshold, through the
     # framework_laptop module, so the battery charges again as soon as it
@@ -124,7 +139,7 @@ lib.mkIf (!host.is.iso) {
     # every boot, which overrides the charge limit in the firmware setup.
     udev.extraRules =
       lib.optionalString isThinkpad ''
-        ACTION=="add|change", SUBSYSTEM=="power_supply", KERNEL=="BAT*", TEST=="charge_control_start_threshold", ATTR{charge_control_start_threshold}="${toString chargeThresholds.start}", ATTR{charge_control_end_threshold}="${toString chargeThresholds.stop}"
+        ACTION=="add|change", SUBSYSTEM=="power_supply", KERNEL=="BAT*", TEST=="charge_control_start_threshold", ${chargeThresholdRule}
       ''
       + lib.optionalString isFrameworkLaptop ''
         ACTION=="add|change", SUBSYSTEM=="power_supply", KERNEL=="BAT*", TEST=="charge_control_end_threshold", ATTR{charge_control_end_threshold}="${toString chargeThresholds.stop}"
