@@ -164,8 +164,8 @@ Add the floor note to the install documentation. See [install-docs.md](install-d
 ### Workflow
 
 1. A build matrix runs on one native runner per target (`ubuntu-24.04`, `ubuntu-24.04-arm`, `macos-15-intel`, `macos-15`). Each job sets `TARGET` to `<os>_<arch>`.
-2. Each build job runs `goreleaser release --clean --skip=publish,announce` on a tag, and `goreleaser release --clean --snapshot` otherwise.
-3. Each build job copies the bare binary and packages from `dist/artifacts.json` and uploads them as a workflow artefact.
+2. Each build job runs `goreleaser release --clean --skip=publish,announce` on a tag, and `goreleaser release --clean --snapshot` otherwise. The darwin jobs also pass `--skip=nfpm`, because they have no Linux binaries to package.
+3. Each build job copies the bare binary and packages from `dist/artifacts.json` and uploads them as a workflow artefact. Select by artefact type, not by checksum, because `extra.Checksum` is absent when checksums are off: `select(.type == "Linux Package" or (.type == "Binary" and (.name | test("-(linux|darwin)-(amd64|arm64)$"))))`. The second `Binary` entry is the raw build output, so the name test matters.
 4. One publish job, on a tag only, downloads all artefacts into `./artifacts` with `merge-multiple: true`.
 5. The publish job runs `goreleaser release --clean --skip=nfpm` with `TARGET` unset, so every build skips.
 6. The publish job then runs the "Move latest tag" step.
