@@ -1,5 +1,6 @@
 {
   config,
+  inputs,
   lib,
   noughtyLib,
   pkgs,
@@ -56,6 +57,13 @@ in
     lib.optionals host.is.workstation [
       audacity
     ]
+    ++
+      lib.optionals (noughtyLib.hostHasTag "podcast" && pkgs.stdenv.hostPlatform.system == "x86_64-linux")
+        [
+          inputs.jive-vocals.packages.${pkgs.stdenv.hostPlatform.system}.jive-vocals
+          inputs.jive-encoder.packages.${pkgs.stdenv.hostPlatform.system}.jive-encoder
+          inputs.jive-visualiser.packages.${pkgs.stdenv.hostPlatform.system}.jive-visualiser
+        ]
     ++ lib.optionals (host.is.workstation && host.is.linux) [
       gimp3
       inkscape

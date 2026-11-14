@@ -20,6 +20,9 @@
     llm-agents.url = "github:numtide/llm-agents.nix";
     llm-agents.inputs.treefmt-nix.follows = "direnv-instant/treefmt-nix";
     sidra.url = "github:wimpysworld/sidra/latest";
+    jive-vocals.url = "github:linuxmatters/jive-vocals/latest";
+    jive-encoder.url = "github:linuxmatters/jive-encoder/latest";
+    jive-visualiser.url = "github:linuxmatters/jive-visualiser/latest";
     veila.url = "github:naurissteins/Veila/0.4.4";
     veila.inputs.nixpkgs.follows = "nixpkgs";
     lan-mouse.url = "github:feschber/lan-mouse/v0.11.0";
