@@ -92,11 +92,21 @@ Check a release by listing its assets and confirming one top candidate per platf
 
 Tailor scaffolds `.goreleaser.yaml`, `.github/workflows/build-go.yml`, and `flake.nix` once. These swatches are first-fit, so an existing project does not receive later swatch changes. Recut the project with Tailor, or edit the files by hand.
 
-From Tailor 0.6.6, the `.goreleaser.yaml` swatch includes `archlinux` and renders `description` from `repository.description` and `license` from `license` in `.tailor.yml`. Set both in `.tailor.yml` before the first fit, because an empty value omits the field and Haberdasher then rejects the APK. Projects fitted by an older Tailor lack these fields. Add them by hand. The swatch sets no `vendor`. The `build-go.yml` swatch already moves `latest` after a stable release.
+From Tailor 0.6.6, the `.goreleaser.yaml` swatch includes `archlinux` and renders `description` from `repository.description` and `license` from `license` in `.tailor.yml`. Set both in `.tailor.yml` before the first fit, because an empty value omits the field and Haberdasher then rejects the APK. Projects fitted by an older Tailor lack these fields. Add them by hand. The swatch sets no `vendor`. The `build-go.yml` swatch already moves `latest` after a stable release, and from Tailor 0.6.6 it writes `nix/version` too.
 
 ## Nix package
 
-`nix/package.nix` takes `{ pkgs, self, ... }` and returns one derivation with a `pname`. Tailor's version uses `0.0.0-<short revision>`, because the flake cannot see its tag. Set `meta.mainProgram`, and set `meta.platforms` for a platform-specific tool.
+`nix/package.nix` takes `{ pkgs, self, ... }` and returns one derivation with a `pname`. Set `meta.mainProgram`, and set `meta.platforms` for a platform-specific tool.
+
+Read the version from `nix/version`, which the release step writes, and pass it to `-X main.version`:
+
+```nix
+version =
+  if builtins.pathExists ./version then
+    pkgs.lib.trim (builtins.readFile ./version)
+  else
+    "0.0.0-${self.sourceInfo.shortRev or (self.sourceInfo.dirtyShortRev or "dirty")}";
+```
 
 ## cgo on native runners
 

@@ -39,7 +39,7 @@ Leave out every builder feature that publishes to Homebrew, Scoop, or Nix. Haber
 
 After a stable release, move the `latest` tag. Skip pre-releases, which have a `-` in the tag.
 
-For a Go project, add this step after GoReleaser, as in Tailor's `.github/workflows/builder.yml`:
+For a Go project, add this step after GoReleaser, as in Tailor's `.github/workflows/builder.yml`. It records the release version in `nix/version` on a commit on top of the tag, because a flake cannot see its tag:
 
 ```yaml
 - name: Move latest tag
@@ -47,9 +47,20 @@ For a Go project, add this step after GoReleaser, as in Tailor's `.github/workfl
   env:
     RELEASE_TAG: ${{ github.ref_name }}
   run: |
-    git tag --force latest "${RELEASE_TAG}^{commit}"
+    # Nix cannot see the tag, so record the version in a commit on top of it.
+    git checkout --detach "${RELEASE_TAG}^{commit}"
+    if [[ -f nix/package.nix ]]; then
+      printf '%s\n' "${RELEASE_TAG#v}" > nix/version
+      git add nix/version
+      git -c user.name="github-actions[bot]" \
+        -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+        commit --message "chore(nix): set the package version to ${RELEASE_TAG#v}"
+    fi
+    git tag --force latest HEAD
     git push --force origin refs/tags/latest
 ```
+
+The commit stays off main. Builds from main report `0.0.0-<short revision>`.
 
 For a cgo project, the publish job moves `latest` after its GoReleaser step.
 
@@ -63,7 +74,7 @@ For an Electron project whose flake fetches release assets by hash, the `nix-has
 - In the dev shell, use `tailor.url = "github:wimpysworld/tailor/latest";` with no `follows`.
 - Tell consumers to use `github:wimpysworld/<repo>/latest` with no `follows`.
 
-Haberdasher builds `packages.<system>` of the project's own flake at the release tag. When `latest` is at or ahead of the release tag, it builds the `latest` commit instead. A flake cannot see its tag, so the version that the page shows comes from the tag. The cache serves `x86_64-linux` only.
+Haberdasher builds `packages.<system>` of the project's own flake at the release tag. When `latest` is at or ahead of the release tag, it builds the `latest` commit instead. The page takes the version from the tag, and the binary takes it from `nix/version`. The cache serves `x86_64-linux` only.
 
 A `follows` on the consumer's input changes the derivation, so the cache misses and the consumer builds from source.
 
