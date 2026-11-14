@@ -34,6 +34,7 @@ pkgs: {
   tcount = pkgs.callPackage ./tcount { };
   tchackpoum-ludwig-black-cortex = pkgs.callPackage ./tchackpoum-ludwig-black-cortex { };
   twelvetake-reaper-mcp = pkgs.callPackage ./twelvetake-reaper-mcp { };
+  unreal-engine = pkgs.callPackage ./unreal-engine { };
   unreal-the-slapper = pkgs.callPackage ./unreal-the-slapper { };
   vecdecor = pkgs.callPackage ./vecdecor { };
   virtuosity-drums = pkgs.callPackage ./virtuosity-drums { };
