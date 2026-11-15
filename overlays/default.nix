@@ -91,6 +91,7 @@ in
       });
 
       herdr = inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}.herdr;
+      herdr-app = inputs.llm-agents.packages.${final.stdenv.hostPlatform.system}.herdr-app;
 
       inherit (final.unstable) ollama;
       inherit (final.unstable) ollama-cuda;

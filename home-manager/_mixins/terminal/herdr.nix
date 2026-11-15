@@ -585,13 +585,13 @@ let
 in
 {
   config = lib.mkIf (!host.is.iso) {
-    # `pkgs.herdr` comes from the `modifiedPackages` overlay, which exposes the
-    # llm-agents flake build with a stable-release override.
+    # The `modifiedPackages` overlay exposes the unmodified llm-agents builds.
     home.packages = [
       herdrWorktree
       pkgs.herdr
       herdrLayout
-    ];
+    ]
+    ++ lib.optionals host.is.workstation [ pkgs.herdr-app ];
 
     # Unlink layout plugin variants that a previous host configuration may
     # have left linked, so exactly one `workspace.created` handler remains.
