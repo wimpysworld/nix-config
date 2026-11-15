@@ -229,6 +229,8 @@ Repeat it for `darwin` and `windows` with `command: build`. Also set:
 - `nfpms.ids: [linux]`, with `deb`, `rpm`, `apk`, and `archlinux`. The static musl binary needs no glibc floor and no dependencies.
 - `release.extra_files` and `checksum.extra_files`, both with `glob: ./artifacts/*`, so that the checksum file and its cosign bundle cover the runner outputs.
 
+Add `.zig-cache/` to `.gitignore`. `mlugg/setup-zig` keeps its cache in the workspace, and GoReleaser rejects a tag build from a dirty tree. Snapshot builds skip that check, so the snapshot run on `main` does not catch it.
+
 ### Workflow
 
 1. A build matrix runs one job each on `ubuntu-24.04`, `macos-15`, and `windows-2025`, with `TARGET` set to `linux`, `darwin`, or `windows`. `dtolnay/rust-toolchain` installs the targets. The Linux job also installs zig with `mlugg/setup-zig` and `cargo-zigbuild` with `taiki-e/install-action`.
