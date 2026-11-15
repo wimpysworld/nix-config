@@ -229,7 +229,7 @@ Repeat it for `darwin` and `windows` with `command: build`. Also set:
 - `nfpms.ids: [linux]`, with `deb`, `rpm`, `apk`, and `archlinux`. The static musl binary needs no glibc floor and no dependencies.
 - `release.extra_files` and `checksum.extra_files`, both with `glob: ./artifacts/*`, so that the checksum file and its cosign bundle cover the runner outputs.
 
-Add `.zig-cache/` to `.gitignore`. `mlugg/setup-zig` keeps its cache in the workspace, and GoReleaser rejects a tag build from a dirty tree. Snapshot builds skip that check, so the snapshot run on `main` does not catch it.
+Add `.zig-cache/` and `/artifacts/` to `.gitignore`. `mlugg/setup-zig` keeps its cache in the workspace, the release job downloads into `./artifacts`, and GoReleaser rejects a tag build from a dirty tree. Snapshot builds skip that check, so the snapshot run on `main` does not catch it.
 
 ### Workflow
 
