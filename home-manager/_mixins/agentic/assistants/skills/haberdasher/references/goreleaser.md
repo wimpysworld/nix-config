@@ -2,7 +2,7 @@
 
 Canonical example: `.goreleaser.yaml` in `github.com/wimpysworld/tailor` (cross-platform, with a GHCR image). WonKey is the Linux-only example. `github.com/linuxmatters/jive-encoder` is the cgo example.
 
-Contents: Keep, Leave out, Archives, nfpms, bin scoring, Tailor swatches, Nix package, cgo on native runners, Nix package for cgo.
+Contents: Keep, Leave out, Archives, nfpms, bin scoring, Tailor swatches, Nix package, cgo on native runners, Nix package for cgo, Rust.
 
 ## Keep
 
@@ -195,3 +195,49 @@ Before you rename or replace a job, run `gh ruleset list` and keep every job nam
 - Guard x86_64-only dev shell packages, such as `intel-media-driver` and `vpl-gpu-rt`, with `pkgs.stdenv.hostPlatform.isx86_64`.
 
 jive-encoder's `nix/package.nix` and `flake.nix` are the examples.
+
+## Rust
+
+Use GoReleaser's `builder: rust`, which GoReleaser OSS supports. `github.com/wimpysworld/ia-get` is the example. Tailor has no Rust release swatch, so write `.goreleaser.yaml` and the release jobs by hand.
+
+One runner cannot build every target:
+
+- `cargo zigbuild` builds static musl Linux binaries for `x86_64` and `aarch64` on one Ubuntu runner.
+- The darwin targets need the macOS SDK, because Rust's standard library links `objc`. Zig on Linux has no SDK, so build them with `cargo build` on `macos-15`.
+- The Windows GNU targets fail under zig, because its MinGW libraries lack `synchronization`. Build `x86_64-pc-windows-msvc` and `aarch64-pc-windows-msvc` with `cargo build` on `windows-2025`.
+
+### `.goreleaser.yaml`
+
+Declare one build per runner. `TARGET` selects the build that runs, as in the cgo route:
+
+```yaml
+builds:
+  - id: linux
+    builder: rust
+    binary: <tool>
+    command: zigbuild
+    targets:
+      - x86_64-unknown-linux-musl
+      - aarch64-unknown-linux-musl
+    flags: [--release, --locked]
+    skip: '{{ ne (index .Env "TARGET") "linux" }}'
+```
+
+Repeat it for `darwin` and `windows` with `command: build`. Also set:
+
+- `git.ignore_tags: [latest]`.
+- `nfpms.ids: [linux]`, with `deb`, `rpm`, `apk`, and `archlinux`. The static musl binary needs no glibc floor and no dependencies.
+- `release.extra_files` and `checksum.extra_files`, both with `glob: ./artifacts/*`, so that the checksum file and its cosign bundle cover the runner outputs.
+
+### Workflow
+
+1. A build matrix runs one job each on `ubuntu-24.04`, `macos-15`, and `windows-2025`, with `TARGET` set to `linux`, `darwin`, or `windows`. `dtolnay/rust-toolchain` installs the targets. The Linux job also installs zig with `mlugg/setup-zig` and `cargo-zigbuild` with `taiki-e/install-action`.
+2. Each build job runs `goreleaser release --clean --skip=sign` with `--skip=publish,announce` on a tag and `--snapshot` otherwise. The darwin and Windows jobs also pass `--skip=nfpm`.
+3. Each build job copies the packages and the bare binaries from `dist/artifacts.json`. Match `-(linux|darwin|windows)-(amd64|arm64)(\.exe)?$`, and convert backslashes in Windows paths.
+4. The release job downloads the artefacts into `./artifacts`, installs cosign, runs `goreleaser release --clean --skip=nfpm` with `TARGET` unset, then moves `latest`.
+
+Push to `main` first. The snapshot builds prove all three runners before the tag.
+
+### Nix package
+
+Build with `pkgs.rustPlatform.buildRustPackage` and `cargoLock.lockFile = ../Cargo.lock`, with the version read from `nix/version`. The binary takes its version from `Cargo.toml`, so bump it before the tag.

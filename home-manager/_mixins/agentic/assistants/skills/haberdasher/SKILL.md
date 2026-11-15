@@ -23,6 +23,7 @@ The hosts, anchors, and per-format inputs are in [references/repositories.md](re
 | --- | --- | --- |
 | Go command-line tool | GoReleaser | [references/goreleaser.md](references/goreleaser.md) |
 | Go tool with cgo and native libraries, for example a static FFmpeg library | GoReleaser on native runners | [references/goreleaser.md#cgo-on-native-runners](references/goreleaser.md#cgo-on-native-runners) |
+| Rust command-line tool | GoReleaser `builder: rust` on native runners | [references/goreleaser.md#rust](references/goreleaser.md#rust) |
 | Electron desktop app | electron-builder | [references/electron-builder.md](references/electron-builder.md) |
 
 Other types have no proven path yet. Ask the owner before you invent one.
@@ -31,6 +32,7 @@ Other types have no proven path yet. Ask the owner before you invent one.
 
 - Go: bare binaries, Linux packages from nfpm with full metadata, and an optional GHCR image.
 - Go with cgo: the same bare binaries and packages, built on one native runner per target. Leave out `apk` unless a musl build of the native library exists.
+- Rust: static musl Linux binaries and packages, including `apk`, plus darwin and Windows bare binaries, each from its own runner.
 - Electron: Linux packages, a Flatpak bundle, a macOS `.zip` that holds one `.app`, and a portable Windows `.zip` that holds one `.exe`.
 
 Leave out every builder feature that publishes to Homebrew, Scoop, or Nix. Haberdasher publishes those formats.
