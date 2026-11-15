@@ -17,13 +17,13 @@ let
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "roamgate";
-  version = "0.8.2";
+  version = "0.8.15";
 
   src = fetchFromGitHub {
     owner = "powerfooI";
     repo = "roamgate";
     tag = "v${finalAttrs.version}";
-    hash = "sha256-5zqNjEqTr5w78HH4xvTkWVLXMr8o3cHL9CNDKxx/4UI=";
+    hash = "sha256-ykHEPAiyO4gsxUGqs/o3yd/NgHzxip3lAISMYLkhK+8=";
   };
 
   # nixpkgs has no Bun dependency fetcher. This fixed-output derivation runs
@@ -69,7 +69,7 @@ stdenv.mkDerivation (finalAttrs: {
     # A fixed-output derivation must not reference store paths.
     dontFixup = true;
 
-    outputHash = "sha256-hbxrcN4Rk1kWTuCEJBpBqhb01Q8HlQOT8iV30ZnVJMI=";
+    outputHash = "sha256-Qsg1Eq6oAMt2m7zCvL9f307VurLPf7Ym3hmUjPh65kA=";
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
   };
@@ -130,11 +130,14 @@ stdenv.mkDerivation (finalAttrs: {
       @earendil-works/pi-coding-agent \
       @earendil-works/pi-durable \
       proper-lockfile \
+      qrcode-generator \
       typebox \
       undici \
       web-push
-    find "$root/node_modules/@esbuild" -mindepth 1 -maxdepth 1 ! -name '${esbuildPlatform}' \
-      -exec rm -rf {} +
+    if [ -d "$root/node_modules/@esbuild" ]; then
+      find "$root/node_modules/@esbuild" -mindepth 1 -maxdepth 1 ! -name '${esbuildPlatform}' \
+        -exec rm -rf {} +
+    fi
     makeWrapper ${lib.getExe bun} "$out/bin/roamgate" \
       --prefix PATH : ${lib.makeBinPath [ nodejs ]} \
       --chdir "$root" \
