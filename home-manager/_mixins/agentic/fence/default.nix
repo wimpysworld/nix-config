@@ -61,8 +61,12 @@ let
     };
     devices = {
       mode = "minimal";
-      # Hardware-accelerated OpenGL and Vulkan for games and GPU tools.
-      allow = [ "/dev/dri" ];
+      # Hardware-accelerated OpenGL and Vulkan for games and GPU tools, plus
+      # KVM for hardware-accelerated virtual machines.
+      allow = [
+        "/dev/dri"
+        "/dev/kvm"
+      ];
     };
     filesystem = {
       defaultDenyRead = false;

@@ -116,7 +116,9 @@ on Linux because Fence may otherwise re-bind the current project read-only while
 reconstructing `/home` across mount boundaries.
 
 Device handling is pinned to Fence's `minimal` mode for deterministic Linux
-sandbox behaviour.
+sandbox behaviour. The policy also allows `/dev/dri` for GPU acceleration, and
+`/dev/kvm` for hardware-accelerated virtual machines. Fence skips device paths
+that do not exist.
 
 Command runtime enforcement uses `runtimeExecPolicy = "path"`. This permits
 multithreaded tools such as Nix and Go to execute child processes. Single-token
