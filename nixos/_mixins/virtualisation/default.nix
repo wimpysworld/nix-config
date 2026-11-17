@@ -20,6 +20,9 @@ lib.mkMerge [
       enable = true;
       enableOnBoot = false;
     };
+    # `bootc install to-filesystem` in a privileged container compares its
+    # /var/lib/containers with the host's and fails when the host lacks it.
+    systemd.tmpfiles.rules = [ "d /var/lib/containers 0700 root root -" ];
   })
 
   (lib.mkIf virtualisationEnabled {
