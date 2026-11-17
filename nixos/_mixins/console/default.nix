@@ -119,12 +119,10 @@ in
     automatic-timezoned.enable = useGeoclue;
     geoclue2 = {
       enable = useGeoclue;
-      # https://github.com/NixOS/nixpkgs/issues/321121
-      geoProviderUrl = "https://api.positon.xyz/v1/geolocate?key=test";
-      submissionUrl = "https://api.positon.xyz/v2/geosubmit?key=test";
+      geoProviderUrl = "https://api.beacondb.net/v1/geolocate";
       submitData = false;
     };
-    localtimed.enable = useGeoclue;
+    localtimed.enable = false;
     # TODO: Does compiling without fbterm help by odd sized displays?
     # - https://github.com/Aetf/kmscon/issues/18#issuecomment-612003371
 
