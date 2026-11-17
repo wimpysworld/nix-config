@@ -31,7 +31,7 @@
     reaper-flake.url = "github:9Prestidigitator/reaper-flake/e7efd7af128b153a5fdbefe523179e1822299006";
     reaper-flake.inputs.nixpkgs.follows = "nixpkgs";
     reaper-flake.inputs.flake-parts.follows = "flake-parts";
-    handy.url = "github:cjpais/Handy/v0.10.0";
+    handy.url = "github:cjpais/Handy/v0.10.1";
     handy.inputs.nixpkgs.follows = "nixpkgs";
     catppuccin.url = "github:catppuccin/nix/release-26.05";
     catppuccin.inputs.nixpkgs.follows = "nixpkgs";
