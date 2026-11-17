@@ -1511,11 +1511,11 @@
         "tailor": "tailor_5"
       },
       "locked": {
-        "lastModified": 1794571456,
-        "narHash": "sha256-ZDY0Uxi7A+q/Bi0VhjlxpoFwLIQtwa80xd+BlxmfnT0=",
+        "lastModified": 1794655770,
+        "narHash": "sha256-WRhTxH8cIJUNtKsWFVKUyF8HBWIH4ngvAXry7Ho6fjM=",
         "owner": "wimpysworld",
         "repo": "WonKey",
-        "rev": "1e0f9a5bd7bd373b359cc1b119ef42be96200b43",
+        "rev": "b9b7c4cb6b4830684597b2a13b503cf0ea6a33fd",
         "type": "github"
       },
       "original": {
