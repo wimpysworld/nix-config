@@ -50,7 +50,12 @@ let
     '';
   };
   chargeThresholds =
-    if noughtyLib.isHost [ "tanis" ] then
+    if
+      noughtyLib.isHost [
+        "tanis"
+        "ravi"
+      ]
+    then
       {
         start = 95;
         stop = 100;
