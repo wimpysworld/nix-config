@@ -339,7 +339,7 @@ class CompanionTestBase(unittest.TestCase):
     def make_components(
         self,
         agent_name: str = "skrye",
-        main_model: str = "gemini::gemini-4-argon",
+        main_model: str = "gemini::gemini-4-neon",
         started_at_ms: int | None = None,
     ):
         self_uid = f"@{agent_name}:{companion.SERVER_DOMAIN}"
@@ -2362,7 +2362,7 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         self.httpd.context_token_usage = None
         self.assertEqual(
             engine.turn_reconciler._resolve_turn_context_telemetry(session_key, "run-missing-tokens"),
-            (182_688, 1_000_000),
+            (182_688, 1_048_576),
         )
 
         # 3. >= 5s turn edits its existing progress m.notice in place with context usage,
@@ -2555,7 +2555,7 @@ class Criterion3AssessmentOutputValidationTests(CompanionTestBase):
     def test_assessment_worker_posts_only_valid_badges(self) -> None:
         store, _, _, _, engine = self.make_components(
             agent_name="zannah",
-            main_model="gemini::gemini-4-argon",
+            main_model="gemini::gemini-4-neon",
         )
         engine.process_sync_batch({"next_batch": "s_init", "rooms": {"join": {}}})
 
@@ -2609,7 +2609,7 @@ class Criterion3AssessmentOutputValidationTests(CompanionTestBase):
         )
         # Verify RPC parameters: ephemeral=True, active_tools=[], model=mainModel.
         rpc_params = self.httpd.rpc_requests[-1]["params"]
-        self.assertEqual(rpc_params["model"], "gemini::gemini-4-argon")
+        self.assertEqual(rpc_params["model"], "gemini::gemini-4-neon")
         self.assertEqual(rpc_params["_session_key"], "companion:matrix-assess")
         self.assertIs(rpc_params["_ephemeral"], True)
         self.assertEqual(rpc_params["active_tools"], [])
@@ -2621,7 +2621,7 @@ class Criterion3AssessmentOutputValidationTests(CompanionTestBase):
 
         store, resolver, _, _, engine = self.make_components(
             agent_name="skrye",
-            main_model="gemini::gemini-4-argon",
+            main_model="gemini::gemini-4-neon",
         )
         session_key = resolver.default_session_key
         engine.process_sync_batch({"next_batch": "s_init", "rooms": {"join": {}}})
@@ -4353,7 +4353,7 @@ class Criterion5ModeratorWakeupRulesTests(CompanionTestBase):
                 self.assertEqual(root_after_zannah["pending_hands"], [companion.SKRYE_ID])
 
     def test_caption_bearing_bot_audio_events_pass_all_six_checks_and_bare_filename_audio_is_skipped(self) -> None:
-        store, resolver, _, _, engine = self.make_components(agent_name="skrye", main_model="gemini::gemini-4-argon")
+        store, resolver, _, _, engine = self.make_components(agent_name="skrye", main_model="gemini::gemini-4-neon")
         session_key = resolver.default_session_key
         hook_script = self.write_hook_script(agent_name="skrye")
         engine.process_sync_batch({"next_batch": "s0", "rooms": {"join": {}}})
@@ -4552,7 +4552,7 @@ class Criterion6RoomEventsDurabilityAndNewIsolationTests(CompanionTestBase):
     def test_fresh_host_provisional_cutoff_reconciliation_and_delayed_sync_across_new(self) -> None:
         store, resolver, _, _, engine = self.make_components(
             agent_name="skrye",
-            main_model="gemini::gemini-4-argon",
+            main_model="gemini::gemini-4-neon",
             started_at_ms=self.current_time_ms,
         )
         # 1. Fresh host before first turn: sessions row does not exist yet -> provisional_cutoff_ms.
@@ -5416,7 +5416,7 @@ class Criterion6RoomEventsDurabilityAndNewIsolationTests(CompanionTestBase):
         # Peer companions (for example Zannah) do not enqueue or react 👌🏻 to "/new @Skrye ".
         z_store, _, _, _, z_engine = self.make_components(
             agent_name="zannah",
-            main_model="gemini::gemini-4-argon",
+            main_model="gemini::gemini-4-neon",
         )
         z_engine.process_sync_batch({"next_batch": "z0", "rooms": {"join": {}}})
         self.httpd.reactions_sent.clear()
@@ -5472,7 +5472,7 @@ class Criterion6RoomEventsDurabilityAndNewIsolationTests(CompanionTestBase):
                 self.data_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
                 store, resolver, _, _, engine = self.make_components(
                     agent_name="skrye",
-                    main_model="gemini::gemini-4-argon",
+                    main_model="gemini::gemini-4-neon",
                     started_at_ms=self.current_time_ms - 600_000,
                 )
                 engine.process_sync_batch({"next_batch": "s0", "rooms": {"join": {}}})
@@ -5596,7 +5596,7 @@ class Criterion6RoomEventsDurabilityAndNewIsolationTests(CompanionTestBase):
 
         store, resolver, _, _, engine = self.make_components(
             agent_name="skrye",
-            main_model="gemini::gemini-4-argon",
+            main_model="gemini::gemini-4-neon",
         )
         engine.process_sync_batch({"next_batch": "s0", "rooms": {"join": {}}})
 
@@ -5647,7 +5647,7 @@ class Criterion6RoomEventsDurabilityAndNewIsolationTests(CompanionTestBase):
         ]
         self.assertEqual(len(send_sync_calls), 2)
         for params in send_sync_calls:
-            self.assertEqual(params["model"], "gemini::gemini-4-argon")
+            self.assertEqual(params["model"], "gemini::gemini-4-neon")
             self.assertEqual(params["_session_key"], companion.ASSESSMENT_SESSION_KEY)
             self.assertEqual(params["active_tools"], [])
             self.assertEqual(params["_tool_policy"], {"deny": ["*"]})
@@ -5737,7 +5737,7 @@ class Criterion6RoomEventsDurabilityAndNewIsolationTests(CompanionTestBase):
     def test_status_cli_flag_outputs_redacted_summary_without_access_token(self) -> None:
         store, resolver, _, _, engine = self.make_components(
             agent_name="skrye",
-            main_model="gemini::gemini-4-argon",
+            main_model="gemini::gemini-4-neon",
         )
         redacted_value = "syt-redacted-status-check-999"
         store.write_auth(
@@ -5809,7 +5809,7 @@ class Criterion7CommandsRecoveryWithdrawalAndModeratorTests(CompanionTestBase):
     def test_room_wide_stop_and_new_commands_abort_runs_and_acknowledge(self) -> None:
         store, resolver, _, _, engine = self.make_components(
             agent_name="skrye",
-            main_model="gemini::gemini-4-argon",
+            main_model="gemini::gemini-4-neon",
         )
         session_key = resolver.default_session_key
         hook_script = self.write_hook_script(agent_name="skrye")

@@ -1,6 +1,6 @@
 // Preload hook that registers missing model context windows in LibreChat 0.8.8
 // and strips any stale 1024-token floor cached in conversation or preset payloads.
-// Gemini 4 defaults to medium thinking without overriding explicit choices.
+// Gemini 4 Neon defaults to high thinking, Carbon and Hydrogen to medium.
 'use strict';
 
 const Module = require('module');
@@ -8,9 +8,54 @@ const originalLoad = Module._load;
 
 let patchedDataProvider = false;
 let patchedApi = false;
+const auxiliaryInitializers = new WeakMap();
 
 Module._load = function patchedModuleLoad(request, parent, isMain) {
   const exported = originalLoad.apply(this, arguments);
+
+  // Titles discard thinking options, while summaries inherit the main model's options.
+  if (
+    ((request === './llm/init.cjs' &&
+      parent?.filename?.endsWith('/@librechat/agents/dist/cjs/run.cjs')) ||
+      (request === '../llm/init.cjs' &&
+        parent?.filename?.endsWith('/@librechat/agents/dist/cjs/summarization/node.cjs'))) &&
+    typeof exported?.initializeModel === 'function'
+  ) {
+    if (!auxiliaryInitializers.has(exported)) {
+      const originalInitializeModel = exported.initializeModel;
+      auxiliaryInitializers.set(exported, {
+        ...exported,
+        initializeModel(params, ...args) {
+          const options = params?.clientOptions;
+          if (
+            params?.provider === 'google' &&
+            options?.model === 'gemini-4-hydrogen' &&
+            options.thinking !== false &&
+            options.thinkingConfig?.includeThoughts !== false
+          ) {
+            const { thinkingLevel, ...clientOptions } = options;
+            return originalInitializeModel.call(
+              this,
+              {
+                ...params,
+                clientOptions: {
+                  ...clientOptions,
+                  thinkingConfig: {
+                    ...options.thinkingConfig,
+                    thinkingLevel:
+                      thinkingLevel?.toUpperCase() || options.thinkingConfig?.thinkingLevel || 'MEDIUM',
+                  },
+                },
+              },
+              ...args,
+            );
+          }
+          return originalInitializeModel.apply(this, arguments);
+        },
+      });
+    }
+    return auxiliaryInitializers.get(exported);
+  }
 
   if (
     !patchedDataProvider &&
@@ -55,7 +100,7 @@ Module._load = function patchedModuleLoad(request, parent, isMain) {
     patchedApi = true;
     const extraModels = {
       'gemini-4': 1048576,
-      'gemini-4-argon': 1048576,
+      'gemini-4-neon': 1048576,
       'gemini-4-carbon': 1048576,
       'gemini-4-hydrogen': 1048576,
       'gpt-6-terra': 1050000,
@@ -71,7 +116,7 @@ Module._load = function patchedModuleLoad(request, parent, isMain) {
       exported.providerConfigMap.google = function initializeGoogleWithDefaults(params, ...args) {
         const modelParameters = params?.model_parameters;
         if (
-          /^gemini-4-(argon|carbon|hydrogen)$/.test(modelParameters?.model ?? '') &&
+          /^gemini-4-(neon|carbon|hydrogen)$/.test(modelParameters?.model ?? '') &&
           modelParameters.thinking !== false &&
           (modelParameters.thinkingLevel == null || modelParameters.thinkingLevel === '')
         ) {
@@ -79,7 +124,10 @@ Module._load = function patchedModuleLoad(request, parent, isMain) {
             this,
             {
               ...params,
-              model_parameters: { ...modelParameters, thinkingLevel: 'medium' },
+              model_parameters: {
+                ...modelParameters,
+                thinkingLevel: modelParameters.model === 'gemini-4-neon' ? 'high' : 'medium',
+              },
             },
             ...args,
           );

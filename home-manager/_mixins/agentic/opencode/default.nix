@@ -126,6 +126,9 @@ let
                   ) config.home.file
                 );
             inherit (config.programs.opencode.settings) permissions;
+            inherit (config.programs.opencode.settings) model;
+            agents = config.programs.opencode.settings.agents or { };
+            googleProvider = config.programs.opencode.settings.providers.google;
             openaiModels = config.programs.opencode.settings.providers.openai.models;
           }
         )
@@ -253,10 +256,14 @@ in
               effect = "deny";
             }
           ];
-          model = if workModelsOnly then "google/gemini-4-argon" else "opencode-go/glm-5.3-flash";
+          model = if workModelsOnly then "google/gemini-4-neon#medium" else "opencode-go/glm-5.3-flash";
           # V2 has no small_model field. Its legacy migration moves small_model
           # to the built-in title agent, so set that agent's model directly.
-          agents = lib.mkIf workModelsOnly { title.model = "google/gemini-3.8-flash"; };
+          agents = lib.mkIf workModelsOnly {
+            build.model = "google/gemini-4-neon#medium";
+            title.model = "google/gemini-4-hydrogen#medium";
+            compaction.model = "google/gemini-4-hydrogen#medium";
+          };
           # V2 replaces disabled_providers with provider.use deny policies.
           policies = lib.mkIf workModelsOnly (
             map
@@ -280,6 +287,7 @@ in
                 lib.mapAttrs
                   (_: model: {
                     inherit (model) name cost;
+                    settings.thinkingConfig.thinkingLevel = model.thinkingLevel;
                     capabilities = {
                       tools = true;
                       input = [
@@ -304,6 +312,7 @@ in
                   {
                     gemini-4-hydrogen = {
                       name = "Gemini 4 Hydrogen";
+                      thinkingLevel = "medium";
                       cost = {
                         input = 1.50;
                         output = 7.50;
@@ -311,17 +320,19 @@ in
                       };
                       maxTokens = 65536;
                     };
-                    gemini-4-argon = {
-                      name = "Gemini 4 Argon";
+                    gemini-4-neon = {
+                      name = "Gemini 4 Neon";
+                      thinkingLevel = "high";
                       cost = {
-                        input = 2;
-                        output = 10;
-                        cache.read = 0.10;
+                        input = 3;
+                        output = 15;
+                        cache.read = 0.15;
                       };
-                      maxTokens = 32768;
+                      maxTokens = 65536;
                     };
                     gemini-4-carbon = {
                       name = "Gemini 4 Carbon";
+                      thinkingLevel = "medium";
                       cost = {
                         input = 2;
                         output = 10;

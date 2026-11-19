@@ -41,7 +41,7 @@ The managed settings use Google by default:
 ```json
 {
   "defaultProvider": "google",
-  "defaultModel": "gemini-4-argon",
+  "defaultModel": "gemini-4-neon",
   "defaultThinkingLevel": "medium",
   "hideThinkingBlock": true,
   "enabledModels": [
@@ -49,7 +49,7 @@ The managed settings use Google by default:
     "anthropic/claude-haiku-5-5",
     "anthropic/claude-opus-5-5",
     "anthropic/claude-sonnet-5-5",
-    "google/gemini-4-argon",
+    "google/gemini-4-neon",
     "google/gemini-4-carbon",
     "google/gemini-4-hydrogen",
     "google/gemini-3.8-flash",
@@ -65,7 +65,11 @@ The managed settings use Google by default:
 }
 ```
 
-Argon uses Pi's built-in catalogue. `models.json` registers Carbon and Hydrogen. All three appear in model cycling, with medium thinking as the default.
+`models.json` registers Neon, Carbon and Hydrogen. All three appear in model cycling. The main coordinator starts on Neon at medium thinking. Shared specialist routes select high thinking for Neon and retain medium thinking for Carbon and Hydrogen.
+
+Neon accepts text and images, with a 1,048,576-token context and a 65,536-token output limit that includes thinking. Pi exposes low, medium and high thinking. Its Google adapter does not support Neon's extra-high level. Direct sessions inherit the global medium default unless the caller selects high thinking explicitly.
+
+Neon's input/output/cache-read prices are 3/15/0.15 USD per million tokens. Implicit caching requires the paid Gemini Developer API. The registration does not enable explicit cache writes.
 
 `models.json` also registers GPT-6.2 Astra and Sol through `openai-codex-responses`, using the ChatGPT subscription endpoint. Both support low, medium, high, xhigh and max thinking. Their 384,000-token context and 38,400-token output limits are deliberate operating budgets, not API maxima. The 38,400-token compaction reserve stays unchanged.
 
@@ -73,7 +77,7 @@ The registrations include standard API price estimates and the higher long-conte
 
 Hydrogen accepts text and images, with a 1,048,576-token context and 65,536-token output limit. Pi exposes its low, medium, and high thinking levels. Pi's Google adapter does not support Hydrogen's extra-high level.
 
-Compaction and retry are enabled. Retry settings favour longer backoff for transient provider overloads:
+Compaction and retry are enabled. Pi compaction uses the active session model, with no separate model setting. It does not route to Hydrogen independently. Retry settings favour longer backoff for transient provider overloads:
 
 ```json
 {
@@ -283,7 +287,7 @@ This module writes `~/.pi/agent/themes/catppuccin-mocha.json` from the repositor
 
 Home Manager owns `~/.pi/agent/models.json` on every developer host. On hosts without the `cg` tag, both `providers.opencode.apiKey` and `providers.opencode-go.apiKey` reference `$OPENCODE_API_KEY`. Pi resolves the reference from the wrapper's environment and keeps its built-in models. The configuration contains no secret value. See Pi's [authentication and provider overrides](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/docs/models.md).
 
-The scoped GLM models use `opencode-go/glm-5.3-flash` and `opencode-go/glm-5.3`. These entries control model cycling, not workspace access. The default remains `google/gemini-4-argon`. The `opencode` provider uses pay-as-you-go billing, while `opencode-go` selects the workspace's Go plan. See the [OpenCode Pi setup](https://opencode.ai/v2/docs/console/harnesses/pi/).
+The scoped GLM models use `opencode-go/glm-5.3-flash` and `opencode-go/glm-5.3`. These entries control model cycling, not workspace access. The default remains `google/gemini-4-neon`. The `opencode` provider uses pay-as-you-go billing, while `opencode-go` selects the workspace's Go plan. See the [OpenCode Pi setup](https://opencode.ai/v2/docs/console/harnesses/pi/).
 
 Stored Pi credentials take priority over `models.json`, and resumed sessions restore their earlier provider choice. If an old credential masks the managed key, use `/logout` for that provider. Start a fresh session and select `opencode-go` to use Go.
 

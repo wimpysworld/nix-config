@@ -346,7 +346,7 @@ let
 
   piSettings = {
     defaultProvider = "google";
-    defaultModel = "gemini-4-argon";
+    defaultModel = "gemini-4-neon";
     defaultThinkingLevel = "medium";
     thinkingBudgets = {
       minimal = 1024;
@@ -361,7 +361,7 @@ let
       "anthropic/claude-haiku-5-5"
       "anthropic/claude-opus-5-5"
       "anthropic/claude-sonnet-5-5"
-      "google/gemini-4-argon"
+      "google/gemini-4-neon"
       "google/gemini-4-carbon"
       "google/gemini-4-hydrogen"
       "google/gemini-3.8-flash"
@@ -807,6 +807,32 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
           lib.recursiveUpdate
             {
               providers.google.models = [
+                {
+                  id = "gemini-4-neon";
+                  name = "Gemini 4 Neon";
+                  reasoning = true;
+                  thinkingLevelMap = {
+                    off = null;
+                    minimal = null;
+                    low = "LOW";
+                    medium = "MEDIUM";
+                    high = "HIGH";
+                    xhigh = null;
+                    max = null;
+                  };
+                  input = [
+                    "text"
+                    "image"
+                  ];
+                  cost = {
+                    input = 3;
+                    output = 15;
+                    cacheRead = 0.15;
+                    cacheWrite = 0;
+                  };
+                  contextWindow = 1048576;
+                  maxTokens = 65536;
+                }
                 {
                   id = "gemini-4-hydrogen";
                   name = "Gemini 4 Hydrogen";

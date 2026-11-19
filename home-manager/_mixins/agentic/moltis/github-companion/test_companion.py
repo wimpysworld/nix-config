@@ -1773,7 +1773,7 @@ class InterruptedTurnRecoveryDecoupledPollingAndStartNoticeTests(GithubCompanion
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name="traya",
-            main_model="gemini::gemini-4-argon",
+            main_model="gemini::gemini-4-neon",
             matrix_client=mclient,
             completion_timeout_ms=300,
             recovery_deadline_ms=300,
@@ -2004,7 +2004,7 @@ class InterruptedTurnRecoveryDecoupledPollingAndStartNoticeTests(GithubCompanion
             data_dir=self.data_dir,
             agent_name="skrye",
             agent_display_name="Skrye",
-            main_model="gemini::gemini-4-argon",
+            main_model="gemini::gemini-4-neon",
             telegram_bot_token_path=self.bot_token_file,
             telegram_allowed_users_path=self.allowed_users_file,
             telegram_api_url=self.httpd.base_url,
@@ -3191,11 +3191,11 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
 
         # Runtime config resolves --review-model / MOLTIS_GITHUB_COMPANION_REVIEW_MODEL and defaults to main_model
         parsed_default = companion.build_arg_parser().parse_args(
-            ["--agent-name", "skrye", "--main-model", "gemini::gemini-4-argon@reasoning-medium"]
+            ["--agent-name", "skrye", "--main-model", "gemini::gemini-4-neon@reasoning-medium"]
         )
         cfg_default = companion.resolve_runtime_config(parsed_default)
-        self.assertEqual(cfg_default["main_model"], "gemini::gemini-4-argon@reasoning-medium")
-        self.assertEqual(cfg_default["review_model"], "gemini::gemini-4-argon@reasoning-medium")
+        self.assertEqual(cfg_default["main_model"], "gemini::gemini-4-neon@reasoning-medium")
+        self.assertEqual(cfg_default["review_model"], "gemini::gemini-4-neon@reasoning-medium")
 
         parsed_explicit = companion.build_arg_parser().parse_args(
             [
@@ -3232,7 +3232,7 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
 
             return _handler
 
-        # 1) Skrye: main_model = gemini::gemini-4-argon@reasoning-medium, review_model = gemini::gemini-4-carbon@reasoning-medium
+        # 1) Skrye: main_model = gemini::gemini-4-neon@reasoning-medium, review_model = gemini::gemini-4-carbon@reasoning-medium
         notif_batches: list[str] = [
             # Cycle 1 notifications:
             # - Issue mention (flexiondotorg) -> review_model
@@ -3408,7 +3408,7 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name="skrye",
-            main_model="gemini::gemini-4-argon@reasoning-medium",
+            main_model="gemini::gemini-4-neon@reasoning-medium",
             review_model="gemini::gemini-4-carbon@reasoning-medium",
             clock=self.clock,
             sleeper=self.sleeper,
@@ -3441,19 +3441,19 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
                 # Issue mention (flexiondotorg) -> review_model
                 ("skrye:targeted", "gemini::gemini-4-carbon@reasoning-medium"),
                 # github-actions[bot] PR notification -> main_model
-                ("skrye:targeted", "gemini::gemini-4-argon@reasoning-medium"),
+                ("skrye:targeted", "gemini::gemini-4-neon@reasoning-medium"),
                 # Freshener PR notification -> main_model
-                ("skrye:targeted", "gemini::gemini-4-argon@reasoning-medium"),
+                ("skrye:targeted", "gemini::gemini-4-neon@reasoning-medium"),
                 # Human PR (flexiondotorg) -> review_model
                 ("skrye:targeted", "gemini::gemini-4-carbon@reasoning-medium"),
                 # Peer PR (sith-zannah) -> review_model
                 ("skrye:targeted", "gemini::gemini-4-carbon@reasoning-medium"),
                 # Dependabot PR -> main_model
-                ("skrye:targeted", "gemini::gemini-4-argon@reasoning-medium"),
+                ("skrye:targeted", "gemini::gemini-4-neon@reasoning-medium"),
                 # Weekly sweep -> main_model
-                ("skrye:weekly_sweep", "gemini::gemini-4-argon@reasoning-medium"),
+                ("skrye:weekly_sweep", "gemini::gemini-4-neon@reasoning-medium"),
                 # 6-hour reconciliation sweep -> main_model
-                ("skrye:reconcile_sweep", "gemini::gemini-4-argon@reasoning-medium"),
+                ("skrye:reconcile_sweep", "gemini::gemini-4-neon@reasoning-medium"),
             ],
         )
 

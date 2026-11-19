@@ -20,8 +20,9 @@ let
   isTraya = agentName == "traya";
   mainProvider = if isTraya then "openai-codex" else "gemini";
   mainModelName =
-    if isTraya then "gpt-6.2-sol@reasoning-medium" else "gemini-4-argon@reasoning-medium";
+    if isTraya then "gpt-6.2-sol@reasoning-medium" else "gemini-4-neon@reasoning-medium";
   mainModel = "${mainProvider}::${mainModelName}";
+  assessmentModel = if isTraya then mainModel else "gemini::gemini-4-neon@reasoning-high";
   githubMainModel = if isTraya then mainModel else "gemini::gemini-4-hydrogen@reasoning-medium";
   reviewModel =
     if isTraya then
@@ -30,7 +31,10 @@ let
       "gemini::gemini-4-carbon@reasoning-medium";
   reviewReasoningEffort = "medium";
   auxiliaryModel =
-    if isTraya then "openai-codex::gpt-6-luna@reasoning-high" else "gemini::gemini-3.8-flash";
+    if isTraya then
+      "openai-codex::gpt-6-luna@reasoning-high"
+    else
+      "gemini::gemini-4-hydrogen@reasoning-medium";
   auxiliaryReasoningEffort = if isTraya then "high" else "medium";
   stateDir = "${config.xdg.stateHome}/moltis";
   mcporterConfig = "${config.xdg.configHome}/moltis/mcporter.json";
@@ -941,8 +945,8 @@ let
     inherit
       agentName
       agentDisplayName
-      mainModel
       ;
+    mainModel = assessmentModel;
     selfUserId = matrixCfg.userId or "@${agentName}:matrix.wimpys.world";
     roomId = matrixCfg.roomId or "!the-cauldron:matrix.wimpys.world";
     homeserverUrl = "https://matrix.wimpys.world";
@@ -1690,7 +1694,14 @@ in
                 }
               )
               (
-                (import ./builtin-presets.nix)
+                (lib.mapAttrs (
+                  _: preset:
+                  preset
+                  // lib.optionalAttrs (!isTraya) {
+                    model = "gemini::gemini-4-neon@reasoning-high";
+                    reasoning_effort = "high";
+                  }
+                ) (import ./builtin-presets.nix))
                 // {
                   coordinator = {
                     model = mainModel;
@@ -1714,7 +1725,7 @@ in
         };
 
         models = {
-          gemini-4-argon.context_window = 1000000;
+          gemini-4-neon.context_window = 1048576;
           gemini-4-carbon.context_window = 1048576;
           gemini-4-hydrogen.context_window = 1048576;
           "gpt-6.2-sol".context_window = 384000;
@@ -1728,7 +1739,7 @@ in
           gemini = {
             enabled = !isTraya;
             models = [
-              "gemini-4-argon"
+              "gemini-4-neon"
               "gemini-4-carbon"
               "gemini-4-hydrogen"
               "gemini-3.8-flash"

@@ -108,7 +108,7 @@ let
   };
   companionWrapper = pkgs.callPackage ../../home-manager/_mixins/agentic/moltis/matrix-companion {
     agentName = "skrye";
-    mainModel = "gemini::gemini-4-argon";
+    mainModel = "gemini::gemini-4-neon";
     passwordPath = "/synthetic/matrix-password";
     dataDir = "/synthetic/moltis";
     stateDir = "/synthetic/state";
@@ -117,7 +117,7 @@ let
     pkgs.callPackage ../../home-manager/_mixins/agentic/moltis/github-companion
       {
         agentName = "skrye";
-        mainModel = "gemini::gemini-4-argon";
+        mainModel = "gemini::gemini-4-neon";
         passwordPath = "/synthetic/matrix-password";
         telegramBotTokenPath = "/synthetic/telegram-bot-token";
         telegramAllowedUsersPath = "/synthetic/telegram-allowed-users";
@@ -232,12 +232,12 @@ let
       gemini = context.provider == "gemini";
       agentName = host;
       expectedMainModelName =
-        if host == "traya" then "gpt-6.2-sol@reasoning-medium" else "gemini-4-argon@reasoning-medium";
+        if host == "traya" then "gpt-6.2-sol@reasoning-medium" else "gemini-4-neon@reasoning-medium";
       expectedMainModel =
         if host == "traya" then
           "openai-codex::gpt-6.2-sol@reasoning-medium"
         else
-          "gemini::gemini-4-argon@reasoning-medium";
+          "gemini::gemini-4-neon@reasoning-medium";
       expectedReviewModel =
         if host == "traya" then
           "openai-codex::gpt-6.2-astra@reasoning-medium"
@@ -246,6 +246,10 @@ let
       expectedReviewReasoningEffort = "medium";
       expectedGithubMainModel =
         if host == "traya" then expectedMainModel else "gemini::gemini-4-hydrogen@reasoning-medium";
+      expectedAssessmentModel =
+        if host == "traya" then expectedMainModel else "gemini::gemini-4-neon@reasoning-high";
+      expectedAuxiliaryModel =
+        if host == "traya" then "openai-codex::gpt-6-luna@reasoning-high" else expectedGithubMainModel;
       settings = c.agentic.moltis.settings;
       cli = builtins.fromJSON (
         builtins.unsafeDiscardStringContext c.xdg.configFile."moltis/mcporter.json".text
@@ -305,7 +309,7 @@ let
     assert !darwin || c.launchd.agents.llama-swap.config.Label == "org.moltis.llama-swap";
     assert
       settings.models == {
-        gemini-4-argon.context_window = 1000000;
+        gemini-4-neon.context_window = 1048576;
         gemini-4-carbon.context_window = 1048576;
         gemini-4-hydrogen.context_window = 1048576;
         "gpt-6.2-sol".context_window = 384000;
@@ -387,7 +391,8 @@ let
     assert lib.hasInfix "/bin/moltis-github-companion &\n\nexec " scripts.inner == !darwin;
     assert lib.hasInfix "export MOLTIS_COMPANION_AGENT_NAME=${lib.escapeShellArg agentName}"
       scripts.companion;
-    assert lib.hasInfix "export MOLTIS_COMPANION_MAIN_MODEL=${lib.escapeShellArg expectedMainModel}"
+    assert lib.hasInfix
+      "export MOLTIS_COMPANION_MAIN_MODEL=${lib.escapeShellArg expectedAssessmentModel}"
       scripts.companion;
     assert lib.hasInfix
       "export MOLTIS_COMPANION_SELF_USER_ID=${lib.escapeShellArg "@${agentName}:matrix.wimpys.world"}"
@@ -529,6 +534,12 @@ let
       && preset.max_iterations == original.max_iterations
       && lib.hasPrefix original.system_prompt_suffix preset.system_prompt_suffix
       && preset.delegate_only == original.delegate_only
+      && (
+        if gemini then
+          preset.model == expectedAssessmentModel && preset.reasoning_effort == "high"
+        else
+          !(preset ? model) && !(preset ? reasoning_effort)
+      )
     ) (lib.remove "coordinator" (builtins.attrNames builtinPresets));
     assert settings.agents.presets.coordinator.delegate_only == false;
     assert settings.agents.presets.coordinator.model == context.mainModel;
@@ -554,6 +565,7 @@ let
     assert settings.agents.presets.review.reasoning_effort == expectedReviewReasoningEffort;
     assert settings.heartbeat.model == expectedGithubMainModel;
     assert !gemini || builtins.elem "gemini-4-hydrogen" settings.providers.gemini.models;
+    assert context.auxiliaryModel == expectedAuxiliaryModel;
     assert settings.auxiliary.compaction == context.auxiliaryModel;
     assert settings.auxiliary.title_generation == context.auxiliaryModel;
     assert settings.auxiliary.vision == context.auxiliaryModel;

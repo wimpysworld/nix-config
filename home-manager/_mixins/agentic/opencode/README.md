@@ -12,11 +12,13 @@ Server settings use native V2 fields in `opencode.json`. Terminal settings use `
 
 No local model allowlist filters the catalogue. The default model is `opencode-go/glm-5.3-flash`. OpenCode Go and the pay-as-you-go `opencode` provider remain separate providers.
 
-The Google provider explicitly registers `gemini-4-hydrogen`, `gemini-4-argon`, and `gemini-4-carbon`, so their availability does not depend on catalogue downloads. Google models default to medium thinking. The three Gemini 4 entries expose low, medium, and high variants, text and image input, and text output.
+The Google provider explicitly registers `gemini-4-hydrogen`, `gemini-4-neon`, and `gemini-4-carbon`, so their availability does not depend on catalogue downloads. Neon defaults to high thinking. Carbon and Hydrogen retain medium thinking. The three Gemini 4 entries expose low, medium and high variants, text and image input, and text output.
 
-Hydrogen has a 1,048,576-token context and a 65,536-token output limit. Argon and Carbon retain their 32,768-token output limits. Their promotional input/output/cache-read prices remain 2/10/0.10 USD per million tokens until 30 November 2026.
+Neon and Hydrogen have a 1,048,576-token context and a 65,536-token output limit. Neon's output limit includes thinking. Its input/output/cache-read prices are 3/15/0.15 USD per million tokens. Implicit caching requires the paid Gemini Developer API. The registration does not enable explicit cache writes. Carbon retains its 32,768-token output limit and promotional prices of 2/10/0.10 USD per million tokens until 30 November 2026.
 
-Hosts with the `cg` tag use only models that are approved for work. Their default model is `google/gemini-4-argon`, and the built-in `title` agent uses `google/gemini-3.8-flash`. V2 has no `small_model` field, so the module sets the `title` agent model instead. `provider.use` deny policies remove the `opencode` and `opencode-go` providers from these hosts. These policies are the V2 form of `disabled_providers`.
+Hosts with the `cg` tag use only models that are approved for work. Their default model and primary `build` agent use `google/gemini-4-neon#medium`. Shared specialist routes select Neon at high thinking. The built-in `title` and `compaction` agents use `google/gemini-4-hydrogen#medium`. V2 has no `small_model` field, so these auxiliary models use native agent settings. `provider.use` deny policies remove the `opencode` and `opencode-go` providers from these hosts. These policies are the V2 form of `disabled_providers`.
+
+Personal hosts retain the GLM default and native auxiliary model selection. A manual switch to Neon uses its high default. Select `google/gemini-4-neon#medium` for a personal coordinator session. V2 has no conditional per-model effort override on its primary agent.
 
 The OpenAI provider explicitly registers GPT-6.2 Astra and Sol with Responses transport, tool support and low, medium, high, xhigh and max reasoning variants. Both use deliberate operating limits of 384,000 context tokens and 38,400 output tokens, below their API maxima. Terra and Luna retain their existing limit overrides. Automatic compaction uses V2's resolved input limit and default reserve. The old fixed 345,600-token trigger does not apply.
 

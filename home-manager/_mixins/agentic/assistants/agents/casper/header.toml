@@ -15,6 +15,10 @@ model = "claude-sonnet-5-5"
 [routing.opencode.providers.openai]
 model = "gpt-6.2-sol"
 
+[routing.opencode.providers.google]
+model = "gemini-4-neon"
+variant = "high"
+
 [routing.pi.anthropic]
 model = "claude-sonnet-5-5"
 thinking = "high"
@@ -22,6 +26,10 @@ thinking = "high"
 [routing.pi.openai-codex]
 model = "gpt-6.2-sol"
 thinking = "medium"
+
+[routing.pi.google]
+model = "gemini-4-neon"
+thinking = "high"
 
 [claude]
 disallowedTools = ["Agent"]

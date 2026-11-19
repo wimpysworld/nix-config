@@ -858,7 +858,7 @@ in
         ALLOW_REGISTRATION = lib.mkDefault false;
         ALLOW_SOCIAL_LOGIN = lib.mkDefault false;
         ALLOW_UNVERIFIED_EMAIL_LOGIN = lib.mkDefault true;
-        GOOGLE_MODELS = lib.mkDefault "gemini-4-argon,gemini-4-carbon,gemini-4-hydrogen,gemini-3.8-flash";
+        GOOGLE_MODELS = lib.mkDefault "gemini-4-neon,gemini-4-carbon,gemini-4-hydrogen,gemini-3.8-flash";
         HOST = lib.mkDefault "0.0.0.0";
         LIBRECHAT_CODE_API_KEY = lib.mkDefault "local-sandbox";
         LIBRECHAT_CODE_BASEURL = lib.mkDefault "http://127.0.0.1:3082";
@@ -898,7 +898,8 @@ in
         summarization = {
           enabled = true;
           provider = "google";
-          model = "gemini-4-argon";
+          model = "gemini-4-hydrogen";
+          parameters.thinkingLevel = "medium";
         };
         endpoints = {
           allowedAddresses = [
@@ -935,7 +936,7 @@ in
           };
           google = {
             titleConvo = true;
-            titleModel = "gemini-3.8-flash";
+            titleModel = "gemini-4-hydrogen";
           };
           custom = [
             {

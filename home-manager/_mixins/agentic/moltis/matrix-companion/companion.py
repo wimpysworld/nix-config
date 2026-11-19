@@ -99,8 +99,8 @@ NOTICE_FINISHED_ICON = "🏁"
 NOTICE_UNVERIFIED_ICON = "⚠️"
 
 DEFAULT_CONTEXT_WINDOWS: dict[str, int] = {
-    "skrye": 1_000_000,
-    "zannah": 1_000_000,
+    "skrye": 1_048_576,
+    "zannah": 1_048_576,
     "traya": 384_000,
 }
 
@@ -817,7 +817,7 @@ def parse_chat_peek_active(rpc_response: object) -> bool | None:
 def default_context_window_for_agent(agent_name: str) -> int:
     """Return the default model context window for agent_name."""
     norm = (agent_name or "").strip().lower()
-    return DEFAULT_CONTEXT_WINDOWS.get(norm, 1_000_000)
+    return DEFAULT_CONTEXT_WINDOWS.get(norm, 1_048_576)
 
 
 _REQUEST_TOKEN_KEY_PAIRS: tuple[tuple[str, str], ...] = (
@@ -7353,7 +7353,7 @@ def resolve_runtime_config(args: argparse.Namespace) -> dict:
             main_model = (
                 "openai-codex::gpt-6.2-astra"
                 if agent_name == "traya"
-                else "gemini::gemini-4-argon"
+                else "gemini::gemini-4-neon"
             )
         else:
             raise ValueError("mainModel is required")

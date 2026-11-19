@@ -127,7 +127,15 @@ for (const layout of ["plain", "fenced", "escaping-entrypoint"]) {
     writeFileSync(join(configDir, "opencode.json"), JSON.stringify({
       update: "disable", share: "disabled", websearch: false,
       permissions: delivery.permissions,
-      providers: { openai: { models: delivery.openaiModels } },
+      model: delivery.model,
+      agents: delivery.agents,
+      providers: {
+        google: {
+          ...delivery.googleProvider,
+          settings: { ...delivery.googleProvider.settings, apiKey: "offline-test" },
+        },
+        openai: { models: delivery.openaiModels },
+      },
     }));
     const child = spawn(process.env.OPENCODE_TEST_BINARY!, ["--print-logs", "serve", "--hostname", "127.0.0.1", "--port", "0"], {
       cwd: project,
@@ -177,6 +185,29 @@ for (const layout of ["plain", "fenced", "escaping-entrypoint"]) {
       });
       // The local catalogue endpoint waits for plugin activation without inference or downloads.
       const models = await api("/api/model");
+      for (const [id, configured] of Object.entries(delivery.googleProvider.models) as [string, any][]) {
+        const resolved = models.find((model: any) => model.providerID === "google" && model.id === id);
+        assert.ok(resolved, `The offline catalogue must retain configured model ${id}`);
+        assert.deepEqual(resolved.limit, configured.limit);
+        assert.equal(resolved.settings.thinkingConfig.thinkingLevel, configured.settings.thinkingConfig.thinkingLevel,
+          "Per-model thinking must override the provider default");
+        assert.deepEqual(resolved.variants.map((variant: any) => variant.id).sort(), configured.capabilities.reasoning.effort.toSorted());
+        for (const variant of resolved.variants) {
+          assert.equal(variant.settings.thinkingConfig.thinkingLevel, variant.id,
+            "Explicit variants must override per-model thinking defaults");
+        }
+      }
+      const agents = await api("/api/agent");
+      for (const [id, configured] of Object.entries(delivery.agents) as [string, any][]) {
+        if (!configured.model) continue;
+        const resolved = agents.find((agent: any) => agent.id === id);
+        const [reference, variant] = configured.model.split("#");
+        const [providerID, modelID] = reference.split("/");
+        assert.deepEqual(resolved?.model, { providerID, id: modelID, ...(variant && { variant }) },
+          `Native agent ${id} must retain its configured model and effort`);
+        assert.ok(models.some((model: any) => model.providerID === providerID && model.id === modelID
+          && (!variant || model.variants.some((entry: any) => entry.id === variant))));
+      }
       for (const [id, configured] of Object.entries(delivery.openaiModels) as [string, any][]) {
         if (!configured.capabilities) continue;
         const resolved = models.find((model: any) => model.providerID === "openai" && model.id === id);

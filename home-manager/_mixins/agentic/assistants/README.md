@@ -229,7 +229,7 @@ Agents without routing defaults inherit the model selected in the coding tool. T
 
 Agent `header.toml` files are the sole routing default source for Claude Code, Codex, and Pi. Commands and ordinary skills remain model-neutral. Explicit launch-time child model, thinking, or effort overrides remain supported. Caller-context commands never change the caller's model, whether or not they have an agent binding. The `make-commit` and `make-pr` commands retain the caller's model.
 
-The [OpenCode router](../opencode/README.md#provider-routing) installs whenever OpenCode is enabled. Google and other missing routes retain native behaviour. Existing OpenCode command model metadata remains supported. OpenCode's direct slash commands use native agent binding. Do not assume that binding uses the router, which applies only to direct-root native subagent children.
+The [OpenCode router](../opencode/README.md#provider-routing) installs whenever OpenCode is enabled. Missing provider routes retain native behaviour. Existing OpenCode command model metadata remains supported. OpenCode's direct slash commands use native agent binding. Do not assume that binding uses the router, which applies only to direct-root native subagent children.
 
 ---
 
@@ -317,7 +317,7 @@ The inference-provider name must match Pi exactly, including hyphens. The defaul
 `Agent` receives `model: provider/modelId` and a separate `thinking` field. Workflow children receive `model` and `effort`.
 A thinking-only entry reuses the active session model ID. Model and effort pins are independent. An omitted table preserves session inheritance.
 
-Pi's global `defaultThinkingLevel = "medium"` and `defaultModel = "gemini-4-argon"`
+Pi's global `defaultThinkingLevel = "medium"` and `defaultModel = "gemini-4-neon"`
 set the session default for the unnamed global prompt. Agents that omit a
 header do not fall back to them per-agent; they inherit whatever model the
 session is running.
