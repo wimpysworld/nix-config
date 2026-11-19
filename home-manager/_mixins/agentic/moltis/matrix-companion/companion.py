@@ -7351,7 +7351,7 @@ def resolve_runtime_config(args: argparse.Namespace) -> dict:
     if not main_model:
         if status_mode:
             main_model = (
-                "openai-codex::gpt-6-astra"
+                "openai-codex::gpt-6.2-astra"
                 if agent_name == "traya"
                 else "gemini::gemini-4-argon"
             )

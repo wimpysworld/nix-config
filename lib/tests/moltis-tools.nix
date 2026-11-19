@@ -232,15 +232,15 @@ let
       gemini = context.provider == "gemini";
       agentName = host;
       expectedMainModelName =
-        if host == "traya" then "gpt-6.1-sol@reasoning-medium" else "gemini-4-argon@reasoning-medium";
+        if host == "traya" then "gpt-6.2-sol@reasoning-medium" else "gemini-4-argon@reasoning-medium";
       expectedMainModel =
         if host == "traya" then
-          "openai-codex::gpt-6.1-sol@reasoning-medium"
+          "openai-codex::gpt-6.2-sol@reasoning-medium"
         else
           "gemini::gemini-4-argon@reasoning-medium";
       expectedReviewModel =
         if host == "traya" then
-          "openai-codex::gpt-6-astra@reasoning-medium"
+          "openai-codex::gpt-6.2-astra@reasoning-medium"
         else
           "gemini::gemini-4-carbon@reasoning-medium";
       expectedReviewReasoningEffort = "medium";
@@ -308,16 +308,16 @@ let
         gemini-4-argon.context_window = 1000000;
         gemini-4-carbon.context_window = 1048576;
         gemini-4-hydrogen.context_window = 1048576;
-        "gpt-6.1-sol".context_window = 384000;
-        gpt-6-astra.context_window = 384000;
+        "gpt-6.2-sol".context_window = 384000;
+        "gpt-6.2-astra".context_window = 384000;
         gpt-6-luna.context_window = 384000;
       };
     assert
       !darwin
       ||
         settings.providers.openai-codex.models == [
-          "gpt-6.1-sol"
-          "gpt-6-astra"
+          "gpt-6.2-sol"
+          "gpt-6.2-astra"
           "gpt-6-luna"
         ];
     assert settings.channels.telegram.moltis.model == expectedMainModelName;

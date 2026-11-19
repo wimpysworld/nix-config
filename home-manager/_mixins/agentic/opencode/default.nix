@@ -126,6 +126,7 @@ let
                   ) config.home.file
                 );
             inherit (config.programs.opencode.settings) permissions;
+            openaiModels = config.programs.opencode.settings.providers.openai.models;
           }
         )
       }
@@ -333,19 +334,55 @@ in
             opencode = lib.mkIf gatewayEnabled { settings.apiKey = "{env:OPENCODE_API_KEY}"; };
             opencode-go = lib.mkIf gatewayEnabled { settings.apiKey = "{env:OPENCODE_API_KEY}"; };
             openai.models =
-              lib.genAttrs
-                [
-                  "gpt-6-astra"
-                  "gpt-6.1-sol"
-                  "gpt-6.1-terra"
-                  "gpt-6-luna"
-                ]
-                (_: {
+              (lib.mapAttrs
+                (_: model: {
+                  inherit (model) name;
+                  package = "@opencode/ai/providers/openai/responses";
+                  capabilities = {
+                    tools = true;
+                    temperature = false;
+                    input = [
+                      "text"
+                      "image"
+                    ];
+                    output = [ "text" ];
+                    reasoning = {
+                      supported = true;
+                      effort = [
+                        "low"
+                        "medium"
+                        "high"
+                        "xhigh"
+                        "max"
+                      ];
+                    };
+                  };
                   limit = {
                     context = 384000;
                     output = 38400;
                   };
-                });
+                })
+                {
+                  "gpt-6.2-astra" = {
+                    name = "GPT-6.2 Astra";
+                  };
+                  "gpt-6.2-sol" = {
+                    name = "GPT-6.2 Sol";
+                  };
+                }
+              )
+              //
+                lib.genAttrs
+                  [
+                    "gpt-6.1-terra"
+                    "gpt-6-luna"
+                  ]
+                  (_: {
+                    limit = {
+                      context = 384000;
+                      output = 38400;
+                    };
+                  });
           };
           # V2 uses the resolved input limit, then its default reserve. Keep the
           # model limits without imposing a new buffer on unrelated providers.

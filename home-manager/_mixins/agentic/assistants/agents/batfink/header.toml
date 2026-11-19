@@ -6,14 +6,14 @@ model = "claude-opus-5-5"
 effort = "medium"
 
 [routing.codex]
-model = "gpt-6.1-sol"
+model = "gpt-6.2-sol"
 model_reasoning_effort = "xhigh"
 
 [routing.opencode.providers.anthropic]
 model = "claude-opus-5-5"
 
 [routing.opencode.providers.openai]
-model = "gpt-6.1-sol"
+model = "gpt-6.2-sol"
 
 [routing.opencode.providers.google]
 model = "gemini-4-carbon"
@@ -24,7 +24,7 @@ model = "claude-opus-5-5"
 thinking = "medium"
 
 [routing.pi.openai-codex]
-model = "gpt-6.1-sol"
+model = "gpt-6.2-sol"
 thinking = "xhigh"
 
 [routing.pi.google]

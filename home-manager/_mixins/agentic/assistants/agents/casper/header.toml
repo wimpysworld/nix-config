@@ -6,21 +6,21 @@ model = "claude-sonnet-5-5"
 effort = "high"
 
 [routing.codex]
-model = "gpt-6.1-sol"
+model = "gpt-6.2-sol"
 model_reasoning_effort = "medium"
 
 [routing.opencode.providers.anthropic]
 model = "claude-sonnet-5-5"
 
 [routing.opencode.providers.openai]
-model = "gpt-6.1-sol"
+model = "gpt-6.2-sol"
 
 [routing.pi.anthropic]
 model = "claude-sonnet-5-5"
 thinking = "high"
 
 [routing.pi.openai-codex]
-model = "gpt-6.1-sol"
+model = "gpt-6.2-sol"
 thinking = "medium"
 
 [claude]

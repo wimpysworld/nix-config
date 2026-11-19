@@ -944,20 +944,20 @@ in
               baseURL = "http://127.0.0.1:8317/v1";
               models = {
                 default = [
-                  "gpt-6.1-sol"
-                  "gpt-6-astra"
+                  "gpt-6.2-sol"
+                  "gpt-6.2-astra"
                   "gpt-6.1-terra"
                   "gpt-6-luna"
                 ];
                 fetch = true;
               };
               tokenConfig = {
-                "gpt-6.1-sol" = {
+                "gpt-6.2-sol" = {
                   prompt = 0;
                   completion = 0;
                   context = 1050000;
                 };
-                "gpt-6-astra" = {
+                "gpt-6.2-astra" = {
                   prompt = 0;
                   completion = 0;
                   context = 1050000;

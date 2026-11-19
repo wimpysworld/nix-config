@@ -365,8 +365,8 @@ let
       "google/gemini-4-carbon"
       "google/gemini-4-hydrogen"
       "google/gemini-3.8-flash"
-      "openai-codex/gpt-6-astra"
-      "openai-codex/gpt-6.1-sol"
+      "openai-codex/gpt-6.2-astra"
+      "openai-codex/gpt-6.2-sol"
       "openai-codex/gpt-6.1-terra"
       "openai-codex/gpt-6-luna"
       "opencode-go/glm-5.3-flash"
@@ -391,8 +391,8 @@ let
     compaction = {
       enabled = true;
       # The trigger fires when context tokens exceed the model's context
-      # window minus this reserve. The GPT-6 and GPT-6.1 families carry a
-      # 384,000-token window via models.json modelOverrides below, so a
+      # window minus this reserve. The listed OpenAI subscription models use a
+      # deliberate 384,000-token operating window in models.json, so a
       # 38,400 reserve starts compaction at 345,600 tokens for them, matching
       # Codex's 90%-of-window trigger. keepRecentTokens stays at its 20,000.
       reserveTokens = 38400;
@@ -798,12 +798,9 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
     ]
     ++ lib.optional fencedEnabled piFencedPackage;
     file = {
-      # models.json exists on every developer host so the openai-codex
-      # overrides below always apply. They raise the built-in openai-codex
-      # provider's context window for the listed subscription models above the
-      # smaller built-in registry value. Subscription auth must accept the
-      # window, so this declaration must stay within what the provider
-      # entitlement accepts. Unknown model ids are silently ignored by Pi.
+      # Register models absent from Pi's bundled catalogue. Overrides alone
+      # cannot add unknown IDs. Context limits are deliberate operating budgets,
+      # not API maxima, and remain subject to subscription entitlements.
       # Both OpenCode providers use the workspace key on non-cg hosts.
       ".pi/agent/models.json" = {
         text = builtins.toJSON (
@@ -864,11 +861,64 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
                   maxTokens = 32768;
                 }
               ];
+              providers."openai-codex".models =
+                map
+                  (model: {
+                    inherit (model) id name;
+                    api = "openai-codex-responses";
+                    baseUrl = "https://chatgpt.com/backend-api";
+                    reasoning = true;
+                    thinkingLevelMap = {
+                      off = null;
+                      minimal = null;
+                      low = "low";
+                      medium = "medium";
+                      high = "high";
+                      xhigh = "xhigh";
+                      max = "max";
+                    };
+                    input = [
+                      "text"
+                      "image"
+                    ];
+                    cost = model.cost // {
+                      cacheWrite = 0;
+                      tiers = [
+                        {
+                          inputTokensAbove = 272000;
+                          input = model.cost.input * 2;
+                          output = model.cost.output * 1.5;
+                          cacheRead = model.cost.cacheRead * 2;
+                          cacheWrite = 0;
+                        }
+                      ];
+                    };
+                    contextWindow = 384000;
+                    maxTokens = 38400;
+                  })
+                  [
+                    {
+                      id = "gpt-6.2-astra";
+                      name = "GPT-6.2 Astra";
+                      cost = {
+                        input = 8;
+                        output = 40;
+                        cacheRead = 0.40;
+                      };
+                    }
+                    {
+                      id = "gpt-6.2-sol";
+                      name = "GPT-6.2 Sol";
+                      cost = {
+                        input = 2;
+                        output = 10;
+                        cacheRead = 0.10;
+                      };
+                    }
+                  ];
               providers."openai-codex".modelOverrides =
                 lib.genAttrs
                   [
-                    "gpt-6-astra"
-                    "gpt-6.1-sol"
                     "gpt-6.1-terra"
                     "gpt-6-luna"
                   ]

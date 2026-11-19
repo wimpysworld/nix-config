@@ -3202,14 +3202,14 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
                 "--agent-name",
                 "traya",
                 "--main-model",
-                "openai-codex::gpt-6.1-sol@reasoning-medium",
+                "openai-codex::gpt-6.2-sol@reasoning-medium",
                 "--review-model",
-                "openai-codex::gpt-6-astra@reasoning-medium",
+                "openai-codex::gpt-6.2-astra@reasoning-medium",
             ]
         )
         cfg_explicit = companion.resolve_runtime_config(parsed_explicit)
-        self.assertEqual(cfg_explicit["main_model"], "openai-codex::gpt-6.1-sol@reasoning-medium")
-        self.assertEqual(cfg_explicit["review_model"], "openai-codex::gpt-6-astra@reasoning-medium")
+        self.assertEqual(cfg_explicit["main_model"], "openai-codex::gpt-6.2-sol@reasoning-medium")
+        self.assertEqual(cfg_explicit["review_model"], "openai-codex::gpt-6.2-astra@reasoning-medium")
 
         sent_models: list[tuple[str, str]] = []
 
@@ -3457,7 +3457,7 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             ],
         )
 
-        # 2) Traya: main_model = openai-codex::gpt-6.1-sol@reasoning-medium, review_model = openai-codex::gpt-6-astra@reasoning-medium
+        # 2) Traya: main_model = openai-codex::gpt-6.2-sol@reasoning-medium, review_model = openai-codex::gpt-6.2-astra@reasoning-medium
         sent_models.clear()
         store_traya = self.make_store("traya")
         coord_traya = companion.LocalExecutionCoordinator(
@@ -3465,14 +3465,14 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name="traya",
-            main_model="openai-codex::gpt-6.1-sol@reasoning-medium",
-            review_model="openai-codex::gpt-6-astra@reasoning-medium",
+            main_model="openai-codex::gpt-6.2-sol@reasoning-medium",
+            review_model="openai-codex::gpt-6.2-astra@reasoning-medium",
             clock=self.clock,
             sleeper=self.sleeper,
         )
         self.httpd.send_sync_handler = make_send_sync_handler("traya")
 
-        # Human/peer PR and issue mention turns use review_model (gpt-6-astra@reasoning-medium)
+        # Human/peer PR and issue mention turns use review_model (gpt-6.2-astra@reasoning-medium)
         coord_traya.execute_dispatch(
             kind="targeted",
             is_automated_pr=False,
@@ -3489,7 +3489,7 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             subject_kind="Issue",
             trigger_reason="mention",
         )
-        # Automated PR turn (if explicitly invoked) and sweep turns use main_model (gpt-6.1-sol@reasoning-medium)
+        # Automated PR turn (if explicitly invoked) and sweep turns use main_model (gpt-6.2-sol@reasoning-medium)
         coord_traya.execute_dispatch(
             kind="targeted",
             is_automated_pr=True,
@@ -3504,11 +3504,11 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
         self.assertEqual(
             sent_models,
             [
-                ("traya:targeted", "openai-codex::gpt-6-astra@reasoning-medium"),
-                ("traya:targeted", "openai-codex::gpt-6-astra@reasoning-medium"),
-                ("traya:targeted", "openai-codex::gpt-6.1-sol@reasoning-medium"),
-                ("traya:reconcile_sweep", "openai-codex::gpt-6.1-sol@reasoning-medium"),
-                ("traya:weekly_sweep", "openai-codex::gpt-6.1-sol@reasoning-medium"),
+                ("traya:targeted", "openai-codex::gpt-6.2-astra@reasoning-medium"),
+                ("traya:targeted", "openai-codex::gpt-6.2-astra@reasoning-medium"),
+                ("traya:targeted", "openai-codex::gpt-6.2-sol@reasoning-medium"),
+                ("traya:reconcile_sweep", "openai-codex::gpt-6.2-sol@reasoning-medium"),
+                ("traya:weekly_sweep", "openai-codex::gpt-6.2-sol@reasoning-medium"),
             ],
         )
 

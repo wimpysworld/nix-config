@@ -8,8 +8,8 @@ const FAST_BETA = "fast-mode-2026-02-01";
 // Pi's catalogue has no speed capability field. Keep these exact IDs in step
 // with the provider references in ../../README.md, not model-name prefixes.
 const OPENAI_FAST_MODELS = new Set([
-	"gpt-6-astra",
-	"gpt-6.1-sol",
+	"gpt-6.2-astra",
+	"gpt-6.2-sol",
 	"gpt-6.1-terra",
 	"gpt-6-luna",
 ]);

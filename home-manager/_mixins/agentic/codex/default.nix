@@ -467,7 +467,7 @@ let
     # built-in fetch tool. MCP servers are independent, so Exa is unaffected.
     web_search = "disabled";
 
-    model = "gpt-6.1-sol";
+    model = "gpt-6.2-sol";
     model_reasoning_effort = "medium";
     service_tier = "default";
 

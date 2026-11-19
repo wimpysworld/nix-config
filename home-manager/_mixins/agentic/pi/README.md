@@ -53,8 +53,8 @@ The managed settings use Google by default:
     "google/gemini-4-carbon",
     "google/gemini-4-hydrogen",
     "google/gemini-3.8-flash",
-    "openai-codex/gpt-6-astra",
-    "openai-codex/gpt-6.1-sol",
+    "openai-codex/gpt-6.2-astra",
+    "openai-codex/gpt-6.2-sol",
     "openai-codex/gpt-6.1-terra",
     "openai-codex/gpt-6-luna",
     "opencode-go/glm-5.3-flash",
@@ -66,6 +66,10 @@ The managed settings use Google by default:
 ```
 
 Argon uses Pi's built-in catalogue. `models.json` registers Carbon and Hydrogen. All three appear in model cycling, with medium thinking as the default.
+
+`models.json` also registers GPT-6.2 Astra and Sol through `openai-codex-responses`, using the ChatGPT subscription endpoint. Both support low, medium, high, xhigh and max thinking. Their 384,000-token context and 38,400-token output limits are deliberate operating budgets, not API maxima. The 38,400-token compaction reserve stays unchanged.
+
+The registrations include standard API price estimates and the higher long-context tier above 272,000 input tokens. These estimates do not describe subscription charges. Fast requests cost twice the standard API rate.
 
 Hydrogen accepts text and images, with a 1,048,576-token context and 65,536-token output limit. Pi exposes its low, medium, and high thinking levels. Pi's Google adapter does not support Hydrogen's extra-high level.
 
@@ -170,7 +174,7 @@ Fast starts off in every session, including children, resume, fork, and `/reload
 | OpenAI Codex | Omit `service_tier` | `service_tier: "priority"` |
 | Anthropic | Remove `speed` and the exact Fast beta token, set `service_tier: "standard_only"` | Add `speed: "fast"` and `fast-mode-2026-02-01`, retain `standard_only` |
 
-Fast requires a registered model and an exact verified ID. OpenAI supports `gpt-6-astra`, `gpt-6.1-sol`, `gpt-6.1-terra`, and `gpt-6-luna`. Anthropic supports `claude-opus-5-5`. Pi's catalogue has no speed capability field, so other IDs stay unavailable until verified. Custom endpoints and other providers stay unavailable without a claim that standard speed is enforced.
+Fast requires a registered model and an exact verified ID. OpenAI supports `gpt-6.2-astra`, `gpt-6.2-sol`, `gpt-6.1-terra`, and `gpt-6-luna`. Anthropic supports `claude-opus-5-5`. Pi's catalogue has no speed capability field, so other IDs stay unavailable until verified. Custom endpoints and other providers stay unavailable without a claim that standard speed is enforced.
 
 The footer shows `Fast on` for a requested priority tier or Fast mode, and `Fast off` otherwise. It reports the session selection, not the server response or account entitlement. Unsupported models show `Fast off`. `/fast` notifications retain availability details. Codex tier omission follows its native off behaviour, not a verified server guarantee. `auto`, `flex`, and Anthropic service priority are not Fast speed. See the [OpenAI Fast mode contract](https://developers.openai.com/api/docs/guides/fast-mode) and [Anthropic Fast mode contract](https://platform.claude.com/docs/en/build-with-claude/fast-mode).
 

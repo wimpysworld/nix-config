@@ -5,11 +5,11 @@ import register from "./index.ts";
 const beta = "fast-mode-2026-02-01";
 const piBeta = "mid-conversation-output-config-2026-07-01";
 const definitions = {
-	openai: ["openai-responses", "https://api.openai.com/v1", "gpt-6-astra"],
+	openai: ["openai-responses", "https://api.openai.com/v1", "gpt-6.2-astra"],
 	"openai-codex": [
 		"openai-codex-responses",
 		"https://chatgpt.com/backend-api",
-		"gpt-6-astra",
+		"gpt-6.2-astra",
 	],
 	anthropic: [
 		"anthropic-messages",
@@ -163,7 +163,7 @@ test("invalid arguments never change Fast", async () => {
 test("model, provider, endpoint, and unannounced changes reset Fast", async () => {
 	const h = harness();
 	for (const next of [
-		model("openai", "gpt-6.1-sol"),
+		model("openai", "gpt-6.2-sol"),
 		model("anthropic"),
 		model("openai-codex"),
 	]) {
@@ -224,7 +224,7 @@ test("Anthropic requests keep Pi's betas without a beta header hook", async () =
 test("unknown providers and APIs remain untouched and unavailable", async () => {
 	for (const selected of [
 		undefined,
-		model("other", "gpt-6-astra"),
+		model("other", "gpt-6.2-astra"),
 		{ ...model("openai"), api: "openai-completions" },
 	]) {
 		const h = harness();
@@ -283,8 +283,8 @@ test("Fast changes wait until paired request hooks finish", async () => {
 test("all verified exact IDs enable Fast", async () => {
 	for (const provider of ["openai", "openai-codex"]) {
 		for (const id of [
-			"gpt-6-astra",
-			"gpt-6.1-sol",
+			"gpt-6.2-astra",
+			"gpt-6.2-sol",
 			"gpt-6.1-terra",
 			"gpt-6-luna",
 		]) {

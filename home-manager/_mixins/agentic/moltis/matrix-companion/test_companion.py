@@ -2373,7 +2373,7 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         self.state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
         t_store, t_resolver, _, _, t_engine = self.make_components(
             agent_name="traya",
-            main_model="openai-codex::gpt-6-astra",
+            main_model="openai-codex::gpt-6.2-astra",
         )
         t_session_key = t_resolver.default_session_key
         t_hook = self.write_hook_script(agent_name="traya")
@@ -6397,7 +6397,7 @@ class Criterion7CommandsRecoveryWithdrawalAndModeratorTests(CompanionTestBase):
         self.state_dir = traya_dir
         traya_store, _, _, _, traya_engine = self.make_components(
             agent_name="traya",
-            main_model="openai-codex::gpt-6-astra",
+            main_model="openai-codex::gpt-6.2-astra",
         )
         skrye_dir = self.root / "state-skrye-withdraw"
         skrye_dir.mkdir(mode=0o700, parents=True, exist_ok=True)

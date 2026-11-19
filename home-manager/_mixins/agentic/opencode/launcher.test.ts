@@ -127,6 +127,7 @@ for (const layout of ["plain", "fenced", "escaping-entrypoint"]) {
     writeFileSync(join(configDir, "opencode.json"), JSON.stringify({
       update: "disable", share: "disabled", websearch: false,
       permissions: delivery.permissions,
+      providers: { openai: { models: delivery.openaiModels } },
     }));
     const child = spawn(process.env.OPENCODE_TEST_BINARY!, ["--print-logs", "serve", "--hostname", "127.0.0.1", "--port", "0"], {
       cwd: project,
@@ -170,8 +171,21 @@ for (const layout of ["plain", "fenced", "escaping-entrypoint"]) {
         assert.ok(response.ok, `${path}: ${response.status} ${text}`);
         return JSON.parse(text).data;
       }
+      await api("/api/credential", {
+        integrationID: "openai", label: "Offline browser fixture", activate: true,
+        value: { type: "oauth", methodID: "chatgpt-browser", access: "offline-test", refresh: "offline-test", expires: Date.now() + 86400000 },
+      });
       // The local catalogue endpoint waits for plugin activation without inference or downloads.
-      await api("/api/model");
+      const models = await api("/api/model");
+      for (const [id, configured] of Object.entries(delivery.openaiModels) as [string, any][]) {
+        if (!configured.capabilities) continue;
+        const resolved = models.find((model: any) => model.providerID === "openai" && model.id === id);
+        assert.ok(resolved, `Browser OAuth must retain configured model ${id}`);
+        assert.equal(resolved.package, configured.package, "Configured models must retain Responses transport");
+        assert.deepEqual(resolved.limit, configured.limit);
+        assert.deepEqual(resolved.variants.map((variant: any) => variant.id).sort(), configured.capabilities.reasoning.effort.toSorted());
+        assert.deepEqual(resolved.cost, [], "Subscription models must retain native zero-cost accounting");
+      }
       const plugins = await api("/api/plugin");
       for (const id of expected) {
         const plugin = plugins.find((entry: any) => entry.id === id);
