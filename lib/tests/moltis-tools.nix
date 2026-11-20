@@ -468,6 +468,18 @@ let
     assert lib.hasInfix
       "export MOLTIS_GITHUB_COMPANION_RPC_URL=${lib.escapeShellArg "https://127.0.0.1:13131/api/rpc"}"
       scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_ENABLED=${lib.escapeShellArg "true"}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_LINES=${lib.escapeShellArg "250"}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_FILES=${lib.escapeShellArg "10"}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS=${lib.escapeShellArg "wimpysworld/nix-config"}"
+      scripts.githubCompanion;
     assert lib.hasInfix "companion.py" scripts.githubCompanion;
     assert !(lib.hasInfix "CLOUDFLARE_API_TOKEN" scripts.inner);
     assert !(lib.hasInfix "export CLOUDFLARE_API_TOKEN" scripts.outer);
@@ -536,7 +548,16 @@ let
       && preset.delegate_only == original.delegate_only
       && (
         if gemini then
-          preset.model == expectedAssessmentModel && preset.reasoning_effort == "high"
+          if
+            lib.elem name [
+              "research"
+              "coder"
+              "reviewer"
+            ]
+          then
+            preset.model == expectedReviewModel && preset.reasoning_effort == expectedReviewReasoningEffort
+          else
+            preset.model == expectedAssessmentModel && preset.reasoning_effort == "high"
         else
           !(preset ? model) && !(preset ? reasoning_effort)
       )

@@ -6,6 +6,7 @@ import argparse
 import contextlib
 import datetime
 import fcntl
+import fnmatch
 import hashlib
 import http.client
 import json
@@ -47,7 +48,7 @@ SWEEP_RETRY_MAX_DELAY_MS = RECONCILE_SWEEP_INTERVAL_MS
 DEFAULT_RPC_TIMEOUT_SECS = DEFAULT_COMPLETION_WAIT_TIMEOUT_SECS = DEFAULT_RECOVERY_WAIT_TIMEOUT_SECS = 3600.0
 DEFAULT_COMPLETION_TIMEOUT_MS = DEFAULT_RECOVERY_DEADLINE_MS = 3_600_000
 DEFAULT_COMPLETION_POLL_INTERVAL_MS = 250
-POLL_PR_OWNERS = ("wimpysworld", "linuxmatters", "quickemu-project", "noughtylinux", "oval-tutu", "flexiondotorg")
+POLL_PR_OWNERS = POLL_ISSUE_OWNERS = ("wimpysworld", "linuxmatters", "quickemu-project", "noughtylinux", "oval-tutu", "flexiondotorg")
 ALLOWED_NOTIFICATION_OWNERS = frozenset(POLL_PR_OWNERS)
 TRUSTED_INSTRUCTION_ACTORS = frozenset({"flexiondotorg", "sith-skrye", "sith-traya", "sith-zannah"})
 TRUSTED_BOT_ACTORS = frozenset({"dependabot[bot]", "app/dependabot", "github-actions[bot]", "app/github-actions", "cubic-dev-ai[bot]"})
@@ -61,6 +62,32 @@ OUTBOX_FILENAME, AUTH_STATE_FILENAME = "outbox.json", "auth.json"
 COORDINATOR_LOCK_FILENAME, STATE_LOCK_FILENAME = "coordinator.lock", "companion.lock"
 ENCODED_COMPONENT_BYTES, MAX_RESPONSE_BYTES = 120, 4 * 1048576
 DEFAULT_GH_SESSION_KEY, MAX_THREAD_FAILURE_RETRIES = "companion:github", 3
+TEAM_LABELS = ("team:fix", "team:merge", "team:review")
+PR_TEAM_LABELS = ("team:merge", "team:review", "team:fix")
+ISSUE_TEAM_LABELS = ("team:fix", "team:review")
+TEAM_LABEL_TRIGGER_REASONS: dict[str, str] = {
+    "team:fix": "team_fix",
+    "team:merge": "team_merge",
+    "team:review": "team_review",
+}
+MODE_1B_DISPATCH_KINDS = frozenset({"community_triage", "community_auto_review", *TEAM_LABELS})
+DEFAULT_COMMUNITY_AUTO_MERGE_ENABLED = True
+DEFAULT_COMMUNITY_AUTO_MERGE_MAX_LINES = 250
+DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES = 10
+DEFAULT_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS = ("wimpysworld/nix-config",)
+SENSITIVE_COMMUNITY_PR_FILENAMES = frozenset({
+    "flake.nix", "flake.lock",
+    "cargo.toml", "cargo.lock",
+    "go.mod", "go.sum", "go.work", "go.work.sum",
+    "package.json", "package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "pnpm-workspace.yaml",
+    "yarn.lock", "bun.lock", "bun.lockb", "deno.json", "deno.jsonc", "deno.lock",
+    "pyproject.toml", "poetry.lock", "uv.lock", "pipfile", "pipfile.lock", "pdm.lock", "setup.py", "setup.cfg",
+    "composer.json", "composer.lock",
+    "pom.xml", "build.gradle", "build.gradle.kts", "gradle.lockfile", "settings.gradle", "settings.gradle.kts", "libs.versions.toml",
+    "mix.exs", "mix.lock", "pubspec.yaml", "pubspec.lock", "packages.lock.json", "package.resolved",
+    "dependabot.yml", "dependabot.yaml", "renovate.json", "renovate.json5", ".renovaterc", ".renovaterc.json",
+    "codeowners", "security.md",
+})
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -216,10 +243,210 @@ def is_trusted_bot_actor(actor: object) -> bool:
     return normalize_github_actor(actor) in TRUSTED_BOT_ACTORS
 
 
-def compute_automated_pr_owner(repo: str, number: int) -> str:
+def compute_pr_owner(repo: str, number: int) -> str:
     owner_repo = (repo or "").strip().lower()
     digest = hashlib.sha256(f"v1:{owner_repo}:pr:{_safe_int(number, 0)}".encode()).digest()
     return SWEEP_AGENT_ORDER[int.from_bytes(digest, "big") % 2]
+
+
+compute_automated_pr_owner = compute_pr_owner
+
+
+def compute_issue_owner(repo: str, number: int) -> str:
+    owner_repo = (repo or "").strip().lower()
+    digest = hashlib.sha256(f"v1:{owner_repo}:issue:{_safe_int(number, 0)}".encode()).digest()
+    return SWEEP_AGENT_ORDER[int.from_bytes(digest, "big") % 2]
+
+
+def _parse_bool_flag(value: object, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return value != 0
+    if isinstance(value, str):
+        norm = value.strip().lower()
+        if norm in ("1", "true", "yes", "on"):
+            return True
+        if norm in ("0", "false", "no", "off"):
+            return False
+    return default
+
+
+def parse_repo_list(raw: object, default: Iterable[str] = DEFAULT_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS) -> tuple[str, ...]:
+    items: Iterable[object]
+    if raw is None:
+        items = default
+    elif isinstance(raw, str):
+        stripped = raw.strip()
+        if not stripped:
+            return ()
+        if stripped.startswith("["):
+            try:
+                parsed = json.loads(stripped)
+                items = parsed if isinstance(parsed, list) else [stripped]
+            except ValueError:
+                items = re.split(r"[\s,]+", stripped)
+        else:
+            items = re.split(r"[\s,]+", stripped)
+    elif isinstance(raw, Iterable):
+        items = raw
+    else:
+        items = default
+    seen: list[str] = []
+    for entry in items:
+        norm = str(entry or "").strip().lower()
+        if norm and norm not in seen:
+            seen.append(norm)
+    return tuple(seen)
+
+
+def extract_label_names(raw_labels: object) -> list[str]:
+    nodes = raw_labels["nodes"] if isinstance(raw_labels, dict) and isinstance(raw_labels.get("nodes"), list) else (raw_labels if isinstance(raw_labels, list) else [])
+    names: list[str] = []
+    for item in nodes:
+        raw_name = item.get("name") if isinstance(item, dict) else item
+        if isinstance(raw_name, str) and raw_name.strip():
+            clean = raw_name.strip()
+            if clean not in names:
+                names.append(clean)
+    return names
+
+
+def extract_team_labels(raw_labels: object, allowed: Iterable[str] = TEAM_LABELS) -> list[str]:
+    present = {lbl.strip().lower() for lbl in extract_label_names(raw_labels) if lbl.strip()}
+    return [cand for cand in (str(a).strip().lower() for a in allowed) if cand in present]
+
+
+def verify_team_label_from_events(events: Iterable[dict], label_name: str) -> dict | None:
+    """Verify via issue events that the latest `labeled` event for `label_name` came from `TRUSTED_INSTRUCTION_ACTORS`."""
+    target = (label_name or "").strip().lower()
+    if not target:
+        return None
+    best_event: dict | None = None
+    best_sort_key: tuple[int, int] = (-1, -1)
+    for idx, ev in enumerate(events or ()):
+        if not isinstance(ev, dict) or str(ev.get("event") or "").strip().lower() != "labeled":
+            continue
+        lbl_obj = ev.get("label")
+        ev_lbl = str(lbl_obj.get("name") if isinstance(lbl_obj, dict) else (lbl_obj or "")).strip().lower()
+        if ev_lbl != target:
+            continue
+        _, ts_ms = normalize_ts(ev.get("created_at"))
+        sort_key = (ts_ms, idx)
+        if best_event is None or sort_key >= best_sort_key:
+            best_event = ev
+            best_sort_key = sort_key
+    if best_event is None:
+        return None
+    actor_norm = normalize_github_actor(best_event.get("actor") or best_event.get("user"))
+    if not is_trusted_instruction_actor(actor_norm):
+        return None
+    ev_id = best_event.get("id")
+    created_at = str(best_event.get("created_at") or "").strip()
+    event_key = f"{target}:{ev_id if ev_id is not None else (created_at or 'verified')}"
+    return {"label": target, "actor": actor_norm, "event_id": ev_id, "created_at": created_at, "event_key": event_key}
+
+
+def extract_pr_file_paths(raw_files: object) -> tuple[list[str] | None, bool]:
+    if raw_files is None:
+        return None, False
+    has_next = False
+    nodes: list[object]
+    if isinstance(raw_files, dict):
+        has_next = bool(_as_dict(raw_files.get("pageInfo")).get("hasNextPage"))
+        raw_nodes = raw_files.get("nodes")
+        nodes = raw_nodes if isinstance(raw_nodes, list) else []
+    elif isinstance(raw_files, list):
+        nodes = raw_files
+    else:
+        return None, False
+    paths: list[str] = []
+    for item in nodes:
+        if isinstance(item, str) and item.strip():
+            paths.append(item.strip())
+        elif isinstance(item, dict):
+            for key in ("path", "filename", "previous_filename"):
+                val = item.get(key)
+                if isinstance(val, str) and val.strip() and val.strip() not in paths:
+                    paths.append(val.strip())
+    return paths, has_next
+
+
+def is_sensitive_community_pr_path(file_path: str) -> bool:
+    clean = (file_path or "").strip().replace("\\", "/").lstrip("/")
+    while clean.startswith("./"):
+        clean = clean[2:]
+    if not clean:
+        return False
+    lower_path = clean.lower()
+    if (
+        lower_path in (".github/workflows", ".github/actions")
+        or lower_path.startswith((".github/workflows/", ".github/actions/"))
+        or lower_path.endswith(("npins/sources.json", "niv/sources.json"))
+    ):
+        return True
+    basename = lower_path.rsplit("/", 1)[-1]
+    if basename in SENSITIVE_COMMUNITY_PR_FILENAMES:
+        return True
+    return (
+        fnmatch.fnmatchcase(basename, "requirements*.txt")
+        or fnmatch.fnmatchcase(basename, "constraints*.txt")
+        or fnmatch.fnmatchcase(basename, "gemfile*")
+        or fnmatch.fnmatchcase(basename, "*.gemspec")
+    )
+
+
+def resolve_community_auto_merge_config(
+    *,
+    enabled: bool | str | None = None,
+    max_lines: int | str | None = None,
+    max_files: int | str | None = None,
+    excluded_repos: Iterable[str] | str | None = None,
+) -> dict[str, object]:
+    raw_enabled = os.environ.get("MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_ENABLED") if enabled is None else enabled
+    raw_max_lines = os.environ.get("MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_LINES") if max_lines is None else max_lines
+    raw_max_files = os.environ.get("MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_FILES") if max_files is None else max_files
+    raw_excluded = os.environ.get("MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS") if excluded_repos is None else excluded_repos
+    return {
+        "enabled": _parse_bool_flag(raw_enabled, default=DEFAULT_COMMUNITY_AUTO_MERGE_ENABLED),
+        "max_lines": max(0, _safe_int(raw_max_lines, DEFAULT_COMMUNITY_AUTO_MERGE_MAX_LINES)) if raw_max_lines is not None and str(raw_max_lines).strip() != "" else DEFAULT_COMMUNITY_AUTO_MERGE_MAX_LINES,
+        "max_files": max(0, _safe_int(raw_max_files, DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES)) if raw_max_files is not None and str(raw_max_files).strip() != "" else DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES,
+        "excluded_repos": parse_repo_list(raw_excluded, default=DEFAULT_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS),
+    }
+
+
+def compute_community_auto_merge_eligible(
+    *,
+    repo: str,
+    additions: int | None,
+    deletions: int | None,
+    changed_files: int | None,
+    file_paths: Iterable[str] | None,
+    files_has_next_page: bool = False,
+    enabled: bool = DEFAULT_COMMUNITY_AUTO_MERGE_ENABLED,
+    max_lines: int = DEFAULT_COMMUNITY_AUTO_MERGE_MAX_LINES,
+    max_files: int = DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES,
+    excluded_repos: Iterable[str] = DEFAULT_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS,
+) -> bool:
+    if not enabled:
+        return False
+    norm_repo = (repo or "").strip().lower()
+    excluded = set(parse_repo_list(excluded_repos, default=()))
+    if not norm_repo or norm_repo in excluded:
+        return False
+    if additions is None or deletions is None or isinstance(additions, bool) or isinstance(deletions, bool):
+        return False
+    add_val, del_val = _safe_int(additions, -1), _safe_int(deletions, -1)
+    if add_val < 0 or del_val < 0 or (add_val + del_val) > max(0, _safe_int(max_lines, DEFAULT_COMMUNITY_AUTO_MERGE_MAX_LINES)):
+        return False
+    if file_paths is None or files_has_next_page:
+        return False
+    paths_list = [str(p).strip() for p in file_paths if isinstance(p, str) and str(p).strip()]
+    eff_changed = _safe_int(changed_files, -1) if (changed_files is not None and not isinstance(changed_files, bool)) else len(paths_list)
+    max_f = max(0, _safe_int(max_files, DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES))
+    if eff_changed <= 0 or eff_changed > max_f or not paths_list or len(paths_list) < eff_changed:
+        return False
+    return not any(is_sensitive_community_pr_path(p) for p in paths_list)
 
 
 def is_automated_update_pr(author_norm: str, repo: str = "", head_ref: str = "", labels: list[str] | None = None, title: str = "") -> bool:
@@ -290,9 +517,10 @@ def format_security_alert_notice(*, event_kind: str, repo: str, subject_type: st
 def format_start_of_work_notice(*, agent_display_name: str, kind: str, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, trigger_reason: str | None = None, sweep_date: str | None = None, schedule_day_name: str | None = None) -> str:
     """Format a one-line Telegram start-of-work notice."""
     display = (agent_display_name or "Companion").strip()
-    if kind == "targeted":
+    if kind == "targeted" or kind in MODE_1B_DISPATCH_KINDS:
         target = f"{repo}#{number}" if repo and number else (repo or "GitHub thread")
-        line = f"⚙️ {display} starting targeted {(subject_kind or 'PullRequest').strip()} turn on {target} ({(trigger_reason or 'notification').strip()})."
+        label = "targeted" if kind == "targeted" else kind
+        line = f"⚙️ {display} starting {label} {(subject_kind or 'PullRequest').strip()} turn on {target} ({(trigger_reason or 'notification').strip()})."
     elif kind == "weekly_sweep":
         line = f"⚙️ {display} starting weekly organisation sweep ({(sweep_date or schedule_day_name or 'scheduled').strip()})."
     else:
@@ -834,7 +1062,13 @@ def count_unresolved_review_threads(raw_threads: object) -> int:
 
 
 def normalize_open_pull_request_record(raw: dict) -> dict | None:
-    if not isinstance(raw, dict) or "subject" in raw or _is_archived_record(raw) or not any(k in raw for k in ("headRefOid", "head", "head_sha", "reviewDecision", "statusCheckRollup", "reviewRequests", "reviewThreads", "isDraft")):
+    if (
+        not isinstance(raw, dict)
+        or "subject" in raw
+        or _is_archived_record(raw)
+        or str(raw.get("__typename") or "").strip().lower() == "issue"
+        or not any(k in raw for k in ("headRefOid", "head", "head_sha", "reviewDecision", "statusCheckRollup", "reviewRequests", "reviewThreads", "isDraft"))
+    ):
         return None
     number = _safe_int(raw.get("number"), 0)
     if number <= 0:
@@ -846,13 +1080,112 @@ def normalize_open_pull_request_record(raw: dict) -> dict | None:
     if not is_allowed_notification_repo(repo_full_name):
         return None
     head_sha = str(raw.get("headRefOid") or _as_dict(raw.get("head")).get("sha") or raw.get("head_sha") or "").strip()
+    head_ref = str(raw.get("headRefName") or _as_dict(raw.get("head")).get("ref") or raw.get("head_ref") or "").strip()
     review_decision = str(raw.get("reviewDecision") or raw.get("review_decision") or "").strip().upper()
     ci_raw = raw.get("statusCheckRollup") if "statusCheckRollup" in raw else raw.get("ci_state")
     updated_at = str(raw.get("updatedAt") or raw.get("updated_at") or "").strip()
     review_requests = extract_review_request_logins(raw.get("reviewRequests") if "reviewRequests" in raw else raw.get("requested_reviewers"))
     review_threads = raw.get("reviewThreads") if "reviewThreads" in raw else raw.get("review_threads")
     unresolved_thread_count = max(0, _safe_int(raw.get("unresolved_thread_count"), 0)) if "unresolved_thread_count" in raw else count_unresolved_review_threads(review_threads)
-    return {"pr_key": make_pr_key(repo_full_name, number), "repo": repo_full_name, "owner": repo_full_name.split("/", 1)[0].lower(), "number": number, "author": extract_actor_login(raw.get("author") or raw.get("user")), "head_sha": head_sha, "headRefOid": head_sha, "review_decision": review_decision, "reviewDecision": review_decision, "ci_state": normalize_ci_state(ci_raw), "statusCheckRollup": ci_raw, "updated_at": updated_at, "updatedAt": updated_at, "review_requests": review_requests, "reviewRequests": review_requests, "review_threads": review_threads, "reviewThreads": review_threads, "unresolved_thread_count": unresolved_thread_count, "is_draft": bool(raw.get("isDraft") or raw.get("draft", False)), "state": str(raw.get("state") or "OPEN").strip().upper(), "title": str(raw.get("title") or "").strip(), "body": str(raw.get("body") or "").strip(), "url": str(raw.get("url") or raw.get("html_url") or "").strip()}
+    labels = extract_label_names(raw.get("labels"))
+    team_labels = extract_team_labels(raw.get("team_labels") if "team_labels" in raw else labels, PR_TEAM_LABELS)
+    raw_add = raw.get("additions")
+    raw_del = raw.get("deletions")
+    raw_chg = raw.get("changedFiles") if "changedFiles" in raw else raw.get("changed_files")
+    additions = _safe_int(raw_add, -1) if raw_add is not None and not isinstance(raw_add, bool) else None
+    deletions = _safe_int(raw_del, -1) if raw_del is not None and not isinstance(raw_del, bool) else None
+    changed_files = _safe_int(raw_chg, -1) if raw_chg is not None and not isinstance(raw_chg, bool) else None
+    file_paths, files_has_next_page = extract_pr_file_paths(raw.get("files") if "files" in raw else raw.get("file_paths"))
+    if "files_has_next_page" in raw:
+        files_has_next_page = bool(raw.get("files_has_next_page"))
+    return {
+        "pr_key": make_pr_key(repo_full_name, number),
+        "id": raw.get("databaseId") or raw.get("id") or number,
+        "repo": repo_full_name,
+        "owner": repo_full_name.split("/", 1)[0].lower(),
+        "number": number,
+        "author": extract_actor_login(raw.get("author") or raw.get("user")),
+        "head_sha": head_sha,
+        "headRefOid": head_sha,
+        "head_ref": head_ref,
+        "review_decision": review_decision,
+        "reviewDecision": review_decision,
+        "ci_state": normalize_ci_state(ci_raw),
+        "statusCheckRollup": ci_raw,
+        "updated_at": updated_at,
+        "updatedAt": updated_at,
+        "review_requests": review_requests,
+        "reviewRequests": review_requests,
+        "review_threads": review_threads,
+        "reviewThreads": review_threads,
+        "unresolved_thread_count": unresolved_thread_count,
+        "labels": labels,
+        "team_labels": team_labels,
+        "additions": additions,
+        "deletions": deletions,
+        "changed_files": changed_files,
+        "file_paths": file_paths,
+        "files_has_next_page": files_has_next_page,
+        "is_draft": bool(raw.get("isDraft") or raw.get("draft", False)),
+        "state": str(raw.get("state") or "OPEN").strip().upper(),
+        "title": str(raw.get("title") or "").strip(),
+        "body": str(raw.get("body") or "").strip(),
+        "url": str(raw.get("url") or raw.get("html_url") or "").strip(),
+    }
+
+
+def normalize_open_issue_record(raw: dict) -> dict | None:
+    if (
+        not isinstance(raw, dict)
+        or "subject" in raw
+        or _is_archived_record(raw)
+        or str(raw.get("__typename") or "").strip().lower() == "pullrequest"
+        or "pull_request" in raw
+        or any(k in raw for k in ("headRefOid", "head", "head_sha", "reviewDecision", "statusCheckRollup", "reviewRequests", "reviewThreads", "isDraft", "draft"))
+    ):
+        return None
+    url_text = str(raw.get("url") or raw.get("html_url") or "").strip()
+    if "/pull/" in url_text.lower():
+        return None
+    number = _safe_int(raw.get("number"), 0)
+    if number <= 0:
+        return None
+    repo_val = raw.get("repository")
+    repo_full_name = str(repo_val.get("nameWithOwner") or repo_val.get("full_name") or "").strip() if isinstance(repo_val, dict) else (repo_val.strip() if isinstance(repo_val, str) else str(raw.get("repo") or "").strip())
+    if not repo_full_name and (m := re.search(r"github\.com/([^/]+/[^/]+)/issues/", url_text, re.IGNORECASE)):
+        repo_full_name = m.group(1)
+    if not is_allowed_notification_repo(repo_full_name):
+        return None
+    updated_at = str(raw.get("updatedAt") or raw.get("updated_at") or "").strip()
+    labels = extract_label_names(raw.get("labels"))
+    team_labels = extract_team_labels(raw.get("team_labels") if "team_labels" in raw else labels, ISSUE_TEAM_LABELS)
+    latest_comment: dict | None = None
+    raw_comments = raw.get("comments")
+    if isinstance(raw_comments, dict):
+        c_nodes = raw_comments.get("nodes")
+        if isinstance(c_nodes, list) and c_nodes and isinstance(c_nodes[-1], dict):
+            latest_comment = dict(c_nodes[-1])
+    elif isinstance(raw_comments, list) and raw_comments and isinstance(raw_comments[-1], dict):
+        latest_comment = dict(raw_comments[-1])
+    elif isinstance(raw.get("latest_comment"), dict):
+        latest_comment = dict(_as_dict(raw.get("latest_comment")))
+    return {
+        "issue_key": make_pr_key(repo_full_name, number),
+        "id": raw.get("databaseId") or raw.get("id") or number,
+        "repo": repo_full_name,
+        "owner": repo_full_name.split("/", 1)[0].lower(),
+        "number": number,
+        "author": extract_actor_login(raw.get("author") or raw.get("user")),
+        "updated_at": updated_at,
+        "updatedAt": updated_at,
+        "labels": labels,
+        "team_labels": team_labels,
+        "latest_comment": latest_comment,
+        "state": str(raw.get("state") or "OPEN").strip().upper(),
+        "title": str(raw.get("title") or "").strip(),
+        "body": str(raw.get("body") or "").strip(),
+        "url": url_text,
+    }
 
 
 _HTTP_STATUS_RE = re.compile(r"^HTTP/\d+(?:\.\d+)?\s+(\d{3})(?:\s+(.*))?$", re.IGNORECASE)
@@ -922,19 +1255,40 @@ def parse_gh_api_paginated_http_output(raw_output: str) -> tuple[int, dict[str, 
 class CompanionStateStore:
     """Durable 0600 unified state store (state.json) in ~/.local/state/moltis/github-companion-<agent>/."""
 
-    def __init__(self, state_dir: Path | str, agent_name: str, room_id: str = DEFAULT_ROOM_ID, started_at_ms: int | None = None, followup_cooldown_ms: int = PR_REVIEW_COOLDOWN_MS):
+    def __init__(
+        self,
+        state_dir: Path | str,
+        agent_name: str,
+        room_id: str = DEFAULT_ROOM_ID,
+        started_at_ms: int | None = None,
+        followup_cooldown_ms: int = PR_REVIEW_COOLDOWN_MS,
+        community_auto_merge_enabled: bool | str | None = None,
+        community_auto_merge_max_lines: int | str | None = None,
+        community_auto_merge_max_files: int | str | None = None,
+        community_auto_merge_excluded_repos: Iterable[str] | str | None = None,
+    ):
         self.state_dir = Path(state_dir)
         self.agent_name = normalize_agent_name(agent_name)
         self.room_id = room_id
         self.started_at_ms = _safe_int(started_at_ms, now_ms()) if started_at_ms is not None else now_ms()
         self.followup_cooldown_ms = max(0, _safe_int(followup_cooldown_ms, PR_REVIEW_COOLDOWN_MS))
+        cam_cfg = resolve_community_auto_merge_config(
+            enabled=community_auto_merge_enabled,
+            max_lines=community_auto_merge_max_lines,
+            max_files=community_auto_merge_max_files,
+            excluded_repos=community_auto_merge_excluded_repos,
+        )
+        self.community_auto_merge_enabled = bool(cam_cfg["enabled"])
+        self.community_auto_merge_max_lines = _safe_int(cam_cfg["max_lines"], DEFAULT_COMMUNITY_AUTO_MERGE_MAX_LINES)
+        self.community_auto_merge_max_files = _safe_int(cam_cfg["max_files"], DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES)
+        self.community_auto_merge_excluded_repos = parse_repo_list(cam_cfg["excluded_repos"], default=())
         self.ensure_directory()
 
     def _default_thread_entry(self, *, handled_updated_at: str | None = None, handled_head_sha: str | None = None, handled_ci_state: str | None = None, retry_count: int = 0) -> dict:
         return {"handled_updated_at": handled_updated_at, "handled_head_sha": handled_head_sha, "handled_ci_state": handled_ci_state, "retry_count": max(0, _safe_int(retry_count, 0))}
 
     def _default_state(self) -> dict:
-        return {"version": 2, "agent_name": self.agent_name, "next_poll_at_ms": None, "last_poll_started_at_ms": None, "last_poll_completed_at_ms": None, "last_status": None, "last_modified": None, "poll_interval_secs": 0, "retry_after_secs": 0, "last_poll_rate_limited": False, "ratelimit_reset_epoch": None, "last_jitter_ms": None, "last_open_prs_poll_error": None, "last_reconcile_sweep_at_ms": None, "last_reconcile_sweep_attempt_at_ms": None, "reconcile_sweep_retry_after_ms": None, "reconcile_sweep_failure_count": 0, "last_reconcile_sweep_failure_reason": None, "last_weekly_sweep_date": None, "last_weekly_sweep_attempt_at_ms": None, "weekly_sweep_retry_after_ms": None, "weekly_sweep_failure_count": 0, "last_weekly_sweep_failure_reason": None, "threads": {}, "updated_at_ms": self.started_at_ms}
+        return {"version": 2, "agent_name": self.agent_name, "next_poll_at_ms": None, "last_poll_started_at_ms": None, "last_poll_completed_at_ms": None, "last_status": None, "last_modified": None, "poll_interval_secs": 0, "retry_after_secs": 0, "last_poll_rate_limited": False, "ratelimit_reset_epoch": None, "last_jitter_ms": None, "last_open_prs_poll_error": None, "last_open_issues_poll_error": None, "last_reconcile_sweep_at_ms": None, "last_reconcile_sweep_attempt_at_ms": None, "reconcile_sweep_retry_after_ms": None, "reconcile_sweep_failure_count": 0, "last_reconcile_sweep_failure_reason": None, "last_weekly_sweep_date": None, "last_weekly_sweep_attempt_at_ms": None, "weekly_sweep_retry_after_ms": None, "weekly_sweep_failure_count": 0, "last_weekly_sweep_failure_reason": None, "threads": {}, "updated_at_ms": self.started_at_ms}
 
     def _default_active_dispatch(self) -> dict:
         return {"version": 1, "agent_name": self.agent_name, "active": None, "updated_at_ms": self.started_at_ms}
@@ -1024,7 +1378,7 @@ class CompanionStateStore:
             state[ts_key] = val if val > 0 else None
         for count_key in ("reconcile_sweep_failure_count", "weekly_sweep_failure_count"):
             state[count_key] = max(0, _safe_int(state.get(count_key), 0))
-        for str_key in ("last_weekly_sweep_date", "last_reconcile_sweep_failure_reason", "last_weekly_sweep_failure_reason", "last_open_prs_poll_error"):
+        for str_key in ("last_weekly_sweep_date", "last_reconcile_sweep_failure_reason", "last_weekly_sweep_failure_reason", "last_open_prs_poll_error", "last_open_issues_poll_error"):
             raw = state.get(str_key)
             state[str_key] = raw.strip() if isinstance(raw, str) and raw.strip() else None
 
@@ -1223,10 +1577,10 @@ class CompanionStateStore:
         return {"actionable_threads": actionable_threads, "queued_followups": queued_followups, "auto_dismiss_threads": auto_dismiss_threads, "cooled_down_threads": cooled_down_threads}
 
     def record_polled_pull_requests(self, pull_requests: list[dict], self_github_login: str = "", now_override_ms: int | None = None) -> dict:
-        """Evaluate and persist open pull requests in state.json for 60-second wake detection."""
+        """Evaluate and persist open pull requests in state.json for wake, community triage, and team-label detection."""
         stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
         self_login_norm = (self_github_login or GITHUB_AGENT_LOGINS[self.agent_name]).strip().lower()
-        actionable_prs, queued_followups, cooled_down_prs = [], [], []
+        actionable_prs, queued_followups, cooled_down_prs, team_label_candidates, coercive_items = [], [], [], [], []
         with self._locked_dir() as dir_fd:
             state = self._read_state_unlocked(dir_fd)
             threads: dict[str, dict] = state["threads"]
@@ -1243,6 +1597,9 @@ class CompanionStateStore:
                 review_decision = str(norm_pr.get("review_decision") or norm_pr.get("reviewDecision") or "").strip().upper()
                 ci_state = normalize_ci_state(norm_pr.get("ci_state") or norm_pr.get("statusCheckRollup"))
                 updated_at = str(norm_pr.get("updated_at") or norm_pr.get("updatedAt") or "").strip()
+                title, body = str(norm_pr.get("title") or ""), str(norm_pr.get("body") or "")
+                labels = extract_label_names(norm_pr.get("labels"))
+                team_labels = extract_team_labels(norm_pr.get("team_labels") if "team_labels" in norm_pr else labels, PR_TEAM_LABELS)
                 review_requests = list(norm_pr.get("review_requests") or norm_pr.get("reviewRequests") or [])
                 unresolved_thread_count = (
                     max(0, _safe_int(norm_pr.get("unresolved_thread_count"), 0))
@@ -1260,18 +1617,85 @@ class CompanionStateStore:
                 )
                 retry_count = 0 if changed else _safe_int(existing.get("retry_count"), 0)
                 is_trusted = is_trusted_github_actor(author_norm)
+                is_instruction = is_trusted_instruction_actor(author_norm)
                 is_self = bool(author_norm == self_login_norm or LOGIN_TO_AGENT_NAME.get(author_norm) == self.agent_name)
+                is_community = not is_trusted
                 is_auto_update = is_automated_update_pr(
                     author_norm,
                     repo=repo,
                     head_ref=str(norm_pr.get("head_ref") or _as_dict(norm_pr.get("head")).get("ref") or ""),
-                    labels=norm_pr.get("labels") if isinstance(norm_pr.get("labels"), list) else None,
-                    title=str(norm_pr.get("title") or ""),
+                    labels=labels,
+                    title=title,
                 )
-                unowned_auto_update = bool(
-                    is_auto_update
-                    and (self.agent_name == "traya" or compute_automated_pr_owner(repo, number) != self.agent_name)
+                pr_owner = compute_pr_owner(repo, number)
+                owns_mod2_pr = bool(self.agent_name in SWEEP_AGENT_ORDER and pr_owner == self.agent_name)
+                unowned_auto_update = bool(is_auto_update and not owns_mod2_pr)
+
+                raw_texts = [t for t in (title, body) if t]
+                matched_coercion = detect_coercion_patterns("\n".join(raw_texts))
+                if is_trusted and not is_instruction:
+                    matched_coercion = [r for r in matched_coercion if r != "html_comment_block"]
+                elif is_instruction:
+                    matched_coercion = []
+                if matched_coercion:
+                    coercive_items.append({
+                        "repo": repo,
+                        "subject_type": "PullRequest",
+                        "number": number,
+                        "thread_id": str(existing.get("thread_id") or pr_key),
+                        "item_kind": "pull_request",
+                        "item_id": norm_pr.get("id") or number,
+                        "actor": author or "unknown",
+                        "raw_texts": raw_texts,
+                    })
+                    handled_u, handled_sha, handled_ci = updated_at or handled_u, head_sha or handled_sha, ci_state or handled_ci
+                    entry = {**existing, "pr_key": pr_key, "repo": repo, "number": number, "subject_type": "PullRequest", "author": author, "head_sha": head_sha, "ci_state": ci_state, "review_decision": review_decision, "review_requests": review_requests, "unresolved_thread_count": unresolved_thread_count, "labels": labels, "updated_at": updated_at or existing.get("updated_at"), "handled_updated_at": handled_u, "handled_head_sha": handled_sha, "handled_ci_state": handled_ci, "retry_count": 0, "is_automated_pr": is_auto_update, "is_community": is_community, "coercion_blocked": True, "in_flight": in_flight, "pending_followup": False, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
+                    for tk in target_keys:
+                        threads[tk] = dict(entry)
+                    continue
+
+                auto_merge_eligible = (
+                    compute_community_auto_merge_eligible(
+                        repo=repo,
+                        additions=norm_pr.get("additions"),
+                        deletions=norm_pr.get("deletions"),
+                        changed_files=norm_pr.get("changed_files"),
+                        file_paths=norm_pr.get("file_paths"),
+                        files_has_next_page=bool(norm_pr.get("files_has_next_page", False)),
+                        enabled=self.community_auto_merge_enabled,
+                        max_lines=self.community_auto_merge_max_lines,
+                        max_files=self.community_auto_merge_max_files,
+                        excluded_repos=self.community_auto_merge_excluded_repos,
+                    )
+                    if is_community
+                    else None
                 )
+
+                if owns_mod2_pr and team_labels:
+                    if in_flight:
+                        pending_followup = True
+                        if pr_key not in queued_followups:
+                            queued_followups.append(pr_key)
+                    elif retry_count < MAX_THREAD_FAILURE_RETRIES:
+                        team_label_candidates.append({
+                            "key": pr_key,
+                            "thread_id": existing.get("thread_id"),
+                            "repo": repo,
+                            "number": number,
+                            "kind": "PullRequest",
+                            "head_sha": head_sha,
+                            "ci_state": ci_state,
+                            "updated_at": updated_at,
+                            "team_labels": list(team_labels),
+                            "is_automated_pr": is_auto_update,
+                            "is_community": is_community,
+                            "community_auto_merge_eligible": auto_merge_eligible,
+                            "handled_head_sha": handled_sha,
+                            "triaged_head_sha": existing.get("triaged_head_sha") or handled_sha,
+                            "handled_team_labels": dict(_as_dict(existing.get("handled_team_labels"))),
+                        })
+
+                dispatch_kind = "targeted"
                 trigger_reason: str | None = None
                 if is_trusted and not unowned_auto_update:
                     if review_decision == "APPROVED" and ci_state in ("SUCCESS", "NONE") and unresolved_thread_count == 0 and (handled_ci != ci_state or (head_sha and handled_sha != head_sha)):
@@ -1280,29 +1704,197 @@ class CompanionStateStore:
                         trigger_reason = "head_push"
                     elif not is_self and not handled_sha and not handled_u:
                         trigger_reason = "review_requested" if self_login_norm in review_requests else "unrequested_pr"
+                elif is_community and owns_mod2_pr:
+                    if not handled_sha and not handled_u:
+                        dispatch_kind = "community_auto_review" if auto_merge_eligible else "community_triage"
+                        trigger_reason = dispatch_kind
+                    elif (
+                        handled_sha
+                        and head_sha
+                        and head_sha == handled_sha
+                        and auto_merge_eligible
+                        and review_decision == "APPROVED"
+                        and ci_state in ("SUCCESS", "NONE")
+                        and unresolved_thread_count == 0
+                        and handled_ci != ci_state
+                    ):
+                        dispatch_kind = "targeted"
+                        trigger_reason = "ci_green_after_approval"
+
                 if trigger_reason is None:
-                    if is_self or not is_trusted or unowned_auto_update:
+                    if is_self or unowned_auto_update or (is_community and not owns_mod2_pr):
                         handled_u, handled_sha = updated_at or handled_u, head_sha or handled_sha
-                        if not is_trusted or unowned_auto_update or ci_state not in ("SUCCESS", "NONE"):
+                        if unowned_auto_update or (is_community and not owns_mod2_pr) or ci_state not in ("SUCCESS", "NONE"):
                             handled_ci = ci_state or handled_ci
                     elif ci_state not in ("SUCCESS", "NONE") and ci_state:
                         handled_ci = ci_state
                 elif in_flight:
                     pending_followup = True
-                    queued_followups.append(pr_key)
+                    if pr_key not in queued_followups:
+                        queued_followups.append(pr_key)
                 elif retry_count < MAX_THREAD_FAILURE_RETRIES:
                     if trigger_reason != "ci_green_after_approval" and cooldown_until_ms > stamp_ms:
                         pending_followup = True
-                        queued_followups.append(pr_key)
+                        if pr_key not in queued_followups:
+                            queued_followups.append(pr_key)
                         cooled_down_prs.append(pr_key)
                     else:
-                        actionable_prs.append({"key": pr_key, "thread_id": existing.get("thread_id"), "repo": repo, "number": number, "kind": "PullRequest", "head_sha": head_sha, "ci_state": ci_state, "updated_at": updated_at, "trigger_reason": trigger_reason, "is_automated_pr": is_auto_update})
-                entry = {**existing, "pr_key": pr_key, "repo": repo, "number": number, "subject_type": "PullRequest", "author": author, "head_sha": head_sha, "ci_state": ci_state, "review_decision": review_decision, "review_requests": review_requests, "unresolved_thread_count": unresolved_thread_count, "updated_at": updated_at or existing.get("updated_at"), "handled_updated_at": handled_u, "handled_head_sha": handled_sha, "handled_ci_state": handled_ci, "retry_count": retry_count, "trigger_reason": trigger_reason or existing.get("trigger_reason"), "is_automated_pr": is_auto_update, "in_flight": in_flight, "pending_followup": pending_followup, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
+                        actionable_prs.append({
+                            "key": pr_key,
+                            "thread_id": existing.get("thread_id"),
+                            "repo": repo,
+                            "number": number,
+                            "kind": "PullRequest",
+                            "dispatch_kind": dispatch_kind,
+                            "head_sha": head_sha,
+                            "ci_state": ci_state,
+                            "updated_at": updated_at,
+                            "trigger_reason": trigger_reason,
+                            "is_automated_pr": is_auto_update,
+                            "is_community": is_community,
+                            "community_auto_merge_eligible": auto_merge_eligible,
+                            "additions": norm_pr.get("additions"),
+                            "deletions": norm_pr.get("deletions"),
+                            "changed_files": norm_pr.get("changed_files"),
+                            "file_paths": norm_pr.get("file_paths"),
+                            "files_has_next_page": bool(norm_pr.get("files_has_next_page", False)),
+                        })
+                entry = {**existing, "pr_key": pr_key, "repo": repo, "number": number, "subject_type": "PullRequest", "author": author, "head_sha": head_sha, "ci_state": ci_state, "review_decision": review_decision, "review_requests": review_requests, "unresolved_thread_count": unresolved_thread_count, "labels": labels, "updated_at": updated_at or existing.get("updated_at"), "handled_updated_at": handled_u, "handled_head_sha": handled_sha, "handled_ci_state": handled_ci, "retry_count": retry_count, "trigger_reason": trigger_reason or existing.get("trigger_reason"), "is_automated_pr": is_auto_update, "is_community": is_community, "community_auto_merge_eligible": auto_merge_eligible, "coercion_blocked": False, "in_flight": in_flight, "pending_followup": pending_followup, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
                 for tk in target_keys:
                     threads[tk] = dict(entry)
             state["updated_at_ms"] = stamp_ms
             atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
-        return {"actionable_prs": actionable_prs, "queued_followups": queued_followups, "cooled_down_prs": cooled_down_prs}
+        return {"actionable_prs": actionable_prs, "queued_followups": queued_followups, "cooled_down_prs": cooled_down_prs, "team_label_candidates": team_label_candidates, "coercive_items": coercive_items}
+
+    def record_polled_issues(self, issues: list[dict], now_override_ms: int | None = None) -> dict:
+        """Evaluate and persist open issues in state.json for community triage and team-label detection."""
+        stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
+        actionable_issues, queued_followups, team_label_candidates, coercive_items = [], [], [], []
+        with self._locked_dir() as dir_fd:
+            state = self._read_state_unlocked(dir_fd)
+            threads: dict[str, dict] = state["threads"]
+            for raw_issue in issues:
+                norm_issue = normalize_open_issue_record(raw_issue) if "issue_key" not in _as_dict(raw_issue) else dict(raw_issue)
+                if not isinstance(norm_issue, dict) or _is_archived_record(raw_issue, norm_issue) or str(norm_issue.get("state") or "OPEN").upper() != "OPEN":
+                    continue
+                repo, number = str(norm_issue.get("repo") or "").strip(), _safe_int(norm_issue.get("number"), 0)
+                if not repo or number <= 0:
+                    continue
+                issue_key, author = make_pr_key(repo, number), str(norm_issue.get("author") or "").strip()
+                author_norm = normalize_github_actor(author)
+                updated_at = str(norm_issue.get("updated_at") or norm_issue.get("updatedAt") or "").strip()
+                title, body = str(norm_issue.get("title") or ""), str(norm_issue.get("body") or "")
+                labels = extract_label_names(norm_issue.get("labels"))
+                team_labels = extract_team_labels(norm_issue.get("team_labels") if "team_labels" in norm_issue else labels, ISSUE_TEAM_LABELS)
+                latest_comment = _as_dict(norm_issue.get("latest_comment"))
+                latest_comment_actor = extract_actor_login(latest_comment.get("author") or latest_comment.get("user")) if latest_comment else ""
+                latest_comment_actor_norm = normalize_github_actor(latest_comment_actor)
+                latest_comment_body = str(latest_comment.get("body") or "") if latest_comment else ""
+
+                target_keys, existing = self._load_entry_unlocked(threads, issue_key, repo=repo, number=number)
+                handled_u = existing.get("handled_updated_at")
+                in_flight, pending_followup = bool(existing.get("in_flight", False)), bool(existing.get("pending_followup", False))
+                prior_u = str(existing.get("updated_at") or "").strip()
+                newer = is_timestamp_newer(updated_at, prior_u)
+                retry_count = 0 if newer else _safe_int(existing.get("retry_count"), 0)
+                is_trusted = is_trusted_github_actor(author_norm)
+                is_instruction = is_trusted_instruction_actor(author_norm)
+                is_community = not is_trusted
+                issue_owner = compute_issue_owner(repo, number)
+                owns_mod2_issue = bool(self.agent_name in SWEEP_AGENT_ORDER and issue_owner == self.agent_name)
+
+                subj_texts = [t for t in (title, body) if t]
+                subj_coercion = detect_coercion_patterns("\n".join(subj_texts))
+                if is_trusted and not is_instruction:
+                    subj_coercion = [r for r in subj_coercion if r != "html_comment_block"]
+                elif is_instruction:
+                    subj_coercion = []
+                comment_coercion = (
+                    detect_coercion_patterns(latest_comment_body)
+                    if (latest_comment_body and not is_trusted_github_actor(latest_comment_actor_norm))
+                    else []
+                )
+                if subj_coercion or comment_coercion:
+                    if subj_coercion:
+                        coercive_items.append({
+                            "repo": repo,
+                            "subject_type": "Issue",
+                            "number": number,
+                            "thread_id": str(existing.get("thread_id") or issue_key),
+                            "item_kind": "issue",
+                            "item_id": norm_issue.get("id") or number,
+                            "actor": author or "unknown",
+                            "raw_texts": subj_texts,
+                        })
+                    else:
+                        coercive_items.append({
+                            "repo": repo,
+                            "subject_type": "Issue",
+                            "number": number,
+                            "thread_id": str(existing.get("thread_id") or issue_key),
+                            "item_kind": "issue_comment",
+                            "item_id": latest_comment.get("id") or latest_comment.get("databaseId") or f"{number}:{updated_at}",
+                            "actor": latest_comment_actor or "unknown",
+                            "raw_texts": [latest_comment_body],
+                        })
+                    handled_u = updated_at or handled_u
+                    entry = {**existing, "issue_key": issue_key, "repo": repo, "number": number, "subject_type": "Issue", "author": author, "labels": labels, "updated_at": updated_at or existing.get("updated_at"), "handled_updated_at": handled_u, "retry_count": 0, "is_community": is_community, "coercion_blocked": True, "in_flight": in_flight, "pending_followup": False, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
+                    for tk in target_keys:
+                        threads[tk] = dict(entry)
+                    continue
+
+                if owns_mod2_issue and team_labels:
+                    if in_flight:
+                        pending_followup = True
+                        if issue_key not in queued_followups:
+                            queued_followups.append(issue_key)
+                    elif retry_count < MAX_THREAD_FAILURE_RETRIES:
+                        team_label_candidates.append({
+                            "key": issue_key,
+                            "thread_id": existing.get("thread_id"),
+                            "repo": repo,
+                            "number": number,
+                            "kind": "Issue",
+                            "updated_at": updated_at,
+                            "team_labels": list(team_labels),
+                            "is_community": is_community,
+                            "handled_team_labels": dict(_as_dict(existing.get("handled_team_labels"))),
+                        })
+
+                trigger_reason: str | None = None
+                unhandled = is_timestamp_newer(updated_at, handled_u) or (not handled_u and bool(updated_at))
+                if not owns_mod2_issue or is_trusted:
+                    handled_u = updated_at or handled_u
+                elif unhandled:
+                    if handled_u and latest_comment_actor_norm in LOGIN_TO_AGENT_NAME:
+                        handled_u = updated_at or handled_u
+                    else:
+                        trigger_reason = "community_triage"
+
+                if trigger_reason is not None:
+                    if in_flight:
+                        pending_followup = True
+                        if issue_key not in queued_followups:
+                            queued_followups.append(issue_key)
+                    elif retry_count < MAX_THREAD_FAILURE_RETRIES:
+                        actionable_issues.append({
+                            "key": issue_key,
+                            "thread_id": existing.get("thread_id"),
+                            "repo": repo,
+                            "number": number,
+                            "kind": "Issue",
+                            "dispatch_kind": "community_triage",
+                            "trigger_reason": trigger_reason,
+                            "updated_at": updated_at,
+                            "is_community": True,
+                        })
+
+                entry = {**existing, "issue_key": issue_key, "repo": repo, "number": number, "subject_type": "Issue", "author": author, "labels": labels, "updated_at": updated_at or existing.get("updated_at"), "handled_updated_at": handled_u, "retry_count": retry_count, "trigger_reason": trigger_reason or existing.get("trigger_reason"), "is_community": is_community, "coercion_blocked": False, "in_flight": in_flight, "pending_followup": pending_followup, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
+                for tk in target_keys:
+                    threads[tk] = dict(entry)
+            state["updated_at_ms"] = stamp_ms
+            atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
+        return {"actionable_issues": actionable_issues, "queued_followups": queued_followups, "team_label_candidates": team_label_candidates, "coercive_items": coercive_items}
 
     def mark_thread_in_flight(self, key: str, *, updated_at: str | None = None, head_sha: str | None = None, ci_state: str | None = None, now_override_ms: int | None = None) -> dict:
         def _mark(entry: dict, _: int) -> None:
@@ -1310,18 +1902,42 @@ class CompanionStateStore:
 
         return self._mutate_thread(key, _mark, now_override_ms=now_override_ms)
 
-    def complete_thread_review(self, key: str, *, handled_updated_at: str | None = None, handled_head_sha: str | None = None, handled_ci_state: str | None = None, completed_revision: str | None = None, apply_cooldown: bool | None = None, now_override_ms: int | None = None) -> dict:
+    def complete_thread_review(
+        self,
+        key: str,
+        *,
+        handled_updated_at: str | None = None,
+        handled_head_sha: str | None = None,
+        handled_ci_state: str | None = None,
+        completed_revision: str | None = None,
+        team_label: str | None = None,
+        team_label_event_key: str | None = None,
+        preserve_handled_head_sha: bool = False,
+        apply_cooldown: bool | None = None,
+        now_override_ms: int | None = None,
+    ) -> dict:
         rev_u, rev_cid = parse_revision_token(completed_revision)
 
         def _complete(entry: dict, stamp_ms: int) -> None:
             was_in_flight = bool(entry.get("in_flight"))
             should_cooldown = was_in_flight if apply_cooldown is None else bool(apply_cooldown)
             fin_u = handled_updated_at or rev_u or entry.get("in_flight_updated_at") or entry.get("updated_at") or entry.get("handled_updated_at")
-            fin_sha = handled_head_sha or entry.get("in_flight_head_sha") or entry.get("head_sha") or entry.get("handled_head_sha")
+            fin_sha = (
+                entry.get("handled_head_sha")
+                if preserve_handled_head_sha
+                else (handled_head_sha or entry.get("in_flight_head_sha") or entry.get("head_sha") or entry.get("handled_head_sha"))
+            )
             fin_ci = handled_ci_state or entry.get("in_flight_ci_state") or entry.get("ci_state") or entry.get("handled_ci_state")
             seen_u, seen_sha = str(entry.get("updated_at") or "").strip(), str(entry.get("head_sha") or "").strip()
-            has_newer = bool((was_in_flight and entry.get("pending_followup")) or (seen_u and fin_u and is_timestamp_newer(seen_u, fin_u)) or (seen_sha and fin_sha and seen_sha != fin_sha))
+            sha_newer = bool(not preserve_handled_head_sha and seen_sha and fin_sha and seen_sha != fin_sha)
+            has_newer = bool((was_in_flight and entry.get("pending_followup")) or (seen_u and fin_u and is_timestamp_newer(seen_u, fin_u)) or sha_newer)
             entry.update({"handled_updated_at": fin_u, "handled_head_sha": fin_sha, "handled_ci_state": fin_ci, "retry_count": 0, "in_flight": False, "pending_followup": has_newer, "dismiss_ready": not has_newer})
+            if not preserve_handled_head_sha and fin_sha:
+                entry["triaged_head_sha"] = fin_sha
+            if team_label and team_label_event_key:
+                handled_lbls = dict(_as_dict(entry.get("handled_team_labels")))
+                handled_lbls[team_label.strip().lower()] = team_label_event_key.strip()
+                entry["handled_team_labels"] = handled_lbls
             if should_cooldown and self.followup_cooldown_ms > 0:
                 entry["last_review_completed_at_ms"] = stamp_ms
                 entry["followup_cooldown_until_ms"] = stamp_ms + self.followup_cooldown_ms
@@ -1544,12 +2160,53 @@ class MoltisRpcClient:
         return self.call("chat.send_sync", params, timeout=self.send_sync_timeout if timeout is None else timeout)
 
 
-OPEN_PRS_GRAPHQL_QUERY_TEMPLATE = "query($endCursor: String) { search(query: %s, type: ISSUE, first: 100, after: $endCursor) { pageInfo { hasNextPage endCursor } nodes { ... on PullRequest { number title url state isDraft updatedAt headRefOid reviewDecision repository { nameWithOwner isArchived } author { __typename login } reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } } } } reviewThreads(first: 100) { pageInfo { hasNextPage } nodes { isResolved } } statusCheckRollup { state contexts(first: 100) { nodes { __typename ... on CheckRun { status conclusion } ... on StatusContext { state } } } } } } } }"
+OPEN_PRS_GRAPHQL_QUERY_TEMPLATE = (
+    "query($endCursor: String) { "
+    "search(query: %s, type: ISSUE, first: 100, after: $endCursor) { "
+    "pageInfo { hasNextPage endCursor } "
+    "nodes { "
+    "__typename "
+    "... on PullRequest { "
+    "id number title body url state isDraft updatedAt headRefName headRefOid reviewDecision additions deletions changedFiles "
+    "repository { nameWithOwner isArchived } "
+    "author { __typename login } "
+    "labels(first: 20) { nodes { name } } "
+    "files(first: 25) { pageInfo { hasNextPage } nodes { path } } "
+    "reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } } } } "
+    "reviewThreads(first: 100) { pageInfo { hasNextPage } nodes { isResolved } } "
+    "statusCheckRollup { state contexts(first: 100) { nodes { __typename ... on CheckRun { status conclusion } ... on StatusContext { state } } } } "
+    "} "
+    "... on Issue { "
+    "id number title body url state updatedAt "
+    "repository { nameWithOwner isArchived } "
+    "author { __typename login } "
+    "labels(first: 20) { nodes { name } } "
+    "comments(last: 1) { nodes { id author { __typename login } body updatedAt } } "
+    "} "
+    "} } }"
+)
+OPEN_ISSUES_GRAPHQL_QUERY_TEMPLATE = (
+    "query($endCursor: String) { "
+    "search(query: %s, type: ISSUE, first: 100, after: $endCursor) { "
+    "pageInfo { hasNextPage endCursor } "
+    "nodes { ... on Issue { "
+    "id number title body url state updatedAt "
+    "repository { nameWithOwner isArchived } "
+    "author { __typename login } "
+    "labels(first: 20) { nodes { name } } "
+    "comments(last: 1) { nodes { id author { __typename login } body updatedAt } } "
+    "} } } }"
+)
 
 
 def build_open_prs_graphql_query(owners: Iterable[str] = POLL_PR_OWNERS) -> str:
     owner_clauses = " ".join(f"user:{o.strip()}" for o in owners if str(o).strip())
-    return OPEN_PRS_GRAPHQL_QUERY_TEMPLATE % json.dumps(f"is:pr is:open draft:false archived:false {owner_clauses}".strip())
+    return OPEN_PRS_GRAPHQL_QUERY_TEMPLATE % json.dumps(f"is:open archived:false {owner_clauses}".strip())
+
+
+def build_open_issues_graphql_query(owners: Iterable[str] = POLL_ISSUE_OWNERS) -> str:
+    owner_clauses = " ".join(f"user:{o.strip()}" for o in owners if str(o).strip())
+    return OPEN_ISSUES_GRAPHQL_QUERY_TEMPLATE % json.dumps(f"is:issue is:open archived:false {owner_clauses}".strip())
 
 
 class GhApiSafeClient:
@@ -1606,9 +2263,8 @@ class GhApiSafeClient:
             raise RuntimeError(f"gh-api-safe notifications exited {proc.returncode}: {stderr.strip()}")
         return parse_gh_api_paginated_http_output(stdout)
 
-    def poll_open_pull_requests(self, owners: Iterable[str] = POLL_PR_OWNERS, timeout: float | None = None) -> list[dict]:
-        """Query open pull requests across the configured owners via a single GraphQL search query."""
-        proc = self.invoke(["graphql", "--paginate", "-f", f"query={build_open_prs_graphql_query(owners)}"], timeout=timeout)
+    def _query_graphql_search_nodes(self, query: str, timeout: float | None = None) -> list[dict]:
+        proc = self.invoke(["graphql", "--paginate", "-f", f"query={query}"], timeout=timeout)
         stdout, stderr = (proc.stdout or "").strip(), (proc.stderr or "").strip()
         if proc.returncode != 0:
             raise RuntimeError(f"gh-api-safe graphql open pull requests exited {proc.returncode}: {stderr or stdout}")
@@ -1628,7 +2284,27 @@ class GhApiSafeClient:
             raw_nodes.extend([n for n in nodes if isinstance(n, dict)] if isinstance(nodes, list) else [item])
         if last_has_next_page:
             raise RuntimeError("Incomplete or failed GraphQL open pull-request pagination")
-        return [norm for node in raw_nodes if (norm := normalize_open_pull_request_record(node)) is not None]
+        return raw_nodes
+
+    def poll_open_items(self, owners: Iterable[str] = POLL_PR_OWNERS, timeout: float | None = None) -> tuple[list[dict], list[dict]]:
+        """Query open pull requests and open issues across the configured owners via a single GraphQL search query."""
+        raw_nodes = self._query_graphql_search_nodes(build_open_prs_graphql_query(owners), timeout=timeout)
+        prs = [norm for node in raw_nodes if (norm := normalize_open_pull_request_record(node)) is not None]
+        issues = [norm for node in raw_nodes if (norm := normalize_open_issue_record(node)) is not None]
+        return prs, issues
+
+    def poll_open_pull_requests(self, owners: Iterable[str] = POLL_PR_OWNERS, timeout: float | None = None) -> list[dict]:
+        """Query open pull requests across the configured owners via a single GraphQL search query."""
+        return self.poll_open_items(owners, timeout=timeout)[0]
+
+    def poll_open_issues(self, owners: Iterable[str] = POLL_ISSUE_OWNERS, timeout: float | None = None) -> list[dict]:
+        """Query open issues across the configured owners via a GraphQL search query."""
+        raw_nodes = self._query_graphql_search_nodes(build_open_issues_graphql_query(owners), timeout=timeout)
+        return [norm for node in raw_nodes if (norm := normalize_open_issue_record(node)) is not None]
+
+    def fetch_issue_events(self, repo: str, number: int, timeout: float | None = None) -> list[dict]:
+        """Fetch issue or pull request timeline events for label-actor verification."""
+        return self.fetch_json_items(f"repos/{repo}/issues/{number}/events?per_page=100", paginate=True, timeout=timeout)
 
 
 class TrustFilterAndSnapshotBuilder:
@@ -1907,8 +2583,8 @@ class NotificationPoller:
         self.state_store.write_state({"last_poll_started_at_ms": current_ms, "next_poll_at_ms": provisional_next_ms, "last_jitter_ms": 0}, now_override_ms=current_ms)
         return provisional_next_ms, 0
 
-    def poll_once(self, now_override_ms: int | None = None, poll_open_prs: bool = True) -> dict:
-        """Execute one conditional /notifications poll plus the 6-owner open PR poll."""
+    def poll_once(self, now_override_ms: int | None = None, poll_open_prs: bool = True, poll_open_issues: bool = True) -> dict:
+        """Execute one conditional /notifications poll plus the 6-owner open PR and issue polls."""
         start_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         prior_last_modified = self.state_store.read_state().get("last_modified")
         provisional_next_ms, provisional_jitter_ms = self._persist_provisional_next_poll(start_ms)
@@ -1917,7 +2593,9 @@ class NotificationPoller:
         wait_ms, base_wait_sec, post_jitter_ms = compute_backoff_wait_ms(headers=headers, now_ms_val=finish_ms, rng=self.jitter_rng, status=status, agent_name=self.state_store.agent_name)
         computed_next_poll_ms = finish_ms + wait_ms
 
-        filtered_records, actionable_threads, queued_followups, dismissed_threads, actionable_prs, open_pull_requests = [], [], [], [], [], []
+        filtered_records, actionable_threads, queued_followups, dismissed_threads = [], [], [], []
+        actionable_prs, open_pull_requests, actionable_issues, open_issues = [], [], [], []
+        team_label_candidates, coercive_items = [], []
         if 200 <= status < 300:
             filtered_records = [norm for item in raw_items if (norm := normalize_notification_record(item)) is not None]
             ingest_result = self.state_store.record_polled_notifications(filtered_records, now_override_ms=finish_ms)
@@ -1935,28 +2613,42 @@ class NotificationPoller:
         is_rate_limited = bool(status in (403, 429) or remaining_exhausted or retry_after_hdr > 0)
 
         open_prs_poll_error: str | None = None
+        open_issues_poll_error: str | None = None
         if poll_open_prs and not is_rate_limited:
             try:
-                open_pull_requests = self.gh_client.poll_open_pull_requests()
+                if poll_open_issues and hasattr(self.gh_client, "poll_open_items"):
+                    open_pull_requests, open_issues = self.gh_client.poll_open_items()
+                else:
+                    open_pull_requests = self.gh_client.poll_open_pull_requests()
             except Exception as exc:
                 open_prs_poll_error = str(exc) or exc.__class__.__name__
             if open_pull_requests:
                 pr_ingest = self.state_store.record_polled_pull_requests(open_pull_requests, self_github_login=GITHUB_AGENT_LOGINS[self.state_store.agent_name], now_override_ms=finish_ms)
                 actionable_prs = list(pr_ingest["actionable_prs"])
+                team_label_candidates.extend(pr_ingest.get("team_label_candidates") or [])
+                coercive_items.extend(pr_ingest.get("coercive_items") or [])
                 for qf in pr_ingest["queued_followups"]:
+                    if qf not in queued_followups:
+                        queued_followups.append(qf)
+            if open_issues:
+                issue_ingest = self.state_store.record_polled_issues(open_issues, now_override_ms=finish_ms)
+                actionable_issues = list(issue_ingest["actionable_issues"])
+                team_label_candidates.extend(issue_ingest.get("team_label_candidates") or [])
+                coercive_items.extend(issue_ingest.get("coercive_items") or [])
+                for qf in issue_ingest["queued_followups"]:
                     if qf not in queued_followups:
                         queued_followups.append(qf)
 
         new_last_modified = headers["last-modified"].strip() if (200 <= status < 300 and isinstance(headers.get("last-modified"), str) and headers["last-modified"].strip()) else prior_last_modified
         ratelimit_reset_hdr = (_safe_int(headers.get("x-ratelimit-reset"), 0) or None) if is_rate_limited else None
-        self.state_store.write_state({"last_poll_completed_at_ms": finish_ms, "last_status": status, "last_modified": new_last_modified, "next_poll_at_ms": computed_next_poll_ms, "poll_interval_secs": poll_interval_hdr, "retry_after_secs": retry_after_hdr, "last_poll_rate_limited": is_rate_limited, "ratelimit_reset_epoch": ratelimit_reset_hdr, "last_jitter_ms": post_jitter_ms, "last_open_prs_poll_error": open_prs_poll_error}, now_override_ms=finish_ms)
+        self.state_store.write_state({"last_poll_completed_at_ms": finish_ms, "last_status": status, "last_modified": new_last_modified, "next_poll_at_ms": computed_next_poll_ms, "poll_interval_secs": poll_interval_hdr, "retry_after_secs": retry_after_hdr, "last_poll_rate_limited": is_rate_limited, "ratelimit_reset_epoch": ratelimit_reset_hdr, "last_jitter_ms": post_jitter_ms, "last_open_prs_poll_error": open_prs_poll_error, "last_open_issues_poll_error": open_issues_poll_error}, now_override_ms=finish_ms)
 
         dispatched_threads: list[str] = []
         if not self.read_only_trial and actionable_threads and self.on_actionable_threads is not None:
             self.on_actionable_threads(actionable_threads)
             dispatched_threads = list(actionable_threads)
 
-        return {"status": status, "provisional_next_poll_at_ms": provisional_next_ms, "provisional_jitter_ms": provisional_jitter_ms, "next_poll_at_ms": computed_next_poll_ms, "base_wait_secs": base_wait_sec, "jitter_ms": post_jitter_ms, "last_modified": new_last_modified, "filtered_notifications": filtered_records, "open_pull_requests": open_pull_requests, "open_prs_poll_error": open_prs_poll_error, "actionable_threads": actionable_threads, "actionable_prs": actionable_prs, "dismissed_threads": dismissed_threads, "queued_followups": queued_followups, "dispatched_threads": dispatched_threads, "read_only_trial": self.read_only_trial}
+        return {"status": status, "provisional_next_poll_at_ms": provisional_next_ms, "provisional_jitter_ms": provisional_jitter_ms, "next_poll_at_ms": computed_next_poll_ms, "base_wait_secs": base_wait_sec, "jitter_ms": post_jitter_ms, "last_modified": new_last_modified, "filtered_notifications": filtered_records, "open_pull_requests": open_pull_requests, "open_prs_poll_error": open_prs_poll_error, "open_issues": open_issues, "open_issues_poll_error": open_issues_poll_error, "actionable_threads": actionable_threads, "actionable_prs": actionable_prs, "actionable_issues": actionable_issues, "team_label_candidates": team_label_candidates, "coercive_items": coercive_items, "dismissed_threads": dismissed_threads, "queued_followups": queued_followups, "dispatched_threads": dispatched_threads, "read_only_trial": self.read_only_trial}
 
 
 class LocalExecutionCoordinator:
@@ -1986,12 +2678,12 @@ class LocalExecutionCoordinator:
         self.clock = clock
         self.sleeper = sleeper
 
-    def build_dispatch_prompt(self, *, dispatch_id: str, kind: str, thread_id: str | None = None, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, head_sha: str | None = None, trigger_reason: str | None = None, comment_id: int | str | None = None, review_id: int | str | None = None, trusted_item_id: int | str | None = None, extra_instructions: str = "") -> str:
+    def build_dispatch_prompt(self, *, dispatch_id: str, kind: str, thread_id: str | None = None, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, head_sha: str | None = None, trigger_reason: str | None = None, comment_id: int | str | None = None, review_id: int | str | None = None, trusted_item_id: int | str | None = None, community_auto_merge_eligible: bool | None = None, team_label: str | None = None, triaged_head_sha: str | None = None, head_sha_changed: bool = False, extra_instructions: str = "") -> str:
         header = f"# {self.agent_display_name} Scheduled Maintenance Heartbeat"
         meta_lines = [f"dispatch_id: {dispatch_id}", f"dispatch_kind: {kind}", f"agent_name: {self.agent_name}", f"schedule_day_name: {self.schedule_day_name}", f"schedule_dow: {self.schedule_dow}"]
         if thread_id:
             meta_lines.append(f"thread_id: {thread_id}")
-        if kind == "targeted" or repo or number:
+        if kind == "targeted" or kind in MODE_1B_DISPATCH_KINDS or repo or number:
             eff_item_id = trusted_item_id if trusted_item_id is not None else (comment_id or review_id)
             meta_lines.extend([f"repo: {repo or ''}", f"number: {number if number is not None else ''}", f"kind: {subject_kind or 'PullRequest'}", f"head_sha: {head_sha or ''}", f"trigger_reason: {trigger_reason or 'notification'}"])
             if comment_id is not None and str(comment_id).strip():
@@ -2000,9 +2692,19 @@ class LocalExecutionCoordinator:
                 meta_lines.append(f"review_id: {review_id}")
             if eff_item_id is not None and str(eff_item_id).strip():
                 meta_lines.append(f"trusted_item_id: {eff_item_id}")
+            if community_auto_merge_eligible is not None:
+                meta_lines.append(f"community_auto_merge_eligible: {'true' if community_auto_merge_eligible else 'false'}")
+            if team_label:
+                meta_lines.append(f"team_label: {team_label}")
+            if triaged_head_sha:
+                meta_lines.append(f"triaged_head_sha: {triaged_head_sha}")
+            if head_sha_changed:
+                meta_lines.append("head_sha_changed: true")
 
         if kind == "targeted":
             mode_line = f"Mode 1 - Targeted Notification or Mention Turn (repo={repo or ''}, number={number if number is not None else ''}, kind={subject_kind or 'PullRequest'}, head_sha={head_sha or 'none'}, trigger_reason={trigger_reason or 'notification'})."
+        elif kind in MODE_1B_DISPATCH_KINDS:
+            mode_line = f"Mode 1B - Community Triage and team: Label Action (dispatch_kind={kind}, repo={repo or ''}, number={number if number is not None else ''}, kind={subject_kind or 'PullRequest'}, head_sha={head_sha or 'none'}, trigger_reason={trigger_reason or kind})."
         elif kind == "weekly_sweep":
             mode_line = f"Mode 3 - Weekly Organisation Sweep ({self.schedule_day_name} Only, dow == {self.schedule_dow})."
         else:
@@ -2122,13 +2824,15 @@ class LocalExecutionCoordinator:
         with self.state_store.coordinator_lock():
             return self._recover_unlocked(now_override_ms=now_override_ms)
 
-    def execute_dispatch(self, *, kind: str, model: str | None = None, is_automated_pr: bool = False, session_key: str | None = None, thread_id: str | None = None, state_key: str | None = None, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, head_sha: str | None = None, ci_state: str | None = None, updated_at: str | None = None, trigger_reason: str | None = None, comment_id: int | str | None = None, review_id: int | str | None = None, trusted_item_id: int | str | None = None, revision: str | None = None, sweep_date: str | None = None, extra_instructions: str = "", dispatch_id: str | None = None, now_override_ms: int | None = None, **_ignored: object) -> dict:
+    def execute_dispatch(self, *, kind: str, model: str | None = None, is_automated_pr: bool = False, session_key: str | None = None, thread_id: str | None = None, state_key: str | None = None, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, head_sha: str | None = None, ci_state: str | None = None, updated_at: str | None = None, trigger_reason: str | None = None, comment_id: int | str | None = None, review_id: int | str | None = None, trusted_item_id: int | str | None = None, community_auto_merge_eligible: bool | None = None, team_label: str | None = None, triaged_head_sha: str | None = None, head_sha_changed: bool = False, revision: str | None = None, sweep_date: str | None = None, extra_instructions: str = "", dispatch_id: str | None = None, now_override_ms: int | None = None, **_ignored: object) -> dict:
         """Serialise a model turn under coordinator.lock while allowing state.json updates under companion.lock."""
         with self.state_store.coordinator_lock():
             recovery = self._recover_unlocked(now_override_ms=now_override_ms)
             start_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
             resolved_session_key = (session_key or self.session_key or DEFAULT_GH_SESSION_KEY).strip()
-            resolved_model = (model or ((self.review_model or self.main_model) if (kind == "targeted" and not is_automated_pr) else self.main_model)).strip()
+            is_issue_triage = kind == "community_triage" and str(subject_kind or "").strip().lower() == "issue"
+            use_review_model = (kind == "targeted" and not is_automated_pr) or (kind in MODE_1B_DISPATCH_KINDS and not is_issue_triage)
+            resolved_model = (model or ((self.review_model or self.main_model) if use_review_model else self.main_model)).strip()
             resolved_dispatch_id = (dispatch_id or f"ghd-{self.agent_name}-{uuid.uuid4().hex}").strip()
             eff_state_key = (state_key or thread_id or (make_pr_key(repo, number) if repo and number else "")).strip()
 
@@ -2139,14 +2843,14 @@ class LocalExecutionCoordinator:
                 self.state_store.record_sweep_attempt(kind, now_override_ms=start_ms)
 
             active_record: dict[str, object] = {"dispatch_id": resolved_dispatch_id, "session_key": resolved_session_key, "kind": kind, "started_at_ms": start_ms, "status": "in_flight"}
-            for k, v in (("thread_id", thread_id), ("state_key", eff_state_key), ("repo", repo), ("number", number), ("subject_kind", subject_kind), ("head_sha", head_sha), ("ci_state", ci_state), ("updated_at", updated_at), ("trigger_reason", trigger_reason), ("revision", revision), ("sweep_date", sweep_date)):
+            for k, v in (("thread_id", thread_id), ("state_key", eff_state_key), ("repo", repo), ("number", number), ("subject_kind", subject_kind), ("head_sha", head_sha), ("ci_state", ci_state), ("updated_at", updated_at), ("trigger_reason", trigger_reason), ("team_label", team_label), ("triaged_head_sha", triaged_head_sha), ("revision", revision), ("sweep_date", sweep_date)):
                 if v is not None and v != "":
                     active_record[k] = v
             self.state_store.write_active_dispatch(active_record, now_override_ms=start_ms)
 
             start_notice_text = format_start_of_work_notice(agent_display_name=self.agent_display_name, kind=kind, repo=repo, number=number, subject_kind=subject_kind, trigger_reason=trigger_reason, sweep_date=sweep_date, schedule_day_name=self.schedule_day_name)
             start_notice_sent, start_notice_error = False, None
-            prompt_message = self.build_dispatch_prompt(dispatch_id=resolved_dispatch_id, kind=kind, thread_id=thread_id, repo=repo, number=number, subject_kind=subject_kind, head_sha=head_sha, trigger_reason=trigger_reason, comment_id=comment_id, review_id=review_id, trusted_item_id=trusted_item_id, extra_instructions=extra_instructions)
+            prompt_message = self.build_dispatch_prompt(dispatch_id=resolved_dispatch_id, kind=kind, thread_id=thread_id, repo=repo, number=number, subject_kind=subject_kind, head_sha=head_sha, trigger_reason=trigger_reason, comment_id=comment_id, review_id=review_id, trusted_item_id=trusted_item_id, community_auto_merge_eligible=community_auto_merge_eligible, team_label=team_label, triaged_head_sha=triaged_head_sha, head_sha_changed=head_sha_changed, extra_instructions=extra_instructions)
 
             rpc_error: Exception | None = None
             rpc_response: dict | None = None
@@ -2287,6 +2991,74 @@ class GithubCompanionRunner:
             dispatched_targets.add(dedup_key)
             targeted_dispatches.append(self.execution_coordinator.execute_dispatch(kind="targeted", is_automated_pr=bool(prep.get("is_automated_pr") or entry.get("is_automated_pr")), thread_id=tid, state_key=tid, repo=prep.get("repo") or repo, number=prep.get("number") or number, subject_kind=prep.get("kind") or entry.get("subject_type"), head_sha=prep.get("head_sha") or entry.get("head_sha"), ci_state=entry.get("ci_state"), updated_at=entry.get("updated_at"), trigger_reason=prep.get("trigger_reason") or entry.get("reason"), comment_id=prep.get("comment_id"), review_id=prep.get("review_id"), trusted_item_id=prep.get("trusted_item_id"), now_override_ms=now_override_ms))
 
+        for coercive in poll_result.get("coercive_items") or []:
+            if not isinstance(coercive, dict):
+                continue
+            c_repo = str(coercive.get("repo") or "").strip()
+            c_num = _safe_int(coercive.get("number"), 0) or None
+            if not c_repo or c_num is None:
+                continue
+            self.trust_filter._record_security_event_and_alert(
+                repo=c_repo,
+                subject_type=str(coercive.get("subject_type") or "PullRequest"),
+                number=c_num,
+                thread_id=str(coercive.get("key") or make_pr_key(c_repo, c_num)),
+                item_kind="pull_request" if str(coercive.get("subject_type") or "").lower().startswith("pull") else "issue",
+                item_id=c_num,
+                actor=str(coercive.get("author") or "unknown"),
+                raw_texts=[str(t) for t in (coercive.get("title") or "", coercive.get("body") or "") if t],
+                stamp_ms=current_ms,
+            )
+
+        for cand in poll_result.get("team_label_candidates") or []:
+            if not isinstance(cand, dict):
+                continue
+            cand_key = str(cand.get("key") or "").strip()
+            cand_repo = str(cand.get("repo") or "").strip()
+            cand_num = _safe_int(cand.get("number"), 0) or None
+            cand_labels = [str(lbl) for lbl in (cand.get("team_labels") or []) if str(lbl) in TEAM_LABELS]
+            if not cand_key or not cand_repo or cand_num is None or not cand_labels or cand_key in dispatched_targets:
+                continue
+            cand_entry = _as_dict(self.state_store.get_thread_state(cand_key))
+            if _safe_int(cand_entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
+                continue
+            try:
+                events = self.gh_client.fetch_issue_events(cand_repo, cand_num)
+            except Exception as exc:
+                sys.stderr.write(f"moltis-github-companion label-events warning ({cand_key}): {exc}\n")
+                continue
+            verified_label: str | None = None
+            for lbl in cand_labels:
+                if verify_team_label_from_events(events, lbl) is not None:
+                    verified_label = lbl
+                    break
+            if not verified_label:
+                continue
+            cand_head_sha = str(cand.get("head_sha") or "").strip() or None
+            triaged_sha = str(cand.get("triaged_head_sha") or cand_entry.get("triaged_head_sha") or cand_entry.get("handled_head_sha") or "").strip() or None
+            sha_changed = bool(verified_label == "team:merge" and triaged_sha and cand_head_sha and triaged_sha != cand_head_sha)
+            dispatched_targets.add(cand_key)
+            targeted_dispatches.append(
+                self.execution_coordinator.execute_dispatch(
+                    kind=verified_label,
+                    is_automated_pr=False,
+                    thread_id=str(cand.get("thread_id") or "").strip() or None,
+                    state_key=cand_key,
+                    repo=cand_repo,
+                    number=cand_num,
+                    subject_kind=str(cand.get("subject_type") or "PullRequest"),
+                    head_sha=cand_head_sha,
+                    ci_state=str(cand.get("ci_state") or "") or None,
+                    updated_at=str(cand.get("updated_at") or "") or None,
+                    trigger_reason=TEAM_LABEL_TRIGGER_REASONS.get(verified_label, verified_label),
+                    community_auto_merge_eligible=cand.get("community_auto_merge_eligible"),
+                    team_label=verified_label,
+                    triaged_head_sha=triaged_sha,
+                    head_sha_changed=sha_changed,
+                    now_override_ms=now_override_ms,
+                )
+            )
+
         for pr_item in poll_result.get("actionable_prs") or []:
             if not isinstance(pr_item, dict):
                 continue
@@ -2298,7 +3070,18 @@ class GithubCompanionRunner:
             if trig_reason != "ci_green_after_approval" and _safe_int(pr_entry.get("followup_cooldown_until_ms"), 0) > current_ms:
                 continue
             dispatched_targets.add(pr_key)
-            targeted_dispatches.append(self.execution_coordinator.execute_dispatch(kind="targeted", is_automated_pr=bool(pr_item.get("is_automated_pr") or pr_entry.get("is_automated_pr")), thread_id=str(pr_item.get("thread_id") or "").strip() or None, state_key=pr_key, repo=str(pr_item.get("repo") or ""), number=_safe_int(pr_item.get("number"), 0) or None, subject_kind="PullRequest", head_sha=str(pr_item.get("head_sha") or "") or None, ci_state=str(pr_item.get("ci_state") or "") or None, updated_at=str(pr_item.get("updated_at") or "") or None, trigger_reason=trig_reason, now_override_ms=now_override_ms))
+            pr_dispatch_kind = str(pr_item.get("dispatch_kind") or "targeted")
+            targeted_dispatches.append(self.execution_coordinator.execute_dispatch(kind=pr_dispatch_kind, is_automated_pr=bool(pr_item.get("is_automated_pr") or pr_entry.get("is_automated_pr")), thread_id=str(pr_item.get("thread_id") or "").strip() or None, state_key=pr_key, repo=str(pr_item.get("repo") or ""), number=_safe_int(pr_item.get("number"), 0) or None, subject_kind="PullRequest", head_sha=str(pr_item.get("head_sha") or "") or None, ci_state=str(pr_item.get("ci_state") or "") or None, updated_at=str(pr_item.get("updated_at") or "") or None, trigger_reason=trig_reason, community_auto_merge_eligible=pr_item.get("community_auto_merge_eligible"), triaged_head_sha=str(pr_entry.get("triaged_head_sha") or "") or None, now_override_ms=now_override_ms))
+
+        for issue_item in poll_result.get("actionable_issues") or []:
+            if not isinstance(issue_item, dict):
+                continue
+            issue_key = str(issue_item.get("key") or "").strip()
+            issue_entry = _as_dict(self.state_store.get_thread_state(issue_key))
+            if not issue_key or issue_key in dispatched_targets or _safe_int(issue_entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
+                continue
+            dispatched_targets.add(issue_key)
+            targeted_dispatches.append(self.execution_coordinator.execute_dispatch(kind=str(issue_item.get("dispatch_kind") or "community_triage"), is_automated_pr=False, state_key=issue_key, repo=str(issue_item.get("repo") or ""), number=_safe_int(issue_item.get("number"), 0) or None, subject_kind="Issue", updated_at=str(issue_item.get("updated_at") or "") or None, trigger_reason=str(issue_item.get("trigger_reason") or "community_triage"), now_override_ms=now_override_ms))
 
         sweep_dispatch: dict | None = None
         if run_sweeps_if_due:
@@ -2329,6 +3112,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--gh-api-safe-bin", default=os.environ.get("MOLTIS_GITHUB_COMPANION_GH_API_SAFE_BIN", "gh-api-safe"))
     parser.add_argument("--schedule-dow", type=int, default=None)
     parser.add_argument("--schedule-day-name", default=os.environ.get("MOLTIS_GITHUB_COMPANION_SCHEDULE_DAY_NAME", ""))
+    parser.add_argument("--community-auto-merge-enabled", default=os.environ.get("MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_ENABLED", ""))
+    parser.add_argument("--community-auto-merge-max-lines", default=os.environ.get("MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_LINES", ""))
+    parser.add_argument("--community-auto-merge-max-files", default=os.environ.get("MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_FILES", ""))
+    parser.add_argument("--community-auto-merge-excluded-repos", default=os.environ.get("MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS", ""))
     parser.add_argument("--read-only-trial", action="store_true", default=os.environ.get("MOLTIS_GITHUB_COMPANION_READ_ONLY_TRIAL", "").strip() in ("1", "true", "yes"))
     parser.add_argument("--once", action="store_true")
     return parser
@@ -2344,6 +3131,12 @@ def resolve_runtime_config(args: argparse.Namespace) -> dict:
     state_dir_raw = (args.state_dir or "").strip()
     xdg_state = os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state")
     main_model = (args.main_model or "").strip()
+    cam_cfg = resolve_community_auto_merge_config(
+        enabled=getattr(args, "community_auto_merge_enabled", "") or None,
+        max_lines=getattr(args, "community_auto_merge_max_lines", "") or None,
+        max_files=getattr(args, "community_auto_merge_max_files", "") or None,
+        excluded_repos=getattr(args, "community_auto_merge_excluded_repos", "") or None,
+    )
     return {
         "agent_name": agent_name, "agent_display_name": derive_display_name(agent_name, args.agent_display_name),
         "main_model": main_model,
@@ -2357,13 +3150,25 @@ def resolve_runtime_config(args: argparse.Namespace) -> dict:
         "telegram_api_url": (getattr(args, "telegram_api_url", "") or os.environ.get("MOLTIS_GITHUB_COMPANION_TELEGRAM_API_URL", "") or DEFAULT_TELEGRAM_API_URL).strip(),
         "data_dir": Path(args.data_dir).expanduser(), "state_dir": Path(state_dir_raw).expanduser() if state_dir_raw else (Path(xdg_state) / "moltis" / f"github-companion-{agent_name}"),
         "rpc_url": (args.rpc_url or DEFAULT_RPC_URL).strip(), "gh_api_safe_bin": (args.gh_api_safe_bin or "gh-api-safe").strip(),
+        "community_auto_merge_enabled": cam_cfg["enabled"],
+        "community_auto_merge_max_lines": cam_cfg["max_lines"],
+        "community_auto_merge_max_files": cam_cfg["max_files"],
+        "community_auto_merge_excluded_repos": cam_cfg["excluded_repos"],
         "read_only_trial": bool(getattr(args, "read_only_trial", False)), "once": bool(getattr(args, "once", False)),
     }
 
 
 def main(argv: list[str] | None = None) -> int:
     cfg = resolve_runtime_config(build_arg_parser().parse_args(argv))
-    store = CompanionStateStore(state_dir=cfg["state_dir"], agent_name=cfg["agent_name"], room_id=cfg["room_id"])
+    store = CompanionStateStore(
+        state_dir=cfg["state_dir"],
+        agent_name=cfg["agent_name"],
+        room_id=cfg["room_id"],
+        community_auto_merge_enabled=cfg["community_auto_merge_enabled"],
+        community_auto_merge_max_lines=cfg["community_auto_merge_max_lines"],
+        community_auto_merge_max_files=cfg["community_auto_merge_max_files"],
+        community_auto_merge_excluded_repos=cfg["community_auto_merge_excluded_repos"],
+    )
     gh_client = GhApiSafeClient(gh_api_safe_bin=cfg["gh_api_safe_bin"])
     has_matrix_creds = bool(cfg["password_path"] or os.environ.get("MATRIX" + "_PASSWORD", "").strip())
     matrix_client = MatrixClient(homeserver_url=cfg["homeserver_url"], self_user_id=cfg["self_user_id"], agent_name=cfg["agent_name"], room_id=cfg["room_id"], password_path=cfg["password_path"], state_store=store) if has_matrix_creds else None

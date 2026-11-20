@@ -974,6 +974,10 @@ let
     dataDir = "${homeDir}/.moltis";
     stateDir = "${stateDir}/github-companion-${agentName}";
     rpcUrl = "https://127.0.0.1:13131/api/rpc";
+    communityAutoMergeEnabled = true;
+    communityAutoMergeMaxLines = 250;
+    communityAutoMergeMaxFiles = 10;
+    communityAutoMergeExcludedRepos = [ "wimpysworld/nix-config" ];
   };
 
   moltisMatrixCouncilHook = pkgs.writeScript "moltis-matrix-council-hook" ''
@@ -1695,12 +1699,26 @@ in
               )
               (
                 (lib.mapAttrs (
-                  _: preset:
+                  name: preset:
                   preset
-                  // lib.optionalAttrs (!isTraya) {
-                    model = "gemini::gemini-4-neon@reasoning-high";
-                    reasoning_effort = "high";
-                  }
+                  // lib.optionalAttrs (!isTraya) (
+                    if
+                      lib.elem name [
+                        "research"
+                        "coder"
+                        "reviewer"
+                      ]
+                    then
+                      {
+                        model = "gemini::gemini-4-carbon@reasoning-medium";
+                        reasoning_effort = "medium";
+                      }
+                    else
+                      {
+                        model = "gemini::gemini-4-neon@reasoning-high";
+                        reasoning_effort = "high";
+                      }
+                  )
                 ) (import ./builtin-presets.nix))
                 // {
                   coordinator = {
