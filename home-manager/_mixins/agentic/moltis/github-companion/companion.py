@@ -1633,6 +1633,8 @@ class CompanionStateStore:
 
                 raw_texts = [t for t in (title, body) if t]
                 matched_coercion = detect_coercion_patterns("\n".join(raw_texts))
+                if not is_trusted and extract_mentioned_github_agents("\n".join(raw_texts)):
+                    matched_coercion = [*matched_coercion, "targeted_agent_mention"]
                 if is_trusted and not is_instruction:
                     matched_coercion = [r for r in matched_coercion if r != "html_comment_block"]
                 elif is_instruction:
@@ -1805,6 +1807,8 @@ class CompanionStateStore:
 
                 subj_texts = [t for t in (title, body) if t]
                 subj_coercion = detect_coercion_patterns("\n".join(subj_texts))
+                if not is_trusted and extract_mentioned_github_agents("\n".join(subj_texts)):
+                    subj_coercion = [*subj_coercion, "targeted_agent_mention"]
                 if is_trusted and not is_instruction:
                     subj_coercion = [r for r in subj_coercion if r != "html_comment_block"]
                 elif is_instruction:
@@ -1814,6 +1818,8 @@ class CompanionStateStore:
                     if (latest_comment_body and not is_trusted_github_actor(latest_comment_actor_norm))
                     else []
                 )
+                if latest_comment_body and not is_trusted_github_actor(latest_comment_actor_norm) and extract_mentioned_github_agents(latest_comment_body):
+                    comment_coercion = [*comment_coercion, "targeted_agent_mention"]
                 if subj_coercion or comment_coercion:
                     if subj_coercion:
                         coercive_items.append({
@@ -2765,7 +2771,7 @@ class LocalExecutionCoordinator:
         stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         kind = str(active_record.get("kind") or "")
         state_key = str(active_record.get("state_key") or active_record.get("thread_id") or "").strip()
-        watermark_result = self.state_store.complete_thread_review(state_key, handled_updated_at=active_record.get("updated_at"), handled_head_sha=active_record.get("head_sha"), handled_ci_state=active_record.get("ci_state"), completed_revision=active_record.get("revision"), apply_cooldown=True, now_override_ms=stamp_ms) if state_key else None
+        watermark_result = self.state_store.complete_thread_review(state_key, handled_updated_at=active_record.get("updated_at"), handled_head_sha=active_record.get("head_sha"), handled_ci_state=active_record.get("ci_state"), completed_revision=active_record.get("revision"), team_label=str(active_record.get("team_label") or "") or None, team_label_event_key=str(active_record.get("team_label_event_key") or "") or None, apply_cooldown=True, now_override_ms=stamp_ms) if state_key else None
         if kind in ("reconcile_sweep", "weekly_sweep"):
             self.state_store.complete_sweep(kind, sweep_date=str(active_record["sweep_date"]).strip() if active_record.get("sweep_date") else None, now_override_ms=stamp_ms)
         self.state_store.write_active_dispatch(None, now_override_ms=stamp_ms)
@@ -2824,7 +2830,7 @@ class LocalExecutionCoordinator:
         with self.state_store.coordinator_lock():
             return self._recover_unlocked(now_override_ms=now_override_ms)
 
-    def execute_dispatch(self, *, kind: str, model: str | None = None, is_automated_pr: bool = False, session_key: str | None = None, thread_id: str | None = None, state_key: str | None = None, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, head_sha: str | None = None, ci_state: str | None = None, updated_at: str | None = None, trigger_reason: str | None = None, comment_id: int | str | None = None, review_id: int | str | None = None, trusted_item_id: int | str | None = None, community_auto_merge_eligible: bool | None = None, team_label: str | None = None, triaged_head_sha: str | None = None, head_sha_changed: bool = False, revision: str | None = None, sweep_date: str | None = None, extra_instructions: str = "", dispatch_id: str | None = None, now_override_ms: int | None = None, **_ignored: object) -> dict:
+    def execute_dispatch(self, *, kind: str, model: str | None = None, is_automated_pr: bool = False, session_key: str | None = None, thread_id: str | None = None, state_key: str | None = None, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, head_sha: str | None = None, ci_state: str | None = None, updated_at: str | None = None, trigger_reason: str | None = None, comment_id: int | str | None = None, review_id: int | str | None = None, trusted_item_id: int | str | None = None, community_auto_merge_eligible: bool | None = None, team_label: str | None = None, team_label_event_key: str | None = None, triaged_head_sha: str | None = None, head_sha_changed: bool = False, revision: str | None = None, sweep_date: str | None = None, extra_instructions: str = "", dispatch_id: str | None = None, now_override_ms: int | None = None, **_ignored: object) -> dict:
         """Serialise a model turn under coordinator.lock while allowing state.json updates under companion.lock."""
         with self.state_store.coordinator_lock():
             recovery = self._recover_unlocked(now_override_ms=now_override_ms)
@@ -2843,7 +2849,7 @@ class LocalExecutionCoordinator:
                 self.state_store.record_sweep_attempt(kind, now_override_ms=start_ms)
 
             active_record: dict[str, object] = {"dispatch_id": resolved_dispatch_id, "session_key": resolved_session_key, "kind": kind, "started_at_ms": start_ms, "status": "in_flight"}
-            for k, v in (("thread_id", thread_id), ("state_key", eff_state_key), ("repo", repo), ("number", number), ("subject_kind", subject_kind), ("head_sha", head_sha), ("ci_state", ci_state), ("updated_at", updated_at), ("trigger_reason", trigger_reason), ("team_label", team_label), ("triaged_head_sha", triaged_head_sha), ("revision", revision), ("sweep_date", sweep_date)):
+            for k, v in (("thread_id", thread_id), ("state_key", eff_state_key), ("repo", repo), ("number", number), ("subject_kind", subject_kind), ("head_sha", head_sha), ("ci_state", ci_state), ("updated_at", updated_at), ("trigger_reason", trigger_reason), ("team_label", team_label), ("team_label_event_key", team_label_event_key), ("triaged_head_sha", triaged_head_sha), ("revision", revision), ("sweep_date", sweep_date)):
                 if v is not None and v != "":
                     active_record[k] = v
             self.state_store.write_active_dispatch(active_record, now_override_ms=start_ms)
@@ -3002,11 +3008,11 @@ class GithubCompanionRunner:
                 repo=c_repo,
                 subject_type=str(coercive.get("subject_type") or "PullRequest"),
                 number=c_num,
-                thread_id=str(coercive.get("key") or make_pr_key(c_repo, c_num)),
-                item_kind="pull_request" if str(coercive.get("subject_type") or "").lower().startswith("pull") else "issue",
-                item_id=c_num,
-                actor=str(coercive.get("author") or "unknown"),
-                raw_texts=[str(t) for t in (coercive.get("title") or "", coercive.get("body") or "") if t],
+                thread_id=str(coercive.get("thread_id") or coercive.get("key") or make_pr_key(c_repo, c_num)),
+                item_kind=str(coercive.get("item_kind") or ("pull_request" if str(coercive.get("subject_type") or "").lower().startswith("pull") else "issue")),
+                item_id=coercive.get("item_id") or c_num,
+                actor=str(coercive.get("actor") or "unknown"),
+                raw_texts=[str(t) for t in (coercive.get("raw_texts") or []) if isinstance(t, str) and t],
                 stamp_ms=current_ms,
             )
 
@@ -3027,11 +3033,19 @@ class GithubCompanionRunner:
             except Exception as exc:
                 sys.stderr.write(f"moltis-github-companion label-events warning ({cand_key}): {exc}\n")
                 continue
+            handled_team_labels = dict(_as_dict(cand_entry.get("handled_team_labels")))
             verified_label: str | None = None
+            verified_event_key: str | None = None
             for lbl in cand_labels:
-                if verify_team_label_from_events(events, lbl) is not None:
-                    verified_label = lbl
-                    break
+                ver = verify_team_label_from_events(events, lbl)
+                if ver is None:
+                    continue
+                ev_key = str(ver.get("event_key") or f"{lbl}:{ver.get('event_id') or ver.get('created_at') or cand.get('updated_at') or ''}").strip()
+                if ev_key and handled_team_labels.get(lbl.lower()) == ev_key:
+                    continue
+                verified_label = lbl
+                verified_event_key = ev_key
+                break
             if not verified_label:
                 continue
             cand_head_sha = str(cand.get("head_sha") or "").strip() or None
@@ -3046,13 +3060,14 @@ class GithubCompanionRunner:
                     state_key=cand_key,
                     repo=cand_repo,
                     number=cand_num,
-                    subject_kind=str(cand.get("subject_type") or "PullRequest"),
+                    subject_kind=str(cand.get("kind") or cand.get("subject_type") or "PullRequest"),
                     head_sha=cand_head_sha,
                     ci_state=str(cand.get("ci_state") or "") or None,
                     updated_at=str(cand.get("updated_at") or "") or None,
                     trigger_reason=TEAM_LABEL_TRIGGER_REASONS.get(verified_label, verified_label),
                     community_auto_merge_eligible=cand.get("community_auto_merge_eligible"),
                     team_label=verified_label,
+                    team_label_event_key=verified_event_key,
                     triaged_head_sha=triaged_sha,
                     head_sha_changed=sha_changed,
                     now_override_ms=now_override_ms,

@@ -97,7 +97,7 @@ readonly GH_BOT_MERGE_GH_BIN
 export GH_PROMPT_DISABLED=true
 export GH_TELEMETRY=false
 
-readonly PR_VIEW_FIELDS='number,state,isDraft,mergeable,mergeStateStatus,author,headRefName,headRefOid,headRepositoryOwner,isCrossRepository,labels,changedFiles,files,statusCheckRollup,reviewDecision'
+readonly PR_VIEW_FIELDS='number,state,isDraft,mergeable,mergeStateStatus,author,headRefName,headRefOid,headRepositoryOwner,isCrossRepository,labels,additions,deletions,changedFiles,files,statusCheckRollup,reviewDecision'
 
 set +e
 pr_json="$("${GH_BOT_MERGE_GH_BIN}" pr view "${pr_url}" --json "${PR_VIEW_FIELDS}" </dev/null)"
@@ -225,14 +225,57 @@ def is_freshener($owner; $repo):
     and (.path != "pkgs/../default.nix")
   );
 
+def is_sensitive_community_path:
+  (. // "") as $p
+  | ($p | ascii_downcase) as $pl
+  | ($pl | startswith(".github/workflows/"))
+    or ($pl | startswith(".github/actions/"))
+    or ($pl == ".github/codeowners")
+    or ($pl == ".github/security.md")
+    or (($pl | split("/") | last) as $base
+      | ($base == "flake.nix"
+        or $base == "flake.lock"
+        or $base == "cargo.toml"
+        or $base == "cargo.lock"
+        or $base == "go.mod"
+        or $base == "go.sum"
+        or $base == "package.json"
+        or $base == "package-lock.json"
+        or $base == "pnpm-lock.yaml"
+        or $base == "yarn.lock"
+        or $base == "bun.lock"
+        or $base == "bun.lockb"
+        or $base == "pyproject.toml"
+        or $base == "poetry.lock"
+        or $base == "uv.lock"
+        or $base == "composer.json"
+        or $base == "composer.lock"
+        or $base == "codeowners"
+        or $base == "security.md"
+        or ($base | test("^requirements.*\\.txt$"))
+        or ($base | test("^gemfile"))));
+
+def is_community($owner; $repo):
+  (is_dependabot | not)
+  and (is_github_actions | not)
+  and (is_freshener($owner; $repo) | not)
+  and (is_trusted_peer($owner; $repo) | not)
+  and (
+    any((.labels // [])[]; .name == "team:merge")
+    or (
+      ((($owner | ascii_downcase) == "wimpysworld" and ($repo | ascii_downcase) == "nix-config") | not)
+      and (((.additions // 0) + (.deletions // 0)) <= 250)
+      and (((.changedFiles // ((.files // []) | length)) <= 10) and (((.files // []) | length) > 0))
+      and (all((.files // [])[]; ((.path // "") | is_sensitive_community_path) | not))
+    )
+  );
+
 if type != "object" or ((.number | tostring) != $pr_number) then
   "ERR\u001fresponse did not identify pull request #" + $pr_number
 elif .state != "OPEN" then
   "ERR\u001fpull request #" + $pr_number + " is not OPEN (state=" + (.state // "UNKNOWN") + ")"
 elif .isDraft != false then
   "ERR\u001fpull request #" + $pr_number + " is a draft"
-elif (.isCrossRepository != false) or (((.headRepositoryOwner.login // "") | ascii_downcase) != ($owner | ascii_downcase)) then
-  "ERR\u001fpull request #" + $pr_number + " is a fork or cross-repository pull request (isCrossRepository=" + (.isCrossRepository | tostring) + ", headRepositoryOwner=" + (.headRepositoryOwner.login // "UNKNOWN") + ")"
 elif .mergeable != "MERGEABLE" then
   "ERR\u001fpull request #" + $pr_number + " is not mergeable (mergeable=" + (.mergeable // "UNKNOWN") + ")"
 elif ((.headRefOid | type) != "string") or ((.headRefOid | length) == 0) then
@@ -245,6 +288,7 @@ else
     elif is_github_actions then "github-actions"
     elif is_freshener($owner; $repo) then "freshener"
     elif is_trusted_peer($owner; $repo) then "trusted-peer"
+    elif is_community($owner; $repo) then "community"
     else ""
     end
   ) as $pr_class
@@ -252,9 +296,11 @@ else
   | ([(.statusCheckRollup // [])[] | select(check_pending) | check_label]) as $pending_checks
   | if $pr_class == "" then
       "ERR\u001fpull request #" + $pr_number + " (author=" + (.author.login // "UNKNOWN") + ", headRefName=" + (.headRefName // "UNKNOWN") + ") does not match any permitted PR policy"
+    elif ($pr_class != "community") and ((.isCrossRepository != false) or (((.headRepositoryOwner.login // "") | ascii_downcase) != ($owner | ascii_downcase))) then
+      "ERR\u001fpull request #" + $pr_number + " is a fork or cross-repository pull request (isCrossRepository=" + (.isCrossRepository | tostring) + ", headRepositoryOwner=" + (.headRepositoryOwner.login // "UNKNOWN") + ")"
     elif (((.statusCheckRollup // []) | length) == 0) and ($pr_class == "freshener") then
       "ERR\u001fpull request #" + $pr_number + " has no statusCheckRollup entries (CI checks are missing or have not registered yet)"
-    elif (($pending_checks | length) > 0) or ((($bad_checks | length) > 0) and ($pr_class == "trusted-peer")) then
+    elif (($pending_checks | length) > 0) or ((($bad_checks | length) > 0) and (($pr_class == "trusted-peer") or ($pr_class == "community"))) then
       "ERR\u001fpull request #" + $pr_number + " has failing or pending status checks: " + ($bad_checks | join(", "))
     else
       ["OK", $pr_class, (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), .headRefOid, ($bad_checks | join(", "))] | join("\u001f")
@@ -303,10 +349,10 @@ if [[ -z ${viewer} ]]; then
 fi
 
 peer_approved="false"
-if [[ ${pr_class} == "trusted-peer" ]]; then
+if [[ ${pr_class} == "trusted-peer" || ${pr_class} == "community" ]]; then
 	case "${viewer}" in
 	flexiondotorg | sith-skrye | sith-traya | sith-zannah) ;;
-	*) die "authenticated viewer '${viewer}' is not authorised to merge trusted-peer pull requests" ;;
+	*) die "authenticated viewer '${viewer}' is not authorised to merge ${pr_class} pull requests" ;;
 	esac
 fi
 
