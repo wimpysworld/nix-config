@@ -108,7 +108,7 @@ if [[ ${gh_status} -ne 0 ]]; then
 	exit "${gh_status}"
 fi
 
-if jq -e 'type == "object" and ((.changedFiles // 0) > ((.files // []) | length))' <<<"${pr_json}" >/dev/null 2>&1; then
+if jq -e 'type == "object" and (((.changedFiles // 0) > ((.files // []) | length)) or any((.files // [])[]; ((.changeType // "") | ascii_upcase) == "RENAMED" and ((.previousPath // "") == "")))' <<<"${pr_json}" >/dev/null 2>&1; then
 	# shellcheck disable=SC2016
 	readonly JQ_REST_FILE_ENTRY='.[] | {path: (.filename // ""), previousPath: (.previous_filename // ""), changeType: ((.status // "") | ascii_upcase)}'
 	set +e
@@ -226,34 +226,78 @@ def is_freshener($owner; $repo):
   );
 
 def is_sensitive_community_path:
-  (. // "") as $p
-  | ($p | ascii_downcase) as $pl
-  | ($pl | startswith(".github/workflows/"))
-    or ($pl | startswith(".github/actions/"))
-    or ($pl == ".github/codeowners")
-    or ($pl == ".github/security.md")
-    or (($pl | split("/") | last) as $base
+  (. // "")
+  | gsub("\\\\"; "/")
+  | sub("^/+"; "")
+  | sub("^(\\./)+"; "")
+  | ascii_downcase as $pl
+  | if ($pl | length) == 0 then
+      false
+    elif ($pl == ".github/workflows")
+      or ($pl == ".github/actions")
+      or ($pl | startswith(".github/workflows/"))
+      or ($pl | startswith(".github/actions/"))
+      or ($pl | endswith("npins/sources.json"))
+      or ($pl | endswith("niv/sources.json"))
+    then
+      true
+    else
+      ($pl | split("/") | last) as $base
       | ($base == "flake.nix"
         or $base == "flake.lock"
         or $base == "cargo.toml"
         or $base == "cargo.lock"
         or $base == "go.mod"
         or $base == "go.sum"
+        or $base == "go.work"
+        or $base == "go.work.sum"
         or $base == "package.json"
         or $base == "package-lock.json"
+        or $base == "npm-shrinkwrap.json"
         or $base == "pnpm-lock.yaml"
+        or $base == "pnpm-workspace.yaml"
         or $base == "yarn.lock"
         or $base == "bun.lock"
         or $base == "bun.lockb"
+        or $base == "deno.json"
+        or $base == "deno.jsonc"
+        or $base == "deno.lock"
         or $base == "pyproject.toml"
         or $base == "poetry.lock"
         or $base == "uv.lock"
+        or $base == "pipfile"
+        or $base == "pipfile.lock"
+        or $base == "pdm.lock"
+        or $base == "setup.py"
+        or $base == "setup.cfg"
         or $base == "composer.json"
         or $base == "composer.lock"
+        or $base == "pom.xml"
+        or $base == "build.gradle"
+        or $base == "build.gradle.kts"
+        or $base == "gradle.lockfile"
+        or $base == "settings.gradle"
+        or $base == "settings.gradle.kts"
+        or $base == "libs.versions.toml"
+        or $base == "mix.exs"
+        or $base == "mix.lock"
+        or $base == "pubspec.yaml"
+        or $base == "pubspec.lock"
+        or $base == "packages.lock.json"
+        or $base == "package.resolved"
+        or $base == "dependabot.yml"
+        or $base == "dependabot.yaml"
+        or $base == "renovate.json"
+        or $base == "renovate.json5"
+        or $base == ".renovaterc"
+        or $base == ".renovaterc.json"
         or $base == "codeowners"
         or $base == "security.md"
         or ($base | test("^requirements.*\\.txt$"))
-        or ($base | test("^gemfile"))));
+        or ($base | test("^constraints.*\\.txt$"))
+        or ($base | test("^gemfile"))
+        or ($base | test("\\.gemspec$")))
+    end;
 
 def is_community($owner; $repo):
   (is_dependabot | not)
@@ -266,7 +310,12 @@ def is_community($owner; $repo):
       ((($owner | ascii_downcase) == "wimpysworld" and ($repo | ascii_downcase) == "nix-config") | not)
       and (((.additions // 0) + (.deletions // 0)) <= 250)
       and (((.changedFiles // ((.files // []) | length)) <= 10) and (((.files // []) | length) > 0))
-      and (all((.files // [])[]; ((.path // "") | is_sensitive_community_path) | not))
+      and (all(
+        (.files // [])[];
+        ((((.changeType // "") | ascii_upcase) == "RENAMED" and ((.previousPath // "") == "")) | not)
+        and (((.path // "") | is_sensitive_community_path) | not)
+        and (((.previousPath // "") | is_sensitive_community_path) | not)
+      ))
     )
   );
 

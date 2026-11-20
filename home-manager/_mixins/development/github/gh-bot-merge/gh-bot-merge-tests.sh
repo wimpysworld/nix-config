@@ -781,6 +781,41 @@ else
 	pass 'dry-run accepts lowercase oval-tutu URL when GitHub returns Oval-Tutu owner login'
 fi
 
+reset_stub
+write_pr_json wimpysworld 'community-dev' 'fix-typo' \
+	'.isCrossRepository = true | .headRepositoryOwner.login = "community-dev" | .additions = 10 | .deletions = 2 | .changedFiles = 1 | .files = [{path: "README.md"}]'
+run_helper --dry-run "https://github.com/wimpysworld/tailor/pull/42"
+if [[ ${status} -ne 0 || ${stdout} != *"class=community"* ]]; then
+	fail 'small non-sensitive community fork PR accepted' "status ${status} stdout=${stdout} stderr=${stderr}"
+else
+	pass 'dry-run accepts small non-sensitive community fork PR as community'
+fi
+
+for sensitive_path in "npins/sources.json" ".github/dependabot.yml" "renovate.json" "foo.gemspec"; do
+	reset_stub
+	write_pr_json wimpysworld 'community-dev' 'edit-sensitive' \
+		".isCrossRepository = true | .headRepositoryOwner.login = \"community-dev\" | .additions = 5 | .deletions = 1 | .changedFiles = 1 | .files = [{path: \"${sensitive_path}\"}]"
+	run_helper --dry-run "https://github.com/wimpysworld/tailor/pull/42"
+	if [[ ${status} -ne 64 ]]; then
+		fail "reject community PR touching ${sensitive_path}" "status ${status} stdout=${stdout}"
+	else
+		pass "reject community PR touching ${sensitive_path}"
+	fi
+done
+
+reset_stub
+write_pr_json wimpysworld 'community-dev' 'rename-workflow' \
+	'.isCrossRepository = true | .headRepositoryOwner.login = "community-dev" | .additions = 1 | .deletions = 1 | .changedFiles = 1 | .files = [{path: "notes.txt", changeType: "RENAMED"}]'
+cat >"${state_dir}/rest_files.json" <<'EOF'
+[{"filename":"notes.txt","previous_filename":".github/workflows/build.yml","status":"renamed"}]
+EOF
+run_helper --dry-run "https://github.com/wimpysworld/tailor/pull/42"
+if [[ ${status} -ne 64 ]]; then
+	fail 'reject community PR renaming sensitive workflow to benign path' "status ${status} stdout=${stdout}"
+else
+	pass 'reject community PR renaming sensitive workflow to benign path'
+fi
+
 printf '%s: %s passed, %s failed\n' \
 	"$([[ ${failures} -eq 0 ]] && printf PASS || printf FAIL)" \
 	"${passes}" "${failures}"
