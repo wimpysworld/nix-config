@@ -86,6 +86,7 @@ SENSITIVE_COMMUNITY_PR_FILENAMES = frozenset({
     "pom.xml", "build.gradle", "build.gradle.kts", "gradle.lockfile", "settings.gradle", "settings.gradle.kts", "libs.versions.toml",
     "mix.exs", "mix.lock", "pubspec.yaml", "pubspec.lock", "packages.lock.json", "package.resolved",
     "dependabot.yml", "dependabot.yaml", "renovate.json", "renovate.json5", ".renovaterc", ".renovaterc.json",
+    ".goreleaser.yml", ".goreleaser.yaml", ".envrc",
     "codeowners", "security.md",
 })
 
@@ -1708,8 +1709,11 @@ class CompanionStateStore:
                         trigger_reason = "review_requested" if self_login_norm in review_requests else "unrequested_pr"
                 elif is_community and owns_mod2_pr:
                     if not handled_sha and not handled_u:
-                        dispatch_kind = "community_auto_review" if auto_merge_eligible else "community_triage"
-                        trigger_reason = dispatch_kind
+                        if auto_merge_eligible and ci_state == "PENDING":
+                            pass
+                        else:
+                            dispatch_kind = "community_auto_review" if auto_merge_eligible else "community_triage"
+                            trigger_reason = dispatch_kind
                     elif (
                         handled_sha
                         and head_sha
@@ -1720,7 +1724,7 @@ class CompanionStateStore:
                         and unresolved_thread_count == 0
                         and handled_ci != ci_state
                     ):
-                        dispatch_kind = "targeted"
+                        dispatch_kind = "community_auto_review"
                         trigger_reason = "ci_green_after_approval"
 
                 if trigger_reason is None:
@@ -1868,14 +1872,12 @@ class CompanionStateStore:
                         })
 
                 trigger_reason: str | None = None
-                unhandled = is_timestamp_newer(updated_at, handled_u) or (not handled_u and bool(updated_at))
                 if not owns_mod2_issue or is_trusted:
                     handled_u = updated_at or handled_u
-                elif unhandled:
-                    if handled_u and latest_comment_actor_norm in LOGIN_TO_AGENT_NAME:
-                        handled_u = updated_at or handled_u
-                    else:
-                        trigger_reason = "community_triage"
+                elif not handled_u and bool(updated_at):
+                    trigger_reason = "community_triage"
+                elif handled_u and is_timestamp_newer(updated_at, handled_u):
+                    handled_u = updated_at or handled_u
 
                 if trigger_reason is not None:
                     if in_flight:
@@ -1919,6 +1921,7 @@ class CompanionStateStore:
         team_label: str | None = None,
         team_label_event_key: str | None = None,
         preserve_handled_head_sha: bool = False,
+        record_triaged_head_sha: bool = False,
         apply_cooldown: bool | None = None,
         now_override_ms: int | None = None,
     ) -> dict:
@@ -1938,7 +1941,7 @@ class CompanionStateStore:
             sha_newer = bool(not preserve_handled_head_sha and seen_sha and fin_sha and seen_sha != fin_sha)
             has_newer = bool((was_in_flight and entry.get("pending_followup")) or (seen_u and fin_u and is_timestamp_newer(seen_u, fin_u)) or sha_newer)
             entry.update({"handled_updated_at": fin_u, "handled_head_sha": fin_sha, "handled_ci_state": fin_ci, "retry_count": 0, "in_flight": False, "pending_followup": has_newer, "dismiss_ready": not has_newer})
-            if not preserve_handled_head_sha and fin_sha:
+            if record_triaged_head_sha and not preserve_handled_head_sha and fin_sha:
                 entry["triaged_head_sha"] = fin_sha
             if team_label and team_label_event_key:
                 handled_lbls = dict(_as_dict(entry.get("handled_team_labels")))
@@ -2771,7 +2774,9 @@ class LocalExecutionCoordinator:
         stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         kind = str(active_record.get("kind") or "")
         state_key = str(active_record.get("state_key") or active_record.get("thread_id") or "").strip()
-        watermark_result = self.state_store.complete_thread_review(state_key, handled_updated_at=active_record.get("updated_at"), handled_head_sha=active_record.get("head_sha"), handled_ci_state=active_record.get("ci_state"), completed_revision=active_record.get("revision"), team_label=str(active_record.get("team_label") or "") or None, team_label_event_key=str(active_record.get("team_label_event_key") or "") or None, apply_cooldown=True, now_override_ms=stamp_ms) if state_key else None
+        preserve_sha = bool(active_record.get("head_sha_changed"))
+        record_triaged = kind in ("community_triage", "community_auto_review", "team:review") and not preserve_sha
+        watermark_result = self.state_store.complete_thread_review(state_key, handled_updated_at=active_record.get("updated_at"), handled_head_sha=active_record.get("head_sha"), handled_ci_state=active_record.get("ci_state"), completed_revision=active_record.get("revision"), team_label=str(active_record.get("team_label") or "") or None, team_label_event_key=str(active_record.get("team_label_event_key") or "") or None, preserve_handled_head_sha=preserve_sha, record_triaged_head_sha=record_triaged, apply_cooldown=True, now_override_ms=stamp_ms) if state_key else None
         if kind in ("reconcile_sweep", "weekly_sweep"):
             self.state_store.complete_sweep(kind, sweep_date=str(active_record["sweep_date"]).strip() if active_record.get("sweep_date") else None, now_override_ms=stamp_ms)
         self.state_store.write_active_dispatch(None, now_override_ms=stamp_ms)
@@ -2852,6 +2857,8 @@ class LocalExecutionCoordinator:
             for k, v in (("thread_id", thread_id), ("state_key", eff_state_key), ("repo", repo), ("number", number), ("subject_kind", subject_kind), ("head_sha", head_sha), ("ci_state", ci_state), ("updated_at", updated_at), ("trigger_reason", trigger_reason), ("team_label", team_label), ("team_label_event_key", team_label_event_key), ("triaged_head_sha", triaged_head_sha), ("revision", revision), ("sweep_date", sweep_date)):
                 if v is not None and v != "":
                     active_record[k] = v
+            if head_sha_changed:
+                active_record["head_sha_changed"] = True
             self.state_store.write_active_dispatch(active_record, now_override_ms=start_ms)
 
             start_notice_text = format_start_of_work_notice(agent_display_name=self.agent_display_name, kind=kind, repo=repo, number=number, subject_kind=subject_kind, trigger_reason=trigger_reason, sweep_date=sweep_date, schedule_day_name=self.schedule_day_name)

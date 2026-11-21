@@ -291,6 +291,9 @@ def is_sensitive_community_path:
         or $base == "renovate.json5"
         or $base == ".renovaterc"
         or $base == ".renovaterc.json"
+        or $base == ".goreleaser.yml"
+        or $base == ".goreleaser.yaml"
+        or $base == ".envrc"
         or $base == "codeowners"
         or $base == "security.md"
         or ($base | test("^requirements.*\\.txt$"))
@@ -299,25 +302,30 @@ def is_sensitive_community_path:
         or ($base | test("\\.gemspec$")))
     end;
 
-def is_community($owner; $repo):
+def is_community_small($owner; $repo):
   (is_dependabot | not)
   and (is_github_actions | not)
   and (is_freshener($owner; $repo) | not)
   and (is_trusted_peer($owner; $repo) | not)
-  and (
-    any((.labels // [])[]; .name == "team:merge")
-    or (
-      ((($owner | ascii_downcase) == "wimpysworld" and ($repo | ascii_downcase) == "nix-config") | not)
-      and (((.additions // 0) + (.deletions // 0)) <= 250)
-      and (((.changedFiles // ((.files // []) | length)) <= 10) and (((.files // []) | length) > 0))
-      and (all(
-        (.files // [])[];
-        ((((.changeType // "") | ascii_upcase) == "RENAMED" and ((.previousPath // "") == "")) | not)
-        and (((.path // "") | is_sensitive_community_path) | not)
-        and (((.previousPath // "") | is_sensitive_community_path) | not)
-      ))
-    )
-  );
+  and ((($owner | ascii_downcase) == "wimpysworld" and ($repo | ascii_downcase) == "nix-config") | not)
+  and (((.additions // 0) + (.deletions // 0)) <= 250)
+  and (((.changedFiles // ((.files // []) | length)) <= 10) and (((.files // []) | length) > 0))
+  and (all(
+    (.files // [])[];
+    ((((.changeType // "") | ascii_upcase) == "RENAMED" and ((.previousPath // "") == "")) | not)
+    and (((.path // "") | is_sensitive_community_path) | not)
+    and (((.previousPath // "") | is_sensitive_community_path) | not)
+  ));
+
+def is_community_labeled($owner; $repo):
+  (is_dependabot | not)
+  and (is_github_actions | not)
+  and (is_freshener($owner; $repo) | not)
+  and (is_trusted_peer($owner; $repo) | not)
+  and any((.labels // [])[]; .name == "team:merge");
+
+def is_community($owner; $repo):
+  is_community_small($owner; $repo) or is_community_labeled($owner; $repo);
 
 if type != "object" or ((.number | tostring) != $pr_number) then
   "ERR\u001fresponse did not identify pull request #" + $pr_number
@@ -352,7 +360,7 @@ else
     elif (($pending_checks | length) > 0) or ((($bad_checks | length) > 0) and (($pr_class == "trusted-peer") or ($pr_class == "community"))) then
       "ERR\u001fpull request #" + $pr_number + " has failing or pending status checks: " + ($bad_checks | join(", "))
     else
-      ["OK", $pr_class, (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), .headRefOid, ($bad_checks | join(", "))] | join("\u001f")
+      ["OK", $pr_class, (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), .headRefOid, ($bad_checks | join(", ")), (if $pr_class == "community" and (is_community_small($owner; $repo) | not) then "true" else "false" end)] | join("\u001f")
     end
 end
 '
@@ -370,7 +378,7 @@ if [[ ${jq_status} -ne 0 ]]; then
 	exit "${jq_status}"
 fi
 
-IFS=$'\x1f' read -r verdict field1 field2 field3 field4 field5 field6 <<<"${verify_out}"
+IFS=$'\x1f' read -r verdict field1 field2 field3 field4 field5 field6 field7 <<<"${verify_out}"
 if [[ ${verdict} != "OK" ]]; then
 	die "${field1:-verification failed}"
 fi
@@ -381,6 +389,7 @@ review_decision="${field3}"
 merge_state_status="${field4}"
 head_ref_oid="${field5:-}"
 failed_checks="${field6:-}"
+community_via_label="${field7:-false}"
 if [[ -z ${head_ref_oid} ]]; then
 	die "pull request #${pr_number} has no headRefOid"
 fi
@@ -403,6 +412,101 @@ if [[ ${pr_class} == "trusted-peer" || ${pr_class} == "community" ]]; then
 	flexiondotorg | sith-skrye | sith-traya | sith-zannah) ;;
 	*) die "authenticated viewer '${viewer}' is not authorised to merge ${pr_class} pull requests" ;;
 	esac
+fi
+
+if [[ ${pr_class} == "community" && ${community_via_label} == "true" ]]; then
+	set +e
+	events_json="$("${GH_BOT_MERGE_GH_BIN}" api --paginate "repos/${owner}/${repo}/issues/${pr_number}/events?per_page=100" </dev/null)"
+	events_status=$?
+	set -e
+	if [[ ${events_status} -ne 0 ]]; then
+		printf 'gh-bot-merge: gh exited %s while reading issue events for %s.\n' "${events_status}" "${pr_url}" >&2
+		exit "${events_status}"
+	fi
+
+	set +e
+	commit_date="$("${GH_BOT_MERGE_GH_BIN}" api "repos/${owner}/${repo}/commits/${head_ref_oid}" --jq '.commit.committer.date // .commit.author.date // ""' </dev/null)"
+	commit_status=$?
+	set -e
+	if [[ ${commit_status} -ne 0 ]]; then
+		printf 'gh-bot-merge: gh exited %s while reading head commit %s for %s.\n' "${commit_status}" "${head_ref_oid}" "${pr_url}" >&2
+		exit "${commit_status}"
+	fi
+	if [[ -z ${commit_date} ]]; then
+		die "pull request #${pr_number} head commit ${head_ref_oid} has no timestamp for team:merge verification"
+	fi
+
+	# shellcheck disable=SC2016
+	readonly JQ_VERIFY_TEAM_MERGE='
+	def is_trusted_labeler($login):
+	  ($login | ascii_downcase) as $l
+	  | $l == "flexiondotorg" or $l == "sith-skrye" or $l == "sith-traya" or $l == "sith-zannah";
+
+	[ .[] | select(type == "array") | .[] ] as $all
+	| ([ $all[] | select((.event == "labeled" or .event == "unlabeled") and ((.label.name // "") | ascii_downcase) == "team:merge") ]) as $evs
+	| if ($evs | length) == 0 then
+	    "ERR\u001fpull request #" + $pr_number + " has no team:merge label event"
+	  else
+	    ($evs | last) as $last
+	    | if $last.event != "labeled" then
+	        "ERR\u001fpull request #" + $pr_number + " team:merge label is no longer active"
+	      elif (is_trusted_labeler($last.actor.login // "") | not) then
+	        "ERR\u001fpull request #" + $pr_number + " team:merge label was applied by untrusted actor " + ($last.actor.login // "UNKNOWN")
+	      elif (($last.created_at // "") == "") or (($last.created_at // "") < $commit_date) then
+	        "ERR\u001fpull request #" + $pr_number + " has commits pushed after team:merge was applied (label=" + ($last.created_at // "UNKNOWN") + ", head=" + $commit_date + ")"
+	      else
+	        "OK"
+	      end
+	  end
+	'
+	set +e
+	label_verdict="$(jq -s -r --arg pr_number "${pr_number}" --arg commit_date "${commit_date}" "${JQ_VERIFY_TEAM_MERGE}" <<<"${events_json}")"
+	label_jq_status=$?
+	set -e
+	if [[ ${label_jq_status} -ne 0 ]]; then
+		printf 'gh-bot-merge: jq exited %s while verifying team:merge events for %s.\n' "${label_jq_status}" "${pr_url}" >&2
+		exit "${label_jq_status}"
+	fi
+	if [[ ${label_verdict} != "OK" ]]; then
+		die "${label_verdict#ERR$'\x1f'}"
+	fi
+fi
+
+if [[ ${pr_class} == "community" ]]; then
+	set +e
+	runs_json="$("${GH_BOT_MERGE_GH_BIN}" api --paginate "repos/${owner}/${repo}/actions/runs?head_sha=${head_ref_oid}&per_page=100" </dev/null)"
+	runs_status=$?
+	set -e
+	if [[ ${runs_status} -ne 0 ]]; then
+		printf 'gh-bot-merge: gh exited %s while reading workflow runs for %s.\n' "${runs_status}" "${pr_url}" >&2
+		exit "${runs_status}"
+	fi
+
+	# shellcheck disable=SC2016
+	readonly JQ_VERIFY_COMMUNITY_RUNS='
+	[ .[] | (.workflow_runs // [])[] ] as $runs
+	| [ $runs[] | select(
+	    (.status // "") != "completed"
+	    or (.conclusion // "") == "action_required"
+	    or ((.conclusion // "") != "success" and (.conclusion // "") != "skipped" and (.conclusion // "") != "neutral")
+	  ) | "\(.name // "workflow") (\(.status // "unknown")/\(.conclusion // "pending"))" ] as $bad
+	| if ($bad | length) > 0 then
+	    "ERR\u001fpull request #" + $pr_number + " has incomplete, action_required, or failing workflow runs: " + ($bad | join(", "))
+	  else
+	    "OK"
+	  end
+	'
+	set +e
+	runs_verdict="$(jq -s -r --arg pr_number "${pr_number}" "${JQ_VERIFY_COMMUNITY_RUNS}" <<<"${runs_json}")"
+	runs_jq_status=$?
+	set -e
+	if [[ ${runs_jq_status} -ne 0 ]]; then
+		printf 'gh-bot-merge: jq exited %s while verifying workflow runs for %s.\n' "${runs_jq_status}" "${pr_url}" >&2
+		exit "${runs_jq_status}"
+	fi
+	if [[ ${runs_verdict} != "OK" ]]; then
+		die "${runs_verdict#ERR$'\x1f'}"
+	fi
 fi
 
 # shellcheck disable=SC2016 # $owner, $repo, and $pr are GraphQL variables.

@@ -3562,6 +3562,9 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             "package-lock.json",
             "CODEOWNERS",
             "SECURITY.md",
+            ".goreleaser.yml",
+            ".goreleaser.yaml",
+            ".envrc",
         ):
             self.assertFalse(
                 companion.compute_community_auto_merge_eligible(
@@ -3607,6 +3610,19 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
         res_skrye = store_skrye.record_polled_issues(issues, now_override_ms=now_val)
         self.assertEqual([i["number"] for i in res_skrye["actionable_issues"]], [skrye_issue])
         self.assertEqual(res_skrye["actionable_issues"][0]["dispatch_kind"], "community_triage")
+
+        # After initial triage completes, a later updatedAt (for example label removal) must not re-triage
+        store_skrye.complete_thread_review(
+            companion.make_pr_key("wimpysworld/tailor", skrye_issue),
+            handled_updated_at="2026-04-01T10:00:00Z",
+            apply_cooldown=False,
+            now_override_ms=now_val,
+        )
+        res_skrye_later = store_skrye.record_polled_issues(
+            [{**issues[0], "updated_at": "2026-04-01T10:30:00Z"}],
+            now_override_ms=now_val + 1_000,
+        )
+        self.assertEqual(res_skrye_later["actionable_issues"], [])
 
         # Traya never polls community issues
         res_traya = store_traya.record_polled_issues(issues, now_override_ms=now_val)
@@ -3735,6 +3751,7 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             handled_updated_at="2026-04-01T09:00:00Z",
             handled_head_sha="oldsha111",
             handled_ci_state="SUCCESS",
+            record_triaged_head_sha=True,
             apply_cooldown=False,
             now_override_ms=self.clock(),
         )
@@ -3834,6 +3851,8 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
         self.assertIn("head_sha_changed: true", sent_calls[0][1])
         self.assertIn("triaged_head_sha: oldsha111", sent_calls[0][1])
         self.assertIn("team_label: team:merge", sent_calls[0][1])
+        # Preserved triaged_head_sha must NOT be overwritten by the untriaged SHA
+        self.assertEqual((store.get_thread_state(pr_key) or {}).get("triaged_head_sha"), "oldsha111")
 
         # Second cycle with the same label event must NOT re-dispatch
         res2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self.clock() + 1_000_000)

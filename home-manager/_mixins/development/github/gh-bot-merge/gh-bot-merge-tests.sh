@@ -82,6 +82,33 @@ if [[ $# -ge 2 && $1 == "api" && $2 == "graphql" ]]; then
 	exit 0
 fi
 
+if [[ $# -ge 2 && $1 == "api" && " $* " == *"/issues/"*"/events"* ]]; then
+	if [[ -r "${GH_STUB_STATE}/issue-events.json" ]]; then
+		cat "${GH_STUB_STATE}/issue-events.json"
+	else
+		printf '[]\n'
+	fi
+	exit 0
+fi
+
+if [[ $# -ge 2 && $1 == "api" && " $* " == *"/commits/"* ]]; then
+	if [[ -r "${GH_STUB_STATE}/commit-date.txt" ]]; then
+		cat "${GH_STUB_STATE}/commit-date.txt"
+	else
+		printf '2026-04-01T09:00:00Z\n'
+	fi
+	exit 0
+fi
+
+if [[ $# -ge 2 && $1 == "api" && " $* " == *"/actions/runs"* ]]; then
+	if [[ -r "${GH_STUB_STATE}/actions-runs.json" ]]; then
+		cat "${GH_STUB_STATE}/actions-runs.json"
+	else
+		printf '{"workflow_runs":[]}\n'
+	fi
+	exit 0
+fi
+
 if [[ $# -ge 2 && $1 == "pr" && $2 == "review" ]]; then
 	printf '%s\n' "$*" >>"${GH_STUB_STATE}/reviews"
 	exit "${GH_STUB_REVIEW_EXIT:-0}"
@@ -791,7 +818,7 @@ else
 	pass 'dry-run accepts small non-sensitive community fork PR as community'
 fi
 
-for sensitive_path in "npins/sources.json" ".github/dependabot.yml" "renovate.json" "foo.gemspec"; do
+for sensitive_path in "npins/sources.json" ".github/dependabot.yml" "renovate.json" "foo.gemspec" ".goreleaser.yml" ".goreleaser.yaml" ".envrc"; do
 	reset_stub
 	write_pr_json wimpysworld 'community-dev' 'edit-sensitive' \
 		".isCrossRepository = true | .headRepositoryOwner.login = \"community-dev\" | .additions = 5 | .deletions = 1 | .changedFiles = 1 | .files = [{path: \"${sensitive_path}\"}]"
@@ -806,7 +833,7 @@ done
 reset_stub
 write_pr_json wimpysworld 'community-dev' 'rename-workflow' \
 	'.isCrossRepository = true | .headRepositoryOwner.login = "community-dev" | .additions = 1 | .deletions = 1 | .changedFiles = 1 | .files = [{path: "notes.txt", changeType: "RENAMED"}]'
-cat >"${state_dir}/rest_files.json" <<'EOF'
+cat >"${state_dir}/files-raw.json" <<'EOF'
 [{"filename":"notes.txt","previous_filename":".github/workflows/build.yml","status":"renamed"}]
 EOF
 run_helper --dry-run "https://github.com/wimpysworld/tailor/pull/42"
@@ -814,6 +841,60 @@ if [[ ${status} -ne 64 ]]; then
 	fail 'reject community PR renaming sensitive workflow to benign path' "status ${status} stdout=${stdout}"
 else
 	pass 'reject community PR renaming sensitive workflow to benign path'
+fi
+
+reset_stub
+write_pr_json wimpysworld 'community-dev' 'large-labeled' \
+	'.isCrossRepository = true | .headRepositoryOwner.login = "community-dev" | .additions = 400 | .deletions = 50 | .changedFiles = 1 | .labels = [{name: "team:merge"}] | .files = [{path: "README.md"}]'
+cat >"${state_dir}/issue-events.json" <<'EOF'
+[{"event":"labeled","label":{"name":"team:merge"},"actor":{"login":"untrusted-triage"},"created_at":"2026-04-01T10:00:00Z"}]
+EOF
+run_helper --dry-run "https://github.com/wimpysworld/tailor/pull/42"
+if [[ ${status} -ne 64 ]]; then
+	fail 'reject team:merge label applied by untrusted actor' "status ${status} stdout=${stdout}"
+else
+	pass 'reject team:merge label applied by untrusted actor'
+fi
+
+reset_stub
+write_pr_json wimpysworld 'community-dev' 'large-labeled-stale' \
+	'.isCrossRepository = true | .headRepositoryOwner.login = "community-dev" | .additions = 400 | .deletions = 50 | .changedFiles = 1 | .labels = [{name: "team:merge"}] | .files = [{path: "README.md"}]'
+cat >"${state_dir}/issue-events.json" <<'EOF'
+[{"event":"labeled","label":{"name":"team:merge"},"actor":{"login":"flexiondotorg"},"created_at":"2026-04-01T08:00:00Z"}]
+EOF
+printf '2026-04-01T09:00:00Z\n' >"${state_dir}/commit-date.txt"
+run_helper --dry-run "https://github.com/wimpysworld/tailor/pull/42"
+if [[ ${status} -ne 64 ]]; then
+	fail 'reject team:merge label older than head commit' "status ${status} stdout=${stdout}"
+else
+	pass 'reject team:merge label older than head commit'
+fi
+
+reset_stub
+write_pr_json wimpysworld 'community-dev' 'large-labeled-valid' \
+	'.isCrossRepository = true | .headRepositoryOwner.login = "community-dev" | .additions = 400 | .deletions = 50 | .changedFiles = 1 | .labels = [{name: "team:merge"}] | .files = [{path: "README.md"}]'
+cat >"${state_dir}/issue-events.json" <<'EOF'
+[{"event":"labeled","label":{"name":"team:merge"},"actor":{"login":"flexiondotorg"},"created_at":"2026-04-01T10:00:00Z"}]
+EOF
+printf '2026-04-01T09:00:00Z\n' >"${state_dir}/commit-date.txt"
+run_helper --dry-run "https://github.com/wimpysworld/tailor/pull/42"
+if [[ ${status} -ne 0 || ${stdout} != *"class=community"* ]]; then
+	fail 'accept verified fresh team:merge label on community PR' "status ${status} stdout=${stdout} stderr=${stderr}"
+else
+	pass 'accept verified fresh team:merge label on community PR'
+fi
+
+reset_stub
+write_pr_json wimpysworld 'community-dev' 'held-workflow' \
+	'.isCrossRepository = true | .headRepositoryOwner.login = "community-dev" | .additions = 10 | .deletions = 2 | .changedFiles = 1 | .statusCheckRollup = [] | .files = [{path: "README.md"}]'
+cat >"${state_dir}/actions-runs.json" <<'EOF'
+{"workflow_runs":[{"name":"CI","status":"completed","conclusion":"action_required"}]}
+EOF
+run_helper --dry-run "https://github.com/wimpysworld/tailor/pull/42"
+if [[ ${status} -ne 64 ]]; then
+	fail 'reject community PR with action_required workflow run' "status ${status} stdout=${stdout}"
+else
+	pass 'reject community PR with action_required workflow run'
 fi
 
 printf '%s: %s passed, %s failed\n' \
