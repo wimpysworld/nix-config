@@ -865,11 +865,11 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
                   reasoning = true;
                   thinkingLevelMap = {
                     off = null;
-                    minimal = "LOW";
+                    minimal = null;
                     low = "LOW";
                     medium = "MEDIUM";
                     high = "HIGH";
-                    xhigh = "HIGH";
+                    xhigh = null;
                     max = null;
                   };
                   input = [

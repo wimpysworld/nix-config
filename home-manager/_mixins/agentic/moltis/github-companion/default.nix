@@ -39,6 +39,10 @@
   dataDir,
   stateDir,
   rpcUrl ? "https://127.0.0.1:13131/api/rpc",
+  communityAutoMergeEnabled ? true,
+  communityAutoMergeMaxLines ? 250,
+  communityAutoMergeMaxFiles ? 10,
+  communityAutoMergeExcludedRepos ? [ "wimpysworld/nix-config" ],
   ghApiSafe ? null,
 }:
 pkgs.writeShellApplication {
@@ -69,6 +73,10 @@ pkgs.writeShellApplication {
       dataDir
       stateDir
       rpcUrl
+      communityAutoMergeEnabled
+      communityAutoMergeMaxLines
+      communityAutoMergeMaxFiles
+      communityAutoMergeExcludedRepos
       ghApiSafe
       ;
   };
@@ -89,6 +97,10 @@ pkgs.writeShellApplication {
     export MOLTIS_GITHUB_COMPANION_DATA_DIR=${lib.escapeShellArg dataDir}
     export MOLTIS_GITHUB_COMPANION_STATE_DIR=${lib.escapeShellArg stateDir}
     export MOLTIS_GITHUB_COMPANION_RPC_URL=${lib.escapeShellArg rpcUrl}
+    export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_ENABLED=${lib.escapeShellArg (lib.boolToString communityAutoMergeEnabled)}
+    export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_LINES=${lib.escapeShellArg (toString communityAutoMergeMaxLines)}
+    export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_FILES=${lib.escapeShellArg (toString communityAutoMergeMaxFiles)}
+    export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS=${lib.escapeShellArg (lib.concatStringsSep "," communityAutoMergeExcludedRepos)}
     exec python3 ${./companion.py} "$@"
   '';
 }

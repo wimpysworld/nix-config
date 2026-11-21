@@ -322,7 +322,7 @@ in
                     };
                     gemini-4-neon = {
                       name = "Gemini 4 Neon";
-                      thinkingLevel = "high";
+                      thinkingLevel = "medium";
                       cost = {
                         input = 3;
                         output = 15;

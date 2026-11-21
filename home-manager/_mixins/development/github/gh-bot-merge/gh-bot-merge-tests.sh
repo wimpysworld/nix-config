@@ -82,6 +82,29 @@ if [[ $# -ge 2 && $1 == "api" && $2 == "graphql" ]]; then
 	exit 0
 fi
 
+if [[ $# -ge 2 && $1 == "api" && " $* " == *"/issues/"*"/timeline"* ]]; then
+	if [[ -r "${GH_STUB_STATE}/issue-timeline.json" ]]; then
+		cat "${GH_STUB_STATE}/issue-timeline.json"
+	else
+		printf '[]\n'
+	fi
+	exit 0
+fi
+
+if [[ $# -ge 2 && $1 == "api" && " $* " == *"/actions/runs"* ]]; then
+	expected_sha="$(jq -r '.headRefOid // ""' "${GH_STUB_STATE}/pr.json" 2>/dev/null || true)"
+	if [[ -n "${expected_sha}" && " $* " != *"head_sha=${expected_sha}"* ]]; then
+		printf 'unexpected actions/runs query without expected head_sha=%s: %s\n' "${expected_sha}" "$*" >&2
+		exit 98
+	fi
+	if [[ -r "${GH_STUB_STATE}/actions-runs.json" ]]; then
+		cat "${GH_STUB_STATE}/actions-runs.json"
+	else
+		printf '{"workflow_runs":[]}\n'
+	fi
+	exit 0
+fi
+
 if [[ $# -ge 2 && $1 == "pr" && $2 == "review" ]]; then
 	printf '%s\n' "$*" >>"${GH_STUB_STATE}/reviews"
 	exit "${GH_STUB_REVIEW_EXIT:-0}"
@@ -779,6 +802,93 @@ if [[ ${status} -ne 0 ]]; then
 	fail 'oval-tutu lowercase URL against Oval-Tutu owner login' "status ${status}: ${stderr}"
 else
 	pass 'dry-run accepts lowercase oval-tutu URL when GitHub returns Oval-Tutu owner login'
+fi
+
+reset_stub
+write_pr_json wimpysworld 'community-dev' 'fix-typo' \
+	'.isCrossRepository = true | .headRepositoryOwner.login = "community-dev" | .additions = 10 | .deletions = 2 | .changedFiles = 1 | .files = [{path: "README.md"}]'
+run_helper --dry-run "https://github.com/wimpysworld/tailor/pull/42"
+if [[ ${status} -ne 0 || ${stdout} != *"class=community"* ]]; then
+	fail 'small non-sensitive community fork PR accepted' "status ${status} stdout=${stdout} stderr=${stderr}"
+else
+	pass 'dry-run accepts small non-sensitive community fork PR as community'
+fi
+
+for sensitive_path in "npins/sources.json" ".github/dependabot.yml" "renovate.json" "foo.gemspec" ".goreleaser.yml" ".goreleaser.yaml" ".envrc"; do
+	reset_stub
+	write_pr_json wimpysworld 'community-dev' 'edit-sensitive' \
+		".isCrossRepository = true | .headRepositoryOwner.login = \"community-dev\" | .additions = 5 | .deletions = 1 | .changedFiles = 1 | .files = [{path: \"${sensitive_path}\"}]"
+	run_helper --dry-run "https://github.com/wimpysworld/tailor/pull/42"
+	if [[ ${status} -ne 64 ]]; then
+		fail "reject community PR touching ${sensitive_path}" "status ${status} stdout=${stdout}"
+	else
+		pass "reject community PR touching ${sensitive_path}"
+	fi
+done
+
+reset_stub
+write_pr_json wimpysworld 'community-dev' 'rename-workflow' \
+	'.isCrossRepository = true | .headRepositoryOwner.login = "community-dev" | .additions = 1 | .deletions = 1 | .changedFiles = 1 | .files = [{path: "notes.txt", changeType: "RENAMED"}]'
+cat >"${state_dir}/files-raw.json" <<'EOF'
+[{"filename":"notes.txt","previous_filename":".github/workflows/build.yml","status":"renamed"}]
+EOF
+run_helper --dry-run "https://github.com/wimpysworld/tailor/pull/42"
+if [[ ${status} -ne 64 ]]; then
+	fail 'reject community PR renaming sensitive workflow to benign path' "status ${status} stdout=${stdout}"
+else
+	pass 'reject community PR renaming sensitive workflow to benign path'
+fi
+
+reset_stub
+write_pr_json wimpysworld 'community-dev' 'large-labeled' \
+	'.isCrossRepository = true | .headRepositoryOwner.login = "community-dev" | .additions = 400 | .deletions = 50 | .changedFiles = 1 | .labels = [{name: "team:merge"}] | .files = [{path: "README.md"}]'
+cat >"${state_dir}/issue-timeline.json" <<EOF
+[{"event":"committed","sha":"${DEFAULT_HEAD_OID}"},{"event":"labeled","label":{"name":"team:merge"},"actor":{"login":"untrusted-triage"}}]
+EOF
+run_helper --dry-run "https://github.com/wimpysworld/tailor/pull/42"
+if [[ ${status} -ne 64 ]]; then
+	fail 'reject team:merge label applied by untrusted actor' "status ${status} stdout=${stdout}"
+else
+	pass 'reject team:merge label applied by untrusted actor'
+fi
+
+reset_stub
+write_pr_json wimpysworld 'community-dev' 'large-labeled-stale' \
+	'.isCrossRepository = true | .headRepositoryOwner.login = "community-dev" | .additions = 400 | .deletions = 50 | .changedFiles = 1 | .labels = [{name: "team:merge"}] | .files = [{path: "README.md"}]'
+cat >"${state_dir}/issue-timeline.json" <<EOF
+[{"event":"committed","sha":"${STALE_HEAD_OID}"},{"event":"labeled","label":{"name":"team:merge"},"actor":{"login":"flexiondotorg"}},{"event":"committed","sha":"${DEFAULT_HEAD_OID}"}]
+EOF
+run_helper --dry-run "https://github.com/wimpysworld/tailor/pull/42"
+if [[ ${status} -ne 64 ]]; then
+	fail 'reject team:merge label followed by post-label commit in timeline' "status ${status} stdout=${stdout}"
+else
+	pass 'reject team:merge label followed by post-label commit in timeline'
+fi
+
+reset_stub
+write_pr_json wimpysworld 'community-dev' 'large-labeled-valid' \
+	'.isCrossRepository = true | .headRepositoryOwner.login = "community-dev" | .additions = 400 | .deletions = 50 | .changedFiles = 1 | .labels = [{name: "team:merge"}] | .files = [{path: "README.md"}]'
+cat >"${state_dir}/issue-timeline.json" <<EOF
+[{"event":"committed","sha":"${DEFAULT_HEAD_OID}"},{"event":"labeled","label":{"name":"team:merge"},"actor":{"login":"flexiondotorg"}}]
+EOF
+run_helper --dry-run "https://github.com/wimpysworld/tailor/pull/42"
+if [[ ${status} -ne 0 || ${stdout} != *"class=community"* ]]; then
+	fail 'accept verified fresh team:merge label on community PR' "status ${status} stdout=${stdout} stderr=${stderr}"
+else
+	pass 'accept verified fresh team:merge label on community PR'
+fi
+
+reset_stub
+write_pr_json wimpysworld 'community-dev' 'held-workflow' \
+	'.isCrossRepository = true | .headRepositoryOwner.login = "community-dev" | .additions = 10 | .deletions = 2 | .changedFiles = 1 | .statusCheckRollup = [] | .files = [{path: "README.md"}]'
+cat >"${state_dir}/actions-runs.json" <<'EOF'
+{"workflow_runs":[{"name":"CI","status":"completed","conclusion":"action_required"}]}
+EOF
+run_helper --dry-run "https://github.com/wimpysworld/tailor/pull/42"
+if [[ ${status} -ne 64 ]]; then
+	fail 'reject community PR with action_required workflow run' "status ${status} stdout=${stdout}"
+else
+	pass 'reject community PR with action_required workflow run'
 fi
 
 printf '%s: %s passed, %s failed\n' \

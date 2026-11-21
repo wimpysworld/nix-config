@@ -97,7 +97,7 @@ readonly GH_BOT_MERGE_GH_BIN
 export GH_PROMPT_DISABLED=true
 export GH_TELEMETRY=false
 
-readonly PR_VIEW_FIELDS='number,state,isDraft,mergeable,mergeStateStatus,author,headRefName,headRefOid,headRepositoryOwner,isCrossRepository,labels,changedFiles,files,statusCheckRollup,reviewDecision'
+readonly PR_VIEW_FIELDS='number,state,isDraft,mergeable,mergeStateStatus,author,headRefName,headRefOid,headRepositoryOwner,isCrossRepository,labels,additions,deletions,changedFiles,files,statusCheckRollup,reviewDecision'
 
 set +e
 pr_json="$("${GH_BOT_MERGE_GH_BIN}" pr view "${pr_url}" --json "${PR_VIEW_FIELDS}" </dev/null)"
@@ -108,7 +108,7 @@ if [[ ${gh_status} -ne 0 ]]; then
 	exit "${gh_status}"
 fi
 
-if jq -e 'type == "object" and ((.changedFiles // 0) > ((.files // []) | length))' <<<"${pr_json}" >/dev/null 2>&1; then
+if jq -e 'type == "object" and (((.changedFiles // 0) > ((.files // []) | length)) or any((.files // [])[]; ((.changeType // "") | ascii_upcase) == "RENAMED" and ((.previousPath // "") == "")))' <<<"${pr_json}" >/dev/null 2>&1; then
 	# shellcheck disable=SC2016
 	readonly JQ_REST_FILE_ENTRY='.[] | {path: (.filename // ""), previousPath: (.previous_filename // ""), changeType: ((.status // "") | ascii_upcase)}'
 	set +e
@@ -225,14 +225,114 @@ def is_freshener($owner; $repo):
     and (.path != "pkgs/../default.nix")
   );
 
+def is_sensitive_community_path:
+  (. // "")
+  | gsub("\\\\"; "/")
+  | sub("^/+"; "")
+  | sub("^(\\./)+"; "")
+  | ascii_downcase as $pl
+  | if ($pl | length) == 0 then
+      false
+    elif ($pl == ".github/workflows")
+      or ($pl == ".github/actions")
+      or ($pl | startswith(".github/workflows/"))
+      or ($pl | startswith(".github/actions/"))
+      or ($pl | endswith("npins/sources.json"))
+      or ($pl | endswith("niv/sources.json"))
+    then
+      true
+    else
+      ($pl | split("/") | last) as $base
+      | ($base == "flake.nix"
+        or $base == "flake.lock"
+        or $base == "cargo.toml"
+        or $base == "cargo.lock"
+        or $base == "go.mod"
+        or $base == "go.sum"
+        or $base == "go.work"
+        or $base == "go.work.sum"
+        or $base == "package.json"
+        or $base == "package-lock.json"
+        or $base == "npm-shrinkwrap.json"
+        or $base == "pnpm-lock.yaml"
+        or $base == "pnpm-workspace.yaml"
+        or $base == "yarn.lock"
+        or $base == "bun.lock"
+        or $base == "bun.lockb"
+        or $base == "deno.json"
+        or $base == "deno.jsonc"
+        or $base == "deno.lock"
+        or $base == "pyproject.toml"
+        or $base == "poetry.lock"
+        or $base == "uv.lock"
+        or $base == "pipfile"
+        or $base == "pipfile.lock"
+        or $base == "pdm.lock"
+        or $base == "setup.py"
+        or $base == "setup.cfg"
+        or $base == "composer.json"
+        or $base == "composer.lock"
+        or $base == "pom.xml"
+        or $base == "build.gradle"
+        or $base == "build.gradle.kts"
+        or $base == "gradle.lockfile"
+        or $base == "settings.gradle"
+        or $base == "settings.gradle.kts"
+        or $base == "libs.versions.toml"
+        or $base == "mix.exs"
+        or $base == "mix.lock"
+        or $base == "pubspec.yaml"
+        or $base == "pubspec.lock"
+        or $base == "packages.lock.json"
+        or $base == "package.resolved"
+        or $base == "dependabot.yml"
+        or $base == "dependabot.yaml"
+        or $base == "renovate.json"
+        or $base == "renovate.json5"
+        or $base == ".renovaterc"
+        or $base == ".renovaterc.json"
+        or $base == ".goreleaser.yml"
+        or $base == ".goreleaser.yaml"
+        or $base == ".envrc"
+        or $base == "codeowners"
+        or $base == "security.md"
+        or ($base | test("^requirements.*\\.txt$"))
+        or ($base | test("^constraints.*\\.txt$"))
+        or ($base | test("^gemfile"))
+        or ($base | test("\\.gemspec$")))
+    end;
+
+def is_community_small($owner; $repo):
+  (is_dependabot | not)
+  and (is_github_actions | not)
+  and (is_freshener($owner; $repo) | not)
+  and (is_trusted_peer($owner; $repo) | not)
+  and ((($owner | ascii_downcase) == "wimpysworld" and ($repo | ascii_downcase) == "nix-config") | not)
+  and (((.additions // 0) + (.deletions // 0)) <= 250)
+  and (((.changedFiles // ((.files // []) | length)) <= 10) and (((.files // []) | length) > 0))
+  and (all(
+    (.files // [])[];
+    ((((.changeType // "") | ascii_upcase) == "RENAMED" and ((.previousPath // "") == "")) | not)
+    and (((.path // "") | is_sensitive_community_path) | not)
+    and (((.previousPath // "") | is_sensitive_community_path) | not)
+  ));
+
+def is_community_labeled($owner; $repo):
+  (is_dependabot | not)
+  and (is_github_actions | not)
+  and (is_freshener($owner; $repo) | not)
+  and (is_trusted_peer($owner; $repo) | not)
+  and any((.labels // [])[]; .name == "team:merge");
+
+def is_community($owner; $repo):
+  is_community_small($owner; $repo) or is_community_labeled($owner; $repo);
+
 if type != "object" or ((.number | tostring) != $pr_number) then
   "ERR\u001fresponse did not identify pull request #" + $pr_number
 elif .state != "OPEN" then
   "ERR\u001fpull request #" + $pr_number + " is not OPEN (state=" + (.state // "UNKNOWN") + ")"
 elif .isDraft != false then
   "ERR\u001fpull request #" + $pr_number + " is a draft"
-elif (.isCrossRepository != false) or (((.headRepositoryOwner.login // "") | ascii_downcase) != ($owner | ascii_downcase)) then
-  "ERR\u001fpull request #" + $pr_number + " is a fork or cross-repository pull request (isCrossRepository=" + (.isCrossRepository | tostring) + ", headRepositoryOwner=" + (.headRepositoryOwner.login // "UNKNOWN") + ")"
 elif .mergeable != "MERGEABLE" then
   "ERR\u001fpull request #" + $pr_number + " is not mergeable (mergeable=" + (.mergeable // "UNKNOWN") + ")"
 elif ((.headRefOid | type) != "string") or ((.headRefOid | length) == 0) then
@@ -245,6 +345,7 @@ else
     elif is_github_actions then "github-actions"
     elif is_freshener($owner; $repo) then "freshener"
     elif is_trusted_peer($owner; $repo) then "trusted-peer"
+    elif is_community($owner; $repo) then "community"
     else ""
     end
   ) as $pr_class
@@ -252,12 +353,14 @@ else
   | ([(.statusCheckRollup // [])[] | select(check_pending) | check_label]) as $pending_checks
   | if $pr_class == "" then
       "ERR\u001fpull request #" + $pr_number + " (author=" + (.author.login // "UNKNOWN") + ", headRefName=" + (.headRefName // "UNKNOWN") + ") does not match any permitted PR policy"
+    elif ($pr_class != "community") and ((.isCrossRepository != false) or (((.headRepositoryOwner.login // "") | ascii_downcase) != ($owner | ascii_downcase))) then
+      "ERR\u001fpull request #" + $pr_number + " is a fork or cross-repository pull request (isCrossRepository=" + (.isCrossRepository | tostring) + ", headRepositoryOwner=" + (.headRepositoryOwner.login // "UNKNOWN") + ")"
     elif (((.statusCheckRollup // []) | length) == 0) and ($pr_class == "freshener") then
       "ERR\u001fpull request #" + $pr_number + " has no statusCheckRollup entries (CI checks are missing or have not registered yet)"
-    elif (($pending_checks | length) > 0) or ((($bad_checks | length) > 0) and ($pr_class == "trusted-peer")) then
+    elif (($pending_checks | length) > 0) or ((($bad_checks | length) > 0) and (($pr_class == "trusted-peer") or ($pr_class == "community"))) then
       "ERR\u001fpull request #" + $pr_number + " has failing or pending status checks: " + ($bad_checks | join(", "))
     else
-      ["OK", $pr_class, (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), .headRefOid, ($bad_checks | join(", "))] | join("\u001f")
+      ["OK", $pr_class, (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), .headRefOid, ($bad_checks | join(", ")), (if $pr_class == "community" and (is_community_small($owner; $repo) | not) then "true" else "false" end)] | join("\u001f")
     end
 end
 '
@@ -275,7 +378,7 @@ if [[ ${jq_status} -ne 0 ]]; then
 	exit "${jq_status}"
 fi
 
-IFS=$'\x1f' read -r verdict field1 field2 field3 field4 field5 field6 <<<"${verify_out}"
+IFS=$'\x1f' read -r verdict field1 field2 field3 field4 field5 field6 field7 <<<"${verify_out}"
 if [[ ${verdict} != "OK" ]]; then
 	die "${field1:-verification failed}"
 fi
@@ -286,6 +389,7 @@ review_decision="${field3}"
 merge_state_status="${field4}"
 head_ref_oid="${field5:-}"
 failed_checks="${field6:-}"
+community_via_label="${field7:-false}"
 if [[ -z ${head_ref_oid} ]]; then
 	die "pull request #${pr_number} has no headRefOid"
 fi
@@ -303,11 +407,109 @@ if [[ -z ${viewer} ]]; then
 fi
 
 peer_approved="false"
-if [[ ${pr_class} == "trusted-peer" ]]; then
+if [[ ${pr_class} == "trusted-peer" || ${pr_class} == "community" ]]; then
 	case "${viewer}" in
 	flexiondotorg | sith-skrye | sith-traya | sith-zannah) ;;
-	*) die "authenticated viewer '${viewer}' is not authorised to merge trusted-peer pull requests" ;;
+	*) die "authenticated viewer '${viewer}' is not authorised to merge ${pr_class} pull requests" ;;
 	esac
+fi
+
+if [[ ${pr_class} == "community" && ${community_via_label} == "true" ]]; then
+	set +e
+	timeline_json="$("${GH_BOT_MERGE_GH_BIN}" api --paginate "repos/${owner}/${repo}/issues/${pr_number}/timeline?per_page=100" </dev/null)"
+	timeline_status=$?
+	set -e
+	if [[ ${timeline_status} -ne 0 ]]; then
+		printf 'gh-bot-merge: gh exited %s while reading issue timeline for %s.\n' "${timeline_status}" "${pr_url}" >&2
+		exit "${timeline_status}"
+	fi
+
+	# shellcheck disable=SC2016
+	readonly JQ_VERIFY_TEAM_MERGE='
+	def is_trusted_labeler($login):
+	  ($login | ascii_downcase) as $l
+	  | $l == "flexiondotorg" or $l == "sith-skrye" or $l == "sith-traya" or $l == "sith-zannah";
+
+	[ .[] | select(type == "array") | .[] ] as $all
+	| ([ range(0; $all | length) as $i
+	    | $all[$i]
+	    | select((.event == "labeled" or .event == "unlabeled") and ((.label.name // "") | ascii_downcase) == "team:merge")
+	    | { idx: $i, item: . }
+	  ]) as $label_evs
+	| if ($label_evs | length) == 0 then
+	    "ERR\u001fpull request #" + $pr_number + " has no team:merge label event"
+	  else
+	    ($label_evs | last) as $last
+	    | if $last.item.event != "labeled" then
+	        "ERR\u001fpull request #" + $pr_number + " team:merge label is no longer active"
+	      elif (is_trusted_labeler($last.item.actor.login // "") | not) then
+	        "ERR\u001fpull request #" + $pr_number + " team:merge label was applied by untrusted actor " + ($last.item.actor.login // "UNKNOWN")
+	      else
+	        ($all[($last.idx + 1):] | map(select(.event == "committed" or .event == "head_ref_force_pushed"))) as $post_pushes
+	        | ($all[0:$last.idx] | map(select(.event == "committed" or .event == "head_ref_force_pushed"))) as $pre_pushes
+	        | if ($post_pushes | length) > 0 then
+	            "ERR\u001fpull request #" + $pr_number + " received commits or force-pushes after team:merge was applied"
+	          elif ($pre_pushes | length) == 0 then
+	            "ERR\u001fpull request #" + $pr_number + " cannot prove head commit preceded team:merge in timeline"
+	          else
+	            (($pre_pushes | last) | (.sha // .commit_id // "")) as $last_pre_sha
+	            | if $last_pre_sha != $head_ref_oid then
+	                "ERR\u001fpull request #" + $pr_number + " head commit " + $head_ref_oid + " does not match last commit before team:merge (" + $last_pre_sha + ")"
+	              else
+	                "OK"
+	              end
+	          end
+	      end
+	  end
+	'
+	set +e
+	label_verdict="$(jq -s -r --arg pr_number "${pr_number}" --arg head_ref_oid "${head_ref_oid}" "${JQ_VERIFY_TEAM_MERGE}" <<<"${timeline_json}")"
+	label_jq_status=$?
+	set -e
+	if [[ ${label_jq_status} -ne 0 ]]; then
+		printf 'gh-bot-merge: jq exited %s while verifying team:merge timeline for %s.\n' "${label_jq_status}" "${pr_url}" >&2
+		exit "${label_jq_status}"
+	fi
+	if [[ ${label_verdict} != "OK" ]]; then
+		die "${label_verdict#ERR$'\x1f'}"
+	fi
+fi
+
+if [[ ${pr_class} == "community" ]]; then
+	set +e
+	runs_json="$("${GH_BOT_MERGE_GH_BIN}" api --paginate "repos/${owner}/${repo}/actions/runs?head_sha=${head_ref_oid}&per_page=100" </dev/null)"
+	runs_status=$?
+	set -e
+	if [[ ${runs_status} -ne 0 ]]; then
+		printf 'gh-bot-merge: gh exited %s while reading workflow runs for %s.\n' "${runs_status}" "${pr_url}" >&2
+		exit "${runs_status}"
+	fi
+
+	# shellcheck disable=SC2016
+	readonly JQ_VERIFY_COMMUNITY_RUNS='
+	[ .[] | (.workflow_runs // [])[] ] as $runs
+	| [ $runs[] | select(
+	    (.status // "") != "completed"
+	    or (.conclusion // "") == "action_required"
+	    or ((.conclusion // "") != "success" and (.conclusion // "") != "skipped" and (.conclusion // "") != "neutral")
+	  ) | "\(.name // "workflow") (\(.status // "unknown")/\(.conclusion // "pending"))" ] as $bad
+	| if ($bad | length) > 0 then
+	    "ERR\u001fpull request #" + $pr_number + " has incomplete, action_required, or failing workflow runs: " + ($bad | join(", "))
+	  else
+	    "OK"
+	  end
+	'
+	set +e
+	runs_verdict="$(jq -s -r --arg pr_number "${pr_number}" "${JQ_VERIFY_COMMUNITY_RUNS}" <<<"${runs_json}")"
+	runs_jq_status=$?
+	set -e
+	if [[ ${runs_jq_status} -ne 0 ]]; then
+		printf 'gh-bot-merge: jq exited %s while verifying workflow runs for %s.\n' "${runs_jq_status}" "${pr_url}" >&2
+		exit "${runs_jq_status}"
+	fi
+	if [[ ${runs_verdict} != "OK" ]]; then
+		die "${runs_verdict#ERR$'\x1f'}"
+	fi
 fi
 
 # shellcheck disable=SC2016 # $owner, $repo, and $pr are GraphQL variables.
