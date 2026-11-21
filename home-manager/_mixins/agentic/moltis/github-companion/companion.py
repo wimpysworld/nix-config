@@ -1694,7 +1694,7 @@ class CompanionStateStore:
                             "is_community": is_community,
                             "community_auto_merge_eligible": auto_merge_eligible,
                             "handled_head_sha": handled_sha,
-                            "triaged_head_sha": existing.get("triaged_head_sha") or handled_sha,
+                            "triaged_head_sha": existing.get("triaged_head_sha"),
                             "handled_team_labels": dict(_as_dict(existing.get("handled_team_labels"))),
                         })
 
@@ -2976,7 +2976,7 @@ class GithubCompanionRunner:
                 except Exception as exc:
                     sys.stderr.write(f"moltis-github-companion dismiss warning ({self.execution_coordinator.agent_name} thread {tid_val}): {exc}\n")
                     return
-            self.state_store.complete_thread_review(key_val, handled_updated_at=entry_val.get("updated_at"), handled_head_sha=prep_res.get("head_sha") or entry_val.get("head_sha"), handled_ci_state=entry_val.get("ci_state"), apply_cooldown=False, now_override_ms=now_override_ms)
+            self.state_store.complete_thread_review(key_val, handled_updated_at=entry_val.get("updated_at"), handled_head_sha=prep_res.get("head_sha") or entry_val.get("head_sha"), handled_ci_state=entry_val.get("ci_state"), preserve_handled_head_sha=prep_res.get("skip_reason") in ("untrusted_actor", "coercion_pattern"), apply_cooldown=False, now_override_ms=now_override_ms)
 
         candidate_thread_ids: list[str] = list(poll_result.get("actionable_threads") or [])
         for tid, entry in threads.items():
@@ -3056,7 +3056,7 @@ class GithubCompanionRunner:
             if not verified_label:
                 continue
             cand_head_sha = str(cand.get("head_sha") or "").strip() or None
-            triaged_sha = str(cand.get("triaged_head_sha") or cand_entry.get("triaged_head_sha") or cand_entry.get("handled_head_sha") or "").strip() or None
+            triaged_sha = str(cand.get("triaged_head_sha") or cand_entry.get("triaged_head_sha") or "").strip() or None
             sha_changed = bool(verified_label == "team:merge" and triaged_sha and cand_head_sha and triaged_sha != cand_head_sha)
             dispatched_targets.add(cand_key)
             targeted_dispatches.append(

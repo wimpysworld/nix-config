@@ -82,25 +82,21 @@ if [[ $# -ge 2 && $1 == "api" && $2 == "graphql" ]]; then
 	exit 0
 fi
 
-if [[ $# -ge 2 && $1 == "api" && " $* " == *"/issues/"*"/events"* ]]; then
-	if [[ -r "${GH_STUB_STATE}/issue-events.json" ]]; then
-		cat "${GH_STUB_STATE}/issue-events.json"
+if [[ $# -ge 2 && $1 == "api" && " $* " == *"/issues/"*"/timeline"* ]]; then
+	if [[ -r "${GH_STUB_STATE}/issue-timeline.json" ]]; then
+		cat "${GH_STUB_STATE}/issue-timeline.json"
 	else
 		printf '[]\n'
 	fi
 	exit 0
 fi
 
-if [[ $# -ge 2 && $1 == "api" && " $* " == *"/commits/"* ]]; then
-	if [[ -r "${GH_STUB_STATE}/commit-date.txt" ]]; then
-		cat "${GH_STUB_STATE}/commit-date.txt"
-	else
-		printf '2026-04-01T09:00:00Z\n'
-	fi
-	exit 0
-fi
-
 if [[ $# -ge 2 && $1 == "api" && " $* " == *"/actions/runs"* ]]; then
+	expected_sha="$(jq -r '.headRefOid // ""' "${GH_STUB_STATE}/pr.json" 2>/dev/null || true)"
+	if [[ -n "${expected_sha}" && " $* " != *"head_sha=${expected_sha}"* ]]; then
+		printf 'unexpected actions/runs query without expected head_sha=%s: %s\n' "${expected_sha}" "$*" >&2
+		exit 98
+	fi
 	if [[ -r "${GH_STUB_STATE}/actions-runs.json" ]]; then
 		cat "${GH_STUB_STATE}/actions-runs.json"
 	else
@@ -846,8 +842,8 @@ fi
 reset_stub
 write_pr_json wimpysworld 'community-dev' 'large-labeled' \
 	'.isCrossRepository = true | .headRepositoryOwner.login = "community-dev" | .additions = 400 | .deletions = 50 | .changedFiles = 1 | .labels = [{name: "team:merge"}] | .files = [{path: "README.md"}]'
-cat >"${state_dir}/issue-events.json" <<'EOF'
-[{"event":"labeled","label":{"name":"team:merge"},"actor":{"login":"untrusted-triage"},"created_at":"2026-04-01T10:00:00Z"}]
+cat >"${state_dir}/issue-timeline.json" <<EOF
+[{"event":"committed","sha":"${DEFAULT_HEAD_OID}"},{"event":"labeled","label":{"name":"team:merge"},"actor":{"login":"untrusted-triage"}}]
 EOF
 run_helper --dry-run "https://github.com/wimpysworld/tailor/pull/42"
 if [[ ${status} -ne 64 ]]; then
@@ -859,24 +855,22 @@ fi
 reset_stub
 write_pr_json wimpysworld 'community-dev' 'large-labeled-stale' \
 	'.isCrossRepository = true | .headRepositoryOwner.login = "community-dev" | .additions = 400 | .deletions = 50 | .changedFiles = 1 | .labels = [{name: "team:merge"}] | .files = [{path: "README.md"}]'
-cat >"${state_dir}/issue-events.json" <<'EOF'
-[{"event":"labeled","label":{"name":"team:merge"},"actor":{"login":"flexiondotorg"},"created_at":"2026-04-01T08:00:00Z"}]
+cat >"${state_dir}/issue-timeline.json" <<EOF
+[{"event":"committed","sha":"${STALE_HEAD_OID}"},{"event":"labeled","label":{"name":"team:merge"},"actor":{"login":"flexiondotorg"}},{"event":"committed","sha":"${DEFAULT_HEAD_OID}"}]
 EOF
-printf '2026-04-01T09:00:00Z\n' >"${state_dir}/commit-date.txt"
 run_helper --dry-run "https://github.com/wimpysworld/tailor/pull/42"
 if [[ ${status} -ne 64 ]]; then
-	fail 'reject team:merge label older than head commit' "status ${status} stdout=${stdout}"
+	fail 'reject team:merge label followed by post-label commit in timeline' "status ${status} stdout=${stdout}"
 else
-	pass 'reject team:merge label older than head commit'
+	pass 'reject team:merge label followed by post-label commit in timeline'
 fi
 
 reset_stub
 write_pr_json wimpysworld 'community-dev' 'large-labeled-valid' \
 	'.isCrossRepository = true | .headRepositoryOwner.login = "community-dev" | .additions = 400 | .deletions = 50 | .changedFiles = 1 | .labels = [{name: "team:merge"}] | .files = [{path: "README.md"}]'
-cat >"${state_dir}/issue-events.json" <<'EOF'
-[{"event":"labeled","label":{"name":"team:merge"},"actor":{"login":"flexiondotorg"},"created_at":"2026-04-01T10:00:00Z"}]
+cat >"${state_dir}/issue-timeline.json" <<EOF
+[{"event":"committed","sha":"${DEFAULT_HEAD_OID}"},{"event":"labeled","label":{"name":"team:merge"},"actor":{"login":"flexiondotorg"}}]
 EOF
-printf '2026-04-01T09:00:00Z\n' >"${state_dir}/commit-date.txt"
 run_helper --dry-run "https://github.com/wimpysworld/tailor/pull/42"
 if [[ ${status} -ne 0 || ${stdout} != *"class=community"* ]]; then
 	fail 'accept verified fresh team:merge label on community PR' "status ${status} stdout=${stdout} stderr=${stderr}"

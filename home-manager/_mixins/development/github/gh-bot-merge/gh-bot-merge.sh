@@ -416,24 +416,12 @@ fi
 
 if [[ ${pr_class} == "community" && ${community_via_label} == "true" ]]; then
 	set +e
-	events_json="$("${GH_BOT_MERGE_GH_BIN}" api --paginate "repos/${owner}/${repo}/issues/${pr_number}/events?per_page=100" </dev/null)"
-	events_status=$?
+	timeline_json="$("${GH_BOT_MERGE_GH_BIN}" api --paginate "repos/${owner}/${repo}/issues/${pr_number}/timeline?per_page=100" </dev/null)"
+	timeline_status=$?
 	set -e
-	if [[ ${events_status} -ne 0 ]]; then
-		printf 'gh-bot-merge: gh exited %s while reading issue events for %s.\n' "${events_status}" "${pr_url}" >&2
-		exit "${events_status}"
-	fi
-
-	set +e
-	commit_date="$("${GH_BOT_MERGE_GH_BIN}" api "repos/${owner}/${repo}/commits/${head_ref_oid}" --jq '.commit.committer.date // .commit.author.date // ""' </dev/null)"
-	commit_status=$?
-	set -e
-	if [[ ${commit_status} -ne 0 ]]; then
-		printf 'gh-bot-merge: gh exited %s while reading head commit %s for %s.\n' "${commit_status}" "${head_ref_oid}" "${pr_url}" >&2
-		exit "${commit_status}"
-	fi
-	if [[ -z ${commit_date} ]]; then
-		die "pull request #${pr_number} head commit ${head_ref_oid} has no timestamp for team:merge verification"
+	if [[ ${timeline_status} -ne 0 ]]; then
+		printf 'gh-bot-merge: gh exited %s while reading issue timeline for %s.\n' "${timeline_status}" "${pr_url}" >&2
+		exit "${timeline_status}"
 	fi
 
 	# shellcheck disable=SC2016
@@ -443,28 +431,43 @@ if [[ ${pr_class} == "community" && ${community_via_label} == "true" ]]; then
 	  | $l == "flexiondotorg" or $l == "sith-skrye" or $l == "sith-traya" or $l == "sith-zannah";
 
 	[ .[] | select(type == "array") | .[] ] as $all
-	| ([ $all[] | select((.event == "labeled" or .event == "unlabeled") and ((.label.name // "") | ascii_downcase) == "team:merge") ]) as $evs
-	| if ($evs | length) == 0 then
+	| ([ range(0; $all | length) as $i
+	    | $all[$i]
+	    | select((.event == "labeled" or .event == "unlabeled") and ((.label.name // "") | ascii_downcase) == "team:merge")
+	    | { idx: $i, item: . }
+	  ]) as $label_evs
+	| if ($label_evs | length) == 0 then
 	    "ERR\u001fpull request #" + $pr_number + " has no team:merge label event"
 	  else
-	    ($evs | last) as $last
-	    | if $last.event != "labeled" then
+	    ($label_evs | last) as $last
+	    | if $last.item.event != "labeled" then
 	        "ERR\u001fpull request #" + $pr_number + " team:merge label is no longer active"
-	      elif (is_trusted_labeler($last.actor.login // "") | not) then
-	        "ERR\u001fpull request #" + $pr_number + " team:merge label was applied by untrusted actor " + ($last.actor.login // "UNKNOWN")
-	      elif (($last.created_at // "") == "") or (($last.created_at // "") < $commit_date) then
-	        "ERR\u001fpull request #" + $pr_number + " has commits pushed after team:merge was applied (label=" + ($last.created_at // "UNKNOWN") + ", head=" + $commit_date + ")"
+	      elif (is_trusted_labeler($last.item.actor.login // "") | not) then
+	        "ERR\u001fpull request #" + $pr_number + " team:merge label was applied by untrusted actor " + ($last.item.actor.login // "UNKNOWN")
 	      else
-	        "OK"
+	        ($all[($last.idx + 1):] | map(select(.event == "committed" or .event == "head_ref_force_pushed"))) as $post_pushes
+	        | ($all[0:$last.idx] | map(select(.event == "committed" or .event == "head_ref_force_pushed"))) as $pre_pushes
+	        | if ($post_pushes | length) > 0 then
+	            "ERR\u001fpull request #" + $pr_number + " received commits or force-pushes after team:merge was applied"
+	          elif ($pre_pushes | length) == 0 then
+	            "ERR\u001fpull request #" + $pr_number + " cannot prove head commit preceded team:merge in timeline"
+	          else
+	            (($pre_pushes | last) | (.sha // .commit_id // "")) as $last_pre_sha
+	            | if $last_pre_sha != $head_ref_oid then
+	                "ERR\u001fpull request #" + $pr_number + " head commit " + $head_ref_oid + " does not match last commit before team:merge (" + $last_pre_sha + ")"
+	              else
+	                "OK"
+	              end
+	          end
 	      end
 	  end
 	'
 	set +e
-	label_verdict="$(jq -s -r --arg pr_number "${pr_number}" --arg commit_date "${commit_date}" "${JQ_VERIFY_TEAM_MERGE}" <<<"${events_json}")"
+	label_verdict="$(jq -s -r --arg pr_number "${pr_number}" --arg head_ref_oid "${head_ref_oid}" "${JQ_VERIFY_TEAM_MERGE}" <<<"${timeline_json}")"
 	label_jq_status=$?
 	set -e
 	if [[ ${label_jq_status} -ne 0 ]]; then
-		printf 'gh-bot-merge: jq exited %s while verifying team:merge events for %s.\n' "${label_jq_status}" "${pr_url}" >&2
+		printf 'gh-bot-merge: jq exited %s while verifying team:merge timeline for %s.\n' "${label_jq_status}" "${pr_url}" >&2
 		exit "${label_jq_status}"
 	fi
 	if [[ ${label_verdict} != "OK" ]]; then
