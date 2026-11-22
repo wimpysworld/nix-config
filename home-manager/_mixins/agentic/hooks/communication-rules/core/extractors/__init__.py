@@ -124,7 +124,7 @@ def tool_call(payload: dict, name: str, args) -> Extraction:
         if isinstance(nested_name, str) and isinstance(nested_args, dict):
             return tool_call(payload, nested_name, nested_args)
     leaf = leaf_name(name)
-    if leaf in {"bash", "exec_command", "run_command", "shell"}:
+    if leaf in {"bash", "exec_command", "run_command", "shell", "shell_exec"}:
         command = first_string(args, ("command", "cmd", "CommandLine", "commandLine"))
         rec.texts = publication_command_texts(command)
     elif publication(name, args):
