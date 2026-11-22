@@ -21,6 +21,7 @@ PROMPT_TOKENS = 4096
 OUTPUT_TOKENS = 512
 SEED = 42
 DEVICES = {"vulkan": "Vulkan0", "rocm": "ROCm0", "cuda": "CUDA0"}
+MTP_BACKENDS = {"vulkan", "rocm"}
 
 
 def follow_server(pipe, log, ready):
@@ -210,13 +211,14 @@ def run_case(output, model, model_path, backend, server, width, runs, profile):
 def main():
     model = sys.argv[1]
     runs = int(sys.argv[2])
-    widths = (0, 2, 3) if model == "qwen3.8-27b" else (0,)
     backends = os.environ.get("BENCHMARK_MODELS_BACKENDS", "").split()
     if not backends:
         print("Error: no GPU benchmark backend is configured for this host.", file=sys.stderr)
         return 1
 
     profile = json.loads(os.environ["BENCHMARK_MODELS_PROFILES"]).get(model, {})
+    draft_tokens = profile.get("mtpDraftTokens")
+    widths = (0, draft_tokens, draft_tokens + 1) if draft_tokens else (0,)
     snapshot = profile.get("snapshot")
     if not snapshot:
         print(f"Error: {model} is not configured for this host's video memory tier.", file=sys.stderr)
@@ -246,6 +248,8 @@ def main():
     failed = False
     for width in widths:
         for backend, server in servers.items():
+            if width and backend not in MTP_BACKENDS:
+                continue
             try:
                 run_case(output, model, model_path, backend, server, width, runs, profile)
             except (OSError, RuntimeError, ValueError, KeyError, http.client.HTTPException) as error:
