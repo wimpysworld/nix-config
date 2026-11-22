@@ -6,7 +6,7 @@ The [assistants module](../assistants/README.md) supplies shared agents, command
 
 ## Package and configuration
 
-The module selects `inputs.llm-agents.packages.${system}.opencode2`. The current pin is `2.2.6`. The public command remains `opencode`, including for editors and Herdr. Nix owns updates, so native automatic updates are disabled.
+The module selects `inputs.llm-agents.packages.${system}.opencode2`. The current pin is `2.3.2`. The public command remains `opencode`, including for editors and Herdr. Nix owns updates, so native automatic updates are disabled.
 
 Server settings use native V2 fields in `opencode.json`. Terminal settings use `cli.json`, with native keybinding names and the built-in Catppuccin themes. The V1 Catppuccin generator is disabled. Linux hosts also receive the matching Herdr terminal plugin.
 
@@ -20,9 +20,9 @@ Hosts with the `cg` tag use only models that are approved for work. Their defaul
 
 Personal hosts retain the GLM default and native auxiliary model selection. A manual switch to Neon uses its medium default, matching Pi, Moltis main, and work hosts. Shared specialist routes still select Neon at high thinking. V2 has no conditional per-model effort override on its primary agent.
 
-The OpenAI provider explicitly registers GPT-6.2 Astra and Sol with Responses transport, tool support and low, medium, high, xhigh and max reasoning variants. Both use deliberate operating limits of 384,000 context tokens and 38,400 output tokens, below their API maxima. Terra and Luna retain their existing limit overrides. Automatic compaction uses V2's resolved input limit and default reserve. The old fixed 345,600-token trigger does not apply.
+OpenCode 2.3.2 natively resolves `gpt-6.2-astra`, `gpt-6.2-sol`, `gpt-6.1-terra`, and `gpt-6-luna` with Responses transport and zero-cost subscription accounting. Under OpenAI OAuth, Astra, Sol, and Terra use 500,000 input tokens, 128,000 output tokens, and 628,000 context tokens. Luna uses 272,000 input tokens, 128,000 output tokens, and 400,000 context tokens. Automatic compaction uses V2's resolved input limit and default reserve.
 
-The registrations work with the `chatgpt-browser` subscription login in OpenCode 2.2.6. Its separate `chatgpt-token-sharing` login filters out both IDs, so that login needs a compatible client release. The registrations omit API prices because explicit prices override OpenCode's native zero-cost subscription accounting.
+Both `chatgpt-browser` and `chatgpt-token-sharing` subscription logins support all four models natively in OpenCode 2.3.2. The configuration sets no `providers.openai` override.
 
 Session sharing and the built-in `webfetch` and `websearch` tools are disabled. Web access uses the shared [MCP servers](../mcp/README.md). Plain launches ask before access to external directories.
 

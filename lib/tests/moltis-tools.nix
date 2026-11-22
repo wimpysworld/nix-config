@@ -312,9 +312,9 @@ let
         gemini-4-neon.context_window = 1048576;
         gemini-4-carbon.context_window = 1048576;
         gemini-4-hydrogen.context_window = 1048576;
-        "gpt-6.2-sol".context_window = 384000;
-        "gpt-6.2-astra".context_window = 384000;
-        gpt-6-luna.context_window = 384000;
+        "gpt-6.2-sol".context_window = 500000;
+        "gpt-6.2-astra".context_window = 272000;
+        gpt-6-luna.context_window = 272000;
       };
     assert
       !darwin

@@ -134,7 +134,6 @@ for (const layout of ["plain", "fenced", "escaping-entrypoint"]) {
           ...delivery.googleProvider,
           settings: { ...delivery.googleProvider.settings, apiKey: "offline-test" },
         },
-        openai: { models: delivery.openaiModels },
       },
     }));
     const child = spawn(process.env.OPENCODE_TEST_BINARY!, ["--print-logs", "serve", "--hostname", "127.0.0.1", "--port", "0"], {
@@ -208,13 +207,10 @@ for (const layout of ["plain", "fenced", "escaping-entrypoint"]) {
         assert.ok(models.some((model: any) => model.providerID === providerID && model.id === modelID
           && (!variant || model.variants.some((entry: any) => entry.id === variant))));
       }
-      for (const [id, configured] of Object.entries(delivery.openaiModels) as [string, any][]) {
-        if (!configured.capabilities) continue;
+      for (const id of ["gpt-6.2-astra", "gpt-6.2-sol", "gpt-6.1-terra", "gpt-6-luna"]) {
         const resolved = models.find((model: any) => model.providerID === "openai" && model.id === id);
-        assert.ok(resolved, `Browser OAuth must retain configured model ${id}`);
-        assert.equal(resolved.package, configured.package, "Configured models must retain Responses transport");
-        assert.deepEqual(resolved.limit, configured.limit);
-        assert.deepEqual(resolved.variants.map((variant: any) => variant.id).sort(), configured.capabilities.reasoning.effort.toSorted());
+        assert.ok(resolved, `OpenAI OAuth must resolve built-in model ${id}`);
+        assert.equal(resolved.package, "@opencode/ai/providers/openai/responses", "Built-in models must use Responses transport");
         assert.deepEqual(resolved.cost, [], "Subscription models must retain native zero-cost accounting");
       }
       const plugins = await api("/api/plugin");
