@@ -32,7 +32,7 @@ model = "gemini-4-neon"
 thinking = "high"
 
 [routing.antigravity]
-model = "pro"
+model = "inherit"
 
 [claude]
 disallowedTools = ["Agent"]

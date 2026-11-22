@@ -100,7 +100,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | batfink | pi | anthropic | claude-opus-5-5 | medium |
 | batfink | pi | google | gemini-4-carbon | medium |
 | batfink | pi | openai-codex | gpt-6.2-sol | xhigh |
-| batfink | antigravity | Unset | pro | Unset |
+| batfink | antigravity | Unset | inherit | Unset |
 | brain | claude | Unset | claude-opus-5-5 | medium |
 | brain | opencode | anthropic | claude-opus-5-5 | Unset |
 | brain | opencode | google | gemini-4-neon | high |
@@ -109,7 +109,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | brain | pi | anthropic | claude-opus-5-5 | medium |
 | brain | pi | google | gemini-4-neon | high |
 | brain | pi | openai-codex | gpt-6.2-sol | xhigh |
-| brain | antigravity | Unset | pro | Unset |
+| brain | antigravity | Unset | inherit | Unset |
 | casper | claude | Unset | claude-sonnet-5-5 | high |
 | casper | opencode | anthropic | claude-sonnet-5-5 | Unset |
 | casper | opencode | google | gemini-4-neon | high |
@@ -118,7 +118,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | casper | pi | anthropic | claude-sonnet-5-5 | high |
 | casper | pi | google | gemini-4-neon | high |
 | casper | pi | openai-codex | gpt-6.2-sol | medium |
-| casper | antigravity | Unset | pro | Unset |
+| casper | antigravity | Unset | inherit | Unset |
 | dibble | claude | Unset | claude-opus-5-5 | medium |
 | dibble | opencode | anthropic | claude-opus-5-5 | Unset |
 | dibble | opencode | google | gemini-4-carbon | medium |
@@ -127,7 +127,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | dibble | pi | anthropic | claude-opus-5-5 | medium |
 | dibble | pi | google | gemini-4-carbon | medium |
 | dibble | pi | openai-codex | gpt-6.2-astra | high |
-| dibble | antigravity | Unset | pro | Unset |
+| dibble | antigravity | Unset | inherit | Unset |
 | donatello | claude | Unset | claude-opus-5-5 | medium |
 | donatello | opencode | anthropic | claude-opus-5-5 | Unset |
 | donatello | opencode | google | gemini-4-carbon | medium |
@@ -136,7 +136,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | donatello | pi | anthropic | claude-opus-5-5 | medium |
 | donatello | pi | google | gemini-4-carbon | medium |
 | donatello | pi | openai-codex | gpt-6.2-astra | high |
-| donatello | antigravity | Unset | pro | Unset |
+| donatello | antigravity | Unset | inherit | Unset |
 | garfield | claude | Unset | claude-haiku-5-5 | high |
 | garfield | opencode | anthropic | claude-haiku-5-5 | high |
 | garfield | opencode | google | gemini-4-hydrogen | medium |
@@ -154,7 +154,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | gonzales | pi | anthropic | claude-opus-5-5 | medium |
 | gonzales | pi | google | gemini-4-neon | high |
 | gonzales | pi | openai-codex | gpt-6.2-sol | xhigh |
-| gonzales | antigravity | Unset | pro | Unset |
+| gonzales | antigravity | Unset | inherit | Unset |
 | morph | claude | Unset | claude-fable-5-2 | medium |
 | morph | opencode | anthropic | claude-fable-5-2 | Unset |
 | morph | opencode | google | gemini-4-carbon | medium |
@@ -163,7 +163,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | morph | pi | anthropic | claude-fable-5-2 | medium |
 | morph | pi | google | gemini-4-carbon | medium |
 | morph | pi | openai-codex | gpt-6.2-astra | medium |
-| morph | antigravity | Unset | pro | Unset |
+| morph | antigravity | Unset | inherit | Unset |
 | penfold | claude | Unset | claude-fable-5-2 | high |
 | penfold | opencode | anthropic | claude-fable-5-2 | Unset |
 | penfold | opencode | google | gemini-4-carbon | medium |
@@ -172,7 +172,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | penfold | pi | anthropic | claude-fable-5-2 | high |
 | penfold | pi | google | gemini-4-carbon | medium |
 | penfold | pi | openai-codex | gpt-6.2-astra | high |
-| penfold | antigravity | Unset | pro | Unset |
+| penfold | antigravity | Unset | inherit | Unset |
 | penry | claude | Unset | claude-opus-5-5 | medium |
 | penry | opencode | anthropic | claude-opus-5-5 | Unset |
 | penry | opencode | google | gemini-4-neon | high |
@@ -181,7 +181,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | penry | pi | anthropic | claude-opus-5-5 | medium |
 | penry | pi | google | gemini-4-neon | high |
 | penry | pi | openai-codex | gpt-6.2-sol | xhigh |
-| penry | antigravity | Unset | pro | Unset |
+| penry | antigravity | Unset | inherit | Unset |
 | rosey | claude | Unset | claude-opus-5-5 | medium |
 | rosey | opencode | anthropic | claude-opus-5-5 | Unset |
 | rosey | opencode | google | gemini-4-neon | high |
@@ -190,7 +190,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | rosey | pi | anthropic | claude-opus-5-5 | medium |
 | rosey | pi | google | gemini-4-neon | high |
 | rosey | pi | openai-codex | gpt-6.2-astra | medium |
-| rosey | antigravity | Unset | pro | Unset |
+| rosey | antigravity | Unset | inherit | Unset |
 | velma | claude | Unset | claude-sonnet-5-5 | high |
 | velma | opencode | anthropic | claude-sonnet-5-5 | Unset |
 | velma | opencode | google | gemini-4-neon | high |
@@ -199,4 +199,4 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | velma | pi | anthropic | claude-sonnet-5-5 | high |
 | velma | pi | google | gemini-4-neon | high |
 | velma | pi | openai-codex | gpt-6.2-sol | medium |
-| velma | antigravity | Unset | pro | Unset |
+| velma | antigravity | Unset | inherit | Unset |
