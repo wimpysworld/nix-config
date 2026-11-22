@@ -7286,12 +7286,16 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
             ),
         ]
 
+        merged_prs: set[int] = set()
+
         def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
             ep = cmd[1] if len(cmd) > 1 else ""
             if ep == "notifications":
                 return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
             if ep == "graphql":
                 return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(current_nodes), stderr="")
+            if any(ep == f"repos/{repo}/pulls/{n}" for n in merged_prs):
+                return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "closed", "merged": True}), stderr="")
             return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
 
         linear_stub = StubLinearSyncClient()
@@ -7311,6 +7315,7 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
                     )
                 return "BLIND_REVIEW_VERDICT: PASS\nFINDINGS: Documentation change is accurate.\nPOLISH: none"
             if kind == "community_pr_lane_a_merge":
+                merged_prs.add(num)
                 url = meta.get("github_url", "")
                 if num == pr_success:
                     return (
@@ -8045,6 +8050,11 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
             kind = meta.get("dispatch_kind", "")
             url = meta.get("github_url", "")
             if kind == "team:merge" and meta.get("head_sha_changed") != "true":
+                rest_payloads[f"repos/{repo}/pulls/{pr_merge_ok}"] = {
+                    "state": "closed",
+                    "merged": True,
+                    "merged_at": "2026-04-01T12:00:00Z",
+                }
                 return f"🏁 {url} - feat: approved Lane B merge"
             return "HEARTBEAT_OK"
 
@@ -8358,12 +8368,16 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
             ),
         ]
 
+        merged_prs: set[int] = set()
+
         def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
             ep = cmd[1] if len(cmd) > 1 else ""
             if ep == "notifications":
                 return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
             if ep == "graphql":
                 return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(open_nodes), stderr="")
+            if any(ep == f"repos/{repo}/pulls/{n}" for n in merged_prs):
+                return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "closed", "merged": True}), stderr="")
             return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
 
         linear_stub = StubLinearSyncClient()
@@ -8401,6 +8415,7 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
             if num == pr_head_err:
                 return "HEARTBEAT_ERROR: pull request head changed after blind review consensus"
             if num == pr_merged:
+                merged_prs.add(num)
                 return f"🏁 {gh_url} - fix: clean lane a merge"
             return "HEARTBEAT_OK"
 
@@ -8622,6 +8637,7 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
         ]
 
         gh_label_edits: list[list[str]] = []
+        merged_prs: set[int] = set()
 
         def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
             if cmd and cmd[0] == "gh" and len(cmd) >= 4 and cmd[1] == "pr" and cmd[2] == "edit":
@@ -8634,6 +8650,8 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
                 return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
             if ep == "graphql":
                 return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(open_nodes), stderr="")
+            if any(ep == f"repos/{repo}/pulls/{n}" for n in merged_prs):
+                return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "closed", "merged": True}), stderr="")
             return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
 
         linear_stub = StubLinearSyncClient()
@@ -8665,6 +8683,7 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
                 gh_label_edits,
             )
             if num == pr_merged:
+                merged_prs.add(num)
                 return f"🏁 {gh_url} - feat: lane b merged cleanly"
             if num == pr_blocked:
                 return f"✋🏻 {gh_url} - feat: lane b blocked by agent"
@@ -8752,6 +8771,207 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
             ["gh", "pr", "edit", f"https://github.com/{repo}/pull/{pr_dnm}", "--add-label", "team:merge"],
             gh_label_edits,
         )
+
+    def test_merge_reply_requires_github_merged_true_before_closing_linear_done(self) -> None:
+        repo = "wimpysworld/tailor"
+
+        # 1) Direct GhApiSafeClient.is_pull_request_merged fail-closed checks
+        direct_calls: list[list[str]] = []
+        direct_responses: dict[str, subprocess.CompletedProcess] = {
+            f"repos/{repo}/pulls/10": subprocess.CompletedProcess([], 0, stdout=json.dumps({"state": "closed", "merged": True}), stderr=""),
+            f"repos/{repo}/pulls/11": subprocess.CompletedProcess([], 0, stdout=json.dumps({"state": "open", "merged": False}), stderr=""),
+            f"repos/{repo}/pulls/12": subprocess.CompletedProcess([], 0, stdout=json.dumps({"state": "closed", "merged": False}), stderr=""),
+            f"repos/{repo}/pulls/13": subprocess.CompletedProcess([], 0, stdout=json.dumps({"state": "closed", "merged": "true"}), stderr=""),
+            f"repos/{repo}/pulls/14": subprocess.CompletedProcess([], 0, stdout=json.dumps({"state": "closed", "merged": 1}), stderr=""),
+            f"repos/{repo}/pulls/15": subprocess.CompletedProcess([], 1, stdout="", stderr="HTTP 502 Bad Gateway"),
+            f"repos/{repo}/pulls/16": subprocess.CompletedProcess([], 0, stdout="{not valid json", stderr=""),
+        }
+
+        def direct_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            direct_calls.append(list(cmd))
+            ep = cmd[1] if len(cmd) > 1 else ""
+            return direct_responses[ep]
+
+        gh_direct = companion.GhApiSafeClient(runner=direct_runner)
+        self.assertTrue(gh_direct.is_pull_request_merged(repo, 10))
+        self.assertEqual(direct_calls[0], ["gh-api-safe", f"repos/{repo}/pulls/10"])
+        for num in (11, 12, 13, 14, 15, 16):
+            self.assertFalse(gh_direct.is_pull_request_merged(repo, num), f"Expected False for PR #{num}")
+        self.assertFalse(gh_direct.is_pull_request_merged("", 10))
+        self.assertFalse(gh_direct.is_pull_request_merged(repo, 0))
+
+        # 2) Both Lane A merge and linear_todo_merge refuse to close Linear as Done when GitHub does not confirm merged == True
+        pr_lane_a_open, pr_lane_a_err, pr_todo_open, pr_todo_err = self._owned_numbers(
+            repo, "skrye", 4, kind="pr", start=785
+        )
+        open_nodes: list[dict[str, object]] = [
+            self._graphql_pr_node(
+                repo,
+                pr_lane_a_open,
+                title="fix: lane a reply claims merged while still open",
+                head_sha="sha_la_open",
+                ci_state="SUCCESS",
+                unresolved_threads=0,
+                additions=10,
+                deletions=2,
+                file_paths=["src/la_open.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_lane_a_err,
+                title="fix: lane a reply claims merged on api error",
+                head_sha="sha_la_err",
+                ci_state="SUCCESS",
+                unresolved_threads=0,
+                additions=10,
+                deletions=2,
+                file_paths=["src/la_err.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_todo_open,
+                title="feat: todo merge reply claims merged while still open",
+                head_sha="sha_todo_open",
+                ci_state="SUCCESS",
+                additions=200,
+                deletions=10,
+                file_paths=["src/todo_open.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_todo_err,
+                title="feat: todo merge reply claims merged on api error",
+                head_sha="sha_todo_err",
+                ci_state="SUCCESS",
+                additions=200,
+                deletions=10,
+                file_paths=["src/todo_err.py"],
+            ),
+        ]
+
+        gh_label_edits: list[list[str]] = []
+        pr_merge_checks: list[str] = []
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            if cmd and cmd[0] == "gh" and len(cmd) >= 4 and cmd[1] == "pr" and cmd[2] == "edit":
+                gh_label_edits.append(list(cmd))
+                return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(open_nodes), stderr="")
+            if ep in (f"repos/{repo}/pulls/{pr_lane_a_open}", f"repos/{repo}/pulls/{pr_todo_open}"):
+                pr_merge_checks.append(ep)
+                return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open", "merged": False}), stderr="")
+            if ep in (f"repos/{repo}/pulls/{pr_lane_a_err}", f"repos/{repo}/pulls/{pr_todo_err}"):
+                pr_merge_checks.append(ep)
+                return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="HTTP 503 Service Unavailable")
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open", "merged": False}), stderr="")
+
+        linear_stub = StubLinearSyncClient()
+        seeded: dict[int, dict[str, object]] = {}
+        for pr_num, sha, title in (
+            (pr_lane_a_open, "sha_la_open", "fix: lane a reply claims merged while still open"),
+            (pr_lane_a_err, "sha_la_err", "fix: lane a reply claims merged on api error"),
+        ):
+            lin = linear_stub.seed_issue(
+                github_url=f"https://github.com/{repo}/pull/{pr_num}",
+                title=title,
+                repo=repo,
+                item_kind="PR",
+                state="In Review",
+            )
+            linear_stub.post_blind_review_verdict(
+                str(lin["id"]), agent="skrye", model_family="gemini", head_sha=sha, verdict="PASS"
+            )
+            linear_stub.post_blind_review_verdict(
+                str(lin["id"]), agent="traya", model_family="gpt", head_sha=sha, verdict="PASS"
+            )
+            seeded[pr_num] = lin
+
+        for pr_num, title in (
+            (pr_todo_open, "feat: todo merge reply claims merged while still open"),
+            (pr_todo_err, "feat: todo merge reply claims merged on api error"),
+        ):
+            seeded[pr_num] = linear_stub.seed_issue(
+                github_url=f"https://github.com/{repo}/pull/{pr_num}",
+                title=title,
+                repo=repo,
+                item_kind="PR",
+                state="Todo",
+                extra_labels=("ready-to-merge",),
+            )
+
+        def skrye_reply(meta: dict[str, str], _params: dict) -> str:
+            gh_url = meta.get("github_url", "")
+            return f"🏁 {gh_url} - claimed merged"
+
+        store, runner, rpc_calls = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=skrye_reply,
+        )
+        for pr_num, sha in (
+            (pr_lane_a_open, "sha_la_open"),
+            (pr_lane_a_err, "sha_la_err"),
+            (pr_todo_open, "sha_todo_open"),
+            (pr_todo_err, "sha_todo_err"),
+        ):
+            store.update_thread_state(
+                companion.make_pr_key(repo, pr_num),
+                {
+                    "repo": repo,
+                    "number": pr_num,
+                    "subject_type": "PullRequest",
+                    "handled_updated_at": "2026-04-01T09:00:00Z",
+                    "handled_head_sha": sha,
+                    "triaged_head_sha": sha,
+                    "is_community": True,
+                },
+                now_override_ms=self.clock(),
+            )
+
+        res = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 13, 0))
+        actions_by_num = {int(a["number"]): a for a in res["linear_pr_actions"]}
+        dispatches_by_key = {str(d["state_key"]): d for d in res["targeted_dispatches"]}
+
+        self.assertEqual(len(rpc_calls), 4)
+        self.assertEqual(
+            set(pr_merge_checks),
+            {
+                f"repos/{repo}/pulls/{pr_lane_a_open}",
+                f"repos/{repo}/pulls/{pr_lane_a_err}",
+                f"repos/{repo}/pulls/{pr_todo_open}",
+                f"repos/{repo}/pulls/{pr_todo_err}",
+            },
+        )
+        self.assertIsNone(store.read_active_dispatch()["active"])
+
+        for pr_num in (pr_lane_a_open, pr_lane_a_err):
+            pr_key = companion.make_pr_key(repo, pr_num)
+            self.assertEqual(actions_by_num[pr_num]["action"], "lane_a_merge_failed")
+            self.assertFalse(dispatches_by_key[pr_key]["task_succeeded"])
+            self.assertEqual(dispatches_by_key[pr_key]["failure_reason"], "merge_not_confirmed_on_github")
+            self.assertEqual(linear_stub.issues[str(seeded[pr_num]["id"])]["state"]["name"], "In Review")  # type: ignore[index]
+            st = store.get_thread_state(pr_key) or {}
+            self.assertEqual(st.get("retry_count"), 1)
+            self.assertFalse(st.get("in_flight"))
+
+        for pr_num in (pr_todo_open, pr_todo_err):
+            pr_key = companion.make_pr_key(repo, pr_num)
+            self.assertEqual(actions_by_num[pr_num]["action"], "linear_todo_merge_failed")
+            self.assertFalse(dispatches_by_key[pr_key]["task_succeeded"])
+            self.assertEqual(dispatches_by_key[pr_key]["failure_reason"], "merge_not_confirmed_on_github")
+            self.assertEqual(linear_stub.issues[str(seeded[pr_num]["id"])]["state"]["name"], "Todo")  # type: ignore[index]
+            st = store.get_thread_state(pr_key) or {}
+            self.assertEqual(st.get("retry_count"), 1)
+            self.assertFalse(st.get("in_flight"))
+            self.assertIn(
+                ["gh", "pr", "edit", f"https://github.com/{repo}/pull/{pr_num}", "--remove-label", "team:merge"],
+                gh_label_edits,
+            )
 
     def test_backlog_pr_reevaluates_on_new_head_push_and_skips_unchanged_sha(self) -> None:
         repo = "wimpysworld/tailor"

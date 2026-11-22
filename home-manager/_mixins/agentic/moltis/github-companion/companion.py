@@ -3258,6 +3258,19 @@ class GhApiSafeClient:
         """Fetch paginated issue or pull request timeline events for commit-to-label freshness verification."""
         return self.fetch_json_items(f"repos/{repo}/issues/{number}/timeline?per_page=100", paginate=True, timeout=timeout)
 
+    def is_pull_request_merged(self, repo: str, number: int, timeout: float | None = None) -> bool:
+        """Return True only when GitHub `repos/{repo}/pulls/{number}` confirms `merged is True`; fail closed otherwise."""
+        clean_repo = (repo or "").strip()
+        clean_num = _safe_int(number, 0)
+        if not clean_repo or clean_num <= 0:
+            return False
+        try:
+            pr_obj = self.fetch_json_object(f"repos/{clean_repo}/pulls/{clean_num}", paginate=False, timeout=timeout)
+        except Exception as exc:
+            sys.stderr.write(f"moltis-github-companion pr-merge-check warning ({clean_repo}#{clean_num}): {exc}\n")
+            return False
+        return isinstance(pr_obj, dict) and pr_obj.get("merged") is True
+
     @staticmethod
     def _validate_pr_label_target(repo: str, number: int, label: str) -> tuple[str, str, str]:
         clean_repo = (repo or "").strip()
@@ -5014,12 +5027,20 @@ class GithubCompanionRunner:
                         linear_url=linear_url,
                     )
                     if merge_outcome == "merged":
-                        action = "lane_a_merged"
-                        try:
-                            self.linear_client.update_issue(clean_linear_id, state="Done")
-                        except Exception as exc:
-                            sys.stderr.write(f"moltis-github-companion lane-a-done warning ({pr_key} / {clean_linear_id}): {exc}\n")
-                        self.execution_coordinator.commit_deferred_dispatch(dispatch_res, now_override_ms=now_override_ms)
+                        if self.gh_client.is_pull_request_merged(repo, number):
+                            action = "lane_a_merged"
+                            try:
+                                self.linear_client.update_issue(clean_linear_id, state="Done")
+                            except Exception as exc:
+                                sys.stderr.write(f"moltis-github-companion lane-a-done warning ({pr_key} / {clean_linear_id}): {exc}\n")
+                            self.execution_coordinator.commit_deferred_dispatch(dispatch_res, now_override_ms=now_override_ms)
+                        else:
+                            action = "lane_a_merge_failed"
+                            self.execution_coordinator.fail_deferred_dispatch(
+                                dispatch_res,
+                                failure_reason="merge_not_confirmed_on_github",
+                                now_override_ms=now_override_ms,
+                            )
                     elif merge_outcome == "needs_decision":
                         try:
                             self.linear_client.update_issue(
@@ -5940,12 +5961,23 @@ class GithubCompanionRunner:
                                     linear_url=linear_url,
                                 )
                                 if merge_outcome == "merged":
-                                    action = "linear_todo_merged"
-                                    try:
-                                        self.linear_client.update_issue(linear_id, state="Done")
-                                    except Exception as exc:
-                                        sys.stderr.write(f"moltis-github-companion linear-todo-merge-done warning ({pr_key} / {linear_id}): {exc}\n")
-                                    self.execution_coordinator.commit_deferred_dispatch(merge_res, now_override_ms=now_override_ms)
+                                    if self.gh_client.is_pull_request_merged(repo, number):
+                                        action = "linear_todo_merged"
+                                        try:
+                                            self.linear_client.update_issue(linear_id, state="Done")
+                                        except Exception as exc:
+                                            sys.stderr.write(f"moltis-github-companion linear-todo-merge-done warning ({pr_key} / {linear_id}): {exc}\n")
+                                        self.execution_coordinator.commit_deferred_dispatch(merge_res, now_override_ms=now_override_ms)
+                                    else:
+                                        if applied_team_merge:
+                                            with contextlib.suppress(Exception):
+                                                self.gh_client.remove_pull_request_label(repo, number, "team:merge")
+                                        action = "linear_todo_merge_failed"
+                                        self.execution_coordinator.fail_deferred_dispatch(
+                                            merge_res,
+                                            failure_reason="merge_not_confirmed_on_github",
+                                            now_override_ms=now_override_ms,
+                                        )
                                 elif merge_outcome in ("blocked", "needs_decision"):
                                     if applied_team_merge:
                                         with contextlib.suppress(Exception):
