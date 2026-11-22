@@ -70,8 +70,17 @@ run_preseed() {
 	local mock_bin="$3"
 
 	PATH="${mock_bin}:${PATH}" \
+	HF_HOME="${cache_root}" \
+	HF_HUB_CACHE="${cache_root}/hub" \
+	HUGGINGFACE_HUB_CACHE="${cache_root}/hub" \
 	LLAMA_PRESEED_MODELS_JSON="${manifest_path}" \
 	LLAMA_PRESEED_CACHE_ROOT="${cache_root}" \
+	LLAMA_PRESEED_PRUNE="${LLAMA_PRESEED_PRUNE:-0}" \
+	TMPDIR="${cache_root}/tmp" \
+	TRANSFORMERS_CACHE="${cache_root}/transformers" \
+	XDG_CACHE_HOME="${cache_root}/xdg/cache" \
+	XDG_CONFIG_HOME="${cache_root}/xdg/config" \
+	XDG_DATA_HOME="${cache_root}/xdg/data" \
 	bash "${SCRIPT_PATH}"
 }
 
@@ -87,8 +96,18 @@ single_file_case() {
 	local mock_bin="${case_root}/bin"
 	local cache_root="${case_root}/cache"
 	local manifest_path="${case_root}/manifest.json"
+	local hub_cache="${cache_root}/hub"
+	local retired_repo="${hub_cache}/models--example--retired"
+	local ancillary_cache="${hub_cache}/datasets--example--dataset"
+	local symlink_target="${case_root}/other-cache"
+	local old_snapshot="${hub_cache}/models--example--single/snapshots/old-revision"
+	local extra_repo="${hub_cache}/models--other--model/snapshots/mock-revision"
 
-	mkdir -p "${case_root}"
+	mkdir -p "${retired_repo}/blobs" "${ancillary_cache}" "${symlink_target}" "${old_snapshot}" "${extra_repo}"
+	: >"${old_snapshot}/old-quant.gguf"
+	: >"${extra_repo}/model.gguf"
+	: >"${hub_cache}/models--example--file"
+	ln -s "${symlink_target}" "${hub_cache}/models--example--link"
 	create_hf_mock "${mock_bin}"
 	cat >"${manifest_path}" <<'EOF'
 [
@@ -97,11 +116,23 @@ single_file_case() {
     "hfRepo": "example/single",
     "primaryPath": "model.gguf",
     "downloadPaths": ["model.gguf"]
+  },
+  {
+    "modelRef": "other:model",
+    "hfRepo": "other/model",
+    "primaryPath": "model.gguf",
+    "downloadPaths": ["model.gguf"]
   }
 ]
 EOF
 
-	run_preseed "${manifest_path}" "${cache_root}" "${mock_bin}"
+	LLAMA_PRESEED_PRUNE=0 run_preseed "${manifest_path}" "${cache_root}" "${mock_bin}"
+	[[ -d "${retired_repo}" ]]
+	LLAMA_PRESEED_PRUNE=1 run_preseed "${manifest_path}" "${cache_root}" "${mock_bin}"
+	[[ ! -e "${retired_repo}" ]]
+	[[ -d "${ancillary_cache}" && -d "${symlink_target}" ]]
+	[[ -L "${hub_cache}/models--example--link" && -f "${hub_cache}/models--example--file" ]]
+	[[ -f "${old_snapshot}/old-quant.gguf" && -f "${extra_repo}/model.gguf" ]]
 	[[ -f "${cache_root}/hub/models--example--single/refs/main" ]]
 	[[ -f "${cache_root}/hub/models--example--single/snapshots/mock-revision/model.gguf" ]]
 }
@@ -173,8 +204,9 @@ invalid_path_case() {
 	local cache_root="${case_root}/cache"
 	local manifest_path="${case_root}/manifest.json"
 	local stderr_path="${case_root}/stderr.txt"
+	local retired_repo="${cache_root}/hub/models--example--retired"
 
-	mkdir -p "${case_root}"
+	mkdir -p "${retired_repo}"
 	create_hf_mock "${mock_bin}"
 	cat >"${manifest_path}" <<'EOF'
 [
@@ -187,12 +219,20 @@ invalid_path_case() {
 ]
 EOF
 
-	if run_preseed "${manifest_path}" "${cache_root}" "${mock_bin}" 2>"${stderr_path}"; then
+	if LLAMA_PRESEED_PRUNE=1 run_preseed "${manifest_path}" "${cache_root}" "${mock_bin}" 2>"${stderr_path}"; then
 		printf 'invalid_path_case should have failed\n' >&2
 		exit 1
 	fi
 
 	assert_contains "${stderr_path}" "primaryPath must be repo-relative for model: invalid:model"
+	[[ -d "${retired_repo}" ]]
+
+	printf '[]\n' >"${manifest_path}"
+	if LLAMA_PRESEED_PRUNE=1 run_preseed "${manifest_path}" "${cache_root}" "${mock_bin}" 2>"${stderr_path}"; then
+		printf 'empty manifest should have failed\n' >&2
+		exit 1
+	fi
+	[[ -d "${retired_repo}" ]]
 }
 
 idempotence_case() {
@@ -314,10 +354,11 @@ missing_shard_case() {
 	local manifest_path="${case_root}/manifest.json"
 	local stderr_path="${case_root}/stderr.txt"
 	local old_snapshot="${cache_root}/hub/models--example--missing/snapshots/old-revision/Q4"
+	local retired_repo="${cache_root}/hub/models--example--retired"
 
 	mkdir -p "${case_root}"
 	create_hf_mock "${mock_bin}"
-	mkdir -p "${old_snapshot}"
+	mkdir -p "${old_snapshot}" "${retired_repo}"
 	: >"${old_snapshot}/model-00002-of-00002.gguf"
 	cat >"${manifest_path}" <<'EOF'
 [
@@ -333,12 +374,13 @@ missing_shard_case() {
 ]
 EOF
 
-	if HF_MOCK_MODE="missing-last-shard" run_preseed "${manifest_path}" "${cache_root}" "${mock_bin}" 2>"${stderr_path}"; then
+	if LLAMA_PRESEED_PRUNE=1 HF_MOCK_MODE="missing-last-shard" run_preseed "${manifest_path}" "${cache_root}" "${mock_bin}" 2>"${stderr_path}"; then
 		printf 'missing_shard_case should have failed\n' >&2
 		exit 1
 	fi
 
 	assert_contains "${stderr_path}" "failed to resolve downloaded GGUF path Q4/model-00002-of-00002.gguf for model: missing:shard"
+	[[ -d "${retired_repo}" ]]
 }
 
 invalid_download_path_case() {

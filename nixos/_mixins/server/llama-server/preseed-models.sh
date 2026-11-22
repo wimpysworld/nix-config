@@ -4,6 +4,7 @@ set -euo pipefail
 
 manifest_path="${1:-${LLAMA_PRESEED_MODELS_JSON:-}}"
 cache_root="${LLAMA_PRESEED_CACHE_ROOT:-/var/lib/llama-models/huggingface}"
+declare -A retained_repositories=()
 
 die() {
 	printf 'Error: %s\n' "$1" >&2
@@ -96,8 +97,10 @@ prepare_model() {
 	local download_path
 	local hf_model_path
 	local snapshot_path
+	local repo_component='[[:alnum:]_]([[:alnum:]_.-]*[[:alnum:]_])?'
 	local primary_in_downloads='false'
 	local missing_download='true'
+	local download_paths_text
 	local -a download_paths=()
 	local -a revision_args=()
 
@@ -111,14 +114,11 @@ prepare_model() {
 		revision_args=(--revision "${revision}")
 	fi
 
-	jq -e '.downloadPaths | type == "array" and length > 0' <<<"${spec_json}" >/dev/null || die "downloadPaths must be a non-empty array for model: ${model_ref}"
-	while IFS= read -r download_path; do
-		download_paths+=("${download_path}")
-	done < <(jq -r '.downloadPaths[]' <<<"${spec_json}")
+	download_paths_text="$(jq -er '.downloadPaths[]' <<<"${spec_json}")" || die "could not read downloadPaths for model: ${model_ref}"
+	mapfile -t download_paths <<<"${download_paths_text}"
 
-	if [[ -z "${hf_repo}" ]]; then
-		die "hfRepo must not be empty for model: ${model_ref}"
-	fi
+	[[ "${hf_repo}" =~ ^${repo_component}(/${repo_component})?$ && "${hf_repo}" != *--* && "${hf_repo}" != *..* ]] \
+		|| die "invalid hfRepo for model: ${model_ref}"
 
 	validate_gguf_path "${model_ref}" "primaryPath" "${primary_path}"
 
@@ -163,12 +163,42 @@ prepare_model() {
 		fi
 	done
 
+	retained_repositories["models--${hf_repo//\//--}"]=1
 	printf '  Hugging Face GGUF: verified\n'
+}
+
+prune_retired_repositories() {
+	local repo_directory
+
+	[[ "${HF_HUB_CACHE}" == "${cache_root}/hub" && "${HF_HUB_CACHE}" == "$(realpath -e -- "${HF_HUB_CACHE}")" ]] \
+		|| die "pruning requires the dedicated Hugging Face hub cache at ${cache_root}/hub"
+
+	for repo_directory in "${HF_HUB_CACHE}"/models--*; do
+		[[ -d "${repo_directory}" && ! -L "${repo_directory}" ]] || continue
+		[[ -z "${retained_repositories["${repo_directory##*/}"]+present}" ]] || continue
+		printf 'Remove retired Hugging Face repository: %s\n' "${repo_directory##*/}"
+		rm -rf --one-file-system --preserve-root=all -- "${repo_directory}"
+	done
 }
 
 [[ -n "${manifest_path}" ]] || die "no manifest path supplied"
 [[ -f "${manifest_path}" ]] || die "manifest file does not exist: ${manifest_path}"
 [[ -n "${cache_root}" ]] || die "cache root must not be empty"
+
+manifest_entries="$(jq -cse '
+	def safe_string: type == "string" and length > 0 and (explode | all(. >= 32 and . != 127));
+	def valid_entry:
+		type == "object"
+		and (.modelRef | safe_string)
+		and (.hfRepo | safe_string)
+		and (.revision == null or (.revision | safe_string))
+		and (.primaryPath | safe_string)
+		and (.downloadPaths | type == "array" and length > 0 and all(.[]; safe_string));
+	if length == 1 and (.[0] | type == "array" and length > 0 and all(.[]; valid_entry))
+	then .[0][]
+	else empty
+	end
+' "${manifest_path}")" || die "manifest must contain one non-empty array of model downloads"
 
 export HF_HOME="${HF_HOME:-${cache_root}}"
 export HF_HUB_CACHE="${HF_HUB_CACHE:-${cache_root}/hub}"
@@ -187,8 +217,10 @@ mkdir -p \
 	"${XDG_CONFIG_HOME}" \
 	"${XDG_DATA_HOME}"
 
-jq -e 'type == "array" and length > 0' "${manifest_path}" >/dev/null || die "manifest must be a non-empty JSON array"
-
 while IFS= read -r spec_json; do
 	prepare_model "${spec_json}"
-done < <(jq -c '.[]' "${manifest_path}")
+done <<<"${manifest_entries}"
+
+if [[ "${LLAMA_PRESEED_PRUNE:-}" == '1' ]]; then
+	prune_retired_repositories
+fi

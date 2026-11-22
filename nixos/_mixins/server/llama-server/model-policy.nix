@@ -5,6 +5,7 @@ let
       modelRef,
       maxContext,
       generation ? null,
+      reasoningEffort ? null,
       singleSlot ? false,
       microBatchSize ? null,
       mtpDraftTokens ? null,
@@ -45,6 +46,7 @@ let
         microBatchSize
         modelRef
         mtpDraftTokens
+        reasoningEffort
         singleSlot
         ;
       llamaServerArgs = [
@@ -56,6 +58,10 @@ let
         kvCache.v
       ]
       ++ generationArgs
+      ++ lib.optionals (reasoningEffort != null) [
+        "--reasoning-effort"
+        reasoningEffort
+      ]
       ++ lib.optionals singleSlot [
         "--parallel"
         "1"
@@ -96,6 +102,7 @@ let
     mkModel {
       inherit maxContext mtpDraftTokens;
       modelRef = "unsloth/Qwen3.8-27B-GGUF:${quant}";
+      reasoningEffort = "medium";
       singleSlot = true;
       # Use the model card's thinking-mode sampling settings.
       generation = {

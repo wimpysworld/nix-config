@@ -46,13 +46,8 @@ let
   service = inferenceEval.config.systemd.services.llama-swap;
   swapConfig = inferenceEval.config.services.llama-swap;
   inherit (swapConfig.settings) models;
-  matchesVulkanBackend =
-    packageName: name:
-    let
-      package = inferenceEval.pkgs.${packageName}.override { vulkanSupport = true; };
-      command = builtins.unsafeDiscardStringContext (lib.getExe' package "llama-server");
-    in
-    package.pname == packageName && lib.hasInfix command models.${name}.cmd;
+  package = inferenceEval.pkgs.llama-cpp.override { vulkanSupport = true; };
+  server = builtins.unsafeDiscardStringContext (lib.getExe' package "llama-server");
   groupNames = builtins.attrNames swapConfig.settings.groups;
 in
 assert inferenceEval.config.systemd.services ? llama-swap;
@@ -79,10 +74,8 @@ assert service.environment.XDG_DATA_HOME == "%S/llama-swap";
 assert service.environment.LD_LIBRARY_PATH == "/run/opengl-driver/lib:/run/opengl-driver-32/lib";
 assert service.environment.XDG_DATA_DIRS == "/run/opengl-driver/share:/run/opengl-driver-32/share";
 assert builtins.elem inferenceEval.pkgs.llama-swap inferenceEval.config.environment.systemPackages;
-assert matchesVulkanBackend "llama-cpp-inkling" "inkling-2-mini";
-assert matchesVulkanBackend "llama-cpp-inkling" "qwen3.8-27b";
-assert matchesVulkanBackend "llama-cpp" "gemma4-e4b";
-assert matchesVulkanBackend "llama-cpp" "qwen3-embedding-0.6b";
+assert builtins.elem package inferenceEval.config.environment.systemPackages;
+assert lib.all (model: lib.hasInfix server model.cmd) (lib.attrValues models);
 assert lib.hasInfix "Mainline_Support/" models.inkling-2-mini.cmd;
 assert builtins.elem "embedding" groupNames;
 assert builtins.elem "generation" groupNames;

@@ -3,11 +3,6 @@
 
 set -euo pipefail
 
-if [[ ${1:-} == --focused ]]; then
-	shift
-	exec python3 "${BENCHMARK_FOCUSED_SCRIPT:-$(dirname "${BASH_SOURCE[0]}")/focused.py}" "$@"
-fi
-
 GENERATION_PROMPT="Write a concise Python function named summarise_log(lines) that counts INFO, WARNING, and ERROR entries, ignores malformed lines, and returns a dict. Include a short example."
 GENERATION_MAX_TOKENS="512"
 PROMPT_BENCH_TOKENS="512"
@@ -15,9 +10,9 @@ EMBEDDING_BENCH_TEXT="Optical fibre uses pulses of light to carry data through t
 EMBEDDING_BENCH_BATCH="16"
 MODEL_SPECS=$(
 	cat <<'EOF'
-	gemma4:e2b|unsloth/gemma-4-E2B-it-GGUF|gemma-4-E2B-it-UD-Q6_K_XL.gguf|gemma-4-E2B-it-UD-Q6_K_XL.gguf
-	gemma4:e4b|unsloth/gemma-4-E4B-it-GGUF|gemma-4-E4B-it-UD-Q6_K_XL.gguf|gemma-4-E4B-it-UD-Q6_K_XL.gguf
-	qwen3-embedding:0.6b|Qwen/Qwen3-Embedding-0.6B-GGUF|Qwen3-Embedding-0.6B-Q8_0.gguf|Qwen3-Embedding-0.6B-Q8_0.gguf
+	gemma4-e2b|unsloth/gemma-4-E2B-it-GGUF|gemma-4-E2B-it-UD-Q6_K_XL.gguf|gemma-4-E2B-it-UD-Q6_K_XL.gguf
+	gemma4-e4b|unsloth/gemma-4-E4B-it-GGUF|gemma-4-E4B-it-UD-Q6_K_XL.gguf|gemma-4-E4B-it-UD-Q6_K_XL.gguf
+	qwen3-embedding-0.6b|Qwen/Qwen3-Embedding-0.6B-GGUF|Qwen3-Embedding-0.6B-Q8_0.gguf|Qwen3-Embedding-0.6B-Q8_0.gguf
 EOF
 )
 VOLATILE_ROOT="${BENCHMARK_MODELS_ROOT:-${HOME}/Volatile/benchmark-models}"
@@ -40,11 +35,7 @@ LLAMA_SERVER_PID=""
 HF_REPO=""
 HF_PRIMARY_PATH=""
 HF_MODEL_PATH=""
-MODEL=""
 MODEL_KIND="generation"
-RUNS="5"
-PURGE_REQUESTED='false'
-HOST_COMPUTE_VENDOR="${BENCHMARK_MODELS_HOST_GPU_COMPUTE_VENDOR:-}"
 BACKEND_MATRIX_REASON=""
 PRIMARY_METRIC_LABEL=""
 SECONDARY_METRIC_LABEL=""
@@ -66,27 +57,15 @@ declare -a HF_DOWNLOAD_PATHS=()
 
 usage() {
 	cat <<'EOF'
-Usage: benchmark-models [model] [runs]
+Usage: benchmark-models MODEL [runs]
        benchmark-models --purge
-       benchmark-models --focused --help
-       benchmark-models-all [--inkling GGUF] [--qwen GGUF]
+       benchmark-models-all
 
-The default batch compares Vulkan and ROCm on Strix Halo using local GGUF files.
-An explicit model alias runs an optional Ollama and llama.cpp benchmark.
+benchmark-models-all tests inkling-2-mini and qwen3.8-27b with three measured
+runs per case. Both models use local, pinned GGUF files and packaged llama-server
+binaries. The other models compare Ollama and llama.cpp with five measured runs.
 
-Arguments:
-  model   Alias for an optional benchmark, listed below
-  runs    Number of measured runs, default: 5
-
-Options:
-  --focused  Run the same comparison as benchmark-models-all
-  --purge  Remove the benchmark-models volatile root, then exit
-  -h, --help
-           Show this help text
-
-Backend matrix:
-  AMD      rocm-ollama, vulkan-ollama, rocm-llama-bench or rocm-llama-server
-  NVIDIA   cuda-ollama, vulkan-ollama, cuda-llama-bench or cuda-llama-server
+--purge removes the benchmark cache and results, not the server model cache.
 
 Environment:
   BENCHMARK_MODELS_ROOT         Root for caches and results, default: ~/Volatile/benchmark-models
@@ -107,56 +86,12 @@ trim_whitespace() {
 list_supported_models() {
 	local model
 
-	printf 'Supported models:\n'
+	printf 'Supported models:\n  - inkling-2-mini\n  - qwen3.8-27b\n'
 	while IFS='|' read -r model _; do
 		model="$(trim_whitespace "${model}")"
 		printf '  - %s\n' "${model}"
 	done <<<"${MODEL_SPECS}"
 }
-
-parse_args() {
-	local positional=()
-
-	while [[ $# -gt 0 ]]; do
-		case "$1" in
-		--purge)
-			PURGE_REQUESTED='true'
-			;;
-		-h | --help)
-			usage
-			exit 0
-			;;
-		--)
-			shift
-			while [[ $# -gt 0 ]]; do
-				positional+=("$1")
-				shift
-			done
-			break
-			;;
-		-*)
-			printf 'Error: unknown option: %s\n' "$1" >&2
-			exit 1
-			;;
-		*)
-			positional+=("$1")
-			;;
-		esac
-		shift
-	done
-
-	if [[ ${#positional[@]} -gt 2 ]]; then
-		printf 'Error: expected at most two positional arguments: model and runs.\n' >&2
-		exit 1
-	fi
-
-	MODEL="${positional[0]:-}"
-	RUNS="${positional[1]:-5}"
-	MODEL="$(trim_whitespace "${MODEL}")"
-	RUNS="$(trim_whitespace "${RUNS}")"
-}
-
-parse_args "$@"
 
 purge_benchmark_root() {
 	local home_volatile_root
@@ -186,24 +121,46 @@ purge_benchmark_root() {
 	fi
 }
 
-if [[ "${PURGE_REQUESTED}" == 'true' ]]; then
-	if [[ -n "${MODEL}" ]]; then
+case "${1-}" in
+--purge)
+	if [[ $# -ne 1 ]]; then
 		printf 'Error: --purge does not accept model or runs arguments.\n' >&2
 		exit 1
 	fi
 	purge_benchmark_root
 	exit 0
-fi
-
-if [[ -z "${MODEL}" ]]; then
+	;;
+-h | --help | '')
 	usage
 	exit 0
+	;;
+-*)
+	printf 'Error: unknown option: %s\n' "$1" >&2
+	exit 1
+	;;
+esac
+
+if [[ $# -gt 2 ]]; then
+	printf 'Error: expected at most two positional arguments: model and runs.\n' >&2
+	exit 1
 fi
 
-if ! [[ "${RUNS}" =~ ^[0-9]+$ ]] || [[ "${RUNS}" -lt 1 ]]; then
+MODEL="$1"
+RUNS="${2-}"
+if [[ $# -gt 1 && ! "${RUNS}" =~ ^0*[1-9][0-9]*$ ]]; then
 	printf 'Error: runs must be a positive integer.\n' >&2
 	exit 1
 fi
+
+case "${MODEL}" in
+inkling-2-mini | qwen3.8-27b)
+	exec python3 "${BENCHMARK_COMPARISON_SCRIPT:-$(dirname "${BASH_SOURCE[0]}")/focused.py}" "${MODEL}" "${RUNS:-3}"
+	;;
+gemma4-e2b) OLLAMA_MODEL='gemma4:e2b' ;;
+gemma4-e4b) OLLAMA_MODEL='gemma4:e4b' ;;
+qwen3-embedding-0.6b) OLLAMA_MODEL='qwen3-embedding:0.6b' ;;
+esac
+RUNS="${RUNS:-5}"
 
 model_spec_field() {
 	local requested_model="$1"
@@ -533,36 +490,23 @@ add_runner() {
 }
 
 prepare_backend_matrix() {
-	case "${HOST_COMPUTE_VENDOR}" in
-	amd)
-		add_runner 'rocm-ollama' 'ollama' 'rocm-ollama'
-		add_runner 'vulkan-ollama' 'ollama' 'vulkan-ollama'
+	local backend prefix ollama server server_bin
+	local -a backends
+
+	read -r -a backends <<<"${BENCHMARK_MODELS_BACKENDS:-}"
+	for backend in "${backends[@]}"; do
+		prefix="BENCHMARK_MODELS_${backend^^}"
+		ollama="${prefix}_OLLAMA"
+		server="${prefix}_SERVER"
+		server_bin="${!server}"
+		add_runner "${backend}-ollama" 'ollama' "${!ollama}"
 		if [[ "${MODEL_KIND}" == 'embedding' ]]; then
-			add_runner 'rocm-llama-server' 'llama-server' 'rocm-llama-server'
-			add_runner 'vulkan-llama-server' 'llama-server' 'vulkan-llama-server'
+			add_runner "${backend}-llama-server" 'llama-server' "${server_bin}"
 		else
-			add_runner 'rocm-llama-bench' 'llama.cpp' 'rocm-llama-bench'
-			add_runner 'vulkan-llama-bench' 'llama.cpp' 'vulkan-llama-bench'
+			add_runner "${backend}-llama-bench" 'llama.cpp' "${server_bin%/*}/llama-bench"
 		fi
-		;;
-	nvidia)
-		add_runner 'cuda-ollama' 'ollama' 'cuda-ollama'
-		add_runner 'vulkan-ollama' 'ollama' 'vulkan-ollama'
-		if [[ "${MODEL_KIND}" == 'embedding' ]]; then
-			add_runner 'cuda-llama-server' 'llama-server' 'cuda-llama-server'
-			add_runner 'vulkan-llama-server' 'llama-server' 'vulkan-llama-server'
-		else
-			add_runner 'cuda-llama-bench' 'llama.cpp' 'cuda-llama-bench'
-			add_runner 'vulkan-llama-bench' 'llama.cpp' 'vulkan-llama-bench'
-		fi
-		;;
-	'')
-		BACKEND_MATRIX_REASON='Host compute vendor metadata is unavailable, backend comparison skipped.'
-		;;
-	*)
-		BACKEND_MATRIX_REASON="Host compute vendor '${HOST_COMPUTE_VENDOR}' is not supported for dedicated backend comparison."
-		;;
-	esac
+	done
+	BACKEND_MATRIX_REASON='No GPU benchmark backend is configured for this host.'
 }
 
 backend_matrix_label() {
@@ -622,7 +566,7 @@ run_ollama_once() {
 	local metrics
 
 	payload=$(jq -cn \
-		--arg model "${MODEL}" \
+		--arg model "${OLLAMA_MODEL}" \
 		--arg prompt "${GENERATION_PROMPT}" \
 		--argjson max_tokens "${max_tokens}" \
 		'{
@@ -788,7 +732,7 @@ run_ollama_embedding_once() {
 
 	embedding_inputs_json="$(generate_embedding_inputs_json)"
 	payload=$(jq -cn \
-		--arg model "${MODEL}" \
+		--arg model "${OLLAMA_MODEL}" \
 		--argjson input "${embedding_inputs_json}" \
 		'{
 		  model: $model,
@@ -849,7 +793,7 @@ ollama_model_cached() {
 	local cached_model
 
 	while read -r cached_model; do
-		if [[ "${cached_model}" == "${MODEL}" ]]; then
+		if [[ "${cached_model}" == "${OLLAMA_MODEL}" ]]; then
 			return 0
 		fi
 	done < <(run_ollama "${OLLAMA_COMMAND}" list 2>/dev/null | awk 'NR > 1 { print $1 }')
@@ -859,30 +803,31 @@ ollama_model_cached() {
 
 resolve_cached_hf_path() {
 	local repo_relative_path="$1"
+	local hub
+	local hubs=("${HF_HUB_CACHE}")
 	local repo_cache_dir
 	local revision
 	local candidate
-	local -a candidates=()
 
-	repo_cache_dir="${HF_HUB_CACHE}/models--${HF_REPO//\//--}"
-
-	if [[ -f "${repo_cache_dir}/refs/main" ]]; then
-		revision="$(<"${repo_cache_dir}/refs/main")"
-		candidate="${repo_cache_dir}/snapshots/${revision}/${repo_relative_path}"
-		if [[ -e "${candidate}" ]]; then
+	if [[ -n "${BENCHMARK_MODELS_PRESEED_CACHE:-}" ]]; then
+		hubs=("${BENCHMARK_MODELS_PRESEED_CACHE}/hub" "${hubs[@]}")
+	fi
+	for hub in "${hubs[@]}"; do
+		repo_cache_dir="${hub}/models--${HF_REPO//\//--}"
+		if [[ -r "${repo_cache_dir}/refs/main" ]]; then
+			revision="$(<"${repo_cache_dir}/refs/main")"
+			candidate="${repo_cache_dir}/snapshots/${revision}/${repo_relative_path}"
+			if [[ -f "${candidate}" && -r "${candidate}" ]]; then
+				printf '%s\n' "${candidate}"
+				return 0
+			fi
+		fi
+		for candidate in "${repo_cache_dir}"/snapshots/*/"${repo_relative_path}"; do
+			[[ -f "${candidate}" && -r "${candidate}" ]] || continue
 			printf '%s\n' "${candidate}"
 			return 0
-		fi
-	fi
-
-	shopt -s nullglob
-	candidates=("${repo_cache_dir}"/snapshots/*/"${repo_relative_path}")
-	shopt -u nullglob
-
-	if [[ ${#candidates[@]} -gt 0 ]]; then
-		printf '%s\n' "${candidates[0]}"
-		return 0
-	fi
+		done
+	done
 
 	return 1
 }
@@ -904,7 +849,7 @@ calculate_stats() {
 print_intro() {
 	printf 'Model benchmark: %s runs\n' "${RUNS}"
 	printf -- '- %-10s %s\n' 'Mode:' "${MODEL_KIND}"
-	printf -- '- %-10s %s\n' 'Ollama:' "${MODEL}"
+	printf -- '- %-10s %s\n' 'Ollama:' "${OLLAMA_MODEL}"
 	printf -- '- %-10s %s\n' 'Llama.cpp:' "${HF_PRIMARY_PATH}"
 
 	if [[ "${MODEL_KIND}" == 'generation' ]]; then
@@ -928,7 +873,7 @@ prepare_downloads() {
 		printf '  [1/2] Ollama model: ready\n'
 	else
 		printf '  [1/2] Ollama model: pulling\n'
-		run_ollama "${OLLAMA_COMMAND}" pull "${MODEL}"
+		run_ollama "${OLLAMA_COMMAND}" pull "${OLLAMA_MODEL}"
 	fi
 
 	for download_path in "${HF_DOWNLOAD_PATHS[@]}"; do

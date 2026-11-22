@@ -25,7 +25,7 @@ let
       coreutils
       findutils
       jq
-      python3Packages.huggingface-hub
+      huggingface-cli
     ];
     text = builtins.readFile ./preseed-models.sh;
   };
@@ -61,6 +61,7 @@ in
         HUGGINGFACE_HUB_CACHE = "${cacheRoot}/hub";
         LLAMA_PRESEED_CACHE_ROOT = cacheRoot;
         LLAMA_PRESEED_MODELS_JSON = "${preseedModelsJson}";
+        LLAMA_PRESEED_PRUNE = "1";
         TMPDIR = "${cacheRoot}/tmp";
         TRANSFORMERS_CACHE = "${cacheRoot}/transformers";
         XDG_CACHE_HOME = "${cacheRoot}/xdg/cache";
@@ -71,7 +72,7 @@ in
         coreutils
         findutils
         jq
-        python3Packages.huggingface-hub
+        huggingface-cli
       ];
       serviceConfig = {
         Type = "exec";

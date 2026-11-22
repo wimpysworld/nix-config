@@ -134,6 +134,10 @@ let
       model.kvCache.v
     ]
     ++ generationArgPairs model
+    ++ lib.optionals (model.reasoningEffort != null) [
+      "--reasoning-effort"
+      model.reasoningEffort
+    ]
     ++ lib.optionals model.singleSlot [
       "--parallel"
       "1"
@@ -276,6 +280,8 @@ assert lib.all maxContextIsSane allModels;
 assert lib.all (model: generationShape model.generation) allModels;
 assert argsComposeCorrectly;
 assert argsAreAllStrings;
+assert lib.all (tier: tier.models.dense.reasoningEffort == "medium") textTiers;
+assert lib.all (tier: tier.models.moe.reasoningEffort == null) textTiers;
 assert textContextShrinksOnLowerTiers;
 assert eachTextModelUsesOneSlot;
 assert embeddingIsUniform;
@@ -296,6 +302,7 @@ assert downloadsCoverSelection cudaRuntime;
 # Embedding models carry no generation block, so sampler flags must stay absent.
 assert vulkanEmbedding.generation == null;
 assert !builtins.elem "--temp" vulkanEmbedding.runtimeArgs;
+assert !builtins.elem "--reasoning-effort" vulkanEmbedding.runtimeArgs;
 assert
   lib.take 4 (lib.reverseList vulkanMoe.runtimeArgs) == [
     "none"
