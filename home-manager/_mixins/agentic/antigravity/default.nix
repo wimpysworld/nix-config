@@ -164,6 +164,7 @@ let
   };
 
   declarativeSettings = {
+    model = "Gemini 4 Neon (High)";
     modelProvider = "gemini";
     colorScheme = "terminal";
     enableTerminalSandbox = false;
@@ -217,7 +218,6 @@ let
       '
         . as $existing
         | $desired
-        | if ($existing | has("model")) and ($existing.model != null) then .model = $existing.model else . end
         | if ($existing | has("gcp")) and ($existing.gcp != null) then .gcp = $existing.gcp else . end
         | .trustedWorkspaces = (
             (
