@@ -11,6 +11,7 @@ if [[ $# -ne 0 ]]; then
 fi
 
 status=0
-benchmark-models inkling-2-mini || status=$?
-benchmark-models qwen3.8-27b || status=$?
+for model in "${suiteModels[@]}"; do
+	python3 "${BENCHMARK_COMPARISON_SCRIPT}" "${model}" 3 || status=$?
+done
 exit "${status}"

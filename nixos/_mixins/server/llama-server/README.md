@@ -30,13 +30,16 @@ matching BF16 projector for image and audio input. All tiers use
 
 ## Run benchmarks
 
-Run `benchmark-models-all` to benchmark `inkling-2-mini` and `qwen3.8-27b`.
-Run `benchmark-models MODEL [runs]` to benchmark one model. Specify `gemma4-e2b`,
-`gemma4-e4b` or `qwen3-embedding-0.6b` to benchmark a media or embedding model.
-The commands use packaged llama.cpp binaries and pinned snapshots in the
-Hugging Face cache. For the two text generators, the host's VRAM tier sets the
-quantisation. Text generation benchmarks use the shared model sampler policy.
-Synthetic `llama-bench` tests do not sample tokens.
+Run `benchmark-models-all` to benchmark the host's configured generation models,
+including Gemma 4 E2B or E4B. The suite uses packaged llama-server binaries,
+local Hugging Face snapshots and the shared sampler policy. The Gemma case
+measures text generation without speculative decoding. It does not test image
+or audio input.
+
+Run `benchmark-models MODEL [runs]` to benchmark one model. The individual
+`gemma4-e2b` and `gemma4-e4b` commands retain the Ollama and llama.cpp comparison.
+`qwen3-embedding-0.6b` remains opt-in. Synthetic `llama-bench` tests do not sample
+tokens.
 
 ### Strix Halo results
 
@@ -176,7 +179,11 @@ Qwen uses the [model card's thinking-mode settings](https://huggingface.co/unslo
 Its default reasoning effort is `medium`. Set `reasoning_effort` in the request
 body to override the default.
 Gemma uses the [Unsloth Gemma 4 settings](https://unsloth.ai/docs/models/gemma-4)
-with thinking enabled. Embedding has no sampler.
+with thinking enabled. The [Gemma 4 QAT guide](https://unsloth.ai/docs/models/gemma-4/qat)
+recommends the same sampler for its smaller weight files. Keep the deployed
+weights as the benchmark baseline. Compare transcription and image results
+with the matching projector before changing the media model. Embedding has no
+sampler.
 
 ### llama-swap as the production model manager
 
