@@ -208,7 +208,7 @@ Alerts group by `<owner>/<repo>:dependabot:<ecosystem>:<package>` or `<owner>/<r
 
 **Community Issues pipeline (`skrye` and `zannah` only)**
 
-The owning Gemini agent (`skrye` or `zannah` via `mod 2`) creates silent Linear `Triage` intake stubs (`linear_triage_intake`) for new community issues with zero GitHub comments. Throttled `linear_triage_research` turns inspect the GitHub issue and codebase read-only, enrich the Linear description, assign Estimate, Type, and Priority, and apply the fail-closed `ready-to-implement` gate. Every gate condition must pass:
+The owning Gemini agent (`skrye` or `zannah` via `mod 2`) creates `Triage` intake stubs (`linear_triage_intake`) in Linear for untracked community issues. Stub creation posts zero GitHub comments. Throttled `linear_triage_research` turns inspect the GitHub issue and codebase read-only, enrich the Linear description, assign Estimate, Type, and Priority, and apply the fail-closed `ready-to-implement` gate. Every gate condition must pass:
 
 - Estimate is `XS` or `S`.
 - Type is `Bug`, a bounded `Improvement`, or an allowlisted catalogue addition (such as a verified `deb-get` entry), never a new `Feature`.
