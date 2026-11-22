@@ -7863,6 +7863,197 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
             gh_label_edits,
         )
 
+    def test_backlog_pr_reevaluates_on_new_head_push_and_skips_unchanged_sha(self) -> None:
+        repo = "wimpysworld/tailor"
+        pr_unchanged, pr_lane_b_push, pr_lane_a_push, pr_cooled_down = self._owned_numbers(
+            repo, "skrye", 4, kind="pr", start=820
+        )
+
+        open_nodes: list[dict[str, object]] = [
+            self._graphql_pr_node(
+                repo,
+                pr_unchanged,
+                title="feat: unchanged backlog PR",
+                head_sha="sha_keep_v1",
+                ci_state="SUCCESS",
+                additions=200,
+                deletions=10,
+                file_paths=["src/keep.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_lane_b_push,
+                title="feat: lane B backlog PR pushed new commit",
+                head_sha="sha_lb_v2",
+                ci_state="SUCCESS",
+                additions=200,
+                deletions=15,
+                file_paths=["src/large.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_lane_a_push,
+                title="fix: backlog PR shrunk to lane A",
+                head_sha="sha_la_v2",
+                ci_state="SUCCESS",
+                additions=12,
+                deletions=4,
+                file_paths=["src/small.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_cooled_down,
+                title="feat: backlog PR pushed during cooldown",
+                head_sha="sha_cd_v2",
+                ci_state="SUCCESS",
+                additions=210,
+                deletions=5,
+                file_paths=["src/cooled.py"],
+            ),
+        ]
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(open_nodes), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
+
+        linear_stub = StubLinearSyncClient()
+        lin_unchanged = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_unchanged}",
+            title="feat: unchanged backlog PR",
+            repo=repo,
+            item_kind="PR",
+            state="Backlog",
+            extra_labels=("ready-to-merge",),
+        )
+        lin_lane_b = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_lane_b_push}",
+            title="feat: lane B backlog PR pushed new commit",
+            repo=repo,
+            item_kind="PR",
+            state="Backlog",
+            extra_labels=("ready-to-merge",),
+        )
+        lin_lane_a = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_lane_a_push}",
+            title="fix: backlog PR shrunk to lane A",
+            repo=repo,
+            item_kind="PR",
+            state="Backlog",
+            extra_labels=("ready-to-merge",),
+        )
+        lin_cooled = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_cooled_down}",
+            title="feat: backlog PR pushed during cooldown",
+            repo=repo,
+            item_kind="PR",
+            state="Backlog",
+            extra_labels=("ready-to-merge",),
+        )
+
+        def skrye_reply(meta: dict[str, str], _params: dict) -> str:
+            kind = meta.get("dispatch_kind", "")
+            sha = meta.get("head_sha", "")
+            if kind == "community_pr_lane_b_review" and sha == "sha_lb_v2":
+                return "LANE_B_VERDICT: needs-decision\nSUMMARY: New push adds breaking API flag."
+            if kind == "community_pr_blind_review" and sha == "sha_la_v2":
+                return "BLIND_REVIEW_VERDICT: PASS\nFINDINGS: Small focused fix.\nPOLISH: none"
+            if kind == "community_pr_lane_b_review" and sha == "sha_cd_v2":
+                return "LANE_B_VERDICT: ready-to-merge\nSUMMARY: Re-reviewed commit looks clean."
+            return "HEARTBEAT_OK"
+
+        store, runner, rpc_calls = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=skrye_reply,
+        )
+        slot1_ms = self._utc_ms(2026, 4, 1, 10, 0)
+        for pr_num, prior_sha, cooldown_until in (
+            (pr_unchanged, "sha_keep_v1", 0),
+            (pr_lane_b_push, "sha_lb_v1", 0),
+            (pr_lane_a_push, "sha_la_v1", 0),
+            (pr_cooled_down, "sha_cd_v1", slot1_ms + 600_000),
+        ):
+            store.update_thread_state(
+                companion.make_pr_key(repo, pr_num),
+                {
+                    "repo": repo,
+                    "number": pr_num,
+                    "subject_type": "PullRequest",
+                    "handled_updated_at": "2026-04-01T09:00:00Z",
+                    "handled_head_sha": prior_sha,
+                    "triaged_head_sha": prior_sha,
+                    "is_community": True,
+                    "followup_cooldown_until_ms": cooldown_until,
+                },
+                now_override_ms=slot1_ms - 60_000,
+            )
+
+        # Slot 1: pr_lane_b_push re-evaluates via Lane B, pr_lane_a_push moves to In Review + Lane A blind review;
+        # pr_unchanged stays untouched; pr_cooled_down defers dispatch until cooldown expires while stripping stale ready-to-merge.
+        res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms)
+        by_num_1 = {int(c["meta"]["number"]): c for c in rpc_calls}  # type: ignore[index]
+        self.assertEqual(set(by_num_1.keys()), {pr_lane_b_push, pr_lane_a_push})
+        self.assertEqual(by_num_1[pr_lane_b_push]["meta"]["dispatch_kind"], "community_pr_lane_b_review")  # type: ignore[index]
+        self.assertEqual(by_num_1[pr_lane_b_push]["meta"]["head_sha"], "sha_lb_v2")  # type: ignore[index]
+        self.assertEqual(by_num_1[pr_lane_a_push]["meta"]["dispatch_kind"], "community_pr_blind_review")  # type: ignore[index]
+        self.assertEqual(by_num_1[pr_lane_a_push]["meta"]["head_sha"], "sha_la_v2")  # type: ignore[index]
+
+        # pr_unchanged remained untouched with ready-to-merge
+        self.assertEqual(linear_stub.issues[str(lin_unchanged["id"])]["state"]["name"], "Backlog")  # type: ignore[index]
+        self.assertIn("ready-to-merge", companion.extract_linear_issue_labels(linear_stub.issues[str(lin_unchanged["id"])]))
+
+        # pr_lane_b_push replaced stale ready-to-merge with needs-decision, updated watermarks, and sent 1 ping
+        lb_labels = companion.extract_linear_issue_labels(linear_stub.issues[str(lin_lane_b["id"])])
+        self.assertEqual(linear_stub.issues[str(lin_lane_b["id"])]["state"]["name"], "Backlog")  # type: ignore[index]
+        self.assertIn("needs-decision", lb_labels)
+        self.assertNotIn("ready-to-merge", lb_labels)
+        lb_state = store.get_thread_state(companion.make_pr_key(repo, pr_lane_b_push)) or {}
+        self.assertEqual(lb_state.get("handled_head_sha"), "sha_lb_v2")
+        self.assertEqual(lb_state.get("triaged_head_sha"), "sha_lb_v2")
+        self.assertEqual(len(res1["needs_decision_notifications"]), 1)
+        self.assertEqual(len(self.httpd.telegram_requests), 1)
+
+        # pr_lane_a_push transitioned to In Review without stale labels and posted Gemini PASS verdict for sha_la_v2
+        la_labels = companion.extract_linear_issue_labels(linear_stub.issues[str(lin_lane_a["id"])])
+        self.assertEqual(linear_stub.issues[str(lin_lane_a["id"])]["state"]["name"], "In Review")  # type: ignore[index]
+        self.assertNotIn("ready-to-merge", la_labels)
+        self.assertNotIn("needs-decision", la_labels)
+        la_verdicts = companion.linear_sync.parse_blind_review_verdicts(
+            linear_stub.list_issue_comments(str(lin_lane_a["id"])), head_sha="sha_la_v2"
+        )
+        self.assertEqual(len(la_verdicts), 1)
+        self.assertEqual((la_verdicts[0]["agent"], la_verdicts[0]["verdict"]), ("skrye", "pass"))
+
+        # pr_cooled_down did not dispatch during cooldown, and stale ready-to-merge was cleared
+        cd_labels_1 = companion.extract_linear_issue_labels(linear_stub.issues[str(lin_cooled["id"])])
+        self.assertNotIn("ready-to-merge", cd_labels_1)
+        cd_state_1 = store.get_thread_state(companion.make_pr_key(repo, pr_cooled_down)) or {}
+        self.assertEqual(cd_state_1.get("handled_head_sha"), "sha_cd_v1")
+
+        # Slot 2 (after cooldown expires): only pr_cooled_down dispatches; pr_unchanged and pr_lane_b_push stay silent
+        slot2_ms = self._utc_ms(2026, 4, 1, 10, 30)
+        res2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot2_ms)
+        self.assertEqual(len(res2["targeted_dispatches"]), 1)
+        self.assertEqual(int(rpc_calls[-1]["meta"]["number"]), pr_cooled_down)  # type: ignore[index]
+        self.assertEqual(rpc_calls[-1]["meta"]["dispatch_kind"], "community_pr_lane_b_review")  # type: ignore[index]
+        cd_labels_2 = companion.extract_linear_issue_labels(linear_stub.issues[str(lin_cooled["id"])])
+        self.assertIn("ready-to-merge", cd_labels_2)
+        self.assertNotIn("needs-decision", cd_labels_2)
+        cd_state_2 = store.get_thread_state(companion.make_pr_key(repo, pr_cooled_down)) or {}
+        self.assertEqual(cd_state_2.get("handled_head_sha"), "sha_cd_v2")
+        self.assertEqual(cd_state_2.get("triaged_head_sha"), "sha_cd_v2")
+
+        # Slot 3 (repeat poll on unchanged SHAs): zero further dispatches or pings
+        res3 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 11, 0))
+        self.assertEqual(res3["targeted_dispatches"], [])
+        self.assertEqual(res3["needs_decision_notifications"], [])
+        self.assertEqual(len(self.httpd.telegram_requests), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
