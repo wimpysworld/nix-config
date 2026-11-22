@@ -24,7 +24,8 @@ use one slot and disable context shifting. On the 64 GiB Vulkan hosts, both use
 and Qwen uses multi-token prediction (MTP) with up to two draft tokens. Other
 tiers do not enable MTP.
 
-The small media models keep UD-Q6_K_XL and 128K context. All tiers use
+The small media models keep UD-Q6_K_XL and 128K context. Each loads its
+matching BF16 projector for image and audio input. All tiers use
 `qwen3-embedding-0.6b` at Q8_0 with 8,192 tokens of context.
 
 ## Run benchmarks
@@ -34,14 +35,16 @@ Run `benchmark-models MODEL [runs]` to benchmark one model. Specify `gemma4-e2b`
 `gemma4-e4b` or `qwen3-embedding-0.6b` to benchmark a media or embedding model.
 The commands use packaged llama.cpp binaries and pinned snapshots in the
 Hugging Face cache. For the two text generators, the host's VRAM tier sets the
-quantisation.
+quantisation. Text generation benchmarks use the shared model sampler policy.
+Synthetic `llama-bench` tests do not sample tokens.
 
 ### Strix Halo results
 
 An earlier benchmark compared Vulkan and ROCm on Strix Halo with llama.cpp
 b12628. Both backends used the same UD-Q4_K_XL file for each model. Each case
-used an 8,192-token context, a 4,096-token prompt and 512 output tokens. The
-table shows the median total request time over three runs after a warm-up:
+used an 8,192-token context, a 4,096-token prompt and 512 output tokens. These
+runs used greedy sampling, not the current model samplers. The table shows
+the median total request time over three runs after a warm-up:
 
 | Model | MTP draft limit | Vulkan (s) | ROCm (s) |
 |---|---:|---:|---:|
@@ -172,7 +175,8 @@ uses the [Unsloth local-run settings](https://unsloth.ai/docs/models/inkling-2-m
 Qwen uses the [model card's thinking-mode settings](https://huggingface.co/unsloth/Qwen3.8-27B-GGUF).
 Its default reasoning effort is `medium`. Set `reasoning_effort` in the request
 body to override the default.
-Gemma keeps its existing sampler. Embedding has no sampler.
+Gemma uses the [Unsloth Gemma 4 settings](https://unsloth.ai/docs/models/gemma-4)
+with thinking enabled. Embedding has no sampler.
 
 ### llama-swap as the production model manager
 

@@ -15,7 +15,10 @@ let
     defaultCacheRoot
     mkRuntime
     ;
-  inherit (mkRuntime { hostVramGiB = host.gpu.compute.vram or 0; }) selectedRuntimeModels;
+  inherit (mkRuntime { hostVramGiB = host.gpu.compute.vram or 0; })
+    modelMatrix
+    selectedRuntimeModels
+    ;
   modelSnapshot =
     role:
     let
@@ -25,6 +28,34 @@ let
     lib.optionalString (
       selectedRuntimeModels ? ${role}
     ) "hub/models--${repo}/snapshots/${model.revision}/${model.primaryPath}";
+
+  models = {
+    "gemma4-e2b" = modelMatrix.vram8.models.smallMedia;
+    "gemma4-e4b" = modelMatrix.vram64.models.smallMedia;
+  }
+  // lib.optionalAttrs (selectedRuntimeModels ? moe) {
+    "inkling-2-mini" = selectedRuntimeModels.moe;
+  }
+  // lib.optionalAttrs (selectedRuntimeModels ? dense) {
+    "qwen3.8-27b" = selectedRuntimeModels.dense;
+  };
+  profiles = lib.mapAttrs (
+    _: model:
+    let
+      inherit (model) generation;
+    in
+    {
+      inherit (model) microBatchSize reasoning reasoningEffort;
+      sampling = lib.filterAttrs (_: value: value != null) {
+        inherit (generation) temperature;
+        top_k = generation.topK;
+        top_p = generation.topP;
+        min_p = generation.minP or null;
+        repeat_penalty = generation.repetitionPenalty;
+        presence_penalty = generation.presencePenalty or null;
+      };
+    }
+  ) models;
 
   backends =
     if vendor == "nvidia" then
@@ -68,6 +99,7 @@ let
     BENCHMARK_COMPARISON_SCRIPT=${./focused.py}
     export BENCHMARK_MODELS_BACKENDS=${lib.escapeShellArg (lib.concatStringsSep " " backends)}
     export BENCHMARK_MODELS_PRESEED_CACHE=${lib.escapeShellArg defaultCacheRoot}
+    export BENCHMARK_MODELS_PROFILES=${lib.escapeShellArg (builtins.toJSON profiles)}
     export BENCHMARK_MODELS_INKLING_SNAPSHOT=${lib.escapeShellArg (modelSnapshot "moe")}
     export BENCHMARK_MODELS_QWEN_SNAPSHOT=${lib.escapeShellArg (modelSnapshot "dense")}
   ''
