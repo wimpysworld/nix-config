@@ -5,6 +5,7 @@ let
       modelRef,
       maxContext,
       generation ? null,
+      reasoning ? null,
       reasoningEffort ? null,
       singleSlot ? false,
       microBatchSize ? null,
@@ -46,6 +47,7 @@ let
         microBatchSize
         modelRef
         mtpDraftTokens
+        reasoning
         reasoningEffort
         singleSlot
         ;
@@ -58,6 +60,10 @@ let
         kvCache.v
       ]
       ++ generationArgs
+      ++ lib.optionals (reasoning != null) [
+        "--reasoning"
+        reasoning
+      ]
       ++ lib.optionals (reasoningEffort != null) [
         "--reasoning-effort"
         reasoningEffort
@@ -104,7 +110,7 @@ let
       modelRef = "unsloth/Qwen3.8-27B-GGUF:${quant}";
       reasoningEffort = "medium";
       singleSlot = true;
-      # Use the model card's thinking-mode sampling settings.
+      # Use the thinking-mode sampling settings from Unsloth's Qwen3.8 guide.
       generation = {
         temperature = 1.0;
         topP = 0.95;
@@ -120,10 +126,13 @@ let
     mkModel {
       modelRef = "unsloth/gemma-4-E${size}B-it-GGUF:UD-Q6_K_XL";
       maxContext = 131072;
+      reasoning = "on";
       generation = {
         temperature = 1.0;
         topP = 0.95;
         topK = 64;
+        # Disable llama.cpp's extra sampler to match Google's generation config.
+        minP = 0.0;
         repetitionPenalty = 1.0;
       };
     };

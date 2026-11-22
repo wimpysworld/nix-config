@@ -19,6 +19,7 @@ import time
 
 PROMPT_TOKENS = 4096
 OUTPUT_TOKENS = 512
+SEED = 42
 DEVICES = {"vulkan": "Vulkan0", "rocm": "ROCm0", "cuda": "CUDA0"}
 MODELS = {
     "inkling-2-mini": ("INKLING", (0,)),
@@ -51,7 +52,8 @@ def post(port, path, payload):
 
 def make_prompt(port):
     def tokenize(text, add_special):
-        with post(port, "/tokenize", {"content": text, "add_special": add_special}) as response:
+        payload = {"content": text, "add_special": add_special, "parse_special": True}
+        with post(port, "/tokenize", payload) as response:
             return json.load(response)["tokens"]
 
     lines = [
@@ -59,21 +61,34 @@ def make_prompt(port):
         f"worker={i % 17} job={i * 11} elapsed_ms={(i * 137) % 999}"
         for i in range(400)
     ]
-    logs = tokenize("Application log:\n" + "\n".join(lines), True)
-    task = tokenize(
+    task = (
         "\nWrite a Python function named summarise_log(lines) that counts INFO, WARNING "
         "and ERROR entries, ignores malformed lines and returns a dictionary. "
-        "Explain the parser and provide examples and tests.\n", False
+        "Explain the parser and provide examples and tests."
     )
-    tokens = logs[:PROMPT_TOKENS - len(task)] + task
+    messages = [{"role": "user", "content": "Application log:\n" + "\n".join(lines) + task}]
+    with post(port, "/apply-template", {"messages": messages}) as response:
+        rendered = json.load(response)["prompt"]
+    prefix, found, suffix = rendered.rpartition(task)
+    if not found:
+        raise ValueError("chat template did not preserve the benchmark task")
+
+    # Trim only the log data, leaving the task and assistant prompt intact.
+    # llama.cpp leaves out the template BOS when the tokenizer adds it.
+    log_tokens = tokenize(prefix, True)
+    task_tokens = tokenize(task + suffix, False)
+    log_budget = PROMPT_TOKENS - len(task_tokens)
+    if log_budget <= 0:
+        raise ValueError("chat template and benchmark task exceed the prompt budget")
+    tokens = log_tokens[:log_budget] + task_tokens
     if len(tokens) != PROMPT_TOKENS:
         raise ValueError(f"expected {PROMPT_TOKENS} prompt tokens, got {len(tokens)}")
     return tokens
 
 
-def completion(port, tokens, width):
+def completion(port, tokens, width, sampling):
     payload = {
-        "prompt": tokens, "n_predict": OUTPUT_TOKENS, "temperature": 0, "seed": 42,
+        **sampling, "prompt": tokens, "n_predict": OUTPUT_TOKENS, "seed": SEED,
         "ignore_eos": True, "cache_prompt": False, "return_tokens": True, "stream": True,
     }
     started = time.monotonic()
@@ -123,25 +138,31 @@ def sample_gpu_memory(stop, peaks):
             return
 
 
-def run_case(output, model, model_path, backend, server, width, runs):
+def run_case(output, model, model_path, backend, server, width, runs, profile):
     label = f"{model}-{backend}-" + (f"mtp{width}" if width else "off")
+    microbatch = str(profile["microBatchSize"] or 512)
     command = [
         str(server), "--model", str(model_path), "--offline",
         "--host", "127.0.0.1", "--port", "0", "--device", DEVICES[backend],
         "--gpu-layers", "all", "--fit", "off", "--flash-attn", "on", "--load-mode", "none",
         "--cache-type-k", "q8_0", "--cache-type-v", "q8_0",
-        "--ctx-size", "8192", "--parallel", "1", "--batch-size", "2048", "--ubatch-size", "512",
-        "--no-warmup", "--no-mmproj", "--no-cache-prompt", "--cache-ram", "0",
+        "--ctx-size", "8192", "--parallel", "1", "--batch-size", "2048", "--ubatch-size", microbatch,
+        "--jinja", "--no-warmup", "--no-mmproj", "--no-cache-prompt", "--cache-ram", "0",
         "--spec-type", "draft-mtp" if width else "none",
     ]
+    if profile["reasoning"] is not None:
+        command.extend(["--reasoning", profile["reasoning"]])
+    if profile["reasoningEffort"] is not None:
+        command.extend(["--reasoning-effort", profile["reasoningEffort"]])
     if width:
         command.extend(["--spec-draft-n-max", str(width)])
+    sampling = profile["sampling"]
     print(f"{label}: starting", file=sys.stderr, flush=True)
     with (output / f"{label}.jsonl").open("x") as records, (output / f"{label}.log").open("xb") as log:
         def record(**fields):
             print(json.dumps({"case": label, **fields}), file=records, flush=True)
 
-        record(kind="config", command=command)
+        record(kind="config", command=command, sampling=sampling, seed=SEED)
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         ready = Queue()
         reader = Thread(target=follow_server, args=(process.stdout, log, ready))
@@ -155,7 +176,7 @@ def run_case(output, model, model_path, backend, server, width, runs):
                 raise RuntimeError(f"server exited before becoming ready, see {label}.log")
             tokens = make_prompt(port)
             record(kind="prompt", tokens=len(tokens), sha256=hashlib.sha256(json.dumps(tokens).encode()).hexdigest())
-            record(kind="warmup", **completion(port, tokens, width))
+            record(kind="warmup", **completion(port, tokens, width, sampling))
             peaks = {}
             stop = Event()
             sampler = Thread(target=sample_gpu_memory, args=(stop, peaks))
@@ -163,7 +184,7 @@ def run_case(output, model, model_path, backend, server, width, runs):
             samples = []
             try:
                 for number in range(1, runs + 1):
-                    sample = completion(port, tokens, width)
+                    sample = completion(port, tokens, width, sampling)
                     record(kind="sample", number=number, **sample)
                     samples.append(sample)
             finally:
@@ -201,6 +222,7 @@ def main():
         print(f"Error: {model} is not configured for this host's video memory tier.", file=sys.stderr)
         return 1
 
+    profile = json.loads(os.environ["BENCHMARK_MODELS_PROFILES"])[model]
     root = Path(os.environ.get("BENCHMARK_MODELS_ROOT") or Path.home() / "Volatile/benchmark-models")
     model_path = cached_model_path(Path(snapshot), root)
     if model_path is None:
@@ -222,7 +244,7 @@ def main():
     for width in widths:
         for backend, server in servers.items():
             try:
-                run_case(output, model, model_path, backend, server, width, runs)
+                run_case(output, model, model_path, backend, server, width, runs, profile)
             except (OSError, RuntimeError, ValueError, KeyError, http.client.HTTPException) as error:
                 print(f"{model} {backend} width {width}: {error}", file=sys.stderr)
                 failed = True

@@ -567,14 +567,16 @@ run_ollama_once() {
 
 	payload=$(jq -cn \
 		--arg model "${OLLAMA_MODEL}" \
+		--arg benchmark_model "${MODEL}" \
 		--arg prompt "${GENERATION_PROMPT}" \
 		--argjson max_tokens "${max_tokens}" \
-		'{
+		--argjson profiles "${BENCHMARK_MODELS_PROFILES:?}" \
+		'$profiles[$benchmark_model] as $profile | {
 		  model: $model,
 		  prompt: $prompt,
 		  stream: false,
-		  options: { num_predict: $max_tokens, temperature: 0.0 },
-		  think: false
+		  options: ($profile.sampling + { num_predict: $max_tokens, seed: 42 }),
+		  think: ($profile.reasoning == "on")
 		}')
 
 	metrics=$(curl --silent --show-error "${OLLAMA_URL}/api/generate" \
@@ -854,7 +856,8 @@ print_intro() {
 
 	if [[ "${MODEL_KIND}" == 'generation' ]]; then
 		printf -- '- %-10s %s\n' 'Prompt:' "${GENERATION_PROMPT}"
-		printf -- '- %-10s %s output tokens, %s-token synthetic pp test\n\n' 'Metrics:' "${GENERATION_MAX_TOKENS}" "${PROMPT_BENCH_TOKENS}"
+		printf -- '- %-10s Up to %s output tokens in Ollama\n' 'Metrics:' "${GENERATION_MAX_TOKENS}"
+		printf -- '- %-10s Synthetic runs with %s decode tokens and %s prompt tokens, no sampling\n\n' 'llama-bench:' "${GENERATION_MAX_TOKENS}" "${PROMPT_BENCH_TOKENS}"
 	else
 		printf -- '- %-10s %s documents x %s characters\n\n' 'Batch:' "${EMBEDDING_BENCH_BATCH}" "${#EMBEDDING_BENCH_TEXT}"
 	fi

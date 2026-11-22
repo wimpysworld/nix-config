@@ -25,6 +25,7 @@ let
         let
           metadata = downloads.${ref};
           downloadPaths = metadata.downloadPaths or [ ];
+          projectorPath = metadata.projectorPath or null;
         in
         !(metadata ? hfRepo && metadata ? primaryPath && metadata ? downloadPaths)
         || metadata.hfRepo == ""
@@ -32,6 +33,10 @@ let
         || downloadPaths == [ ]
         || !(lib.all validateDownloadPath downloadPaths)
         || !(builtins.elem metadata.primaryPath downloadPaths)
+        || (
+          projectorPath != null
+          && (projectorPath == metadata.primaryPath || !(builtins.elem projectorPath downloadPaths))
+        )
       ) refs;
     in
     {
@@ -49,6 +54,10 @@ let
       "qwen3.8-27b"
     ]
   ) modelDownloads;
+  mediaNames = [
+    "gemma4-e2b"
+    "gemma4-e4b"
+  ];
   unmappedValidation = validateModelDownloads [ "broken:model" ] modelDownloads;
   invalidMetadataValidation = validateModelDownloads [ "broken:model" ] {
     "broken:model" = {
@@ -69,6 +78,9 @@ assert lib.all (
 assert lib.all (download: builtins.match "[a-f0-9]{40}" download.revision != null) (
   lib.attrValues pinnedDownloads
 );
+assert lib.all (
+  download: (download.projectorPath != null) == (builtins.elem download.publicName mediaNames)
+) (lib.attrValues modelDownloads);
 assert unmappedValidation.missingRefs == [ "broken:model" ];
 assert invalidMetadataValidation.invalidRefs == [ "broken:model" ];
 true

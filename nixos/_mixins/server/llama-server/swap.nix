@@ -51,15 +51,31 @@ let
       server="$4"
       port="$5"
       shift 5
+      projectorRelativePath=""
+      if [[ "''${1:-}" == --mmproj ]]; then
+        projectorRelativePath="$2"
+        shift 2
+      fi
 
       if [[ "$revision" != '*' ]]; then
         modelPath="$snapshotRoot/$revision/$primaryPath"
       else
         shopt -s nullglob
         modelPathMatches=("$snapshotRoot"/*/"$primaryPath")
+        if [[ -n "$projectorRelativePath" ]]; then
+          # An older snapshot can contain the model but not the projector.
+          completeMatches=()
+          for candidate in "''${modelPathMatches[@]}"; do
+            snapshotPath="''${candidate%/"$primaryPath"}"
+            if [[ -f "$candidate" && -f "$snapshotPath/$projectorRelativePath" ]]; then
+              completeMatches+=("$candidate")
+            fi
+          done
+          modelPathMatches=("''${completeMatches[@]}")
+        fi
         if [[ "''${#modelPathMatches[@]}" -ne 1 ]]; then
-          printf 'Error: expected one model path for pattern %s, got %s\n' \
-            "$snapshotRoot/*/$primaryPath" "''${#modelPathMatches[@]}" >&2
+          printf 'Error: expected one model path for pattern %s (projector: %s), got %s\n' \
+            "$snapshotRoot/*/$primaryPath" "''${projectorRelativePath:-none}" "''${#modelPathMatches[@]}" >&2
           exit 1
         fi
         modelPath="''${modelPathMatches[0]}"
@@ -70,32 +86,52 @@ let
         exit 1
       fi
 
+      if [[ -n "$projectorRelativePath" ]]; then
+        projectorPath="''${modelPath%/"$primaryPath"}/$projectorRelativePath"
+        if [[ ! -f "$projectorPath" ]]; then
+          printf 'Error: projector file is missing: %s\n' "$projectorPath" >&2
+          exit 1
+        fi
+        set -- --mmproj "$projectorPath" "$@"
+      fi
+
       # Keep the snapshot path so llama.cpp can find sibling shards.
       exec "$server" --port "$port" -m "$modelPath" "$@"
     '';
   };
 
-  mkModelConfig = model: {
-    cmd = ''
-      ${
-        lib.escapeShellArgs [
-          (lib.getExe launchLlamaServer)
-          "${model.repoCacheDirectory}/snapshots"
-          (if model.revision == null then "*" else model.revision)
-          model.primaryPath
-          llamaServer
+  mkModelConfig =
+    model:
+    let
+      inherit (model.download) projectorPath;
+      modelArgs =
+        lib.optionals (projectorPath != null) [
+          "--mmproj"
+          projectorPath
         ]
-      } ''${PORT} ${lib.escapeShellArgs model.runtimeArgs}
-    '';
-    metadata = {
-      inherit (model)
-        hfRepo
-        modelRef
-        role
-        ;
+        ++ model.runtimeArgs;
+    in
+    {
+      cmd = ''
+        ${
+          lib.escapeShellArgs [
+            (lib.getExe launchLlamaServer)
+            "${model.repoCacheDirectory}/snapshots"
+            (if model.revision == null then "*" else model.revision)
+            model.primaryPath
+            llamaServer
+          ]
+        } ''${PORT} ${lib.escapeShellArgs modelArgs}
+      '';
+      metadata = {
+        inherit (model)
+          hfRepo
+          modelRef
+          role
+          ;
+      };
+      name = model.publicName;
     };
-    name = model.publicName;
-  };
 
   llamaSwapModels = builtins.listToAttrs (
     lib.mapAttrsToList (_role: model: {
