@@ -22,8 +22,14 @@ import time
 import urllib.parse
 import urllib.request
 import uuid
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
+
+_SCRIPT_DIR = str(Path(__file__).resolve().parent)
+if _SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPT_DIR)
+
+import linear_sync
 
 SERVER_DOMAIN = "matrix.wimpys.world"
 DEFAULT_ROOM_ID, DEFAULT_HOMESERVER_URL = f"!the-cauldron:{SERVER_DOMAIN}", f"https://{SERVER_DOMAIN}"
@@ -55,6 +61,25 @@ TRUSTED_BOT_ACTORS = frozenset({"dependabot[bot]", "app/dependabot", "github-act
 TRUSTED_GITHUB_ACTORS = TRUSTED_INSTRUCTION_ACTORS | TRUSTED_BOT_ACTORS
 GITHUB_AGENT_LOGINS: dict[str, str] = {"skrye": "sith-skrye", "traya": "sith-traya", "zannah": "sith-zannah"}
 LOGIN_TO_AGENT_NAME: dict[str, str] = {"sith-skrye": "skrye", "skrye": "skrye", "sith-traya": "traya", "traya": "traya", "sith-zannah": "zannah", "zannah": "zannah"}
+STATE_SCHEMA_VERSION = 3
+DEFAULT_SLOT_TRIAGE_STUBS_CAP = 10
+DEFAULT_SLOT_TRIAGE_RESEARCH_CAP = 2
+DEFAULT_SLOT_COMMUNITY_PR_REVIEWS_CAP = 2
+DEFAULT_SLOT_TODO_IMPLEMENTATIONS_CAP = 1
+DEFAULT_DAILY_IMPLEMENTATIONS_CAP = 3
+DEFAULT_THROTTLE_LIMITS: dict[str, int] = {
+    "triage_stubs": DEFAULT_SLOT_TRIAGE_STUBS_CAP,
+    "triage_research": DEFAULT_SLOT_TRIAGE_RESEARCH_CAP,
+    "community_pr_reviews": DEFAULT_SLOT_COMMUNITY_PR_REVIEWS_CAP,
+    "todo_implementations": DEFAULT_SLOT_TODO_IMPLEMENTATIONS_CAP,
+    "daily_implementations": DEFAULT_DAILY_IMPLEMENTATIONS_CAP,
+}
+_THROTTLE_BUCKET_TO_STATE_KEY: dict[str, str] = {
+    "triage_stubs": "slot_triage_stubs",
+    "triage_research": "slot_triage_research",
+    "community_pr_reviews": "slot_community_pr_reviews",
+    "todo_implementations": "slot_todo_implementations",
+}
 STATE_FILENAME, ACTIVE_DISPATCH_FILENAME, SECURITY_EVENTS_FILENAME = "state.json", "active-dispatch.json", "security-events.jsonl"
 LEGACY_POLL_STATE_FILENAME, LEGACY_NOTIFICATIONS_STATE_FILENAME = "poll-state.json", "notifications-state.json"
 LEGACY_WATERMARKS_FILENAME, LEGACY_SECURITY_OWNERSHIP_FILENAME = "watermarks.json", "security-ownership.json"
@@ -62,18 +87,24 @@ OUTBOX_FILENAME, AUTH_STATE_FILENAME = "outbox.json", "auth.json"
 COORDINATOR_LOCK_FILENAME, STATE_LOCK_FILENAME = "coordinator.lock", "companion.lock"
 ENCODED_COMPONENT_BYTES, MAX_RESPONSE_BYTES = 120, 4 * 1048576
 DEFAULT_GH_SESSION_KEY, MAX_THREAD_FAILURE_RETRIES = "companion:github", 3
-TEAM_LABELS = ("team:fix", "team:merge", "team:review")
-PR_TEAM_LABELS = ("team:merge", "team:review", "team:fix")
-ISSUE_TEAM_LABELS = ("team:fix", "team:review")
+MAX_LINEAR_TODO_RECOVERY_ATTEMPTS = MAX_THREAD_FAILURE_RETRIES
+TEAM_LABELS = ("team:implement", "team:merge", "team:review")
+PR_TEAM_LABELS = ("team:merge", "team:review", "team:implement")
+ISSUE_TEAM_LABELS = ("team:implement", "team:review")
+DO_NOT_MERGE_LABEL = "team:do-not-merge"
 TEAM_LABEL_TRIGGER_REASONS: dict[str, str] = {
-    "team:fix": "team_fix",
+    "team:implement": "team_implement",
     "team:merge": "team_merge",
     "team:review": "team_review",
 }
-MODE_1B_DISPATCH_KINDS = frozenset({"community_triage", "community_auto_review", *TEAM_LABELS})
+MODEL_FAMILY_BY_AGENT: dict[str, str] = {"skrye": "gemini", "zannah": "gemini", "traya": "gpt"}
+LINEAR_ISSUE_DISPATCH_KINDS = frozenset({"linear_triage_research", "linear_todo_implement"})
+LINEAR_PR_DISPATCH_KINDS = frozenset({"community_pr_blind_review", "community_pr_lane_a_merge", "community_pr_lane_b_review"})
+MODE_1B_DISPATCH_KINDS = frozenset({"community_triage", "community_auto_review", *TEAM_LABELS, *LINEAR_ISSUE_DISPATCH_KINDS, *LINEAR_PR_DISPATCH_KINDS})
+SILENT_TELEGRAM_DISPATCH_KINDS = frozenset({"linear_triage_research", "community_pr_blind_review", "community_pr_lane_b_review"})
 DEFAULT_COMMUNITY_AUTO_MERGE_ENABLED = True
-DEFAULT_COMMUNITY_AUTO_MERGE_MAX_LINES = 250
-DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES = 10
+DEFAULT_COMMUNITY_AUTO_MERGE_MAX_LINES = 150
+DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES = 5
 DEFAULT_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS = ("wimpysworld/nix-config",)
 SENSITIVE_COMMUNITY_PR_FILENAMES = frozenset({
     "flake.nix", "flake.lock",
@@ -161,6 +192,22 @@ def _http_json_request(url: str, method: str, headers: dict[str, str], raw_body:
 
 def now_ms() -> int:
     return math.trunc(time.time() * 1000)
+
+
+def _london_datetime(ts_ms: int) -> datetime.datetime:
+    safe_ms = _safe_int(ts_ms, 0)
+    try:
+        import zoneinfo
+
+        tz: datetime.tzinfo = zoneinfo.ZoneInfo("Europe/London")
+    except Exception:
+        tz = datetime.timezone.utc
+    return datetime.datetime.fromtimestamp(safe_ms / 1000.0, tz=tz)
+
+
+def london_date_str(ts_ms: int) -> str:
+    """Return the Europe/London YYYY-MM-DD calendar date for a millisecond epoch timestamp."""
+    return _london_datetime(ts_ms).strftime("%Y-%m-%d")
 
 
 def normalize_agent_name(agent_name: str) -> str:
@@ -318,15 +365,112 @@ def extract_team_labels(raw_labels: object, allowed: Iterable[str] = TEAM_LABELS
     return [cand for cand in (str(a).strip().lower() for a in allowed) if cand in present]
 
 
+def has_do_not_merge_label(raw_labels: object) -> bool:
+    return any(lbl.strip().lower() == DO_NOT_MERGE_LABEL for lbl in extract_label_names(raw_labels))
+
+
+def parse_github_item_url(url: str) -> tuple[str, str, int, str] | None:
+    """Parse a GitHub issue or pull request URL into (repo, item_label, number, normalized_url)."""
+    if not isinstance(url, str) or not url.strip():
+        return None
+    try:
+        normalized_url = linear_sync.normalize_github_url(url)
+    except ValueError:
+        return None
+    parsed = urllib.parse.urlsplit(normalized_url)
+    segments = [seg for seg in parsed.path.split("/") if seg]
+    if len(segments) >= 4 and segments[2] in ("pull", "issues") and segments[3].isdigit():
+        repo = f"{segments[0].lower()}/{segments[1].lower()}"
+        item_label = "PR" if segments[2] == "pull" else "Issue"
+        number = int(segments[3])
+        if number > 0:
+            return repo, item_label, number, normalized_url
+    return None
+
+
+def _is_linear_issue_not_found_error(exc: Exception | None) -> bool:
+    """Return True when a Linear error permanently indicates that an issue does not exist."""
+    if not isinstance(exc, linear_sync.LinearAPIError):
+        return False
+    if getattr(exc, "status", None) == 404:
+        return True
+    return "not found" in str(exc).lower()
+
+
+def _fetch_linear_issue_state_with_retry(
+    linear_client: linear_sync.LinearSyncClient | None,
+    linear_id: str,
+) -> tuple[str | None, Exception | None]:
+    """Fetch a Linear issue's lowercased workflow state name with one retry on transient failure."""
+    if linear_client is None:
+        return None, None
+    last_exc: Exception | None = None
+    for attempt in range(2):
+        try:
+            refreshed = linear_client.get_issue(linear_id)
+            post_state = _as_dict(_as_dict(refreshed).get("state"))
+            return str(post_state.get("name") or "").strip().lower(), None
+        except Exception as exc:
+            last_exc = exc
+            if _is_linear_issue_not_found_error(exc):
+                break
+            if attempt == 0:
+                continue
+    return None, last_exc
+
+
+def extract_linear_issue_labels(linear_issue: dict) -> set[str]:
+    """Return lowercased label names from a Linear issue dict (`labels.nodes` or list `labels`)."""
+    if not isinstance(linear_issue, dict):
+        return set()
+    return {name.lower() for name in extract_label_names(linear_issue.get("labels")) if name}
+
+
+def extract_linear_github_target(linear_issue: dict, *, expected_kind: str | None = None) -> tuple[str, str, int, str] | None:
+    """Extract a GitHub (repo, item_label, number, normalized_url) target from a Linear issue's attachments."""
+    if not isinstance(linear_issue, dict):
+        return None
+    target_kind: str | None = None
+    if expected_kind is not None:
+        raw_kind = str(expected_kind).strip().lower()
+        if raw_kind in ("issue", "issues"):
+            target_kind = "Issue"
+        elif raw_kind in ("pr", "pull", "pulls", "pullrequest", "pull_request"):
+            target_kind = "PR"
+        else:
+            return None
+    raw_attachments = linear_issue.get("attachments")
+    if isinstance(raw_attachments, dict) and isinstance(raw_attachments.get("nodes"), list):
+        nodes = raw_attachments["nodes"]
+    elif isinstance(raw_attachments, list):
+        nodes = raw_attachments
+    else:
+        return None
+    for item in nodes:
+        raw_url = item.get("url") if isinstance(item, dict) else item
+        if not isinstance(raw_url, str) or not raw_url.strip():
+            continue
+        parsed = parse_github_item_url(raw_url)
+        if parsed is None:
+            continue
+        if target_kind is not None and parsed[1] != target_kind:
+            continue
+        return parsed
+    return None
+
+
 def verify_team_label_from_events(events: Iterable[dict], label_name: str) -> dict | None:
-    """Verify via issue events that the latest `labeled` event for `label_name` came from `TRUSTED_INSTRUCTION_ACTORS`."""
+    """Verify via issue events that the latest `labeled`/`unlabeled` event for `label_name` is `labeled` from `TRUSTED_INSTRUCTION_ACTORS`."""
     target = (label_name or "").strip().lower()
     if not target:
         return None
     best_event: dict | None = None
     best_sort_key: tuple[int, int] = (-1, -1)
     for idx, ev in enumerate(events or ()):
-        if not isinstance(ev, dict) or str(ev.get("event") or "").strip().lower() != "labeled":
+        if not isinstance(ev, dict):
+            continue
+        ev_type = str(ev.get("event") or "").strip().lower()
+        if ev_type not in ("labeled", "unlabeled"):
             continue
         lbl_obj = ev.get("label")
         ev_lbl = str(lbl_obj.get("name") if isinstance(lbl_obj, dict) else (lbl_obj or "")).strip().lower()
@@ -337,7 +481,7 @@ def verify_team_label_from_events(events: Iterable[dict], label_name: str) -> di
         if best_event is None or sort_key >= best_sort_key:
             best_event = ev
             best_sort_key = sort_key
-    if best_event is None:
+    if best_event is None or str(best_event.get("event") or "").strip().lower() != "labeled":
         return None
     actor_norm = normalize_github_actor(best_event.get("actor") or best_event.get("user"))
     if not is_trusted_instruction_actor(actor_norm):
@@ -346,6 +490,62 @@ def verify_team_label_from_events(events: Iterable[dict], label_name: str) -> di
     created_at = str(best_event.get("created_at") or "").strip()
     event_key = f"{target}:{ev_id if ev_id is not None else (created_at or 'verified')}"
     return {"label": target, "actor": actor_norm, "event_id": ev_id, "created_at": created_at, "event_key": event_key}
+
+
+def verify_team_merge_timeline(timeline_events: Iterable[dict], head_sha: str | None) -> dict | None:
+    """Verify via issue timeline events that `team:merge` is active, trusted, preceded by `head_sha`, and followed by zero commits."""
+    clean_head_sha = str(head_sha or "").strip()
+    if not clean_head_sha:
+        return None
+    events_list = [ev for ev in (timeline_events or ()) if isinstance(ev, dict)]
+    last_label_idx: int | None = None
+    last_label_ev: dict | None = None
+    for idx, ev in enumerate(events_list):
+        ev_type = str(ev.get("event") or "").strip().lower()
+        if ev_type not in ("labeled", "unlabeled"):
+            continue
+        lbl_obj = ev.get("label")
+        ev_lbl = str(lbl_obj.get("name") if isinstance(lbl_obj, dict) else (lbl_obj or "")).strip().lower()
+        if ev_lbl != "team:merge":
+            continue
+        last_label_idx = idx
+        last_label_ev = ev
+    if last_label_ev is None or last_label_idx is None:
+        return None
+    if str(last_label_ev.get("event") or "").strip().lower() != "labeled":
+        return None
+    actor_norm = normalize_github_actor(last_label_ev.get("actor") or last_label_ev.get("user"))
+    if not is_trusted_instruction_actor(actor_norm):
+        return None
+    post_pushes = [
+        ev
+        for ev in events_list[last_label_idx + 1 :]
+        if str(ev.get("event") or "").strip().lower() in ("committed", "head_ref_force_pushed")
+    ]
+    if post_pushes:
+        return None
+    pre_pushes = [
+        ev
+        for ev in events_list[:last_label_idx]
+        if str(ev.get("event") or "").strip().lower() in ("committed", "head_ref_force_pushed")
+    ]
+    if not pre_pushes:
+        return None
+    last_pre = pre_pushes[-1]
+    last_pre_sha = str(last_pre.get("sha") or last_pre.get("commit_id") or "").strip()
+    if not last_pre_sha or last_pre_sha != clean_head_sha:
+        return None
+    ev_id = last_label_ev.get("id")
+    created_at = str(last_label_ev.get("created_at") or "").strip()
+    event_key = f"team:merge:{ev_id if ev_id is not None else (created_at or 'verified')}"
+    return {
+        "label": "team:merge",
+        "actor": actor_norm,
+        "event_id": ev_id,
+        "created_at": created_at,
+        "event_key": event_key,
+        "head_sha": clean_head_sha,
+    }
 
 
 def extract_pr_file_paths(raw_files: object) -> tuple[list[str] | None, bool]:
@@ -450,6 +650,293 @@ def compute_community_auto_merge_eligible(
     return not any(is_sensitive_community_pr_path(p) for p in paths_list)
 
 
+def compute_lane_a_bypass_reasons(
+    *,
+    repo: str,
+    additions: int | None,
+    deletions: int | None,
+    changed_files: int | None,
+    file_paths: Iterable[str] | None,
+    files_has_next_page: bool = False,
+    ci_state: str | None = None,
+    enabled: bool = DEFAULT_COMMUNITY_AUTO_MERGE_ENABLED,
+    max_lines: int = DEFAULT_COMMUNITY_AUTO_MERGE_MAX_LINES,
+    max_files: int = DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES,
+    excluded_repos: Iterable[str] = DEFAULT_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS,
+) -> list[str]:
+    """Return ordered Lane A bypass reason tokens for a community pull request."""
+    reasons: list[str] = []
+    if not enabled:
+        reasons.append("disabled")
+    norm_repo = (repo or "").strip().lower()
+    excluded = set(parse_repo_list(excluded_repos, default=()))
+    if not norm_repo or norm_repo in excluded:
+        reasons.append("excluded_repo")
+    max_l = max(0, _safe_int(max_lines, DEFAULT_COMMUNITY_AUTO_MERGE_MAX_LINES))
+    if additions is None or deletions is None or isinstance(additions, bool) or isinstance(deletions, bool):
+        reasons.append("lines_exceeded")
+    else:
+        add_val, del_val = _safe_int(additions, -1), _safe_int(deletions, -1)
+        if add_val < 0 or del_val < 0 or (add_val + del_val) > max_l:
+            reasons.append("lines_exceeded")
+    max_f = max(0, _safe_int(max_files, DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES))
+    paths_list = [str(p).strip() for p in file_paths if isinstance(p, str) and str(p).strip()] if file_paths is not None else []
+    eff_changed = _safe_int(changed_files, -1) if (changed_files is not None and not isinstance(changed_files, bool)) else len(paths_list)
+    if eff_changed > max_f:
+        reasons.append("files_exceeded")
+    if file_paths is None or files_has_next_page or eff_changed <= 0 or not paths_list or len(paths_list) < eff_changed:
+        reasons.append("incomplete_files")
+    if any(is_sensitive_community_pr_path(p) for p in paths_list):
+        reasons.append("sensitive_path")
+    if ci_state is not None and normalize_ci_state(ci_state) not in ("SUCCESS", "NONE"):
+        reasons.append("ci_not_green")
+    return reasons
+
+
+_BLIND_REVIEW_VERDICT_RE = re.compile(
+    r"^\s*(?:[-*]\s+)?(?:\*\*|`)?BLIND_REVIEW_VERDICT(?:\*\*|`)?\s*:\s*(?:\*\*|`)?(PASS|FAIL)(?:\*\*|`)?\s*$",
+    re.IGNORECASE,
+)
+_BLIND_REVIEW_VERDICT_PREFIX_RE = re.compile(
+    r"^\s*(?:[-*]\s+)?(?:\*\*|`)?BLIND_REVIEW_VERDICT(?:\*\*|`)?\s*:",
+    re.IGNORECASE,
+)
+_BLIND_FINDINGS_RE = re.compile(
+    r"^\s*(?:[-*]\s+)?(?:\*\*|`)?FINDINGS(?:\*\*|`)?\s*:\s*(.*)$",
+    re.IGNORECASE,
+)
+_BLIND_POLISH_RE = re.compile(
+    r"^\s*(?:[-*]\s+)?(?:\*\*|`)?POLISH(?:\*\*|`)?\s*:\s*(.*)$",
+    re.IGNORECASE,
+)
+_LANE_B_VERDICT_RE = re.compile(
+    r"^\s*(?:[-*]\s+)?(?:\*\*|`)?LANE_B_VERDICT(?:\*\*|`)?\s*:\s*(?:\*\*|`)?(ready-to-merge|needs-decision)(?:\*\*|`)?\s*$",
+    re.IGNORECASE,
+)
+_LANE_B_VERDICT_PREFIX_RE = re.compile(
+    r"^\s*(?:[-*]\s+)?(?:\*\*|`)?LANE_B_VERDICT(?:\*\*|`)?\s*:",
+    re.IGNORECASE,
+)
+_LANE_B_SUMMARY_RE = re.compile(
+    r"^\s*(?:[-*]\s+)?(?:\*\*|`)?(?:SUMMARY|REASON)(?:\*\*|`)?\s*:\s*(.*)$",
+    re.IGNORECASE,
+)
+_EMPTY_POLISH_VALUES = frozenset({"", "none", "n/a", "na", "nil", "-"})
+
+
+def _normalize_optional_polish(text: str) -> str:
+    clean = " ".join(str(text or "").splitlines()).strip()
+    return "" if clean.lower() in _EMPTY_POLISH_VALUES else clean
+
+
+def parse_blind_review_reply(reply_text: str) -> tuple[str, str, str]:
+    """Parse `BLIND_REVIEW_VERDICT: PASS|FAIL` plus optional `FINDINGS:` and `POLISH:`; fail-closed to FAIL."""
+    if not isinstance(reply_text, str) or not reply_text.strip():
+        return "FAIL", "Unparseable or empty blind review reply", ""
+    verdicts_seen: list[str] = []
+    findings_lines: list[str] = []
+    polish_lines: list[str] = []
+    active_section: str | None = None
+    saw_invalid_verdict_line = False
+    for line in reply_text.replace("\r\n", "\n").splitlines():
+        if m := _BLIND_REVIEW_VERDICT_RE.match(line):
+            verdicts_seen.append(m.group(1).upper())
+            active_section = None
+            continue
+        if _BLIND_REVIEW_VERDICT_PREFIX_RE.match(line):
+            saw_invalid_verdict_line = True
+            active_section = None
+            continue
+        if m := _BLIND_FINDINGS_RE.match(line):
+            active_section = "findings"
+            if val := m.group(1).strip():
+                findings_lines.append(val)
+            continue
+        if m := _BLIND_POLISH_RE.match(line):
+            active_section = "polish"
+            if val := m.group(1).strip():
+                polish_lines.append(val)
+            continue
+        if active_section == "findings" and line.strip():
+            findings_lines.append(line.strip())
+        elif active_section == "polish" and line.strip():
+            polish_lines.append(line.strip())
+    findings = "\n".join(findings_lines).strip()
+    polish = "\n".join(polish_lines).strip()
+    distinct = set(verdicts_seen)
+    if saw_invalid_verdict_line or not distinct or len(distinct) > 1:
+        excerpt = " ".join(reply_text.strip().splitlines())[:240]
+        reason = f"Unparseable blind review reply: {excerpt}" if excerpt else "Unparseable blind review reply"
+        return "FAIL", findings or reason, ""
+    return next(iter(distinct)), findings, polish
+
+
+def parse_lane_b_reply(reply_text: str) -> tuple[str, str]:
+    """Parse `LANE_B_VERDICT: ready-to-merge|needs-decision`; fail-closed to needs-decision."""
+    if not isinstance(reply_text, str) or not reply_text.strip():
+        return "needs-decision", "Unparseable or empty Lane B review reply"
+    verdicts_seen: list[str] = []
+    summary_lines: list[str] = []
+    other_lines: list[str] = []
+    in_summary = False
+    saw_invalid_verdict_line = False
+    for line in reply_text.replace("\r\n", "\n").splitlines():
+        if m := _LANE_B_VERDICT_RE.match(line):
+            verdicts_seen.append(m.group(1).lower())
+            in_summary = False
+            continue
+        if _LANE_B_VERDICT_PREFIX_RE.match(line):
+            saw_invalid_verdict_line = True
+            in_summary = False
+            continue
+        if m := _LANE_B_SUMMARY_RE.match(line):
+            in_summary = True
+            if val := m.group(1).strip():
+                summary_lines.append(val)
+            continue
+        if line.strip():
+            if in_summary:
+                summary_lines.append(line.strip())
+            else:
+                other_lines.append(line.strip())
+    summary = "\n".join(summary_lines).strip() or "\n".join(other_lines).strip()
+    distinct = set(verdicts_seen)
+    if saw_invalid_verdict_line or not distinct or len(distinct) > 1:
+        excerpt = " ".join(reply_text.strip().splitlines())[:240]
+        reason = f"Unparseable Lane B review reply: {excerpt}" if excerpt else "Unparseable Lane B review reply"
+        return "needs-decision", reason
+    return next(iter(distinct)), summary
+
+
+_LINEAR_ISSUE_KEY_RE = re.compile(r"^/[^/]+/issue/([A-Za-z0-9_-]+)(?:/|$)", re.IGNORECASE)
+
+
+def _extract_linear_issue_key(url: str | None) -> str:
+    if not isinstance(url, str) or not url.strip():
+        return ""
+    parsed = urllib.parse.urlsplit(url.strip())
+    if (parsed.hostname or "").lower() != "linear.app":
+        return ""
+    if match := _LINEAR_ISSUE_KEY_RE.match(parsed.path or ""):
+        return match.group(1).lower()
+    return ""
+
+
+def _parse_merge_reply(
+    reply_text: str | None,
+    *,
+    repo: str,
+    number: int,
+    linear_url: str | None = None,
+    allow_blocked: bool = False,
+) -> tuple[str, str]:
+    clean = normalize_terminal_reply_text(reply_text)
+    if not clean or is_heartbeat_ok_reply(clean):
+        return "unconfirmed", "empty_or_heartbeat_ok"
+    _, code_spans = _find_code_spans(clean)
+    expected_repo = (repo or "").strip().lower()
+    expected_number = _safe_int(number, 0)
+    expected_linear_key = _extract_linear_issue_key(linear_url)
+    merged_line = ""
+    decision_line = ""
+    blocked_line = ""
+    has_blocked_entry = False
+
+    def _matches_pr_or_linear(url: str) -> bool:
+        parsed_gh = parse_github_item_url(url)
+        if parsed_gh is not None:
+            return bool(
+                expected_repo
+                and expected_number > 0
+                and parsed_gh[0] == expected_repo
+                and parsed_gh[1] == "PR"
+                and parsed_gh[2] == expected_number
+            )
+        entry_linear_key = _extract_linear_issue_key(url)
+        return bool(entry_linear_key and (not expected_linear_key or entry_linear_key == expected_linear_key))
+
+    for match in _STEP5_ENTRY_RE.finditer(clean):
+        if _offset_in_spans(match.start(), code_spans):
+            continue
+        emoji = _canonicalize_step5_emoji(match.group("emoji"))
+        url = match.group("url").strip()
+        title = match.group("title").strip()
+        entry_line = f"{emoji} {url} - {title}"
+        if emoji == "🧑‍⚖️":
+            if _matches_pr_or_linear(url):
+                decision_line = decision_line or entry_line
+        elif emoji == "✋🏻":
+            has_blocked_entry = True
+            if allow_blocked and _matches_pr_or_linear(url):
+                blocked_line = blocked_line or entry_line
+        elif emoji == "🏁":
+            parsed_gh = parse_github_item_url(url)
+            if (
+                parsed_gh is not None
+                and expected_repo
+                and expected_number > 0
+                and parsed_gh[0] == expected_repo
+                and parsed_gh[1] == "PR"
+                and parsed_gh[2] == expected_number
+            ):
+                merged_line = merged_line or entry_line
+
+    if decision_line and merged_line:
+        return "unconfirmed", "conflicting_merge_and_decision_entries"
+    if allow_blocked and blocked_line and (merged_line or decision_line):
+        return "unconfirmed", "conflicting_merge_and_blocked_entries"
+    if decision_line and not (allow_blocked and has_blocked_entry):
+        return "needs_decision", decision_line
+    if allow_blocked and blocked_line:
+        return "blocked", blocked_line
+    if merged_line and not has_blocked_entry:
+        return "merged", merged_line
+    if has_blocked_entry:
+        return "unconfirmed", "blocked_without_merge"
+    return "unconfirmed", "missing_merge_confirmation"
+
+
+def parse_lane_a_merge_reply(
+    reply_text: str | None,
+    *,
+    repo: str,
+    number: int,
+    linear_url: str | None = None,
+) -> tuple[str, str]:
+    """Classify a `community_pr_lane_a_merge` reply as `merged`, `needs_decision`, or `unconfirmed`."""
+    return _parse_merge_reply(reply_text, repo=repo, number=number, linear_url=linear_url, allow_blocked=False)
+
+
+def parse_linear_todo_merge_reply(
+    reply_text: str | None,
+    *,
+    repo: str,
+    number: int,
+    linear_url: str | None = None,
+) -> tuple[str, str]:
+    """Classify a `linear_todo_merge` reply as `merged`, `blocked`, `needs_decision`, or `unconfirmed`."""
+    return _parse_merge_reply(reply_text, repo=repo, number=number, linear_url=linear_url, allow_blocked=True)
+
+
+def _extract_polish_from_comment_body(comment_body: str) -> str:
+    if not isinstance(comment_body, str) or not comment_body.strip():
+        return ""
+    polish_lines: list[str] = []
+    in_polish = False
+    for line in comment_body.replace("\r\n", "\n").splitlines():
+        if _BLIND_FINDINGS_RE.match(line) or _BLIND_REVIEW_VERDICT_PREFIX_RE.match(line):
+            in_polish = False
+            continue
+        if m := _BLIND_POLISH_RE.match(line):
+            in_polish = True
+            if val := m.group(1).strip():
+                polish_lines.append(val)
+            continue
+        if in_polish and line.strip():
+            polish_lines.append(line.strip())
+    return _normalize_optional_polish("\n".join(polish_lines))
+
+
 def is_automated_update_pr(author_norm: str, repo: str = "", head_ref: str = "", labels: list[str] | None = None, title: str = "") -> bool:
     norm_author = normalize_github_actor(author_norm)
     if norm_author in TRUSTED_BOT_ACTORS and norm_author != "cubic-dev-ai[bot]":
@@ -479,7 +966,6 @@ def extract_mentioned_github_agents(text: str | None) -> set[str]:
 
 
 _COERCION_RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
-    ("html_comment_block", re.compile(r"<!--")),
     ("ignore_previous_instructions", re.compile(r"\b(?:ignore|disregard|forget|override|bypass)\s+(?:all\s+|any\s+|the\s+)?(?:previous|prior|above|earlier|system|developer|safety|security)\s+(?:instructions?|prompts?|rules?|constraints?|directives?|guardrails?)\b", re.IGNORECASE)),
     ("system_prompt_override", re.compile(r"(?:\[\s*(?:system|inst|admin|developer)\s*\]|<\|\s*(?:im_start|system|user|assistant)\s*\|>|^\s*(?:system\s+prompt|developer\s+message|new\s+system\s+instructions?)\s*:)", re.IGNORECASE | re.MULTILINE)),
     ("tool_invocation_directive", re.compile(r"\b(?:gh-bot-merge|gh-code-scanning-dismiss|gh-notification-dismiss|gh-review-resolve|gh-review-unresolve|gh-review-inline|gh-review-reply|moltis-telegram-voice|chat\.send_sync|exec_command|tool_call)\b", re.IGNORECASE)),
@@ -493,9 +979,8 @@ def detect_coercion_patterns(raw_text: str | None) -> list[str]:
     if not isinstance(raw_text, str) or not raw_text:
         return []
     matched: list[str] = []
-    stripped = strip_html_comments(raw_text)
+    target = f"{raw_text}\n{strip_html_comments(raw_text)}"
     for rule_name, pattern in _COERCION_RULES:
-        target = raw_text if rule_name == "html_comment_block" else f"{raw_text}\n{stripped}"
         if pattern.search(target) and rule_name not in matched:
             matched.append(rule_name)
     return matched
@@ -529,15 +1014,36 @@ def format_start_of_work_notice(*, agent_display_name: str, kind: str, repo: str
     return sanitize_no_matrix_mentions(" ".join(line.splitlines()).strip())
 
 
+def _is_thought_block(item: dict) -> bool:
+    if item.get("thought") is True:
+        return True
+    return str(item.get("type") or "").strip().lower() in ("thought", "thinking", "reasoning")
+
+
 def extract_text_content(value: object) -> str:
     if isinstance(value, str):
         return value
     if isinstance(value, list):
-        return "\n".join(p for p in [item if isinstance(item, str) else str(item.get("text") or item.get("content") or "") for item in value if isinstance(item, (str, dict))] if p)
+        parts: list[str] = []
+        for item in value:
+            if isinstance(item, str):
+                if item:
+                    parts.append(item)
+            elif isinstance(item, dict) and not _is_thought_block(item):
+                if extracted := extract_text_content(item):
+                    parts.append(extracted)
+        return "\n".join(parts)
     if isinstance(value, dict):
+        if _is_thought_block(value):
+            return ""
         for key in ("text", "content", "reply", "response", "body"):
-            if isinstance(value.get(key), str):
-                return value[key]
+            candidate = value.get(key)
+            if isinstance(candidate, str):
+                if candidate:
+                    return candidate
+            elif isinstance(candidate, (list, dict)):
+                if extracted := extract_text_content(candidate):
+                    return extracted
         if isinstance(value.get("message"), (str, dict, list)):
             return extract_text_content(value["message"])
     return ""
@@ -556,6 +1062,206 @@ TURN_FAILURE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("tool_or_turn_failed", re.compile(r"^\s*(?:the\s+)?(?:github|gh|gh-api-safe|gh-bot-merge|gh-review-inline|gh-review-reply|gh-review-resolve|gh-review-unresolve|gh-notification-dismiss|git|exec|shell|rpc|model|provider|api|command|request|turn|dispatch|tool)\s+(?:tool\s+|command\s+|call\s+|request\s+|execution\s+|turn\s+|helper\s+)?(?:failed|errored|timed\s+out|aborted|crashed|was\s+blocked|is\s+unavailable)\b", re.IGNORECASE)),
     ("unable_to_complete", re.compile(r"^\s*(?:i\s+(?:was\s+|am\s+)?)?(?:failed|unable|could\s+not|cannot|can\s+not)\s+(?:to\s+)?(?:complete|finish|run|execute|fetch|query|read|inspect|review|merge|dismiss|post|reply|process|reach|connect|authenticate|proceed|continue)\b", re.IGNORECASE)),
 )
+
+_SKIN_TONE_OR_VS16 = r"[\ufe0f\U0001f3fb-\U0001f3ff]{0,2}"
+_STEP5_EMOJI_SPECS: tuple[tuple[str, str], ...] = (
+    ("🧼", r"\U0001f9fc\ufe0f?"),
+    ("🧑‍⚖️", r"[\U0001f9d1\U0001f468\U0001f469][\U0001f3fb-\U0001f3ff]?\u200d?\u2696\ufe0f?"),
+    ("🏁", r"\U0001f3c1\ufe0f?"),
+    ("🚦", r"\U0001f6a6\ufe0f?"),
+    ("👍🏻", rf"\U0001f44d{_SKIN_TONE_OR_VS16}"),
+    ("👎🏻", rf"\U0001f44e{_SKIN_TONE_OR_VS16}"),
+    ("👆🏻", rf"\U0001f446{_SKIN_TONE_OR_VS16}"),
+    ("🤲🏻", rf"\U0001f932{_SKIN_TONE_OR_VS16}"),
+    ("🤞🏻", rf"\U0001f91e{_SKIN_TONE_OR_VS16}"),
+    ("✍🏻", rf"\u270d{_SKIN_TONE_OR_VS16}"),
+    ("✋🏻", rf"\u270b{_SKIN_TONE_OR_VS16}"),
+)
+_STEP5_EMOJI_BY_LEAD_CHAR: dict[str, str] = {
+    "\U0001f9fc": "🧼",
+    "\U0001f9d1": "🧑‍⚖️",
+    "\U0001f468": "🧑‍⚖️",
+    "\U0001f469": "🧑‍⚖️",
+    "\U0001f3c1": "🏁",
+    "\U0001f6a6": "🚦",
+    "\U0001f44d": "👍🏻",
+    "\U0001f44e": "👎🏻",
+    "\U0001f446": "👆🏻",
+    "\U0001f932": "🤲🏻",
+    "\U0001f91e": "🤞🏻",
+    "\u270d": "✍🏻",
+    "\u270b": "✋🏻",
+}
+_STEP5_EMOJI_ALTERNATION = "|".join(pattern for _, pattern in _STEP5_EMOJI_SPECS)
+_STEP5_URL_PATTERN = (
+    r"https?://(?:"
+    r"github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:/[^\s<>`\"'()]+)?"
+    r"|linear\.app/[A-Za-z0-9_.-]+/issue/[A-Za-z0-9_-]+(?:/[^\s<>`\"'()]+)?"
+    r")"
+)
+_STEP5_ENTRY_RE = re.compile(
+    rf"(?P<emoji>{_STEP5_EMOJI_ALTERNATION})"
+    r"[ \t]+"
+    rf"(?P<url>{_STEP5_URL_PATTERN})"
+    r"[ \t]+[-\u2013\u2014][ \t]+"
+    rf"(?P<title>[^\r\n]+?)(?=[ \t]*(?:\r|\n|$|(?:{_STEP5_EMOJI_ALTERNATION})[ \t]+{_STEP5_URL_PATTERN}))",
+)
+_FENCE_OPEN_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
+_THOUGHT_PREAMBLE_RE = re.compile(r"^\s*thought[ \t]*\r?\n")
+_THOUGHT_MONOLOGUE_PARAGRAPH_RE = re.compile(
+    r"^(?:thought\b|let(?:'s| us| me)\b|now\s+let(?:'s| us| me)\b|i(?:'ll| will| should| need to)\b|confirmed[!.:]|report\s+|output\s+|reply\s+)",
+    re.IGNORECASE,
+)
+_EMBEDDED_EXPLICIT_ERROR_RE = re.compile(
+    r"(?:^|\r?\n|[.!?:`'\"\)\]]\s*)(?P<err>`?(?:HEARTBEAT_ERROR|HEARTBEAT_FAILED|TURN_FAILED|COMPANION_RESULT:\s*(?:ERROR|FAILED))\b[^\r\n]*)",
+    re.IGNORECASE,
+)
+_TRAILING_HEARTBEAT_OK_LINE_RE = re.compile(r"(?:\A|\r?\n)[ \t]*`?(?P<tok>HEARTBEAT_OK)`?[ \t]*\Z")
+_TRAILING_HEARTBEAT_OK_CONCAT_RE = re.compile(r"(?:[.!?:`'\"\)\]])[ \t]*`?(?P<tok>HEARTBEAT_OK)`?[ \t]*\Z")
+_TRAILING_HEARTBEAT_OK_WORD_RE = re.compile(r"(?:\A|\s)`?(?P<tok>HEARTBEAT_OK)`?[ \t]*\Z")
+
+
+def _canonicalize_step5_emoji(raw_emoji: str) -> str:
+    return _STEP5_EMOJI_BY_LEAD_CHAR.get(raw_emoji[0], raw_emoji) if raw_emoji else ""
+
+
+def _find_code_spans(text: str) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
+    """Return (fenced_spans, all_code_spans) for fenced code blocks and inline backtick spans."""
+    fenced_spans: list[tuple[int, int]] = []
+    offset = 0
+    fence_char = ""
+    fence_len = 0
+    fence_start = -1
+    for line in text.splitlines(keepends=True):
+        stripped_line = line.rstrip("\r\n")
+        if fence_start < 0:
+            if m := _FENCE_OPEN_RE.match(stripped_line):
+                marker, rest = m.group(1), m.group(2)
+                if marker[0] == "~" or "`" not in rest:
+                    fence_char = marker[0]
+                    fence_len = len(marker)
+                    fence_start = offset
+        else:
+            close_stripped = stripped_line.strip()
+            if close_stripped and len(close_stripped) >= fence_len and set(close_stripped) == {fence_char}:
+                fenced_spans.append((fence_start, offset + len(line)))
+                fence_start = -1
+        offset += len(line)
+    if fence_start >= 0:
+        fenced_spans.append((fence_start, len(text)))
+
+    all_spans: list[tuple[int, int]] = list(fenced_spans)
+    non_fenced: list[tuple[int, int]] = []
+    cursor = 0
+    for f_start, f_end in fenced_spans:
+        if cursor < f_start:
+            non_fenced.append((cursor, f_start))
+        cursor = max(cursor, f_end)
+    if cursor < len(text):
+        non_fenced.append((cursor, len(text)))
+
+    for slice_start, slice_end in non_fenced:
+        segment = text[slice_start:slice_end]
+        pos = 0
+        seg_len = len(segment)
+        while pos < seg_len:
+            tick_idx = segment.find("`", pos)
+            if tick_idx < 0:
+                break
+            tick_end = tick_idx
+            while tick_end < seg_len and segment[tick_end] == "`":
+                tick_end += 1
+            tick_len = tick_end - tick_idx
+            blank_match = re.search(r"\r?\n[ \t]*\r?\n", segment[tick_end:])
+            search_limit = (tick_end + blank_match.start()) if blank_match else seg_len
+            scan = tick_end
+            matched_end = -1
+            while scan < search_limit:
+                next_tick = segment.find("`", scan, search_limit)
+                if next_tick < 0:
+                    break
+                run_end = next_tick
+                while run_end < search_limit and segment[run_end] == "`":
+                    run_end += 1
+                if (run_end - next_tick) == tick_len:
+                    matched_end = run_end
+                    break
+                scan = run_end
+            if matched_end > 0:
+                all_spans.append((slice_start + tick_idx, slice_start + matched_end))
+                pos = matched_end
+            else:
+                pos = tick_end
+
+    all_spans.sort()
+    return fenced_spans, all_spans
+
+
+def _offset_in_spans(offset: int, spans: list[tuple[int, int]]) -> bool:
+    return any(start <= offset < end for start, end in spans)
+
+
+def _has_trailing_heartbeat_ok(text: str, fenced_spans: list[tuple[int, int]], code_spans: list[tuple[int, int]]) -> bool:
+    if m := _TRAILING_HEARTBEAT_OK_LINE_RE.search(text):
+        if not _offset_in_spans(m.start("tok"), fenced_spans):
+            return True
+    if m := _TRAILING_HEARTBEAT_OK_CONCAT_RE.search(text):
+        if not _offset_in_spans(m.start("tok"), code_spans):
+            return True
+    if _THOUGHT_PREAMBLE_RE.match(text):
+        if m := _TRAILING_HEARTBEAT_OK_WORD_RE.search(text):
+            if not _offset_in_spans(m.start("tok"), fenced_spans):
+                return True
+    return False
+
+
+def _strip_thought_preamble(text: str) -> str:
+    paragraphs = [p.strip() for p in re.split(r"\r?\n[ \t]*\r?\n+", text.strip()) if p.strip()]
+    if len(paragraphs) <= 1:
+        return ""
+    remaining = paragraphs[1:]
+    while remaining and _THOUGHT_MONOLOGUE_PARAGRAPH_RE.match(remaining[0]):
+        remaining.pop(0)
+    return "\n\n".join(remaining).strip()
+
+
+def normalize_terminal_reply_text(text: str | None) -> str:
+    """Normalise terminal replies to clean Step 5 status entries or HEARTBEAT_OK without leaked reasoning."""
+    if not isinstance(text, str):
+        return ""
+    clean = text.strip()
+    if not clean:
+        return ""
+    if is_heartbeat_ok_reply(clean):
+        return "HEARTBEAT_OK"
+
+    fenced_spans, code_spans = _find_code_spans(clean)
+    dedup: dict[tuple[str, str], str] = {}
+    for match in _STEP5_ENTRY_RE.finditer(clean):
+        if _offset_in_spans(match.start(), code_spans):
+            continue
+        canonical_emoji = _canonicalize_step5_emoji(match.group("emoji"))
+        url = match.group("url").strip()
+        title = match.group("title").strip()
+        if canonical_emoji and url and title:
+            dedup[(canonical_emoji, url)] = f"{canonical_emoji} {url} - {title}"
+    if dedup:
+        return "\n\n".join(dedup.values())
+
+    if any(pattern.search(clean) for _, pattern in TURN_FAILURE_PATTERNS):
+        return clean
+    if _THOUGHT_PREAMBLE_RE.match(clean):
+        if err_match := _EMBEDDED_EXPLICIT_ERROR_RE.search(clean):
+            if not _offset_in_spans(err_match.start("err"), code_spans):
+                return clean[err_match.start("err"):].strip()
+
+    if _has_trailing_heartbeat_ok(clean, fenced_spans, code_spans):
+        return "HEARTBEAT_OK"
+
+    if _THOUGHT_PREAMBLE_RE.match(clean):
+        return _strip_thought_preamble(clean)
+
+    return clean
 
 
 def classify_terminal_turn_outcome(reply_text: str | None, *, assistant_record: dict | None = None, rpc_response: object = None) -> tuple[bool, str | None]:
@@ -594,9 +1300,11 @@ def extract_rpc_reply_text(rpc_response: object) -> str:
 
 
 def extract_terminal_reply_text(rpc_response: object = None, assistant_record: dict | None = None) -> str:
-    """Extract terminal assistant reply text from history.jsonl assistant record or chat.send_sync response."""
-    history_text = extract_text_content(assistant_record.get("content") if "content" in assistant_record else assistant_record).strip() if isinstance(assistant_record, dict) else ""
-    rpc_text = extract_rpc_reply_text(rpc_response)
+    """Extract and normalise terminal assistant reply text from history.jsonl or chat.send_sync response."""
+    raw_history = extract_text_content(assistant_record.get("content") if "content" in assistant_record else assistant_record).strip() if isinstance(assistant_record, dict) else ""
+    raw_rpc = extract_rpc_reply_text(rpc_response)
+    history_text = normalize_terminal_reply_text(raw_history)
+    rpc_text = normalize_terminal_reply_text(raw_rpc)
     if (history_text and is_heartbeat_ok_reply(history_text)) or (rpc_text and is_heartbeat_ok_reply(rpc_text)):
         return "HEARTBEAT_OK"
     return history_text if (history_text and history_text.lower() != "done") else (rpc_text or history_text)
@@ -908,6 +1616,12 @@ def compute_next_poll_slot_ms(now_ms_val: int, agent_name: str = "skrye") -> int
             if cand_ms > safe_now:
                 return cand_ms
     return safe_now + POLL_SLOT_INTERVAL_MS
+
+
+def compute_throttle_slot_id(now_ms_val: int, agent_name: str = "skrye") -> str:
+    """Return a deterministic throttle slot identifier aligned to the agent's 30-minute poll slot."""
+    norm_agent = normalize_agent_name(agent_name) if (agent_name or "").strip().lower() in AGENT_POLL_MINUTE_SLOTS else "skrye"
+    return f"{norm_agent}:{compute_next_poll_slot_ms(now_ms_val, norm_agent)}"
 
 
 def compute_backoff_wait_ms(headers: dict[str, str] | None, now_ms_val: int, rng: Callable[[int, int], int] | None = None, status: int | None = None, agent_name: str = "skrye") -> tuple[int, int, int]:
@@ -1253,6 +1967,67 @@ def parse_gh_api_paginated_http_output(raw_output: str) -> tuple[int, dict[str, 
     return final_status, merged_headers, items
 
 
+def _extract_thread_repo_number(key: str, entry: dict) -> tuple[str, int] | None:
+    repo = str(entry.get("repo") or "").strip().lower()
+    number = _safe_int(entry.get("number"), 0)
+    if (not repo or number <= 0) and "#" in key:
+        head, tail = key.rsplit("#", 1)
+        if not repo and "/" in head:
+            repo = head.strip().lower()
+        if number <= 0:
+            number = _safe_int(tail, 0)
+    return (repo, number) if (repo and number > 0) else None
+
+
+def _reset_community_entries_in_state(state: dict, stamp_ms: int) -> int:
+    """Reset watermarks and tracking fields only on community or coercion-blocked threads (and paired keys)."""
+    threads = state.get("threads")
+    if not isinstance(threads, dict):
+        return 0
+    target_keys: set[str] = set()
+    target_pairs: set[tuple[str, int]] = set()
+    target_thread_ids: set[str] = set()
+    for key, entry in threads.items():
+        if not isinstance(entry, dict):
+            continue
+        if bool(entry.get("is_community")) or bool(entry.get("coercion_blocked")):
+            target_keys.add(key)
+            if pair := _extract_thread_repo_number(key, entry):
+                target_pairs.add(pair)
+            if tid := str(entry.get("thread_id") or "").strip():
+                target_thread_ids.add(tid)
+    if not target_keys:
+        return 0
+    for key, entry in threads.items():
+        if not isinstance(entry, dict) or key in target_keys:
+            continue
+        pair = _extract_thread_repo_number(key, entry)
+        tid = str(entry.get("thread_id") or "").strip()
+        if (pair is not None and pair in target_pairs) or key in target_thread_ids or (tid and tid in target_thread_ids):
+            target_keys.add(key)
+    reset_count = 0
+    for key in target_keys:
+        entry = threads.get(key)
+        if not isinstance(entry, dict):
+            continue
+        entry.update({
+            "handled_updated_at": None,
+            "handled_head_sha": None,
+            "triaged_head_sha": None,
+            "coercion_blocked": False,
+            "in_flight": False,
+            "pending_followup": False,
+            "retry_count": 0,
+            "linear_issue_id": None,
+            "linear_issue_url": None,
+            "decision_notified_sha": None,
+            "ready_for_signoff_notified_sha": None,
+            "updated_at_ms": stamp_ms,
+        })
+        reset_count += 1
+    return reset_count
+
+
 class CompanionStateStore:
     """Durable 0600 unified state store (state.json) in ~/.local/state/moltis/github-companion-<agent>/."""
 
@@ -1286,10 +2061,102 @@ class CompanionStateStore:
         self.ensure_directory()
 
     def _default_thread_entry(self, *, handled_updated_at: str | None = None, handled_head_sha: str | None = None, handled_ci_state: str | None = None, retry_count: int = 0) -> dict:
-        return {"handled_updated_at": handled_updated_at, "handled_head_sha": handled_head_sha, "handled_ci_state": handled_ci_state, "retry_count": max(0, _safe_int(retry_count, 0))}
+        return {
+            "handled_updated_at": handled_updated_at,
+            "handled_head_sha": handled_head_sha,
+            "handled_ci_state": handled_ci_state,
+            "retry_count": max(0, _safe_int(retry_count, 0)),
+            "linear_issue_id": None,
+            "linear_issue_url": None,
+            "decision_notified_sha": None,
+            "ready_for_signoff_notified_sha": None,
+        }
+
+    @staticmethod
+    def _default_throttles() -> dict:
+        return {
+            "daily_date": None,
+            "daily_implementations": 0,
+            "slot_id": None,
+            "slot_triage_stubs": 0,
+            "slot_triage_research": 0,
+            "slot_community_pr_reviews": 0,
+            "slot_todo_implementations": 0,
+        }
+
+    @classmethod
+    def _normalize_throttles(cls, raw: object) -> dict:
+        data = _as_dict(raw)
+        daily_date_raw = data.get("daily_date")
+        slot_id_raw = data.get("slot_id")
+        return {
+            "daily_date": daily_date_raw.strip() if isinstance(daily_date_raw, str) and daily_date_raw.strip() else None,
+            "daily_implementations": max(0, _safe_int(data.get("daily_implementations"), 0)),
+            "slot_id": slot_id_raw.strip() if isinstance(slot_id_raw, str) and slot_id_raw.strip() else None,
+            "slot_triage_stubs": max(0, _safe_int(data.get("slot_triage_stubs"), 0)),
+            "slot_triage_research": max(0, _safe_int(data.get("slot_triage_research"), 0)),
+            "slot_community_pr_reviews": max(0, _safe_int(data.get("slot_community_pr_reviews"), 0)),
+            "slot_todo_implementations": max(0, _safe_int(data.get("slot_todo_implementations"), 0)),
+        }
+
+    @classmethod
+    def _rollover_throttles(cls, raw_throttles: object, *, stamp_ms: int, slot_id: str | None = None) -> dict:
+        throttles = cls._normalize_throttles(raw_throttles)
+        today_london = london_date_str(stamp_ms)
+        if throttles["daily_date"] != today_london:
+            throttles["daily_date"] = today_london
+            throttles["daily_implementations"] = 0
+        clean_slot_id = slot_id.strip() if isinstance(slot_id, str) and slot_id.strip() else None
+        if clean_slot_id is not None and throttles["slot_id"] != clean_slot_id:
+            throttles["slot_id"] = clean_slot_id
+            throttles["slot_triage_stubs"] = 0
+            throttles["slot_triage_research"] = 0
+            throttles["slot_community_pr_reviews"] = 0
+            throttles["slot_todo_implementations"] = 0
+        return throttles
+
+    @staticmethod
+    def _validate_throttle_bucket(bucket: str) -> tuple[str, str]:
+        clean = bucket.strip() if isinstance(bucket, str) else ""
+        if clean not in _THROTTLE_BUCKET_TO_STATE_KEY:
+            raise ValueError(f"Unsupported throttle bucket: {bucket!r}")
+        return clean, _THROTTLE_BUCKET_TO_STATE_KEY[clean]
+
+    @staticmethod
+    def _resolve_throttle_limits(limits: dict | None = None) -> dict[str, int]:
+        resolved = dict(DEFAULT_THROTTLE_LIMITS)
+        if isinstance(limits, dict):
+            for key, default_val in DEFAULT_THROTTLE_LIMITS.items():
+                if key in limits and limits[key] is not None and not isinstance(limits[key], bool):
+                    resolved[key] = max(0, _safe_int(limits[key], default_val))
+        return resolved
+
+    @staticmethod
+    def _normalize_pending_linear_todo_reconciliations(raw: object) -> dict[str, dict[str, object]]:
+        normalized: dict[str, dict[str, object]] = {}
+        if not isinstance(raw, dict):
+            return normalized
+        for raw_key, raw_entry in raw.items():
+            clean_id = str(raw_key or "").strip()
+            if not clean_id or not isinstance(raw_entry, dict):
+                continue
+            thread_key = str(raw_entry.get("thread_key") or raw_entry.get("state_key") or "").strip() or None
+            dispatch_id = str(raw_entry.get("dispatch_id") or "").strip() or None
+            reason = str(raw_entry.get("reason") or "").strip() or None
+            enqueued_at_ms = _safe_int(raw_entry.get("enqueued_at_ms"), 0) or None
+            updated_at_ms = _safe_int(raw_entry.get("updated_at_ms"), 0) or None
+            normalized[clean_id] = {
+                "linear_issue_id": clean_id,
+                "thread_key": thread_key,
+                "dispatch_id": dispatch_id,
+                "reason": reason,
+                "enqueued_at_ms": enqueued_at_ms,
+                "updated_at_ms": updated_at_ms,
+            }
+        return normalized
 
     def _default_state(self) -> dict:
-        return {"version": 2, "agent_name": self.agent_name, "next_poll_at_ms": None, "last_poll_started_at_ms": None, "last_poll_completed_at_ms": None, "last_status": None, "last_modified": None, "poll_interval_secs": 0, "retry_after_secs": 0, "last_poll_rate_limited": False, "ratelimit_reset_epoch": None, "last_jitter_ms": None, "last_open_prs_poll_error": None, "last_open_issues_poll_error": None, "last_reconcile_sweep_at_ms": None, "last_reconcile_sweep_attempt_at_ms": None, "reconcile_sweep_retry_after_ms": None, "reconcile_sweep_failure_count": 0, "last_reconcile_sweep_failure_reason": None, "last_weekly_sweep_date": None, "last_weekly_sweep_attempt_at_ms": None, "weekly_sweep_retry_after_ms": None, "weekly_sweep_failure_count": 0, "last_weekly_sweep_failure_reason": None, "threads": {}, "updated_at_ms": self.started_at_ms}
+        return {"version": STATE_SCHEMA_VERSION, "agent_name": self.agent_name, "next_poll_at_ms": None, "last_poll_started_at_ms": None, "last_poll_completed_at_ms": None, "last_status": None, "last_modified": None, "poll_interval_secs": 0, "retry_after_secs": 0, "last_poll_rate_limited": False, "ratelimit_reset_epoch": None, "last_jitter_ms": None, "last_open_prs_poll_error": None, "last_open_issues_poll_error": None, "last_reconcile_sweep_at_ms": None, "last_reconcile_sweep_attempt_at_ms": None, "reconcile_sweep_retry_after_ms": None, "reconcile_sweep_failure_count": 0, "last_reconcile_sweep_failure_reason": None, "last_weekly_sweep_date": None, "last_weekly_sweep_attempt_at_ms": None, "weekly_sweep_retry_after_ms": None, "weekly_sweep_failure_count": 0, "last_weekly_sweep_failure_reason": None, "throttles": self._default_throttles(), "pending_linear_todo_reconciliations": {}, "threads": {}, "updated_at_ms": self.started_at_ms}
 
     def _default_active_dispatch(self) -> dict:
         return {"version": 1, "agent_name": self.agent_name, "active": None, "updated_at_ms": self.started_at_ms}
@@ -1340,6 +2207,13 @@ class CompanionStateStore:
             existing_state = self._try_read_json(dir_fd, STATE_FILENAME)
             if not existing_state or not isinstance(existing_state.get("threads"), dict):
                 atomic_write_json_in_dir(dir_fd, STATE_FILENAME, self._migrate_legacy_state_unlocked(dir_fd))
+            elif _safe_int(existing_state.get("version"), 1) < STATE_SCHEMA_VERSION:
+                migrated = self._read_state_unlocked(dir_fd)
+                _reset_community_entries_in_state(migrated, self.started_at_ms)
+                migrated["version"] = STATE_SCHEMA_VERSION
+                migrated["throttles"] = self._normalize_throttles(migrated.get("throttles"))
+                migrated["updated_at_ms"] = self.started_at_ms
+                atomic_write_json_in_dir(dir_fd, STATE_FILENAME, migrated)
             if not self._try_read_json(dir_fd, ACTIVE_DISPATCH_FILENAME):
                 atomic_write_json_in_dir(dir_fd, ACTIVE_DISPATCH_FILENAME, self._default_active_dispatch())
             for fname, flags in ((SECURITY_EVENTS_FILENAME, os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW), (COORDINATOR_LOCK_FILENAME, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK)):
@@ -1390,6 +2264,10 @@ class CompanionStateStore:
             return default
         merged = {**default, **{k: v for k, v in data.items() if k not in ("poll_offset_secs", "initial_offset_applied")}, "agent_name": self.agent_name}
         self._normalize_sweep_fields(merged)
+        merged["throttles"] = self._normalize_throttles(merged.get("throttles"))
+        merged["pending_linear_todo_reconciliations"] = self._normalize_pending_linear_todo_reconciliations(
+            merged.get("pending_linear_todo_reconciliations")
+        )
         raw_threads = merged.get("threads")
         norm_threads: dict[str, dict] = {}
         if isinstance(raw_threads, dict):
@@ -1416,14 +2294,130 @@ class CompanionStateStore:
                         entry = {**self._default_thread_entry(), **_as_dict(merged_threads.get(str(k))), **v}
                         entry["retry_count"] = max(0, _safe_int(entry.get("retry_count"), 0))
                         merged_threads[str(k)] = entry
-                state.update({k: v for k, v in updates.items() if k != "threads"})
+                state.update({k: v for k, v in updates.items() if k not in ("threads", "throttles")})
                 state["threads"] = merged_threads
             else:
-                state.update(updates)
+                state.update({k: v for k, v in updates.items() if k != "throttles"})
+            if "throttles" in updates and isinstance(updates["throttles"], dict):
+                state["throttles"] = self._normalize_throttles({**self._normalize_throttles(state.get("throttles")), **updates["throttles"]})
+            else:
+                state["throttles"] = self._normalize_throttles(state.get("throttles"))
+            state["pending_linear_todo_reconciliations"] = self._normalize_pending_linear_todo_reconciliations(
+                state.get("pending_linear_todo_reconciliations")
+            )
             self._normalize_sweep_fields(state)
             state.update({"agent_name": self.agent_name, "updated_at_ms": stamp_ms})
             atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
             return dict(state)
+
+    def enqueue_linear_todo_reconciliation(
+        self,
+        linear_id: str,
+        thread_key: str | None = None,
+        *,
+        dispatch_id: str | None = None,
+        reason: str | None = None,
+        now_override_ms: int | None = None,
+    ) -> dict[str, object] | None:
+        """Persist a stranded Linear Todo claim in state.json for non-blocking reconciliation."""
+        clean_id = str(linear_id or "").strip()
+        if not clean_id:
+            return None
+        stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
+        with self._locked_dir() as dir_fd:
+            state = self._read_state_unlocked(dir_fd)
+            pending = dict(state.get("pending_linear_todo_reconciliations") or {})
+            existing = _as_dict(pending.get(clean_id))
+            entry: dict[str, object] = {
+                "linear_issue_id": clean_id,
+                "thread_key": str(thread_key or existing.get("thread_key") or "").strip() or None,
+                "dispatch_id": str(dispatch_id or existing.get("dispatch_id") or "").strip() or None,
+                "reason": str(reason or existing.get("reason") or "").strip() or None,
+                "enqueued_at_ms": _safe_int(existing.get("enqueued_at_ms"), 0) or stamp_ms,
+                "updated_at_ms": stamp_ms,
+            }
+            pending[clean_id] = entry
+            state["pending_linear_todo_reconciliations"] = pending
+            state["agent_name"] = self.agent_name
+            state["updated_at_ms"] = stamp_ms
+            atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
+            return dict(entry)
+
+    def list_linear_todo_reconciliations(self) -> dict[str, dict[str, object]]:
+        """Return a copy of all pending Linear Todo reconciliations keyed by linear_id."""
+        pending = self.read_state().get("pending_linear_todo_reconciliations")
+        if not isinstance(pending, dict):
+            return {}
+        return {str(k): dict(v) for k, v in pending.items() if isinstance(v, dict)}
+
+    def remove_linear_todo_reconciliation(self, linear_id: str, *, now_override_ms: int | None = None) -> bool:
+        """Atomically remove a reconciled Linear Todo claim from state.json."""
+        clean_id = str(linear_id or "").strip()
+        if not clean_id:
+            return False
+        stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
+        with self._locked_dir() as dir_fd:
+            state = self._read_state_unlocked(dir_fd)
+            pending = dict(state.get("pending_linear_todo_reconciliations") or {})
+            if clean_id not in pending:
+                return False
+            pending.pop(clean_id, None)
+            state["pending_linear_todo_reconciliations"] = pending
+            state["agent_name"] = self.agent_name
+            state["updated_at_ms"] = stamp_ms
+            atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
+            return True
+
+    def reprocess_community_entries(self, now_override_ms: int | None = None) -> int:
+        stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
+        with self._locked_dir() as dir_fd:
+            state = self._read_state_unlocked(dir_fd)
+            reset_count = _reset_community_entries_in_state(state, stamp_ms)
+            state["version"] = max(_safe_int(state.get("version"), STATE_SCHEMA_VERSION), STATE_SCHEMA_VERSION)
+            state["throttles"] = self._normalize_throttles(state.get("throttles"))
+            state["agent_name"] = self.agent_name
+            state["updated_at_ms"] = stamp_ms
+            atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
+            return reset_count
+
+    def get_throttle_state(self, *, slot_id: str | None = None, now_override_ms: int | None = None) -> dict:
+        stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
+        with self._locked_dir() as dir_fd:
+            state = self._read_state_unlocked(dir_fd)
+            return self._rollover_throttles(state.get("throttles"), stamp_ms=stamp_ms, slot_id=slot_id)
+
+    def can_consume_throttle(self, bucket: str, *, slot_id: str | None = None, limits: dict | None = None, now_override_ms: int | None = None) -> bool:
+        clean_bucket, state_key = self._validate_throttle_bucket(bucket)
+        eff_limits = self._resolve_throttle_limits(limits)
+        throttles = self.get_throttle_state(slot_id=slot_id, now_override_ms=now_override_ms)
+        if throttles[state_key] + 1 > eff_limits[clean_bucket]:
+            return False
+        if clean_bucket == "todo_implementations" and throttles["daily_implementations"] + 1 > eff_limits["daily_implementations"]:
+            return False
+        return True
+
+    def consume_throttle(self, bucket: str, *, count: int = 1, slot_id: str | None = None, limits: dict | None = None, now_override_ms: int | None = None) -> tuple[bool, dict]:
+        clean_bucket, state_key = self._validate_throttle_bucket(bucket)
+        if isinstance(count, bool) or _safe_int(count, 0) <= 0:
+            raise ValueError(f"Throttle consume count must be positive: {count!r}")
+        step = _safe_int(count, 1)
+        eff_limits = self._resolve_throttle_limits(limits)
+        stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
+        with self._locked_dir() as dir_fd:
+            state = self._read_state_unlocked(dir_fd)
+            throttles = self._rollover_throttles(state.get("throttles"), stamp_ms=stamp_ms, slot_id=slot_id)
+            if throttles[state_key] + step > eff_limits[clean_bucket]:
+                return False, dict(throttles)
+            if clean_bucket == "todo_implementations" and throttles["daily_implementations"] + step > eff_limits["daily_implementations"]:
+                return False, dict(throttles)
+            throttles[state_key] += step
+            if clean_bucket == "todo_implementations":
+                throttles["daily_implementations"] += step
+            state["throttles"] = throttles
+            state["agent_name"] = self.agent_name
+            state["updated_at_ms"] = stamp_ms
+            atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
+            return True, dict(throttles)
 
     def record_sweep_attempt(self, kind: str, *, now_override_ms: int | None = None) -> dict:
         stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
@@ -1581,7 +2575,7 @@ class CompanionStateStore:
         """Evaluate and persist open pull requests in state.json for wake, community triage, and team-label detection."""
         stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
         self_login_norm = (self_github_login or GITHUB_AGENT_LOGINS[self.agent_name]).strip().lower()
-        actionable_prs, queued_followups, cooled_down_prs, team_label_candidates, coercive_items = [], [], [], [], []
+        actionable_prs, queued_followups, cooled_down_prs, team_label_candidates, coercive_items, signoff_ready_prs = [], [], [], [], [], []
         with self._locked_dir() as dir_fd:
             state = self._read_state_unlocked(dir_fd)
             threads: dict[str, dict] = state["threads"]
@@ -1599,8 +2593,10 @@ class CompanionStateStore:
                 ci_state = normalize_ci_state(norm_pr.get("ci_state") or norm_pr.get("statusCheckRollup"))
                 updated_at = str(norm_pr.get("updated_at") or norm_pr.get("updatedAt") or "").strip()
                 title, body = str(norm_pr.get("title") or ""), str(norm_pr.get("body") or "")
+                pr_url = str(norm_pr.get("url") or norm_pr.get("html_url") or "").strip()
                 labels = extract_label_names(norm_pr.get("labels"))
                 team_labels = extract_team_labels(norm_pr.get("team_labels") if "team_labels" in norm_pr else labels, PR_TEAM_LABELS)
+                has_do_not_merge = has_do_not_merge_label(labels)
                 review_requests = list(norm_pr.get("review_requests") or norm_pr.get("reviewRequests") or [])
                 unresolved_thread_count = (
                     max(0, _safe_int(norm_pr.get("unresolved_thread_count"), 0))
@@ -1608,6 +2604,7 @@ class CompanionStateStore:
                     else count_unresolved_review_threads(norm_pr.get("reviewThreads") if "reviewThreads" in norm_pr else norm_pr.get("review_threads"))
                 )
                 target_keys, existing = self._load_entry_unlocked(threads, pr_key, repo=repo, number=number)
+                resolved_pr_url = pr_url or str(existing.get("url") or "").strip() or f"https://github.com/{repo}/pull/{number}"
                 handled_u, handled_sha, handled_ci = existing.get("handled_updated_at"), existing.get("handled_head_sha"), existing.get("handled_ci_state")
                 in_flight, pending_followup = bool(existing.get("in_flight", False)), bool(existing.get("pending_followup", False))
                 cooldown_until_ms = _safe_int(existing.get("followup_cooldown_until_ms"), 0)
@@ -1633,13 +2630,12 @@ class CompanionStateStore:
                 unowned_auto_update = bool(is_auto_update and not owns_mod2_pr)
 
                 raw_texts = [t for t in (title, body) if t]
-                matched_coercion = detect_coercion_patterns("\n".join(raw_texts))
-                if not is_trusted and extract_mentioned_github_agents("\n".join(raw_texts)):
-                    matched_coercion = [*matched_coercion, "targeted_agent_mention"]
-                if is_trusted and not is_instruction:
-                    matched_coercion = [r for r in matched_coercion if r != "html_comment_block"]
-                elif is_instruction:
+                if is_instruction:
                     matched_coercion = []
+                else:
+                    matched_coercion = detect_coercion_patterns("\n".join(raw_texts))
+                    if not is_trusted and extract_mentioned_github_agents("\n".join(raw_texts)):
+                        matched_coercion = [*matched_coercion, "targeted_agent_mention"]
                 if matched_coercion:
                     coercive_items.append({
                         "repo": repo,
@@ -1652,10 +2648,28 @@ class CompanionStateStore:
                         "raw_texts": raw_texts,
                     })
                     handled_u, handled_sha, handled_ci = updated_at or handled_u, head_sha or handled_sha, ci_state or handled_ci
-                    entry = {**existing, "pr_key": pr_key, "repo": repo, "number": number, "subject_type": "PullRequest", "author": author, "head_sha": head_sha, "ci_state": ci_state, "review_decision": review_decision, "review_requests": review_requests, "unresolved_thread_count": unresolved_thread_count, "labels": labels, "updated_at": updated_at or existing.get("updated_at"), "handled_updated_at": handled_u, "handled_head_sha": handled_sha, "handled_ci_state": handled_ci, "retry_count": 0, "is_automated_pr": is_auto_update, "is_community": is_community, "coercion_blocked": True, "in_flight": in_flight, "pending_followup": False, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
+                    entry = {**existing, "pr_key": pr_key, "repo": repo, "number": number, "subject_type": "PullRequest", "author": author, "title": title or existing.get("title") or "", "url": resolved_pr_url, "head_sha": head_sha, "ci_state": ci_state, "review_decision": review_decision, "review_requests": review_requests, "unresolved_thread_count": unresolved_thread_count, "labels": labels, "updated_at": updated_at or existing.get("updated_at"), "handled_updated_at": handled_u, "handled_head_sha": handled_sha, "handled_ci_state": handled_ci, "retry_count": 0, "is_automated_pr": is_auto_update, "is_community": is_community, "coercion_blocked": True, "in_flight": in_flight, "pending_followup": False, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
                     for tk in target_keys:
                         threads[tk] = dict(entry)
                     continue
+
+                if (
+                    has_do_not_merge
+                    and owns_mod2_pr
+                    and review_decision == "APPROVED"
+                    and ci_state in ("SUCCESS", "NONE")
+                    and unresolved_thread_count == 0
+                    and head_sha
+                    and existing.get("ready_for_signoff_notified_sha") != head_sha
+                ):
+                    signoff_ready_prs.append({
+                        "key": pr_key,
+                        "repo": repo,
+                        "number": number,
+                        "head_sha": head_sha,
+                        "title": title,
+                        "url": pr_url or f"https://github.com/{repo}/pull/{number}",
+                    })
 
                 auto_merge_eligible = (
                     compute_community_auto_merge_eligible(
@@ -1701,7 +2715,7 @@ class CompanionStateStore:
                 dispatch_kind = "targeted"
                 trigger_reason: str | None = None
                 if is_trusted and not unowned_auto_update:
-                    if review_decision == "APPROVED" and ci_state in ("SUCCESS", "NONE") and unresolved_thread_count == 0 and (handled_ci != ci_state or (head_sha and handled_sha != head_sha)):
+                    if not has_do_not_merge and review_decision == "APPROVED" and ci_state in ("SUCCESS", "NONE") and unresolved_thread_count == 0 and (handled_ci != ci_state or (head_sha and handled_sha != head_sha)):
                         trigger_reason = "ci_green_after_approval"
                     elif not is_self and handled_sha and head_sha and head_sha != handled_sha:
                         trigger_reason = "head_push"
@@ -1715,7 +2729,8 @@ class CompanionStateStore:
                             dispatch_kind = "community_auto_review" if auto_merge_eligible else "community_triage"
                             trigger_reason = dispatch_kind
                     elif (
-                        handled_sha
+                        not has_do_not_merge
+                        and handled_sha
                         and head_sha
                         and head_sha == handled_sha
                         and auto_merge_eligible
@@ -1765,12 +2780,12 @@ class CompanionStateStore:
                             "file_paths": norm_pr.get("file_paths"),
                             "files_has_next_page": bool(norm_pr.get("files_has_next_page", False)),
                         })
-                entry = {**existing, "pr_key": pr_key, "repo": repo, "number": number, "subject_type": "PullRequest", "author": author, "head_sha": head_sha, "ci_state": ci_state, "review_decision": review_decision, "review_requests": review_requests, "unresolved_thread_count": unresolved_thread_count, "labels": labels, "updated_at": updated_at or existing.get("updated_at"), "handled_updated_at": handled_u, "handled_head_sha": handled_sha, "handled_ci_state": handled_ci, "retry_count": retry_count, "trigger_reason": trigger_reason or existing.get("trigger_reason"), "is_automated_pr": is_auto_update, "is_community": is_community, "community_auto_merge_eligible": auto_merge_eligible, "coercion_blocked": False, "in_flight": in_flight, "pending_followup": pending_followup, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
+                entry = {**existing, "pr_key": pr_key, "repo": repo, "number": number, "subject_type": "PullRequest", "author": author, "title": title or existing.get("title") or "", "url": resolved_pr_url, "head_sha": head_sha, "ci_state": ci_state, "review_decision": review_decision, "review_requests": review_requests, "unresolved_thread_count": unresolved_thread_count, "labels": labels, "updated_at": updated_at or existing.get("updated_at"), "handled_updated_at": handled_u, "handled_head_sha": handled_sha, "handled_ci_state": handled_ci, "retry_count": retry_count, "trigger_reason": trigger_reason or existing.get("trigger_reason"), "is_automated_pr": is_auto_update, "is_community": is_community, "community_auto_merge_eligible": auto_merge_eligible, "coercion_blocked": False, "in_flight": in_flight, "pending_followup": pending_followup, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
                 for tk in target_keys:
                     threads[tk] = dict(entry)
             state["updated_at_ms"] = stamp_ms
             atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
-        return {"actionable_prs": actionable_prs, "queued_followups": queued_followups, "cooled_down_prs": cooled_down_prs, "team_label_candidates": team_label_candidates, "coercive_items": coercive_items}
+        return {"actionable_prs": actionable_prs, "queued_followups": queued_followups, "cooled_down_prs": cooled_down_prs, "team_label_candidates": team_label_candidates, "coercive_items": coercive_items, "signoff_ready_prs": signoff_ready_prs}
 
     def record_polled_issues(self, issues: list[dict], now_override_ms: int | None = None) -> dict:
         """Evaluate and persist open issues in state.json for community triage and team-label detection."""
@@ -1790,6 +2805,7 @@ class CompanionStateStore:
                 author_norm = normalize_github_actor(author)
                 updated_at = str(norm_issue.get("updated_at") or norm_issue.get("updatedAt") or "").strip()
                 title, body = str(norm_issue.get("title") or ""), str(norm_issue.get("body") or "")
+                raw_issue_url = str(norm_issue.get("url") or norm_issue.get("html_url") or "").strip()
                 labels = extract_label_names(norm_issue.get("labels"))
                 team_labels = extract_team_labels(norm_issue.get("team_labels") if "team_labels" in norm_issue else labels, ISSUE_TEAM_LABELS)
                 latest_comment = _as_dict(norm_issue.get("latest_comment"))
@@ -1798,6 +2814,7 @@ class CompanionStateStore:
                 latest_comment_body = str(latest_comment.get("body") or "") if latest_comment else ""
 
                 target_keys, existing = self._load_entry_unlocked(threads, issue_key, repo=repo, number=number)
+                issue_url = raw_issue_url or str(existing.get("url") or "").strip() or f"https://github.com/{repo}/issues/{number}"
                 handled_u = existing.get("handled_updated_at")
                 in_flight, pending_followup = bool(existing.get("in_flight", False)), bool(existing.get("pending_followup", False))
                 prior_u = str(existing.get("updated_at") or "").strip()
@@ -1810,13 +2827,12 @@ class CompanionStateStore:
                 owns_mod2_issue = bool(self.agent_name in SWEEP_AGENT_ORDER and issue_owner == self.agent_name)
 
                 subj_texts = [t for t in (title, body) if t]
-                subj_coercion = detect_coercion_patterns("\n".join(subj_texts))
-                if not is_trusted and extract_mentioned_github_agents("\n".join(subj_texts)):
-                    subj_coercion = [*subj_coercion, "targeted_agent_mention"]
-                if is_trusted and not is_instruction:
-                    subj_coercion = [r for r in subj_coercion if r != "html_comment_block"]
-                elif is_instruction:
+                if is_instruction:
                     subj_coercion = []
+                else:
+                    subj_coercion = detect_coercion_patterns("\n".join(subj_texts))
+                    if not is_trusted and extract_mentioned_github_agents("\n".join(subj_texts)):
+                        subj_coercion = [*subj_coercion, "targeted_agent_mention"]
                 comment_coercion = (
                     detect_coercion_patterns(latest_comment_body)
                     if (latest_comment_body and not is_trusted_github_actor(latest_comment_actor_norm))
@@ -1848,7 +2864,7 @@ class CompanionStateStore:
                             "raw_texts": [latest_comment_body],
                         })
                     handled_u = updated_at or handled_u
-                    entry = {**existing, "issue_key": issue_key, "repo": repo, "number": number, "subject_type": "Issue", "author": author, "labels": labels, "updated_at": updated_at or existing.get("updated_at"), "handled_updated_at": handled_u, "retry_count": 0, "is_community": is_community, "coercion_blocked": True, "in_flight": in_flight, "pending_followup": False, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
+                    entry = {**existing, "issue_key": issue_key, "repo": repo, "number": number, "subject_type": "Issue", "author": author, "title": title or existing.get("title") or "", "url": issue_url, "labels": labels, "updated_at": updated_at or existing.get("updated_at"), "handled_updated_at": handled_u, "retry_count": 0, "is_community": is_community, "coercion_blocked": True, "in_flight": in_flight, "pending_followup": False, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
                     for tk in target_keys:
                         threads[tk] = dict(entry)
                     continue
@@ -1865,17 +2881,24 @@ class CompanionStateStore:
                             "repo": repo,
                             "number": number,
                             "kind": "Issue",
+                            "url": issue_url,
+                            "title": title,
+                            "body": body,
+                            "author": author,
+                            "labels": list(labels),
+                            "linear_issue_id": existing.get("linear_issue_id"),
                             "updated_at": updated_at,
                             "team_labels": list(team_labels),
                             "is_community": is_community,
                             "handled_team_labels": dict(_as_dict(existing.get("handled_team_labels"))),
                         })
 
+                dispatch_kind = "linear_triage_intake"
                 trigger_reason: str | None = None
                 if not owns_mod2_issue or is_trusted:
                     handled_u = updated_at or handled_u
-                elif not handled_u and bool(updated_at):
-                    trigger_reason = "community_triage"
+                elif not handled_u and not existing.get("linear_issue_id") and bool(updated_at):
+                    trigger_reason = "linear_triage_intake"
                 elif handled_u and is_timestamp_newer(updated_at, handled_u):
                     handled_u = updated_at or handled_u
 
@@ -1891,13 +2914,19 @@ class CompanionStateStore:
                             "repo": repo,
                             "number": number,
                             "kind": "Issue",
-                            "dispatch_kind": "community_triage",
+                            "url": issue_url,
+                            "title": title,
+                            "body": body,
+                            "author": author,
+                            "labels": list(labels),
+                            "linear_issue_id": existing.get("linear_issue_id"),
+                            "dispatch_kind": dispatch_kind,
                             "trigger_reason": trigger_reason,
                             "updated_at": updated_at,
                             "is_community": True,
                         })
 
-                entry = {**existing, "issue_key": issue_key, "repo": repo, "number": number, "subject_type": "Issue", "author": author, "labels": labels, "updated_at": updated_at or existing.get("updated_at"), "handled_updated_at": handled_u, "retry_count": retry_count, "trigger_reason": trigger_reason or existing.get("trigger_reason"), "is_community": is_community, "coercion_blocked": False, "in_flight": in_flight, "pending_followup": pending_followup, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
+                entry = {**existing, "issue_key": issue_key, "repo": repo, "number": number, "subject_type": "Issue", "author": author, "title": title or existing.get("title") or "", "url": issue_url, "labels": labels, "updated_at": updated_at or existing.get("updated_at"), "handled_updated_at": handled_u, "retry_count": retry_count, "trigger_reason": trigger_reason or existing.get("trigger_reason"), "is_community": is_community, "coercion_blocked": False, "in_flight": in_flight, "pending_followup": pending_followup, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
                 for tk in target_keys:
                     threads[tk] = dict(entry)
             state["updated_at_ms"] = stamp_ms
@@ -1909,6 +2938,13 @@ class CompanionStateStore:
             entry.update({"in_flight": True, "pending_followup": False, "in_flight_updated_at": updated_at or entry.get("updated_at"), "in_flight_head_sha": head_sha or entry.get("head_sha"), "in_flight_ci_state": ci_state or entry.get("ci_state")})
 
         return self._mutate_thread(key, _mark, now_override_ms=now_override_ms)
+
+    def clear_thread_in_flight(self, key: str, *, now_override_ms: int | None = None) -> dict:
+        """Clear in_flight without advancing handled watermarks or retry_count."""
+        def _clear(entry: dict, _: int) -> None:
+            entry["in_flight"] = False
+
+        return self._mutate_thread(key, _clear, now_override_ms=now_override_ms)
 
     def complete_thread_review(
         self,
@@ -1923,6 +2959,7 @@ class CompanionStateStore:
         preserve_handled_head_sha: bool = False,
         record_triaged_head_sha: bool = False,
         apply_cooldown: bool | None = None,
+        preserve_pending_followup: bool = False,
         now_override_ms: int | None = None,
     ) -> dict:
         rev_u, rev_cid = parse_revision_token(completed_revision)
@@ -1939,7 +2976,7 @@ class CompanionStateStore:
             fin_ci = handled_ci_state or entry.get("in_flight_ci_state") or entry.get("ci_state") or entry.get("handled_ci_state")
             seen_u, seen_sha = str(entry.get("updated_at") or "").strip(), str(entry.get("head_sha") or "").strip()
             sha_newer = bool(not preserve_handled_head_sha and seen_sha and fin_sha and seen_sha != fin_sha)
-            has_newer = bool((was_in_flight and entry.get("pending_followup")) or (seen_u and fin_u and is_timestamp_newer(seen_u, fin_u)) or sha_newer)
+            has_newer = bool(((was_in_flight or preserve_pending_followup) and entry.get("pending_followup")) or (seen_u and fin_u and is_timestamp_newer(seen_u, fin_u)) or sha_newer)
             entry.update({"handled_updated_at": fin_u, "handled_head_sha": fin_sha, "handled_ci_state": fin_ci, "retry_count": 0, "in_flight": False, "pending_followup": has_newer, "dismiss_ready": not has_newer})
             if record_triaged_head_sha and not preserve_handled_head_sha and fin_sha:
                 entry["triaged_head_sha"] = fin_sha
@@ -2219,11 +3256,12 @@ def build_open_issues_graphql_query(owners: Iterable[str] = POLL_ISSUE_OWNERS) -
 
 
 class GhApiSafeClient:
-    """Subprocess wrapper around `gh-api-safe` and `gh-notification-dismiss`."""
+    """Subprocess wrapper around `gh-api-safe`, `gh-notification-dismiss`, and scoped `gh` PR label edits."""
 
-    def __init__(self, gh_api_safe_bin: str = "gh-api-safe", gh_notification_dismiss_bin: str = "gh-notification-dismiss", runner: Callable[..., subprocess.CompletedProcess] | None = None, timeout: float = 45.0):
+    def __init__(self, gh_api_safe_bin: str = "gh-api-safe", gh_notification_dismiss_bin: str = "gh-notification-dismiss", gh_bin: str = "gh", runner: Callable[..., subprocess.CompletedProcess] | None = None, timeout: float = 45.0):
         self.gh_api_safe_bin = gh_api_safe_bin
         self.gh_notification_dismiss_bin = gh_notification_dismiss_bin
+        self.gh_bin = gh_bin
         self.runner = runner or subprocess.run
         self.timeout = timeout
 
@@ -2312,8 +3350,83 @@ class GhApiSafeClient:
         return [norm for node in raw_nodes if (norm := normalize_open_issue_record(node)) is not None]
 
     def fetch_issue_events(self, repo: str, number: int, timeout: float | None = None) -> list[dict]:
-        """Fetch issue or pull request timeline events for label-actor verification."""
+        """Fetch issue or pull request events for label-actor verification."""
         return self.fetch_json_items(f"repos/{repo}/issues/{number}/events?per_page=100", paginate=True, timeout=timeout)
+
+    def fetch_issue_timeline(self, repo: str, number: int, timeout: float | None = None) -> list[dict]:
+        """Fetch paginated issue or pull request timeline events for commit-to-label freshness verification."""
+        return self.fetch_json_items(f"repos/{repo}/issues/{number}/timeline?per_page=100", paginate=True, timeout=timeout)
+
+    def is_pull_request_merged(self, repo: str, number: int, timeout: float | None = None) -> bool:
+        """Return True only when GitHub `repos/{repo}/pulls/{number}` confirms `merged is True`; fail closed otherwise."""
+        clean_repo = (repo or "").strip()
+        clean_num = _safe_int(number, 0)
+        if not clean_repo or clean_num <= 0:
+            return False
+        try:
+            pr_obj = self.fetch_json_object(f"repos/{clean_repo}/pulls/{clean_num}", paginate=False, timeout=timeout)
+        except Exception as exc:
+            sys.stderr.write(f"moltis-github-companion pr-merge-check warning ({clean_repo}#{clean_num}): {exc}\n")
+            return False
+        return isinstance(pr_obj, dict) and pr_obj.get("merged") is True
+
+    @staticmethod
+    def _validate_pr_label_target(repo: str, number: int, label: str) -> tuple[str, str, str]:
+        clean_repo = (repo or "").strip()
+        if (
+            not clean_repo
+            or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*", clean_repo)
+            or any(part in (".", "..") for part in clean_repo.split("/"))
+            or not is_allowed_notification_repo(clean_repo)
+        ):
+            raise ValueError(f"Unsupported repository for pull request label edit: {repo!r}")
+        clean_num = _safe_int(number, 0)
+        if clean_num <= 0:
+            raise ValueError(f"Invalid pull request number for label edit: {number!r}")
+        clean_label = (label or "").strip()
+        if clean_label not in TEAM_LABELS:
+            raise ValueError(f"Unsupported pull request team label: {label!r}")
+        return clean_repo, f"https://github.com/{clean_repo}/pull/{clean_num}", clean_label
+
+    def add_pull_request_label(self, repo: str, number: int, label: str, *, timeout: float | None = None) -> subprocess.CompletedProcess:
+        """Apply an allowlisted `team:` label to a pull request via `gh pr edit --add-label`."""
+        clean_repo, pr_url, clean_label = self._validate_pr_label_target(repo, number, label)
+        cmd = [self.gh_bin, "pr", "edit", pr_url, "--add-label", clean_label]
+        proc = self.runner(cmd, capture_output=True, text=True, timeout=timeout or self.timeout, check=False)
+        if proc.returncode != 0:
+            err_text = (proc.stderr or proc.stdout or "").strip()
+            if "not found" in err_text.lower():
+                create_cmd = [
+                    self.gh_bin,
+                    "label",
+                    "create",
+                    clean_label,
+                    "--repo",
+                    clean_repo,
+                    "--color",
+                    "0E8A16",
+                    "--description",
+                    "Authorise bot merge for verified pull request",
+                ]
+                create_proc = self.runner(create_cmd, capture_output=True, text=True, timeout=timeout or self.timeout, check=False)
+                create_err = (create_proc.stderr or create_proc.stdout or "").strip()
+                if create_proc.returncode == 0 or "already exists" in create_err.lower():
+                    proc = self.runner(cmd, capture_output=True, text=True, timeout=timeout or self.timeout, check=False)
+                    if proc.returncode == 0:
+                        return proc
+                    err_text = (proc.stderr or proc.stdout or "").strip()
+            raise RuntimeError(f"gh pr edit {pr_url} --add-label {clean_label} exited {proc.returncode}: {err_text}")
+        return proc
+
+    def remove_pull_request_label(self, repo: str, number: int, label: str, *, timeout: float | None = None) -> subprocess.CompletedProcess:
+        """Remove an allowlisted `team:` label from a pull request via `gh pr edit --remove-label`."""
+        _, pr_url, clean_label = self._validate_pr_label_target(repo, number, label)
+        cmd = [self.gh_bin, "pr", "edit", pr_url, "--remove-label", clean_label]
+        proc = self.runner(cmd, capture_output=True, text=True, timeout=timeout or self.timeout, check=False)
+        if proc.returncode != 0:
+            err_text = (proc.stderr or proc.stdout or "").strip()
+            raise RuntimeError(f"gh pr edit {pr_url} --remove-label {clean_label} exited {proc.returncode}: {err_text}")
+        return proc
 
 
 class TrustFilterAndSnapshotBuilder:
@@ -2399,7 +3512,7 @@ class TrustFilterAndSnapshotBuilder:
             return _out(False, False, False, False, "untrusted_actor")
 
         is_instruction, is_bot = is_trusted_instruction_actor(actor_norm), is_trusted_bot_actor(actor_norm)
-        if not is_instruction and [r for r in detect_coercion_patterns("\n".join(raw_texts)) if r != "html_comment_block"]:
+        if not is_instruction and detect_coercion_patterns("\n".join(raw_texts)):
             res = self._record_security_event_and_alert(repo=repo, subject_type=subject_type, number=number, thread_id=thread_id, item_kind=item_kind, item_id=item_id, actor=actor, raw_texts=raw_texts, stamp_ms=now_val)
             if not res.get("deduplicated"):
                 security_events.append(res["event"])
@@ -2604,7 +3717,7 @@ class NotificationPoller:
 
         filtered_records, actionable_threads, queued_followups, dismissed_threads = [], [], [], []
         actionable_prs, open_pull_requests, actionable_issues, open_issues = [], [], [], []
-        team_label_candidates, coercive_items = [], []
+        team_label_candidates, coercive_items, signoff_ready_prs = [], [], []
         if 200 <= status < 300:
             filtered_records = [norm for item in raw_items if (norm := normalize_notification_record(item)) is not None]
             ingest_result = self.state_store.record_polled_notifications(filtered_records, now_override_ms=finish_ms)
@@ -2634,6 +3747,7 @@ class NotificationPoller:
             if open_pull_requests:
                 pr_ingest = self.state_store.record_polled_pull_requests(open_pull_requests, self_github_login=GITHUB_AGENT_LOGINS[self.state_store.agent_name], now_override_ms=finish_ms)
                 actionable_prs = list(pr_ingest["actionable_prs"])
+                signoff_ready_prs = list(pr_ingest.get("signoff_ready_prs") or [])
                 team_label_candidates.extend(pr_ingest.get("team_label_candidates") or [])
                 coercive_items.extend(pr_ingest.get("coercive_items") or [])
                 for qf in pr_ingest["queued_followups"]:
@@ -2657,13 +3771,13 @@ class NotificationPoller:
             self.on_actionable_threads(actionable_threads)
             dispatched_threads = list(actionable_threads)
 
-        return {"status": status, "provisional_next_poll_at_ms": provisional_next_ms, "provisional_jitter_ms": provisional_jitter_ms, "next_poll_at_ms": computed_next_poll_ms, "base_wait_secs": base_wait_sec, "jitter_ms": post_jitter_ms, "last_modified": new_last_modified, "filtered_notifications": filtered_records, "open_pull_requests": open_pull_requests, "open_prs_poll_error": open_prs_poll_error, "open_issues": open_issues, "open_issues_poll_error": open_issues_poll_error, "actionable_threads": actionable_threads, "actionable_prs": actionable_prs, "actionable_issues": actionable_issues, "team_label_candidates": team_label_candidates, "coercive_items": coercive_items, "dismissed_threads": dismissed_threads, "queued_followups": queued_followups, "dispatched_threads": dispatched_threads, "read_only_trial": self.read_only_trial}
+        return {"status": status, "provisional_next_poll_at_ms": provisional_next_ms, "provisional_jitter_ms": provisional_jitter_ms, "next_poll_at_ms": computed_next_poll_ms, "base_wait_secs": base_wait_sec, "jitter_ms": post_jitter_ms, "last_modified": new_last_modified, "filtered_notifications": filtered_records, "open_pull_requests": open_pull_requests, "open_prs_poll_error": open_prs_poll_error, "open_issues": open_issues, "open_issues_poll_error": open_issues_poll_error, "actionable_threads": actionable_threads, "actionable_prs": actionable_prs, "actionable_issues": actionable_issues, "signoff_ready_prs": signoff_ready_prs, "team_label_candidates": team_label_candidates, "coercive_items": coercive_items, "dismissed_threads": dismissed_threads, "queued_followups": queued_followups, "dispatched_threads": dispatched_threads, "read_only_trial": self.read_only_trial}
 
 
 class LocalExecutionCoordinator:
     """Serialise all targeted turns, 6-hour reconciliation sweeps, and weekly sweeps under coordinator.lock and active-dispatch.json."""
 
-    def __init__(self, state_store: CompanionStateStore, rpc_client: MoltisRpcClient, data_dir: Path | str, agent_name: str, agent_display_name: str = "", main_model: str = "", review_model: str = "", matrix_client: MatrixClient | None = None, telegram_client: TelegramClient | None = None, telegram_bot_token_path: Path | str | None = None, telegram_allowed_users_path: Path | str | None = None, telegram_api_url: str = DEFAULT_TELEGRAM_API_URL, session_key: str = DEFAULT_GH_SESSION_KEY, room_id: str = DEFAULT_ROOM_ID, schedule_dow: int | None = None, schedule_day_name: str = "", completion_timeout_ms: int | None = None, recovery_deadline_ms: int | None = None, completion_wait_timeout_secs: float | None = None, recovery_wait_timeout_secs: float | None = None, rpc_timeout_secs: float = DEFAULT_RPC_TIMEOUT_SECS, poll_interval_ms: int = DEFAULT_COMPLETION_POLL_INTERVAL_MS, clock: Callable[[], int] = now_ms, sleeper: Callable[[float], None] = time.sleep):
+    def __init__(self, state_store: CompanionStateStore, rpc_client: MoltisRpcClient, data_dir: Path | str, agent_name: str, agent_display_name: str = "", main_model: str = "", review_model: str = "", matrix_client: MatrixClient | None = None, telegram_client: TelegramClient | None = None, telegram_bot_token_path: Path | str | None = None, telegram_allowed_users_path: Path | str | None = None, telegram_api_url: str = DEFAULT_TELEGRAM_API_URL, session_key: str = DEFAULT_GH_SESSION_KEY, room_id: str = DEFAULT_ROOM_ID, schedule_dow: int | None = None, schedule_day_name: str = "", completion_timeout_ms: int | None = None, recovery_deadline_ms: int | None = None, completion_wait_timeout_secs: float | None = None, recovery_wait_timeout_secs: float | None = None, rpc_timeout_secs: float = DEFAULT_RPC_TIMEOUT_SECS, poll_interval_ms: int = DEFAULT_COMPLETION_POLL_INTERVAL_MS, clock: Callable[[], int] = now_ms, sleeper: Callable[[float], None] = time.sleep, linear_client: linear_sync.LinearSyncClient | None = None):
         self.state_store = state_store
         self.rpc_client = rpc_client
         self.data_dir = Path(data_dir)
@@ -2673,6 +3787,7 @@ class LocalExecutionCoordinator:
         self.review_model = (review_model or self.main_model).strip()
         self.matrix_client = matrix_client
         self.telegram_client = telegram_client or (TelegramClient(bot_token_path=telegram_bot_token_path, allowed_users_path=telegram_allowed_users_path, api_url=telegram_api_url) if (telegram_bot_token_path or telegram_allowed_users_path) else None)
+        self.linear_client = linear_client
         self.session_key = (session_key or DEFAULT_GH_SESSION_KEY).strip()
         self.room_id = room_id
         default_dow, default_day_name = AGENT_DEFAULT_SCHEDULES[self.agent_name]
@@ -2687,7 +3802,7 @@ class LocalExecutionCoordinator:
         self.clock = clock
         self.sleeper = sleeper
 
-    def build_dispatch_prompt(self, *, dispatch_id: str, kind: str, thread_id: str | None = None, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, head_sha: str | None = None, trigger_reason: str | None = None, comment_id: int | str | None = None, review_id: int | str | None = None, trusted_item_id: int | str | None = None, community_auto_merge_eligible: bool | None = None, team_label: str | None = None, triaged_head_sha: str | None = None, head_sha_changed: bool = False, extra_instructions: str = "") -> str:
+    def build_dispatch_prompt(self, *, dispatch_id: str, kind: str, thread_id: str | None = None, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, head_sha: str | None = None, trigger_reason: str | None = None, comment_id: int | str | None = None, review_id: int | str | None = None, trusted_item_id: int | str | None = None, community_auto_merge_eligible: bool | None = None, team_label: str | None = None, triaged_head_sha: str | None = None, head_sha_changed: bool = False, linear_issue_id: str | None = None, linear_issue_identifier: str | None = None, linear_issue_url: str | None = None, github_url: str | None = None, bypass_reasons: Iterable[str] | None = None, lane_a_polish_notes: str | None = None, extra_instructions: str = "") -> str:
         header = f"# {self.agent_display_name} Scheduled Maintenance Heartbeat"
         meta_lines = [f"dispatch_id: {dispatch_id}", f"dispatch_kind: {kind}", f"agent_name: {self.agent_name}", f"schedule_day_name: {self.schedule_day_name}", f"schedule_dow: {self.schedule_dow}"]
         if thread_id:
@@ -2709,6 +3824,21 @@ class LocalExecutionCoordinator:
                 meta_lines.append(f"triaged_head_sha: {triaged_head_sha}")
             if head_sha_changed:
                 meta_lines.append("head_sha_changed: true")
+        for meta_key, meta_val in (
+            ("linear_issue_id", linear_issue_id),
+            ("linear_issue_identifier", linear_issue_identifier),
+            ("linear_issue_url", linear_issue_url),
+            ("github_url", github_url),
+        ):
+            clean_val = str(meta_val).strip() if meta_val is not None else ""
+            if clean_val:
+                meta_lines.append(f"{meta_key}: {clean_val}")
+        clean_bypass = [str(r).strip() for r in (bypass_reasons or ()) if str(r or "").strip()]
+        if clean_bypass:
+            meta_lines.append(f"bypass_reasons: {', '.join(clean_bypass)}")
+        clean_polish = _normalize_optional_polish(lane_a_polish_notes or "")
+        if clean_polish and kind != "community_pr_blind_review":
+            meta_lines.append(f"lane_a_polish_notes: {clean_polish}")
 
         if kind == "targeted":
             mode_line = f"Mode 1 - Targeted Notification or Mention Turn (repo={repo or ''}, number={number if number is not None else ''}, kind={subject_kind or 'PullRequest'}, head_sha={head_sha or 'none'}, trigger_reason={trigger_reason or 'notification'})."
@@ -2757,7 +3887,7 @@ class LocalExecutionCoordinator:
     _wait_for_turn_completion = _poll_until_completed
 
     def _send_telegram_safe(self, text: str) -> tuple[bool, str | None]:
-        clean_text = (text or "").strip()
+        clean_text = normalize_terminal_reply_text(text)
         if not clean_text or is_heartbeat_ok_reply(clean_text) or self.telegram_client is None:
             return False, None
         try:
@@ -2770,17 +3900,225 @@ class LocalExecutionCoordinator:
 
     _forward_terminal_reply_to_telegram = _send_telegram_safe
 
-    def _finalize_completed_dispatch(self, active_record: dict, now_override_ms: int | None = None) -> dict:
+    def _commit_completed_watermarks(
+        self,
+        active_record: dict,
+        *,
+        now_override_ms: int | None = None,
+        preserve_pending_followup: bool = False,
+    ) -> dict:
         stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         kind = str(active_record.get("kind") or "")
         state_key = str(active_record.get("state_key") or active_record.get("thread_id") or "").strip()
         preserve_sha = bool(active_record.get("head_sha_changed"))
-        record_triaged = kind in ("community_triage", "community_auto_review", "team:review") and not preserve_sha
-        watermark_result = self.state_store.complete_thread_review(state_key, handled_updated_at=active_record.get("updated_at"), handled_head_sha=active_record.get("head_sha"), handled_ci_state=active_record.get("ci_state"), completed_revision=active_record.get("revision"), team_label=str(active_record.get("team_label") or "") or None, team_label_event_key=str(active_record.get("team_label_event_key") or "") or None, preserve_handled_head_sha=preserve_sha, record_triaged_head_sha=record_triaged, apply_cooldown=True, now_override_ms=stamp_ms) if state_key else None
+        record_triaged = kind in ("community_triage", "community_auto_review", "community_pr_blind_review", "community_pr_lane_b_review", "team:review") and not preserve_sha
+        watermark_result = (
+            self.state_store.complete_thread_review(
+                state_key,
+                handled_updated_at=active_record.get("updated_at"),
+                handled_head_sha=active_record.get("head_sha"),
+                handled_ci_state=active_record.get("ci_state"),
+                completed_revision=active_record.get("revision"),
+                team_label=str(active_record.get("team_label") or "") or None,
+                team_label_event_key=str(active_record.get("team_label_event_key") or "") or None,
+                preserve_handled_head_sha=preserve_sha,
+                record_triaged_head_sha=record_triaged,
+                apply_cooldown=True,
+                preserve_pending_followup=preserve_pending_followup,
+                now_override_ms=stamp_ms,
+            )
+            if state_key
+            else None
+        )
         if kind in ("reconcile_sweep", "weekly_sweep"):
             self.state_store.complete_sweep(kind, sweep_date=str(active_record["sweep_date"]).strip() if active_record.get("sweep_date") else None, now_override_ms=stamp_ms)
-        self.state_store.write_active_dispatch(None, now_override_ms=stamp_ms)
         return {"watermark": watermark_result, "queued_followup": bool(_as_dict(watermark_result).get("pending_followup"))}
+
+    def _clear_active_dispatch_if_matching(self, active_record: dict, *, now_override_ms: int | None = None) -> None:
+        dispatch_id = str(active_record.get("dispatch_id") or "").strip()
+        current = self.state_store.read_active_dispatch().get("active")
+        if not isinstance(current, dict) or not dispatch_id or str(current.get("dispatch_id") or "").strip() == dispatch_id:
+            self.state_store.write_active_dispatch(None, now_override_ms=now_override_ms)
+
+    def _fetch_linear_issue_state(self, linear_id: str) -> tuple[str | None, Exception | None]:
+        """Fetch a Linear issue's lowercased workflow state name with one retry on transient failure."""
+        return _fetch_linear_issue_state_with_retry(self.linear_client, linear_id)
+
+    def _revert_stranded_linear_todo_on_recovery(self, active_record: dict) -> tuple[bool, bool, str | None]:
+        """Reconcile a linear_todo_implement issue on recovery; return (reverted, reconciled, error)."""
+        if self.linear_client is None or active_record.get("kind") != "linear_todo_implement":
+            return False, True, None
+        linear_issue_id = str(active_record.get("linear_issue_id") or "").strip()
+        if not linear_issue_id:
+            return False, True, None
+        post_state_name, verify_exc = self._fetch_linear_issue_state(linear_issue_id)
+        if _is_linear_issue_not_found_error(verify_exc):
+            return False, True, None
+        if verify_exc is not None or not post_state_name:
+            detail = str(verify_exc) if verify_exc is not None else "missing workflow state in Linear response"
+            sys.stderr.write(f"moltis-github-companion linear-todo-recovery-verify warning ({active_record.get('state_key') or linear_issue_id} / {linear_issue_id}): {detail}\n")
+            return False, False, f"linear_todo_recovery_verify_failed: {detail}"
+        if post_state_name not in ("in progress", "in_progress"):
+            return False, True, None
+        try:
+            self.linear_client.update_issue(linear_issue_id, state="Todo")
+        except Exception as exc:
+            if _is_linear_issue_not_found_error(exc):
+                return False, True, None
+            sys.stderr.write(f"moltis-github-companion linear-todo-recovery-revert warning ({active_record.get('state_key') or linear_issue_id} / {linear_issue_id}): {exc}\n")
+            return False, False, f"linear_todo_recovery_revert_failed: {exc}"
+        return True, True, None
+
+    def defer_linear_todo_verification(
+        self,
+        dispatch_result: dict,
+        *,
+        verification_error: str,
+        failure_reason: str | None = None,
+        now_override_ms: int | None = None,
+    ) -> dict:
+        """Retain active-dispatch.json marked verification_deferred when post-turn Linear verification or rollback fails."""
+        active_record = _as_dict(dispatch_result.get("_deferred_active_record"))
+        clean_error = str(verification_error or "linear_todo_state_verify_failed").strip()
+        clean_failure = str(failure_reason or "").strip() if failure_reason is not None else ""
+        if active_record:
+            with self.state_store.coordinator_lock():
+                stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
+                current = self.state_store.read_active_dispatch().get("active")
+                dispatch_id = str(active_record.get("dispatch_id") or "").strip()
+                current_dispatch_id = str(current.get("dispatch_id") or "").strip() if isinstance(current, dict) else ""
+                if isinstance(current, dict) and dispatch_id and current_dispatch_id == dispatch_id:
+                    updated_active = dict(current)
+                    updated_active["verification_deferred"] = True
+                    updated_active["verification_error"] = clean_error
+                    if clean_failure:
+                        updated_active["deferred_failure_reason"] = clean_failure
+                    self.state_store.write_active_dispatch(updated_active, now_override_ms=stamp_ms)
+                else:
+                    linear_issue_id = str(active_record.get("linear_issue_id") or "").strip()
+                    if linear_issue_id and active_record.get("kind") == "linear_todo_implement":
+                        self.state_store.enqueue_linear_todo_reconciliation(
+                            linear_issue_id,
+                            str(active_record.get("state_key") or active_record.get("thread_id") or "").strip() or None,
+                            dispatch_id=dispatch_id or None,
+                            reason=clean_error,
+                            now_override_ms=stamp_ms,
+                        )
+        dispatch_result.pop("_deferred_active_record", None)
+        dispatch_result["verification_deferred"] = True
+        dispatch_result["verification_error"] = clean_error
+        if clean_failure:
+            dispatch_result["status"] = "failed"
+            dispatch_result["task_succeeded"] = False
+            dispatch_result["failure_reason"] = clean_failure
+        elif dispatch_result.get("task_succeeded"):
+            dispatch_result["status"] = "unverified"
+        else:
+            dispatch_result["status"] = "failed"
+            dispatch_result["task_succeeded"] = False
+        return dispatch_result
+
+    def _finalize_recovery_failure(
+        self,
+        active_record: dict,
+        *,
+        failure_reason: str,
+        now_override_ms: int,
+    ) -> tuple[dict, bool, bool, str, int]:
+        """Reconcile any stranded linear_todo_implement issue on recovery and finalize or defer active-dispatch.json."""
+        linear_todo_reverted, reconciled, rec_err = self._revert_stranded_linear_todo_on_recovery(active_record)
+        if reconciled:
+            fin = self._finalize_failed_dispatch(active_record, failure_reason=failure_reason, now_override_ms=now_override_ms)
+            return fin, linear_todo_reverted, False, failure_reason, _safe_int(active_record.get("linear_recovery_attempts"), 0)
+
+        attempts = _safe_int(active_record.get("linear_recovery_attempts"), 0) + 1
+        err_reason = rec_err or "linear_todo_recovery_failed"
+        if attempts < MAX_LINEAR_TODO_RECOVERY_ATTEMPTS:
+            updated_active = dict(active_record)
+            updated_active["verification_deferred"] = True
+            updated_active["linear_recovery_attempts"] = attempts
+            updated_active["verification_error"] = err_reason
+            updated_active.setdefault("deferred_failure_reason", failure_reason)
+            self.state_store.write_active_dispatch(updated_active, now_override_ms=now_override_ms)
+            state_key = str(active_record.get("state_key") or active_record.get("thread_id") or "").strip()
+            watermark_result = self.state_store.get_thread_state(state_key) if state_key else None
+            fin = {"watermark": watermark_result, "queued_followup": bool(_as_dict(watermark_result).get("pending_followup"))}
+            return fin, False, True, err_reason, attempts
+
+        sys.stderr.write(
+            f"moltis-github-companion linear-todo-recovery-exhausted warning "
+            f"({active_record.get('state_key') or active_record.get('linear_issue_id')} / {active_record.get('linear_issue_id')}): "
+            f"{err_reason} after {attempts} attempts\n"
+        )
+        exhausted_reason = f"linear_todo_recovery_exhausted: {err_reason}"
+        linear_issue_id = str(active_record.get("linear_issue_id") or "").strip()
+        if linear_issue_id and active_record.get("kind") == "linear_todo_implement":
+            self.state_store.enqueue_linear_todo_reconciliation(
+                linear_issue_id,
+                str(active_record.get("state_key") or active_record.get("thread_id") or "").strip() or None,
+                dispatch_id=str(active_record.get("dispatch_id") or "").strip() or None,
+                reason=exhausted_reason,
+                now_override_ms=now_override_ms,
+            )
+        fin = self._finalize_failed_dispatch(active_record, failure_reason=exhausted_reason, now_override_ms=now_override_ms)
+        return fin, False, False, exhausted_reason, attempts
+
+    def _finalize_completed_dispatch(
+        self,
+        active_record: dict,
+        now_override_ms: int | None = None,
+        *,
+        defer_watermark_commit: bool = False,
+    ) -> dict:
+        stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
+        if defer_watermark_commit:
+            state_key = str(active_record.get("state_key") or active_record.get("thread_id") or "").strip()
+            watermark_result = self.state_store.get_thread_state(state_key) if state_key else None
+            return {"watermark": watermark_result, "queued_followup": bool(_as_dict(watermark_result).get("pending_followup"))}
+        fin = self._commit_completed_watermarks(active_record, now_override_ms=stamp_ms)
+        self.state_store.write_active_dispatch(None, now_override_ms=stamp_ms)
+        return fin
+
+    def commit_deferred_dispatch(self, dispatch_result: dict, *, now_override_ms: int | None = None) -> dict:
+        """Commit thread watermarks and clear active-dispatch.json for a dispatch completed with defer_watermark_commit=True."""
+        active_record = _as_dict(dispatch_result.get("_deferred_active_record"))
+        if not active_record:
+            dispatch_result["watermark_deferred"] = False
+            return {"watermark": dispatch_result.get("watermark"), "queued_followup": bool(dispatch_result.get("queued_followup"))}
+        with self.state_store.coordinator_lock():
+            stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
+            fin = self._commit_completed_watermarks(active_record, now_override_ms=stamp_ms, preserve_pending_followup=True)
+            self._clear_active_dispatch_if_matching(active_record, now_override_ms=stamp_ms)
+        dispatch_result.pop("_deferred_active_record", None)
+        dispatch_result["watermark_deferred"] = False
+        dispatch_result["watermark"] = fin["watermark"]
+        dispatch_result["queued_followup"] = fin["queued_followup"]
+        return fin
+
+    def fail_deferred_dispatch(self, dispatch_result: dict, *, failure_reason: str | None = None, now_override_ms: int | None = None) -> dict:
+        """Record a post-turn failure and clear active-dispatch.json for a deferred dispatch without advancing handled watermarks."""
+        active_record = _as_dict(dispatch_result.get("_deferred_active_record"))
+        if not active_record:
+            dispatch_result["watermark_deferred"] = False
+            return {"watermark": dispatch_result.get("watermark"), "queued_followup": bool(dispatch_result.get("queued_followup"))}
+        with self.state_store.coordinator_lock():
+            stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
+            kind = str(active_record.get("kind") or "")
+            state_key = str(active_record.get("state_key") or active_record.get("thread_id") or "").strip()
+            reason = (failure_reason or "post_turn_write_failed").strip()
+            watermark_result = self.state_store.fail_thread_review(state_key, failure_reason=reason, now_override_ms=stamp_ms) if state_key else None
+            if kind in ("reconcile_sweep", "weekly_sweep"):
+                self.state_store.fail_sweep(kind, failure_reason=reason, attempt_at_ms=_safe_int(active_record.get("started_at_ms"), 0) or None, now_override_ms=stamp_ms)
+            self._clear_active_dispatch_if_matching(active_record, now_override_ms=stamp_ms)
+        dispatch_result.pop("_deferred_active_record", None)
+        dispatch_result["watermark_deferred"] = False
+        queued = bool(_as_dict(watermark_result).get("pending_followup"))
+        dispatch_result["watermark"] = watermark_result
+        dispatch_result["queued_followup"] = queued
+        dispatch_result["status"] = "failed"
+        dispatch_result["task_succeeded"] = False
+        dispatch_result["failure_reason"] = reason
+        return {"watermark": watermark_result, "queued_followup": queued}
 
     def _finalize_failed_dispatch(self, active_record: dict, failure_reason: str | None = None, now_override_ms: int | None = None) -> dict:
         """Clear active-dispatch.json after a failed or interrupted turn and increment retry_count up to 3."""
@@ -2793,29 +4131,105 @@ class LocalExecutionCoordinator:
         self.state_store.write_active_dispatch(None, now_override_ms=stamp_ms)
         return {"watermark": watermark_result, "queued_followup": bool(_as_dict(watermark_result).get("pending_followup"))}
 
-    def _resolve_turn_outcome(self, active_record: dict, check: dict, *, rpc_response: dict | None = None, rpc_error: Exception | None = None, recovery: dict | None = None, start_notice: tuple[bool, str, str | None] | None = None, is_recovery: bool = False, now_override_ms: int | None = None) -> dict:
+    def _resolve_turn_outcome(self, active_record: dict, check: dict, *, rpc_response: dict | None = None, rpc_error: Exception | None = None, recovery: dict | None = None, start_notice: tuple[bool, str, str | None] | None = None, is_recovery: bool = False, defer_watermark_commit: bool = False, now_override_ms: int | None = None) -> dict:
         stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         dispatch_id = str(active_record.get("dispatch_id") or "")
         session_key = str(active_record.get("session_key") or self.session_key)
+        defer_commit = bool(defer_watermark_commit or active_record.get("defer_watermark_commit"))
+        defer_failure = bool(defer_commit and not is_recovery and active_record.get("kind") == "linear_todo_implement")
         reply_text = ""
         task_succeeded, failure_reason, tg_ok, tg_err = False, None, False, None
+        linear_todo_reverted = False
+        recovery_deferred = False
+        linear_recovery_attempts = _safe_int(active_record.get("linear_recovery_attempts"), 0)
         if check["completed"]:
             reply_text = extract_terminal_reply_text(rpc_response=rpc_response, assistant_record=check.get("assistant_record"))
             task_succeeded, failure_reason = classify_terminal_turn_outcome(reply_text, assistant_record=check.get("assistant_record"), rpc_response=rpc_response)
+            if task_succeeded and active_record.get("kind") == "community_pr_lane_a_merge":
+                merge_outcome, merge_detail = parse_lane_a_merge_reply(
+                    reply_text,
+                    repo=str(active_record.get("repo") or ""),
+                    number=_safe_int(active_record.get("number"), 0),
+                    linear_url=str(active_record.get("linear_issue_url") or "") or None,
+                )
+                if merge_outcome == "unconfirmed":
+                    task_succeeded = False
+                    failure_reason = f"lane_a_merge_unconfirmed ({merge_detail})"
+            elif (
+                task_succeeded
+                and active_record.get("kind") == "team:merge"
+                and active_record.get("trigger_reason") == "linear_todo_merge"
+                and not bool(active_record.get("head_sha_changed"))
+            ):
+                merge_outcome, merge_detail = parse_linear_todo_merge_reply(
+                    reply_text,
+                    repo=str(active_record.get("repo") or ""),
+                    number=_safe_int(active_record.get("number"), 0),
+                    linear_url=str(active_record.get("linear_issue_url") or "") or None,
+                )
+                if merge_outcome == "unconfirmed":
+                    task_succeeded = False
+                    failure_reason = f"linear_todo_merge_unconfirmed ({merge_detail})"
             if task_succeeded:
-                tg_ok, tg_err = self._send_telegram_safe(reply_text)
-                fin = self._finalize_completed_dispatch(active_record, now_override_ms=stamp_ms)
+                if defer_commit and is_recovery:
+                    task_succeeded = False
+                    failure_reason = str(active_record.get("deferred_failure_reason") or "").strip() or "interrupted_deferred_post_turn_write"
+                    fin, linear_todo_reverted, recovery_deferred, failure_reason, linear_recovery_attempts = self._finalize_recovery_failure(
+                        active_record,
+                        failure_reason=failure_reason,
+                        now_override_ms=stamp_ms,
+                    )
+                else:
+                    if active_record.get("kind") not in SILENT_TELEGRAM_DISPATCH_KINDS:
+                        tg_ok, tg_err = self._send_telegram_safe(reply_text)
+                    fin = self._finalize_completed_dispatch(active_record, now_override_ms=stamp_ms, defer_watermark_commit=defer_commit)
             else:
-                fin = self._finalize_failed_dispatch(active_record, failure_reason=failure_reason, now_override_ms=stamp_ms)
+                if is_recovery:
+                    fin, linear_todo_reverted, recovery_deferred, failure_reason, linear_recovery_attempts = self._finalize_recovery_failure(
+                        active_record,
+                        failure_reason=failure_reason or "turn_failed",
+                        now_override_ms=stamp_ms,
+                    )
+                elif defer_failure:
+                    state_key = str(active_record.get("state_key") or active_record.get("thread_id") or "").strip()
+                    watermark_result = self.state_store.get_thread_state(state_key) if state_key else None
+                    fin = {"watermark": watermark_result, "queued_followup": bool(_as_dict(watermark_result).get("pending_followup"))}
+                else:
+                    fin = self._finalize_failed_dispatch(active_record, failure_reason=failure_reason, now_override_ms=stamp_ms)
         else:
             default_timeout = "turn_recovery_timeout" if is_recovery else (f"rpc_error: {rpc_error}" if rpc_error is not None else "turn_completion_timeout")
             failure_reason = "interrupted_turn_without_terminal_reply" if check.get("peek_active") is False else default_timeout
-            fin = self._finalize_failed_dispatch(active_record, failure_reason=failure_reason, now_override_ms=stamp_ms)
+            if is_recovery:
+                if check.get("peek_active") is False and str(active_record.get("deferred_failure_reason") or "").strip():
+                    failure_reason = str(active_record.get("deferred_failure_reason") or "").strip()
+                fin, linear_todo_reverted, recovery_deferred, failure_reason, linear_recovery_attempts = self._finalize_recovery_failure(
+                    active_record,
+                    failure_reason=failure_reason,
+                    now_override_ms=stamp_ms,
+                )
+            elif defer_failure:
+                state_key = str(active_record.get("state_key") or active_record.get("thread_id") or "").strip()
+                watermark_result = self.state_store.get_thread_state(state_key) if state_key else None
+                fin = {"watermark": watermark_result, "queued_followup": bool(_as_dict(watermark_result).get("pending_followup"))}
+            else:
+                fin = self._finalize_failed_dispatch(active_record, failure_reason=failure_reason, now_override_ms=stamp_ms)
 
-        status = ("recovered_completed" if task_succeeded else "recovered_failed") if is_recovery else ("completed" if task_succeeded else "failed")
-        res: dict[str, object] = {"status": status, "execution_terminated": bool(check.get("completed") or check.get("peek_active") is False), "task_succeeded": task_succeeded, "failure_reason": failure_reason, "dispatch_id": dispatch_id, "session_key": session_key, "kind": active_record.get("kind"), "thread_id": active_record.get("thread_id"), "state_key": active_record.get("state_key"), "reply_text": reply_text, "telegram_forwarded": tg_ok, "telegram_error": tg_err, "queued_followup": fin["queued_followup"], "watermark": fin["watermark"]}
         if is_recovery:
-            res["can_dispatch"] = True
+            status = "recovery_deferred" if recovery_deferred else ("recovered_completed" if task_succeeded else "recovered_failed")
+        else:
+            status = "completed" if task_succeeded else "failed"
+        res: dict[str, object] = {"status": status, "execution_terminated": bool(check.get("completed") or check.get("peek_active") is False), "task_succeeded": task_succeeded, "failure_reason": failure_reason, "dispatch_id": dispatch_id, "session_key": session_key, "kind": active_record.get("kind"), "thread_id": active_record.get("thread_id"), "state_key": active_record.get("state_key"), "reply_text": reply_text, "telegram_forwarded": tg_ok, "telegram_error": tg_err, "queued_followup": fin["queued_followup"], "watermark": fin["watermark"]}
+        if (defer_commit and task_succeeded and not is_recovery) or (defer_failure and not task_succeeded):
+            res["watermark_deferred"] = True
+            res["_deferred_active_record"] = dict(active_record)
+        if is_recovery:
+            res["can_dispatch"] = not recovery_deferred
+            if active_record.get("kind") == "linear_todo_implement":
+                res["linear_todo_reverted"] = linear_todo_reverted
+                res["linear_recovery_attempts"] = linear_recovery_attempts
+                if recovery_deferred:
+                    res["verification_deferred"] = True
+                    res["verification_error"] = failure_reason
         else:
             sn_sent, sn_text, sn_err = start_notice or (False, "", None)
             res.update({"dispatched": True, "start_notice_sent": sn_sent, "start_notice_text": sn_text, "start_notice_error": sn_err, "rpc_response": rpc_response, "rpc_error": str(rpc_error) if rpc_error is not None else None, "recovery": recovery})
@@ -2835,14 +4249,27 @@ class LocalExecutionCoordinator:
         with self.state_store.coordinator_lock():
             return self._recover_unlocked(now_override_ms=now_override_ms)
 
-    def execute_dispatch(self, *, kind: str, model: str | None = None, is_automated_pr: bool = False, session_key: str | None = None, thread_id: str | None = None, state_key: str | None = None, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, head_sha: str | None = None, ci_state: str | None = None, updated_at: str | None = None, trigger_reason: str | None = None, comment_id: int | str | None = None, review_id: int | str | None = None, trusted_item_id: int | str | None = None, community_auto_merge_eligible: bool | None = None, team_label: str | None = None, team_label_event_key: str | None = None, triaged_head_sha: str | None = None, head_sha_changed: bool = False, revision: str | None = None, sweep_date: str | None = None, extra_instructions: str = "", dispatch_id: str | None = None, now_override_ms: int | None = None, **_ignored: object) -> dict:
+    def execute_dispatch(self, *, kind: str, model: str | None = None, is_automated_pr: bool = False, session_key: str | None = None, thread_id: str | None = None, state_key: str | None = None, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, head_sha: str | None = None, ci_state: str | None = None, updated_at: str | None = None, trigger_reason: str | None = None, comment_id: int | str | None = None, review_id: int | str | None = None, trusted_item_id: int | str | None = None, community_auto_merge_eligible: bool | None = None, team_label: str | None = None, team_label_event_key: str | None = None, triaged_head_sha: str | None = None, head_sha_changed: bool = False, linear_issue_id: str | None = None, linear_issue_identifier: str | None = None, linear_issue_url: str | None = None, github_url: str | None = None, bypass_reasons: Iterable[str] | None = None, lane_a_polish_notes: str | None = None, revision: str | None = None, sweep_date: str | None = None, extra_instructions: str = "", dispatch_id: str | None = None, defer_watermark_commit: bool = False, now_override_ms: int | None = None, **_ignored: object) -> dict:
         """Serialise a model turn under coordinator.lock while allowing state.json updates under companion.lock."""
         with self.state_store.coordinator_lock():
             recovery = self._recover_unlocked(now_override_ms=now_override_ms)
+            if not recovery.get("can_dispatch", True):
+                return {
+                    "status": str(recovery.get("status") or "recovery_deferred"),
+                    "dispatched": False,
+                    "execution_terminated": False,
+                    "task_succeeded": False,
+                    "failure_reason": recovery.get("failure_reason") or "active_dispatch_recovery_pending",
+                    "kind": kind,
+                    "thread_id": thread_id,
+                    "state_key": (state_key or thread_id or (make_pr_key(repo, number) if repo and number else "")).strip(),
+                    "verification_deferred": bool(recovery.get("verification_deferred")),
+                    "recovery": recovery,
+                }
             start_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
             resolved_session_key = (session_key or self.session_key or DEFAULT_GH_SESSION_KEY).strip()
             is_issue_triage = kind == "community_triage" and str(subject_kind or "").strip().lower() == "issue"
-            use_review_model = (kind == "targeted" and not is_automated_pr) or (kind in MODE_1B_DISPATCH_KINDS and not is_issue_triage)
+            use_review_model = (kind == "targeted" and not is_automated_pr) or (kind in MODE_1B_DISPATCH_KINDS and not is_issue_triage) or (kind in LINEAR_PR_DISPATCH_KINDS)
             resolved_model = (model or ((self.review_model or self.main_model) if use_review_model else self.main_model)).strip()
             resolved_dispatch_id = (dispatch_id or f"ghd-{self.agent_name}-{uuid.uuid4().hex}").strip()
             eff_state_key = (state_key or thread_id or (make_pr_key(repo, number) if repo and number else "")).strip()
@@ -2854,16 +4281,37 @@ class LocalExecutionCoordinator:
                 self.state_store.record_sweep_attempt(kind, now_override_ms=start_ms)
 
             active_record: dict[str, object] = {"dispatch_id": resolved_dispatch_id, "session_key": resolved_session_key, "kind": kind, "started_at_ms": start_ms, "status": "in_flight"}
-            for k, v in (("thread_id", thread_id), ("state_key", eff_state_key), ("repo", repo), ("number", number), ("subject_kind", subject_kind), ("head_sha", head_sha), ("ci_state", ci_state), ("updated_at", updated_at), ("trigger_reason", trigger_reason), ("team_label", team_label), ("team_label_event_key", team_label_event_key), ("triaged_head_sha", triaged_head_sha), ("revision", revision), ("sweep_date", sweep_date)):
+            for k, v in (
+                ("thread_id", thread_id),
+                ("state_key", eff_state_key),
+                ("repo", repo),
+                ("number", number),
+                ("subject_kind", subject_kind),
+                ("head_sha", head_sha),
+                ("ci_state", ci_state),
+                ("updated_at", updated_at),
+                ("trigger_reason", trigger_reason),
+                ("team_label", team_label),
+                ("team_label_event_key", team_label_event_key),
+                ("triaged_head_sha", triaged_head_sha),
+                ("linear_issue_id", str(linear_issue_id).strip() if linear_issue_id is not None else ""),
+                ("linear_issue_identifier", str(linear_issue_identifier).strip() if linear_issue_identifier is not None else ""),
+                ("linear_issue_url", str(linear_issue_url).strip() if linear_issue_url is not None else ""),
+                ("github_url", str(github_url).strip() if github_url is not None else ""),
+                ("revision", revision),
+                ("sweep_date", sweep_date),
+            ):
                 if v is not None and v != "":
                     active_record[k] = v
             if head_sha_changed:
                 active_record["head_sha_changed"] = True
+            if defer_watermark_commit:
+                active_record["defer_watermark_commit"] = True
             self.state_store.write_active_dispatch(active_record, now_override_ms=start_ms)
 
             start_notice_text = format_start_of_work_notice(agent_display_name=self.agent_display_name, kind=kind, repo=repo, number=number, subject_kind=subject_kind, trigger_reason=trigger_reason, sweep_date=sweep_date, schedule_day_name=self.schedule_day_name)
             start_notice_sent, start_notice_error = False, None
-            prompt_message = self.build_dispatch_prompt(dispatch_id=resolved_dispatch_id, kind=kind, thread_id=thread_id, repo=repo, number=number, subject_kind=subject_kind, head_sha=head_sha, trigger_reason=trigger_reason, comment_id=comment_id, review_id=review_id, trusted_item_id=trusted_item_id, community_auto_merge_eligible=community_auto_merge_eligible, team_label=team_label, triaged_head_sha=triaged_head_sha, head_sha_changed=head_sha_changed, extra_instructions=extra_instructions)
+            prompt_message = self.build_dispatch_prompt(dispatch_id=resolved_dispatch_id, kind=kind, thread_id=thread_id, repo=repo, number=number, subject_kind=subject_kind, head_sha=head_sha, trigger_reason=trigger_reason, comment_id=comment_id, review_id=review_id, trusted_item_id=trusted_item_id, community_auto_merge_eligible=community_auto_merge_eligible, team_label=team_label, triaged_head_sha=triaged_head_sha, head_sha_changed=head_sha_changed, linear_issue_id=linear_issue_id, linear_issue_identifier=linear_issue_identifier, linear_issue_url=linear_issue_url, github_url=github_url, bypass_reasons=bypass_reasons, lane_a_polish_notes=lane_a_polish_notes, extra_instructions=extra_instructions)
 
             rpc_error: Exception | None = None
             rpc_response: dict | None = None
@@ -2876,13 +4324,25 @@ class LocalExecutionCoordinator:
             deadline_ms = poll_base_ms + (self.recovery_deadline_ms if rpc_error is not None else self.completion_timeout_ms)
             check = self._poll_until_completed(resolved_session_key, resolved_dispatch_id, deadline_ms=deadline_ms)
             finish_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
-            return self._resolve_turn_outcome(active_record, check, rpc_response=rpc_response, rpc_error=rpc_error, recovery=recovery, start_notice=(start_notice_sent, start_notice_text, start_notice_error), is_recovery=False, now_override_ms=finish_ms)
+            return self._resolve_turn_outcome(active_record, check, rpc_response=rpc_response, rpc_error=rpc_error, recovery=recovery, start_notice=(start_notice_sent, start_notice_text, start_notice_error), is_recovery=False, defer_watermark_commit=defer_watermark_commit, now_override_ms=finish_ms)
 
 
 class GithubCompanionRunner:
     """Orchestrate 300s notification and open-PR polling, inline trigger evaluation, and serialised turns."""
 
-    def __init__(self, state_store: CompanionStateStore, gh_client: GhApiSafeClient, poller: NotificationPoller, trust_filter: TrustFilterAndSnapshotBuilder, execution_coordinator: LocalExecutionCoordinator, matrix_client: MatrixClient | None = None, read_only_trial: bool = False, reconcile_interval_ms: int = RECONCILE_SWEEP_INTERVAL_MS, clock: Callable[[], int] = now_ms):
+    def __init__(
+        self,
+        state_store: CompanionStateStore,
+        gh_client: GhApiSafeClient,
+        poller: NotificationPoller,
+        trust_filter: TrustFilterAndSnapshotBuilder,
+        execution_coordinator: LocalExecutionCoordinator,
+        matrix_client: MatrixClient | None = None,
+        read_only_trial: bool = False,
+        reconcile_interval_ms: int = RECONCILE_SWEEP_INTERVAL_MS,
+        clock: Callable[[], int] = now_ms,
+        linear_client: linear_sync.LinearSyncClient | None = None,
+    ):
         self.state_store = state_store
         self.gh_client = gh_client
         self.poller = poller
@@ -2891,9 +4351,32 @@ class GithubCompanionRunner:
         if self.trust_filter.telegram_client is None and self.execution_coordinator.telegram_client is not None:
             self.trust_filter.telegram_client = self.execution_coordinator.telegram_client
         self.matrix_client = matrix_client
+        self.linear_client = linear_client
+        if self.execution_coordinator.linear_client is None and self.linear_client is not None:
+            self.execution_coordinator.linear_client = self.linear_client
         self.read_only_trial = bool(read_only_trial)
         self.reconcile_interval_ms = max(60_000, _safe_int(reconcile_interval_ms, RECONCILE_SWEEP_INTERVAL_MS))
         self.clock = clock
+
+    @contextlib.contextmanager
+    def _deferred_dispatch_guard(self, dispatch_result: dict, *, now_override_ms: int | None = None) -> Iterator[None]:
+        """Ensure deferred dispatches are committed or failed on normal exit or Exception without masking process-exit crash recovery."""
+        try:
+            yield
+        except Exception:
+            if dispatch_result.get("watermark_deferred"):
+                self.execution_coordinator.fail_deferred_dispatch(
+                    dispatch_result,
+                    failure_reason="deferred_post_turn_aborted",
+                    now_override_ms=now_override_ms,
+                )
+            raise
+        if dispatch_result.get("watermark_deferred") and not dispatch_result.get("verification_deferred"):
+            self.execution_coordinator.fail_deferred_dispatch(
+                dispatch_result,
+                failure_reason="deferred_post_turn_uncommitted",
+                now_override_ms=now_override_ms,
+            )
 
     def is_reconcile_sweep_due(self, now_override_ms: int | None = None) -> bool:
         if self.state_store.agent_name == "traya" or self.execution_coordinator.schedule_dow <= 0:
@@ -2916,13 +4399,7 @@ class GithubCompanionRunner:
 
     def is_weekly_sweep_due(self, now_override_ms: int | None = None) -> tuple[bool, str]:
         current_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
-        try:
-            import zoneinfo
-
-            tz = zoneinfo.ZoneInfo("Europe/London")
-        except Exception:
-            tz = datetime.timezone.utc
-        dt = datetime.datetime.fromtimestamp(current_ms / 1000.0, tz=tz)
+        dt = _london_datetime(current_ms)
         today_str = dt.strftime("%Y-%m-%d")
         if self.state_store.agent_name == "traya" or self.execution_coordinator.schedule_dow <= 0 or self.execution_coordinator.schedule_day_name.lower() == "disabled":
             return False, today_str
@@ -2946,6 +4423,2324 @@ class GithubCompanionRunner:
         except BlockingIOError:
             return True
 
+    def _create_linear_triage_stubs(self, actionable_issues: Iterable[dict], *, slot_id: str, current_ms: int) -> list[dict]:
+        if self.linear_client is None or self.state_store.agent_name not in SWEEP_AGENT_ORDER:
+            return []
+        created_stubs: list[dict] = []
+        for issue_item in actionable_issues or ():
+            if not isinstance(issue_item, dict):
+                continue
+            issue_key = str(issue_item.get("key") or "").strip()
+            repo = str(issue_item.get("repo") or "").strip()
+            number = _safe_int(issue_item.get("number"), 0)
+            if not issue_key or not repo or number <= 0:
+                continue
+            if not is_allowed_notification_repo(repo) or compute_issue_owner(repo, number) != self.state_store.agent_name:
+                continue
+            issue_entry = _as_dict(self.state_store.get_thread_state(issue_key))
+            if issue_entry.get("linear_issue_id") or issue_item.get("linear_issue_id"):
+                continue
+            if bool(issue_entry.get("coercion_blocked")) or _safe_int(issue_entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
+                continue
+            if not self.state_store.can_consume_throttle("triage_stubs", slot_id=slot_id, now_override_ms=current_ms):
+                break
+            issue_url = str(issue_item.get("url") or issue_entry.get("url") or "").strip() or f"https://github.com/{repo}/issues/{number}"
+            title = str(issue_item.get("title") or issue_entry.get("title") or "").strip() or f"{repo}#{number}"
+            updated_at = str(issue_item.get("updated_at") or issue_entry.get("updated_at") or "").strip() or None
+            try:
+                linear_issue = self.linear_client.ensure_issue_for_github_item(
+                    github_url=issue_url,
+                    title=title,
+                    repo=repo,
+                    item_kind="Issue",
+                    state="Triage",
+                )
+                linear_id = str(linear_issue.get("id") or "").strip()
+                if not linear_id:
+                    raise RuntimeError("Linear issue response missing id")
+                linear_identifier = str(linear_issue.get("identifier") or "").strip() or None
+                linear_url = str(linear_issue.get("url") or "").strip() or None
+            except Exception as exc:
+                sys.stderr.write(f"moltis-github-companion linear-triage-stub warning ({issue_key}): {exc}\n")
+                continue
+            self.state_store.consume_throttle("triage_stubs", slot_id=slot_id, now_override_ms=current_ms)
+            self.state_store.update_thread_state(
+                issue_key,
+                {
+                    "repo": repo,
+                    "number": number,
+                    "subject_type": "Issue",
+                    "url": issue_url,
+                    "title": title,
+                    "linear_issue_id": linear_id,
+                    "linear_issue_identifier": linear_identifier,
+                    "linear_issue_url": linear_url,
+                    "handled_updated_at": updated_at or issue_entry.get("handled_updated_at"),
+                },
+                now_override_ms=current_ms,
+            )
+            created_stubs.append({
+                "key": issue_key,
+                "repo": repo,
+                "number": number,
+                "github_url": issue_url,
+                "title": title,
+                "linear_issue_id": linear_id,
+                "linear_issue_identifier": linear_identifier,
+                "linear_issue_url": linear_url,
+            })
+        return created_stubs
+
+    def _promote_team_implement_issue_to_linear(self, *, cand: dict, cand_key: str, verified_event_key: str | None, current_ms: int) -> dict | None:
+        if self.linear_client is None or self.state_store.agent_name not in SWEEP_AGENT_ORDER:
+            return None
+        repo = str(cand.get("repo") or "").strip()
+        number = _safe_int(cand.get("number"), 0)
+        if not repo or number <= 0:
+            return None
+        cand_entry = _as_dict(self.state_store.get_thread_state(cand_key))
+        issue_url = str(cand.get("url") or cand_entry.get("url") or "").strip() or f"https://github.com/{repo}/issues/{number}"
+        title = str(cand.get("title") or cand_entry.get("title") or "").strip() or f"{repo}#{number}"
+        updated_at = str(cand.get("updated_at") or cand_entry.get("updated_at") or "").strip() or None
+        try:
+            linear_issue = self.linear_client.ensure_issue_for_github_item(
+                github_url=issue_url,
+                title=title,
+                repo=repo,
+                item_kind="Issue",
+                state="Todo",
+                extra_labels=("ready-to-implement",),
+            )
+            linear_id = str(linear_issue.get("id") or "").strip()
+            if not linear_id:
+                raise RuntimeError("Linear issue response missing id")
+            state_obj = _as_dict(linear_issue.get("state"))
+            state_name = str(state_obj.get("name") or "").strip().lower()
+            state_type = str(state_obj.get("type") or "").strip().lower()
+            promoted_state = False
+            if state_name in ("triage", "backlog") or state_type in ("triage", "backlog"):
+                linear_issue = self.linear_client.update_issue(
+                    linear_id,
+                    state="Todo",
+                    add_labels=("ready-to-implement",),
+                    remove_labels=("sign-off-required",),
+                )
+                promoted_state = True
+            linear_identifier = str(linear_issue.get("identifier") or "").strip() or None
+            linear_url = str(linear_issue.get("url") or "").strip() or None
+            final_state_name = str(_as_dict(linear_issue.get("state")).get("name") or "").strip() or None
+        except Exception as exc:
+            sys.stderr.write(f"moltis-github-companion linear-promote warning ({cand_key}): {exc}\n")
+            return None
+        handled_team_labels = dict(_as_dict(cand_entry.get("handled_team_labels")))
+        if verified_event_key:
+            handled_team_labels["team:implement"] = verified_event_key
+        updates: dict[str, object] = {
+            "repo": repo,
+            "number": number,
+            "subject_type": "Issue",
+            "url": issue_url,
+            "title": title,
+            "linear_issue_id": linear_id,
+            "linear_issue_identifier": linear_identifier,
+            "linear_issue_url": linear_url,
+            "handled_team_labels": handled_team_labels,
+        }
+        if updated_at and not cand_entry.get("handled_updated_at"):
+            updates["handled_updated_at"] = updated_at
+        self.state_store.update_thread_state(cand_key, updates, now_override_ms=current_ms)
+        return {
+            "key": cand_key,
+            "repo": repo,
+            "number": number,
+            "github_url": issue_url,
+            "title": title,
+            "linear_issue_id": linear_id,
+            "linear_issue_identifier": linear_identifier,
+            "linear_issue_url": linear_url,
+            "state": final_state_name,
+            "promoted_from_triage_or_backlog": promoted_state,
+            "event_key": verified_event_key,
+        }
+
+    def _poll_active_linear_issues(self) -> list[dict] | None:
+        if self.linear_client is None or self.state_store.agent_name not in SWEEP_AGENT_ORDER:
+            return None
+        try:
+            raw_issues = self.linear_client.list_project_issues_by_state(("Triage", "Backlog", "Todo", "In Progress", "In Review"))
+        except Exception as exc:
+            sys.stderr.write(f"moltis-github-companion linear-poll warning ({self.state_store.agent_name}): {exc}\n")
+            return None
+        return [item for item in (raw_issues or ()) if isinstance(item, dict)]
+
+    def _sync_closed_github_items_to_linear(self, active_linear_issues: Iterable[dict], *, poll_result: dict, current_ms: int) -> list[dict]:
+        _ = current_ms
+        if (
+            self.linear_client is None
+            or self.state_store.agent_name not in SWEEP_AGENT_ORDER
+            or poll_result.get("open_prs_poll_error") is not None
+            or poll_result.get("open_issues_poll_error") is not None
+            or poll_result.get("status") in (403, 429)
+        ):
+            return []
+        open_issue_keys: set[str] = set()
+        for item in poll_result.get("open_issues") or ():
+            if not isinstance(item, dict):
+                continue
+            key = str(item.get("issue_key") or "").strip().lower()
+            if not key:
+                r, n = str(item.get("repo") or "").strip(), _safe_int(item.get("number"), 0)
+                if r and n > 0:
+                    key = make_pr_key(r, n)
+            if key:
+                open_issue_keys.add(key)
+        open_pr_keys: set[str] = set()
+        for item in poll_result.get("open_pull_requests") or ():
+            if not isinstance(item, dict):
+                continue
+            key = str(item.get("pr_key") or "").strip().lower()
+            if not key:
+                r, n = str(item.get("repo") or "").strip(), _safe_int(item.get("number"), 0)
+                if r and n > 0:
+                    key = make_pr_key(r, n)
+            if key:
+                open_pr_keys.add(key)
+
+        synced: list[dict] = []
+        for linear_issue in active_linear_issues or ():
+            if not isinstance(linear_issue, dict) or linear_issue.get("archivedAt"):
+                continue
+            linear_id = str(linear_issue.get("id") or "").strip()
+            if not linear_id:
+                continue
+            state_obj = _as_dict(linear_issue.get("state"))
+            state_name = str(state_obj.get("name") or "").strip().lower()
+            state_type = str(state_obj.get("type") or "").strip().lower()
+            if state_type in ("completed", "canceled", "cancelled", "duplicate") or state_name in ("done", "canceled", "cancelled", "duplicate"):
+                continue
+            labels = extract_linear_issue_labels(linear_issue)
+            expected_kind = "PR" if "pr" in labels else ("Issue" if "issue" in labels else None)
+            target = extract_linear_github_target(linear_issue, expected_kind=expected_kind)
+            if target is None:
+                continue
+            repo, item_label, number, github_url = target
+            if not is_allowed_notification_repo(repo):
+                continue
+            expected_owner = compute_pr_owner(repo, number) if item_label == "PR" else compute_issue_owner(repo, number)
+            if expected_owner != self.state_store.agent_name:
+                continue
+            item_key = make_pr_key(repo, number)
+            if (item_label == "PR" and item_key in open_pr_keys) or (item_label == "Issue" and item_key in open_issue_keys):
+                continue
+            endpoint = f"repos/{repo}/{'pulls' if item_label == 'PR' else 'issues'}/{number}"
+            try:
+                live_obj = self.gh_client.fetch_json_object(endpoint)
+            except Exception as exc:
+                sys.stderr.write(f"moltis-github-companion linear-close-sync fetch warning ({item_key}): {exc}\n")
+                continue
+            if not isinstance(live_obj, dict) or not live_obj:
+                continue
+            live_state = str(live_obj.get("state") or "").strip().lower()
+            if item_label == "PR":
+                is_merged = bool(live_obj.get("merged")) or bool(str(live_obj.get("merged_at") or "").strip())
+                if is_merged:
+                    target_state = "Done"
+                elif live_state == "closed":
+                    target_state = "Canceled"
+                else:
+                    continue
+            else:
+                if live_state != "closed":
+                    continue
+                state_reason = str(live_obj.get("state_reason") or "").strip().lower()
+                target_state = "Canceled" if state_reason in ("not_planned", "duplicate") else "Done"
+            try:
+                self.linear_client.update_issue(linear_id, state=target_state)
+            except Exception as exc:
+                sys.stderr.write(f"moltis-github-companion linear-close-sync update warning ({item_key} / {linear_id}): {exc}\n")
+                continue
+            synced.append({
+                "key": item_key,
+                "repo": repo,
+                "number": number,
+                "kind": item_label,
+                "github_url": github_url,
+                "linear_issue_id": linear_id,
+                "linear_issue_identifier": str(linear_issue.get("identifier") or "").strip() or None,
+                "linear_issue_url": str(linear_issue.get("url") or "").strip() or None,
+                "target_state": target_state,
+            })
+        return synced
+
+    def _resolve_owned_linear_issue_candidate(self, linear_issue: object, *, dispatched_targets: set[str]) -> dict | None:
+        if not isinstance(linear_issue, dict) or linear_issue.get("archivedAt"):
+            return None
+        linear_id = str(linear_issue.get("id") or "").strip()
+        if not linear_id:
+            return None
+        labels = extract_linear_issue_labels(linear_issue)
+        if "issue" not in labels or "pr" in labels:
+            return None
+        target = extract_linear_github_target(linear_issue, expected_kind="Issue")
+        if target is None:
+            return None
+        repo, _, number, github_url = target
+        if not is_allowed_notification_repo(repo) or compute_issue_owner(repo, number) != self.state_store.agent_name:
+            return None
+        issue_key = make_pr_key(repo, number)
+        if issue_key in dispatched_targets:
+            return None
+        entry = _as_dict(self.state_store.get_thread_state(issue_key))
+        if bool(entry.get("coercion_blocked")) or _safe_int(entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
+            return None
+        state_obj = _as_dict(linear_issue.get("state"))
+        return {
+            "linear_id": linear_id,
+            "linear_identifier": str(linear_issue.get("identifier") or "").strip() or None,
+            "linear_url": str(linear_issue.get("url") or "").strip() or None,
+            "title": str(linear_issue.get("title") or "").strip() or str(entry.get("title") or "").strip() or f"{repo}#{number}",
+            "updated_at": str(entry.get("updated_at") or linear_issue.get("updatedAt") or "").strip() or None,
+            "state_name": str(state_obj.get("name") or "").strip().lower(),
+            "state_type": str(state_obj.get("type") or "").strip().lower(),
+            "repo": repo,
+            "number": number,
+            "github_url": github_url,
+            "issue_key": issue_key,
+        }
+
+    def _dispatch_linear_triage_research(self, active_linear_issues: Iterable[dict], *, slot_id: str, dispatched_targets: set[str], current_ms: int, now_override_ms: int | None) -> list[dict]:
+        if self.linear_client is None or self.state_store.agent_name not in SWEEP_AGENT_ORDER:
+            return []
+        dispatches: list[dict] = []
+        for linear_issue in active_linear_issues or ():
+            cand = self._resolve_owned_linear_issue_candidate(linear_issue, dispatched_targets=dispatched_targets)
+            if cand is None or (cand["state_name"] != "triage" and cand["state_type"] != "triage"):
+                continue
+            if not self.state_store.can_consume_throttle("triage_research", slot_id=slot_id, now_override_ms=current_ms):
+                break
+            consumed, _ = self.state_store.consume_throttle("triage_research", slot_id=slot_id, now_override_ms=current_ms)
+            if not consumed:
+                break
+            self.state_store.update_thread_state(
+                cand["issue_key"],
+                {
+                    "repo": cand["repo"],
+                    "number": cand["number"],
+                    "subject_type": "Issue",
+                    "url": cand["github_url"],
+                    "title": cand["title"],
+                    "linear_issue_id": cand["linear_id"],
+                    "linear_issue_identifier": cand["linear_identifier"],
+                    "linear_issue_url": cand["linear_url"],
+                },
+                now_override_ms=current_ms,
+            )
+            dispatched_targets.add(cand["issue_key"])
+            res = self.execution_coordinator.execute_dispatch(
+                kind="linear_triage_research",
+                is_automated_pr=False,
+                state_key=cand["issue_key"],
+                repo=cand["repo"],
+                number=cand["number"],
+                subject_kind="Issue",
+                updated_at=cand["updated_at"],
+                trigger_reason="linear_triage_research",
+                linear_issue_id=cand["linear_id"],
+                linear_issue_identifier=cand["linear_identifier"],
+                linear_issue_url=cand["linear_url"],
+                github_url=cand["github_url"],
+                defer_watermark_commit=True,
+                now_override_ms=now_override_ms,
+            )
+            if res.get("task_succeeded"):
+                with self._deferred_dispatch_guard(res, now_override_ms=now_override_ms):
+                    try:
+                        refreshed = self.linear_client.get_issue(cand["linear_id"])
+                    except Exception as exc:
+                        sys.stderr.write(f"moltis-github-companion linear-triage-verify warning ({cand['issue_key']} / {cand['linear_id']}): {exc}\n")
+                        self.execution_coordinator.fail_deferred_dispatch(
+                            res,
+                            failure_reason=f"linear_triage_state_verify_failed: {exc}",
+                            now_override_ms=now_override_ms,
+                        )
+                    else:
+                        post_state = _as_dict(_as_dict(refreshed).get("state"))
+                        post_state_name = str(post_state.get("name") or "").strip().lower()
+                        post_state_type = str(post_state.get("type") or "").strip().lower()
+                        if (not post_state_name and not post_state_type) or post_state_name == "triage" or post_state_type == "triage":
+                            self.execution_coordinator.fail_deferred_dispatch(
+                                res,
+                                failure_reason="linear_triage_state_unchanged",
+                                now_override_ms=now_override_ms,
+                            )
+                        else:
+                            self.execution_coordinator.commit_deferred_dispatch(res, now_override_ms=now_override_ms)
+            dispatches.append(res)
+        return dispatches
+
+    def _fetch_linear_issue_state(self, linear_id: str) -> tuple[str | None, Exception | None]:
+        """Fetch a Linear issue's lowercased workflow state name with one retry on transient failure."""
+        return _fetch_linear_issue_state_with_retry(self.linear_client, linear_id)
+
+    def _reconcile_pending_linear_todo_claims(self, *, current_ms: int) -> list[dict]:
+        """Drain durable pending_linear_todo_reconciliations without blocking other dispatches."""
+        if self.linear_client is None:
+            return []
+        pending = self.state_store.list_linear_todo_reconciliations()
+        if not pending:
+            return []
+        results: list[dict] = []
+        for linear_id, entry in pending.items():
+            thread_key = str(_as_dict(entry).get("thread_key") or "").strip() or None
+            try:
+                refreshed = self.linear_client.get_issue(linear_id)
+            except Exception as exc:
+                if _is_linear_issue_not_found_error(exc):
+                    self.state_store.remove_linear_todo_reconciliation(linear_id, now_override_ms=current_ms)
+                    results.append({
+                        "linear_issue_id": linear_id,
+                        "thread_key": thread_key,
+                        "action": "removed_not_found",
+                        "error": str(exc),
+                    })
+                else:
+                    sys.stderr.write(
+                        f"moltis-github-companion linear-todo-reconcile-verify warning ({thread_key or linear_id} / {linear_id}): {exc}\n"
+                    )
+                    results.append({
+                        "linear_issue_id": linear_id,
+                        "thread_key": thread_key,
+                        "action": "deferred_transient_error",
+                        "error": str(exc),
+                    })
+                continue
+            post_state = _as_dict(_as_dict(refreshed).get("state"))
+            post_state_name = str(post_state.get("name") or "").strip().lower()
+            if not post_state_name:
+                sys.stderr.write(
+                    f"moltis-github-companion linear-todo-reconcile-verify warning ({thread_key or linear_id} / {linear_id}): missing workflow state in Linear response\n"
+                )
+                results.append({
+                    "linear_issue_id": linear_id,
+                    "thread_key": thread_key,
+                    "action": "deferred_transient_error",
+                    "error": "missing workflow state in Linear response",
+                })
+                continue
+            if post_state_name in ("in progress", "in_progress"):
+                try:
+                    self.linear_client.update_issue(linear_id, state="Todo")
+                except Exception as exc:
+                    if _is_linear_issue_not_found_error(exc):
+                        self.state_store.remove_linear_todo_reconciliation(linear_id, now_override_ms=current_ms)
+                        results.append({
+                            "linear_issue_id": linear_id,
+                            "thread_key": thread_key,
+                            "action": "removed_not_found",
+                            "error": str(exc),
+                        })
+                    else:
+                        sys.stderr.write(
+                            f"moltis-github-companion linear-todo-reconcile-revert warning ({thread_key or linear_id} / {linear_id}): {exc}\n"
+                        )
+                        results.append({
+                            "linear_issue_id": linear_id,
+                            "thread_key": thread_key,
+                            "action": "deferred_revert_error",
+                            "error": str(exc),
+                        })
+                    continue
+                self.state_store.remove_linear_todo_reconciliation(linear_id, now_override_ms=current_ms)
+                results.append({
+                    "linear_issue_id": linear_id,
+                    "thread_key": thread_key,
+                    "action": "reverted_to_todo",
+                    "previous_state": post_state_name,
+                })
+            else:
+                self.state_store.remove_linear_todo_reconciliation(linear_id, now_override_ms=current_ms)
+                results.append({
+                    "linear_issue_id": linear_id,
+                    "thread_key": thread_key,
+                    "action": "cleared_already_moved",
+                    "state": post_state_name,
+                })
+        return results
+
+    def _dispatch_linear_todo_implementations(self, active_linear_issues: Iterable[dict], *, slot_id: str, dispatched_targets: set[str], current_ms: int, now_override_ms: int | None) -> list[dict]:
+        if self.linear_client is None or self.state_store.agent_name not in SWEEP_AGENT_ORDER:
+            return []
+        dispatches: list[dict] = []
+        for linear_issue in active_linear_issues or ():
+            cand = self._resolve_owned_linear_issue_candidate(linear_issue, dispatched_targets=dispatched_targets)
+            if cand is None or (cand["state_name"] != "todo" and cand["state_type"] != "unstarted"):
+                continue
+            if not self.state_store.can_consume_throttle("todo_implementations", slot_id=slot_id, now_override_ms=current_ms):
+                break
+            try:
+                self.linear_client.update_issue(cand["linear_id"], state="In Progress")
+            except Exception as exc:
+                sys.stderr.write(f"moltis-github-companion linear-todo-claim warning ({cand['issue_key']} / {cand['linear_id']}): {exc}\n")
+                continue
+            consumed, _ = self.state_store.consume_throttle("todo_implementations", slot_id=slot_id, now_override_ms=current_ms)
+            if not consumed:
+                try:
+                    self.linear_client.update_issue(cand["linear_id"], state="Todo")
+                except Exception as exc:
+                    if not _is_linear_issue_not_found_error(exc):
+                        sys.stderr.write(f"moltis-github-companion linear-todo-throttle-revert warning ({cand['issue_key']} / {cand['linear_id']}): {exc}\n")
+                        self.state_store.enqueue_linear_todo_reconciliation(
+                            cand["linear_id"],
+                            cand["issue_key"],
+                            reason=f"linear_todo_throttle_revert_failed: {exc}",
+                            now_override_ms=current_ms,
+                        )
+                break
+            self.state_store.update_thread_state(
+                cand["issue_key"],
+                {
+                    "repo": cand["repo"],
+                    "number": cand["number"],
+                    "subject_type": "Issue",
+                    "url": cand["github_url"],
+                    "title": cand["title"],
+                    "linear_issue_id": cand["linear_id"],
+                    "linear_issue_identifier": cand["linear_identifier"],
+                    "linear_issue_url": cand["linear_url"],
+                },
+                now_override_ms=current_ms,
+            )
+            dispatched_targets.add(cand["issue_key"])
+            res = self.execution_coordinator.execute_dispatch(
+                kind="linear_todo_implement",
+                is_automated_pr=False,
+                state_key=cand["issue_key"],
+                repo=cand["repo"],
+                number=cand["number"],
+                subject_kind="Issue",
+                updated_at=cand["updated_at"],
+                trigger_reason="linear_todo_implement",
+                linear_issue_id=cand["linear_id"],
+                linear_issue_identifier=cand["linear_identifier"],
+                linear_issue_url=cand["linear_url"],
+                github_url=cand["github_url"],
+                defer_watermark_commit=True,
+                now_override_ms=now_override_ms,
+            )
+            if not res.get("dispatched", True):
+                try:
+                    self.linear_client.update_issue(cand["linear_id"], state="Todo")
+                except Exception as exc:
+                    if not _is_linear_issue_not_found_error(exc):
+                        sys.stderr.write(f"moltis-github-companion linear-todo-undispatched-revert warning ({cand['issue_key']} / {cand['linear_id']}): {exc}\n")
+                        self.state_store.enqueue_linear_todo_reconciliation(
+                            cand["linear_id"],
+                            cand["issue_key"],
+                            reason=f"linear_todo_undispatched_revert_failed: {exc}",
+                            now_override_ms=current_ms,
+                        )
+                dispatches.append(res)
+                break
+            with self._deferred_dispatch_guard(res, now_override_ms=now_override_ms):
+                turn_succeeded = bool(res.get("task_succeeded"))
+                orig_failure_reason = str(res.get("failure_reason") or "turn_failed")
+                post_state_name, verify_exc = self._fetch_linear_issue_state(cand["linear_id"])
+                if verify_exc is not None or not post_state_name:
+                    detail = str(verify_exc) if verify_exc is not None else "missing workflow state in Linear response"
+                    sys.stderr.write(f"moltis-github-companion linear-todo-verify warning ({cand['issue_key']} / {cand['linear_id']}): {detail}\n")
+                    self.execution_coordinator.defer_linear_todo_verification(
+                        res,
+                        verification_error=f"linear_todo_state_verify_failed: {detail}",
+                        failure_reason=None if turn_succeeded else orig_failure_reason,
+                        now_override_ms=now_override_ms,
+                    )
+                elif post_state_name in ("in progress", "in_progress"):
+                    try:
+                        self.linear_client.update_issue(cand["linear_id"], state="Todo")
+                    except Exception as exc:
+                        sys.stderr.write(f"moltis-github-companion linear-todo-revert warning ({cand['issue_key']} / {cand['linear_id']}): {exc}\n")
+                        self.execution_coordinator.defer_linear_todo_verification(
+                            res,
+                            verification_error=f"linear_todo_revert_failed: {exc}",
+                            failure_reason="linear_todo_state_unchanged_in_progress" if turn_succeeded else orig_failure_reason,
+                            now_override_ms=now_override_ms,
+                        )
+                    else:
+                        self.execution_coordinator.fail_deferred_dispatch(
+                            res,
+                            failure_reason="linear_todo_state_unchanged_in_progress" if turn_succeeded else orig_failure_reason,
+                            now_override_ms=now_override_ms,
+                        )
+                elif turn_succeeded:
+                    self.execution_coordinator.commit_deferred_dispatch(res, now_override_ms=now_override_ms)
+                else:
+                    self.execution_coordinator.fail_deferred_dispatch(
+                        res,
+                        failure_reason=orig_failure_reason,
+                        now_override_ms=now_override_ms,
+                    )
+            dispatches.append(res)
+        return dispatches
+
+    def _send_do_not_merge_signoff_pings(self, signoff_ready_prs: Iterable[dict], *, current_ms: int) -> list[dict]:
+        if self.state_store.agent_name not in SWEEP_AGENT_ORDER:
+            return []
+        notifications: list[dict] = []
+        for pr_item in signoff_ready_prs or ():
+            if not isinstance(pr_item, dict):
+                continue
+            repo = str(pr_item.get("repo") or "").strip()
+            number = _safe_int(pr_item.get("number"), 0)
+            pr_key = str(pr_item.get("key") or "").strip() or (make_pr_key(repo, number) if repo and number > 0 else "")
+            head_sha = str(pr_item.get("head_sha") or "").strip()
+            if not pr_key or not head_sha:
+                continue
+            if repo and number > 0 and compute_pr_owner(repo, number) != self.state_store.agent_name:
+                continue
+            entry = _as_dict(self.state_store.get_thread_state(pr_key))
+            if bool(entry.get("coercion_blocked")) or entry.get("ready_for_signoff_notified_sha") == head_sha:
+                continue
+            pr_url = str(pr_item.get("url") or entry.get("url") or "").strip() or (f"https://github.com/{repo}/pull/{number}" if repo and number > 0 else "")
+            if not pr_url:
+                continue
+            raw_title = str(pr_item.get("title") or entry.get("title") or "").strip()
+            pr_title = " ".join(raw_title.splitlines()).strip() or (f"{repo}#{number}" if repo and number > 0 else pr_key)
+            msg = f"🚦 {pr_url} - {pr_title}"
+            sent, err = self.execution_coordinator._send_telegram_safe(msg)
+            if not sent:
+                continue
+            self.state_store.update_thread_state(
+                pr_key,
+                {
+                    **({"repo": repo} if repo else {}),
+                    **({"number": number} if number > 0 else {}),
+                    "url": pr_url,
+                    "title": pr_title,
+                    "ready_for_signoff_notified_sha": head_sha,
+                },
+                now_override_ms=current_ms,
+            )
+            notifications.append({
+                "key": pr_key,
+                "repo": repo,
+                "number": number or None,
+                "head_sha": head_sha,
+                "url": pr_url,
+                "title": pr_title,
+                "message": msg,
+                "sent": True,
+                "error": err,
+            })
+        return notifications
+
+    def _send_needs_decision_ping(
+        self,
+        *,
+        pr_key: str,
+        linear_url: str,
+        repo: str,
+        number: int,
+        title: str,
+        head_sha: str,
+        current_ms: int,
+    ) -> dict | None:
+        clean_key = str(pr_key or "").strip()
+        clean_url = str(linear_url or "").strip()
+        clean_sha = str(head_sha or "").strip()
+        if not clean_key or not clean_url or not clean_sha:
+            return None
+        entry = _as_dict(self.state_store.get_thread_state(clean_key))
+        if entry.get("decision_notified_sha") == clean_sha:
+            return None
+        clean_title = " ".join(str(title or entry.get("title") or "").splitlines()).strip() or f"{repo}#{number}"
+        msg = f"🧑‍⚖️ {clean_url} - {repo}#{number}: {clean_title}"
+        sent, err = self.execution_coordinator._send_telegram_safe(msg)
+        if not sent:
+            return None
+        self.state_store.update_thread_state(
+            clean_key,
+            {
+                **({"repo": repo} if repo else {}),
+                **({"number": number} if number > 0 else {}),
+                "title": clean_title,
+                "linear_issue_url": clean_url,
+                "decision_notified_sha": clean_sha,
+            },
+            now_override_ms=current_ms,
+        )
+        return {
+            "key": clean_key,
+            "repo": repo,
+            "number": number,
+            "head_sha": clean_sha,
+            "linear_url": clean_url,
+            "title": clean_title,
+            "message": msg,
+            "sent": True,
+            "error": err,
+        }
+
+    @staticmethod
+    def _latest_blind_verdict(
+        verdicts: list[dict[str, object]],
+        predicate: Callable[[dict[str, object]], bool],
+    ) -> dict[str, object] | None:
+        matched = [v for v in verdicts if predicate(v)]
+        if not matched:
+            return None
+        best_idx = 0
+        best_key = (0, 0)
+        for idx, item in enumerate(matched):
+            _, ts_ms = normalize_ts(item.get("created_at") or item.get("updated_at"))
+            sort_key = (ts_ms, idx)
+            if sort_key >= best_key:
+                best_key = sort_key
+                best_idx = idx
+        return matched[best_idx]
+
+    def _evaluate_lane_a_consensus(
+        self,
+        *,
+        linear_id: str,
+        linear_identifier: str | None,
+        linear_url: str | None,
+        pr_entry: dict,
+        head_sha: str,
+        ci_state: str,
+        unresolved_thread_count: int,
+        slot_id: str,
+        dispatched_targets: set[str],
+        current_ms: int,
+        now_override_ms: int | None,
+    ) -> dict | None:
+        _ = slot_id
+        if self.linear_client is None or self.state_store.agent_name not in SWEEP_AGENT_ORDER:
+            return None
+        clean_linear_id = str(linear_id or "").strip()
+        clean_sha = str(head_sha or "").strip()
+        if not clean_linear_id or not clean_sha:
+            return None
+        repo = str(pr_entry.get("repo") or "").strip()
+        number = _safe_int(pr_entry.get("number"), 0)
+        pr_key = str(pr_entry.get("pr_key") or pr_entry.get("key") or "").strip() or (make_pr_key(repo, number) if repo and number > 0 else "")
+        if not pr_key or not repo or number <= 0:
+            return None
+        pr_url = str(pr_entry.get("url") or "").strip() or f"https://github.com/{repo}/pull/{number}"
+        title = str(pr_entry.get("title") or "").strip() or f"{repo}#{number}"
+        updated_at = str(pr_entry.get("updated_at") or pr_entry.get("updatedAt") or "").strip() or None
+        pr_labels = extract_label_names(pr_entry.get("labels"))
+        norm_ci = normalize_ci_state(ci_state)
+        unresolved = max(0, _safe_int(unresolved_thread_count, 0))
+
+        try:
+            comments = self.linear_client.list_issue_comments(clean_linear_id)
+        except Exception as exc:
+            sys.stderr.write(f"moltis-github-companion lane-a-comments warning ({pr_key} / {clean_linear_id}): {exc}\n")
+            return None
+
+        verdicts = linear_sync.parse_blind_review_verdicts(comments, head_sha=clean_sha)
+        gemini_verdict = self._latest_blind_verdict(
+            verdicts,
+            lambda v: str(v.get("model_family") or "").strip().lower() == "gemini",
+        )
+        gpt_verdict = self._latest_blind_verdict(
+            verdicts,
+            lambda v: str(v.get("model_family") or "").strip().lower() == "gpt"
+            or str(v.get("agent") or "").strip().lower() == "traya",
+        )
+        gemini_val = str(gemini_verdict.get("verdict") or "").strip().lower() if gemini_verdict else None
+        gpt_val = str(gpt_verdict.get("verdict") or "").strip().lower() if gpt_verdict else None
+
+        if (gemini_val is not None and gemini_val != "pass") or (gpt_val is not None and gpt_val != "pass"):
+            try:
+                self.linear_client.update_issue(
+                    clean_linear_id,
+                    state="Backlog",
+                    add_labels=("needs-decision",),
+                    remove_labels=("ready-to-merge",),
+                )
+            except Exception as exc:
+                sys.stderr.write(f"moltis-github-companion lane-a-escalate warning ({pr_key} / {clean_linear_id}): {exc}\n")
+                return None
+            ping = self._send_needs_decision_ping(
+                pr_key=pr_key,
+                linear_url=str(linear_url or pr_entry.get("linear_issue_url") or "").strip(),
+                repo=repo,
+                number=number,
+                title=title,
+                head_sha=clean_sha,
+                current_ms=current_ms,
+            )
+            self.state_store.complete_thread_review(
+                pr_key,
+                handled_updated_at=updated_at,
+                handled_head_sha=clean_sha,
+                handled_ci_state=norm_ci,
+                record_triaged_head_sha=True,
+                apply_cooldown=False,
+                now_override_ms=current_ms,
+            )
+            return {
+                "action": "escalated_needs_decision",
+                "key": pr_key,
+                "repo": repo,
+                "number": number,
+                "head_sha": clean_sha,
+                "linear_issue_id": clean_linear_id,
+                "linear_issue_identifier": linear_identifier,
+                "linear_issue_url": linear_url,
+                "gemini_verdict": gemini_val,
+                "gpt_verdict": gpt_val,
+                "needs_decision_notification": ping,
+                "dispatch": None,
+            }
+
+        if (
+            gemini_val == "pass"
+            and gpt_val == "pass"
+            and norm_ci in ("SUCCESS", "NONE")
+            and unresolved == 0
+            and not has_do_not_merge_label(pr_labels)
+        ):
+            stored_entry = _as_dict(self.state_store.get_thread_state(pr_key))
+            if _safe_int(stored_entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
+                return None
+            comments_by_id = {
+                str(c.get("id")): str(c.get("body") or "")
+                for c in (comments or ())
+                if isinstance(c, dict) and c.get("id") is not None
+            }
+            polish_parts: list[str] = []
+            for v_item in (gemini_verdict, gpt_verdict):
+                cid = v_item.get("comment_id") if isinstance(v_item, dict) else None
+                if cid is not None and str(cid) in comments_by_id:
+                    p_note = _extract_polish_from_comment_body(comments_by_id[str(cid)])
+                    if p_note and p_note not in polish_parts:
+                        polish_parts.append(p_note)
+            lane_a_polish = "; ".join(polish_parts) if polish_parts else None
+            dispatched_targets.add(pr_key)
+            dispatch_res = self.execution_coordinator.execute_dispatch(
+                kind="community_pr_lane_a_merge",
+                is_automated_pr=False,
+                thread_id=str(stored_entry.get("thread_id") or pr_entry.get("thread_id") or "").strip() or None,
+                state_key=pr_key,
+                repo=repo,
+                number=number,
+                subject_kind="PullRequest",
+                head_sha=clean_sha,
+                ci_state=norm_ci,
+                updated_at=updated_at,
+                trigger_reason="community_pr_lane_a_consensus",
+                community_auto_merge_eligible=True,
+                linear_issue_id=clean_linear_id,
+                linear_issue_identifier=linear_identifier,
+                linear_issue_url=linear_url,
+                github_url=pr_url,
+                lane_a_polish_notes=lane_a_polish,
+                defer_watermark_commit=True,
+                now_override_ms=now_override_ms,
+            )
+            action = "lane_a_merge_failed"
+            ping: dict | None = None
+            if dispatch_res.get("task_succeeded"):
+                with self._deferred_dispatch_guard(dispatch_res, now_override_ms=now_override_ms):
+                    merge_outcome, merge_detail = parse_lane_a_merge_reply(
+                        str(dispatch_res.get("reply_text") or ""),
+                        repo=repo,
+                        number=number,
+                        linear_url=linear_url,
+                    )
+                    if merge_outcome == "merged":
+                        if self.gh_client.is_pull_request_merged(repo, number):
+                            action = "lane_a_merged"
+                            try:
+                                self.linear_client.update_issue(clean_linear_id, state="Done")
+                            except Exception as exc:
+                                sys.stderr.write(f"moltis-github-companion lane-a-done warning ({pr_key} / {clean_linear_id}): {exc}\n")
+                            self.execution_coordinator.commit_deferred_dispatch(dispatch_res, now_override_ms=now_override_ms)
+                        else:
+                            action = "lane_a_merge_failed"
+                            self.execution_coordinator.fail_deferred_dispatch(
+                                dispatch_res,
+                                failure_reason="merge_not_confirmed_on_github",
+                                now_override_ms=now_override_ms,
+                            )
+                    elif merge_outcome == "needs_decision":
+                        try:
+                            self.linear_client.update_issue(
+                                clean_linear_id,
+                                state="Backlog",
+                                add_labels=("needs-decision",),
+                                remove_labels=("ready-to-merge",),
+                            )
+                        except Exception as exc:
+                            sys.stderr.write(f"moltis-github-companion lane-a-escalate warning ({pr_key} / {clean_linear_id}): {exc}\n")
+                            self.execution_coordinator.fail_deferred_dispatch(
+                                dispatch_res,
+                                failure_reason=f"linear_lane_a_escalate_failed: {exc}",
+                                now_override_ms=now_override_ms,
+                            )
+                            action = "lane_a_merge_escalate_failed"
+                        else:
+                            action = "lane_a_merge_needs_decision"
+                            self.execution_coordinator.commit_deferred_dispatch(dispatch_res, now_override_ms=now_override_ms)
+                            clean_linear_url = str(linear_url or pr_entry.get("linear_issue_url") or "").strip()
+                            if dispatch_res.get("telegram_forwarded"):
+                                self.state_store.update_thread_state(
+                                    pr_key,
+                                    {
+                                        "repo": repo,
+                                        "number": number,
+                                        "title": title,
+                                        **({"linear_issue_url": clean_linear_url} if clean_linear_url else {}),
+                                        "decision_notified_sha": clean_sha,
+                                    },
+                                    now_override_ms=current_ms,
+                                )
+                                ping = {
+                                    "key": pr_key,
+                                    "repo": repo,
+                                    "number": number,
+                                    "head_sha": clean_sha,
+                                    "linear_url": clean_linear_url,
+                                    "title": title,
+                                    "message": merge_detail,
+                                    "sent": True,
+                                    "error": None,
+                                }
+                    else:
+                        self.execution_coordinator.commit_deferred_dispatch(dispatch_res, now_override_ms=now_override_ms)
+            return {
+                "action": action,
+                "key": pr_key,
+                "repo": repo,
+                "number": number,
+                "head_sha": clean_sha,
+                "linear_issue_id": clean_linear_id,
+                "linear_issue_identifier": linear_identifier,
+                "linear_issue_url": linear_url,
+                "gemini_verdict": gemini_val,
+                "gpt_verdict": gpt_val,
+                "lane_a_polish_notes": lane_a_polish,
+                "needs_decision_notification": ping,
+                "dispatch": dispatch_res,
+            }
+
+        return None
+
+    def _run_own_blind_review_and_post(
+        self,
+        *,
+        pr_key: str,
+        repo: str,
+        number: int,
+        pr_url: str,
+        head_sha: str,
+        ci_state: str,
+        updated_at: str | None,
+        thread_id: str | None,
+        linear_id: str,
+        linear_identifier: str | None,
+        linear_url: str | None,
+        slot_id: str,
+        dispatched_targets: set[str],
+        current_ms: int,
+        now_override_ms: int | None,
+    ) -> tuple[dict | None, dict | None]:
+        """Run owning Gemini agent's diff-only blind review and post verdict to Linear."""
+        if self.linear_client is None:
+            return None, None
+        if not self.state_store.can_consume_throttle("community_pr_reviews", slot_id=slot_id, now_override_ms=current_ms):
+            return None, None
+        consumed, _ = self.state_store.consume_throttle("community_pr_reviews", slot_id=slot_id, now_override_ms=current_ms)
+        if not consumed:
+            return None, None
+        dispatched_targets.add(pr_key)
+        review_res = self.execution_coordinator.execute_dispatch(
+            kind="community_pr_blind_review",
+            is_automated_pr=False,
+            thread_id=thread_id,
+            state_key=pr_key,
+            repo=repo,
+            number=number,
+            subject_kind="PullRequest",
+            head_sha=head_sha,
+            ci_state=ci_state,
+            updated_at=updated_at,
+            trigger_reason="community_pr_blind_review",
+            community_auto_merge_eligible=True,
+            linear_issue_id=linear_id,
+            linear_issue_identifier=linear_identifier,
+            linear_issue_url=linear_url,
+            github_url=pr_url,
+            defer_watermark_commit=True,
+            now_override_ms=now_override_ms,
+        )
+        if not review_res.get("task_succeeded"):
+            return review_res, {
+                "action": "blind_review_failed",
+                "key": pr_key,
+                "repo": repo,
+                "number": number,
+                "head_sha": head_sha,
+                "agent": self.state_store.agent_name,
+                "model_family": MODEL_FAMILY_BY_AGENT.get(self.state_store.agent_name, "gemini"),
+                "verdict": None,
+                "linear_issue_id": linear_id,
+                "linear_issue_identifier": linear_identifier,
+                "linear_issue_url": linear_url,
+            }
+        with self._deferred_dispatch_guard(review_res, now_override_ms=now_override_ms):
+            verdict, findings, polish = parse_blind_review_reply(str(review_res.get("reply_text") or ""))
+            summary_parts: list[str] = []
+            if findings:
+                summary_parts.append(f"FINDINGS: {findings}")
+            if polish:
+                summary_parts.append(f"POLISH: {polish}")
+            verdict_summary = "\n".join(summary_parts)
+            model_family = MODEL_FAMILY_BY_AGENT.get(self.state_store.agent_name, "gemini")
+            try:
+                self.linear_client.post_blind_review_verdict(
+                    linear_id,
+                    agent=self.state_store.agent_name,
+                    model_family=model_family,
+                    head_sha=head_sha,
+                    verdict=verdict,
+                    summary=verdict_summary,
+                )
+            except Exception as exc:
+                sys.stderr.write(f"moltis-github-companion blind-verdict-post warning ({pr_key} / {linear_id}): {exc}\n")
+                self.execution_coordinator.fail_deferred_dispatch(
+                    review_res,
+                    failure_reason=f"linear_blind_verdict_post_failed: {exc}",
+                    now_override_ms=now_override_ms,
+                )
+                return review_res, None
+            self.execution_coordinator.commit_deferred_dispatch(review_res, now_override_ms=now_override_ms)
+        return review_res, {
+            "action": "blind_review_posted",
+            "key": pr_key,
+            "repo": repo,
+            "number": number,
+            "head_sha": head_sha,
+            "agent": self.state_store.agent_name,
+            "model_family": model_family,
+            "verdict": verdict,
+            "findings": findings,
+            "polish": polish,
+            "linear_issue_id": linear_id,
+            "linear_issue_identifier": linear_identifier,
+            "linear_issue_url": linear_url,
+        }
+
+    def _run_lane_a_pr_evaluation(
+        self,
+        *,
+        pr_key: str,
+        repo: str,
+        number: int,
+        pr_url: str,
+        title: str,
+        head_sha: str,
+        ci_state: str,
+        updated_at: str | None,
+        pr_labels: list[str],
+        unresolved_threads: int,
+        thread_id: str | None,
+        pr_entry: dict,
+        live_pr: dict,
+        linear_id: str,
+        linear_identifier: str | None,
+        linear_url: str | None,
+        own_family: str,
+        slot_id: str,
+        dispatched_targets: set[str],
+        processed_pr_keys: set[str],
+        dispatches: list[dict],
+        linear_pr_actions: list[dict],
+        notifications: list[dict],
+        current_ms: int,
+        now_override_ms: int | None,
+    ) -> None:
+        if self.linear_client is None:
+            return
+        try:
+            existing_comments = self.linear_client.list_issue_comments(linear_id)
+        except Exception as exc:
+            sys.stderr.write(f"moltis-github-companion lane-a-comments warning ({pr_key} / {linear_id}): {exc}\n")
+            return
+        existing_verdicts = linear_sync.parse_blind_review_verdicts(existing_comments, head_sha=head_sha)
+        has_own_verdict = any(
+            str(v.get("agent") or "").strip().lower() == self.state_store.agent_name
+            or str(v.get("model_family") or "").strip().lower() == own_family
+            for v in existing_verdicts
+        )
+        if not has_own_verdict:
+            review_res, action_rec = self._run_own_blind_review_and_post(
+                pr_key=pr_key,
+                repo=repo,
+                number=number,
+                pr_url=pr_url,
+                head_sha=head_sha,
+                ci_state=ci_state,
+                updated_at=updated_at,
+                thread_id=thread_id,
+                linear_id=linear_id,
+                linear_identifier=linear_identifier,
+                linear_url=linear_url,
+                slot_id=slot_id,
+                dispatched_targets=dispatched_targets,
+                current_ms=current_ms,
+                now_override_ms=now_override_ms,
+            )
+            if review_res is None:
+                return
+            processed_pr_keys.add(pr_key)
+            dispatches.append(review_res)
+            if action_rec is not None:
+                linear_pr_actions.append(action_rec)
+            if not review_res.get("task_succeeded") or action_rec is None:
+                return
+        else:
+            processed_pr_keys.add(pr_key)
+
+        pr_info = {
+            **pr_entry,
+            **live_pr,
+            "pr_key": pr_key,
+            "repo": repo,
+            "number": number,
+            "url": pr_url,
+            "title": title,
+            "head_sha": head_sha,
+            "ci_state": ci_state,
+            "updated_at": updated_at,
+            "labels": pr_labels,
+            "linear_issue_url": linear_url,
+        }
+        consensus = self._evaluate_lane_a_consensus(
+            linear_id=linear_id,
+            linear_identifier=linear_identifier,
+            linear_url=linear_url,
+            pr_entry=pr_info,
+            head_sha=head_sha,
+            ci_state=ci_state,
+            unresolved_thread_count=unresolved_threads,
+            slot_id=slot_id,
+            dispatched_targets=dispatched_targets,
+            current_ms=current_ms,
+            now_override_ms=now_override_ms,
+        )
+        if consensus is not None:
+            linear_pr_actions.append(consensus)
+            if isinstance(consensus.get("dispatch"), dict):
+                dispatches.append(consensus["dispatch"])
+            if isinstance(consensus.get("needs_decision_notification"), dict):
+                notifications.append(consensus["needs_decision_notification"])
+
+    def _run_lane_b_pr_review(
+        self,
+        *,
+        pr_key: str,
+        repo: str,
+        number: int,
+        pr_url: str,
+        title: str,
+        head_sha: str,
+        ci_state: str,
+        updated_at: str | None,
+        additions: object,
+        deletions: object,
+        changed_files: object,
+        file_paths: object,
+        files_has_next_page: bool,
+        auto_merge_eligible: bool,
+        thread_id: str | None,
+        linear_id: str,
+        linear_identifier: str | None,
+        linear_url: str | None,
+        slot_id: str,
+        dispatched_targets: set[str],
+        processed_pr_keys: set[str],
+        dispatches: list[dict],
+        linear_pr_actions: list[dict],
+        notifications: list[dict],
+        current_ms: int,
+        now_override_ms: int | None,
+    ) -> str:
+        if self.linear_client is None:
+            return "throttled"
+        bypass_reasons = compute_lane_a_bypass_reasons(
+            repo=repo,
+            additions=additions,  # type: ignore[arg-type]
+            deletions=deletions,  # type: ignore[arg-type]
+            changed_files=changed_files,  # type: ignore[arg-type]
+            file_paths=file_paths,  # type: ignore[arg-type]
+            files_has_next_page=files_has_next_page,
+            ci_state=ci_state,
+            enabled=self.state_store.community_auto_merge_enabled,
+            max_lines=self.state_store.community_auto_merge_max_lines,
+            max_files=self.state_store.community_auto_merge_max_files,
+            excluded_repos=self.state_store.community_auto_merge_excluded_repos,
+        )
+        if not self.state_store.can_consume_throttle("community_pr_reviews", slot_id=slot_id, now_override_ms=current_ms):
+            return "throttled"
+        consumed, _ = self.state_store.consume_throttle("community_pr_reviews", slot_id=slot_id, now_override_ms=current_ms)
+        if not consumed:
+            return "throttled"
+        dispatched_targets.add(pr_key)
+        processed_pr_keys.add(pr_key)
+        lane_b_res = self.execution_coordinator.execute_dispatch(
+            kind="community_pr_lane_b_review",
+            is_automated_pr=False,
+            thread_id=thread_id,
+            state_key=pr_key,
+            repo=repo,
+            number=number,
+            subject_kind="PullRequest",
+            head_sha=head_sha,
+            ci_state=ci_state,
+            updated_at=updated_at,
+            trigger_reason="community_pr_lane_b_review",
+            community_auto_merge_eligible=bool(auto_merge_eligible),
+            linear_issue_id=linear_id,
+            linear_issue_identifier=linear_identifier,
+            linear_issue_url=linear_url,
+            github_url=pr_url,
+            bypass_reasons=bypass_reasons,
+            defer_watermark_commit=True,
+            now_override_ms=now_override_ms,
+        )
+        dispatches.append(lane_b_res)
+        if not lane_b_res.get("task_succeeded"):
+            linear_pr_actions.append({
+                "action": "lane_b_review_failed",
+                "key": pr_key,
+                "repo": repo,
+                "number": number,
+                "head_sha": head_sha,
+                "bypass_reasons": bypass_reasons,
+                "linear_issue_id": linear_id,
+                "linear_issue_identifier": linear_identifier,
+                "linear_issue_url": linear_url,
+            })
+            return "dispatch_failed"
+        with self._deferred_dispatch_guard(lane_b_res, now_override_ms=now_override_ms):
+            lane_b_verdict, lane_b_summary = parse_lane_b_reply(str(lane_b_res.get("reply_text") or ""))
+            if lane_b_verdict == "ready-to-merge":
+                add_lbls, rem_lbls = ("ready-to-merge",), ("needs-decision",)
+            else:
+                add_lbls, rem_lbls = ("needs-decision",), ("ready-to-merge",)
+            try:
+                self.linear_client.update_issue(
+                    linear_id,
+                    state="Backlog",
+                    add_labels=add_lbls,
+                    remove_labels=rem_lbls,
+                )
+            except Exception as exc:
+                sys.stderr.write(f"moltis-github-companion lane-b-update warning ({pr_key} / {linear_id}): {exc}\n")
+                self.execution_coordinator.fail_deferred_dispatch(
+                    lane_b_res,
+                    failure_reason=f"linear_lane_b_update_failed: {exc}",
+                    now_override_ms=now_override_ms,
+                )
+                return "update_failed"
+            self.execution_coordinator.commit_deferred_dispatch(lane_b_res, now_override_ms=now_override_ms)
+        ping = None
+        if lane_b_verdict == "needs-decision":
+            ping = self._send_needs_decision_ping(
+                pr_key=pr_key,
+                linear_url=linear_url or "",
+                repo=repo,
+                number=number,
+                title=title,
+                head_sha=head_sha,
+                current_ms=current_ms,
+            )
+            if ping is not None:
+                notifications.append(ping)
+        linear_pr_actions.append({
+            "action": "lane_b_reviewed",
+            "key": pr_key,
+            "repo": repo,
+            "number": number,
+            "head_sha": head_sha,
+            "verdict": lane_b_verdict,
+            "summary": lane_b_summary,
+            "bypass_reasons": bypass_reasons,
+            "linear_issue_id": linear_id,
+            "linear_issue_identifier": linear_identifier,
+            "linear_issue_url": linear_url,
+            "needs_decision_notification": ping,
+        })
+        return "updated"
+
+    def _process_linear_community_prs(
+        self,
+        actionable_prs: Iterable[dict],
+        *,
+        active_linear_issues: Iterable[dict],
+        open_prs_by_key: dict[str, dict],
+        slot_id: str,
+        dispatched_targets: set[str],
+        current_ms: int,
+        now_override_ms: int | None,
+    ) -> dict:
+        dispatches: list[dict] = []
+        linear_pr_actions: list[dict] = []
+        notifications: list[dict] = []
+        if self.linear_client is None or self.state_store.agent_name not in SWEEP_AGENT_ORDER:
+            return {
+                "dispatches": dispatches,
+                "linear_pr_actions": linear_pr_actions,
+                "needs_decision_notifications": notifications,
+            }
+
+        processed_pr_keys: set[str] = set()
+        own_family = MODEL_FAMILY_BY_AGENT.get(self.state_store.agent_name, "gemini")
+
+        for pr_item in actionable_prs or ():
+            if not isinstance(pr_item, dict) or not bool(pr_item.get("is_community")):
+                continue
+            pr_key = str(pr_item.get("key") or "").strip()
+            repo = str(pr_item.get("repo") or "").strip()
+            number = _safe_int(pr_item.get("number"), 0)
+            if not pr_key or not repo or number <= 0:
+                continue
+            if not is_allowed_notification_repo(repo) or compute_pr_owner(repo, number) != self.state_store.agent_name:
+                continue
+            if pr_key in dispatched_targets:
+                continue
+            pr_entry = _as_dict(self.state_store.get_thread_state(pr_key))
+            if bool(pr_entry.get("coercion_blocked")) or _safe_int(pr_entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
+                continue
+            trig_reason = str(pr_item.get("trigger_reason") or "open_pr_poll")
+            if trig_reason != "ci_green_after_approval" and _safe_int(pr_entry.get("followup_cooldown_until_ms"), 0) > current_ms:
+                continue
+
+            live_pr = _as_dict(open_prs_by_key.get(pr_key))
+            head_sha = str(pr_item.get("head_sha") or live_pr.get("head_sha") or pr_entry.get("head_sha") or "").strip()
+            ci_state = normalize_ci_state(pr_item.get("ci_state") or live_pr.get("ci_state") or pr_entry.get("ci_state"))
+            updated_at = str(pr_item.get("updated_at") or live_pr.get("updated_at") or pr_entry.get("updated_at") or "").strip() or None
+            pr_url = str(live_pr.get("url") or pr_entry.get("url") or "").strip() or f"https://github.com/{repo}/pull/{number}"
+            title = str(live_pr.get("title") or pr_entry.get("title") or "").strip() or f"{repo}#{number}"
+            pr_labels = extract_label_names(live_pr.get("labels") if "labels" in live_pr else pr_entry.get("labels"))
+            has_dnm = has_do_not_merge_label(pr_labels)
+            unresolved_threads = max(
+                0,
+                _safe_int(
+                    live_pr.get("unresolved_thread_count") if "unresolved_thread_count" in live_pr else pr_entry.get("unresolved_thread_count"),
+                    0,
+                ),
+            )
+            additions = pr_item.get("additions") if "additions" in pr_item else live_pr.get("additions")
+            deletions = pr_item.get("deletions") if "deletions" in pr_item else live_pr.get("deletions")
+            changed_files = pr_item.get("changed_files") if "changed_files" in pr_item else live_pr.get("changed_files")
+            file_paths = pr_item.get("file_paths") if "file_paths" in pr_item else live_pr.get("file_paths")
+            files_has_next_page = bool(pr_item.get("files_has_next_page", live_pr.get("files_has_next_page", False)))
+            raw_eligible = pr_item.get("community_auto_merge_eligible")
+            auto_merge_eligible = (
+                bool(raw_eligible)
+                if isinstance(raw_eligible, bool)
+                else compute_community_auto_merge_eligible(
+                    repo=repo,
+                    additions=additions,
+                    deletions=deletions,
+                    changed_files=changed_files,
+                    file_paths=file_paths,
+                    files_has_next_page=files_has_next_page,
+                    enabled=self.state_store.community_auto_merge_enabled,
+                    max_lines=self.state_store.community_auto_merge_max_lines,
+                    max_files=self.state_store.community_auto_merge_max_files,
+                    excluded_repos=self.state_store.community_auto_merge_excluded_repos,
+                )
+            )
+            is_lane_a = bool(auto_merge_eligible) and ci_state in ("SUCCESS", "NONE") and not has_dnm
+            initial_state = "In Review" if is_lane_a else "Backlog"
+
+            try:
+                linear_issue = self.linear_client.ensure_issue_for_github_item(
+                    github_url=pr_url,
+                    title=title,
+                    repo=repo,
+                    item_kind="PR",
+                    state=initial_state,
+                )
+                linear_id = str(linear_issue.get("id") or "").strip()
+                if not linear_id:
+                    raise RuntimeError("Linear issue response missing id")
+                linear_identifier = str(linear_issue.get("identifier") or "").strip() or None
+                linear_url = str(linear_issue.get("url") or "").strip() or None
+            except Exception as exc:
+                sys.stderr.write(f"moltis-github-companion linear-pr-ensure warning ({pr_key}): {exc}\n")
+                continue
+
+            self.state_store.update_thread_state(
+                pr_key,
+                {
+                    "repo": repo,
+                    "number": number,
+                    "subject_type": "PullRequest",
+                    "url": pr_url,
+                    "title": title,
+                    "linear_issue_id": linear_id,
+                    "linear_issue_identifier": linear_identifier,
+                    "linear_issue_url": linear_url,
+                },
+                now_override_ms=current_ms,
+            )
+
+            thread_id = str(pr_item.get("thread_id") or pr_entry.get("thread_id") or "").strip() or None
+            if is_lane_a:
+                issue_state_name = str(_as_dict(linear_issue.get("state")).get("name") or "").strip().lower()
+                issue_labels = extract_linear_issue_labels(linear_issue)
+                if (
+                    issue_state_name != "in review"
+                    or "needs-decision" in issue_labels
+                    or "ready-to-merge" in issue_labels
+                ):
+                    try:
+                        self.linear_client.update_issue(
+                            linear_id,
+                            state="In Review",
+                            remove_labels=("needs-decision", "ready-to-merge"),
+                        )
+                    except Exception as exc:
+                        sys.stderr.write(
+                            f"moltis-github-companion lane-a-issue-update warning ({pr_key} / {linear_id}): {exc}\n"
+                        )
+                        continue
+                self._run_lane_a_pr_evaluation(
+                    pr_key=pr_key,
+                    repo=repo,
+                    number=number,
+                    pr_url=pr_url,
+                    title=title,
+                    head_sha=head_sha,
+                    ci_state=ci_state,
+                    updated_at=updated_at,
+                    pr_labels=pr_labels,
+                    unresolved_threads=unresolved_threads,
+                    thread_id=thread_id,
+                    pr_entry=pr_entry,
+                    live_pr=live_pr,
+                    linear_id=linear_id,
+                    linear_identifier=linear_identifier,
+                    linear_url=linear_url,
+                    own_family=own_family,
+                    slot_id=slot_id,
+                    dispatched_targets=dispatched_targets,
+                    processed_pr_keys=processed_pr_keys,
+                    dispatches=dispatches,
+                    linear_pr_actions=linear_pr_actions,
+                    notifications=notifications,
+                    current_ms=current_ms,
+                    now_override_ms=now_override_ms,
+                )
+            else:
+                issue_labels = extract_linear_issue_labels(linear_issue)
+                if "ready-to-merge" in issue_labels:
+                    try:
+                        self.linear_client.update_issue(linear_id, remove_labels=("ready-to-merge",))
+                    except Exception as exc:
+                        sys.stderr.write(
+                            f"moltis-github-companion lane-b-stale-label warning ({pr_key} / {linear_id}): {exc}\n"
+                        )
+                    else:
+                        issue_labels.discard("ready-to-merge")
+                lane_b_outcome = self._run_lane_b_pr_review(
+                    pr_key=pr_key,
+                    repo=repo,
+                    number=number,
+                    pr_url=pr_url,
+                    title=title,
+                    head_sha=head_sha,
+                    ci_state=ci_state,
+                    updated_at=updated_at,
+                    additions=additions,
+                    deletions=deletions,
+                    changed_files=changed_files,
+                    file_paths=file_paths,
+                    files_has_next_page=files_has_next_page,
+                    auto_merge_eligible=bool(auto_merge_eligible),
+                    thread_id=thread_id,
+                    linear_id=linear_id,
+                    linear_identifier=linear_identifier,
+                    linear_url=linear_url,
+                    slot_id=slot_id,
+                    dispatched_targets=dispatched_targets,
+                    processed_pr_keys=processed_pr_keys,
+                    dispatches=dispatches,
+                    linear_pr_actions=linear_pr_actions,
+                    notifications=notifications,
+                    current_ms=current_ms,
+                    now_override_ms=now_override_ms,
+                )
+                if lane_b_outcome in ("throttled", "dispatch_failed", "update_failed") and "ready-to-merge" in issue_labels:
+                    try:
+                        self.linear_client.update_issue(linear_id, remove_labels=("ready-to-merge",))
+                    except Exception as exc:
+                        sys.stderr.write(
+                            f"moltis-github-companion lane-b-stale-label warning ({pr_key} / {linear_id}): {exc}\n"
+                        )
+
+        for linear_issue in active_linear_issues or ():
+            if not isinstance(linear_issue, dict) or linear_issue.get("archivedAt"):
+                continue
+            linear_id = str(linear_issue.get("id") or "").strip()
+            if not linear_id:
+                continue
+            lin_labels = extract_linear_issue_labels(linear_issue)
+            if "pr" not in lin_labels:
+                continue
+            target = extract_linear_github_target(linear_issue, expected_kind="PR")
+            if target is None:
+                continue
+            repo, _, number, github_url = target
+            if not is_allowed_notification_repo(repo) or compute_pr_owner(repo, number) != self.state_store.agent_name:
+                continue
+            pr_key = make_pr_key(repo, number)
+            if pr_key in processed_pr_keys or pr_key in dispatched_targets:
+                continue
+            live_pr = _as_dict(open_prs_by_key.get(pr_key))
+            if not live_pr:
+                continue
+            pr_entry = _as_dict(self.state_store.get_thread_state(pr_key))
+            if bool(pr_entry.get("coercion_blocked")) or _safe_int(pr_entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
+                continue
+
+            state_obj = _as_dict(linear_issue.get("state"))
+            state_name = str(state_obj.get("name") or "").strip().lower()
+            state_type = str(state_obj.get("type") or "").strip().lower()
+            linear_identifier = str(linear_issue.get("identifier") or "").strip() or None
+            linear_url = str(linear_issue.get("url") or "").strip() or None
+            head_sha = str(live_pr.get("head_sha") or live_pr.get("headRefOid") or pr_entry.get("head_sha") or "").strip()
+            ci_state = normalize_ci_state(live_pr.get("ci_state") or live_pr.get("statusCheckRollup") or pr_entry.get("ci_state"))
+            updated_at = str(live_pr.get("updated_at") or live_pr.get("updatedAt") or pr_entry.get("updated_at") or "").strip() or None
+            title = str(live_pr.get("title") or linear_issue.get("title") or pr_entry.get("title") or "").strip() or f"{repo}#{number}"
+            pr_url = str(live_pr.get("url") or github_url or f"https://github.com/{repo}/pull/{number}").strip()
+            pr_labels = extract_label_names(live_pr.get("labels"))
+            unresolved_threads = max(0, _safe_int(live_pr.get("unresolved_thread_count"), 0))
+            thread_id = str(pr_entry.get("thread_id") or "").strip() or None
+
+            if pr_entry.get("linear_issue_id") != linear_id or pr_entry.get("linear_issue_url") != linear_url:
+                self.state_store.update_thread_state(
+                    pr_key,
+                    {
+                        "repo": repo,
+                        "number": number,
+                        "subject_type": "PullRequest",
+                        "url": pr_url,
+                        "title": title,
+                        "linear_issue_id": linear_id,
+                        "linear_issue_identifier": linear_identifier,
+                        "linear_issue_url": linear_url,
+                    },
+                    now_override_ms=current_ms,
+                )
+
+            if state_name == "in review":
+                if not head_sha or pr_entry.get("linear_todo_reviewed_sha") == head_sha:
+                    continue
+                pr_info = {
+                    **pr_entry,
+                    **live_pr,
+                    "pr_key": pr_key,
+                    "repo": repo,
+                    "number": number,
+                    "url": pr_url,
+                    "title": title,
+                    "head_sha": head_sha,
+                    "ci_state": ci_state,
+                    "updated_at": updated_at,
+                    "labels": pr_labels,
+                    "linear_issue_url": linear_url,
+                }
+                consensus = self._evaluate_lane_a_consensus(
+                    linear_id=linear_id,
+                    linear_identifier=linear_identifier,
+                    linear_url=linear_url,
+                    pr_entry=pr_info,
+                    head_sha=head_sha,
+                    ci_state=ci_state,
+                    unresolved_thread_count=unresolved_threads,
+                    slot_id=slot_id,
+                    dispatched_targets=dispatched_targets,
+                    current_ms=current_ms,
+                    now_override_ms=now_override_ms,
+                )
+                if consensus is not None:
+                    processed_pr_keys.add(pr_key)
+                    linear_pr_actions.append(consensus)
+                    if isinstance(consensus.get("dispatch"), dict):
+                        dispatches.append(consensus["dispatch"])
+                    if isinstance(consensus.get("needs_decision_notification"), dict):
+                        notifications.append(consensus["needs_decision_notification"])
+                elif (
+                    not is_trusted_github_actor(live_pr.get("author"))
+                    and not has_do_not_merge_label(pr_labels)
+                    and ci_state in ("SUCCESS", "NONE")
+                    and (
+                        pr_entry.get("handled_head_sha") != head_sha
+                        or (
+                            bool(pr_entry.get("handled_ci_state"))
+                            and normalize_ci_state(pr_entry.get("handled_ci_state")) not in ("SUCCESS", "NONE")
+                        )
+                    )
+                    and compute_community_auto_merge_eligible(
+                        repo=repo,
+                        additions=live_pr.get("additions"),
+                        deletions=live_pr.get("deletions"),
+                        changed_files=live_pr.get("changed_files"),
+                        file_paths=live_pr.get("file_paths"),
+                        files_has_next_page=bool(live_pr.get("files_has_next_page", False)),
+                        enabled=self.state_store.community_auto_merge_enabled,
+                        max_lines=self.state_store.community_auto_merge_max_lines,
+                        max_files=self.state_store.community_auto_merge_max_files,
+                        excluded_repos=self.state_store.community_auto_merge_excluded_repos,
+                    )
+                ):
+                    try:
+                        existing_comments = self.linear_client.list_issue_comments(linear_id)
+                    except Exception:
+                        continue
+                    existing_verdicts = linear_sync.parse_blind_review_verdicts(existing_comments, head_sha=head_sha)
+                    has_own_verdict = any(
+                        str(v.get("agent") or "").strip().lower() == self.state_store.agent_name
+                        or str(v.get("model_family") or "").strip().lower() == own_family
+                        for v in existing_verdicts
+                    )
+                    if not has_own_verdict:
+                        review_res, action_rec = self._run_own_blind_review_and_post(
+                            pr_key=pr_key,
+                            repo=repo,
+                            number=number,
+                            pr_url=pr_url,
+                            head_sha=head_sha,
+                            ci_state=ci_state,
+                            updated_at=updated_at,
+                            thread_id=thread_id,
+                            linear_id=linear_id,
+                            linear_identifier=linear_identifier,
+                            linear_url=linear_url,
+                            slot_id=slot_id,
+                            dispatched_targets=dispatched_targets,
+                            current_ms=current_ms,
+                            now_override_ms=now_override_ms,
+                        )
+                        if review_res is not None:
+                            processed_pr_keys.add(pr_key)
+                            dispatches.append(review_res)
+                            if action_rec is not None:
+                                linear_pr_actions.append(action_rec)
+                            if review_res.get("task_succeeded") and action_rec is not None:
+                                post_consensus = self._evaluate_lane_a_consensus(
+                                    linear_id=linear_id,
+                                    linear_identifier=linear_identifier,
+                                    linear_url=linear_url,
+                                    pr_entry=pr_info,
+                                    head_sha=head_sha,
+                                    ci_state=ci_state,
+                                    unresolved_thread_count=unresolved_threads,
+                                    slot_id=slot_id,
+                                    dispatched_targets=dispatched_targets,
+                                    current_ms=current_ms,
+                                    now_override_ms=now_override_ms,
+                                )
+                                if post_consensus is not None:
+                                    linear_pr_actions.append(post_consensus)
+                                    if isinstance(post_consensus.get("dispatch"), dict):
+                                        dispatches.append(post_consensus["dispatch"])
+                                    if isinstance(post_consensus.get("needs_decision_notification"), dict):
+                                        notifications.append(post_consensus["needs_decision_notification"])
+            elif state_name == "todo" or state_type == "unstarted":
+                triaged_sha = str(pr_entry.get("triaged_head_sha") or "").strip() or None
+                if "ready-to-merge" in lin_labels:
+                    sha_changed = not triaged_sha or not head_sha or triaged_sha != head_sha
+                    if has_do_not_merge_label(pr_labels) and not sha_changed:
+                        dispatched_targets.add(pr_key)
+                        processed_pr_keys.add(pr_key)
+                        with contextlib.suppress(Exception):
+                            self.linear_client.update_issue(
+                                linear_id,
+                                state="Backlog",
+                                add_labels=("needs-decision",),
+                                remove_labels=("ready-to-merge",),
+                            )
+                        ping = self._send_needs_decision_ping(
+                            pr_key=pr_key,
+                            linear_url=linear_url or "",
+                            repo=repo,
+                            number=number,
+                            title=title,
+                            head_sha=head_sha,
+                            current_ms=current_ms,
+                        )
+                        if ping is not None:
+                            notifications.append(ping)
+                        linear_pr_actions.append({
+                            "action": "linear_todo_merge_blocked_do_not_merge",
+                            "key": pr_key,
+                            "repo": repo,
+                            "number": number,
+                            "head_sha": head_sha,
+                            "head_sha_changed": False,
+                            "linear_issue_id": linear_id,
+                            "linear_issue_identifier": linear_identifier,
+                            "linear_issue_url": linear_url,
+                            "needs_decision_notification": ping,
+                        })
+                        continue
+                    applied_team_merge = False
+                    if not sha_changed and not any(lbl == "team:merge" for lbl in pr_labels):
+                        try:
+                            self.gh_client.add_pull_request_label(repo, number, "team:merge")
+                            applied_team_merge = True
+                        except Exception as exc:
+                            sys.stderr.write(f"moltis-github-companion linear-todo-merge-label warning ({pr_key} / {linear_id}): {exc}\n")
+                            self.state_store.fail_thread_review(
+                                pr_key,
+                                failure_reason=f"team_merge_label_failed: {exc}",
+                                now_override_ms=current_ms,
+                            )
+                            dispatched_targets.add(pr_key)
+                            processed_pr_keys.add(pr_key)
+                            linear_pr_actions.append({
+                                "action": "linear_todo_merge_label_failed",
+                                "key": pr_key,
+                                "repo": repo,
+                                "number": number,
+                                "head_sha": head_sha,
+                                "head_sha_changed": False,
+                                "linear_issue_id": linear_id,
+                                "linear_issue_identifier": linear_identifier,
+                                "linear_issue_url": linear_url,
+                                "needs_decision_notification": None,
+                            })
+                            continue
+                    dispatched_targets.add(pr_key)
+                    processed_pr_keys.add(pr_key)
+                    merge_res = self.execution_coordinator.execute_dispatch(
+                        kind="team:merge",
+                        is_automated_pr=False,
+                        thread_id=thread_id,
+                        state_key=pr_key,
+                        repo=repo,
+                        number=number,
+                        subject_kind="PullRequest",
+                        head_sha=head_sha or None,
+                        ci_state=ci_state or None,
+                        updated_at=updated_at,
+                        trigger_reason="linear_todo_merge",
+                        team_label="team:merge",
+                        triaged_head_sha=triaged_sha,
+                        head_sha_changed=sha_changed,
+                        linear_issue_id=linear_id,
+                        linear_issue_identifier=linear_identifier,
+                        linear_issue_url=linear_url,
+                        github_url=pr_url,
+                        defer_watermark_commit=True,
+                        now_override_ms=now_override_ms,
+                    )
+                    dispatches.append(merge_res)
+                    ping = None
+                    action = "linear_todo_merge_blocked_sha_changed" if sha_changed else "linear_todo_merge_failed"
+                    if merge_res.get("task_succeeded"):
+                        with self._deferred_dispatch_guard(merge_res, now_override_ms=now_override_ms):
+                            if sha_changed:
+                                try:
+                                    self.linear_client.update_issue(
+                                        linear_id,
+                                        state="Backlog",
+                                        add_labels=("needs-decision",),
+                                        remove_labels=("ready-to-merge",),
+                                    )
+                                except Exception as exc:
+                                    sys.stderr.write(f"moltis-github-companion linear-todo-merge-escalate warning ({pr_key} / {linear_id}): {exc}\n")
+                                    self.execution_coordinator.fail_deferred_dispatch(
+                                        merge_res,
+                                        failure_reason=f"linear_todo_merge_escalate_failed: {exc}",
+                                        now_override_ms=now_override_ms,
+                                    )
+                                    action = "linear_todo_merge_escalate_failed"
+                                else:
+                                    self.execution_coordinator.commit_deferred_dispatch(merge_res, now_override_ms=now_override_ms)
+                                    ping = self._send_needs_decision_ping(
+                                        pr_key=pr_key,
+                                        linear_url=linear_url or "",
+                                        repo=repo,
+                                        number=number,
+                                        title=title,
+                                        head_sha=head_sha,
+                                        current_ms=current_ms,
+                                    )
+                                    if ping is not None:
+                                        notifications.append(ping)
+                            else:
+                                merge_outcome, merge_detail = parse_linear_todo_merge_reply(
+                                    str(merge_res.get("reply_text") or ""),
+                                    repo=repo,
+                                    number=number,
+                                    linear_url=linear_url,
+                                )
+                                if merge_outcome == "merged":
+                                    if self.gh_client.is_pull_request_merged(repo, number):
+                                        action = "linear_todo_merged"
+                                        try:
+                                            self.linear_client.update_issue(linear_id, state="Done")
+                                        except Exception as exc:
+                                            sys.stderr.write(f"moltis-github-companion linear-todo-merge-done warning ({pr_key} / {linear_id}): {exc}\n")
+                                        self.execution_coordinator.commit_deferred_dispatch(merge_res, now_override_ms=now_override_ms)
+                                    else:
+                                        if applied_team_merge:
+                                            with contextlib.suppress(Exception):
+                                                self.gh_client.remove_pull_request_label(repo, number, "team:merge")
+                                        action = "linear_todo_merge_failed"
+                                        self.execution_coordinator.fail_deferred_dispatch(
+                                            merge_res,
+                                            failure_reason="merge_not_confirmed_on_github",
+                                            now_override_ms=now_override_ms,
+                                        )
+                                elif merge_outcome in ("blocked", "needs_decision"):
+                                    if applied_team_merge:
+                                        with contextlib.suppress(Exception):
+                                            self.gh_client.remove_pull_request_label(repo, number, "team:merge")
+                                    try:
+                                        self.linear_client.update_issue(
+                                            linear_id,
+                                            state="Backlog",
+                                            add_labels=("needs-decision",),
+                                            remove_labels=("ready-to-merge",),
+                                        )
+                                    except Exception as exc:
+                                        sys.stderr.write(f"moltis-github-companion linear-todo-merge-escalate warning ({pr_key} / {linear_id}): {exc}\n")
+                                        self.execution_coordinator.fail_deferred_dispatch(
+                                            merge_res,
+                                            failure_reason=f"linear_todo_merge_escalate_failed: {exc}",
+                                            now_override_ms=now_override_ms,
+                                        )
+                                        action = "linear_todo_merge_escalate_failed"
+                                    else:
+                                        action = "linear_todo_merge_blocked" if merge_outcome == "blocked" else "linear_todo_merge_needs_decision"
+                                        self.execution_coordinator.commit_deferred_dispatch(merge_res, now_override_ms=now_override_ms)
+                                        if merge_outcome == "needs_decision" and merge_res.get("telegram_forwarded"):
+                                            clean_linear_url = str(linear_url or pr_entry.get("linear_issue_url") or "").strip()
+                                            self.state_store.update_thread_state(
+                                                pr_key,
+                                                {
+                                                    "repo": repo,
+                                                    "number": number,
+                                                    "title": title,
+                                                    **({"linear_issue_url": clean_linear_url} if clean_linear_url else {}),
+                                                    "decision_notified_sha": head_sha,
+                                                },
+                                                now_override_ms=current_ms,
+                                            )
+                                            ping = {
+                                                "key": pr_key,
+                                                "repo": repo,
+                                                "number": number,
+                                                "head_sha": head_sha,
+                                                "linear_url": clean_linear_url,
+                                                "title": title,
+                                                "message": merge_detail,
+                                                "sent": True,
+                                                "error": None,
+                                            }
+                                            notifications.append(ping)
+                                        else:
+                                            ping = self._send_needs_decision_ping(
+                                                pr_key=pr_key,
+                                                linear_url=linear_url or "",
+                                                repo=repo,
+                                                number=number,
+                                                title=title,
+                                                head_sha=head_sha,
+                                                current_ms=current_ms,
+                                            )
+                                            if ping is not None:
+                                                notifications.append(ping)
+                                else:
+                                    if applied_team_merge:
+                                        with contextlib.suppress(Exception):
+                                            self.gh_client.remove_pull_request_label(repo, number, "team:merge")
+                                    self.execution_coordinator.commit_deferred_dispatch(merge_res, now_override_ms=now_override_ms)
+                    elif applied_team_merge:
+                        with contextlib.suppress(Exception):
+                            self.gh_client.remove_pull_request_label(repo, number, "team:merge")
+                    linear_pr_actions.append({
+                        "action": action,
+                        "key": pr_key,
+                        "repo": repo,
+                        "number": number,
+                        "head_sha": head_sha,
+                        "head_sha_changed": sha_changed,
+                        "linear_issue_id": linear_id,
+                        "linear_issue_identifier": linear_identifier,
+                        "linear_issue_url": linear_url,
+                        "needs_decision_notification": ping,
+                    })
+                else:
+                    dispatched_targets.add(pr_key)
+                    processed_pr_keys.add(pr_key)
+                    review_res = self.execution_coordinator.execute_dispatch(
+                        kind="team:review",
+                        is_automated_pr=False,
+                        thread_id=thread_id,
+                        state_key=pr_key,
+                        repo=repo,
+                        number=number,
+                        subject_kind="PullRequest",
+                        head_sha=head_sha or None,
+                        ci_state=ci_state or None,
+                        updated_at=updated_at,
+                        trigger_reason="linear_todo_review",
+                        team_label="team:review",
+                        triaged_head_sha=triaged_sha,
+                        linear_issue_id=linear_id,
+                        linear_issue_identifier=linear_identifier,
+                        linear_issue_url=linear_url,
+                        github_url=pr_url,
+                        defer_watermark_commit=True,
+                        now_override_ms=now_override_ms,
+                    )
+                    dispatches.append(review_res)
+                    review_action = "linear_todo_review_failed"
+                    if review_res.get("task_succeeded"):
+                        with self._deferred_dispatch_guard(review_res, now_override_ms=now_override_ms):
+                            try:
+                                self.linear_client.update_issue(linear_id, state="In Review")
+                            except Exception as exc:
+                                sys.stderr.write(f"moltis-github-companion linear-todo-review-update warning ({pr_key} / {linear_id}): {exc}\n")
+                                self.execution_coordinator.fail_deferred_dispatch(
+                                    review_res,
+                                    failure_reason=f"linear_todo_review_update_failed: {exc}",
+                                    now_override_ms=now_override_ms,
+                                )
+                            else:
+                                self.execution_coordinator.commit_deferred_dispatch(review_res, now_override_ms=now_override_ms)
+                                if head_sha:
+                                    self.state_store.update_thread_state(
+                                        pr_key,
+                                        {"linear_todo_reviewed_sha": head_sha},
+                                        now_override_ms=current_ms,
+                                    )
+                                review_action = "linear_todo_reviewed"
+                    linear_pr_actions.append({
+                        "action": review_action,
+                        "key": pr_key,
+                        "repo": repo,
+                        "number": number,
+                        "head_sha": head_sha,
+                        "linear_issue_id": linear_id,
+                        "linear_issue_identifier": linear_identifier,
+                        "linear_issue_url": linear_url,
+                    })
+            elif state_name == "backlog" or state_type == "backlog":
+                if (
+                    str(live_pr.get("state") or "OPEN").upper() != "OPEN"
+                    or is_trusted_github_actor(live_pr.get("author"))
+                    or not head_sha
+                    or bool(pr_entry.get("in_flight"))
+                ):
+                    continue
+                is_draft = bool(live_pr.get("is_draft"))
+                handled_sha = str(pr_entry.get("handled_head_sha") or "").strip()
+                triaged_sha = str(pr_entry.get("triaged_head_sha") or "").strip()
+                handled_ci = normalize_ci_state(pr_entry.get("handled_ci_state")) if pr_entry.get("handled_ci_state") else ""
+                sha_unchanged = handled_sha == head_sha and (not triaged_sha or triaged_sha == head_sha)
+
+                def _strip_stale_ready_to_merge(
+                    _linear_id: str = linear_id,
+                    _pr_key: str = pr_key,
+                    _lin_labels: set[str] = lin_labels,
+                ) -> None:
+                    if "ready-to-merge" not in _lin_labels or self.linear_client is None:
+                        return
+                    try:
+                        self.linear_client.update_issue(_linear_id, remove_labels=("ready-to-merge",))
+                    except Exception as exc:
+                        sys.stderr.write(
+                            f"moltis-github-companion backlog-stale-label warning ({_pr_key} / {_linear_id}): {exc}\n"
+                        )
+                    else:
+                        _lin_labels.discard("ready-to-merge")
+
+                has_dnm = has_do_not_merge_label(pr_labels)
+                backlog_blockers: list[str] = []
+                if is_draft:
+                    backlog_blockers.append("draft")
+                if has_dnm:
+                    backlog_blockers.append("do_not_merge")
+                if ci_state not in ("SUCCESS", "NONE"):
+                    backlog_blockers.append(f"ci_{ci_state.lower()}")
+                if unresolved_threads > 0:
+                    backlog_blockers.append("unresolved_threads")
+
+                if (is_draft or sha_unchanged) and "ready-to-merge" in lin_labels and backlog_blockers:
+                    try:
+                        self.linear_client.update_issue(
+                            linear_id,
+                            state="Backlog",
+                            add_labels=("needs-decision",),
+                            remove_labels=("ready-to-merge",),
+                        )
+                    except Exception as exc:
+                        sys.stderr.write(
+                            f"moltis-github-companion backlog-blocker-update warning ({pr_key} / {linear_id}): {exc}\n"
+                        )
+                        continue
+                    self.state_store.update_thread_state(
+                        pr_key,
+                        {"handled_ci_state": ci_state},
+                        now_override_ms=current_ms,
+                    )
+                    ping = self._send_needs_decision_ping(
+                        pr_key=pr_key,
+                        linear_url=linear_url or "",
+                        repo=repo,
+                        number=number,
+                        title=title,
+                        head_sha=head_sha,
+                        current_ms=current_ms,
+                    )
+                    if ping is not None:
+                        notifications.append(ping)
+                    dispatched_targets.add(pr_key)
+                    processed_pr_keys.add(pr_key)
+                    linear_pr_actions.append({
+                        "action": "backlog_ready_to_merge_blocked",
+                        "key": pr_key,
+                        "repo": repo,
+                        "number": number,
+                        "head_sha": head_sha,
+                        "blockers": backlog_blockers,
+                        "linear_issue_id": linear_id,
+                        "linear_issue_identifier": linear_identifier,
+                        "linear_issue_url": linear_url,
+                        "needs_decision_notification": ping,
+                    })
+                    continue
+
+                if is_draft:
+                    continue
+                additions = live_pr.get("additions")
+                deletions = live_pr.get("deletions")
+                changed_files = live_pr.get("changed_files")
+                file_paths = live_pr.get("file_paths")
+                files_has_next_page = bool(live_pr.get("files_has_next_page", False))
+                auto_merge_eligible = compute_community_auto_merge_eligible(
+                    repo=repo,
+                    additions=additions,
+                    deletions=deletions,
+                    changed_files=changed_files,
+                    file_paths=file_paths,
+                    files_has_next_page=files_has_next_page,
+                    enabled=self.state_store.community_auto_merge_enabled,
+                    max_lines=self.state_store.community_auto_merge_max_lines,
+                    max_files=self.state_store.community_auto_merge_max_files,
+                    excluded_repos=self.state_store.community_auto_merge_excluded_repos,
+                )
+                is_lane_a = bool(auto_merge_eligible) and ci_state in ("SUCCESS", "NONE") and not has_dnm
+                ci_turned_green_for_lane_a = (
+                    sha_unchanged
+                    and is_lane_a
+                    and bool(handled_ci)
+                    and handled_ci not in ("SUCCESS", "NONE")
+                )
+                if sha_unchanged and not ci_turned_green_for_lane_a:
+                    continue
+
+                if not sha_unchanged:
+                    _strip_stale_ready_to_merge()
+
+                if not ci_turned_green_for_lane_a and _safe_int(pr_entry.get("followup_cooldown_until_ms"), 0) > current_ms:
+                    continue
+                if auto_merge_eligible and not has_dnm and ci_state == "PENDING":
+                    continue
+
+                if is_lane_a:
+                    if ci_turned_green_for_lane_a:
+                        try:
+                            backlog_comments = self.linear_client.list_issue_comments(linear_id)
+                        except Exception as exc:
+                            sys.stderr.write(
+                                f"moltis-github-companion backlog-lane-a-comments warning ({pr_key} / {linear_id}): {exc}\n"
+                            )
+                            continue
+                        backlog_verdicts = linear_sync.parse_blind_review_verdicts(backlog_comments, head_sha=head_sha)
+                        if any(str(v.get("verdict") or "").strip().lower() != "pass" for v in backlog_verdicts):
+                            self.state_store.update_thread_state(
+                                pr_key,
+                                {"handled_ci_state": ci_state},
+                                now_override_ms=current_ms,
+                            )
+                            continue
+                    try:
+                        self.linear_client.update_issue(
+                            linear_id,
+                            state="In Review",
+                            remove_labels=("needs-decision", "ready-to-merge"),
+                        )
+                    except Exception as exc:
+                        sys.stderr.write(
+                            f"moltis-github-companion backlog-lane-a-update warning ({pr_key} / {linear_id}): {exc}\n"
+                        )
+                        continue
+                    self._run_lane_a_pr_evaluation(
+                        pr_key=pr_key,
+                        repo=repo,
+                        number=number,
+                        pr_url=pr_url,
+                        title=title,
+                        head_sha=head_sha,
+                        ci_state=ci_state,
+                        updated_at=updated_at,
+                        pr_labels=pr_labels,
+                        unresolved_threads=unresolved_threads,
+                        thread_id=thread_id,
+                        pr_entry=pr_entry,
+                        live_pr=live_pr,
+                        linear_id=linear_id,
+                        linear_identifier=linear_identifier,
+                        linear_url=linear_url,
+                        own_family=own_family,
+                        slot_id=slot_id,
+                        dispatched_targets=dispatched_targets,
+                        processed_pr_keys=processed_pr_keys,
+                        dispatches=dispatches,
+                        linear_pr_actions=linear_pr_actions,
+                        notifications=notifications,
+                        current_ms=current_ms,
+                        now_override_ms=now_override_ms,
+                    )
+                else:
+                    lane_b_outcome = self._run_lane_b_pr_review(
+                        pr_key=pr_key,
+                        repo=repo,
+                        number=number,
+                        pr_url=pr_url,
+                        title=title,
+                        head_sha=head_sha,
+                        ci_state=ci_state,
+                        updated_at=updated_at,
+                        additions=additions,
+                        deletions=deletions,
+                        changed_files=changed_files,
+                        file_paths=file_paths,
+                        files_has_next_page=files_has_next_page,
+                        auto_merge_eligible=bool(auto_merge_eligible),
+                        thread_id=thread_id,
+                        linear_id=linear_id,
+                        linear_identifier=linear_identifier,
+                        linear_url=linear_url,
+                        slot_id=slot_id,
+                        dispatched_targets=dispatched_targets,
+                        processed_pr_keys=processed_pr_keys,
+                        dispatches=dispatches,
+                        linear_pr_actions=linear_pr_actions,
+                        notifications=notifications,
+                        current_ms=current_ms,
+                        now_override_ms=now_override_ms,
+                    )
+                    if lane_b_outcome in ("throttled", "dispatch_failed", "update_failed"):
+                        _strip_stale_ready_to_merge()
+
+        return {
+            "dispatches": dispatches,
+            "linear_pr_actions": linear_pr_actions,
+            "needs_decision_notifications": notifications,
+        }
+
+    def _run_traya_blind_pr_reviews(
+        self,
+        *,
+        open_prs_by_key: dict[str, dict],
+        slot_id: str,
+        dispatched_targets: set[str],
+        current_ms: int,
+        now_override_ms: int | None,
+    ) -> list[dict]:
+        if self.state_store.agent_name != "traya" or self.linear_client is None:
+            return []
+        eligible_open_prs: dict[str, dict] = {}
+        for pr_key, live_pr in (open_prs_by_key or {}).items():
+            if not isinstance(live_pr, dict):
+                continue
+            if live_pr.get("is_draft") or str(live_pr.get("state") or "OPEN").upper() != "OPEN":
+                continue
+            if is_trusted_github_actor(live_pr.get("author")):
+                continue
+            if has_do_not_merge_label(live_pr.get("labels")):
+                continue
+            ci_state = normalize_ci_state(live_pr.get("ci_state") or live_pr.get("statusCheckRollup"))
+            if ci_state not in ("SUCCESS", "NONE"):
+                continue
+            repo = str(live_pr.get("repo") or "").strip()
+            number = _safe_int(live_pr.get("number"), 0)
+            if not repo or number <= 0 or not is_allowed_notification_repo(repo):
+                continue
+            raw_text = "\n".join(t for t in (str(live_pr.get("title") or ""), str(live_pr.get("body") or "")) if t)
+            if detect_coercion_patterns(raw_text) or extract_mentioned_github_agents(raw_text):
+                continue
+            entry = _as_dict(self.state_store.get_thread_state(pr_key))
+            if bool(entry.get("coercion_blocked")) or _safe_int(entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
+                continue
+            if not compute_community_auto_merge_eligible(
+                repo=repo,
+                additions=live_pr.get("additions"),
+                deletions=live_pr.get("deletions"),
+                changed_files=live_pr.get("changed_files"),
+                file_paths=live_pr.get("file_paths"),
+                files_has_next_page=bool(live_pr.get("files_has_next_page", False)),
+                enabled=self.state_store.community_auto_merge_enabled,
+                max_lines=self.state_store.community_auto_merge_max_lines,
+                max_files=self.state_store.community_auto_merge_max_files,
+                excluded_repos=self.state_store.community_auto_merge_excluded_repos,
+            ):
+                continue
+            eligible_open_prs[pr_key] = live_pr
+
+        if not eligible_open_prs:
+            return []
+
+        try:
+            in_review_issues = self.linear_client.list_project_issues_by_state(("In Review",))
+        except Exception as exc:
+            sys.stderr.write(f"moltis-github-companion traya-linear-poll warning: {exc}\n")
+            return []
+
+        results: list[dict] = []
+        for linear_issue in in_review_issues or ():
+            if not isinstance(linear_issue, dict) or linear_issue.get("archivedAt"):
+                continue
+            linear_id = str(linear_issue.get("id") or "").strip()
+            if not linear_id:
+                continue
+            lin_labels = extract_linear_issue_labels(linear_issue)
+            if "pr" not in lin_labels or "needs-decision" in lin_labels:
+                continue
+            target = extract_linear_github_target(linear_issue, expected_kind="PR")
+            if target is None:
+                continue
+            repo, _, number, github_url = target
+            if not is_allowed_notification_repo(repo):
+                continue
+            pr_key = make_pr_key(repo, number)
+            if pr_key in dispatched_targets or pr_key not in eligible_open_prs:
+                continue
+            live_pr = eligible_open_prs[pr_key]
+            head_sha = str(live_pr.get("head_sha") or live_pr.get("headRefOid") or "").strip()
+            if not head_sha:
+                continue
+            try:
+                comments = self.linear_client.list_issue_comments(linear_id)
+            except Exception as exc:
+                sys.stderr.write(f"moltis-github-companion traya-blind-comments warning ({pr_key} / {linear_id}): {exc}\n")
+                continue
+            existing_verdicts = linear_sync.parse_blind_review_verdicts(comments, head_sha=head_sha)
+            has_traya_verdict = any(
+                str(v.get("agent") or "").strip().lower() == "traya"
+                or str(v.get("model_family") or "").strip().lower() == "gpt"
+                for v in existing_verdicts
+            )
+            if has_traya_verdict:
+                continue
+            if not self.state_store.can_consume_throttle("community_pr_reviews", slot_id=slot_id, now_override_ms=current_ms):
+                break
+            consumed, _ = self.state_store.consume_throttle("community_pr_reviews", slot_id=slot_id, now_override_ms=current_ms)
+            if not consumed:
+                break
+
+            pr_url = str(live_pr.get("url") or github_url or f"https://github.com/{repo}/pull/{number}").strip()
+            ci_state = normalize_ci_state(live_pr.get("ci_state") or live_pr.get("statusCheckRollup"))
+            updated_at = str(live_pr.get("updated_at") or live_pr.get("updatedAt") or "").strip() or None
+            linear_identifier = str(linear_issue.get("identifier") or "").strip() or None
+            linear_url = str(linear_issue.get("url") or "").strip() or None
+
+            dispatched_targets.add(pr_key)
+            review_res = self.execution_coordinator.execute_dispatch(
+                kind="community_pr_blind_review",
+                is_automated_pr=False,
+                state_key=pr_key,
+                repo=repo,
+                number=number,
+                subject_kind="PullRequest",
+                head_sha=head_sha,
+                ci_state=ci_state,
+                updated_at=updated_at,
+                trigger_reason="community_pr_blind_review",
+                community_auto_merge_eligible=True,
+                linear_issue_id=linear_id,
+                linear_issue_identifier=linear_identifier,
+                linear_issue_url=linear_url,
+                github_url=pr_url,
+                defer_watermark_commit=True,
+                now_override_ms=now_override_ms,
+            )
+            if not review_res.get("task_succeeded"):
+                results.append({
+                    "key": pr_key,
+                    "repo": repo,
+                    "number": number,
+                    "head_sha": head_sha,
+                    "agent": "traya",
+                    "model_family": MODEL_FAMILY_BY_AGENT["traya"],
+                    "verdict": None,
+                    "posted": False,
+                    "linear_issue_id": linear_id,
+                    "linear_issue_identifier": linear_identifier,
+                    "linear_issue_url": linear_url,
+                    "dispatch": review_res,
+                })
+                continue
+            with self._deferred_dispatch_guard(review_res, now_override_ms=now_override_ms):
+                verdict, findings, polish = parse_blind_review_reply(str(review_res.get("reply_text") or ""))
+                summary_parts: list[str] = []
+                if findings:
+                    summary_parts.append(f"FINDINGS: {findings}")
+                if polish:
+                    summary_parts.append(f"POLISH: {polish}")
+                verdict_summary = "\n".join(summary_parts)
+                posted = False
+                try:
+                    self.linear_client.post_blind_review_verdict(
+                        linear_id,
+                        agent="traya",
+                        model_family=MODEL_FAMILY_BY_AGENT["traya"],
+                        head_sha=head_sha,
+                        verdict=verdict,
+                        summary=verdict_summary,
+                    )
+                    posted = True
+                except Exception as exc:
+                    sys.stderr.write(f"moltis-github-companion traya-verdict-post warning ({pr_key} / {linear_id}): {exc}\n")
+                    self.execution_coordinator.fail_deferred_dispatch(
+                        review_res,
+                        failure_reason=f"linear_blind_verdict_post_failed: {exc}",
+                        now_override_ms=now_override_ms,
+                    )
+                else:
+                    self.execution_coordinator.commit_deferred_dispatch(review_res, now_override_ms=now_override_ms)
+            results.append({
+                "key": pr_key,
+                "repo": repo,
+                "number": number,
+                "head_sha": head_sha,
+                "agent": "traya",
+                "model_family": MODEL_FAMILY_BY_AGENT["traya"],
+                "verdict": verdict,
+                "findings": findings,
+                "polish": polish,
+                "posted": posted,
+                "linear_issue_id": linear_id,
+                "linear_issue_identifier": linear_identifier,
+                "linear_issue_url": linear_url,
+                "dispatch": review_res,
+            })
+        return results
+
     def run_cycle(self, *, run_sweeps_if_due: bool = True, now_override_ms: int | None = None) -> dict:
         if self.matrix_client is not None:
             with contextlib.suppress(Exception):
@@ -2954,12 +6749,30 @@ class GithubCompanionRunner:
         poll_result = self.poller.poll_once(now_override_ms=now_override_ms)
         dismissed_threads: list[str] = list(poll_result.get("dismissed_threads") or [])
         if self.read_only_trial:
-            return {"status": "ok", "recovery": {"status": "read_only_trial", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None}
+            return {"status": "ok", "recovery": {"status": "read_only_trial", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": [], "linear_todo_reconciliations": []}
         if self._is_coordinator_busy():
-            return {"status": "turn_in_progress", "recovery": {"status": "busy", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None}
+            return {"status": "turn_in_progress", "recovery": {"status": "busy", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": [], "linear_todo_reconciliations": []}
 
         recovery = self.execution_coordinator.recover_active_dispatch(now_override_ms=now_override_ms)
+        if not recovery.get("can_dispatch", True):
+            return {
+                "status": str(recovery.get("status") or "recovery_deferred"),
+                "recovery": recovery,
+                "poll_result": poll_result,
+                "targeted_dispatches": [],
+                "dismissed_threads": dismissed_threads,
+                "sweep_dispatch": None,
+                "linear_triage_stubs": [],
+                "linear_promoted_todos": [],
+                "linear_synced_closed": [],
+                "signoff_notifications": [],
+                "linear_pr_actions": [],
+                "needs_decision_notifications": [],
+                "traya_blind_reviews": [],
+                "linear_todo_reconciliations": [],
+            }
         current_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
+        slot_id = compute_throttle_slot_id(current_ms, self.state_store.agent_name)
         targeted_dispatches: list[dict] = []
         dispatched_targets: set[str] = set()
         threads = _as_dict(self.state_store.read_state().get("threads"))
@@ -3023,6 +6836,12 @@ class GithubCompanionRunner:
                 stamp_ms=current_ms,
             )
 
+        signoff_notifications = self._send_do_not_merge_signoff_pings(
+            poll_result.get("signoff_ready_prs") or [],
+            current_ms=current_ms,
+        )
+
+        linear_promoted_todos: list[dict] = []
         for cand in poll_result.get("team_label_candidates") or []:
             if not isinstance(cand, dict):
                 continue
@@ -3035,8 +6854,13 @@ class GithubCompanionRunner:
             cand_entry = _as_dict(self.state_store.get_thread_state(cand_key))
             if _safe_int(cand_entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
                 continue
+            use_timeline = "team:merge" in cand_labels
             try:
-                events = self.gh_client.fetch_issue_events(cand_repo, cand_num)
+                events = (
+                    self.gh_client.fetch_issue_timeline(cand_repo, cand_num)
+                    if use_timeline
+                    else self.gh_client.fetch_issue_events(cand_repo, cand_num)
+                )
             except Exception as exc:
                 sys.stderr.write(f"moltis-github-companion label-events warning ({cand_key}): {exc}\n")
                 continue
@@ -3055,9 +6879,28 @@ class GithubCompanionRunner:
                 break
             if not verified_label:
                 continue
+            cand_kind = str(cand.get("kind") or cand.get("subject_type") or "PullRequest")
+            if self.linear_client is not None and verified_label == "team:implement" and cand_kind.strip().lower() == "issue":
+                promoted = self._promote_team_implement_issue_to_linear(
+                    cand=cand,
+                    cand_key=cand_key,
+                    verified_event_key=verified_event_key,
+                    current_ms=current_ms,
+                )
+                if promoted is not None:
+                    linear_promoted_todos.append(promoted)
+                continue
             cand_head_sha = str(cand.get("head_sha") or "").strip() or None
             triaged_sha = str(cand.get("triaged_head_sha") or cand_entry.get("triaged_head_sha") or "").strip() or None
-            sha_changed = bool(verified_label == "team:merge" and triaged_sha and cand_head_sha and triaged_sha != cand_head_sha)
+            if verified_label == "team:merge":
+                timeline_ver = verify_team_merge_timeline(events, cand_head_sha)
+                sha_changed = bool(
+                    timeline_ver is None
+                    or not cand_head_sha
+                    or (triaged_sha and triaged_sha != cand_head_sha)
+                )
+            else:
+                sha_changed = False
             dispatched_targets.add(cand_key)
             targeted_dispatches.append(
                 self.execution_coordinator.execute_dispatch(
@@ -3067,7 +6910,7 @@ class GithubCompanionRunner:
                     state_key=cand_key,
                     repo=cand_repo,
                     number=cand_num,
-                    subject_kind=str(cand.get("kind") or cand.get("subject_type") or "PullRequest"),
+                    subject_kind=cand_kind,
                     head_sha=cand_head_sha,
                     ci_state=str(cand.get("ci_state") or "") or None,
                     updated_at=str(cand.get("updated_at") or "") or None,
@@ -3081,8 +6924,24 @@ class GithubCompanionRunner:
                 )
             )
 
+        open_prs_by_key: dict[str, dict] = {}
+        for raw_open_pr in poll_result.get("open_pull_requests") or ():
+            if not isinstance(raw_open_pr, dict):
+                continue
+            pk = str(raw_open_pr.get("pr_key") or "").strip().lower()
+            if not pk:
+                r_name, r_num = str(raw_open_pr.get("repo") or "").strip(), _safe_int(raw_open_pr.get("number"), 0)
+                if r_name and r_num > 0:
+                    pk = make_pr_key(r_name, r_num)
+            if pk:
+                open_prs_by_key[pk] = raw_open_pr
+
+        community_actionable_prs: list[dict] = []
         for pr_item in poll_result.get("actionable_prs") or []:
             if not isinstance(pr_item, dict):
+                continue
+            if self.linear_client is not None and bool(pr_item.get("is_community")):
+                community_actionable_prs.append(pr_item)
                 continue
             pr_key = str(pr_item.get("key") or "").strip()
             pr_entry = _as_dict(self.state_store.get_thread_state(pr_key))
@@ -3095,23 +6954,104 @@ class GithubCompanionRunner:
             pr_dispatch_kind = str(pr_item.get("dispatch_kind") or "targeted")
             targeted_dispatches.append(self.execution_coordinator.execute_dispatch(kind=pr_dispatch_kind, is_automated_pr=bool(pr_item.get("is_automated_pr") or pr_entry.get("is_automated_pr")), thread_id=str(pr_item.get("thread_id") or "").strip() or None, state_key=pr_key, repo=str(pr_item.get("repo") or ""), number=_safe_int(pr_item.get("number"), 0) or None, subject_kind="PullRequest", head_sha=str(pr_item.get("head_sha") or "") or None, ci_state=str(pr_item.get("ci_state") or "") or None, updated_at=str(pr_item.get("updated_at") or "") or None, trigger_reason=trig_reason, community_auto_merge_eligible=pr_item.get("community_auto_merge_eligible"), triaged_head_sha=str(pr_entry.get("triaged_head_sha") or "") or None, now_override_ms=now_override_ms))
 
-        for issue_item in poll_result.get("actionable_issues") or []:
-            if not isinstance(issue_item, dict):
-                continue
-            issue_key = str(issue_item.get("key") or "").strip()
-            issue_entry = _as_dict(self.state_store.get_thread_state(issue_key))
-            if not issue_key or issue_key in dispatched_targets or _safe_int(issue_entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
-                continue
-            dispatched_targets.add(issue_key)
-            targeted_dispatches.append(self.execution_coordinator.execute_dispatch(kind=str(issue_item.get("dispatch_kind") or "community_triage"), is_automated_pr=False, state_key=issue_key, repo=str(issue_item.get("repo") or ""), number=_safe_int(issue_item.get("number"), 0) or None, subject_kind="Issue", updated_at=str(issue_item.get("updated_at") or "") or None, trigger_reason=str(issue_item.get("trigger_reason") or "community_triage"), now_override_ms=now_override_ms))
+        linear_todo_reconciliations: list[dict] = []
+        if self.linear_client is not None:
+            linear_todo_reconciliations = self._reconcile_pending_linear_todo_claims(current_ms=current_ms)
+
+        linear_triage_stubs = self._create_linear_triage_stubs(
+            poll_result.get("actionable_issues") or [],
+            slot_id=slot_id,
+            current_ms=current_ms,
+        )
+
+        linear_synced_closed: list[dict] = []
+        linear_pr_actions: list[dict] = []
+        needs_decision_notifications: list[dict] = []
+        traya_blind_reviews: list[dict] = []
+        if self.linear_client is not None and self.state_store.agent_name in SWEEP_AGENT_ORDER:
+            active_linear_issues = self._poll_active_linear_issues()
+            remaining_linear_issues: list[dict] = []
+            if active_linear_issues:
+                linear_synced_closed = self._sync_closed_github_items_to_linear(
+                    active_linear_issues,
+                    poll_result=poll_result,
+                    current_ms=current_ms,
+                )
+                synced_closed_ids = {
+                    str(item.get("linear_issue_id") or "").strip()
+                    for item in linear_synced_closed
+                    if str(item.get("linear_issue_id") or "").strip()
+                }
+                remaining_linear_issues = [
+                    issue
+                    for issue in active_linear_issues
+                    if str(issue.get("id") or "").strip() not in synced_closed_ids
+                ]
+            pr_pipeline = self._process_linear_community_prs(
+                community_actionable_prs,
+                active_linear_issues=remaining_linear_issues,
+                open_prs_by_key=open_prs_by_key,
+                slot_id=slot_id,
+                dispatched_targets=dispatched_targets,
+                current_ms=current_ms,
+                now_override_ms=now_override_ms,
+            )
+            targeted_dispatches.extend(pr_pipeline["dispatches"])
+            linear_pr_actions.extend(pr_pipeline["linear_pr_actions"])
+            needs_decision_notifications.extend(pr_pipeline["needs_decision_notifications"])
+            if remaining_linear_issues:
+                targeted_dispatches.extend(
+                    self._dispatch_linear_triage_research(
+                        remaining_linear_issues,
+                        slot_id=slot_id,
+                        dispatched_targets=dispatched_targets,
+                        current_ms=current_ms,
+                        now_override_ms=now_override_ms,
+                    )
+                )
+                targeted_dispatches.extend(
+                    self._dispatch_linear_todo_implementations(
+                        remaining_linear_issues,
+                        slot_id=slot_id,
+                        dispatched_targets=dispatched_targets,
+                        current_ms=current_ms,
+                        now_override_ms=now_override_ms,
+                    )
+                )
+        elif self.linear_client is not None and self.state_store.agent_name == "traya" and poll_result.get("open_prs_poll_error") is None:
+            traya_blind_reviews = self._run_traya_blind_pr_reviews(
+                open_prs_by_key=open_prs_by_key,
+                slot_id=slot_id,
+                dispatched_targets=dispatched_targets,
+                current_ms=current_ms,
+                now_override_ms=now_override_ms,
+            )
+            for traya_item in traya_blind_reviews:
+                if isinstance(traya_item.get("dispatch"), dict):
+                    targeted_dispatches.append(traya_item["dispatch"])
 
         sweep_dispatch: dict | None = None
-        if run_sweeps_if_due:
+        if run_sweeps_if_due and not any(d.get("verification_deferred") for d in targeted_dispatches):
             weekly_due, today_str = self.is_weekly_sweep_due(now_override_ms=now_override_ms)
             if weekly_due or self.is_reconcile_sweep_due(now_override_ms=now_override_ms):
                 sweep_dispatch = self.execution_coordinator.execute_dispatch(kind="weekly_sweep" if weekly_due else "reconcile_sweep", sweep_date=today_str if weekly_due else None, now_override_ms=now_override_ms)
 
-        return {"status": "ok", "recovery": recovery, "poll_result": poll_result, "targeted_dispatches": targeted_dispatches, "dismissed_threads": dismissed_threads, "sweep_dispatch": sweep_dispatch}
+        return {
+            "status": "ok",
+            "recovery": recovery,
+            "poll_result": poll_result,
+            "targeted_dispatches": targeted_dispatches,
+            "dismissed_threads": dismissed_threads,
+            "sweep_dispatch": sweep_dispatch,
+            "linear_triage_stubs": linear_triage_stubs,
+            "linear_promoted_todos": linear_promoted_todos,
+            "linear_synced_closed": linear_synced_closed,
+            "signoff_notifications": signoff_notifications,
+            "linear_pr_actions": linear_pr_actions,
+            "needs_decision_notifications": needs_decision_notifications,
+            "traya_blind_reviews": traya_blind_reviews,
+            "linear_todo_reconciliations": linear_todo_reconciliations,
+        }
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -3139,6 +7079,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--community-auto-merge-max-files", default=os.environ.get("MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_FILES", ""))
     parser.add_argument("--community-auto-merge-excluded-repos", default=os.environ.get("MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS", ""))
     parser.add_argument("--read-only-trial", action="store_true", default=os.environ.get("MOLTIS_GITHUB_COMPANION_READ_ONLY_TRIAL", "").strip() in ("1", "true", "yes"))
+    parser.add_argument("--reprocess-community", action="store_true")
     parser.add_argument("--once", action="store_true")
     return parser
 
@@ -3176,7 +7117,9 @@ def resolve_runtime_config(args: argparse.Namespace) -> dict:
         "community_auto_merge_max_lines": cam_cfg["max_lines"],
         "community_auto_merge_max_files": cam_cfg["max_files"],
         "community_auto_merge_excluded_repos": cam_cfg["excluded_repos"],
-        "read_only_trial": bool(getattr(args, "read_only_trial", False)), "once": bool(getattr(args, "once", False)),
+        "read_only_trial": bool(getattr(args, "read_only_trial", False)),
+        "reprocess_community": bool(getattr(args, "reprocess_community", False)),
+        "once": bool(getattr(args, "once", False)),
     }
 
 
@@ -3191,6 +7134,10 @@ def main(argv: list[str] | None = None) -> int:
         community_auto_merge_max_files=cfg["community_auto_merge_max_files"],
         community_auto_merge_excluded_repos=cfg["community_auto_merge_excluded_repos"],
     )
+    if cfg["reprocess_community"]:
+        reset_count = store.reprocess_community_entries()
+        print(json.dumps({"status": "ok", "agent_name": cfg["agent_name"], "reset_count": reset_count}, sort_keys=True))
+        return 0
     gh_client = GhApiSafeClient(gh_api_safe_bin=cfg["gh_api_safe_bin"])
     has_matrix_creds = bool(cfg["password_path"] or os.environ.get("MATRIX" + "_PASSWORD", "").strip())
     matrix_client = MatrixClient(homeserver_url=cfg["homeserver_url"], self_user_id=cfg["self_user_id"], agent_name=cfg["agent_name"], room_id=cfg["room_id"], password_path=cfg["password_path"], state_store=store) if has_matrix_creds else None
@@ -3200,8 +7147,9 @@ def main(argv: list[str] | None = None) -> int:
     rpc_client = MoltisRpcClient(rpc_url=cfg["rpc_url"])
     poller = NotificationPoller(state_store=store, gh_client=gh_client, read_only_trial=cfg["read_only_trial"])
     trust_filter = TrustFilterAndSnapshotBuilder(state_store=store, gh_client=gh_client, matrix_client=matrix_client, telegram_client=telegram_client, agent_name=cfg["agent_name"])
-    execution_coordinator = LocalExecutionCoordinator(state_store=store, rpc_client=rpc_client, data_dir=cfg["data_dir"], agent_name=cfg["agent_name"], agent_display_name=cfg["agent_display_name"], main_model=cfg["main_model"], review_model=cfg["review_model"], matrix_client=matrix_client, telegram_client=telegram_client, room_id=cfg["room_id"], schedule_dow=cfg["schedule_dow"], schedule_day_name=cfg["schedule_day_name"])
-    runner = GithubCompanionRunner(state_store=store, gh_client=gh_client, poller=poller, trust_filter=trust_filter, execution_coordinator=execution_coordinator, matrix_client=matrix_client, read_only_trial=cfg["read_only_trial"])
+    linear_client = linear_sync.LinearSyncClient.from_env()
+    execution_coordinator = LocalExecutionCoordinator(state_store=store, rpc_client=rpc_client, data_dir=cfg["data_dir"], agent_name=cfg["agent_name"], agent_display_name=cfg["agent_display_name"], main_model=cfg["main_model"], review_model=cfg["review_model"], matrix_client=matrix_client, telegram_client=telegram_client, room_id=cfg["room_id"], schedule_dow=cfg["schedule_dow"], schedule_day_name=cfg["schedule_day_name"], linear_client=linear_client)
+    runner = GithubCompanionRunner(state_store=store, gh_client=gh_client, poller=poller, trust_filter=trust_filter, execution_coordinator=execution_coordinator, matrix_client=matrix_client, read_only_trial=cfg["read_only_trial"], linear_client=linear_client)
     if cfg["once"]:
         poller.wait_until_due()
         runner.run_cycle()

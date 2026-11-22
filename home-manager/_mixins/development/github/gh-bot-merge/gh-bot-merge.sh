@@ -31,6 +31,8 @@ POLICY
     Before any mutation, gh-bot-merge reads the pull request metadata and
     verifies that:
       * state is OPEN and isDraft is false
+      * the pull request does not carry the team:do-not-merge label
+        (case-insensitive; blocks automated merge for every author class)
       * isCrossRepository is false and headRepositoryOwner.login matches the
         base repository owner (fork pull requests are never merged)
       * mergeable is MERGEABLE
@@ -302,14 +304,17 @@ def is_sensitive_community_path:
         or ($base | test("\\.gemspec$")))
     end;
 
+def has_do_not_merge_label:
+  any((.labels // [])[]; ((.name // "") | ascii_downcase) == "team:do-not-merge");
+
 def is_community_small($owner; $repo):
   (is_dependabot | not)
   and (is_github_actions | not)
   and (is_freshener($owner; $repo) | not)
   and (is_trusted_peer($owner; $repo) | not)
   and ((($owner | ascii_downcase) == "wimpysworld" and ($repo | ascii_downcase) == "nix-config") | not)
-  and (((.additions // 0) + (.deletions // 0)) <= 250)
-  and (((.changedFiles // ((.files // []) | length)) <= 10) and (((.files // []) | length) > 0))
+  and (((.additions // 0) + (.deletions // 0)) <= 150)
+  and (((.changedFiles // ((.files // []) | length)) <= 5) and (((.files // []) | length) > 0))
   and (all(
     (.files // [])[];
     ((((.changeType // "") | ascii_upcase) == "RENAMED" and ((.previousPath // "") == "")) | not)
@@ -339,6 +344,8 @@ elif ((.headRefOid | type) != "string") or ((.headRefOid | length) == 0) then
   "ERR\u001fpull request #" + $pr_number + " has no headRefOid"
 elif ((.changedFiles // ((.files // []) | length)) > ((.files // []) | length)) then
   "ERR\u001fpull request #" + $pr_number + " changed file list is incomplete (changedFiles=" + (.changedFiles | tostring) + ", files=" + (((.files // []) | length) | tostring) + ")"
+elif has_do_not_merge_label then
+  "ERR\u001fpull request #" + $pr_number + " carries the team:do-not-merge label"
 else
   (
     if is_dependabot then "dependabot"

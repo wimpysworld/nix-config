@@ -975,9 +975,13 @@ let
     stateDir = "${stateDir}/github-companion-${agentName}";
     rpcUrl = "https://127.0.0.1:13131/api/rpc";
     communityAutoMergeEnabled = true;
-    communityAutoMergeMaxLines = 250;
-    communityAutoMergeMaxFiles = 10;
+    communityAutoMergeMaxLines = 150;
+    communityAutoMergeMaxFiles = 5;
     communityAutoMergeExcludedRepos = [ "wimpysworld/nix-config" ];
+    linearClientIdPath = config.sops.secrets.MOLTIS_LINEAR_CLIENT_ID.path;
+    linearClientSecretPath = config.sops.secrets.MOLTIS_LINEAR_CLIENT_SECRET.path;
+    linearTokenCacheDir = "${stateDir}/linear-${agentName}";
+    linearTeamKey = "WW";
   };
 
   moltisMatrixCouncilHook = pkgs.writeScript "moltis-matrix-council-hook" ''

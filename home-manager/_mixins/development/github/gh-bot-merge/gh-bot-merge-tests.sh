@@ -308,7 +308,7 @@ assert_pr_rejected() {
 # 1. --help and CLI argument checks
 reset_stub
 run_helper --help
-if [[ ${status} -ne 0 || ${stdout} != *"USAGE"* || ${stdout} != *"trusted-peer"* || $(call_count) -ne 0 ]]; then
+if [[ ${status} -ne 0 || ${stdout} != *"USAGE"* || ${stdout} != *"trusted-peer"* || ${stdout} != *"team:do-not-merge"* || $(call_count) -ne 0 ]]; then
 	fail '--help prints usage and exits 0' "status=${status}"
 else
 	pass '--help prints usage and exits 0'
@@ -890,6 +890,62 @@ if [[ ${status} -ne 64 ]]; then
 else
 	pass 'reject community PR with action_required workflow run'
 fi
+
+# 10. team:do-not-merge label rejections across author classes and casing
+url_tailor='https://github.com/wimpysworld/tailor/pull/42'
+
+for dnm_label in 'team:do-not-merge' 'TEAM:DO-NOT-MERGE'; do
+	reset_stub
+	write_pr_json wimpysworld 'app/dependabot' 'dependabot/nix/nixpkgs-3ec6363' \
+		".labels += [{name: \"${dnm_label}\"}]"
+	assert_pr_rejected "reject dependabot PR carrying ${dnm_label}" "${url_ww}" 'carries the team:do-not-merge label'
+done
+
+for dnm_label in 'team:do-not-merge' 'TEAM:DO-NOT-MERGE'; do
+	reset_stub
+	write_pr_json wimpysworld 'sith-skrye' 'fix/do-not-merge' \
+		".labels = [{name: \"${dnm_label}\"}] | .files = [{path: \"src/main.rs\"}]"
+	GH_STUB_VIEWER=sith-zannah assert_pr_rejected \
+		"reject trusted-peer PR carrying ${dnm_label}" "${url_ww}" 'carries the team:do-not-merge label'
+done
+
+for dnm_label in 'team:do-not-merge' 'TEAM:DO-NOT-MERGE'; do
+	reset_stub
+	write_pr_json wimpysworld 'community-dev' 'small-dnm' \
+		".isCrossRepository = true | .headRepositoryOwner.login = \"community-dev\" | .additions = 10 | .deletions = 2 | .changedFiles = 1 | .labels = [{name: \"${dnm_label}\"}] | .files = [{path: \"README.md\"}]"
+	assert_pr_rejected "reject small community PR carrying ${dnm_label}" "${url_tailor}" 'carries the team:do-not-merge label'
+done
+
+for dnm_label in 'team:do-not-merge' 'TEAM:DO-NOT-MERGE'; do
+	reset_stub
+	write_pr_json wimpysworld 'community-dev' 'merge-and-dnm' \
+		".isCrossRepository = true | .headRepositoryOwner.login = \"community-dev\" | .additions = 400 | .deletions = 50 | .changedFiles = 1 | .labels = [{name: \"team:merge\"}, {name: \"${dnm_label}\"}] | .files = [{path: \"README.md\"}]"
+	cat >"${state_dir}/issue-timeline.json" <<EOF
+[{"event":"committed","sha":"${DEFAULT_HEAD_OID}"},{"event":"labeled","label":{"name":"team:merge"},"actor":{"login":"flexiondotorg"}}]
+EOF
+	assert_pr_rejected "reject community PR carrying both team:merge and ${dnm_label}" "${url_tailor}" 'carries the team:do-not-merge label'
+done
+
+# 11. Lane A community size and file-count boundaries (150 lines / 5 files)
+reset_stub
+write_pr_json wimpysworld 'community-dev' 'lane-a-at-limit' \
+	'.isCrossRepository = true | .headRepositoryOwner.login = "community-dev" | .additions = 100 | .deletions = 50 | .changedFiles = 5 | .files = [{path: "docs/1.md"}, {path: "docs/2.md"}, {path: "docs/3.md"}, {path: "docs/4.md"}, {path: "docs/5.md"}]'
+run_helper --dry-run "${url_tailor}"
+if [[ ${status} -ne 0 || ${stdout} != *"class=community"* ]]; then
+	fail 'accept community PR at 150 lines and 5 files' "status ${status} stdout=${stdout} stderr=${stderr}"
+else
+	pass 'accept community PR at 150 lines and 5 files'
+fi
+
+reset_stub
+write_pr_json wimpysworld 'community-dev' 'lane-a-over-lines' \
+	'.isCrossRepository = true | .headRepositoryOwner.login = "community-dev" | .additions = 101 | .deletions = 50 | .changedFiles = 5 | .files = [{path: "docs/1.md"}, {path: "docs/2.md"}, {path: "docs/3.md"}, {path: "docs/4.md"}, {path: "docs/5.md"}]'
+assert_pr_rejected 'reject community PR with 151 lines' "${url_tailor}" 'does not match'
+
+reset_stub
+write_pr_json wimpysworld 'community-dev' 'lane-a-over-files' \
+	'.isCrossRepository = true | .headRepositoryOwner.login = "community-dev" | .additions = 6 | .deletions = 0 | .changedFiles = 6 | .files = [{path: "docs/1.md"}, {path: "docs/2.md"}, {path: "docs/3.md"}, {path: "docs/4.md"}, {path: "docs/5.md"}, {path: "docs/6.md"}]'
+assert_pr_rejected 'reject community PR with 6 files' "${url_tailor}" 'does not match'
 
 printf '%s: %s passed, %s failed\n' \
 	"$([[ ${failures} -eq 0 ]] && printf PASS || printf FAIL)" \
