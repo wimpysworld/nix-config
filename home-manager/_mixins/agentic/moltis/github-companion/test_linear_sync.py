@@ -651,6 +651,7 @@ class LinearSyncTestBase(unittest.TestCase):
         team_key: str = linear_sync.DEFAULT_TEAM_KEY,
         project_name: str = linear_sync.DEFAULT_PROJECT_NAME,
         timeout: float = linear_sync.DEFAULT_TIMEOUT_SECS,
+        marker_index_ttl_secs: float = linear_sync.DEFAULT_MARKER_INDEX_TTL_SECS,
         api_url: str | None = None,
     ) -> linear_sync.LinearSyncClient:
         return linear_sync.LinearSyncClient(
@@ -661,6 +662,7 @@ class LinearSyncTestBase(unittest.TestCase):
             project_name=project_name,
             api_url=api_url or self.httpd.graphql_url,
             timeout=timeout,
+            marker_index_ttl_secs=marker_index_ttl_secs,
             linear_token_module=linear_token,
         )
 
@@ -1238,6 +1240,116 @@ class IssueSyncPaginationAndVerdictTests(LinearSyncTestBase):
             missing_project_client.find_issue_by_github_url("https://github.com/wimpysworld/nix-config/issues/404")
         )
         self.assertEqual(len(self.httpd.requests_for("projectCreate")), 0)
+
+    def test_project_marker_index_caches_across_attachment_misses_and_refreshes_on_ttl_expiry(self) -> None:
+        for bad_ttl in (-1, -0.1, True, False, float("inf"), float("nan")):
+            with self.subTest(marker_index_ttl_secs=bad_ttl), self.assertRaises(ValueError):
+                self.make_client(marker_index_ttl_secs=bad_ttl)
+
+        orphan_one_url = "https://github.com/wimpysworld/nix-config/issues/201"
+        orphan_two_url = "https://github.com/wimpysworld/nix-config/pull/202"
+        archived_url = "https://github.com/wimpysworld/nix-config/issues/203"
+        new_one_url = "https://github.com/wimpysworld/nix-config/issues/204"
+        new_two_url = "https://github.com/wimpysworld/nix-config/issues/205"
+        retry_url = "https://github.com/wimpysworld/nix-config/issues/206"
+        late_orphan_url = "https://github.com/wimpysworld/nix-config/issues/207"
+
+        # Seed a multi-page project with distractors, two orphans on separate pages, and one archived orphan.
+        self.httpd.add_issue(issue_id="issue-plain-1", title="Unmarked 1", description="No marker")
+        self.httpd.add_issue(
+            issue_id="issue-orphan-1",
+            title="Orphan 1",
+            description=linear_sync.format_issue_description_with_github_url("Orphan one body", orphan_one_url),
+        )
+        self.httpd.add_issue(issue_id="issue-plain-2", title="Unmarked 2", description="No marker")
+        self.httpd.add_issue(
+            issue_id="issue-archived",
+            title="Archived orphan",
+            description=linear_sync.format_github_url_marker(archived_url),
+            archived_at="2026-10-01T00:00:00.000Z",
+        )
+        self.httpd.add_issue(
+            issue_id="issue-orphan-2",
+            title="Orphan 2",
+            description=linear_sync.format_issue_description_with_github_url("Orphan two body", orphan_two_url),
+        )
+        self.httpd.issues_page_size = 2
+
+        clock = {"now": 1000.0}
+        with patch.object(linear_sync.time, "monotonic", side_effect=lambda: clock["now"]):
+            client = self.make_client(marker_index_ttl_secs=300.0)
+
+            # First attachment miss performs one full paginated project scan (4 non-archived issues -> 2 pages).
+            created_one = client.ensure_issue_for_github_item(
+                github_url=new_one_url,
+                title="New issue 204",
+            )
+            scan_query_count = len(self.httpd.requests_for("issues"))
+            self.assertEqual(scan_query_count, 2)
+
+            # Subsequent attachment misses for another new item, both orphans, and an archived item perform ZERO extra scans.
+            created_two = client.ensure_issue_for_github_item(
+                github_url=new_two_url,
+                title="New issue 205",
+            )
+            self.assertNotEqual(created_one["id"], created_two["id"])
+            self.assertEqual(len(self.httpd.requests_for("issues")), scan_query_count)
+
+            reconciled_orphan_one = client.ensure_issue_for_github_item(
+                github_url=orphan_one_url,
+                title="Must reconcile orphan 1 without creating duplicate",
+            )
+            self.assertEqual(reconciled_orphan_one["id"], "issue-orphan-1")
+            self.assertEqual(len(self.httpd.requests_for("issues")), scan_query_count)
+            self.assertEqual(len(self.httpd.requests_for("issueCreate")), 2)
+
+            found_orphan_two = client.find_issue_by_github_url(orphan_two_url)
+            assert found_orphan_two is not None
+            self.assertEqual(found_orphan_two["id"], "issue-orphan-2")
+            self.assertIsNone(client.find_issue_by_github_url(archived_url))
+            self.assertEqual(len(self.httpd.requests_for("issues")), scan_query_count)
+
+            # A failed attachment after issueCreate keeps the newly created issue in the cached index so a same-client retry reconciles it without rescanning or duplicating.
+            fail_once = {"remaining": 1}
+
+            def fail_attachment_once(handler: MockLinearGraphQLHandler, record: dict[str, object]) -> bool:
+                if record["operation"] == "attachmentCreate" and fail_once["remaining"] > 0:
+                    fail_once["remaining"] -= 1
+                    handler._send_json(503, {"errors": [{"message": "Transient attachment outage"}]})
+                    return True
+                return False
+
+            self.httpd.custom_handler = fail_attachment_once
+            with self.assertRaises(linear_sync.LinearAPIError):
+                client.ensure_issue_for_github_item(
+                    github_url=retry_url,
+                    title="Retry issue 206",
+                )
+            self.assertEqual(len(self.httpd.requests_for("issueCreate")), 3)
+            self.assertEqual(len(self.httpd.requests_for("issues")), scan_query_count)
+
+            reconciled_retry = client.ensure_issue_for_github_item(
+                github_url=retry_url,
+                title="Retry must reuse cached newly created issue",
+            )
+            self.assertEqual(reconciled_retry["id"], self.httpd.issue_order[-1])
+            self.assertEqual(len(self.httpd.requests_for("issueCreate")), 3)
+            self.assertEqual(len(self.httpd.requests_for("issues")), scan_query_count)
+
+            # Once the cache TTL expires (e.g. next daemon poll slot), a new attachment miss rescans and discovers externally created orphans.
+            self.httpd.add_issue(
+                issue_id="issue-late-orphan",
+                title="Externally created orphan",
+                description=linear_sync.format_github_url_marker(late_orphan_url),
+            )
+            self.assertIsNone(client.find_issue_by_github_url(late_orphan_url))
+            self.assertEqual(len(self.httpd.requests_for("issues")), scan_query_count)
+
+            clock["now"] += 301.0
+            found_late_orphan = client.find_issue_by_github_url(late_orphan_url)
+            assert found_late_orphan is not None
+            self.assertEqual(found_late_orphan["id"], "issue-late-orphan")
+            self.assertGreater(len(self.httpd.requests_for("issues")), scan_query_count)
 
     def test_update_issue_fields_and_label_add_remove(self) -> None:
         client = self.make_client()

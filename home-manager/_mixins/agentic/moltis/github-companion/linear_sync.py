@@ -33,6 +33,7 @@ WORKFLOW_LABELS = (
     "needs-decision",
 )
 DEFAULT_TIMEOUT_SECS = 20.0
+DEFAULT_MARKER_INDEX_TTL_SECS = 300.0
 MAX_RESPONSE_BYTES = 4 * 1048576
 BLIND_REVIEW_MARKER_PREFIX = "moltis:blind-review:v1"
 GITHUB_URL_MARKER_PREFIX = "moltis:github-url:v1"
@@ -132,6 +133,12 @@ def _validate_timeout(timeout: float) -> float:
     if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("Timeout must be a positive finite number")
     return float(timeout)
+
+
+def _validate_non_negative_seconds(value: float, *, field_name: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+        raise ValueError(f"{field_name} must be a non-negative finite number")
+    return float(value)
 
 
 def _extract_graphql_errors(raw: bytes) -> tuple[str, list[dict[str, object]]]:
@@ -709,6 +716,7 @@ class LinearSyncClient:
         project_name: str = DEFAULT_PROJECT_NAME,
         api_url: str = DEFAULT_GRAPHQL_URL,
         timeout: float = DEFAULT_TIMEOUT_SECS,
+        marker_index_ttl_secs: float = DEFAULT_MARKER_INDEX_TTL_SECS,
         linear_token_module: ModuleType | None = None,
     ):
         clean_client_id = str(client_id_path or "").strip()
@@ -725,10 +733,16 @@ class LinearSyncClient:
         self.api_url = (api_url or DEFAULT_GRAPHQL_URL).strip()
         _validate_http_url(self.api_url)
         self.timeout = _validate_timeout(timeout)
+        self.marker_index_ttl_secs = _validate_non_negative_seconds(
+            marker_index_ttl_secs,
+            field_name="marker_index_ttl_secs",
+        )
         self._linear_token_module = linear_token_module
 
         self._team_id: str | None = None
         self._project_ids_by_lower_name: dict[str, str] = {}
+        self._project_marker_index_by_project_id: dict[str, dict[str, dict[str, object]]] = {}
+        self._project_marker_index_expires_at: dict[str, float] = {}
         self._states_loaded = False
         self._states_by_canonical: dict[str, dict[str, object]] = {}
         self._states_by_lower_name: dict[str, dict[str, object]] = {}
@@ -1272,17 +1286,21 @@ class LinearSyncClient:
 
         return team_fallback
 
-    def _find_issue_by_description_marker(
+    def _get_project_marker_index(
         self,
-        normalized_url: str,
+        project_id: str,
         team_id: str,
         *,
         page_size: int = 50,
-    ) -> dict[str, object] | None:
-        """Scan non-archived issues in the target project for an exact leading GitHub URL marker."""
-        project_id = self._resolve_existing_project_id()
-        if project_id is None:
-            return None
+    ) -> dict[str, dict[str, object]]:
+        """Return a cached per-project map of normalised GitHub URL markers to non-archived issues."""
+        now = time.monotonic()
+        if (
+            self.marker_index_ttl_secs > 0
+            and project_id in self._project_marker_index_by_project_id
+            and now < self._project_marker_index_expires_at.get(project_id, 0.0)
+        ):
+            return self._project_marker_index_by_project_id[project_id]
 
         issue_filter: dict[str, object] = {
             "team": {"id": {"eq": team_id}},
@@ -1290,6 +1308,7 @@ class LinearSyncClient:
         }
         after: str | None = None
         seen_cursors: set[str] = set()
+        index: dict[str, dict[str, object]] = {}
 
         while True:
             data = self._graphql_request(
@@ -1311,8 +1330,9 @@ class LinearSyncClient:
                     issue_team_id = str(issue_team.get("id") or "").strip() if isinstance(issue_team, dict) else ""
                     if issue_team_id and issue_team_id != team_id:
                         continue
-                    if parse_github_url_marker(issue.get("description")) == normalized_url:
-                        return issue
+                    marker_url = parse_github_url_marker(issue.get("description"))
+                    if marker_url is not None:
+                        index.setdefault(marker_url, issue)
 
             page_info = issues.get("pageInfo") if isinstance(issues, dict) else None
             has_next = bool(page_info.get("hasNextPage")) if isinstance(page_info, dict) else False
@@ -1322,7 +1342,81 @@ class LinearSyncClient:
             seen_cursors.add(end_cursor)
             after = end_cursor
 
-        return None
+        if self.marker_index_ttl_secs > 0:
+            self._project_marker_index_by_project_id[project_id] = index
+            self._project_marker_index_expires_at[project_id] = time.monotonic() + self.marker_index_ttl_secs
+        else:
+            self._project_marker_index_by_project_id.pop(project_id, None)
+            self._project_marker_index_expires_at.pop(project_id, None)
+
+        return index
+
+    def _record_issue_in_marker_index(
+        self,
+        project_id: str,
+        issue: dict[str, object],
+        *,
+        marker_url: str | None = None,
+    ) -> None:
+        """Insert a newly created issue into an already-populated, non-expired project marker index."""
+        if (
+            self.marker_index_ttl_secs <= 0
+            or project_id not in self._project_marker_index_by_project_id
+            or time.monotonic() >= self._project_marker_index_expires_at.get(project_id, 0.0)
+        ):
+            return
+        if issue.get("archivedAt"):
+            return
+        resolved_marker = parse_github_url_marker(issue.get("description")) or marker_url
+        if resolved_marker:
+            self._project_marker_index_by_project_id[project_id][resolved_marker] = issue
+
+    def _sync_updated_issue_in_marker_index(self, updated_issue: dict[str, object]) -> None:
+        """Keep cached project marker indexes aligned when `update_issue` modifies an issue."""
+        if not self._project_marker_index_by_project_id:
+            return
+        issue_id = str(updated_issue.get("id") or "").strip()
+        if not issue_id:
+            return
+        now = time.monotonic()
+        new_marker = parse_github_url_marker(updated_issue.get("description"))
+        issue_project = updated_issue.get("project")
+        issue_project_id = str(issue_project.get("id") or "").strip() if isinstance(issue_project, dict) else ""
+        is_archived = bool(updated_issue.get("archivedAt"))
+
+        for proj_id, index in list(self._project_marker_index_by_project_id.items()):
+            if now >= self._project_marker_index_expires_at.get(proj_id, 0.0):
+                self._project_marker_index_by_project_id.pop(proj_id, None)
+                self._project_marker_index_expires_at.pop(proj_id, None)
+                continue
+            prev_attachments: object = None
+            stale_urls: list[str] = []
+            for url_key, cached in index.items():
+                if str(cached.get("id") or "").strip() == issue_id:
+                    if prev_attachments is None and "attachments" in cached:
+                        prev_attachments = cached["attachments"]
+                    stale_urls.append(url_key)
+            for url_key in stale_urls:
+                index.pop(url_key, None)
+            if not is_archived and proj_id == issue_project_id and new_marker:
+                cached_copy: dict[str, object] = dict(updated_issue)
+                if prev_attachments is not None and "attachments" not in cached_copy:
+                    cached_copy["attachments"] = prev_attachments
+                index[new_marker] = cached_copy
+
+    def _find_issue_by_description_marker(
+        self,
+        normalized_url: str,
+        team_id: str,
+        *,
+        page_size: int = 50,
+    ) -> dict[str, object] | None:
+        """Look up a non-archived project issue by its leading GitHub URL marker using a cached index."""
+        project_id = self._resolve_existing_project_id()
+        if project_id is None:
+            return None
+        marker_index = self._get_project_marker_index(project_id, team_id, page_size=page_size)
+        return marker_index.get(normalized_url)
 
     @staticmethod
     def _issue_has_github_attachment(issue: Mapping[str, object], normalized_url: str) -> bool:
@@ -1429,6 +1523,8 @@ class LinearSyncClient:
                     att_conn = orphaned.get("attachments")
                     if isinstance(att_conn, dict) and isinstance(att_conn.get("nodes"), list):
                         att_conn["nodes"].append(created_attachment)
+                    else:
+                        orphaned["attachments"] = {"nodes": [created_attachment]}
             return orphaned
 
         clean_title = str(title or "").strip()
@@ -1470,7 +1566,9 @@ class LinearSyncClient:
         if not isinstance(create_payload, dict) or not create_payload.get("success") or not issue_id:
             raise LinearAPIError(f"Failed to create Linear issue for {normalized_url}")
 
-        self._attach_github_url(
+        self._record_issue_in_marker_index(project_id, issue, marker_url=normalized_url)
+
+        created_attachment = self._attach_github_url(
             issue_id=issue_id,
             normalized_url=normalized_url,
             resolved_repo=resolved_repo,
@@ -1479,6 +1577,12 @@ class LinearSyncClient:
             attachment_title=attachment_title,
             attachment_subtitle=attachment_subtitle,
         )
+        if created_attachment is not None:
+            att_conn = issue.get("attachments")
+            if isinstance(att_conn, dict) and isinstance(att_conn.get("nodes"), list):
+                att_conn["nodes"].append(created_attachment)
+            else:
+                issue["attachments"] = {"nodes": [created_attachment]}
 
         return issue
 
@@ -1559,6 +1663,7 @@ class LinearSyncClient:
         updated_issue = payload.get("issue") if isinstance(payload, dict) else None
         if not isinstance(payload, dict) or not payload.get("success") or not isinstance(updated_issue, dict):
             raise LinearAPIError(f"Failed to update Linear issue {clean_id!r}")
+        self._sync_updated_issue_in_marker_index(updated_issue)
         return updated_issue
 
     def list_project_issues_by_state(
