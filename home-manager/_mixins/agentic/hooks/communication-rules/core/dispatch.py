@@ -118,6 +118,7 @@ def dispatch(agent: str, event: str, config: Config | None) -> Decision:
             str(
                 payload.get("session_id")
                 or payload.get("sessionID")
+                or payload.get("sessionId")
                 or payload.get("conversationId")
                 or ""
             ),
