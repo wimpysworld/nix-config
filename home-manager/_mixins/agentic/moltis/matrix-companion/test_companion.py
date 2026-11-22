@@ -2366,7 +2366,7 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         )
 
         # 3. >= 5s turn edits its existing progress m.notice in place with context usage,
-        # falling back to agent_name default context window (384k for traya) when chat.context is unavailable.
+        # falling back to agent_name default context window (500k for traya) when chat.context is unavailable.
         self.httpd.context_token_usage = None
         self.httpd.peek_active = True
         self.state_dir = self.root / "state-traya-ctx-edit"
@@ -2451,7 +2451,7 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         self.assertIsNotNone(t_prog_id)
         self.assertEqual(len(self.httpd.messages_sent), 1)
 
-        # Complete turn at 18s with inputTokens fallback in history.jsonl and default 384k window for Traya.
+        # Complete turn at 18s with inputTokens fallback in history.jsonl and default 500k window for Traya.
         self.httpd.peek_active = False
         self.current_time_ms = t_long + 18_000
         self.write_history(
@@ -2468,7 +2468,7 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
                     "role": "assistant",
                     "run_id": "run-traya-long",
                     "content": long_reply,
-                    "inputTokens": 288_000,
+                    "inputTokens": 375_000,
                     "created_at": self.current_time_ms,
                 },
             ],
@@ -2502,7 +2502,7 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         self.assertEqual(t_run["terminal_notice_event_id"], t_prog_id)
         self.assertEqual(
             t_run["terminal_notice_text"],
-            "🏁 Traya finished in 00:18 · 🔴 75% (288k / 384k)",
+            "🏁 Traya finished in 00:18 · 🔴 75% (375k / 500k)",
         )
         self.assertEqual(len(self.httpd.messages_sent), 2)
         t_edit = self.httpd.messages_sent[-1]["body"]
@@ -2512,7 +2512,7 @@ class Gate2ChatPeekProgressAndCompletionTests(CompanionTestBase):
         )
         self.assertEqual(
             t_edit["m.new_content"]["body"],
-            "🏁 Traya finished in 00:18 · 🔴 75% (288k / 384k)",
+            "🏁 Traya finished in 00:18 · 🔴 75% (375k / 500k)",
         )
 
 

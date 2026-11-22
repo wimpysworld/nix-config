@@ -101,7 +101,7 @@ NOTICE_UNVERIFIED_ICON = "⚠️"
 DEFAULT_CONTEXT_WINDOWS: dict[str, int] = {
     "skrye": 1_048_576,
     "zannah": 1_048_576,
-    "traya": 384_000,
+    "traya": 500_000,
 }
 
 SHELL_TOOLS = frozenset({"exec", "process"})

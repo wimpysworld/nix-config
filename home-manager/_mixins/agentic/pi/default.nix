@@ -390,12 +390,6 @@ let
 
     compaction = {
       enabled = true;
-      # The trigger fires when context tokens exceed the model's context
-      # window minus this reserve. The listed OpenAI subscription models use a
-      # deliberate 384,000-token operating window in models.json, so a
-      # 38,400 reserve starts compaction at 345,600 tokens for them, matching
-      # Codex's 90%-of-window trigger. keepRecentTokens stays at its 20,000.
-      reserveTokens = 38400;
       keepRecentTokens = 20000;
     };
     retry = {
@@ -799,9 +793,8 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
     ++ lib.optional fencedEnabled piFencedPackage;
     file = {
       # Register models absent from Pi's bundled catalogue. Overrides alone
-      # cannot add unknown IDs. Context limits are deliberate operating budgets,
-      # not API maxima, and remain subject to subscription entitlements.
-      # Both OpenCode providers use the workspace key on non-cg hosts.
+      # cannot add unknown IDs. Both OpenCode providers use the workspace key
+      # on non-cg hosts.
       ".pi/agent/models.json" = {
         text = builtins.toJSON (
           lib.recursiveUpdate
@@ -887,70 +880,6 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
                   maxTokens = 32768;
                 }
               ];
-              providers."openai-codex".models =
-                map
-                  (model: {
-                    inherit (model) id name;
-                    api = "openai-codex-responses";
-                    baseUrl = "https://chatgpt.com/backend-api";
-                    reasoning = true;
-                    thinkingLevelMap = {
-                      off = null;
-                      minimal = null;
-                      low = "low";
-                      medium = "medium";
-                      high = "high";
-                      xhigh = "xhigh";
-                      max = "max";
-                    };
-                    input = [
-                      "text"
-                      "image"
-                    ];
-                    cost = model.cost // {
-                      cacheWrite = 0;
-                      tiers = [
-                        {
-                          inputTokensAbove = 272000;
-                          input = model.cost.input * 2;
-                          output = model.cost.output * 1.5;
-                          cacheRead = model.cost.cacheRead * 2;
-                          cacheWrite = 0;
-                        }
-                      ];
-                    };
-                    contextWindow = 384000;
-                    maxTokens = 38400;
-                  })
-                  [
-                    {
-                      id = "gpt-6.2-astra";
-                      name = "GPT-6.2 Astra";
-                      cost = {
-                        input = 8;
-                        output = 40;
-                        cacheRead = 0.40;
-                      };
-                    }
-                    {
-                      id = "gpt-6.2-sol";
-                      name = "GPT-6.2 Sol";
-                      cost = {
-                        input = 2;
-                        output = 10;
-                        cacheRead = 0.10;
-                      };
-                    }
-                  ];
-              providers."openai-codex".modelOverrides =
-                lib.genAttrs
-                  [
-                    "gpt-6.1-terra"
-                    "gpt-6-luna"
-                  ]
-                  (_: {
-                    contextWindow = 384000;
-                  });
             }
             (
               lib.optionalAttrs opencodeEnabled {

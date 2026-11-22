@@ -71,9 +71,7 @@ Neon accepts text and images, with a 1,048,576-token context and a 65,536-token 
 
 Neon's input/output/cache-read prices are 3/15/0.15 USD per million tokens. Implicit caching requires the paid Gemini Developer API. The registration does not enable explicit cache writes.
 
-`models.json` also registers GPT-6.2 Astra and Sol through `openai-codex-responses`, using the ChatGPT subscription endpoint. Both support low, medium, high, xhigh and max thinking. Their 384,000-token context and 38,400-token output limits are deliberate operating budgets, not API maxima. The 38,400-token compaction reserve stays unchanged.
-
-The registrations include standard API price estimates and the higher long-context tier above 272,000 input tokens. These estimates do not describe subscription charges. Fast requests cost twice the standard API rate.
+The `openai-codex` models use Pi's built-in catalogue without `models.json` overrides. `gpt-6.2-sol` and `gpt-6.1-terra` have a 500,000-token context window, while `gpt-6.2-astra` and `gpt-6-luna` have a 272,000-token context window. All four models use a 128,000-token `maxTokens` output limit. Compaction uses Pi's default 16,384-token reserve and keeps `keepRecentTokens` at 20,000.
 
 Hydrogen accepts text and images, with a 1,048,576-token context and 65,536-token output limit. Pi exposes its low, medium, and high thinking levels. Pi's Google adapter does not support Hydrogen's extra-high level.
 
