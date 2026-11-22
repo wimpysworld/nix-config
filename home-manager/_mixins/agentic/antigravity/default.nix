@@ -217,8 +217,7 @@ let
       --argjson roots ${lib.escapeShellArg (builtins.toJSON trustedWorkspaces)} \
       '
         . as $existing
-        | $desired
-        | if ($existing | has("gcp")) and ($existing.gcp != null) then .gcp = $existing.gcp else . end
+        | ($existing * $desired)
         | .trustedWorkspaces = (
             (
               if ($existing.trustedWorkspaces | type) == "array" then
