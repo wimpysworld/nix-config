@@ -1,0 +1,13 @@
+{
+  "conversationId": "conv-fixture",
+  "workspacePaths": ["/tmp/workspace"],
+  "modelName": "auto",
+  "stepIdx": 6,
+  "toolCall": {
+    "name": "mcp_linear_save_comment",
+    "args": {
+      "issueId": "ENG-1",
+      "body": "This is a robust update."
+    }
+  }
+}

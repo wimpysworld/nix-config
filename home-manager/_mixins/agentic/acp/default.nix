@@ -16,6 +16,7 @@ let
   inherit (pkgs.stdenv.hostPlatform) system;
   acpPackages = inputs.llm-agents.packages.${system};
   zedAcpEnabled = config.programs.zed-editor.enable;
+  antigravityAcpEnabled = zedAcpEnabled && config.agentic.antigravity.enable;
   codexAcpEnabled = zedAcpEnabled && config.programs.codex.enable;
   # The Pi mixin has no `programs.pi` option; it gates on this user tag.
   piAcpEnabled = noughtyLib.userHasTag "developer";
@@ -26,7 +27,18 @@ let
   # below drops any stale on-disk copy that Home Manager's deep-merge
   # would otherwise preserve.
   acpAgentServers =
-    lib.optionalAttrs config.programs.claude-code.enable {
+    lib.optionalAttrs antigravityAcpEnabled {
+      Antigravity = {
+        type = "custom";
+        command = lib.getExe config.agentic.antigravity.package;
+        args = [
+          "acp"
+          "--disable-telemetry"
+        ];
+        env = { };
+      };
+    }
+    // lib.optionalAttrs config.programs.claude-code.enable {
       Claude = {
         type = "custom";
         command = "${pkgs.coreutils}/bin/env";
@@ -73,7 +85,21 @@ let
   # returns a 0- or 1-element list, so the `++` chain produces a single
   # flat list that exactly matches the enabled set above.
   acpKeymaps =
-    lib.optional config.programs.claude-code.enable {
+    lib.optional antigravityAcpEnabled {
+      bindings = {
+        "ctrl-alt-shift-g" = [
+          "agent::NewExternalAgentThread"
+          {
+            agent = {
+              custom = {
+                name = "Antigravity";
+              };
+            };
+          }
+        ];
+      };
+    }
+    ++ lib.optional config.programs.claude-code.enable {
       bindings = {
         "ctrl-alt-shift-c" = [
           "agent::NewExternalAgentThread"

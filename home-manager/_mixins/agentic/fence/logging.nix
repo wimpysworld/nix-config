@@ -13,7 +13,7 @@
 # directory, then restores the caller's original working directory inside
 # `fence-direnv-exec` before running `direnv exec`. The agent name is taken
 # from the wrapper-local variable `fence_log_agent`; only literal
-# `claude|codex|moltis|opencode|pi` should be set.
+# `agy|claude|codex|moltis|opencode|pi` should be set.
 #
 # Permissions: the directory is created 0700; Fence opens the file 0600 via
 # the flag path, so the helper deliberately does not pre-create the file.
@@ -72,7 +72,7 @@ in
 
       agent="''${fence_log_agent:-agent}"
       case "$agent" in
-        claude | codex | moltis | opencode | pi | agent) ;;
+        agy | claude | codex | moltis | opencode | pi | agent) ;;
         *)
           agent="agent"
           ;;

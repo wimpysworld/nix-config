@@ -2,15 +2,15 @@
 
 # Inspect Fence per-launch logs under ${XDG_STATE_HOME:-$HOME/.local/state}/fence.
 #
-# The fenced wrappers (claude-fenced, codex-fenced, opencode-fenced,
-# pi-fenced) write one log file per launch and refresh a per-agent
-# `<agent>-current.log` symlink. This script offers safe browsing without
-# accepting arbitrary paths: the agent name is whitelisted and the log
+# The fenced wrappers (agy-fenced, claude-fenced, codex-fenced,
+# opencode-fenced, pi-fenced) write one log file per launch and refresh a
+# per-agent `<agent>-current.log` symlink. This script offers safe browsing
+# without accepting arbitrary paths: the agent name is whitelisted and the log
 # directory is fixed.
 
 set -euo pipefail
 
-readonly AGENTS=("claude" "codex" "opencode" "pi")
+readonly AGENTS=("agy" "claude" "codex" "opencode" "pi")
 readonly LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/fence"
 readonly PAGER_CMD="${PAGER:-less}"
 
@@ -22,6 +22,7 @@ Usage: fence-log <agent> [command]
 Inspect Fence per-launch logs for fenced agents.
 
 Agents:
+  agy       Antigravity (agy-fenced)
   claude    Claude Code (claude-fenced)
   codex     Codex (codex-fenced)
   opencode  OpenCode (opencode-fenced)
@@ -58,7 +59,7 @@ is_known_agent() {
 ensure_log_dir() {
 	if [[ ! -d "$LOG_DIR" ]]; then
 		echo "fence-log: no log directory at $LOG_DIR" >&2
-		echo "Run a fenced agent first (claude-fenced, codex-fenced, opencode-fenced, pi-fenced)." >&2
+		echo "Run a fenced agent first (agy-fenced, claude-fenced, codex-fenced, opencode-fenced, pi-fenced)." >&2
 		exit 1
 	fi
 }

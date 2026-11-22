@@ -1,0 +1,12 @@
+{
+  "conversationId": "conv-fixture",
+  "workspacePaths": ["/tmp/workspace"],
+  "modelName": "auto",
+  "stepIdx": 10,
+  "toolCall": {
+    "name": "invoke_subagent",
+    "args": {
+      "prompt": "Summarise the status."
+    }
+  }
+}

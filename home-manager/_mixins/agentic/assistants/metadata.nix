@@ -5,6 +5,14 @@ let
     "opencode"
     "codex"
     "pi"
+    "antigravity"
+  ];
+  antigravitySkillKeys = [
+    "name"
+    "description"
+    "license"
+    "compatibility"
+    "disable-model-invocation"
   ];
   companionKeys = [
     "interface"
@@ -63,6 +71,13 @@ let
           "codex"
           "opencode"
         ];
+      unsupportedAntigravityRoute =
+        (routing.antigravity or { }) != { }
+        && (
+          filename == "command.toml"
+          || builtins.pathExists (path + "/SKILL.md")
+          || builtins.pathExists (path + "/global.md")
+        );
       routeValid =
         provider: route:
         let
@@ -83,6 +98,10 @@ let
                 "variant"
                 "reasoningEffort"
               ]
+            else if provider == "antigravity" then
+              [
+                "model"
+              ]
             else
               [
                 "model"
@@ -92,6 +111,16 @@ let
         builtins.isAttrs route
         && lib.all (key: lib.elem key allowed) (builtins.attrNames route)
         && lib.all nonEmptyString (builtins.attrValues route)
+        && (
+          provider != "antigravity"
+          || !(route ? model)
+          || lib.elem route.model [
+            "inherit"
+            "flash_lite"
+            "flash"
+            "pro"
+          ]
+        )
         && (
           provider != "opencode"
           || (
@@ -176,6 +205,7 @@ let
             "claude"
             "codex"
             "pi"
+            "antigravity"
           ]
         ) (builtins.attrNames controls)
         && builtins.isBool (controls.caller-context or false)
@@ -194,6 +224,7 @@ let
               "claude"
               "codex"
               "pi"
+              "antigravity"
             ];
     in
     if unknown != [ ] then
@@ -206,6 +237,8 @@ let
       fail path "Model settings belong exclusively in routing tables."
     else if unsupportedSkill then
       fail path "Codex and OpenCode skill routing has no supported native execution boundary."
+    else if unsupportedAntigravityRoute then
+      fail path "Unsupported antigravity routing: [routing.antigravity] is allowed on agents only."
     else if !routesValid then
       fail path "Invalid routing provider, field, or value."
     else if !coordinatorValid then
@@ -223,30 +256,52 @@ let
       common = header.common or { };
       allowed =
         if kind == "skill" then
-          [
-            "name"
-            "description"
-            "license"
-            "compatibility"
-            "metadata"
-            "allowed-tools"
-          ]
+          if platform == "antigravity" then
+            antigravitySkillKeys
+          else
+            [
+              "name"
+              "description"
+              "license"
+              "compatibility"
+              "metadata"
+              "allowed-tools"
+            ]
         else if kind == "command" then
-          [ "description" ] ++ lib.optional (platform != "codex") "argument-hint"
+          [ "description" ]
+          ++ lib.optional (
+            !lib.elem platform [
+              "codex"
+              "antigravity"
+            ]
+          ) "argument-hint"
         else if kind == "agent" then
           [ "description" ]
         else
           [ ];
-      defaults = lib.optionalAttrs (kind == "agent" && platform == "pi") {
-        prompt_mode = "replace";
-        extensions = true;
-        exclude_extensions = "pi-cc-header";
-        skills = true;
-        isolated = false;
-      };
+      defaults =
+        if kind == "agent" && platform == "pi" then
+          {
+            prompt_mode = "replace";
+            extensions = true;
+            exclude_extensions = "pi-cc-header";
+            skills = true;
+            isolated = false;
+          }
+        else if kind == "agent" && platform == "antigravity" then
+          {
+            mainAgent = false;
+            subagent = true;
+          }
+        else
+          { };
       native =
         if kind == "skill" && platform == "codex" then
           lib.removeAttrs (header.codex or { }) companionKeys
+        else if kind == "skill" && platform == "antigravity" then
+          lib.getAttrs (lib.intersectLists antigravitySkillKeys (
+            builtins.attrNames (header.antigravity or { })
+          )) (header.antigravity or { })
         else
           header.${platform} or { };
       route = (header.routing or { }).${platform} or { };
@@ -260,6 +315,7 @@ let
             "claude"
             "codex"
             "pi"
+            "antigravity"
           ]
           && route != { }
         )
@@ -285,6 +341,7 @@ let
           "claude"
           "pi"
           "codex"
+          "antigravity"
         ]
       ) { inherit name; };
       result = lib.foldl' lib.recursiveUpdate { } [
@@ -415,6 +472,8 @@ let
           "opencode-subagent"
         else if platform == "codex" && selectedAgent != null then
           if header.compose.codex.spawn-agent or true then "codex-agent" else "codex-inline"
+        else if platform == "antigravity" && selectedAgent != null then
+          if header.compose.antigravity.spawn-agent or true then "antigravity-agent" else "antigravity-inline"
         else
           "body";
     in

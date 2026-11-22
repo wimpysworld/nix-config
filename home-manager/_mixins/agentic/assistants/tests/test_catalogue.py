@@ -43,7 +43,7 @@ class CatalogueTests(unittest.TestCase):
 
     def fixture(self):
         return {
-            "agents/worker/header.toml": '[common]\ndescription = "Worker."\n[routing.pi.provider]\nmodel = "agent-model"\nthinking = "high"\n',
+            "agents/worker/header.toml": '[common]\ndescription = "Worker."\n[routing.pi.provider]\nmodel = "agent-model"\nthinking = "high"\n[routing.antigravity]\nmodel = "pro"\n',
             "skills/delegate-task/header.toml": '[common]\nname = "delegate-task"\ndescription = "Delegate a task."\n',
             "commands/zulu/command.toml": '[common]\ndescription = "Pipe | newline\\n<text>"\n[compose]\nagent = "worker"\ncaller-context = true\n[compose.coordinator]\nbefore-launch = "PRIVATE_COORDINATOR"\n[routing.opencode]\nmodel = "provider/command-model"\n',
             "commands/zulu/command.sops": "PRIVATE_KEY",
@@ -60,13 +60,19 @@ class CatalogueTests(unittest.TestCase):
         for private in ("PRIVATE_BODY", "PRIVATE_KEY", "PRIVATE_COORDINATOR"):
             self.assertNotIn(private, serialised)
         self.assertIn("Pipe \\| newline &lt;text&gt;", data["markdown"])
-        zulu = data["commands"][1]
+        alpha, zulu = data["commands"]
+        self.assertEqual(
+            alpha["clients"]["antigravity"]["behaviour"], "invoke_subagent: worker"
+        )
+        self.assertEqual(alpha["clients"]["antigravity"]["invocation"], "/alpha")
         self.assertEqual(zulu["agent"], "worker")
         self.assertEqual(zulu["visibility"], "secret")
         for client in zulu["clients"].values():
             self.assertTrue(client["behaviour"].startswith("Caller context"))
+        self.assertEqual(zulu["clients"]["antigravity"]["invocation"], "/zulu")
         self.assertEqual(zulu["clients"]["opencode"]["model"], "provider/command-model")
         self.assertIsNone(zulu["clients"]["pi"]["model"])
+        self.assertIsNone(zulu["clients"]["antigravity"]["model"])
         self.assertIn(
             {
                 "agent": "worker",
@@ -74,6 +80,16 @@ class CatalogueTests(unittest.TestCase):
                 "provider": "provider",
                 "model": "agent-model",
                 "effort": "high",
+            },
+            data["agents"],
+        )
+        self.assertIn(
+            {
+                "agent": "worker",
+                "client": "antigravity",
+                "provider": None,
+                "model": "pro",
+                "effort": None,
             },
             data["agents"],
         )
@@ -99,7 +115,7 @@ class CatalogueTests(unittest.TestCase):
             f"| {link} | pi | Same as common | CLIENT_HINT \\| &lt;arg&gt; next |",
             table,
         )
-        for client in ("opencode", "codex"):
+        for client in ("opencode", "codex", "antigravity"):
             self.assertIn(f"| {link} | {client} | Same as common | Unset |", table)
         self.assertIn("Unset means that the argument hint is absent.", table)
         self.assertNotIn("Alpha.", table)
@@ -139,6 +155,7 @@ class CatalogueTests(unittest.TestCase):
             '[common]\ndescription = "Check."\nargument-hint = false\n',
             '[common]\ndescription = "Check."\n[compose]\nagent = "missing"\n',
             '[common]\ndescription = "Check."\n[routing.pi.provider]\nmodel = "forbidden"\n',
+            '[common]\ndescription = "Check."\n[routing.antigravity]\nmodel = "pro"\n',
             '[common]\ndescription = "Check."\n[codex.policy]\nallow_implicit_invocation = true\n',
         ):
             with self.subTest(header=suffix):
@@ -279,6 +296,7 @@ class CatalogueTests(unittest.TestCase):
             "[codex.policy]\nallow_implicit_invocation = false\n"
             '[codex.interface]\ndisplay_name = "PRIVATE_INTERFACE"\n'
             "[pi]\ndisable-model-invocation = true\n"
+            "[antigravity]\ndisable-model-invocation = true\n"
         )
         data = self.evaluate(files)
         agent = data["agentRecords"][0]
@@ -292,6 +310,10 @@ class CatalogueTests(unittest.TestCase):
         )
         self.assertEqual(agent["clients"]["codex"]["controls"], {})
         self.assertEqual(agent["clients"]["pi"]["controls"]["prompt_mode"], "replace")
+        self.assertEqual(
+            agent["clients"]["antigravity"]["controls"],
+            {"mainAgent": False, "subagent": True},
+        )
         policies = data["skillRecords"][0]["clients"]
         self.assertEqual(
             policies["claude"]["invocationPolicy"],
@@ -305,6 +327,10 @@ class CatalogueTests(unittest.TestCase):
         )
         self.assertEqual(
             policies["pi"]["invocationPolicy"], {"disable-model-invocation": True}
+        )
+        self.assertEqual(
+            policies["antigravity"]["invocationPolicy"],
+            {"disable-model-invocation": True},
         )
         self.assertEqual(policies["opencode"]["invocationPolicy"], {})
         self.assertIn("Worker \\| &lt;override&gt; next", data["agentsMarkdown"])
@@ -322,6 +348,7 @@ class CatalogueTests(unittest.TestCase):
             '[common]\nname = "wrong"\ndescription = "Skill."\n',
             '[common]\nname = "delegate-task"\ndescription = ""\n',
             '[common]\nname = "delegate-task"\ndescription = "Skill."\n[routing.pi.provider]\nmodel = "forbidden"\n',
+            '[common]\nname = "delegate-task"\ndescription = "Skill."\n[routing.antigravity]\nmodel = "pro"\n',
             '[common]\nname = "delegate-task"\ndescription = "Skill."\n[codex.policy]\nallow_implicit_invocation = "false"\n',
         ):
             with self.subTest(header=header):

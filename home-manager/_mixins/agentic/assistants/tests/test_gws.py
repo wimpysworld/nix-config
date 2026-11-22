@@ -130,7 +130,7 @@ class GwsTests(unittest.TestCase):
             names = builtins.attrNames composer.skillDirs;
             agentModels = assistants.config.agentic.assistants.pi.providerRouterMap;
             agentThinking = assistants.config.agentic.assistants.pi.providerRouterThinkingMap;
-            clients = lib.genAttrs [ "claude" "codex" "opencode" "pi" ] (platform:
+            clients = lib.genAttrs [ "claude" "codex" "opencode" "pi" "antigravity" ] (platform:
               lib.mapAttrs (_: skill: skill.content)
                 (lib.filterAttrs (name: _: lib.hasPrefix "gws-" name)
                   (composer.composeSkillsFor platform)));
@@ -180,6 +180,10 @@ class GwsTests(unittest.TestCase):
                     header = yaml.safe_load(content.split("---", 2)[1])
                     self.assertEqual(header["name"], name)
                     self.assertEqual(header["license"], "Apache-2.0")
+                    if platform == "antigravity":
+                        self.assertNotIn("metadata", header)
+                    else:
+                        self.assertIn("metadata", header)
                     self.assertNotIn("[common]", content)
         codex = (ASSISTANTS.parent / "codex/default.nix").read_text()
         self.assertIn('gwsEnabled = isDeveloper && noughtyLib.hostHasTag "cg";', codex)
@@ -200,7 +204,7 @@ class GwsTests(unittest.TestCase):
           lib.mapAttrsToList (_: skill: skill.path)
             (lib.filterAttrs (name: _: lib.hasPrefix "gws-" name)
               (composer.composeSkillsFor platform)))
-          [ "claude" "codex" "opencode" "pi" ]"""
+          [ "claude" "codex" "opencode" "pi" "antigravity" ]"""
         result = subprocess.run(
             ["nix", "build", "--impure", "--json", "--no-link", "--expr", expression],
             capture_output=True,
@@ -208,7 +212,7 @@ class GwsTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         trees = [Path(item["outputs"]["out"]) for item in json.loads(result.stdout)]
-        self.assertEqual(len(trees), 4 * len(NAMES))
+        self.assertEqual(len(trees), 5 * len(NAMES))
         for tree in trees:
             content = (tree / "SKILL.md").read_text()
             header = yaml.safe_load(content.split("---", 2)[1])
@@ -223,7 +227,7 @@ class GwsTests(unittest.TestCase):
                 (ASSISTANTS / "skills" / name / "LICENSE").read_bytes(),
             )
             self.assertFalse((tree / "header.toml").exists())
-            if "-codex-skill-" in tree.name:
+            if "-codex-skill-" in tree.name or "-antigravity-skill-" in tree.name:
                 self.assertFalse((tree / "SKILL.md").is_symlink())
 
 

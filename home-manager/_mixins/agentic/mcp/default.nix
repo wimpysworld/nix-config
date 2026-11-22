@@ -18,6 +18,7 @@ let
   mcpServerDefs = import ./servers.nix { inherit config pkgs; };
   inherit (mcpServerDefs) opencodeServers opencodeToolPermissions;
 
+  antigravityMcpEnabled = config.agentic.antigravity.enable;
   piMcpEnabled = lib.elem "developer" (config.noughty.user.tags or [ ]);
   claudeMcpEnabled = config.programs.claude-code.enable;
   codexMcpEnabled = config.programs.codex.enable;
@@ -27,7 +28,8 @@ let
   isMartin = noughtyLib.isUser [ "martin" ];
   moltisMcpEnabled = isMartin && (host.is.linux || host.is.darwin) && noughtyLib.hostHasTag "moltis";
   mcpClientEnabled =
-    claudeMcpEnabled
+    antigravityMcpEnabled
+    || claudeMcpEnabled
     || codexMcpEnabled
     || opencodeMcpEnabled
     || piMcpEnabled
@@ -38,7 +40,8 @@ let
   mcpConfigPath = "${config.xdg.configHome}/mcp/mcp.json";
 
   enabledMcpSecretConsumers =
-    lib.optionals claudeMcpEnabled [ "claudeCode" ]
+    lib.optionals antigravityMcpEnabled [ "antigravity" ]
+    ++ lib.optionals claudeMcpEnabled [ "claudeCode" ]
     ++ lib.optionals codexMcpEnabled [ "codex" ]
     ++ lib.optionals opencodeMcpEnabled [ "opencode" ]
     ++ lib.optionals piMcpEnabled [ "pi" ]

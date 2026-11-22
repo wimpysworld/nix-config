@@ -19,6 +19,7 @@ from advisory_support import (
     ROOT,
     TOOL_EVENTS,
     AdvisoryCase,
+    antigravity_hook_cli,
     assert_no_permission,
     assert_record,
     cli,
@@ -37,9 +38,15 @@ class ReadIsolation(AdvisoryCase):
     def test_read_method_overrides_a_publication_tool_name(self):
         for agent in AGENTS:
             payload = publication(agent)
-            arguments = payload.get(
-                "tool_input", payload.get("input", payload.get("args"))
+            tool_call_obj = payload.get("toolCall")
+            nested_args = (
+                tool_call_obj.get("args") if isinstance(tool_call_obj, dict) else None
             )
+            arguments = payload.get(
+                "tool_input",
+                payload.get("input", payload.get("args", nested_args)),
+            )
+            assert isinstance(arguments, dict)
             arguments["method"] = "get"
             with patch.object(dispatcher, "_run_scan") as scanner:
                 assert_record(self, invoke(agent, TOOL_EVENTS[agent], payload), "pass")
@@ -78,11 +85,16 @@ class ReadIsolation(AdvisoryCase):
         for agent in AGENTS:
             for command in commands:
                 with self.subTest(agent=agent, command=command):
-                    payload = tool_payload(
-                        agent,
-                        "Bash" if agent in ("claude-code", "codex") else "bash",
-                        {"command": command},
-                    )
+                    if agent == "antigravity":
+                        tool_name = "run_command"
+                        tool_args = {"CommandLine": command}
+                    elif agent in ("claude-code", "codex"):
+                        tool_name = "Bash"
+                        tool_args = {"command": command}
+                    else:
+                        tool_name = "bash"
+                        tool_args = {"command": command}
+                    payload = tool_payload(agent, tool_name, tool_args)
                     with patch.object(dispatcher, "_run_scan") as scanner:
                         assert_record(
                             self, invoke(agent, TOOL_EVENTS[agent], payload), "pass"
@@ -236,11 +248,30 @@ class FailOpen(AdvisoryCase):
                         else None
                     )
                     assert_no_permission(self, value)
-                    if agent in ("pi", "opencode"):
+                    if agent in ("pi", "opencode", "antigravity"):
+                        self.assertIsInstance(value, dict)
+                        assert isinstance(value, dict)
                         self.assertIn(value["decision"], ("pass", "advisory"))
                         if value["decision"] == "advisory":
                             self.assertIn("check unavailable", value["notice"])
                             self.assertLessEqual(len(value["notice"]), 320)
+        for event, expected_keys in (
+            ("PreToolUse", {"decision"}),
+            ("PreInvocation", set()),
+        ):
+            for body in ("{", publication("antigravity")):
+                completed = antigravity_hook_cli(
+                    event, body, self.state_dir, ROOT / "missing-rules.md"
+                )
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                parsed = json.loads(completed.stdout)
+                if event == "PreToolUse":
+                    self.assertEqual(parsed, {"decision": "allow"})
+                else:
+                    self.assertTrue(
+                        set(parsed) in (expected_keys, {"injectSteps"}),
+                        parsed,
+                    )
 
     def test_unavailable_state_cannot_restart_a_denial_cycle(self):
         self.state_dir.write_text("not a directory")

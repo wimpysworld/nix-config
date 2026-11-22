@@ -12,6 +12,9 @@ let
       "${config.xdg.configHome}/codex"
     else
       "${config.home.homeDirectory}/.codex";
+  geminiDir = "${config.home.homeDirectory}/.gemini";
+  antigravityConfigDir = "${geminiDir}/config";
+  antigravityEnabled = config.agentic.antigravity.enable or false;
   # Import compose module
   compose = import ./compose.nix {
     inherit lib pkgs;
@@ -69,11 +72,11 @@ let
   secretClaudePath = cmdName: "${config.home.homeDirectory}/.claude/commands/${cmdName}.md";
   secretOpencodePath = cmdName: "${config.xdg.configHome}/opencode/commands/${cmdName}.md";
   secretPiPath = cmdName: "${config.home.homeDirectory}/.pi/agent/prompts/${cmdName}.md";
+  secretAntigravityPath = cmdName: "${antigravityConfigDir}/skills/${cmdName}/SKILL.md";
 
-  # sops templates for Claude, OpenCode, and Pi render in private sops paths.
-  # The ownership helper links them to the explicit client destinations.
-  # Pi reuses the subagent-launch prelude assembled for non-secret agent
-  # commands so the placeholder body carries identical routing.
+  # sops templates for Claude, OpenCode, Pi, and Antigravity render in private
+  # sops paths. The ownership helper links them for Claude, OpenCode, and Pi,
+  # and writes regular files for Antigravity so Go os.ReadDir scans discover them.
   secretCommandTemplates = lib.listToAttrs (
     lib.concatMap (
       entry:
@@ -83,6 +86,7 @@ let
         claudeBody = compose.composeCommandFromPrompt "claude" cmdName sopsPlaceholder;
         opencodeBody = compose.composeCommandFromPrompt "opencode" cmdName sopsPlaceholder;
         piBody = compose.composeCommandFromPrompt "pi" cmdName sopsPlaceholder;
+        antigravityBody = compose.composeAntigravityCommandSkillFromPrompt cmdName sopsPlaceholder;
       in
       lib.optionals config.programs.claude-code.enable [
         (lib.nameValuePair "assistant-claude-command-${cmdName}" {
@@ -100,6 +104,12 @@ let
         (lib.nameValuePair "assistant-pi-command-${cmdName}" {
           content = piBody;
           path = secretPiPath cmdName;
+        })
+      ]
+      ++ lib.optionals antigravityEnabled [
+        (lib.nameValuePair "assistant-antigravity-command-${cmdName}" {
+          content = antigravityBody;
+          path = secretAntigravityPath cmdName;
         })
       ]
     ) secretCommandList
@@ -136,6 +146,7 @@ let
   secretSkillOpencodeDir = name: "${config.xdg.configHome}/opencode/skills/${name}";
   secretSkillPiDir = name: "${config.home.homeDirectory}/.pi/agent/skills/${name}";
   secretSkillMoltisDir = name: "${config.home.homeDirectory}/.moltis/skills/${name}";
+  secretSkillAntigravityDir = name: "${antigravityConfigDir}/skills/${name}";
 
   # sops template names double as filenames in the rendered-templates
   # directory, so a supporting file's relative path is flattened into a slug.
@@ -187,6 +198,7 @@ let
     )
     ++ lib.optionals piEnabled (mkSecretSkillTemplates "pi" secretSkillPiDir)
     ++ lib.optionals moltisEnabled (mkSecretSkillTemplates "moltis" secretSkillMoltisDir)
+    ++ lib.optionals antigravityEnabled (mkSecretSkillTemplates "antigravity" secretSkillAntigravityDir)
   );
 
   # ============ CLAUDE CODE ============
@@ -898,10 +910,12 @@ let
   claudeSkills = compose.composeSkillsFor "claude";
   opencodeSkills = compose.composeSkillsFor "opencode";
   piSkills = compose.composeSkillsFor "pi";
+  antigravitySkills = compose.composeSkillsFor "antigravity";
 
   # Codex's activation script expects { name = "SKILL.md content"; ... } so
   # it can merge in command-derived skill texts. Project skills only.
   skillContents = lib.mapAttrs (_: skill: skill.content) skills;
+  antigravitySkillContents = lib.mapAttrs (_: skill: skill.content) antigravitySkills;
 
   # Generate home.file entries for Claude Code skills.
   # Symlink the entire skill directory so SKILL.md plus all supporting files
@@ -1005,12 +1019,68 @@ let
     lib.mapAttrs (_: entry: mkCodexCommandOpenAiYaml entry.path) publicCommandRegistry
   );
 
+  # ============ ANTIGRAVITY ============
+
+  # Antigravity enforces a 24 KB single-file rule cap on global instructions.
+  antigravityRawInstructions = globalInstructions + "\n\n" + compose.houseStyleBody + "\n";
+  antigravityInstructions =
+    if builtins.stringLength antigravityRawInstructions <= 24000 then
+      antigravityRawInstructions
+    else
+      throw "Antigravity global instructions (${toString (builtins.stringLength antigravityRawInstructions)} bytes) exceed the 24,000-byte single-file rule cap.";
+
+  antigravityAgents = lib.mapAttrs (name: _: compose.composeAgent "antigravity" name) codingAgentDirs;
+
+  antigravityCommandSources =
+    lib.mapAttrsToList (name: _: {
+      inherit name;
+      source = "skill: ${name}";
+    }) antigravitySkillContents
+    ++ map (entry: {
+      inherit (entry) name;
+      source = "skill: ${entry.name}";
+    }) secretSkillList
+    ++ [
+      {
+        name = "self-review";
+        source = "chainguard-skill: self-review";
+      }
+    ]
+    ++ compose.commandSources;
+  antigravityCommandCollisionCheck = compose.assertNoCommandCollisions {
+    context = "Antigravity skills (~/.gemini/config/skills/)";
+    sources = antigravityCommandSources;
+  };
+
+  antigravityAllSkills = builtins.seq antigravityCommandCollisionCheck (
+    antigravitySkillContents
+    // lib.mapAttrs (cmdName: _: compose.composeAntigravityCommandSkill cmdName) publicCommandRegistry
+  );
+
   ownedFile = path: content: {
     inherit path;
     kind = "file";
     source = toString (pkgs.writeText (builtins.baseNameOf path) content);
     mode = "0600";
   };
+
+  antigravityOwnedFiles = [
+    (ownedFile "${geminiDir}/AGENTS.md" antigravityInstructions)
+  ]
+  ++ lib.mapAttrsToList (
+    name: content: ownedFile "${antigravityConfigDir}/agents/${name}.md" content
+  ) antigravityAgents
+  ++ lib.concatLists (
+    lib.mapAttrsToList (
+      name: content:
+      [ (ownedFile "${antigravityConfigDir}/skills/${name}/SKILL.md" content) ]
+      ++ lib.mapAttrsToList (entryName: _: {
+        path = "${antigravityConfigDir}/skills/${name}/${entryName}";
+        source = "${antigravitySkills.${name}.path}/${entryName}";
+        kind = "symlink";
+      }) (antigravitySkills.${name}.extras or { })
+    ) antigravityAllSkills
+  );
 
   codexOwnedFiles = [
     (ownedFile "${codexDir}/AGENTS.md" (globalInstructions + "\n"))
@@ -1071,14 +1141,15 @@ let
     lib.mapAttrsToList (
       name: template:
       let
-        isMoltis = lib.hasPrefix "assistant-moltis-skill-" name;
+        isRegularFile =
+          lib.hasPrefix "assistant-moltis-skill-" name || lib.hasPrefix "assistant-antigravity-" name;
       in
       {
         inherit (template) path;
         source = config.sops.templates.${name}.path;
-        kind = if isMoltis then "file" else "symlink";
+        kind = if isRegularFile then "file" else "symlink";
       }
-      // lib.optionalAttrs isMoltis {
+      // lib.optionalAttrs isRegularFile {
         mode = "0600";
       }
     ) secretTemplates
@@ -1131,6 +1202,11 @@ let
         relPath:
         optionalFile "${config.home.homeDirectory}/.moltis/${relPath}" "${chainguardAgentsDir}/${relPath}"
       ) chainguardSkillFiles
+    )
+    ++ lib.optionals antigravityEnabled (
+      map (
+        relPath: optionalFile "${antigravityConfigDir}/${relPath}" "${chainguardAgentsDir}/${relPath}"
+      ) chainguardSkillFiles
     );
 
   chainguardCodexOwnedFiles =
@@ -1146,6 +1222,7 @@ let
     lib.optionals config.programs.codex.enable (
       codexOwnedFiles ++ codexSecretOwnedFiles ++ chainguardCodexOwnedFiles
     )
+    ++ lib.optionals antigravityEnabled antigravityOwnedFiles
     ++ lib.optionals moltisEnabled moltisOwnedFiles
     ++ secretOwnedFiles
     ++ chainguardClientOwnedFiles;
@@ -1159,7 +1236,10 @@ let
     # The moltis secret-skill sops templates deploy under ~/.moltis/skills/,
     # so the moltis root joins the spec only when the moltis gate is active;
     # hosts without the deployment keep the previous root set.
-    extraRoots = lib.optionals moltisEnabled [ "${config.home.homeDirectory}/.moltis" ];
+    extraRoots = [
+      "${config.home.homeDirectory}/.gemini"
+    ]
+    ++ lib.optionals moltisEnabled [ "${config.home.homeDirectory}/.moltis" ];
     requiresSecrets =
       secretOwnedFiles != [ ] || (config.programs.codex.enable && codexSecretOwnedFiles != [ ]);
   };
@@ -1216,16 +1296,24 @@ in
   };
 
   config = {
+    assertions = [
+      {
+        assertion = builtins.stringLength antigravityInstructions <= 24000;
+        message = "Antigravity global instructions exceed the 24,000-byte single-file rule cap.";
+      }
+    ];
     agentic.assistants.opencode.providerRouterMap = opencodeProviderRouterMap;
     agentic.assistants.opencode.providerRouterVariantMap = opencodeProviderRouterVariantMap;
     agentic.assistants.ownedSpec = ownedDeployment.spec;
     agentic.assistants.requiresSecrets = ownedDeployment.requiresSecrets;
-    # Report whether OpenCode and Pi carry the house style in their system
-    # prompt. Neither has an output-style mechanism, so the carriage is the
-    # append to their global instructions below. The flag is read back from the
-    # composed text rather than assumed: drop the append and the Communication
-    # Rules tripwire falls back to injecting the full rules on a fresh context.
+    # Report whether Antigravity, OpenCode, and Pi carry the house style in
+    # their system prompt. None has an output-style mechanism, so the carriage
+    # is the append to their global instructions below. The flag is read back
+    # from the composed text rather than assumed: drop the append and the
+    # Communication Rules tripwire falls back to injecting the full rules on a
+    # fresh context.
     agentic.houseStyle.inSystemPrompt = {
+      antigravity = antigravityEnabled && carriesHouseStyle antigravityInstructions;
       opencode = config.programs.opencode.enable && carriesHouseStyle opencodeInstructions;
       pi = piEnabled && carriesHouseStyle piHomeFiles.".pi/agent/AGENTS.md".text;
     };
@@ -1249,6 +1337,7 @@ in
         config.programs.claude-code.enable
         || config.programs.opencode.enable
         || config.programs.codex.enable
+        || antigravityEnabled
         || piEnabled
         || moltisEnabled
       ) pkgs.python3;

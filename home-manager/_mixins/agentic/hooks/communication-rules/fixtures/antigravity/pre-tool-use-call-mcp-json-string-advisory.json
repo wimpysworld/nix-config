@@ -1,0 +1,14 @@
+{
+  "conversationId": "conv-fixture",
+  "workspacePaths": ["/tmp/workspace"],
+  "modelName": "auto",
+  "stepIdx": 4,
+  "toolCall": {
+    "name": "call_mcp_tool",
+    "args": {
+      "ServerName": "linear",
+      "ToolName": "create_comment",
+      "Arguments": "{\"issueId\":\"ENG-1\",\"body\":\"This is a robust update.\"}"
+    }
+  }
+}

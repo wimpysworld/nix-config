@@ -21,6 +21,7 @@ class SkillFileTests(unittest.TestCase):
         body = "TASK_SENTINEL: keep caller context and delegate checks for $ARGUMENTS."
         files = {
             "instructions/global.md": "Keep caller context.\n",
+            "instructions/header.toml": '[claude]\ndescription = "Fixture instructions."\n[opencode]\ndescription = "Fixture instructions."\n',
             "styles/house-style/house-style.md": "Use plain language.\n",
             "skills/communication-rules/SKILL.md": "Use plain language.\n",
             "skills/communication-rules/header.toml": '[common]\nname = "communication-rules"\ndescription = "Use plain language."\n',
@@ -51,6 +52,7 @@ class SkillFileTests(unittest.TestCase):
                         ("claude", "use-task"),
                         ("pi", "spawn-agent"),
                         ("codex", "spawn-agent"),
+                        ("antigravity", "spawn-agent"),
                     ):
                         header += f"[compose.{provider}]\n{key} = {str(mode != 'inline').lower()}\n"
                     header += (
@@ -119,6 +121,7 @@ class SkillFileTests(unittest.TestCase):
                   programs.claude-code.enable = true;
                   programs.opencode.enable = true;
                   programs.codex.enable = true;
+                  agentic.antigravity.enable = true;
                   sops.placeholder = lib.genAttrs secretNames (name: "PLACEHOLDER_" + name);
                   sops.secrets = lib.genAttrs secretNames (name: {{ path = "/run/secret/" + name; }});
                   sops.templates = lib.genAttrs
@@ -134,6 +137,8 @@ class SkillFileTests(unittest.TestCase):
                 cfg.agentic.assistants.pi.homeFiles;
               templates = cfg.sops.templates;
               owned = cfg.agentic.assistants.ownedSpec.files;
+              roots = cfg.agentic.assistants.ownedSpec.roots;
+              inSystemPrompt = cfg.agentic.houseStyle.inSystemPrompt;
             }}"""
             result = subprocess.run(
                 ["nix", "eval", "--impure", "--json", "--expr", expression],
@@ -143,9 +148,19 @@ class SkillFileTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             generated = json.loads(result.stdout)
         owned = {entry["path"]: entry for entry in generated["owned"]}
+        self.assertIn("/fixture/.gemini", generated["roots"])
+        self.assertIs(generated["inSystemPrompt"]["antigravity"], True)
+        self.assertEqual(owned["/fixture/.gemini/AGENTS.md"]["kind"], "file")
+        self.assertEqual(
+            owned["/fixture/.gemini/config/agents/donatello.md"]["kind"], "file"
+        )
+        self.assertIs(
+            owned["/fixture/.gemini/config/skills/self-review/SKILL.md"]["optional"],
+            True,
+        )
         self.assertFalse(any("/agents/command-" in path for path in owned))
         for name, (selection, mode, secret) in cases.items():
-            for platform in ("claude", "opencode", "pi", "codex"):
+            for platform in ("claude", "opencode", "pi", "codex", "antigravity"):
                 with self.subTest(command=name, platform=platform):
                     expected_body = "PLACEHOLDER_" + name if secret else body
                     agent = (
@@ -172,6 +187,20 @@ class SkillFileTests(unittest.TestCase):
                         self.assertIs(
                             policy["policy"]["allow_implicit_invocation"], False
                         )
+                    elif platform == "antigravity":
+                        entry = owned[f"/fixture/.gemini/config/skills/{name}/SKILL.md"]
+                        self.assertEqual(entry["kind"], "file")
+                        self.assertEqual(entry["mode"], "0600")
+                        if secret:
+                            self.assertEqual(
+                                entry["source"],
+                                f"/run/template/assistant-antigravity-command-{name}",
+                            )
+                            rendered = generated["templates"][
+                                f"assistant-antigravity-command-{name}"
+                            ]["content"]
+                        else:
+                            rendered = entry["source"]
                     elif secret:
                         rendered = generated["templates"][
                             f"assistant-{platform}-command-{name}"
@@ -184,6 +213,9 @@ class SkillFileTests(unittest.TestCase):
                         rendered = generated[platform][name]
                     frontmatter, task = rendered.split("---", 2)[1:]
                     native = yaml.safe_load(frontmatter)
+                    if platform == "antigravity":
+                        self.assertEqual(native["name"], name)
+                        self.assertIs(native["disable-model-invocation"], True)
                     self.assertNotIn("compose", native)
                     self.assertNotIn("caller-context", native)
                     self.assertNotIn("coordinator", native)
@@ -194,9 +226,9 @@ class SkillFileTests(unittest.TestCase):
                         and mode == "worker"
                         and platform != "opencode"
                     )
-                    if (
-                        selection not in ("garfield", "donatello")
-                        and name not in ("make-commit", "make-pr")
+                    if selection not in ("garfield", "donatello") and name not in (
+                        "make-commit",
+                        "make-pr",
                     ):
                         for marker in ("BEFORE_SENTINEL", "AFTER_SENTINEL"):
                             self.assertEqual(rendered.count(marker), int(wrapped))
@@ -230,6 +262,18 @@ class SkillFileTests(unittest.TestCase):
                                 f"Use the `spawn_agent` tool to launch the `{agent}` agent",
                                 task,
                             )
+                            self.assertNotIn("PERSONA_SENTINEL", task)
+                    elif platform == "antigravity":
+                        if mode == "inline":
+                            self.assertIn("PERSONA_SENTINEL", task)
+                            self.assertNotIn("Use the `invoke_subagent` tool", task)
+                        else:
+                            self.assertIn(
+                                f"Use the `invoke_subagent` tool to launch the `{agent}` agent",
+                                task,
+                            )
+                            self.assertIn(f'TypeName: "{agent}"', task)
+                            self.assertIn('Workspace: "inherit"', task)
                             self.assertNotIn("PERSONA_SENTINEL", task)
                     elif platform == "pi":
                         if mode == "inline":
@@ -282,18 +326,21 @@ class SkillFileTests(unittest.TestCase):
                                 child_task,
                             )
                             self.assertNotIn("model", native)
-                            if platform != "codex":
+                            if platform not in ("codex", "antigravity"):
                                 hint = (
                                     "[target|report]"
                                     if name == "review-code-again"
                                     else "[pr|branch|worktree|commit]"
                                 )
                                 self.assertEqual(native["argument-hint"], hint)
+                            else:
+                                self.assertNotIn("argument-hint", native)
                         if selection == "garfield":
                             self.assertNotIn("model", native)
                             self.assertNotIn("argument-hint", native)
                         for wrapper in (
                             "Use the `spawn_agent` tool to launch",
+                            "Use the `invoke_subagent` tool to launch",
                             "Use the Agent tool with",
                             "Use the Task tool to launch",
                         ):
@@ -575,6 +622,117 @@ allow_implicit_invocation = false
                     (tree / name).read_text(), files["skills/fixture/" + name]
                 )
             self.assertTrue((tree / "references/nested/guide.md").is_symlink())
+
+    def test_antigravity_gate_regular_skill_files_and_instructions_cap(self):
+        files = {
+            "instructions/global.md": "Keep caller context.\n",
+            "styles/house-style/house-style.md": "Use plain language.\n",
+            "skills/communication-rules/SKILL.md": "Use plain language.\n",
+            "skills/communication-rules/header.toml": '[common]\nname = "communication-rules"\ndescription = "Use plain language."\n',
+            "skills/delegate-task/header.toml": '[common]\nname = "delegate-task"\ndescription = "Delegate a task."\n',
+            "skills/fixture/header.toml": '[common]\nname = "fixture"\ndescription = "Fixture."\n',
+            "skills/fixture/SKILL.md": "Run the fixture.\n",
+            "skills/fixture/references/nested/header.toml": '[common]\nname = "nested"\ndescription = "Nested."\n',
+            "skills/fixture/references/nested/SKILL.md": "Run nested.\n",
+            "skills/fixture/references/guide.md": "Supporting guide.\n",
+        }
+        with tempfile.TemporaryDirectory(prefix="assistant-antigravity-") as directory:
+            for name in (
+                "default.nix",
+                "compose.nix",
+                "metadata.nix",
+                "owned-deployment.nix",
+            ):
+                Path(directory, name).write_text((ASSISTANTS / name).read_text())
+            for name, content in files.items():
+                path = Path(directory, name)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content)
+            eval_disabled = f"""let
+              flake = builtins.getFlake {json.dumps(str(REPO))};
+              pkgs = import flake.inputs.nixpkgs {{ system = builtins.currentSystem; }};
+              module = import {directory}/default.nix {{
+                inherit pkgs;
+                inherit (pkgs) lib;
+                noughtyLib = {{ userHasTag = _: false; hostHasTag = _: false; isUser = _: false; }};
+                config = {{
+                  home.homeDirectory = "/fixture";
+                  home.preferXdgDirectories = false;
+                  xdg.configHome = "/fixture/.config";
+                  xdg.stateHome = "/fixture/.state";
+                  programs.claude-code.enable = false;
+                  programs.opencode.enable = false;
+                  programs.codex.enable = false;
+                  agentic.antigravity.enable = false;
+                }};
+              }};
+            in {{
+              files = module.config.agentic.assistants.ownedSpec.files;
+              roots = module.config.agentic.assistants.ownedSpec.roots;
+              inSystemPrompt = module.config.agentic.houseStyle.inSystemPrompt.antigravity;
+            }}"""
+            res = subprocess.run(
+                ["nix", "eval", "--impure", "--json", "--expr", eval_disabled],
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(res.returncode, 0, res.stderr)
+            disabled = json.loads(res.stdout)
+            self.assertEqual(disabled["files"], [])
+            self.assertIn("/fixture/.gemini", disabled["roots"])
+            self.assertIs(disabled["inSystemPrompt"], False)
+
+            build_expr = f"""let
+              flake = builtins.getFlake {json.dumps(str(REPO))};
+              pkgs = import flake.inputs.nixpkgs {{ system = builtins.currentSystem; }};
+              composer = import {directory}/compose.nix {{
+                inherit pkgs;
+                inherit (pkgs) lib;
+                basePath = builtins.path {{ path = {json.dumps(directory)}; }};
+              }};
+              skills = composer.composeSkillsFor "antigravity";
+            in [ skills.fixture.path skills.delegate-task.path ]"""
+            build = subprocess.run(
+                [
+                    "nix",
+                    "build",
+                    "--impure",
+                    "--json",
+                    "--no-link",
+                    "--expr",
+                    build_expr,
+                ],
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(build.returncode, 0, build.stderr)
+            trees = [Path(item["outputs"]["out"]) for item in json.loads(build.stdout)]
+            tree = next(path for path in trees if path.name.endswith("-skill-fixture"))
+            self.assertTrue(stat.S_ISREG((tree / "SKILL.md").lstat().st_mode))
+            self.assertTrue(
+                stat.S_ISREG((tree / "references/nested/SKILL.md").lstat().st_mode)
+            )
+            self.assertFalse((tree / "agents/openai.yaml").exists())
+            self.assertTrue((tree / "references/guide.md").is_symlink())
+
+            Path(directory, "instructions/global.md").write_text("A" * 24001 + "\n")
+            oversize = subprocess.run(
+                [
+                    "nix",
+                    "eval",
+                    "--impure",
+                    "--json",
+                    "--expr",
+                    eval_disabled.replace(
+                        "agentic.antigravity.enable = false;",
+                        "agentic.antigravity.enable = true;",
+                    ),
+                ],
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(oversize.returncode, 0)
+            self.assertIn("24,000-byte single-file rule cap", oversize.stderr)
 
 
 if __name__ == "__main__":

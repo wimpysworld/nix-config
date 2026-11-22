@@ -130,6 +130,10 @@ let
         # ~/.cache is on the same device as /, so no rebuild happens.
         "${config.xdg.cacheHome}/fence-share"
 
+        # Antigravity
+        "${homeDirectory}/.gemini"
+        "${homeDirectory}/.gemini/**"
+
         # Claude Code
         "${config.xdg.configHome}/ccstatusline"
         "~/.claude*"

@@ -31,6 +31,9 @@ thinking = "xhigh"
 model = "gemini-4-neon"
 thinking = "high"
 
+[routing.antigravity]
+model = "pro"
+
 [claude]
 disallowedTools = ["Agent"]
 

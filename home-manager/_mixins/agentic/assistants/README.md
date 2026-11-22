@@ -1,8 +1,8 @@
 # AI Agents
 
-Nix composes agents, commands, and skills from one source tree for each enabled Claude Code, OpenCode, Codex, and Pi Agent client.
+Nix composes agents, commands, and skills from one source tree for each enabled Claude Code, OpenCode, Codex, Pi Agent, and Google Antigravity CLI client.
 
-Developer servers keep Pi Agent resources. Claude Code, OpenCode, and Codex resources are emitted only when those clients are enabled.
+Developer servers keep Pi Agent resources. Claude Code, OpenCode, Codex, and Antigravity resources are emitted only when those clients are enabled.
 
 [Moltis delivery](../moltis/README.md) also supports Martin's Linux and Darwin hosts with the `moltis` tag. Traya replaces Malak as a Moltis host. Normal deployment enables the [Matrix server](../../../../nixos/_mixins/server/private-matrix/README.md) on Malak and provisions its private accounts and room automatically. Moltis uses the fixed room ID and its own SOPS-managed password. The shared room and Martin-only direct messages permit conversation, not tools or private owner context.
 
@@ -54,7 +54,19 @@ The Nix composition is the delivery mechanism, not the strategy. Everything belo
 
 Pi Agent resources are rendered here and consumed by `../pi`, which owns the Pi package, runtime wrapper, settings, MCP adapter, subagent extension config, and theme files.
 
-Every command uses `commands/<name>/command.toml` and exactly one `command.md` or `command.sops`. Agent sources stay in `agents/<name>/prompt.md` and `header.toml`. Other metadata stays in `header.toml`. The composer generates native client files through Home Manager. Agent and command names derive from their directories. Skills declare `[common] name`, which must match the directory. Generated skill files contain YAML frontmatter. Pi and Codex global instructions are plain Markdown, and Codex agents are TOML.
+**Antigravity:**
+
+```
+~/.gemini/
+├── AGENTS.md                       # Global instructions + house style (<= 24 KB cap)
+└── config/
+    ├── agents/<name>.md            # Subagent definitions (mainAgent: false, subagent: true)
+    └── skills/<name>/SKILL.md      # Reusable and command-derived skills (invocable with /<name>)
+```
+
+Antigravity resources are gated on `config.agentic.antigravity.enable` and deployed through `ownedFiles` as regular files so Go `os.ReadDir` scans always see regular files, with symlink sidecars for skill `extras`. `../antigravity` owns the wrapped `agy` package, settings, and MCP config.
+
+Every command uses `commands/<name>/command.toml` and exactly one `command.md` or `command.sops`. Agent sources stay in `agents/<name>/prompt.md` and `header.toml`. Other metadata stays in `header.toml`. The composer generates native client files through Home Manager. Agent and command names derive from their directories. Skills declare `[common] name`, which must match the directory. Generated skill files contain YAML frontmatter. Pi, Codex, and Antigravity global instructions are plain Markdown, and Codex agents are TOML.
 
 ## Contents
 
@@ -79,12 +91,12 @@ Instructions stack in four layers. Each layer narrows scope and increases specif
 instructions/global.md          ← environment constraints, tool preferences, skill references
     └── AGENTS.md / CLAUDE.md   ← project-specific context, conventions, commands
             └── agent prompt    ← specialist persona, expertise, tools, constraints
-                    └── command prompt  ← single task, model-neutral on Claude Code, Codex, and Pi
+                    └── command prompt  ← single task, model-neutral on Claude Code, Codex, Pi, and Antigravity
 ```
 
 **`instructions/global.md`** is the role-neutral foundation for every platform. It sets delegation triggers, fresh-context defaults, trust boundaries, reference-tool preferences, GitHub safety, LSP guidance, file rules, skill references, and the relay rules for artefacts and reports. Full specialist routing and output contracts live in the generated `delegate-task` skill. See [`instructions/README.md`](instructions/README.md) for the research that informs the global rules and the generated skill.
 
-Agent prompts inherit the global constraints and add specialisation. Commands select a specialist only through explicit `[compose] agent`, with no directory inheritance. Maintenance ownership is independent of the selected agent and executing caller, and has no metadata field. `[compose] caller-context = true` preserves the caller's role. Unbound commands run in the caller's context. Claude Code, Codex, and Pi commands use the selected agent's routing defaults for child launches. Caller-context execution never changes the caller's model.
+Agent prompts inherit the global constraints and add specialisation. Commands select a specialist only through explicit `[compose] agent`, with no directory inheritance. Maintenance ownership is independent of the selected agent and executing caller, and has no metadata field. `[compose] caller-context = true` preserves the caller's role. Unbound commands run in the caller's context. Claude Code, Codex, Pi, and Antigravity commands use the selected agent's routing defaults for child launches. Caller-context execution never changes the caller's model.
 
 ---
 
@@ -101,6 +113,7 @@ This aggregate rule is guidance, not a shared scheduler. Workers cannot launch a
 | Codex | `agents.max_concurrent_threads_per_session = 12` | Open child threads per session, not only active workers, with depth one. |
 | Pi | `maxConcurrent = 12`, `maxConcurrentForeground = 12` | Separate direct pools, with depth one. Each workflow has a separate twelve-call active limit and the native 1000-call total cap. |
 | OpenCode | No supported native worker concurrency setting | Shared aggregate guidance applies. Specialist `subagent` access remains denied. |
+| Antigravity | No supported native worker concurrency setting | Shared aggregate guidance applies. Specialists project `mainAgent: false` and `subagent: true`. |
 
 Native CPU capacity can lower Pi workflow concurrency. Claude Code's parallel tool scheduler remains unchanged because it is separate from worker concurrency.
 
@@ -116,6 +129,7 @@ Each platform takes the body through its own system-prompt channel:
 | Codex       | `developer_instructions` in `config.toml`, injected at the developer role; the built-in coding prompt is kept |
 | OpenCode    | Appended to the global instructions in `AGENTS.md`                   |
 | Pi Agent    | Appended to the global instructions in `AGENTS.md`                   |
+| Antigravity | Appended to the global instructions in `~/.gemini/AGENTS.md` (checked against the 24,000-byte single-file rule cap) |
 
 `skills/communication-rules/SKILL.md` contains the checked-in skill body. `compose.nix` adds native frontmatter and checks that the body matches the house style during evaluation. The skill stays for command-driven reinforcement and for surfaces with no system-prompt access, such as Codex Cloud. The `delegate-task` packet tells every worker to load it.
 
@@ -127,7 +141,7 @@ Style feedback never denies a tool, changes its inputs or results, blocks stoppi
 
 ### Session Priming
 
-In Codex CLI, use `$ready` for the session command below. Claude Code, OpenCode, and Pi use `/ready`.
+In Codex CLI, use `$ready` for the session command below. Claude Code, OpenCode, Pi, and Antigravity use `/ready`.
 
 Every session begins with `/ready We are going to <broad activity description>`. This is a step-back prompt ([Zheng et al., 2023](https://arxiv.org/abs/2310.06117)) - an abstraction-first technique that weights the model's attention toward the relevant domain before specifics arrive. The description stays deliberately vague ("document my MCP configuration", not "write a README for the assistants directory") so the model activates broad domain knowledge rather than narrowing prematurely. Detailed instructions follow in subsequent messages once the model's attention is oriented.
 
@@ -227,7 +241,7 @@ Compact, stable system prompts preserve Claude prompt-cache hits; bloated or var
 
 Agents without routing defaults inherit the model selected in the coding tool. The [agent catalogue](agents/README.md) lists current defaults from `header.toml`. Defaults do not guarantee the model for every invocation. Client entry behaviour and explicit overrides determine whether a route applies.
 
-Agent `header.toml` files are the sole routing default source for Claude Code, Codex, and Pi. Commands and ordinary skills remain model-neutral. Explicit launch-time child model, thinking, or effort overrides remain supported. Caller-context commands never change the caller's model, whether or not they have an agent binding. The `make-commit` and `make-pr` commands retain the caller's model.
+Agent `header.toml` files are the sole routing default source for Claude Code, Codex, Pi, and Antigravity. Commands and ordinary skills remain model-neutral. Explicit launch-time child model, thinking, or effort overrides remain supported. Caller-context commands never change the caller's model, whether or not they have an agent binding. The `make-commit` and `make-pr` commands retain the caller's model.
 
 The [OpenCode router](../opencode/README.md#provider-routing) installs whenever OpenCode is enabled. Missing provider routes retain native behaviour. Existing OpenCode command model metadata remains supported. OpenCode's direct slash commands use native agent binding. Do not assume that binding uses the router, which applies only to direct-root native subagent children.
 
@@ -245,24 +259,25 @@ V2 does not run language servers. OpenCode users must run the installed `semgrep
 | Table | Purpose |
 | --- | --- |
 | `[common]` | Shared description and argument hint. Skills also declare `name`, optional `license`, `compatibility`, and `metadata`. |
-| `[claude]`, `[opencode]`, `[codex]`, `[pi]` | Native non-model fields, such as permissions, tools, and context settings. |
+| `[claude]`, `[opencode]`, `[codex]`, `[pi]`, `[antigravity]` | Native non-model fields, such as permissions, tools, and context settings. |
 | `[compose]` | Repository agent binding through `agent`, or caller-context execution through `caller-context = true`. |
-| `[compose.claude]`, `[compose.codex]`, `[compose.pi]` | Repository controls `use-task` and `spawn-agent`. |
+| `[compose.claude]`, `[compose.codex]`, `[compose.pi]`, `[compose.antigravity]` | Repository controls `use-task` and `spawn-agent`. |
 | `[compose.coordinator]` | Optional `before-launch` and `after-return` prose for launch wrappers, not native metadata. |
 | `[routing.claude]`, `[routing.codex]` | Agent model and effort defaults. |
+| `[routing.antigravity]` | Agent model tier defaults: `inherit`, `flash_lite`, `flash`, or `pro`. |
 | `[routing.opencode]` | Existing native agent and command model metadata. |
 | `[routing.opencode.providers.<inference-provider>]` | Agent-only exact model routes, with an optional model `variant`, for the local OpenCode plugin. These fields never enter native headers. |
 | `[routing.pi.<inference-provider>]` | Agent model and thinking defaults for the exact inference provider. |
 
-Common hints apply to Claude Code, OpenCode, and Pi. Provider-specific hints preserve differences in presence or value. Missing tables mean no overrides, not disabled output. Omit unset values because TOML has no null.
+Common hints apply to Claude Code, OpenCode, and Pi. Codex and Antigravity command-derived skills omit `argument-hint`. Provider-specific hints preserve differences in presence or value. Missing tables mean no overrides, not disabled output. Omit unset values because TOML has no null.
 
-Non-empty command or skill routing for Claude Code, Codex, or Pi fails evaluation. Ordinary OpenCode skill routing remains rejected. OpenCode command model metadata remains supported. Put shared workflow defaults in the selected agent's `header.toml`.
+Non-empty command or skill routing for Claude Code, Codex, Pi, or Antigravity fails evaluation. Ordinary OpenCode skill routing remains rejected. OpenCode command model metadata remains supported. Put shared workflow defaults in the selected agent's `header.toml`.
 
 Keep agent bodies in `prompt.md`. Use `commands/<name>/command.toml` and exactly one `command.md` or `command.sops` for each command. Keep skill bodies in frontmatter-free `SKILL.md`, including nested API skills. The composer rebuilds native frontmatter for each client. Encrypted `SKILL.sops` files remain complete native skills.
 
 Retired provider headers are removed. Retired `description.txt` files remain in the repository but are not consumed. Edit `command.toml` for command metadata and `header.toml` for other live metadata.
 
-Pi composition routes through `compose.composeAgentFromPrompt "pi"` and `compose.composeCommandFromPrompt "pi"`. The composer shares the launch wrapper across public and encrypted commands. Codex uses a `spawn_agent` wrapper around command-derived skills.
+Pi composition routes through `compose.composeAgentFromPrompt "pi"` and `compose.composeCommandFromPrompt "pi"`. Antigravity agent composition routes through `compose.composeAgentFromPrompt "antigravity"` and `compose.adaptAgentPrompt "antigravity"`, appending the worker contract, shared safety rules, and house style while replacing `Task tool` with `` `invoke_subagent` tool ``. Antigravity agents omit `tools` by default because unmapped tool names hang subagents upstream. The composer shares the launch wrapper across public and encrypted commands. Codex uses a `spawn_agent` wrapper around command-derived skills, and Antigravity uses an `invoke_subagent` wrapper (`TypeName` and `Workspace: "inherit"`) with `disable-model-invocation: true` in YAML frontmatter.
 
 Generated child tasks carry a shared worker contract. Workers complete assigned work directly, launch no agents, and return to the parent. They follow nested workflow bodies without executing generated launch wrappers. If more specialist work is necessary, they return a bounded request after completing independent assigned work. The coordinator dispatches that work and continues the original task.
 
@@ -280,10 +295,11 @@ Set `[compose] caller-context = true` to preserve the caller's role by suppressi
 | OpenCode | No `agent` binding and `subagent: false`, so the caller retains its agent and permissions. |
 | Pi | Command body without a subagent launch wrapper. |
 | Codex | Command body without `spawn_agent` or an inline specialist persona. The manual-only companion policy remains. |
+| Antigravity | Command body without `invoke_subagent` or an inline specialist persona. `disable-model-invocation: true` remains. |
 
-Caller-context commands retain the caller's model. Claude Code, Codex, and Pi reject non-empty command routing in all execution modes. Codex launches the selected agent role without a command-specific role. OpenCode provider routes apply only to direct-root native subagent children.
+Caller-context commands retain the caller's model. Claude Code, Codex, Pi, and Antigravity reject non-empty command routing in all execution modes. Codex and Antigravity launch the selected agent role without a command-specific role. OpenCode provider routes apply only to direct-root native subagent children.
 
-Per-client controls remain available when `caller-context` is false. In Codex, `[compose.codex] spawn-agent = false` embeds the specialist persona in the caller's context. Use `caller-context = true` to preserve the caller's role instead.
+Per-client controls remain available when `caller-context` is false. In Codex and Antigravity, `spawn-agent = false` under `[compose.codex]` or `[compose.antigravity]` embeds the specialist persona in the caller's context. Use `caller-context = true` to preserve the caller's role instead.
 
 ### Codex command policy
 
@@ -347,12 +363,13 @@ This split keeps the surfaces semantically clean: prompts take inputs, skills pr
 | OpenCode    | `~/.config/opencode/agents/*.md`       | `~/.config/opencode/commands/*.md`        | `~/.config/opencode/AGENTS.md`    | `~/.config/opencode/skills/*/SKILL.md` |
 | Codex       | `~/.config/codex/agents/*.toml`        | `~/.config/codex/skills/*/SKILL.md`       | `~/.config/codex/AGENTS.md`       | `~/.config/codex/skills/*/SKILL.md`    |
 | Pi Agent    | `~/.pi/agent/agents/*.md`              | `~/.pi/agent/prompts/*.md`                | `~/.pi/agent/AGENTS.md`           | `~/.pi/agent/skills/*/SKILL.md`        |
+| Antigravity | `~/.gemini/config/agents/*.md`         | `~/.gemini/config/skills/*/SKILL.md`      | `~/.gemini/AGENTS.md`             | `~/.gemini/config/skills/*/SKILL.md`   |
 
 ### Secret prompts
 
 A few command and skill bodies must not enter git or the Nix store. Those directories ship a marker file instead of the plaintext: `command.sops` for a command, `SKILL.sops` for a skill. The marker holds one thing, the name of a top-level key in `secrets/assistant-prompts.yaml` whose value is the body. A secret skill's supporting files follow the same convention under the general rule that any `<name>.sops` marker renders to `<name>`, so `references/cycle-mechanics.md.sops` renders to `references/cycle-mechanics.md`; `SKILL.sops` and `command.sops` are the two fixed, named exceptions to that rule.
 
-`compose.nix` detects the marker and composes the file with a sops placeholder where the body belongs. Claude Code, OpenCode, and Pi use helper-owned links to private sops templates. Codex receives regular files that combine the generated prefix with the decrypted body. Activation checks the refreshed secret sources before the helper writes client files. Plaintext stays outside the Nix store.
+`compose.nix` detects the marker and composes the file with a sops placeholder where the body belongs. Claude Code, OpenCode, and Pi use helper-owned links to private sops templates. Antigravity writes regular files from private sops templates so Go `os.ReadDir` scans discover them. Codex receives regular files that combine the generated prefix with the decrypted body. Activation checks the refreshed secret sources before the helper writes client files. Plaintext stays outside the Nix store.
 
 A directory holding both the marker and its plaintext counterpart fails evaluation, so the two can never drift apart.
 
@@ -360,7 +377,7 @@ Command `command.toml` and skill `header.toml` files stay plaintext and are comp
 
 ### Activation ownership and cleanup
 
-The shared helper updates generated Codex files and custom links that Home Manager does not own. It records ownership in `${XDG_STATE_HOME:-$HOME/.local/state}/agentic/assistants/manifest.json`.
+The shared helper updates generated Codex and Antigravity files and custom links that Home Manager does not own. It records ownership in `${XDG_STATE_HOME:-$HOME/.local/state}/agentic/assistants/manifest.json`.
 
 The private manifest stores file hashes, link targets, helper-created directories, and completed one-off retirements. It stores no file bodies or secret history.
 
@@ -430,7 +447,7 @@ For each manual refresh:
 5. Update the provenance fields and check every local file reference from the skill root.
 6. Compare the licence byte-for-byte with the pinned source. Check technical sections, code examples, and identifiers against upstream.
 7. Run `just update-assistant-catalogue`, then `just check-assistant-catalogue` and `git diff --check`.
-8. Check the generated skills for Claude Code, Codex, OpenCode, Pi, and gated Moltis without activation.
+8. Check the generated skills for Claude Code, Codex, OpenCode, Pi, Antigravity, and gated Moltis without activation.
 
 Description checks: a Ratatui dashboard request loads this skill. A browser UI request does not.
 An architecture diagram request uses `diagram-design` instead.
@@ -447,7 +464,7 @@ The local `scripts/resolve_profile.py` adds read-only preference resolution.
 Paths in the third-party notices refer to the upstream repository layout, not this installation.
 
 Upstream plugin manifests, commands, maintainer scripts, and website screenshots are not part of the skill import.
-The composer discovers the skill without registration and generates Claude Code, Codex, OpenCode, and Pi output.
+The composer discovers the skill without registration and generates Claude Code, Codex, OpenCode, Pi, and Antigravity output.
 `header.toml` holds the description, licence, upstream version, source path, commit, and local-change summary.
 The source `SKILL.md` has no frontmatter.
 

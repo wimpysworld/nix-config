@@ -1,0 +1,9 @@
+{
+  "conversationId": "conv-fixture",
+  "workspacePaths": ["/tmp/workspace"],
+  "modelName": "auto",
+  "executionNum": 1,
+  "terminationReason": "NO_TOOL_CALL",
+  "error": "",
+  "fullyIdle": true
+}

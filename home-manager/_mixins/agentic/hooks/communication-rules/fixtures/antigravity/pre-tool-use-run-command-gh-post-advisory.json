@@ -1,0 +1,12 @@
+{
+  "conversationId": "conv-fixture",
+  "workspacePaths": ["/tmp/workspace"],
+  "modelName": "auto",
+  "stepIdx": 7,
+  "toolCall": {
+    "name": "run_command",
+    "args": {
+      "CommandLine": "gh issue create --title 'Build status' --body 'This is a robust update.'"
+    }
+  }
+}

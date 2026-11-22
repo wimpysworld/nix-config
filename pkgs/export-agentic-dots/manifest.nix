@@ -297,6 +297,7 @@ let
     "hooks/communication-rules/core/detection.py"
     "hooks/communication-rules/core/dispatch.py"
     "hooks/communication-rules/core/extractors/__init__.py"
+    "hooks/communication-rules/core/extractors/antigravity.py"
     "hooks/communication-rules/core/extractors/claude_code.py"
     "hooks/communication-rules/core/extractors/codex.py"
     "hooks/communication-rules/core/extractors/opencode.py"
@@ -356,6 +357,8 @@ let
     "hooks/communication-rules/core/__pycache__/types.cpython-314.pyc"
     "hooks/communication-rules/core/extractors/__pycache__/__init__.cpython-313.pyc"
     "hooks/communication-rules/core/extractors/__pycache__/__init__.cpython-314.pyc"
+    "hooks/communication-rules/core/extractors/__pycache__/antigravity.cpython-313.pyc"
+    "hooks/communication-rules/core/extractors/__pycache__/antigravity.cpython-314.pyc"
     "hooks/communication-rules/core/extractors/__pycache__/claude_code.cpython-313.pyc"
     "hooks/communication-rules/core/extractors/__pycache__/claude_code.cpython-314.pyc"
     "hooks/communication-rules/core/extractors/__pycache__/codex.cpython-313.pyc"
@@ -899,6 +902,12 @@ let
   };
 
   scannerFiles = [
+    (mkFile {
+      path = "integrations/communication-rules/antigravity-hook.py";
+      content = builtins.readFile ../../home-manager/_mixins/agentic/hooks/communication-rules/antigravity-hook.py;
+      mode = "0755";
+      dependencies = [ "Python 3" ];
+    })
     (mkFile {
       path = "integrations/communication-rules/scanner.py";
       content = builtins.readFile ../../home-manager/_mixins/agentic/hooks/communication-rules/scanner.py;

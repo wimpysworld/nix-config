@@ -11,7 +11,7 @@ from core.config import Config
 from core.detection import prose_findings
 from core.types import Decision, ExtractorRecord
 
-AGENTS = ("claude-code", "codex", "pi", "opencode")
+AGENTS = ("claude-code", "codex", "pi", "opencode", "antigravity")
 EVENT_GATE = "gate"
 EVENT_FACING = "facing"
 EVENT_REISSUE = "reissue"
@@ -53,9 +53,10 @@ def read_event(stream=None) -> dict:
 def _extract(
     agent: str, event: str, payload: dict, config: Config | None
 ) -> Extraction:
-    from core.extractors import claude_code, codex, opencode, pi
+    from core.extractors import antigravity, claude_code, codex, opencode, pi
 
     extractor = {
+        "antigravity": antigravity,
         "claude-code": claude_code,
         "codex": codex,
         "opencode": opencode,
@@ -114,7 +115,12 @@ def dispatch(agent: str, event: str, config: Config | None) -> Decision:
         return _decide(agent, extraction, config)
     except Exception:
         record = ExtractorRecord(
-            str(payload.get("session_id") or payload.get("sessionID") or ""),
+            str(
+                payload.get("session_id")
+                or payload.get("sessionID")
+                or payload.get("conversationId")
+                or ""
+            ),
             payload.get("turn_id"),
             event,
             None,

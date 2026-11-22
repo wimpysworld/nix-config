@@ -34,10 +34,12 @@ let
   };
   scannerFile = pkgs.runCommand "agent-communication-rules-scanner" { } ''
     install -Dm755 ${./scanner.py} "$out/share/agent-communication-rules/scanner.py"
+    install -Dm755 ${./antigravity-hook.py} "$out/share/agent-communication-rules/antigravity-hook.py"
     cp -r ${coreTree} "$out/share/agent-communication-rules/core"
     chmod -R u+w "$out/share/agent-communication-rules/core"
   '';
   scannerPath = "${scannerFile}/share/agent-communication-rules/scanner.py";
+  antigravityHookPath = "${scannerFile}/share/agent-communication-rules/antigravity-hook.py";
   scannerPackage = pkgs.writeShellApplication {
     name = "agent-communication-check";
     runtimeInputs = [ pkgs.python3 ];
@@ -128,6 +130,54 @@ let
           };
         in
         "sha256:${builtins.hashString "sha256" (builtins.toJSON identity)}";
+    };
+
+  # Build a command-style hook adapter for Google Antigravity CLI. Antigravity
+  # requires {"decision": "allow"} on PreToolUse stdout and accepts ephemeral
+  # injected steps on PreInvocation, so the wrapper runs antigravity-hook.py
+  # and falls back to valid fail-open JSON on timeout or empty output.
+  mkAntigravityHookAdapter =
+    {
+      runtimeInputs ? [ ],
+      timeout ? 10,
+    }:
+    let
+      hookPackage = pkgs.writeShellApplication {
+        name = "antigravity-communication-rules-hook";
+        runtimeInputs = [
+          scannerPackage
+          pkgs.coreutils
+          pkgs.python3
+        ]
+        ++ runtimeInputs;
+        text = ''
+          is_pre_tool_use=0
+          for arg in "$@"; do
+            if [[ "$arg" == "PreToolUse" ]]; then
+              is_pre_tool_use=1
+              break
+            fi
+          done
+          if ! output="$(timeout --kill-after=1s 5s python3 ${lib.escapeShellArg antigravityHookPath} --scanner ${lib.escapeShellArg (lib.getExe scannerPackage)} "$@")" || [[ -z "$output" ]]; then
+            if [[ "$is_pre_tool_use" == 1 ]]; then
+              printf '{"decision":"allow"}\n'
+            else
+              printf '{}\n'
+            fi
+            exit 0
+          fi
+          printf '%s\n' "$output"
+        '';
+      };
+    in
+    {
+      inherit (tripwireBase) package executable;
+      inherit hookPackage;
+      mkHook = event: {
+        type = "command";
+        command = "${lib.getExe hookPackage} ${lib.escapeShellArg event}";
+        inherit timeout;
+      };
     };
 
   # Build a plugin adapter for an agent whose runtime loads an in-process TS
@@ -239,6 +289,13 @@ in
       description = "Runtime directory for generated Communication Rules assets.";
     };
 
+    mkAntigravityHookAdapter = lib.mkOption {
+      type = lib.types.nullOr (lib.types.functionTo lib.types.attrs);
+      default = null;
+      internal = true;
+      description = "Helper that builds a command-style hook adapter for Google Antigravity CLI.";
+    };
+
     mkCommandHookAdapter = lib.mkOption {
       type = lib.types.nullOr (lib.types.functionTo lib.types.attrs);
       default = null;
@@ -264,7 +321,7 @@ in
       rulesPath = runtimeRulesPath;
       policyPath = runtimePolicyPath;
       policyFilePath = "${policyFile}";
-      inherit mkCommandHookAdapter mkPluginAdapter;
+      inherit mkAntigravityHookAdapter mkCommandHookAdapter mkPluginAdapter;
       inherit (fragment) detectionPolicy;
     };
 

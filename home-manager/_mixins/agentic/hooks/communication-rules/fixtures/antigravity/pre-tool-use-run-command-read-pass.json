@@ -1,0 +1,12 @@
+{
+  "conversationId": "conv-fixture",
+  "workspacePaths": ["/tmp/workspace"],
+  "modelName": "auto",
+  "stepIdx": 8,
+  "toolCall": {
+    "name": "run_command",
+    "args": {
+      "CommandLine": "gh pr view 42 --json body"
+    }
+  }
+}

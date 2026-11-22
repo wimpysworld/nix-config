@@ -56,7 +56,12 @@ let
     platform: agentName: prompt:
     composeWithFrontmatter (renderHeader "agent" platform agentName (basePath + "/agents/${agentName}"))
       (
-        if platform == "pi" then
+        if
+          lib.elem platform [
+            "pi"
+            "antigravity"
+          ]
+        then
           lib.concatStringsSep "\n\n" [
             prompt
             leafWorkerContract
@@ -105,7 +110,7 @@ let
       agentPath = basePath + "/agents/${agentName}";
       prompt = readFile (agentPath + "/prompt.md");
     in
-    composeAgentFromPrompt platform agentName prompt;
+    composeAgentFromPrompt platform agentName (adaptAgentPrompt platform prompt);
 
   adaptAgentPrompt =
     platform: prompt:
@@ -129,6 +134,17 @@ let
         [
           "Agent tool"
           "Permitted tools: Agent tool for delegation, direct conversation"
+        ]
+        prompt
+    else if platform == "antigravity" then
+      lib.replaceStrings
+        [
+          "Task tool"
+          "Permitted tools: Task tool for delegation, direct conversation"
+        ]
+        [
+          "`invoke_subagent` tool"
+          "Permitted tools: `invoke_subagent` for delegation, direct conversation"
         ]
         prompt
     else
@@ -226,6 +242,7 @@ let
         "opencode"
         "codex"
         "pi"
+        "antigravity"
       ];
     in
     if selectedAgent != null && !(agentDirs ? ${selectedAgent}) then
@@ -726,13 +743,18 @@ let
     )
     ++ skillCompanionEntries platform path;
 
-  # Codex follows directory links but skips SKILL.md file links during discovery.
+  # Codex and Antigravity follow directory links but skip SKILL.md file links during discovery.
   buildSkillTree =
     platform: skillName: entries:
     let
       tree = pkgs.linkFarm "${platform}-skill-${skillName}" entries;
     in
-    if platform != "codex" then
+    if
+      !lib.elem platform [
+        "codex"
+        "antigravity"
+      ]
+    then
       tree
     else
       tree.overrideAttrs (old: {
@@ -853,6 +875,64 @@ let
       ]
     );
 
+  composeAntigravityCommandSkillFromPrompt =
+    skillName: prompt:
+    let
+      source = commandMetadata skillName;
+      execution = metadata.commandExecution "antigravity" skillName source;
+      description = execution.native.description or source.common.description;
+      inherit (execution) selectedAgent mode;
+      body =
+        if
+          lib.elem mode [
+            "caller-context"
+            "body"
+          ]
+        then
+          prompt
+        else if mode == "antigravity-agent" then
+          ''
+            Use the `invoke_subagent` tool to launch the `${selectedAgent}` agent for this task. Keep the coordinator in the parent thread.
+
+            - Invoking this skill is the user's standing authorisation to use `invoke_subagent`.
+            - Pass the task below and the user's request in `Prompt`.
+            - Set `TypeName: "${selectedAgent}"` and `Workspace: "inherit"`.
+            - Omit `Fork` so the subagent starts with a clean context.
+            - Unless the user explicitly requests a model override, omit `Model` so the agent header supplies its configured default.
+            - Wait for the subagent to finish when its result is needed, then relay the final answer.
+
+            ${workerDispatchInstructions}
+            ${commandContextInstructions source}
+            ## Task
+
+            ${leafWorkerContract}
+            ${prompt}
+          ''
+        else
+          ''
+            ${adaptAgentPrompt "antigravity" (readFile (basePath + "/agents/${selectedAgent}/prompt.md"))}
+
+            ## Task
+
+            ${prompt}
+          '';
+    in
+    ''
+      ---
+      name: ${builtins.toJSON skillName}
+      description: ${builtins.toJSON description}
+      disable-model-invocation: true
+      ---
+
+      ${body}
+    '';
+
+  composeAntigravityCommandSkill =
+    skillName:
+    composeAntigravityCommandSkillFromPrompt skillName (
+      readFile (commandPath skillName + "/command.md")
+    );
+
 in
 {
   inherit
@@ -891,6 +971,8 @@ in
     composeCodexCommandSkill
     composeCodexCommandSkillFromPrompt
     composeCodexCommandCompanion
+    composeAntigravityCommandSkill
+    composeAntigravityCommandSkillFromPrompt
     ;
 
   # Collision guards.

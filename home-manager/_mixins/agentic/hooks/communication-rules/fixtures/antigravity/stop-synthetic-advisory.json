@@ -1,0 +1,6 @@
+{
+  "conversationId": "conv-fixture",
+  "workspacePaths": ["/tmp/workspace"],
+  "modelName": "auto",
+  "last_assistant_message": "This is a robust update."
+}

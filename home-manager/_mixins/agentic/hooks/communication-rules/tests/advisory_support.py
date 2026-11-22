@@ -13,6 +13,7 @@ import tempfile
 import unittest
 from dataclasses import asdict
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 from skill_source import materialised_rules_path
@@ -22,7 +23,7 @@ sys.path.insert(0, str(ROOT))
 from core import dispatch as dispatcher  # noqa: E402
 from core.config import load_config  # noqa: E402
 
-AGENTS = ("claude-code", "codex", "pi", "opencode")
+AGENTS = ("claude-code", "codex", "pi", "opencode", "antigravity")
 RULES = materialised_rules_path()
 CONFIG = load_config(argparse.Namespace(rules=str(RULES), policy_json=None))
 BREACH = "Please " + "del" + "ve" + " into this."
@@ -31,17 +32,27 @@ TOOL_EVENTS = {
     "codex": "PreToolUse",
     "pi": "tool_call",
     "opencode": "tool.execute.before",
+    "antigravity": "PreToolUse",
 }
 FINAL_EVENTS = {
     "claude-code": "Stop",
     "codex": "Stop",
     "pi": "message_end",
     "opencode": "message.final",
+    "antigravity": "Stop",
 }
 
 
-def tool_payload(agent, name, arguments, session="session", turn="turn-1"):
-    payload = {"session_id": session, "turn_id": turn}
+def tool_payload(
+    agent, name, arguments, session="session", turn="turn-1"
+) -> dict[str, Any]:
+    if agent == "antigravity":
+        return {
+            "conversationId": session,
+            "turn_id": turn,
+            "toolCall": {"name": name, "args": arguments},
+        }
+    payload: dict[str, Any] = {"session_id": session, "turn_id": turn}
     if agent in ("claude-code", "codex"):
         payload.update(tool_name=name, tool_input=arguments)
     elif agent == "pi":
@@ -51,8 +62,16 @@ def tool_payload(agent, name, arguments, session="session", turn="turn-1"):
     return payload
 
 
-def final_payload(agent, text=BREACH, session="session", turn="turn-1"):
-    payload = {"session_id": session, "turn_id": turn}
+def final_payload(
+    agent, text=BREACH, session="session", turn="turn-1"
+) -> dict[str, Any]:
+    if agent == "antigravity":
+        return {
+            "conversationId": session,
+            "turn_id": turn,
+            "last_assistant_message": text,
+        }
+    payload: dict[str, Any] = {"session_id": session, "turn_id": turn}
     if agent in ("claude-code", "codex"):
         payload["last_assistant_message"] = text
     elif agent == "pi":
@@ -98,6 +117,24 @@ def wire(agent, event, decision, config=CONFIG):
 def cli(agent, event, payload, state_dir, rules=RULES):
     return subprocess.run(
         [sys.executable, str(ROOT / "scanner.py"), "--rules", str(rules), agent, event],
+        input=payload if isinstance(payload, str) else json.dumps(payload),
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=10,
+        env={**os.environ, "COMMUNICATION_RULES_STATE_DIR": str(state_dir)},
+    )
+
+
+def antigravity_hook_cli(event, payload, state_dir, rules=RULES):
+    return subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "antigravity-hook.py"),
+            "--rules",
+            str(rules),
+            event,
+        ],
         input=payload if isinstance(payload, str) else json.dumps(payload),
         capture_output=True,
         text=True,

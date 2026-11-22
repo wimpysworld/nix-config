@@ -1,0 +1,13 @@
+{
+  "conversationId": "conv-fixture",
+  "workspacePaths": ["/tmp/workspace"],
+  "modelName": "auto",
+  "stepIdx": 9,
+  "toolCall": {
+    "name": "write_to_file",
+    "args": {
+      "TargetFile": "notes.md",
+      "CodeContent": "This is a robust update."
+    }
+  }
+}

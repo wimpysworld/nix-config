@@ -21,7 +21,7 @@ These tables describe repository sources and projected client metadata, not inst
 
 ## Projected client controls
 
-Pi defaults come from metadata.project. Descriptions show the client projection, including any override. These controls do not grant authority or list observed runtime tools.
+Pi and Antigravity defaults come from metadata.project. Descriptions show the client projection, including any override. These controls do not grant authority or list observed runtime tools.
 
 | Agent | Client | Description | Controls |
 | --- | --- | --- | --- |
@@ -29,50 +29,62 @@ Pi defaults come from metadata.project. Descriptions show the client projection,
 | batfink | opencode | Infrastructure security auditor for cloud, Kubernetes, Docker, CI/CD, network, secrets, and supply-chain config, focused on exploitability and blast radius. | {"mode":"subagent","permissions":[{"action":"question","effect":"allow","resource":"*"},{"action":"subagent","effect":"deny","resource":"*"}]} |
 | batfink | codex | Infrastructure security auditor for cloud, Kubernetes, Docker, CI/CD, network, secrets, and supply-chain config, focused on exploitability and blast radius. | No metadata override |
 | batfink | pi | Infrastructure security auditor for cloud, Kubernetes, Docker, CI/CD, network, secrets, and supply-chain config, focused on exploitability and blast radius. | {"exclude_extensions":"pi-cc-header","extensions":true,"isolated":false,"prompt_mode":"replace","skills":true} |
+| batfink | antigravity | Infrastructure security auditor for cloud, Kubernetes, Docker, CI/CD, network, secrets, and supply-chain config, focused on exploitability and blast radius. | {"mainAgent":false,"subagent":true} |
 | brain | claude | A pragmatic test engineer who analyses code and coverage to suggest high-impact unit tests that catch real bugs while following existing patterns and maintaining simplicity. | {"disallowedTools":["Agent"]} |
 | brain | opencode | A pragmatic test engineer who analyses code and coverage to suggest high-impact unit tests that catch real bugs while following existing patterns and maintaining simplicity. | {"mode":"subagent","permissions":[{"action":"question","effect":"allow","resource":"*"},{"action":"subagent","effect":"deny","resource":"*"}]} |
 | brain | codex | A pragmatic test engineer who analyses code and coverage to suggest high-impact unit tests that catch real bugs while following existing patterns and maintaining simplicity. | No metadata override |
 | brain | pi | A pragmatic test engineer who analyses code and coverage to suggest high-impact unit tests that catch real bugs while following existing patterns and maintaining simplicity. | {"exclude_extensions":"pi-cc-header","extensions":true,"isolated":false,"prompt_mode":"replace","skills":true} |
+| brain | antigravity | A pragmatic test engineer who analyses code and coverage to suggest high-impact unit tests that catch real bugs while following existing patterns and maintaining simplicity. | {"mainAgent":false,"subagent":true} |
 | casper | claude | A technical writer who crafts engaging Linux and open-source content in Martin Wimpress's distinctive British style, blending technical accuracy with personality and humour. | {"disallowedTools":["Agent"]} |
 | casper | opencode | A technical writer who crafts engaging Linux and open-source content in Martin Wimpress's distinctive British style, blending technical accuracy with personality and humour. | {"mode":"subagent","permissions":[{"action":"question","effect":"allow","resource":"*"},{"action":"subagent","effect":"deny","resource":"*"}]} |
 | casper | codex | A technical writer who crafts engaging Linux and open-source content in Martin Wimpress's distinctive British style, blending technical accuracy with personality and humour. | No metadata override |
 | casper | pi | A technical writer who crafts engaging Linux and open-source content in Martin Wimpress's distinctive British style, blending technical accuracy with personality and humour. | {"exclude_extensions":"pi-cc-header","extensions":true,"isolated":false,"prompt_mode":"replace","skills":true} |
+| casper | antigravity | A technical writer who crafts engaging Linux and open-source content in Martin Wimpress's distinctive British style, blending technical accuracy with personality and humour. | {"mainAgent":false,"subagent":true} |
 | dibble | claude | Use for explicit code security audits of application source, dependencies, secrets, and LLM app risks when present. | {"disallowedTools":["Agent"]} |
 | dibble | opencode | Use for explicit code security audits of application source, dependencies, secrets, and LLM app risks when present. | {"mode":"subagent","permissions":[{"action":"question","effect":"allow","resource":"*"},{"action":"subagent","effect":"deny","resource":"*"}]} |
 | dibble | codex | Use for explicit code security audits of application source, dependencies, secrets, and LLM app risks when present. | No metadata override |
 | dibble | pi | Use for explicit code security audits of application source, dependencies, secrets, and LLM app risks when present. | {"exclude_extensions":"pi-cc-header","extensions":true,"isolated":false,"prompt_mode":"replace","skills":true} |
+| dibble | antigravity | Use for explicit code security audits of application source, dependencies, secrets, and LLM app risks when present. | {"mainAgent":false,"subagent":true} |
 | donatello | claude | A methodical implementation engineer who precisely executes code changes from improvement plans while maintaining existing style, verifying tests pass, and seeking clarification when obstacles arise. | {"disallowedTools":["Agent"]} |
 | donatello | opencode | A methodical implementation engineer who precisely executes code changes from improvement plans while maintaining existing style, verifying tests pass, and seeking clarification when obstacles arise. | {"mode":"subagent","permissions":[{"action":"question","effect":"allow","resource":"*"},{"action":"subagent","effect":"deny","resource":"*"}]} |
 | donatello | codex | A methodical implementation engineer who precisely executes code changes from improvement plans while maintaining existing style, verifying tests pass, and seeking clarification when obstacles arise. | No metadata override |
 | donatello | pi | A methodical implementation engineer who precisely executes code changes from improvement plans while maintaining existing style, verifying tests pass, and seeking clarification when obstacles arise. | {"exclude_extensions":"pi-cc-header","extensions":true,"isolated":false,"prompt_mode":"replace","skills":true} |
+| donatello | antigravity | A methodical implementation engineer who precisely executes code changes from improvement plans while maintaining existing style, verifying tests pass, and seeking clarification when obstacles arise. | {"mainAgent":false,"subagent":true} |
 | garfield | claude | A specialised git workflow assistant that enforces best practices for commit messages, pull requests, and code explanations while strictly adhering to Conventional Commits standards. | {"disallowedTools":["Agent"]} |
 | garfield | opencode | A specialised git workflow assistant that enforces best practices for commit messages, pull requests, and code explanations while strictly adhering to Conventional Commits standards. | {"mode":"subagent","permissions":[{"action":"question","effect":"allow","resource":"*"},{"action":"subagent","effect":"deny","resource":"*"}]} |
 | garfield | codex | A specialised git workflow assistant that enforces best practices for commit messages, pull requests, and code explanations while strictly adhering to Conventional Commits standards. | No metadata override |
 | garfield | pi | A specialised git workflow assistant that enforces best practices for commit messages, pull requests, and code explanations while strictly adhering to Conventional Commits standards. | {"exclude_extensions":"pi-cc-header","extensions":true,"isolated":false,"prompt_mode":"replace","skills":true} |
+| garfield | antigravity | A specialised git workflow assistant that enforces best practices for commit messages, pull requests, and code explanations while strictly adhering to Conventional Commits standards. | {"mainAgent":false,"subagent":true} |
 | gonzales | claude | A pragmatic performance specialist who identifies high-impact optimisations in bottlenecks and hotspots while preserving code simplicity and focusing on user-perceivable improvements. | {"disallowedTools":["Agent"]} |
 | gonzales | opencode | A pragmatic performance specialist who identifies high-impact optimisations in bottlenecks and hotspots while preserving code simplicity and focusing on user-perceivable improvements. | {"mode":"subagent","permissions":[{"action":"question","effect":"allow","resource":"*"},{"action":"subagent","effect":"deny","resource":"*"}]} |
 | gonzales | codex | A pragmatic performance specialist who identifies high-impact optimisations in bottlenecks and hotspots while preserving code simplicity and focusing on user-perceivable improvements. | No metadata override |
 | gonzales | pi | A pragmatic performance specialist who identifies high-impact optimisations in bottlenecks and hotspots while preserving code simplicity and focusing on user-perceivable improvements. | {"exclude_extensions":"pi-cc-header","extensions":true,"isolated":false,"prompt_mode":"replace","skills":true} |
+| gonzales | antigravity | A pragmatic performance specialist who identifies high-impact optimisations in bottlenecks and hotspots while preserving code simplicity and focusing on user-perceivable improvements. | {"mainAgent":false,"subagent":true} |
 | morph | claude | Designs and makes visual communication, interactive interfaces, presentations, spatial designs, and pixel art through medium-aware judgement and bounded implementation. | {"disallowedTools":["Agent"]} |
 | morph | opencode | Designs and makes visual communication, interactive interfaces, presentations, spatial designs, and pixel art through medium-aware judgement and bounded implementation. | {"mode":"subagent","permissions":[{"action":"question","effect":"allow","resource":"*"},{"action":"subagent","effect":"deny","resource":"*"}]} |
 | morph | codex | Designs and makes visual communication, interactive interfaces, presentations, spatial designs, and pixel art through medium-aware judgement and bounded implementation. | No metadata override |
 | morph | pi | Designs and makes visual communication, interactive interfaces, presentations, spatial designs, and pixel art through medium-aware judgement and bounded implementation. | {"exclude_extensions":"pi-cc-header","extensions":true,"isolated":false,"prompt_mode":"replace","skills":true} |
+| morph | antigravity | Designs and makes visual communication, interactive interfaces, presentations, spatial designs, and pixel art through medium-aware judgement and bounded implementation. | {"mainAgent":false,"subagent":true} |
 | penfold | claude | A thoughtful research generalist who explores ideas through dialogue, synthesises findings into context-efficient overviews, and frames problems clearly for downstream specialists. | {"disallowedTools":["Agent"]} |
 | penfold | opencode | A thoughtful research generalist who explores ideas through dialogue, synthesises findings into context-efficient overviews, and frames problems clearly for downstream specialists. | {"mode":"subagent","permissions":[{"action":"question","effect":"allow","resource":"*"},{"action":"subagent","effect":"deny","resource":"*"}]} |
 | penfold | codex | A thoughtful research generalist who explores ideas through dialogue, synthesises findings into context-efficient overviews, and frames problems clearly for downstream specialists. | No metadata override |
 | penfold | pi | A thoughtful research generalist who explores ideas through dialogue, synthesises findings into context-efficient overviews, and frames problems clearly for downstream specialists. | {"exclude_extensions":"pi-cc-header","extensions":true,"isolated":false,"prompt_mode":"replace","skills":true} |
+| penfold | antigravity | A thoughtful research generalist who explores ideas through dialogue, synthesises findings into context-efficient overviews, and frames problems clearly for downstream specialists. | {"mainAgent":false,"subagent":true} |
 | penry | claude | A meticulous code reviewer who identifies practical maintainability improvements through simplification, deduplication, and naming clarity while ensuring all changes are small, safe, and preserve exact functionality. | {"disallowedTools":["Agent"]} |
 | penry | opencode | A meticulous code reviewer who identifies practical maintainability improvements through simplification, deduplication, and naming clarity while ensuring all changes are small, safe, and preserve exact functionality. | {"mode":"subagent","permissions":[{"action":"question","effect":"allow","resource":"*"},{"action":"subagent","effect":"deny","resource":"*"}]} |
 | penry | codex | A meticulous code reviewer who identifies practical maintainability improvements through simplification, deduplication, and naming clarity while ensuring all changes are small, safe, and preserve exact functionality. | No metadata override |
 | penry | pi | A meticulous code reviewer who identifies practical maintainability improvements through simplification, deduplication, and naming clarity while ensuring all changes are small, safe, and preserve exact functionality. | {"exclude_extensions":"pi-cc-header","extensions":true,"isolated":false,"prompt_mode":"replace","skills":true} |
+| penry | antigravity | A meticulous code reviewer who identifies practical maintainability improvements through simplification, deduplication, and naming clarity while ensuring all changes are small, safe, and preserve exact functionality. | {"mainAgent":false,"subagent":true} |
 | rosey | claude | A prompt and skill specialist who crafts, refines, and maintains agent prompts, skills, commands, and instruction files with ruthless token efficiency. | {"disallowedTools":["Agent"]} |
 | rosey | opencode | A prompt and skill specialist who crafts, refines, and maintains agent prompts, skills, commands, and instruction files with ruthless token efficiency. | {"mode":"subagent","permissions":[{"action":"question","effect":"allow","resource":"*"},{"action":"subagent","effect":"deny","resource":"*"}]} |
 | rosey | codex | A prompt and skill specialist who crafts, refines, and maintains agent prompts, skills, commands, and instruction files with ruthless token efficiency. | No metadata override |
 | rosey | pi | A prompt and skill specialist who crafts, refines, and maintains agent prompts, skills, commands, and instruction files with ruthless token efficiency. | {"exclude_extensions":"pi-cc-header","extensions":true,"isolated":false,"prompt_mode":"replace","skills":true} |
+| rosey | antigravity | A prompt and skill specialist who crafts, refines, and maintains agent prompts, skills, commands, and instruction files with ruthless token efficiency. | {"mainAgent":false,"subagent":true} |
 | velma | claude | A documentation architect who creates engaging, well-organised technical documentation by translating code into clear explanations, crafting compelling READMEs, and structuring information for optimal reader comprehension. | {"disallowedTools":["Agent"]} |
 | velma | opencode | A documentation architect who creates engaging, well-organised technical documentation by translating code into clear explanations, crafting compelling READMEs, and structuring information for optimal reader comprehension. | {"mode":"subagent","permissions":[{"action":"question","effect":"allow","resource":"*"},{"action":"subagent","effect":"deny","resource":"*"}]} |
 | velma | codex | A documentation architect who creates engaging, well-organised technical documentation by translating code into clear explanations, crafting compelling READMEs, and structuring information for optimal reader comprehension. | No metadata override |
 | velma | pi | A documentation architect who creates engaging, well-organised technical documentation by translating code into clear explanations, crafting compelling READMEs, and structuring information for optimal reader comprehension. | {"exclude_extensions":"pi-cc-header","extensions":true,"isolated":false,"prompt_mode":"replace","skills":true} |
+| velma | antigravity | A documentation architect who creates engaging, well-organised technical documentation by translating code into clear explanations, crafting compelling READMEs, and structuring information for optimal reader comprehension. | {"mainAgent":false,"subagent":true} |
 
 ## Agent model defaults
 
@@ -88,6 +100,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | batfink | pi | anthropic | claude-opus-5-5 | medium |
 | batfink | pi | google | gemini-4-carbon | medium |
 | batfink | pi | openai-codex | gpt-6.2-sol | xhigh |
+| batfink | antigravity | Unset | pro | Unset |
 | brain | claude | Unset | claude-opus-5-5 | medium |
 | brain | opencode | anthropic | claude-opus-5-5 | Unset |
 | brain | opencode | google | gemini-4-neon | high |
@@ -96,6 +109,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | brain | pi | anthropic | claude-opus-5-5 | medium |
 | brain | pi | google | gemini-4-neon | high |
 | brain | pi | openai-codex | gpt-6.2-sol | xhigh |
+| brain | antigravity | Unset | pro | Unset |
 | casper | claude | Unset | claude-sonnet-5-5 | high |
 | casper | opencode | anthropic | claude-sonnet-5-5 | Unset |
 | casper | opencode | google | gemini-4-neon | high |
@@ -104,6 +118,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | casper | pi | anthropic | claude-sonnet-5-5 | high |
 | casper | pi | google | gemini-4-neon | high |
 | casper | pi | openai-codex | gpt-6.2-sol | medium |
+| casper | antigravity | Unset | pro | Unset |
 | dibble | claude | Unset | claude-opus-5-5 | medium |
 | dibble | opencode | anthropic | claude-opus-5-5 | Unset |
 | dibble | opencode | google | gemini-4-carbon | medium |
@@ -112,6 +127,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | dibble | pi | anthropic | claude-opus-5-5 | medium |
 | dibble | pi | google | gemini-4-carbon | medium |
 | dibble | pi | openai-codex | gpt-6.2-astra | high |
+| dibble | antigravity | Unset | pro | Unset |
 | donatello | claude | Unset | claude-opus-5-5 | medium |
 | donatello | opencode | anthropic | claude-opus-5-5 | Unset |
 | donatello | opencode | google | gemini-4-carbon | medium |
@@ -120,6 +136,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | donatello | pi | anthropic | claude-opus-5-5 | medium |
 | donatello | pi | google | gemini-4-carbon | medium |
 | donatello | pi | openai-codex | gpt-6.2-astra | high |
+| donatello | antigravity | Unset | pro | Unset |
 | garfield | claude | Unset | claude-haiku-5-5 | high |
 | garfield | opencode | anthropic | claude-haiku-5-5 | high |
 | garfield | opencode | google | gemini-4-hydrogen | medium |
@@ -128,6 +145,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | garfield | pi | anthropic | claude-haiku-5-5 | high |
 | garfield | pi | google | gemini-4-hydrogen | medium |
 | garfield | pi | openai-codex | gpt-6-luna | high |
+| garfield | antigravity | Unset | flash | Unset |
 | gonzales | claude | Unset | claude-opus-5-5 | medium |
 | gonzales | opencode | anthropic | claude-opus-5-5 | Unset |
 | gonzales | opencode | google | gemini-4-neon | high |
@@ -136,6 +154,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | gonzales | pi | anthropic | claude-opus-5-5 | medium |
 | gonzales | pi | google | gemini-4-neon | high |
 | gonzales | pi | openai-codex | gpt-6.2-sol | xhigh |
+| gonzales | antigravity | Unset | pro | Unset |
 | morph | claude | Unset | claude-fable-5-2 | medium |
 | morph | opencode | anthropic | claude-fable-5-2 | Unset |
 | morph | opencode | google | gemini-4-carbon | medium |
@@ -144,6 +163,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | morph | pi | anthropic | claude-fable-5-2 | medium |
 | morph | pi | google | gemini-4-carbon | medium |
 | morph | pi | openai-codex | gpt-6.2-astra | medium |
+| morph | antigravity | Unset | pro | Unset |
 | penfold | claude | Unset | claude-fable-5-2 | high |
 | penfold | opencode | anthropic | claude-fable-5-2 | Unset |
 | penfold | opencode | google | gemini-4-carbon | medium |
@@ -152,6 +172,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | penfold | pi | anthropic | claude-fable-5-2 | high |
 | penfold | pi | google | gemini-4-carbon | medium |
 | penfold | pi | openai-codex | gpt-6.2-astra | high |
+| penfold | antigravity | Unset | pro | Unset |
 | penry | claude | Unset | claude-opus-5-5 | medium |
 | penry | opencode | anthropic | claude-opus-5-5 | Unset |
 | penry | opencode | google | gemini-4-neon | high |
@@ -160,6 +181,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | penry | pi | anthropic | claude-opus-5-5 | medium |
 | penry | pi | google | gemini-4-neon | high |
 | penry | pi | openai-codex | gpt-6.2-sol | xhigh |
+| penry | antigravity | Unset | pro | Unset |
 | rosey | claude | Unset | claude-opus-5-5 | medium |
 | rosey | opencode | anthropic | claude-opus-5-5 | Unset |
 | rosey | opencode | google | gemini-4-neon | high |
@@ -168,6 +190,7 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | rosey | pi | anthropic | claude-opus-5-5 | medium |
 | rosey | pi | google | gemini-4-neon | high |
 | rosey | pi | openai-codex | gpt-6.2-astra | medium |
+| rosey | antigravity | Unset | pro | Unset |
 | velma | claude | Unset | claude-sonnet-5-5 | high |
 | velma | opencode | anthropic | claude-sonnet-5-5 | Unset |
 | velma | opencode | google | gemini-4-neon | high |
@@ -176,3 +199,4 @@ These are declared agent defaults, not command or caller model assignments. Unse
 | velma | pi | anthropic | claude-sonnet-5-5 | high |
 | velma | pi | google | gemini-4-neon | high |
 | velma | pi | openai-codex | gpt-6.2-sol | medium |
+| velma | antigravity | Unset | pro | Unset |

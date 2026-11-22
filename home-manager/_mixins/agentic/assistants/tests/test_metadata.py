@@ -89,7 +89,7 @@ class MetadataTests(unittest.TestCase):
                 result = self.evaluate(
                     """let source = m.readCommandHeader fixture; in {
                       instructions = c.commandContextInstructions source;
-                      native = lib.genAttrs [ "claude" "opencode" "pi" "codex" ]
+                      native = lib.genAttrs [ "claude" "opencode" "pi" "codex" "antigravity" ]
                         (platform: m.project "command" platform "fixture" source);
                     }""",
                     files={
@@ -247,7 +247,8 @@ use-task = true
         result = self.evaluate(
             '{ claude = m.project "command" "claude" "task" h; '
             'pi = m.project "command" "pi" "task" h; '
-            'codex = m.project "command" "codex" "task" h; }',
+            'codex = m.project "command" "codex" "task" h; '
+            'antigravity = m.project "command" "antigravity" "task" h; }',
             header,
         )
         self.assertEqual(
@@ -267,6 +268,81 @@ use-task = true
             },
         )
         self.assertEqual(result["codex"], {"description": "Task description"})
+        self.assertEqual(result["antigravity"], {"description": "Task description"})
+
+    def test_antigravity_defaults_routing_skills_and_execution_modes(self):
+        for model in ("inherit", "flash_lite", "flash", "pro"):
+            with self.subTest(model=model):
+                projected = self.evaluate(
+                    'm.project "agent" "antigravity" "worker" h',
+                    f'[common]\ndescription = "Worker."\n[routing.antigravity]\nmodel = "{model}"\n',
+                )
+                self.assertEqual(
+                    projected,
+                    {
+                        "name": "worker",
+                        "description": "Worker.",
+                        "mainAgent": False,
+                        "subagent": True,
+                        "model": model,
+                    },
+                )
+        explicit_tools = self.evaluate(
+            'm.project "agent" "antigravity" "worker" h',
+            '[common]\ndescription = "Worker."\n[antigravity]\ntools = ["read_file"]\n',
+        )
+        self.assertEqual(explicit_tools["tools"], ["read_file"])
+        skill = self.evaluate(
+            'm.project "skill" "antigravity" "fixture" h',
+            """[common]
+name = "fixture"
+description = "Fixture skill."
+license = "MIT"
+compatibility = "Linux"
+allowed-tools = "Bash"
+[common.metadata]
+upstream = "https://example.invalid"
+[antigravity]
+disable-model-invocation = true
+""",
+        )
+        self.assertEqual(
+            skill,
+            {
+                "name": "fixture",
+                "description": "Fixture skill.",
+                "license": "MIT",
+                "compatibility": "Linux",
+                "disable-model-invocation": True,
+            },
+        )
+        modes = self.evaluate(
+            """{
+              body = (m.commandExecution "antigravity" "cmd" { common.description = "Cmd."; }).mode;
+              caller = (m.commandExecution "antigravity" "cmd" {
+                common.description = "Cmd.";
+                compose = { agent = "worker"; caller-context = true; };
+              }).mode;
+              agent = (m.commandExecution "antigravity" "cmd" {
+                common.description = "Cmd.";
+                compose.agent = "worker";
+              }).mode;
+              inline = (m.commandExecution "antigravity" "cmd" {
+                common.description = "Cmd.";
+                compose = { agent = "worker"; antigravity.spawn-agent = false; };
+              }).mode;
+              adapted = c.adaptAgentPrompt "antigravity"
+                "Use Task tool. Permitted tools: Task tool for delegation, direct conversation";
+            }"""
+        )
+        self.assertEqual(modes["body"], "body")
+        self.assertEqual(modes["caller"], "caller-context")
+        self.assertEqual(modes["agent"], "antigravity-agent")
+        self.assertEqual(modes["inline"], "antigravity-inline")
+        self.assertEqual(
+            modes["adapted"],
+            "Use `invoke_subagent` tool. Permitted tools: `invoke_subagent` for delegation, direct conversation",
+        )
 
     def test_pi_defaults_and_explicit_overrides(self):
         result = self.evaluate(
@@ -304,7 +380,7 @@ skills = false
         )
 
     def test_header_exclusion_is_only_a_pi_agent_default(self):
-        for provider in ("claude", "opencode", "codex", "pi"):
+        for provider in ("claude", "opencode", "codex", "pi", "antigravity"):
             for kind in ("agent", "command", "skill", "instructions"):
                 with self.subTest(provider=provider, kind=kind):
                     result = self.evaluate(
@@ -317,7 +393,7 @@ skills = false
                         self.assertNotIn("exclude_extensions", result)
 
     def test_native_model_settings_cannot_compete_with_routing(self):
-        for provider in ("common", "claude", "opencode", "codex", "pi"):
+        for provider in ("common", "claude", "opencode", "codex", "pi", "antigravity"):
             with self.subTest(provider=provider):
                 error = self.evaluate(
                     "h",
@@ -332,7 +408,11 @@ skills = false
             '[routing.pi.openai-codex]\nthinking = "ultra"\n',
             '[routing.codex]\nmodel = ""\n',
             '[routing.codex]\nreasoningEffort = "high"\n',
+            '[routing.antigravity]\nmodel = "gemini-2.5-pro"\n',
+            '[routing.antigravity]\nmodel = ""\n',
+            '[routing.antigravity]\neffort = "high"\n',
             '[compose.codex]\nspawn-agent = "false"\n',
+            '[compose.antigravity]\nspawn-agent = "false"\n',
         ):
             with self.subTest(header=header):
                 self.evaluate("h", header, success=False)
@@ -443,6 +523,7 @@ skills = false
                     "[compose.claude]\nuse-task = true\n"
                     "[compose.pi]\nspawn-agent = true\n"
                     "[compose.codex]\nspawn-agent = true\n"
+                    "[compose.antigravity]\nspawn-agent = true\n"
                     '[claude]\ncontext = "fork"\nagent = "worker"\n'
                     '[opencode]\nagent = "worker"\nsubtask = true\n'
                 )
@@ -455,7 +536,7 @@ skills = false
             + """/compose.nix {
             inherit lib; basePath = fixture;
           };
-        in lib.genAttrs [ "claude" "opencode" "pi" "codex" ] composer.composeCommands""",
+        in lib.genAttrs [ "claude" "opencode" "pi" "codex" "antigravity" ] composer.composeCommands""",
             files=files,
         )
         for platform, commands in result.items():
@@ -575,7 +656,7 @@ skills = false
           commands = lib.genAttrs [ "claude" "opencode" "pi" ] c.composeCommands;
           metadata = lib.genAttrs [ "make-commit" "make-pr" ]
             (name: c.commandMetadata name);
-          skills = lib.genAttrs [ "claude" "codex" "opencode" "pi" ]
+          skills = lib.genAttrs [ "claude" "codex" "opencode" "pi" "antigravity" ]
             (platform: (c.composeSkillsFor platform).delegate-task.content);
         }""")
         for name in ("make-commit", "make-pr"):
@@ -617,7 +698,7 @@ skills = false
             self.assertNotIn("Garfield never launches monitoring", skill)
 
     def test_git_command_collisions_are_rejected_for_every_client(self):
-        for platform in ("claude", "opencode", "pi", "codex"):
+        for platform in ("claude", "opencode", "pi", "codex", "antigravity"):
             for name in ("make-commit", "make-pr"):
                 with self.subTest(platform=platform, command=name):
                     error = self.evaluate(
@@ -856,7 +937,7 @@ reasoningEffort = "high"
                 self.assertTrue(child.rstrip().endswith(body))
 
     def test_native_specialists_keep_routes_and_tools_without_nested_dispatch(self):
-        result = self.evaluate("""lib.genAttrs [ "claude" "opencode" "pi" ]
+        result = self.evaluate("""lib.genAttrs [ "claude" "opencode" "pi" "antigravity" ]
           (platform: lib.mapAttrs (name: _: c.composeAgentFromPrompt platform name
             "PERSONA_SENTINEL") c.agentDirs)""")
         for platform, agents in result.items():
@@ -864,11 +945,13 @@ reasoningEffort = "high"
                 with self.subTest(platform=platform, agent=name):
                     native = yaml.safe_load(rendered.split("---", 2)[1])
                     body = rendered.split("---", 2)[2].strip()
-                    if platform == "pi":
+                    if platform in ("pi", "antigravity"):
                         self.assertTrue(body.startswith("PERSONA_SENTINEL\n"))
                         self.assertIn("You are a worker.", body)
                         self.assertIn("## Shared safety rules", body)
                         self.assertIn("## Sentences", body)
+                        if platform == "antigravity":
+                            self.assertNotIn("exclude_extensions", native)
                     else:
                         self.assertEqual(body, "PERSONA_SENTINEL")
                         self.assertNotIn("exclude_extensions", native)
@@ -901,6 +984,14 @@ reasoningEffort = "high"
                                 },
                             ],
                         )
+                    elif platform == "antigravity":
+                        self.assertEqual(native["name"], name)
+                        self.assertIs(native["mainAgent"], False)
+                        self.assertIs(native["subagent"], True)
+                        self.assertEqual(
+                            native["model"], "flash" if name == "garfield" else "pro"
+                        )
+                        self.assertNotIn("tools", native)
                     else:
                         self.assertEqual(native["prompt_mode"], "replace")
                         self.assertTrue(native["skills"])
@@ -1026,7 +1117,7 @@ reasoningEffort = "high"
 
     def test_shared_coordinator_limit_and_worker_rule_reach_every_client(self):
         instructions = self.evaluate(
-            'lib.genAttrs [ "claude" "codex" "opencode" "pi" ] c.composeInstructions'
+            'lib.genAttrs [ "claude" "codex" "opencode" "pi" "antigravity" ] c.composeInstructions'
         )
         for platform, body in instructions.items():
             with self.subTest(platform=platform):
@@ -1089,6 +1180,7 @@ reasoningEffort = "high"
             "claude": '[routing.claude]\nmodel = "sonnet"\n',
             "codex": '[routing.codex]\nmodel = "test-model"\n',
             "pi": '[routing.pi.openai-codex]\nmodel = "test-model"\n',
+            "antigravity": '[routing.antigravity]\nmodel = "pro"\n',
         }
         for kind in ("command", "skill"):
             for provider, route in routes.items():
@@ -1105,7 +1197,7 @@ reasoningEffort = "high"
 
     def test_empty_command_and_skill_routes_remain_valid(self):
         for kind in ("command", "skill"):
-            for provider in ("claude", "codex", "pi", "opencode"):
+            for provider in ("claude", "codex", "pi", "opencode", "antigravity"):
                 with self.subTest(kind=kind, provider=provider):
                     result = self.evaluate(
                         f'm.project "{kind}" "{provider}" "fixture" h',
@@ -1215,7 +1307,7 @@ task = "deny"
     def test_opencode_provider_routes_are_agent_only_and_not_native_fields(self):
         header = '[routing.opencode.providers.openai]\nmodel = "gpt-6.1-terra"\n'
         result = self.evaluate(
-            'lib.genAttrs [ "claude" "codex" "opencode" "pi" ] '
+            'lib.genAttrs [ "claude" "codex" "opencode" "pi" "antigravity" ] '
             '(platform: m.project "agent" platform "fixture" h)',
             header,
         )
