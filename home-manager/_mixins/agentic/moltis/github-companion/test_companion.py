@@ -7261,6 +7261,248 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
         self.assertEqual(len(rpc_calls), rpc_before)
         self.assertEqual(len(self.httpd.telegram_requests), tg_before)
 
+    def test_lane_a_merge_fail_closed_on_fresh_guard_escalation_and_unconfirmed_replies(self) -> None:
+        repo = "wimpysworld/tailor"
+        linear_url = "https://linear.app/wimpress/issue/WW-42"
+
+        # 1) Direct parser checks: only a matching 🏁 (without 🧑‍⚖️ or ✋🏻) confirms merge
+        self.assertEqual(
+            companion.parse_lane_a_merge_reply(
+                f"🏁 https://github.com/{repo}/pull/700 - fix: confirm merge",
+                repo=repo,
+                number=700,
+                linear_url=linear_url,
+            )[0],
+            "merged",
+        )
+        self.assertEqual(
+            companion.parse_lane_a_merge_reply(
+                f"🏁 https://github.com/{repo}/pull/700 - fix: confirm merge\n\n"
+                f"🤲🏻 https://github.com/{repo}/pull/701 - polish: tidy docs",
+                repo=repo,
+                number=700,
+                linear_url=linear_url,
+            )[0],
+            "merged",
+        )
+        self.assertEqual(
+            companion.parse_lane_a_merge_reply(
+                f"🧑‍⚖️ {linear_url} - {repo}#700: fix: pending check blocked merge",
+                repo=repo,
+                number=700,
+                linear_url=linear_url,
+            )[0],
+            "needs_decision",
+        )
+        self.assertEqual(
+            companion.parse_lane_a_merge_reply(
+                f"🧑‍⚖️ {linear_url}/fix-pending-check - {repo}#700: fix: pending check blocked merge",
+                repo=repo,
+                number=700,
+                linear_url=linear_url,
+            )[0],
+            "needs_decision",
+        )
+        self.assertEqual(
+            companion.parse_lane_a_merge_reply(
+                f"🧑‍⚖️ https://github.com/{repo}/pull/700 - fix: unresolved thread blocked merge",
+                repo=repo,
+                number=700,
+                linear_url=linear_url,
+            )[0],
+            "needs_decision",
+        )
+        for unconfirmed_reply in (
+            "",
+            "HEARTBEAT_OK",
+            "HEARTBEAT_ERROR: pull request head changed after blind review consensus",
+            "Merged the pull request cleanly.",
+            f"✋🏻 https://github.com/{repo}/pull/700 - blocked by guard",
+            f"🏁 https://github.com/{repo}/pull/999 - wrong PR number",
+            f"🧑‍⚖️ https://linear.app/wimpress/issue/WW-999 - wrong Linear issue",
+            f"🏁 https://github.com/{repo}/pull/700 - merged\n\n🧑‍⚖️ {linear_url} - blocked",
+        ):
+            outcome, _ = companion.parse_lane_a_merge_reply(
+                unconfirmed_reply,
+                repo=repo,
+                number=700,
+                linear_url=linear_url,
+            )
+            self.assertEqual(outcome, "unconfirmed", f"Expected unconfirmed for {unconfirmed_reply!r}")
+
+        # 2) End-to-end Lane A merge pipeline: 🧑‍⚖️, HEARTBEAT_OK, and HEARTBEAT_ERROR never close Linear as Done; 🏁 does
+        pr_guard, pr_ok_only, pr_head_err, pr_merged = self._owned_numbers(repo, "skrye", 4, kind="pr", start=710)
+        open_nodes: list[dict[str, object]] = [
+            self._graphql_pr_node(
+                repo,
+                pr_guard,
+                title="fix: fresh guard blocks merge",
+                head_sha="sha_guard_v1",
+                ci_state="SUCCESS",
+                unresolved_threads=0,
+                additions=10,
+                deletions=2,
+                file_paths=["src/a.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_ok_only,
+                title="fix: silent heartbeat ok without merge",
+                head_sha="sha_ok_v1",
+                ci_state="SUCCESS",
+                unresolved_threads=0,
+                additions=10,
+                deletions=2,
+                file_paths=["src/b.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_head_err,
+                title="fix: head sha changed before merge",
+                head_sha="sha_err_v1",
+                ci_state="SUCCESS",
+                unresolved_threads=0,
+                additions=10,
+                deletions=2,
+                file_paths=["src/c.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_merged,
+                title="fix: clean lane a merge",
+                head_sha="sha_merged_v1",
+                ci_state="SUCCESS",
+                unresolved_threads=0,
+                additions=10,
+                deletions=2,
+                file_paths=["src/d.py"],
+            ),
+        ]
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(open_nodes), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
+
+        linear_stub = StubLinearSyncClient()
+        seeded: dict[int, dict[str, object]] = {}
+        for pr_num, sha, title in (
+            (pr_guard, "sha_guard_v1", "fix: fresh guard blocks merge"),
+            (pr_ok_only, "sha_ok_v1", "fix: silent heartbeat ok without merge"),
+            (pr_head_err, "sha_err_v1", "fix: head sha changed before merge"),
+            (pr_merged, "sha_merged_v1", "fix: clean lane a merge"),
+        ):
+            lin = linear_stub.seed_issue(
+                github_url=f"https://github.com/{repo}/pull/{pr_num}",
+                title=title,
+                repo=repo,
+                item_kind="PR",
+                state="In Review",
+            )
+            linear_stub.post_blind_review_verdict(
+                str(lin["id"]), agent="skrye", model_family="gemini", head_sha=sha, verdict="PASS"
+            )
+            linear_stub.post_blind_review_verdict(
+                str(lin["id"]), agent="traya", model_family="gpt", head_sha=sha, verdict="PASS"
+            )
+            seeded[pr_num] = lin
+
+        def skrye_reply(meta: dict[str, str], _params: dict) -> str:
+            self.assertEqual(meta.get("dispatch_kind"), "community_pr_lane_a_merge")
+            num = int(meta.get("number", "0"))
+            lin_url = meta.get("linear_issue_url", "")
+            gh_url = meta.get("github_url", "")
+            if num == pr_guard:
+                return f"🧑‍⚖️ {lin_url} - {repo}#{pr_guard}: fix: fresh guard blocks merge"
+            if num == pr_ok_only:
+                return "HEARTBEAT_OK"
+            if num == pr_head_err:
+                return "HEARTBEAT_ERROR: pull request head changed after blind review consensus"
+            if num == pr_merged:
+                return f"🏁 {gh_url} - fix: clean lane a merge"
+            return "HEARTBEAT_OK"
+
+        store, runner, rpc_calls = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=skrye_reply,
+        )
+        for pr_num, sha in (
+            (pr_guard, "sha_guard_v1"),
+            (pr_ok_only, "sha_ok_v1"),
+            (pr_head_err, "sha_err_v1"),
+            (pr_merged, "sha_merged_v1"),
+        ):
+            store.update_thread_state(
+                companion.make_pr_key(repo, pr_num),
+                {
+                    "repo": repo,
+                    "number": pr_num,
+                    "subject_type": "PullRequest",
+                    "handled_updated_at": "2026-04-01T09:00:00Z",
+                    "handled_head_sha": sha,
+                    "triaged_head_sha": sha,
+                    "is_community": True,
+                },
+                now_override_ms=self.clock(),
+            )
+
+        res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 10, 0))
+        actions_by_num = {int(a["number"]): a for a in res1["linear_pr_actions"]}
+        self.assertEqual(len(rpc_calls), 4)
+        self.assertEqual(actions_by_num[pr_guard]["action"], "lane_a_merge_needs_decision")
+        self.assertEqual(actions_by_num[pr_ok_only]["action"], "lane_a_merge_failed")
+        self.assertEqual(actions_by_num[pr_head_err]["action"], "lane_a_merge_failed")
+        self.assertEqual(actions_by_num[pr_merged]["action"], "lane_a_merged")
+
+        # Fresh-guard 🧑‍⚖️ escalation moves Linear to Backlog + needs-decision (NOT Done) with one Telegram ping
+        lin_guard_id = str(seeded[pr_guard]["id"])
+        self.assertEqual(linear_stub.issues[lin_guard_id]["state"]["name"], "Backlog")  # type: ignore[index]
+        guard_labels = companion.extract_linear_issue_labels(linear_stub.issues[lin_guard_id])
+        self.assertIn("needs-decision", guard_labels)
+        self.assertNotIn("ready-to-merge", guard_labels)
+        self.assertEqual(
+            (store.get_thread_state(companion.make_pr_key(repo, pr_guard)) or {}).get("decision_notified_sha"),
+            "sha_guard_v1",
+        )
+        self.assertEqual(len(res1["needs_decision_notifications"]), 1)
+
+        # Unconfirmed HEARTBEAT_OK and HEARTBEAT_ERROR leave Linear open in In Review and record retry failure
+        self.assertEqual(linear_stub.issues[str(seeded[pr_ok_only]["id"])]["state"]["name"], "In Review")  # type: ignore[index]
+        self.assertEqual(
+            (store.get_thread_state(companion.make_pr_key(repo, pr_ok_only)) or {}).get("retry_count"),
+            1,
+        )
+        self.assertFalse(actions_by_num[pr_ok_only]["dispatch"]["task_succeeded"])
+        self.assertEqual(linear_stub.issues[str(seeded[pr_head_err]["id"])]["state"]["name"], "In Review")  # type: ignore[index]
+        self.assertEqual(
+            (store.get_thread_state(companion.make_pr_key(repo, pr_head_err)) or {}).get("retry_count"),
+            1,
+        )
+
+        # Confirmed 🏁 merge transitions Linear to Done
+        self.assertEqual(linear_stub.issues[str(seeded[pr_merged]["id"])]["state"]["name"], "Done")  # type: ignore[index]
+
+        # Exactly two Telegram messages: one 🧑‍⚖️ for pr_guard (no duplicate) and one 🏁 for pr_merged
+        self.assertEqual(
+            [req["body"]["text"] for req in self.httpd.telegram_requests],
+            [
+                f"🧑‍⚖️ {seeded[pr_guard]['url']} - {repo}#{pr_guard}: fix: fresh guard blocks merge",
+                f"🏁 https://github.com/{repo}/pull/{pr_merged} - fix: clean lane a merge",
+            ],
+        )
+
+        # Next cycle on same headRefOid does NOT re-dispatch pr_guard (Backlog) or re-ping Telegram
+        open_nodes[:] = [open_nodes[0]]
+        res2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 10, 30))
+        self.assertEqual(res2["targeted_dispatches"], [])
+        self.assertEqual(res2["needs_decision_notifications"], [])
+        self.assertEqual(len(self.httpd.telegram_requests), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

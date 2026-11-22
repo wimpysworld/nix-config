@@ -717,6 +717,84 @@ def parse_lane_b_reply(reply_text: str) -> tuple[str, str]:
     return next(iter(distinct)), summary
 
 
+_LINEAR_ISSUE_KEY_RE = re.compile(r"^/[^/]+/issue/([A-Za-z0-9_-]+)(?:/|$)", re.IGNORECASE)
+
+
+def _extract_linear_issue_key(url: str | None) -> str:
+    if not isinstance(url, str) or not url.strip():
+        return ""
+    parsed = urllib.parse.urlsplit(url.strip())
+    if (parsed.hostname or "").lower() != "linear.app":
+        return ""
+    if match := _LINEAR_ISSUE_KEY_RE.match(parsed.path or ""):
+        return match.group(1).lower()
+    return ""
+
+
+def parse_lane_a_merge_reply(
+    reply_text: str | None,
+    *,
+    repo: str,
+    number: int,
+    linear_url: str | None = None,
+) -> tuple[str, str]:
+    """Classify a `community_pr_lane_a_merge` reply as `merged`, `needs_decision`, or `unconfirmed`."""
+    clean = normalize_terminal_reply_text(reply_text)
+    if not clean or is_heartbeat_ok_reply(clean):
+        return "unconfirmed", "empty_or_heartbeat_ok"
+    _, code_spans = _find_code_spans(clean)
+    expected_repo = (repo or "").strip().lower()
+    expected_number = _safe_int(number, 0)
+    expected_linear_key = _extract_linear_issue_key(linear_url)
+    merged_line = ""
+    decision_line = ""
+    has_blocked_entry = False
+    for match in _STEP5_ENTRY_RE.finditer(clean):
+        if _offset_in_spans(match.start(), code_spans):
+            continue
+        emoji = _canonicalize_step5_emoji(match.group("emoji"))
+        url = match.group("url").strip()
+        title = match.group("title").strip()
+        entry_line = f"{emoji} {url} - {title}"
+        if emoji == "🧑‍⚖️":
+            parsed_gh = parse_github_item_url(url)
+            if parsed_gh is not None:
+                if (
+                    expected_repo
+                    and expected_number > 0
+                    and parsed_gh[0] == expected_repo
+                    and parsed_gh[1] == "PR"
+                    and parsed_gh[2] == expected_number
+                ):
+                    decision_line = decision_line or entry_line
+            else:
+                entry_linear_key = _extract_linear_issue_key(url)
+                if entry_linear_key and (not expected_linear_key or entry_linear_key == expected_linear_key):
+                    decision_line = decision_line or entry_line
+        elif emoji == "✋🏻":
+            has_blocked_entry = True
+        elif emoji == "🏁":
+            parsed_gh = parse_github_item_url(url)
+            if (
+                parsed_gh is not None
+                and expected_repo
+                and expected_number > 0
+                and parsed_gh[0] == expected_repo
+                and parsed_gh[1] == "PR"
+                and parsed_gh[2] == expected_number
+            ):
+                merged_line = merged_line or entry_line
+    if decision_line and merged_line:
+        return "unconfirmed", "conflicting_merge_and_decision_entries"
+    if decision_line:
+        return "needs_decision", decision_line
+    if merged_line and not has_blocked_entry:
+        return "merged", merged_line
+    if has_blocked_entry:
+        return "unconfirmed", "blocked_without_merge"
+    return "unconfirmed", "missing_merge_confirmation"
+
+
 def _extract_polish_from_comment_body(comment_body: str) -> str:
     if not isinstance(comment_body, str) or not comment_body.strip():
         return ""
@@ -3558,6 +3636,16 @@ class LocalExecutionCoordinator:
         if check["completed"]:
             reply_text = extract_terminal_reply_text(rpc_response=rpc_response, assistant_record=check.get("assistant_record"))
             task_succeeded, failure_reason = classify_terminal_turn_outcome(reply_text, assistant_record=check.get("assistant_record"), rpc_response=rpc_response)
+            if task_succeeded and active_record.get("kind") == "community_pr_lane_a_merge":
+                merge_outcome, merge_detail = parse_lane_a_merge_reply(
+                    reply_text,
+                    repo=str(active_record.get("repo") or ""),
+                    number=_safe_int(active_record.get("number"), 0),
+                    linear_url=str(active_record.get("linear_issue_url") or "") or None,
+                )
+                if merge_outcome == "unconfirmed":
+                    task_succeeded = False
+                    failure_reason = f"lane_a_merge_unconfirmed ({merge_detail})"
             if task_succeeded:
                 if active_record.get("kind") not in SILENT_TELEGRAM_DISPATCH_KINDS:
                     tg_ok, tg_err = self._send_telegram_safe(reply_text)
@@ -4376,13 +4464,58 @@ class GithubCompanionRunner:
                 lane_a_polish_notes=lane_a_polish,
                 now_override_ms=now_override_ms,
             )
+            action = "lane_a_merge_failed"
+            ping: dict | None = None
             if dispatch_res.get("task_succeeded"):
-                try:
-                    self.linear_client.update_issue(clean_linear_id, state="Done")
-                except Exception as exc:
-                    sys.stderr.write(f"moltis-github-companion lane-a-done warning ({pr_key} / {clean_linear_id}): {exc}\n")
+                merge_outcome, merge_detail = parse_lane_a_merge_reply(
+                    str(dispatch_res.get("reply_text") or ""),
+                    repo=repo,
+                    number=number,
+                    linear_url=linear_url,
+                )
+                if merge_outcome == "merged":
+                    action = "lane_a_merged"
+                    try:
+                        self.linear_client.update_issue(clean_linear_id, state="Done")
+                    except Exception as exc:
+                        sys.stderr.write(f"moltis-github-companion lane-a-done warning ({pr_key} / {clean_linear_id}): {exc}\n")
+                elif merge_outcome == "needs_decision":
+                    action = "lane_a_merge_needs_decision"
+                    try:
+                        self.linear_client.update_issue(
+                            clean_linear_id,
+                            state="Backlog",
+                            add_labels=("needs-decision",),
+                            remove_labels=("ready-to-merge",),
+                        )
+                    except Exception as exc:
+                        sys.stderr.write(f"moltis-github-companion lane-a-escalate warning ({pr_key} / {clean_linear_id}): {exc}\n")
+                    clean_linear_url = str(linear_url or pr_entry.get("linear_issue_url") or "").strip()
+                    if dispatch_res.get("telegram_forwarded"):
+                        self.state_store.update_thread_state(
+                            pr_key,
+                            {
+                                "repo": repo,
+                                "number": number,
+                                "title": title,
+                                **({"linear_issue_url": clean_linear_url} if clean_linear_url else {}),
+                                "decision_notified_sha": clean_sha,
+                            },
+                            now_override_ms=current_ms,
+                        )
+                        ping = {
+                            "key": pr_key,
+                            "repo": repo,
+                            "number": number,
+                            "head_sha": clean_sha,
+                            "linear_url": clean_linear_url,
+                            "title": title,
+                            "message": merge_detail,
+                            "sent": True,
+                            "error": None,
+                        }
             return {
-                "action": "lane_a_merged" if dispatch_res.get("task_succeeded") else "lane_a_merge_failed",
+                "action": action,
                 "key": pr_key,
                 "repo": repo,
                 "number": number,
@@ -4393,7 +4526,7 @@ class GithubCompanionRunner:
                 "gemini_verdict": gemini_val,
                 "gpt_verdict": gpt_val,
                 "lane_a_polish_notes": lane_a_polish,
-                "needs_decision_notification": None,
+                "needs_decision_notification": ping,
                 "dispatch": dispatch_res,
             }
 
