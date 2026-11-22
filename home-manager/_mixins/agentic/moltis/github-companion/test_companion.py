@@ -6815,6 +6815,230 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
         self.assertEqual(st_stuck.get("retry_count"), 0)
         self.assertFalse(st_stuck.get("in_flight"))
 
+    def test_failed_linear_todo_retains_active_dispatch_for_deferred_verify_revert_and_bounded_recovery(self) -> None:
+        repo = "wimpysworld/tailor"
+        n_verify_stuck, n_verify_review, n_revert_fail, n_perm_outage = self._owned_numbers(
+            repo, "skrye", 4, kind="issue", start=310
+        )
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload([]), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
+
+        class FlakyLinearRecoveryStub(StubLinearSyncClient):
+            def __init__(self) -> None:
+                super().__init__()
+                self.fail_get_issue_remaining: dict[str, int] = {}
+                self.fail_revert_todo_remaining: dict[str, int] = {}
+                self.get_issue_attempts: dict[str, int] = {}
+
+            def get_issue(self, issue_id: str) -> dict[str, object]:
+                clean_id = str(issue_id or "").strip()
+                self.get_issue_attempts[clean_id] = self.get_issue_attempts.get(clean_id, 0) + 1
+                remaining = self.fail_get_issue_remaining.get(clean_id, 0)
+                if remaining > 0:
+                    self.fail_get_issue_remaining[clean_id] = remaining - 1
+                    raise companion.linear_sync.LinearAPIError("Linear 503 transient get_issue failure")
+                return super().get_issue(issue_id)
+
+            def update_issue(
+                self,
+                issue_id: str,
+                *,
+                state: str | None = None,
+                **kwargs: object,
+            ) -> dict[str, object]:
+                clean_id = str(issue_id or "").strip()
+                if state == "Todo":
+                    remaining = self.fail_revert_todo_remaining.get(clean_id, 0)
+                    if remaining > 0:
+                        self.fail_revert_todo_remaining[clean_id] = remaining - 1
+                        raise companion.linear_sync.LinearAPIError("Linear 503 transient update_issue failure")
+                return super().update_issue(issue_id, state=state, **kwargs)  # type: ignore[arg-type]
+
+        linear_stub = FlakyLinearRecoveryStub()
+        fail_turn_ids: set[str] = set()
+        move_to_in_review_ids: set[str] = set()
+
+        def reply_fn(meta: dict[str, str], _params: dict) -> str:
+            lid = str(meta.get("linear_issue_id") or "")
+            if lid in move_to_in_review_ids:
+                linear_stub.update_issue(lid, state="In Review")
+            if lid in fail_turn_ids:
+                return "HEARTBEAT_ERROR: implementation turn failed"
+            return f"Implemented Linear issue {lid}."
+
+        store, runner, rpc_calls = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=reply_fn,
+        )
+
+        # 1) Failed turn (task_succeeded=False) + both get_issue attempts fail while Linear is In Progress:
+        #    active-dispatch.json stays persisted with verification_deferred=True.
+        #    Poll 2 (still unreachable) defers recovery without clearing active-dispatch.json or burning retry_count.
+        #    Poll 3 (Linear healthy) confirms In Progress, reverts to Todo, clears active-dispatch.json, and retries cleanly.
+        lin_stuck = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n_verify_stuck}",
+            title=f"Failed turn verify outage #{n_verify_stuck}",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        lin_stuck_id = str(lin_stuck["id"])
+        fail_turn_ids.add(lin_stuck_id)
+        # 2 failures during Cycle 1 verification + 2 failures during Cycle 2 recovery
+        linear_stub.fail_get_issue_remaining[lin_stuck_id] = 4
+
+        res_c1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 10, 10, 0))
+        self.assertEqual(len(res_c1["targeted_dispatches"]), 1)
+        disp_c1 = res_c1["targeted_dispatches"][0]
+        self.assertFalse(disp_c1["task_succeeded"])
+        self.assertEqual(disp_c1["status"], "failed")
+        self.assertTrue(disp_c1["verification_deferred"])
+        self.assertIn("linear_todo_state_verify_failed", str(disp_c1["verification_error"]))
+        self.assertEqual(linear_stub.issues[lin_stuck_id]["state"]["name"], "In Progress")  # type: ignore[index]
+        retained_c1 = store.read_active_dispatch()["active"]
+        self.assertIsNotNone(retained_c1)
+        assert retained_c1 is not None
+        self.assertEqual(retained_c1.get("linear_issue_id"), lin_stuck_id)
+        self.assertTrue(retained_c1.get("verification_deferred"))
+
+        # Poll 2: Linear is still unreachable during recovery -> retains active-dispatch.json and does not burn retry_count.
+        rpc_before_c2 = len(rpc_calls)
+        res_c2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 10, 10, 30))
+        self.assertEqual(res_c2["status"], "recovery_deferred")
+        self.assertEqual(res_c2["recovery"]["status"], "recovery_deferred")
+        self.assertFalse(res_c2["recovery"]["can_dispatch"])
+        self.assertFalse(res_c2["recovery"]["linear_todo_reverted"])
+        self.assertEqual(res_c2["recovery"]["linear_recovery_attempts"], 1)
+        self.assertEqual(res_c2["targeted_dispatches"], [])
+        self.assertEqual(len(rpc_calls), rpc_before_c2)
+        retained_c2 = store.read_active_dispatch()["active"]
+        self.assertIsNotNone(retained_c2)
+        assert retained_c2 is not None
+        self.assertEqual(retained_c2.get("linear_recovery_attempts"), 1)
+        st_c2 = store.get_thread_state(companion.make_pr_key(repo, n_verify_stuck)) or {}
+        self.assertEqual(st_c2.get("retry_count"), 0)
+
+        # Poll 3: Linear is healthy -> recovery confirms In Progress, reverts to Todo, and re-dispatches cleanly.
+        fail_turn_ids.discard(lin_stuck_id)
+        move_to_in_review_ids.add(lin_stuck_id)
+        res_c3 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 10, 11, 0))
+        self.assertEqual(res_c3["recovery"]["status"], "recovered_failed")
+        self.assertTrue(res_c3["recovery"]["can_dispatch"])
+        self.assertTrue(res_c3["recovery"]["linear_todo_reverted"])
+        self.assertEqual(len(res_c3["targeted_dispatches"]), 1)
+        self.assertTrue(res_c3["targeted_dispatches"][0]["task_succeeded"])
+        self.assertEqual(linear_stub.issues[lin_stuck_id]["state"]["name"], "In Review")  # type: ignore[index]
+        self.assertIsNone(store.read_active_dispatch()["active"])
+
+        # 2) Failed turn + both get_issue attempts fail when Linear was ALREADY moved to In Review:
+        #    next poll recovery confirms In Review, leaves it untouched, clears active-dispatch.json, and does not re-dispatch.
+        lin_review = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n_verify_review}",
+            title=f"Failed turn already in review #{n_verify_review}",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        lin_review_id = str(lin_review["id"])
+        fail_turn_ids.add(lin_review_id)
+        move_to_in_review_ids.add(lin_review_id)
+        linear_stub.fail_get_issue_remaining[lin_review_id] = 2
+
+        res_rev_1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 10, 11, 30))
+        self.assertEqual(len(res_rev_1["targeted_dispatches"]), 1)
+        self.assertFalse(res_rev_1["targeted_dispatches"][0]["task_succeeded"])
+        self.assertTrue(res_rev_1["targeted_dispatches"][0]["verification_deferred"])
+        self.assertIsNotNone(store.read_active_dispatch()["active"])
+        self.assertEqual(linear_stub.issues[lin_review_id]["state"]["name"], "In Review")  # type: ignore[index]
+
+        rpc_before_rev_2 = len(rpc_calls)
+        res_rev_2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 10, 12, 0))
+        self.assertEqual(res_rev_2["recovery"]["status"], "recovered_failed")
+        self.assertFalse(res_rev_2["recovery"]["linear_todo_reverted"])
+        self.assertEqual(res_rev_2["targeted_dispatches"], [])
+        self.assertEqual(len(rpc_calls), rpc_before_rev_2)
+        self.assertEqual(linear_stub.issues[lin_review_id]["state"]["name"], "In Review")  # type: ignore[index]
+        self.assertIsNone(store.read_active_dispatch()["active"])
+
+        # 3) Failed turn + get_issue confirms In Progress + update_issue(..., state="Todo") fails transiently:
+        #    active-dispatch.json stays persisted; next poll recovery retries update_issue and reverts to Todo.
+        lin_revert = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n_revert_fail}",
+            title=f"Failed turn revert failure #{n_revert_fail}",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        lin_revert_id = str(lin_revert["id"])
+        fail_turn_ids.add(lin_revert_id)
+        linear_stub.fail_revert_todo_remaining[lin_revert_id] = 1
+
+        res_rv1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 11, 10, 0))
+        self.assertEqual(len(res_rv1["targeted_dispatches"]), 1)
+        self.assertFalse(res_rv1["targeted_dispatches"][0]["task_succeeded"])
+        self.assertTrue(res_rv1["targeted_dispatches"][0]["verification_deferred"])
+        self.assertIn("linear_todo_revert_failed", str(res_rv1["targeted_dispatches"][0]["verification_error"]))
+        self.assertEqual(linear_stub.issues[lin_revert_id]["state"]["name"], "In Progress")  # type: ignore[index]
+        self.assertIsNotNone(store.read_active_dispatch()["active"])
+
+        fail_turn_ids.discard(lin_revert_id)
+        move_to_in_review_ids.add(lin_revert_id)
+        res_rv2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 11, 10, 30))
+        self.assertEqual(res_rv2["recovery"]["status"], "recovered_failed")
+        self.assertTrue(res_rv2["recovery"]["linear_todo_reverted"])
+        self.assertEqual(len(res_rv2["targeted_dispatches"]), 1)
+        self.assertTrue(res_rv2["targeted_dispatches"][0]["task_succeeded"])
+        self.assertEqual(linear_stub.issues[lin_revert_id]["state"]["name"], "In Review")  # type: ignore[index]
+        self.assertIsNone(store.read_active_dispatch()["active"])
+
+        # 4) Permanent Linear outage during recovery stops after MAX_LINEAR_TODO_RECOVERY_ATTEMPTS
+        #    so active-dispatch.json is cleared and does not wedge the companion in an infinite loop.
+        lin_perm = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n_perm_outage}",
+            title=f"Permanent recovery outage #{n_perm_outage}",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        lin_perm_id = str(lin_perm["id"])
+        fail_turn_ids.add(lin_perm_id)
+        linear_stub.fail_get_issue_remaining[lin_perm_id] = 100
+
+        res_perm_0 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 12, 10, 0))
+        self.assertEqual(len(res_perm_0["targeted_dispatches"]), 1)
+        self.assertTrue(res_perm_0["targeted_dispatches"][0]["verification_deferred"])
+        self.assertIsNotNone(store.read_active_dispatch()["active"])
+
+        for attempt_idx in range(1, companion.MAX_LINEAR_TODO_RECOVERY_ATTEMPTS):
+            rec = runner.execution_coordinator.recover_active_dispatch(
+                now_override_ms=self._utc_ms(2026, 4, 12, 10, 10 * attempt_idx)
+            )
+            self.assertEqual(rec["status"], "recovery_deferred")
+            self.assertFalse(rec["can_dispatch"])
+            self.assertEqual(rec["linear_recovery_attempts"], attempt_idx)
+            self.assertIsNotNone(store.read_active_dispatch()["active"])
+
+        rec_final = runner.execution_coordinator.recover_active_dispatch(
+            now_override_ms=self._utc_ms(2026, 4, 12, 10, 45)
+        )
+        self.assertEqual(rec_final["status"], "recovered_failed")
+        self.assertTrue(rec_final["can_dispatch"])
+        self.assertFalse(rec_final["linear_todo_reverted"])
+        self.assertEqual(rec_final["linear_recovery_attempts"], companion.MAX_LINEAR_TODO_RECOVERY_ATTEMPTS)
+        self.assertIn("linear_todo_recovery_exhausted", str(rec_final["failure_reason"]))
+        self.assertIsNone(store.read_active_dispatch()["active"])
+        st_perm = store.get_thread_state(companion.make_pr_key(repo, n_perm_outage)) or {}
+        self.assertEqual(st_perm.get("retry_count"), 1)
+        self.assertFalse(st_perm.get("in_flight"))
+
 
 class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
     """End-to-end tests for WW-398 Lane A blind two-family PR review, Lane B briefs, needs-decision pings, and traya isolation."""

@@ -87,6 +87,7 @@ OUTBOX_FILENAME, AUTH_STATE_FILENAME = "outbox.json", "auth.json"
 COORDINATOR_LOCK_FILENAME, STATE_LOCK_FILENAME = "coordinator.lock", "companion.lock"
 ENCODED_COMPONENT_BYTES, MAX_RESPONSE_BYTES = 120, 4 * 1048576
 DEFAULT_GH_SESSION_KEY, MAX_THREAD_FAILURE_RETRIES = "companion:github", 3
+MAX_LINEAR_TODO_RECOVERY_ATTEMPTS = MAX_THREAD_FAILURE_RETRIES
 TEAM_LABELS = ("team:implement", "team:merge", "team:review")
 PR_TEAM_LABELS = ("team:merge", "team:review", "team:implement")
 ISSUE_TEAM_LABELS = ("team:implement", "team:review")
@@ -385,6 +386,26 @@ def parse_github_item_url(url: str) -> tuple[str, str, int, str] | None:
         if number > 0:
             return repo, item_label, number, normalized_url
     return None
+
+
+def _fetch_linear_issue_state_with_retry(
+    linear_client: linear_sync.LinearSyncClient | None,
+    linear_id: str,
+) -> tuple[str | None, Exception | None]:
+    """Fetch a Linear issue's lowercased workflow state name with one retry on transient failure."""
+    if linear_client is None:
+        return None, None
+    last_exc: Exception | None = None
+    for attempt in range(2):
+        try:
+            refreshed = linear_client.get_issue(linear_id)
+            post_state = _as_dict(_as_dict(refreshed).get("state"))
+            return str(post_state.get("name") or "").strip().lower(), None
+        except Exception as exc:
+            last_exc = exc
+            if attempt == 0:
+                continue
+    return None, last_exc
 
 
 def extract_linear_issue_labels(linear_issue: dict) -> set[str]:
@@ -3807,28 +3828,106 @@ class LocalExecutionCoordinator:
         if not isinstance(current, dict) or not dispatch_id or str(current.get("dispatch_id") or "").strip() == dispatch_id:
             self.state_store.write_active_dispatch(None, now_override_ms=now_override_ms)
 
-    def _revert_stranded_linear_todo_on_recovery(self, active_record: dict) -> bool:
-        """Revert a stranded In Progress linear_todo_implement issue to Todo if Linear confirms it is still In Progress."""
+    def _fetch_linear_issue_state(self, linear_id: str) -> tuple[str | None, Exception | None]:
+        """Fetch a Linear issue's lowercased workflow state name with one retry on transient failure."""
+        return _fetch_linear_issue_state_with_retry(self.linear_client, linear_id)
+
+    def _revert_stranded_linear_todo_on_recovery(self, active_record: dict) -> tuple[bool, bool, str | None]:
+        """Reconcile a linear_todo_implement issue on recovery; return (reverted, reconciled, error)."""
         if self.linear_client is None or active_record.get("kind") != "linear_todo_implement":
-            return False
+            return False, True, None
         linear_issue_id = str(active_record.get("linear_issue_id") or "").strip()
         if not linear_issue_id:
-            return False
-        try:
-            refreshed = self.linear_client.get_issue(linear_issue_id)
-        except Exception as exc:
-            sys.stderr.write(f"moltis-github-companion linear-todo-recovery-verify warning ({active_record.get('state_key') or linear_issue_id} / {linear_issue_id}): {exc}\n")
-            return False
-        post_state = _as_dict(_as_dict(refreshed).get("state"))
-        post_state_name = str(post_state.get("name") or "").strip().lower()
+            return False, True, None
+        post_state_name, verify_exc = self._fetch_linear_issue_state(linear_issue_id)
+        if verify_exc is not None or not post_state_name:
+            detail = str(verify_exc) if verify_exc is not None else "missing workflow state in Linear response"
+            sys.stderr.write(f"moltis-github-companion linear-todo-recovery-verify warning ({active_record.get('state_key') or linear_issue_id} / {linear_issue_id}): {detail}\n")
+            return False, False, f"linear_todo_recovery_verify_failed: {detail}"
         if post_state_name not in ("in progress", "in_progress"):
-            return False
+            return False, True, None
         try:
             self.linear_client.update_issue(linear_issue_id, state="Todo")
         except Exception as exc:
             sys.stderr.write(f"moltis-github-companion linear-todo-recovery-revert warning ({active_record.get('state_key') or linear_issue_id} / {linear_issue_id}): {exc}\n")
-            return False
-        return True
+            return False, False, f"linear_todo_recovery_revert_failed: {exc}"
+        return True, True, None
+
+    def defer_linear_todo_verification(
+        self,
+        dispatch_result: dict,
+        *,
+        verification_error: str,
+        failure_reason: str | None = None,
+        now_override_ms: int | None = None,
+    ) -> dict:
+        """Retain active-dispatch.json marked verification_deferred when post-turn Linear verification or rollback fails."""
+        active_record = _as_dict(dispatch_result.get("_deferred_active_record"))
+        clean_error = str(verification_error or "linear_todo_state_verify_failed").strip()
+        clean_failure = str(failure_reason or "").strip() if failure_reason is not None else ""
+        if active_record:
+            with self.state_store.coordinator_lock():
+                stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
+                current = self.state_store.read_active_dispatch().get("active")
+                dispatch_id = str(active_record.get("dispatch_id") or "").strip()
+                if isinstance(current, dict) and (not dispatch_id or str(current.get("dispatch_id") or "").strip() == dispatch_id):
+                    updated_active = dict(current)
+                else:
+                    updated_active = dict(active_record)
+                updated_active["verification_deferred"] = True
+                updated_active["verification_error"] = clean_error
+                if clean_failure:
+                    updated_active["deferred_failure_reason"] = clean_failure
+                self.state_store.write_active_dispatch(updated_active, now_override_ms=stamp_ms)
+        dispatch_result.pop("_deferred_active_record", None)
+        dispatch_result["verification_deferred"] = True
+        dispatch_result["verification_error"] = clean_error
+        if clean_failure:
+            dispatch_result["status"] = "failed"
+            dispatch_result["task_succeeded"] = False
+            dispatch_result["failure_reason"] = clean_failure
+        elif dispatch_result.get("task_succeeded"):
+            dispatch_result["status"] = "unverified"
+        else:
+            dispatch_result["status"] = "failed"
+            dispatch_result["task_succeeded"] = False
+        return dispatch_result
+
+    def _finalize_recovery_failure(
+        self,
+        active_record: dict,
+        *,
+        failure_reason: str,
+        now_override_ms: int,
+    ) -> tuple[dict, bool, bool, str, int]:
+        """Reconcile any stranded linear_todo_implement issue on recovery and finalize or defer active-dispatch.json."""
+        linear_todo_reverted, reconciled, rec_err = self._revert_stranded_linear_todo_on_recovery(active_record)
+        if reconciled:
+            fin = self._finalize_failed_dispatch(active_record, failure_reason=failure_reason, now_override_ms=now_override_ms)
+            return fin, linear_todo_reverted, False, failure_reason, _safe_int(active_record.get("linear_recovery_attempts"), 0)
+
+        attempts = _safe_int(active_record.get("linear_recovery_attempts"), 0) + 1
+        err_reason = rec_err or "linear_todo_recovery_failed"
+        if attempts < MAX_LINEAR_TODO_RECOVERY_ATTEMPTS:
+            updated_active = dict(active_record)
+            updated_active["verification_deferred"] = True
+            updated_active["linear_recovery_attempts"] = attempts
+            updated_active["verification_error"] = err_reason
+            updated_active.setdefault("deferred_failure_reason", failure_reason)
+            self.state_store.write_active_dispatch(updated_active, now_override_ms=now_override_ms)
+            state_key = str(active_record.get("state_key") or active_record.get("thread_id") or "").strip()
+            watermark_result = self.state_store.get_thread_state(state_key) if state_key else None
+            fin = {"watermark": watermark_result, "queued_followup": bool(_as_dict(watermark_result).get("pending_followup"))}
+            return fin, False, True, err_reason, attempts
+
+        sys.stderr.write(
+            f"moltis-github-companion linear-todo-recovery-exhausted warning "
+            f"({active_record.get('state_key') or active_record.get('linear_issue_id')} / {active_record.get('linear_issue_id')}): "
+            f"{err_reason} after {attempts} attempts\n"
+        )
+        exhausted_reason = f"linear_todo_recovery_exhausted: {err_reason}"
+        fin = self._finalize_failed_dispatch(active_record, failure_reason=exhausted_reason, now_override_ms=now_override_ms)
+        return fin, False, False, exhausted_reason, attempts
 
     def _finalize_completed_dispatch(
         self,
@@ -3903,9 +4002,12 @@ class LocalExecutionCoordinator:
         dispatch_id = str(active_record.get("dispatch_id") or "")
         session_key = str(active_record.get("session_key") or self.session_key)
         defer_commit = bool(defer_watermark_commit or active_record.get("defer_watermark_commit"))
+        defer_failure = bool(defer_commit and not is_recovery and active_record.get("kind") == "linear_todo_implement")
         reply_text = ""
         task_succeeded, failure_reason, tg_ok, tg_err = False, None, False, None
         linear_todo_reverted = False
+        recovery_deferred = False
+        linear_recovery_attempts = _safe_int(active_record.get("linear_recovery_attempts"), 0)
         if check["completed"]:
             reply_text = extract_terminal_reply_text(rpc_response=rpc_response, assistant_record=check.get("assistant_record"))
             task_succeeded, failure_reason = classify_terminal_turn_outcome(reply_text, assistant_record=check.get("assistant_record"), rpc_response=rpc_response)
@@ -3937,33 +4039,63 @@ class LocalExecutionCoordinator:
             if task_succeeded:
                 if defer_commit and is_recovery:
                     task_succeeded = False
-                    failure_reason = "interrupted_deferred_post_turn_write"
-                    linear_todo_reverted = self._revert_stranded_linear_todo_on_recovery(active_record)
-                    fin = self._finalize_failed_dispatch(active_record, failure_reason=failure_reason, now_override_ms=stamp_ms)
+                    failure_reason = str(active_record.get("deferred_failure_reason") or "").strip() or "interrupted_deferred_post_turn_write"
+                    fin, linear_todo_reverted, recovery_deferred, failure_reason, linear_recovery_attempts = self._finalize_recovery_failure(
+                        active_record,
+                        failure_reason=failure_reason,
+                        now_override_ms=stamp_ms,
+                    )
                 else:
                     if active_record.get("kind") not in SILENT_TELEGRAM_DISPATCH_KINDS:
                         tg_ok, tg_err = self._send_telegram_safe(reply_text)
                     fin = self._finalize_completed_dispatch(active_record, now_override_ms=stamp_ms, defer_watermark_commit=defer_commit)
             else:
                 if is_recovery:
-                    linear_todo_reverted = self._revert_stranded_linear_todo_on_recovery(active_record)
-                fin = self._finalize_failed_dispatch(active_record, failure_reason=failure_reason, now_override_ms=stamp_ms)
+                    fin, linear_todo_reverted, recovery_deferred, failure_reason, linear_recovery_attempts = self._finalize_recovery_failure(
+                        active_record,
+                        failure_reason=failure_reason or "turn_failed",
+                        now_override_ms=stamp_ms,
+                    )
+                elif defer_failure:
+                    state_key = str(active_record.get("state_key") or active_record.get("thread_id") or "").strip()
+                    watermark_result = self.state_store.get_thread_state(state_key) if state_key else None
+                    fin = {"watermark": watermark_result, "queued_followup": bool(_as_dict(watermark_result).get("pending_followup"))}
+                else:
+                    fin = self._finalize_failed_dispatch(active_record, failure_reason=failure_reason, now_override_ms=stamp_ms)
         else:
             default_timeout = "turn_recovery_timeout" if is_recovery else (f"rpc_error: {rpc_error}" if rpc_error is not None else "turn_completion_timeout")
             failure_reason = "interrupted_turn_without_terminal_reply" if check.get("peek_active") is False else default_timeout
             if is_recovery:
-                linear_todo_reverted = self._revert_stranded_linear_todo_on_recovery(active_record)
-            fin = self._finalize_failed_dispatch(active_record, failure_reason=failure_reason, now_override_ms=stamp_ms)
+                if check.get("peek_active") is False and str(active_record.get("deferred_failure_reason") or "").strip():
+                    failure_reason = str(active_record.get("deferred_failure_reason") or "").strip()
+                fin, linear_todo_reverted, recovery_deferred, failure_reason, linear_recovery_attempts = self._finalize_recovery_failure(
+                    active_record,
+                    failure_reason=failure_reason,
+                    now_override_ms=stamp_ms,
+                )
+            elif defer_failure:
+                state_key = str(active_record.get("state_key") or active_record.get("thread_id") or "").strip()
+                watermark_result = self.state_store.get_thread_state(state_key) if state_key else None
+                fin = {"watermark": watermark_result, "queued_followup": bool(_as_dict(watermark_result).get("pending_followup"))}
+            else:
+                fin = self._finalize_failed_dispatch(active_record, failure_reason=failure_reason, now_override_ms=stamp_ms)
 
-        status = ("recovered_completed" if task_succeeded else "recovered_failed") if is_recovery else ("completed" if task_succeeded else "failed")
+        if is_recovery:
+            status = "recovery_deferred" if recovery_deferred else ("recovered_completed" if task_succeeded else "recovered_failed")
+        else:
+            status = "completed" if task_succeeded else "failed"
         res: dict[str, object] = {"status": status, "execution_terminated": bool(check.get("completed") or check.get("peek_active") is False), "task_succeeded": task_succeeded, "failure_reason": failure_reason, "dispatch_id": dispatch_id, "session_key": session_key, "kind": active_record.get("kind"), "thread_id": active_record.get("thread_id"), "state_key": active_record.get("state_key"), "reply_text": reply_text, "telegram_forwarded": tg_ok, "telegram_error": tg_err, "queued_followup": fin["queued_followup"], "watermark": fin["watermark"]}
-        if defer_commit and task_succeeded and not is_recovery:
+        if (defer_commit and task_succeeded and not is_recovery) or (defer_failure and not task_succeeded):
             res["watermark_deferred"] = True
             res["_deferred_active_record"] = dict(active_record)
         if is_recovery:
-            res["can_dispatch"] = True
+            res["can_dispatch"] = not recovery_deferred
             if active_record.get("kind") == "linear_todo_implement":
                 res["linear_todo_reverted"] = linear_todo_reverted
+                res["linear_recovery_attempts"] = linear_recovery_attempts
+                if recovery_deferred:
+                    res["verification_deferred"] = True
+                    res["verification_error"] = failure_reason
         else:
             sn_sent, sn_text, sn_err = start_notice or (False, "", None)
             res.update({"dispatched": True, "start_notice_sent": sn_sent, "start_notice_text": sn_text, "start_notice_error": sn_err, "rpc_response": rpc_response, "rpc_error": str(rpc_error) if rpc_error is not None else None, "recovery": recovery})
@@ -3987,6 +4119,19 @@ class LocalExecutionCoordinator:
         """Serialise a model turn under coordinator.lock while allowing state.json updates under companion.lock."""
         with self.state_store.coordinator_lock():
             recovery = self._recover_unlocked(now_override_ms=now_override_ms)
+            if not recovery.get("can_dispatch", True):
+                return {
+                    "status": str(recovery.get("status") or "recovery_deferred"),
+                    "dispatched": False,
+                    "execution_terminated": False,
+                    "task_succeeded": False,
+                    "failure_reason": recovery.get("failure_reason") or "active_dispatch_recovery_pending",
+                    "kind": kind,
+                    "thread_id": thread_id,
+                    "state_key": (state_key or thread_id or (make_pr_key(repo, number) if repo and number else "")).strip(),
+                    "verification_deferred": bool(recovery.get("verification_deferred")),
+                    "recovery": recovery,
+                }
             start_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
             resolved_session_key = (session_key or self.session_key or DEFAULT_GH_SESSION_KEY).strip()
             is_issue_triage = kind == "community_triage" and str(subject_kind or "").strip().lower() == "issue"
@@ -4501,19 +4646,7 @@ class GithubCompanionRunner:
 
     def _fetch_linear_issue_state(self, linear_id: str) -> tuple[str | None, Exception | None]:
         """Fetch a Linear issue's lowercased workflow state name with one retry on transient failure."""
-        if self.linear_client is None:
-            return None, None
-        last_exc: Exception | None = None
-        for attempt in range(2):
-            try:
-                refreshed = self.linear_client.get_issue(linear_id)
-                post_state = _as_dict(_as_dict(refreshed).get("state"))
-                return str(post_state.get("name") or "").strip().lower(), None
-            except Exception as exc:
-                last_exc = exc
-                if attempt == 0:
-                    continue
-        return None, last_exc
+        return _fetch_linear_issue_state_with_retry(self.linear_client, linear_id)
 
     def _dispatch_linear_todo_implementations(self, active_linear_issues: Iterable[dict], *, slot_id: str, dispatched_targets: set[str], current_ms: int, now_override_ms: int | None) -> list[dict]:
         if self.linear_client is None or self.state_store.agent_name not in SWEEP_AGENT_ORDER:
@@ -4566,37 +4699,49 @@ class GithubCompanionRunner:
                 defer_watermark_commit=True,
                 now_override_ms=now_override_ms,
             )
-            confirmed_in_progress = False
-            if res.get("task_succeeded"):
-                with self._deferred_dispatch_guard(res, now_override_ms=now_override_ms):
-                    post_state_name, verify_exc = self._fetch_linear_issue_state(cand["linear_id"])
-                    if verify_exc is not None or not post_state_name:
-                        detail = str(verify_exc) if verify_exc is not None else "missing workflow state in Linear response"
-                        sys.stderr.write(f"moltis-github-companion linear-todo-verify warning ({cand['issue_key']} / {cand['linear_id']}): {detail}\n")
-                        res.pop("_deferred_active_record", None)
-                        res["status"] = "unverified"
-                        res["verification_deferred"] = True
-                        res["verification_error"] = f"linear_todo_state_verify_failed: {detail}"
-                    elif post_state_name in ("in progress", "in_progress"):
-                        confirmed_in_progress = True
-                        self.execution_coordinator.fail_deferred_dispatch(
+            if not res.get("dispatched", True):
+                with contextlib.suppress(Exception):
+                    self.linear_client.update_issue(cand["linear_id"], state="Todo")
+                dispatches.append(res)
+                break
+            with self._deferred_dispatch_guard(res, now_override_ms=now_override_ms):
+                turn_succeeded = bool(res.get("task_succeeded"))
+                orig_failure_reason = str(res.get("failure_reason") or "turn_failed")
+                post_state_name, verify_exc = self._fetch_linear_issue_state(cand["linear_id"])
+                if verify_exc is not None or not post_state_name:
+                    detail = str(verify_exc) if verify_exc is not None else "missing workflow state in Linear response"
+                    sys.stderr.write(f"moltis-github-companion linear-todo-verify warning ({cand['issue_key']} / {cand['linear_id']}): {detail}\n")
+                    self.execution_coordinator.defer_linear_todo_verification(
+                        res,
+                        verification_error=f"linear_todo_state_verify_failed: {detail}",
+                        failure_reason=None if turn_succeeded else orig_failure_reason,
+                        now_override_ms=now_override_ms,
+                    )
+                elif post_state_name in ("in progress", "in_progress"):
+                    try:
+                        self.linear_client.update_issue(cand["linear_id"], state="Todo")
+                    except Exception as exc:
+                        sys.stderr.write(f"moltis-github-companion linear-todo-revert warning ({cand['issue_key']} / {cand['linear_id']}): {exc}\n")
+                        self.execution_coordinator.defer_linear_todo_verification(
                             res,
-                            failure_reason="linear_todo_state_unchanged_in_progress",
+                            verification_error=f"linear_todo_revert_failed: {exc}",
+                            failure_reason="linear_todo_state_unchanged_in_progress" if turn_succeeded else orig_failure_reason,
                             now_override_ms=now_override_ms,
                         )
                     else:
-                        self.execution_coordinator.commit_deferred_dispatch(res, now_override_ms=now_override_ms)
-            else:
-                post_state_name, verify_exc = self._fetch_linear_issue_state(cand["linear_id"])
-                if verify_exc is not None:
-                    sys.stderr.write(f"moltis-github-companion linear-todo-verify warning ({cand['issue_key']} / {cand['linear_id']}): {verify_exc}\n")
-                elif post_state_name in ("in progress", "in_progress"):
-                    confirmed_in_progress = True
-            if confirmed_in_progress:
-                try:
-                    self.linear_client.update_issue(cand["linear_id"], state="Todo")
-                except Exception as exc:
-                    sys.stderr.write(f"moltis-github-companion linear-todo-revert warning ({cand['issue_key']} / {cand['linear_id']}): {exc}\n")
+                        self.execution_coordinator.fail_deferred_dispatch(
+                            res,
+                            failure_reason="linear_todo_state_unchanged_in_progress" if turn_succeeded else orig_failure_reason,
+                            now_override_ms=now_override_ms,
+                        )
+                elif turn_succeeded:
+                    self.execution_coordinator.commit_deferred_dispatch(res, now_override_ms=now_override_ms)
+                else:
+                    self.execution_coordinator.fail_deferred_dispatch(
+                        res,
+                        failure_reason=orig_failure_reason,
+                        now_override_ms=now_override_ms,
+                    )
             dispatches.append(res)
         return dispatches
 
@@ -6333,6 +6478,22 @@ class GithubCompanionRunner:
             return {"status": "turn_in_progress", "recovery": {"status": "busy", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": []}
 
         recovery = self.execution_coordinator.recover_active_dispatch(now_override_ms=now_override_ms)
+        if not recovery.get("can_dispatch", True):
+            return {
+                "status": str(recovery.get("status") or "recovery_deferred"),
+                "recovery": recovery,
+                "poll_result": poll_result,
+                "targeted_dispatches": [],
+                "dismissed_threads": dismissed_threads,
+                "sweep_dispatch": None,
+                "linear_triage_stubs": [],
+                "linear_promoted_todos": [],
+                "linear_synced_closed": [],
+                "signoff_notifications": [],
+                "linear_pr_actions": [],
+                "needs_decision_notifications": [],
+                "traya_blind_reviews": [],
+            }
         current_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         slot_id = compute_throttle_slot_id(current_ms, self.state_store.agent_name)
         targeted_dispatches: list[dict] = []
@@ -6589,7 +6750,7 @@ class GithubCompanionRunner:
                     targeted_dispatches.append(traya_item["dispatch"])
 
         sweep_dispatch: dict | None = None
-        if run_sweeps_if_due:
+        if run_sweeps_if_due and not any(d.get("verification_deferred") for d in targeted_dispatches):
             weekly_due, today_str = self.is_weekly_sweep_due(now_override_ms=now_override_ms)
             if weekly_due or self.is_reconcile_sweep_due(now_override_ms=now_override_ms):
                 sweep_dispatch = self.execution_coordinator.execute_dispatch(kind="weekly_sweep" if weekly_due else "reconcile_sweep", sweep_date=today_str if weekly_due else None, now_override_ms=now_override_ms)
