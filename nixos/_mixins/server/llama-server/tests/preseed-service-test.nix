@@ -10,6 +10,10 @@ let
       modules = [
         ../../../../../lib/noughty
         {
+          nixpkgs.overlays = with flake.overlays; [
+            modifiedPackages
+            unstablePackages
+          ];
           system.stateVersion = "25.11";
           noughty.host = {
             name = "testhost";
