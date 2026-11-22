@@ -45,8 +45,7 @@ ENV_LINEAR_API_URL = "MOLTIS_GITHUB_COMPANION_LINEAR_API_URL"
 _WORKFLOW_LABEL_BY_LOWER: dict[str, str] = {label.lower(): label for label in WORKFLOW_LABELS}
 _REPO_SLUG_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 _BLIND_REVIEW_MARKER_RE = re.compile(
-    r"<!--\s*" + re.escape(BLIND_REVIEW_MARKER_PREFIX) + r"\s+(\{.*?\})\s*-->",
-    re.DOTALL,
+    r"\A\s*<!--\s*" + re.escape(BLIND_REVIEW_MARKER_PREFIX) + r"\s+(\{[^\r\n]*?\})\s*-->[ \t]*(?:\r?\n|\Z)",
 )
 
 _CANONICAL_STATE_ALIASES: dict[str, str] = {
@@ -318,6 +317,11 @@ def _normalize_verdict_fields(
     return values
 
 
+def _escape_verdict_summary(summary: str) -> str:
+    """Escape HTML comment delimiters so summary text cannot smuggle verdict markers."""
+    return str(summary or "").strip().replace("<!--", "&lt;!--").replace("-->", "--&gt;")
+
+
 def format_blind_review_verdict_comment(
     agent: str,
     model_family: str,
@@ -333,7 +337,7 @@ def format_blind_review_verdict_comment(
         marker,
         f"**Blind review verdict ({fields['agent']} / {fields['model_family']})**: `{fields['verdict']}` on `{fields['head_sha']}`",
     ]
-    clean_summary = str(summary or "").strip()
+    clean_summary = _escape_verdict_summary(summary)
     if clean_summary:
         lines.extend(["", clean_summary])
     return "\n".join(lines)
@@ -343,7 +347,7 @@ def parse_blind_review_verdicts(
     comments: Iterable[dict[str, object] | str],
     head_sha: str | None = None,
 ) -> list[dict[str, object]]:
-    """Parse structured blind review verdict markers from Linear comments."""
+    """Parse one canonical leading blind review verdict marker per Linear comment."""
     target_sha = str(head_sha).strip().lower() if head_sha is not None else None
     parsed_verdicts: list[dict[str, object]] = []
 
@@ -351,33 +355,35 @@ def parse_blind_review_verdicts(
         body = comment if isinstance(comment, str) else (comment.get("body") if isinstance(comment, dict) else "")
         if not isinstance(body, str) or not body:
             continue
-        for match in _BLIND_REVIEW_MARKER_RE.finditer(body):
-            try:
-                raw_payload = json.loads(match.group(1))
-            except ValueError:
-                continue
-            if not isinstance(raw_payload, dict):
-                continue
-            try:
-                fields = _normalize_verdict_fields(
-                    str(raw_payload.get("agent") or ""),
-                    str(raw_payload.get("model_family") or ""),
-                    str(raw_payload.get("head_sha") or ""),
-                    str(raw_payload.get("verdict") or ""),
-                )
-            except ValueError:
-                continue
-            if target_sha is not None and fields["head_sha"] != target_sha:
-                continue
-            entry: dict[str, object] = dict(fields)
-            if isinstance(comment, dict):
-                if comment.get("id") is not None:
-                    entry["comment_id"] = comment.get("id")
-                if comment.get("createdAt") is not None:
-                    entry["created_at"] = comment.get("createdAt")
-                if comment.get("updatedAt") is not None:
-                    entry["updated_at"] = comment.get("updatedAt")
-            parsed_verdicts.append(entry)
+        match = _BLIND_REVIEW_MARKER_RE.match(body)
+        if match is None:
+            continue
+        try:
+            raw_payload = json.loads(match.group(1))
+        except ValueError:
+            continue
+        if not isinstance(raw_payload, dict):
+            continue
+        try:
+            fields = _normalize_verdict_fields(
+                str(raw_payload.get("agent") or ""),
+                str(raw_payload.get("model_family") or ""),
+                str(raw_payload.get("head_sha") or ""),
+                str(raw_payload.get("verdict") or ""),
+            )
+        except ValueError:
+            continue
+        if target_sha is not None and fields["head_sha"] != target_sha:
+            continue
+        entry: dict[str, object] = dict(fields)
+        if isinstance(comment, dict):
+            if comment.get("id") is not None:
+                entry["comment_id"] = comment.get("id")
+            if comment.get("createdAt") is not None:
+                entry["created_at"] = comment.get("createdAt")
+            if comment.get("updatedAt") is not None:
+                entry["updated_at"] = comment.get("updatedAt")
+        parsed_verdicts.append(entry)
 
     return parsed_verdicts
 
