@@ -5,9 +5,15 @@ let
     lib.evalModules {
       modules = [
         {
-          options.assertions = lib.mkOption {
-            type = lib.types.listOf lib.types.anything;
-            default = [ ];
+          options = {
+            assertions = lib.mkOption {
+              type = lib.types.listOf lib.types.anything;
+              default = [ ];
+            };
+            systemd = lib.mkOption {
+              type = lib.types.attrs;
+              default = { };
+            };
           };
         }
         ../../../../../lib/noughty

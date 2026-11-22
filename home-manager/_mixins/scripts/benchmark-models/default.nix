@@ -9,6 +9,18 @@ let
   name = builtins.baseNameOf (builtins.toString ./.);
   inherit (host.gpu.compute) vendor;
   isInference = builtins.elem "inference" host.tags;
+  isStrixHalo = builtins.elem "strix-halo" host.tags;
+
+  modelDownloads = import ../../../../nixos/_mixins/server/llama-server/model-downloads.nix;
+  inherit (import ../../../../nixos/_mixins/server/llama-server/runtime.nix { inherit lib; })
+    defaultCacheRoot
+    ;
+  modelSnapshot =
+    model:
+    let
+      repo = lib.replaceStrings [ "/" ] [ "--" ] model.hfRepo;
+    in
+    "hub/models--${repo}/snapshots/${model.revision}/${model.primaryPath}";
 
   mkPrefixedBackend =
     prefix: package:
@@ -50,6 +62,19 @@ let
   rocmOllama = mkPrefixedBackend "rocm" pkgs.ollama-rocm;
   vulkanOllama = mkPrefixedBackend "vulkan" pkgs.ollama-vulkan;
 
+  focusedRocm = pkgs.llama-cpp-inkling.override {
+    rocmSupport = true;
+    rocmGpuTargets = [ "gfx1151" ];
+    cudaSupport = false;
+    vulkanSupport = false;
+  };
+
+  focusedVulkan = pkgs.llama-cpp-inkling.override {
+    vulkanSupport = true;
+    rocmSupport = false;
+    cudaSupport = false;
+  };
+
   backendPackages =
     if vendor == "nvidia" then
       [
@@ -70,6 +95,18 @@ let
 
   benchmarkEnv = ''
     BENCHMARK_MODELS_HOST_GPU_COMPUTE_VENDOR="${if vendor != null then vendor else ""}"
+    BENCHMARK_FOCUSED_SCRIPT=${./focused.py}
+  ''
+  + lib.optionalString (isStrixHalo && vendor == "amd") ''
+    export BENCHMARK_MODELS_VULKAN_SERVER="''${BENCHMARK_MODELS_VULKAN_SERVER:-${focusedVulkan}/bin/llama-server}"
+    export BENCHMARK_MODELS_ROCM_SERVER="''${BENCHMARK_MODELS_ROCM_SERVER:-${focusedRocm}/bin/llama-server}"
+    export BENCHMARK_FOCUSED_CACHE=${lib.escapeShellArg defaultCacheRoot}
+    export BENCHMARK_FOCUSED_INKLING_SNAPSHOT=${
+      lib.escapeShellArg (modelSnapshot modelDownloads."unsloth/Inkling-2-Mini-GGUF:UD-Q4_K_XL")
+    }
+    export BENCHMARK_FOCUSED_QWEN_SNAPSHOT=${
+      lib.escapeShellArg (modelSnapshot modelDownloads."unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL")
+    }
   '';
 
   shellApplication = pkgs.writeShellApplication {
@@ -81,6 +118,7 @@ let
         curl
         gawk
         jq
+        python3
         python3Packages.huggingface-hub
       ]
       ++ backendPackages;
@@ -89,10 +127,7 @@ let
 
   shellApplicationAll = pkgs.writeShellApplication {
     name = "${name}-all";
-    runtimeInputs = with pkgs; [
-      coreutils
-      shellApplication
-    ];
+    runtimeInputs = [ shellApplication ];
     text = builtins.readFile ./benchmark-models-all.sh;
   };
 in

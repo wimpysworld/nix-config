@@ -1,7 +1,7 @@
 { lib }:
 let
   modelPolicy = import ../model-policy.nix { inherit lib; };
-  modelDownloads = import ../model-downloads.nix { inherit lib; };
+  modelDownloads = import ../model-downloads.nix;
   selectedRefs = modelPolicy.selectedModelReferences;
 
   validateRepoRelativePath =
@@ -11,6 +11,10 @@ let
     && lib.all (component: component != "" && component != "." && component != "..") (
       lib.splitString "/" pathValue
     );
+
+  validateDownloadPath =
+    path:
+    (lib.hasSuffix ".gguf" path || lib.hasSuffix ".gguf_file" path) && validateRepoRelativePath path;
 
   validateModelDownloads =
     refs: downloads:
@@ -24,13 +28,9 @@ let
         in
         !(metadata ? hfRepo && metadata ? primaryPath && metadata ? downloadPaths)
         || metadata.hfRepo == ""
-        || metadata.primaryPath == ""
-        || !(lib.hasSuffix ".gguf" metadata.primaryPath)
-        || !(validateRepoRelativePath metadata.primaryPath)
+        || !(validateDownloadPath metadata.primaryPath)
         || downloadPaths == [ ]
-        || lib.any (
-          downloadPath: !(lib.hasSuffix ".gguf" downloadPath) || !(validateRepoRelativePath downloadPath)
-        ) downloadPaths
+        || !(lib.all validateDownloadPath downloadPaths)
         || !(builtins.elem metadata.primaryPath downloadPaths)
       ) refs;
     in
@@ -39,6 +39,12 @@ let
     };
 
   validation = validateModelDownloads selectedRefs modelDownloads;
+  inklingDownloads = lib.filterAttrs (
+    _: download: download.publicName == "inkling-2-mini"
+  ) modelDownloads;
+  pinnedDownloads = lib.filterAttrs (
+    _: download: download.backend == "llama-cpp-inkling"
+  ) modelDownloads;
   unmappedValidation = validateModelDownloads [ "broken:model" ] modelDownloads;
   invalidMetadataValidation = validateModelDownloads [ "broken:model" ] {
     "broken:model" = {
@@ -50,8 +56,15 @@ let
 in
 assert validation.missingRefs == [ ];
 assert validation.invalidRefs == [ ];
-assert
-  modelDownloads."Qwen/Qwen3-Embedding-4B-GGUF:Q8_0".primaryPath == "Qwen3-Embedding-4B-Q8_0.gguf";
+assert lib.subtractLists selectedRefs (builtins.attrNames modelDownloads) == [ ];
+assert lib.all (
+  download:
+  lib.hasPrefix "Mainline_Support/" download.primaryPath
+  && lib.hasSuffix ".gguf_file" download.primaryPath
+) (lib.attrValues inklingDownloads);
+assert lib.all (download: builtins.match "[a-f0-9]{40}" download.revision != null) (
+  lib.attrValues pinnedDownloads
+);
 assert unmappedValidation.missingRefs == [ "broken:model" ];
 assert invalidMetadataValidation.invalidRefs == [ "broken:model" ];
 true

@@ -5,6 +5,9 @@ let
       modelRef,
       maxContext,
       generation ? null,
+      singleSlot ? false,
+      microBatchSize ? null,
+      mtpDraftTokens ? null,
     }:
     let
       kvCache = {
@@ -39,7 +42,10 @@ let
         generation
         kvCache
         maxContext
+        microBatchSize
         modelRef
+        mtpDraftTokens
+        singleSlot
         ;
       llamaServerArgs = [
         "--ctx-size"
@@ -49,60 +55,94 @@ let
         "--cache-type-v"
         kvCache.v
       ]
-      ++ generationArgs;
+      ++ generationArgs
+      ++ lib.optionals singleSlot [
+        "--parallel"
+        "1"
+        "--no-context-shift"
+      ]
+      ++ lib.optionals (microBatchSize != null) [
+        "--ubatch-size"
+        (toString microBatchSize)
+      ];
     };
+
+  mkInkling =
+    {
+      quant ? "UD-Q4_K_XL",
+      maxContext,
+      microBatchSize ? null,
+    }:
+    mkModel {
+      inherit maxContext microBatchSize;
+      modelRef = "unsloth/Inkling-2-Mini-GGUF:${quant}";
+      singleSlot = true;
+      # Use the sampling settings from Unsloth's Inkling 2 Mini guide.
+      generation = {
+        temperature = 1.0;
+        topP = 1.0;
+        topK = 0;
+        minP = 0.0;
+        repetitionPenalty = 1.0;
+      };
+    };
+
+  mkQwen =
+    {
+      quant ? "UD-Q4_K_XL",
+      maxContext,
+      mtpDraftTokens ? null,
+    }:
+    mkModel {
+      inherit maxContext mtpDraftTokens;
+      modelRef = "unsloth/Qwen3.8-27B-GGUF:${quant}";
+      singleSlot = true;
+      # Use the model card's thinking-mode sampling settings.
+      generation = {
+        temperature = 1.0;
+        topP = 0.95;
+        topK = 20;
+        minP = 0.0;
+        presencePenalty = 0.0;
+        repetitionPenalty = 1.0;
+      };
+    };
+
+  mkSmallMedia =
+    size:
+    mkModel {
+      modelRef = "unsloth/gemma-4-E${size}B-it-GGUF:UD-Q6_K_XL";
+      maxContext = 131072;
+      generation = {
+        temperature = 1.0;
+        topP = 0.95;
+        topK = 64;
+        repetitionPenalty = 1.0;
+      };
+    };
+
+  embedding = mkModel {
+    modelRef = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
+    maxContext = 8192;
+  };
+
+  standardModels = {
+    inherit embedding;
+    smallMedia = mkSmallMedia "4";
+  };
 
   modelMatrix = {
     vram64 = {
       minVramGiB = 64;
       name = "vram64";
-      models = {
-        coding = mkModel {
-          modelRef = "unsloth/Qwen3-Coder-Next-GGUF:UD-Q4_K_XL";
+      models = standardModels // {
+        moe = mkInkling {
           maxContext = 262144;
-          generation = {
-            temperature = 1.0;
-            topP = 0.95;
-            topK = 40;
-            repetitionPenalty = 1.0;
-            minP = 0.01;
-          };
+          microBatchSize = 128;
         };
-        agentic = mkModel {
-          modelRef = "unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q4_K_XL";
+        dense = mkQwen {
           maxContext = 262144;
-          generation = {
-            temperature = 1.0;
-            topP = 0.95;
-            topK = 20;
-            repetitionPenalty = 1.0;
-            minP = 0.0;
-            presencePenalty = 1.5;
-          };
-        };
-        reasoning = mkModel {
-          modelRef = "unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q4_K_XL";
-          maxContext = 262144;
-          generation = {
-            temperature = 1.0;
-            topP = 0.95;
-            topK = 64;
-            repetitionPenalty = 1.0;
-          };
-        };
-        smallMedia = mkModel {
-          modelRef = "unsloth/gemma-4-E4B-it-GGUF:UD-Q6_K_XL";
-          maxContext = 131072;
-          generation = {
-            temperature = 1.0;
-            topP = 0.95;
-            topK = 64;
-            repetitionPenalty = 1.0;
-          };
-        };
-        embedding = mkModel {
-          modelRef = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
-          maxContext = 8192;
+          mtpDraftTokens = 2;
         };
       };
     };
@@ -110,154 +150,32 @@ let
     vram32 = {
       minVramGiB = 32;
       name = "vram32";
-      models = {
-        coding = mkModel {
-          modelRef = "unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:UD-Q4_K_XL";
-          maxContext = 262144;
-          generation = {
-            temperature = 0.7;
-            topP = 0.8;
-            topK = 20;
-            repetitionPenalty = 1.05;
-            minP = 0.0;
-          };
-        };
-        agentic = mkModel {
-          modelRef = "unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q4_K_XL";
-          maxContext = 262144;
-          generation = {
-            temperature = 1.0;
-            topP = 0.95;
-            topK = 20;
-            repetitionPenalty = 1.0;
-            minP = 0.0;
-            presencePenalty = 1.5;
-          };
-        };
-        reasoning = mkModel {
-          modelRef = "unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q4_K_XL";
-          maxContext = 262144;
-          generation = {
-            temperature = 1.0;
-            topP = 0.95;
-            topK = 64;
-            repetitionPenalty = 1.0;
-          };
-        };
-        smallMedia = mkModel {
-          modelRef = "unsloth/gemma-4-E4B-it-GGUF:UD-Q6_K_XL";
-          maxContext = 131072;
-          generation = {
-            temperature = 1.0;
-            topP = 0.95;
-            topK = 64;
-            repetitionPenalty = 1.0;
-          };
-        };
-        embedding = mkModel {
-          modelRef = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
-          maxContext = 8192;
-        };
+      models = standardModels // {
+        moe = mkInkling { maxContext = 32768; };
+        dense = mkQwen { maxContext = 65536; };
       };
     };
 
     vram22 = {
       minVramGiB = 22;
       name = "vram22";
-      models = {
-        coding = mkModel {
-          modelRef = "unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:UD-Q4_K_XL";
-          maxContext = 262144;
-          generation = {
-            temperature = 0.7;
-            topP = 0.8;
-            topK = 20;
-            repetitionPenalty = 1.05;
-            minP = 0.0;
-          };
-        };
-        agentic = mkModel {
-          modelRef = "unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q4_K_XL";
-          maxContext = 262144;
-          generation = {
-            temperature = 1.0;
-            topP = 0.95;
-            topK = 20;
-            repetitionPenalty = 1.0;
-            minP = 0.0;
-            presencePenalty = 1.5;
-          };
-        };
-        reasoning = mkModel {
-          modelRef = "unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q4_K_XL";
-          maxContext = 262144;
-          generation = {
-            temperature = 1.0;
-            topP = 0.95;
-            topK = 64;
-            repetitionPenalty = 1.0;
-          };
-        };
-        smallMedia = mkModel {
-          modelRef = "unsloth/gemma-4-E4B-it-GGUF:UD-Q6_K_XL";
-          maxContext = 131072;
-          generation = {
-            temperature = 1.0;
-            topP = 0.95;
-            topK = 64;
-            repetitionPenalty = 1.0;
-          };
-        };
-        embedding = mkModel {
-          modelRef = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
-          maxContext = 8192;
-        };
+      models = standardModels // {
+        moe = mkInkling { maxContext = 16384; };
+        dense = mkQwen { maxContext = 32768; };
       };
     };
 
     vram16 = {
       minVramGiB = 16;
       name = "vram16";
-      models = {
-        coding = mkModel {
-          modelRef = "unsloth/Qwen2.5-Coder-14B-Instruct-128K-GGUF:Q4_K_M";
-          maxContext = 131072;
+      models = standardModels // {
+        moe = mkInkling {
+          quant = "UD-IQ3_XXS";
+          maxContext = 16384;
         };
-        agentic = mkModel {
-          modelRef = "unsloth/Qwen3.5-9B-GGUF:UD-Q4_K_XL";
-          maxContext = 262144;
-          generation = {
-            temperature = 1.0;
-            topP = 0.95;
-            topK = 20;
-            repetitionPenalty = 1.0;
-            minP = 0.0;
-            presencePenalty = 1.5;
-          };
-        };
-        reasoning = mkModel {
-          modelRef = "unsloth/gpt-oss-20b-GGUF:UD-Q4_K_XL";
-          maxContext = 131072;
-          generation = {
-            temperature = 1.0;
-            topP = 1.0;
-            topK = 0;
-            repetitionPenalty = 1.0;
-          };
-        };
-        smallMedia = mkModel {
-          modelRef = "unsloth/gemma-4-E4B-it-GGUF:UD-Q6_K_XL";
-          maxContext = 131072;
-          generation = {
-            temperature = 1.0;
-            topP = 0.95;
-            topK = 64;
-            repetitionPenalty = 1.0;
-          };
-        };
-        embedding = mkModel {
-          modelRef = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
-          maxContext = 8192;
+        dense = mkQwen {
+          quant = "UD-Q3_K_XL";
+          maxContext = 16384;
         };
       };
     };
@@ -266,40 +184,8 @@ let
       minVramGiB = 8;
       name = "vram8";
       models = {
-        coding = mkModel {
-          modelRef = "unsloth/Qwen2.5-Coder-7B-Instruct-128K-GGUF:Q4_K_M";
-          maxContext = 131072;
-        };
-        agentic = mkModel {
-          modelRef = "unsloth/rnj-1-instruct-GGUF:UD-Q4_K_XL";
-          maxContext = 32768;
-        };
-        reasoning = mkModel {
-          modelRef = "unsloth/Qwen3.5-9B-GGUF:UD-Q4_K_XL";
-          maxContext = 262144;
-          generation = {
-            temperature = 1.0;
-            topP = 0.95;
-            topK = 20;
-            repetitionPenalty = 1.0;
-            minP = 0.0;
-            presencePenalty = 1.5;
-          };
-        };
-        smallMedia = mkModel {
-          modelRef = "unsloth/gemma-4-E2B-it-GGUF:UD-Q6_K_XL";
-          maxContext = 131072;
-          generation = {
-            temperature = 1.0;
-            topP = 0.95;
-            topK = 64;
-            repetitionPenalty = 1.0;
-          };
-        };
-        embedding = mkModel {
-          modelRef = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
-          maxContext = 8192;
-        };
+        inherit embedding;
+        smallMedia = mkSmallMedia "2";
       };
     };
   };

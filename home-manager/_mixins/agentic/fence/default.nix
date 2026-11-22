@@ -66,6 +66,15 @@ let
       allow = [
         "/dev/dri"
         "/dev/kvm"
+      ]
+      # AMD hosts can run ROCm even when they select Vulkan by default.
+      ++ lib.optional (host.is.linux && host.gpu.hasAmd) "/dev/kfd"
+      # Cover up to two NVIDIA cards. Fence skips device nodes that do not exist.
+      ++ lib.optionals (host.is.linux && host.gpu.hasNvidia) [
+        "/dev/nvidiactl"
+        "/dev/nvidia-uvm"
+        "/dev/nvidia0"
+        "/dev/nvidia1"
       ];
     };
     filesystem = {

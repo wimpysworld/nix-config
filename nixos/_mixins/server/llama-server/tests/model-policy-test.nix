@@ -1,20 +1,21 @@
 # Eval-time suite for the llama-server model policy and its runtime wiring.
-# Assertions are property- and shape-based so that routine model refreshes do
-# not trip constant pins, while tier-boundary selection, argument composition,
-# and cache path construction stay covered. The one cross-tier constant that a
-# property cannot express is pinned explicitly and noted in a comment.
+# Run directly with nix eval to check tier boundaries, argument composition,
+# and cache paths without evaluating a host configuration.
 { lib }:
 let
   modelPolicy = import ../model-policy.nix { inherit lib; };
   runtime = import ../runtime.nix { inherit lib; };
 
-  inherit (modelPolicy) modelTiers;
-  generationRoles = [
-    "agentic"
-    "coding"
-    "reasoning"
+  inherit (modelPolicy) modelMatrix modelTiers;
+  textRoles = [
+    "dense"
+    "moe"
+  ];
+  commonRoles = [
+    "embedding"
     "smallMedia"
   ];
+  textTiers = lib.init modelTiers;
 
   isNumber = value: builtins.isInt value || builtins.isFloat value;
   allModels = lib.flatten (map (tier: lib.attrValues tier.models) modelTiers);
@@ -45,17 +46,18 @@ let
     atMinimum.name == tier.name && oneGiBShort.name == nextTierDown.name
   ) allTierIndex;
 
-  everyTierExposesAllRoles = lib.all (
-    tier: lib.all (role: builtins.hasAttr role tier.models) (generationRoles ++ [ "embedding" ])
-  ) modelTiers;
+  tierRolesHold =
+    lib.all (
+      tier: builtins.attrNames tier.models == lib.sort builtins.lessThan (textRoles ++ commonRoles)
+    ) textTiers
+    && builtins.attrNames (lib.last modelTiers).models == commonRoles;
 
-  # The three generation roles must never collapse onto one model within a tier.
-  generationRolesAreDistinct = lib.all (
+  modelRolesAreDistinct = lib.all (
     tier:
     let
-      refs = map (role: tier.models.${role}.modelRef) generationRoles;
+      refs = map (model: model.modelRef) (lib.attrValues tier.models);
     in
-    lib.length (lib.unique refs) == lib.length generationRoles
+    lib.length (lib.unique refs) == lib.length refs
   ) modelTiers;
 
   modelRefShape =
@@ -91,7 +93,7 @@ let
       )
       && (
         !(generation ? presencePenalty)
-        || (isNumber generation.presencePenalty && generation.presencePenalty > 0.0)
+        || (isNumber generation.presencePenalty && generation.presencePenalty >= 0.0)
       )
     );
 
@@ -131,22 +133,48 @@ let
       "--cache-type-v"
       model.kvCache.v
     ]
-    ++ generationArgPairs model;
+    ++ generationArgPairs model
+    ++ lib.optionals model.singleSlot [
+      "--parallel"
+      "1"
+      "--no-context-shift"
+    ]
+    ++ lib.optionals (model.microBatchSize != null) [
+      "--ubatch-size"
+      (toString model.microBatchSize)
+    ];
 
   argsComposeCorrectly = lib.all (model: model.llamaServerArgs == expectedArgs model) allModels;
 
   argsAreAllStrings = lib.all (model: lib.all builtins.isString model.llamaServerArgs) allModels;
 
-  # The 8 GiB tier deliberately trades agentic context for a smaller model fit,
-  # so keep this cross-tier difference pinned: a policy edit must not silently
-  # equalise the agentic context window across tier boundaries.
-  agenticContextDropsOnSmallestTier =
-    (lib.last modelTiers).models.agentic.maxContext < (builtins.head modelTiers)
-    .models.agentic.maxContext;
+  textContextShrinksOnLowerTiers = lib.all (
+    role:
+    let
+      contexts = map (tier: tier.models.${role}.maxContext) textTiers;
+    in
+    lib.head contexts > lib.last contexts && contexts == lib.sort (a: b: a > b) contexts
+  ) textRoles;
+
+  eachTextModelUsesOneSlot = lib.all (
+    tier: lib.all (role: tier.models.${role}.singleSlot) textRoles
+  ) textTiers;
+
+  embeddingIsUniform = lib.all (
+    tier: tier.models.embedding == modelMatrix.vram8.models.embedding
+  ) modelTiers;
 
   vulkanRuntime = runtime.mkRuntime {
     acceleration = "vulkan";
     hostVramGiB = 96;
+  };
+  lowerVulkanRuntime = runtime.mkRuntime {
+    acceleration = "vulkan";
+    hostVramGiB = 32;
+  };
+  highCudaRuntime = runtime.mkRuntime {
+    acceleration = "cuda";
+    hostVramGiB = 64;
   };
   cudaRuntime = runtime.mkRuntime {
     acceleration = "cuda";
@@ -180,23 +208,36 @@ let
     else
       [ ];
 
-  # Policy arguments must lead, then role arguments, then accelerator
-  # arguments, so llama-swap always sees a predictable command tail.
+  mtpArgsFor =
+    rt: model:
+    lib.optionals (rt.acceleration == "vulkan" && model.mtpDraftTokens != null) [
+      "--spec-type"
+      "draft-mtp"
+      "--spec-draft-n-max"
+      (toString model.mtpDraftTokens)
+    ];
+
+  # Keep the runtime argument order stable.
   runtimeArgsCompose =
     rt:
     lib.all (
       model:
-      model.runtimeArgs
-      == model.llamaServerArgs ++ roleArgsFor model.role ++ acceleratorArgsFor rt.acceleration
+      model.runtimeArgs == model.llamaServerArgs
+      ++ roleArgsFor model.role
+      ++ acceleratorArgsFor rt.acceleration
+      ++ mtpArgsFor rt model
     ) (lib.attrValues rt.selectedRuntimeModels);
 
   cachePathsResolve =
     model:
     let
       expectedCacheDirectory = expectedRepoCacheDirectory model.cacheRoot model.hfRepo;
+      snapshot = if model.revision == null then "*" else model.revision;
     in
     model.repoCacheDirectory == expectedCacheDirectory
-    && model.resolvedPrimaryPathPattern == "${expectedCacheDirectory}/snapshots/*/${model.primaryPath}";
+    &&
+      model.resolvedPrimaryPathPattern
+      == "${expectedCacheDirectory}/snapshots/${snapshot}/${model.primaryPath}";
 
   downloadMetadataConsistent =
     model:
@@ -218,24 +259,32 @@ let
       lib.length (lib.unique (map (download: download.hfRepo) rt.selectedModelDownloads))
       == lib.length rt.selectedModelDownloads;
 
-  vulkanCoding = vulkanRuntime.selectedRuntimeModels.coding;
+  vulkanMoe = vulkanRuntime.selectedRuntimeModels.moe;
+  vulkanDense = vulkanRuntime.selectedRuntimeModels.dense;
   vulkanEmbedding = vulkanRuntime.selectedRuntimeModels.embedding;
-  cudaReasoning = cudaRuntime.selectedRuntimeModels.reasoning;
+  cudaDense = cudaRuntime.selectedRuntimeModels.dense;
+  usesMtp = model: builtins.elem "--spec-type" model.runtimeArgs;
 in
 assert tierNamesAreUnique;
 assert tierMinimumsDecrease;
 assert tierBoundariesHold;
-assert everyTierExposesAllRoles;
-assert generationRolesAreDistinct;
+assert tierRolesHold;
+assert modelRolesAreDistinct;
 assert lib.all modelRefShape allModels;
 assert lib.all kvCacheIsQuantised allModels;
 assert lib.all maxContextIsSane allModels;
 assert lib.all (model: generationShape model.generation) allModels;
 assert argsComposeCorrectly;
 assert argsAreAllStrings;
-assert agenticContextDropsOnSmallestTier;
-assert runtimeArgsCompose vulkanRuntime;
-assert runtimeArgsCompose cudaRuntime;
+assert textContextShrinksOnLowerTiers;
+assert eachTextModelUsesOneSlot;
+assert embeddingIsUniform;
+assert lib.all runtimeArgsCompose [
+  vulkanRuntime
+  lowerVulkanRuntime
+  highCudaRuntime
+  cudaRuntime
+];
 assert lib.all cachePathsResolve (lib.attrValues vulkanRuntime.selectedRuntimeModels);
 assert lib.all cachePathsResolve (lib.attrValues cudaRuntime.selectedRuntimeModels);
 assert lib.all downloadMetadataConsistent (lib.attrValues vulkanRuntime.selectedRuntimeModels);
@@ -244,16 +293,20 @@ assert publicNamesAreUsable vulkanRuntime;
 assert publicNamesAreUsable cudaRuntime;
 assert downloadsCoverSelection vulkanRuntime;
 assert downloadsCoverSelection cudaRuntime;
-# Embedding models carry no generation block, so no sampler flags may leak in.
+# Embedding models carry no generation block, so sampler flags must stay absent.
 assert vulkanEmbedding.generation == null;
 assert !builtins.elem "--temp" vulkanEmbedding.runtimeArgs;
 assert
-  lib.take 4 (lib.reverseList vulkanCoding.runtimeArgs) == [
+  lib.take 4 (lib.reverseList vulkanMoe.runtimeArgs) == [
     "none"
     "--load-mode"
     "on"
     "--flash-attn"
   ];
-assert !(builtins.elem "--flash-attn" cudaReasoning.runtimeArgs);
-assert !(builtins.elem "--load-mode" cudaReasoning.runtimeArgs);
+assert !(builtins.elem "--flash-attn" cudaDense.runtimeArgs);
+assert !(builtins.elem "--load-mode" cudaDense.runtimeArgs);
+assert usesMtp vulkanDense;
+assert !usesMtp vulkanMoe;
+assert !usesMtp lowerVulkanRuntime.selectedRuntimeModels.dense;
+assert !usesMtp highCudaRuntime.selectedRuntimeModels.dense;
 true

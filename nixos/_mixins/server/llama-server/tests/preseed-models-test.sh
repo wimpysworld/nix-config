@@ -28,13 +28,23 @@ if [[ "${1:-}" != "download" || "${2:-}" != "--repo-type" || "${3:-}" != "model"
 	exit 1
 fi
 
-repo="$4"
-path="$5"
+shift 3
+pinned=false
+if [[ "${1:-}" == "--revision" ]]; then
+	revision="$2"
+	pinned=true
+	shift 2
+fi
+
+repo="$1"
+path="$2"
 repo_cache_dir="${HF_HUB_CACHE}/models--${repo//\//--}"
 snapshot_dir="${repo_cache_dir}/snapshots/${revision}"
 
 mkdir -p "${repo_cache_dir}/refs" "${snapshot_dir}/$(dirname "${path}")"
-printf '%s\n' "${revision}" >"${repo_cache_dir}/refs/main"
+if [[ "${pinned}" == 'false' ]]; then
+	printf '%s\n' "${revision}" >"${repo_cache_dir}/refs/main"
+fi
 
 case "${mode}" in
 success)
@@ -121,6 +131,40 @@ EOF
 	run_preseed "${manifest_path}" "${cache_root}" "${mock_bin}"
 	[[ -f "${cache_root}/hub/models--example--sharded/snapshots/mock-revision/Q4/model-00001-of-00002.gguf" ]]
 	[[ -f "${cache_root}/hub/models--example--sharded/snapshots/mock-revision/Q4/model-00002-of-00002.gguf" ]]
+}
+
+pinned_revision_case() {
+	local case_root="${TEST_ROOT}/pinned"
+	local mock_bin="${case_root}/bin"
+	local cache_root="${case_root}/cache"
+	local manifest_path="${case_root}/manifest.json"
+	local log_path="${case_root}/hf.log"
+	local revision="0123456789abcdef0123456789abcdef01234567"
+	local model_path="Mainline_Support/model.gguf_file"
+	local repo_cache_dir="${cache_root}/hub/models--example--pinned"
+	local old_snapshot="${repo_cache_dir}/snapshots/unpinned-revision"
+	local pinned_snapshot="${repo_cache_dir}/snapshots/${revision}"
+
+	create_hf_mock "${mock_bin}"
+	mkdir -p "${old_snapshot}/Mainline_Support" "${repo_cache_dir}/refs"
+	printf 'unpinned-revision\n' >"${repo_cache_dir}/refs/main"
+	: >"${old_snapshot}/${model_path}"
+	jq -n --arg revision "${revision}" --arg path "${model_path}" '[
+		{
+			modelRef: "pinned:model",
+			hfRepo: "example/pinned",
+			revision: $revision,
+			primaryPath: $path,
+			downloadPaths: [$path]
+		}
+	]' >"${manifest_path}"
+
+	HF_MOCK_LOG="${log_path}" run_preseed "${manifest_path}" "${cache_root}" "${mock_bin}"
+	assert_contains "${log_path}" "download --repo-type model --revision ${revision} example/pinned ${model_path}"
+	[[ -f "${pinned_snapshot}/${model_path}" ]]
+	: >"${log_path}"
+	HF_MOCK_LOG="${log_path}" run_preseed "${manifest_path}" "${cache_root}" "${mock_bin}"
+	[[ ! -s "${log_path}" ]]
 }
 
 invalid_path_case() {
@@ -269,9 +313,12 @@ missing_shard_case() {
 	local cache_root="${case_root}/cache"
 	local manifest_path="${case_root}/manifest.json"
 	local stderr_path="${case_root}/stderr.txt"
+	local old_snapshot="${cache_root}/hub/models--example--missing/snapshots/old-revision/Q4"
 
 	mkdir -p "${case_root}"
 	create_hf_mock "${mock_bin}"
+	mkdir -p "${old_snapshot}"
+	: >"${old_snapshot}/model-00002-of-00002.gguf"
 	cat >"${manifest_path}" <<'EOF'
 [
   {
@@ -319,11 +366,12 @@ EOF
 		exit 1
 	fi
 
-	assert_contains "${stderr_path}" "downloadPath must end with .gguf for model: invalid:download-path"
+	assert_contains "${stderr_path}" "downloadPath must end with .gguf or .gguf_file for model: invalid:download-path"
 }
 
 single_file_case
 sharded_case
+pinned_revision_case
 invalid_path_case
 idempotence_case
 refs_main_fixture_case
