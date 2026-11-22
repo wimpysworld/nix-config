@@ -70,7 +70,9 @@ def first_string(data: dict, keys) -> str:
 
 
 def record(payload: dict, tool: str = "", target: str | None = None) -> ExtractorRecord:
-    session = first_string(payload, ("session_id", "sessionID", "sessionId"))
+    session = first_string(
+        payload, ("session_id", "sessionID", "sessionId", "conversationId")
+    )
     turn = first_string(payload, ("turn_id", "turnID", "turnId")) or None
     return ExtractorRecord(session, turn, tool, target, [])
 
@@ -91,6 +93,8 @@ def text_blocks(value) -> list[str]:
 
 def leaf_name(name: str) -> str:
     leaf = name.rsplit("__", 1)[-1].replace("-", "_").replace(".", "_").lower()
+    if leaf.startswith("mcp_"):
+        leaf = leaf[4:]
     for prefix in ("linear_", "slack_", "github_"):
         if leaf.startswith(prefix):
             return leaf[len(prefix) :]
@@ -120,8 +124,8 @@ def tool_call(payload: dict, name: str, args) -> Extraction:
         if isinstance(nested_name, str) and isinstance(nested_args, dict):
             return tool_call(payload, nested_name, nested_args)
     leaf = leaf_name(name)
-    if leaf in {"bash", "exec_command", "shell"}:
-        command = first_string(args, ("command", "cmd"))
+    if leaf in {"bash", "exec_command", "run_command", "shell"}:
+        command = first_string(args, ("command", "cmd", "CommandLine", "commandLine"))
         rec.texts = publication_command_texts(command)
     elif publication(name, args):
         rec.texts = [

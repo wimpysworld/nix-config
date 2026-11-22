@@ -1,0 +1,10 @@
+{
+  "conversationId": "conv-fixture",
+  "workspacePaths": ["/tmp/workspace"],
+  "transcriptPath": "/tmp/workspace/.gemini/antigravity-cli/transcript.jsonl",
+  "artifactDirectoryPath": "/tmp/workspace/.gemini/antigravity-cli/artifacts",
+  "modelName": "auto",
+  "lastUserInput": "Write a short status update.",
+  "invocationNum": 0,
+  "initialNumSteps": 4
+}

@@ -75,6 +75,15 @@ rec {
   #                #18068, #16821, #19542) where sub-agent startup events
   #                surface in the leader TUI's status header.
   #   consumers  - optional per-consumer overrides:
+  #                  antigravity.enabled (default true) - `false` keeps the
+  #                                     server in `~/.gemini/config/mcp_config.json`
+  #                                     with `disabled = true` so `agy mcp` can
+  #                                     inspect it without starting it.
+  #                  antigravity.omit    bool, default false - hard-omits the
+  #                                     server from Antigravity's config.
+  #                  antigravity.disabledTools
+  #                                     list of MCP tool names disabled for
+  #                                     this server in Antigravity.
   #                  claudeCode.enabled (default true) - Claude Code's JSON
   #                                     MCP schema has no disabled/server
   #                                     toggle field, so `false` omits the
@@ -192,19 +201,20 @@ rec {
       };
     };
   }
-  // lib.optionalAttrs (
-    (host.is.nixos or false) && (host.is.workstation or false) && lib.elem "studio" (host.tags or [ ])
-  ) {
-    reaper = {
-      transport = "stdio";
-      command = lib.getExe (
-        pkgs.callPackage ./reaper {
-          bridgeDir = "${config.xdg.configHome}/REAPER/Scripts/mcp_bridge_data";
-        }
-      );
-      consumers.pi.lifecycle = "eager";
-    };
-  }
+  //
+    lib.optionalAttrs
+      ((host.is.nixos or false) && (host.is.workstation or false) && lib.elem "studio" (host.tags or [ ]))
+      {
+        reaper = {
+          transport = "stdio";
+          command = lib.getExe (
+            pkgs.callPackage ./reaper {
+              bridgeDir = "${config.xdg.configHome}/REAPER/Scripts/mcp_bridge_data";
+            }
+          );
+          consumers.pi.lifecycle = "eager";
+        };
+      }
   // lib.optionalAttrs isWorkHost (
     lib.mapAttrs (_: chainguardServer) {
       cg-apk = "https://apk.cgr.dev/mcp";
@@ -233,6 +243,45 @@ rec {
   #     `enabled = false` keeps the server in the output with `enabled = false`
   #     so each tool's surface (codex mcp list, OpenCode TUI, Zed agent panel)
   #     can toggle it at runtime. See AC 8 of MCP-PROPOSAL.md.
+
+  # antigravityServers: Antigravity CLI entries for `~/.gemini/config/mcp_config.json`.
+  # Emits `serverUrl` and bearer `headers` for HTTP servers, `command` and
+  # `args` (plus optional `env`) for stdio servers, and optional `disabled` and
+  # `disabledTools` flags, omitting `timeoutSeconds`.
+  antigravityServers =
+    let
+      keep = _: s: (s.enabled or true) && (!(s.consumers.antigravity.omit or false));
+      common =
+        s:
+        lib.optionalAttrs (!(s.consumers.antigravity.enabled or true)) {
+          disabled = true;
+        }
+        // lib.optionalAttrs ((s.consumers.antigravity.disabledTools or [ ]) != [ ]) {
+          disabledTools = s.consumers.antigravity.disabledTools;
+        };
+      render =
+        _: s:
+        if s.transport == "http" then
+          {
+            serverUrl = s.url;
+          }
+          // common s
+          // lib.optionalAttrs (s.auth or null != null && s.auth.kind == "bearer") {
+            headers = {
+              Authorization = "Bearer ${config.sops.placeholder.${s.auth.envVar}}";
+            };
+          }
+        else
+          {
+            inherit (s) command;
+            args = s.args or [ ];
+          }
+          // common s
+          // lib.optionalAttrs ((s.env or { }) != { }) {
+            inherit (s) env;
+          };
+    in
+    lib.mapAttrs render (lib.filterAttrs keep servers);
 
   # claudeServers: Claude Code and any generic MCP client that follows the
   # original `mcpServers` schema.
@@ -609,7 +658,9 @@ rec {
         consumer: s:
         (s.enabled or true)
         && (
-          if consumer == "claudeCode" then
+          if consumer == "antigravity" then
+            !(s.consumers.antigravity.omit or false)
+          else if consumer == "claudeCode" then
             s.consumers.claudeCode.enabled or true
           else if consumer == "codex" then
             true
@@ -635,6 +686,7 @@ rec {
 
   # Full legacy set for callers that do not have an enabled-client context.
   requiredSecrets = requiredSecretsForConsumers [
+    "antigravity"
     "claudeCode"
     "codex"
     "opencode"

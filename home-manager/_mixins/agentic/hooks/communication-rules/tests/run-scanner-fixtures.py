@@ -28,10 +28,12 @@ FIXTURES = ROOT / "fixtures"
 
 
 def event_name(agent, path, payload):
-    if agent in ("claude-code", "codex"):
+    if agent in ("claude-code", "codex", "antigravity"):
         return (
             payload.get("hook_event_name")
             or {
+                "post-tool-use": "PostToolUse",
+                "pre-invocation": "PreInvocation",
                 "pre-tool-use": "PreToolUse",
                 "user-prompt-submit": "UserPromptSubmit",
                 "subagent-stop": "SubagentStop",
@@ -42,6 +44,8 @@ def event_name(agent, path, payload):
                 next(
                     prefix
                     for prefix in (
+                        "post-tool-use",
+                        "pre-invocation",
                         "pre-tool-use",
                         "user-prompt-submit",
                         "subagent-stop",
@@ -67,14 +71,26 @@ class ScannerFixtures(AdvisoryCase):
                         "__TRANSCRIPT_DIR__", str(directory)
                     )
                     payload = json.loads(text)
-                    payload["session_id"] = f"fixture-{agent}-{path.stem}"
+                    if agent == "antigravity":
+                        payload["conversationId"] = f"fixture-{agent}-{path.stem}"
+                    else:
+                        payload["session_id"] = f"fixture-{agent}-{path.stem}"
                     payload.setdefault("turn_id", "fixture-turn")
                     event = event_name(agent, path, payload)
                     decision = invoke(agent, event, payload)
-                    assert_record(self, decision)
+                    expected = (
+                        "advisory"
+                        if agent == "antigravity" and path.stem.endswith("-advisory")
+                        else (
+                            "pass"
+                            if agent == "antigravity"
+                            else None
+                        )
+                    )
+                    assert_record(self, decision, expected)
                     assert_no_permission(self, wire(agent, event, decision))
                     count += 1
-        self.assertGreater(count, 80)
+        self.assertGreater(count, 90)
         print(f"native fixtures passed: {count}")
 
     def test_explicit_prose_lint_keeps_word_boundaries(self):

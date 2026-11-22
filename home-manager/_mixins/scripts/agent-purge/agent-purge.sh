@@ -3,9 +3,9 @@
 usage() {
 	echo "Usage: agent-purge [--force]"
 	echo ""
-	echo "Remove the chat history, caches, logs and temporary files of Claude Code,"
-	echo "Codex, Pi and OpenCode, plus the shared agent temporary files and review"
-	echo "reports. Prints a summary and asks before it deletes anything."
+	echo "Remove the chat history, caches, logs and temporary files of Antigravity,"
+	echo "Claude Code, Codex, Pi and OpenCode, plus the shared agent temporary files"
+	echo "and review reports. Prints a summary and asks before it deletes anything."
 	echo ""
 	echo "Options:"
 	echo "  --force     Run even when a coding-agent process is running."
@@ -49,7 +49,7 @@ uid=$(id -u)
 # pi-coding-agent bundle as its script, so it is matched by command line.
 client_processes=$(
 	{
-		pgrep -a -u "${uid}" -x 'claude|\.claude-wrapped|codex|codex-code-mode|opencode|\.opencode-wrapp|pi' || true
+		pgrep -a -u "${uid}" -x 'agy|\.agy-wrapped|claude|\.claude-wrapped|codex|codex-code-mode|opencode|\.opencode-wrapp|pi' || true
 		pgrep -a -u "${uid}" -f 'pi-coding-agent/dist/' || true
 	} | sort -u -n
 )
@@ -74,11 +74,12 @@ fence_share="${cache_home}/fence-share"
 # AGENT_PURGE_TMP_ROOT exists for testing only, so a test can stand in for /tmp.
 tmp_root="${AGENT_PURGE_TMP_ROOT:-/tmp}"
 
+antigravity_dir="${home_dir}/.gemini/antigravity-cli"
 claude_dir="${home_dir}/.claude"
 pi_dir="${home_dir}/.pi/agent"
 opencode_data="${data_home}/opencode"
 
-groups=("Claude Code" "Codex" "Pi" "OpenCode" "Shared temporary files" "Review reports")
+groups=("Antigravity" "Claude Code" "Codex" "Pi" "OpenCode" "Shared temporary files" "Review reports")
 target_paths=()
 target_groups=()
 
@@ -108,6 +109,15 @@ add_owned() {
 		fi
 	done
 }
+
+# Antigravity.
+add "Antigravity" \
+	"${antigravity_dir}/brain" \
+	"${antigravity_dir}/log" \
+	"${antigravity_dir}/mcp" \
+	"${antigravity_dir}/updater" \
+	"${antigravity_dir}/cache" \
+	"${antigravity_dir}/tmp"
 
 # Claude Code. Each project directory holds session transcripts
 # (<session>.jsonl) and per-session directories named by the session UUID,

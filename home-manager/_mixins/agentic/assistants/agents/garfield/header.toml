@@ -36,6 +36,9 @@ thinking = "high"
 model = "gemini-4-hydrogen"
 thinking = "medium"
 
+[routing.antigravity]
+model = "flash"
+
 [claude]
 disallowedTools = ["Agent"]
 

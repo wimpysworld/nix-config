@@ -7,16 +7,20 @@ lib/tests/communication-rules-hooks.nix.
 
 from __future__ import annotations
 
+import json
 import unittest
 
 from advisory_support import (
     AGENTS,
+    BREACH,
     FINAL_EVENTS,
     AdvisoryCase,
+    antigravity_hook_cli,
     assert_no_permission,
     assert_record,
     final_payload,
     invoke,
+    publication,
     wire,
 )
 from core import state
@@ -65,6 +69,8 @@ class PendingContext(AdvisoryCase):
                 response = wire(agent, FINAL_EVENTS[agent], decision)
                 assert_no_permission(self, response)
                 if agent in ("claude-code", "codex"):
+                    self.assertIsNotNone(response)
+                    assert response is not None
                     self.assertEqual(set(response), {"systemMessage"})
 
     def test_imported_subagent_reports_do_not_create_pending_feedback(self):
@@ -86,6 +92,16 @@ class PendingContext(AdvisoryCase):
                             }
                         ],
                     }
+                elif agent == "antigravity":
+                    event = "PostToolUse"
+                    payload = {
+                        "conversationId": session,
+                        "toolCall": {
+                            "name": "invoke_subagent",
+                            "args": {"prompt": BREACH},
+                        },
+                        "toolResponse": {"output": BREACH},
+                    }
                 else:
                     event = "subagent.final"
                     payload = final_payload(agent, session=session)
@@ -93,6 +109,37 @@ class PendingContext(AdvisoryCase):
                 record = ExtractorRecord(session, "next", "", None, [])
                 state.start_turn(agent, record)
                 assert_record(self, state.context(agent, record), "pass")
+
+    def test_antigravity_hook_queues_pre_tool_use_notice_until_pre_invocation(self):
+        session = "antigravity-queue-session"
+        pre_tool = antigravity_hook_cli(
+            "PreToolUse",
+            publication("antigravity", session=session),
+            self.state_dir,
+        )
+        self.assertEqual(pre_tool.returncode, 0, pre_tool.stderr)
+        self.assertEqual(json.loads(pre_tool.stdout), {"decision": "allow"})
+
+        continuation = antigravity_hook_cli(
+            "PreInvocation",
+            {"conversationId": session, "invocationNum": 1},
+            self.state_dir,
+        )
+        self.assertEqual(continuation.returncode, 0, continuation.stderr)
+        injected = json.loads(continuation.stdout)
+        self.assertEqual(set(injected), {"injectSteps"})
+        self.assertEqual(len(injected["injectSteps"]), 1)
+        self.assertIn(
+            "create_issue", injected["injectSteps"][0]["ephemeralMessage"]
+        )
+
+        follow_up = antigravity_hook_cli(
+            "PreInvocation",
+            {"conversationId": session, "invocationNum": 2},
+            self.state_dir,
+        )
+        self.assertEqual(follow_up.returncode, 0, follow_up.stderr)
+        self.assertEqual(json.loads(follow_up.stdout), {})
 
 
 if __name__ == "__main__":

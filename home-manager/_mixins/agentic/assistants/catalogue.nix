@@ -10,6 +10,7 @@ let
     "opencode"
     "codex"
     "pi"
+    "antigravity"
   ];
   escape =
     value:
@@ -28,6 +29,8 @@ let
       pi-agent = "Agent worker: ${agent}";
       codex-agent = "spawn_agent: ${agent}";
       codex-inline = "Inline persona: ${agent}";
+      antigravity-agent = "invoke_subagent: ${agent}";
+      antigravity-inline = "Inline persona: ${agent}";
       opencode-subagent = "Native subagent: ${execution.native.agent or "client selection"}";
       body =
         if execution.native ? agent then
@@ -120,6 +123,11 @@ let
       "skills"
       "isolated"
     ];
+    antigravity = [
+      "tools"
+      "mainAgent"
+      "subagent"
+    ];
   };
   agentRecords = lib.mapAttrsToList (
     name: _:
@@ -186,7 +194,12 @@ let
                 select [ "user-invocable" "disable-model-invocation" ] projected
               else if client == "codex" then
                 select [ "allow_implicit_invocation" ] (companion.policy or { })
-              else if client == "pi" then
+              else if
+                lib.elem client [
+                  "pi"
+                  "antigravity"
+                ]
+              then
                 select [ "disable-model-invocation" ] projected
               else
                 { };
@@ -217,8 +230,8 @@ let
     builtins.deepSeq agents (
       builtins.seq collisionCheck (
         "# Assistant commands\n\nGenerated from validated metadata. Run `just update-assistant-catalogue` to update this file.\n\n"
-        + "An associated agent does not imply worker execution. Caller-context takes precedence over dispatch controls. Claude, Codex, and Pi commands have no model pins. OpenCode command model routes remain supported, including caller-context commands. The tables describe generated entry behaviour, not observed runtime execution.\n\n"
-        + "Claude Code, OpenCode, and Pi use `/name`. Codex uses manual-only `$name` skills. OpenCode `/init` separately reads the create-agents-md body with its Rosey binding.\n\n"
+        + "An associated agent does not imply worker execution. Caller-context takes precedence over dispatch controls. Claude, Codex, Pi, and Antigravity commands have no model pins. OpenCode command model routes remain supported, including caller-context commands. The tables describe generated entry behaviour, not observed runtime execution.\n\n"
+        + "Claude Code, OpenCode, Pi, and Antigravity use `/name`. Codex uses manual-only `$name` skills. Antigravity emits manual-only skills with `disable-model-invocation: true`, invoked with `/name`. OpenCode `/init` separately reads the create-agents-md body with its Rosey binding.\n\n"
         + row [
           "Command"
           "Description"
@@ -228,8 +241,9 @@ let
           "OpenCode"
           "Codex"
           "Pi"
+          "Antigravity"
         ]
-        + row (lib.replicate 8 "---")
+        + row (lib.replicate 9 "---")
         + lib.concatMapStrings (
           command:
           row (
@@ -298,7 +312,7 @@ let
           agent.availability
         ]
       ) agentRecords
-      + "\n## Projected client controls\n\nPi defaults come from metadata.project. Descriptions show the client projection, including any override. These controls do not grant authority or list observed runtime tools.\n\n"
+      + "\n## Projected client controls\n\nPi and Antigravity defaults come from metadata.project. Descriptions show the client projection, including any override. These controls do not grant authority or list observed runtime tools.\n\n"
       + row [
         "Agent"
         "Client"
@@ -363,7 +377,7 @@ let
           skill.availability
         ]
       ) skillRecords
-      + "\n## Native invocation policy and projected controls\n\nClaude Code uses user-invocable and disable-model-invocation. Codex uses companion policy.allow_implicit_invocation. Pi uses disable-model-invocation. OpenCode has no invocation-policy projection here. Absent fields leave client defaults unchanged. Ordinary skills do not inherit the manual-only policy of Codex command-derived skills. Skill loading grants no additional authority.\n\n"
+      + "\n## Native invocation policy and projected controls\n\nClaude Code uses user-invocable and disable-model-invocation. Codex uses companion policy.allow_implicit_invocation. Pi and Antigravity use disable-model-invocation. OpenCode has no invocation-policy projection here. Absent fields leave client defaults unchanged. Ordinary skills do not inherit the manual-only policy of Codex or Antigravity command-derived skills. Skill loading grants no additional authority.\n\n"
       + row [
         "Skill"
         "Client"

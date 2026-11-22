@@ -1,0 +1,16 @@
+{
+  "conversationId": "conv-fixture",
+  "workspacePaths": ["/tmp/workspace"],
+  "modelName": "auto",
+  "stepIdx": 5,
+  "toolCall": {
+    "name": "call_mcp_tool",
+    "args": {
+      "ServerName": "linear",
+      "ToolName": "get_issue",
+      "Arguments": {
+        "id": "ENG-1"
+      }
+    }
+  }
+}

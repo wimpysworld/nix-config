@@ -1,0 +1,17 @@
+{
+  "conversationId": "conv-fixture",
+  "workspacePaths": ["/tmp/workspace"],
+  "modelName": "auto",
+  "stepIdx": 3,
+  "toolCall": {
+    "name": "call_mcp_tool",
+    "args": {
+      "ServerName": "github",
+      "ToolName": "create_issue",
+      "Arguments": {
+        "title": "Build status",
+        "body": "The build passed on main."
+      }
+    }
+  }
+}

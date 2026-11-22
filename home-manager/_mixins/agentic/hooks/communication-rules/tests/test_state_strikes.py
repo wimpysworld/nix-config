@@ -104,7 +104,7 @@ class BoundedNotices(AdvisoryCase):
                         else None
                     )
                     assert_no_permission(self, value)
-                if agent in ("pi", "opencode"):
+                if agent in ("pi", "opencode", "antigravity"):
                     self.assertEqual(
                         json.loads(outputs[0].stdout)["decision"], "advisory"
                     )
