@@ -4,7 +4,10 @@
 from __future__ import annotations
 
 import concurrent.futures
+import contextlib
+import datetime
 import http.server
+import io
 import json
 import stat
 import subprocess
@@ -599,6 +602,416 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
             agent_name="skrye",
         )
         self.assertEqual((base_sec_rl, jitter_rl, wait_ms_rl), (2400, 0, 2_400_000))
+
+    def test_v2_to_v3_selective_migration_and_reopen_idempotence(self) -> None:
+        v2_dir = self.state_dir / "v2-migration-skrye"
+        v2_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        security_event_line = json.dumps(
+            {
+                "event_kind": "coercion_pattern",
+                "repo": "quickemu-project/quickemu",
+                "number": 77,
+                "actor": "external-attacker",
+                "timestamp_ms": 1_699_999_500_000,
+            },
+            sort_keys=True,
+        ) + "\n"
+        sec_path = v2_dir / companion.SECURITY_EVENTS_FILENAME
+        sec_path.write_text(security_event_line, encoding="utf-8")
+        sec_path.chmod(0o600)
+
+        v2_state = {
+            "version": 2,
+            "agent_name": "skrye",
+            "last_modified": "Wed, 15 Nov 2023 10:00:00 GMT",
+            "last_reconcile_sweep_at_ms": 1_699_999_000_000,
+            "last_reconcile_sweep_attempt_at_ms": 1_699_999_000_000,
+            "last_weekly_sweep_date": "2023-11-15",
+            "last_weekly_sweep_attempt_at_ms": 1_699_998_000_000,
+            "threads": {
+                "wimpysworld/tailor#12": {
+                    "thread_id": "t-comm-12",
+                    "repo": "wimpysworld/tailor",
+                    "number": 12,
+                    "subject_type": "PullRequest",
+                    "is_community": True,
+                    "coercion_blocked": False,
+                    "handled_updated_at": "2026-04-01T10:00:00Z",
+                    "handled_head_sha": "sha_comm_12",
+                    "triaged_head_sha": "sha_comm_12",
+                    "in_flight": True,
+                    "pending_followup": True,
+                    "retry_count": 2,
+                },
+                "t-comm-12": {
+                    "thread_id": "t-comm-12",
+                    "repo": "wimpysworld/tailor",
+                    "number": 12,
+                    "subject_type": "PullRequest",
+                    "handled_updated_at": "2026-04-01T10:00:00Z",
+                    "handled_head_sha": "sha_comm_12",
+                    "triaged_head_sha": "sha_comm_12",
+                    "retry_count": 1,
+                },
+                "quickemu-project/quickemu#77": {
+                    "thread_id": "t-coerced-77",
+                    "repo": "quickemu-project/quickemu",
+                    "number": 77,
+                    "subject_type": "Issue",
+                    "is_community": False,
+                    "coercion_blocked": True,
+                    "handled_updated_at": "2026-04-01T11:00:00Z",
+                    "handled_head_sha": "sha_coerced_77",
+                    "triaged_head_sha": "sha_coerced_77",
+                    "retry_count": 1,
+                },
+                "t-coerced-77": {
+                    "repo": "quickemu-project/quickemu",
+                    "number": 77,
+                    "subject_type": "Issue",
+                    "handled_updated_at": "2026-04-01T11:00:00Z",
+                    "handled_head_sha": "sha_coerced_77",
+                    "triaged_head_sha": "sha_coerced_77",
+                },
+                "wimpysworld/nix-config#10": {
+                    "repo": "wimpysworld/nix-config",
+                    "number": 10,
+                    "subject_type": "PullRequest",
+                    "author": "flexiondotorg",
+                    "is_community": False,
+                    "coercion_blocked": False,
+                    "handled_updated_at": "2026-04-01T09:00:00Z",
+                    "handled_head_sha": "sha_trusted_10",
+                    "triaged_head_sha": "sha_trusted_10",
+                    "handled_ci_state": "SUCCESS",
+                },
+                "wimpysworld/nix-config#20": {
+                    "repo": "wimpysworld/nix-config",
+                    "number": 20,
+                    "subject_type": "PullRequest",
+                    "author": "sith-zannah",
+                    "is_community": False,
+                    "coercion_blocked": False,
+                    "handled_updated_at": "2026-04-01T09:30:00Z",
+                    "handled_head_sha": "sha_peer_20",
+                    "handled_ci_state": "PENDING",
+                },
+                "wimpysworld/wonkey#27": {
+                    "repo": "wimpysworld/wonkey",
+                    "number": 27,
+                    "subject_type": "PullRequest",
+                    "author": "dependabot[bot]",
+                    "is_automated_pr": True,
+                    "is_community": False,
+                    "coercion_blocked": False,
+                    "handled_updated_at": "2026-04-01T09:45:00Z",
+                    "handled_head_sha": "sha_dep_27",
+                    "handled_ci_state": "SUCCESS",
+                },
+            },
+        }
+        dir_fd = companion.open_private_directory(v2_dir, create=True)
+        try:
+            companion.atomic_write_json_in_dir(dir_fd, companion.STATE_FILENAME, v2_state)
+        finally:
+            companion.os.close(dir_fd)
+
+        store = self.make_store("skrye", state_dir=v2_dir)
+        state = store.read_state()
+        self.assertEqual(state["version"], companion.STATE_SCHEMA_VERSION)
+        self.assertEqual(state["version"], 3)
+        self.assertEqual(state["last_modified"], "Wed, 15 Nov 2023 10:00:00 GMT")
+        self.assertEqual(state["last_reconcile_sweep_at_ms"], 1_699_999_000_000)
+        self.assertEqual(state["last_reconcile_sweep_attempt_at_ms"], 1_699_999_000_000)
+        self.assertEqual(state["last_weekly_sweep_date"], "2023-11-15")
+        self.assertEqual(state["last_weekly_sweep_attempt_at_ms"], 1_699_998_000_000)
+        self.assertEqual(sec_path.read_text(encoding="utf-8"), security_event_line)
+
+        for reset_key in (
+            "wimpysworld/tailor#12",
+            "t-comm-12",
+            "quickemu-project/quickemu#77",
+            "t-coerced-77",
+        ):
+            entry = store.get_thread_state(reset_key)
+            assert entry is not None
+            self.assertIsNone(entry["handled_updated_at"])
+            self.assertIsNone(entry["handled_head_sha"])
+            self.assertIsNone(entry["triaged_head_sha"])
+            self.assertFalse(entry["coercion_blocked"])
+            self.assertFalse(entry["in_flight"])
+            self.assertFalse(entry["pending_followup"])
+            self.assertEqual(entry["retry_count"], 0)
+            self.assertIn("linear_issue_id", entry)
+            self.assertIn("linear_issue_url", entry)
+            self.assertIn("decision_notified_sha", entry)
+            self.assertIn("ready_for_signoff_notified_sha", entry)
+            self.assertIsNone(entry["linear_issue_id"])
+            self.assertIsNone(entry["linear_issue_url"])
+            self.assertIsNone(entry["decision_notified_sha"])
+            self.assertIsNone(entry["ready_for_signoff_notified_sha"])
+
+        trusted = store.get_thread_state("wimpysworld/nix-config#10")
+        peer = store.get_thread_state("wimpysworld/nix-config#20")
+        dep = store.get_thread_state("wimpysworld/wonkey#27")
+        assert trusted is not None and peer is not None and dep is not None
+        self.assertEqual(trusted["handled_updated_at"], "2026-04-01T09:00:00Z")
+        self.assertEqual(trusted["handled_head_sha"], "sha_trusted_10")
+        self.assertEqual(trusted["triaged_head_sha"], "sha_trusted_10")
+        self.assertEqual(trusted["handled_ci_state"], "SUCCESS")
+        self.assertEqual(peer["handled_updated_at"], "2026-04-01T09:30:00Z")
+        self.assertEqual(peer["handled_head_sha"], "sha_peer_20")
+        self.assertEqual(dep["handled_updated_at"], "2026-04-01T09:45:00Z")
+        self.assertEqual(dep["handled_head_sha"], "sha_dep_27")
+
+        # Mark the migrated community entry as newly handled and re-open the v3 store:
+        # already-v3 stores must not re-reset newly handled community entries.
+        store.update_thread_state(
+            "wimpysworld/tailor#12",
+            {
+                "is_community": True,
+                "handled_updated_at": "2026-04-02T12:00:00Z",
+                "handled_head_sha": "sha_comm_12_v3",
+                "triaged_head_sha": "sha_comm_12_v3",
+                "linear_issue_id": "WW-396",
+                "linear_issue_url": "https://linear.app/wimpress/issue/WW-396",
+                "decision_notified_sha": "sha_comm_12_v3",
+                "ready_for_signoff_notified_sha": "sha_comm_12_v3",
+            },
+        )
+        reopened = self.make_store("skrye", state_dir=v2_dir)
+        preserved = reopened.get_thread_state("wimpysworld/tailor#12")
+        assert preserved is not None
+        self.assertEqual(preserved["handled_updated_at"], "2026-04-02T12:00:00Z")
+        self.assertEqual(preserved["handled_head_sha"], "sha_comm_12_v3")
+        self.assertEqual(preserved["triaged_head_sha"], "sha_comm_12_v3")
+        self.assertEqual(preserved["linear_issue_id"], "WW-396")
+        self.assertEqual(preserved["linear_issue_url"], "https://linear.app/wimpress/issue/WW-396")
+        self.assertEqual(preserved["decision_notified_sha"], "sha_comm_12_v3")
+        self.assertEqual(preserved["ready_for_signoff_notified_sha"], "sha_comm_12_v3")
+
+    def test_cli_reprocess_community_resets_only_community_and_coercion_blocked_entries(self) -> None:
+        cli_dir = self.state_dir / "cli-reprocess-skrye"
+        store = self.make_store("skrye", state_dir=cli_dir)
+        store.write_state(
+            {
+                "threads": {
+                    "wimpysworld/tailor#31": {
+                        "thread_id": "t-comm-31",
+                        "repo": "wimpysworld/tailor",
+                        "number": 31,
+                        "is_community": True,
+                        "handled_updated_at": "2026-04-02T10:00:00Z",
+                        "handled_head_sha": "sha_comm_31",
+                        "triaged_head_sha": "sha_comm_31",
+                        "linear_issue_id": "WW-101",
+                        "linear_issue_url": "https://linear.app/wimpress/issue/WW-101",
+                        "decision_notified_sha": "sha_comm_31",
+                        "ready_for_signoff_notified_sha": "sha_comm_31",
+                    },
+                    "t-comm-31": {
+                        "thread_id": "t-comm-31",
+                        "repo": "wimpysworld/tailor",
+                        "number": 31,
+                        "handled_updated_at": "2026-04-02T10:00:00Z",
+                        "handled_head_sha": "sha_comm_31",
+                        "triaged_head_sha": "sha_comm_31",
+                    },
+                    "quickemu-project/quickemu#88": {
+                        "repo": "quickemu-project/quickemu",
+                        "number": 88,
+                        "is_community": False,
+                        "coercion_blocked": True,
+                        "handled_updated_at": "2026-04-02T11:00:00Z",
+                        "handled_head_sha": "sha_coerced_88",
+                        "triaged_head_sha": "sha_coerced_88",
+                    },
+                    "wimpysworld/nix-config#55": {
+                        "repo": "wimpysworld/nix-config",
+                        "number": 55,
+                        "author": "flexiondotorg",
+                        "is_community": False,
+                        "coercion_blocked": False,
+                        "handled_updated_at": "2026-04-02T09:00:00Z",
+                        "handled_head_sha": "sha_trusted_55",
+                        "triaged_head_sha": "sha_trusted_55",
+                    },
+                    "wimpysworld/wonkey#29": {
+                        "repo": "wimpysworld/wonkey",
+                        "number": 29,
+                        "author": "dependabot[bot]",
+                        "is_automated_pr": True,
+                        "is_community": False,
+                        "coercion_blocked": False,
+                        "handled_updated_at": "2026-04-02T09:15:00Z",
+                        "handled_head_sha": "sha_dep_29",
+                    },
+                }
+            }
+        )
+
+        stdout_buf = io.StringIO()
+        with contextlib.redirect_stdout(stdout_buf):
+            exit_code = companion.main(
+                ["--agent-name", "skrye", "--state-dir", str(cli_dir), "--reprocess-community"]
+            )
+
+        self.assertEqual(exit_code, 0)
+        summary = json.loads(stdout_buf.getvalue().strip())
+        self.assertEqual(summary, {"agent_name": "skrye", "reset_count": 3, "status": "ok"})
+
+        for reset_key in ("wimpysworld/tailor#31", "t-comm-31", "quickemu-project/quickemu#88"):
+            entry = store.get_thread_state(reset_key)
+            assert entry is not None
+            self.assertIsNone(entry["handled_updated_at"])
+            self.assertIsNone(entry["handled_head_sha"])
+            self.assertIsNone(entry["triaged_head_sha"])
+            self.assertFalse(entry["coercion_blocked"])
+            self.assertIsNone(entry["linear_issue_id"])
+            self.assertIsNone(entry["linear_issue_url"])
+            self.assertIsNone(entry["decision_notified_sha"])
+            self.assertIsNone(entry["ready_for_signoff_notified_sha"])
+
+        trusted = store.get_thread_state("wimpysworld/nix-config#55")
+        dep = store.get_thread_state("wimpysworld/wonkey#29")
+        assert trusted is not None and dep is not None
+        self.assertEqual(trusted["handled_updated_at"], "2026-04-02T09:00:00Z")
+        self.assertEqual(trusted["handled_head_sha"], "sha_trusted_55")
+        self.assertEqual(trusted["triaged_head_sha"], "sha_trusted_55")
+        self.assertEqual(dep["handled_updated_at"], "2026-04-02T09:15:00Z")
+        self.assertEqual(dep["handled_head_sha"], "sha_dep_29")
+
+    def test_persistent_throttles_slot_caps_daily_cap_and_europe_london_rollover(self) -> None:
+        def utc_ms(year: int, month: int, day: int, hour: int, minute: int = 0) -> int:
+            dt = datetime.datetime(year, month, day, hour, minute, tzinfo=datetime.timezone.utc)
+            return int(dt.timestamp() * 1000)
+
+        throttle_dir = self.state_dir / "throttles-skrye"
+        store = self.make_store("skrye", state_dir=throttle_dir)
+
+        # Summer BST date (Europe/London is UTC+1): 2026-07-15
+        slot1_ms = utc_ms(2026, 7, 15, 10, 0)
+        slot2_ms = utc_ms(2026, 7, 15, 10, 30)
+        slot3_bst_same_day_ms = utc_ms(2026, 7, 15, 22, 30)  # 23:30 BST -> 2026-07-15
+        slot4_bst_same_day_ms = utc_ms(2026, 7, 15, 22, 55)  # 23:55 BST -> 2026-07-15
+        slot5_bst_next_day_ms = utc_ms(2026, 7, 15, 23, 30)  # 00:30 BST -> 2026-07-16
+
+        self.assertEqual(companion.london_date_str(slot3_bst_same_day_ms), "2026-07-15")
+        self.assertEqual(companion.london_date_str(slot5_bst_next_day_ms), "2026-07-16")
+
+        # Default per-slot caps in slot-1
+        for bucket, cap in (
+            ("triage_stubs", 10),
+            ("triage_research", 2),
+            ("community_pr_reviews", 2),
+            ("todo_implementations", 1),
+        ):
+            for idx in range(cap):
+                self.assertTrue(
+                    store.can_consume_throttle(bucket, slot_id="slot-1", now_override_ms=slot1_ms),
+                    f"expected {bucket} slot-1 attempt {idx + 1}/{cap} to be allowed",
+                )
+                ok, snap = store.consume_throttle(bucket, slot_id="slot-1", now_override_ms=slot1_ms)
+                self.assertTrue(ok)
+                self.assertEqual(snap[f"slot_{bucket}"], idx + 1)
+            self.assertFalse(store.can_consume_throttle(bucket, slot_id="slot-1", now_override_ms=slot1_ms))
+            ok_over, snap_over = store.consume_throttle(bucket, slot_id="slot-1", now_override_ms=slot1_ms)
+            self.assertFalse(ok_over)
+            self.assertEqual(snap_over[f"slot_{bucket}"], cap)
+
+        # Persistence across re-opened store instance
+        reopened = self.make_store("skrye", state_dir=throttle_dir)
+        persisted = reopened.get_throttle_state(slot_id="slot-1", now_override_ms=slot1_ms)
+        self.assertEqual(persisted["daily_date"], "2026-07-15")
+        self.assertEqual(persisted["daily_implementations"], 1)
+        self.assertEqual(persisted["slot_triage_stubs"], 10)
+        self.assertEqual(persisted["slot_triage_research"], 2)
+        self.assertEqual(persisted["slot_community_pr_reviews"], 2)
+        self.assertEqual(persisted["slot_todo_implementations"], 1)
+
+        # Slot rollover resets per-slot counts without resetting daily_implementations
+        rolled_slot2 = store.get_throttle_state(slot_id="slot-2", now_override_ms=slot2_ms)
+        self.assertEqual(rolled_slot2["slot_id"], "slot-2")
+        self.assertEqual(rolled_slot2["slot_triage_stubs"], 0)
+        self.assertEqual(rolled_slot2["slot_triage_research"], 0)
+        self.assertEqual(rolled_slot2["slot_community_pr_reviews"], 0)
+        self.assertEqual(rolled_slot2["slot_todo_implementations"], 0)
+        self.assertEqual(rolled_slot2["daily_date"], "2026-07-15")
+        self.assertEqual(rolled_slot2["daily_implementations"], 1)
+
+        # Consume 2nd and 3rd daily implementations in slot-2 and slot-3 (22:30 UTC / 23:30 BST)
+        ok_impl2, snap_impl2 = store.consume_throttle(
+            "todo_implementations", slot_id="slot-2", now_override_ms=slot2_ms
+        )
+        self.assertTrue(ok_impl2)
+        self.assertEqual(snap_impl2["daily_implementations"], 2)
+        self.assertEqual(snap_impl2["slot_todo_implementations"], 1)
+
+        ok_impl3, snap_impl3 = store.consume_throttle(
+            "todo_implementations", slot_id="slot-3", now_override_ms=slot3_bst_same_day_ms
+        )
+        self.assertTrue(ok_impl3)
+        self.assertEqual(snap_impl3["daily_date"], "2026-07-15")
+        self.assertEqual(snap_impl3["daily_implementations"], 3)
+        self.assertEqual(snap_impl3["slot_todo_implementations"], 1)
+
+        # 4th implementation in a new slot on the same Europe/London date is rejected by daily cap (3)
+        self.assertFalse(
+            store.can_consume_throttle(
+                "todo_implementations", slot_id="slot-4", now_override_ms=slot4_bst_same_day_ms
+            )
+        )
+        ok_impl4, snap_impl4 = store.consume_throttle(
+            "todo_implementations", slot_id="slot-4", now_override_ms=slot4_bst_same_day_ms
+        )
+        self.assertFalse(ok_impl4)
+        self.assertEqual(snap_impl4["daily_date"], "2026-07-15")
+        self.assertEqual(snap_impl4["daily_implementations"], 3)
+        self.assertEqual(snap_impl4["slot_todo_implementations"], 0)
+        self.assertTrue(
+            store.can_consume_throttle("triage_stubs", slot_id="slot-4", now_override_ms=slot4_bst_same_day_ms)
+        )
+
+        # BST midnight rollover: 23:30 UTC on 2026-07-15 is 00:30 BST on 2026-07-16 in Europe/London
+        rolled_next_day = store.get_throttle_state(slot_id="slot-5", now_override_ms=slot5_bst_next_day_ms)
+        self.assertEqual(rolled_next_day["daily_date"], "2026-07-16")
+        self.assertEqual(rolled_next_day["daily_implementations"], 0)
+        self.assertTrue(
+            store.can_consume_throttle(
+                "todo_implementations", slot_id="slot-5", now_override_ms=slot5_bst_next_day_ms
+            )
+        )
+        ok_next_day, snap_next_day = store.consume_throttle(
+            "todo_implementations", slot_id="slot-5", now_override_ms=slot5_bst_next_day_ms
+        )
+        self.assertTrue(ok_next_day)
+        self.assertEqual(snap_next_day["daily_date"], "2026-07-16")
+        self.assertEqual(snap_next_day["daily_implementations"], 1)
+        self.assertEqual(snap_next_day["slot_todo_implementations"], 1)
+
+        # Winter GMT check: 23:30 UTC on 2026-01-15 stays on 2026-01-15 until 00:00 UTC on 2026-01-16
+        winter_2230 = utc_ms(2026, 1, 15, 22, 30)
+        winter_2330 = utc_ms(2026, 1, 15, 23, 30)
+        winter_0005 = utc_ms(2026, 1, 16, 0, 5)
+        self.assertEqual(companion.london_date_str(winter_2330), "2026-01-15")
+        self.assertEqual(companion.london_date_str(winter_0005), "2026-01-16")
+        winter_store = self.make_store("zannah", state_dir=self.state_dir / "throttles-zannah")
+        for idx, (slot_label, ts_val) in enumerate(
+            (("w1", winter_2230 - 3_600_000), ("w2", winter_2230), ("w3", winter_2330)),
+            start=1,
+        ):
+            ok_w, snap_w = winter_store.consume_throttle(
+                "todo_implementations", slot_id=slot_label, now_override_ms=ts_val
+            )
+            self.assertTrue(ok_w)
+            self.assertEqual(snap_w["daily_date"], "2026-01-15")
+            self.assertEqual(snap_w["daily_implementations"], idx)
+        self.assertFalse(
+            winter_store.can_consume_throttle("todo_implementations", slot_id="w4", now_override_ms=winter_2330)
+        )
+        self.assertTrue(
+            winter_store.can_consume_throttle("todo_implementations", slot_id="w5", now_override_ms=winter_0005)
+        )
 
 
 class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
@@ -4115,6 +4528,78 @@ class TerminalReplyNormalizationAndHtmlCommentFilterTests(GithubCompanionTestBas
             "🏁 https://github.com/wimpysworld/tailor/pull/11 - fix: first\n\n"
             "🤲🏻 https://github.com/wimpysworld/tailor/pull/12 - chore: follow-up",
         )
+
+    def test_normalize_terminal_reply_linear_app_and_traffic_light_step5_entries(self) -> None:
+        linear_expected = "🧑‍⚖️ https://linear.app/wimpress/issue/WW-1 - owner/repo#1: title"
+        traffic_expected = "🚦 https://github.com/owner/repo/pull/2 - title"
+
+        # 1) Clean forms (including emoji variant normalisation)
+        self.assertEqual(companion.normalize_terminal_reply_text(linear_expected), linear_expected)
+        self.assertEqual(
+            companion.normalize_terminal_reply_text(
+                "🧑⚖️ https://linear.app/wimpress/issue/WW-1 - owner/repo#1: title"
+            ),
+            linear_expected,
+        )
+        self.assertEqual(companion.normalize_terminal_reply_text(traffic_expected), traffic_expected)
+        self.assertEqual(
+            companion.normalize_terminal_reply_text(
+                "🚦\ufe0f https://github.com/owner/repo/pull/2 - title"
+            ),
+            traffic_expected,
+        )
+
+        # 2) Leaked reasoning preceding the actual Step 5 line
+        leaked_linear = (
+            "thought\n"
+            "Created the Linear decision issue for owner/repo#1 and confirmed all links.\n\n"
+            "Let's report the exact Step 5 status line.\n"
+            "🧑⚖️ https://linear.app/wimpress/issue/WW-1 - owner/repo#1: title"
+        )
+        self.assertEqual(companion.normalize_terminal_reply_text(leaked_linear), linear_expected)
+
+        leaked_traffic = (
+            "thought\n"
+            "Pull request is approved and CI is green, ready for Martin's final sign-off.\n\n"
+            "Outputting the final line:\n"
+            "🚦 https://github.com/owner/repo/pull/2 - title"
+        )
+        self.assertEqual(companion.normalize_terminal_reply_text(leaked_traffic), traffic_expected)
+
+        # 3) Mid-line concatenated forms (after prose and back-to-back without newlines)
+        concat_both = (
+            "Decision logged."
+            "🧑⚖️ https://linear.app/wimpress/issue/WW-1 - owner/repo#1: title"
+            "🚦 https://github.com/owner/repo/pull/2 - title"
+        )
+        self.assertEqual(
+            companion.normalize_terminal_reply_text(concat_both),
+            f"{linear_expected}\n\n{traffic_expected}",
+        )
+
+        # 4) Backtick-quoted forms (inline backticks and fenced code blocks) are ignored while unquoted lines extract
+        backtick_linear = (
+            "thought\n"
+            "Report `🧑⚖️ https://linear.app/wimpress/issue/WW-1 - owner/repo#1: draft` with no extra text.\n"
+            "```text\n"
+            "🧑‍⚖️ https://linear.app/wimpress/issue/WW-1 - owner/repo#1: fenced\n"
+            "```\n"
+            "🧑‍⚖️ https://linear.app/wimpress/issue/WW-1 - owner/repo#1: title"
+        )
+        self.assertEqual(companion.normalize_terminal_reply_text(backtick_linear), linear_expected)
+
+        backtick_traffic = (
+            "Draft `🚦 https://github.com/owner/repo/pull/2 - draft` ready."
+            "🚦 https://github.com/owner/repo/pull/2 - title"
+        )
+        self.assertEqual(companion.normalize_terminal_reply_text(backtick_traffic), traffic_expected)
+
+        only_backtick_monologue = (
+            "thought\n"
+            "Need to check format: `🧑‍⚖️ https://linear.app/wimpress/issue/WW-1 - owner/repo#1: title` "
+            "and `🚦 https://github.com/owner/repo/pull/2 - title`."
+        )
+        self.assertEqual(companion.normalize_terminal_reply_text(only_backtick_monologue), "")
 
     def test_leaked_heartbeat_ok_plain_replies_thought_preamble_and_error_classification(self) -> None:
         # Leaked reasoning ending with HEARTBEAT_OK (concatenated, final line, or thought monologue)

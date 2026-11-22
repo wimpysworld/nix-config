@@ -55,6 +55,25 @@ TRUSTED_BOT_ACTORS = frozenset({"dependabot[bot]", "app/dependabot", "github-act
 TRUSTED_GITHUB_ACTORS = TRUSTED_INSTRUCTION_ACTORS | TRUSTED_BOT_ACTORS
 GITHUB_AGENT_LOGINS: dict[str, str] = {"skrye": "sith-skrye", "traya": "sith-traya", "zannah": "sith-zannah"}
 LOGIN_TO_AGENT_NAME: dict[str, str] = {"sith-skrye": "skrye", "skrye": "skrye", "sith-traya": "traya", "traya": "traya", "sith-zannah": "zannah", "zannah": "zannah"}
+STATE_SCHEMA_VERSION = 3
+DEFAULT_SLOT_TRIAGE_STUBS_CAP = 10
+DEFAULT_SLOT_TRIAGE_RESEARCH_CAP = 2
+DEFAULT_SLOT_COMMUNITY_PR_REVIEWS_CAP = 2
+DEFAULT_SLOT_TODO_IMPLEMENTATIONS_CAP = 1
+DEFAULT_DAILY_IMPLEMENTATIONS_CAP = 3
+DEFAULT_THROTTLE_LIMITS: dict[str, int] = {
+    "triage_stubs": DEFAULT_SLOT_TRIAGE_STUBS_CAP,
+    "triage_research": DEFAULT_SLOT_TRIAGE_RESEARCH_CAP,
+    "community_pr_reviews": DEFAULT_SLOT_COMMUNITY_PR_REVIEWS_CAP,
+    "todo_implementations": DEFAULT_SLOT_TODO_IMPLEMENTATIONS_CAP,
+    "daily_implementations": DEFAULT_DAILY_IMPLEMENTATIONS_CAP,
+}
+_THROTTLE_BUCKET_TO_STATE_KEY: dict[str, str] = {
+    "triage_stubs": "slot_triage_stubs",
+    "triage_research": "slot_triage_research",
+    "community_pr_reviews": "slot_community_pr_reviews",
+    "todo_implementations": "slot_todo_implementations",
+}
 STATE_FILENAME, ACTIVE_DISPATCH_FILENAME, SECURITY_EVENTS_FILENAME = "state.json", "active-dispatch.json", "security-events.jsonl"
 LEGACY_POLL_STATE_FILENAME, LEGACY_NOTIFICATIONS_STATE_FILENAME = "poll-state.json", "notifications-state.json"
 LEGACY_WATERMARKS_FILENAME, LEGACY_SECURITY_OWNERSHIP_FILENAME = "watermarks.json", "security-ownership.json"
@@ -162,6 +181,22 @@ def _http_json_request(url: str, method: str, headers: dict[str, str], raw_body:
 
 def now_ms() -> int:
     return math.trunc(time.time() * 1000)
+
+
+def _london_datetime(ts_ms: int) -> datetime.datetime:
+    safe_ms = _safe_int(ts_ms, 0)
+    try:
+        import zoneinfo
+
+        tz: datetime.tzinfo = zoneinfo.ZoneInfo("Europe/London")
+    except Exception:
+        tz = datetime.timezone.utc
+    return datetime.datetime.fromtimestamp(safe_ms / 1000.0, tz=tz)
+
+
+def london_date_str(ts_ms: int) -> str:
+    """Return the Europe/London YYYY-MM-DD calendar date for a millisecond epoch timestamp."""
+    return _london_datetime(ts_ms).strftime("%Y-%m-%d")
 
 
 def normalize_agent_name(agent_name: str) -> str:
@@ -586,6 +621,7 @@ _STEP5_EMOJI_SPECS: tuple[tuple[str, str], ...] = (
     ("🧼", r"\U0001f9fc\ufe0f?"),
     ("🧑‍⚖️", r"[\U0001f9d1\U0001f468\U0001f469][\U0001f3fb-\U0001f3ff]?\u200d?\u2696\ufe0f?"),
     ("🏁", r"\U0001f3c1\ufe0f?"),
+    ("🚦", r"\U0001f6a6\ufe0f?"),
     ("👍🏻", rf"\U0001f44d{_SKIN_TONE_OR_VS16}"),
     ("👎🏻", rf"\U0001f44e{_SKIN_TONE_OR_VS16}"),
     ("👆🏻", rf"\U0001f446{_SKIN_TONE_OR_VS16}"),
@@ -600,6 +636,7 @@ _STEP5_EMOJI_BY_LEAD_CHAR: dict[str, str] = {
     "\U0001f468": "🧑‍⚖️",
     "\U0001f469": "🧑‍⚖️",
     "\U0001f3c1": "🏁",
+    "\U0001f6a6": "🚦",
     "\U0001f44d": "👍🏻",
     "\U0001f44e": "👎🏻",
     "\U0001f446": "👆🏻",
@@ -609,12 +646,18 @@ _STEP5_EMOJI_BY_LEAD_CHAR: dict[str, str] = {
     "\u270b": "✋🏻",
 }
 _STEP5_EMOJI_ALTERNATION = "|".join(pattern for _, pattern in _STEP5_EMOJI_SPECS)
+_STEP5_URL_PATTERN = (
+    r"https?://(?:"
+    r"github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:/[^\s<>`\"'()]+)?"
+    r"|linear\.app/[A-Za-z0-9_.-]+/issue/[A-Za-z0-9_-]+(?:/[^\s<>`\"'()]+)?"
+    r")"
+)
 _STEP5_ENTRY_RE = re.compile(
     rf"(?P<emoji>{_STEP5_EMOJI_ALTERNATION})"
     r"[ \t]+"
-    r"(?P<url>https?://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:/[^\s<>`\"'()]+)?)"
+    rf"(?P<url>{_STEP5_URL_PATTERN})"
     r"[ \t]+[-\u2013\u2014][ \t]+"
-    rf"(?P<title>[^\r\n]+?)(?=[ \t]*(?:\r|\n|$|(?:{_STEP5_EMOJI_ALTERNATION})[ \t]+https?://github\.com/))",
+    rf"(?P<title>[^\r\n]+?)(?=[ \t]*(?:\r|\n|$|(?:{_STEP5_EMOJI_ALTERNATION})[ \t]+{_STEP5_URL_PATTERN}))",
 )
 _FENCE_OPEN_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 _THOUGHT_PREAMBLE_RE = re.compile(r"^\s*thought[ \t]*\r?\n")
@@ -1471,6 +1514,67 @@ def parse_gh_api_paginated_http_output(raw_output: str) -> tuple[int, dict[str, 
     return final_status, merged_headers, items
 
 
+def _extract_thread_repo_number(key: str, entry: dict) -> tuple[str, int] | None:
+    repo = str(entry.get("repo") or "").strip().lower()
+    number = _safe_int(entry.get("number"), 0)
+    if (not repo or number <= 0) and "#" in key:
+        head, tail = key.rsplit("#", 1)
+        if not repo and "/" in head:
+            repo = head.strip().lower()
+        if number <= 0:
+            number = _safe_int(tail, 0)
+    return (repo, number) if (repo and number > 0) else None
+
+
+def _reset_community_entries_in_state(state: dict, stamp_ms: int) -> int:
+    """Reset watermarks and tracking fields only on community or coercion-blocked threads (and paired keys)."""
+    threads = state.get("threads")
+    if not isinstance(threads, dict):
+        return 0
+    target_keys: set[str] = set()
+    target_pairs: set[tuple[str, int]] = set()
+    target_thread_ids: set[str] = set()
+    for key, entry in threads.items():
+        if not isinstance(entry, dict):
+            continue
+        if bool(entry.get("is_community")) or bool(entry.get("coercion_blocked")):
+            target_keys.add(key)
+            if pair := _extract_thread_repo_number(key, entry):
+                target_pairs.add(pair)
+            if tid := str(entry.get("thread_id") or "").strip():
+                target_thread_ids.add(tid)
+    if not target_keys:
+        return 0
+    for key, entry in threads.items():
+        if not isinstance(entry, dict) or key in target_keys:
+            continue
+        pair = _extract_thread_repo_number(key, entry)
+        tid = str(entry.get("thread_id") or "").strip()
+        if (pair is not None and pair in target_pairs) or key in target_thread_ids or (tid and tid in target_thread_ids):
+            target_keys.add(key)
+    reset_count = 0
+    for key in target_keys:
+        entry = threads.get(key)
+        if not isinstance(entry, dict):
+            continue
+        entry.update({
+            "handled_updated_at": None,
+            "handled_head_sha": None,
+            "triaged_head_sha": None,
+            "coercion_blocked": False,
+            "in_flight": False,
+            "pending_followup": False,
+            "retry_count": 0,
+            "linear_issue_id": None,
+            "linear_issue_url": None,
+            "decision_notified_sha": None,
+            "ready_for_signoff_notified_sha": None,
+            "updated_at_ms": stamp_ms,
+        })
+        reset_count += 1
+    return reset_count
+
+
 class CompanionStateStore:
     """Durable 0600 unified state store (state.json) in ~/.local/state/moltis/github-companion-<agent>/."""
 
@@ -1504,10 +1608,78 @@ class CompanionStateStore:
         self.ensure_directory()
 
     def _default_thread_entry(self, *, handled_updated_at: str | None = None, handled_head_sha: str | None = None, handled_ci_state: str | None = None, retry_count: int = 0) -> dict:
-        return {"handled_updated_at": handled_updated_at, "handled_head_sha": handled_head_sha, "handled_ci_state": handled_ci_state, "retry_count": max(0, _safe_int(retry_count, 0))}
+        return {
+            "handled_updated_at": handled_updated_at,
+            "handled_head_sha": handled_head_sha,
+            "handled_ci_state": handled_ci_state,
+            "retry_count": max(0, _safe_int(retry_count, 0)),
+            "linear_issue_id": None,
+            "linear_issue_url": None,
+            "decision_notified_sha": None,
+            "ready_for_signoff_notified_sha": None,
+        }
+
+    @staticmethod
+    def _default_throttles() -> dict:
+        return {
+            "daily_date": None,
+            "daily_implementations": 0,
+            "slot_id": None,
+            "slot_triage_stubs": 0,
+            "slot_triage_research": 0,
+            "slot_community_pr_reviews": 0,
+            "slot_todo_implementations": 0,
+        }
+
+    @classmethod
+    def _normalize_throttles(cls, raw: object) -> dict:
+        data = _as_dict(raw)
+        daily_date_raw = data.get("daily_date")
+        slot_id_raw = data.get("slot_id")
+        return {
+            "daily_date": daily_date_raw.strip() if isinstance(daily_date_raw, str) and daily_date_raw.strip() else None,
+            "daily_implementations": max(0, _safe_int(data.get("daily_implementations"), 0)),
+            "slot_id": slot_id_raw.strip() if isinstance(slot_id_raw, str) and slot_id_raw.strip() else None,
+            "slot_triage_stubs": max(0, _safe_int(data.get("slot_triage_stubs"), 0)),
+            "slot_triage_research": max(0, _safe_int(data.get("slot_triage_research"), 0)),
+            "slot_community_pr_reviews": max(0, _safe_int(data.get("slot_community_pr_reviews"), 0)),
+            "slot_todo_implementations": max(0, _safe_int(data.get("slot_todo_implementations"), 0)),
+        }
+
+    @classmethod
+    def _rollover_throttles(cls, raw_throttles: object, *, stamp_ms: int, slot_id: str | None = None) -> dict:
+        throttles = cls._normalize_throttles(raw_throttles)
+        today_london = london_date_str(stamp_ms)
+        if throttles["daily_date"] != today_london:
+            throttles["daily_date"] = today_london
+            throttles["daily_implementations"] = 0
+        clean_slot_id = slot_id.strip() if isinstance(slot_id, str) and slot_id.strip() else None
+        if clean_slot_id is not None and throttles["slot_id"] != clean_slot_id:
+            throttles["slot_id"] = clean_slot_id
+            throttles["slot_triage_stubs"] = 0
+            throttles["slot_triage_research"] = 0
+            throttles["slot_community_pr_reviews"] = 0
+            throttles["slot_todo_implementations"] = 0
+        return throttles
+
+    @staticmethod
+    def _validate_throttle_bucket(bucket: str) -> tuple[str, str]:
+        clean = bucket.strip() if isinstance(bucket, str) else ""
+        if clean not in _THROTTLE_BUCKET_TO_STATE_KEY:
+            raise ValueError(f"Unsupported throttle bucket: {bucket!r}")
+        return clean, _THROTTLE_BUCKET_TO_STATE_KEY[clean]
+
+    @staticmethod
+    def _resolve_throttle_limits(limits: dict | None = None) -> dict[str, int]:
+        resolved = dict(DEFAULT_THROTTLE_LIMITS)
+        if isinstance(limits, dict):
+            for key, default_val in DEFAULT_THROTTLE_LIMITS.items():
+                if key in limits and limits[key] is not None and not isinstance(limits[key], bool):
+                    resolved[key] = max(0, _safe_int(limits[key], default_val))
+        return resolved
 
     def _default_state(self) -> dict:
-        return {"version": 2, "agent_name": self.agent_name, "next_poll_at_ms": None, "last_poll_started_at_ms": None, "last_poll_completed_at_ms": None, "last_status": None, "last_modified": None, "poll_interval_secs": 0, "retry_after_secs": 0, "last_poll_rate_limited": False, "ratelimit_reset_epoch": None, "last_jitter_ms": None, "last_open_prs_poll_error": None, "last_open_issues_poll_error": None, "last_reconcile_sweep_at_ms": None, "last_reconcile_sweep_attempt_at_ms": None, "reconcile_sweep_retry_after_ms": None, "reconcile_sweep_failure_count": 0, "last_reconcile_sweep_failure_reason": None, "last_weekly_sweep_date": None, "last_weekly_sweep_attempt_at_ms": None, "weekly_sweep_retry_after_ms": None, "weekly_sweep_failure_count": 0, "last_weekly_sweep_failure_reason": None, "threads": {}, "updated_at_ms": self.started_at_ms}
+        return {"version": STATE_SCHEMA_VERSION, "agent_name": self.agent_name, "next_poll_at_ms": None, "last_poll_started_at_ms": None, "last_poll_completed_at_ms": None, "last_status": None, "last_modified": None, "poll_interval_secs": 0, "retry_after_secs": 0, "last_poll_rate_limited": False, "ratelimit_reset_epoch": None, "last_jitter_ms": None, "last_open_prs_poll_error": None, "last_open_issues_poll_error": None, "last_reconcile_sweep_at_ms": None, "last_reconcile_sweep_attempt_at_ms": None, "reconcile_sweep_retry_after_ms": None, "reconcile_sweep_failure_count": 0, "last_reconcile_sweep_failure_reason": None, "last_weekly_sweep_date": None, "last_weekly_sweep_attempt_at_ms": None, "weekly_sweep_retry_after_ms": None, "weekly_sweep_failure_count": 0, "last_weekly_sweep_failure_reason": None, "throttles": self._default_throttles(), "threads": {}, "updated_at_ms": self.started_at_ms}
 
     def _default_active_dispatch(self) -> dict:
         return {"version": 1, "agent_name": self.agent_name, "active": None, "updated_at_ms": self.started_at_ms}
@@ -1558,6 +1730,13 @@ class CompanionStateStore:
             existing_state = self._try_read_json(dir_fd, STATE_FILENAME)
             if not existing_state or not isinstance(existing_state.get("threads"), dict):
                 atomic_write_json_in_dir(dir_fd, STATE_FILENAME, self._migrate_legacy_state_unlocked(dir_fd))
+            elif _safe_int(existing_state.get("version"), 1) < STATE_SCHEMA_VERSION:
+                migrated = self._read_state_unlocked(dir_fd)
+                _reset_community_entries_in_state(migrated, self.started_at_ms)
+                migrated["version"] = STATE_SCHEMA_VERSION
+                migrated["throttles"] = self._normalize_throttles(migrated.get("throttles"))
+                migrated["updated_at_ms"] = self.started_at_ms
+                atomic_write_json_in_dir(dir_fd, STATE_FILENAME, migrated)
             if not self._try_read_json(dir_fd, ACTIVE_DISPATCH_FILENAME):
                 atomic_write_json_in_dir(dir_fd, ACTIVE_DISPATCH_FILENAME, self._default_active_dispatch())
             for fname, flags in ((SECURITY_EVENTS_FILENAME, os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW), (COORDINATOR_LOCK_FILENAME, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK)):
@@ -1608,6 +1787,7 @@ class CompanionStateStore:
             return default
         merged = {**default, **{k: v for k, v in data.items() if k not in ("poll_offset_secs", "initial_offset_applied")}, "agent_name": self.agent_name}
         self._normalize_sweep_fields(merged)
+        merged["throttles"] = self._normalize_throttles(merged.get("throttles"))
         raw_threads = merged.get("threads")
         norm_threads: dict[str, dict] = {}
         if isinstance(raw_threads, dict):
@@ -1634,14 +1814,69 @@ class CompanionStateStore:
                         entry = {**self._default_thread_entry(), **_as_dict(merged_threads.get(str(k))), **v}
                         entry["retry_count"] = max(0, _safe_int(entry.get("retry_count"), 0))
                         merged_threads[str(k)] = entry
-                state.update({k: v for k, v in updates.items() if k != "threads"})
+                state.update({k: v for k, v in updates.items() if k not in ("threads", "throttles")})
                 state["threads"] = merged_threads
             else:
-                state.update(updates)
+                state.update({k: v for k, v in updates.items() if k != "throttles"})
+            if "throttles" in updates and isinstance(updates["throttles"], dict):
+                state["throttles"] = self._normalize_throttles({**self._normalize_throttles(state.get("throttles")), **updates["throttles"]})
+            else:
+                state["throttles"] = self._normalize_throttles(state.get("throttles"))
             self._normalize_sweep_fields(state)
             state.update({"agent_name": self.agent_name, "updated_at_ms": stamp_ms})
             atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
             return dict(state)
+
+    def reprocess_community_entries(self, now_override_ms: int | None = None) -> int:
+        stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
+        with self._locked_dir() as dir_fd:
+            state = self._read_state_unlocked(dir_fd)
+            reset_count = _reset_community_entries_in_state(state, stamp_ms)
+            state["version"] = max(_safe_int(state.get("version"), STATE_SCHEMA_VERSION), STATE_SCHEMA_VERSION)
+            state["throttles"] = self._normalize_throttles(state.get("throttles"))
+            state["agent_name"] = self.agent_name
+            state["updated_at_ms"] = stamp_ms
+            atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
+            return reset_count
+
+    def get_throttle_state(self, *, slot_id: str | None = None, now_override_ms: int | None = None) -> dict:
+        stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
+        with self._locked_dir() as dir_fd:
+            state = self._read_state_unlocked(dir_fd)
+            return self._rollover_throttles(state.get("throttles"), stamp_ms=stamp_ms, slot_id=slot_id)
+
+    def can_consume_throttle(self, bucket: str, *, slot_id: str | None = None, limits: dict | None = None, now_override_ms: int | None = None) -> bool:
+        clean_bucket, state_key = self._validate_throttle_bucket(bucket)
+        eff_limits = self._resolve_throttle_limits(limits)
+        throttles = self.get_throttle_state(slot_id=slot_id, now_override_ms=now_override_ms)
+        if throttles[state_key] + 1 > eff_limits[clean_bucket]:
+            return False
+        if clean_bucket == "todo_implementations" and throttles["daily_implementations"] + 1 > eff_limits["daily_implementations"]:
+            return False
+        return True
+
+    def consume_throttle(self, bucket: str, *, count: int = 1, slot_id: str | None = None, limits: dict | None = None, now_override_ms: int | None = None) -> tuple[bool, dict]:
+        clean_bucket, state_key = self._validate_throttle_bucket(bucket)
+        if isinstance(count, bool) or _safe_int(count, 0) <= 0:
+            raise ValueError(f"Throttle consume count must be positive: {count!r}")
+        step = _safe_int(count, 1)
+        eff_limits = self._resolve_throttle_limits(limits)
+        stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
+        with self._locked_dir() as dir_fd:
+            state = self._read_state_unlocked(dir_fd)
+            throttles = self._rollover_throttles(state.get("throttles"), stamp_ms=stamp_ms, slot_id=slot_id)
+            if throttles[state_key] + step > eff_limits[clean_bucket]:
+                return False, dict(throttles)
+            if clean_bucket == "todo_implementations" and throttles["daily_implementations"] + step > eff_limits["daily_implementations"]:
+                return False, dict(throttles)
+            throttles[state_key] += step
+            if clean_bucket == "todo_implementations":
+                throttles["daily_implementations"] += step
+            state["throttles"] = throttles
+            state["agent_name"] = self.agent_name
+            state["updated_at_ms"] = stamp_ms
+            atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
+            return True, dict(throttles)
 
     def record_sweep_attempt(self, kind: str, *, now_override_ms: int | None = None) -> dict:
         stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
@@ -3134,13 +3369,7 @@ class GithubCompanionRunner:
 
     def is_weekly_sweep_due(self, now_override_ms: int | None = None) -> tuple[bool, str]:
         current_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
-        try:
-            import zoneinfo
-
-            tz = zoneinfo.ZoneInfo("Europe/London")
-        except Exception:
-            tz = datetime.timezone.utc
-        dt = datetime.datetime.fromtimestamp(current_ms / 1000.0, tz=tz)
+        dt = _london_datetime(current_ms)
         today_str = dt.strftime("%Y-%m-%d")
         if self.state_store.agent_name == "traya" or self.execution_coordinator.schedule_dow <= 0 or self.execution_coordinator.schedule_day_name.lower() == "disabled":
             return False, today_str
@@ -3357,6 +3586,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--community-auto-merge-max-files", default=os.environ.get("MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_FILES", ""))
     parser.add_argument("--community-auto-merge-excluded-repos", default=os.environ.get("MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS", ""))
     parser.add_argument("--read-only-trial", action="store_true", default=os.environ.get("MOLTIS_GITHUB_COMPANION_READ_ONLY_TRIAL", "").strip() in ("1", "true", "yes"))
+    parser.add_argument("--reprocess-community", action="store_true")
     parser.add_argument("--once", action="store_true")
     return parser
 
@@ -3394,7 +3624,9 @@ def resolve_runtime_config(args: argparse.Namespace) -> dict:
         "community_auto_merge_max_lines": cam_cfg["max_lines"],
         "community_auto_merge_max_files": cam_cfg["max_files"],
         "community_auto_merge_excluded_repos": cam_cfg["excluded_repos"],
-        "read_only_trial": bool(getattr(args, "read_only_trial", False)), "once": bool(getattr(args, "once", False)),
+        "read_only_trial": bool(getattr(args, "read_only_trial", False)),
+        "reprocess_community": bool(getattr(args, "reprocess_community", False)),
+        "once": bool(getattr(args, "once", False)),
     }
 
 
@@ -3409,6 +3641,10 @@ def main(argv: list[str] | None = None) -> int:
         community_auto_merge_max_files=cfg["community_auto_merge_max_files"],
         community_auto_merge_excluded_repos=cfg["community_auto_merge_excluded_repos"],
     )
+    if cfg["reprocess_community"]:
+        reset_count = store.reprocess_community_entries()
+        print(json.dumps({"status": "ok", "agent_name": cfg["agent_name"], "reset_count": reset_count}, sort_keys=True))
+        return 0
     gh_client = GhApiSafeClient(gh_api_safe_bin=cfg["gh_api_safe_bin"])
     has_matrix_creds = bool(cfg["password_path"] or os.environ.get("MATRIX" + "_PASSWORD", "").strip())
     matrix_client = MatrixClient(homeserver_url=cfg["homeserver_url"], self_user_id=cfg["self_user_id"], agent_name=cfg["agent_name"], room_id=cfg["room_id"], password_path=cfg["password_path"], state_store=store) if has_matrix_creds else None
