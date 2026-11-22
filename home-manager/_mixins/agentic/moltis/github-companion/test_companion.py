@@ -8728,6 +8728,192 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
         self.assertEqual(traya_st_ok.get("retry_count"), 0)
         self.assertEqual(len(traya_rpc), 3)
 
+    def test_deferred_dispatch_retains_active_record_until_finalized_and_recovers_stranded_linear_todo(self) -> None:
+        repo = "wimpysworld/tailor"
+        n_ok, n_crash_stranded, n_crash_moved = self._owned_numbers(repo, "skrye", 3, kind="issue", start=950)
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload([]), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
+
+        class CrashExit(BaseException):
+            pass
+
+        observed_during_verify: list[tuple[str, dict | None, bool | None]] = []
+        crash_once_on_get: set[str] = set()
+        store_ref: list[companion.CompanionStateStore] = []
+
+        class InspectingLinearClient(StubLinearSyncClient):
+            def get_issue(self, issue_id: str) -> dict[str, object]:
+                if store_ref:
+                    active = store_ref[0].read_active_dispatch().get("active")
+                    issue_obj = self.issues.get(issue_id) or {}
+                    gh_url = str(issue_obj.get("description") or "")
+                    in_flight_val: bool | None = None
+                    if isinstance(active, dict) and active.get("state_key"):
+                        st = store_ref[0].get_thread_state(str(active["state_key"])) or {}
+                        in_flight_val = bool(st.get("in_flight"))
+                    observed_during_verify.append((issue_id, dict(active) if isinstance(active, dict) else None, in_flight_val))
+                    del gh_url
+                if issue_id in crash_once_on_get:
+                    crash_once_on_get.remove(issue_id)
+                    raise CrashExit(f"simulated process exit before deferred commit for {issue_id}")
+                return super().get_issue(issue_id)
+
+        linear_stub = InspectingLinearClient()
+        lin_ok = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n_ok}",
+            title=f"Todo normal commit #{n_ok}",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        lin_ok_id = str(lin_ok["id"])
+
+        move_to_in_review_ids: set[str] = {lin_ok_id}
+
+        def skrye_reply(meta: dict[str, str], _params: dict) -> str:
+            lin_id = str(meta.get("linear_issue_id") or "")
+            if lin_id in move_to_in_review_ids:
+                linear_stub.update_issue(lin_id, state="In Review")
+            return f"Implemented Linear issue {lin_id}."
+
+        store, runner, rpc_calls = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=skrye_reply,
+        )
+        store_ref.append(store)
+
+        # 1) Normal deferred linear_todo_implement: active-dispatch.json and in_flight stay set
+        #    during post-turn get_issue verification and are cleared by commit_deferred_dispatch.
+        t0 = self._utc_ms(2026, 4, 5, 10, 0)
+        res_ok = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0)
+        self.assertEqual(len(res_ok["targeted_dispatches"]), 1)
+        self.assertTrue(res_ok["targeted_dispatches"][0]["task_succeeded"])
+        self.assertEqual(len(observed_during_verify), 1)
+        ver_id, ver_active, ver_in_flight = observed_during_verify[0]
+        self.assertEqual(ver_id, lin_ok_id)
+        self.assertIsNotNone(ver_active)
+        assert ver_active is not None
+        self.assertEqual(ver_active.get("kind"), "linear_todo_implement")
+        self.assertTrue(ver_active.get("defer_watermark_commit"))
+        self.assertEqual(ver_active.get("linear_issue_id"), lin_ok_id)
+        self.assertTrue(ver_in_flight)
+        self.assertIsNone(store.read_active_dispatch()["active"])
+        st_ok = store.get_thread_state(companion.make_pr_key(repo, n_ok)) or {}
+        self.assertFalse(st_ok.get("in_flight"))
+
+        # 2) Simulated crash after execute_dispatch completes while Linear is STILL In Progress:
+        #    active-dispatch.json stays persisted; restart recovery confirms In Progress, reverts to Todo,
+        #    clears active-dispatch.json, and lets the next slot pick it up cleanly.
+        lin_stranded = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n_crash_stranded}",
+            title=f"Todo stranded on crash #{n_crash_stranded}",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        lin_stranded_id = str(lin_stranded["id"])
+        crash_once_on_get.add(lin_stranded_id)
+
+        t1 = self._utc_ms(2026, 4, 5, 10, 30)
+        with self.assertRaises(CrashExit):
+            runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t1)
+
+        # Immediately after the simulated crash: Linear is In Progress and active-dispatch.json is retained.
+        self.assertEqual(linear_stub.issues[lin_stranded_id]["state"]["name"], "In Progress")  # type: ignore[index]
+        retained = store.read_active_dispatch()["active"]
+        self.assertIsNotNone(retained)
+        assert retained is not None
+        self.assertEqual(retained.get("kind"), "linear_todo_implement")
+        self.assertEqual(retained.get("linear_issue_id"), lin_stranded_id)
+        self.assertTrue(retained.get("defer_watermark_commit"))
+        st_crashed = store.get_thread_state(companion.make_pr_key(repo, n_crash_stranded)) or {}
+        self.assertTrue(st_crashed.get("in_flight"))
+
+        # Restarted cycle on next slot recovers the interrupted deferred dispatch, reverts Linear -> Todo,
+        # and then re-dispatches and completes it (now moving Linear to In Review).
+        move_to_in_review_ids.add(lin_stranded_id)
+        t2 = self._utc_ms(2026, 4, 5, 11, 0)
+        tg_before_recovery = len(self.httpd.telegram_requests)
+        res_recovered = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t2)
+        self.assertEqual(res_recovered["recovery"]["status"], "recovered_failed")
+        self.assertEqual(res_recovered["recovery"]["failure_reason"], "interrupted_deferred_post_turn_write")
+        self.assertTrue(res_recovered["recovery"]["linear_todo_reverted"])
+        self.assertEqual(len(res_recovered["targeted_dispatches"]), 1)
+        self.assertTrue(res_recovered["targeted_dispatches"][0]["task_succeeded"])
+        self.assertEqual(linear_stub.issues[lin_stranded_id]["state"]["name"], "In Review")  # type: ignore[index]
+        self.assertIsNone(store.read_active_dispatch()["active"])
+        st_recovered = store.get_thread_state(companion.make_pr_key(repo, n_crash_stranded)) or {}
+        self.assertFalse(st_recovered.get("in_flight"))
+        self.assertEqual(st_recovered.get("retry_count"), 0)
+        # Only 1 Telegram reply sent (from the re-dispatched turn, not a duplicate during recovery).
+        self.assertEqual(len(self.httpd.telegram_requests), tg_before_recovery + 1)
+
+        # 3) Simulated crash after the turn ALREADY moved Linear to In Review (next Europe/London day to stay under 3/day cap):
+        #    recovery must fail closed, clear active-dispatch.json + in_flight, and NOT clobber In Review back to Todo.
+        lin_moved = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n_crash_moved}",
+            title=f"Todo already in review on crash #{n_crash_moved}",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        lin_moved_id = str(lin_moved["id"])
+        move_to_in_review_ids.add(lin_moved_id)
+        crash_once_on_get.add(lin_moved_id)
+
+        t3 = self._utc_ms(2026, 4, 6, 10, 0)
+        with self.assertRaises(CrashExit):
+            runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t3)
+
+        self.assertEqual(linear_stub.issues[lin_moved_id]["state"]["name"], "In Review")  # type: ignore[index]
+        self.assertIsNotNone(store.read_active_dispatch()["active"])
+        tg_before_moved_recovery = len(self.httpd.telegram_requests)
+
+        recovered_moved = runner.execution_coordinator.recover_active_dispatch(now_override_ms=self._utc_ms(2026, 4, 6, 10, 5))
+        self.assertEqual(recovered_moved["status"], "recovered_failed")
+        self.assertEqual(recovered_moved["failure_reason"], "interrupted_deferred_post_turn_write")
+        self.assertFalse(recovered_moved["linear_todo_reverted"])
+        self.assertEqual(linear_stub.issues[lin_moved_id]["state"]["name"], "In Review")  # type: ignore[index]
+        self.assertIsNone(store.read_active_dispatch()["active"])
+        st_moved = store.get_thread_state(companion.make_pr_key(repo, n_crash_moved)) or {}
+        self.assertFalse(st_moved.get("in_flight"))
+        self.assertEqual(st_moved.get("retry_count"), 1)
+        self.assertEqual(len(self.httpd.telegram_requests), tg_before_moved_recovery)
+        self.assertEqual(len(rpc_calls), 4)
+
+        # 4) Deferred dispatch guard clears active-dispatch.json and in_flight on unexpected Exception.
+        disp_guard = runner.execution_coordinator.execute_dispatch(
+            kind="linear_triage_research",
+            is_automated_pr=False,
+            state_key=companion.make_pr_key(repo, n_ok),
+            repo=repo,
+            number=n_ok,
+            subject_kind="Issue",
+            trigger_reason="linear_triage_research",
+            linear_issue_id=lin_ok_id,
+            defer_watermark_commit=True,
+            now_override_ms=self._utc_ms(2026, 4, 6, 10, 30),
+        )
+        self.assertTrue(disp_guard.get("watermark_deferred"))
+        self.assertIsNotNone(store.read_active_dispatch()["active"])
+        self.assertTrue((store.get_thread_state(companion.make_pr_key(repo, n_ok)) or {}).get("in_flight"))
+        with self.assertRaises(RuntimeError):
+            with runner._deferred_dispatch_guard(disp_guard, now_override_ms=self._utc_ms(2026, 4, 6, 10, 31)):
+                raise RuntimeError("unexpected post-turn failure")
+        self.assertFalse(disp_guard.get("watermark_deferred"))
+        self.assertFalse(disp_guard.get("task_succeeded"))
+        self.assertEqual(disp_guard.get("failure_reason"), "deferred_post_turn_aborted")
+        self.assertIsNone(store.read_active_dispatch()["active"])
+        self.assertFalse((store.get_thread_state(companion.make_pr_key(repo, n_ok)) or {}).get("in_flight"))
+
 
 if __name__ == "__main__":
     unittest.main()

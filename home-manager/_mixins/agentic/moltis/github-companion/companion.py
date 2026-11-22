@@ -22,7 +22,7 @@ import time
 import urllib.parse
 import urllib.request
 import uuid
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 
 _SCRIPT_DIR = str(Path(__file__).resolve().parent)
@@ -3581,7 +3581,7 @@ class NotificationPoller:
 class LocalExecutionCoordinator:
     """Serialise all targeted turns, 6-hour reconciliation sweeps, and weekly sweeps under coordinator.lock and active-dispatch.json."""
 
-    def __init__(self, state_store: CompanionStateStore, rpc_client: MoltisRpcClient, data_dir: Path | str, agent_name: str, agent_display_name: str = "", main_model: str = "", review_model: str = "", matrix_client: MatrixClient | None = None, telegram_client: TelegramClient | None = None, telegram_bot_token_path: Path | str | None = None, telegram_allowed_users_path: Path | str | None = None, telegram_api_url: str = DEFAULT_TELEGRAM_API_URL, session_key: str = DEFAULT_GH_SESSION_KEY, room_id: str = DEFAULT_ROOM_ID, schedule_dow: int | None = None, schedule_day_name: str = "", completion_timeout_ms: int | None = None, recovery_deadline_ms: int | None = None, completion_wait_timeout_secs: float | None = None, recovery_wait_timeout_secs: float | None = None, rpc_timeout_secs: float = DEFAULT_RPC_TIMEOUT_SECS, poll_interval_ms: int = DEFAULT_COMPLETION_POLL_INTERVAL_MS, clock: Callable[[], int] = now_ms, sleeper: Callable[[float], None] = time.sleep):
+    def __init__(self, state_store: CompanionStateStore, rpc_client: MoltisRpcClient, data_dir: Path | str, agent_name: str, agent_display_name: str = "", main_model: str = "", review_model: str = "", matrix_client: MatrixClient | None = None, telegram_client: TelegramClient | None = None, telegram_bot_token_path: Path | str | None = None, telegram_allowed_users_path: Path | str | None = None, telegram_api_url: str = DEFAULT_TELEGRAM_API_URL, session_key: str = DEFAULT_GH_SESSION_KEY, room_id: str = DEFAULT_ROOM_ID, schedule_dow: int | None = None, schedule_day_name: str = "", completion_timeout_ms: int | None = None, recovery_deadline_ms: int | None = None, completion_wait_timeout_secs: float | None = None, recovery_wait_timeout_secs: float | None = None, rpc_timeout_secs: float = DEFAULT_RPC_TIMEOUT_SECS, poll_interval_ms: int = DEFAULT_COMPLETION_POLL_INTERVAL_MS, clock: Callable[[], int] = now_ms, sleeper: Callable[[float], None] = time.sleep, linear_client: linear_sync.LinearSyncClient | None = None):
         self.state_store = state_store
         self.rpc_client = rpc_client
         self.data_dir = Path(data_dir)
@@ -3591,6 +3591,7 @@ class LocalExecutionCoordinator:
         self.review_model = (review_model or self.main_model).strip()
         self.matrix_client = matrix_client
         self.telegram_client = telegram_client or (TelegramClient(bot_token_path=telegram_bot_token_path, allowed_users_path=telegram_allowed_users_path, api_url=telegram_api_url) if (telegram_bot_token_path or telegram_allowed_users_path) else None)
+        self.linear_client = linear_client
         self.session_key = (session_key or DEFAULT_GH_SESSION_KEY).strip()
         self.room_id = room_id
         default_dow, default_day_name = AGENT_DEFAULT_SCHEDULES[self.agent_name]
@@ -3737,6 +3738,35 @@ class LocalExecutionCoordinator:
             self.state_store.complete_sweep(kind, sweep_date=str(active_record["sweep_date"]).strip() if active_record.get("sweep_date") else None, now_override_ms=stamp_ms)
         return {"watermark": watermark_result, "queued_followup": bool(_as_dict(watermark_result).get("pending_followup"))}
 
+    def _clear_active_dispatch_if_matching(self, active_record: dict, *, now_override_ms: int | None = None) -> None:
+        dispatch_id = str(active_record.get("dispatch_id") or "").strip()
+        current = self.state_store.read_active_dispatch().get("active")
+        if not isinstance(current, dict) or not dispatch_id or str(current.get("dispatch_id") or "").strip() == dispatch_id:
+            self.state_store.write_active_dispatch(None, now_override_ms=now_override_ms)
+
+    def _revert_stranded_linear_todo_on_recovery(self, active_record: dict) -> bool:
+        """Revert a stranded In Progress linear_todo_implement issue to Todo if Linear confirms it is still In Progress."""
+        if self.linear_client is None or active_record.get("kind") != "linear_todo_implement":
+            return False
+        linear_issue_id = str(active_record.get("linear_issue_id") or "").strip()
+        if not linear_issue_id:
+            return False
+        try:
+            refreshed = self.linear_client.get_issue(linear_issue_id)
+        except Exception as exc:
+            sys.stderr.write(f"moltis-github-companion linear-todo-recovery-verify warning ({active_record.get('state_key') or linear_issue_id} / {linear_issue_id}): {exc}\n")
+            return False
+        post_state = _as_dict(_as_dict(refreshed).get("state"))
+        post_state_name = str(post_state.get("name") or "").strip().lower()
+        if post_state_name not in ("in progress", "in_progress"):
+            return False
+        try:
+            self.linear_client.update_issue(linear_issue_id, state="Todo")
+        except Exception as exc:
+            sys.stderr.write(f"moltis-github-companion linear-todo-recovery-revert warning ({active_record.get('state_key') or linear_issue_id} / {linear_issue_id}): {exc}\n")
+            return False
+        return True
+
     def _finalize_completed_dispatch(
         self,
         active_record: dict,
@@ -3747,38 +3777,45 @@ class LocalExecutionCoordinator:
         stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         if defer_watermark_commit:
             state_key = str(active_record.get("state_key") or active_record.get("thread_id") or "").strip()
-            watermark_result = self.state_store.clear_thread_in_flight(state_key, now_override_ms=stamp_ms) if state_key else None
-            fin = {"watermark": watermark_result, "queued_followup": bool(_as_dict(watermark_result).get("pending_followup"))}
-        else:
-            fin = self._commit_completed_watermarks(active_record, now_override_ms=stamp_ms)
+            watermark_result = self.state_store.get_thread_state(state_key) if state_key else None
+            return {"watermark": watermark_result, "queued_followup": bool(_as_dict(watermark_result).get("pending_followup"))}
+        fin = self._commit_completed_watermarks(active_record, now_override_ms=stamp_ms)
         self.state_store.write_active_dispatch(None, now_override_ms=stamp_ms)
         return fin
 
     def commit_deferred_dispatch(self, dispatch_result: dict, *, now_override_ms: int | None = None) -> dict:
-        """Commit thread watermarks for a dispatch completed with defer_watermark_commit=True."""
-        active_record = _as_dict(dispatch_result.pop("_deferred_active_record", None))
-        dispatch_result["watermark_deferred"] = False
+        """Commit thread watermarks and clear active-dispatch.json for a dispatch completed with defer_watermark_commit=True."""
+        active_record = _as_dict(dispatch_result.get("_deferred_active_record"))
         if not active_record:
+            dispatch_result["watermark_deferred"] = False
             return {"watermark": dispatch_result.get("watermark"), "queued_followup": bool(dispatch_result.get("queued_followup"))}
-        stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
-        fin = self._commit_completed_watermarks(active_record, now_override_ms=stamp_ms, preserve_pending_followup=True)
+        with self.state_store.coordinator_lock():
+            stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
+            fin = self._commit_completed_watermarks(active_record, now_override_ms=stamp_ms, preserve_pending_followup=True)
+            self._clear_active_dispatch_if_matching(active_record, now_override_ms=stamp_ms)
+        dispatch_result.pop("_deferred_active_record", None)
+        dispatch_result["watermark_deferred"] = False
         dispatch_result["watermark"] = fin["watermark"]
         dispatch_result["queued_followup"] = fin["queued_followup"]
         return fin
 
     def fail_deferred_dispatch(self, dispatch_result: dict, *, failure_reason: str | None = None, now_override_ms: int | None = None) -> dict:
-        """Record a post-turn failure for a deferred dispatch without advancing handled watermarks."""
-        active_record = _as_dict(dispatch_result.pop("_deferred_active_record", None))
-        dispatch_result["watermark_deferred"] = False
+        """Record a post-turn failure and clear active-dispatch.json for a deferred dispatch without advancing handled watermarks."""
+        active_record = _as_dict(dispatch_result.get("_deferred_active_record"))
         if not active_record:
+            dispatch_result["watermark_deferred"] = False
             return {"watermark": dispatch_result.get("watermark"), "queued_followup": bool(dispatch_result.get("queued_followup"))}
-        stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
-        kind = str(active_record.get("kind") or "")
-        state_key = str(active_record.get("state_key") or active_record.get("thread_id") or "").strip()
-        reason = (failure_reason or "post_turn_write_failed").strip()
-        watermark_result = self.state_store.fail_thread_review(state_key, failure_reason=reason, now_override_ms=stamp_ms) if state_key else None
-        if kind in ("reconcile_sweep", "weekly_sweep"):
-            self.state_store.fail_sweep(kind, failure_reason=reason, attempt_at_ms=_safe_int(active_record.get("started_at_ms"), 0) or None, now_override_ms=stamp_ms)
+        with self.state_store.coordinator_lock():
+            stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
+            kind = str(active_record.get("kind") or "")
+            state_key = str(active_record.get("state_key") or active_record.get("thread_id") or "").strip()
+            reason = (failure_reason or "post_turn_write_failed").strip()
+            watermark_result = self.state_store.fail_thread_review(state_key, failure_reason=reason, now_override_ms=stamp_ms) if state_key else None
+            if kind in ("reconcile_sweep", "weekly_sweep"):
+                self.state_store.fail_sweep(kind, failure_reason=reason, attempt_at_ms=_safe_int(active_record.get("started_at_ms"), 0) or None, now_override_ms=stamp_ms)
+            self._clear_active_dispatch_if_matching(active_record, now_override_ms=stamp_ms)
+        dispatch_result.pop("_deferred_active_record", None)
+        dispatch_result["watermark_deferred"] = False
         queued = bool(_as_dict(watermark_result).get("pending_followup"))
         dispatch_result["watermark"] = watermark_result
         dispatch_result["queued_followup"] = queued
@@ -3805,6 +3842,7 @@ class LocalExecutionCoordinator:
         defer_commit = bool(defer_watermark_commit or active_record.get("defer_watermark_commit"))
         reply_text = ""
         task_succeeded, failure_reason, tg_ok, tg_err = False, None, False, None
+        linear_todo_reverted = False
         if check["completed"]:
             reply_text = extract_terminal_reply_text(rpc_response=rpc_response, assistant_record=check.get("assistant_record"))
             task_succeeded, failure_reason = classify_terminal_turn_outcome(reply_text, assistant_record=check.get("assistant_record"), rpc_response=rpc_response)
@@ -3834,19 +3872,24 @@ class LocalExecutionCoordinator:
                     task_succeeded = False
                     failure_reason = f"linear_todo_merge_unconfirmed ({merge_detail})"
             if task_succeeded:
-                if active_record.get("kind") not in SILENT_TELEGRAM_DISPATCH_KINDS:
-                    tg_ok, tg_err = self._send_telegram_safe(reply_text)
                 if defer_commit and is_recovery:
                     task_succeeded = False
                     failure_reason = "interrupted_deferred_post_turn_write"
+                    linear_todo_reverted = self._revert_stranded_linear_todo_on_recovery(active_record)
                     fin = self._finalize_failed_dispatch(active_record, failure_reason=failure_reason, now_override_ms=stamp_ms)
                 else:
+                    if active_record.get("kind") not in SILENT_TELEGRAM_DISPATCH_KINDS:
+                        tg_ok, tg_err = self._send_telegram_safe(reply_text)
                     fin = self._finalize_completed_dispatch(active_record, now_override_ms=stamp_ms, defer_watermark_commit=defer_commit)
             else:
+                if is_recovery:
+                    linear_todo_reverted = self._revert_stranded_linear_todo_on_recovery(active_record)
                 fin = self._finalize_failed_dispatch(active_record, failure_reason=failure_reason, now_override_ms=stamp_ms)
         else:
             default_timeout = "turn_recovery_timeout" if is_recovery else (f"rpc_error: {rpc_error}" if rpc_error is not None else "turn_completion_timeout")
             failure_reason = "interrupted_turn_without_terminal_reply" if check.get("peek_active") is False else default_timeout
+            if is_recovery:
+                linear_todo_reverted = self._revert_stranded_linear_todo_on_recovery(active_record)
             fin = self._finalize_failed_dispatch(active_record, failure_reason=failure_reason, now_override_ms=stamp_ms)
 
         status = ("recovered_completed" if task_succeeded else "recovered_failed") if is_recovery else ("completed" if task_succeeded else "failed")
@@ -3856,6 +3899,8 @@ class LocalExecutionCoordinator:
             res["_deferred_active_record"] = dict(active_record)
         if is_recovery:
             res["can_dispatch"] = True
+            if active_record.get("kind") == "linear_todo_implement":
+                res["linear_todo_reverted"] = linear_todo_reverted
         else:
             sn_sent, sn_text, sn_err = start_notice or (False, "", None)
             res.update({"dispatched": True, "start_notice_sent": sn_sent, "start_notice_text": sn_text, "start_notice_error": sn_err, "rpc_response": rpc_response, "rpc_error": str(rpc_error) if rpc_error is not None else None, "recovery": recovery})
@@ -3965,9 +4010,31 @@ class GithubCompanionRunner:
             self.trust_filter.telegram_client = self.execution_coordinator.telegram_client
         self.matrix_client = matrix_client
         self.linear_client = linear_client
+        if self.execution_coordinator.linear_client is None and self.linear_client is not None:
+            self.execution_coordinator.linear_client = self.linear_client
         self.read_only_trial = bool(read_only_trial)
         self.reconcile_interval_ms = max(60_000, _safe_int(reconcile_interval_ms, RECONCILE_SWEEP_INTERVAL_MS))
         self.clock = clock
+
+    @contextlib.contextmanager
+    def _deferred_dispatch_guard(self, dispatch_result: dict, *, now_override_ms: int | None = None) -> Iterator[None]:
+        """Ensure deferred dispatches are committed or failed on normal exit or Exception without masking process-exit crash recovery."""
+        try:
+            yield
+        except Exception:
+            if dispatch_result.get("watermark_deferred"):
+                self.execution_coordinator.fail_deferred_dispatch(
+                    dispatch_result,
+                    failure_reason="deferred_post_turn_aborted",
+                    now_override_ms=now_override_ms,
+                )
+            raise
+        if dispatch_result.get("watermark_deferred"):
+            self.execution_coordinator.fail_deferred_dispatch(
+                dispatch_result,
+                failure_reason="deferred_post_turn_uncommitted",
+                now_override_ms=now_override_ms,
+            )
 
     def is_reconcile_sweep_due(self, now_override_ms: int | None = None) -> bool:
         if self.state_store.agent_name == "traya" or self.execution_coordinator.schedule_dow <= 0:
@@ -4344,27 +4411,28 @@ class GithubCompanionRunner:
                 now_override_ms=now_override_ms,
             )
             if res.get("task_succeeded"):
-                try:
-                    refreshed = self.linear_client.get_issue(cand["linear_id"])
-                except Exception as exc:
-                    sys.stderr.write(f"moltis-github-companion linear-triage-verify warning ({cand['issue_key']} / {cand['linear_id']}): {exc}\n")
-                    self.execution_coordinator.fail_deferred_dispatch(
-                        res,
-                        failure_reason=f"linear_triage_state_verify_failed: {exc}",
-                        now_override_ms=now_override_ms,
-                    )
-                else:
-                    post_state = _as_dict(_as_dict(refreshed).get("state"))
-                    post_state_name = str(post_state.get("name") or "").strip().lower()
-                    post_state_type = str(post_state.get("type") or "").strip().lower()
-                    if (not post_state_name and not post_state_type) or post_state_name == "triage" or post_state_type == "triage":
+                with self._deferred_dispatch_guard(res, now_override_ms=now_override_ms):
+                    try:
+                        refreshed = self.linear_client.get_issue(cand["linear_id"])
+                    except Exception as exc:
+                        sys.stderr.write(f"moltis-github-companion linear-triage-verify warning ({cand['issue_key']} / {cand['linear_id']}): {exc}\n")
                         self.execution_coordinator.fail_deferred_dispatch(
                             res,
-                            failure_reason="linear_triage_state_unchanged",
+                            failure_reason=f"linear_triage_state_verify_failed: {exc}",
                             now_override_ms=now_override_ms,
                         )
                     else:
-                        self.execution_coordinator.commit_deferred_dispatch(res, now_override_ms=now_override_ms)
+                        post_state = _as_dict(_as_dict(refreshed).get("state"))
+                        post_state_name = str(post_state.get("name") or "").strip().lower()
+                        post_state_type = str(post_state.get("type") or "").strip().lower()
+                        if (not post_state_name and not post_state_type) or post_state_name == "triage" or post_state_type == "triage":
+                            self.execution_coordinator.fail_deferred_dispatch(
+                                res,
+                                failure_reason="linear_triage_state_unchanged",
+                                now_override_ms=now_override_ms,
+                            )
+                        else:
+                            self.execution_coordinator.commit_deferred_dispatch(res, now_override_ms=now_override_ms)
             dispatches.append(res)
         return dispatches
 
@@ -4420,26 +4488,27 @@ class GithubCompanionRunner:
                 now_override_ms=now_override_ms,
             )
             if res.get("task_succeeded"):
-                try:
-                    refreshed = self.linear_client.get_issue(cand["linear_id"])
-                except Exception as exc:
-                    sys.stderr.write(f"moltis-github-companion linear-todo-verify warning ({cand['issue_key']} / {cand['linear_id']}): {exc}\n")
-                    self.execution_coordinator.fail_deferred_dispatch(
-                        res,
-                        failure_reason=f"linear_todo_state_verify_failed: {exc}",
-                        now_override_ms=now_override_ms,
-                    )
-                else:
-                    post_state = _as_dict(_as_dict(refreshed).get("state"))
-                    post_state_name = str(post_state.get("name") or "").strip().lower()
-                    if not post_state_name or post_state_name in ("in progress", "in_progress"):
+                with self._deferred_dispatch_guard(res, now_override_ms=now_override_ms):
+                    try:
+                        refreshed = self.linear_client.get_issue(cand["linear_id"])
+                    except Exception as exc:
+                        sys.stderr.write(f"moltis-github-companion linear-todo-verify warning ({cand['issue_key']} / {cand['linear_id']}): {exc}\n")
                         self.execution_coordinator.fail_deferred_dispatch(
                             res,
-                            failure_reason="linear_todo_state_unchanged_in_progress",
+                            failure_reason=f"linear_todo_state_verify_failed: {exc}",
                             now_override_ms=now_override_ms,
                         )
                     else:
-                        self.execution_coordinator.commit_deferred_dispatch(res, now_override_ms=now_override_ms)
+                        post_state = _as_dict(_as_dict(refreshed).get("state"))
+                        post_state_name = str(post_state.get("name") or "").strip().lower()
+                        if not post_state_name or post_state_name in ("in progress", "in_progress"):
+                            self.execution_coordinator.fail_deferred_dispatch(
+                                res,
+                                failure_reason="linear_todo_state_unchanged_in_progress",
+                                now_override_ms=now_override_ms,
+                            )
+                        else:
+                            self.execution_coordinator.commit_deferred_dispatch(res, now_override_ms=now_override_ms)
             if not res.get("task_succeeded"):
                 try:
                     self.linear_client.update_issue(cand["linear_id"], state="Todo")
@@ -4709,64 +4778,65 @@ class GithubCompanionRunner:
             action = "lane_a_merge_failed"
             ping: dict | None = None
             if dispatch_res.get("task_succeeded"):
-                merge_outcome, merge_detail = parse_lane_a_merge_reply(
-                    str(dispatch_res.get("reply_text") or ""),
-                    repo=repo,
-                    number=number,
-                    linear_url=linear_url,
-                )
-                if merge_outcome == "merged":
-                    action = "lane_a_merged"
-                    try:
-                        self.linear_client.update_issue(clean_linear_id, state="Done")
-                    except Exception as exc:
-                        sys.stderr.write(f"moltis-github-companion lane-a-done warning ({pr_key} / {clean_linear_id}): {exc}\n")
-                    self.execution_coordinator.commit_deferred_dispatch(dispatch_res, now_override_ms=now_override_ms)
-                elif merge_outcome == "needs_decision":
-                    try:
-                        self.linear_client.update_issue(
-                            clean_linear_id,
-                            state="Backlog",
-                            add_labels=("needs-decision",),
-                            remove_labels=("ready-to-merge",),
-                        )
-                    except Exception as exc:
-                        sys.stderr.write(f"moltis-github-companion lane-a-escalate warning ({pr_key} / {clean_linear_id}): {exc}\n")
-                        self.execution_coordinator.fail_deferred_dispatch(
-                            dispatch_res,
-                            failure_reason=f"linear_lane_a_escalate_failed: {exc}",
-                            now_override_ms=now_override_ms,
-                        )
-                        action = "lane_a_merge_escalate_failed"
-                    else:
-                        action = "lane_a_merge_needs_decision"
+                with self._deferred_dispatch_guard(dispatch_res, now_override_ms=now_override_ms):
+                    merge_outcome, merge_detail = parse_lane_a_merge_reply(
+                        str(dispatch_res.get("reply_text") or ""),
+                        repo=repo,
+                        number=number,
+                        linear_url=linear_url,
+                    )
+                    if merge_outcome == "merged":
+                        action = "lane_a_merged"
+                        try:
+                            self.linear_client.update_issue(clean_linear_id, state="Done")
+                        except Exception as exc:
+                            sys.stderr.write(f"moltis-github-companion lane-a-done warning ({pr_key} / {clean_linear_id}): {exc}\n")
                         self.execution_coordinator.commit_deferred_dispatch(dispatch_res, now_override_ms=now_override_ms)
-                        clean_linear_url = str(linear_url or pr_entry.get("linear_issue_url") or "").strip()
-                        if dispatch_res.get("telegram_forwarded"):
-                            self.state_store.update_thread_state(
-                                pr_key,
-                                {
+                    elif merge_outcome == "needs_decision":
+                        try:
+                            self.linear_client.update_issue(
+                                clean_linear_id,
+                                state="Backlog",
+                                add_labels=("needs-decision",),
+                                remove_labels=("ready-to-merge",),
+                            )
+                        except Exception as exc:
+                            sys.stderr.write(f"moltis-github-companion lane-a-escalate warning ({pr_key} / {clean_linear_id}): {exc}\n")
+                            self.execution_coordinator.fail_deferred_dispatch(
+                                dispatch_res,
+                                failure_reason=f"linear_lane_a_escalate_failed: {exc}",
+                                now_override_ms=now_override_ms,
+                            )
+                            action = "lane_a_merge_escalate_failed"
+                        else:
+                            action = "lane_a_merge_needs_decision"
+                            self.execution_coordinator.commit_deferred_dispatch(dispatch_res, now_override_ms=now_override_ms)
+                            clean_linear_url = str(linear_url or pr_entry.get("linear_issue_url") or "").strip()
+                            if dispatch_res.get("telegram_forwarded"):
+                                self.state_store.update_thread_state(
+                                    pr_key,
+                                    {
+                                        "repo": repo,
+                                        "number": number,
+                                        "title": title,
+                                        **({"linear_issue_url": clean_linear_url} if clean_linear_url else {}),
+                                        "decision_notified_sha": clean_sha,
+                                    },
+                                    now_override_ms=current_ms,
+                                )
+                                ping = {
+                                    "key": pr_key,
                                     "repo": repo,
                                     "number": number,
+                                    "head_sha": clean_sha,
+                                    "linear_url": clean_linear_url,
                                     "title": title,
-                                    **({"linear_issue_url": clean_linear_url} if clean_linear_url else {}),
-                                    "decision_notified_sha": clean_sha,
-                                },
-                                now_override_ms=current_ms,
-                            )
-                            ping = {
-                                "key": pr_key,
-                                "repo": repo,
-                                "number": number,
-                                "head_sha": clean_sha,
-                                "linear_url": clean_linear_url,
-                                "title": title,
-                                "message": merge_detail,
-                                "sent": True,
-                                "error": None,
-                            }
-                else:
-                    self.execution_coordinator.commit_deferred_dispatch(dispatch_res, now_override_ms=now_override_ms)
+                                    "message": merge_detail,
+                                    "sent": True,
+                                    "error": None,
+                                }
+                    else:
+                        self.execution_coordinator.commit_deferred_dispatch(dispatch_res, now_override_ms=now_override_ms)
             return {
                 "action": action,
                 "key": pr_key,
@@ -4847,32 +4917,33 @@ class GithubCompanionRunner:
                 "linear_issue_identifier": linear_identifier,
                 "linear_issue_url": linear_url,
             }
-        verdict, findings, polish = parse_blind_review_reply(str(review_res.get("reply_text") or ""))
-        summary_parts: list[str] = []
-        if findings:
-            summary_parts.append(f"FINDINGS: {findings}")
-        if polish:
-            summary_parts.append(f"POLISH: {polish}")
-        verdict_summary = "\n".join(summary_parts)
-        model_family = MODEL_FAMILY_BY_AGENT.get(self.state_store.agent_name, "gemini")
-        try:
-            self.linear_client.post_blind_review_verdict(
-                linear_id,
-                agent=self.state_store.agent_name,
-                model_family=model_family,
-                head_sha=head_sha,
-                verdict=verdict,
-                summary=verdict_summary,
-            )
-        except Exception as exc:
-            sys.stderr.write(f"moltis-github-companion blind-verdict-post warning ({pr_key} / {linear_id}): {exc}\n")
-            self.execution_coordinator.fail_deferred_dispatch(
-                review_res,
-                failure_reason=f"linear_blind_verdict_post_failed: {exc}",
-                now_override_ms=now_override_ms,
-            )
-            return review_res, None
-        self.execution_coordinator.commit_deferred_dispatch(review_res, now_override_ms=now_override_ms)
+        with self._deferred_dispatch_guard(review_res, now_override_ms=now_override_ms):
+            verdict, findings, polish = parse_blind_review_reply(str(review_res.get("reply_text") or ""))
+            summary_parts: list[str] = []
+            if findings:
+                summary_parts.append(f"FINDINGS: {findings}")
+            if polish:
+                summary_parts.append(f"POLISH: {polish}")
+            verdict_summary = "\n".join(summary_parts)
+            model_family = MODEL_FAMILY_BY_AGENT.get(self.state_store.agent_name, "gemini")
+            try:
+                self.linear_client.post_blind_review_verdict(
+                    linear_id,
+                    agent=self.state_store.agent_name,
+                    model_family=model_family,
+                    head_sha=head_sha,
+                    verdict=verdict,
+                    summary=verdict_summary,
+                )
+            except Exception as exc:
+                sys.stderr.write(f"moltis-github-companion blind-verdict-post warning ({pr_key} / {linear_id}): {exc}\n")
+                self.execution_coordinator.fail_deferred_dispatch(
+                    review_res,
+                    failure_reason=f"linear_blind_verdict_post_failed: {exc}",
+                    now_override_ms=now_override_ms,
+                )
+                return review_res, None
+            self.execution_coordinator.commit_deferred_dispatch(review_res, now_override_ms=now_override_ms)
         return review_res, {
             "action": "blind_review_posted",
             "key": pr_key,
@@ -5081,27 +5152,28 @@ class GithubCompanionRunner:
                 "linear_issue_url": linear_url,
             })
             return "dispatch_failed"
-        lane_b_verdict, lane_b_summary = parse_lane_b_reply(str(lane_b_res.get("reply_text") or ""))
-        if lane_b_verdict == "ready-to-merge":
-            add_lbls, rem_lbls = ("ready-to-merge",), ("needs-decision",)
-        else:
-            add_lbls, rem_lbls = ("needs-decision",), ("ready-to-merge",)
-        try:
-            self.linear_client.update_issue(
-                linear_id,
-                state="Backlog",
-                add_labels=add_lbls,
-                remove_labels=rem_lbls,
-            )
-        except Exception as exc:
-            sys.stderr.write(f"moltis-github-companion lane-b-update warning ({pr_key} / {linear_id}): {exc}\n")
-            self.execution_coordinator.fail_deferred_dispatch(
-                lane_b_res,
-                failure_reason=f"linear_lane_b_update_failed: {exc}",
-                now_override_ms=now_override_ms,
-            )
-            return "update_failed"
-        self.execution_coordinator.commit_deferred_dispatch(lane_b_res, now_override_ms=now_override_ms)
+        with self._deferred_dispatch_guard(lane_b_res, now_override_ms=now_override_ms):
+            lane_b_verdict, lane_b_summary = parse_lane_b_reply(str(lane_b_res.get("reply_text") or ""))
+            if lane_b_verdict == "ready-to-merge":
+                add_lbls, rem_lbls = ("ready-to-merge",), ("needs-decision",)
+            else:
+                add_lbls, rem_lbls = ("needs-decision",), ("ready-to-merge",)
+            try:
+                self.linear_client.update_issue(
+                    linear_id,
+                    state="Backlog",
+                    add_labels=add_lbls,
+                    remove_labels=rem_lbls,
+                )
+            except Exception as exc:
+                sys.stderr.write(f"moltis-github-companion lane-b-update warning ({pr_key} / {linear_id}): {exc}\n")
+                self.execution_coordinator.fail_deferred_dispatch(
+                    lane_b_res,
+                    failure_reason=f"linear_lane_b_update_failed: {exc}",
+                    now_override_ms=now_override_ms,
+                )
+                return "update_failed"
+            self.execution_coordinator.commit_deferred_dispatch(lane_b_res, now_override_ms=now_override_ms)
         ping = None
         if lane_b_verdict == "needs-decision":
             ping = self._send_needs_decision_ping(
@@ -5585,53 +5657,8 @@ class GithubCompanionRunner:
                     ping = None
                     action = "linear_todo_merge_blocked_sha_changed" if sha_changed else "linear_todo_merge_failed"
                     if merge_res.get("task_succeeded"):
-                        if sha_changed:
-                            try:
-                                self.linear_client.update_issue(
-                                    linear_id,
-                                    state="Backlog",
-                                    add_labels=("needs-decision",),
-                                    remove_labels=("ready-to-merge",),
-                                )
-                            except Exception as exc:
-                                sys.stderr.write(f"moltis-github-companion linear-todo-merge-escalate warning ({pr_key} / {linear_id}): {exc}\n")
-                                self.execution_coordinator.fail_deferred_dispatch(
-                                    merge_res,
-                                    failure_reason=f"linear_todo_merge_escalate_failed: {exc}",
-                                    now_override_ms=now_override_ms,
-                                )
-                                action = "linear_todo_merge_escalate_failed"
-                            else:
-                                self.execution_coordinator.commit_deferred_dispatch(merge_res, now_override_ms=now_override_ms)
-                                ping = self._send_needs_decision_ping(
-                                    pr_key=pr_key,
-                                    linear_url=linear_url or "",
-                                    repo=repo,
-                                    number=number,
-                                    title=title,
-                                    head_sha=head_sha,
-                                    current_ms=current_ms,
-                                )
-                                if ping is not None:
-                                    notifications.append(ping)
-                        else:
-                            merge_outcome, merge_detail = parse_linear_todo_merge_reply(
-                                str(merge_res.get("reply_text") or ""),
-                                repo=repo,
-                                number=number,
-                                linear_url=linear_url,
-                            )
-                            if merge_outcome == "merged":
-                                action = "linear_todo_merged"
-                                try:
-                                    self.linear_client.update_issue(linear_id, state="Done")
-                                except Exception as exc:
-                                    sys.stderr.write(f"moltis-github-companion linear-todo-merge-done warning ({pr_key} / {linear_id}): {exc}\n")
-                                self.execution_coordinator.commit_deferred_dispatch(merge_res, now_override_ms=now_override_ms)
-                            elif merge_outcome in ("blocked", "needs_decision"):
-                                if applied_team_merge:
-                                    with contextlib.suppress(Exception):
-                                        self.gh_client.remove_pull_request_label(repo, number, "team:merge")
+                        with self._deferred_dispatch_guard(merge_res, now_override_ms=now_override_ms):
+                            if sha_changed:
                                 try:
                                     self.linear_client.update_issue(
                                         linear_id,
@@ -5648,50 +5675,96 @@ class GithubCompanionRunner:
                                     )
                                     action = "linear_todo_merge_escalate_failed"
                                 else:
-                                    action = "linear_todo_merge_blocked" if merge_outcome == "blocked" else "linear_todo_merge_needs_decision"
                                     self.execution_coordinator.commit_deferred_dispatch(merge_res, now_override_ms=now_override_ms)
-                                    if merge_outcome == "needs_decision" and merge_res.get("telegram_forwarded"):
-                                        clean_linear_url = str(linear_url or pr_entry.get("linear_issue_url") or "").strip()
-                                        self.state_store.update_thread_state(
-                                            pr_key,
-                                            {
+                                    ping = self._send_needs_decision_ping(
+                                        pr_key=pr_key,
+                                        linear_url=linear_url or "",
+                                        repo=repo,
+                                        number=number,
+                                        title=title,
+                                        head_sha=head_sha,
+                                        current_ms=current_ms,
+                                    )
+                                    if ping is not None:
+                                        notifications.append(ping)
+                            else:
+                                merge_outcome, merge_detail = parse_linear_todo_merge_reply(
+                                    str(merge_res.get("reply_text") or ""),
+                                    repo=repo,
+                                    number=number,
+                                    linear_url=linear_url,
+                                )
+                                if merge_outcome == "merged":
+                                    action = "linear_todo_merged"
+                                    try:
+                                        self.linear_client.update_issue(linear_id, state="Done")
+                                    except Exception as exc:
+                                        sys.stderr.write(f"moltis-github-companion linear-todo-merge-done warning ({pr_key} / {linear_id}): {exc}\n")
+                                    self.execution_coordinator.commit_deferred_dispatch(merge_res, now_override_ms=now_override_ms)
+                                elif merge_outcome in ("blocked", "needs_decision"):
+                                    if applied_team_merge:
+                                        with contextlib.suppress(Exception):
+                                            self.gh_client.remove_pull_request_label(repo, number, "team:merge")
+                                    try:
+                                        self.linear_client.update_issue(
+                                            linear_id,
+                                            state="Backlog",
+                                            add_labels=("needs-decision",),
+                                            remove_labels=("ready-to-merge",),
+                                        )
+                                    except Exception as exc:
+                                        sys.stderr.write(f"moltis-github-companion linear-todo-merge-escalate warning ({pr_key} / {linear_id}): {exc}\n")
+                                        self.execution_coordinator.fail_deferred_dispatch(
+                                            merge_res,
+                                            failure_reason=f"linear_todo_merge_escalate_failed: {exc}",
+                                            now_override_ms=now_override_ms,
+                                        )
+                                        action = "linear_todo_merge_escalate_failed"
+                                    else:
+                                        action = "linear_todo_merge_blocked" if merge_outcome == "blocked" else "linear_todo_merge_needs_decision"
+                                        self.execution_coordinator.commit_deferred_dispatch(merge_res, now_override_ms=now_override_ms)
+                                        if merge_outcome == "needs_decision" and merge_res.get("telegram_forwarded"):
+                                            clean_linear_url = str(linear_url or pr_entry.get("linear_issue_url") or "").strip()
+                                            self.state_store.update_thread_state(
+                                                pr_key,
+                                                {
+                                                    "repo": repo,
+                                                    "number": number,
+                                                    "title": title,
+                                                    **({"linear_issue_url": clean_linear_url} if clean_linear_url else {}),
+                                                    "decision_notified_sha": head_sha,
+                                                },
+                                                now_override_ms=current_ms,
+                                            )
+                                            ping = {
+                                                "key": pr_key,
                                                 "repo": repo,
                                                 "number": number,
+                                                "head_sha": head_sha,
+                                                "linear_url": clean_linear_url,
                                                 "title": title,
-                                                **({"linear_issue_url": clean_linear_url} if clean_linear_url else {}),
-                                                "decision_notified_sha": head_sha,
-                                            },
-                                            now_override_ms=current_ms,
-                                        )
-                                        ping = {
-                                            "key": pr_key,
-                                            "repo": repo,
-                                            "number": number,
-                                            "head_sha": head_sha,
-                                            "linear_url": clean_linear_url,
-                                            "title": title,
-                                            "message": merge_detail,
-                                            "sent": True,
-                                            "error": None,
-                                        }
-                                        notifications.append(ping)
-                                    else:
-                                        ping = self._send_needs_decision_ping(
-                                            pr_key=pr_key,
-                                            linear_url=linear_url or "",
-                                            repo=repo,
-                                            number=number,
-                                            title=title,
-                                            head_sha=head_sha,
-                                            current_ms=current_ms,
-                                        )
-                                        if ping is not None:
+                                                "message": merge_detail,
+                                                "sent": True,
+                                                "error": None,
+                                            }
                                             notifications.append(ping)
-                            else:
-                                if applied_team_merge:
-                                    with contextlib.suppress(Exception):
-                                        self.gh_client.remove_pull_request_label(repo, number, "team:merge")
-                                self.execution_coordinator.commit_deferred_dispatch(merge_res, now_override_ms=now_override_ms)
+                                        else:
+                                            ping = self._send_needs_decision_ping(
+                                                pr_key=pr_key,
+                                                linear_url=linear_url or "",
+                                                repo=repo,
+                                                number=number,
+                                                title=title,
+                                                head_sha=head_sha,
+                                                current_ms=current_ms,
+                                            )
+                                            if ping is not None:
+                                                notifications.append(ping)
+                                else:
+                                    if applied_team_merge:
+                                        with contextlib.suppress(Exception):
+                                            self.gh_client.remove_pull_request_label(repo, number, "team:merge")
+                                    self.execution_coordinator.commit_deferred_dispatch(merge_res, now_override_ms=now_override_ms)
                     elif applied_team_merge:
                         with contextlib.suppress(Exception):
                             self.gh_client.remove_pull_request_label(repo, number, "team:merge")
@@ -5734,24 +5807,25 @@ class GithubCompanionRunner:
                     dispatches.append(review_res)
                     review_action = "linear_todo_review_failed"
                     if review_res.get("task_succeeded"):
-                        try:
-                            self.linear_client.update_issue(linear_id, state="In Review")
-                        except Exception as exc:
-                            sys.stderr.write(f"moltis-github-companion linear-todo-review-update warning ({pr_key} / {linear_id}): {exc}\n")
-                            self.execution_coordinator.fail_deferred_dispatch(
-                                review_res,
-                                failure_reason=f"linear_todo_review_update_failed: {exc}",
-                                now_override_ms=now_override_ms,
-                            )
-                        else:
-                            self.execution_coordinator.commit_deferred_dispatch(review_res, now_override_ms=now_override_ms)
-                            if head_sha:
-                                self.state_store.update_thread_state(
-                                    pr_key,
-                                    {"linear_todo_reviewed_sha": head_sha},
-                                    now_override_ms=current_ms,
+                        with self._deferred_dispatch_guard(review_res, now_override_ms=now_override_ms):
+                            try:
+                                self.linear_client.update_issue(linear_id, state="In Review")
+                            except Exception as exc:
+                                sys.stderr.write(f"moltis-github-companion linear-todo-review-update warning ({pr_key} / {linear_id}): {exc}\n")
+                                self.execution_coordinator.fail_deferred_dispatch(
+                                    review_res,
+                                    failure_reason=f"linear_todo_review_update_failed: {exc}",
+                                    now_override_ms=now_override_ms,
                                 )
-                            review_action = "linear_todo_reviewed"
+                            else:
+                                self.execution_coordinator.commit_deferred_dispatch(review_res, now_override_ms=now_override_ms)
+                                if head_sha:
+                                    self.state_store.update_thread_state(
+                                        pr_key,
+                                        {"linear_todo_reviewed_sha": head_sha},
+                                        now_override_ms=current_ms,
+                                    )
+                                review_action = "linear_todo_reviewed"
                     linear_pr_actions.append({
                         "action": review_action,
                         "key": pr_key,
@@ -6060,33 +6134,34 @@ class GithubCompanionRunner:
                     "dispatch": review_res,
                 })
                 continue
-            verdict, findings, polish = parse_blind_review_reply(str(review_res.get("reply_text") or ""))
-            summary_parts: list[str] = []
-            if findings:
-                summary_parts.append(f"FINDINGS: {findings}")
-            if polish:
-                summary_parts.append(f"POLISH: {polish}")
-            verdict_summary = "\n".join(summary_parts)
-            posted = False
-            try:
-                self.linear_client.post_blind_review_verdict(
-                    linear_id,
-                    agent="traya",
-                    model_family=MODEL_FAMILY_BY_AGENT["traya"],
-                    head_sha=head_sha,
-                    verdict=verdict,
-                    summary=verdict_summary,
-                )
-                posted = True
-            except Exception as exc:
-                sys.stderr.write(f"moltis-github-companion traya-verdict-post warning ({pr_key} / {linear_id}): {exc}\n")
-                self.execution_coordinator.fail_deferred_dispatch(
-                    review_res,
-                    failure_reason=f"linear_blind_verdict_post_failed: {exc}",
-                    now_override_ms=now_override_ms,
-                )
-            else:
-                self.execution_coordinator.commit_deferred_dispatch(review_res, now_override_ms=now_override_ms)
+            with self._deferred_dispatch_guard(review_res, now_override_ms=now_override_ms):
+                verdict, findings, polish = parse_blind_review_reply(str(review_res.get("reply_text") or ""))
+                summary_parts: list[str] = []
+                if findings:
+                    summary_parts.append(f"FINDINGS: {findings}")
+                if polish:
+                    summary_parts.append(f"POLISH: {polish}")
+                verdict_summary = "\n".join(summary_parts)
+                posted = False
+                try:
+                    self.linear_client.post_blind_review_verdict(
+                        linear_id,
+                        agent="traya",
+                        model_family=MODEL_FAMILY_BY_AGENT["traya"],
+                        head_sha=head_sha,
+                        verdict=verdict,
+                        summary=verdict_summary,
+                    )
+                    posted = True
+                except Exception as exc:
+                    sys.stderr.write(f"moltis-github-companion traya-verdict-post warning ({pr_key} / {linear_id}): {exc}\n")
+                    self.execution_coordinator.fail_deferred_dispatch(
+                        review_res,
+                        failure_reason=f"linear_blind_verdict_post_failed: {exc}",
+                        now_override_ms=now_override_ms,
+                    )
+                else:
+                    self.execution_coordinator.commit_deferred_dispatch(review_res, now_override_ms=now_override_ms)
             results.append({
                 "key": pr_key,
                 "repo": repo,
@@ -6476,8 +6551,8 @@ def main(argv: list[str] | None = None) -> int:
     rpc_client = MoltisRpcClient(rpc_url=cfg["rpc_url"])
     poller = NotificationPoller(state_store=store, gh_client=gh_client, read_only_trial=cfg["read_only_trial"])
     trust_filter = TrustFilterAndSnapshotBuilder(state_store=store, gh_client=gh_client, matrix_client=matrix_client, telegram_client=telegram_client, agent_name=cfg["agent_name"])
-    execution_coordinator = LocalExecutionCoordinator(state_store=store, rpc_client=rpc_client, data_dir=cfg["data_dir"], agent_name=cfg["agent_name"], agent_display_name=cfg["agent_display_name"], main_model=cfg["main_model"], review_model=cfg["review_model"], matrix_client=matrix_client, telegram_client=telegram_client, room_id=cfg["room_id"], schedule_dow=cfg["schedule_dow"], schedule_day_name=cfg["schedule_day_name"])
     linear_client = linear_sync.LinearSyncClient.from_env()
+    execution_coordinator = LocalExecutionCoordinator(state_store=store, rpc_client=rpc_client, data_dir=cfg["data_dir"], agent_name=cfg["agent_name"], agent_display_name=cfg["agent_display_name"], main_model=cfg["main_model"], review_model=cfg["review_model"], matrix_client=matrix_client, telegram_client=telegram_client, room_id=cfg["room_id"], schedule_dow=cfg["schedule_dow"], schedule_day_name=cfg["schedule_day_name"], linear_client=linear_client)
     runner = GithubCompanionRunner(state_store=store, gh_client=gh_client, poller=poller, trust_filter=trust_filter, execution_coordinator=execution_coordinator, matrix_client=matrix_client, read_only_trial=cfg["read_only_trial"], linear_client=linear_client)
     if cfg["once"]:
         poller.wait_until_due()
