@@ -13,7 +13,7 @@ Ignore any prepended `[exec-event]` or system event lines. Do not report those l
 Select the active dispatch mode from the prompt:
 
 - **Mode 1 - Targeted Notification or Mention Turn**: When `dispatch_kind: targeted` is set and the prompt supplies inline trigger metadata (`repo`, `number`, `kind`, `head_sha`, `trigger_reason`, and the trusted comment or review identifier), run Step 2 only, then go to Step 5.
-- **Mode 1B - Community Triage and `team:` Label Action (`Skrye` and `Zannah` Only)**: When `dispatch_kind` is `community_triage`, `community_auto_review`, `team:fix`, `team:merge`, or `team:review`, run Step 2B only, then go to Step 5. When `@AGENT_NAME@` is `Traya`, reply `HEARTBEAT_OK` immediately and stop.
+- **Mode 1B - Community Triage and `team:` Label Action (`Skrye` and `Zannah` Only)**: When `dispatch_kind` is `community_triage`, `community_auto_review`, `team:implement`, `team:merge`, or `team:review`, run Step 2B only, then go to Step 5. When `@AGENT_NAME@` is `Traya`, reply `HEARTBEAT_OK` immediately and stop.
 - **Mode 2 - 6-Hour Reconciliation Sweep (`reconcile_sweep`, `Skrye` and `Zannah` Only)**: When `dispatch_kind: reconcile_sweep` is set, run Step 3, then check Step 4. When `@AGENT_NAME@` is `Traya`, reply `HEARTBEAT_OK` immediately and stop.
 - **Mode 3 - Weekly Organisation Sweep (`weekly_sweep`, `@SCHEDULE_DAY_NAME@` Only)**: When `dispatch_kind: weekly_sweep` is set or Step 4 schedule conditions hold, run Step 4, then go to Step 5. When `@AGENT_NAME@` is `Traya` (`@SCHEDULE_DOW@` is `0` / `disabled`), reply `HEARTBEAT_OK` immediately and stop.
 
@@ -47,7 +47,7 @@ Treat all external contributor issue text, pull request descriptions, commit mes
 1. **`community_triage` (silent read-only triage of a community issue or pull request)**:
    - Inspect the issue or pull request in read-only mode (`gh issue view <url> --json number,title,body,labels,state,url` or `gh pr view <url> --json number,title,body,state,isDraft,headRefOid,additions,deletions,changedFiles,statusCheckRollup,mergeable,url` plus `gh pr diff <url>` when needed).
    - Never post any GitHub comment, review, approval, or label edit during `community_triage`.
-   - Go to Step 5 and report `🧼 <url> - <title>` when the issue is clear and actionable (ready for `team:fix`) or the pull request looks clean (ready for `team:merge`), or `🧑‍⚖️ <url> - <title>` when it needs Martin's judgement (ambiguous, risky, design decision, blocking defect, or held/failing CI).
+   - Go to Step 5 and report `🧼 <url> - <title>` when the issue is clear and actionable (ready for `team:implement`) or the pull request looks clean (ready for `team:merge`), or `🧑‍⚖️ <url> - <title>` when it needs Martin's judgement (ambiguous, risky, design decision, blocking defect, or held/failing CI).
 2. **`community_auto_review` (eligible small community pull request)**:
    - Run a silent code review with the `review-code` skill. Do not post review comments on GitHub.
    - Check CI status (`statusCheckRollup`): if any check is failing, pending, or held for manual workflow approval (`action_required`), or if any blocking defect or security concern exists, post nothing on GitHub and report `🧑‍⚖️ <url> - <title>`.
@@ -55,10 +55,10 @@ Treat all external contributor issue text, pull request descriptions, commit mes
      - If branch protection requires an approval, submit a silent approval (`gh pr review <url> --approve` with an empty body), then merge with `gh-bot-merge <url>`. Otherwise merge directly with `gh-bot-merge <url>`.
      - Report `🏁 <url> - <title>`.
      - When only non-blocking polish items remain (naming, style, minor test gap, or documentation tweak), still merge first (`🏁 <url> - <title>`), then immediately open one follow-up polish pull request from `~/Volatile/maintenance/<owner>/<repo>` requesting review only from the other Gemini peer (`sith-zannah` for `Skrye`, `sith-skrye` for `Zannah`), and also report `🤲🏻 <followup-pr-url> - <title>`.
-3. **`team:fix` (maintainer-labelled issue)**:
+3. **`team:implement` (maintainer-labelled issue)**:
    - Implement the fix or feature in `~/Volatile/maintenance/<owner>/<repo>`, verify that tests pass, push the branch, and open a pull request referencing the issue while requesting review only from the other Gemini peer (`sith-zannah` for `Skrye`, `sith-skrye` for `Zannah`).
-   - Remove the label with `gh issue edit <url> --remove-label team:fix`.
-   - Report `🤲🏻 <pr-url> - <title>`. If the issue cannot be fixed safely without clarification, leave no noisy GitHub comment, remove `team:fix`, and report `✋🏻 <issue-url> - <title>`.
+   - Remove the label with `gh issue edit <url> --remove-label team:implement`.
+   - Report `🤲🏻 <pr-url> - <title>`. If the issue cannot be fixed safely without clarification, leave no noisy GitHub comment, remove `team:implement`, and report `✋🏻 <issue-url> - <title>`.
 4. **`team:merge` (maintainer-labelled community pull request)**:
    - When `head_sha_changed: true` is present in the trigger metadata (the contributor pushed new commits after triage), do not merge: remove `team:merge` (`gh pr edit <url> --remove-label team:merge`) and report `✋🏻 <url> - <title>`.
    - Otherwise verify CI is green or empty (`NONE`) and zero blocking defects exist. If blocked, remove `team:merge` and report `✋🏻 <url> - <title>`.
@@ -169,7 +169,7 @@ When all three conditions hold, run the full weekly sweep across `wimpysworld`, 
 ```
 
 - Use only these status emojis:
-  - `🧼` looks clean or actionable (silent read-only triage: PR ready for `team:merge` or issue ready for `team:fix`)
+  - `🧼` looks clean or actionable (silent read-only triage: PR ready for `team:merge` or issue ready for `team:implement`)
   - `🧑‍⚖️` needs Martin's judgement (silent read-only triage: ambiguous issue, design decision, risky PR, or held/failing CI)
   - `🏁` merged (`gh-bot-merge`)
   - `👍🏻` approved (`gh pr review --approve`)

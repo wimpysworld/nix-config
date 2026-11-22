@@ -472,10 +472,10 @@ let
       "export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_ENABLED=${lib.escapeShellArg "true"}"
       scripts.githubCompanion;
     assert lib.hasInfix
-      "export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_LINES=${lib.escapeShellArg "250"}"
+      "export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_LINES=${lib.escapeShellArg "150"}"
       scripts.githubCompanion;
     assert lib.hasInfix
-      "export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_FILES=${lib.escapeShellArg "10"}"
+      "export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_FILES=${lib.escapeShellArg "5"}"
       scripts.githubCompanion;
     assert lib.hasInfix
       "export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS=${lib.escapeShellArg "wimpysworld/nix-config"}"

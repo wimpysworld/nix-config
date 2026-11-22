@@ -62,18 +62,19 @@ OUTBOX_FILENAME, AUTH_STATE_FILENAME = "outbox.json", "auth.json"
 COORDINATOR_LOCK_FILENAME, STATE_LOCK_FILENAME = "coordinator.lock", "companion.lock"
 ENCODED_COMPONENT_BYTES, MAX_RESPONSE_BYTES = 120, 4 * 1048576
 DEFAULT_GH_SESSION_KEY, MAX_THREAD_FAILURE_RETRIES = "companion:github", 3
-TEAM_LABELS = ("team:fix", "team:merge", "team:review")
-PR_TEAM_LABELS = ("team:merge", "team:review", "team:fix")
-ISSUE_TEAM_LABELS = ("team:fix", "team:review")
+TEAM_LABELS = ("team:implement", "team:merge", "team:review")
+PR_TEAM_LABELS = ("team:merge", "team:review", "team:implement")
+ISSUE_TEAM_LABELS = ("team:implement", "team:review")
+DO_NOT_MERGE_LABEL = "team:do-not-merge"
 TEAM_LABEL_TRIGGER_REASONS: dict[str, str] = {
-    "team:fix": "team_fix",
+    "team:implement": "team_implement",
     "team:merge": "team_merge",
     "team:review": "team_review",
 }
 MODE_1B_DISPATCH_KINDS = frozenset({"community_triage", "community_auto_review", *TEAM_LABELS})
 DEFAULT_COMMUNITY_AUTO_MERGE_ENABLED = True
-DEFAULT_COMMUNITY_AUTO_MERGE_MAX_LINES = 250
-DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES = 10
+DEFAULT_COMMUNITY_AUTO_MERGE_MAX_LINES = 150
+DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES = 5
 DEFAULT_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS = ("wimpysworld/nix-config",)
 SENSITIVE_COMMUNITY_PR_FILENAMES = frozenset({
     "flake.nix", "flake.lock",
@@ -316,6 +317,10 @@ def extract_label_names(raw_labels: object) -> list[str]:
 def extract_team_labels(raw_labels: object, allowed: Iterable[str] = TEAM_LABELS) -> list[str]:
     present = {lbl.strip().lower() for lbl in extract_label_names(raw_labels) if lbl.strip()}
     return [cand for cand in (str(a).strip().lower() for a in allowed) if cand in present]
+
+
+def has_do_not_merge_label(raw_labels: object) -> bool:
+    return any(lbl.strip().lower() == DO_NOT_MERGE_LABEL for lbl in extract_label_names(raw_labels))
 
 
 def verify_team_label_from_events(events: Iterable[dict], label_name: str) -> dict | None:
@@ -1814,6 +1819,7 @@ class CompanionStateStore:
                 title, body = str(norm_pr.get("title") or ""), str(norm_pr.get("body") or "")
                 labels = extract_label_names(norm_pr.get("labels"))
                 team_labels = extract_team_labels(norm_pr.get("team_labels") if "team_labels" in norm_pr else labels, PR_TEAM_LABELS)
+                has_do_not_merge = has_do_not_merge_label(labels)
                 review_requests = list(norm_pr.get("review_requests") or norm_pr.get("reviewRequests") or [])
                 unresolved_thread_count = (
                     max(0, _safe_int(norm_pr.get("unresolved_thread_count"), 0))
@@ -1913,7 +1919,7 @@ class CompanionStateStore:
                 dispatch_kind = "targeted"
                 trigger_reason: str | None = None
                 if is_trusted and not unowned_auto_update:
-                    if review_decision == "APPROVED" and ci_state in ("SUCCESS", "NONE") and unresolved_thread_count == 0 and (handled_ci != ci_state or (head_sha and handled_sha != head_sha)):
+                    if not has_do_not_merge and review_decision == "APPROVED" and ci_state in ("SUCCESS", "NONE") and unresolved_thread_count == 0 and (handled_ci != ci_state or (head_sha and handled_sha != head_sha)):
                         trigger_reason = "ci_green_after_approval"
                     elif not is_self and handled_sha and head_sha and head_sha != handled_sha:
                         trigger_reason = "head_push"
@@ -1927,7 +1933,8 @@ class CompanionStateStore:
                             dispatch_kind = "community_auto_review" if auto_merge_eligible else "community_triage"
                             trigger_reason = dispatch_kind
                     elif (
-                        handled_sha
+                        not has_do_not_merge
+                        and handled_sha
                         and head_sha
                         and head_sha == handled_sha
                         and auto_merge_eligible

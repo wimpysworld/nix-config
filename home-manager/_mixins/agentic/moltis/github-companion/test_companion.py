@@ -3513,34 +3513,36 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
         )
 
     def test_community_auto_merge_eligibility_and_sensitive_paths(self) -> None:
-        # Eligible small non-sensitive PR
+        self.assertEqual(companion.DEFAULT_COMMUNITY_AUTO_MERGE_MAX_LINES, 150)
+        self.assertEqual(companion.DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES, 5)
+        # Eligible small non-sensitive PR at the 150-line / 5-file ceiling
         self.assertTrue(
             companion.compute_community_auto_merge_eligible(
                 repo="wimpysworld/tailor",
-                additions=120,
-                deletions=80,
+                additions=100,
+                deletions=50,
+                changed_files=5,
+                file_paths=[f"internal/alter/f{i}.go" for i in range(5)],
+            )
+        )
+        # Exceeds 150-line ceiling
+        self.assertFalse(
+            companion.compute_community_auto_merge_eligible(
+                repo="wimpysworld/tailor",
+                additions=100,
+                deletions=51,
                 changed_files=2,
                 file_paths=["internal/alter/labels.go", "internal/alter/labels_test.go"],
             )
         )
-        # Exceeds 250-line ceiling
-        self.assertFalse(
-            companion.compute_community_auto_merge_eligible(
-                repo="wimpysworld/tailor",
-                additions=200,
-                deletions=51,
-                changed_files=2,
-                file_paths=["internal/alter/labels.go"],
-            )
-        )
-        # Exceeds 10-file ceiling
+        # Exceeds 5-file ceiling
         self.assertFalse(
             companion.compute_community_auto_merge_eligible(
                 repo="wimpysworld/tailor",
                 additions=20,
                 deletions=10,
-                changed_files=11,
-                file_paths=[f"pkg/f{i}.go" for i in range(11)],
+                changed_files=6,
+                file_paths=[f"pkg/f{i}.go" for i in range(6)],
             )
         )
         # Excluded repository
@@ -3868,6 +3870,136 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
         )
         self.assertEqual(sent_calls[1][0], "gemini::gemini-4-hydrogen@reasoning-medium")
 
+    def test_team_implement_constants_and_legacy_label_ignored(self) -> None:
+        self.assertEqual(companion.TEAM_LABELS, ("team:implement", "team:merge", "team:review"))
+        self.assertEqual(companion.PR_TEAM_LABELS, ("team:merge", "team:review", "team:implement"))
+        self.assertEqual(companion.ISSUE_TEAM_LABELS, ("team:implement", "team:review"))
+        self.assertEqual(companion.DO_NOT_MERGE_LABEL, "team:do-not-merge")
+        self.assertEqual(companion.TEAM_LABEL_TRIGGER_REASONS["team:implement"], "team_implement")
+        self.assertIn("team:implement", companion.MODE_1B_DISPATCH_KINDS)
+        self.assertEqual(
+            companion.extract_team_labels(["team:implement", "enhancement"]),
+            ["team:implement"],
+        )
+        legacy_label = "team:" + "fix"
+        self.assertNotIn(legacy_label, companion.TEAM_LABELS)
+        self.assertNotIn(legacy_label, companion.PR_TEAM_LABELS)
+        self.assertNotIn(legacy_label, companion.ISSUE_TEAM_LABELS)
+        self.assertNotIn(legacy_label, companion.TEAM_LABEL_TRIGGER_REASONS)
+        self.assertNotIn(legacy_label, companion.MODE_1B_DISPATCH_KINDS)
+        self.assertEqual(companion.extract_team_labels([legacy_label]), [])
+        self.assertEqual(companion.extract_team_labels([legacy_label, "team:implement"]), ["team:implement"])
+        self.assertTrue(companion.has_do_not_merge_label(["team:do-not-merge"]))
+        self.assertTrue(companion.has_do_not_merge_label({"nodes": [{"name": "Team:Do-Not-Merge"}]}))
+        self.assertFalse(companion.has_do_not_merge_label(["team:implement", "team:merge"]))
+
+    def test_do_not_merge_label_blocks_ci_green_after_approval_until_removed(self) -> None:
+        store = self.make_store("skrye")
+        now_val = self.clock()
+
+        # 1) Trusted PR held by team:do-not-merge (lowercase and mixed case), then released
+        trusted_key = "wimpysworld/nix-config#46"
+        store.update_thread_state(
+            trusted_key,
+            {
+                "repo": "wimpysworld/nix-config",
+                "number": 46,
+                "handled_updated_at": "2026-04-01T10:00:00Z",
+                "handled_head_sha": "sha_pr46_v1",
+                "handled_ci_state": "PENDING",
+            },
+        )
+        trusted_base = {
+            "number": 46,
+            "title": "feat: held trusted PR",
+            "url": "https://github.com/wimpysworld/nix-config/pull/46",
+            "state": "OPEN",
+            "isDraft": False,
+            "updatedAt": "2026-04-01T10:05:00Z",
+            "headRefOid": "sha_pr46_v1",
+            "reviewDecision": "APPROVED",
+            "repository": {"nameWithOwner": "wimpysworld/nix-config"},
+            "author": {"login": "sith-zannah"},
+            "reviewRequests": {"nodes": []},
+            "reviewThreads": {"pageInfo": {"hasNextPage": False}, "nodes": []},
+            "statusCheckRollup": {
+                "state": "SUCCESS",
+                "contexts": {"nodes": [{"__typename": "CheckRun", "status": "COMPLETED", "conclusion": "SUCCESS"}]},
+            },
+        }
+
+        for held_labels in (
+            {"nodes": [{"name": "team:do-not-merge"}]},
+            {"nodes": [{"name": "Team:Do-Not-Merge"}]},
+        ):
+            res_held = store.record_polled_pull_requests(
+                [{**trusted_base, "labels": held_labels}],
+                now_override_ms=now_val,
+            )
+            self.assertEqual(res_held["actionable_prs"], [])
+            st_held = store.get_thread_state(trusted_key)
+            assert st_held is not None
+            self.assertEqual(st_held["handled_ci_state"], "PENDING")
+
+        res_released = store.record_polled_pull_requests(
+            [{**trusted_base, "labels": {"nodes": []}}],
+            now_override_ms=now_val + 1_000,
+        )
+        self.assertEqual(
+            {item["key"]: item["trigger_reason"] for item in res_released["actionable_prs"]},
+            {trusted_key: "ci_green_after_approval"},
+        )
+
+        # 2) Community auto-merge-eligible PR owned by skrye held by mixed-case team:do-not-merge, then released
+        skrye_comm_pr = next(
+            n for n in range(400, 450) if companion.compute_pr_owner("wimpysworld/tailor", n) == "skrye"
+        )
+        comm_key = companion.make_pr_key("wimpysworld/tailor", skrye_comm_pr)
+        store.update_thread_state(
+            comm_key,
+            {
+                "repo": "wimpysworld/tailor",
+                "number": skrye_comm_pr,
+                "handled_updated_at": "2026-04-01T10:00:00Z",
+                "handled_head_sha": "sha_comm_v1",
+                "handled_ci_state": "PENDING",
+            },
+        )
+        comm_base = {
+            "repo": "wimpysworld/tailor",
+            "number": skrye_comm_pr,
+            "title": "fix: small community change",
+            "body": "Clean fix",
+            "author": "community-dev",
+            "head_sha": "sha_comm_v1",
+            "review_decision": "APPROVED",
+            "ci_state": "SUCCESS",
+            "unresolved_thread_count": 0,
+            "updated_at": "2026-04-01T10:06:00Z",
+            "additions": 20,
+            "deletions": 5,
+            "changed_files": 1,
+            "file_paths": ["internal/alter/labels.go"],
+        }
+
+        res_comm_held = store.record_polled_pull_requests(
+            [{**comm_base, "labels": ["Team:Do-Not-Merge"]}],
+            now_override_ms=now_val + 2_000,
+        )
+        self.assertEqual(res_comm_held["actionable_prs"], [])
+        st_comm_held = store.get_thread_state(comm_key)
+        assert st_comm_held is not None
+        self.assertEqual(st_comm_held["handled_ci_state"], "PENDING")
+
+        res_comm_released = store.record_polled_pull_requests(
+            [{**comm_base, "labels": []}],
+            now_override_ms=now_val + 3_000,
+        )
+        self.assertEqual(
+            [(item["key"], item["dispatch_kind"], item["trigger_reason"]) for item in res_comm_released["actionable_prs"]],
+            [(comm_key, "community_auto_review", "ci_green_after_approval")],
+        )
+
 
 class TerminalReplyNormalizationAndHtmlCommentFilterTests(GithubCompanionTestBase):
     """Regression tests for structured thought stripping, Step 5 reply normalisation, and HTML comment coercion filtering."""
@@ -3909,7 +4041,7 @@ class TerminalReplyNormalizationAndHtmlCommentFilterTests(GithubCompanionTestBas
     def test_normalize_terminal_reply_strips_leaked_reasoning_and_normalises_step5_entries(self) -> None:
         example_a = (
             "Confirmed! `keeweb/keeweb` publishes `KeeWeb-1.18.7.linux.x64.deb` in its latest GitHub release "
-            "and is not yet in `wimpysworld/deb-get`. Clear and actionable for `team:fix`.\n\n"
+            "and is not yet in `wimpysworld/deb-get`. Clear and actionable for `team:implement`.\n\n"
             "Report `🧼 https://github.com/wimpysworld/deb-get/issues/447 - Add Keeweb` with no other text."
             "🧼 https://github.com/wimpysworld/deb-get/issues/447 - Add Keeweb"
         )

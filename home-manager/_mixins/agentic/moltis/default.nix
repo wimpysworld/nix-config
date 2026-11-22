@@ -975,8 +975,8 @@ let
     stateDir = "${stateDir}/github-companion-${agentName}";
     rpcUrl = "https://127.0.0.1:13131/api/rpc";
     communityAutoMergeEnabled = true;
-    communityAutoMergeMaxLines = 250;
-    communityAutoMergeMaxFiles = 10;
+    communityAutoMergeMaxLines = 150;
+    communityAutoMergeMaxFiles = 5;
     communityAutoMergeExcludedRepos = [ "wimpysworld/nix-config" ];
   };
 
