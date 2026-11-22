@@ -989,7 +989,8 @@ reasoningEffort = "high"
                         self.assertIs(native["mainAgent"], False)
                         self.assertIs(native["subagent"], True)
                         self.assertEqual(
-                            native["model"], "flash" if name == "garfield" else "pro"
+                            native["model"],
+                            "flash" if name == "garfield" else "inherit",
                         )
                         self.assertNotIn("tools", native)
                     else:
