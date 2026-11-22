@@ -98,12 +98,8 @@ in
       inherit (final.unstable) ollama-rocm;
       inherit (final.unstable) ollama-vulkan;
 
-      inherit (final.unstable) llama-cpp;
-      llama-cpp-rocm = llama-cpp.override { rocmSupport = true; };
-      llama-cpp-vulkan = llama-cpp.override { vulkanSupport = true; };
-
-      # Keep the Inkling trial separate until nixpkgs includes its model support.
-      llama-cpp-inkling = llama-cpp.overrideAttrs (
+      # Keep this pin until nixpkgs includes Inkling model support.
+      llama-cpp = final.unstable.llama-cpp.overrideAttrs (
         oldAttrs:
         let
           buildNumber = "12628";
@@ -111,7 +107,6 @@ in
           inherit (final.lib) cmakeBool cmakeFeature hasPrefix;
         in
         {
-          pname = "llama-cpp-inkling";
           version = "b${buildNumber}";
           src = final.unstable.fetchFromGitHub {
             owner = "ggml-org";
@@ -141,8 +136,10 @@ in
           disabledTests = oldAttrs.disabledTests ++ [ "test-kv-cache-scales" ];
         }
       );
+      llama-cpp-rocm = llama-cpp.override { rocmSupport = true; };
+      llama-cpp-vulkan = llama-cpp.override { vulkanSupport = true; };
 
-      inherit (final.unstable) llama-swap;
+      inherit (final.unstable) huggingface-cli llama-swap;
 
       # Packages tracking the unstable channel ahead of their stable releases.
       inherit (final.unstable) apko;

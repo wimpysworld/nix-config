@@ -6,25 +6,6 @@ let
   modelDownloads = import ./model-downloads.nix;
   publicModelNames = lib.mapAttrs (_ref: download: download.publicName) modelDownloads;
 
-  packageForAcceleration =
-    acceleration: package:
-    if acceleration == "cuda" then
-      package.override {
-        cudaSupport = true;
-        rocmSupport = false;
-      }
-    else if acceleration == "rocm" then
-      package.override {
-        rocmSupport = true;
-        cudaSupport = false;
-      }
-    else if acceleration == "vulkan" then
-      package.override {
-        vulkanSupport = true;
-      }
-    else
-      package;
-
   mkRepoCacheDirectory =
     cacheRoot: hfRepo: "${cacheRoot}/hub/models--${lib.replaceStrings [ "/" ] [ "--" ] hfRepo}";
 
@@ -71,7 +52,6 @@ let
         role
         ;
       inherit (download)
-        backend
         downloadPaths
         hfRepo
         primaryPath
@@ -97,7 +77,7 @@ let
     // model;
 in
 {
-  inherit defaultCacheRoot packageForAcceleration publicModelNames;
+  inherit defaultCacheRoot publicModelNames;
 
   mkRuntime =
     {

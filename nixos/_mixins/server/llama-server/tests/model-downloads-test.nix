@@ -43,7 +43,11 @@ let
     _: download: download.publicName == "inkling-2-mini"
   ) modelDownloads;
   pinnedDownloads = lib.filterAttrs (
-    _: download: download.backend == "llama-cpp-inkling"
+    _: download:
+    builtins.elem download.publicName [
+      "inkling-2-mini"
+      "qwen3.8-27b"
+    ]
   ) modelDownloads;
   unmappedValidation = validateModelDownloads [ "broken:model" ] modelDownloads;
   invalidMetadataValidation = validateModelDownloads [ "broken:model" ] {

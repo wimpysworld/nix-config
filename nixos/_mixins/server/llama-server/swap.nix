@@ -11,6 +11,23 @@ let
   accel = host.gpu.compute.acceleration;
   listenPort = 8080;
 
+  llamaPackage =
+    if accel == "cuda" then
+      pkgs.llama-cpp.override {
+        cudaSupport = true;
+        rocmSupport = false;
+      }
+    else if accel == "rocm" then
+      pkgs.llama-cpp.override {
+        rocmSupport = true;
+        cudaSupport = false;
+      }
+    else if accel == "vulkan" then
+      pkgs.llama-cpp.override { vulkanSupport = true; }
+    else
+      pkgs.llama-cpp;
+  llamaServer = lib.getExe' llamaPackage "llama-server";
+
   runtime = import ./runtime.nix { inherit lib; };
   selectedRuntime = runtime.mkRuntime {
     acceleration = accel;
@@ -66,7 +83,7 @@ let
           "${model.repoCacheDirectory}/snapshots"
           (if model.revision == null then "*" else model.revision)
           model.primaryPath
-          (lib.getExe' (runtime.packageForAcceleration accel pkgs.${model.backend}) "llama-server")
+          llamaServer
         ]
       } ''${PORT} ${lib.escapeShellArgs model.runtimeArgs}
     '';
@@ -112,6 +129,11 @@ let
 in
 {
   config = lib.mkIf isInference {
+    environment.systemPackages = [
+      llamaPackage
+      pkgs.llama-swap
+    ];
+
     services.llama-swap = {
       enable = true;
       package = pkgs.llama-swap;

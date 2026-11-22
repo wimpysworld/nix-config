@@ -5,11 +5,9 @@ let
       path,
       publicName,
       revision ? null,
-      backend ? "llama-cpp",
     }:
     {
       inherit
-        backend
         hfRepo
         publicName
         revision
@@ -25,7 +23,6 @@ let
       path = "Mainline_Support/Inkling-2-Mini-${quant}.gguf_file";
       publicName = "inkling-2-mini";
       revision = "45fd08764f2b0bf16b03a5483a80e5c7aaec8772";
-      backend = "llama-cpp-inkling";
     };
 
   qwen =
@@ -35,7 +32,6 @@ let
       path = "Qwen3.8-27B-${quant}.gguf";
       publicName = "qwen3.8-27b";
       revision = "4af51b3542f775b0a8e4b310bfb3f17e01c306c9";
-      backend = "llama-cpp-inkling";
     };
 in
 {

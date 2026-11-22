@@ -1,6 +1,5 @@
-"""Compare Vulkan and ROCm llama-server builds with the same local GGUF files."""
+"""Compare packaged llama-server backends with the same local GGUF file."""
 
-import argparse
 from contextlib import contextmanager
 import hashlib
 import http.client
@@ -20,9 +19,11 @@ import time
 
 PROMPT_TOKENS = 4096
 OUTPUT_TOKENS = 512
-MEASURED_RUNS = 3
-DEVICES = {"vulkan": "Vulkan0", "rocm": "ROCm0"}
-WIDTHS = {"inkling": (0,), "qwen": (0, 2, 3)}
+DEVICES = {"vulkan": "Vulkan0", "rocm": "ROCm0", "cuda": "CUDA0"}
+MODELS = {
+    "inkling-2-mini": ("INKLING", (0,)),
+    "qwen3.8-27b": ("QWEN", (0, 2, 3)),
+}
 
 
 def follow_server(pipe, log, ready):
@@ -122,10 +123,10 @@ def sample_gpu_memory(stop, peaks):
             return
 
 
-def run_case(args, model, backend, width):
+def run_case(output, model, model_path, backend, server, width, runs):
     label = f"{model}-{backend}-" + (f"mtp{width}" if width else "off")
     command = [
-        str(getattr(args, backend)), "--model", str(getattr(args, model)), "--offline",
+        str(server), "--model", str(model_path), "--offline",
         "--host", "127.0.0.1", "--port", "0", "--device", DEVICES[backend],
         "--gpu-layers", "all", "--fit", "off", "--flash-attn", "on", "--load-mode", "none",
         "--cache-type-k", "q8_0", "--cache-type-v", "q8_0",
@@ -136,7 +137,7 @@ def run_case(args, model, backend, width):
     if width:
         command.extend(["--spec-draft-n-max", str(width)])
     print(f"{label}: starting", file=sys.stderr, flush=True)
-    with (args.output / f"{label}.jsonl").open("x") as records, (args.output / f"{label}.log").open("xb") as log:
+    with (output / f"{label}.jsonl").open("x") as records, (output / f"{label}.log").open("xb") as log:
         def record(**fields):
             print(json.dumps({"case": label, **fields}), file=records, flush=True)
 
@@ -161,7 +162,7 @@ def run_case(args, model, backend, width):
             sampler.start()
             samples = []
             try:
-                for number in range(1, MEASURED_RUNS + 1):
+                for number in range(1, runs + 1):
                     sample = completion(port, tokens, width)
                     record(kind="sample", number=number, **sample)
                     samples.append(sample)
@@ -187,77 +188,56 @@ def run_case(args, model, backend, width):
 
 
 def main():
+    model = sys.argv[1]
+    runs = int(sys.argv[2])
+    snapshot_name, widths = MODELS[model]
+    backends = os.environ.get("BENCHMARK_MODELS_BACKENDS", "").split()
+    if not backends:
+        print("Error: no GPU benchmark backend is configured for this host.", file=sys.stderr)
+        return 1
+
+    snapshot = os.environ.get(f"BENCHMARK_MODELS_{snapshot_name}_SNAPSHOT")
+    if not snapshot:
+        print(f"Error: {model} is not configured for this host's video memory tier.", file=sys.stderr)
+        return 1
+
     root = Path(os.environ.get("BENCHMARK_MODELS_ROOT") or Path.home() / "Volatile/benchmark-models")
-    parser = argparse.ArgumentParser(
-        prog="benchmark-models --focused",
-        description="Compare Vulkan and ROCm on Strix Halo with local Inkling 2 Mini and Qwen3.8-27B models.",
-        epilog=(
-            "The Strix Halo package supplies llama-server b12628 for both backends. "
-            "It uses the pinned Q4 models from the production or benchmark cache when available. "
-            "When running from source, pass the paths to both executables. "
-            "Use --backend to run only one. The benchmark does not download models."
-        ),
-    )
-    parser.add_argument("--only", choices=WIDTHS, help="run one model (default: both)")
-    parser.add_argument("--backend", choices=DEVICES, help="run one backend (default: both)")
-    for backend in DEVICES:
-        variable = f"BENCHMARK_MODELS_{backend.upper()}_SERVER"
-        parser.add_argument(
-            f"--{backend}", type=Path, metavar="SERVER", default=os.environ.get(variable) or None,
-            help=f"path to the {backend} llama-server (or set {variable})",
-        )
-    for model in WIDTHS:
-        variable = f"BENCHMARK_MODELS_{model.upper()}_GGUF"
-        parser.add_argument(
-            f"--{model}", type=Path, metavar="GGUF", default=default_model_path(model, root),
-            help=f"path to the local {model} GGUF (or set {variable})",
-        )
-    parser.add_argument(
-        "--output", type=Path, help="directory for logs and JSONL results (default: a new directory under BENCHMARK_MODELS_ROOT)",
-    )
-    args = parser.parse_args()
-    models = [args.only] if args.only else list(WIDTHS)
-    backends = [args.backend] if args.backend else list(DEVICES)
-    for name in models + backends:
-        path = getattr(args, name)
-        mode = os.X_OK if name in backends else os.R_OK
-        if not path or not path.is_file() or not os.access(path, mode):
-            missing = f": {path}" if path else ""
-            parser.error(f"--{name} requires an existing {'executable' if name in backends else 'readable GGUF'} file{missing}")
-        setattr(args, name, path.absolute())
-    if args.output is None:
-        root.mkdir(parents=True, exist_ok=True)
-        args.output = Path(mkdtemp(prefix="focused-", dir=root))
-    else:
-        args.output.mkdir(parents=True, exist_ok=True)
-    print(f"Results: {args.output}", file=sys.stderr)
+    model_path = cached_model_path(Path(snapshot), root)
+    if model_path is None:
+        print(f"Error: no readable cached GGUF for {model}: {snapshot}", file=sys.stderr)
+        return 1
+
+    servers = {}
+    for backend in backends:
+        server = os.environ.get(f"BENCHMARK_MODELS_{backend.upper()}_SERVER")
+        if not server or not Path(server).is_file() or not os.access(server, os.X_OK):
+            print(f"Error: packaged {backend} llama-server is not executable: {server}", file=sys.stderr)
+            return 1
+        servers[backend] = server
+
+    root.mkdir(parents=True, exist_ok=True)
+    output = Path(mkdtemp(prefix=f"{model}-", dir=root))
+    print(f"Results: {output}", file=sys.stderr)
     failed = False
-    for model in models:
-        for width in WIDTHS[model]:
-            for backend in backends:
-                try:
-                    run_case(args, model, backend, width)
-                except (OSError, RuntimeError, ValueError, KeyError, http.client.HTTPException) as error:
-                    print(f"{model} {backend} width {width}: {error}", file=sys.stderr)
-                    failed = True
+    for width in widths:
+        for backend, server in servers.items():
+            try:
+                run_case(output, model, model_path, backend, server, width, runs)
+            except (OSError, RuntimeError, ValueError, KeyError, http.client.HTTPException) as error:
+                print(f"{model} {backend} width {width}: {error}", file=sys.stderr)
+                failed = True
     return int(failed)
 
 
-def default_model_path(model, root):
-    override = os.environ.get(f"BENCHMARK_MODELS_{model.upper()}_GGUF")
-    if override:
-        return Path(override)
-    snapshot = os.environ.get(f"BENCHMARK_FOCUSED_{model.upper()}_SNAPSHOT")
-    cache = os.environ.get("BENCHMARK_FOCUSED_CACHE")
-    if not snapshot or not cache:
-        return None
-    production_path = Path(cache) / snapshot
-    if production_path.is_file() and os.access(production_path, os.R_OK):
-        return production_path
-    user_path = root / "huggingface" / snapshot
-    if user_path.is_file() and os.access(user_path, os.R_OK):
-        return user_path
-    return production_path
+def cached_model_path(snapshot, root):
+    preseed_cache = os.environ["BENCHMARK_MODELS_PRESEED_CACHE"]
+    user_cache = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
+    hf_home = Path(os.environ.get("HF_HOME") or user_cache / "huggingface")
+    hf_hub = Path(os.environ.get("HF_HUB_CACHE") or os.environ.get("HUGGINGFACE_HUB_CACHE") or hf_home / "hub")
+    for path in (Path(preseed_cache) / snapshot, root / "huggingface" / snapshot, hf_hub / snapshot.relative_to("hub")):
+        if path.is_file() and os.access(path, os.R_OK):
+            return path.absolute()
+    return None
 
 
 if __name__ == "__main__":

@@ -7,8 +7,8 @@ Each inference host selects its own models by GPU memory from the shared
 ## Current model policy
 
 The policy applies to all inference hosts. Inkling 2 Mini is the mixture-of-experts
-model (`moe`), and Qwen3.8 27B is the dense model (`dense`). The new models use
-llama.cpp b12628.
+model (`moe`), and Qwen3.8 27B is the dense model (`dense`). The service and
+benchmarks use the shared `pkgs.llama-cpp` package at b12628.
 
 | VRAM tier | Inkling 2 Mini (`inkling-2-mini`) | Qwen3.8 27B (`qwen3.8-27b`) | Small / media | Embedding |
 |---|---|---|---|---|
@@ -27,13 +27,21 @@ tiers do not enable MTP.
 The small media models keep UD-Q6_K_XL and 128K context. All tiers use
 `qwen3-embedding-0.6b` at Q8_0 with 8,192 tokens of context.
 
-## Current benchmarks
+## Run benchmarks
 
-The [focused benchmark](../../../../home-manager/_mixins/scripts/benchmark-models/focused.py)
-compares Vulkan and ROCm on Strix Halo with llama.cpp b12628. Both backends
-use the same UD-Q4_K_XL file for each model. Each case uses an 8,192-token
-context, a 4,096-token prompt and 512 output tokens. The table shows the median
-total request time over three runs after a warm-up:
+Run `benchmark-models-all` to benchmark `inkling-2-mini` and `qwen3.8-27b`.
+Run `benchmark-models MODEL [runs]` to benchmark one model. Specify `gemma4-e2b`,
+`gemma4-e4b` or `qwen3-embedding-0.6b` to benchmark a media or embedding model.
+The commands use packaged llama.cpp binaries and pinned snapshots in the
+Hugging Face cache. For the two text generators, the host's VRAM tier sets the
+quantisation.
+
+### Strix Halo results
+
+An earlier benchmark compared Vulkan and ROCm on Strix Halo with llama.cpp
+b12628. Both backends used the same UD-Q4_K_XL file for each model. Each case
+used an 8,192-token context, a 4,096-token prompt and 512 output tokens. The
+table shows the median total request time over three runs after a warm-up:
 
 | Model | MTP draft limit | Vulkan (s) | ROCm (s) |
 |---|---:|---:|---:|
@@ -45,10 +53,6 @@ total request time over three runs after a warm-up:
 On Vulkan, Qwen with a draft limit of two decoded at 25.26 tokens per second
 versus 12.13 without MTP. A limit of three was slightly faster, but fewer
 draft tokens were accepted (70% versus 87%).
-
-Run `benchmark-models --focused --help` for the model and backend arguments.
-The benchmark writes per-case logs and JSONL results with prompt processing,
-decode rate, time to first token, and draft acceptance.
 
 In a separate Vulkan run, Inkling processed a 258,207-token prompt without
 truncation. Prompt processing alone took about 41 minutes and 33 seconds.
@@ -158,11 +162,16 @@ benchmarks used `-fa 1 --mmap 0` to enable flash attention and disable mmap.
 The model policy sets `--ctx-size` per model and uses
 `--cache-type-k q8_0 --cache-type-v q8_0` on all tiers.
 
+llama-server already reuses cached prompt prefixes. Keep the opening tokens
+unchanged across requests to the same running backend and model.
+
 ### Generation sampler policy
 
 The [model policy](model-policy.nix) sets sampling flags per model. Inkling
 uses the [Unsloth local-run settings](https://unsloth.ai/docs/models/inkling-2-mini).
 Qwen uses the [model card's thinking-mode settings](https://huggingface.co/unsloth/Qwen3.8-27B-GGUF).
+Its default reasoning effort is `medium`. Set `reasoning_effort` in the request
+body to override the default.
 Gemma keeps its existing sampler. Embedding has no sampler.
 
 ### llama-swap as the production model manager
@@ -186,17 +195,16 @@ explicitly for Qwen3 Embedding.
 
 ### Model pre-seeding
 
-This is the primary operational gap in a llama-server deployment versus Ollama's `services.ollama.loadModels`.
-
-llama.cpp has no dedicated download tool. The `-hf` flag downloads models at runtime to `~/.cache/llama.cpp`, which is unsuitable for a server deployment. The correct pre-seeding tool is `hf` from `pkgs.python3Packages.huggingface-hub`, which provides both the `hf` and `huggingface-cli` commands:
+The service uses `hf` from the standalone `pkgs.huggingface-cli` package in
+unstable to download model files before llama-swap starts:
 
 ```bash
-hf download --repo-type model <org/repo> <file-path>
+hf download --repo-type model --revision <revision> <org/repo> <file-path>
 ```
 
-The `llama-models-preseed` service downloads each host's selected files before
-`llama-swap` starts. The service uses a Hugging Face cache at
-`/var/lib/llama-models/huggingface`.
+The `llama-models-preseed` service uses the dedicated Hugging Face cache at
+`/var/lib/llama-models/huggingface`. It removes retired repositories from that
+cache only after all selected model files are available.
 
 ---
 
