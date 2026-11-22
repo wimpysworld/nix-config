@@ -5858,13 +5858,13 @@ class GithubCompanionRunner:
                     })
             elif state_name == "backlog" or state_type == "backlog":
                 if (
-                    live_pr.get("is_draft")
-                    or str(live_pr.get("state") or "OPEN").upper() != "OPEN"
+                    str(live_pr.get("state") or "OPEN").upper() != "OPEN"
                     or is_trusted_github_actor(live_pr.get("author"))
                     or not head_sha
                     or bool(pr_entry.get("in_flight"))
                 ):
                     continue
+                is_draft = bool(live_pr.get("is_draft"))
                 handled_sha = str(pr_entry.get("handled_head_sha") or "").strip()
                 triaged_sha = str(pr_entry.get("triaged_head_sha") or "").strip()
                 handled_ci = normalize_ci_state(pr_entry.get("handled_ci_state")) if pr_entry.get("handled_ci_state") else ""
@@ -5885,6 +5885,63 @@ class GithubCompanionRunner:
                         )
 
                 has_dnm = has_do_not_merge_label(pr_labels)
+                backlog_blockers: list[str] = []
+                if is_draft:
+                    backlog_blockers.append("draft")
+                if has_dnm:
+                    backlog_blockers.append("do_not_merge")
+                if ci_state not in ("SUCCESS", "NONE"):
+                    backlog_blockers.append(f"ci_{ci_state.lower()}")
+                if unresolved_threads > 0:
+                    backlog_blockers.append("unresolved_threads")
+
+                if (is_draft or sha_unchanged) and "ready-to-merge" in lin_labels and backlog_blockers:
+                    try:
+                        self.linear_client.update_issue(
+                            linear_id,
+                            state="Backlog",
+                            add_labels=("needs-decision",),
+                            remove_labels=("ready-to-merge",),
+                        )
+                    except Exception as exc:
+                        sys.stderr.write(
+                            f"moltis-github-companion backlog-blocker-update warning ({pr_key} / {linear_id}): {exc}\n"
+                        )
+                        continue
+                    self.state_store.update_thread_state(
+                        pr_key,
+                        {"handled_ci_state": ci_state},
+                        now_override_ms=current_ms,
+                    )
+                    ping = self._send_needs_decision_ping(
+                        pr_key=pr_key,
+                        linear_url=linear_url or "",
+                        repo=repo,
+                        number=number,
+                        title=title,
+                        head_sha=head_sha,
+                        current_ms=current_ms,
+                    )
+                    if ping is not None:
+                        notifications.append(ping)
+                    dispatched_targets.add(pr_key)
+                    processed_pr_keys.add(pr_key)
+                    linear_pr_actions.append({
+                        "action": "backlog_ready_to_merge_blocked",
+                        "key": pr_key,
+                        "repo": repo,
+                        "number": number,
+                        "head_sha": head_sha,
+                        "blockers": backlog_blockers,
+                        "linear_issue_id": linear_id,
+                        "linear_issue_identifier": linear_identifier,
+                        "linear_issue_url": linear_url,
+                        "needs_decision_notification": ping,
+                    })
+                    continue
+
+                if is_draft:
+                    continue
                 additions = live_pr.get("additions")
                 deletions = live_pr.get("deletions")
                 changed_files = live_pr.get("changed_files")

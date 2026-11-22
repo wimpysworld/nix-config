@@ -8408,6 +8408,160 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
         self.assertEqual(res3["needs_decision_notifications"], [])
         self.assertEqual(len(self.httpd.telegram_requests), 1)
 
+    def test_backlog_ready_to_merge_clears_on_unchanged_sha_blockers(self) -> None:
+        repo = "wimpysworld/tailor"
+        pr_dnm, pr_ci_fail, pr_draft, pr_threads, pr_clean = self._owned_numbers(
+            repo, "skrye", 5, kind="pr", start=830
+        )
+
+        open_nodes: list[dict[str, object]] = [
+            self._graphql_pr_node(
+                repo,
+                pr_dnm,
+                title="feat: backlog ready-to-merge gets do-not-merge",
+                head_sha="sha_dnm_v1",
+                ci_state="SUCCESS",
+                labels=["team:do-not-merge"],
+                additions=200,
+                deletions=10,
+                file_paths=["src/dnm.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_ci_fail,
+                title="feat: backlog ready-to-merge CI regresses",
+                head_sha="sha_ci_v1",
+                ci_state="FAILURE",
+                additions=200,
+                deletions=10,
+                file_paths=["src/ci.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_draft,
+                title="feat: backlog ready-to-merge converted to draft",
+                head_sha="sha_draft_v1",
+                ci_state="SUCCESS",
+                is_draft=True,
+                additions=200,
+                deletions=10,
+                file_paths=["src/draft.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_threads,
+                title="feat: backlog ready-to-merge gets unresolved thread",
+                head_sha="sha_thr_v1",
+                ci_state="SUCCESS",
+                unresolved_threads=1,
+                additions=200,
+                deletions=10,
+                file_paths=["src/threads.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_clean,
+                title="feat: backlog ready-to-merge stays clean",
+                head_sha="sha_clean_v1",
+                ci_state="SUCCESS",
+                additions=200,
+                deletions=10,
+                file_paths=["src/clean.py"],
+            ),
+        ]
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(open_nodes), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
+
+        linear_stub = StubLinearSyncClient()
+        seeded: dict[int, dict[str, object]] = {}
+        for pr_num, pr_title in (
+            (pr_dnm, "feat: backlog ready-to-merge gets do-not-merge"),
+            (pr_ci_fail, "feat: backlog ready-to-merge CI regresses"),
+            (pr_draft, "feat: backlog ready-to-merge converted to draft"),
+            (pr_threads, "feat: backlog ready-to-merge gets unresolved thread"),
+            (pr_clean, "feat: backlog ready-to-merge stays clean"),
+        ):
+            seeded[pr_num] = linear_stub.seed_issue(
+                github_url=f"https://github.com/{repo}/pull/{pr_num}",
+                title=pr_title,
+                repo=repo,
+                item_kind="PR",
+                state="Backlog",
+                extra_labels=("ready-to-merge",),
+            )
+
+        store, runner, rpc_calls = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+        )
+        slot1_ms = self._utc_ms(2026, 4, 1, 10, 0)
+        for pr_num, sha in (
+            (pr_dnm, "sha_dnm_v1"),
+            (pr_ci_fail, "sha_ci_v1"),
+            (pr_draft, "sha_draft_v1"),
+            (pr_threads, "sha_thr_v1"),
+            (pr_clean, "sha_clean_v1"),
+        ):
+            store.update_thread_state(
+                companion.make_pr_key(repo, pr_num),
+                {
+                    "repo": repo,
+                    "number": pr_num,
+                    "subject_type": "PullRequest",
+                    "handled_updated_at": "2026-04-01T09:00:00Z",
+                    "handled_head_sha": sha,
+                    "triaged_head_sha": sha,
+                    "handled_ci_state": "SUCCESS",
+                    "is_community": True,
+                },
+                now_override_ms=slot1_ms - 60_000,
+            )
+
+        res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms)
+        self.assertEqual(rpc_calls, [])
+        self.assertEqual(res1["targeted_dispatches"], [])
+        self.assertEqual(len(res1["needs_decision_notifications"]), 4)
+        self.assertEqual(len(self.httpd.telegram_requests), 4)
+
+        for pr_num, expected_sha, expected_ci in (
+            (pr_dnm, "sha_dnm_v1", "SUCCESS"),
+            (pr_ci_fail, "sha_ci_v1", "FAILURE"),
+            (pr_draft, "sha_draft_v1", "SUCCESS"),
+            (pr_threads, "sha_thr_v1", "SUCCESS"),
+        ):
+            issue = linear_stub.issues[str(seeded[pr_num]["id"])]
+            labels = companion.extract_linear_issue_labels(issue)
+            self.assertEqual(issue["state"]["name"], "Backlog")  # type: ignore[index]
+            self.assertNotIn("ready-to-merge", labels)
+            self.assertIn("needs-decision", labels)
+            st = store.get_thread_state(companion.make_pr_key(repo, pr_num)) or {}
+            self.assertEqual(st.get("handled_ci_state"), expected_ci)
+            self.assertEqual(st.get("decision_notified_sha"), expected_sha)
+
+        # Clean unchanged Backlog PR stays untouched with zero Linear update calls
+        clean_id = str(seeded[pr_clean]["id"])
+        clean_labels = companion.extract_linear_issue_labels(linear_stub.issues[clean_id])
+        self.assertIn("ready-to-merge", clean_labels)
+        self.assertNotIn("needs-decision", clean_labels)
+        self.assertNotIn(clean_id, [call["issue_id"] for call in linear_stub.update_calls])
+        updates_after_slot1 = len(linear_stub.update_calls)
+        self.assertEqual(updates_after_slot1, 4)
+
+        # Slot 2 (30 minutes later, same unchanged SHAs and blockers): fully deduped with zero API updates or Telegram pings
+        slot2_ms = self._utc_ms(2026, 4, 1, 10, 30)
+        res2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot2_ms)
+        self.assertEqual(res2["targeted_dispatches"], [])
+        self.assertEqual(res2["needs_decision_notifications"], [])
+        self.assertEqual(len(self.httpd.telegram_requests), 4)
+        self.assertEqual(len(linear_stub.update_calls), updates_after_slot1)
+
     def test_lane_a_existing_backlog_issue_transitions_to_in_review_when_ci_turns_green_for_traya(self) -> None:
         repo = "wimpysworld/tailor"
         pr_actionable_existing, pr_same_sha_green, pr_failed_verdict = self._owned_numbers(
