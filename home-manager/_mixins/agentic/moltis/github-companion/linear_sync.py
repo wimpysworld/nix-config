@@ -35,6 +35,7 @@ WORKFLOW_LABELS = (
 DEFAULT_TIMEOUT_SECS = 20.0
 MAX_RESPONSE_BYTES = 4 * 1048576
 BLIND_REVIEW_MARKER_PREFIX = "moltis:blind-review:v1"
+GITHUB_URL_MARKER_PREFIX = "moltis:github-url:v1"
 
 ENV_LINEAR_CLIENT_ID_PATH = "MOLTIS_GITHUB_COMPANION_LINEAR_CLIENT_ID_PATH"
 ENV_LINEAR_CLIENT_SECRET_PATH = "MOLTIS_GITHUB_COMPANION_LINEAR_CLIENT_SECRET_PATH"
@@ -46,6 +47,9 @@ _WORKFLOW_LABEL_BY_LOWER: dict[str, str] = {label.lower(): label for label in WO
 _REPO_SLUG_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 _BLIND_REVIEW_MARKER_RE = re.compile(
     r"\A\s*<!--\s*" + re.escape(BLIND_REVIEW_MARKER_PREFIX) + r"\s+(\{[^\r\n]*?\})\s*-->[ \t]*(?:\r?\n|\Z)",
+)
+_GITHUB_URL_MARKER_RE = re.compile(
+    r"\A\s*<!--\s*" + re.escape(GITHUB_URL_MARKER_PREFIX) + r"\s+(\{[^\r\n]*?\})\s*-->[ \t]*(?:\r?\n|\Z)",
 )
 
 _CANONICAL_STATE_ALIASES: dict[str, str] = {
@@ -281,6 +285,48 @@ def _parse_github_url_parts(normalized_url: str) -> tuple[str, str | None, int |
         item_label = "PR" if segments[2] == "pull" else "Issue"
         return repo, item_label, int(segments[3])
     return repo, None, None
+
+
+def format_github_url_marker(github_url: str) -> str:
+    """Format a deterministic leading HTML comment marker for a canonical GitHub URL."""
+    normalized_url = normalize_github_url(github_url)
+    encoded = json.dumps({"url": normalized_url}, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    encoded = encoded.replace("<", "\\u003c").replace(">", "\\u003e")
+    return f"<!-- {GITHUB_URL_MARKER_PREFIX} {encoded} -->"
+
+
+def parse_github_url_marker(description: object) -> str | None:
+    """Extract and normalise the canonical GitHub URL from a leading issue description marker."""
+    if not isinstance(description, str) or not description:
+        return None
+    match = _GITHUB_URL_MARKER_RE.match(description)
+    if match is None:
+        return None
+    try:
+        payload = json.loads(match.group(1))
+    except ValueError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    raw_url = payload.get("url")
+    if not isinstance(raw_url, str) or not raw_url.strip():
+        return None
+    try:
+        return normalize_github_url(raw_url)
+    except ValueError:
+        return None
+
+
+def format_issue_description_with_github_url(description: str, github_url: str) -> str:
+    """Ensure the canonical GitHub URL marker leads the Linear issue description."""
+    normalized_url = normalize_github_url(github_url)
+    marker = format_github_url_marker(normalized_url)
+    body = str(description or "")
+    if not body.strip():
+        return marker
+    if parse_github_url_marker(body) == normalized_url:
+        return body
+    return f"{marker}\n\n{body}"
 
 
 def _normalize_repo_name(repo: str) -> str:
@@ -807,8 +853,8 @@ class LinearSyncClient:
                         return team_id
         raise LinearAPIError(f"Linear team not found for key {self.team_key!r}")
 
-    def ensure_project(self, project_name: str | None = None) -> str:
-        """Resolve or create a Linear project attached to the team and cache its ID."""
+    def _resolve_existing_project_id(self, project_name: str | None = None) -> str | None:
+        """Resolve and cache an existing Linear project ID for the team without creating one."""
         target = (project_name or self.project_name).strip() or self.project_name
         target_lower = target.lower()
         if target_lower in self._project_ids_by_lower_name:
@@ -851,6 +897,17 @@ class LinearSyncClient:
             self._project_ids_by_lower_name[target_lower] = fallback_id
             return fallback_id
 
+        return None
+
+    def ensure_project(self, project_name: str | None = None) -> str:
+        """Resolve or create a Linear project attached to the team and cache its ID."""
+        target = (project_name or self.project_name).strip() or self.project_name
+        target_lower = target.lower()
+        existing_id = self._resolve_existing_project_id(target)
+        if existing_id is not None:
+            return existing_id
+
+        team_id = self.resolve_team_id()
         created = self._graphql_request(
             _PROJECT_CREATE_MUTATION,
             {"input": {"name": target, "teamIds": [team_id]}},
@@ -1165,10 +1222,7 @@ class LinearSyncClient:
             raise LinearAPIError(f"Linear issue not found: {clean_id!r}")
         return issue
 
-    def find_issue_by_github_url(self, github_url: str) -> dict[str, object] | None:
-        """Find an existing Linear issue linked to the normalised GitHub URL via attachments."""
-        normalized_url = normalize_github_url(github_url)
-        team_id = self.resolve_team_id()
+    def _find_issue_by_attachment_url(self, normalized_url: str, team_id: str) -> dict[str, object] | None:
         after: str | None = None
         seen_cursors: set[str] = set()
         team_fallback: dict[str, object] | None = None
@@ -1218,6 +1272,122 @@ class LinearSyncClient:
 
         return team_fallback
 
+    def _find_issue_by_description_marker(
+        self,
+        normalized_url: str,
+        team_id: str,
+        *,
+        page_size: int = 50,
+    ) -> dict[str, object] | None:
+        """Scan non-archived issues in the target project for an exact leading GitHub URL marker."""
+        project_id = self._resolve_existing_project_id()
+        if project_id is None:
+            return None
+
+        issue_filter: dict[str, object] = {
+            "team": {"id": {"eq": team_id}},
+            "project": {"id": {"eq": project_id}},
+        }
+        after: str | None = None
+        seen_cursors: set[str] = set()
+
+        while True:
+            data = self._graphql_request(
+                _PROJECT_ISSUES_QUERY,
+                {
+                    "filter": issue_filter,
+                    "first": page_size,
+                    "after": after,
+                    "includeArchived": False,
+                },
+            )
+            issues = data.get("issues")
+            nodes = issues.get("nodes") if isinstance(issues, dict) else None
+            if isinstance(nodes, list):
+                for issue in nodes:
+                    if not isinstance(issue, dict) or not issue.get("id") or issue.get("archivedAt"):
+                        continue
+                    issue_team = issue.get("team")
+                    issue_team_id = str(issue_team.get("id") or "").strip() if isinstance(issue_team, dict) else ""
+                    if issue_team_id and issue_team_id != team_id:
+                        continue
+                    if parse_github_url_marker(issue.get("description")) == normalized_url:
+                        return issue
+
+            page_info = issues.get("pageInfo") if isinstance(issues, dict) else None
+            has_next = bool(page_info.get("hasNextPage")) if isinstance(page_info, dict) else False
+            end_cursor = str(page_info.get("endCursor") or "").strip() if isinstance(page_info, dict) else ""
+            if not has_next or not end_cursor or end_cursor in seen_cursors:
+                break
+            seen_cursors.add(end_cursor)
+            after = end_cursor
+
+        return None
+
+    @staticmethod
+    def _issue_has_github_attachment(issue: Mapping[str, object], normalized_url: str) -> bool:
+        attachments = issue.get("attachments")
+        raw_nodes = attachments.get("nodes") if isinstance(attachments, dict) else None
+        if not isinstance(raw_nodes, list):
+            return False
+        for node in raw_nodes:
+            if not isinstance(node, dict):
+                continue
+            att_url = str(node.get("url") or "").strip()
+            if not att_url:
+                continue
+            try:
+                if normalize_github_url(att_url) == normalized_url:
+                    return True
+            except ValueError:
+                if att_url == normalized_url:
+                    return True
+        return False
+
+    def _attach_github_url(
+        self,
+        *,
+        issue_id: str,
+        normalized_url: str,
+        resolved_repo: str,
+        parsed_num: int | None,
+        fallback_title: str,
+        attachment_title: str | None = None,
+        attachment_subtitle: str | None = None,
+    ) -> dict[str, object] | None:
+        resolved_attachment_title = (
+            str(attachment_title).strip()
+            if attachment_title is not None and str(attachment_title).strip()
+            else (
+                f"{resolved_repo}#{parsed_num}"
+                if resolved_repo and parsed_num is not None
+                else (fallback_title or normalized_url)
+            )
+        )
+        attachment_input: dict[str, object] = {
+            "issueId": issue_id,
+            "url": normalized_url,
+            "title": resolved_attachment_title,
+        }
+        if attachment_subtitle is not None and str(attachment_subtitle).strip():
+            attachment_input["subtitle"] = str(attachment_subtitle).strip()
+
+        att_result = self._graphql_request(_ATTACHMENT_CREATE_MUTATION, {"input": attachment_input})
+        att_payload = att_result.get("attachmentCreate")
+        if not isinstance(att_payload, dict) or not att_payload.get("success"):
+            raise LinearAPIError(f"Failed to attach GitHub URL to Linear issue {issue_id}")
+        attachment = att_payload.get("attachment")
+        return attachment if isinstance(attachment, dict) else None
+
+    def find_issue_by_github_url(self, github_url: str) -> dict[str, object] | None:
+        """Find an existing Linear issue linked to the normalised GitHub URL via attachments or description marker."""
+        normalized_url = normalize_github_url(github_url)
+        team_id = self.resolve_team_id()
+        found = self._find_issue_by_attachment_url(normalized_url, team_id)
+        if found is not None:
+            return found
+        return self._find_issue_by_description_marker(normalized_url, team_id)
+
     def ensure_issue_for_github_item(
         self,
         *,
@@ -1235,19 +1405,39 @@ class LinearSyncClient:
     ) -> dict[str, object]:
         """Return an existing issue for the GitHub item, or create it with labels and attachment."""
         normalized_url = normalize_github_url(github_url)
-        existing = self.find_issue_by_github_url(normalized_url)
+        team_id = self.resolve_team_id()
+        existing = self._find_issue_by_attachment_url(normalized_url, team_id)
         if existing is not None:
             return existing
+
+        parsed_repo, parsed_kind, parsed_num = _parse_github_url_parts(normalized_url)
+        orphaned = self._find_issue_by_description_marker(normalized_url, team_id)
+        if orphaned is not None:
+            if not self._issue_has_github_attachment(orphaned, normalized_url):
+                reconcile_repo = _normalize_repo_name(repo) if repo is not None else parsed_repo
+                fallback_title = str(title or "").strip() or str(orphaned.get("title") or "").strip()
+                created_attachment = self._attach_github_url(
+                    issue_id=str(orphaned["id"]),
+                    normalized_url=normalized_url,
+                    resolved_repo=reconcile_repo,
+                    parsed_num=parsed_num,
+                    fallback_title=fallback_title,
+                    attachment_title=attachment_title,
+                    attachment_subtitle=attachment_subtitle,
+                )
+                if created_attachment is not None:
+                    att_conn = orphaned.get("attachments")
+                    if isinstance(att_conn, dict) and isinstance(att_conn.get("nodes"), list):
+                        att_conn["nodes"].append(created_attachment)
+            return orphaned
 
         clean_title = str(title or "").strip()
         if not clean_title:
             raise ValueError("Issue title must be non-empty")
 
-        parsed_repo, parsed_kind, parsed_num = _parse_github_url_parts(normalized_url)
         resolved_repo = _normalize_repo_name(repo if repo is not None else parsed_repo)
         resolved_kind = _normalize_item_kind_label(item_kind if item_kind is not None else (parsed_kind or ""))
 
-        team_id = self.resolve_team_id()
         project_id = self.ensure_project()
         state_id = self.resolve_state_id(state)
 
@@ -1265,10 +1455,9 @@ class LinearSyncClient:
             "projectId": project_id,
             "stateId": state_id,
             "title": clean_title,
+            "description": format_issue_description_with_github_url(description, normalized_url),
             "labelIds": label_ids,
         }
-        if description:
-            issue_input["description"] = description
         if priority is not None:
             issue_input["priority"] = priority
         if estimate is not None:
@@ -1281,23 +1470,15 @@ class LinearSyncClient:
         if not isinstance(create_payload, dict) or not create_payload.get("success") or not issue_id:
             raise LinearAPIError(f"Failed to create Linear issue for {normalized_url}")
 
-        resolved_attachment_title = (
-            str(attachment_title).strip()
-            if attachment_title is not None and str(attachment_title).strip()
-            else (f"{resolved_repo}#{parsed_num}" if parsed_num is not None else clean_title)
+        self._attach_github_url(
+            issue_id=issue_id,
+            normalized_url=normalized_url,
+            resolved_repo=resolved_repo,
+            parsed_num=parsed_num,
+            fallback_title=clean_title,
+            attachment_title=attachment_title,
+            attachment_subtitle=attachment_subtitle,
         )
-        attachment_input: dict[str, object] = {
-            "issueId": issue_id,
-            "url": normalized_url,
-            "title": resolved_attachment_title,
-        }
-        if attachment_subtitle is not None and str(attachment_subtitle).strip():
-            attachment_input["subtitle"] = str(attachment_subtitle).strip()
-
-        att_result = self._graphql_request(_ATTACHMENT_CREATE_MUTATION, {"input": attachment_input})
-        att_payload = att_result.get("attachmentCreate")
-        if not isinstance(att_payload, dict) or not att_payload.get("success"):
-            raise LinearAPIError(f"Failed to attach GitHub URL to Linear issue {issue_id}")
 
         return issue
 

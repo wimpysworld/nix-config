@@ -194,6 +194,7 @@ class LoopbackLinearServer(http.server.ThreadingHTTPServer):
         self.states_page_size = 100
         self.labels_page_size = 100
         self.attachments_page_size = 50
+        self.issues_page_size = 50
         self.comments_page_size = 100
 
         self._seq = 0
@@ -533,7 +534,7 @@ class LoopbackLinearServer(http.server.ThreadingHTTPServer):
 
         if operation == "issues":
             issue_filter = variables.get("filter") if isinstance(variables.get("filter"), dict) else {}
-            first = int(variables.get("first") or 50)
+            first = min(int(variables.get("first") or 50), self.issues_page_size)
             after = variables.get("after")
             include_archived = bool(variables.get("includeArchived", False))
 
@@ -1142,6 +1143,101 @@ class IssueSyncPaginationAndVerdictTests(LinearSyncTestBase):
         self.assertEqual(att_input["url"], "https://github.com/wimpysworld/nix-config/pull/77")
         self.assertEqual(att_input["title"], "wimpysworld/nix-config#77")
         self.assertEqual(att_input["subtitle"], "Open PR")
+
+    def test_ensure_issue_reconciles_orphaned_issue_after_attachment_failure(self) -> None:
+        target_url = "https://github.com/wimpysworld/nix-config/issues/1"
+        similar_url = "https://github.com/wimpysworld/nix-config/issues/10"
+
+        # Seed distractors to verify exact marker matching, leading-line anchoring, archiving, and pagination.
+        self.httpd.add_issue(
+            issue_id="issue-10",
+            title="Issue 10",
+            description=linear_sync.format_issue_description_with_github_url("Body for 10.", similar_url),
+        )
+        self.httpd.add_issue(
+            issue_id="issue-prose-mention",
+            title="Unrelated issue mentioning target marker in body",
+            description=f"Quoted note:\n{linear_sync.format_github_url_marker(target_url)}",
+        )
+        self.httpd.add_issue(
+            issue_id="issue-archived-orphan",
+            title="Archived orphan",
+            description=linear_sync.format_github_url_marker(target_url),
+            archived_at="2026-10-01T00:00:00.000Z",
+        )
+        self.httpd.issues_page_size = 1
+
+        fail_once = {"remaining": 1}
+
+        def fail_first_attachment(handler: MockLinearGraphQLHandler, record: dict[str, object]) -> bool:
+            if record["operation"] == "attachmentCreate" and fail_once["remaining"] > 0:
+                fail_once["remaining"] -= 1
+                handler._send_json(503, {"errors": [{"message": "Transient attachment error"}]})
+                return True
+            return False
+
+        self.httpd.custom_handler = fail_first_attachment
+
+        client = self.make_client()
+        with self.assertRaises(linear_sync.LinearAPIError) as ctx:
+            client.ensure_issue_for_github_item(
+                github_url="https://github.com/WimpysWorld/Nix-Config/issues/1",
+                title="Fix issue 1",
+                description="User body text.",
+                attachment_subtitle="Open Issue",
+            )
+        self.assertEqual(ctx.exception.status, 503)
+        self.assertEqual(len(self.httpd.requests_for("issueCreate")), 1)
+        self.assertEqual(len(self.httpd.requests_for("attachmentCreate")), 1)
+        self.assertEqual(self.httpd.attachments, [])
+
+        created_input = self.httpd.requests_for("issueCreate")[0]["variables"]["input"]
+        self.assertEqual(linear_sync.parse_github_url_marker(created_input["description"]), target_url)
+        self.assertIn("User body text.", str(created_input["description"]))
+        orphaned_id = self.httpd.issue_order[-1]
+
+        # Read-only lookup finds the orphaned issue across pages without matching /issues/10 or archived/prose items.
+        fresh_client = self.make_client()
+        found_orphan = fresh_client.find_issue_by_github_url(
+            "https://api.github.com/repos/wimpysworld/nix-config/issues/1"
+        )
+        assert found_orphan is not None
+        self.assertEqual(found_orphan["id"], orphaned_id)
+
+        # Retry reconciles the orphaned issue and creates the missing attachment without a duplicate issueCreate.
+        recovered = fresh_client.ensure_issue_for_github_item(
+            github_url="https://api.github.com/repos/wimpysworld/nix-config/issues/1",
+            title="Retry title must not create duplicate",
+            attachment_subtitle="Open Issue",
+        )
+        self.assertEqual(recovered["id"], orphaned_id)
+        self.assertEqual(len(self.httpd.requests_for("issueCreate")), 1)
+        self.assertEqual(len(self.httpd.requests_for("attachmentCreate")), 2)
+        self.assertEqual(len(self.httpd.attachments), 1)
+        self.assertEqual(self.httpd.attachments[0]["issueId"], orphaned_id)
+        self.assertEqual(self.httpd.attachments[0]["url"], target_url)
+        self.assertEqual(self.httpd.attachments[0]["title"], "wimpysworld/nix-config#1")
+
+        retry_att_input = self.httpd.requests_for("attachmentCreate")[1]["variables"]["input"]
+        self.assertEqual(retry_att_input["subtitle"], "Open Issue")
+
+        # Subsequent call resolves directly via attachmentsForURL without scanning issues or mutating.
+        issues_reqs_before = len(self.httpd.requests_for("issues"))
+        settled = fresh_client.ensure_issue_for_github_item(
+            github_url=target_url,
+            title="Settled call",
+        )
+        self.assertEqual(settled["id"], orphaned_id)
+        self.assertEqual(len(self.httpd.requests_for("issueCreate")), 1)
+        self.assertEqual(len(self.httpd.requests_for("attachmentCreate")), 2)
+        self.assertEqual(len(self.httpd.requests_for("issues")), issues_reqs_before)
+
+        # Read-only lookup does not create a missing project when falling back.
+        missing_project_client = self.make_client(project_name="Nonexistent Project")
+        self.assertIsNone(
+            missing_project_client.find_issue_by_github_url("https://github.com/wimpysworld/nix-config/issues/404")
+        )
+        self.assertEqual(len(self.httpd.requests_for("projectCreate")), 0)
 
     def test_update_issue_fields_and_label_add_remove(self) -> None:
         client = self.make_client()
