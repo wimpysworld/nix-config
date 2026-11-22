@@ -4915,12 +4915,16 @@ class StubLinearSyncClient:
     ) -> None:
         self.issues: dict[str, dict[str, object]] = {}
         self.by_github_url: dict[str, str] = {}
+        self.comments_by_issue: dict[str, list[dict[str, object]]] = {}
         self.ensure_calls: list[dict[str, object]] = []
         self.update_calls: list[dict[str, object]] = []
         self.list_calls: list[dict[str, object]] = []
+        self.list_comments_calls: list[str] = []
+        self.post_verdict_calls: list[dict[str, object]] = []
         self.event_log: list[tuple[object, ...]] = event_log if event_log is not None else []
         self.list_returns_empty = list_returns_empty
         self._seq = 100
+        self._comment_seq = 0
 
     @classmethod
     def _state_obj(cls, state: str) -> dict[str, str]:
@@ -5109,6 +5113,84 @@ class StubLinearSyncClient:
                 continue
             results.append(self._copy_issue(issue))
         return results
+
+    def list_issue_comments(self, issue_id: str, *, page_size: int = 100) -> list[dict[str, object]]:
+        _ = page_size
+        clean_id = str(issue_id or "").strip()
+        if not clean_id:
+            raise ValueError("issue_id must be non-empty")
+        if clean_id not in self.issues:
+            raise companion.linear_sync.LinearAPIError(f"Linear issue not found: {clean_id!r}")
+        self.list_comments_calls.append(clean_id)
+        return json.loads(json.dumps(self.comments_by_issue.get(clean_id, [])))
+
+    def post_blind_review_verdict(
+        self,
+        issue_id: str,
+        *,
+        agent: str,
+        model_family: str,
+        head_sha: str,
+        verdict: str,
+        summary: str = "",
+    ) -> dict[str, object]:
+        clean_id = str(issue_id or "").strip()
+        if not clean_id:
+            raise ValueError("issue_id must be non-empty")
+        if clean_id not in self.issues:
+            raise companion.linear_sync.LinearAPIError(f"Linear issue not found: {clean_id!r}")
+        body = companion.linear_sync.format_blind_review_verdict_comment(
+            agent=agent,
+            model_family=model_family,
+            head_sha=head_sha,
+            verdict=verdict,
+            summary=summary,
+        )
+        norm_agent = str(agent or "").strip().lower()
+        norm_family = str(model_family or "").strip().lower()
+        norm_sha = str(head_sha or "").strip().lower()
+        norm_verdict = str(verdict or "").strip().lower()
+        self.post_verdict_calls.append(
+            {
+                "issue_id": clean_id,
+                "agent": norm_agent,
+                "model_family": norm_family,
+                "head_sha": norm_sha,
+                "verdict": norm_verdict,
+                "summary": summary,
+            }
+        )
+        existing_comments = self.comments_by_issue.setdefault(clean_id, [])
+        comments_by_id = {
+            str(comment.get("id")): comment
+            for comment in existing_comments
+            if comment.get("id") is not None
+        }
+        for existing in companion.linear_sync.parse_blind_review_verdicts(existing_comments, head_sha=norm_sha):
+            if (
+                existing["agent"] == norm_agent
+                and existing["model_family"] == norm_family
+                and existing["head_sha"] == norm_sha
+                and existing["verdict"] == norm_verdict
+            ):
+                comment_id = existing.get("comment_id")
+                if comment_id is not None and str(comment_id) in comments_by_id:
+                    return json.loads(json.dumps(comments_by_id[str(comment_id)]))
+                return dict(existing)
+        self._comment_seq += 1
+        stamp_dt = datetime.datetime(2026, 4, 1, 10, 0, 0, tzinfo=datetime.timezone.utc) + datetime.timedelta(
+            seconds=self._comment_seq
+        )
+        stamp = stamp_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        comment: dict[str, object] = {
+            "id": f"cmt-{self._comment_seq}",
+            "body": body,
+            "createdAt": stamp,
+            "updatedAt": stamp,
+        }
+        existing_comments.append(comment)
+        self.event_log.append(("linear_blind_verdict", clean_id, norm_agent, norm_family, norm_sha, norm_verdict))
+        return json.loads(json.dumps(comment))
 
 
 class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
@@ -6066,6 +6148,1118 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
         self.assertEqual(self.httpd.rpc_requests, [])
         self.assertEqual(rpc_calls, [])
         self.assertEqual(self.httpd.telegram_requests, [])
+
+
+class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
+    """End-to-end tests for WW-398 Lane A blind two-family PR review, Lane B briefs, needs-decision pings, and traya isolation."""
+
+    MAIN_MODEL = "gemini::gemini-4-hydrogen@reasoning-medium"
+    REVIEW_MODEL = "gemini::gemini-4-carbon@reasoning-medium"
+
+    def setUp(self) -> None:
+        super().setUp()
+        self._agent_rpc_handlers: dict[str, Callable[[dict[str, str], dict], str]] = {}
+        self._agent_rpc_calls: dict[str, list[dict[str, object]]] = {}
+        self._agent_event_logs: dict[str, list[tuple[object, ...]] | None] = {}
+
+    @staticmethod
+    def _utc_ms(year: int, month: int, day: int, hour: int, minute: int = 0) -> int:
+        dt = datetime.datetime(year, month, day, hour, minute, tzinfo=datetime.timezone.utc)
+        return int(dt.timestamp() * 1000)
+
+    @staticmethod
+    def _owned_numbers(repo: str, owner: str, count: int, *, kind: str = "pr", start: int = 1) -> list[int]:
+        owner_fn = companion.compute_pr_owner if kind == "pr" else companion.compute_issue_owner
+        found: list[int] = []
+        num = start
+        while len(found) < count:
+            if owner_fn(repo, num) == owner:
+                found.append(num)
+            num += 1
+        return found
+
+    @staticmethod
+    def _graphql_issue_node(
+        repo: str,
+        number: int,
+        *,
+        title: str,
+        body: str = "Clear reproduction steps.",
+        author: str = "community-dev",
+        updated_at: str = "2026-04-01T10:00:00Z",
+        labels: list[str] | None = None,
+    ) -> dict[str, object]:
+        return {
+            "__typename": "Issue",
+            "id": f"I_kw_{number}",
+            "databaseId": 10_000 + number,
+            "number": number,
+            "title": title,
+            "body": body,
+            "url": f"https://github.com/{repo}/issues/{number}",
+            "state": "OPEN",
+            "updatedAt": updated_at,
+            "repository": {"nameWithOwner": repo, "isArchived": False},
+            "author": {"__typename": "User", "login": author},
+            "labels": {"nodes": [{"name": lbl} for lbl in (labels or [])]},
+            "comments": {"nodes": []},
+        }
+
+    @staticmethod
+    def _graphql_pr_node(
+        repo: str,
+        number: int,
+        *,
+        title: str,
+        head_sha: str,
+        author: str = "community-contributor",
+        author_typename: str = "User",
+        body: str = "Small community fix.",
+        review_decision: str = "REVIEW_REQUIRED",
+        ci_state: str = "SUCCESS",
+        unresolved_threads: int = 0,
+        labels: list[str] | None = None,
+        additions: int = 25,
+        deletions: int = 10,
+        changed_files: int | None = None,
+        file_paths: list[str] | None = None,
+        files_has_next_page: bool = False,
+        is_draft: bool = False,
+        updated_at: str = "2026-04-01T10:00:00Z",
+    ) -> dict[str, object]:
+        resolved_paths = list(file_paths) if file_paths is not None else ["src/app.py", "tests/test_app.py"]
+        resolved_changed = changed_files if changed_files is not None else len(resolved_paths)
+        rollup: dict[str, object] | None
+        if ci_state == "NONE":
+            rollup = None
+        else:
+            rollup = {"state": ci_state, "contexts": {"nodes": []}}
+        thread_nodes = [{"isResolved": False} for _ in range(unresolved_threads)]
+        return {
+            "__typename": "PullRequest",
+            "id": f"PR_kw_{number}",
+            "databaseId": 20_000 + number,
+            "number": number,
+            "title": title,
+            "body": body,
+            "url": f"https://github.com/{repo}/pull/{number}",
+            "state": "OPEN",
+            "isDraft": is_draft,
+            "updatedAt": updated_at,
+            "headRefName": f"contrib/pr-{number}",
+            "headRefOid": head_sha,
+            "reviewDecision": review_decision,
+            "additions": additions,
+            "deletions": deletions,
+            "changedFiles": resolved_changed,
+            "repository": {"nameWithOwner": repo, "isArchived": False},
+            "author": {"__typename": author_typename, "login": author},
+            "labels": {"nodes": [{"name": lbl} for lbl in (labels or [])]},
+            "files": {
+                "pageInfo": {"hasNextPage": files_has_next_page},
+                "nodes": [{"path": path} for path in resolved_paths],
+            },
+            "reviewRequests": {"nodes": []},
+            "reviewThreads": {"pageInfo": {"hasNextPage": False}, "nodes": thread_nodes},
+            "statusCheckRollup": rollup,
+        }
+
+    @staticmethod
+    def _graphql_search_payload(nodes: list[dict[str, object]]) -> str:
+        return json.dumps(
+            {
+                "data": {
+                    "search": {
+                        "pageInfo": {"hasNextPage": False, "endCursor": None},
+                        "nodes": nodes,
+                    }
+                }
+            }
+        )
+
+    @staticmethod
+    def _parse_prompt_metadata(message: str) -> dict[str, str]:
+        meta: dict[str, str] = {}
+        for line in message.splitlines():
+            if ": " in line:
+                key, value = line.split(": ", 1)
+                if key.strip() and " " not in key.strip():
+                    meta[key.strip()] = value.strip()
+        return meta
+
+    def _build_pipeline_runner(
+        self,
+        *,
+        agent_name: str = "skrye",
+        gh_runner: Callable[..., subprocess.CompletedProcess],
+        linear_client: object | None,
+        rpc_reply_fn: Callable[[dict[str, str], dict], str] | None = None,
+        event_log: list[tuple[object, ...]] | None = None,
+        state_dir: Path | None = None,
+    ) -> tuple[companion.CompanionStateStore, companion.GithubCompanionRunner, list[dict[str, object]]]:
+        norm_agent = companion.normalize_agent_name(agent_name)
+        store = self.make_store(norm_agent, state_dir=state_dir)
+        tg_client = self.make_telegram_client()
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        rpc_calls: list[dict[str, object]] = []
+        self._agent_rpc_calls[norm_agent] = rpc_calls
+        self._agent_event_logs[norm_agent] = event_log
+        if rpc_reply_fn is not None:
+            self._agent_rpc_handlers[norm_agent] = rpc_reply_fn
+        else:
+            self._agent_rpc_handlers.pop(norm_agent, None)
+        self.httpd.peek_active = False
+
+        def _dispatch_send_sync(params: dict) -> dict:
+            msg = str(params.get("message") or "")
+            model = str(params.get("model") or "")
+            meta = self._parse_prompt_metadata(msg)
+            target_agent = meta.get("agent_name") or norm_agent
+            disp_id = meta.get("dispatch_id", "")
+            calls_bucket = self._agent_rpc_calls.setdefault(target_agent, [])
+            calls_bucket.append({"model": model, "message": msg, "meta": meta, "params": dict(params)})
+            ev_log = self._agent_event_logs.get(target_agent)
+            if ev_log is not None:
+                ev_log.append(("rpc_send_sync", target_agent, meta.get("linear_issue_id") or disp_id, meta.get("dispatch_kind") or ""))
+            handler = self._agent_rpc_handlers.get(target_agent)
+            reply_text = handler(meta, params) if handler is not None else "HEARTBEAT_OK"
+            self.write_history(
+                str(params.get("_session_key") or params.get("session_key") or companion.DEFAULT_GH_SESSION_KEY),
+                [
+                    {"role": "user", "dispatch_id": disp_id, "content": msg},
+                    {"role": "assistant", "content": reply_text, "stop_reason": "end_turn"},
+                ],
+                agent_name=target_agent,
+            )
+            return {"ok": True, "result": {"text": reply_text}}
+
+        self.httpd.send_sync_handler = _dispatch_send_sync
+
+        gh_client = companion.GhApiSafeClient(runner=gh_runner)
+        poller = companion.NotificationPoller(state_store=store, gh_client=gh_client, clock=self.clock)
+        tf = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store,
+            gh_client=gh_client,
+            telegram_client=tg_client,
+            agent_name=norm_agent,
+            clock=self.clock,
+        )
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name=norm_agent,
+            main_model=self.MAIN_MODEL,
+            review_model=self.REVIEW_MODEL,
+            telegram_client=tg_client,
+            completion_timeout_ms=1_000,
+            poll_interval_ms=20,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+        runner = companion.GithubCompanionRunner(
+            state_store=store,
+            gh_client=gh_client,
+            poller=poller,
+            trust_filter=tf,
+            execution_coordinator=coord,
+            clock=self.clock,
+            linear_client=linear_client,  # type: ignore[arg-type]
+        )
+        return store, runner, rpc_calls
+
+    def test_lane_a_dual_pass_blind_two_family_merge_and_polish_forwarding(self) -> None:
+        repo = "wimpysworld/tailor"
+        pr_success, pr_none = self._owned_numbers(repo, "skrye", 2, kind="pr", start=300)
+        current_nodes: list[dict[str, object]] = [
+            self._graphql_pr_node(
+                repo,
+                pr_success,
+                title="fix: handle empty config path",
+                head_sha="sha_lane_a_success",
+                ci_state="SUCCESS",
+                unresolved_threads=0,
+                additions=30,
+                deletions=8,
+                file_paths=["src/config.py", "tests/test_config.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_none,
+                title="docs: clarify quickstart flags",
+                head_sha="sha_lane_a_none",
+                ci_state="NONE",
+                unresolved_threads=0,
+                additions=12,
+                deletions=4,
+                file_paths=["README.md"],
+            ),
+        ]
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(current_nodes), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
+
+        linear_stub = StubLinearSyncClient()
+        gemini_secret_finding = "GEMINI_PRIVATE_FINDING_918273"
+        gemini_polish = "Tighten docstring wording in src/config.py"
+        traya_polish = "Add trailing newline in tests/test_config.py"
+
+        def skrye_reply(meta: dict[str, str], _params: dict) -> str:
+            kind = meta.get("dispatch_kind", "")
+            num = int(meta.get("number", "0"))
+            if kind == "community_pr_blind_review":
+                if num == pr_success:
+                    return (
+                        "BLIND_REVIEW_VERDICT: PASS\n"
+                        f"FINDINGS: {gemini_secret_finding}\n"
+                        f"POLISH: {gemini_polish}"
+                    )
+                return "BLIND_REVIEW_VERDICT: PASS\nFINDINGS: Documentation change is accurate.\nPOLISH: none"
+            if kind == "community_pr_lane_a_merge":
+                url = meta.get("github_url", "")
+                if num == pr_success:
+                    return (
+                        f"🏁 {url} - fix: handle empty config path\n\n"
+                        f"🤲🏻 {url} - {gemini_polish}"
+                    )
+                return f"🏁 {url} - docs: clarify quickstart flags"
+            return "HEARTBEAT_OK"
+
+        def traya_reply(meta: dict[str, str], _params: dict) -> str:
+            self.assertEqual(meta.get("dispatch_kind"), "community_pr_blind_review")
+            num = int(meta.get("number", "0"))
+            if num == pr_success:
+                return f"BLIND_REVIEW_VERDICT: PASS\nFINDINGS: Diff is clean and minimal.\nPOLISH: {traya_polish}"
+            return "BLIND_REVIEW_VERDICT: PASS\nFINDINGS: Docs match CLI.\nPOLISH: none"
+
+        skrye_store, skrye_runner, skrye_rpc = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=skrye_reply,
+        )
+        _, traya_runner, traya_rpc = self._build_pipeline_runner(
+            agent_name="traya",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=traya_reply,
+        )
+
+        # 1) Skrye cycle 1: links both Lane A PRs in Linear (In Review), runs blind reviews, posts Gemini verdicts, sends 0 Telegram pings
+        t0 = self._utc_ms(2026, 4, 1, 10, 0)
+        res_s1 = skrye_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0)
+        self.assertEqual(len(skrye_rpc), 2)
+        self.assertEqual([c["meta"]["dispatch_kind"] for c in skrye_rpc], ["community_pr_blind_review", "community_pr_blind_review"])  # type: ignore[index]
+        self.assertEqual([c["model"] for c in skrye_rpc], [self.REVIEW_MODEL, self.REVIEW_MODEL])
+        self.assertEqual(self.httpd.telegram_requests, [])
+        self.assertEqual(res_s1["needs_decision_notifications"], [])
+
+        lin_success_id = str((skrye_store.get_thread_state(companion.make_pr_key(repo, pr_success)) or {}).get("linear_issue_id") or "")
+        lin_none_id = str((skrye_store.get_thread_state(companion.make_pr_key(repo, pr_none)) or {}).get("linear_issue_id") or "")
+        self.assertTrue(lin_success_id and lin_none_id)
+        self.assertEqual(linear_stub.issues[lin_success_id]["state"]["name"], "In Review")  # type: ignore[index]
+        self.assertEqual(linear_stub.issues[lin_none_id]["state"]["name"], "In Review")  # type: ignore[index]
+
+        verdicts_s1 = companion.linear_sync.parse_blind_review_verdicts(
+            linear_stub.list_issue_comments(lin_success_id), head_sha="sha_lane_a_success"
+        )
+        self.assertEqual(len(verdicts_s1), 1)
+        self.assertEqual((verdicts_s1[0]["agent"], verdicts_s1[0]["model_family"], verdicts_s1[0]["verdict"]), ("skrye", "gemini", "pass"))
+
+        # Verify StubLinearSyncClient.post_blind_review_verdict idempotency on duplicate (agent, model_family, head_sha, verdict)
+        comment_count_before = len(linear_stub.comments_by_issue[lin_success_id])
+        linear_stub.post_blind_review_verdict(
+            lin_success_id,
+            agent="skrye",
+            model_family="gemini",
+            head_sha="sha_lane_a_success",
+            verdict="PASS",
+            summary="duplicate attempt",
+        )
+        self.assertEqual(len(linear_stub.comments_by_issue[lin_success_id]), comment_count_before)
+
+        # 2) Traya cycle 1: runs blind review with ZERO Gemini verdict/comment text in prompt, posts GPT PASS, sends 0 Telegram pings
+        t_traya = self._utc_ms(2026, 4, 1, 10, 10)
+        res_t1 = traya_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t_traya)
+        self.assertEqual(len(res_t1["traya_blind_reviews"]), 2)
+        self.assertEqual(len(traya_rpc), 2)
+        for traya_call in traya_rpc:
+            prompt_text = str(traya_call["message"])
+            self.assertEqual(traya_call["meta"]["dispatch_kind"], "community_pr_blind_review")  # type: ignore[index]
+            self.assertNotIn(gemini_secret_finding, prompt_text)
+            self.assertNotIn(gemini_polish, prompt_text)
+            self.assertNotIn(companion.linear_sync.BLIND_REVIEW_MARKER_PREFIX, prompt_text)
+            self.assertNotIn("Blind review verdict", prompt_text)
+            self.assertNotIn("lane_a_polish_notes", prompt_text)
+        self.assertEqual(self.httpd.telegram_requests, [])
+
+        verdicts_after_traya = companion.linear_sync.parse_blind_review_verdicts(
+            linear_stub.list_issue_comments(lin_success_id), head_sha="sha_lane_a_success"
+        )
+        self.assertEqual(len(verdicts_after_traya), 2)
+        self.assertEqual({(v["agent"], v["model_family"], v["verdict"]) for v in verdicts_after_traya}, {
+            ("skrye", "gemini", "pass"),
+            ("traya", "gpt", "pass"),
+        })
+
+        # 3) Unresolved review thread blocks Lane A consensus merge even after dual PASS
+        current_nodes[0]["reviewThreads"] = {"pageInfo": {"hasNextPage": False}, "nodes": [{"isResolved": False}]}
+        current_nodes[1]["statusCheckRollup"] = {"state": "PENDING", "contexts": {"nodes": []}}
+        res_blocked = skrye_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 10, 20))
+        self.assertEqual(res_blocked["targeted_dispatches"], [])
+        self.assertEqual(len(skrye_rpc), 2)
+        self.assertEqual(self.httpd.telegram_requests, [])
+
+        # 4) Once 0 unresolved threads and green/NONE CI, Skrye detects dual PASS, merges both with polish notes, transitions Linear to Done, and forwards to Telegram
+        current_nodes[0]["reviewThreads"] = {"pageInfo": {"hasNextPage": False}, "nodes": [{"isResolved": True}]}
+        current_nodes[1]["statusCheckRollup"] = None
+        res_s2 = skrye_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 10, 30))
+        self.assertEqual(len(res_s2["targeted_dispatches"]), 2)
+        self.assertEqual([d["kind"] for d in res_s2["targeted_dispatches"]], ["community_pr_lane_a_merge", "community_pr_lane_a_merge"])
+        self.assertEqual([a["action"] for a in res_s2["linear_pr_actions"]], ["lane_a_merged", "lane_a_merged"])
+
+        merge_call_success = skrye_rpc[2]
+        merge_call_none = skrye_rpc[3]
+        self.assertEqual(merge_call_success["meta"]["dispatch_kind"], "community_pr_lane_a_merge")  # type: ignore[index]
+        self.assertEqual(
+            merge_call_success["meta"].get("lane_a_polish_notes"),  # type: ignore[union-attr]
+            f"{gemini_polish}; {traya_polish}",
+        )
+        self.assertEqual(merge_call_none["meta"]["dispatch_kind"], "community_pr_lane_a_merge")  # type: ignore[index]
+        self.assertNotIn("lane_a_polish_notes", merge_call_none["meta"])  # type: ignore[operator]
+
+        self.assertEqual(linear_stub.issues[lin_success_id]["state"]["name"], "Done")  # type: ignore[index]
+        self.assertEqual(linear_stub.issues[lin_none_id]["state"]["name"], "Done")  # type: ignore[index]
+        self.assertEqual(len(self.httpd.telegram_requests), 2)
+        self.assertEqual(
+            self.httpd.telegram_requests[0]["body"]["text"],
+            f"🏁 https://github.com/{repo}/pull/{pr_success} - fix: handle empty config path\n\n"
+            f"🤲🏻 https://github.com/{repo}/pull/{pr_success} - {gemini_polish}",
+        )
+        self.assertEqual(
+            self.httpd.telegram_requests[1]["body"]["text"],
+            f"🏁 https://github.com/{repo}/pull/{pr_none} - docs: clarify quickstart flags",
+        )
+
+    def test_lane_a_disagreement_fail_escalation_dedup_and_fail_closed_parsers(self) -> None:
+        # 1) Parser fail-closed checks on empty, prose-only, invalid, and conflicting replies
+        for bad_blind in (
+            "",
+            "   \n  ",
+            "Looks good to me, ready to ship!",
+            "BLIND_REVIEW_VERDICT: MAYBE",
+            "BLIND_REVIEW_VERDICT: PASS\nBLIND_REVIEW_VERDICT: FAIL",
+        ):
+            verdict, findings, polish = companion.parse_blind_review_reply(bad_blind)
+            self.assertEqual(verdict, "FAIL", f"Expected FAIL for {bad_blind!r}")
+            self.assertTrue(findings)
+            self.assertEqual(polish, "")
+
+        self.assertEqual(
+            companion.parse_blind_review_reply("BLIND_REVIEW_VERDICT: PASS\nFINDINGS: Clean.\nPOLISH: Rename local var"),
+            ("PASS", "Clean.", "Rename local var"),
+        )
+
+        for bad_lane_b in (
+            "",
+            "   ",
+            "I think this is fine to merge.",
+            "LANE_B_VERDICT: ship-it",
+            "LANE_B_VERDICT: ready-to-merge\nLANE_B_VERDICT: needs-decision",
+        ):
+            lb_verdict, lb_summary = companion.parse_lane_b_reply(bad_lane_b)
+            self.assertEqual(lb_verdict, "needs-decision", f"Expected needs-decision for {bad_lane_b!r}")
+            self.assertTrue(lb_summary)
+
+        self.assertEqual(
+            companion.parse_lane_b_reply("LANE_B_VERDICT: ready-to-merge\nSUMMARY: All checks green."),
+            ("ready-to-merge", "All checks green."),
+        )
+
+        # 2) Single-side Gemini FAIL and Gemini PASS + traya FAIL disagreement escalation
+        repo = "wimpysworld/tailor"
+        pr_disagree, pr_gemini_fail = self._owned_numbers(repo, "skrye", 2, kind="pr", start=340)
+        disagree_title = "fix: lock retry backoff"
+        gemini_fail_title = "fix: parse user flags"
+        current_nodes: list[dict[str, object]] = [
+            self._graphql_pr_node(
+                repo,
+                pr_disagree,
+                title=disagree_title,
+                head_sha="sha_disagree_v1",
+                ci_state="SUCCESS",
+                additions=20,
+                deletions=5,
+                file_paths=["src/lock.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_gemini_fail,
+                title=gemini_fail_title,
+                head_sha="sha_gfail_v1",
+                ci_state="SUCCESS",
+                additions=15,
+                deletions=3,
+                file_paths=["src/flags.py"],
+            ),
+        ]
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(current_nodes), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
+
+        linear_stub = StubLinearSyncClient()
+        skrye_verdict_by_sha = {
+            "sha_disagree_v1": "BLIND_REVIEW_VERDICT: PASS\nFINDINGS: Looks safe.",
+            "sha_disagree_v2": "BLIND_REVIEW_VERDICT: FAIL\nFINDINGS: Regression on timeout path.",
+            "sha_gfail_v1": "BLIND_REVIEW_VERDICT: FAIL\nFINDINGS: Unsanitised shell argument.",
+        }
+
+        def skrye_reply(meta: dict[str, str], _params: dict) -> str:
+            self.assertEqual(meta.get("dispatch_kind"), "community_pr_blind_review")
+            return skrye_verdict_by_sha[meta.get("head_sha", "")]
+
+        def traya_reply(meta: dict[str, str], _params: dict) -> str:
+            self.assertEqual(meta.get("dispatch_kind"), "community_pr_blind_review")
+            return "BLIND_REVIEW_VERDICT: FAIL\nFINDINGS: Race condition in lock acquisition."
+
+        skrye_store, skrye_runner, skrye_rpc = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=skrye_reply,
+        )
+        _, traya_runner, traya_rpc = self._build_pipeline_runner(
+            agent_name="traya",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=traya_reply,
+        )
+
+        # Skrye cycle 1: pr_disagree posts PASS (stays In Review, 0 pings); pr_gemini_fail posts FAIL (immediately escalates + 1 ping)
+        t0 = self._utc_ms(2026, 4, 1, 10, 0)
+        res_s1 = skrye_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0)
+        self.assertEqual(len(skrye_rpc), 2)
+        disagree_key = companion.make_pr_key(repo, pr_disagree)
+        gfail_key = companion.make_pr_key(repo, pr_gemini_fail)
+        lin_disagree_id = str((skrye_store.get_thread_state(disagree_key) or {}).get("linear_issue_id") or "")
+        lin_gfail_id = str((skrye_store.get_thread_state(gfail_key) or {}).get("linear_issue_id") or "")
+        lin_disagree_url = str(linear_stub.issues[lin_disagree_id]["url"])
+        lin_gfail_url = str(linear_stub.issues[lin_gfail_id]["url"])
+
+        self.assertEqual(linear_stub.issues[lin_disagree_id]["state"]["name"], "In Review")  # type: ignore[index]
+        self.assertEqual(linear_stub.issues[lin_gfail_id]["state"]["name"], "Backlog")  # type: ignore[index]
+        self.assertIn("needs-decision", companion.extract_linear_issue_labels(linear_stub.issues[lin_gfail_id]))
+        self.assertEqual(len(res_s1["needs_decision_notifications"]), 1)
+        self.assertEqual(len(self.httpd.telegram_requests), 1)
+        self.assertEqual(
+            self.httpd.telegram_requests[0]["body"]["text"],
+            f"🧑‍⚖️ {lin_gfail_url} - {repo}#{pr_gemini_fail}: {gemini_fail_title}",
+        )
+        self.assertEqual((skrye_store.get_thread_state(gfail_key) or {}).get("decision_notified_sha"), "sha_gfail_v1")
+        self.assertIsNone((skrye_store.get_thread_state(disagree_key) or {}).get("decision_notified_sha"))
+
+        # Traya cycle 1: only reviews pr_disagree (still In Review), posts FAIL, sends 0 Telegram pings
+        res_t1 = traya_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 10, 10))
+        self.assertEqual(len(res_t1["traya_blind_reviews"]), 1)
+        self.assertEqual(res_t1["traya_blind_reviews"][0]["verdict"], "FAIL")
+        self.assertEqual(len(traya_rpc), 1)
+        self.assertEqual(len(self.httpd.telegram_requests), 1)
+
+        # Skrye cycle 2a with Telegram delivery failure: moves to Backlog + needs-decision, blocks merge, does NOT persist decision_notified_sha
+        self.httpd.fail_next_telegram_send = True
+        res_s2_fail = skrye_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 10, 30))
+        self.assertEqual(res_s2_fail["targeted_dispatches"], [])
+        self.assertEqual(res_s2_fail["needs_decision_notifications"], [])
+        self.assertEqual(linear_stub.issues[lin_disagree_id]["state"]["name"], "Backlog")  # type: ignore[index]
+        self.assertIn("needs-decision", companion.extract_linear_issue_labels(linear_stub.issues[lin_disagree_id]))
+        self.assertIsNone((skrye_store.get_thread_state(disagree_key) or {}).get("decision_notified_sha"))
+        self.assertEqual(len(self.httpd.telegram_requests), 2)
+
+        # Skrye cycle 2b once Telegram recovers (re-evaluating In Review): sends exact ping and persists decision_notified_sha
+        linear_stub.update_issue(lin_disagree_id, state="In Review")
+        res_s2_ok = skrye_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 11, 0))
+        self.assertEqual(res_s2_ok["targeted_dispatches"], [])
+        self.assertEqual(len(res_s2_ok["needs_decision_notifications"]), 1)
+        self.assertEqual(len(self.httpd.telegram_requests), 3)
+        self.assertEqual(
+            self.httpd.telegram_requests[2]["body"]["text"],
+            f"🧑‍⚖️ {lin_disagree_url} - {repo}#{pr_disagree}: {disagree_title}",
+        )
+        self.assertEqual((skrye_store.get_thread_state(disagree_key) or {}).get("decision_notified_sha"), "sha_disagree_v1")
+        self.assertEqual(linear_stub.issues[lin_disagree_id]["state"]["name"], "Backlog")  # type: ignore[index]
+
+        # Repeat poll on same headRefOid (both in Backlog and even if moved back to In Review) does NOT re-ping
+        res_repeat_backlog = skrye_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 11, 30))
+        self.assertEqual(res_repeat_backlog["needs_decision_notifications"], [])
+        self.assertEqual(len(self.httpd.telegram_requests), 3)
+
+        linear_stub.update_issue(lin_disagree_id, state="In Review")
+        res_repeat_review = skrye_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 12, 0))
+        self.assertEqual(res_repeat_review["needs_decision_notifications"], [])
+        self.assertEqual(len(self.httpd.telegram_requests), 3)
+
+        # New headRefOid failing again sends exactly ONE new ping and updates decision_notified_sha
+        current_nodes[0]["headRefOid"] = "sha_disagree_v2"
+        current_nodes[0]["updatedAt"] = "2026-04-01T12:25:00Z"
+        linear_stub.update_issue(lin_disagree_id, state="In Review", remove_labels=("needs-decision",))
+        res_new_sha = skrye_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 12, 30))
+        self.assertEqual([d["kind"] for d in res_new_sha["targeted_dispatches"]], ["community_pr_blind_review"])
+        self.assertEqual(len(res_new_sha["needs_decision_notifications"]), 1)
+        self.assertEqual(len(self.httpd.telegram_requests), 4)
+        self.assertEqual(
+            self.httpd.telegram_requests[3]["body"]["text"],
+            f"🧑‍⚖️ {lin_disagree_url} - {repo}#{pr_disagree}: {disagree_title}",
+        )
+        self.assertEqual((skrye_store.get_thread_state(disagree_key) or {}).get("decision_notified_sha"), "sha_disagree_v2")
+        self.assertEqual(linear_stub.issues[lin_disagree_id]["state"]["name"], "Backlog")  # type: ignore[index]
+        self.assertNotIn("community_pr_lane_a_merge", [c["meta"]["dispatch_kind"] for c in skrye_rpc])  # type: ignore[index]
+
+    def test_traya_strict_scope_isolation(self) -> None:
+        repo = "wimpysworld/tailor"
+        pr_lane_a, pr_dual_pass, pr_lane_b, pr_dep, pr_todo_merge = self._owned_numbers(repo, "skrye", 5, kind="pr", start=400)
+        iss_triage, iss_todo, iss_new = self._owned_numbers(repo, "skrye", 3, kind="issue", start=400)
+
+        open_nodes: list[dict[str, object]] = [
+            self._graphql_pr_node(
+                repo,
+                pr_lane_a,
+                title="fix: eligible Lane A PR awaiting traya",
+                head_sha="sha_traya_a",
+                ci_state="SUCCESS",
+                additions=20,
+                deletions=4,
+                file_paths=["src/a.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_dual_pass,
+                title="fix: already dual-PASS PR",
+                head_sha="sha_traya_done",
+                ci_state="SUCCESS",
+                additions=10,
+                deletions=2,
+                file_paths=["src/b.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_lane_b,
+                title="feat: oversized Lane B PR touching flake.nix",
+                head_sha="sha_traya_b",
+                ci_state="SUCCESS",
+                additions=220,
+                deletions=30,
+                file_paths=["flake.nix", "src/c.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_dep,
+                title="build(deps): bump urllib3",
+                head_sha="sha_traya_dep",
+                author="dependabot",
+                author_typename="Bot",
+                ci_state="SUCCESS",
+                additions=4,
+                deletions=4,
+                file_paths=["requirements.txt"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_todo_merge,
+                title="feat: Lane B ready-to-merge in Todo",
+                head_sha="sha_traya_todo",
+                ci_state="SUCCESS",
+                additions=180,
+                deletions=10,
+                file_paths=["src/d.py"],
+            ),
+            self._graphql_issue_node(
+                repo,
+                iss_new,
+                title="Community bug with team:implement",
+                labels=["team:implement"],
+            ),
+        ]
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(open_nodes), stderr="")
+            if ep.endswith("/events?per_page=100"):
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps(
+                        [
+                            {
+                                "id": 9101,
+                                "event": "labeled",
+                                "label": {"name": "team:implement"},
+                                "actor": {"login": "flexiondotorg"},
+                                "created_at": "2026-04-01T09:55:00Z",
+                            }
+                        ]
+                    ),
+                    stderr="",
+                )
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
+
+        linear_stub = StubLinearSyncClient()
+        lin_a = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_lane_a}",
+            title="fix: eligible Lane A PR awaiting traya",
+            repo=repo,
+            item_kind="PR",
+            state="In Review",
+        )
+        lin_dual = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_dual_pass}",
+            title="fix: already dual-PASS PR",
+            repo=repo,
+            item_kind="PR",
+            state="In Review",
+        )
+        linear_stub.post_blind_review_verdict(
+            str(lin_dual["id"]),
+            agent="skrye",
+            model_family="gemini",
+            head_sha="sha_traya_done",
+            verdict="PASS",
+        )
+        linear_stub.post_blind_review_verdict(
+            str(lin_dual["id"]),
+            agent="traya",
+            model_family="gpt",
+            head_sha="sha_traya_done",
+            verdict="PASS",
+        )
+        linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_lane_b}",
+            title="feat: oversized Lane B PR touching flake.nix",
+            repo=repo,
+            item_kind="PR",
+            state="In Review",
+        )
+        linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_todo_merge}",
+            title="feat: Lane B ready-to-merge in Todo",
+            repo=repo,
+            item_kind="PR",
+            state="Todo",
+            extra_labels=("ready-to-merge",),
+        )
+        linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{iss_triage}",
+            title="Community issue in Triage",
+            repo=repo,
+            item_kind="Issue",
+            state="Triage",
+        )
+        linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{iss_todo}",
+            title="Community issue in Todo",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        linear_stub.post_verdict_calls.clear()
+
+        def traya_reply(meta: dict[str, str], _params: dict) -> str:
+            return "BLIND_REVIEW_VERDICT: PASS\nFINDINGS: Clean diff."
+
+        _, traya_runner, traya_rpc = self._build_pipeline_runner(
+            agent_name="traya",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=traya_reply,
+        )
+
+        # Tuesday 10:10 UTC with run_sweeps_if_due=True: traya still only runs community_pr_blind_review on pr_lane_a
+        t_tue = self._utc_ms(2026, 4, 7, 10, 10)
+        res1 = traya_runner.run_cycle(run_sweeps_if_due=True, now_override_ms=t_tue)
+        self.assertIsNone(res1["sweep_dispatch"])
+        self.assertEqual(res1["linear_triage_stubs"], [])
+        self.assertEqual(res1["linear_promoted_todos"], [])
+        self.assertEqual(res1["linear_synced_closed"], [])
+        self.assertEqual(res1["signoff_notifications"], [])
+        self.assertEqual(res1["linear_pr_actions"], [])
+        self.assertEqual(res1["needs_decision_notifications"], [])
+        self.assertEqual(len(res1["targeted_dispatches"]), 1)
+        self.assertEqual(res1["targeted_dispatches"][0]["kind"], "community_pr_blind_review")
+        self.assertEqual(len(res1["traya_blind_reviews"]), 1)
+        self.assertEqual(res1["traya_blind_reviews"][0]["number"], pr_lane_a)
+        self.assertEqual(res1["traya_blind_reviews"][0]["verdict"], "PASS")
+        self.assertTrue(res1["traya_blind_reviews"][0]["posted"])
+        self.assertEqual(len(traya_rpc), 1)
+        self.assertEqual(traya_rpc[0]["meta"]["dispatch_kind"], "community_pr_blind_review")  # type: ignore[index]
+        self.assertEqual(traya_rpc[0]["meta"]["number"], str(pr_lane_a))  # type: ignore[index]
+        self.assertEqual(linear_stub.ensure_calls, [])
+        self.assertEqual(linear_stub.update_calls, [])
+        self.assertEqual(len(linear_stub.post_verdict_calls), 1)
+        self.assertEqual(linear_stub.post_verdict_calls[0]["issue_id"], str(lin_a["id"]))
+        self.assertEqual(self.httpd.telegram_requests, [])
+
+        # Next cycle on same headRefOid: traya sees its own verdict and dispatches zero turns
+        res2 = traya_runner.run_cycle(run_sweeps_if_due=True, now_override_ms=self._utc_ms(2026, 4, 7, 10, 40))
+        self.assertIsNone(res2["sweep_dispatch"])
+        self.assertEqual(res2["targeted_dispatches"], [])
+        self.assertEqual(res2["traya_blind_reviews"], [])
+        self.assertEqual(len(traya_rpc), 1)
+        self.assertEqual(self.httpd.telegram_requests, [])
+
+    def test_lane_b_briefs_bypass_reasons_silent_ready_to_merge_and_deduped_needs_decision(self) -> None:
+        repo = "wimpysworld/tailor"
+        excluded_repo = "wimpysworld/nix-config"
+        pr_lines, pr_files, pr_sensitive = self._owned_numbers(repo, "skrye", 3, kind="pr", start=500)
+        pr_excluded = self._owned_numbers(excluded_repo, "skrye", 1, kind="pr", start=500)[0]
+
+        current_nodes: list[dict[str, object]] = [
+            self._graphql_pr_node(
+                repo,
+                pr_lines,
+                title="refactor: large helper split",
+                head_sha="sha_b_lines",
+                ci_state="SUCCESS",
+                additions=120,
+                deletions=45,
+                file_paths=["src/helper.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_files,
+                title="feat: touch six modules",
+                head_sha="sha_b_files",
+                ci_state="SUCCESS",
+                additions=20,
+                deletions=10,
+                file_paths=[f"src/mod_{i}.py" for i in range(6)],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_sensitive,
+                title="build: tweak flake inputs",
+                head_sha="sha_b_sens",
+                ci_state="SUCCESS",
+                additions=10,
+                deletions=2,
+                file_paths=["flake.nix"],
+            ),
+            self._graphql_pr_node(
+                excluded_repo,
+                pr_excluded,
+                title="docs: update nix-config readme",
+                head_sha="sha_b_excl",
+                ci_state="SUCCESS",
+                additions=8,
+                deletions=2,
+                file_paths=["README.md"],
+            ),
+        ]
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(current_nodes), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
+
+        linear_stub = StubLinearSyncClient()
+        replies_by_sha = {
+            "sha_b_lines": "LANE_B_VERDICT: ready-to-merge\nSUMMARY: Clean refactor with full test coverage.",
+            "sha_b_files": "LANE_B_VERDICT: needs-decision\nSUMMARY: Alters public CLI options across six modules.",
+            "sha_b_sens": "LANE_B_VERDICT: ready-to-merge\nSUMMARY: Safe flake input adjustment.",
+            "sha_b_excl": "LANE_B_VERDICT: needs-decision\nSUMMARY: Excluded repo requires maintainer review.",
+        }
+
+        def skrye_reply(meta: dict[str, str], _params: dict) -> str:
+            self.assertEqual(meta.get("dispatch_kind"), "community_pr_lane_b_review")
+            return replies_by_sha[meta.get("head_sha", "")]
+
+        store, runner, rpc_calls = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=skrye_reply,
+        )
+
+        # Slot 1 (cap 2 community_pr_reviews): processes pr_lines (ready-to-merge, silent) and pr_files (needs-decision, 1 ping)
+        slot1_ms = self._utc_ms(2026, 4, 1, 10, 0)
+        res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms)
+        self.assertEqual(len(res1["targeted_dispatches"]), 2)
+        self.assertEqual([c["meta"]["dispatch_kind"] for c in rpc_calls], ["community_pr_lane_b_review", "community_pr_lane_b_review"])  # type: ignore[index]
+        self.assertEqual(rpc_calls[0]["meta"]["bypass_reasons"], "lines_exceeded")  # type: ignore[index]
+        self.assertEqual(rpc_calls[1]["meta"]["bypass_reasons"], "files_exceeded")  # type: ignore[index]
+
+        lin_lines_id = str((store.get_thread_state(companion.make_pr_key(repo, pr_lines)) or {}).get("linear_issue_id") or "")
+        lin_files_id = str((store.get_thread_state(companion.make_pr_key(repo, pr_files)) or {}).get("linear_issue_id") or "")
+        lin_files_url = str(linear_stub.issues[lin_files_id]["url"])
+
+        self.assertEqual(linear_stub.issues[lin_lines_id]["state"]["name"], "Backlog")  # type: ignore[index]
+        self.assertIn("ready-to-merge", companion.extract_linear_issue_labels(linear_stub.issues[lin_lines_id]))
+        self.assertNotIn("needs-decision", companion.extract_linear_issue_labels(linear_stub.issues[lin_lines_id]))
+        self.assertEqual(linear_stub.issues[lin_files_id]["state"]["name"], "Backlog")  # type: ignore[index]
+        self.assertIn("needs-decision", companion.extract_linear_issue_labels(linear_stub.issues[lin_files_id]))
+        self.assertNotIn("ready-to-merge", companion.extract_linear_issue_labels(linear_stub.issues[lin_files_id]))
+
+        # Only pr_files sent a Telegram ping; pr_lines (ready-to-merge) stayed completely silent
+        self.assertEqual(len(res1["needs_decision_notifications"]), 1)
+        self.assertEqual(len(self.httpd.telegram_requests), 1)
+        self.assertEqual(
+            self.httpd.telegram_requests[0]["body"]["text"],
+            f"🧑‍⚖️ {lin_files_url} - {repo}#{pr_files}: feat: touch six modules",
+        )
+        self.assertEqual((store.get_thread_state(companion.make_pr_key(repo, pr_files)) or {}).get("decision_notified_sha"), "sha_b_files")
+        self.assertIsNone((store.get_thread_state(companion.make_pr_key(repo, pr_lines)) or {}).get("decision_notified_sha"))
+
+        # Slot 2: processes pr_sensitive (ready-to-merge, silent) and pr_excluded (needs-decision, 1 ping)
+        slot2_ms = self._utc_ms(2026, 4, 1, 10, 30)
+        res2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot2_ms)
+        self.assertEqual(len(res2["targeted_dispatches"]), 2)
+        self.assertEqual(rpc_calls[2]["meta"]["bypass_reasons"], "sensitive_path")  # type: ignore[index]
+        self.assertEqual(rpc_calls[3]["meta"]["bypass_reasons"], "excluded_repo")  # type: ignore[index]
+
+        lin_sens_id = str((store.get_thread_state(companion.make_pr_key(repo, pr_sensitive)) or {}).get("linear_issue_id") or "")
+        lin_excl_id = str((store.get_thread_state(companion.make_pr_key(excluded_repo, pr_excluded)) or {}).get("linear_issue_id") or "")
+        lin_excl_url = str(linear_stub.issues[lin_excl_id]["url"])
+
+        self.assertEqual(linear_stub.issues[lin_sens_id]["state"]["name"], "Backlog")  # type: ignore[index]
+        self.assertIn("ready-to-merge", companion.extract_linear_issue_labels(linear_stub.issues[lin_sens_id]))
+        self.assertEqual(linear_stub.issues[lin_excl_id]["state"]["name"], "Backlog")  # type: ignore[index]
+        self.assertIn("needs-decision", companion.extract_linear_issue_labels(linear_stub.issues[lin_excl_id]))
+        self.assertEqual(len(self.httpd.telegram_requests), 2)
+        self.assertEqual(
+            self.httpd.telegram_requests[1]["body"]["text"],
+            f"🧑‍⚖️ {lin_excl_url} - {excluded_repo}#{pr_excluded}: docs: update nix-config readme",
+        )
+        self.assertEqual((store.get_thread_state(companion.make_pr_key(excluded_repo, pr_excluded)) or {}).get("decision_notified_sha"), "sha_b_excl")
+
+        # Repeat poll on same headRefOids emits zero duplicate dispatches and zero duplicate pings
+        res_repeat = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 11, 0))
+        self.assertEqual(res_repeat["targeted_dispatches"], [])
+        self.assertEqual(res_repeat["needs_decision_notifications"], [])
+        self.assertEqual(len(self.httpd.telegram_requests), 2)
+
+    def test_lane_b_linear_todo_promotion_sha_guard_and_external_pr_close_merge_sync(self) -> None:
+        repo = "wimpysworld/tailor"
+        pr_merge_ok, pr_merge_sha_changed, pr_review, pr_ext_merged, pr_ext_closed = self._owned_numbers(
+            repo, "skrye", 5, kind="pr", start=600
+        )
+
+        open_nodes: list[dict[str, object]] = [
+            self._graphql_pr_node(
+                repo,
+                pr_merge_ok,
+                title="feat: approved Lane B merge",
+                head_sha="sha_ok_v1",
+                ci_state="SUCCESS",
+                additions=190,
+                deletions=10,
+                file_paths=["src/m1.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_merge_sha_changed,
+                title="feat: Lane B with head push after triage",
+                head_sha="sha_chg_v2",
+                ci_state="SUCCESS",
+                additions=190,
+                deletions=10,
+                file_paths=["src/m2.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_review,
+                title="feat: Lane B needing review",
+                head_sha="sha_rev_v1",
+                ci_state="SUCCESS",
+                additions=190,
+                deletions=10,
+                file_paths=["src/m3.py"],
+            ),
+        ]
+        rest_payloads: dict[str, dict[str, object]] = {
+            f"repos/{repo}/pulls/{pr_ext_merged}": {
+                "state": "closed",
+                "merged": True,
+                "merged_at": "2026-04-01T11:50:00Z",
+            },
+            f"repos/{repo}/pulls/{pr_ext_closed}": {
+                "state": "closed",
+                "merged": False,
+                "merged_at": None,
+            },
+        }
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(open_nodes), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(rest_payloads.get(ep, {"state": "open"})), stderr="")
+
+        linear_stub = StubLinearSyncClient()
+        lin_merge_ok = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_merge_ok}",
+            title="feat: approved Lane B merge",
+            repo=repo,
+            item_kind="PR",
+            state="Todo",
+            extra_labels=("ready-to-merge",),
+        )
+        lin_merge_chg = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_merge_sha_changed}",
+            title="feat: Lane B with head push after triage",
+            repo=repo,
+            item_kind="PR",
+            state="Todo",
+            extra_labels=("ready-to-merge",),
+        )
+        lin_review = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_review}",
+            title="feat: Lane B needing review",
+            repo=repo,
+            item_kind="PR",
+            state="Todo",
+            extra_labels=("needs-decision",),
+        )
+        lin_ext_merged = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_ext_merged}",
+            title="feat: externally merged community PR",
+            repo=repo,
+            item_kind="PR",
+            state="Backlog",
+            extra_labels=("ready-to-merge",),
+        )
+        lin_ext_closed = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_ext_closed}",
+            title="feat: externally closed community PR",
+            repo=repo,
+            item_kind="PR",
+            state="In Review",
+        )
+
+        def skrye_reply(meta: dict[str, str], _params: dict) -> str:
+            kind = meta.get("dispatch_kind", "")
+            url = meta.get("github_url", "")
+            if kind == "team:merge" and meta.get("head_sha_changed") != "true":
+                return f"🏁 {url} - feat: approved Lane B merge"
+            return "HEARTBEAT_OK"
+
+        store, runner, rpc_calls = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=skrye_reply,
+        )
+        # Seed prior Lane B triage watermarks so open PRs do not re-trigger initial intake
+        for pr_num, triaged_sha in (
+            (pr_merge_ok, "sha_ok_v1"),
+            (pr_merge_sha_changed, "sha_chg_v1"),
+            (pr_review, "sha_rev_v1"),
+        ):
+            store.update_thread_state(
+                companion.make_pr_key(repo, pr_num),
+                {
+                    "repo": repo,
+                    "number": pr_num,
+                    "subject_type": "PullRequest",
+                    "handled_updated_at": "2026-04-01T09:00:00Z",
+                    "handled_head_sha": triaged_sha,
+                    "triaged_head_sha": triaged_sha,
+                    "is_community": True,
+                },
+                now_override_ms=self.clock(),
+            )
+
+        # 1) Cycle 1: Linear Todo promotions + external close/merge sync
+        res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 12, 0))
+
+        # External PR merge/close synced directly to Done / Canceled
+        synced_map = {item["linear_issue_id"]: item["target_state"] for item in res1["linear_synced_closed"]}
+        self.assertEqual(
+            synced_map,
+            {
+                str(lin_ext_merged["id"]): "Done",
+                str(lin_ext_closed["id"]): "Canceled",
+            },
+        )
+        self.assertEqual(linear_stub.issues[str(lin_ext_merged["id"])]["state"]["name"], "Done")  # type: ignore[index]
+        self.assertEqual(linear_stub.issues[str(lin_ext_closed["id"])]["state"]["name"], "Canceled")  # type: ignore[index]
+
+        # Todo promotions dispatched exact kinds with head_sha_changed guard
+        by_num = {int(c["meta"]["number"]): c for c in rpc_calls}  # type: ignore[index]
+        self.assertEqual(set(by_num.keys()), {pr_merge_ok, pr_merge_sha_changed, pr_review})
+        self.assertEqual(by_num[pr_merge_ok]["meta"]["dispatch_kind"], "team:merge")  # type: ignore[index]
+        self.assertNotIn("head_sha_changed", by_num[pr_merge_ok]["meta"])  # type: ignore[operator]
+        self.assertEqual(by_num[pr_merge_sha_changed]["meta"]["dispatch_kind"], "team:merge")  # type: ignore[index]
+        self.assertEqual(by_num[pr_merge_sha_changed]["meta"].get("head_sha_changed"), "true")  # type: ignore[union-attr]
+        self.assertEqual(by_num[pr_merge_sha_changed]["meta"].get("triaged_head_sha"), "sha_chg_v1")  # type: ignore[union-attr]
+        self.assertEqual(by_num[pr_review]["meta"]["dispatch_kind"], "team:review")  # type: ignore[index]
+
+        # Resulting Linear states and Telegram messages
+        self.assertEqual(linear_stub.issues[str(lin_merge_ok["id"])]["state"]["name"], "Done")  # type: ignore[index]
+        self.assertEqual(linear_stub.issues[str(lin_merge_chg["id"])]["state"]["name"], "Backlog")  # type: ignore[index]
+        chg_labels = companion.extract_linear_issue_labels(linear_stub.issues[str(lin_merge_chg["id"])])
+        self.assertIn("needs-decision", chg_labels)
+        self.assertNotIn("ready-to-merge", chg_labels)
+        self.assertEqual(linear_stub.issues[str(lin_review["id"])]["state"]["name"], "In Review")  # type: ignore[index]
+        self.assertEqual(
+            (store.get_thread_state(companion.make_pr_key(repo, pr_review)) or {}).get("linear_todo_reviewed_sha"),
+            "sha_rev_v1",
+        )
+        self.assertEqual(
+            (store.get_thread_state(companion.make_pr_key(repo, pr_merge_sha_changed)) or {}).get("decision_notified_sha"),
+            "sha_chg_v2",
+        )
+        self.assertEqual(
+            [req["body"]["text"] for req in self.httpd.telegram_requests],
+            [
+                f"🏁 https://github.com/{repo}/pull/{pr_merge_ok} - feat: approved Lane B merge",
+                f"🧑‍⚖️ {lin_merge_chg['url']} - {repo}#{pr_merge_sha_changed}: feat: Lane B with head push after triage",
+            ],
+        )
+
+        # 2) Pure external close/merge sync cycle runs with ZERO RPC turns and ZERO Telegram messages
+        open_nodes.clear()
+        rest_payloads[f"repos/{repo}/pulls/{pr_merge_sha_changed}"] = {
+            "state": "closed",
+            "merged": False,
+            "merged_at": None,
+        }
+        rest_payloads[f"repos/{repo}/pulls/{pr_review}"] = {
+            "state": "closed",
+            "merged": True,
+            "merged_at": "2026-04-01T12:20:00Z",
+        }
+        rpc_before = len(rpc_calls)
+        tg_before = len(self.httpd.telegram_requests)
+        res2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 12, 30))
+        synced_map2 = {item["linear_issue_id"]: item["target_state"] for item in res2["linear_synced_closed"]}
+        self.assertEqual(
+            synced_map2,
+            {
+                str(lin_merge_chg["id"]): "Canceled",
+                str(lin_review["id"]): "Done",
+            },
+        )
+        self.assertEqual(linear_stub.issues[str(lin_merge_chg["id"])]["state"]["name"], "Canceled")  # type: ignore[index]
+        self.assertEqual(linear_stub.issues[str(lin_review["id"])]["state"]["name"], "Done")  # type: ignore[index]
+        self.assertEqual(res2["targeted_dispatches"], [])
+        self.assertEqual(len(rpc_calls), rpc_before)
+        self.assertEqual(len(self.httpd.telegram_requests), tg_before)
 
 
 if __name__ == "__main__":
