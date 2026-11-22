@@ -8244,6 +8244,290 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
                 {("skrye", "gemini", "pass"), ("traya", "gpt", "pass")},
             )
 
+    def test_deferred_watermark_commit_retries_after_transient_linear_write_failures(self) -> None:
+        repo = "wimpysworld/tailor"
+        pr_lane_a_new, pr_lane_a_pushed, pr_lane_b_new, pr_lane_b_pushed = self._owned_numbers(
+            repo, "skrye", 4, kind="pr", start=900
+        )
+
+        open_nodes: list[dict[str, object]] = [
+            self._graphql_pr_node(
+                repo,
+                pr_lane_a_new,
+                title="fix: new lane A PR with transient verdict failure",
+                head_sha="sha_la_new_v1",
+                ci_state="SUCCESS",
+                unresolved_threads=0,
+                additions=10,
+                deletions=2,
+                file_paths=["src/la_new.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_lane_a_pushed,
+                title="fix: existing lane A PR pushed new commit",
+                head_sha="sha_la_push_v2",
+                ci_state="SUCCESS",
+                unresolved_threads=0,
+                additions=8,
+                deletions=3,
+                file_paths=["src/la_push.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_lane_b_new,
+                title="feat: new lane B PR with transient update failure",
+                head_sha="sha_lb_new_v1",
+                ci_state="SUCCESS",
+                unresolved_threads=0,
+                additions=180,
+                deletions=10,
+                file_paths=["src/lb_new.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_lane_b_pushed,
+                title="feat: existing lane B PR pushed new commit",
+                head_sha="sha_lb_push_v2",
+                ci_state="SUCCESS",
+                unresolved_threads=0,
+                additions=190,
+                deletions=15,
+                file_paths=["src/lb_push.py"],
+            ),
+        ]
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(open_nodes), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
+
+        class FlakyLinearSyncClient(StubLinearSyncClient):
+            def __init__(self) -> None:
+                super().__init__()
+                self.fail_verdict_once: set[tuple[str, str]] = set()
+                self.fail_backlog_update_once: set[str] = set()
+
+            def post_blind_review_verdict(
+                self,
+                issue_id: str,
+                *,
+                agent: str,
+                model_family: str,
+                head_sha: str,
+                verdict: str,
+                summary: str = "",
+            ) -> dict[str, object]:
+                key = (agent, head_sha)
+                if key in self.fail_verdict_once:
+                    self.fail_verdict_once.remove(key)
+                    raise companion.linear_sync.LinearAPIError("Linear 503 transient verdict post failure")
+                return super().post_blind_review_verdict(
+                    issue_id,
+                    agent=agent,
+                    model_family=model_family,
+                    head_sha=head_sha,
+                    verdict=verdict,
+                    summary=summary,
+                )
+
+            def update_issue(
+                self,
+                issue_id: str,
+                *,
+                state: str | None = None,
+                **kwargs: object,
+            ) -> dict[str, object]:
+                if state == "Backlog" and issue_id in self.fail_backlog_update_once:
+                    self.fail_backlog_update_once.remove(issue_id)
+                    raise companion.linear_sync.LinearAPIError("Linear 503 transient update_issue failure")
+                return super().update_issue(issue_id, state=state, **kwargs)  # type: ignore[arg-type]
+
+        linear_stub = FlakyLinearSyncClient()
+        lin_la_push = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_lane_a_pushed}",
+            title="fix: existing lane A PR pushed new commit",
+            repo=repo,
+            item_kind="PR",
+            state="In Review",
+        )
+        lin_lb_push = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_lane_b_pushed}",
+            title="feat: existing lane B PR pushed new commit",
+            repo=repo,
+            item_kind="PR",
+            state="Backlog",
+            extra_labels=("ready-to-merge",),
+        )
+        lin_lb_new = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_lane_b_new}",
+            title="feat: new lane B PR with transient update failure",
+            repo=repo,
+            item_kind="PR",
+            state="Backlog",
+        )
+        linear_stub.fail_verdict_once.update({
+            ("skrye", "sha_la_new_v1"),
+            ("skrye", "sha_la_push_v2"),
+            ("traya", "sha_la_new_v1"),
+        })
+        linear_stub.fail_backlog_update_once.update({
+            str(lin_lb_new["id"]),
+            str(lin_lb_push["id"]),
+        })
+
+        def skrye_reply(meta: dict[str, str], _params: dict) -> str:
+            kind = meta.get("dispatch_kind", "")
+            if kind == "community_pr_blind_review":
+                return "BLIND_REVIEW_VERDICT: PASS\nFINDINGS: Clean change.\nPOLISH: none"
+            if kind == "community_pr_lane_b_review":
+                return "LANE_B_VERDICT: needs-decision\nSUMMARY: Large change requires maintainer decision."
+            return "HEARTBEAT_OK"
+
+        def traya_reply(meta: dict[str, str], _params: dict) -> str:
+            self.assertEqual(meta.get("dispatch_kind"), "community_pr_blind_review")
+            return "BLIND_REVIEW_VERDICT: PASS\nFINDINGS: Verified independently.\nPOLISH: none"
+
+        skrye_store, skrye_runner, skrye_rpc = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=skrye_reply,
+        )
+        traya_store, traya_runner, traya_rpc = self._build_pipeline_runner(
+            agent_name="traya",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=traya_reply,
+        )
+
+        t0 = self._utc_ms(2026, 4, 1, 10, 0)
+        skrye_store.update_thread_state(
+            companion.make_pr_key(repo, pr_lane_a_pushed),
+            {
+                "repo": repo,
+                "number": pr_lane_a_pushed,
+                "subject_type": "PullRequest",
+                "handled_updated_at": "2026-04-01T09:00:00Z",
+                "handled_head_sha": "sha_la_push_v1",
+                "triaged_head_sha": "sha_la_push_v1",
+                "handled_ci_state": "SUCCESS",
+                "is_community": True,
+            },
+            now_override_ms=t0 - 60_000,
+        )
+        skrye_store.update_thread_state(
+            companion.make_pr_key(repo, pr_lane_b_pushed),
+            {
+                "repo": repo,
+                "number": pr_lane_b_pushed,
+                "subject_type": "PullRequest",
+                "handled_updated_at": "2026-04-01T09:00:00Z",
+                "handled_head_sha": "sha_lb_push_v1",
+                "triaged_head_sha": "sha_lb_push_v1",
+                "handled_ci_state": "SUCCESS",
+                "is_community": True,
+            },
+            now_override_ms=t0 - 60_000,
+        )
+
+        # Slot 1 (cap 2): new Lane A PR + new Lane B PR fail their post-turn Linear writes transiently.
+        # Watermarks MUST NOT advance, in_flight must be False, retry_count must be 1,
+        # and no Telegram needs-decision pings or blind verdicts may be recorded.
+        res1 = skrye_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0)
+        self.assertEqual([int(c["meta"]["number"]) for c in skrye_rpc], [pr_lane_a_new, pr_lane_b_new])  # type: ignore[index]
+        self.assertEqual(res1["needs_decision_notifications"], [])
+        self.assertEqual(self.httpd.telegram_requests, [])
+        for pr_num in (pr_lane_a_new, pr_lane_b_new):
+            st = skrye_store.get_thread_state(companion.make_pr_key(repo, pr_num)) or {}
+            self.assertIsNone(st.get("handled_head_sha"), f"handled_head_sha committed prematurely for PR #{pr_num}")
+            self.assertIsNone(st.get("triaged_head_sha"), f"triaged_head_sha committed prematurely for PR #{pr_num}")
+            self.assertFalse(st.get("in_flight"))
+            self.assertEqual(st.get("retry_count"), 1)
+        lin_la_new_id = str((skrye_store.get_thread_state(companion.make_pr_key(repo, pr_lane_a_new)) or {}).get("linear_issue_id") or "")
+        self.assertTrue(lin_la_new_id)
+        self.assertEqual(linear_stub.list_issue_comments(lin_la_new_id), [])
+        self.assertNotIn("needs-decision", companion.extract_linear_issue_labels(linear_stub.issues[str(lin_lb_new["id"])]))
+
+        # Slot 2: both failed PRs retry cleanly and commit watermarks once Linear writes succeed.
+        res2 = skrye_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 10, 30))
+        self.assertEqual([int(c["meta"]["number"]) for c in skrye_rpc[2:]], [pr_lane_a_new, pr_lane_b_new])  # type: ignore[index]
+        for pr_num, committed_sha in ((pr_lane_a_new, "sha_la_new_v1"), (pr_lane_b_new, "sha_lb_new_v1")):
+            st = skrye_store.get_thread_state(companion.make_pr_key(repo, pr_num)) or {}
+            self.assertEqual(st.get("handled_head_sha"), committed_sha)
+            self.assertEqual(st.get("triaged_head_sha"), committed_sha)
+            self.assertEqual(st.get("retry_count"), 0)
+        self.assertEqual(
+            len(companion.linear_sync.parse_blind_review_verdicts(linear_stub.list_issue_comments(lin_la_new_id), head_sha="sha_la_new_v1")),
+            1,
+        )
+        self.assertIn("needs-decision", companion.extract_linear_issue_labels(linear_stub.issues[str(lin_lb_new["id"])]))
+        self.assertEqual(len(res2["needs_decision_notifications"]), 1)
+        self.assertEqual(len(self.httpd.telegram_requests), 1)
+
+        # Slot 3: pushed existing Lane A (In Review) and Lane B (Backlog) PRs fail post-turn Linear writes transiently.
+        # Prior handled_head_sha / triaged_head_sha must remain at v1 (not v2) so Slot 4 retries them.
+        res3 = skrye_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 11, 0))
+        self.assertEqual([int(c["meta"]["number"]) for c in skrye_rpc[4:]], [pr_lane_a_pushed, pr_lane_b_pushed])  # type: ignore[index]
+        self.assertEqual(res3["needs_decision_notifications"], [])
+        self.assertEqual(len(self.httpd.telegram_requests), 1)
+        for pr_num, prior_sha in ((pr_lane_a_pushed, "sha_la_push_v1"), (pr_lane_b_pushed, "sha_lb_push_v1")):
+            st = skrye_store.get_thread_state(companion.make_pr_key(repo, pr_num)) or {}
+            self.assertEqual(st.get("handled_head_sha"), prior_sha, f"handled_head_sha committed prematurely for PR #{pr_num}")
+            self.assertEqual(st.get("triaged_head_sha"), prior_sha, f"triaged_head_sha committed prematurely for PR #{pr_num}")
+            self.assertFalse(st.get("in_flight"))
+            self.assertEqual(st.get("retry_count"), 1)
+        self.assertEqual(linear_stub.list_issue_comments(str(lin_la_push["id"])), [])
+        self.assertNotIn("needs-decision", companion.extract_linear_issue_labels(linear_stub.issues[str(lin_lb_push["id"])]))
+
+        # Slot 4: both pushed PRs retry cleanly, commit v2 watermarks, and emit the Lane B escalation ping.
+        res4 = skrye_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 11, 30))
+        self.assertEqual([int(c["meta"]["number"]) for c in skrye_rpc[6:]], [pr_lane_a_pushed, pr_lane_b_pushed])  # type: ignore[index]
+        for pr_num, committed_sha in ((pr_lane_a_pushed, "sha_la_push_v2"), (pr_lane_b_pushed, "sha_lb_push_v2")):
+            st = skrye_store.get_thread_state(companion.make_pr_key(repo, pr_num)) or {}
+            self.assertEqual(st.get("handled_head_sha"), committed_sha)
+            self.assertEqual(st.get("triaged_head_sha"), committed_sha)
+            self.assertEqual(st.get("retry_count"), 0)
+        self.assertEqual(
+            len(companion.linear_sync.parse_blind_review_verdicts(linear_stub.list_issue_comments(str(lin_la_push["id"])), head_sha="sha_la_push_v2")),
+            1,
+        )
+        lb_push_labels = companion.extract_linear_issue_labels(linear_stub.issues[str(lin_lb_push["id"])])
+        self.assertIn("needs-decision", lb_push_labels)
+        self.assertNotIn("ready-to-merge", lb_push_labels)
+        self.assertEqual(len(res4["needs_decision_notifications"]), 1)
+        self.assertEqual(len(self.httpd.telegram_requests), 2)
+
+        # Slot 5 (Skrye, unchanged SHAs): zero duplicate dispatches or pings once all 4 watermarks are committed.
+        res5 = skrye_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 12, 0))
+        self.assertEqual(res5["targeted_dispatches"], [])
+        self.assertEqual(res5["needs_decision_notifications"], [])
+        self.assertEqual(len(self.httpd.telegram_requests), 2)
+
+        # Traya blind review transient failure: does not commit triaged_head_sha on failure, retries cleanly on next slot.
+        traya_res1 = traya_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 12, 5))
+        traya_by_num_1 = {int(item["number"]): item for item in traya_res1["traya_blind_reviews"]}
+        self.assertFalse(traya_by_num_1[pr_lane_a_new]["posted"])
+        self.assertFalse(traya_by_num_1[pr_lane_a_new]["dispatch"]["task_succeeded"])
+        self.assertTrue(traya_by_num_1[pr_lane_a_pushed]["posted"])
+        traya_st_fail = traya_store.get_thread_state(companion.make_pr_key(repo, pr_lane_a_new)) or {}
+        self.assertIsNone(traya_st_fail.get("triaged_head_sha"))
+        self.assertFalse(traya_st_fail.get("in_flight"))
+        self.assertEqual(traya_st_fail.get("retry_count"), 1)
+
+        traya_res2 = traya_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 12, 35))
+        self.assertEqual([int(item["number"]) for item in traya_res2["traya_blind_reviews"]], [pr_lane_a_new])
+        self.assertTrue(traya_res2["traya_blind_reviews"][0]["posted"])
+        self.assertTrue(traya_res2["traya_blind_reviews"][0]["dispatch"]["task_succeeded"])
+        traya_st_ok = traya_store.get_thread_state(companion.make_pr_key(repo, pr_lane_a_new)) or {}
+        self.assertEqual(traya_st_ok.get("handled_head_sha"), "sha_la_new_v1")
+        self.assertEqual(traya_st_ok.get("triaged_head_sha"), "sha_la_new_v1")
+        self.assertEqual(traya_st_ok.get("retry_count"), 0)
+        self.assertEqual(len(traya_rpc), 3)
+
 
 if __name__ == "__main__":
     unittest.main()
