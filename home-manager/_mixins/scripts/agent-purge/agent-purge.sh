@@ -112,8 +112,14 @@ add_owned() {
 
 # Antigravity.
 add "Antigravity" \
+	"${antigravity_dir}/conversations" \
+	"${antigravity_dir}"/conversation_summaries.db* \
+	"${antigravity_dir}/jetbox_summaries_proto.pb" \
+	"${antigravity_dir}/implicit" \
 	"${antigravity_dir}/brain" \
+	"${antigravity_dir}/crashes" \
 	"${antigravity_dir}/log" \
+	"${antigravity_dir}/cli.log" \
 	"${antigravity_dir}/mcp" \
 	"${antigravity_dir}/updater" \
 	"${antigravity_dir}/cache" \
