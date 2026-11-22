@@ -6327,7 +6327,7 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
         st_backlog = store.get_thread_state(companion.make_pr_key(repo, n_todo_backlog)) or {}
         self.assertEqual(st_backlog.get("retry_count"), 0)
 
-        # 4) Transient get_issue failure after todo turn counts as a retryable failure and reverts to Todo
+        # 4) Single transient get_issue failure retries once; when Linear confirms In Progress, it reverts to Todo
         lin_todo_err = linear_stub.seed_issue(
             github_url=f"https://github.com/{repo}/issues/{n_todo_err}",
             title=f"Transient get_issue failure todo #{n_todo_err}",
@@ -6344,10 +6344,164 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
         )
         self.assertEqual(len(res_err["targeted_dispatches"]), 1)
         self.assertFalse(res_err["targeted_dispatches"][0]["task_succeeded"])
-        self.assertIn("linear_todo_state_verify_failed", str(res_err["targeted_dispatches"][0]["failure_reason"]))
+        self.assertEqual(res_err["targeted_dispatches"][0]["failure_reason"], "linear_todo_state_unchanged_in_progress")
         self.assertEqual(linear_stub.issues[lin_todo_err_id]["state"]["name"], "Todo")  # type: ignore[index]
         st_err = store.get_thread_state(companion.make_pr_key(repo, n_todo_err)) or {}
         self.assertEqual(st_err.get("retry_count"), 1)
+
+    def test_linear_todo_transient_verify_failure_does_not_rollback_in_review(self) -> None:
+        repo = "wimpysworld/tailor"
+        n_retry_ok, n_outage_review, n_outage_stuck = self._owned_numbers(
+            repo, "skrye", 3, kind="issue", start=260
+        )
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload([]), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
+
+        class FlakyVerifyLinearStub(StubLinearSyncClient):
+            def __init__(self) -> None:
+                super().__init__()
+                self.fail_get_issue_remaining: dict[str, int] = {}
+                self.get_issue_attempts: dict[str, int] = {}
+
+            def get_issue(self, issue_id: str) -> dict[str, object]:
+                clean_id = str(issue_id or "").strip()
+                self.get_issue_attempts[clean_id] = self.get_issue_attempts.get(clean_id, 0) + 1
+                remaining = self.fail_get_issue_remaining.get(clean_id, 0)
+                if remaining > 0:
+                    self.fail_get_issue_remaining[clean_id] = remaining - 1
+                    raise companion.linear_sync.LinearAPIError("Linear 503 transient get_issue failure")
+                return super().get_issue(issue_id)
+
+        linear_stub = FlakyVerifyLinearStub()
+        move_to_in_review_ids: set[str] = set()
+
+        def reply_fn(meta: dict[str, str], _params: dict) -> str:
+            lid = meta.get("linear_issue_id", "")
+            if meta.get("dispatch_kind") == "linear_todo_implement" and lid in move_to_in_review_ids:
+                linear_stub.update_issue(lid, state="In Review")
+            return f"Implemented Linear issue {lid}."
+
+        store, runner, rpc_calls = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=reply_fn,
+        )
+
+        # 1) Single transient get_issue failure after turn moved Linear -> In Review:
+        #    retry confirms In Review, commits deferred dispatch, and never rolls back to Todo.
+        lin_retry_ok = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n_retry_ok}",
+            title=f"Retry verify succeeds in review #{n_retry_ok}",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        lin_retry_ok_id = str(lin_retry_ok["id"])
+        move_to_in_review_ids.add(lin_retry_ok_id)
+        linear_stub.fail_get_issue_remaining[lin_retry_ok_id] = 1
+
+        res_retry_ok = runner.run_cycle(
+            run_sweeps_if_due=False,
+            now_override_ms=self._utc_ms(2026, 4, 1, 10, 0),
+        )
+        self.assertEqual(len(res_retry_ok["targeted_dispatches"]), 1)
+        disp_ok = res_retry_ok["targeted_dispatches"][0]
+        self.assertTrue(disp_ok["task_succeeded"])
+        self.assertEqual(disp_ok["status"], "completed")
+        self.assertEqual(linear_stub.get_issue_attempts[lin_retry_ok_id], 2)
+        self.assertEqual(linear_stub.issues[lin_retry_ok_id]["state"]["name"], "In Review")  # type: ignore[index]
+        self.assertIsNone(store.read_active_dispatch()["active"])
+        st_ok = store.get_thread_state(companion.make_pr_key(repo, n_retry_ok)) or {}
+        self.assertEqual(st_ok.get("retry_count"), 0)
+        self.assertFalse(st_ok.get("in_flight"))
+
+        # 2) Persistent get_issue outage (both attempts fail) after turn moved Linear -> In Review:
+        #    Linear stays In Review (never reverted to Todo), active-dispatch.json stays persisted,
+        #    and the next poll reconciles cleanly without duplicating the implementation turn.
+        lin_outage_review = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n_outage_review}",
+            title=f"Outage verify keeps in review #{n_outage_review}",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        lin_outage_review_id = str(lin_outage_review["id"])
+        move_to_in_review_ids.add(lin_outage_review_id)
+        linear_stub.fail_get_issue_remaining[lin_outage_review_id] = 2
+
+        res_outage_review = runner.run_cycle(
+            run_sweeps_if_due=False,
+            now_override_ms=self._utc_ms(2026, 4, 1, 10, 30),
+        )
+        self.assertEqual(len(res_outage_review["targeted_dispatches"]), 1)
+        disp_unverified = res_outage_review["targeted_dispatches"][0]
+        self.assertTrue(disp_unverified["task_succeeded"])
+        self.assertEqual(disp_unverified["status"], "unverified")
+        self.assertTrue(disp_unverified["verification_deferred"])
+        self.assertIn("linear_todo_state_verify_failed", str(disp_unverified["verification_error"]))
+        self.assertEqual(linear_stub.get_issue_attempts[lin_outage_review_id], 2)
+        self.assertEqual(linear_stub.issues[lin_outage_review_id]["state"]["name"], "In Review")  # type: ignore[index]
+        retained = store.read_active_dispatch()["active"]
+        self.assertIsNotNone(retained)
+        assert retained is not None
+        self.assertEqual(retained.get("linear_issue_id"), lin_outage_review_id)
+
+        # Next poll cycle: Linear API is healthy again; recovery confirms In Review, clears active-dispatch.json,
+        # and does not revert to Todo or re-dispatch the already-implemented issue.
+        rpc_count_before_reconcile = len(rpc_calls)
+        res_reconcile_review = runner.run_cycle(
+            run_sweeps_if_due=False,
+            now_override_ms=self._utc_ms(2026, 4, 1, 11, 0),
+        )
+        self.assertFalse(res_reconcile_review["recovery"]["linear_todo_reverted"])
+        self.assertEqual(res_reconcile_review["targeted_dispatches"], [])
+        self.assertEqual(len(rpc_calls), rpc_count_before_reconcile)
+        self.assertEqual(linear_stub.issues[lin_outage_review_id]["state"]["name"], "In Review")  # type: ignore[index]
+        self.assertIsNone(store.read_active_dispatch()["active"])
+
+        # 3) Persistent get_issue outage after turn left Linear stranded in In Progress:
+        #    Cycle 1 leaves Linear untouched while state is unknown and keeps active-dispatch.json;
+        #    Cycle 2 recovery confirms In Progress, reverts to Todo, increments retry_count, and retries cleanly.
+        lin_outage_stuck = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n_outage_stuck}",
+            title=f"Outage verify reconciles stranded in progress #{n_outage_stuck}",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        lin_outage_stuck_id = str(lin_outage_stuck["id"])
+        linear_stub.fail_get_issue_remaining[lin_outage_stuck_id] = 2
+
+        res_outage_stuck = runner.run_cycle(
+            run_sweeps_if_due=False,
+            now_override_ms=self._utc_ms(2026, 4, 2, 10, 0),
+        )
+        self.assertEqual(len(res_outage_stuck["targeted_dispatches"]), 1)
+        self.assertEqual(res_outage_stuck["targeted_dispatches"][0]["status"], "unverified")
+        self.assertEqual(linear_stub.issues[lin_outage_stuck_id]["state"]["name"], "In Progress")  # type: ignore[index]
+        self.assertIsNotNone(store.read_active_dispatch()["active"])
+
+        # Next poll cycle: recovery confirms In Progress -> reverts to Todo, then re-dispatches and moves to In Review.
+        move_to_in_review_ids.add(lin_outage_stuck_id)
+        res_reconcile_stuck = runner.run_cycle(
+            run_sweeps_if_due=False,
+            now_override_ms=self._utc_ms(2026, 4, 2, 10, 30),
+        )
+        self.assertTrue(res_reconcile_stuck["recovery"]["linear_todo_reverted"])
+        self.assertEqual(len(res_reconcile_stuck["targeted_dispatches"]), 1)
+        self.assertTrue(res_reconcile_stuck["targeted_dispatches"][0]["task_succeeded"])
+        self.assertEqual(linear_stub.issues[lin_outage_stuck_id]["state"]["name"], "In Review")  # type: ignore[index]
+        self.assertIsNone(store.read_active_dispatch()["active"])
+        st_stuck = store.get_thread_state(companion.make_pr_key(repo, n_outage_stuck)) or {}
+        self.assertEqual(st_stuck.get("retry_count"), 0)
+        self.assertFalse(st_stuck.get("in_flight"))
 
 
 class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):

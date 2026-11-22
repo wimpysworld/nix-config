@@ -4029,7 +4029,7 @@ class GithubCompanionRunner:
                     now_override_ms=now_override_ms,
                 )
             raise
-        if dispatch_result.get("watermark_deferred"):
+        if dispatch_result.get("watermark_deferred") and not dispatch_result.get("verification_deferred"):
             self.execution_coordinator.fail_deferred_dispatch(
                 dispatch_result,
                 failure_reason="deferred_post_turn_uncommitted",
@@ -4436,6 +4436,22 @@ class GithubCompanionRunner:
             dispatches.append(res)
         return dispatches
 
+    def _fetch_linear_issue_state(self, linear_id: str) -> tuple[str | None, Exception | None]:
+        """Fetch a Linear issue's lowercased workflow state name with one retry on transient failure."""
+        if self.linear_client is None:
+            return None, None
+        last_exc: Exception | None = None
+        for attempt in range(2):
+            try:
+                refreshed = self.linear_client.get_issue(linear_id)
+                post_state = _as_dict(_as_dict(refreshed).get("state"))
+                return str(post_state.get("name") or "").strip().lower(), None
+            except Exception as exc:
+                last_exc = exc
+                if attempt == 0:
+                    continue
+        return None, last_exc
+
     def _dispatch_linear_todo_implementations(self, active_linear_issues: Iterable[dict], *, slot_id: str, dispatched_targets: set[str], current_ms: int, now_override_ms: int | None) -> list[dict]:
         if self.linear_client is None or self.state_store.agent_name not in SWEEP_AGENT_ORDER:
             return []
@@ -4487,29 +4503,33 @@ class GithubCompanionRunner:
                 defer_watermark_commit=True,
                 now_override_ms=now_override_ms,
             )
+            confirmed_in_progress = False
             if res.get("task_succeeded"):
                 with self._deferred_dispatch_guard(res, now_override_ms=now_override_ms):
-                    try:
-                        refreshed = self.linear_client.get_issue(cand["linear_id"])
-                    except Exception as exc:
-                        sys.stderr.write(f"moltis-github-companion linear-todo-verify warning ({cand['issue_key']} / {cand['linear_id']}): {exc}\n")
+                    post_state_name, verify_exc = self._fetch_linear_issue_state(cand["linear_id"])
+                    if verify_exc is not None or not post_state_name:
+                        detail = str(verify_exc) if verify_exc is not None else "missing workflow state in Linear response"
+                        sys.stderr.write(f"moltis-github-companion linear-todo-verify warning ({cand['issue_key']} / {cand['linear_id']}): {detail}\n")
+                        res.pop("_deferred_active_record", None)
+                        res["status"] = "unverified"
+                        res["verification_deferred"] = True
+                        res["verification_error"] = f"linear_todo_state_verify_failed: {detail}"
+                    elif post_state_name in ("in progress", "in_progress"):
+                        confirmed_in_progress = True
                         self.execution_coordinator.fail_deferred_dispatch(
                             res,
-                            failure_reason=f"linear_todo_state_verify_failed: {exc}",
+                            failure_reason="linear_todo_state_unchanged_in_progress",
                             now_override_ms=now_override_ms,
                         )
                     else:
-                        post_state = _as_dict(_as_dict(refreshed).get("state"))
-                        post_state_name = str(post_state.get("name") or "").strip().lower()
-                        if not post_state_name or post_state_name in ("in progress", "in_progress"):
-                            self.execution_coordinator.fail_deferred_dispatch(
-                                res,
-                                failure_reason="linear_todo_state_unchanged_in_progress",
-                                now_override_ms=now_override_ms,
-                            )
-                        else:
-                            self.execution_coordinator.commit_deferred_dispatch(res, now_override_ms=now_override_ms)
-            if not res.get("task_succeeded"):
+                        self.execution_coordinator.commit_deferred_dispatch(res, now_override_ms=now_override_ms)
+            else:
+                post_state_name, verify_exc = self._fetch_linear_issue_state(cand["linear_id"])
+                if verify_exc is not None:
+                    sys.stderr.write(f"moltis-github-companion linear-todo-verify warning ({cand['issue_key']} / {cand['linear_id']}): {verify_exc}\n")
+                elif post_state_name in ("in progress", "in_progress"):
+                    confirmed_in_progress = True
+            if confirmed_in_progress:
                 try:
                     self.linear_client.update_issue(cand["linear_id"], state="Todo")
                 except Exception as exc:
