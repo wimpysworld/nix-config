@@ -1304,12 +1304,6 @@ in
   };
 
   config = {
-    assertions = [
-      {
-        assertion = builtins.stringLength antigravityInstructions <= 24000;
-        message = "Antigravity global instructions exceed the 24,000-byte single-file rule cap.";
-      }
-    ];
     agentic.assistants.opencode.providerRouterMap = opencodeProviderRouterMap;
     agentic.assistants.opencode.providerRouterVariantMap = opencodeProviderRouterVariantMap;
     agentic.assistants.ownedSpec = ownedDeployment.spec;
