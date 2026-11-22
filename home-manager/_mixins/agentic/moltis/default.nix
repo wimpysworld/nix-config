@@ -978,6 +978,10 @@ let
     communityAutoMergeMaxLines = 150;
     communityAutoMergeMaxFiles = 5;
     communityAutoMergeExcludedRepos = [ "wimpysworld/nix-config" ];
+    linearClientIdPath = config.sops.secrets.MOLTIS_LINEAR_CLIENT_ID.path;
+    linearClientSecretPath = config.sops.secrets.MOLTIS_LINEAR_CLIENT_SECRET.path;
+    linearTokenCacheDir = "${stateDir}/linear-${agentName}";
+    linearTeamKey = "WW";
   };
 
   moltisMatrixCouncilHook = pkgs.writeScript "moltis-matrix-council-hook" ''

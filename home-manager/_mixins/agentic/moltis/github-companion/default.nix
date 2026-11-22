@@ -43,8 +43,22 @@
   communityAutoMergeMaxLines ? 150,
   communityAutoMergeMaxFiles ? 5,
   communityAutoMergeExcludedRepos ? [ "wimpysworld/nix-config" ],
+  linearClientIdPath ? "",
+  linearClientSecretPath ? "",
+  linearTokenCacheDir ? "",
+  linearTeamKey ? "WW",
   ghApiSafe ? null,
 }:
+let
+  companionSrc = lib.fileset.toSource {
+    root = ./..;
+    fileset = lib.fileset.unions [
+      ./companion.py
+      ./linear_sync.py
+      ../linear-token/linear_token.py
+    ];
+  };
+in
 pkgs.writeShellApplication {
   name = "moltis-github-companion";
   runtimeInputs = [
@@ -55,7 +69,9 @@ pkgs.writeShellApplication {
   ++ lib.optional (ghApiSafe != null) ghApiSafe;
   derivationArgs.passthru = {
     script = ./companion.py;
+    linearSyncScript = ./linear_sync.py;
     inherit
+      companionSrc
       agentName
       agentDisplayName
       mainModel
@@ -77,6 +93,10 @@ pkgs.writeShellApplication {
       communityAutoMergeMaxLines
       communityAutoMergeMaxFiles
       communityAutoMergeExcludedRepos
+      linearClientIdPath
+      linearClientSecretPath
+      linearTokenCacheDir
+      linearTeamKey
       ghApiSafe
       ;
   };
@@ -101,6 +121,10 @@ pkgs.writeShellApplication {
     export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_LINES=${lib.escapeShellArg (toString communityAutoMergeMaxLines)}
     export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_FILES=${lib.escapeShellArg (toString communityAutoMergeMaxFiles)}
     export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS=${lib.escapeShellArg (lib.concatStringsSep "," communityAutoMergeExcludedRepos)}
-    exec python3 ${./companion.py} "$@"
+    export MOLTIS_GITHUB_COMPANION_LINEAR_CLIENT_ID_PATH=${lib.escapeShellArg linearClientIdPath}
+    export MOLTIS_GITHUB_COMPANION_LINEAR_CLIENT_SECRET_PATH=${lib.escapeShellArg linearClientSecretPath}
+    export MOLTIS_GITHUB_COMPANION_LINEAR_TOKEN_CACHE_DIR=${lib.escapeShellArg linearTokenCacheDir}
+    export MOLTIS_GITHUB_COMPANION_LINEAR_TEAM_KEY=${lib.escapeShellArg linearTeamKey}
+    exec python3 ${companionSrc}/github-companion/companion.py "$@"
   '';
 }

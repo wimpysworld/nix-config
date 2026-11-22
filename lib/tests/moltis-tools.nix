@@ -123,6 +123,10 @@ let
         telegramAllowedUsersPath = "/synthetic/telegram-allowed-users";
         dataDir = "/synthetic/moltis";
         stateDir = "/synthetic/github-state";
+        linearClientIdPath = "/synthetic/linear-client-id";
+        linearClientSecretPath = "/synthetic/linear-client-secret";
+        linearTokenCacheDir = "/synthetic/linear-cache";
+        linearTeamKey = "WW";
       };
   checkRestartInputs =
     host:
@@ -481,6 +485,17 @@ let
       "export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS=${lib.escapeShellArg "wimpysworld/nix-config"}"
       scripts.githubCompanion;
     assert lib.hasInfix "companion.py" scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_LINEAR_CLIENT_ID_PATH=${lib.escapeShellArg c.sops.secrets.MOLTIS_LINEAR_CLIENT_ID.path}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_LINEAR_CLIENT_SECRET_PATH=${lib.escapeShellArg c.sops.secrets.MOLTIS_LINEAR_CLIENT_SECRET.path}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_LINEAR_TOKEN_CACHE_DIR=${lib.escapeShellArg "${c.xdg.stateHome}/moltis/linear-${agentName}"}"
+      scripts.githubCompanion;
+    assert lib.hasInfix "export MOLTIS_GITHUB_COMPANION_LINEAR_TEAM_KEY=${lib.escapeShellArg "WW"}"
+      scripts.githubCompanion;
     assert !(lib.hasInfix "CLOUDFLARE_API_TOKEN" scripts.inner);
     assert !(lib.hasInfix "export CLOUDFLARE_API_TOKEN" scripts.outer);
     assert !(lib.hasInfix "export LINEAR_API_KEY" scripts.inner);
@@ -787,6 +802,9 @@ pkgs.runCommand "moltis-tools" { } ''
   PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis/linear-token}/test_linear_token.py
   PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis}/matrix-companion/test_companion.py
   PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis}/github-companion/test_companion.py
+  test -f ${githubCompanionWrapper.linearSyncScript}
+  PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 -c 'import sys; sys.path.insert(0, "${githubCompanionWrapper.companionSrc}/github-companion"); import linear_sync; assert linear_sync.load_linear_token_module() is not None'
+  PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis}/github-companion/test_linear_sync.py
   PATH=${
     lib.makeBinPath [
       pkgs.coreutils
