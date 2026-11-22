@@ -7592,6 +7592,277 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
         self.assertEqual(res2["needs_decision_notifications"], [])
         self.assertEqual(len(self.httpd.telegram_requests), 2)
 
+    def test_linear_todo_merge_applies_team_merge_and_gates_done_on_confirmed_merge(self) -> None:
+        repo = "wimpysworld/tailor"
+        linear_url = "https://linear.app/wimpress/issue/WW-77"
+
+        # 1) Direct parser checks for parse_linear_todo_merge_reply
+        self.assertEqual(
+            companion.parse_linear_todo_merge_reply(
+                f"🏁 https://github.com/{repo}/pull/750 - feat: merged lane b",
+                repo=repo,
+                number=750,
+                linear_url=linear_url,
+            )[0],
+            "merged",
+        )
+        self.assertEqual(
+            companion.parse_linear_todo_merge_reply(
+                f"🏁 https://github.com/{repo}/pull/750 - feat: merged lane b\n\n"
+                f"🤲🏻 https://github.com/{repo}/pull/751 - polish: docs",
+                repo=repo,
+                number=750,
+                linear_url=linear_url,
+            )[0],
+            "merged",
+        )
+        self.assertEqual(
+            companion.parse_linear_todo_merge_reply(
+                f"✋🏻 https://github.com/{repo}/pull/750 - blocked by gh-bot-merge policy",
+                repo=repo,
+                number=750,
+                linear_url=linear_url,
+            )[0],
+            "blocked",
+        )
+        self.assertEqual(
+            companion.parse_linear_todo_merge_reply(
+                f"🧑‍⚖️ {linear_url} - {repo}#750: needs maintainer decision",
+                repo=repo,
+                number=750,
+                linear_url=linear_url,
+            )[0],
+            "needs_decision",
+        )
+        for unconfirmed_reply in (
+            "",
+            "HEARTBEAT_OK",
+            "HEARTBEAT_ERROR: gh-bot-merge exited 64",
+            "Merged without emoji",
+            f"🏁 https://github.com/{repo}/pull/999 - wrong PR",
+            f"✋🏻 https://github.com/{repo}/pull/999 - wrong PR blocked",
+            f"🏁 https://github.com/{repo}/pull/750 - merged\n\n✋🏻 https://github.com/{repo}/pull/750 - blocked",
+            f"🏁 https://github.com/{repo}/pull/750 - merged\n\n🧑‍⚖️ {linear_url} - needs decision",
+        ):
+            outcome, _ = companion.parse_linear_todo_merge_reply(
+                unconfirmed_reply,
+                repo=repo,
+                number=750,
+                linear_url=linear_url,
+            )
+            self.assertEqual(outcome, "unconfirmed", f"Expected unconfirmed for {unconfirmed_reply!r}")
+
+        # 2) GhApiSafeClient.add_pull_request_label creates missing team:merge label without --force and retries
+        label_cmds: list[list[str]] = []
+
+        def fake_missing_label_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            label_cmds.append(list(cmd))
+            if len(label_cmds) == 1:
+                return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="could not add label: 'team:merge' not found")
+            return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+        gh_lbl_client = companion.GhApiSafeClient(runner=fake_missing_label_runner)
+        gh_lbl_client.add_pull_request_label(repo, 750, "team:merge")
+        self.assertEqual(len(label_cmds), 3)
+        self.assertEqual(label_cmds[0], ["gh", "pr", "edit", f"https://github.com/{repo}/pull/750", "--add-label", "team:merge"])
+        self.assertEqual(label_cmds[1][:6], ["gh", "label", "create", "team:merge", "--repo", repo])
+        self.assertNotIn("--force", label_cmds[1])
+        self.assertEqual(label_cmds[2], label_cmds[0])
+        with self.assertRaises(ValueError):
+            gh_lbl_client.add_pull_request_label("untrusted/repo", 750, "team:merge")
+        with self.assertRaises(ValueError):
+            gh_lbl_client.add_pull_request_label(repo, 750, "arbitrary:label")
+
+        # 3) End-to-end linear_todo_merge pipeline for Lane B PRs lacking team:merge on GitHub
+        pr_merged, pr_blocked, pr_unconfirmed, pr_label_fail, pr_dnm = self._owned_numbers(
+            repo, "skrye", 5, kind="pr", start=760
+        )
+        open_nodes: list[dict[str, object]] = [
+            self._graphql_pr_node(
+                repo,
+                pr_merged,
+                title="feat: lane b merged cleanly",
+                head_sha="sha_m_v1",
+                ci_state="SUCCESS",
+                additions=200,
+                deletions=10,
+                file_paths=["src/merged.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_blocked,
+                title="feat: lane b blocked by agent",
+                head_sha="sha_b_v1",
+                ci_state="SUCCESS",
+                additions=200,
+                deletions=10,
+                file_paths=["src/blocked.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_unconfirmed,
+                title="feat: lane b silent heartbeat ok",
+                head_sha="sha_u_v1",
+                ci_state="SUCCESS",
+                additions=200,
+                deletions=10,
+                file_paths=["src/unconfirmed.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_label_fail,
+                title="feat: lane b label add fails",
+                head_sha="sha_lf_v1",
+                ci_state="SUCCESS",
+                additions=200,
+                deletions=10,
+                file_paths=["src/labelfail.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_dnm,
+                title="feat: lane b with do-not-merge",
+                head_sha="sha_dnm_v1",
+                ci_state="SUCCESS",
+                additions=200,
+                deletions=10,
+                file_paths=["src/dnm.py"],
+                labels=["team:do-not-merge"],
+            ),
+        ]
+
+        gh_label_edits: list[list[str]] = []
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            if cmd and cmd[0] == "gh" and len(cmd) >= 4 and cmd[1] == "pr" and cmd[2] == "edit":
+                gh_label_edits.append(list(cmd))
+                if cmd[3] == f"https://github.com/{repo}/pull/{pr_label_fail}" and "--add-label" in cmd:
+                    return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="HTTP 403 forbidden")
+                return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(open_nodes), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
+
+        linear_stub = StubLinearSyncClient()
+        seeded: dict[int, dict[str, object]] = {}
+        for pr_num, title in (
+            (pr_merged, "feat: lane b merged cleanly"),
+            (pr_blocked, "feat: lane b blocked by agent"),
+            (pr_unconfirmed, "feat: lane b silent heartbeat ok"),
+            (pr_label_fail, "feat: lane b label add fails"),
+            (pr_dnm, "feat: lane b with do-not-merge"),
+        ):
+            seeded[pr_num] = linear_stub.seed_issue(
+                github_url=f"https://github.com/{repo}/pull/{pr_num}",
+                title=title,
+                repo=repo,
+                item_kind="PR",
+                state="Todo",
+                extra_labels=("ready-to-merge",),
+            )
+
+        def skrye_reply(meta: dict[str, str], _params: dict) -> str:
+            self.assertEqual(meta.get("dispatch_kind"), "team:merge")
+            self.assertEqual(meta.get("trigger_reason"), "linear_todo_merge")
+            num = int(meta.get("number", "0"))
+            gh_url = meta.get("github_url", "")
+            # Confirm companion applied team:merge before dispatching the turn
+            self.assertIn(
+                ["gh", "pr", "edit", gh_url, "--add-label", "team:merge"],
+                gh_label_edits,
+            )
+            if num == pr_merged:
+                return f"🏁 {gh_url} - feat: lane b merged cleanly"
+            if num == pr_blocked:
+                return f"✋🏻 {gh_url} - feat: lane b blocked by agent"
+            if num == pr_unconfirmed:
+                return "HEARTBEAT_OK"
+            return "HEARTBEAT_OK"
+
+        store, runner, rpc_calls = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=skrye_reply,
+        )
+        for pr_num, sha in (
+            (pr_merged, "sha_m_v1"),
+            (pr_blocked, "sha_b_v1"),
+            (pr_unconfirmed, "sha_u_v1"),
+            (pr_label_fail, "sha_lf_v1"),
+            (pr_dnm, "sha_dnm_v1"),
+        ):
+            store.update_thread_state(
+                companion.make_pr_key(repo, pr_num),
+                {
+                    "repo": repo,
+                    "number": pr_num,
+                    "subject_type": "PullRequest",
+                    "handled_updated_at": "2026-04-01T09:00:00Z",
+                    "handled_head_sha": sha,
+                    "triaged_head_sha": sha,
+                    "is_community": True,
+                },
+                now_override_ms=self.clock(),
+            )
+
+        res = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 12, 0))
+        actions_by_num = {int(a["number"]): a for a in res["linear_pr_actions"]}
+
+        # Only pr_merged, pr_blocked, and pr_unconfirmed reached RPC dispatch; pr_label_fail and pr_dnm stopped before dispatch
+        dispatched_nums = {int(c["meta"]["number"]) for c in rpc_calls}  # type: ignore[index]
+        self.assertEqual(dispatched_nums, {pr_merged, pr_blocked, pr_unconfirmed})
+
+        # pr_merged: team:merge applied, confirmed 🏁 sets Linear Done
+        self.assertEqual(actions_by_num[pr_merged]["action"], "linear_todo_merged")
+        self.assertEqual(linear_stub.issues[str(seeded[pr_merged]["id"])]["state"]["name"], "Done")  # type: ignore[index]
+        self.assertNotIn(
+            ["gh", "pr", "edit", f"https://github.com/{repo}/pull/{pr_merged}", "--remove-label", "team:merge"],
+            gh_label_edits,
+        )
+
+        # pr_blocked: ✋🏻 NEVER sets Done; escalates Linear to Backlog + needs-decision and removes team:merge
+        self.assertEqual(actions_by_num[pr_blocked]["action"], "linear_todo_merge_blocked")
+        self.assertEqual(linear_stub.issues[str(seeded[pr_blocked]["id"])]["state"]["name"], "Backlog")  # type: ignore[index]
+        blocked_labels = companion.extract_linear_issue_labels(linear_stub.issues[str(seeded[pr_blocked]["id"])])
+        self.assertIn("needs-decision", blocked_labels)
+        self.assertNotIn("ready-to-merge", blocked_labels)
+        self.assertIn(
+            ["gh", "pr", "edit", f"https://github.com/{repo}/pull/{pr_blocked}", "--remove-label", "team:merge"],
+            gh_label_edits,
+        )
+
+        # pr_unconfirmed: HEARTBEAT_OK fails closed, increments retry_count, keeps Linear in Todo (NOT Done), and removes team:merge
+        self.assertEqual(actions_by_num[pr_unconfirmed]["action"], "linear_todo_merge_failed")
+        self.assertEqual(linear_stub.issues[str(seeded[pr_unconfirmed]["id"])]["state"]["name"], "Todo")  # type: ignore[index]
+        self.assertEqual(
+            (store.get_thread_state(companion.make_pr_key(repo, pr_unconfirmed)) or {}).get("retry_count"),
+            1,
+        )
+        self.assertIn(
+            ["gh", "pr", "edit", f"https://github.com/{repo}/pull/{pr_unconfirmed}", "--remove-label", "team:merge"],
+            gh_label_edits,
+        )
+
+        # pr_label_fail: failed label add aborts before dispatch, increments retry_count, keeps Linear in Todo
+        self.assertEqual(actions_by_num[pr_label_fail]["action"], "linear_todo_merge_label_failed")
+        self.assertEqual(linear_stub.issues[str(seeded[pr_label_fail]["id"])]["state"]["name"], "Todo")  # type: ignore[index]
+        self.assertEqual(
+            (store.get_thread_state(companion.make_pr_key(repo, pr_label_fail)) or {}).get("retry_count"),
+            1,
+        )
+
+        # pr_dnm: team:do-not-merge skips team:merge label and dispatch, escalates to Backlog + needs-decision
+        self.assertEqual(actions_by_num[pr_dnm]["action"], "linear_todo_merge_blocked_do_not_merge")
+        self.assertEqual(linear_stub.issues[str(seeded[pr_dnm]["id"])]["state"]["name"], "Backlog")  # type: ignore[index]
+        self.assertNotIn(
+            ["gh", "pr", "edit", f"https://github.com/{repo}/pull/{pr_dnm}", "--add-label", "team:merge"],
+            gh_label_edits,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

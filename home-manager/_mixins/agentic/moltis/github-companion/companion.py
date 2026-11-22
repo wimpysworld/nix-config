@@ -731,14 +731,14 @@ def _extract_linear_issue_key(url: str | None) -> str:
     return ""
 
 
-def parse_lane_a_merge_reply(
+def _parse_merge_reply(
     reply_text: str | None,
     *,
     repo: str,
     number: int,
     linear_url: str | None = None,
+    allow_blocked: bool = False,
 ) -> tuple[str, str]:
-    """Classify a `community_pr_lane_a_merge` reply as `merged`, `needs_decision`, or `unconfirmed`."""
     clean = normalize_terminal_reply_text(reply_text)
     if not clean or is_heartbeat_ok_reply(clean):
         return "unconfirmed", "empty_or_heartbeat_ok"
@@ -748,7 +748,22 @@ def parse_lane_a_merge_reply(
     expected_linear_key = _extract_linear_issue_key(linear_url)
     merged_line = ""
     decision_line = ""
+    blocked_line = ""
     has_blocked_entry = False
+
+    def _matches_pr_or_linear(url: str) -> bool:
+        parsed_gh = parse_github_item_url(url)
+        if parsed_gh is not None:
+            return bool(
+                expected_repo
+                and expected_number > 0
+                and parsed_gh[0] == expected_repo
+                and parsed_gh[1] == "PR"
+                and parsed_gh[2] == expected_number
+            )
+        entry_linear_key = _extract_linear_issue_key(url)
+        return bool(entry_linear_key and (not expected_linear_key or entry_linear_key == expected_linear_key))
+
     for match in _STEP5_ENTRY_RE.finditer(clean):
         if _offset_in_spans(match.start(), code_spans):
             continue
@@ -757,22 +772,12 @@ def parse_lane_a_merge_reply(
         title = match.group("title").strip()
         entry_line = f"{emoji} {url} - {title}"
         if emoji == "🧑‍⚖️":
-            parsed_gh = parse_github_item_url(url)
-            if parsed_gh is not None:
-                if (
-                    expected_repo
-                    and expected_number > 0
-                    and parsed_gh[0] == expected_repo
-                    and parsed_gh[1] == "PR"
-                    and parsed_gh[2] == expected_number
-                ):
-                    decision_line = decision_line or entry_line
-            else:
-                entry_linear_key = _extract_linear_issue_key(url)
-                if entry_linear_key and (not expected_linear_key or entry_linear_key == expected_linear_key):
-                    decision_line = decision_line or entry_line
+            if _matches_pr_or_linear(url):
+                decision_line = decision_line or entry_line
         elif emoji == "✋🏻":
             has_blocked_entry = True
+            if allow_blocked and _matches_pr_or_linear(url):
+                blocked_line = blocked_line or entry_line
         elif emoji == "🏁":
             parsed_gh = parse_github_item_url(url)
             if (
@@ -784,15 +789,42 @@ def parse_lane_a_merge_reply(
                 and parsed_gh[2] == expected_number
             ):
                 merged_line = merged_line or entry_line
+
     if decision_line and merged_line:
         return "unconfirmed", "conflicting_merge_and_decision_entries"
-    if decision_line:
+    if allow_blocked and blocked_line and (merged_line or decision_line):
+        return "unconfirmed", "conflicting_merge_and_blocked_entries"
+    if decision_line and not (allow_blocked and has_blocked_entry):
         return "needs_decision", decision_line
+    if allow_blocked and blocked_line:
+        return "blocked", blocked_line
     if merged_line and not has_blocked_entry:
         return "merged", merged_line
     if has_blocked_entry:
         return "unconfirmed", "blocked_without_merge"
     return "unconfirmed", "missing_merge_confirmation"
+
+
+def parse_lane_a_merge_reply(
+    reply_text: str | None,
+    *,
+    repo: str,
+    number: int,
+    linear_url: str | None = None,
+) -> tuple[str, str]:
+    """Classify a `community_pr_lane_a_merge` reply as `merged`, `needs_decision`, or `unconfirmed`."""
+    return _parse_merge_reply(reply_text, repo=repo, number=number, linear_url=linear_url, allow_blocked=False)
+
+
+def parse_linear_todo_merge_reply(
+    reply_text: str | None,
+    *,
+    repo: str,
+    number: int,
+    linear_url: str | None = None,
+) -> tuple[str, str]:
+    """Classify a `linear_todo_merge` reply as `merged`, `blocked`, `needs_decision`, or `unconfirmed`."""
+    return _parse_merge_reply(reply_text, repo=repo, number=number, linear_url=linear_url, allow_blocked=True)
 
 
 def _extract_polish_from_comment_body(comment_body: str) -> str:
@@ -3037,11 +3069,12 @@ def build_open_issues_graphql_query(owners: Iterable[str] = POLL_ISSUE_OWNERS) -
 
 
 class GhApiSafeClient:
-    """Subprocess wrapper around `gh-api-safe` and `gh-notification-dismiss`."""
+    """Subprocess wrapper around `gh-api-safe`, `gh-notification-dismiss`, and scoped `gh` PR label edits."""
 
-    def __init__(self, gh_api_safe_bin: str = "gh-api-safe", gh_notification_dismiss_bin: str = "gh-notification-dismiss", runner: Callable[..., subprocess.CompletedProcess] | None = None, timeout: float = 45.0):
+    def __init__(self, gh_api_safe_bin: str = "gh-api-safe", gh_notification_dismiss_bin: str = "gh-notification-dismiss", gh_bin: str = "gh", runner: Callable[..., subprocess.CompletedProcess] | None = None, timeout: float = 45.0):
         self.gh_api_safe_bin = gh_api_safe_bin
         self.gh_notification_dismiss_bin = gh_notification_dismiss_bin
+        self.gh_bin = gh_bin
         self.runner = runner or subprocess.run
         self.timeout = timeout
 
@@ -3132,6 +3165,64 @@ class GhApiSafeClient:
     def fetch_issue_events(self, repo: str, number: int, timeout: float | None = None) -> list[dict]:
         """Fetch issue or pull request timeline events for label-actor verification."""
         return self.fetch_json_items(f"repos/{repo}/issues/{number}/events?per_page=100", paginate=True, timeout=timeout)
+
+    @staticmethod
+    def _validate_pr_label_target(repo: str, number: int, label: str) -> tuple[str, str, str]:
+        clean_repo = (repo or "").strip()
+        if (
+            not clean_repo
+            or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*", clean_repo)
+            or any(part in (".", "..") for part in clean_repo.split("/"))
+            or not is_allowed_notification_repo(clean_repo)
+        ):
+            raise ValueError(f"Unsupported repository for pull request label edit: {repo!r}")
+        clean_num = _safe_int(number, 0)
+        if clean_num <= 0:
+            raise ValueError(f"Invalid pull request number for label edit: {number!r}")
+        clean_label = (label or "").strip()
+        if clean_label not in TEAM_LABELS:
+            raise ValueError(f"Unsupported pull request team label: {label!r}")
+        return clean_repo, f"https://github.com/{clean_repo}/pull/{clean_num}", clean_label
+
+    def add_pull_request_label(self, repo: str, number: int, label: str, *, timeout: float | None = None) -> subprocess.CompletedProcess:
+        """Apply an allowlisted `team:` label to a pull request via `gh pr edit --add-label`."""
+        clean_repo, pr_url, clean_label = self._validate_pr_label_target(repo, number, label)
+        cmd = [self.gh_bin, "pr", "edit", pr_url, "--add-label", clean_label]
+        proc = self.runner(cmd, capture_output=True, text=True, timeout=timeout or self.timeout, check=False)
+        if proc.returncode != 0:
+            err_text = (proc.stderr or proc.stdout or "").strip()
+            if "not found" in err_text.lower():
+                create_cmd = [
+                    self.gh_bin,
+                    "label",
+                    "create",
+                    clean_label,
+                    "--repo",
+                    clean_repo,
+                    "--color",
+                    "0E8A16",
+                    "--description",
+                    "Authorise bot merge for verified pull request",
+                ]
+                create_proc = self.runner(create_cmd, capture_output=True, text=True, timeout=timeout or self.timeout, check=False)
+                create_err = (create_proc.stderr or create_proc.stdout or "").strip()
+                if create_proc.returncode == 0 or "already exists" in create_err.lower():
+                    proc = self.runner(cmd, capture_output=True, text=True, timeout=timeout or self.timeout, check=False)
+                    if proc.returncode == 0:
+                        return proc
+                    err_text = (proc.stderr or proc.stdout or "").strip()
+            raise RuntimeError(f"gh pr edit {pr_url} --add-label {clean_label} exited {proc.returncode}: {err_text}")
+        return proc
+
+    def remove_pull_request_label(self, repo: str, number: int, label: str, *, timeout: float | None = None) -> subprocess.CompletedProcess:
+        """Remove an allowlisted `team:` label from a pull request via `gh pr edit --remove-label`."""
+        _, pr_url, clean_label = self._validate_pr_label_target(repo, number, label)
+        cmd = [self.gh_bin, "pr", "edit", pr_url, "--remove-label", clean_label]
+        proc = self.runner(cmd, capture_output=True, text=True, timeout=timeout or self.timeout, check=False)
+        if proc.returncode != 0:
+            err_text = (proc.stderr or proc.stdout or "").strip()
+            raise RuntimeError(f"gh pr edit {pr_url} --remove-label {clean_label} exited {proc.returncode}: {err_text}")
+        return proc
 
 
 class TrustFilterAndSnapshotBuilder:
@@ -3646,6 +3737,21 @@ class LocalExecutionCoordinator:
                 if merge_outcome == "unconfirmed":
                     task_succeeded = False
                     failure_reason = f"lane_a_merge_unconfirmed ({merge_detail})"
+            elif (
+                task_succeeded
+                and active_record.get("kind") == "team:merge"
+                and active_record.get("trigger_reason") == "linear_todo_merge"
+                and not bool(active_record.get("head_sha_changed"))
+            ):
+                merge_outcome, merge_detail = parse_linear_todo_merge_reply(
+                    reply_text,
+                    repo=str(active_record.get("repo") or ""),
+                    number=_safe_int(active_record.get("number"), 0),
+                    linear_url=str(active_record.get("linear_issue_url") or "") or None,
+                )
+                if merge_outcome == "unconfirmed":
+                    task_succeeded = False
+                    failure_reason = f"linear_todo_merge_unconfirmed ({merge_detail})"
             if task_succeeded:
                 if active_record.get("kind") not in SILENT_TELEGRAM_DISPATCH_KINDS:
                     tg_ok, tg_err = self._send_telegram_safe(reply_text)
@@ -5084,6 +5190,67 @@ class GithubCompanionRunner:
                 triaged_sha = str(pr_entry.get("triaged_head_sha") or "").strip() or None
                 if "ready-to-merge" in lin_labels:
                     sha_changed = not triaged_sha or not head_sha or triaged_sha != head_sha
+                    if has_do_not_merge_label(pr_labels) and not sha_changed:
+                        dispatched_targets.add(pr_key)
+                        processed_pr_keys.add(pr_key)
+                        with contextlib.suppress(Exception):
+                            self.linear_client.update_issue(
+                                linear_id,
+                                state="Backlog",
+                                add_labels=("needs-decision",),
+                                remove_labels=("ready-to-merge",),
+                            )
+                        ping = self._send_needs_decision_ping(
+                            pr_key=pr_key,
+                            linear_url=linear_url or "",
+                            repo=repo,
+                            number=number,
+                            title=title,
+                            head_sha=head_sha,
+                            current_ms=current_ms,
+                        )
+                        if ping is not None:
+                            notifications.append(ping)
+                        linear_pr_actions.append({
+                            "action": "linear_todo_merge_blocked_do_not_merge",
+                            "key": pr_key,
+                            "repo": repo,
+                            "number": number,
+                            "head_sha": head_sha,
+                            "head_sha_changed": False,
+                            "linear_issue_id": linear_id,
+                            "linear_issue_identifier": linear_identifier,
+                            "linear_issue_url": linear_url,
+                            "needs_decision_notification": ping,
+                        })
+                        continue
+                    applied_team_merge = False
+                    if not sha_changed and not any(lbl == "team:merge" for lbl in pr_labels):
+                        try:
+                            self.gh_client.add_pull_request_label(repo, number, "team:merge")
+                            applied_team_merge = True
+                        except Exception as exc:
+                            sys.stderr.write(f"moltis-github-companion linear-todo-merge-label warning ({pr_key} / {linear_id}): {exc}\n")
+                            self.state_store.fail_thread_review(
+                                pr_key,
+                                failure_reason=f"team_merge_label_failed: {exc}",
+                                now_override_ms=current_ms,
+                            )
+                            dispatched_targets.add(pr_key)
+                            processed_pr_keys.add(pr_key)
+                            linear_pr_actions.append({
+                                "action": "linear_todo_merge_label_failed",
+                                "key": pr_key,
+                                "repo": repo,
+                                "number": number,
+                                "head_sha": head_sha,
+                                "head_sha_changed": False,
+                                "linear_issue_id": linear_id,
+                                "linear_issue_identifier": linear_identifier,
+                                "linear_issue_url": linear_url,
+                                "needs_decision_notification": None,
+                            })
+                            continue
                     dispatched_targets.add(pr_key)
                     processed_pr_keys.add(pr_key)
                     merge_res = self.execution_coordinator.execute_dispatch(
@@ -5109,6 +5276,7 @@ class GithubCompanionRunner:
                     )
                     dispatches.append(merge_res)
                     ping = None
+                    action = "linear_todo_merge_blocked_sha_changed" if sha_changed else "linear_todo_merge_failed"
                     if merge_res.get("task_succeeded"):
                         if sha_changed:
                             with contextlib.suppress(Exception):
@@ -5130,16 +5298,75 @@ class GithubCompanionRunner:
                             if ping is not None:
                                 notifications.append(ping)
                         else:
-                            try:
-                                self.linear_client.update_issue(linear_id, state="Done")
-                            except Exception as exc:
-                                sys.stderr.write(f"moltis-github-companion linear-todo-merge-done warning ({pr_key} / {linear_id}): {exc}\n")
+                            merge_outcome, merge_detail = parse_linear_todo_merge_reply(
+                                str(merge_res.get("reply_text") or ""),
+                                repo=repo,
+                                number=number,
+                                linear_url=linear_url,
+                            )
+                            if merge_outcome == "merged":
+                                action = "linear_todo_merged"
+                                try:
+                                    self.linear_client.update_issue(linear_id, state="Done")
+                                except Exception as exc:
+                                    sys.stderr.write(f"moltis-github-companion linear-todo-merge-done warning ({pr_key} / {linear_id}): {exc}\n")
+                            elif merge_outcome in ("blocked", "needs_decision"):
+                                action = "linear_todo_merge_blocked" if merge_outcome == "blocked" else "linear_todo_merge_needs_decision"
+                                if applied_team_merge:
+                                    with contextlib.suppress(Exception):
+                                        self.gh_client.remove_pull_request_label(repo, number, "team:merge")
+                                with contextlib.suppress(Exception):
+                                    self.linear_client.update_issue(
+                                        linear_id,
+                                        state="Backlog",
+                                        add_labels=("needs-decision",),
+                                        remove_labels=("ready-to-merge",),
+                                    )
+                                if merge_outcome == "needs_decision" and merge_res.get("telegram_forwarded"):
+                                    clean_linear_url = str(linear_url or pr_entry.get("linear_issue_url") or "").strip()
+                                    self.state_store.update_thread_state(
+                                        pr_key,
+                                        {
+                                            "repo": repo,
+                                            "number": number,
+                                            "title": title,
+                                            **({"linear_issue_url": clean_linear_url} if clean_linear_url else {}),
+                                            "decision_notified_sha": head_sha,
+                                        },
+                                        now_override_ms=current_ms,
+                                    )
+                                    ping = {
+                                        "key": pr_key,
+                                        "repo": repo,
+                                        "number": number,
+                                        "head_sha": head_sha,
+                                        "linear_url": clean_linear_url,
+                                        "title": title,
+                                        "message": merge_detail,
+                                        "sent": True,
+                                        "error": None,
+                                    }
+                                    notifications.append(ping)
+                                else:
+                                    ping = self._send_needs_decision_ping(
+                                        pr_key=pr_key,
+                                        linear_url=linear_url or "",
+                                        repo=repo,
+                                        number=number,
+                                        title=title,
+                                        head_sha=head_sha,
+                                        current_ms=current_ms,
+                                    )
+                                    if ping is not None:
+                                        notifications.append(ping)
+                            elif applied_team_merge:
+                                with contextlib.suppress(Exception):
+                                    self.gh_client.remove_pull_request_label(repo, number, "team:merge")
+                    elif applied_team_merge:
+                        with contextlib.suppress(Exception):
+                            self.gh_client.remove_pull_request_label(repo, number, "team:merge")
                     linear_pr_actions.append({
-                        "action": (
-                            "linear_todo_merge_blocked_sha_changed"
-                            if sha_changed
-                            else ("linear_todo_merged" if merge_res.get("task_succeeded") else "linear_todo_merge_failed")
-                        ),
+                        "action": action,
                         "key": pr_key,
                         "repo": repo,
                         "number": number,
