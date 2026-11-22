@@ -8054,6 +8054,196 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
         self.assertEqual(res3["needs_decision_notifications"], [])
         self.assertEqual(len(self.httpd.telegram_requests), 1)
 
+    def test_lane_a_existing_backlog_issue_transitions_to_in_review_when_ci_turns_green_for_traya(self) -> None:
+        repo = "wimpysworld/tailor"
+        pr_actionable_existing, pr_same_sha_green, pr_failed_verdict = self._owned_numbers(
+            repo, "skrye", 3, kind="pr", start=860
+        )
+
+        # pr_actionable_existing: approved PR whose Linear ticket already sits in Backlog with needs-decision + ready-to-merge;
+        #   re-enters via actionable_prs (ci_green_after_approval) when CI turns SUCCESS.
+        # pr_same_sha_green: unapproved community PR that starts with ci_state=FAILURE (lands in Backlog + needs-decision via Lane B),
+        #   then CI turns SUCCESS on the SAME head_sha.
+        # pr_failed_verdict: PR already escalated to Backlog with a FAIL blind-review verdict on sha_fail_v1;
+        #   even if handled_ci_state was FAILURE and CI is now SUCCESS, it must NOT bounce back to In Review.
+        open_nodes: list[dict[str, object]] = [
+            self._graphql_pr_node(
+                repo,
+                pr_actionable_existing,
+                title="fix: pre-existing backlog ticket turning green",
+                head_sha="sha_act_v1",
+                ci_state="SUCCESS",
+                review_decision="APPROVED",
+                unresolved_threads=0,
+                additions=10,
+                deletions=3,
+                file_paths=["src/act.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_same_sha_green,
+                title="fix: flaky CI community PR",
+                head_sha="sha_flaky_v1",
+                ci_state="FAILURE",
+                unresolved_threads=0,
+                additions=14,
+                deletions=2,
+                file_paths=["src/flaky.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_failed_verdict,
+                title="fix: already failed blind review",
+                head_sha="sha_fail_v1",
+                ci_state="SUCCESS",
+                unresolved_threads=0,
+                additions=8,
+                deletions=2,
+                file_paths=["src/fail.py"],
+            ),
+        ]
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(open_nodes), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
+
+        linear_stub = StubLinearSyncClient()
+        lin_act = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_actionable_existing}",
+            title="fix: pre-existing backlog ticket turning green",
+            repo=repo,
+            item_kind="PR",
+            state="Backlog",
+            extra_labels=("needs-decision", "ready-to-merge"),
+        )
+        lin_fail = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_failed_verdict}",
+            title="fix: already failed blind review",
+            repo=repo,
+            item_kind="PR",
+            state="Backlog",
+            extra_labels=("needs-decision",),
+        )
+        linear_stub.post_blind_review_verdict(
+            str(lin_fail["id"]),
+            agent="skrye",
+            model_family="gemini",
+            head_sha="sha_fail_v1",
+            verdict="FAIL",
+            summary="FINDINGS: Missing validation.",
+        )
+
+        def skrye_reply(meta: dict[str, str], _params: dict) -> str:
+            kind = meta.get("dispatch_kind", "")
+            if kind == "community_pr_blind_review":
+                return "BLIND_REVIEW_VERDICT: PASS\nFINDINGS: Clean change.\nPOLISH: none"
+            if kind == "community_pr_lane_b_review":
+                return "LANE_B_VERDICT: needs-decision\nSUMMARY: CI currently failing."
+            return "HEARTBEAT_OK"
+
+        def traya_reply(meta: dict[str, str], _params: dict) -> str:
+            self.assertEqual(meta.get("dispatch_kind"), "community_pr_blind_review")
+            return "BLIND_REVIEW_VERDICT: PASS\nFINDINGS: Verified independently.\nPOLISH: none"
+
+        skrye_store, skrye_runner, skrye_rpc = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=skrye_reply,
+        )
+        _, traya_runner, traya_rpc = self._build_pipeline_runner(
+            agent_name="traya",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=traya_reply,
+        )
+
+        t0 = self._utc_ms(2026, 4, 1, 10, 0)
+        # Seed prior state for pr_actionable_existing (was FAILURE on sha_act_v1 -> now SUCCESS triggers ci_green_after_approval)
+        # and pr_failed_verdict (already failed blind review on sha_fail_v1 with handled_ci_state=FAILURE).
+        skrye_store.update_thread_state(
+            companion.make_pr_key(repo, pr_actionable_existing),
+            {
+                "repo": repo,
+                "number": pr_actionable_existing,
+                "subject_type": "PullRequest",
+                "handled_updated_at": "2026-04-01T09:00:00Z",
+                "handled_head_sha": "sha_act_v1",
+                "triaged_head_sha": "sha_act_v1",
+                "handled_ci_state": "FAILURE",
+                "is_community": True,
+            },
+            now_override_ms=t0 - 60_000,
+        )
+        skrye_store.update_thread_state(
+            companion.make_pr_key(repo, pr_failed_verdict),
+            {
+                "repo": repo,
+                "number": pr_failed_verdict,
+                "subject_type": "PullRequest",
+                "handled_updated_at": "2026-04-01T09:00:00Z",
+                "handled_head_sha": "sha_fail_v1",
+                "triaged_head_sha": "sha_fail_v1",
+                "handled_ci_state": "FAILURE",
+                "is_community": True,
+            },
+            now_override_ms=t0 - 60_000,
+        )
+
+        # Cycle 1 (Skrye):
+        # - pr_actionable_existing enters via actionable_prs (ci_green_after_approval), transitions Backlog -> In Review
+        #   and strips needs-decision + ready-to-merge, then runs Gemini blind review.
+        # - pr_same_sha_green has CI=FAILURE -> enters Lane B -> lands in Backlog + needs-decision.
+        # - pr_failed_verdict stays in Backlog + needs-decision (existing FAIL verdict prevents bounce).
+        skrye_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0)
+
+        self.assertEqual(linear_stub.issues[str(lin_act["id"])]["state"]["name"], "In Review")  # type: ignore[index]
+        act_labels = companion.extract_linear_issue_labels(linear_stub.issues[str(lin_act["id"])])
+        self.assertNotIn("needs-decision", act_labels)
+        self.assertNotIn("ready-to-merge", act_labels)
+
+        flaky_id = str((skrye_store.get_thread_state(companion.make_pr_key(repo, pr_same_sha_green)) or {}).get("linear_issue_id") or "")
+        self.assertTrue(flaky_id)
+        self.assertEqual(linear_stub.issues[flaky_id]["state"]["name"], "Backlog")  # type: ignore[index]
+        self.assertIn("needs-decision", companion.extract_linear_issue_labels(linear_stub.issues[flaky_id]))
+
+        self.assertEqual(linear_stub.issues[str(lin_fail["id"])]["state"]["name"], "Backlog")  # type: ignore[index]
+        self.assertIn("needs-decision", companion.extract_linear_issue_labels(linear_stub.issues[str(lin_fail["id"])]))
+
+        # Cycle 2 (Skrye, next 30-min slot): flaky CI on pr_same_sha_green turns SUCCESS on the SAME head_sha ->
+        # Backlog issue transitions to In Review without needs-decision/ready-to-merge and runs Gemini blind review.
+        open_nodes[1]["statusCheckRollup"] = {"state": "SUCCESS", "contexts": {"nodes": []}}
+        t1 = self._utc_ms(2026, 4, 1, 10, 30)
+        skrye_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t1)
+
+        self.assertEqual(linear_stub.issues[flaky_id]["state"]["name"], "In Review")  # type: ignore[index]
+        flaky_labels = companion.extract_linear_issue_labels(linear_stub.issues[flaky_id])
+        self.assertNotIn("needs-decision", flaky_labels)
+        self.assertNotIn("ready-to-merge", flaky_labels)
+        flaky_verdicts_after_skrye = companion.linear_sync.parse_blind_review_verdicts(
+            linear_stub.list_issue_comments(flaky_id), head_sha="sha_flaky_v1"
+        )
+        self.assertEqual([(v["agent"], v["verdict"]) for v in flaky_verdicts_after_skrye], [("skrye", "pass")])
+
+        # Cycle 3 (Traya): picks up BOTH transitioned In Review issues and posts GPT blind review verdicts.
+        t_traya = self._utc_ms(2026, 4, 1, 10, 40)
+        res_traya = traya_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t_traya)
+        traya_numbers = {int(c["meta"]["number"]) for c in traya_rpc}  # type: ignore[index]
+        self.assertEqual(traya_numbers, {pr_actionable_existing, pr_same_sha_green})
+        self.assertEqual(len(res_traya["traya_blind_reviews"]), 2)
+        for issue_id, expected_sha in ((str(lin_act["id"]), "sha_act_v1"), (flaky_id, "sha_flaky_v1")):
+            verdicts = companion.linear_sync.parse_blind_review_verdicts(
+                linear_stub.list_issue_comments(issue_id), head_sha=expected_sha
+            )
+            self.assertEqual(
+                {(v["agent"], v["model_family"], v["verdict"]) for v in verdicts},
+                {("skrye", "gemini", "pass"), ("traya", "gpt", "pass")},
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

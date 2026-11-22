@@ -5087,6 +5087,24 @@ class GithubCompanionRunner:
 
             thread_id = str(pr_item.get("thread_id") or pr_entry.get("thread_id") or "").strip() or None
             if is_lane_a:
+                issue_state_name = str(_as_dict(linear_issue.get("state")).get("name") or "").strip().lower()
+                issue_labels = extract_linear_issue_labels(linear_issue)
+                if (
+                    issue_state_name != "in review"
+                    or "needs-decision" in issue_labels
+                    or "ready-to-merge" in issue_labels
+                ):
+                    try:
+                        self.linear_client.update_issue(
+                            linear_id,
+                            state="In Review",
+                            remove_labels=("needs-decision", "ready-to-merge"),
+                        )
+                    except Exception as exc:
+                        sys.stderr.write(
+                            f"moltis-github-companion lane-a-issue-update warning ({pr_key} / {linear_id}): {exc}\n"
+                        )
+                        continue
                 self._run_lane_a_pr_evaluation(
                     pr_key=pr_key,
                     repo=repo,
@@ -5240,7 +5258,13 @@ class GithubCompanionRunner:
                     not is_trusted_github_actor(live_pr.get("author"))
                     and not has_do_not_merge_label(pr_labels)
                     and ci_state in ("SUCCESS", "NONE")
-                    and pr_entry.get("handled_head_sha") != head_sha
+                    and (
+                        pr_entry.get("handled_head_sha") != head_sha
+                        or (
+                            bool(pr_entry.get("handled_ci_state"))
+                            and normalize_ci_state(pr_entry.get("handled_ci_state")) not in ("SUCCESS", "NONE")
+                        )
+                    )
                     and compute_community_auto_merge_eligible(
                         repo=repo,
                         additions=live_pr.get("additions"),
@@ -5554,8 +5578,8 @@ class GithubCompanionRunner:
                     continue
                 handled_sha = str(pr_entry.get("handled_head_sha") or "").strip()
                 triaged_sha = str(pr_entry.get("triaged_head_sha") or "").strip()
-                if handled_sha == head_sha and (not triaged_sha or triaged_sha == head_sha):
-                    continue
+                handled_ci = normalize_ci_state(pr_entry.get("handled_ci_state")) if pr_entry.get("handled_ci_state") else ""
+                sha_unchanged = handled_sha == head_sha and (not triaged_sha or triaged_sha == head_sha)
 
                 def _strip_stale_ready_to_merge(
                     _linear_id: str = linear_id,
@@ -5590,8 +5614,16 @@ class GithubCompanionRunner:
                     excluded_repos=self.state_store.community_auto_merge_excluded_repos,
                 )
                 is_lane_a = bool(auto_merge_eligible) and ci_state in ("SUCCESS", "NONE") and not has_dnm
+                ci_turned_green_for_lane_a = (
+                    sha_unchanged
+                    and is_lane_a
+                    and bool(handled_ci)
+                    and handled_ci not in ("SUCCESS", "NONE")
+                )
+                if sha_unchanged and not ci_turned_green_for_lane_a:
+                    continue
 
-                if _safe_int(pr_entry.get("followup_cooldown_until_ms"), 0) > current_ms:
+                if not ci_turned_green_for_lane_a and _safe_int(pr_entry.get("followup_cooldown_until_ms"), 0) > current_ms:
                     _strip_stale_ready_to_merge()
                     continue
                 if auto_merge_eligible and not has_dnm and ci_state == "PENDING":
@@ -5599,11 +5631,27 @@ class GithubCompanionRunner:
                     continue
 
                 if is_lane_a:
+                    if ci_turned_green_for_lane_a:
+                        try:
+                            backlog_comments = self.linear_client.list_issue_comments(linear_id)
+                        except Exception as exc:
+                            sys.stderr.write(
+                                f"moltis-github-companion backlog-lane-a-comments warning ({pr_key} / {linear_id}): {exc}\n"
+                            )
+                            continue
+                        backlog_verdicts = linear_sync.parse_blind_review_verdicts(backlog_comments, head_sha=head_sha)
+                        if any(str(v.get("verdict") or "").strip().lower() != "pass" for v in backlog_verdicts):
+                            self.state_store.update_thread_state(
+                                pr_key,
+                                {"handled_ci_state": ci_state},
+                                now_override_ms=current_ms,
+                            )
+                            continue
                     try:
                         self.linear_client.update_issue(
                             linear_id,
                             state="In Review",
-                            remove_labels=("ready-to-merge", "needs-decision"),
+                            remove_labels=("needs-decision", "ready-to-merge"),
                         )
                     except Exception as exc:
                         sys.stderr.write(
