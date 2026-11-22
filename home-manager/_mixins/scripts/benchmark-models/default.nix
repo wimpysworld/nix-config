@@ -19,26 +19,18 @@ let
     modelMatrix
     selectedRuntimeModels
     ;
-  modelSnapshot =
-    role:
-    let
-      model = selectedRuntimeModels.${role};
-      repo = lib.replaceStrings [ "/" ] [ "--" ] model.hfRepo;
-    in
-    lib.optionalString (
-      selectedRuntimeModels ? ${role}
-    ) "hub/models--${repo}/snapshots/${model.revision}/${model.primaryPath}";
-
+  suiteModels = map (role: selectedRuntimeModels.${role}) (
+    lib.filter (role: selectedRuntimeModels ? ${role}) [
+      "moe"
+      "dense"
+      "smallMedia"
+    ]
+  );
   models = {
     "gemma4-e2b" = modelMatrix.vram8.models.smallMedia;
     "gemma4-e4b" = modelMatrix.vram64.models.smallMedia;
   }
-  // lib.optionalAttrs (selectedRuntimeModels ? moe) {
-    "inkling-2-mini" = selectedRuntimeModels.moe;
-  }
-  // lib.optionalAttrs (selectedRuntimeModels ? dense) {
-    "qwen3.8-27b" = selectedRuntimeModels.dense;
-  };
+  // builtins.listToAttrs (map (model: lib.nameValuePair model.publicName model) suiteModels);
   profiles = lib.mapAttrs (
     _: model:
     let
@@ -54,6 +46,10 @@ let
         repeat_penalty = generation.repetitionPenalty;
         presence_penalty = generation.presencePenalty or null;
       };
+    }
+    // lib.optionalAttrs (model ? resolvedPrimaryPathPattern) {
+      snapshot = lib.removePrefix "${defaultCacheRoot}/" model.resolvedPrimaryPathPattern;
+      inherit (model.download) projectorPath;
     }
   ) models;
 
@@ -100,8 +96,6 @@ let
     export BENCHMARK_MODELS_BACKENDS=${lib.escapeShellArg (lib.concatStringsSep " " backends)}
     export BENCHMARK_MODELS_PRESEED_CACHE=${lib.escapeShellArg defaultCacheRoot}
     export BENCHMARK_MODELS_PROFILES=${lib.escapeShellArg (builtins.toJSON profiles)}
-    export BENCHMARK_MODELS_INKLING_SNAPSHOT=${lib.escapeShellArg (modelSnapshot "moe")}
-    export BENCHMARK_MODELS_QWEN_SNAPSHOT=${lib.escapeShellArg (modelSnapshot "dense")}
   ''
   + backendEnv;
 
@@ -120,8 +114,13 @@ let
 
   shellApplicationAll = pkgs.writeShellApplication {
     name = "${name}-all";
-    runtimeInputs = [ shellApplication ];
-    text = builtins.readFile ./benchmark-models-all.sh;
+    runtimeInputs = [ pkgs.python3 ];
+    text =
+      benchmarkEnv
+      + ''
+        suiteModels=(${lib.escapeShellArgs (map (model: model.publicName) suiteModels)})
+      ''
+      + builtins.readFile ./benchmark-models-all.sh;
   };
 in
 lib.mkIf (host.is.linux && isInference) {

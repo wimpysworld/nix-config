@@ -61,9 +61,10 @@ Usage: benchmark-models MODEL [runs]
        benchmark-models --purge
        benchmark-models-all
 
-benchmark-models-all tests inkling-2-mini and qwen3.8-27b with three measured
-runs per case. Both models use local, pinned GGUF files and packaged llama-server
-binaries. The other models compare Ollama and llama.cpp with five measured runs.
+benchmark-models-all tests the host's Gemma 4 and, where deployed, inkling-2-mini
+and qwen3.8-27b. Each case uses cached weights and packaged llama-server binaries
+for three measured runs. Standalone Gemma and embedding benchmarks compare Ollama
+and llama.cpp with five measured runs by default.
 
 --purge removes the benchmark cache and results, not the server model cache.
 

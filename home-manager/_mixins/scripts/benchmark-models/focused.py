@@ -21,10 +21,6 @@ PROMPT_TOKENS = 4096
 OUTPUT_TOKENS = 512
 SEED = 42
 DEVICES = {"vulkan": "Vulkan0", "rocm": "ROCm0", "cuda": "CUDA0"}
-MODELS = {
-    "inkling-2-mini": ("INKLING", (0,)),
-    "qwen3.8-27b": ("QWEN", (0, 2, 3)),
-}
 
 
 def follow_server(pipe, log, ready):
@@ -211,20 +207,24 @@ def run_case(output, model, model_path, backend, server, width, runs, profile):
 def main():
     model = sys.argv[1]
     runs = int(sys.argv[2])
-    snapshot_name, widths = MODELS[model]
+    widths = (0, 2, 3) if model == "qwen3.8-27b" else (0,)
     backends = os.environ.get("BENCHMARK_MODELS_BACKENDS", "").split()
     if not backends:
         print("Error: no GPU benchmark backend is configured for this host.", file=sys.stderr)
         return 1
 
-    snapshot = os.environ.get(f"BENCHMARK_MODELS_{snapshot_name}_SNAPSHOT")
+    profile = json.loads(os.environ["BENCHMARK_MODELS_PROFILES"]).get(model, {})
+    snapshot = profile.get("snapshot")
     if not snapshot:
         print(f"Error: {model} is not configured for this host's video memory tier.", file=sys.stderr)
         return 1
 
-    profile = json.loads(os.environ["BENCHMARK_MODELS_PROFILES"])[model]
     root = Path(os.environ.get("BENCHMARK_MODELS_ROOT") or Path.home() / "Volatile/benchmark-models")
-    model_path = cached_model_path(Path(snapshot), root)
+    try:
+        model_path = cached_model_path(Path(snapshot), root, profile["projectorPath"])
+    except ValueError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
     if model_path is None:
         print(f"Error: no readable cached GGUF for {model}: {snapshot}", file=sys.stderr)
         return 1
@@ -251,14 +251,22 @@ def main():
     return int(failed)
 
 
-def cached_model_path(snapshot, root):
+def cached_model_path(snapshot, root, projector):
     preseed_cache = os.environ["BENCHMARK_MODELS_PRESEED_CACHE"]
     user_cache = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
     hf_home = Path(os.environ.get("HF_HOME") or user_cache / "huggingface")
     hf_hub = Path(os.environ.get("HF_HUB_CACHE") or os.environ.get("HUGGINGFACE_HUB_CACHE") or hf_home / "hub")
-    for path in (Path(preseed_cache) / snapshot, root / "huggingface" / snapshot, hf_hub / snapshot.relative_to("hub")):
-        if path.is_file() and os.access(path, os.R_OK):
-            return path.absolute()
+    pattern = snapshot.relative_to("hub")
+    for cache in (Path(preseed_cache) / "hub", root / "huggingface/hub", hf_hub):
+        matches = [
+            path for path in cache.glob(str(pattern))
+            if path.is_file() and os.access(path, os.R_OK)
+            and (not projector or (path.parent / projector).is_file())
+        ]
+        if len(matches) > 1:
+            raise ValueError(f"ambiguous cached model: {cache / pattern} matches {len(matches)} snapshots")
+        if matches:
+            return matches[0].absolute()
     return None
 
 
