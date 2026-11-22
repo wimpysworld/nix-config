@@ -4233,6 +4233,8 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
                     }
                 }
                 return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(payload), stderr="")
+            if ep.endswith("/timeline?per_page=100"):
+                return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(events_trusted), stderr="")
             if ep.endswith("/events?per_page=100"):
                 return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(events_trusted), stderr="")
             return subprocess.CompletedProcess(cmd, 0, stdout="[]", stderr="")
@@ -4282,6 +4284,316 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             trigger_reason="community_triage",
         )
         self.assertEqual(sent_calls[1][0], "gemini::gemini-4-hydrogen@reasoning-medium")
+
+    def test_team_merge_timeline_verification_and_fail_closed_guards(self) -> None:
+        # 1) Pure helper verify_team_merge_timeline checks
+        valid_committed = [
+            {"event": "committed", "sha": "sha_prev"},
+            {"event": "committed", "sha": "sha_live"},
+            {"id": 2001, "event": "labeled", "label": {"name": "team:merge"}, "actor": {"login": "flexiondotorg"}, "created_at": "2026-04-01T10:00:00Z"},
+        ]
+        ver_ok = companion.verify_team_merge_timeline(valid_committed, "sha_live")
+        assert ver_ok is not None
+        self.assertEqual(ver_ok["actor"], "flexiondotorg")
+        self.assertEqual(ver_ok["head_sha"], "sha_live")
+        self.assertEqual(ver_ok["event_key"], "team:merge:2001")
+
+        # Preceding head_ref_force_pushed with matching commit_id passes
+        valid_force_push = [
+            {"event": "head_ref_force_pushed", "commit_id": "sha_fp"},
+            {"id": 2002, "event": "labeled", "label": {"name": "team:merge"}, "actor": {"login": "sith-skrye"}, "created_at": "2026-04-01T10:05:00Z"},
+        ]
+        ver_fp = companion.verify_team_merge_timeline(valid_force_push, "sha_fp")
+        assert ver_fp is not None
+        self.assertEqual(ver_fp["head_sha"], "sha_fp")
+
+        # Missing or blank head_sha fails closed
+        self.assertIsNone(companion.verify_team_merge_timeline(valid_committed, None))
+        self.assertIsNone(companion.verify_team_merge_timeline(valid_committed, ""))
+        self.assertIsNone(companion.verify_team_merge_timeline(valid_committed, "   "))
+
+        # Earlier commit matches head_sha, but last preceding commit does not -> fails closed
+        self.assertIsNone(companion.verify_team_merge_timeline(valid_committed, "sha_prev"))
+
+        # Untrusted labeler fails closed
+        self.assertIsNone(
+            companion.verify_team_merge_timeline(
+                [
+                    {"event": "committed", "sha": "sha_live"},
+                    {"id": 2003, "event": "labeled", "label": {"name": "team:merge"}, "actor": {"login": "random-user"}},
+                ],
+                "sha_live",
+            )
+        )
+
+        # Latest team:merge event is unlabeled -> both helpers fail closed
+        unlabeled_timeline = [
+            {"event": "committed", "sha": "sha_live"},
+            {"id": 2004, "event": "labeled", "label": {"name": "team:merge"}, "actor": {"login": "flexiondotorg"}, "created_at": "2026-04-01T10:00:00Z"},
+            {"id": 2005, "event": "unlabeled", "label": {"name": "team:merge"}, "actor": {"login": "flexiondotorg"}, "created_at": "2026-04-01T10:01:00Z"},
+        ]
+        self.assertIsNone(companion.verify_team_merge_timeline(unlabeled_timeline, "sha_live"))
+        self.assertIsNone(companion.verify_team_label_from_events(unlabeled_timeline, "team:merge"))
+
+        # Post-label commit or force-push fails closed
+        self.assertIsNone(
+            companion.verify_team_merge_timeline(
+                [*valid_committed, {"event": "committed", "sha": "sha_after"}],
+                "sha_live",
+            )
+        )
+        self.assertIsNone(
+            companion.verify_team_merge_timeline(
+                [*valid_committed, {"event": "head_ref_force_pushed", "commit_id": "sha_live"}],
+                "sha_live",
+            )
+        )
+
+        # Missing preceding commit fails closed
+        self.assertIsNone(
+            companion.verify_team_merge_timeline(
+                [{"id": 2006, "event": "labeled", "label": {"name": "team:merge"}, "actor": {"login": "flexiondotorg"}}],
+                "sha_live",
+            )
+        )
+
+        # Mismatched preceding commit SHA fails closed
+        self.assertIsNone(
+            companion.verify_team_merge_timeline(
+                [
+                    {"event": "committed", "sha": "sha_other"},
+                    {"id": 2007, "event": "labeled", "label": {"name": "team:merge"}, "actor": {"login": "flexiondotorg"}},
+                ],
+                "sha_live",
+            )
+        )
+
+        # 2) End-to-end GithubCompanionRunner.run_cycle cases on GitHub team:merge path
+        repo = "wimpysworld/tailor"
+        skrye_prs = [n for n in range(100, 160) if companion.compute_pr_owner(repo, n) == "skrye"][:7]
+        pr_fresh, pr_missing_sha, pr_post_commit, pr_no_pre_commit, pr_mismatch_pre, pr_stale_triaged, pr_timeline_err = skrye_prs
+
+        def run_case(
+            case_name: str,
+            pr_num: int,
+            *,
+            head_ref_oid: str,
+            timeline_payload: list[dict] | None,
+            triaged_head_sha: str | None = None,
+            timeline_exit_code: int = 0,
+        ) -> tuple[dict, list[tuple[str, str]], list[list[str]], companion.CompanionStateStore]:
+            store = companion.CompanionStateStore(state_dir=self.root / f"tm-{case_name}-state", agent_name="skrye")
+            if triaged_head_sha is not None:
+                store.complete_thread_review(
+                    companion.make_pr_key(repo, pr_num),
+                    handled_updated_at="2026-04-01T09:00:00Z",
+                    handled_head_sha=triaged_head_sha,
+                    handled_ci_state="SUCCESS",
+                    record_triaged_head_sha=True,
+                    apply_cooldown=False,
+                    now_override_ms=self.clock(),
+                )
+            sent_calls: list[tuple[str, str]] = []
+            seen_cmds: list[list[str]] = []
+            self_outer = self
+            data_dir = self.root / f"tm-{case_name}-data"
+
+            class CaptureRpc(companion.MoltisRpcClient):
+                def __init__(self) -> None:
+                    super().__init__(rpc_url="https://127.0.0.1:13131/api/rpc")
+
+                def chat_send_sync(self, *, model: str = "", message: str = "", session_key: str = companion.DEFAULT_GH_SESSION_KEY, ephemeral: bool = False, active_tools: list[str] | None = None, timeout: float | None = None) -> dict:  # type: ignore[override]
+                    sent_calls.append((model, message))
+                    did = ""
+                    for line in message.splitlines():
+                        if line.startswith("dispatch_id:"):
+                            did = line.split(":", 1)[1].strip()
+                            break
+                    history_path = companion.history_paths(data_dir, session_key, agent_name="skrye")[0]
+                    history_path.parent.mkdir(parents=True, exist_ok=True)
+                    with history_path.open("a", encoding="utf-8") as fh:
+                        fh.write(json.dumps({"role": "user", "content": f"dispatch_id: {did}"}) + "\n")
+                        fh.write(json.dumps({"role": "assistant", "content": "HEARTBEAT_OK"}) + "\n")
+                    return {"ok": True, "reply": "HEARTBEAT_OK"}
+
+                def chat_peek(self, session_key: str, timeout: float | None = None) -> dict:
+                    return {"active": False}
+
+            def fake_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+                seen_cmds.append(list(cmd))
+                ep = cmd[1] if len(cmd) > 1 else ""
+                if ep == "notifications":
+                    return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+                if ep == "graphql":
+                    payload = {
+                        "data": {
+                            "search": {
+                                "pageInfo": {"hasNextPage": False, "endCursor": None},
+                                "nodes": [
+                                    {
+                                        "__typename": "PullRequest",
+                                        "id": f"PR_{pr_num}",
+                                        "number": pr_num,
+                                        "title": f"fix: case {case_name}",
+                                        "body": "Clean fix",
+                                        "url": f"https://github.com/{repo}/pull/{pr_num}",
+                                        "state": "OPEN",
+                                        "isDraft": False,
+                                        "updatedAt": "2026-04-01T10:00:00Z",
+                                        "headRefName": f"fix-{case_name}",
+                                        "headRefOid": head_ref_oid,
+                                        "reviewDecision": "",
+                                        "additions": 10,
+                                        "deletions": 2,
+                                        "changedFiles": 1,
+                                        "repository": {"nameWithOwner": repo, "isArchived": False},
+                                        "author": {"__typename": "User", "login": "community-dev"},
+                                        "labels": {"nodes": [{"name": "team:merge"}]},
+                                        "files": {"pageInfo": {"hasNextPage": False}, "nodes": [{"path": "README.md"}]},
+                                        "reviewRequests": {"nodes": []},
+                                        "reviewThreads": {"pageInfo": {"hasNextPage": False}, "nodes": []},
+                                        "statusCheckRollup": {"state": "SUCCESS", "contexts": {"nodes": []}},
+                                    }
+                                ],
+                            }
+                        }
+                    }
+                    return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(payload), stderr="")
+                if ep == f"repos/{repo}/issues/{pr_num}/timeline?per_page=100":
+                    if timeline_exit_code != 0:
+                        return subprocess.CompletedProcess(cmd, timeline_exit_code, stdout="", stderr="502 Bad Gateway")
+                    return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(timeline_payload or []), stderr="")
+                return subprocess.CompletedProcess(cmd, 0, stdout="[]", stderr="")
+
+            gh_client = companion.GhApiSafeClient(runner=fake_runner)
+            poller = companion.NotificationPoller(state_store=store, gh_client=gh_client, clock=self.clock)
+            tf = companion.TrustFilterAndSnapshotBuilder(state_store=store, gh_client=gh_client, agent_name="skrye", clock=self.clock)
+            coord = companion.LocalExecutionCoordinator(
+                state_store=store,
+                rpc_client=CaptureRpc(),
+                data_dir=data_dir,
+                agent_name="skrye",
+                agent_display_name="Skrye",
+                main_model="gemini::gemini-4-hydrogen@reasoning-medium",
+                review_model="gemini::gemini-4-carbon@reasoning-medium",
+                clock=self.clock,
+                sleeper=lambda _: None,
+            )
+            runner = companion.GithubCompanionRunner(
+                state_store=store,
+                gh_client=gh_client,
+                poller=poller,
+                trust_filter=tf,
+                execution_coordinator=coord,
+                clock=self.clock,
+            )
+            res = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self_outer.clock())
+            return res, sent_calls, seen_cmds, store
+
+        # 2a) Matching preceding commit with no triaged_head_sha -> proven fresh (no head_sha_changed: true)
+        res_fresh, calls_fresh, cmds_fresh, _ = run_case(
+            "fresh",
+            pr_fresh,
+            head_ref_oid="sha_fresh_ok",
+            timeline_payload=[
+                {"event": "committed", "sha": "sha_fresh_ok"},
+                {"id": 3001, "event": "labeled", "label": {"name": "team:merge"}, "actor": {"login": "flexiondotorg"}, "created_at": "2026-04-01T10:00:00Z"},
+            ],
+        )
+        self.assertEqual(len(res_fresh["targeted_dispatches"]), 1)
+        self.assertIn("team_label: team:merge", calls_fresh[0][1])
+        self.assertNotIn("head_sha_changed: true", calls_fresh[0][1])
+        self.assertTrue(
+            any(
+                len(c) >= 3 and c[1] == f"repos/{repo}/issues/{pr_fresh}/timeline?per_page=100" and "--paginate" in c
+                for c in cmds_fresh
+            )
+        )
+
+        # 2b) Missing headRefOid -> fail closed with head_sha_changed: true
+        res_missing, calls_missing, _, _ = run_case(
+            "missing-sha",
+            pr_missing_sha,
+            head_ref_oid="",
+            timeline_payload=[
+                {"event": "committed", "sha": "sha_some"},
+                {"id": 3002, "event": "labeled", "label": {"name": "team:merge"}, "actor": {"login": "flexiondotorg"}, "created_at": "2026-04-01T10:00:00Z"},
+            ],
+        )
+        self.assertEqual(len(res_missing["targeted_dispatches"]), 1)
+        self.assertIn("head_sha_changed: true", calls_missing[0][1])
+
+        # 2c) Post-label commit with no triaged_head_sha -> fail closed with head_sha_changed: true
+        res_post, calls_post, _, _ = run_case(
+            "post-commit",
+            pr_post_commit,
+            head_ref_oid="sha_after",
+            timeline_payload=[
+                {"event": "committed", "sha": "sha_before"},
+                {"id": 3003, "event": "labeled", "label": {"name": "team:merge"}, "actor": {"login": "flexiondotorg"}, "created_at": "2026-04-01T10:00:00Z"},
+                {"event": "committed", "sha": "sha_after"},
+            ],
+        )
+        self.assertEqual(len(res_post["targeted_dispatches"]), 1)
+        self.assertIn("head_sha_changed: true", calls_post[0][1])
+
+        # 2d) Missing preceding commit with no triaged_head_sha -> fail closed with head_sha_changed: true
+        res_no_pre, calls_no_pre, _, _ = run_case(
+            "no-pre-commit",
+            pr_no_pre_commit,
+            head_ref_oid="sha_live",
+            timeline_payload=[
+                {"id": 3004, "event": "labeled", "label": {"name": "team:merge"}, "actor": {"login": "flexiondotorg"}, "created_at": "2026-04-01T10:00:00Z"},
+            ],
+        )
+        self.assertEqual(len(res_no_pre["targeted_dispatches"]), 1)
+        self.assertIn("head_sha_changed: true", calls_no_pre[0][1])
+
+        # 2e) Mismatched preceding commit SHA with no triaged_head_sha -> fail closed with head_sha_changed: true
+        res_mismatch, calls_mismatch, _, _ = run_case(
+            "mismatch-pre",
+            pr_mismatch_pre,
+            head_ref_oid="sha_live",
+            timeline_payload=[
+                {"event": "committed", "sha": "sha_different"},
+                {"id": 3005, "event": "labeled", "label": {"name": "team:merge"}, "actor": {"login": "flexiondotorg"}, "created_at": "2026-04-01T10:00:00Z"},
+            ],
+        )
+        self.assertEqual(len(res_mismatch["targeted_dispatches"]), 1)
+        self.assertIn("head_sha_changed: true", calls_mismatch[0][1])
+
+        # 2f) Matching timeline commit but mismatched triaged_head_sha -> fail closed and preserve triaged_head_sha
+        res_stale, calls_stale, _, store_stale = run_case(
+            "stale-triaged",
+            pr_stale_triaged,
+            head_ref_oid="sha_v2",
+            triaged_head_sha="sha_v1",
+            timeline_payload=[
+                {"event": "committed", "sha": "sha_v2"},
+                {"id": 3006, "event": "labeled", "label": {"name": "team:merge"}, "actor": {"login": "flexiondotorg"}, "created_at": "2026-04-01T10:00:00Z"},
+            ],
+        )
+        self.assertEqual(len(res_stale["targeted_dispatches"]), 1)
+        self.assertIn("head_sha_changed: true", calls_stale[0][1])
+        self.assertEqual(
+            (store_stale.get_thread_state(companion.make_pr_key(repo, pr_stale_triaged)) or {}).get("triaged_head_sha"),
+            "sha_v1",
+        )
+
+        # 2g) Timeline API error -> skip team:merge dispatch (fail closed) and do not consume handled_team_labels
+        res_err, calls_err, _, store_err = run_case(
+            "timeline-err",
+            pr_timeline_err,
+            head_ref_oid="sha_live",
+            triaged_head_sha="sha_live",
+            timeline_payload=None,
+            timeline_exit_code=1,
+        )
+        self.assertEqual(res_err["targeted_dispatches"], [])
+        self.assertEqual(calls_err, [])
+        self.assertFalse(
+            (store_err.get_thread_state(companion.make_pr_key(repo, pr_timeline_err)) or {}).get("handled_team_labels")
+        )
 
     def test_team_implement_constants_and_legacy_label_ignored(self) -> None:
         self.assertEqual(companion.TEAM_LABELS, ("team:implement", "team:merge", "team:review"))

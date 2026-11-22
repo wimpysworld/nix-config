@@ -428,14 +428,17 @@ def extract_linear_github_target(linear_issue: dict, *, expected_kind: str | Non
 
 
 def verify_team_label_from_events(events: Iterable[dict], label_name: str) -> dict | None:
-    """Verify via issue events that the latest `labeled` event for `label_name` came from `TRUSTED_INSTRUCTION_ACTORS`."""
+    """Verify via issue events that the latest `labeled`/`unlabeled` event for `label_name` is `labeled` from `TRUSTED_INSTRUCTION_ACTORS`."""
     target = (label_name or "").strip().lower()
     if not target:
         return None
     best_event: dict | None = None
     best_sort_key: tuple[int, int] = (-1, -1)
     for idx, ev in enumerate(events or ()):
-        if not isinstance(ev, dict) or str(ev.get("event") or "").strip().lower() != "labeled":
+        if not isinstance(ev, dict):
+            continue
+        ev_type = str(ev.get("event") or "").strip().lower()
+        if ev_type not in ("labeled", "unlabeled"):
             continue
         lbl_obj = ev.get("label")
         ev_lbl = str(lbl_obj.get("name") if isinstance(lbl_obj, dict) else (lbl_obj or "")).strip().lower()
@@ -446,7 +449,7 @@ def verify_team_label_from_events(events: Iterable[dict], label_name: str) -> di
         if best_event is None or sort_key >= best_sort_key:
             best_event = ev
             best_sort_key = sort_key
-    if best_event is None:
+    if best_event is None or str(best_event.get("event") or "").strip().lower() != "labeled":
         return None
     actor_norm = normalize_github_actor(best_event.get("actor") or best_event.get("user"))
     if not is_trusted_instruction_actor(actor_norm):
@@ -455,6 +458,62 @@ def verify_team_label_from_events(events: Iterable[dict], label_name: str) -> di
     created_at = str(best_event.get("created_at") or "").strip()
     event_key = f"{target}:{ev_id if ev_id is not None else (created_at or 'verified')}"
     return {"label": target, "actor": actor_norm, "event_id": ev_id, "created_at": created_at, "event_key": event_key}
+
+
+def verify_team_merge_timeline(timeline_events: Iterable[dict], head_sha: str | None) -> dict | None:
+    """Verify via issue timeline events that `team:merge` is active, trusted, preceded by `head_sha`, and followed by zero commits."""
+    clean_head_sha = str(head_sha or "").strip()
+    if not clean_head_sha:
+        return None
+    events_list = [ev for ev in (timeline_events or ()) if isinstance(ev, dict)]
+    last_label_idx: int | None = None
+    last_label_ev: dict | None = None
+    for idx, ev in enumerate(events_list):
+        ev_type = str(ev.get("event") or "").strip().lower()
+        if ev_type not in ("labeled", "unlabeled"):
+            continue
+        lbl_obj = ev.get("label")
+        ev_lbl = str(lbl_obj.get("name") if isinstance(lbl_obj, dict) else (lbl_obj or "")).strip().lower()
+        if ev_lbl != "team:merge":
+            continue
+        last_label_idx = idx
+        last_label_ev = ev
+    if last_label_ev is None or last_label_idx is None:
+        return None
+    if str(last_label_ev.get("event") or "").strip().lower() != "labeled":
+        return None
+    actor_norm = normalize_github_actor(last_label_ev.get("actor") or last_label_ev.get("user"))
+    if not is_trusted_instruction_actor(actor_norm):
+        return None
+    post_pushes = [
+        ev
+        for ev in events_list[last_label_idx + 1 :]
+        if str(ev.get("event") or "").strip().lower() in ("committed", "head_ref_force_pushed")
+    ]
+    if post_pushes:
+        return None
+    pre_pushes = [
+        ev
+        for ev in events_list[:last_label_idx]
+        if str(ev.get("event") or "").strip().lower() in ("committed", "head_ref_force_pushed")
+    ]
+    if not pre_pushes:
+        return None
+    last_pre = pre_pushes[-1]
+    last_pre_sha = str(last_pre.get("sha") or last_pre.get("commit_id") or "").strip()
+    if not last_pre_sha or last_pre_sha != clean_head_sha:
+        return None
+    ev_id = last_label_ev.get("id")
+    created_at = str(last_label_ev.get("created_at") or "").strip()
+    event_key = f"team:merge:{ev_id if ev_id is not None else (created_at or 'verified')}"
+    return {
+        "label": "team:merge",
+        "actor": actor_norm,
+        "event_id": ev_id,
+        "created_at": created_at,
+        "event_key": event_key,
+        "head_sha": clean_head_sha,
+    }
 
 
 def extract_pr_file_paths(raw_files: object) -> tuple[list[str] | None, bool]:
@@ -3171,8 +3230,12 @@ class GhApiSafeClient:
         return [norm for node in raw_nodes if (norm := normalize_open_issue_record(node)) is not None]
 
     def fetch_issue_events(self, repo: str, number: int, timeout: float | None = None) -> list[dict]:
-        """Fetch issue or pull request timeline events for label-actor verification."""
+        """Fetch issue or pull request events for label-actor verification."""
         return self.fetch_json_items(f"repos/{repo}/issues/{number}/events?per_page=100", paginate=True, timeout=timeout)
+
+    def fetch_issue_timeline(self, repo: str, number: int, timeout: float | None = None) -> list[dict]:
+        """Fetch paginated issue or pull request timeline events for commit-to-label freshness verification."""
+        return self.fetch_json_items(f"repos/{repo}/issues/{number}/timeline?per_page=100", paginate=True, timeout=timeout)
 
     @staticmethod
     def _validate_pr_label_target(repo: str, number: int, label: str) -> tuple[str, str, str]:
@@ -6353,8 +6416,13 @@ class GithubCompanionRunner:
             cand_entry = _as_dict(self.state_store.get_thread_state(cand_key))
             if _safe_int(cand_entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
                 continue
+            use_timeline = "team:merge" in cand_labels
             try:
-                events = self.gh_client.fetch_issue_events(cand_repo, cand_num)
+                events = (
+                    self.gh_client.fetch_issue_timeline(cand_repo, cand_num)
+                    if use_timeline
+                    else self.gh_client.fetch_issue_events(cand_repo, cand_num)
+                )
             except Exception as exc:
                 sys.stderr.write(f"moltis-github-companion label-events warning ({cand_key}): {exc}\n")
                 continue
@@ -6386,7 +6454,15 @@ class GithubCompanionRunner:
                 continue
             cand_head_sha = str(cand.get("head_sha") or "").strip() or None
             triaged_sha = str(cand.get("triaged_head_sha") or cand_entry.get("triaged_head_sha") or "").strip() or None
-            sha_changed = bool(verified_label == "team:merge" and triaged_sha and cand_head_sha and triaged_sha != cand_head_sha)
+            if verified_label == "team:merge":
+                timeline_ver = verify_team_merge_timeline(events, cand_head_sha)
+                sha_changed = bool(
+                    timeline_ver is None
+                    or not cand_head_sha
+                    or (triaged_sha and triaged_sha != cand_head_sha)
+                )
+            else:
+                sha_changed = False
             dispatched_targets.add(cand_key)
             targeted_dispatches.append(
                 self.execution_coordinator.execute_dispatch(
