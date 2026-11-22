@@ -189,7 +189,10 @@ def run_case(output, model, model_path, backend, server, width, runs, profile):
             rates = {key: median(s[key] for s in samples) for key in ("ttft_ms", "total_ms", "prefill_tps", "decode_tps")}
             drafted = sum(s["timings"].get("draft_n", 0) for s in samples)
             accepted = sum(s["timings"].get("draft_n_accepted", 0) for s in samples)
-            summary = dict(medians=rates, device_peak_bytes=peaks, draft_n=drafted, draft_n_accepted=accepted)
+            summary = dict(
+                medians=rates, device_peak_bytes=peaks or None,
+                draft_n=drafted, draft_n_accepted=accepted,
+            )
             record(kind="summary", **summary)
             print(json.dumps({"case": label, **summary}), flush=True)
         finally:
