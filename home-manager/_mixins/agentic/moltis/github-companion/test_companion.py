@@ -7038,6 +7038,244 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
         st_perm = store.get_thread_state(companion.make_pr_key(repo, n_perm_outage)) or {}
         self.assertEqual(st_perm.get("retry_count"), 1)
         self.assertFalse(st_perm.get("in_flight"))
+        pending_after_exhaust = store.list_linear_todo_reconciliations()
+        self.assertIn(lin_perm_id, pending_after_exhaust)
+        self.assertEqual(
+            pending_after_exhaust[lin_perm_id].get("thread_key"),
+            companion.make_pr_key(repo, n_perm_outage),
+        )
+
+    def test_durable_linear_todo_reconciliation_queue_survives_extended_outage_without_blocking(self) -> None:
+        repo = "wimpysworld/tailor"
+        n_stranded, n_other, n_already_review, n_orphan = self._owned_numbers(
+            repo, "skrye", 4, kind="issue", start=360
+        )
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload([]), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
+
+        class ExtendedOutageLinearStub(StubLinearSyncClient):
+            def __init__(self) -> None:
+                super().__init__()
+                self.fail_get_issue_ids: set[str] = set()
+                self.fail_revert_todo_ids: set[str] = set()
+                self.update_calls: list[tuple[str, str | None]] = []
+
+            def get_issue(self, issue_id: str) -> dict[str, object]:
+                clean_id = str(issue_id or "").strip()
+                if clean_id in self.fail_get_issue_ids:
+                    raise companion.linear_sync.LinearAPIError("Linear 503 extended outage on get_issue")
+                return super().get_issue(issue_id)
+
+            def update_issue(
+                self,
+                issue_id: str,
+                *,
+                state: str | None = None,
+                **kwargs: object,
+            ) -> dict[str, object]:
+                clean_id = str(issue_id or "").strip()
+                self.update_calls.append((clean_id, state))
+                if state == "Todo" and clean_id in self.fail_revert_todo_ids:
+                    raise companion.linear_sync.LinearAPIError("Linear 503 transient outage on update_issue")
+                return super().update_issue(issue_id, state=state, **kwargs)  # type: ignore[arg-type]
+
+        linear_stub = ExtendedOutageLinearStub()
+        fail_turn_ids: set[str] = set()
+        move_to_in_review_ids: set[str] = set()
+
+        def reply_fn(meta: dict[str, str], _params: dict) -> str:
+            lid = str(meta.get("linear_issue_id") or "")
+            if lid in move_to_in_review_ids:
+                linear_stub.update_issue(lid, state="In Review")
+            if lid in fail_turn_ids:
+                return "HEARTBEAT_ERROR: implementation turn failed"
+            return f"Implemented Linear issue {lid}."
+
+        store, runner, rpc_calls = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=reply_fn,
+        )
+
+        # Verify existing v3 state.json without pending_linear_todo_reconciliations loads cleanly with {}.
+        state_path = store.state_dir / companion.STATE_FILENAME
+        raw_v3 = json.loads(state_path.read_text(encoding="utf-8"))
+        raw_v3.pop("pending_linear_todo_reconciliations", None)
+        state_path.write_text(json.dumps(raw_v3), encoding="utf-8")
+        reloaded_v3 = companion.CompanionStateStore(store.state_dir, "skrye").read_state()
+        self.assertEqual(reloaded_v3.get("version"), companion.STATE_SCHEMA_VERSION)
+        self.assertEqual(reloaded_v3.get("pending_linear_todo_reconciliations"), {})
+
+        # 1) Seed an issue whose post-turn Linear verification fails across >3 polls (outlasting bounded recovery).
+        lin_stranded = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n_stranded}",
+            title=f"Extended outage stranded issue #{n_stranded}",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        lin_stranded_id = str(lin_stranded["id"])
+        fail_turn_ids.add(lin_stranded_id)
+        linear_stub.fail_get_issue_ids.add(lin_stranded_id)
+
+        # Initial cycle claims In Progress, turn fails, verification defers active-dispatch.json.
+        res_0 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 15, 10, 0))
+        self.assertEqual(len(res_0["targeted_dispatches"]), 1)
+        self.assertTrue(res_0["targeted_dispatches"][0]["verification_deferred"])
+        self.assertEqual(linear_stub.issues[lin_stranded_id]["state"]["name"], "In Progress")  # type: ignore[index]
+        self.assertIsNotNone(store.read_active_dispatch()["active"])
+
+        # Polls 1 and 2 defer recovery; active-dispatch.json stays set.
+        for attempt_idx in range(1, companion.MAX_LINEAR_TODO_RECOVERY_ATTEMPTS):
+            res_def = runner.run_cycle(
+                run_sweeps_if_due=False,
+                now_override_ms=self._utc_ms(2026, 4, 15, 10, 10 * attempt_idx),
+            )
+            self.assertEqual(res_def["status"], "recovery_deferred")
+            self.assertEqual(res_def["recovery"]["linear_recovery_attempts"], attempt_idx)
+            self.assertIsNotNone(store.read_active_dispatch()["active"])
+
+        # Poll 3 exhausts recovery, persists the claim in pending_linear_todo_reconciliations BEFORE
+        # clearing active-dispatch.json, and lets OTHER dispatches proceed unblocked even while
+        # lin_stranded still fails transiently!
+        lin_other = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n_other}",
+            title=f"Unblocked sibling issue #{n_other}",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        lin_other_id = str(lin_other["id"])
+        move_to_in_review_ids.add(lin_other_id)
+
+        res_3 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 15, 11, 0))
+        self.assertEqual(res_3["status"], "ok")
+        self.assertEqual(res_3["recovery"]["status"], "recovered_failed")
+        self.assertTrue(res_3["recovery"]["can_dispatch"])
+        self.assertIsNone(store.read_active_dispatch()["active"])
+        # Sibling issue dispatched and completed cleanly despite lin_stranded still failing reconciliation!
+        self.assertEqual(len(res_3["targeted_dispatches"]), 1)
+        self.assertTrue(res_3["targeted_dispatches"][0]["task_succeeded"])
+        self.assertEqual(linear_stub.issues[lin_other_id]["state"]["name"], "In Review")  # type: ignore[index]
+        # Stranded claim remains durably queued across a fresh CompanionStateStore reload.
+        reloaded_store = companion.CompanionStateStore(store.state_dir, "skrye")
+        pending_q = reloaded_store.list_linear_todo_reconciliations()
+        self.assertIn(lin_stranded_id, pending_q)
+        self.assertEqual(pending_q[lin_stranded_id]["thread_key"], companion.make_pr_key(repo, n_stranded))
+        self.assertEqual(linear_stub.issues[lin_stranded_id]["state"]["name"], "In Progress")  # type: ignore[index]
+
+        # 2) Seed two additional durable queue entries to verify In Review preservation and not-found cleanup:
+        #    - lin_already_review is ALREADY In Review -> must be cleared without mutating Linear.
+        #    - lin_deleted_id does not exist in Linear -> must be cleared on permanent "not found".
+        lin_already_review = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n_already_review}",
+            title=f"Already moved to In Review #{n_already_review}",
+            repo=repo,
+            item_kind="Issue",
+            state="In Review",
+        )
+        lin_already_review_id = str(lin_already_review["id"])
+        lin_deleted_id = "lin-deleted-missing-999"
+        store.enqueue_linear_todo_reconciliation(
+            lin_already_review_id,
+            companion.make_pr_key(repo, n_already_review),
+            reason="simulated_outage_already_moved",
+            now_override_ms=self._utc_ms(2026, 4, 15, 11, 5),
+        )
+        store.enqueue_linear_todo_reconciliation(
+            lin_deleted_id,
+            "wimpysworld/tailor#9999",
+            reason="simulated_outage_deleted",
+            now_override_ms=self._utc_ms(2026, 4, 15, 11, 5),
+        )
+
+        # Poll 4: get_issue now succeeds for lin_stranded, but update_issue(..., state="Todo") fails transiently.
+        #         - lin_stranded stays queued (not dropped on transient revert failure).
+        #         - lin_already_review is cleared without calling update_issue on it.
+        #         - lin_deleted_id is removed permanently on "not found".
+        linear_stub.fail_get_issue_ids.discard(lin_stranded_id)
+        linear_stub.fail_revert_todo_ids.add(lin_stranded_id)
+        updates_before_p4 = len(linear_stub.update_calls)
+        res_4 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 15, 11, 30))
+        self.assertEqual(res_4["status"], "ok")
+        rec_by_id_p4 = {item["linear_issue_id"]: item for item in res_4["linear_todo_reconciliations"]}
+        self.assertEqual(rec_by_id_p4[lin_stranded_id]["action"], "deferred_revert_error")
+        self.assertEqual(rec_by_id_p4[lin_already_review_id]["action"], "cleared_already_moved")
+        self.assertEqual(rec_by_id_p4[lin_deleted_id]["action"], "removed_not_found")
+        pending_after_p4 = store.list_linear_todo_reconciliations()
+        self.assertEqual(list(pending_after_p4.keys()), [lin_stranded_id])
+        self.assertEqual(linear_stub.issues[lin_already_review_id]["state"]["name"], "In Review")  # type: ignore[index]
+        # No update_issue call was made against lin_already_review_id.
+        p4_updated_ids = [lid for lid, _ in linear_stub.update_calls[updates_before_p4:]]
+        self.assertNotIn(lin_already_review_id, p4_updated_ids)
+
+        # Poll 5: Linear fully recovers -> durable queue reverts lin_stranded from In Progress -> Todo,
+        #         removes it from the queue, and the Todo poll picks it up and completes it cleanly.
+        linear_stub.fail_revert_todo_ids.discard(lin_stranded_id)
+        fail_turn_ids.discard(lin_stranded_id)
+        move_to_in_review_ids.add(lin_stranded_id)
+        rpc_before_p5 = len(rpc_calls)
+        res_5 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 15, 12, 0))
+        self.assertEqual(res_5["status"], "ok")
+        rec_by_id_p5 = {item["linear_issue_id"]: item for item in res_5["linear_todo_reconciliations"]}
+        self.assertEqual(rec_by_id_p5[lin_stranded_id]["action"], "reverted_to_todo")
+        self.assertEqual(store.list_linear_todo_reconciliations(), {})
+        self.assertEqual(len(res_5["targeted_dispatches"]), 1)
+        self.assertTrue(res_5["targeted_dispatches"][0]["task_succeeded"])
+        self.assertEqual(len(rpc_calls), rpc_before_p5 + 1)
+        self.assertEqual(linear_stub.issues[lin_stranded_id]["state"]["name"], "In Review")  # type: ignore[index]
+        self.assertEqual(linear_stub.issues[lin_already_review_id]["state"]["name"], "In Review")  # type: ignore[index]
+
+        # 3) Guard in defer_linear_todo_verification: never overwrite missing or mismatched active-dispatch.json,
+        #    and enqueue the orphaned linear_todo_implement claim instead.
+        lin_orphan_id = f"lin-orphan-{n_orphan}"
+        orphan_record = {
+            "dispatch_id": "ghd-skrye-orphan-1",
+            "session_key": runner.execution_coordinator.session_key,
+            "kind": "linear_todo_implement",
+            "state_key": companion.make_pr_key(repo, n_orphan),
+            "linear_issue_id": lin_orphan_id,
+        }
+        # 3a) Missing active-dispatch.json on disk: must stay None and enqueue reconciliation.
+        store.write_active_dispatch(None, now_override_ms=self._utc_ms(2026, 4, 15, 12, 10))
+        runner.execution_coordinator.defer_linear_todo_verification(
+            {"_deferred_active_record": dict(orphan_record), "task_succeeded": False},
+            verification_error="linear_todo_state_verify_failed: missing_active",
+            failure_reason="turn_failed",
+            now_override_ms=self._utc_ms(2026, 4, 15, 12, 11),
+        )
+        self.assertIsNone(store.read_active_dispatch()["active"])
+        self.assertIn(lin_orphan_id, store.list_linear_todo_reconciliations())
+        self.assertTrue(store.remove_linear_todo_reconciliation(lin_orphan_id))
+
+        # 3b) Different dispatch_id on disk: must leave the active record untouched and enqueue reconciliation.
+        other_active = {
+            "dispatch_id": "ghd-skrye-different-active",
+            "session_key": runner.execution_coordinator.session_key,
+            "kind": "targeted",
+            "state_key": "other-thread",
+            "status": "in_flight",
+        }
+        store.write_active_dispatch(other_active, now_override_ms=self._utc_ms(2026, 4, 15, 12, 12))
+        runner.execution_coordinator.defer_linear_todo_verification(
+            {"_deferred_active_record": dict(orphan_record), "task_succeeded": False},
+            verification_error="linear_todo_state_verify_failed: mismatched_active",
+            failure_reason="turn_failed",
+            now_override_ms=self._utc_ms(2026, 4, 15, 12, 13),
+        )
+        active_after_mismatch = store.read_active_dispatch()["active"]
+        self.assertIsNotNone(active_after_mismatch)
+        assert active_after_mismatch is not None
+        self.assertEqual(active_after_mismatch.get("dispatch_id"), "ghd-skrye-different-active")
+        self.assertNotIn("verification_deferred", active_after_mismatch)
+        self.assertIn(lin_orphan_id, store.list_linear_todo_reconciliations())
 
 
 class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):

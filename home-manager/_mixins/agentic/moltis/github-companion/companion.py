@@ -388,6 +388,15 @@ def parse_github_item_url(url: str) -> tuple[str, str, int, str] | None:
     return None
 
 
+def _is_linear_issue_not_found_error(exc: Exception | None) -> bool:
+    """Return True when a Linear error permanently indicates that an issue does not exist."""
+    if not isinstance(exc, linear_sync.LinearAPIError):
+        return False
+    if getattr(exc, "status", None) == 404:
+        return True
+    return "not found" in str(exc).lower()
+
+
 def _fetch_linear_issue_state_with_retry(
     linear_client: linear_sync.LinearSyncClient | None,
     linear_id: str,
@@ -403,6 +412,8 @@ def _fetch_linear_issue_state_with_retry(
             return str(post_state.get("name") or "").strip().lower(), None
         except Exception as exc:
             last_exc = exc
+            if _is_linear_issue_not_found_error(exc):
+                break
             if attempt == 0:
                 continue
     return None, last_exc
@@ -2120,8 +2131,32 @@ class CompanionStateStore:
                     resolved[key] = max(0, _safe_int(limits[key], default_val))
         return resolved
 
+    @staticmethod
+    def _normalize_pending_linear_todo_reconciliations(raw: object) -> dict[str, dict[str, object]]:
+        normalized: dict[str, dict[str, object]] = {}
+        if not isinstance(raw, dict):
+            return normalized
+        for raw_key, raw_entry in raw.items():
+            clean_id = str(raw_key or "").strip()
+            if not clean_id or not isinstance(raw_entry, dict):
+                continue
+            thread_key = str(raw_entry.get("thread_key") or raw_entry.get("state_key") or "").strip() or None
+            dispatch_id = str(raw_entry.get("dispatch_id") or "").strip() or None
+            reason = str(raw_entry.get("reason") or "").strip() or None
+            enqueued_at_ms = _safe_int(raw_entry.get("enqueued_at_ms"), 0) or None
+            updated_at_ms = _safe_int(raw_entry.get("updated_at_ms"), 0) or None
+            normalized[clean_id] = {
+                "linear_issue_id": clean_id,
+                "thread_key": thread_key,
+                "dispatch_id": dispatch_id,
+                "reason": reason,
+                "enqueued_at_ms": enqueued_at_ms,
+                "updated_at_ms": updated_at_ms,
+            }
+        return normalized
+
     def _default_state(self) -> dict:
-        return {"version": STATE_SCHEMA_VERSION, "agent_name": self.agent_name, "next_poll_at_ms": None, "last_poll_started_at_ms": None, "last_poll_completed_at_ms": None, "last_status": None, "last_modified": None, "poll_interval_secs": 0, "retry_after_secs": 0, "last_poll_rate_limited": False, "ratelimit_reset_epoch": None, "last_jitter_ms": None, "last_open_prs_poll_error": None, "last_open_issues_poll_error": None, "last_reconcile_sweep_at_ms": None, "last_reconcile_sweep_attempt_at_ms": None, "reconcile_sweep_retry_after_ms": None, "reconcile_sweep_failure_count": 0, "last_reconcile_sweep_failure_reason": None, "last_weekly_sweep_date": None, "last_weekly_sweep_attempt_at_ms": None, "weekly_sweep_retry_after_ms": None, "weekly_sweep_failure_count": 0, "last_weekly_sweep_failure_reason": None, "throttles": self._default_throttles(), "threads": {}, "updated_at_ms": self.started_at_ms}
+        return {"version": STATE_SCHEMA_VERSION, "agent_name": self.agent_name, "next_poll_at_ms": None, "last_poll_started_at_ms": None, "last_poll_completed_at_ms": None, "last_status": None, "last_modified": None, "poll_interval_secs": 0, "retry_after_secs": 0, "last_poll_rate_limited": False, "ratelimit_reset_epoch": None, "last_jitter_ms": None, "last_open_prs_poll_error": None, "last_open_issues_poll_error": None, "last_reconcile_sweep_at_ms": None, "last_reconcile_sweep_attempt_at_ms": None, "reconcile_sweep_retry_after_ms": None, "reconcile_sweep_failure_count": 0, "last_reconcile_sweep_failure_reason": None, "last_weekly_sweep_date": None, "last_weekly_sweep_attempt_at_ms": None, "weekly_sweep_retry_after_ms": None, "weekly_sweep_failure_count": 0, "last_weekly_sweep_failure_reason": None, "throttles": self._default_throttles(), "pending_linear_todo_reconciliations": {}, "threads": {}, "updated_at_ms": self.started_at_ms}
 
     def _default_active_dispatch(self) -> dict:
         return {"version": 1, "agent_name": self.agent_name, "active": None, "updated_at_ms": self.started_at_ms}
@@ -2230,6 +2265,9 @@ class CompanionStateStore:
         merged = {**default, **{k: v for k, v in data.items() if k not in ("poll_offset_secs", "initial_offset_applied")}, "agent_name": self.agent_name}
         self._normalize_sweep_fields(merged)
         merged["throttles"] = self._normalize_throttles(merged.get("throttles"))
+        merged["pending_linear_todo_reconciliations"] = self._normalize_pending_linear_todo_reconciliations(
+            merged.get("pending_linear_todo_reconciliations")
+        )
         raw_threads = merged.get("threads")
         norm_threads: dict[str, dict] = {}
         if isinstance(raw_threads, dict):
@@ -2264,10 +2302,71 @@ class CompanionStateStore:
                 state["throttles"] = self._normalize_throttles({**self._normalize_throttles(state.get("throttles")), **updates["throttles"]})
             else:
                 state["throttles"] = self._normalize_throttles(state.get("throttles"))
+            state["pending_linear_todo_reconciliations"] = self._normalize_pending_linear_todo_reconciliations(
+                state.get("pending_linear_todo_reconciliations")
+            )
             self._normalize_sweep_fields(state)
             state.update({"agent_name": self.agent_name, "updated_at_ms": stamp_ms})
             atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
             return dict(state)
+
+    def enqueue_linear_todo_reconciliation(
+        self,
+        linear_id: str,
+        thread_key: str | None = None,
+        *,
+        dispatch_id: str | None = None,
+        reason: str | None = None,
+        now_override_ms: int | None = None,
+    ) -> dict[str, object] | None:
+        """Persist a stranded Linear Todo claim in state.json for non-blocking reconciliation."""
+        clean_id = str(linear_id or "").strip()
+        if not clean_id:
+            return None
+        stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
+        with self._locked_dir() as dir_fd:
+            state = self._read_state_unlocked(dir_fd)
+            pending = dict(state.get("pending_linear_todo_reconciliations") or {})
+            existing = _as_dict(pending.get(clean_id))
+            entry: dict[str, object] = {
+                "linear_issue_id": clean_id,
+                "thread_key": str(thread_key or existing.get("thread_key") or "").strip() or None,
+                "dispatch_id": str(dispatch_id or existing.get("dispatch_id") or "").strip() or None,
+                "reason": str(reason or existing.get("reason") or "").strip() or None,
+                "enqueued_at_ms": _safe_int(existing.get("enqueued_at_ms"), 0) or stamp_ms,
+                "updated_at_ms": stamp_ms,
+            }
+            pending[clean_id] = entry
+            state["pending_linear_todo_reconciliations"] = pending
+            state["agent_name"] = self.agent_name
+            state["updated_at_ms"] = stamp_ms
+            atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
+            return dict(entry)
+
+    def list_linear_todo_reconciliations(self) -> dict[str, dict[str, object]]:
+        """Return a copy of all pending Linear Todo reconciliations keyed by linear_id."""
+        pending = self.read_state().get("pending_linear_todo_reconciliations")
+        if not isinstance(pending, dict):
+            return {}
+        return {str(k): dict(v) for k, v in pending.items() if isinstance(v, dict)}
+
+    def remove_linear_todo_reconciliation(self, linear_id: str, *, now_override_ms: int | None = None) -> bool:
+        """Atomically remove a reconciled Linear Todo claim from state.json."""
+        clean_id = str(linear_id or "").strip()
+        if not clean_id:
+            return False
+        stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
+        with self._locked_dir() as dir_fd:
+            state = self._read_state_unlocked(dir_fd)
+            pending = dict(state.get("pending_linear_todo_reconciliations") or {})
+            if clean_id not in pending:
+                return False
+            pending.pop(clean_id, None)
+            state["pending_linear_todo_reconciliations"] = pending
+            state["agent_name"] = self.agent_name
+            state["updated_at_ms"] = stamp_ms
+            atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
+            return True
 
     def reprocess_community_entries(self, now_override_ms: int | None = None) -> int:
         stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
@@ -3853,6 +3952,8 @@ class LocalExecutionCoordinator:
         if not linear_issue_id:
             return False, True, None
         post_state_name, verify_exc = self._fetch_linear_issue_state(linear_issue_id)
+        if _is_linear_issue_not_found_error(verify_exc):
+            return False, True, None
         if verify_exc is not None or not post_state_name:
             detail = str(verify_exc) if verify_exc is not None else "missing workflow state in Linear response"
             sys.stderr.write(f"moltis-github-companion linear-todo-recovery-verify warning ({active_record.get('state_key') or linear_issue_id} / {linear_issue_id}): {detail}\n")
@@ -3862,6 +3963,8 @@ class LocalExecutionCoordinator:
         try:
             self.linear_client.update_issue(linear_issue_id, state="Todo")
         except Exception as exc:
+            if _is_linear_issue_not_found_error(exc):
+                return False, True, None
             sys.stderr.write(f"moltis-github-companion linear-todo-recovery-revert warning ({active_record.get('state_key') or linear_issue_id} / {linear_issue_id}): {exc}\n")
             return False, False, f"linear_todo_recovery_revert_failed: {exc}"
         return True, True, None
@@ -3883,15 +3986,24 @@ class LocalExecutionCoordinator:
                 stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
                 current = self.state_store.read_active_dispatch().get("active")
                 dispatch_id = str(active_record.get("dispatch_id") or "").strip()
-                if isinstance(current, dict) and (not dispatch_id or str(current.get("dispatch_id") or "").strip() == dispatch_id):
+                current_dispatch_id = str(current.get("dispatch_id") or "").strip() if isinstance(current, dict) else ""
+                if isinstance(current, dict) and dispatch_id and current_dispatch_id == dispatch_id:
                     updated_active = dict(current)
+                    updated_active["verification_deferred"] = True
+                    updated_active["verification_error"] = clean_error
+                    if clean_failure:
+                        updated_active["deferred_failure_reason"] = clean_failure
+                    self.state_store.write_active_dispatch(updated_active, now_override_ms=stamp_ms)
                 else:
-                    updated_active = dict(active_record)
-                updated_active["verification_deferred"] = True
-                updated_active["verification_error"] = clean_error
-                if clean_failure:
-                    updated_active["deferred_failure_reason"] = clean_failure
-                self.state_store.write_active_dispatch(updated_active, now_override_ms=stamp_ms)
+                    linear_issue_id = str(active_record.get("linear_issue_id") or "").strip()
+                    if linear_issue_id and active_record.get("kind") == "linear_todo_implement":
+                        self.state_store.enqueue_linear_todo_reconciliation(
+                            linear_issue_id,
+                            str(active_record.get("state_key") or active_record.get("thread_id") or "").strip() or None,
+                            dispatch_id=dispatch_id or None,
+                            reason=clean_error,
+                            now_override_ms=stamp_ms,
+                        )
         dispatch_result.pop("_deferred_active_record", None)
         dispatch_result["verification_deferred"] = True
         dispatch_result["verification_error"] = clean_error
@@ -3939,6 +4051,15 @@ class LocalExecutionCoordinator:
             f"{err_reason} after {attempts} attempts\n"
         )
         exhausted_reason = f"linear_todo_recovery_exhausted: {err_reason}"
+        linear_issue_id = str(active_record.get("linear_issue_id") or "").strip()
+        if linear_issue_id and active_record.get("kind") == "linear_todo_implement":
+            self.state_store.enqueue_linear_todo_reconciliation(
+                linear_issue_id,
+                str(active_record.get("state_key") or active_record.get("thread_id") or "").strip() or None,
+                dispatch_id=str(active_record.get("dispatch_id") or "").strip() or None,
+                reason=exhausted_reason,
+                now_override_ms=now_override_ms,
+            )
         fin = self._finalize_failed_dispatch(active_record, failure_reason=exhausted_reason, now_override_ms=now_override_ms)
         return fin, False, False, exhausted_reason, attempts
 
@@ -4661,6 +4782,91 @@ class GithubCompanionRunner:
         """Fetch a Linear issue's lowercased workflow state name with one retry on transient failure."""
         return _fetch_linear_issue_state_with_retry(self.linear_client, linear_id)
 
+    def _reconcile_pending_linear_todo_claims(self, *, current_ms: int) -> list[dict]:
+        """Drain durable pending_linear_todo_reconciliations without blocking other dispatches."""
+        if self.linear_client is None:
+            return []
+        pending = self.state_store.list_linear_todo_reconciliations()
+        if not pending:
+            return []
+        results: list[dict] = []
+        for linear_id, entry in pending.items():
+            thread_key = str(_as_dict(entry).get("thread_key") or "").strip() or None
+            try:
+                refreshed = self.linear_client.get_issue(linear_id)
+            except Exception as exc:
+                if _is_linear_issue_not_found_error(exc):
+                    self.state_store.remove_linear_todo_reconciliation(linear_id, now_override_ms=current_ms)
+                    results.append({
+                        "linear_issue_id": linear_id,
+                        "thread_key": thread_key,
+                        "action": "removed_not_found",
+                        "error": str(exc),
+                    })
+                else:
+                    sys.stderr.write(
+                        f"moltis-github-companion linear-todo-reconcile-verify warning ({thread_key or linear_id} / {linear_id}): {exc}\n"
+                    )
+                    results.append({
+                        "linear_issue_id": linear_id,
+                        "thread_key": thread_key,
+                        "action": "deferred_transient_error",
+                        "error": str(exc),
+                    })
+                continue
+            post_state = _as_dict(_as_dict(refreshed).get("state"))
+            post_state_name = str(post_state.get("name") or "").strip().lower()
+            if not post_state_name:
+                sys.stderr.write(
+                    f"moltis-github-companion linear-todo-reconcile-verify warning ({thread_key or linear_id} / {linear_id}): missing workflow state in Linear response\n"
+                )
+                results.append({
+                    "linear_issue_id": linear_id,
+                    "thread_key": thread_key,
+                    "action": "deferred_transient_error",
+                    "error": "missing workflow state in Linear response",
+                })
+                continue
+            if post_state_name in ("in progress", "in_progress"):
+                try:
+                    self.linear_client.update_issue(linear_id, state="Todo")
+                except Exception as exc:
+                    if _is_linear_issue_not_found_error(exc):
+                        self.state_store.remove_linear_todo_reconciliation(linear_id, now_override_ms=current_ms)
+                        results.append({
+                            "linear_issue_id": linear_id,
+                            "thread_key": thread_key,
+                            "action": "removed_not_found",
+                            "error": str(exc),
+                        })
+                    else:
+                        sys.stderr.write(
+                            f"moltis-github-companion linear-todo-reconcile-revert warning ({thread_key or linear_id} / {linear_id}): {exc}\n"
+                        )
+                        results.append({
+                            "linear_issue_id": linear_id,
+                            "thread_key": thread_key,
+                            "action": "deferred_revert_error",
+                            "error": str(exc),
+                        })
+                    continue
+                self.state_store.remove_linear_todo_reconciliation(linear_id, now_override_ms=current_ms)
+                results.append({
+                    "linear_issue_id": linear_id,
+                    "thread_key": thread_key,
+                    "action": "reverted_to_todo",
+                    "previous_state": post_state_name,
+                })
+            else:
+                self.state_store.remove_linear_todo_reconciliation(linear_id, now_override_ms=current_ms)
+                results.append({
+                    "linear_issue_id": linear_id,
+                    "thread_key": thread_key,
+                    "action": "cleared_already_moved",
+                    "state": post_state_name,
+                })
+        return results
+
     def _dispatch_linear_todo_implementations(self, active_linear_issues: Iterable[dict], *, slot_id: str, dispatched_targets: set[str], current_ms: int, now_override_ms: int | None) -> list[dict]:
         if self.linear_client is None or self.state_store.agent_name not in SWEEP_AGENT_ORDER:
             return []
@@ -4678,8 +4884,17 @@ class GithubCompanionRunner:
                 continue
             consumed, _ = self.state_store.consume_throttle("todo_implementations", slot_id=slot_id, now_override_ms=current_ms)
             if not consumed:
-                with contextlib.suppress(Exception):
+                try:
                     self.linear_client.update_issue(cand["linear_id"], state="Todo")
+                except Exception as exc:
+                    if not _is_linear_issue_not_found_error(exc):
+                        sys.stderr.write(f"moltis-github-companion linear-todo-throttle-revert warning ({cand['issue_key']} / {cand['linear_id']}): {exc}\n")
+                        self.state_store.enqueue_linear_todo_reconciliation(
+                            cand["linear_id"],
+                            cand["issue_key"],
+                            reason=f"linear_todo_throttle_revert_failed: {exc}",
+                            now_override_ms=current_ms,
+                        )
                 break
             self.state_store.update_thread_state(
                 cand["issue_key"],
@@ -4713,8 +4928,17 @@ class GithubCompanionRunner:
                 now_override_ms=now_override_ms,
             )
             if not res.get("dispatched", True):
-                with contextlib.suppress(Exception):
+                try:
                     self.linear_client.update_issue(cand["linear_id"], state="Todo")
+                except Exception as exc:
+                    if not _is_linear_issue_not_found_error(exc):
+                        sys.stderr.write(f"moltis-github-companion linear-todo-undispatched-revert warning ({cand['issue_key']} / {cand['linear_id']}): {exc}\n")
+                        self.state_store.enqueue_linear_todo_reconciliation(
+                            cand["linear_id"],
+                            cand["issue_key"],
+                            reason=f"linear_todo_undispatched_revert_failed: {exc}",
+                            now_override_ms=current_ms,
+                        )
                 dispatches.append(res)
                 break
             with self._deferred_dispatch_guard(res, now_override_ms=now_override_ms):
@@ -6525,9 +6749,9 @@ class GithubCompanionRunner:
         poll_result = self.poller.poll_once(now_override_ms=now_override_ms)
         dismissed_threads: list[str] = list(poll_result.get("dismissed_threads") or [])
         if self.read_only_trial:
-            return {"status": "ok", "recovery": {"status": "read_only_trial", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": []}
+            return {"status": "ok", "recovery": {"status": "read_only_trial", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": [], "linear_todo_reconciliations": []}
         if self._is_coordinator_busy():
-            return {"status": "turn_in_progress", "recovery": {"status": "busy", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": []}
+            return {"status": "turn_in_progress", "recovery": {"status": "busy", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": [], "linear_todo_reconciliations": []}
 
         recovery = self.execution_coordinator.recover_active_dispatch(now_override_ms=now_override_ms)
         if not recovery.get("can_dispatch", True):
@@ -6545,6 +6769,7 @@ class GithubCompanionRunner:
                 "linear_pr_actions": [],
                 "needs_decision_notifications": [],
                 "traya_blind_reviews": [],
+                "linear_todo_reconciliations": [],
             }
         current_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         slot_id = compute_throttle_slot_id(current_ms, self.state_store.agent_name)
@@ -6729,6 +6954,10 @@ class GithubCompanionRunner:
             pr_dispatch_kind = str(pr_item.get("dispatch_kind") or "targeted")
             targeted_dispatches.append(self.execution_coordinator.execute_dispatch(kind=pr_dispatch_kind, is_automated_pr=bool(pr_item.get("is_automated_pr") or pr_entry.get("is_automated_pr")), thread_id=str(pr_item.get("thread_id") or "").strip() or None, state_key=pr_key, repo=str(pr_item.get("repo") or ""), number=_safe_int(pr_item.get("number"), 0) or None, subject_kind="PullRequest", head_sha=str(pr_item.get("head_sha") or "") or None, ci_state=str(pr_item.get("ci_state") or "") or None, updated_at=str(pr_item.get("updated_at") or "") or None, trigger_reason=trig_reason, community_auto_merge_eligible=pr_item.get("community_auto_merge_eligible"), triaged_head_sha=str(pr_entry.get("triaged_head_sha") or "") or None, now_override_ms=now_override_ms))
 
+        linear_todo_reconciliations: list[dict] = []
+        if self.linear_client is not None:
+            linear_todo_reconciliations = self._reconcile_pending_linear_todo_claims(current_ms=current_ms)
+
         linear_triage_stubs = self._create_linear_triage_stubs(
             poll_result.get("actionable_issues") or [],
             slot_id=slot_id,
@@ -6821,6 +7050,7 @@ class GithubCompanionRunner:
             "linear_pr_actions": linear_pr_actions,
             "needs_decision_notifications": needs_decision_notifications,
             "traya_blind_reviews": traya_blind_reviews,
+            "linear_todo_reconciliations": linear_todo_reconciliations,
         }
 
 
