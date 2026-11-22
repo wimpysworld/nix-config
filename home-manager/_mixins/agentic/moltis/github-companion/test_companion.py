@@ -4024,7 +4024,7 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
         ]
         res_skrye = store_skrye.record_polled_issues(issues, now_override_ms=now_val)
         self.assertEqual([i["number"] for i in res_skrye["actionable_issues"]], [skrye_issue])
-        self.assertEqual(res_skrye["actionable_issues"][0]["dispatch_kind"], "community_triage")
+        self.assertEqual(res_skrye["actionable_issues"][0]["dispatch_kind"], "linear_triage_intake")
 
         # After initial triage completes, a later updatedAt (for example label removal) must not re-triage
         store_skrye.complete_thread_review(
@@ -4886,6 +4886,1186 @@ class TerminalReplyNormalizationAndHtmlCommentFilterTests(GithubCompanionTestBas
         self.assertEqual(res_bot_coercion["skip_reason"], "coercion_pattern")
         self.assertEqual(len(self.httpd.messages_sent), 3)
         self.assertEqual(len(self.httpd.telegram_requests), 3)
+
+
+class StubLinearSyncClient:
+    """Deterministic in-memory stub matching `linear_sync.LinearSyncClient`'s public interface."""
+
+    _STATE_MAP: dict[str, tuple[str, str]] = {
+        "triage": ("Triage", "triage"),
+        "backlog": ("Backlog", "backlog"),
+        "todo": ("Todo", "unstarted"),
+        "unstarted": ("Todo", "unstarted"),
+        "in progress": ("In Progress", "started"),
+        "in_progress": ("In Progress", "started"),
+        "in review": ("In Review", "started"),
+        "in_review": ("In Review", "started"),
+        "done": ("Done", "completed"),
+        "completed": ("Done", "completed"),
+        "canceled": ("Canceled", "canceled"),
+        "cancelled": ("Canceled", "canceled"),
+        "duplicate": ("Duplicate", "duplicate"),
+    }
+
+    def __init__(
+        self,
+        *,
+        event_log: list[tuple[object, ...]] | None = None,
+        list_returns_empty: bool = False,
+    ) -> None:
+        self.issues: dict[str, dict[str, object]] = {}
+        self.by_github_url: dict[str, str] = {}
+        self.ensure_calls: list[dict[str, object]] = []
+        self.update_calls: list[dict[str, object]] = []
+        self.list_calls: list[dict[str, object]] = []
+        self.event_log: list[tuple[object, ...]] = event_log if event_log is not None else []
+        self.list_returns_empty = list_returns_empty
+        self._seq = 100
+
+    @classmethod
+    def _state_obj(cls, state: str) -> dict[str, str]:
+        raw = str(state or "").strip()
+        canon, stype = cls._STATE_MAP.get(raw.lower(), (raw or "Triage", raw.lower() or "triage"))
+        slug = canon.lower().replace(" ", "_")
+        return {"id": f"st-{slug}", "name": canon, "type": stype}
+
+    @staticmethod
+    def _copy_issue(issue: dict[str, object]) -> dict[str, object]:
+        return json.loads(json.dumps(issue))
+
+    def seed_issue(
+        self,
+        *,
+        github_url: str,
+        title: str,
+        repo: str,
+        item_kind: str = "Issue",
+        state: str = "Triage",
+        extra_labels: tuple[str, ...] = (),
+        updated_at: str = "2026-04-01T10:00:00Z",
+    ) -> dict[str, object]:
+        normalized_url = companion.linear_sync.normalize_github_url(github_url)
+        self._seq += 1
+        issue_id = f"lin-{self._seq}"
+        identifier = f"WW-{self._seq}"
+        label_names: list[str] = []
+        for lbl in (repo.strip().lower(), item_kind, *extra_labels):
+            clean = str(lbl or "").strip()
+            if clean and clean.lower() not in {x.lower() for x in label_names}:
+                label_names.append(clean)
+        issue: dict[str, object] = {
+            "id": issue_id,
+            "identifier": identifier,
+            "title": title,
+            "description": "",
+            "url": f"https://linear.app/wimpress/issue/{identifier}",
+            "updatedAt": updated_at,
+            "archivedAt": None,
+            "state": self._state_obj(state),
+            "project": {"id": "proj-community", "name": "Community Contributions"},
+            "team": {"id": "team-ww", "key": "WW"},
+            "labels": {
+                "nodes": [{"id": f"lbl-{name.lower()}", "name": name} for name in label_names],
+            },
+            "attachments": {
+                "nodes": [{"id": f"att-{self._seq}", "url": normalized_url, "title": title}],
+            },
+        }
+        self.issues[issue_id] = issue
+        self.by_github_url[normalized_url] = issue_id
+        return self._copy_issue(issue)
+
+    def ensure_issue_for_github_item(
+        self,
+        *,
+        github_url: str,
+        title: str,
+        repo: str | None = None,
+        item_kind: str | None = None,
+        description: str = "",
+        state: str = "Triage",
+        extra_labels: tuple[str, ...] | list[str] = (),
+        priority: int | None = None,
+        estimate: int | None = None,
+        attachment_title: str | None = None,
+        attachment_subtitle: str | None = None,
+    ) -> dict[str, object]:
+        self.ensure_calls.append(
+            {
+                "github_url": github_url,
+                "title": title,
+                "repo": repo,
+                "item_kind": item_kind,
+                "description": description,
+                "state": state,
+                "extra_labels": tuple(extra_labels),
+                "priority": priority,
+                "estimate": estimate,
+                "attachment_title": attachment_title,
+                "attachment_subtitle": attachment_subtitle,
+            }
+        )
+        normalized_url = companion.linear_sync.normalize_github_url(github_url)
+        existing_id = self.by_github_url.get(normalized_url)
+        if existing_id is not None and existing_id in self.issues:
+            self.event_log.append(("linear_ensure_existing", existing_id, state))
+            return self._copy_issue(self.issues[existing_id])
+        resolved_repo = str(repo or "").strip().lower()
+        resolved_kind = str(item_kind or "Issue").strip()
+        created = self.seed_issue(
+            github_url=normalized_url,
+            title=title,
+            repo=resolved_repo,
+            item_kind=resolved_kind,
+            state=state,
+            extra_labels=tuple(extra_labels),
+        )
+        if description:
+            self.issues[str(created["id"])]["description"] = description
+            created["description"] = description
+        self.event_log.append(("linear_ensure_created", str(created["id"]), self._state_obj(state)["name"]))
+        return created
+
+    def update_issue(
+        self,
+        issue_id: str,
+        *,
+        state: str | None = None,
+        title: str | None = None,
+        description: str | None = None,
+        estimate: int | None = None,
+        priority: int | None = None,
+        labels: list[str] | tuple[str, ...] | None = None,
+        add_labels: tuple[str, ...] | list[str] = (),
+        remove_labels: tuple[str, ...] | list[str] = (),
+    ) -> dict[str, object]:
+        self.update_calls.append(
+            {
+                "issue_id": issue_id,
+                "state": state,
+                "title": title,
+                "description": description,
+                "estimate": estimate,
+                "priority": priority,
+                "labels": list(labels) if labels is not None else None,
+                "add_labels": tuple(add_labels),
+                "remove_labels": tuple(remove_labels),
+            }
+        )
+        issue = self.issues[issue_id]
+        if state is not None:
+            issue["state"] = self._state_obj(state)
+        if title is not None:
+            issue["title"] = title
+        if description is not None:
+            issue["description"] = description
+        if estimate is not None:
+            issue["estimate"] = estimate
+        if priority is not None:
+            issue["priority"] = priority
+        if labels is not None:
+            issue["labels"] = {"nodes": [{"id": f"lbl-{lbl.lower()}", "name": lbl} for lbl in labels]}
+        elif add_labels or remove_labels:
+            remove_lower = {str(lbl).strip().lower() for lbl in remove_labels if str(lbl or "").strip()}
+            current_nodes = list((issue.get("labels") or {}).get("nodes") or [])  # type: ignore[union-attr]
+            kept = [node for node in current_nodes if str(node.get("name") or "").strip().lower() not in remove_lower]
+            kept_lower = {str(node.get("name") or "").strip().lower() for node in kept}
+            for lbl in add_labels:
+                clean = str(lbl or "").strip()
+                if clean and clean.lower() not in kept_lower:
+                    kept.append({"id": f"lbl-{clean.lower()}", "name": clean})
+                    kept_lower.add(clean.lower())
+            issue["labels"] = {"nodes": kept}
+        state_name = str((issue.get("state") or {}).get("name") or "")  # type: ignore[union-attr]
+        self.event_log.append(("linear_update", issue_id, state_name))
+        return self._copy_issue(issue)
+
+    def list_project_issues_by_state(
+        self,
+        states: str | tuple[str, ...] | list[str] | None = None,
+        *,
+        project_name: str | None = None,
+        page_size: int = 50,
+        include_archived: bool = False,
+    ) -> list[dict[str, object]]:
+        state_list = [states] if isinstance(states, str) else (list(states) if states is not None else None)
+        self.list_calls.append(
+            {
+                "states": state_list,
+                "project_name": project_name,
+                "page_size": page_size,
+                "include_archived": include_archived,
+            }
+        )
+        if self.list_returns_empty:
+            return []
+        allowed_lower = {self._state_obj(st)["name"].lower() for st in state_list} if state_list else None
+        results: list[dict[str, object]] = []
+        for issue in self.issues.values():
+            if not include_archived and issue.get("archivedAt"):
+                continue
+            st_name = str((issue.get("state") or {}).get("name") or "").strip().lower()  # type: ignore[union-attr]
+            if allowed_lower is not None and st_name not in allowed_lower:
+                continue
+            results.append(self._copy_issue(issue))
+        return results
+
+
+class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
+    """End-to-end tests for WW-397 Linear-backed Community Issues intake, research, implementation, sign-off pings, and close/merge sync."""
+
+    MAIN_MODEL = "gemini::gemini-4-hydrogen@reasoning-medium"
+    REVIEW_MODEL = "gemini::gemini-4-carbon@reasoning-medium"
+
+    @staticmethod
+    def _utc_ms(year: int, month: int, day: int, hour: int, minute: int = 0) -> int:
+        dt = datetime.datetime(year, month, day, hour, minute, tzinfo=datetime.timezone.utc)
+        return int(dt.timestamp() * 1000)
+
+    @staticmethod
+    def _owned_numbers(repo: str, owner: str, count: int, *, kind: str = "issue", start: int = 1) -> list[int]:
+        owner_fn = companion.compute_pr_owner if kind == "pr" else companion.compute_issue_owner
+        found: list[int] = []
+        num = start
+        while len(found) < count:
+            if owner_fn(repo, num) == owner:
+                found.append(num)
+            num += 1
+        return found
+
+    @staticmethod
+    def _graphql_issue_node(
+        repo: str,
+        number: int,
+        *,
+        title: str,
+        body: str = "Clear reproduction steps.",
+        author: str = "community-dev",
+        updated_at: str = "2026-04-01T10:00:00Z",
+        labels: list[str] | None = None,
+    ) -> dict[str, object]:
+        return {
+            "__typename": "Issue",
+            "id": f"I_kw_{number}",
+            "databaseId": 10_000 + number,
+            "number": number,
+            "title": title,
+            "body": body,
+            "url": f"https://github.com/{repo}/issues/{number}",
+            "state": "OPEN",
+            "updatedAt": updated_at,
+            "repository": {"nameWithOwner": repo, "isArchived": False},
+            "author": {"__typename": "User", "login": author},
+            "labels": {"nodes": [{"name": lbl} for lbl in (labels or [])]},
+            "comments": {"nodes": []},
+        }
+
+    @staticmethod
+    def _graphql_pr_node(
+        repo: str,
+        number: int,
+        *,
+        title: str,
+        head_sha: str,
+        author: str = "sith-skrye",
+        review_decision: str = "APPROVED",
+        ci_state: str = "SUCCESS",
+        unresolved_threads: int = 0,
+        labels: list[str] | None = None,
+        updated_at: str = "2026-04-01T10:00:00Z",
+    ) -> dict[str, object]:
+        rollup: dict[str, object] | None
+        if ci_state == "NONE":
+            rollup = None
+        else:
+            rollup = {"state": ci_state, "contexts": {"nodes": []}}
+        thread_nodes = [{"isResolved": False} for _ in range(unresolved_threads)]
+        return {
+            "__typename": "PullRequest",
+            "id": f"PR_kw_{number}",
+            "databaseId": 20_000 + number,
+            "number": number,
+            "title": title,
+            "body": "Automated implementation.",
+            "url": f"https://github.com/{repo}/pull/{number}",
+            "state": "OPEN",
+            "isDraft": False,
+            "updatedAt": updated_at,
+            "headRefName": f"fix/issue-{number}",
+            "headRefOid": head_sha,
+            "reviewDecision": review_decision,
+            "additions": 20,
+            "deletions": 5,
+            "changedFiles": 2,
+            "repository": {"nameWithOwner": repo, "isArchived": False},
+            "author": {"__typename": "User", "login": author},
+            "labels": {"nodes": [{"name": lbl} for lbl in (labels or [])]},
+            "files": {"pageInfo": {"hasNextPage": False}, "nodes": [{"path": "README.md"}]},
+            "reviewRequests": {"nodes": []},
+            "reviewThreads": {"pageInfo": {"hasNextPage": False}, "nodes": thread_nodes},
+            "statusCheckRollup": rollup,
+        }
+
+    @staticmethod
+    def _graphql_search_payload(nodes: list[dict[str, object]]) -> str:
+        return json.dumps(
+            {
+                "data": {
+                    "search": {
+                        "pageInfo": {"hasNextPage": False, "endCursor": None},
+                        "nodes": nodes,
+                    }
+                }
+            }
+        )
+
+    @staticmethod
+    def _parse_prompt_metadata(message: str) -> dict[str, str]:
+        meta: dict[str, str] = {}
+        for line in message.splitlines():
+            if ": " in line:
+                key, value = line.split(": ", 1)
+                if key.strip() and " " not in key.strip():
+                    meta[key.strip()] = value.strip()
+        return meta
+
+    def _build_pipeline_runner(
+        self,
+        *,
+        agent_name: str = "skrye",
+        gh_runner: Callable[..., subprocess.CompletedProcess],
+        linear_client: object | None,
+        rpc_reply_fn: Callable[[dict[str, str], dict], str] | None = None,
+        event_log: list[tuple[object, ...]] | None = None,
+        state_dir: Path | None = None,
+    ) -> tuple[companion.CompanionStateStore, companion.GithubCompanionRunner, list[dict[str, object]]]:
+        store = self.make_store(agent_name, state_dir=state_dir)
+        tg_client = self.make_telegram_client()
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        rpc_calls: list[dict[str, object]] = []
+        self.httpd.peek_active = False
+
+        def _send_sync_handler(params: dict) -> dict:
+            msg = str(params.get("message") or "")
+            model = str(params.get("model") or "")
+            meta = self._parse_prompt_metadata(msg)
+            disp_id = meta.get("dispatch_id", "")
+            rpc_calls.append({"model": model, "message": msg, "meta": meta, "params": dict(params)})
+            if event_log is not None:
+                event_log.append(("rpc_send_sync", meta.get("linear_issue_id") or disp_id, meta.get("dispatch_kind") or ""))
+            reply_text = rpc_reply_fn(meta, params) if rpc_reply_fn is not None else "HEARTBEAT_OK"
+            self.write_history(
+                str(params.get("session_key") or companion.DEFAULT_GH_SESSION_KEY),
+                [
+                    {"role": "user", "dispatch_id": disp_id, "content": msg},
+                    {"role": "assistant", "content": reply_text, "stop_reason": "end_turn"},
+                ],
+                agent_name=agent_name,
+            )
+            return {"ok": True, "result": {"text": reply_text}}
+
+        self.httpd.send_sync_handler = _send_sync_handler
+
+        gh_client = companion.GhApiSafeClient(runner=gh_runner)
+        poller = companion.NotificationPoller(state_store=store, gh_client=gh_client, clock=self.clock)
+        tf = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store,
+            gh_client=gh_client,
+            telegram_client=tg_client,
+            agent_name=agent_name,
+            clock=self.clock,
+        )
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name=agent_name,
+            main_model=self.MAIN_MODEL,
+            review_model=self.REVIEW_MODEL,
+            telegram_client=tg_client,
+            completion_timeout_ms=1_000,
+            poll_interval_ms=20,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+        runner = companion.GithubCompanionRunner(
+            state_store=store,
+            gh_client=gh_client,
+            poller=poller,
+            trust_filter=tf,
+            execution_coordinator=coord,
+            clock=self.clock,
+            linear_client=linear_client,  # type: ignore[arg-type]
+        )
+        return store, runner, rpc_calls
+
+    def test_silent_triage_intake_stubs_caps_deferral_and_guards(self) -> None:
+        repo = "wimpysworld/tailor"
+        skrye_issues = self._owned_numbers(repo, "skrye", 12, kind="issue", start=1)
+        zannah_issue = self._owned_numbers(repo, "zannah", 1, kind="issue", start=1)[0]
+        nodes = [
+            self._graphql_issue_node(repo, num, title=f"Bug #{num}")
+            for num in skrye_issues
+        ] + [
+            self._graphql_issue_node(repo, zannah_issue, title=f"Zannah issue #{zannah_issue}")
+        ]
+        gh_commands: list[list[str]] = []
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            gh_commands.append(list(cmd))
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(nodes), stderr="")
+            raise AssertionError(f"Unexpected gh command during silent intake: {cmd!r}")
+
+        linear_stub = StubLinearSyncClient(list_returns_empty=True)
+        store, runner, rpc_calls = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+        )
+
+        # Slot 1: creates at most 10 stubs, skipping zannah's issue, with zero Telegram, RPC, or GitHub comments
+        slot1_ms = self._utc_ms(2026, 4, 1, 10, 0)
+        res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms)
+        self.assertEqual(len(res1["linear_triage_stubs"]), 10)
+        self.assertEqual([s["number"] for s in res1["linear_triage_stubs"]], skrye_issues[:10])
+        self.assertEqual(len(linear_stub.ensure_calls), 10)
+        for call, expected_num in zip(linear_stub.ensure_calls, skrye_issues[:10], strict=True):
+            self.assertEqual(call["state"], "Triage")
+            self.assertEqual(call["item_kind"], "Issue")
+            self.assertEqual(call["repo"], repo)
+            self.assertEqual(call["github_url"], f"https://github.com/{repo}/issues/{expected_num}")
+        self.assertEqual(self.httpd.telegram_requests, [])
+        self.assertEqual(self.httpd.rpc_requests, [])
+        self.assertEqual(rpc_calls, [])
+        self.assertTrue(all(cmd[1] in ("notifications", "graphql") for cmd in gh_commands))
+
+        # Re-polling within the same 30-minute slot keeps the 2 excess issues deferred
+        res1_same_slot = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms + 5 * 60 * 1000)
+        self.assertEqual(res1_same_slot["linear_triage_stubs"], [])
+        self.assertEqual(len(linear_stub.ensure_calls), 10)
+
+        # Next 30-minute slot creates the remaining 2 deferred stubs
+        slot2_ms = self._utc_ms(2026, 4, 1, 10, 30)
+        res2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot2_ms)
+        self.assertEqual([s["number"] for s in res2["linear_triage_stubs"]], skrye_issues[10:])
+        self.assertEqual(len(linear_stub.ensure_calls), 12)
+        self.assertEqual(self.httpd.telegram_requests, [])
+        self.assertEqual(self.httpd.rpc_requests, [])
+        self.assertIsNone((store.get_thread_state(companion.make_pr_key(repo, zannah_issue)) or {}).get("linear_issue_id"))
+
+        # Traya never creates triage stubs or polls Linear
+        traya_stub = StubLinearSyncClient(list_returns_empty=False)
+        _, traya_runner, traya_rpc = self._build_pipeline_runner(
+            agent_name="traya",
+            gh_runner=fake_gh,
+            linear_client=traya_stub,
+        )
+        res_traya = traya_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms)
+        self.assertEqual(res_traya["linear_triage_stubs"], [])
+        self.assertEqual(traya_stub.ensure_calls, [])
+        self.assertEqual(traya_stub.list_calls, [])
+        self.assertEqual(traya_rpc, [])
+
+        # linear_client=None skips intake cleanly with zero RPC turns and zero Telegram messages
+        _, no_linear_runner, no_linear_rpc = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=None,
+            state_dir=self.state_dir / "skrye-no-linear",
+        )
+        res_no_linear = no_linear_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms)
+        self.assertEqual(res_no_linear["linear_triage_stubs"], [])
+        self.assertEqual(res_no_linear["targeted_dispatches"], [])
+        self.assertEqual(no_linear_rpc, [])
+        self.assertEqual(self.httpd.telegram_requests, [])
+
+    def test_triage_research_dispatch_filtering_cap_model_metadata_and_telegram_suppression(self) -> None:
+        repo = "wimpysworld/tailor"
+        skrye_nums = self._owned_numbers(repo, "skrye", 4, kind="issue", start=20)
+        coercion_num = skrye_nums[0]
+        eligible_nums = skrye_nums[1:]
+        zannah_num = self._owned_numbers(repo, "zannah", 1, kind="issue", start=20)[0]
+        skrye_pr_num = self._owned_numbers(repo, "skrye", 1, kind="pr", start=20)[0]
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload([]), stderr="")
+            # Return open state for live close-sync checks so none of the seeded Triage items are closed
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
+
+        linear_stub = StubLinearSyncClient()
+        # Non-eligible Triage items that must all be skipped
+        linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{skrye_pr_num}",
+            title="Community PR in Triage",
+            repo=repo,
+            item_kind="PR",
+            state="Triage",
+        )
+        linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{zannah_num}",
+            title="Zannah issue in Triage",
+            repo=repo,
+            item_kind="Issue",
+            state="Triage",
+        )
+        linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{coercion_num}",
+            title="Coercion blocked issue",
+            repo=repo,
+            item_kind="Issue",
+            state="Triage",
+        )
+        seeded_eligible = [
+            linear_stub.seed_issue(
+                github_url=f"https://github.com/{repo}/issues/{num}",
+                title=f"Eligible issue #{num}",
+                repo=repo,
+                item_kind="Issue",
+                state="Triage",
+            )
+            for num in eligible_nums
+        ]
+
+        def research_reply(meta: dict[str, str], _params: dict) -> str:
+            linear_id = meta.get("linear_issue_id", "")
+            if linear_id:
+                linear_stub.update_issue(linear_id, state="Backlog")
+            # Emit non-HEARTBEAT_OK text to prove Telegram forwarding stays suppressed
+            return f"🧼 {meta.get('github_url', '')} - Triage research summary written to Linear"
+
+        store, runner, rpc_calls = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=research_reply,
+        )
+        store.update_thread_state(
+            companion.make_pr_key(repo, coercion_num),
+            {"repo": repo, "number": coercion_num, "subject_type": "Issue", "coercion_blocked": True},
+            now_override_ms=self.clock(),
+        )
+
+        # Slot 1: cap of 2 triage_research dispatches/slot
+        slot1_ms = self._utc_ms(2026, 4, 1, 10, 0)
+        res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms)
+        self.assertEqual(len(res1["targeted_dispatches"]), 2)
+        self.assertEqual(len(rpc_calls), 2)
+        for idx, (dispatch, rpc_call, expected_issue) in enumerate(
+            zip(res1["targeted_dispatches"], rpc_calls, seeded_eligible[:2], strict=True)
+        ):
+            self.assertEqual(dispatch["kind"], "linear_triage_research")
+            self.assertTrue(dispatch["task_succeeded"])
+            self.assertFalse(dispatch["telegram_forwarded"])
+            self.assertEqual(rpc_call["model"], self.REVIEW_MODEL)
+            meta = rpc_call["meta"]
+            assert isinstance(meta, dict)
+            self.assertEqual(meta["dispatch_kind"], "linear_triage_research")
+            self.assertEqual(meta["linear_issue_id"], expected_issue["id"])
+            self.assertEqual(meta["linear_issue_identifier"], expected_issue["identifier"])
+            self.assertEqual(meta["linear_issue_url"], expected_issue["url"])
+            self.assertEqual(meta["github_url"], f"https://github.com/{repo}/issues/{eligible_nums[idx]}")
+        self.assertEqual(self.httpd.telegram_requests, [])
+
+        # Slot 2: dispatches the 3rd eligible issue, still suppressing Telegram
+        slot2_ms = self._utc_ms(2026, 4, 1, 10, 30)
+        res2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot2_ms)
+        self.assertEqual(len(res2["targeted_dispatches"]), 1)
+        self.assertEqual(rpc_calls[2]["meta"]["linear_issue_id"], seeded_eligible[2]["id"])  # type: ignore[index]
+        self.assertEqual(rpc_calls[2]["model"], self.REVIEW_MODEL)
+        self.assertFalse(res2["targeted_dispatches"][0]["telegram_forwarded"])
+        self.assertEqual(self.httpd.telegram_requests, [])
+
+        # Traya never polls Linear or dispatches linear_triage_research
+        traya_stub = StubLinearSyncClient()
+        traya_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{eligible_nums[0]}",
+            title="Issue for traya check",
+            repo=repo,
+            item_kind="Issue",
+            state="Triage",
+        )
+        _, traya_runner, traya_rpc = self._build_pipeline_runner(
+            agent_name="traya",
+            gh_runner=fake_gh,
+            linear_client=traya_stub,
+        )
+        res_traya = traya_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms)
+        self.assertEqual(res_traya["targeted_dispatches"], [])
+        self.assertEqual(traya_stub.list_calls, [])
+        self.assertEqual(traya_rpc, [])
+
+    def test_todo_implementation_team_implement_promotion_caps_revert_and_traya_exclusion(self) -> None:
+        repo = "wimpysworld/tailor"
+        n1, n2, n3, n4, n5 = self._owned_numbers(repo, "skrye", 5, kind="issue", start=60)
+        open_nodes: list[dict[str, object]] = [
+            self._graphql_issue_node(
+                repo,
+                n1,
+                title=f"Implement feature #{n1}",
+                labels=["team:implement"],
+            )
+        ]
+        issue_events_by_num: dict[int, list[dict[str, object]]] = {
+            n1: [
+                {
+                    "id": 7000,
+                    "event": "labeled",
+                    "label": {"name": "team:implement"},
+                    "actor": {"login": "untrusted-user"},
+                    "created_at": "2026-04-01T09:50:00Z",
+                }
+            ]
+        }
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(open_nodes), stderr="")
+            if ep.endswith("/events?per_page=100"):
+                num = int(ep.split("/issues/", 1)[1].split("/", 1)[0])
+                return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(issue_events_by_num.get(num, [])), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
+
+        event_log: list[tuple[object, ...]] = []
+        linear_stub = StubLinearSyncClient(event_log=event_log)
+        lin1 = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n1}",
+            title=f"Implement feature #{n1}",
+            repo=repo,
+            item_kind="Issue",
+            state="Triage",
+            extra_labels=("sign-off-required",),
+        )
+        lin2 = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n2}",
+            title=f"Backlog feature #{n2}",
+            repo=repo,
+            item_kind="Issue",
+            state="Backlog",
+        )
+        lin1_id = str(lin1["id"])
+        lin2_id = str(lin2["id"])
+        # Mark n1 with existing linear_issue_id so Triage stub intake does not interfere
+        observed_states_at_rpc: dict[str, str] = {}
+        failing_linear_ids: set[str] = set()
+
+        def impl_reply(meta: dict[str, str], _params: dict) -> str:
+            lid = meta.get("linear_issue_id", "")
+            if lid and lid in linear_stub.issues:
+                observed_states_at_rpc[lid] = str(linear_stub.issues[lid]["state"]["name"])  # type: ignore[index]
+            if lid in failing_linear_ids:
+                return "HEARTBEAT_ERROR: test suite failed"
+            if lid and lid in linear_stub.issues:
+                linear_stub.update_issue(lid, state="In Review")
+            return "HEARTBEAT_OK"
+
+        store, runner, rpc_calls = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=impl_reply,
+            event_log=event_log,
+        )
+        store.update_thread_state(
+            companion.make_pr_key(repo, n1),
+            {
+                "repo": repo,
+                "number": n1,
+                "subject_type": "Issue",
+                "linear_issue_id": lin1_id,
+                "handled_updated_at": "2026-04-01T09:00:00Z",
+            },
+            now_override_ms=self.clock(),
+        )
+        # Keep lin1 out of Triage research during the untrusted-label check by starting it in Backlog
+        linear_stub.update_issue(lin1_id, state="Backlog")
+        event_log.clear()
+        linear_stub.update_calls.clear()
+
+        # 1) Untrusted team:implement event is ignored and Backlog issues do not dispatch
+        slot1_ms = self._utc_ms(2026, 4, 1, 10, 0)
+        res_untrusted = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms)
+        self.assertEqual(res_untrusted["linear_promoted_todos"], [])
+        self.assertEqual(res_untrusted["targeted_dispatches"], [])
+        self.assertEqual(rpc_calls, [])
+
+        # 2) Verified team:implement by flexiondotorg promotes Backlog -> Todo + ready-to-implement and dispatches
+        issue_events_by_num[n1].append(
+            {
+                "id": 7001,
+                "event": "labeled",
+                "label": {"name": "team:implement"},
+                "actor": {"login": "flexiondotorg"},
+                "created_at": "2026-04-01T09:55:00Z",
+            }
+        )
+        res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms)
+        self.assertEqual(len(res1["linear_promoted_todos"]), 1)
+        self.assertEqual(res1["linear_promoted_todos"][0]["linear_issue_id"], lin1_id)
+        self.assertTrue(res1["linear_promoted_todos"][0]["promoted_from_triage_or_backlog"])
+        lin1_labels = companion.extract_linear_issue_labels(linear_stub.issues[lin1_id])
+        self.assertIn("ready-to-implement", lin1_labels)
+        self.assertNotIn("sign-off-required", lin1_labels)
+        self.assertEqual(len(res1["targeted_dispatches"]), 1)
+        self.assertEqual(res1["targeted_dispatches"][0]["kind"], "linear_todo_implement")
+        self.assertTrue(res1["targeted_dispatches"][0]["task_succeeded"])
+        self.assertEqual(rpc_calls[0]["model"], self.REVIEW_MODEL)
+        # Linear moved to In Progress strictly before RPC dispatch
+        self.assertEqual(observed_states_at_rpc[lin1_id], "In Progress")
+        idx_claim = event_log.index(("linear_update", lin1_id, "In Progress"))
+        idx_rpc = event_log.index(("rpc_send_sync", lin1_id, "linear_todo_implement"))
+        self.assertLess(idx_claim, idx_rpc)
+
+        # Same team:implement event on repeat poll is deduplicated
+        ensure_before_dup = len(linear_stub.ensure_calls)
+        res_dup = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms + 60_000)
+        self.assertEqual(res_dup["linear_promoted_todos"], [])
+        self.assertEqual(len(linear_stub.ensure_calls), ensure_before_dup)
+
+        # 3) Moving Backlog issue n2 to Todo + adding n3 in Todo: 1/slot cap defers both in slot 1
+        open_nodes.clear()
+        linear_stub.update_issue(lin2_id, state="Todo")
+        lin3 = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n3}",
+            title=f"Todo feature #{n3}",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        lin3_id = str(lin3["id"])
+        res_cap_slot1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms + 120_000)
+        self.assertEqual(res_cap_slot1["targeted_dispatches"], [])
+        self.assertEqual(linear_stub.issues[lin2_id]["state"]["name"], "Todo")  # type: ignore[index]
+
+        # Slot 2 (10:30 UTC): dispatches n2 (1/slot cap keeps n3 in Todo); daily count -> 2
+        slot2_ms = self._utc_ms(2026, 4, 1, 10, 30)
+        res2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot2_ms)
+        self.assertEqual(len(res2["targeted_dispatches"]), 1)
+        self.assertEqual(rpc_calls[-1]["meta"]["linear_issue_id"], lin2_id)  # type: ignore[index]
+        self.assertEqual(observed_states_at_rpc[lin2_id], "In Progress")
+        self.assertEqual(linear_stub.issues[lin3_id]["state"]["name"], "Todo")  # type: ignore[index]
+
+        # Slot 3 (11:00 UTC): dispatches n3; daily count -> 3 (hits daily_implementations cap)
+        slot3_ms = self._utc_ms(2026, 4, 1, 11, 0)
+        res3 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot3_ms)
+        self.assertEqual(len(res3["targeted_dispatches"]), 1)
+        self.assertEqual(rpc_calls[-1]["meta"]["linear_issue_id"], lin3_id)  # type: ignore[index]
+
+        # Slot 4 (11:30 UTC, same Europe/London day): n4 blocked by 3/day cap
+        lin4 = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n4}",
+            title=f"Fourth daily feature #{n4}",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        lin4_id = str(lin4["id"])
+        slot4_ms = self._utc_ms(2026, 4, 1, 11, 30)
+        res4_blocked = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot4_ms)
+        self.assertEqual(res4_blocked["targeted_dispatches"], [])
+        self.assertEqual(linear_stub.issues[lin4_id]["state"]["name"], "Todo")  # type: ignore[index]
+
+        # Next Europe/London day (2026-04-02 09:00 UTC): daily cap resets and n4 dispatches
+        next_day_ms = self._utc_ms(2026, 4, 2, 9, 0)
+        res4_next_day = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=next_day_ms)
+        self.assertEqual(len(res4_next_day["targeted_dispatches"]), 1)
+        self.assertEqual(rpc_calls[-1]["meta"]["linear_issue_id"], lin4_id)  # type: ignore[index]
+
+        # 4) Failed turn reverts Linear issue back to Todo for bounded retry (max 3 attempts)
+        lin5 = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n5}",
+            title=f"Flaky feature #{n5}",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        lin5_id = str(lin5["id"])
+        failing_linear_ids.add(lin5_id)
+        for attempt, slot_hour_min in enumerate(((9, 0), (9, 30), (10, 0)), start=1):
+            fail_ms = self._utc_ms(2026, 4, 3, slot_hour_min[0], slot_hour_min[1])
+            res_fail = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=fail_ms)
+            self.assertEqual(len(res_fail["targeted_dispatches"]), 1)
+            self.assertFalse(res_fail["targeted_dispatches"][0]["task_succeeded"])
+            self.assertEqual(observed_states_at_rpc[lin5_id], "In Progress")
+            self.assertEqual(linear_stub.issues[lin5_id]["state"]["name"], "Todo")  # type: ignore[index]
+            entry5 = store.get_thread_state(companion.make_pr_key(repo, n5))
+            assert entry5 is not None
+            self.assertEqual(entry5["retry_count"], attempt)
+
+        # 4th attempt on a fresh day is skipped because retry_count reached MAX_THREAD_FAILURE_RETRIES
+        res_exhausted = runner.run_cycle(
+            run_sweeps_if_due=False,
+            now_override_ms=self._utc_ms(2026, 4, 4, 9, 0),
+        )
+        self.assertEqual(res_exhausted["targeted_dispatches"], [])
+        self.assertEqual(linear_stub.issues[lin5_id]["state"]["name"], "Todo")  # type: ignore[index]
+
+        # 5) Traya never promotes team:implement or dispatches linear_todo_implement
+        traya_stub = StubLinearSyncClient()
+        traya_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n1}",
+            title="Traya Todo check",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        open_nodes[:] = [
+            self._graphql_issue_node(repo, n1, title=f"Implement feature #{n1}", labels=["team:implement"])
+        ]
+        _, traya_runner, traya_rpc = self._build_pipeline_runner(
+            agent_name="traya",
+            gh_runner=fake_gh,
+            linear_client=traya_stub,
+        )
+        res_traya = traya_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms)
+        self.assertEqual(res_traya["linear_promoted_todos"], [])
+        self.assertEqual(res_traya["targeted_dispatches"], [])
+        self.assertEqual(traya_stub.ensure_calls, [])
+        self.assertEqual(traya_stub.update_calls, [])
+        self.assertEqual(traya_stub.list_calls, [])
+        self.assertEqual(traya_rpc, [])
+
+    def test_do_not_merge_signoff_ping_deduplication_and_gates(self) -> None:
+        repo = "wimpysworld/tailor"
+        pr_success, pr_none = self._owned_numbers(repo, "skrye", 2, kind="pr", start=120)
+        pr_zannah = self._owned_numbers(repo, "zannah", 1, kind="pr", start=120)[0]
+        current_nodes: list[dict[str, object]] = []
+        gh_commands: list[list[str]] = []
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            gh_commands.append(list(cmd))
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(current_nodes), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout="[]", stderr="")
+
+        store, runner, rpc_calls = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=None,
+        )
+        t0 = self._utc_ms(2026, 4, 1, 10, 0)
+
+        # Suppressed cases: pending CI, failing CI, unresolved thread, and unowned mod-2 PR
+        for ci_val, unresolved in (("PENDING", 0), ("FAILURE", 0), ("SUCCESS", 1)):
+            current_nodes[:] = [
+                self._graphql_pr_node(
+                    repo,
+                    pr_success,
+                    title="feat: held for sign-off",
+                    head_sha="sha_v1",
+                    review_decision="APPROVED",
+                    ci_state=ci_val,
+                    unresolved_threads=unresolved,
+                    labels=["team:do-not-merge"],
+                ),
+                self._graphql_pr_node(
+                    repo,
+                    pr_zannah,
+                    title="feat: zannah owned PR",
+                    head_sha="sha_z1",
+                    review_decision="APPROVED",
+                    ci_state="SUCCESS",
+                    unresolved_threads=0,
+                    labels=["team:do-not-merge"],
+                ),
+            ]
+            res_sup = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0)
+            self.assertEqual(res_sup["signoff_notifications"], [])
+            self.assertEqual(self.httpd.telegram_requests, [])
+            self.assertEqual(rpc_calls, [])
+            t0 += 60_000
+
+        # Ready cases: APPROVED + SUCCESS CI and APPROVED + NONE CI both emit one traffic-light ping
+        current_nodes[:] = [
+            self._graphql_pr_node(
+                repo,
+                pr_success,
+                title="feat: held for sign-off",
+                head_sha="sha_v1",
+                review_decision="APPROVED",
+                ci_state="SUCCESS",
+                unresolved_threads=0,
+                labels=["team:do-not-merge"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_none,
+                title="docs: no checks configured",
+                head_sha="sha_none_v1",
+                review_decision="APPROVED",
+                ci_state="NONE",
+                unresolved_threads=0,
+                labels=["team:do-not-merge"],
+            ),
+        ]
+        res_ready = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0)
+        self.assertEqual(len(res_ready["signoff_notifications"]), 2)
+        self.assertEqual(len(self.httpd.telegram_requests), 2)
+        self.assertEqual(
+            [req["body"]["text"] for req in self.httpd.telegram_requests],
+            [
+                f"🚦 https://github.com/{repo}/pull/{pr_success} - feat: held for sign-off",
+                f"🚦 https://github.com/{repo}/pull/{pr_none} - docs: no checks configured",
+            ],
+        )
+        self.assertEqual(
+            (store.get_thread_state(companion.make_pr_key(repo, pr_success)) or {}).get("ready_for_signoff_notified_sha"),
+            "sha_v1",
+        )
+        self.assertEqual(
+            (store.get_thread_state(companion.make_pr_key(repo, pr_none)) or {}).get("ready_for_signoff_notified_sha"),
+            "sha_none_v1",
+        )
+        self.assertEqual(self.httpd.rpc_requests, [])
+        self.assertEqual(rpc_calls, [])
+
+        # Repeat poll on the same headRefOid emits zero duplicate Telegram messages
+        t0 += 60_000
+        res_repeat = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0)
+        self.assertEqual(res_repeat["signoff_notifications"], [])
+        self.assertEqual(len(self.httpd.telegram_requests), 2)
+
+        # Newer headRefOid with PENDING CI stays silent; once APPROVED + SUCCESS, emits one new ping
+        t0 += 60_000
+        current_nodes[:] = [
+            self._graphql_pr_node(
+                repo,
+                pr_success,
+                title="feat: held for sign-off",
+                head_sha="sha_v2",
+                review_decision="APPROVED",
+                ci_state="PENDING",
+                unresolved_threads=0,
+                labels=["team:do-not-merge"],
+            )
+        ]
+        res_v2_pending = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0)
+        self.assertEqual(res_v2_pending["signoff_notifications"], [])
+        self.assertEqual(len(self.httpd.telegram_requests), 2)
+
+        t0 += 60_000
+        current_nodes[0]["statusCheckRollup"] = {"state": "SUCCESS", "contexts": {"nodes": []}}
+        res_v2_green = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0)
+        self.assertEqual(len(res_v2_green["signoff_notifications"]), 1)
+        self.assertEqual(len(self.httpd.telegram_requests), 3)
+        self.assertEqual(
+            self.httpd.telegram_requests[2]["body"]["text"],
+            f"🚦 https://github.com/{repo}/pull/{pr_success} - feat: held for sign-off",
+        )
+        self.assertEqual(
+            (store.get_thread_state(companion.make_pr_key(repo, pr_success)) or {}).get("ready_for_signoff_notified_sha"),
+            "sha_v2",
+        )
+        self.assertEqual(self.httpd.rpc_requests, [])
+        self.assertFalse(any("merge" in " ".join(cmd).lower() for cmd in gh_commands))
+
+        # Traya never sends sign-off pings
+        _, traya_runner, _ = self._build_pipeline_runner(
+            agent_name="traya",
+            gh_runner=fake_gh,
+            linear_client=None,
+        )
+        res_traya = traya_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0 + 60_000)
+        self.assertEqual(res_traya["signoff_notifications"], [])
+        self.assertEqual(len(self.httpd.telegram_requests), 3)
+
+    def test_zero_token_close_and_merge_sync_ownership_and_error_guards(self) -> None:
+        repo = "wimpysworld/tailor"
+        iss_done, iss_not_planned, iss_dup, iss_open = self._owned_numbers(repo, "skrye", 4, kind="issue", start=200)
+        iss_zannah = self._owned_numbers(repo, "zannah", 1, kind="issue", start=200)[0]
+        pr_merged, pr_closed = self._owned_numbers(repo, "skrye", 2, kind="pr", start=200)
+        pr_zannah = self._owned_numbers(repo, "zannah", 1, kind="pr", start=200)[0]
+
+        linear_stub = StubLinearSyncClient()
+        lin_iss_done = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{iss_done}",
+            title="Completed issue",
+            repo=repo,
+            item_kind="Issue",
+            state="Backlog",
+        )
+        lin_iss_not_planned = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{iss_not_planned}",
+            title="Not planned issue",
+            repo=repo,
+            item_kind="Issue",
+            state="Backlog",
+        )
+        lin_iss_dup = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{iss_dup}",
+            title="Duplicate issue",
+            repo=repo,
+            item_kind="Issue",
+            state="Backlog",
+        )
+        lin_iss_open = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{iss_open}",
+            title="Still open issue",
+            repo=repo,
+            item_kind="Issue",
+            state="Backlog",
+        )
+        lin_iss_zannah = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{iss_zannah}",
+            title="Zannah closed issue",
+            repo=repo,
+            item_kind="Issue",
+            state="Backlog",
+        )
+        lin_pr_merged = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_merged}",
+            title="Merged PR",
+            repo=repo,
+            item_kind="PR",
+            state="In Review",
+        )
+        lin_pr_closed = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_closed}",
+            title="Closed unmerged PR",
+            repo=repo,
+            item_kind="PR",
+            state="In Progress",
+        )
+        lin_pr_zannah = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_zannah}",
+            title="Zannah merged PR",
+            repo=repo,
+            item_kind="PR",
+            state="In Review",
+        )
+
+        rest_payloads: dict[str, dict[str, object]] = {
+            f"repos/{repo}/issues/{iss_done}": {"state": "closed", "state_reason": "completed"},
+            f"repos/{repo}/issues/{iss_not_planned}": {"state": "closed", "state_reason": "not_planned"},
+            f"repos/{repo}/issues/{iss_dup}": {"state": "closed", "state_reason": "duplicate"},
+            f"repos/{repo}/issues/{iss_zannah}": {"state": "closed", "state_reason": "completed"},
+            f"repos/{repo}/pulls/{pr_merged}": {
+                "state": "closed",
+                "merged": True,
+                "merged_at": "2026-04-01T09:50:00Z",
+            },
+            f"repos/{repo}/pulls/{pr_closed}": {
+                "state": "closed",
+                "merged": False,
+                "merged_at": None,
+            },
+            f"repos/{repo}/pulls/{pr_zannah}": {
+                "state": "closed",
+                "merged": True,
+                "merged_at": "2026-04-01T09:55:00Z",
+            },
+        }
+        poll_mode = {"mode": "graphql_error"}
+        fetched_rest_endpoints: list[str] = []
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                if poll_mode["mode"] == "rate_limited":
+                    return subprocess.CompletedProcess(
+                        cmd,
+                        0,
+                        stdout="HTTP/2.0 429 Too Many Requests\r\nRetry-After: 60\r\n\r\n{}",
+                        stderr="",
+                    )
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                if poll_mode["mode"] == "graphql_error":
+                    return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="GraphQL transient error")
+                open_nodes = [self._graphql_issue_node(repo, iss_open, title="Still open issue")]
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(open_nodes), stderr="")
+            fetched_rest_endpoints.append(ep)
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(rest_payloads.get(ep, {})), stderr="")
+
+        store, runner, rpc_calls = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+        )
+        store.update_thread_state(
+            companion.make_pr_key(repo, iss_open),
+            {
+                "repo": repo,
+                "number": iss_open,
+                "subject_type": "Issue",
+                "linear_issue_id": str(lin_iss_open["id"]),
+                "handled_updated_at": "2026-04-01T10:00:00Z",
+            },
+            now_override_ms=self.clock(),
+        )
+        # Keep closed items out of Triage/Todo dispatch during the guard tests by testing _sync_closed_github_items_to_linear
+        # through run_cycle on poll errors and rate limits first.
+        t0 = self._utc_ms(2026, 4, 1, 10, 0)
+
+        # 1) Poll error skips close/merge sync completely
+        poll_mode["mode"] = "graphql_error"
+        res_err = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0)
+        self.assertIsNotNone(res_err["poll_result"]["open_prs_poll_error"])
+        self.assertEqual(res_err["linear_synced_closed"], [])
+        self.assertEqual(fetched_rest_endpoints, [])
+        self.assertEqual(linear_stub.update_calls, [])
+        self.assertEqual(rpc_calls, [])
+        self.assertEqual(self.httpd.telegram_requests, [])
+
+        # 2) Rate-limited notifications poll skips close/merge sync completely
+        poll_mode["mode"] = "rate_limited"
+        res_rl = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0 + 60_000)
+        self.assertEqual(res_rl["poll_result"]["status"], 429)
+        self.assertEqual(res_rl["linear_synced_closed"], [])
+        self.assertEqual(fetched_rest_endpoints, [])
+        self.assertEqual(linear_stub.update_calls, [])
+        self.assertEqual(rpc_calls, [])
+        self.assertEqual(self.httpd.telegram_requests, [])
+
+        # 3) Clean poll syncs owned closed issues (including Triage/Todo) and merged/closed PRs with zero RPC or Telegram
+        linear_stub.update_issue(str(lin_iss_done["id"]), state="Triage")
+        linear_stub.update_issue(str(lin_iss_not_planned["id"]), state="Todo")
+        linear_stub.update_calls.clear()
+
+        poll_mode["mode"] = "ok"
+        res_ok = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0 + 30 * 60 * 1000)
+        synced_by_id = {item["linear_issue_id"]: item["target_state"] for item in res_ok["linear_synced_closed"]}
+        self.assertEqual(
+            synced_by_id,
+            {
+                str(lin_iss_done["id"]): "Done",
+                str(lin_iss_not_planned["id"]): "Canceled",
+                str(lin_iss_dup["id"]): "Canceled",
+                str(lin_pr_merged["id"]): "Done",
+                str(lin_pr_closed["id"]): "Canceled",
+            },
+        )
+        # Verify final states in stub Linear store, including untouched open and zannah-owned items
+        self.assertEqual(linear_stub.issues[str(lin_iss_done["id"])]["state"]["name"], "Done")  # type: ignore[index]
+        self.assertEqual(linear_stub.issues[str(lin_iss_not_planned["id"])]["state"]["name"], "Canceled")  # type: ignore[index]
+        self.assertEqual(linear_stub.issues[str(lin_iss_dup["id"])]["state"]["name"], "Canceled")  # type: ignore[index]
+        self.assertEqual(linear_stub.issues[str(lin_pr_merged["id"])]["state"]["name"], "Done")  # type: ignore[index]
+        self.assertEqual(linear_stub.issues[str(lin_pr_closed["id"])]["state"]["name"], "Canceled")  # type: ignore[index]
+        self.assertEqual(linear_stub.issues[str(lin_iss_open["id"])]["state"]["name"], "Backlog")  # type: ignore[index]
+        self.assertEqual(linear_stub.issues[str(lin_iss_zannah["id"])]["state"]["name"], "Backlog")  # type: ignore[index]
+        self.assertEqual(linear_stub.issues[str(lin_pr_zannah["id"])]["state"]["name"], "In Review")  # type: ignore[index]
+        # Never fetched REST state for open item or zannah-owned items
+        self.assertNotIn(f"repos/{repo}/issues/{iss_open}", fetched_rest_endpoints)
+        self.assertNotIn(f"repos/{repo}/issues/{iss_zannah}", fetched_rest_endpoints)
+        self.assertNotIn(f"repos/{repo}/pulls/{pr_zannah}", fetched_rest_endpoints)
+        # Zero RPC turns and zero Telegram messages (even though closed items were in Triage and Todo!)
+        self.assertEqual(res_ok["targeted_dispatches"], [])
+        self.assertEqual(self.httpd.rpc_requests, [])
+        self.assertEqual(rpc_calls, [])
+        self.assertEqual(self.httpd.telegram_requests, [])
 
 
 if __name__ == "__main__":
