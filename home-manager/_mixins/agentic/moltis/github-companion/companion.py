@@ -479,7 +479,6 @@ def extract_mentioned_github_agents(text: str | None) -> set[str]:
 
 
 _COERCION_RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
-    ("html_comment_block", re.compile(r"<!--")),
     ("ignore_previous_instructions", re.compile(r"\b(?:ignore|disregard|forget|override|bypass)\s+(?:all\s+|any\s+|the\s+)?(?:previous|prior|above|earlier|system|developer|safety|security)\s+(?:instructions?|prompts?|rules?|constraints?|directives?|guardrails?)\b", re.IGNORECASE)),
     ("system_prompt_override", re.compile(r"(?:\[\s*(?:system|inst|admin|developer)\s*\]|<\|\s*(?:im_start|system|user|assistant)\s*\|>|^\s*(?:system\s+prompt|developer\s+message|new\s+system\s+instructions?)\s*:)", re.IGNORECASE | re.MULTILINE)),
     ("tool_invocation_directive", re.compile(r"\b(?:gh-bot-merge|gh-code-scanning-dismiss|gh-notification-dismiss|gh-review-resolve|gh-review-unresolve|gh-review-inline|gh-review-reply|moltis-telegram-voice|chat\.send_sync|exec_command|tool_call)\b", re.IGNORECASE)),
@@ -493,9 +492,8 @@ def detect_coercion_patterns(raw_text: str | None) -> list[str]:
     if not isinstance(raw_text, str) or not raw_text:
         return []
     matched: list[str] = []
-    stripped = strip_html_comments(raw_text)
+    target = f"{raw_text}\n{strip_html_comments(raw_text)}"
     for rule_name, pattern in _COERCION_RULES:
-        target = raw_text if rule_name == "html_comment_block" else f"{raw_text}\n{stripped}"
         if pattern.search(target) and rule_name not in matched:
             matched.append(rule_name)
     return matched
@@ -529,15 +527,36 @@ def format_start_of_work_notice(*, agent_display_name: str, kind: str, repo: str
     return sanitize_no_matrix_mentions(" ".join(line.splitlines()).strip())
 
 
+def _is_thought_block(item: dict) -> bool:
+    if item.get("thought") is True:
+        return True
+    return str(item.get("type") or "").strip().lower() in ("thought", "thinking", "reasoning")
+
+
 def extract_text_content(value: object) -> str:
     if isinstance(value, str):
         return value
     if isinstance(value, list):
-        return "\n".join(p for p in [item if isinstance(item, str) else str(item.get("text") or item.get("content") or "") for item in value if isinstance(item, (str, dict))] if p)
+        parts: list[str] = []
+        for item in value:
+            if isinstance(item, str):
+                if item:
+                    parts.append(item)
+            elif isinstance(item, dict) and not _is_thought_block(item):
+                if extracted := extract_text_content(item):
+                    parts.append(extracted)
+        return "\n".join(parts)
     if isinstance(value, dict):
+        if _is_thought_block(value):
+            return ""
         for key in ("text", "content", "reply", "response", "body"):
-            if isinstance(value.get(key), str):
-                return value[key]
+            candidate = value.get(key)
+            if isinstance(candidate, str):
+                if candidate:
+                    return candidate
+            elif isinstance(candidate, (list, dict)):
+                if extracted := extract_text_content(candidate):
+                    return extracted
         if isinstance(value.get("message"), (str, dict, list)):
             return extract_text_content(value["message"])
     return ""
@@ -556,6 +575,198 @@ TURN_FAILURE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("tool_or_turn_failed", re.compile(r"^\s*(?:the\s+)?(?:github|gh|gh-api-safe|gh-bot-merge|gh-review-inline|gh-review-reply|gh-review-resolve|gh-review-unresolve|gh-notification-dismiss|git|exec|shell|rpc|model|provider|api|command|request|turn|dispatch|tool)\s+(?:tool\s+|command\s+|call\s+|request\s+|execution\s+|turn\s+|helper\s+)?(?:failed|errored|timed\s+out|aborted|crashed|was\s+blocked|is\s+unavailable)\b", re.IGNORECASE)),
     ("unable_to_complete", re.compile(r"^\s*(?:i\s+(?:was\s+|am\s+)?)?(?:failed|unable|could\s+not|cannot|can\s+not)\s+(?:to\s+)?(?:complete|finish|run|execute|fetch|query|read|inspect|review|merge|dismiss|post|reply|process|reach|connect|authenticate|proceed|continue)\b", re.IGNORECASE)),
 )
+
+_SKIN_TONE_OR_VS16 = r"[\ufe0f\U0001f3fb-\U0001f3ff]{0,2}"
+_STEP5_EMOJI_SPECS: tuple[tuple[str, str], ...] = (
+    ("🧼", r"\U0001f9fc\ufe0f?"),
+    ("🧑‍⚖️", r"[\U0001f9d1\U0001f468\U0001f469][\U0001f3fb-\U0001f3ff]?\u200d?\u2696\ufe0f?"),
+    ("🏁", r"\U0001f3c1\ufe0f?"),
+    ("👍🏻", rf"\U0001f44d{_SKIN_TONE_OR_VS16}"),
+    ("👎🏻", rf"\U0001f44e{_SKIN_TONE_OR_VS16}"),
+    ("👆🏻", rf"\U0001f446{_SKIN_TONE_OR_VS16}"),
+    ("🤲🏻", rf"\U0001f932{_SKIN_TONE_OR_VS16}"),
+    ("🤞🏻", rf"\U0001f91e{_SKIN_TONE_OR_VS16}"),
+    ("✍🏻", rf"\u270d{_SKIN_TONE_OR_VS16}"),
+    ("✋🏻", rf"\u270b{_SKIN_TONE_OR_VS16}"),
+)
+_STEP5_EMOJI_BY_LEAD_CHAR: dict[str, str] = {
+    "\U0001f9fc": "🧼",
+    "\U0001f9d1": "🧑‍⚖️",
+    "\U0001f468": "🧑‍⚖️",
+    "\U0001f469": "🧑‍⚖️",
+    "\U0001f3c1": "🏁",
+    "\U0001f44d": "👍🏻",
+    "\U0001f44e": "👎🏻",
+    "\U0001f446": "👆🏻",
+    "\U0001f932": "🤲🏻",
+    "\U0001f91e": "🤞🏻",
+    "\u270d": "✍🏻",
+    "\u270b": "✋🏻",
+}
+_STEP5_EMOJI_ALTERNATION = "|".join(pattern for _, pattern in _STEP5_EMOJI_SPECS)
+_STEP5_ENTRY_RE = re.compile(
+    rf"(?P<emoji>{_STEP5_EMOJI_ALTERNATION})"
+    r"[ \t]+"
+    r"(?P<url>https?://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:/[^\s<>`\"'()]+)?)"
+    r"[ \t]+[-\u2013\u2014][ \t]+"
+    rf"(?P<title>[^\r\n]+?)(?=[ \t]*(?:\r|\n|$|(?:{_STEP5_EMOJI_ALTERNATION})[ \t]+https?://github\.com/))",
+)
+_FENCE_OPEN_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
+_THOUGHT_PREAMBLE_RE = re.compile(r"^\s*thought[ \t]*\r?\n")
+_THOUGHT_MONOLOGUE_PARAGRAPH_RE = re.compile(
+    r"^(?:thought\b|let(?:'s| us| me)\b|now\s+let(?:'s| us| me)\b|i(?:'ll| will| should| need to)\b|confirmed[!.:]|report\s+|output\s+|reply\s+)",
+    re.IGNORECASE,
+)
+_EMBEDDED_EXPLICIT_ERROR_RE = re.compile(
+    r"(?:^|\r?\n|[.!?:`'\"\)\]]\s*)(?P<err>`?(?:HEARTBEAT_ERROR|HEARTBEAT_FAILED|TURN_FAILED|COMPANION_RESULT:\s*(?:ERROR|FAILED))\b[^\r\n]*)",
+    re.IGNORECASE,
+)
+_TRAILING_HEARTBEAT_OK_LINE_RE = re.compile(r"(?:\A|\r?\n)[ \t]*`?(?P<tok>HEARTBEAT_OK)`?[ \t]*\Z")
+_TRAILING_HEARTBEAT_OK_CONCAT_RE = re.compile(r"(?:[.!?:`'\"\)\]])[ \t]*`?(?P<tok>HEARTBEAT_OK)`?[ \t]*\Z")
+_TRAILING_HEARTBEAT_OK_WORD_RE = re.compile(r"(?:\A|\s)`?(?P<tok>HEARTBEAT_OK)`?[ \t]*\Z")
+
+
+def _canonicalize_step5_emoji(raw_emoji: str) -> str:
+    return _STEP5_EMOJI_BY_LEAD_CHAR.get(raw_emoji[0], raw_emoji) if raw_emoji else ""
+
+
+def _find_code_spans(text: str) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
+    """Return (fenced_spans, all_code_spans) for fenced code blocks and inline backtick spans."""
+    fenced_spans: list[tuple[int, int]] = []
+    offset = 0
+    fence_char = ""
+    fence_len = 0
+    fence_start = -1
+    for line in text.splitlines(keepends=True):
+        stripped_line = line.rstrip("\r\n")
+        if fence_start < 0:
+            if m := _FENCE_OPEN_RE.match(stripped_line):
+                marker, rest = m.group(1), m.group(2)
+                if marker[0] == "~" or "`" not in rest:
+                    fence_char = marker[0]
+                    fence_len = len(marker)
+                    fence_start = offset
+        else:
+            close_stripped = stripped_line.strip()
+            if close_stripped and len(close_stripped) >= fence_len and set(close_stripped) == {fence_char}:
+                fenced_spans.append((fence_start, offset + len(line)))
+                fence_start = -1
+        offset += len(line)
+    if fence_start >= 0:
+        fenced_spans.append((fence_start, len(text)))
+
+    all_spans: list[tuple[int, int]] = list(fenced_spans)
+    non_fenced: list[tuple[int, int]] = []
+    cursor = 0
+    for f_start, f_end in fenced_spans:
+        if cursor < f_start:
+            non_fenced.append((cursor, f_start))
+        cursor = max(cursor, f_end)
+    if cursor < len(text):
+        non_fenced.append((cursor, len(text)))
+
+    for slice_start, slice_end in non_fenced:
+        segment = text[slice_start:slice_end]
+        pos = 0
+        seg_len = len(segment)
+        while pos < seg_len:
+            tick_idx = segment.find("`", pos)
+            if tick_idx < 0:
+                break
+            tick_end = tick_idx
+            while tick_end < seg_len and segment[tick_end] == "`":
+                tick_end += 1
+            tick_len = tick_end - tick_idx
+            blank_match = re.search(r"\r?\n[ \t]*\r?\n", segment[tick_end:])
+            search_limit = (tick_end + blank_match.start()) if blank_match else seg_len
+            scan = tick_end
+            matched_end = -1
+            while scan < search_limit:
+                next_tick = segment.find("`", scan, search_limit)
+                if next_tick < 0:
+                    break
+                run_end = next_tick
+                while run_end < search_limit and segment[run_end] == "`":
+                    run_end += 1
+                if (run_end - next_tick) == tick_len:
+                    matched_end = run_end
+                    break
+                scan = run_end
+            if matched_end > 0:
+                all_spans.append((slice_start + tick_idx, slice_start + matched_end))
+                pos = matched_end
+            else:
+                pos = tick_end
+
+    all_spans.sort()
+    return fenced_spans, all_spans
+
+
+def _offset_in_spans(offset: int, spans: list[tuple[int, int]]) -> bool:
+    return any(start <= offset < end for start, end in spans)
+
+
+def _has_trailing_heartbeat_ok(text: str, fenced_spans: list[tuple[int, int]], code_spans: list[tuple[int, int]]) -> bool:
+    if m := _TRAILING_HEARTBEAT_OK_LINE_RE.search(text):
+        if not _offset_in_spans(m.start("tok"), fenced_spans):
+            return True
+    if m := _TRAILING_HEARTBEAT_OK_CONCAT_RE.search(text):
+        if not _offset_in_spans(m.start("tok"), code_spans):
+            return True
+    if _THOUGHT_PREAMBLE_RE.match(text):
+        if m := _TRAILING_HEARTBEAT_OK_WORD_RE.search(text):
+            if not _offset_in_spans(m.start("tok"), fenced_spans):
+                return True
+    return False
+
+
+def _strip_thought_preamble(text: str) -> str:
+    paragraphs = [p.strip() for p in re.split(r"\r?\n[ \t]*\r?\n+", text.strip()) if p.strip()]
+    if len(paragraphs) <= 1:
+        return ""
+    remaining = paragraphs[1:]
+    while remaining and _THOUGHT_MONOLOGUE_PARAGRAPH_RE.match(remaining[0]):
+        remaining.pop(0)
+    return "\n\n".join(remaining).strip()
+
+
+def normalize_terminal_reply_text(text: str | None) -> str:
+    """Normalise terminal replies to clean Step 5 status entries or HEARTBEAT_OK without leaked reasoning."""
+    if not isinstance(text, str):
+        return ""
+    clean = text.strip()
+    if not clean:
+        return ""
+    if is_heartbeat_ok_reply(clean):
+        return "HEARTBEAT_OK"
+
+    fenced_spans, code_spans = _find_code_spans(clean)
+    dedup: dict[tuple[str, str], str] = {}
+    for match in _STEP5_ENTRY_RE.finditer(clean):
+        if _offset_in_spans(match.start(), code_spans):
+            continue
+        canonical_emoji = _canonicalize_step5_emoji(match.group("emoji"))
+        url = match.group("url").strip()
+        title = match.group("title").strip()
+        if canonical_emoji and url and title:
+            dedup[(canonical_emoji, url)] = f"{canonical_emoji} {url} - {title}"
+    if dedup:
+        return "\n\n".join(dedup.values())
+
+    if any(pattern.search(clean) for _, pattern in TURN_FAILURE_PATTERNS):
+        return clean
+    if _THOUGHT_PREAMBLE_RE.match(clean):
+        if err_match := _EMBEDDED_EXPLICIT_ERROR_RE.search(clean):
+            if not _offset_in_spans(err_match.start("err"), code_spans):
+                return clean[err_match.start("err"):].strip()
+
+    if _has_trailing_heartbeat_ok(clean, fenced_spans, code_spans):
+        return "HEARTBEAT_OK"
+
+    if _THOUGHT_PREAMBLE_RE.match(clean):
+        return _strip_thought_preamble(clean)
+
+    return clean
 
 
 def classify_terminal_turn_outcome(reply_text: str | None, *, assistant_record: dict | None = None, rpc_response: object = None) -> tuple[bool, str | None]:
@@ -594,9 +805,11 @@ def extract_rpc_reply_text(rpc_response: object) -> str:
 
 
 def extract_terminal_reply_text(rpc_response: object = None, assistant_record: dict | None = None) -> str:
-    """Extract terminal assistant reply text from history.jsonl assistant record or chat.send_sync response."""
-    history_text = extract_text_content(assistant_record.get("content") if "content" in assistant_record else assistant_record).strip() if isinstance(assistant_record, dict) else ""
-    rpc_text = extract_rpc_reply_text(rpc_response)
+    """Extract and normalise terminal assistant reply text from history.jsonl or chat.send_sync response."""
+    raw_history = extract_text_content(assistant_record.get("content") if "content" in assistant_record else assistant_record).strip() if isinstance(assistant_record, dict) else ""
+    raw_rpc = extract_rpc_reply_text(rpc_response)
+    history_text = normalize_terminal_reply_text(raw_history)
+    rpc_text = normalize_terminal_reply_text(raw_rpc)
     if (history_text and is_heartbeat_ok_reply(history_text)) or (rpc_text and is_heartbeat_ok_reply(rpc_text)):
         return "HEARTBEAT_OK"
     return history_text if (history_text and history_text.lower() != "done") else (rpc_text or history_text)
@@ -1633,13 +1846,12 @@ class CompanionStateStore:
                 unowned_auto_update = bool(is_auto_update and not owns_mod2_pr)
 
                 raw_texts = [t for t in (title, body) if t]
-                matched_coercion = detect_coercion_patterns("\n".join(raw_texts))
-                if not is_trusted and extract_mentioned_github_agents("\n".join(raw_texts)):
-                    matched_coercion = [*matched_coercion, "targeted_agent_mention"]
-                if is_trusted and not is_instruction:
-                    matched_coercion = [r for r in matched_coercion if r != "html_comment_block"]
-                elif is_instruction:
+                if is_instruction:
                     matched_coercion = []
+                else:
+                    matched_coercion = detect_coercion_patterns("\n".join(raw_texts))
+                    if not is_trusted and extract_mentioned_github_agents("\n".join(raw_texts)):
+                        matched_coercion = [*matched_coercion, "targeted_agent_mention"]
                 if matched_coercion:
                     coercive_items.append({
                         "repo": repo,
@@ -1810,13 +2022,12 @@ class CompanionStateStore:
                 owns_mod2_issue = bool(self.agent_name in SWEEP_AGENT_ORDER and issue_owner == self.agent_name)
 
                 subj_texts = [t for t in (title, body) if t]
-                subj_coercion = detect_coercion_patterns("\n".join(subj_texts))
-                if not is_trusted and extract_mentioned_github_agents("\n".join(subj_texts)):
-                    subj_coercion = [*subj_coercion, "targeted_agent_mention"]
-                if is_trusted and not is_instruction:
-                    subj_coercion = [r for r in subj_coercion if r != "html_comment_block"]
-                elif is_instruction:
+                if is_instruction:
                     subj_coercion = []
+                else:
+                    subj_coercion = detect_coercion_patterns("\n".join(subj_texts))
+                    if not is_trusted and extract_mentioned_github_agents("\n".join(subj_texts)):
+                        subj_coercion = [*subj_coercion, "targeted_agent_mention"]
                 comment_coercion = (
                     detect_coercion_patterns(latest_comment_body)
                     if (latest_comment_body and not is_trusted_github_actor(latest_comment_actor_norm))
@@ -2399,7 +2610,7 @@ class TrustFilterAndSnapshotBuilder:
             return _out(False, False, False, False, "untrusted_actor")
 
         is_instruction, is_bot = is_trusted_instruction_actor(actor_norm), is_trusted_bot_actor(actor_norm)
-        if not is_instruction and [r for r in detect_coercion_patterns("\n".join(raw_texts)) if r != "html_comment_block"]:
+        if not is_instruction and detect_coercion_patterns("\n".join(raw_texts)):
             res = self._record_security_event_and_alert(repo=repo, subject_type=subject_type, number=number, thread_id=thread_id, item_kind=item_kind, item_id=item_id, actor=actor, raw_texts=raw_texts, stamp_ms=now_val)
             if not res.get("deduplicated"):
                 security_events.append(res["event"])
@@ -2757,7 +2968,7 @@ class LocalExecutionCoordinator:
     _wait_for_turn_completion = _poll_until_completed
 
     def _send_telegram_safe(self, text: str) -> tuple[bool, str | None]:
-        clean_text = (text or "").strip()
+        clean_text = normalize_terminal_reply_text(text)
         if not clean_text or is_heartbeat_ok_reply(clean_text) or self.telegram_client is None:
             return False, None
         try:
