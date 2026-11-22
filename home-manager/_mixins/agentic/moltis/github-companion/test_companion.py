@@ -4918,6 +4918,7 @@ class StubLinearSyncClient:
         self.comments_by_issue: dict[str, list[dict[str, object]]] = {}
         self.ensure_calls: list[dict[str, object]] = []
         self.update_calls: list[dict[str, object]] = []
+        self.get_issue_calls: list[str] = []
         self.list_calls: list[dict[str, object]] = []
         self.list_comments_calls: list[str] = []
         self.post_verdict_calls: list[dict[str, object]] = []
@@ -5083,6 +5084,15 @@ class StubLinearSyncClient:
         state_name = str((issue.get("state") or {}).get("name") or "")  # type: ignore[union-attr]
         self.event_log.append(("linear_update", issue_id, state_name))
         return self._copy_issue(issue)
+
+    def get_issue(self, issue_id: str) -> dict[str, object]:
+        clean_id = str(issue_id or "").strip()
+        if not clean_id:
+            raise ValueError("issue_id must be non-empty")
+        if clean_id not in self.issues:
+            raise companion.linear_sync.LinearAPIError(f"Linear issue not found: {clean_id!r}")
+        self.get_issue_calls.append(clean_id)
+        return self._copy_issue(self.issues[clean_id])
 
     def list_project_issues_by_state(
         self,
@@ -6148,6 +6158,196 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
         self.assertEqual(self.httpd.rpc_requests, [])
         self.assertEqual(rpc_calls, [])
         self.assertEqual(self.httpd.telegram_requests, [])
+
+    def test_linear_triage_and_todo_verify_post_turn_state_changes(self) -> None:
+        repo = "wimpysworld/tailor"
+        n_triage_stuck, n_triage_err, n_todo_stuck, n_todo_backlog, n_todo_err = self._owned_numbers(
+            repo, "skrye", 5, kind="issue", start=200
+        )
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload([]), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
+
+        class VerifyingLinearStub(StubLinearSyncClient):
+            def __init__(self) -> None:
+                super().__init__()
+                self.fail_get_issue_once: set[str] = set()
+
+            def get_issue(self, issue_id: str) -> dict[str, object]:
+                clean_id = str(issue_id or "").strip()
+                if clean_id in self.fail_get_issue_once:
+                    self.fail_get_issue_once.remove(clean_id)
+                    raise companion.linear_sync.LinearAPIError("Linear 503 transient get_issue failure")
+                return super().get_issue(issue_id)
+
+        linear_stub = VerifyingLinearStub()
+        lin_triage_stuck = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n_triage_stuck}",
+            title=f"Silent mcporter failure in triage #{n_triage_stuck}",
+            repo=repo,
+            item_kind="Issue",
+            state="Triage",
+        )
+        lin_triage_err = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n_triage_err}",
+            title=f"Transient get_issue failure in triage #{n_triage_err}",
+            repo=repo,
+            item_kind="Issue",
+            state="Triage",
+        )
+        lin_triage_stuck_id = str(lin_triage_stuck["id"])
+        lin_triage_err_id = str(lin_triage_err["id"])
+        linear_stub.fail_get_issue_once.add(lin_triage_err_id)
+
+        todo_replies_by_id: dict[str, list[str]] = {}
+        todo_target_state_by_id: dict[str, str] = {}
+
+        def reply_fn(meta: dict[str, str], _params: dict) -> str:
+            kind = meta.get("dispatch_kind", "")
+            lid = meta.get("linear_issue_id", "")
+            if kind == "linear_triage_research":
+                if lid == lin_triage_err_id and lid not in linear_stub.fail_get_issue_once:
+                    # On the first attempt fail_get_issue_once is still set; keep Backlog transition on retry.
+                    linear_stub.update_issue(lid, state="Backlog")
+                # For lin_triage_stuck, simulate silent mcporter failure: leave Linear in Triage.
+                return "HEARTBEAT_OK"
+            if kind == "linear_todo_implement":
+                target_state = todo_target_state_by_id.get(lid)
+                if target_state:
+                    linear_stub.update_issue(lid, state=target_state, add_labels=("sign-off-required",))
+                replies = todo_replies_by_id.get(lid)
+                if replies:
+                    return replies.pop(0) if len(replies) > 1 else replies[0]
+                return "HEARTBEAT_OK"
+            return "HEARTBEAT_OK"
+
+        store, runner, _ = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=reply_fn,
+        )
+
+        # 1) Triage research: unchanged Triage state increments retry_count up to MAX_THREAD_FAILURE_RETRIES,
+        # while a transient get_issue error fails attempt 1 and succeeds on attempt 2 once state moves to Backlog.
+        for attempt, slot_hour_min in enumerate(((10, 0), (10, 30), (11, 0)), start=1):
+            slot_ms = self._utc_ms(2026, 4, 1, slot_hour_min[0], slot_hour_min[1])
+            res = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot_ms)
+            by_id = {d["state_key"]: d for d in res["targeted_dispatches"]}
+            stuck_key = companion.make_pr_key(repo, n_triage_stuck)
+            self.assertIn(stuck_key, by_id)
+            self.assertFalse(by_id[stuck_key]["task_succeeded"])
+            self.assertEqual(by_id[stuck_key]["failure_reason"], "linear_triage_state_unchanged")
+            stuck_entry = store.get_thread_state(stuck_key) or {}
+            self.assertEqual(stuck_entry.get("retry_count"), attempt)
+            self.assertFalse(stuck_entry.get("in_flight"))
+            self.assertEqual(linear_stub.issues[lin_triage_stuck_id]["state"]["name"], "Triage")  # type: ignore[index]
+
+            err_key = companion.make_pr_key(repo, n_triage_err)
+            if attempt == 1:
+                self.assertIn(err_key, by_id)
+                self.assertFalse(by_id[err_key]["task_succeeded"])
+                self.assertIn("linear_triage_state_verify_failed", str(by_id[err_key]["failure_reason"]))
+                err_entry = store.get_thread_state(err_key) or {}
+                self.assertEqual(err_entry.get("retry_count"), 1)
+            elif attempt == 2:
+                self.assertIn(err_key, by_id)
+                self.assertTrue(by_id[err_key]["task_succeeded"])
+                err_entry = store.get_thread_state(err_key) or {}
+                self.assertEqual(err_entry.get("retry_count"), 0)
+                self.assertEqual(linear_stub.issues[lin_triage_err_id]["state"]["name"], "Backlog")  # type: ignore[index]
+            else:
+                self.assertNotIn(err_key, by_id)
+
+        # 4th triage slot: retry_count exhausted for stuck triage issue -> zero dispatches (bounded retries)
+        res_triage_exhausted = runner.run_cycle(
+            run_sweeps_if_due=False,
+            now_override_ms=self._utc_ms(2026, 4, 1, 11, 30),
+        )
+        self.assertEqual(res_triage_exhausted["targeted_dispatches"], [])
+
+        # 2) Todo implementation: HEARTBEAT_OK / ✋🏻 leaving Linear stranded in In Progress reverts to Todo
+        # and increments retry_count up to MAX_THREAD_FAILURE_RETRIES.
+        lin_todo_stuck = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n_todo_stuck}",
+            title=f"Silent mcporter failure in todo #{n_todo_stuck}",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        lin_todo_stuck_id = str(lin_todo_stuck["id"])
+        todo_replies_by_id[lin_todo_stuck_id] = ["HEARTBEAT_OK", "✋🏻", "HEARTBEAT_OK"]
+
+        for attempt, slot_hour_min in enumerate(((9, 0), (9, 30), (10, 0)), start=1):
+            slot_ms = self._utc_ms(2026, 4, 2, slot_hour_min[0], slot_hour_min[1])
+            res = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot_ms)
+            self.assertEqual(len(res["targeted_dispatches"]), 1)
+            disp = res["targeted_dispatches"][0]
+            self.assertEqual(disp["kind"], "linear_todo_implement")
+            self.assertFalse(disp["task_succeeded"])
+            self.assertEqual(disp["failure_reason"], "linear_todo_state_unchanged_in_progress")
+            # Linear must be reverted from In Progress back to Todo
+            self.assertEqual(linear_stub.issues[lin_todo_stuck_id]["state"]["name"], "Todo")  # type: ignore[index]
+            st = store.get_thread_state(companion.make_pr_key(repo, n_todo_stuck)) or {}
+            self.assertEqual(st.get("retry_count"), attempt)
+            self.assertFalse(st.get("in_flight"))
+
+        # 4th todo attempt on a fresh day is skipped because retry_count reached MAX_THREAD_FAILURE_RETRIES
+        res_todo_exhausted = runner.run_cycle(
+            run_sweeps_if_due=False,
+            now_override_ms=self._utc_ms(2026, 4, 3, 9, 0),
+        )
+        self.assertEqual(res_todo_exhausted["targeted_dispatches"], [])
+        self.assertEqual(linear_stub.issues[lin_todo_stuck_id]["state"]["name"], "Todo")  # type: ignore[index]
+
+        # 3) Genuine clarification/block moving Linear to Backlog with ✋🏻 succeeds and stays in Backlog
+        lin_todo_backlog = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n_todo_backlog}",
+            title=f"Needs sign-off todo #{n_todo_backlog}",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        lin_todo_backlog_id = str(lin_todo_backlog["id"])
+        todo_replies_by_id[lin_todo_backlog_id] = ["✋🏻"]
+        todo_target_state_by_id[lin_todo_backlog_id] = "Backlog"
+
+        res_backlog = runner.run_cycle(
+            run_sweeps_if_due=False,
+            now_override_ms=self._utc_ms(2026, 4, 3, 9, 30),
+        )
+        self.assertEqual(len(res_backlog["targeted_dispatches"]), 1)
+        self.assertTrue(res_backlog["targeted_dispatches"][0]["task_succeeded"])
+        self.assertEqual(linear_stub.issues[lin_todo_backlog_id]["state"]["name"], "Backlog")  # type: ignore[index]
+        st_backlog = store.get_thread_state(companion.make_pr_key(repo, n_todo_backlog)) or {}
+        self.assertEqual(st_backlog.get("retry_count"), 0)
+
+        # 4) Transient get_issue failure after todo turn counts as a retryable failure and reverts to Todo
+        lin_todo_err = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n_todo_err}",
+            title=f"Transient get_issue failure todo #{n_todo_err}",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        lin_todo_err_id = str(lin_todo_err["id"])
+        linear_stub.fail_get_issue_once.add(lin_todo_err_id)
+
+        res_err = runner.run_cycle(
+            run_sweeps_if_due=False,
+            now_override_ms=self._utc_ms(2026, 4, 3, 10, 0),
+        )
+        self.assertEqual(len(res_err["targeted_dispatches"]), 1)
+        self.assertFalse(res_err["targeted_dispatches"][0]["task_succeeded"])
+        self.assertIn("linear_todo_state_verify_failed", str(res_err["targeted_dispatches"][0]["failure_reason"]))
+        self.assertEqual(linear_stub.issues[lin_todo_err_id]["state"]["name"], "Todo")  # type: ignore[index]
+        st_err = store.get_thread_state(companion.make_pr_key(repo, n_todo_err)) or {}
+        self.assertEqual(st_err.get("retry_count"), 1)
 
 
 class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
