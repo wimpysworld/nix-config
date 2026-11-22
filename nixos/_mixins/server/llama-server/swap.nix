@@ -11,24 +11,6 @@ let
   accel = host.gpu.compute.acceleration;
   listenPort = 8080;
 
-  llamaPackage =
-    if accel == "cuda" then
-      pkgs.llama-cpp.override {
-        cudaSupport = true;
-        rocmSupport = false;
-      }
-    else if accel == "rocm" then
-      pkgs.llama-cpp.override {
-        rocmSupport = true;
-        cudaSupport = false;
-      }
-    else if accel == "vulkan" then
-      pkgs.llama-cpp.override {
-        vulkanSupport = true;
-      }
-    else
-      pkgs.llama-cpp;
-
   runtime = import ./runtime.nix { inherit lib; };
   selectedRuntime = runtime.mkRuntime {
     acceleration = accel;
@@ -45,41 +27,48 @@ let
 
   launchLlamaServer = pkgs.writeShellApplication {
     name = "llama-server-launch";
-    runtimeInputs = [
-      pkgs.coreutils
-      pkgs.findutils
-      llamaPackage
-    ];
     text = ''
-      modelPathPattern="$1"
-      port="$2"
-      shift 2
+      snapshotRoot="$1"
+      revision="$2"
+      primaryPath="$3"
+      server="$4"
+      port="$5"
+      shift 5
 
-      snapshotRoot="''${modelPathPattern%/*/*}"
-      modelFileName="''${modelPathPattern##*/}"
+      if [[ "$revision" != '*' ]]; then
+        modelPath="$snapshotRoot/$revision/$primaryPath"
+      else
+        shopt -s nullglob
+        modelPathMatches=("$snapshotRoot"/*/"$primaryPath")
+        if [[ "''${#modelPathMatches[@]}" -ne 1 ]]; then
+          printf 'Error: expected one model path for pattern %s, got %s\n' \
+            "$snapshotRoot/*/$primaryPath" "''${#modelPathMatches[@]}" >&2
+          exit 1
+        fi
+        modelPath="''${modelPathMatches[0]}"
+      fi
 
-      mapfile -t modelPathMatches < <(
-        find "$snapshotRoot" -mindepth 2 -maxdepth 2 -name "$modelFileName" -print
-      )
-
-      if [[ "''${#modelPathMatches[@]}" -ne 1 ]]; then
-        printf 'Error: expected one model path for pattern %s, got %s\n' \
-          "$modelPathPattern" "''${#modelPathMatches[@]}" >&2
+      if [[ ! -f "$modelPath" ]]; then
+        printf 'Error: model file is missing: %s\n' "$modelPath" >&2
         exit 1
       fi
 
-      modelPath="$(readlink -f "''${modelPathMatches[0]}")"
-
-      exec ${lib.getExe' llamaPackage "llama-server"} \
-        --port "$port" \
-        -m "$modelPath" \
-        "$@"
+      # Keep the snapshot path so llama.cpp can find sibling shards.
+      exec "$server" --port "$port" -m "$modelPath" "$@"
     '';
   };
 
   mkModelConfig = model: {
     cmd = ''
-      ${lib.getExe launchLlamaServer} '${model.resolvedPrimaryPathPattern}' ''${PORT} ${lib.escapeShellArgs model.runtimeArgs}
+      ${
+        lib.escapeShellArgs [
+          (lib.getExe launchLlamaServer)
+          "${model.repoCacheDirectory}/snapshots"
+          (if model.revision == null then "*" else model.revision)
+          model.primaryPath
+          (lib.getExe' (runtime.packageForAcceleration accel pkgs.${model.backend}) "llama-server")
+        ]
+      } ''${PORT} ${lib.escapeShellArgs model.runtimeArgs}
     '';
     metadata = {
       inherit (model)

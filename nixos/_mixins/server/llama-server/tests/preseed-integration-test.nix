@@ -1,23 +1,29 @@
 { lib }:
 let
   runtime = import ../runtime.nix { inherit lib; };
-  vram64Manifest =
-    (runtime.mkRuntime {
-      acceleration = null;
-      hostVramGiB = 96;
-    }).selectedModelDownloads;
-  vram16Manifest =
-    (runtime.mkRuntime {
-      acceleration = null;
-      hostVramGiB = 16;
-    }).selectedModelDownloads;
-  vram64Refs = map (entry: entry.modelRef) vram64Manifest;
-  vram16Refs = map (entry: entry.modelRef) vram16Manifest;
+  manifestFor =
+    hostVramGiB:
+    let
+      selection = runtime.mkRuntime { inherit hostVramGiB; };
+    in
+    builtins.listToAttrs (
+      map (entry: lib.nameValuePair entry.publicName entry) selection.selectedModelDownloads
+    );
+  vram64 = manifestFor 96;
+  vram16 = manifestFor 16;
+  vram8 = manifestFor 8;
+  comparesQuant =
+    name:
+    vram64.${name}.hfRepo == vram16.${name}.hfRepo
+    && vram64.${name}.revision == vram16.${name}.revision
+    && vram64.${name}.revision != null
+    && vram64.${name}.primaryPath != vram16.${name}.primaryPath;
 in
-assert builtins.elem "unsloth/Qwen3-Coder-Next-GGUF:UD-Q4_K_XL" vram64Refs;
-assert builtins.elem "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0" vram64Refs;
-assert lib.length vram64Manifest == 5;
-assert builtins.elem "unsloth/Qwen3.5-9B-GGUF:UD-Q4_K_XL" vram16Refs;
-assert builtins.elem "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0" vram16Refs;
-assert lib.length vram16Manifest == 5;
+assert builtins.attrNames vram64 == builtins.attrNames vram16;
+assert comparesQuant "inkling-2-mini";
+assert comparesQuant "qwen3.8-27b";
+assert !(vram8 ? inkling-2-mini);
+assert !(vram8 ? "qwen3.8-27b");
+assert vram64."qwen3-embedding-0.6b" == vram16."qwen3-embedding-0.6b";
+assert vram16."qwen3-embedding-0.6b" == vram8."qwen3-embedding-0.6b";
 true

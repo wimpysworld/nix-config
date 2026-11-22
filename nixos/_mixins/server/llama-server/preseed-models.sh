@@ -34,8 +34,8 @@ validate_gguf_path() {
 	local field_name="$2"
 	local path_value="$3"
 
-	if [[ "${path_value}" != *.gguf ]]; then
-		die "${field_name} must end with .gguf for model: ${model_ref}"
+	if [[ "${path_value}" != *.gguf && "${path_value}" != *.gguf_file ]]; then
+		die "${field_name} must end with .gguf or .gguf_file for model: ${model_ref}"
 	fi
 
 	if ! validate_repo_relative_path "${path_value}"; then
@@ -45,18 +45,25 @@ validate_gguf_path() {
 
 resolve_cached_hf_path() {
 	local hf_repo="$1"
-	local repo_relative_path="$2"
+	local revision="$2"
+	local repo_relative_path="$3"
 	local repo_cache_dir
-	local revision
 	local candidate
 	local -a candidates=()
 
 	repo_cache_dir="${HF_HUB_CACHE}/models--${hf_repo//\//--}"
 
+	if [[ -n "${revision}" ]]; then
+		candidate="${repo_cache_dir}/snapshots/${revision}/${repo_relative_path}"
+		[[ -f "${candidate}" ]] || return 1
+		printf '%s\n' "${candidate}"
+		return 0
+	fi
+
 	if [[ -f "${repo_cache_dir}/refs/main" ]]; then
 		revision="$(<"${repo_cache_dir}/refs/main")"
 		candidate="${repo_cache_dir}/snapshots/${revision}/${repo_relative_path}"
-		if [[ -e "${candidate}" ]]; then
+		if [[ -f "${candidate}" ]]; then
 			printf '%s\n' "${candidate}"
 			return 0
 		fi
@@ -66,10 +73,12 @@ resolve_cached_hf_path() {
 	candidates=("${repo_cache_dir}"/snapshots/*/"${repo_relative_path}")
 	shopt -u nullglob
 
-	if [[ ${#candidates[@]} -gt 0 ]]; then
-		printf '%s\n' "${candidates[0]}"
-		return 0
-	fi
+	for candidate in "${candidates[@]}"; do
+		if [[ -f "${candidate}" ]]; then
+			printf '%s\n' "${candidate}"
+			return 0
+		fi
+	done
 
 	return 1
 }
@@ -82,16 +91,25 @@ prepare_model() {
 	local spec_json="$1"
 	local model_ref
 	local hf_repo
+	local revision
 	local primary_path
 	local download_path
-	local hf_model_path=""
+	local hf_model_path
+	local snapshot_path
 	local primary_in_downloads='false'
-	local missing_download='false'
+	local missing_download='true'
 	local -a download_paths=()
+	local -a revision_args=()
 
 	model_ref="$(jq -er '.modelRef' <<<"${spec_json}")" || die "manifest entry is missing modelRef"
 	hf_repo="$(jq -er '.hfRepo' <<<"${spec_json}")" || die "manifest entry is missing hfRepo for model: ${model_ref}"
+	revision="$(jq -er 'if .revision == null then "" else (.revision | strings) end' <<<"${spec_json}")" || die "revision must be a commit hash for model: ${model_ref}"
 	primary_path="$(jq -er '.primaryPath' <<<"${spec_json}")" || die "manifest entry is missing primaryPath for model: ${model_ref}"
+
+	if [[ -n "${revision}" ]]; then
+		[[ "${revision}" =~ ^[0-9a-f]{40}$ ]] || die "revision must be a commit hash for model: ${model_ref}"
+		revision_args=(--revision "${revision}")
+	fi
 
 	jq -e '.downloadPaths | type == "array" and length > 0' <<<"${spec_json}" >/dev/null || die "downloadPaths must be a non-empty array for model: ${model_ref}"
 	while IFS= read -r download_path; do
@@ -117,29 +135,30 @@ prepare_model() {
 
 	printf 'Pre-seed %s\n' "${model_ref}"
 
-	for download_path in "${download_paths[@]}"; do
-		if ! resolve_cached_hf_path "${hf_repo}" "${download_path}" >/dev/null; then
-			missing_download='true'
-			break
-		fi
-	done
+	if hf_model_path="$(resolve_cached_hf_path "${hf_repo}" "${revision}" "${primary_path}")"; then
+		snapshot_path="${hf_model_path%/"${primary_path}"}"
+		missing_download='false'
+		for download_path in "${download_paths[@]}"; do
+			if [[ ! -f "${snapshot_path}/${download_path}" ]]; then
+				missing_download='true'
+				break
+			fi
+		done
+	fi
 
-	if [[ "${missing_download}" == 'false' ]] && hf_model_path="$(resolve_cached_hf_path "${hf_repo}" "${primary_path}")"; then
+	if [[ "${missing_download}" == 'false' ]]; then
 		printf '  Hugging Face GGUF: ready\n'
 	else
 		printf '  Hugging Face GGUF: downloading\n'
 		for download_path in "${download_paths[@]}"; do
-			run_hf download --repo-type model "${hf_repo}" "${download_path}"
+			run_hf download --repo-type model "${revision_args[@]}" "${hf_repo}" "${download_path}"
 		done
-		hf_model_path="$(resolve_cached_hf_path "${hf_repo}" "${primary_path}")" || true
-	fi
-
-	if [[ -z "${hf_model_path}" ]]; then
-		die "failed to resolve downloaded GGUF path for model: ${model_ref}"
+		hf_model_path="$(resolve_cached_hf_path "${hf_repo}" "${revision}" "${primary_path}")" || die "failed to resolve downloaded GGUF path for model: ${model_ref}"
+		snapshot_path="${hf_model_path%/"${primary_path}"}"
 	fi
 
 	for download_path in "${download_paths[@]}"; do
-		if ! resolve_cached_hf_path "${hf_repo}" "${download_path}" >/dev/null; then
+		if [[ ! -f "${snapshot_path}/${download_path}" ]]; then
 			die "failed to resolve downloaded GGUF path ${download_path} for model: ${model_ref}"
 		fi
 	done
