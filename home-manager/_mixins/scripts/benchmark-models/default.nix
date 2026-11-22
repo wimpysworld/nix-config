@@ -37,7 +37,12 @@ let
       inherit (model) generation;
     in
     {
-      inherit (model) microBatchSize reasoning reasoningEffort;
+      inherit (model)
+        microBatchSize
+        mtpDraftTokens
+        reasoning
+        reasoningEffort
+        ;
       sampling = lib.filterAttrs (_: value: value != null) {
         inherit (generation) temperature;
         top_k = generation.topK;
