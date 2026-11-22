@@ -5594,7 +5594,17 @@ class GithubCompanionRunner:
                     now_override_ms=now_override_ms,
                 )
             else:
-                self._run_lane_b_pr_review(
+                issue_labels = extract_linear_issue_labels(linear_issue)
+                if "ready-to-merge" in issue_labels:
+                    try:
+                        self.linear_client.update_issue(linear_id, remove_labels=("ready-to-merge",))
+                    except Exception as exc:
+                        sys.stderr.write(
+                            f"moltis-github-companion lane-b-stale-label warning ({pr_key} / {linear_id}): {exc}\n"
+                        )
+                    else:
+                        issue_labels.discard("ready-to-merge")
+                lane_b_outcome = self._run_lane_b_pr_review(
                     pr_key=pr_key,
                     repo=repo,
                     number=number,
@@ -5622,6 +5632,13 @@ class GithubCompanionRunner:
                     current_ms=current_ms,
                     now_override_ms=now_override_ms,
                 )
+                if lane_b_outcome in ("throttled", "dispatch_failed", "update_failed") and "ready-to-merge" in issue_labels:
+                    try:
+                        self.linear_client.update_issue(linear_id, remove_labels=("ready-to-merge",))
+                    except Exception as exc:
+                        sys.stderr.write(
+                            f"moltis-github-companion lane-b-stale-label warning ({pr_key} / {linear_id}): {exc}\n"
+                        )
 
         for linear_issue in active_linear_issues or ():
             if not isinstance(linear_issue, dict) or linear_issue.get("archivedAt"):
@@ -6091,6 +6108,8 @@ class GithubCompanionRunner:
                         sys.stderr.write(
                             f"moltis-github-companion backlog-stale-label warning ({_pr_key} / {_linear_id}): {exc}\n"
                         )
+                    else:
+                        _lin_labels.discard("ready-to-merge")
 
                 has_dnm = has_do_not_merge_label(pr_labels)
                 backlog_blockers: list[str] = []
@@ -6177,11 +6196,12 @@ class GithubCompanionRunner:
                 if sha_unchanged and not ci_turned_green_for_lane_a:
                     continue
 
-                if not ci_turned_green_for_lane_a and _safe_int(pr_entry.get("followup_cooldown_until_ms"), 0) > current_ms:
+                if not sha_unchanged:
                     _strip_stale_ready_to_merge()
+
+                if not ci_turned_green_for_lane_a and _safe_int(pr_entry.get("followup_cooldown_until_ms"), 0) > current_ms:
                     continue
                 if auto_merge_eligible and not has_dnm and ci_state == "PENDING":
-                    _strip_stale_ready_to_merge()
                     continue
 
                 if is_lane_a:
@@ -6268,7 +6288,7 @@ class GithubCompanionRunner:
                         current_ms=current_ms,
                         now_override_ms=now_override_ms,
                     )
-                    if lane_b_outcome in ("throttled", "dispatch_failed"):
+                    if lane_b_outcome in ("throttled", "dispatch_failed", "update_failed"):
                         _strip_stale_ready_to_merge()
 
         return {

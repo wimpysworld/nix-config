@@ -9098,6 +9098,192 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
         self.assertEqual(len(self.httpd.telegram_requests), 4)
         self.assertEqual(len(linear_stub.update_calls), updates_after_slot1)
 
+    def test_backlog_ready_to_merge_clears_on_head_push_before_lane_b_verdict_write_failure(self) -> None:
+        repo = "wimpysworld/tailor"
+        pr_upfront_clear, pr_fallback_clear = self._owned_numbers(repo, "skrye", 2, kind="pr", start=845)
+
+        open_nodes: list[dict[str, object]] = [
+            self._graphql_pr_node(
+                repo,
+                pr_upfront_clear,
+                title="feat: lane B backlog PR pushed new commit before verdict write fails",
+                head_sha="sha_uf_v2",
+                ci_state="SUCCESS",
+                additions=200,
+                deletions=10,
+                file_paths=["src/upfront.py"],
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_fallback_clear,
+                title="feat: lane B backlog PR with transient upfront and verdict failures",
+                head_sha="sha_fb_v2",
+                ci_state="SUCCESS",
+                additions=210,
+                deletions=12,
+                file_paths=["src/fallback.py"],
+            ),
+        ]
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(open_nodes), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
+
+        class VerdictFailLinearClient(StubLinearSyncClient):
+            def __init__(self) -> None:
+                super().__init__()
+                self.attempted_updates: list[dict[str, object]] = []
+                self.fail_upfront_once: set[str] = set()
+                self.fail_verdict_once: set[str] = set()
+
+            def update_issue(
+                self,
+                issue_id: str,
+                *,
+                state: str | None = None,
+                add_labels: tuple[str, ...] = (),
+                remove_labels: tuple[str, ...] = (),
+                **kwargs: object,
+            ) -> dict[str, object]:
+                self.attempted_updates.append({
+                    "issue_id": issue_id,
+                    "state": state,
+                    "add_labels": tuple(add_labels),
+                    "remove_labels": tuple(remove_labels),
+                })
+                if state is None and issue_id in self.fail_upfront_once:
+                    self.fail_upfront_once.remove(issue_id)
+                    raise companion.linear_sync.LinearAPIError("Linear 503 transient upfront clear failure")
+                if state == "Backlog" and issue_id in self.fail_verdict_once:
+                    self.fail_verdict_once.remove(issue_id)
+                    raise companion.linear_sync.LinearAPIError("Linear 503 transient Lane B verdict write failure")
+                return super().update_issue(
+                    issue_id,
+                    state=state,
+                    add_labels=add_labels,
+                    remove_labels=remove_labels,
+                    **kwargs,  # type: ignore[arg-type]
+                )
+
+        linear_stub = VerdictFailLinearClient()
+        lin_uf = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_upfront_clear}",
+            title="feat: lane B backlog PR pushed new commit before verdict write fails",
+            repo=repo,
+            item_kind="PR",
+            state="Backlog",
+            extra_labels=("ready-to-merge",),
+        )
+        lin_fb = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_fallback_clear}",
+            title="feat: lane B backlog PR with transient upfront and verdict failures",
+            repo=repo,
+            item_kind="PR",
+            state="Backlog",
+            extra_labels=("ready-to-merge",),
+        )
+        lin_uf_id = str(lin_uf["id"])
+        lin_fb_id = str(lin_fb["id"])
+        linear_stub.fail_verdict_once.update({lin_uf_id, lin_fb_id})
+        linear_stub.fail_upfront_once.add(lin_fb_id)
+
+        labels_seen_during_review: dict[int, set[str]] = {}
+
+        def skrye_reply(meta: dict[str, str], _params: dict) -> str:
+            self.assertEqual(meta.get("dispatch_kind"), "community_pr_lane_b_review")
+            num = int(meta.get("number", "0"))
+            lin_id = str(meta.get("linear_issue_id") or "")
+            labels_seen_during_review[num] = set(companion.extract_linear_issue_labels(linear_stub.issues[lin_id]))
+            return "LANE_B_VERDICT: needs-decision\nSUMMARY: New push introduces breaking behaviour."
+
+        store, runner, rpc_calls = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=skrye_reply,
+        )
+        t0 = self._utc_ms(2026, 4, 1, 10, 0)
+        for pr_num, prior_sha in ((pr_upfront_clear, "sha_uf_v1"), (pr_fallback_clear, "sha_fb_v1")):
+            store.update_thread_state(
+                companion.make_pr_key(repo, pr_num),
+                {
+                    "repo": repo,
+                    "number": pr_num,
+                    "subject_type": "PullRequest",
+                    "handled_updated_at": "2026-04-01T09:00:00Z",
+                    "handled_head_sha": prior_sha,
+                    "triaged_head_sha": prior_sha,
+                    "handled_ci_state": "SUCCESS",
+                    "is_community": True,
+                },
+                now_override_ms=t0 - 60_000,
+            )
+
+        # Slot 1: post-turn Lane B verdict writes fail transiently (update_failed).
+        # - pr_upfront_clear clears ready-to-merge BEFORE Lane B runs and does NOT repeat the strip after update_failed.
+        # - pr_fallback_clear fails the upfront strip transiently, then clears ready-to-merge via the update_failed fallback.
+        res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0)
+        self.assertEqual({int(c["meta"]["number"]) for c in rpc_calls}, {pr_upfront_clear, pr_fallback_clear})  # type: ignore[index]
+        self.assertEqual(res1["needs_decision_notifications"], [])
+        self.assertEqual(self.httpd.telegram_requests, [])
+
+        # During the Lane B turn, pr_upfront_clear already had stale ready-to-merge stripped.
+        self.assertNotIn("ready-to-merge", labels_seen_during_review[pr_upfront_clear])
+        self.assertIn("ready-to-merge", labels_seen_during_review[pr_fallback_clear])
+
+        # After Slot 1, NEITHER issue retains stale ready-to-merge despite update_failed.
+        for lin_id in (lin_uf_id, lin_fb_id):
+            labels_after = companion.extract_linear_issue_labels(linear_stub.issues[lin_id])
+            self.assertNotIn("ready-to-merge", labels_after)
+            self.assertNotIn("needs-decision", labels_after)
+
+        # pr_upfront_clear made exactly 2 attempted update_issue calls: upfront strip + failed verdict write (no redundant retry).
+        uf_attempts = [u for u in linear_stub.attempted_updates if u["issue_id"] == lin_uf_id]
+        self.assertEqual(
+            uf_attempts,
+            [
+                {"issue_id": lin_uf_id, "state": None, "add_labels": (), "remove_labels": ("ready-to-merge",)},
+                {"issue_id": lin_uf_id, "state": "Backlog", "add_labels": ("needs-decision",), "remove_labels": ("ready-to-merge",)},
+            ],
+        )
+        # pr_fallback_clear made 3 attempted calls: failed upfront strip + failed verdict write + fallback strip on update_failed.
+        fb_attempts = [u for u in linear_stub.attempted_updates if u["issue_id"] == lin_fb_id]
+        self.assertEqual(
+            fb_attempts,
+            [
+                {"issue_id": lin_fb_id, "state": None, "add_labels": (), "remove_labels": ("ready-to-merge",)},
+                {"issue_id": lin_fb_id, "state": "Backlog", "add_labels": ("needs-decision",), "remove_labels": ("ready-to-merge",)},
+                {"issue_id": lin_fb_id, "state": None, "add_labels": (), "remove_labels": ("ready-to-merge",)},
+            ],
+        )
+
+        # Watermarks remained at v1 with retry_count=1 so Slot 2 retries both PRs.
+        for pr_num, prior_sha in ((pr_upfront_clear, "sha_uf_v1"), (pr_fallback_clear, "sha_fb_v1")):
+            st = store.get_thread_state(companion.make_pr_key(repo, pr_num)) or {}
+            self.assertEqual(st.get("handled_head_sha"), prior_sha)
+            self.assertEqual(st.get("triaged_head_sha"), prior_sha)
+            self.assertEqual(st.get("retry_count"), 1)
+
+        # Slot 2: retries succeed, store needs-decision, commit v2 watermarks, and emit 2 pings.
+        res2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 10, 30))
+        self.assertEqual(len(res2["needs_decision_notifications"]), 2)
+        self.assertEqual(len(self.httpd.telegram_requests), 2)
+        for pr_num, lin_id, new_sha in (
+            (pr_upfront_clear, lin_uf_id, "sha_uf_v2"),
+            (pr_fallback_clear, lin_fb_id, "sha_fb_v2"),
+        ):
+            labels_final = companion.extract_linear_issue_labels(linear_stub.issues[lin_id])
+            self.assertIn("needs-decision", labels_final)
+            self.assertNotIn("ready-to-merge", labels_final)
+            st = store.get_thread_state(companion.make_pr_key(repo, pr_num)) or {}
+            self.assertEqual(st.get("handled_head_sha"), new_sha)
+            self.assertEqual(st.get("triaged_head_sha"), new_sha)
+            self.assertEqual(st.get("retry_count"), 0)
+
     def test_lane_a_existing_backlog_issue_transitions_to_in_review_when_ci_turns_green_for_traya(self) -> None:
         repo = "wimpysworld/tailor"
         pr_actionable_existing, pr_same_sha_green, pr_failed_verdict = self._owned_numbers(
