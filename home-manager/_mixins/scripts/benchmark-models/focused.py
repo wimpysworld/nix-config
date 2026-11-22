@@ -257,16 +257,28 @@ def cached_model_path(snapshot, root, projector):
     hf_home = Path(os.environ.get("HF_HOME") or user_cache / "huggingface")
     hf_hub = Path(os.environ.get("HF_HUB_CACHE") or os.environ.get("HUGGINGFACE_HUB_CACHE") or hf_home / "hub")
     pattern = snapshot.relative_to("hub")
+    repo, snapshots, revision, *primary_parts = pattern.parts
+    primary_path = Path(*primary_parts)
     for cache in (Path(preseed_cache) / "hub", root / "huggingface/hub", hf_hub):
-        matches = [
-            path for path in cache.glob(str(pattern))
-            if path.is_file() and os.access(path, os.R_OK)
-            and (not projector or (path.parent / projector).is_file())
-        ]
+        repo_cache = cache / repo
+        matches = {}
+        for snapshot_dir in (repo_cache / snapshots).glob(revision):
+            path = snapshot_dir / primary_path
+            if (
+                path.is_file() and os.access(path, os.R_OK)
+                and (not projector or (snapshot_dir / projector).is_file())
+            ):
+                matches[snapshot_dir.name] = path
         if len(matches) > 1:
+            try:
+                main_revision = (repo_cache / "refs/main").read_text().rstrip("\n")
+            except (OSError, UnicodeError):
+                main_revision = ""
+            if main_revision in matches:
+                return matches[main_revision].absolute()
             raise ValueError(f"ambiguous cached model: {cache / pattern} matches {len(matches)} snapshots")
         if matches:
-            return matches[0].absolute()
+            return next(iter(matches.values())).absolute()
     return None
 
 

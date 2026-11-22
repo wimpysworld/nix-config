@@ -60,19 +60,25 @@ let
       if [[ "$revision" != '*' ]]; then
         modelPath="$snapshotRoot/$revision/$primaryPath"
       else
-        shopt -s nullglob
-        modelPathMatches=("$snapshotRoot"/*/"$primaryPath")
-        if [[ -n "$projectorRelativePath" ]]; then
-          # An older snapshot can contain the model but not the projector.
-          completeMatches=()
-          for candidate in "''${modelPathMatches[@]}"; do
-            snapshotPath="''${candidate%/"$primaryPath"}"
-            if [[ -f "$candidate" && -f "$snapshotPath/$projectorRelativePath" ]]; then
-              completeMatches+=("$candidate")
-            fi
-          done
-          modelPathMatches=("''${completeMatches[@]}")
+        mainRevision=""
+        mainRef="$snapshotRoot/../refs/main"
+        if [[ -f "$mainRef" && -r "$mainRef" ]]; then
+          mainRevision="$(<"$mainRef")" || mainRevision=""
         fi
+        shopt -s nullglob
+        modelPathMatches=()
+        for candidate in "$snapshotRoot"/*/"$primaryPath"; do
+          snapshotPath="''${candidate%/"$primaryPath"}"
+          if [[ ! -f "$candidate" ||
+            ( -n "$projectorRelativePath" && ! -f "$snapshotPath/$projectorRelativePath" ) ]]; then
+            continue
+          fi
+          if [[ "$snapshotPath" == "$snapshotRoot/$mainRevision" ]]; then
+            modelPathMatches=("$candidate")
+            break
+          fi
+          modelPathMatches+=("$candidate")
+        done
         if [[ "''${#modelPathMatches[@]}" -ne 1 ]]; then
           printf 'Error: expected one model path for pattern %s (projector: %s), got %s\n' \
             "$snapshotRoot/*/$primaryPath" "''${projectorRelativePath:-none}" "''${#modelPathMatches[@]}" >&2
