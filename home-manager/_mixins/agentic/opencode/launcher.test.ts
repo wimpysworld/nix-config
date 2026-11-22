@@ -212,6 +212,12 @@ for (const layout of ["plain", "fenced", "escaping-entrypoint"]) {
         assert.ok(resolved, `OpenAI OAuth must resolve built-in model ${id}`);
         assert.equal(resolved.package, "@opencode/ai/providers/openai/responses", "Built-in models must use Responses transport");
         assert.deepEqual(resolved.cost, [], "Subscription models must retain native zero-cost accounting");
+        assert.ok(resolved.limit?.input >= 272000 && resolved.limit?.context >= 400000 && resolved.limit?.output >= 128000,
+          `${id} limits must meet subscription bounds: ${JSON.stringify(resolved.limit)}`);
+        const variants = new Set((resolved.variants ?? []).map((variant: any) => variant.id));
+        for (const effort of ["low", "medium", "high", "xhigh", "max"]) {
+          assert.ok(variants.has(effort), `${id} must expose reasoning variant ${effort}`);
+        }
       }
       const plugins = await api("/api/plugin");
       for (const id of expected) {
