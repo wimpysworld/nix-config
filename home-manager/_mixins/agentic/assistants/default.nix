@@ -1046,6 +1046,10 @@ let
         source = "chainguard-skill: self-review";
       }
     ]
+    ++ map (name: {
+      inherit name;
+      source = "chainguard-command: ${name}";
+    }) chainguardCommands
     ++ compose.commandSources;
   antigravityCommandCollisionCheck = compose.assertNoCommandCollisions {
     context = "Antigravity skills (~/.gemini/config/skills/)";
@@ -1205,6 +1209,10 @@ let
     )
     ++ lib.optionals antigravityEnabled (
       map (
+        cmdName:
+        optionalFile (secretAntigravityPath cmdName) "${chainguardAgentsDir}/antigravity/skills/${cmdName}/SKILL.md"
+      ) chainguardCommands
+      ++ map (
         relPath: optionalFile "${antigravityConfigDir}/${relPath}" "${chainguardAgentsDir}/${relPath}"
       ) chainguardSkillFiles
     );

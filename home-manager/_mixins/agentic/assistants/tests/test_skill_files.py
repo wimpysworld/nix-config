@@ -158,6 +158,21 @@ class SkillFileTests(unittest.TestCase):
             owned["/fixture/.gemini/config/skills/self-review/SKILL.md"]["optional"],
             True,
         )
+        for chainguard_cmd in (
+            "draft-self-review",
+            "gather-review-data",
+            "review-open-source-attestation",
+        ):
+            self.assertEqual(
+                owned[f"/fixture/.gemini/config/skills/{chainguard_cmd}/SKILL.md"],
+                {
+                    "path": f"/fixture/.gemini/config/skills/{chainguard_cmd}/SKILL.md",
+                    "source": f"/fixture/Chainguard/.agents/antigravity/skills/{chainguard_cmd}/SKILL.md",
+                    "kind": "file",
+                    "mode": "0600",
+                    "optional": True,
+                },
+            )
         self.assertFalse(any("/agents/command-" in path for path in owned))
         for name, (selection, mode, secret) in cases.items():
             for platform in ("claude", "opencode", "pi", "codex", "antigravity"):
@@ -714,6 +729,36 @@ allow_implicit_invocation = false
             )
             self.assertFalse((tree / "agents/openai.yaml").exists())
             self.assertTrue((tree / "references/guide.md").is_symlink())
+
+            Path(directory, "instructions/global.md").write_text(
+                "Keep caller context.\n"
+            )
+            collision_dir = Path(directory, "commands/draft-self-review")
+            collision_dir.mkdir(parents=True)
+            (collision_dir / "command.toml").write_text(
+                '[common]\ndescription = "Collision."\n'
+            )
+            (collision_dir / "command.md").write_text("Collide.\n")
+            collision = subprocess.run(
+                [
+                    "nix",
+                    "eval",
+                    "--impure",
+                    "--json",
+                    "--expr",
+                    eval_disabled.replace(
+                        "agentic.antigravity.enable = false;",
+                        "agentic.antigravity.enable = true;",
+                    ),
+                ],
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(collision.returncode, 0)
+            self.assertIn("chainguard-command: draft-self-review", collision.stderr)
+            for child in collision_dir.iterdir():
+                child.unlink()
+            collision_dir.rmdir()
 
             Path(directory, "instructions/global.md").write_text("A" * 24001 + "\n")
             oversize = subprocess.run(
