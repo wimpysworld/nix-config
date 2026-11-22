@@ -5083,7 +5083,7 @@ class GithubCompanionRunner:
             elif state_name == "todo" or state_type == "unstarted":
                 triaged_sha = str(pr_entry.get("triaged_head_sha") or "").strip() or None
                 if "ready-to-merge" in lin_labels:
-                    sha_changed = bool(triaged_sha and head_sha and triaged_sha != head_sha)
+                    sha_changed = not triaged_sha or not head_sha or triaged_sha != head_sha
                     dispatched_targets.add(pr_key)
                     processed_pr_keys.add(pr_key)
                     merge_res = self.execution_coordinator.execute_dispatch(

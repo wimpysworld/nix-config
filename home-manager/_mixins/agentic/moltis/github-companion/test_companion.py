@@ -7261,6 +7261,95 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
         self.assertEqual(len(rpc_calls), rpc_before)
         self.assertEqual(len(self.httpd.telegram_requests), tg_before)
 
+    def test_linear_todo_merge_fails_closed_when_triaged_head_sha_missing_after_reprocess(self) -> None:
+        repo = "wimpysworld/tailor"
+        (pr_reprocessed,) = self._owned_numbers(repo, "skrye", 1, kind="pr", start=660)
+        pr_key = companion.make_pr_key(repo, pr_reprocessed)
+        t_run = self._utc_ms(2026, 4, 1, 12, 0)
+
+        open_nodes: list[dict[str, object]] = [
+            self._graphql_pr_node(
+                repo,
+                pr_reprocessed,
+                title="feat: Lane B PR pushed after reprocess reset",
+                head_sha="sha_reproc_v2",
+                ci_state="SUCCESS",
+                additions=190,
+                deletions=10,
+                file_paths=["src/reproc.py"],
+            ),
+        ]
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(open_nodes), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"state": "open"}), stderr="")
+
+        linear_stub = StubLinearSyncClient()
+        lin_issue = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_reprocessed}",
+            title="feat: Lane B PR pushed after reprocess reset",
+            repo=repo,
+            item_kind="PR",
+            state="Todo",
+            extra_labels=("ready-to-merge",),
+        )
+
+        def skrye_reply(meta: dict[str, str], _params: dict) -> str:
+            if meta.get("dispatch_kind") == "team:merge" and meta.get("head_sha_changed") != "true":
+                return f"🏁 {meta.get('github_url', '')} - feat: Lane B PR pushed after reprocess reset"
+            return "HEARTBEAT_OK"
+
+        store, runner, rpc_calls = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=skrye_reply,
+        )
+        store.update_thread_state(
+            pr_key,
+            {
+                "repo": repo,
+                "number": pr_reprocessed,
+                "subject_type": "PullRequest",
+                "handled_updated_at": "2026-04-01T09:00:00Z",
+                "handled_head_sha": "sha_reproc_v1",
+                "triaged_head_sha": "sha_reproc_v1",
+                "is_community": True,
+                "followup_cooldown_until_ms": t_run + 60_000,
+            },
+            now_override_ms=t_run - 2_000,
+        )
+
+        # Simulate --reprocess-community clearing triaged_head_sha before a new push lands
+        reset_count = store.reprocess_community_entries(now_override_ms=t_run - 1_000)
+        self.assertEqual(reset_count, 1)
+        self.assertIsNone((store.get_thread_state(pr_key) or {}).get("triaged_head_sha"))
+
+        res = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t_run)
+
+        self.assertEqual(len(rpc_calls), 1)
+        meta = rpc_calls[0]["meta"]  # type: ignore[index]
+        self.assertEqual(meta["dispatch_kind"], "team:merge")
+        self.assertEqual(meta["trigger_reason"], "linear_todo_merge")
+        self.assertEqual(meta.get("head_sha_changed"), "true")
+        self.assertNotIn("triaged_head_sha", meta)
+
+        self.assertEqual(len(res["linear_pr_actions"]), 1)
+        self.assertEqual(res["linear_pr_actions"][0]["action"], "linear_todo_merge_blocked_sha_changed")
+        self.assertTrue(res["linear_pr_actions"][0]["head_sha_changed"])
+        self.assertEqual(linear_stub.issues[str(lin_issue["id"])]["state"]["name"], "Backlog")  # type: ignore[index]
+        lin_labels = companion.extract_linear_issue_labels(linear_stub.issues[str(lin_issue["id"])])
+        self.assertIn("needs-decision", lin_labels)
+        self.assertNotIn("ready-to-merge", lin_labels)
+        self.assertEqual(
+            [req["body"]["text"] for req in self.httpd.telegram_requests],
+            [f"🧑‍⚖️ {lin_issue['url']} - {repo}#{pr_reprocessed}: feat: Lane B PR pushed after reprocess reset"],
+        )
+
     def test_lane_a_merge_fail_closed_on_fresh_guard_escalation_and_unconfirmed_replies(self) -> None:
         repo = "wimpysworld/tailor"
         linear_url = "https://linear.app/wimpress/issue/WW-42"
