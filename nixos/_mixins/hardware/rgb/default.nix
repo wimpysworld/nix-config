@@ -50,5 +50,9 @@ lib.mkIf (!host.is.iso) {
       motherboard = if builtins.hasAttr host.name hostRGB then hostRGB.${host.name} else null;
       package = pkgs.openrgb-with-all-plugins;
     };
+    udev.extraRules = ''
+      #0x1532 0x0a2e Razer Wolverine V2 Chroma (hue-jackman)
+      SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="1532", ATTR{idProduct}=="0a2e", TAG+="uaccess", GROUP="input", MODE="0660"
+    '';
   };
 }
