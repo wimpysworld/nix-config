@@ -1,4 +1,5 @@
 {
+  catppuccinPalette,
   config,
   inputs,
   lib,
@@ -59,6 +60,10 @@ let
   };
 
   geminiKeyPath = if cfg.enable then config.sops.secrets.GEMINI_API_KEY.path else "";
+
+  agyStatuslinePackage = import ./agy-statusline {
+    inherit catppuccinPalette pkgs;
+  };
 
   agyWrapperPackage =
     (pkgs.writeShellApplication {
@@ -136,6 +141,7 @@ let
       if [[ "''${FENCE_SANDBOX:-0}" == 1 ]]; then
         export HERDR_AGENT=agy
         export NOUGHTY_AGY_BYPASS=1
+        export NOUGHTY_AGENT_ISOLATION=Fenced
         exec ${lib.getExe cfg.package} "$@"
       fi
 
@@ -159,7 +165,7 @@ let
       # first user argument and resumes the most recent session by default.
       ${fenceMemoryCap.setupShell}
       cd -- "$fence_empty_cwd"
-      "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_AGY_BYPASS=1" ${lib.getExe cfg.package} "$@"
+      "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_AGY_BYPASS=1" "NOUGHTY_AGENT_ISOLATION=Fenced" ${lib.getExe cfg.package} "$@"
     '';
   };
 
@@ -172,6 +178,13 @@ let
     showTips = false;
     showFeedbackSurvey = false;
     useTerminalCursor = true;
+    statusLine = {
+      type = "command";
+      command = lib.getExe agyStatuslinePackage;
+      enabled = true;
+      padding = 0;
+      stack_with_default = false;
+    };
     permissions = {
       deny = [
         "read_url(*)"
