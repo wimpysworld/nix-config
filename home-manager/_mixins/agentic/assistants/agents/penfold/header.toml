@@ -16,8 +16,8 @@ model = "claude-fable-5-2"
 model = "gpt-6.2-astra"
 
 [routing.opencode.providers.google]
-model = "gemini-4-carbon"
-variant = "medium"
+model = "gemini-4-neon"
+variant = "high"
 
 [routing.pi.anthropic]
 model = "claude-fable-5-2"
@@ -28,8 +28,8 @@ model = "gpt-6.2-astra"
 thinking = "high"
 
 [routing.pi.google]
-model = "gemini-4-carbon"
-thinking = "medium"
+model = "gemini-4-neon"
+thinking = "high"
 
 [routing.antigravity]
 model = "inherit"

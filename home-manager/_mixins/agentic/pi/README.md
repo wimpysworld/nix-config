@@ -65,7 +65,7 @@ The managed settings use Google by default:
 }
 ```
 
-`models.json` registers Neon, Carbon and Hydrogen. All three appear in model cycling. The main coordinator starts on Neon at medium thinking. Shared specialist routes select high thinking for Neon and retain medium thinking for Carbon and Hydrogen.
+`models.json` registers Neon, Carbon and Hydrogen. All three appear in model cycling. The main coordinator starts on Neon at medium thinking. Shared specialist routes select high thinking for Neon and Carbon, and retain medium thinking for Hydrogen.
 
 Neon accepts text and images, with a 1,048,576-token context and a 65,536-token output limit that includes thinking. Pi exposes low, medium and high thinking. Its Google adapter does not support Neon's extra-high level. Direct sessions inherit the global medium default unless the caller selects high thinking explicitly.
 
