@@ -61,8 +61,23 @@ let
 
   geminiKeyPath = if cfg.enable then config.sops.secrets.GEMINI_API_KEY.path else "";
 
+  herdrDispModelBin =
+    if
+      (pkgs ? herdr-disp-model) && (lib.meta.availableOn pkgs.stdenv.hostPlatform pkgs.herdr-disp-model)
+    then
+      pkgs.writeShellScript "herdr-disp-model" ''
+        exec ${pkgs.herdr-disp-model.passthru.hookCommand} "$@"
+      ''
+    else
+      "";
+
   agyStatuslinePackage = import ./agy-statusline {
-    inherit catppuccinPalette pkgs;
+    inherit
+      catppuccinPalette
+      herdrDispModelBin
+      lib
+      pkgs
+      ;
   };
 
   agyWrapperPackage =
@@ -118,6 +133,31 @@ let
         agy_permission_args=()
         if [[ "''${FENCE_SANDBOX:-}" == "1" && "''${NOUGHTY_AGY_BYPASS:-}" == "1" && "$non_session" == "0" && "$has_skip_permissions" == "0" ]]; then
           agy_permission_args=(--dangerously-skip-permissions)
+        fi
+
+        herdr_pane_id="''${HERDR_PANE_ID:-}"
+        herdr_pane_id="''${herdr_pane_id#"''${herdr_pane_id%%[![:space:]]*}"}"
+        herdr_pane_id="''${herdr_pane_id%"''${herdr_pane_id##*[![:space:]]}"}"
+
+        if [[ "$non_session" == "0" && "''${HERDR_ENV:-}" == "1" && -n "$herdr_pane_id" ]]; then
+          safe_pane_id="''${herdr_pane_id//[^0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-]/_}"
+          herdr_disp_model="''${AGY_HERDR_DISP_MODEL:-${lib.escapeShellArg "${herdrDispModelBin}"}}"
+
+          # shellcheck disable=SC2329 # Invoked indirectly by the EXIT trap below.
+          cleanup_herdr() {
+            local cache_dir="''${XDG_CACHE_HOME:-$HOME/.cache}/agy-herdr"
+            if [[ -n "$safe_pane_id" ]]; then
+              rm -f -- "$cache_dir/$safe_pane_id".* "$cache_dir/.$safe_pane_id".* 2>/dev/null || true
+            fi
+            if [[ -n "$herdr_disp_model" && -x "$herdr_disp_model" ]]; then
+              "$herdr_disp_model" clear --pane "$herdr_pane_id" --harness agy >/dev/null 2>&1 || true
+            fi
+          }
+          trap cleanup_herdr EXIT
+
+          agy_status=0
+          ${lib.escapeShellArg (lib.getExe antigravityUpstreamPackage)} "''${agy_permission_args[@]}" "''${agy_resume[@]}" "$@" || agy_status=$?
+          exit "$agy_status"
         fi
 
         exec ${lib.escapeShellArg (lib.getExe antigravityUpstreamPackage)} "''${agy_permission_args[@]}" "''${agy_resume[@]}" "$@"

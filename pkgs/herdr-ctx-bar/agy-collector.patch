@@ -1,0 +1,131 @@
+--- a/bin/ctx_bar.py
++++ b/bin/ctx_bar.py
+@@ -27,7 +27,7 @@
+
+
+ SOURCE = "herdr-ctx-bar"
+-SUPPORTED_AGENTS = {"codex", "claude", "pi", "hermes"}
++SUPPORTED_AGENTS = {"codex", "claude", "pi", "hermes", "agy"}
+ TOKEN_NAMES = ("ctx_green", "ctx_yellow", "ctx_red")
+ ROW_MARGIN = 5
+ DEFAULT_SIDEBAR_WIDTH = 26
+@@ -499,11 +499,62 @@
+     return None
+
+
++def agy_cache_path(pane_id: str) -> Path | None:
++    if not pane_id:
++        return None
++    safe_id = "".join(
++        ch if (ch.isascii() and (ch.isalnum() or ch in ("-", "_"))) else "_"
++        for ch in pane_id
++    )
++    if not safe_id:
++        return None
++    cache_home = os.environ.get("XDG_CACHE_HOME", "").strip()
++    root = Path(cache_home).expanduser() if cache_home else Path.home() / ".cache"
++    return root / "agy-herdr" / f"{safe_id}.json"
++
++
++def collect_agy(pane: dict[str, Any]) -> tuple[int, int] | None:
++    pane_id = str(pane.get("pane_id") or "").strip()
++    path = agy_cache_path(pane_id)
++    if not path:
++        return None
++    try:
++        data = json.loads(path.read_text(encoding="utf-8"))
++    except (OSError, json.JSONDecodeError, TypeError, ValueError):
++        return None
++    if not isinstance(data, dict):
++        return None
++    window = data.get("context_window_size")
++    if isinstance(window, bool) or not finite_positive(window):
++        return None
++    window_int = int(float(window))
++    if window_int <= 0:
++        return None
++    used = data.get("used_tokens")
++    if used is not None and not isinstance(used, bool):
++        try:
++            used_val = float(used)
++        except (TypeError, ValueError):
++            used_val = -1.0
++        if math.isfinite(used_val) and used_val >= 0:
++            return int(round(used_val)), window_int
++    percent = data.get("used_percentage")
++    if percent is not None and not isinstance(percent, bool):
++        try:
++            pct_val = float(percent)
++        except (TypeError, ValueError):
++            return None
++        if math.isfinite(pct_val) and pct_val >= 0:
++            return int(round(clamp_percent(pct_val) * window_int / 100.0)), window_int
++    return None
++
++
+ COLLECTORS = {
+     "codex": collect_codex,
+     "claude": collect_claude,
+     "pi": collect_pi,
+     "hermes": collect_hermes,
++    "agy": collect_agy,
+ }
+
+
+--- a/tests/test_ctx_bar.py
++++ b/tests/test_ctx_bar.py
+@@ -248,6 +248,54 @@
+                     ctx_bar.hermes_context_window("unknown-model", {}), 256_000
+                 )
+
++    def test_agy_reads_per_pane_cache_file(self):
++        with tempfile.TemporaryDirectory() as directory:
++            cache_dir = Path(directory) / "agy-herdr"
++            cache_dir.mkdir(parents=True)
++            (cache_dir / "pane-42.json").write_text(
++                json.dumps(
++                    {
++                        "used_percentage": 62.5,
++                        "context_window_size": 200_000,
++                        "used_tokens": 125_000,
++                        "updated_at": 1700000000,
++                    }
++                ),
++                encoding="utf-8",
++            )
++            with mock.patch.dict("os.environ", {"XDG_CACHE_HOME": directory}):
++                pane = {"pane_id": "pane-42", "agent": "agy"}
++                self.assertIn("agy", ctx_bar.SUPPORTED_AGENTS)
++                self.assertEqual(ctx_bar.collect_agy(pane), (125_000, 200_000))
++                self.assertEqual(ctx_bar.collect_percent(pane), 62.5)
++
++    def test_agy_handles_missing_malformed_and_zero_window(self):
++        with tempfile.TemporaryDirectory() as directory:
++            cache_dir = Path(directory) / "agy-herdr"
++            cache_dir.mkdir(parents=True)
++            with mock.patch.dict("os.environ", {"XDG_CACHE_HOME": directory}):
++                self.assertIsNone(
++                    ctx_bar.collect_agy({"pane_id": "missing", "agent": "agy"})
++                )
++                (cache_dir / "bad.json").write_text("{not json", encoding="utf-8")
++                self.assertIsNone(
++                    ctx_bar.collect_agy({"pane_id": "bad", "agent": "agy"})
++                )
++                (cache_dir / "zero.json").write_text(
++                    json.dumps(
++                        {
++                            "used_percentage": 40,
++                            "context_window_size": 0,
++                            "used_tokens": 0,
++                        }
++                    ),
++                    encoding="utf-8",
++                )
++                self.assertIsNone(
++                    ctx_bar.collect_agy({"pane_id": "zero", "agent": "agy"})
++                )
++                self.assertIsNone(ctx_bar.collect_agy({"agent": "agy"}))
++
+
+ class DaemonLockTests(unittest.TestCase):
+     def test_losing_contender_does_not_truncate_active_pid(self):

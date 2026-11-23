@@ -1,6 +1,17 @@
 {
   catppuccinPalette,
+  lib ? pkgs.lib,
   pkgs,
+  herdrDispModelBin ? (
+    if
+      (pkgs ? herdr-disp-model) && (lib.meta.availableOn pkgs.stdenv.hostPlatform pkgs.herdr-disp-model)
+    then
+      pkgs.writeShellScript "herdr-disp-model" ''
+        exec ${pkgs.herdr-disp-model.passthru.hookCommand} "$@"
+      ''
+    else
+      ""
+  ),
 }:
 let
   ansiFg =
@@ -24,6 +35,7 @@ pkgs.writeShellApplication {
     AGY_STATUSLINE_COLOR_CONTEXT = ansiFg "peach";
     AGY_STATUSLINE_COLOR_ISOLATION = ansiFg "mauve";
     AGY_STATUSLINE_COLOR_SEPARATOR = ansiFg "overlay0";
+    AGY_STATUSLINE_HERDR_DISP_MODEL_DEFAULT = "${herdrDispModelBin}";
   };
   text = builtins.readFile ./agy-statusline.sh;
 }

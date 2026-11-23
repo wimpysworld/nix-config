@@ -18,6 +18,11 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     hash = "sha256-jD5XGvWZyf5AYKw9dMSny4lPt8BEhEBVgv0ub783zhg=";
   };
 
+  # Upstream does not collect context usage for Antigravity (`agy`). This patch
+  # adds `agy` to `SUPPORTED_AGENTS` and reads the per-pane cache JSON written
+  # by `agy-statusline`, along with unit tests executed by `installCheckPhase`.
+  patches = [ ./agy-collector.patch ];
+
   dontConfigure = true;
   dontBuild = true;
 
