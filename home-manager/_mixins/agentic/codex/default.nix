@@ -442,6 +442,8 @@ let
       multi_agent = true;
       multi_agent_v2 = false;
       skill_mcp_dependency_install = false;
+      # Silence model-change announcement banners.
+      suppress_model_change_announcements = true;
     };
 
     # Belt and braces alongside `features.memories` above. `use_memories` stops
@@ -534,6 +536,8 @@ let
       status_line_use_colors = true;
       # Disable the built-in TUI notifications.
       notifications = false;
+      # Disable onboarding and TUI tooltips, matching Claude Code and Antigravity.
+      show_tooltips = false;
       # Keep the current working directory when resuming the latest session.
       resume_cwd = "current";
     };
