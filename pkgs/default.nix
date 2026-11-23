@@ -22,6 +22,7 @@ pkgs: {
   karoryfer-black-and-green-guitars = pkgs.callPackage ./karoryfer-black-and-green-guitars { };
   karoryfer-growlybass = pkgs.callPackage ./karoryfer-growlybass { };
   karoryfer-pastabass = pkgs.callPackage ./karoryfer-pastabass { };
+  kuna-bin = pkgs.callPackage ./kuna-bin { };
   manuscript = pkgs.callPackage ./manuscript { };
   moltis = pkgs.callPackage ./moltis { };
   openhue-cli = pkgs.callPackage ./openhue-cli { };

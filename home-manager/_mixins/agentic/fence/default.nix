@@ -17,6 +17,16 @@ let
     "vst3"
     "clap"
   ];
+  reaWritePaths = [
+    "${homeDirectory}/.android"
+    "${homeDirectory}/.rea"
+    "${config.xdg.configHome}/rea"
+    "${config.xdg.configHome}/ghidra"
+  ];
+  reaUsbDevices = [
+    "/dev/bus/usb"
+  ]
+  ++ builtins.genList (i: "/dev/hidraw${toString i}") 32;
 
   # Context Bar keeps its daemon lock and preview overrides in its state
   # directory. The lock holds the PID that the `restart` action signals, so a
@@ -75,7 +85,11 @@ let
         "/dev/nvidia-uvm"
         "/dev/nvidia0"
         "/dev/nvidia1"
-      ];
+      ]
+      # Expose USB and HID raw device nodes on Linux hosts with REA enabled for
+      # hardware, controller, and ADB reverse engineering. Kernel permissions
+      # still gate access to each node, and Fence skips nodes that do not exist.
+      ++ lib.optionals (host.is.linux && config.agentic.rea.enable) reaUsbDevices;
     };
     filesystem = {
       defaultDenyRead = false;
@@ -206,6 +220,12 @@ let
         "${config.xdg.configHome}/moltis"
         "${config.xdg.configHome}/moltis/**"
       ]
+      ++ lib.optionals config.agentic.rea.enable (
+        lib.concatMap (path: [
+          path
+          "${path}/**"
+        ]) reaWritePaths
+      )
       ++ lib.optionals host.is.darwin [
         darwinSigstoreCacheHome
         "${darwinSigstoreCacheHome}/**"
@@ -736,23 +756,34 @@ in
   config =
     lib.mkIf ((!host.is.server || noughtyLib.hostHasTag "moltis") && noughtyLib.userHasTag "developer")
       {
-        home.packages = [
-          fencePackage
-          pkgs.socat
-        ]
-        ++ lib.optionals host.is.linux [
-          pkgs.bubblewrap
-          pkgs.bpftrace
-        ];
+        home = {
+          packages = [
+            fencePackage
+            pkgs.socat
+          ]
+          ++ lib.optionals host.is.linux [
+            pkgs.bubblewrap
+            pkgs.bpftrace
+          ];
+
+          activation = {
+            # Fence skips missing write paths, so create only the user plug-in roots.
+            fenceUserPluginDirectories = lib.mkIf studioWorkstation (
+              lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+                run mkdir -p -- ${lib.escapeShellArgs userPluginPaths}
+              ''
+            );
+
+            # Fence skips missing write paths, so ensure REA and Ghidra state roots exist.
+            fenceReaDirectories = lib.mkIf config.agentic.rea.enable (
+              lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+                run mkdir -p -- ${lib.escapeShellArgs reaWritePaths}
+              ''
+            );
+          };
+        };
 
         xdg.configFile."fence/fence.jsonc".text = builtins.toJSON fenceConfig;
-
-        # Fence skips missing write paths, so create only the user plug-in roots.
-        home.activation.fenceUserPluginDirectories = lib.mkIf studioWorkstation (
-          lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-            run mkdir -p -- ${lib.escapeShellArgs userPluginPaths}
-          ''
-        );
 
         systemd.user.tmpfiles.rules = lib.mkIf host.is.linux [
           # Shared launch directory for fenced agents, used as TMPDIR inside the

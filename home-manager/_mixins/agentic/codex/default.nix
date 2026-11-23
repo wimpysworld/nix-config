@@ -11,6 +11,8 @@ let
   inherit (pkgs.stdenv.hostPlatform) system;
   isDeveloper = noughtyLib.userHasTag "developer";
   fencedEnabled = !host.is.server;
+  reaMcpEnabled = config.agentic.rea.enable;
+  reaCommand = lib.getExe config.agentic.rea.package;
 
   # Codex re-execs std::env::current_exe() when launching the Linux sandbox.
   # Nix store paths can disappear after a Home Manager generation switch, and
@@ -127,6 +129,22 @@ let
         fi
       fi
 
+      # codex-fenced-rea enables the Reverse Engineer Anything MCP server for
+      # this session only via Codex -c overrides, without touching config.toml.
+      rea_mcp=()
+      ${lib.optionalString reaMcpEnabled ''
+        codex_rea_mcp="''${NOUGHTY_CODEX_REA_MCP:-0}"
+        unset NOUGHTY_CODEX_REA_MCP
+        if [ "$codex_rea_mcp" = "1" ]; then
+          rea_mcp=(
+            -c ${lib.escapeShellArg "mcp_servers.rea.command=${builtins.toJSON reaCommand}"}
+            -c 'mcp_servers.rea.args=["--mcp"]'
+            -c 'mcp_servers.rea.enabled=true'
+            -c 'mcp_servers.rea.default_tools_approval_mode="approve"'
+          )
+        fi
+      ''}
+
       # Resume the most recent session by default. The `resume --last`
       # subcommand also accepts a prompt and the interactive flags, so it is
       # injected for bare, prompt, and flag launches. It is skipped for Codex
@@ -145,7 +163,7 @@ let
           ;;
       esac
 
-      exec "$codex_bin" -c 'service_tier="default"' "''${bypass[@]}" "''${codex_resume[@]}" "$@"
+      exec "$codex_bin" -c 'service_tier="default"' "''${bypass[@]}" "''${rea_mcp[@]}" "''${codex_resume[@]}" "$@"
     '';
   };
   codexFencedPackage = pkgs.writeShellApplication {
@@ -174,6 +192,14 @@ let
       fence_log_agent="codex"
       ${fenceLogging.setupShell}
 
+      ${lib.optionalString reaMcpEnabled ''
+        codex_rea_mcp="''${NOUGHTY_CODEX_REA_MCP:-0}"
+        unset NOUGHTY_CODEX_REA_MCP
+        if [[ "$codex_rea_mcp" == 1 ]]; then
+          fence_env+=("NOUGHTY_CODEX_REA_MCP=1")
+        fi
+      ''}
+
       # herdr identifies a pane's agent from the foreground process group
       # environ. Export the hint host-side so fence and the whole wrapper chain
       # inherit it; an inline post-`--` token would land only inside the sandbox
@@ -187,6 +213,21 @@ let
       "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_CODEX_BYPASS=1" ${lib.getExe' codexLauncherPackage "codex"} "$@"
     '';
   };
+  codexFencedReaPackage = pkgs.writeShellApplication {
+    name = "codex-fenced-rea";
+    text = ''
+      export NOUGHTY_CODEX_REA_MCP=1
+      exec ${lib.getExe codexFencedPackage} "$@"
+    '';
+  };
+  codexShellAliases = lib.optionalAttrs fencedEnabled (
+    {
+      codex-fenced = lib.getExe codexFencedPackage;
+    }
+    // lib.optionalAttrs reaMcpEnabled {
+      codex-fenced-rea = lib.getExe codexFencedReaPackage;
+    }
+  );
   # Codex writes one rollout transcript per session under
   # $CODEX_HOME/sessions/<year>/<month>/<day>/ and never prunes them. There is
   # no retention setting in config.toml, and `codex delete` removes a single
@@ -801,7 +842,8 @@ lib.mkMerge [
         codexPruneRolloutsPackage
       ]
       ++ lib.optional communicationRules.enable codexTripwireAdapter.hookPackage
-      ++ lib.optional fencedEnabled codexFencedPackage;
+      ++ lib.optional fencedEnabled codexFencedPackage
+      ++ lib.optional (fencedEnabled && reaMcpEnabled) codexFencedReaPackage;
       # config.toml is written as a real mutable file (not a symlink) so that
       # codex can edit it in-place at runtime. See codexConfigActivationScript.
       activation.codexConfig = lib.hm.dag.entryAfter [
@@ -840,21 +882,15 @@ lib.mkMerge [
     };
 
     programs = {
-      bash.shellAliases = lib.mkIf fencedEnabled {
-        codex-fenced = lib.getExe codexFencedPackage;
-      };
+      bash.shellAliases = codexShellAliases;
       codex = {
         enable = true;
         package = codexLauncherPackage;
         # The assistants mixin writes AGENTS.md from the canonical global prompt.
         context = "";
       };
-      fish.shellAliases = lib.mkIf fencedEnabled {
-        codex-fenced = lib.getExe codexFencedPackage;
-      };
-      zsh.shellAliases = lib.mkIf fencedEnabled {
-        codex-fenced = lib.getExe codexFencedPackage;
-      };
+      fish.shellAliases = codexShellAliases;
+      zsh.shellAliases = codexShellAliases;
     };
   })
 ]

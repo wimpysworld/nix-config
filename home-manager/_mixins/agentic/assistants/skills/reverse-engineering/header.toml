@@ -1,0 +1,10 @@
+[common]
+name = "reverse-engineering"
+description = "Reverse engineers compiled binaries, packaged applications, firmware, and shipped artefacts with Kuna, Reverse Engineer Anything (REA), and Ghidra. Use when the user asks to decompile, disassemble, inspect, or trace an ELF, Mach-O, PE, Electron, ASAR, JavaScript bundle, .NET assembly, Go or Rust binary, APK, PyInstaller, UPX-packed binary, or firmware image, or mentions kuna, rea, Ghidra, xrefs, or binary analysis. Routes between bare kuna CLI, REA MCP (<harness>-fenced-rea) or REA CLI with Kuna default, and REA's Ghidra fallback. Excludes ordinary source-repository analysis."
+license = "Apache-2.0"
+compatibility = "Requires the Nix-managed rea, kuna-bin, and ghidra setup on Linux developer workstations. Stateful REA MCP tools require launching via <harness>-fenced-rea; bare kuna and rea CLI commands run on PATH."
+
+[common.metadata]
+upstream = "https://github.com/Noelo-Lab/kuna"
+source = "skills/kuna/SKILL.md"
+local-changes = "Created a unified reverse-engineering skill covering bare Kuna CLI, REA MCP and CLI with Kuna as default, and REA's Ghidra fallback. Adapted Kuna CLI guidance into references/kuna.md with Apache-2.0 attribution and added local Nix, Fence, and provider-routing rules in references/rea.md."

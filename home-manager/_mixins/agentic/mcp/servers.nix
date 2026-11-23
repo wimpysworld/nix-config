@@ -48,6 +48,14 @@ rec {
     && lib.elem "developer" (config.noughty.user.tags or [ ]);
 
   # Canonical MCP server definitions.
+  #
+  # Reverse Engineer Anything (`rea --mcp`) is deliberately excluded from this
+  # shared registry so it stays disabled in LibreChat, Zed, Moltis, and normal
+  # `<harness>-fenced` sessions. Its 41 tool definitions are only needed for
+  # reverse-engineering sessions and are injected on demand by the per-harness
+  # `<harness>-fenced-rea` launchers (`agy-fenced-rea`, `claude-fenced-rea`,
+  # `codex-fenced-rea`, `opencode-fenced-rea`, and `pi-fenced-rea`).
+  #
   # Phase 1 of the MCP refactor: this attrset is the single source of truth
   # for every MCP server and its per-consumer state. Renderers added in later
   # tasks transform these entries into the formats Claude Code, Codex,

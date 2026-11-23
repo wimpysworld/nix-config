@@ -12,6 +12,9 @@ let
   inherit (pkgs.stdenv.hostPlatform) system;
   aiSopsFile = ../../../../secrets/ai.yaml;
   fencedEnabled = !host.is.server;
+  reaMcpEnabled = config.agentic.rea.enable;
+  reaCommand = lib.getExe config.agentic.rea.package;
+  piMcpConfigPath = "${config.home.homeDirectory}/.pi/agent/mcp-adapter.json";
   # Work hosts carry the "cg" tag and exclude the personal OpenCode key.
   opencodeEnabled = !noughtyLib.hostHasTag "cg";
   # Use Node mode to retain the SDK modules that pi-subagents imports.
@@ -265,12 +268,18 @@ let
       # subcommands (install, update, ...), headless `-p` and `--mode` runs
       # (pi-acp starts `pi --mode rpc`), and when the caller already selects
       # a session, so those paths are untouched.
+      pi_mcp_config="''${NOUGHTY_PI_MCP_CONFIG:-}"
+      unset NOUGHTY_PI_MCP_CONFIG
+      pi_mcp_args=()
       pi_resume=(--continue)
       case "''${1:-}" in
         install | remove | uninstall | update | list | config | -h | --help | -v | --version)
           pi_resume=()
           ;;
         *)
+          if [ -n "$pi_mcp_config" ]; then
+            pi_mcp_args=(--mcp-config "$pi_mcp_config")
+          fi
           for arg in "$@"; do
             case "$arg" in
               -c | --continue | -r | --resume | --session | --session-id | --fork | --no-session | -p | --print | --mode)
@@ -289,7 +298,7 @@ let
       # would hide every extension tool (subtask, lens, footer widgets,
       # MCP/adapter tools, etc.). Per-agent allowlists are expressed in the
       # agent's Pi-native frontmatter (`pi.tools` in `header.toml`).
-      exec "${lib.getExe piPackage}" "''${pi_resume[@]}" "$@"
+      exec "${lib.getExe piPackage}" "''${pi_mcp_args[@]}" "''${pi_resume[@]}" "$@"
     '';
   };
 
@@ -298,14 +307,49 @@ let
     runtimeInputs = [
       fencePackage
     ]
+    ++ lib.optionals reaMcpEnabled [
+      pkgs.coreutils
+      pkgs.jq
+    ]
     ++ fenceAgentShare.runtimeInputs
     ++ fenceWaylandBridge.runtimeInputs
     ++ fenceChromium.runtimeInputs
     ++ fenceLogging.runtimeInputs;
     text = ''
+      pi_rea_mcp="''${NOUGHTY_PI_REA_MCP:-0}"
+      unset NOUGHTY_PI_REA_MCP
+
       if [[ "''${FENCE_SANDBOX:-0}" == 1 ]]; then
         export HERDR_AGENT=pi
         export NOUGHTY_AGENT_LAUNCH_COMMAND="pi-fenced"
+        ${lib.optionalString reaMcpEnabled ''
+          if [[ "$pi_rea_mcp" == 1 ]]; then
+            tmp_pi_mcp="$(mktemp "''${TMPDIR:-/tmp}/pi-mcp-config.XXXXXX.json")"
+            chmod 600 "$tmp_pi_mcp"
+            # shellcheck disable=SC2329 # Invoked indirectly by the EXIT trap below.
+            cleanup_nested_pi_mcp_config() {
+              if [[ -n "$tmp_pi_mcp" ]]; then
+                rm -f -- "$tmp_pi_mcp"
+              fi
+            }
+            trap cleanup_nested_pi_mcp_config EXIT
+
+            pi_mcp_source=${lib.escapeShellArg piMcpConfigPath}
+            if [[ -f "$pi_mcp_source" ]]; then
+              jq --arg cmd ${lib.escapeShellArg reaCommand} \
+                '.mcpServers = ((.mcpServers // {}) + { rea: { type: "stdio", command: $cmd, args: ["--mcp"], enabled: true, directTools: false, lifecycle: "eager" } })' \
+                "$pi_mcp_source" > "$tmp_pi_mcp"
+            else
+              jq -n --arg cmd ${lib.escapeShellArg reaCommand} \
+                '{ mcpServers: { rea: { type: "stdio", command: $cmd, args: ["--mcp"], enabled: true, directTools: false, lifecycle: "eager" } } }' \
+                > "$tmp_pi_mcp"
+            fi
+
+            pi_status=0
+            NOUGHTY_PI_MCP_CONFIG="$tmp_pi_mcp" ${lib.getExe' piWrapperPackage "pi"} "$@" || pi_status=$?
+            exit "$pi_status"
+          fi
+        ''}
         exec ${lib.getExe' piWrapperPackage "pi"} "$@"
       fi
 
@@ -318,6 +362,34 @@ let
 
       fence_log_agent="pi"
       ${fenceLogging.setupShell}
+
+      ${lib.optionalString reaMcpEnabled ''
+        tmp_pi_mcp=""
+        # shellcheck disable=SC2329 # Invoked indirectly by add_fence_exit_cleanup_hook.
+        cleanup_pi_mcp_config() {
+          if [[ -n "$tmp_pi_mcp" ]]; then
+            rm -f -- "$tmp_pi_mcp"
+          fi
+        }
+
+        if [[ "$pi_rea_mcp" == 1 ]]; then
+          tmp_pi_mcp="$(mktemp "''${TMPDIR:-/tmp}/pi-mcp-config.XXXXXX.json")"
+          chmod 600 "$tmp_pi_mcp"
+          pi_mcp_source=${lib.escapeShellArg piMcpConfigPath}
+          if [[ -f "$pi_mcp_source" ]]; then
+            jq --arg cmd ${lib.escapeShellArg reaCommand} \
+              '.mcpServers = ((.mcpServers // {}) + { rea: { type: "stdio", command: $cmd, args: ["--mcp"], enabled: true, directTools: false, lifecycle: "eager" } })' \
+              "$pi_mcp_source" > "$tmp_pi_mcp"
+          else
+            jq -n --arg cmd ${lib.escapeShellArg reaCommand} \
+              '{ mcpServers: { rea: { type: "stdio", command: $cmd, args: ["--mcp"], enabled: true, directTools: false, lifecycle: "eager" } } }' \
+              > "$tmp_pi_mcp"
+          fi
+          fence_args+=(--expose-host-path "$tmp_pi_mcp")
+          fence_env+=("NOUGHTY_PI_MCP_CONFIG=$tmp_pi_mcp")
+          add_fence_exit_cleanup_hook cleanup_pi_mcp_config
+        fi
+      ''}
 
       fence_mount=()
       ${lib.optionalString host.is.linux ''
@@ -341,6 +413,21 @@ let
       "''${fence_launch[@]}" "''${fence_mount[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" ${lib.getExe' piWrapperPackage "pi"} "$@"
     '';
   };
+  piFencedReaPackage = pkgs.writeShellApplication {
+    name = "pi-fenced-rea";
+    text = ''
+      export NOUGHTY_PI_REA_MCP=1
+      exec ${lib.getExe piFencedPackage} "$@"
+    '';
+  };
+  piShellAliases = lib.optionalAttrs fencedEnabled (
+    {
+      pi-fenced = lib.getExe piFencedPackage;
+    }
+    // lib.optionalAttrs reaMcpEnabled {
+      pi-fenced-rea = lib.getExe piFencedReaPackage;
+    }
+  );
 
   piSettings = {
     defaultProvider = "google";
@@ -785,7 +872,8 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
       piWrapperPackage
       piNpmPackage
     ]
-    ++ lib.optional fencedEnabled piFencedPackage;
+    ++ lib.optional fencedEnabled piFencedPackage
+    ++ lib.optional (fencedEnabled && reaMcpEnabled) piFencedReaPackage;
     file = {
       # Register models absent from Pi's bundled catalogue. Overrides alone
       # cannot add unknown IDs. Both OpenCode providers use the workspace key
@@ -922,8 +1010,8 @@ lib.mkIf (noughtyLib.userHasTag "developer") {
   };
 
   programs = lib.mkIf fencedEnabled {
-    bash.shellAliases.pi-fenced = lib.getExe piFencedPackage;
-    fish.shellAliases.pi-fenced = lib.getExe piFencedPackage;
-    zsh.shellAliases.pi-fenced = lib.getExe piFencedPackage;
+    bash.shellAliases = piShellAliases;
+    fish.shellAliases = piShellAliases;
+    zsh.shellAliases = piShellAliases;
   };
 }

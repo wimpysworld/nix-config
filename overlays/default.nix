@@ -152,6 +152,30 @@ in
       framework-tool-tui = final.unstable.framework-tool-tui.overrideAttrs (oldAttrs: {
         buildInputs = (oldAttrs.buildInputs or [ ]) ++ [ final.unstable.libgit2 ];
       });
+      # Reverse Engineer Anything (`rea`) requires Ghidra 12.2+ with JDK 25 and Unblob 26.6.x.
+      inherit (final.unstable) ghidra ghidra-bin unblob;
+
+      # REA 6.10.1 strictly matches `sigrok-cli 0.7.2` with libsigrokdecode,
+      # whereas nixpkgs tracks a 0.8.0-unstable snapshot.
+      sigrok-cli = prev.sigrok-cli.overrideAttrs (_oldAttrs: {
+        version = "0.7.2";
+        src = prev.fetchFromGitHub {
+          owner = "sigrokproject";
+          repo = "sigrok-cli";
+          tag = "sigrok-cli-0.7.2";
+          hash = "sha256-KwycQcJzQmhw5/GXh2FkqJh59TDjITwrUJuaTrmlkd8=";
+        };
+      });
+
+      # REA 6.10.1 requires WABT >=1.0.42 <1.1.0. Remove this override once
+      # https://github.com/NixOS/nixpkgs/pull/563659 reaches nixpkgs-unstable.
+      wabt = final.unstable.wabt.overrideAttrs (_oldAttrs: {
+        version = "1.0.42";
+        src = final.unstable.fetchurl {
+          url = "https://github.com/WebAssembly/wabt/releases/download/1.0.42/wabt-1.0.42.tar.xz";
+          hash = "sha256-p2zaPBdKQwl4Y6B/wLDCAvdw9T4hgG6iY28WfR/7HjA=";
+        };
+      });
       inherit (final.unstable) mango;
       inherit (final.unstable) zed-editor;
       inherit (final.unstable) markless;

@@ -10,6 +10,8 @@ let
   inherit (config.noughty) host;
   inherit (pkgs.stdenv.hostPlatform) system;
   fencedEnabled = !host.is.server;
+  reaMcpEnabled = config.agentic.rea.enable;
+  reaCommand = lib.getExe config.agentic.rea.package;
   # The output style Claude Code is pinned to. The `house-style` value is the
   # one that carries the Communication Rules in the system prompt, so both the
   # `settings.outputStyle` value and the tripwire's carriage flag read this
@@ -666,6 +668,22 @@ let
     ++ fenceLogging.runtimeInputs;
     text = ''
       export NOUGHTY_CLAUDE_BYPASS=1
+      claude_rea_mcp="''${NOUGHTY_CLAUDE_REA_MCP:-0}"
+      unset NOUGHTY_CLAUDE_REA_MCP
+
+      mcp_configs=(
+        ${lib.escapeShellArg sharedMcpConfigPath}
+        ${lib.escapeShellArg renderedMcpConfigPath}
+      )
+      mcp_config=""
+      tmp_mcp_config=""
+
+      for candidate in "''${mcp_configs[@]}"; do
+        if [[ -f "$candidate" ]]; then
+          mcp_config="$candidate"
+          break
+        fi
+      done
 
       if [[ "''${FENCE_SANDBOX:-0}" == 1 ]]; then
         export HERDR_AGENT=claude
@@ -676,6 +694,37 @@ let
           "" | *[!0-9]*) ;;
           *) export CCSTATUSLINE_WIDTH="$width" ;;
         esac
+
+        ${lib.optionalString reaMcpEnabled ''
+          if [[ "$claude_rea_mcp" == 1 ]]; then
+            tmp_mcp_config="$(mktemp "''${TMPDIR:-/tmp}/claude-mcp-config.XXXXXX.json")"
+            chmod 600 "$tmp_mcp_config"
+            # shellcheck disable=SC2329 # Invoked indirectly by the EXIT trap below.
+            cleanup_nested_claude_mcp_config() {
+              if [[ -n "$tmp_mcp_config" ]]; then
+                rm -f -- "$tmp_mcp_config"
+              fi
+            }
+            trap cleanup_nested_claude_mcp_config EXIT
+
+            if [[ -n "$mcp_config" ]]; then
+              jq --arg cmd ${lib.escapeShellArg reaCommand} \
+                '.mcpServers = ((.mcpServers // {}) + { rea: { type: "stdio", command: $cmd, args: ["--mcp"] } })' \
+                "$mcp_config" > "$tmp_mcp_config"
+            else
+              jq -n --arg cmd ${lib.escapeShellArg reaCommand} \
+                '{ mcpServers: { rea: { type: "stdio", command: $cmd, args: ["--mcp"] } } }' \
+                > "$tmp_mcp_config"
+            fi
+
+            ${claudeEnvironmentExports}
+            ${claudeLaunchDefaults}
+
+            claude_status=0
+            ${lib.getExe' claudePackageWithCredentials "claude"} "''${claude_plugin_args[@]}" "--mcp-config=$tmp_mcp_config" --dangerously-skip-permissions "''${claude_defaults[@]}" "$@" || claude_status=$?
+            exit "$claude_status"
+          fi
+        ''}
 
         exec ${lib.getExe' claudePackageWithMcp "claude"} "$@"
       fi
@@ -696,33 +745,48 @@ let
       # PID namespace, which herdr does not read.
       export HERDR_AGENT=claude
 
-      mcp_configs=(
-        ${lib.escapeShellArg sharedMcpConfigPath}
-        ${lib.escapeShellArg renderedMcpConfigPath}
-      )
-      mcp_config=""
-      tmp_mcp_config=""
-
+      # shellcheck disable=SC2329 # Invoked indirectly by add_fence_exit_cleanup_hook.
       cleanup_claude_mcp_config() {
         if [[ -n "$tmp_mcp_config" ]]; then
           rm -f -- "$tmp_mcp_config"
         fi
       }
 
-      for candidate in "''${mcp_configs[@]}"; do
-        if [[ -f "$candidate" ]]; then
-          mcp_config="$candidate"
-          break
-        fi
-      done
-
-      if [[ -n "$mcp_config" ]]; then
+      if [[ -n "$mcp_config" || "$claude_rea_mcp" == 1 ]]; then
         tmp_dir="''${XDG_RUNTIME_DIR:-/tmp}"
         tmp_mcp_config="$(mktemp "$tmp_dir/claude-mcp-config.XXXXXX.json")"
         chmod 600 "$tmp_mcp_config"
-        cp "$mcp_config" "$tmp_mcp_config"
-        fence_args+=(--expose-host-path "$tmp_mcp_config")
-        add_fence_exit_cleanup_hook cleanup_claude_mcp_config
+        ${
+          if reaMcpEnabled then
+            ''
+              if [[ "$claude_rea_mcp" == 1 ]]; then
+                if [[ -n "$mcp_config" ]]; then
+                  jq --arg cmd ${lib.escapeShellArg reaCommand} \
+                    '.mcpServers = ((.mcpServers // {}) + { rea: { type: "stdio", command: $cmd, args: ["--mcp"] } })' \
+                    "$mcp_config" > "$tmp_mcp_config"
+                else
+                  jq -n --arg cmd ${lib.escapeShellArg reaCommand} \
+                    '{ mcpServers: { rea: { type: "stdio", command: $cmd, args: ["--mcp"] } } }' \
+                    > "$tmp_mcp_config"
+                fi
+              else
+                cp "$mcp_config" "$tmp_mcp_config"
+              fi
+            ''
+          else
+            ''
+              if [[ -n "$mcp_config" ]]; then
+                cp "$mcp_config" "$tmp_mcp_config"
+              else
+                rm -f -- "$tmp_mcp_config"
+                tmp_mcp_config=""
+              fi
+            ''
+        }
+        if [[ -n "$tmp_mcp_config" ]]; then
+          fence_args+=(--expose-host-path "$tmp_mcp_config")
+          add_fence_exit_cleanup_hook cleanup_claude_mcp_config
+        fi
       fi
 
       ${claudeLaunchDefaults}
@@ -749,6 +813,21 @@ let
       esac
     '';
   };
+  claudeFencedReaPackage = pkgs.writeShellApplication {
+    name = "claude-fenced-rea";
+    text = ''
+      export NOUGHTY_CLAUDE_REA_MCP=1
+      exec ${lib.getExe claudeFencedPackage} "$@"
+    '';
+  };
+  claudeShellAliases = lib.optionalAttrs fencedEnabled (
+    {
+      claude-fenced = lib.getExe claudeFencedPackage;
+    }
+    // lib.optionalAttrs reaMcpEnabled {
+      claude-fenced-rea = lib.getExe claudeFencedReaPackage;
+    }
+  );
 in
 {
   options.claude-code.lspServers = lib.mkOption {
@@ -781,7 +860,8 @@ in
         contextUsedPackage
         fastModeIndicatorPackage
       ]
-      ++ lib.optional fencedEnabled claudeFencedPackage;
+      ++ lib.optional fencedEnabled claudeFencedPackage
+      ++ lib.optional (fencedEnabled && reaMcpEnabled) claudeFencedReaPackage;
       # Skip Claude Code's bundled ripgrep in favour of the system binary on
       # PATH. The bundled `rg` crashes on 16 KB-page kernels (Apple Silicon,
       # some Linux configs), silently emptying the file picker. Using the Nix
@@ -1081,9 +1161,7 @@ in
     };
 
     programs = {
-      bash.shellAliases = lib.mkIf fencedEnabled {
-        claude-fenced = lib.getExe claudeFencedPackage;
-      };
+      bash.shellAliases = claudeShellAliases;
       claude-code = {
         enable = true;
         package = claudePackageWithMcp;
@@ -1201,12 +1279,8 @@ in
           })
         ];
       };
-      fish.shellAliases = lib.mkIf fencedEnabled {
-        claude-fenced = lib.getExe claudeFencedPackage;
-      };
-      zsh.shellAliases = lib.mkIf fencedEnabled {
-        claude-fenced = lib.getExe claudeFencedPackage;
-      };
+      fish.shellAliases = claudeShellAliases;
+      zsh.shellAliases = claudeShellAliases;
     };
   };
 }

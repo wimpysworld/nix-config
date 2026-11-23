@@ -11,6 +11,18 @@ let
   inherit (pkgs.stdenv.hostPlatform) system;
   defaultOpenCodeEnabled = !host.is.server;
   fencedEnabled = !host.is.server;
+  reaMcpEnabled = config.agentic.rea.enable;
+  reaCommand = lib.getExe config.agentic.rea.package;
+  opencodeReaConfigContent = builtins.toJSON {
+    mcp.servers.rea = {
+      type = "local";
+      command = [
+        reaCommand
+        "--mcp"
+      ];
+      disabled = false;
+    };
+  };
   aiSopsFile = ../../../../secrets/ai.yaml;
   gatewayEnabled = !noughtyLib.hostHasTag "cg";
   workModelsOnly = noughtyLib.hostHasTag "cg";
@@ -161,7 +173,14 @@ let
     text = ''
       ${opencodeApiKeyShell}
       export HERDR_AGENT=opencode
+      opencode_rea_mcp="''${NOUGHTY_OPENCODE_REA_MCP:-0}"
+      unset NOUGHTY_OPENCODE_REA_MCP
       if [[ "''${FENCE_SANDBOX:-0}" == 1 ]]; then
+        ${lib.optionalString reaMcpEnabled ''
+          if [[ "$opencode_rea_mcp" == 1 ]]; then
+            export OPENCODE_CONFIG_CONTENT=${lib.escapeShellArg opencodeReaConfigContent}
+          fi
+        ''}
         exec ${lib.getExe opencodeLauncherPackage} "$@"
       fi
       ${fenceAgentShare.captureShell}
@@ -172,11 +191,31 @@ let
       ${fenceChromium.setupShell}
       fence_log_agent="opencode"
       ${fenceLogging.setupShell}
+      ${lib.optionalString reaMcpEnabled ''
+        if [[ "$opencode_rea_mcp" == 1 ]]; then
+          fence_env+=(${lib.escapeShellArg "OPENCODE_CONFIG_CONTENT=${opencodeReaConfigContent}"})
+        fi
+      ''}
       ${fenceMemoryCap.setupShell}
       cd -- "$fence_empty_cwd"
       "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" ${lib.getExe opencodeLauncherPackage} "$@"
     '';
   };
+  opencodeFencedReaPackage = pkgs.writeShellApplication {
+    name = "opencode-fenced-rea";
+    text = ''
+      export NOUGHTY_OPENCODE_REA_MCP=1
+      exec ${lib.getExe opencodeFencedPackage} "$@"
+    '';
+  };
+  opencodeShellAliases = lib.optionalAttrs (config.programs.opencode.enable && fencedEnabled) (
+    {
+      opencode-fenced = lib.getExe opencodeFencedPackage;
+    }
+    // lib.optionalAttrs reaMcpEnabled {
+      opencode-fenced-rea = lib.getExe opencodeFencedReaPackage;
+    }
+  );
 in
 {
   sops.secrets.GEMINI_API_KEY = lib.mkIf config.programs.opencode.enable {
@@ -188,9 +227,11 @@ in
     mode = "0400";
   };
   catppuccin.opencode.enable = lib.mkForce false;
-  home.packages = lib.optional (
-    config.programs.opencode.enable && fencedEnabled
-  ) opencodeFencedPackage;
+  home.packages =
+    lib.optional (config.programs.opencode.enable && fencedEnabled) opencodeFencedPackage
+    ++ lib.optional (
+      config.programs.opencode.enable && fencedEnabled && reaMcpEnabled
+    ) opencodeFencedReaPackage;
   xdg.configFile = lib.mkMerge [
     (lib.mkIf config.programs.opencode.enable {
       "opencode/plugins/provider-router".source = pkgs.writeTextFile {
@@ -221,15 +262,9 @@ in
     }
   ];
   programs = {
-    bash.shellAliases = lib.mkIf (config.programs.opencode.enable && fencedEnabled) {
-      opencode-fenced = lib.getExe opencodeFencedPackage;
-    };
-    fish.shellAliases = lib.mkIf (config.programs.opencode.enable && fencedEnabled) {
-      opencode-fenced = lib.getExe opencodeFencedPackage;
-    };
-    zsh.shellAliases = lib.mkIf (config.programs.opencode.enable && fencedEnabled) {
-      opencode-fenced = lib.getExe opencodeFencedPackage;
-    };
+    bash.shellAliases = opencodeShellAliases;
+    fish.shellAliases = opencodeShellAliases;
+    zsh.shellAliases = opencodeShellAliases;
     opencode = lib.mkMerge [
       { enable = lib.mkDefault defaultOpenCodeEnabled; }
       (lib.mkIf config.programs.opencode.enable {

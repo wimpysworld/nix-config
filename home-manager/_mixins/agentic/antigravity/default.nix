@@ -13,6 +13,9 @@ let
   cfg = config.agentic.antigravity;
   isDeveloper = noughtyLib.userHasTag "developer";
   fencedEnabled = !host.is.server;
+  reaMcpEnabled = config.agentic.rea.enable;
+  reaCommand = lib.getExe config.agentic.rea.package;
+  agyConfigDir = "${config.home.homeDirectory}/.gemini/config";
   supportedSystems = [
     "x86_64-linux"
     "aarch64-linux"
@@ -173,12 +176,26 @@ let
     runtimeInputs = [
       fencePackage
     ]
+    ++ lib.optionals reaMcpEnabled [
+      pkgs.coreutils
+      pkgs.findutils
+      pkgs.jq
+    ]
     ++ fenceAgentShare.runtimeInputs
     ++ fenceWaylandBridge.runtimeInputs
     ++ fenceChromium.runtimeInputs
     ++ fenceLogging.runtimeInputs;
     text = ''
+      agy_rea_mcp="''${NOUGHTY_AGY_REA_MCP:-0}"
+      unset NOUGHTY_AGY_REA_MCP
+
       if [[ "''${FENCE_SANDBOX:-0}" == 1 ]]; then
+        ${lib.optionalString reaMcpEnabled ''
+          if [[ "$agy_rea_mcp" == 1 ]]; then
+            echo "agy-fenced-rea: cannot mount per-session MCP overlay from inside an existing Fence sandbox; run from the host shell" >&2
+            exit 1
+          fi
+        ''}
         export HERDR_AGENT=agy
         export NOUGHTY_AGY_BYPASS=1
         export NOUGHTY_AGENT_ISOLATION=Fenced
@@ -195,6 +212,58 @@ let
       fence_log_agent="agy"
       ${fenceLogging.setupShell}
 
+      fence_mount=()
+      ${lib.optionalString reaMcpEnabled ''
+        tmp_agy_dir=""
+        # shellcheck disable=SC2329 # Invoked indirectly by add_fence_exit_cleanup_hook.
+        cleanup_agy_mcp_config() {
+          if [[ -n "$tmp_agy_dir" ]]; then
+            rm -rf -- "$tmp_agy_dir"
+          fi
+        }
+
+        if [[ "$agy_rea_mcp" == 1 ]]; then
+          agy_config_dir=${lib.escapeShellArg agyConfigDir}
+          agy_mcp_source="$agy_config_dir/mcp_config.json"
+          mkdir -p -- "$agy_config_dir"
+
+          tmp_agy_dir="$(mktemp -d "''${TMPDIR:-/tmp}/agy-rea-mcp.XXXXXX")"
+          chmod 700 "$tmp_agy_dir"
+          tmp_agy_config="$tmp_agy_dir/config"
+          tmp_agy_origin="$tmp_agy_dir/origin"
+          install -d -m 0700 -- "$tmp_agy_config" "$tmp_agy_origin"
+
+          while IFS= read -r -d "" entry; do
+            entry_name="$(basename -- "$entry")"
+            if [[ "$entry_name" == "mcp_config.json" ]]; then
+              continue
+            fi
+            ln -s -- "$tmp_agy_origin/$entry_name" "$tmp_agy_config/$entry_name"
+          done < <(find "$agy_config_dir" -mindepth 1 -maxdepth 1 -print0)
+
+          tmp_agy_mcp="$tmp_agy_config/mcp_config.json"
+          if [[ -f "$agy_mcp_source" ]]; then
+            jq --arg cmd ${lib.escapeShellArg reaCommand} \
+              '.mcpServers = ((.mcpServers // {}) + { rea: { command: $cmd, args: ["--mcp"] } })' \
+              "$agy_mcp_source" > "$tmp_agy_mcp"
+          else
+            jq -n --arg cmd ${lib.escapeShellArg reaCommand} \
+              '{ mcpServers: { rea: { command: $cmd, args: ["--mcp"] } } }' \
+              > "$tmp_agy_mcp"
+          fi
+          chmod 400 "$tmp_agy_mcp"
+
+          fence_mount=(
+            ${lib.getExe pkgs.bubblewrap} --bind / / --dev-bind /dev /dev --bind "$agy_config_dir" "$tmp_agy_origin" --bind "$tmp_agy_config" "$agy_config_dir" --
+          )
+          fence_args+=(
+            --expose-host-path-rw "$tmp_agy_origin"
+            --expose-host-path-rw "$agy_config_dir"
+          )
+          add_fence_exit_cleanup_hook cleanup_agy_mcp_config
+        fi
+      ''}
+
       # herdr identifies a pane's agent from the foreground process group
       # environ. Export the hint host-side so fence and the whole wrapper chain
       # inherit it; an inline post-`--` token would land only inside the sandbox
@@ -205,7 +274,14 @@ let
       # first user argument and resumes the most recent session by default.
       ${fenceMemoryCap.setupShell}
       cd -- "$fence_empty_cwd"
-      "''${fence_launch[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_AGY_BYPASS=1" "NOUGHTY_AGENT_ISOLATION=Fenced" ${lib.getExe cfg.package} "$@"
+      "''${fence_launch[@]}" "''${fence_mount[@]}" fence "''${fence_args[@]}" -- "''${fence_env[@]}" "''${fence_direnv[@]}" "NOUGHTY_AGY_BYPASS=1" "NOUGHTY_AGENT_ISOLATION=Fenced" ${lib.getExe cfg.package} "$@"
+    '';
+  };
+  agyFencedReaPackage = pkgs.writeShellApplication {
+    name = "agy-fenced-rea";
+    text = ''
+      export NOUGHTY_AGY_REA_MCP=1
+      exec ${lib.getExe agyFencedPackage} "$@"
     '';
   };
 
@@ -332,6 +408,10 @@ let
   // lib.optionalAttrs fencedEnabled {
     agy-fenced = lib.getExe agyFencedPackage;
     antigravity-fenced = lib.getExe agyFencedPackage;
+  }
+  // lib.optionalAttrs (fencedEnabled && reaMcpEnabled) {
+    agy-fenced-rea = lib.getExe agyFencedReaPackage;
+    antigravity-fenced-rea = lib.getExe agyFencedReaPackage;
   };
 in
 {
@@ -369,7 +449,8 @@ in
         cfg.package
       ]
       ++ lib.optional communicationRules.enable antigravityTripwireAdapter.hookPackage
-      ++ lib.optional fencedEnabled agyFencedPackage;
+      ++ lib.optional fencedEnabled agyFencedPackage
+      ++ lib.optional (fencedEnabled && reaMcpEnabled) agyFencedReaPackage;
 
       activation.antigravitySettings = lib.hm.dag.entryAfter [
         "writeBoundary"
