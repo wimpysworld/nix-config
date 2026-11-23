@@ -97,6 +97,16 @@ pages:
 4. Edit `index.html` for the introduction, features, installation, and copyright holder. Replace `icon.svg` with the project icon.
 5. Commit and push to the Pages branch (default: the repository default branch) to deploy.
 
+## Version numbering
+
+Keep the `v` prefix on Git tags only. Omit the `v` prefix from every etched binary version and package version.
+
+- **Use `v` on Git tags**: `just release x.y.z` creates `v<x.y.z>`. Go modules, GitHub Actions release triggers (`tags: ["v*.*.*"]`), and GoReleaser expect `v`-prefixed tags.
+- **Omit `v` everywhere else**:
+  - **Go binaries**: Declare `var version = "dev"` in `cmd/<app>/main.go` and expose `--version` without hardware or network access. GoReleaser injects `-trimpath` and `-s -w -X main.version={{ .Version }}` (with `git.ignore_tags: [latest]`), Nix injects `-X main.version=${version}` from `nix/version`, and local `just build` injects `${VERSION#v}` from `git describe --tags --match 'v*.*.*' --always --dirty`.
+  - **Rust binaries**: Read `option_env!("BUILD_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"))` with a `build.rs` `cargo:rerun-if-env-changed=BUILD_VERSION` directive. Set `BUILD_VERSION={{ .Version }}` in GoReleaser, `BUILD_VERSION = version;` in `nix/package.nix`, and `BUILD_VERSION="${VERSION#v}"` in local `just build`. Keep `Cargo.toml`'s `[package] version` in sync with the bare release tag (`x.y.z`, no `v`).
+  - **Packages and Nix**: GoReleaser `{{ .Version }}`, Linux packages (`.deb`, `.rpm`, `.apk`, `.pkg.tar.zst`, AUR), and the workflow-written `nix/version` (`${RELEASE_TAG#v}`) all use bare `x.y.z`.
+
 ## Out of scope
 
 Hugo, Jekyll, MCP integrations, Ebitengine, Android, ffmpeg-statigo, and per-setting detail for the ruleset, Actions policy, variables, and immutable releases. Use `tailor baste --verbose` and the wiki.
