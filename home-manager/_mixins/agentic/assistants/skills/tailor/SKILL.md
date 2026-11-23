@@ -97,6 +97,15 @@ pages:
 4. Edit `index.html` for the introduction, features, installation, and copyright holder. Replace `icon.svg` with the project icon.
 5. Commit and push to the Pages branch (default: the repository default branch) to deploy.
 
+## Project icon
+
+Store every project's canonical icon as a real file at `pages/icon.svg`, even when GitHub Pages is disabled. One icon supplies the static Pages header, footer, and favicon, the repository `README.md`, and Haberdasher package pages.
+
+- **Use a real file, never a symlink**: commit the SVG directly at `pages/icon.svg` (or copy it there when packaging needs a second path). GitHub's Contents API returns symlink target text instead of image bytes, and Windows checkouts break symlinks.
+- **Keep it square and self-contained**: use a `1:1` SVG with an explicit `viewBox`, readable on both light and dark surfaces, with no wide horizontal wordmark and no external fonts, images, or scripts.
+- **Replace the starter placeholder**: replace Tailor's default blue `pages/icon.svg` with the project's own mark. Haberdasher ignores the placeholder bytes.
+- **Enable static Pages later**: Tailor only creates the static starter in a missing or empty `pages/` directory. When `pages/icon.svg` already exists before you enable static Pages, preserve it alongside `pages/index.html`.
+
 ## Version numbering
 
 Keep the `v` prefix on Git tags only. Omit the `v` prefix from every etched binary version and package version.
