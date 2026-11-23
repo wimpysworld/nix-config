@@ -1,9 +1,9 @@
 rec {
-  piMcpAdapterRevision = "1c7a84d489c18c69fde3d6a6503cd051133dd9a9";
+  piMcpAdapterRevision = "0beff98460567cd228ae08d99db5f169a1ad3034";
   # Verify Agent, SubagentWorkflow, and native header compatibility on updates.
   # The provider router uses separate model and thinking fields for Agent,
   # and model and effort fields for workflow children.
-  piSubagentsVersion = "0.22.0";
+  piSubagentsVersion = "0.26.2";
   piMcpAdapterSource = "git:github.com/nicobailon/pi-mcp-adapter@${piMcpAdapterRevision}";
   piSubagentsSource = "npm:@tintinweb/pi-subagents@${piSubagentsVersion}";
 

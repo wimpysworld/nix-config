@@ -42,8 +42,8 @@ let
     piSubagentsConfig
     piSubagentsSource
     ;
-  piLensVersion = "4.4.4";
-  # pi-lens imports the compiler API at runtime, but 4.4.4 omits TypeScript
+  piLensVersion = "4.5.2";
+  # pi-lens imports the compiler API at runtime, but 4.5.2 omits TypeScript
   # from its runtime dependencies. Keep it as a direct Pi npm dependency until the
   # upstream package restores TypeScript to dependencies.
   piLensTypescriptVersion = "7.0.2";
@@ -57,9 +57,8 @@ let
   # pi-pretty re-renders built-in tool output (read, bash, ls, find, grep) and
   # replaces find/grep with its bundled FFF frecency search. Do not install
   # pi-fff alongside it: both would claim the same built-in tool names.
-  piPrettyVersion = "0.8.0";
-  rpivAskUserQuestionVersion = "2.13.9";
-  rpivBtwVersion = "2.13.9";
+  piPrettyVersion = "0.10.2";
+  rpivAskUserQuestionVersion = "2.15.0";
   piTasksVersion = "0.9.1";
   piLensSource = "npm:pi-lens@${piLensVersion}";
   piLensTypescriptSource = "npm:typescript@${piLensTypescriptVersion}";
@@ -68,7 +67,6 @@ let
   piCcHeaderSource = "npm:pi-cc-header@${piCcHeaderVersion}";
   piPrettySource = "npm:@heyhuynhgiabuu/pi-pretty@${piPrettyVersion}";
   rpivAskUserQuestionSource = "npm:@juicesharp/rpiv-ask-user-question@${rpivAskUserQuestionVersion}";
-  rpivBtwSource = "npm:@juicesharp/rpiv-btw@${rpivBtwVersion}";
   piTasksSource = "npm:@tintinweb/pi-tasks@${piTasksVersion}";
   piAssistant = config.agentic.assistants.pi;
   communicationRules = config.agentic.communicationRules;
@@ -431,7 +429,6 @@ let
       piCcHeaderSource
       piPrettySource
       rpivAskUserQuestionSource
-      rpivBtwSource
       piTasksSource
     ];
 
@@ -456,8 +453,6 @@ let
       # `.pi/mcp-adapter.json` can override these settings.
       directTools = false;
       disableProxyTool = false;
-      scriptMode = true;
-      scriptSkill = "model";
       # Silence the advisory shown when 75 or more direct tools resolve. The
       # work hosts intentionally register the full Chainguard tool set, so
       # the count is a requirement, not an accident.

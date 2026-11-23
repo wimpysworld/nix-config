@@ -102,9 +102,9 @@ Pi packages are installed through the Home Manager-owned package setting:
 ```json
 {
   "packages": [
-    "git:github.com/nicobailon/pi-mcp-adapter@1c7a84d489c18c69fde3d6a6503cd051133dd9a9",
-    "npm:@tintinweb/pi-subagents@0.22.0",
-    "npm:pi-lens@4.4.4",
+    "git:github.com/nicobailon/pi-mcp-adapter@0beff98460567cd228ae08d99db5f169a1ad3034",
+    "npm:@tintinweb/pi-subagents@0.26.2",
+    "npm:pi-lens@4.5.2",
     {
       "source": "npm:typescript@7.0.2",
       "extensions": [],
@@ -115,28 +115,24 @@ Pi packages are installed through the Home Manager-owned package setting:
     "npm:pi-footer@0.5.1",
     "npm:@marckrenn/pi-sub-core@1.5.0",
     "npm:pi-cc-header@1.1.1",
-    "npm:@heyhuynhgiabuu/pi-pretty@0.8.0",
-    "npm:@juicesharp/rpiv-ask-user-question@2.13.9",
-    "npm:@juicesharp/rpiv-btw@2.13.9",
+    "npm:@heyhuynhgiabuu/pi-pretty@0.10.2",
+    "npm:@juicesharp/rpiv-ask-user-question@2.15.0",
     "npm:@tintinweb/pi-tasks@0.9.1"
   ]
 }
 ```
 
-Exact npm versions and Git commits keep package updates pinned. Pi reconciles a Git checkout to the configured revision rather than advancing it. The adapter uses the exact v5.4.0 release commit. Pi clones it under `~/.pi/agent/git/` and installs its runtime dependencies. Review Git sources and npm installation scripts before changing a pin.
+Exact npm versions and Git commits keep package updates pinned. Pi reconciles a Git checkout to the configured revision rather than advancing it. The adapter uses the exact v7.0.1 release commit. Pi clones it under `~/.pi/agent/git/` and installs its runtime dependencies. Review Git sources and npm installation scripts before changing a pin.
 
 The other packages use Pi's npm integration. `typescript` supplies the compiler API that `pi-lens` imports at runtime but omits from its runtime dependencies. Its Pi resources stay disabled because it is a runtime dependency, not an extension.
 
-`pi-lens` 4.4.4 accepts any `@earendil-works/pi-tui` version, but its documented verified host range is `>=0.80.10 <1.4.0`. Pi 1.4.0 therefore needs local compatibility checks. Since 4.1.6, use `lens_diagnostics` with `source: "lsp"` instead of `lsp_diagnostics`, and `ast_grep_search` with `dump: true` instead of `ast_grep_dump`.
+`pi-lens` 4.5.2 accepts any `@earendil-works/pi-tui` version. Since 4.1.6, use `lens_diagnostics` with `source: "lsp"` instead of `lsp_diagnostics`, and `ast_grep_search` with `dump: true` instead of `ast_grep_dump`.
 
 `pi-cc-header` loads from its npm package with `ccHeader.readOnlyConfig` set in the Home Manager-owned `settings.json`. That upstream read-only mode (added in 1.1.1 for declarative setups) stops the extension writing `settings.json`, so header commands such as `/htg` apply for the current session only. It replaces the local writable-state patch that earlier releases needed.
 
 [`pi-pretty`](https://github.com/heyhuynhgiabuu/pi-pretty) re-renders built-in tool output: syntax-highlighted `read` previews, coloured `bash` exit summaries, Nerd Font `ls` icons, and FFF frecency-backed `find`/`grep`. Home Manager owns `~/.pi/agent/pi-pretty.json`, which selects the Catppuccin Shiki theme, keeps Nerd Font icons on, and opts in the `ls` renderer. `pi-fff` must not be installed alongside it because both claim the same built-in tool names. FFF index data lives under `~/.pi/agent/pi-pretty/fff/`.
 
-The `juicesharp/rpiv-mono` extensions add native Pi behaviour:
-
-- `rpiv-ask-user-question` gives the model a structured questionnaire with typed options
-- `rpiv-btw` performs an explicit side model call using current conversation context
+`rpiv-ask-user-question` from `juicesharp/rpiv-mono` gives the model a structured questionnaire with typed options.
 
 [`pi-tasks`](https://github.com/tintinweb/pi-tasks) adds Claude Code-style task tracking: `TaskCreate`, `TaskList`, `TaskGet`, `TaskUpdate`, `TaskOutput`, `TaskStop`, and `TaskExecute` tools, a persistent widget above the editor, reminder injection, dependency tracking, and file-backed shared task lists. `TaskExecute` can run tasks with an `agentType` as subagents through the pinned `pi-subagents` package. The `/tasks` command configures widget display, saved as project overrides in `.pi/tasks-config.json`, which stays user-owned.
 
@@ -323,13 +319,11 @@ Home Manager sets `extensions = [ "-builtin:mcp" ]` in Pi's settings. This disab
 
 - `directTools = false`
 - `disableProxyTool = false`
-- `scriptMode = true`
-- `scriptSkill = "model"`
 - `autoAuth = false`
 - `sampling = false`
 - `samplingAutoApprove = false`
 
-These settings keep the proxy and `mcpScript` available to agents and workers, expose the scripting skill to the model, and prevent MCP sampling. Direct tools stay disabled globally, with the existing per-server exceptions.
+These settings keep the MCP proxy available to agents and workers and prevent MCP sampling. Direct tools stay disabled globally, with the existing per-server exceptions. (`scriptMode` and `scriptSkill` were removed in `pi-mcp-adapter` 6.0.0.)
 
 Use `.pi/mcp-adapter.json` for project adapter settings and full server overrides. On Pi 1.0, the adapter translates native `.pi/mcp.json` servers but ignores adapter-only fields such as `directTools` and top-level `settings`. This repository keeps its native file and adds a complete NixOS entry in `.pi/mcp-adapter.json` to preserve direct tools. Project trust and adapter approval still apply.
 
@@ -347,7 +341,7 @@ The Pi-specific file emits full server entries, not partial overrides, because `
 
 ## Subagents
 
-[Tintinweb pi-subagents](https://github.com/tintinweb/pi-subagents) is pinned to `npm:@tintinweb/pi-subagents@0.22.0`, which requires Pi 1.1.0 or later.
+[Tintinweb pi-subagents](https://github.com/tintinweb/pi-subagents) is pinned to `npm:@tintinweb/pi-subagents@0.26.2`, which requires Pi 1.1.0 or later.
 Home Manager writes its settings to `~/.pi/agent/subagents.json`.
 The former package, configuration output, and `subagents.disableBuiltins` setting are no longer configured.
 Historical logs and sessions remain untouched.

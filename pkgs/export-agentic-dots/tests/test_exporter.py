@@ -356,8 +356,8 @@ class GeneratedExportTests(unittest.TestCase):
         self.assertIn("-builtin:mcp", pi_settings["extensions"])
         self.assertNotIn("pi/.pi/agent/mcp.json", entries)
         mcp = json.loads(entries["pi/.pi/agent/mcp-adapter.json"]["content"])
-        self.assertTrue(mcp["settings"]["scriptMode"])
-        self.assertEqual(mcp["settings"]["scriptSkill"], "model")
+        self.assertNotIn("scriptMode", mcp["settings"])
+        self.assertNotIn("scriptSkill", mcp["settings"])
         for setting in ("disableProxyTool", "autoAuth", "sampling", "samplingAutoApprove"):
             self.assertFalse(mcp["settings"][setting])
         self.assertTrue(mcp["mcpServers"]["exa"]["enabled"])

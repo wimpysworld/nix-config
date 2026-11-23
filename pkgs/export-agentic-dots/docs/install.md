@@ -19,7 +19,7 @@ Pi and Claude Code include only the unauthenticated Exa MCP server. Add authenti
 
 Pi installs the pinned `pi-mcp-adapter` Git revision and `pi-subagents` npm version from `settings.json` at client start. Review both sources and npm installation scripts before first use. Git updates reconcile the exact configured commit rather than advancing it.
 
-Keep `"extensions": ["-builtin:mcp"]` when you merge Pi settings. This prevents duplicate native MCP support and adapter writes to read-only settings. The export puts servers and adapter settings in `~/.pi/agent/mcp-adapter.json`. It enables `mcpScript` with `scriptMode: true` and exposes its skill with `scriptSkill: "model"`.
+Keep `"extensions": ["-builtin:mcp"]` when you merge Pi settings. This prevents duplicate native MCP support and adapter writes to read-only settings. The export puts servers and adapter settings in `~/.pi/agent/mcp-adapter.json`.
 
 Use `.pi/mcp-adapter.json` for project adapter settings and full server overrides. Native `.pi/mcp.json` servers remain readable on Pi 1.0, but adapter-only fields there are ignored. Use `/mcp-adapter` inside Pi for adapter management. Shell-level `pi mcp` commands still use native MCP.
 

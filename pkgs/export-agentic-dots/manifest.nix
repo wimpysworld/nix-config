@@ -590,8 +590,6 @@ let
     settings = {
       directTools = false;
       disableProxyTool = false;
-      scriptMode = true;
-      scriptSkill = "model";
       autoAuth = false;
       sampling = false;
       samplingAutoApprove = false;
