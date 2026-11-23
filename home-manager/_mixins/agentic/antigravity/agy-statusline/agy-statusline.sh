@@ -54,8 +54,72 @@ jq_filter='
     ),
     "\u0000",
     (
-      if (.cost | type) == "object" and (.cost.total_usd | type) == "number" then
+      if (.cost | type) == "object" and (.cost.total_usd | type) == "number" and .cost.total_usd > 0 then
         (.cost.total_usd | tostring)
+      else
+        ""
+      end
+    ),
+    "\u0000",
+    (
+      if (.quota | type) == "object" and (.quota | length) > 0 then
+        .quota as $q
+        | (
+            (
+              (if (.model | type) == "object" and (.model.id | type) == "string" then .model.id else "" end)
+              + " "
+              + (if (.model | type) == "object" and (.model.display_name | type) == "string" then .model.display_name else "" end)
+            ) | ascii_downcase
+          ) as $model_lc
+        | (
+            if ($model_lc | contains("claude")) then "claude"
+            elif ($model_lc | contains("gpt")) then "gpt"
+            else "gemini"
+            end
+          ) as $pref
+        | (
+            if ($q[$pref] | type) == "object" and $q[$pref].disabled != true and ($q[$pref].remaining_fraction | type) == "number" then
+              $q[$pref]
+            else
+              (
+                $q
+                | to_entries
+                | map(.value)
+                | map(select(type == "object" and .disabled != true and (.remaining_fraction | type) == "number"))
+                | first // null
+              )
+            end
+          ) as $bucket
+        | if $bucket != null then
+            (
+              ($bucket.remaining_fraction * 100)
+              | if . < 0 then 0 elif . > 100 then 100 else . end
+              | round
+              | tostring
+            ) + "% left"
+          elif ($q.credits | type) == "object" and $q.credits.disabled != true and ($q.credits.remaining_amount | type) == "number" then
+            "Credits " + ($q.credits.remaining_amount | if . < 0 then 0 else . end | round | tostring)
+          else
+            ""
+          end
+      else
+        ""
+      end
+    ),
+    "\u0000",
+    (
+      if (.transcript_path | type) == "string" and (.transcript_path | length) > 0 then
+        .transcript_path
+      else
+        ""
+      end
+    ),
+    "\u0000",
+    (
+      if (.conversation_id | type) == "string" and (.conversation_id | length) > 0 then
+        .conversation_id
+      elif (.session_id | type) == "string" and (.session_id | length) > 0 then
+        .session_id
       else
         ""
       end
@@ -163,6 +227,9 @@ model_name=""
 model_effort=""
 workspace_dir=""
 cost_usd=""
+quota_label=""
+transcript_path=""
+conversation_id=""
 context_window_size=""
 used_percentage=""
 used_tokens=""
@@ -172,6 +239,9 @@ if ! {
     && IFS= read -r -d "" model_effort \
     && IFS= read -r -d "" workspace_dir \
     && IFS= read -r -d "" cost_usd \
+    && IFS= read -r -d "" quota_label \
+    && IFS= read -r -d "" transcript_path \
+    && IFS= read -r -d "" conversation_id \
     && IFS= read -r -d "" context_window_size \
     && IFS= read -r -d "" used_percentage \
     && IFS= read -r -d "" used_tokens
@@ -220,14 +290,172 @@ if [[ -n "$workspace_dir" ]]; then
   fi
 fi
 
-if [[ -n "$cost_usd" ]]; then
-  cost_label="$(LC_ALL=C awk -v v="$cost_usd" 'BEGIN {
+format_usd() {
+  local prefix="$1"
+  local amount="$2"
+  LC_ALL=C awk -v p="$prefix" -v v="$amount" 'BEGIN {
     v = v + 0
-    if (v < 0) v = 0
-    if (v < 1) printf "$%.4f", v
-    else printf "$%.2f", v
-  }')"
-  segments+=("$(paint "$color_cost" "$cost_label")")
+    if (v <= 0) exit
+    if (v < 1) printf "%s$%.4f", p, v
+    else printf "%s$%.2f", p, v
+  }'
+}
+
+# USD rates per 1M tokens aligned with pi/default.nix and opencode/default.nix.
+# On 1 December 2026, gemini-4-carbon input/output/cacheRead rates become 4/20/0.20 USD per million tokens.
+# shellcheck disable=SC2016
+transcript_cost_filter='
+  reduce (
+    inputs
+    | fromjson?
+    | select(type == "object" and .type == "PLANNER_RESPONSE")
+  ) as $r (
+    0;
+    if ($r.model | type) != "string" then
+      .
+    else
+      ($r.model | ascii_downcase) as $model
+      | (if ($r.input_tokens | type) == "number" and $r.input_tokens > 0 then $r.input_tokens else 0 end) as $in
+      | (if ($r.cache_read_tokens | type) == "number" and $r.cache_read_tokens > 0 then $r.cache_read_tokens else 0 end) as $cache
+      | (if ($r.output_tokens | type) == "number" and $r.output_tokens > 0 then $r.output_tokens else 0 end) as $out
+      | (
+          if ($model | startswith("gemini-4-neon")) then
+            [3, 15, 0.15]
+          elif ($model | startswith("gemini-4-hydrogen")) then
+            [1.50, 7.50, 0.075]
+          elif ($model | startswith("gemini-4-carbon")) then
+            [2, 10, 0.10]
+          elif ($model | startswith("gemini-3.1-pro")) then
+            if ($in + $cache) > 200000 then
+              [4, 18, 0.40]
+            else
+              [2, 12, 0.20]
+            end
+          elif ($model | startswith("gemini-3-flash")) then
+            [0.50, 3, 0.05]
+          elif ($model | startswith("gemini-3.1-flash-lite")) then
+            [0.25, 1.50, 0.025]
+          else
+            null
+          end
+        ) as $rates
+      | if $rates == null then
+          .
+        else
+          . + (($in * $rates[0] + $out * $rates[1] + $cache * $rates[2]) / 1000000)
+        end
+    end
+  )
+'
+
+resolve_transcript_path() {
+  local raw_path="$1"
+  local conv_id="$2"
+
+  if [[ -n "$raw_path" && -f "$raw_path" && -r "$raw_path" ]]; then
+    printf '%s' "$raw_path"
+    return 0
+  fi
+
+  # Antigravity CLI 1.5.14 BuildStatusLineData joins ".../.gemini/antigravity/brain/..."
+  # even though transcripts live under ".../.gemini/antigravity-cli/brain/...".
+  if [[ "$raw_path" == *"/.gemini/antigravity/"* ]]; then
+    local cli_path="${raw_path/\/.gemini\/antigravity\//\/.gemini\/antigravity-cli\/}"
+    if [[ -f "$cli_path" && -r "$cli_path" ]]; then
+      printf '%s' "$cli_path"
+      return 0
+    fi
+  fi
+
+  if [[ -n "$conv_id" && "$conv_id" != *"/"* && "$conv_id" != *".."* && -n "${HOME:-}" ]]; then
+    local fallback="${HOME}/.gemini/antigravity-cli/brain/${conv_id}/.system_generated/logs/transcript.jsonl"
+    if [[ -f "$fallback" && -r "$fallback" ]]; then
+      printf '%s' "$fallback"
+      return 0
+    fi
+  fi
+
+  return 0
+}
+
+estimate_transcript_cost() {
+  local path="$1"
+  if [[ -z "$path" || ! -f "$path" || ! -r "$path" ]]; then
+    return 0
+  fi
+
+  local stat_info=""
+  stat_info="$(stat -c '%s %Y' -- "$path" 2>/dev/null)" || return 0
+  local file_size="${stat_info%% *}"
+  local file_mtime="${stat_info#* }"
+  if [[ -z "$file_size" || -z "$file_mtime" ]]; then
+    return 0
+  fi
+
+  local hash_line=""
+  hash_line="$(printf '%s' "$path" | sha256sum 2>/dev/null)" || return 0
+  local path_hash="${hash_line%% *}"
+  if [[ -z "$path_hash" ]]; then
+    return 0
+  fi
+
+  local cache_root="${XDG_CACHE_HOME:-${HOME:+$HOME/.cache}}"
+  local cache_dir=""
+  local cache_file=""
+  if [[ -n "$cache_root" ]]; then
+    cache_dir="${cache_root}/agy-statusline"
+    cache_file="${cache_dir}/${path_hash}.cost"
+    local cached_size="" cached_mtime="" cached_cost=""
+    if [[ -r "$cache_file" ]]; then
+      if read -r cached_size cached_mtime cached_cost < "$cache_file" 2>/dev/null \
+        && [[ "$cached_size" == "$file_size" && "$cached_mtime" == "$file_mtime" && -n "$cached_cost" ]]; then
+        printf '%s' "$cached_cost"
+        return 0
+      fi
+    fi
+  fi
+
+  local total_cost=""
+  if ! total_cost="$(jq -Rn "$transcript_cost_filter" < "$path" 2>/dev/null)"; then
+    return 0
+  fi
+  if [[ -z "$total_cost" ]]; then
+    return 0
+  fi
+
+  if [[ -n "$cache_dir" ]] && mkdir -p -- "$cache_dir" 2>/dev/null; then
+    local cache_tmp=""
+    if cache_tmp="$(mktemp "$cache_dir/.${path_hash}.cost.XXXXXX" 2>/dev/null)"; then
+      if printf '%s %s %s\n' "$file_size" "$file_mtime" "$total_cost" > "$cache_tmp" 2>/dev/null \
+        && mv -f -- "$cache_tmp" "$cache_file" 2>/dev/null; then
+        :
+      else
+        rm -f -- "$cache_tmp" 2>/dev/null || true
+      fi
+    fi
+  fi
+
+  printf '%s' "$total_cost"
+}
+
+if [[ -n "$cost_usd" ]]; then
+  cost_label="$(format_usd "" "$cost_usd")"
+  if [[ -n "$cost_label" ]]; then
+    segments+=("$(paint "$color_cost" "$cost_label")")
+  fi
+elif [[ -n "$quota_label" ]]; then
+  segments+=("$(paint "$color_cost" "$quota_label")")
+elif [[ -n "$transcript_path" || -n "$conversation_id" ]]; then
+  resolved_transcript="$(resolve_transcript_path "$transcript_path" "$conversation_id")" || resolved_transcript=""
+  if [[ -n "$resolved_transcript" ]]; then
+    estimated_cost="$(estimate_transcript_cost "$resolved_transcript")" || estimated_cost=""
+    if [[ -n "$estimated_cost" ]]; then
+      cost_label="$(format_usd "~" "$estimated_cost")"
+      if [[ -n "$cost_label" ]]; then
+        segments+=("$(paint "$color_cost" "$cost_label")")
+      fi
+    fi
+  fi
 fi
 
 if [[ -n "$context_window_size" ]]; then
