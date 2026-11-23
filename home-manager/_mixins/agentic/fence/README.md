@@ -370,6 +370,24 @@ without mutating GitHub state.
 `PATCH notifications/threads/{id}`). The thread ID must be a positive decimal
 integer; any other argument form exits 64.
 
+`gh-release-notes-edit` updates the body of one existing GitHub release
+(published or draft). Use this exact argument order:
+
+```console
+gh-release-notes-edit OWNER/REPO TAG --notes-file notes.md
+```
+
+The notes file must be a readable regular UTF-8 file that contains at least one
+non-whitespace character. The helper looks up the release with GET on
+`repos/{owner}/{repo}/releases/tags/{tag}`. When that returns HTTP 404, the
+helper falls back to a paginated GET on
+`repos/{owner}/{repo}/releases?per_page=100` to locate a draft release. It
+fails when zero releases match or when multiple drafts share the same tag. It
+then sends one PATCH to `repos/{owner}/{repo}/releases/{id}` with only
+`{"body": ...}` so all other release fields stay intact. It never creates or
+deletes a release, and any other flag or argument form exits 64. The
+family-wide `gh release` and `gh api` denies stay unchanged.
+
 `gh-code-scanning-dismiss` dismisses one open code scanning alert.
 Use exactly this argument order:
 

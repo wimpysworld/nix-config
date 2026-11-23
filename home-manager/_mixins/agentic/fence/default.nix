@@ -420,6 +420,13 @@ let
         # `notifications/threads/{id}` through the private gh backend. The
         # family-wide `gh api` deny below remains unchanged.
         "gh-notification-dismiss"
+        # gh-release-notes-edit is a fixed GitHub write path under Fence.
+        # The helper accepts `<owner/repo> <tag> --notes-file <file>`, resolves
+        # an existing published or draft release via GET, and sends one PATCH
+        # to `repos/{owner}/{repo}/releases/{id}` with only `{body: ...}`
+        # through the private gh backend. The family-wide `gh release` and
+        # `gh api` denies below remain unchanged.
+        "gh-release-notes-edit"
         # gh-review-inline is a fixed GitHub write path allowed under Fence.
         # It reaches `POST /repos/{owner}/{repo}/pulls/{n}/reviews` with
         # validated inline `comments[]`, commit SHA guard, and COMMENT/APPROVE

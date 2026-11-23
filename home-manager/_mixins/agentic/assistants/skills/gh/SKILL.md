@@ -8,11 +8,12 @@ Coding agents run fenced. Fence permits the everyday mutations:
 `gh issue edit`, `gh issue comment`, `gh issue develop`, `gh project item-add`,
 `gh project item-edit`, `gh run rerun`, `gh run cancel`, `gh pr update-branch`,
 and `gh pr review --approve`. The source policy also permits
-`gh-code-scanning-dismiss` for authorised alert dismissals.
+`gh-code-scanning-dismiss` for authorised alert dismissals and
+`gh-release-notes-edit` for updating an existing release's notes body.
 This documents source capability, not installation in the current environment.
 Invoking a command that names a mutation is consent for that mutation,
 so run it rather than asking again. Adding a helper does not authorise
-changes to existing alerts.
+changes to existing alerts or releases.
 
 Fence denies raw `gh api`, `gh pr merge`, `gh workflow run`, the
 `gh release` mutations, `gh repo create` and `gh repo edit`, `gh config`,
@@ -33,9 +34,14 @@ This covers `gh pr create`, `gh pr comment`, `gh pr review`,
 `gh issue create`, `gh issue comment`, `gh-review-inline`, `gh-review-reply`, and
 `gh-code-scanning-dismiss`.
 
+Release notes written for `gh-release-notes-edit` (`--notes-file`) also publish
+under the user's name. Apply `communication-rules` and `writing-well` rather
+than `contribution-voice`, because release highlights use headings, bullets,
+and tables.
+
 Prefer the dedicated commands where one fits, because each already loads
-the skill: `make-pr`, `post-comment`, `post-issue`, and
-`post-code-review`. Reach for a bare `gh` call only when no command
+the skill: `make-pr`, `post-comment`, `post-issue`, `post-code-review`, and
+`post-release-highlights`. Reach for a bare `gh` call only when no command
 covers the case.
 
 ## Pull Requests
@@ -168,6 +174,12 @@ gh release upload v1.2.3 dist/binary.tar.gz
 gh release list
 gh release view v1.2.3
 gh release download v1.2.3
+
+# Edit notes body only: `gh release edit` stays denied under Fence.
+# Use `gh-release-notes-edit` when available (see Raw API), or output
+# `gh release edit <tag> --repo <owner/repo> --notes-file <file>` for an
+# unfenced shell.
+gh-release-notes-edit owner/repo v1.2.3 --notes-file notes.md
 ```
 
 ## Repository
@@ -226,8 +238,9 @@ command for the operator to run in an unfenced shell.
 | Resolve a review comment thread        | `gh-review-resolve <review-comment-url>`             |
 | Reopen a resolved review thread        | `gh-review-unresolve <review-comment-url>`           |
 | Withdraw caller's own PR approval      | `gh-review-withdraw-approval <pr-url>`               |
-| Dismiss an authorised alert            | `gh-code-scanning-dismiss`                           |
-| Other mutation (POST/PATCH/PUT/DELETE) | `gh api -X ...` in unfenced shell                    |
+| Dismiss an authorised alert            | `gh-code-scanning-dismiss`                                     |
+| Update an existing release notes body  | `gh-release-notes-edit <owner/repo> <tag> --notes-file <file>` |
+| Other mutation (POST/PATCH/PUT/DELETE) | `gh api -X ...` in unfenced shell                              |
 | Field input from file (`-F x=@file`)   | raw `gh api` in unfenced shell                       |
 
 `gh-api-safe` wraps `gh api`, enforces a read-only allow-list with a
@@ -274,7 +287,7 @@ peer-agent pull request must be authored by `sith-skrye`, `sith-traya`, or
 `flexiondotorg`. Pass `--dry-run` before the pull request URL to verify the
 class and required flags without mutating GitHub state.
 
-`gh-review-reply`, `gh-review-resolve`, `gh-review-unresolve`, `gh-review-withdraw-approval`, and `gh-code-scanning-dismiss` are narrow write helpers
+`gh-review-reply`, `gh-review-resolve`, `gh-review-unresolve`, `gh-review-withdraw-approval`, `gh-code-scanning-dismiss`, and `gh-release-notes-edit` are narrow write helpers
 through the raw API surface. Raw `gh api` remains denied under Fence.
 `gh-review-reply` takes the review comment URL and a body file,
 nothing else. Owner, repository, pull request number, and comment id are
@@ -326,6 +339,25 @@ The alert can change between requests. Do not retry, reopen alerts,
 assign alerts, or request dismissal approval through this helper.
 If the helper is unavailable, stop and report that limit.
 Do not replace it with raw `gh api`.
+
+`gh-release-notes-edit` updates the notes body of one existing GitHub release
+(published or draft). It never creates or deletes a release, and never changes
+`tag_name`, `name`, `draft`, `prerelease`, `make_latest`, or assets. Use
+exactly this four-argument order:
+
+```bash
+gh-release-notes-edit OWNER/REPO TAG --notes-file notes.md
+```
+
+Any unknown flag (`-X`, `-f`, `-F`, `--input`, or a glued `--notes-file=PATH`)
+exits 64 with a single-line reason on stderr. The notes file must be a readable
+non-empty regular UTF-8 file. The helper verifies that the release exists via
+GET (published releases via `/releases/tags/<tag>`, draft releases via
+`/releases`), then sends one `PATCH repos/<owner>/<repo>/releases/<id>`
+containing only `{"body": ...}`. If the helper is unavailable or denied, keep
+the merged body in a temporary file and print
+`gh release edit <tag> --repo <owner/repo> --notes-file <file>` for an
+unfenced shell. Do not replace it with raw `gh api`.
 
 See `home-manager/_mixins/agentic/fence/default.nix` for the
 authoritative `command.allow` / `command.deny` lists,

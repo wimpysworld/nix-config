@@ -36,6 +36,7 @@ Claude Code, OpenCode, Pi, and Antigravity use `/name`. Codex uses manual-only `
 | [draft-commit-message](./draft-commit-message/command.toml) | Draft Commit Message ✍️ | garfield | public | Task worker: garfield | Native subagent: garfield, subagent: true | spawn_agent: garfield | Agent worker: garfield | invoke_subagent: garfield |
 | [draft-pr-message](./draft-pr-message/command.toml) | Draft PR Message 🐙 | garfield | public | Task worker: garfield | Native subagent: garfield, subagent: true | spawn_agent: garfield | Agent worker: garfield | invoke_subagent: garfield |
 | [draft-readme](./draft-readme/command.toml) | Draft README 📄 | velma | public | Task worker: velma | Native subagent: velma | spawn_agent: velma | Agent worker: velma | invoke_subagent: velma |
+| [draft-release-highlights](./draft-release-highlights/command.toml) | Draft Release Highlights ✨ | velma | public | Task worker: velma | Native subagent: velma | spawn_agent: velma | Agent worker: velma | invoke_subagent: velma |
 | [draft-security-review](./draft-security-review/command.toml) | Draft Security Review ✍️ | donatello | public | Task worker: donatello | Native subagent: donatello | spawn_agent: donatello | Agent worker: donatello | invoke_subagent: donatello |
 | [draft-video-script](./draft-video-script/command.toml) | Draft Video Script 🎬 | casper | public | Task worker: casper | Native subagent: casper | spawn_agent: casper | Agent worker: casper | invoke_subagent: casper |
 | [finish-pr](./finish-pr/command.toml) | Wrap up a finished PR 🧹 | garfield | public | Caller context | Caller context, subagent: false | Caller context | Caller context | Caller context |
@@ -51,6 +52,7 @@ Claude Code, OpenCode, Pi, and Antigravity use `/name`. Codex uses manual-only `
 | [post-code-review](./post-code-review/command.toml) | Post Code Review 📮 | donatello | public | Task worker: donatello | Native subagent: donatello | spawn_agent: donatello | Agent worker: donatello | invoke_subagent: donatello |
 | [post-comment](./post-comment/command.toml) | Post Comment 📤 | penfold | public | Task worker: penfold | Native subagent: penfold | spawn_agent: penfold | Agent worker: penfold | invoke_subagent: penfold |
 | [post-issue](./post-issue/command.toml) | Post Issue 📮 | penfold | public | Caller context | Caller context, subagent: false | Caller context | Caller context | Caller context |
+| [post-release-highlights](./post-release-highlights/command.toml) | Post Release Highlights ✨ | velma | public | Caller context | Caller context, subagent: false | Caller context | Caller context | Caller context |
 | [post-security-review](./post-security-review/command.toml) | Post Security Review 📮 | donatello | public | Task worker: donatello | Native subagent: donatello | spawn_agent: donatello | Agent worker: donatello | invoke_subagent: donatello |
 | [project-code-review](./project-code-review/command.toml) | Project Code Review 🔍 | penry | public | Caller context | Caller context, subagent: false | Caller context | Caller context | Caller context |
 | [project-documentation-review](./project-documentation-review/command.toml) | Project Documentation Review 📋 | velma | public | Caller context | Caller context, subagent: false | Caller context | Caller context | Caller context |
@@ -197,6 +199,11 @@ Only description overrides and nonempty argument hints are shown. When any clien
 | [draft-code-review](./draft-code-review/command.toml) | codex | Same as common | Unset |
 | [draft-code-review](./draft-code-review/command.toml) | pi | Same as common | Unset |
 | [draft-code-review](./draft-code-review/command.toml) | antigravity | Same as common | Unset |
+| [draft-release-highlights](./draft-release-highlights/command.toml) | claude | Same as common | [base..target\|tag] |
+| [draft-release-highlights](./draft-release-highlights/command.toml) | opencode | Same as common | [base..target\|tag] |
+| [draft-release-highlights](./draft-release-highlights/command.toml) | codex | Same as common | Unset |
+| [draft-release-highlights](./draft-release-highlights/command.toml) | pi | Same as common | [base..target\|tag] |
+| [draft-release-highlights](./draft-release-highlights/command.toml) | antigravity | Same as common | Unset |
 | [draft-security-review](./draft-security-review/command.toml) | claude | Same as common | [alerts\|report] |
 | [draft-security-review](./draft-security-review/command.toml) | opencode | Same as common | [alerts\|report] |
 | [draft-security-review](./draft-security-review/command.toml) | codex | Same as common | Unset |
@@ -252,6 +259,11 @@ Only description overrides and nonempty argument hints are shown. When any clien
 | [post-issue](./post-issue/command.toml) | codex | Same as common | Unset |
 | [post-issue](./post-issue/command.toml) | pi | Same as common | &lt;repo&gt; |
 | [post-issue](./post-issue/command.toml) | antigravity | Same as common | Unset |
+| [post-release-highlights](./post-release-highlights/command.toml) | claude | Same as common | [tag] [owner/repo] |
+| [post-release-highlights](./post-release-highlights/command.toml) | opencode | Same as common | [tag] [owner/repo] |
+| [post-release-highlights](./post-release-highlights/command.toml) | codex | Same as common | Unset |
+| [post-release-highlights](./post-release-highlights/command.toml) | pi | Same as common | [tag] [owner/repo] |
+| [post-release-highlights](./post-release-highlights/command.toml) | antigravity | Same as common | Unset |
 | [post-security-review](./post-security-review/command.toml) | claude | Same as common | [reviewed-draft] |
 | [post-security-review](./post-security-review/command.toml) | opencode | Same as common | [reviewed-draft] |
 | [post-security-review](./post-security-review/command.toml) | codex | Same as common | Unset |

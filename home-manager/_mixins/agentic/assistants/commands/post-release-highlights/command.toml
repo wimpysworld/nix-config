@@ -1,0 +1,7 @@
+[common]
+description = "Post Release Highlights ✨"
+argument-hint = "[tag] [owner/repo]"
+
+[compose]
+caller-context = true
+agent = "velma"

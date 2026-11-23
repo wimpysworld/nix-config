@@ -40,6 +40,7 @@ let
   gh-bot-merge = pkgs.callPackage ./gh-bot-merge { };
   gh-code-scanning-dismiss = pkgs.callPackage ./gh-code-scanning-dismiss { };
   gh-notification-dismiss = pkgs.callPackage ./gh-notification-dismiss { };
+  gh-release-notes-edit = pkgs.callPackage ./gh-release-notes-edit { };
   gh-review-inline = pkgs.callPackage ./gh-review-inline { };
   ghDashPackage = pkgs.symlinkJoin rec {
     pname = "gh-dash";
@@ -299,6 +300,7 @@ lib.mkMerge [
         gh-bot-merge
         gh-code-scanning-dismiss
         gh-notification-dismiss
+        gh-release-notes-edit
         gh-review-inline
         gh-review-reply
         gh-review-resolve
