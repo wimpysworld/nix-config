@@ -266,16 +266,25 @@ Per-agent counters in `state.json` (`throttles`) enforce these defaults:
 | `Todo` implementations (`todo_implementations`) | `1` | Per 30-minute slot |
 | Autonomous implementations (`daily_implementations`) | `3` | Per agent per `Europe/London` day |
 
-### Prepared security-patch release gate
+### Automated security release pipeline
 
-Every hour, `skrye` and `zannah` check release-managed repositories, split with `mod 2` ownership. `companion.py` discovers these repositories dynamically from `haberdasher.yaml` (`sources`) in `wimpysworld/Haberdasher` via `gh-api-safe`. The companion caches the list in `state.json` for 6 hours and retains the last cached list on transient GitHub failures. The companion validates every entry against `ALLOWED_NOTIFICATION_OWNERS` and merges optional non-Haberdasher entries from `MOLTIS_GITHUB_COMPANION_SECURITY_RELEASE_EXTRA_REPOS` (Nix wrapper parameter `securityPatchReleaseExtraRepos`, default empty). After security fixes merge past the latest stable semantic version (semver) tag (`vX.Y.Z`), the assigned agent enforces four gates:
+Every hour, `skrye` and `zannah` check release-managed repositories, split with `mod 2` ownership. `companion.py` discovers Haberdasher repositories dynamically from `haberdasher.yaml` (`sources`) in `wimpysworld/Haberdasher` via `gh-api-safe`. The companion caches the list in `state.json` for 6 hours and retains the last cached list on transient GitHub failures. The companion validates every entry against `ALLOWED_NOTIFICATION_OWNERS` and merges optional non-Haberdasher entries from `MOLTIS_GITHUB_COMPANION_SECURITY_RELEASE_EXTRA_REPOS` (Nix wrapper parameter `securityPatchReleaseExtraRepos`, default empty). After security fixes merge past the latest stable semantic version (semver) tag (`vA.B.C`), the assigned agent enforces four gates:
 
 - The cooldown elapses (`MOLTIS_GITHUB_COMPANION_SECURITY_RELEASE_COOLDOWN_SECS`, Nix wrapper parameter `securityPatchReleaseCooldownSecs`, default `7200` seconds, or 2 hours).
 - Zero open security pull requests remain.
 - Default-branch CI is green or empty.
-- Clean-main inspection checks commits since the latest tag and flags any unreleased `feat:` or breaking commits.
+- Commit classification inspects commits since the latest tag and separates breaking commits (`!:` or `BREAKING CHANGE`), non-breaking `feat:` commits, and patch-safe commits.
 
-When those gates pass, the companion opens one deduplicated Linear `Backlog` task labelled `release` and sends one Telegram alert (`📦 <repo>: security patch <next_tag> ready`). That alert includes drafted release notes and the exact unfenced release command. Agents never push tags or call `gh release create` inside Fence.
+When those gates pass, commit classification determines the version bump and action:
+
+- **Breaking commits**: the companion holds the release. It opens or updates a Linear `Backlog` task labelled `release` and `needs-decision`, includes a manual `git tag -a <tag> <sha> -m "Release <tag>" && git push origin <tag>` fallback command, and sends one Telegram alert (`📦 <repo>: security release blocked by breaking commits`). It does not push a tag.
+- **Patch or minor on Haberdasher repositories**: the companion selects `vA.(B+1).0` when unreleased `feat:` commits exist, or `vA.B.(C+1)` when all commits are patch-safe. It creates or updates the Linear `release` task in `In Progress`, pushes the annotated semver tag through the fenced helper `gh-security-release-tag`, records the tag in `state.json` (`security_releases.pending_releases`), comments on Linear, and sends one Telegram notice (`🏷️ <repo>: tagged <next_tag> for security release`). Pushing the tag triggers `builder.yml`, `sentinel`, and GoReleaser to build, sign, and publish the GitHub Release without calling `gh release create`. If tagging fails, the companion moves the Linear task to `Backlog` with `needs-decision`, records the failure comment, and sends a Telegram alert (`🚨 <repo>: failed to tag <next_tag>`).
+- **Non-Haberdasher `extra_repos`**: these repositories stay in manual prepared handoff mode. The companion opens a Linear `Backlog` task labelled `release` with drafted release notes and the manual `git tag -a ... && git push origin ...` command, and sends one Telegram alert (`📦 <repo>: security <patch|minor> <next_tag> ready`).
+
+On every poll cycle (without waiting for the hourly check interval), the assigned agent watches `security_releases.pending_releases` through read-only `gh-api-safe` calls to `releases/tags/<tag>` and `actions/runs?branch=<tag>&event=push`:
+
+- When the GitHub Release is published and tag-push workflows succeed with none in progress, the companion moves the Linear task to `Done`, removes `needs-decision` if present, posts the release URL comment, records the completed tag in `security_releases.completed_releases`, and sends one Telegram notice (`🚀 <repo> <tag> released`).
+- When any tag-push workflow fails, the companion moves the Linear task to `Backlog` with `needs-decision`, posts the failed run URL comment, removes the entry from `pending_releases`, and sends one Telegram alert (`🚨 <repo> <tag> release workflow failed`).
 
 ### Silent-failure and dead-letter health alerts
 

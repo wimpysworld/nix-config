@@ -1105,6 +1105,8 @@ def extract_pr_closing_issues(raw_pr: dict, *, default_repo: str) -> list[dict[s
 
 
 _SEMVER_TAG_RE = re.compile(r"^(v?)(\d+)\.(\d+)\.(\d+)$")
+_BREAKING_COMMIT_RE = re.compile(r"^[a-z]+(?:\([^)]+\))?!:", re.IGNORECASE)
+_FEATURE_COMMIT_RE = re.compile(r"^feat(?:\([^)]+\))?:", re.IGNORECASE)
 _NON_PATCH_COMMIT_RE = re.compile(r"^(?:feat(?:\([^)]+\))?!?|[a-z]+(?:\([^)]+\))?!):", re.IGNORECASE)
 _SECURITY_INDICATOR_RE = re.compile(r"(?:\bsecurity\b|\bcve-\d{4}-\d+\b|\bghsa-[a-z0-9-]+\b)", re.IGNORECASE)
 
@@ -1128,19 +1130,37 @@ def bump_semver_patch(tag: str) -> str | None:
     return f"{prefix}{major}.{minor}.{patch + 1}"
 
 
+def bump_semver_minor(tag: str) -> str | None:
+    """Increment the minor component of a strict stable semver tag and reset patch to 0."""
+    parsed = parse_semver_tag(tag)
+    if parsed is None:
+        return None
+    prefix, major, minor, _patch = parsed
+    return f"{prefix}{major}.{minor + 1}.0"
+
+
 def classify_unreleased_commits(commit_subjects: Iterable[str]) -> dict[str, list[str]]:
-    """Classify unreleased commit subjects into `non_patch` (features/breaking) and `patch_safe`."""
-    non_patch: list[str] = []
+    """Classify unreleased commit subjects into `breaking`, `features`, `patch_safe`, and `non_patch`."""
+    breaking: list[str] = []
+    features: list[str] = []
     patch_safe: list[str] = []
     for raw in commit_subjects or ():
         subject = " ".join(str(raw or "").splitlines()).strip()
         if not subject:
             continue
-        if _NON_PATCH_COMMIT_RE.match(subject) or "BREAKING CHANGE" in subject or "BREAKING-CHANGE" in subject:
-            non_patch.append(subject)
+        lower = subject.lower()
+        if _BREAKING_COMMIT_RE.match(subject) or "breaking change" in lower or "breaking-change" in lower:
+            breaking.append(subject)
+        elif _FEATURE_COMMIT_RE.match(subject):
+            features.append(subject)
         else:
             patch_safe.append(subject)
-    return {"non_patch": non_patch, "patch_safe": patch_safe}
+    return {
+        "breaking": breaking,
+        "features": features,
+        "patch_safe": patch_safe,
+        "non_patch": [*breaking, *features],
+    }
 
 
 def is_security_merged_pr(pr: dict) -> bool:
@@ -3128,6 +3148,8 @@ class CompanionStateStore:
         return {
             "last_checked_at_ms": {},
             "notified_releases": {},
+            "pending_releases": {},
+            "completed_releases": {},
             "haberdasher_sources": [],
             "haberdasher_sources_fetched_at_ms": 0,
         }
@@ -3148,6 +3170,19 @@ class CompanionStateStore:
             clean_k = str(k or "").strip().lower()
             if clean_k and isinstance(v, dict):
                 notified[clean_k] = dict(v)
+        raw_pending = _as_dict(data.get("pending_releases"))
+        pending_releases: dict[str, dict[str, object]] = {}
+        for k, v in raw_pending.items():
+            clean_k = str(k or "").strip().lower()
+            if clean_k and isinstance(v, dict):
+                pending_releases[clean_k] = dict(v)
+        raw_completed = _as_dict(data.get("completed_releases"))
+        completed_releases: dict[str, str] = {}
+        for k, v in raw_completed.items():
+            clean_k = str(k or "").strip().lower()
+            clean_v = str(v or "").strip()
+            if clean_k and clean_v:
+                completed_releases[clean_k] = clean_v
         raw_sources = data.get("haberdasher_sources")
         haberdasher_sources: list[str] = []
         if isinstance(raw_sources, list):
@@ -3159,6 +3194,8 @@ class CompanionStateStore:
         return {
             "last_checked_at_ms": last_checked,
             "notified_releases": notified,
+            "pending_releases": pending_releases,
+            "completed_releases": completed_releases,
             "haberdasher_sources": haberdasher_sources,
             "haberdasher_sources_fetched_at_ms": fetched_at_ms,
         }
@@ -4300,12 +4337,13 @@ def build_open_issues_graphql_query(owners: Iterable[str] = POLL_ISSUE_OWNERS) -
 
 
 class GhApiSafeClient:
-    """Subprocess wrapper around `gh-api-safe`, `gh-notification-dismiss`, `gh-workflow-approve`, and scoped `gh` PR label edits."""
+    """Subprocess wrapper around `gh-api-safe`, `gh-notification-dismiss`, `gh-workflow-approve`, `gh-security-release-tag`, and scoped `gh` PR label edits."""
 
-    def __init__(self, gh_api_safe_bin: str = "gh-api-safe", gh_notification_dismiss_bin: str = "gh-notification-dismiss", gh_workflow_approve_bin: str = "gh-workflow-approve", gh_bin: str = "gh", runner: Callable[..., subprocess.CompletedProcess] | None = None, timeout: float = 45.0):
+    def __init__(self, gh_api_safe_bin: str = "gh-api-safe", gh_notification_dismiss_bin: str = "gh-notification-dismiss", gh_workflow_approve_bin: str = "gh-workflow-approve", gh_security_release_tag_bin: str = "gh-security-release-tag", gh_bin: str = "gh", runner: Callable[..., subprocess.CompletedProcess] | None = None, timeout: float = 45.0):
         self.gh_api_safe_bin = gh_api_safe_bin
         self.gh_notification_dismiss_bin = gh_notification_dismiss_bin
         self.gh_workflow_approve_bin = gh_workflow_approve_bin
+        self.gh_security_release_tag_bin = gh_security_release_tag_bin
         self.gh_bin = gh_bin
         self.runner = runner or subprocess.run
         self.timeout = timeout
@@ -4363,6 +4401,192 @@ class GhApiSafeClient:
                 raise RuntimeError(f"gh-workflow-approve {clean_repo} {run_id} exited {proc.returncode}: {(proc.stderr or proc.stdout or '').strip()}")
             approved.append(run_id)
         return approved
+
+    def create_security_release_tag(
+        self,
+        repo: str,
+        tag: str,
+        commit_sha: str,
+        *,
+        dry_run: bool = False,
+        timeout: float | None = None,
+    ) -> subprocess.CompletedProcess:
+        """Create and push an annotated semver release tag via `gh-security-release-tag`."""
+        clean_repo = (repo or "").strip()
+        if (
+            not clean_repo
+            or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*", clean_repo)
+            or any(part in (".", "..") for part in clean_repo.split("/"))
+            or not is_allowed_notification_repo(clean_repo)
+        ):
+            raise ValueError(f"Unsupported repository for security release tag: {repo!r}")
+        clean_tag = (tag or "").strip()
+        if not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", clean_tag):
+            raise ValueError(f"Invalid semver tag for security release: {tag!r}")
+        clean_sha = (commit_sha or "").strip()
+        if not re.fullmatch(r"[0-9a-f]{40}", clean_sha):
+            raise ValueError(f"Invalid commit_sha for security release tag: {commit_sha!r}")
+        cmd = [
+            self.gh_security_release_tag_bin,
+            *(["--dry-run"] if dry_run else []),
+            clean_repo,
+            clean_tag,
+            clean_sha,
+        ]
+        proc = self.runner(cmd, capture_output=True, text=True, timeout=timeout or self.timeout, check=False)
+        if proc.returncode != 0:
+            err_text = (proc.stderr or proc.stdout or "").strip()
+            raise RuntimeError(
+                f"gh-security-release-tag {clean_repo} {clean_tag} {clean_sha} exited {proc.returncode}: {err_text}"
+            )
+        return proc
+
+    def fetch_tag_release_progress(
+        self,
+        repo: str,
+        tag: str,
+        *,
+        timeout: float | None = None,
+    ) -> dict | None:
+        """Read-only check via `gh-api-safe` for a pushed tag's GitHub Release and tag-push workflow runs."""
+        clean_repo = (repo or "").strip()
+        if (
+            not clean_repo
+            or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*", clean_repo)
+            or any(part in (".", "..") for part in clean_repo.split("/"))
+            or not is_allowed_notification_repo(clean_repo)
+        ):
+            raise ValueError(f"Unsupported repository for tag release progress: {repo!r}")
+        clean_tag = (tag or "").strip()
+        if not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", clean_tag):
+            raise ValueError(f"Invalid semver tag for tag release progress: {tag!r}")
+
+        release_published = False
+        release_url: str | None = None
+        release_endpoint = f"repos/{clean_repo}/releases/tags/{clean_tag}"
+        try:
+            rel_proc = self.invoke([release_endpoint], timeout=timeout)
+        except Exception as exc:
+            sys.stderr.write(f"moltis-github-companion tag-release-progress warning ({clean_repo} {clean_tag}): {exc}\n")
+            return None
+
+        rel_stdout = (rel_proc.stdout or "").strip()
+        rel_stderr = (rel_proc.stderr or "").strip()
+        if rel_proc.returncode != 0:
+            combined_err = f"{rel_stderr}\n{rel_stdout}".lower()
+            if "404" in combined_err or "not found" in combined_err:
+                release_published = False
+                release_url = None
+            else:
+                sys.stderr.write(
+                    f"moltis-github-companion tag-release-progress warning ({clean_repo} {clean_tag}): "
+                    f"release lookup exit {rel_proc.returncode}: {rel_stderr or rel_stdout}\n"
+                )
+                return None
+        elif rel_stdout:
+            try:
+                rel_status, _, rel_items = parse_gh_api_paginated_http_output(rel_stdout)
+            except Exception as exc:
+                sys.stderr.write(
+                    f"moltis-github-companion tag-release-progress warning ({clean_repo} {clean_tag}): "
+                    f"invalid release JSON: {exc}\n"
+                )
+                return None
+            if rel_status == 404:
+                release_published = False
+                release_url = None
+            elif rel_status >= 400:
+                sys.stderr.write(
+                    f"moltis-github-companion tag-release-progress warning ({clean_repo} {clean_tag}): "
+                    f"release lookup HTTP {rel_status}\n"
+                )
+                return None
+            else:
+                rel_obj = rel_items[0] if rel_items and isinstance(rel_items[0], dict) else {}
+                msg_lower = str(rel_obj.get("message") or "").strip().lower()
+                is_not_found_body = (
+                    (str(rel_obj.get("status") or "").strip() == "404" or "not found" in msg_lower)
+                    and not rel_obj.get("html_url")
+                    and not rel_obj.get("tag_name")
+                    and not rel_obj.get("id")
+                )
+                if not is_not_found_body and rel_obj:
+                    is_draft = bool(rel_obj.get("draft"))
+                    is_prerelease = bool(rel_obj.get("prerelease"))
+                    published_at = str(rel_obj.get("published_at") or "").strip()
+                    candidate_url = str(rel_obj.get("html_url") or "").strip() or None
+                    if (
+                        not is_draft
+                        and not is_prerelease
+                        and (published_at or candidate_url or rel_obj.get("id") or rel_obj.get("tag_name"))
+                    ):
+                        release_published = True
+                        release_url = candidate_url
+
+        runs_endpoint = (
+            f"repos/{clean_repo}/actions/runs?branch={urllib.parse.quote(clean_tag, safe='')}&event=push&per_page=10"
+        )
+        try:
+            runs_proc = self.invoke([runs_endpoint], timeout=timeout)
+        except Exception as exc:
+            sys.stderr.write(f"moltis-github-companion tag-release-progress warning ({clean_repo} {clean_tag}): {exc}\n")
+            return None
+
+        runs_stdout = (runs_proc.stdout or "").strip()
+        runs_stderr = (runs_proc.stderr or "").strip()
+        if runs_proc.returncode != 0:
+            sys.stderr.write(
+                f"moltis-github-companion tag-release-progress warning ({clean_repo} {clean_tag}): "
+                f"workflow runs exit {runs_proc.returncode}: {runs_stderr or runs_stdout}\n"
+            )
+            return None
+        try:
+            runs_status, _, runs_items = parse_gh_api_paginated_http_output(runs_stdout)
+        except Exception as exc:
+            sys.stderr.write(
+                f"moltis-github-companion tag-release-progress warning ({clean_repo} {clean_tag}): "
+                f"invalid workflow runs JSON: {exc}\n"
+            )
+            return None
+        if runs_status >= 400:
+            sys.stderr.write(
+                f"moltis-github-companion tag-release-progress warning ({clean_repo} {clean_tag}): "
+                f"workflow runs HTTP {runs_status}\n"
+            )
+            return None
+
+        runs_payload = runs_items[0] if runs_items and isinstance(runs_items[0], dict) else {}
+        raw_runs = runs_payload.get("workflow_runs")
+        workflow_runs = [r for r in raw_runs if isinstance(r, dict)] if isinstance(raw_runs, list) else []
+        total_runs = len(workflow_runs)
+        any_in_progress = False
+        any_failed = False
+        failed_run_url: str | None = None
+        latest_run_url: str | None = None
+        for run in workflow_runs:
+            run_url = str(run.get("html_url") or "").strip() or None
+            if latest_run_url is None and run_url:
+                latest_run_url = run_url
+            run_status = str(run.get("status") or "").strip().lower()
+            run_conclusion = str(run.get("conclusion") or "").strip().lower()
+            if run_status != "completed":
+                any_in_progress = True
+            elif run_conclusion not in ("success", "neutral", "skipped"):
+                any_failed = True
+                if failed_run_url is None and run_url:
+                    failed_run_url = run_url
+
+        all_succeeded = total_runs > 0 and not any_in_progress and not any_failed
+        return {
+            "release_published": release_published,
+            "release_url": release_url,
+            "total_runs": total_runs,
+            "any_in_progress": any_in_progress,
+            "any_failed": any_failed,
+            "all_succeeded": all_succeeded,
+            "failed_run_url": failed_run_url,
+            "latest_run_url": latest_run_url,
+        }
 
     def fetch_json_items(self, endpoint: str, *, paginate: bool = False, timeout: float | None = None) -> list[dict]:
         """Invoke `gh-api-safe <endpoint> [--paginate]` and return parsed dict items."""
@@ -10547,14 +10771,11 @@ class GithubCompanionRunner:
         current_ms: int,
         linear_breaker: _LinearWriteCircuitBreaker | None = None,
     ) -> list[dict]:
-        """Evaluate owned repos for prepared security-patch releases and hand off a Linear task plus Telegram ping."""
+        """Watch pending security release tags on every poll and evaluate eligible repos hourly."""
         if (
             self.linear_client is None
             or self.state_store.agent_name not in SWEEP_AGENT_ORDER
-            or poll_result.get("open_prs_poll_error") is not None
             or poll_result.get("status") in (403, 429)
-            or not hasattr(self.gh_client, "fetch_repo_security_release_status")
-            or not hasattr(self.linear_client, "ensure_release_task")
         ):
             return []
 
@@ -10562,206 +10783,695 @@ class GithubCompanionRunner:
         if breaker.skip_if_tripped(scope="security-patch-release"):
             return []
 
-        sec_cfg = resolve_security_release_config(
-            extra_repos=self._security_release_extra_repos,
-            cooldown_secs=self._security_release_cooldown_secs,
-        )
-        candidate_repos = self._resolve_security_release_repos(
-            current_ms=current_ms,
-            extra_repos=sec_cfg["extra_repos"],  # type: ignore[arg-type]
-        )
-        owned_repos = [
-            repo
-            for repo in candidate_repos
-            if is_allowed_notification_repo(repo) and compute_repo_owner(repo) == self.state_store.agent_name
-        ]
-        if not owned_repos:
-            return []
-
-        cooldown_ms = _safe_int(sec_cfg["cooldown_secs"], DEFAULT_SECURITY_PATCH_RELEASE_COOLDOWN_SECS) * 1000
         state = self.state_store.read_state()
         sec_state = dict(state.get("security_releases") or self.state_store._default_security_releases())
         last_checked = dict(_as_dict(sec_state.get("last_checked_at_ms")))
         notified = dict(_as_dict(sec_state.get("notified_releases")))
+        pending_releases = dict(_as_dict(sec_state.get("pending_releases")))
+        completed_releases = dict(_as_dict(sec_state.get("completed_releases")))
         state_dirty = False
         actions: list[dict] = []
+        phase_a_handled_repos: set[str] = set()
 
-        for repo in owned_repos:
-            prev_checked_ms = _safe_int(last_checked.get(repo), 0)
-            if prev_checked_ms > 0 and (current_ms - prev_checked_ms) < SECURITY_RELEASE_CHECK_INTERVAL_MS:
-                continue
-
-            status = self.gh_client.fetch_repo_security_release_status(repo)
-            last_checked[repo] = current_ms
-            state_dirty = True
-            if not isinstance(status, dict):
-                continue
-
-            # Gate 1: not archived, valid stable semver latest_tag, head moved past tag
-            if status.get("is_archived") or status.get("latest_is_draft") or status.get("latest_is_prerelease"):
-                continue
-            latest_tag = str(status.get("latest_tag") or "").strip()
-            latest_tag_oid = str(status.get("latest_tag_oid") or "").strip()
-            head_oid = str(status.get("head_oid") or "").strip()
-            next_tag = bump_semver_patch(latest_tag)
-            if not next_tag or not head_oid:
-                continue
-            if head_oid == latest_tag_oid:
-                if repo in notified and isinstance(notified[repo], dict) and notified[repo].get("pending", True):
-                    notified[repo] = {**notified[repo], "pending": False}
-                    state_dirty = True
-                continue
-
-            # Gate 2: zero open security PRs for this repo
-            has_open_security_pr = any(
-                isinstance(live_pr, dict)
-                and str(live_pr.get("repo") or "").strip().lower() == repo
-                and str(live_pr.get("state") or "OPEN").upper() == "OPEN"
-                and is_security_merged_pr(live_pr)
-                for live_pr in (open_prs_by_key or {}).values()
-            )
-            if has_open_security_pr:
-                continue
-
-            # Gate 3: at least one security PR merged since latest release and cooldown elapsed
-            merged_security_prs = [
-                pr
-                for pr in (status.get("merged_prs_since_tag") or ())
-                if isinstance(pr, dict) and is_security_merged_pr(pr)
-            ]
-            if not merged_security_prs:
-                if repo in notified and isinstance(notified[repo], dict) and notified[repo].get("pending", True):
-                    notified[repo] = {**notified[repo], "pending": False}
-                    state_dirty = True
-                continue
-            latest_security_merge_ms = max(
-                (_safe_int(pr.get("merged_at_ms"), 0) or normalize_ts(pr.get("mergedAt") or pr.get("merged_at"))[1])
-                for pr in merged_security_prs
-            )
-            if latest_security_merge_ms <= 0 or (current_ms - latest_security_merge_ms) < cooldown_ms:
-                continue
-
-            # Gate 4: default-branch CI on head_oid is green or empty
-            ci_state = normalize_ci_state(status.get("ci_state"))
-            if ci_state not in ("SUCCESS", "NONE"):
-                continue
-
-            # Deduplicate per (repo, latest_tag, head_oid)
-            dedup_key = f"{repo}:{latest_tag}:{head_oid}"
-            if _as_dict(notified.get(repo)).get("dedup_key") == dedup_key:
-                continue
-
-            commit_subjects = [
-                str(c.get("messageHeadline") or c.get("subject") or "").strip()
-                for c in (status.get("commits_since_tag") or ())
-                if isinstance(c, dict)
-            ]
-            classified = classify_unreleased_commits(commit_subjects)
-            non_patch_commits = classified["non_patch"]
-            has_non_patch_commits = bool(non_patch_commits)
-            default_branch = str(status.get("default_branch") or "main").strip() or "main"
-
-            pr_lines = []
-            for pr in merged_security_prs:
-                pr_num = _safe_int(pr.get("number"), 0)
-                pr_title = " ".join(str(pr.get("title") or "").splitlines()).strip()
-                pr_url = str(pr.get("url") or "").strip()
-                ref_label = f"#{pr_num}" if pr_num > 0 else "PR"
-                pr_lines.append(f"- {ref_label}: {pr_title} ({pr_url})" if pr_url else f"- {ref_label}: {pr_title}")
-
-            if has_non_patch_commits:
-                branch_status_lines = [
-                    f"Warning: `{default_branch}` contains unreleased feature or breaking commits since `{latest_tag}`:",
-                    *(f"- {subj}" for subj in non_patch_commits[:10]),
-                ]
-            else:
-                branch_status_lines = [
-                    f"Clean `{default_branch}`: all unreleased commits since `{latest_tag}` are patch-safe.",
-                ]
-
-            notes_lines = [f"- {subj}" for subj in commit_subjects[:15] if subj] or pr_lines
-            release_cmd = f"gh release create {next_tag} --repo {repo} --target {head_oid} --generate-notes"
-            title = f"Release {repo} {next_tag} (security patch)"
-            description = "\n".join([
-                f"Prepared security-patch release `{latest_tag}` -> `{next_tag}` on `{default_branch}` (`{head_oid}`).",
-                "",
-                "## Merged security pull requests",
-                *pr_lines,
-                "",
-                "## Branch cleanliness",
-                *branch_status_lines,
-                "",
-                "## Draft release notes",
-                *notes_lines,
-                "",
-                "## Unfenced release command",
-                "```sh",
-                release_cmd,
-                "```",
-            ])
-
-            if breaker.skip_if_tripped(scope="security-patch-release"):
-                break
-            try:
-                linear_issue, created = self.linear_client.ensure_release_task(
-                    repo=repo,
-                    next_tag=next_tag,
-                    title=title,
-                    description=description,
-                    state="Backlog",
-                )
-            except Exception as exc:
-                if breaker.record_error(exc, scope="security-patch-release", item_key=repo):
-                    break
-                sys.stderr.write(f"moltis-github-companion security-patch-release warning ({repo}): {exc}\n")
-                continue
-            breaker.record_success()
-
-            linear_id = str(linear_issue.get("id") or "").strip()
-            linear_identifier = str(linear_issue.get("identifier") or "").strip() or None
-            linear_url = str(linear_issue.get("url") or "").strip()
-
-            ping_msg = f"📦 {repo}: security patch {next_tag} ready ({linear_url})"
-            if has_non_patch_commits:
-                ping_msg += " ⚠️ unreleased feat/breaking commits on main"
-            telegram_sent = False
-            if not self.read_only_trial and self.telegram_client is not None:
+        # Phase A: Watch pending pushed release tags on every poll (not throttled by the 1h interval).
+        progress_fetcher = getattr(self.gh_client, "fetch_tag_release_progress", None)
+        if callable(progress_fetcher) and pending_releases:
+            for repo, raw_entry in list(pending_releases.items()):
+                if not isinstance(raw_entry, dict):
+                    continue
+                if compute_repo_owner(repo) != self.state_store.agent_name:
+                    continue
+                tag = str(raw_entry.get("tag") or "").strip()
+                head_oid = str(raw_entry.get("head_oid") or "").strip()
+                linear_issue_id = str(raw_entry.get("linear_issue_id") or "").strip()
+                linear_issue_url = str(raw_entry.get("linear_issue_url") or "").strip()
+                release_kind = str(raw_entry.get("release_kind") or "patch").strip() or "patch"
+                if not tag:
+                    continue
                 try:
-                    self.telegram_client.send_message(ping_msg)
-                    telegram_sent = True
+                    progress = progress_fetcher(repo, tag)
                 except Exception as exc:
-                    sys.stderr.write(f"moltis-github-companion security-patch-release telegram warning ({repo}): {exc}\n")
+                    sys.stderr.write(
+                        f"moltis-github-companion security-release-watch warning ({repo} {tag}): {exc}\n"
+                    )
+                    continue
+                if not isinstance(progress, dict):
+                    continue
 
-            notified[repo] = {
-                "dedup_key": dedup_key,
-                "repo": repo,
-                "current_tag": latest_tag,
-                "next_tag": next_tag,
-                "head_oid": head_oid,
-                "linear_issue_id": linear_id,
-                "linear_issue_identifier": linear_identifier,
-                "linear_url": linear_url,
-                "has_non_patch_commits": has_non_patch_commits,
-                "non_patch_commits": non_patch_commits,
-                "pending": True,
-                "notified_at_ms": current_ms,
+                if progress.get("any_failed"):
+                    failed_run_url = str(
+                        progress.get("failed_run_url") or progress.get("latest_run_url") or ""
+                    ).strip()
+                    if linear_issue_id:
+                        if breaker.skip_if_tripped(scope="security-patch-release"):
+                            continue
+                        try:
+                            self.linear_client.update_issue(
+                                linear_issue_id,
+                                state="Backlog",
+                                add_labels=("needs-decision",),
+                            )
+                            breaker.record_success()
+                        except Exception as exc:
+                            if breaker.record_error(exc, scope="security-patch-release", item_key=repo):
+                                break
+                            sys.stderr.write(
+                                f"moltis-github-companion security-release-watch linear warning ({repo} {tag}): {exc}\n"
+                            )
+                            continue
+                        if callable(getattr(self.linear_client, "post_comment", None)) and not breaker.skip_if_tripped(
+                            scope="security-patch-release"
+                        ):
+                            comment_body = (
+                                f"Release workflow for tag `{tag}` failed: {failed_run_url}"
+                                if failed_run_url
+                                else f"Release workflow for tag `{tag}` failed."
+                            )
+                            try:
+                                self.linear_client.post_comment(linear_issue_id, comment_body)
+                                breaker.record_success()
+                            except Exception as exc:
+                                breaker.record_error(exc, scope="security-patch-release", item_key=repo)
+                                sys.stderr.write(
+                                    f"moltis-github-companion security-release-watch comment warning ({repo} {tag}): {exc}\n"
+                                )
+                    alert_target = failed_run_url or linear_issue_url
+                    alert_msg = (
+                        f"🚨 {repo} {tag} release workflow failed ({alert_target})"
+                        if alert_target
+                        else f"🚨 {repo} {tag} release workflow failed"
+                    )
+                    telegram_sent = False
+                    if not self.read_only_trial and self.telegram_client is not None:
+                        try:
+                            self.telegram_client.send_message(alert_msg)
+                            telegram_sent = True
+                        except Exception as exc:
+                            sys.stderr.write(
+                                f"moltis-github-companion security-release-watch telegram warning ({repo} {tag}): {exc}\n"
+                            )
+                    pending_releases.pop(repo, None)
+                    if repo in notified and isinstance(notified[repo], dict):
+                        notified[repo] = {**notified[repo], "pending": True}
+                    phase_a_handled_repos.add(repo)
+                    state_dirty = True
+                    actions.append({
+                        "action": "security_release_failed",
+                        "repo": repo,
+                        "tag": tag,
+                        "next_tag": tag,
+                        "head_oid": head_oid,
+                        "release_kind": release_kind,
+                        "linear_issue_id": linear_issue_id,
+                        "linear_url": linear_issue_url,
+                        "failed_run_url": failed_run_url or None,
+                        "telegram_sent": telegram_sent,
+                        "telegram_message": alert_msg,
+                    })
+                elif (
+                    progress.get("release_published")
+                    and not progress.get("any_in_progress")
+                    and (progress.get("all_succeeded") or _safe_int(progress.get("total_runs"), 0) == 0)
+                ):
+                    release_url = str(
+                        progress.get("release_url") or f"https://github.com/{repo}/releases/tag/{tag}"
+                    ).strip()
+                    if linear_issue_id:
+                        if breaker.skip_if_tripped(scope="security-patch-release"):
+                            continue
+                        try:
+                            self.linear_client.update_issue(
+                                linear_issue_id,
+                                state="Done",
+                                remove_labels=("needs-decision",),
+                            )
+                            breaker.record_success()
+                        except Exception as exc:
+                            if breaker.record_error(exc, scope="security-patch-release", item_key=repo):
+                                break
+                            sys.stderr.write(
+                                f"moltis-github-companion security-release-watch linear warning ({repo} {tag}): {exc}\n"
+                            )
+                            continue
+                        if callable(getattr(self.linear_client, "post_comment", None)) and not breaker.skip_if_tripped(
+                            scope="security-patch-release"
+                        ):
+                            try:
+                                self.linear_client.post_comment(
+                                    linear_issue_id,
+                                    f"Published release `{tag}`: {release_url}",
+                                )
+                                breaker.record_success()
+                            except Exception as exc:
+                                breaker.record_error(exc, scope="security-patch-release", item_key=repo)
+                                sys.stderr.write(
+                                    f"moltis-github-companion security-release-watch comment warning ({repo} {tag}): {exc}\n"
+                                )
+                    notice_msg = f"🚀 {repo} {tag} released ({release_url})"
+                    telegram_sent = False
+                    if not self.read_only_trial and self.telegram_client is not None:
+                        try:
+                            self.telegram_client.send_message(notice_msg)
+                            telegram_sent = True
+                        except Exception as exc:
+                            sys.stderr.write(
+                                f"moltis-github-companion security-release-watch telegram warning ({repo} {tag}): {exc}\n"
+                            )
+                    pending_releases.pop(repo, None)
+                    completed_releases[repo] = tag
+                    if repo in notified and isinstance(notified[repo], dict):
+                        notified[repo] = {**notified[repo], "pending": False}
+                    phase_a_handled_repos.add(repo)
+                    state_dirty = True
+                    actions.append({
+                        "action": "security_release_completed",
+                        "repo": repo,
+                        "tag": tag,
+                        "next_tag": tag,
+                        "head_oid": head_oid,
+                        "release_kind": release_kind,
+                        "linear_issue_id": linear_issue_id,
+                        "linear_url": linear_issue_url,
+                        "release_url": release_url,
+                        "telegram_sent": telegram_sent,
+                        "telegram_message": notice_msg,
+                    })
+
+        # Phase B: Evaluate ready repositories on the hourly schedule.
+        if (
+            poll_result.get("open_prs_poll_error") is None
+            and hasattr(self.gh_client, "fetch_repo_security_release_status")
+            and hasattr(self.linear_client, "ensure_release_task")
+            and not breaker.skip_if_tripped(scope="security-patch-release")
+        ):
+            sec_cfg = resolve_security_release_config(
+                extra_repos=self._security_release_extra_repos,
+                cooldown_secs=self._security_release_cooldown_secs,
+            )
+            candidate_repos = self._resolve_security_release_repos(
+                current_ms=current_ms,
+                extra_repos=sec_cfg["extra_repos"],  # type: ignore[arg-type]
+            )
+            refreshed_sec_state = _as_dict(self.state_store.read_state().get("security_releases"))
+            haberdasher_set = {
+                norm
+                for entry in (refreshed_sec_state.get("haberdasher_sources") or [])
+                if (norm := _normalize_valid_haberdasher_repo(entry)) is not None
             }
-            state_dirty = True
-            actions.append({
-                "repo": repo,
-                "current_tag": latest_tag,
-                "next_tag": next_tag,
-                "head_oid": head_oid,
-                "created": created,
-                "linear_issue_id": linear_id,
-                "linear_issue_identifier": linear_identifier,
-                "linear_url": linear_url,
-                "has_non_patch_commits": has_non_patch_commits,
-                "non_patch_commits": non_patch_commits,
-                "release_command": release_cmd,
-                "telegram_sent": telegram_sent,
-                "telegram_message": ping_msg,
-            })
+            owned_repos = [
+                repo
+                for repo in candidate_repos
+                if is_allowed_notification_repo(repo) and compute_repo_owner(repo) == self.state_store.agent_name
+            ]
+            cooldown_ms = _safe_int(sec_cfg["cooldown_secs"], DEFAULT_SECURITY_PATCH_RELEASE_COOLDOWN_SECS) * 1000
+            can_auto_tag = callable(getattr(self.gh_client, "create_security_release_tag", None))
+
+            for repo in owned_repos:
+                if repo in pending_releases or repo in phase_a_handled_repos:
+                    continue
+                prev_checked_ms = _safe_int(last_checked.get(repo), 0)
+                if prev_checked_ms > 0 and (current_ms - prev_checked_ms) < SECURITY_RELEASE_CHECK_INTERVAL_MS:
+                    continue
+
+                status = self.gh_client.fetch_repo_security_release_status(repo)
+                last_checked[repo] = current_ms
+                state_dirty = True
+                if not isinstance(status, dict):
+                    continue
+
+                # Gate 1: not archived, valid stable semver latest_tag, head moved past tag
+                if status.get("is_archived") or status.get("latest_is_draft") or status.get("latest_is_prerelease"):
+                    continue
+                latest_tag = str(status.get("latest_tag") or "").strip()
+                latest_tag_oid = str(status.get("latest_tag_oid") or "").strip()
+                head_oid = str(status.get("head_oid") or "").strip()
+                if parse_semver_tag(latest_tag) is None or not head_oid:
+                    continue
+                if head_oid == latest_tag_oid:
+                    if repo in notified and isinstance(notified[repo], dict) and notified[repo].get("pending", True):
+                        notified[repo] = {**notified[repo], "pending": False}
+                        state_dirty = True
+                    continue
+
+                # Gate 2: zero open security PRs for this repo
+                has_open_security_pr = any(
+                    isinstance(live_pr, dict)
+                    and str(live_pr.get("repo") or "").strip().lower() == repo
+                    and str(live_pr.get("state") or "OPEN").upper() == "OPEN"
+                    and is_security_merged_pr(live_pr)
+                    for live_pr in (open_prs_by_key or {}).values()
+                )
+                if has_open_security_pr:
+                    continue
+
+                # Gate 3: at least one security PR merged since latest release and cooldown elapsed
+                merged_security_prs = [
+                    pr
+                    for pr in (status.get("merged_prs_since_tag") or ())
+                    if isinstance(pr, dict) and is_security_merged_pr(pr)
+                ]
+                if not merged_security_prs:
+                    if repo in notified and isinstance(notified[repo], dict) and notified[repo].get("pending", True):
+                        notified[repo] = {**notified[repo], "pending": False}
+                        state_dirty = True
+                    continue
+                latest_security_merge_ms = max(
+                    (_safe_int(pr.get("merged_at_ms"), 0) or normalize_ts(pr.get("mergedAt") or pr.get("merged_at"))[1])
+                    for pr in merged_security_prs
+                )
+                if latest_security_merge_ms <= 0 or (current_ms - latest_security_merge_ms) < cooldown_ms:
+                    continue
+
+                # Gate 4: default-branch CI on head_oid is green or empty
+                ci_state = normalize_ci_state(status.get("ci_state"))
+                if ci_state not in ("SUCCESS", "NONE"):
+                    continue
+
+                # Deduplicate per (repo, latest_tag, head_oid)
+                dedup_key = f"{repo}:{latest_tag}:{head_oid}"
+                if _as_dict(notified.get(repo)).get("dedup_key") == dedup_key:
+                    continue
+
+                commit_subjects = [
+                    str(c.get("messageHeadline") or c.get("subject") or "").strip()
+                    for c in (status.get("commits_since_tag") or ())
+                    if isinstance(c, dict)
+                ]
+                classified = classify_unreleased_commits(commit_subjects)
+                breaking_commits = classified["breaking"]
+                feature_commits = classified["features"]
+                non_patch_commits = classified["non_patch"]
+                has_breaking_commits = bool(breaking_commits)
+                has_feature_commits = bool(feature_commits)
+                has_non_patch_commits = bool(non_patch_commits)
+                default_branch = str(status.get("default_branch") or "main").strip() or "main"
+
+                if has_breaking_commits:
+                    next_tag = bump_semver_minor(latest_tag) if has_feature_commits else bump_semver_patch(latest_tag)
+                    release_kind = "breaking_hold"
+                elif has_feature_commits:
+                    next_tag = bump_semver_minor(latest_tag)
+                    release_kind = "minor"
+                else:
+                    next_tag = bump_semver_patch(latest_tag)
+                    release_kind = "patch"
+                if not next_tag:
+                    continue
+
+                pr_lines = []
+                for pr in merged_security_prs:
+                    pr_num = _safe_int(pr.get("number"), 0)
+                    pr_title = " ".join(str(pr.get("title") or "").splitlines()).strip()
+                    pr_url = str(pr.get("url") or "").strip()
+                    ref_label = f"#{pr_num}" if pr_num > 0 else "PR"
+                    pr_lines.append(f"- {ref_label}: {pr_title} ({pr_url})" if pr_url else f"- {ref_label}: {pr_title}")
+
+                if has_breaking_commits:
+                    branch_status_lines = [
+                        f"Blocked: `{default_branch}` contains unreleased breaking commits since `{latest_tag}`:",
+                        *(f"- {subj}" for subj in breaking_commits[:10]),
+                    ]
+                    if feature_commits:
+                        branch_status_lines.extend([
+                            "Additional unreleased feature commits:",
+                            *(f"- {subj}" for subj in feature_commits[:10]),
+                        ])
+                elif has_feature_commits:
+                    branch_status_lines = [
+                        f"`{default_branch}` contains unreleased feature commits since `{latest_tag}`; cutting minor release `{next_tag}`:",
+                        *(f"- {subj}" for subj in feature_commits[:10]),
+                    ]
+                else:
+                    branch_status_lines = [
+                        f"Clean `{default_branch}`: all unreleased commits since `{latest_tag}` are patch-safe.",
+                    ]
+
+                notes_lines = [f"- {subj}" for subj in commit_subjects[:15] if subj] or pr_lines
+                release_cmd = f'git tag -a {next_tag} {head_oid} -m "Release {next_tag}" && git push origin {next_tag}'
+                is_haberdasher_auto = (not has_breaking_commits) and (repo in haberdasher_set) and can_auto_tag
+
+                if has_breaking_commits:
+                    title = f"Release {repo} {next_tag} (security release blocked by breaking commits)"
+                    summary_line = (
+                        f"Security release `{latest_tag}` -> `{next_tag}` on `{default_branch}` (`{head_oid}`) "
+                        "is held due to unreleased breaking commits."
+                    )
+                    target_state = "Backlog"
+                elif release_kind == "minor":
+                    title = f"Release {repo} {next_tag} (security minor release)"
+                    summary_line = (
+                        f"Security minor release `{latest_tag}` -> `{next_tag}` on `{default_branch}` (`{head_oid}`)."
+                    )
+                    target_state = "In Progress" if is_haberdasher_auto else "Backlog"
+                else:
+                    title = f"Release {repo} {next_tag} (security patch)"
+                    summary_line = (
+                        f"Prepared security-patch release `{latest_tag}` -> `{next_tag}` on `{default_branch}` (`{head_oid}`)."
+                    )
+                    target_state = "In Progress" if is_haberdasher_auto else "Backlog"
+
+                description = "\n".join([
+                    summary_line,
+                    "",
+                    "## Merged security pull requests",
+                    *pr_lines,
+                    "",
+                    "## Branch cleanliness",
+                    *branch_status_lines,
+                    "",
+                    "## Draft release notes",
+                    *notes_lines,
+                    "",
+                    "## Manual fallback tag command",
+                    "```sh",
+                    release_cmd,
+                    "```",
+                ])
+
+                if breaker.skip_if_tripped(scope="security-patch-release"):
+                    break
+                try:
+                    linear_issue, created = self.linear_client.ensure_release_task(
+                        repo=repo,
+                        next_tag=next_tag,
+                        title=title,
+                        description=description,
+                        state=target_state,
+                    )
+                except Exception as exc:
+                    if breaker.record_error(exc, scope="security-patch-release", item_key=repo):
+                        break
+                    sys.stderr.write(f"moltis-github-companion security-patch-release warning ({repo}): {exc}\n")
+                    continue
+                breaker.record_success()
+
+                linear_id = str(linear_issue.get("id") or "").strip()
+                linear_identifier = str(linear_issue.get("identifier") or "").strip() or None
+                linear_url = str(linear_issue.get("url") or "").strip()
+
+                if has_breaking_commits:
+                    if (
+                        linear_id
+                        and not is_ignored_linear_issue_state(linear_issue)
+                        and callable(getattr(self.linear_client, "update_issue", None))
+                        and not breaker.skip_if_tripped(scope="security-patch-release")
+                    ):
+                        try:
+                            self.linear_client.update_issue(
+                                linear_id,
+                                state="Backlog",
+                                add_labels=("needs-decision",),
+                            )
+                            breaker.record_success()
+                        except Exception as exc:
+                            if breaker.record_error(exc, scope="security-patch-release", item_key=repo):
+                                break
+                            sys.stderr.write(
+                                f"moltis-github-companion security-patch-release label warning ({repo}): {exc}\n"
+                            )
+                    ping_msg = f"📦 {repo}: security release blocked by breaking commits ({linear_url})"
+                    telegram_sent = False
+                    if not self.read_only_trial and self.telegram_client is not None:
+                        try:
+                            self.telegram_client.send_message(ping_msg)
+                            telegram_sent = True
+                        except Exception as exc:
+                            sys.stderr.write(
+                                f"moltis-github-companion security-patch-release telegram warning ({repo}): {exc}\n"
+                            )
+                    notified[repo] = {
+                        "dedup_key": dedup_key,
+                        "repo": repo,
+                        "current_tag": latest_tag,
+                        "next_tag": next_tag,
+                        "head_oid": head_oid,
+                        "release_kind": release_kind,
+                        "linear_issue_id": linear_id,
+                        "linear_issue_identifier": linear_identifier,
+                        "linear_url": linear_url,
+                        "has_breaking_commits": True,
+                        "breaking_commits": breaking_commits,
+                        "has_feature_commits": has_feature_commits,
+                        "feature_commits": feature_commits,
+                        "has_non_patch_commits": has_non_patch_commits,
+                        "non_patch_commits": non_patch_commits,
+                        "pending": True,
+                        "notified_at_ms": current_ms,
+                    }
+                    state_dirty = True
+                    actions.append({
+                        "action": "security_release_held",
+                        "repo": repo,
+                        "current_tag": latest_tag,
+                        "next_tag": next_tag,
+                        "head_oid": head_oid,
+                        "release_kind": release_kind,
+                        "created": created,
+                        "linear_issue_id": linear_id,
+                        "linear_issue_identifier": linear_identifier,
+                        "linear_url": linear_url,
+                        "has_breaking_commits": True,
+                        "breaking_commits": breaking_commits,
+                        "has_feature_commits": has_feature_commits,
+                        "feature_commits": feature_commits,
+                        "has_non_patch_commits": has_non_patch_commits,
+                        "non_patch_commits": non_patch_commits,
+                        "release_command": release_cmd,
+                        "telegram_sent": telegram_sent,
+                        "telegram_message": ping_msg,
+                    })
+                elif is_haberdasher_auto:
+                    if (
+                        not created
+                        and linear_id
+                        and not is_ignored_linear_issue_state(linear_issue)
+                        and callable(getattr(self.linear_client, "update_issue", None))
+                        and str(_as_dict(linear_issue.get("state")).get("name") or "").strip().lower() != "in progress"
+                        and not breaker.skip_if_tripped(scope="security-patch-release")
+                    ):
+                        try:
+                            self.linear_client.update_issue(linear_id, state="In Progress")
+                            breaker.record_success()
+                        except Exception as exc:
+                            breaker.record_error(exc, scope="security-patch-release", item_key=repo)
+                            sys.stderr.write(
+                                f"moltis-github-companion security-patch-release state warning ({repo}): {exc}\n"
+                            )
+                    try:
+                        self.gh_client.create_security_release_tag(repo, next_tag, head_oid)
+                    except Exception as exc:
+                        tag_err = _sanitize_health_reason(exc, max_len=240) or str(exc)
+                        if (
+                            linear_id
+                            and not is_ignored_linear_issue_state(linear_issue)
+                            and callable(getattr(self.linear_client, "update_issue", None))
+                            and not breaker.skip_if_tripped(scope="security-patch-release")
+                        ):
+                            try:
+                                self.linear_client.update_issue(
+                                    linear_id,
+                                    state="Backlog",
+                                    add_labels=("needs-decision",),
+                                )
+                                breaker.record_success()
+                            except Exception as lin_exc:
+                                breaker.record_error(lin_exc, scope="security-patch-release", item_key=repo)
+                                sys.stderr.write(
+                                    f"moltis-github-companion security-release-tag linear warning ({repo} {next_tag}): {lin_exc}\n"
+                                )
+                        if (
+                            linear_id
+                            and callable(getattr(self.linear_client, "post_comment", None))
+                            and not breaker.skip_if_tripped(scope="security-patch-release")
+                        ):
+                            try:
+                                self.linear_client.post_comment(
+                                    linear_id,
+                                    f"Failed to push release tag `{next_tag}` at `{head_oid[:12]}`: {tag_err}",
+                                )
+                                breaker.record_success()
+                            except Exception as cmt_exc:
+                                breaker.record_error(cmt_exc, scope="security-patch-release", item_key=repo)
+                                sys.stderr.write(
+                                    f"moltis-github-companion security-release-tag comment warning ({repo} {next_tag}): {cmt_exc}\n"
+                                )
+                        alert_msg = f"🚨 {repo}: failed to tag {next_tag} ({linear_url})"
+                        telegram_sent = False
+                        if not self.read_only_trial and self.telegram_client is not None:
+                            try:
+                                self.telegram_client.send_message(alert_msg)
+                                telegram_sent = True
+                            except Exception as tg_exc:
+                                sys.stderr.write(
+                                    f"moltis-github-companion security-release-tag telegram warning ({repo} {next_tag}): {tg_exc}\n"
+                                )
+                        notified[repo] = {
+                            "dedup_key": dedup_key,
+                            "repo": repo,
+                            "current_tag": latest_tag,
+                            "next_tag": next_tag,
+                            "head_oid": head_oid,
+                            "release_kind": release_kind,
+                            "linear_issue_id": linear_id,
+                            "linear_issue_identifier": linear_identifier,
+                            "linear_url": linear_url,
+                            "has_breaking_commits": False,
+                            "breaking_commits": [],
+                            "has_feature_commits": has_feature_commits,
+                            "feature_commits": feature_commits,
+                            "has_non_patch_commits": has_non_patch_commits,
+                            "non_patch_commits": non_patch_commits,
+                            "pending": True,
+                            "notified_at_ms": current_ms,
+                        }
+                        state_dirty = True
+                        actions.append({
+                            "action": "security_release_tag_failed",
+                            "repo": repo,
+                            "current_tag": latest_tag,
+                            "next_tag": next_tag,
+                            "head_oid": head_oid,
+                            "release_kind": release_kind,
+                            "created": created,
+                            "linear_issue_id": linear_id,
+                            "linear_issue_identifier": linear_identifier,
+                            "linear_url": linear_url,
+                            "error": tag_err,
+                            "release_command": release_cmd,
+                            "telegram_sent": telegram_sent,
+                            "telegram_message": alert_msg,
+                        })
+                        continue
+
+                    pending_releases[repo] = {
+                        "tag": next_tag,
+                        "head_oid": head_oid,
+                        "linear_issue_id": linear_id,
+                        "linear_issue_url": linear_url,
+                        "pushed_at_ms": current_ms,
+                        "release_kind": release_kind,
+                    }
+                    if (
+                        linear_id
+                        and callable(getattr(self.linear_client, "post_comment", None))
+                        and not breaker.skip_if_tripped(scope="security-patch-release")
+                    ):
+                        try:
+                            self.linear_client.post_comment(
+                                linear_id,
+                                f"Pushed release tag {next_tag} at {head_oid[:12]}; watching GoReleaser workflow.",
+                            )
+                            breaker.record_success()
+                        except Exception as cmt_exc:
+                            breaker.record_error(cmt_exc, scope="security-patch-release", item_key=repo)
+                            sys.stderr.write(
+                                f"moltis-github-companion security-release-tag comment warning ({repo} {next_tag}): {cmt_exc}\n"
+                            )
+                    ping_msg = f"🏷️ {repo}: tagged {next_tag} for security release ({linear_url})"
+                    telegram_sent = False
+                    if not self.read_only_trial and self.telegram_client is not None:
+                        try:
+                            self.telegram_client.send_message(ping_msg)
+                            telegram_sent = True
+                        except Exception as exc:
+                            sys.stderr.write(
+                                f"moltis-github-companion security-release-tag telegram warning ({repo} {next_tag}): {exc}\n"
+                            )
+                    notified[repo] = {
+                        "dedup_key": dedup_key,
+                        "repo": repo,
+                        "current_tag": latest_tag,
+                        "next_tag": next_tag,
+                        "head_oid": head_oid,
+                        "release_kind": release_kind,
+                        "linear_issue_id": linear_id,
+                        "linear_issue_identifier": linear_identifier,
+                        "linear_url": linear_url,
+                        "has_breaking_commits": False,
+                        "breaking_commits": [],
+                        "has_feature_commits": has_feature_commits,
+                        "feature_commits": feature_commits,
+                        "has_non_patch_commits": has_non_patch_commits,
+                        "non_patch_commits": non_patch_commits,
+                        "pending": False,
+                        "notified_at_ms": current_ms,
+                    }
+                    state_dirty = True
+                    actions.append({
+                        "action": "security_release_tagged",
+                        "repo": repo,
+                        "current_tag": latest_tag,
+                        "next_tag": next_tag,
+                        "head_oid": head_oid,
+                        "release_kind": release_kind,
+                        "created": created,
+                        "linear_issue_id": linear_id,
+                        "linear_issue_identifier": linear_identifier,
+                        "linear_url": linear_url,
+                        "has_breaking_commits": False,
+                        "breaking_commits": [],
+                        "has_feature_commits": has_feature_commits,
+                        "feature_commits": feature_commits,
+                        "has_non_patch_commits": has_non_patch_commits,
+                        "non_patch_commits": non_patch_commits,
+                        "release_command": release_cmd,
+                        "telegram_sent": telegram_sent,
+                        "telegram_message": ping_msg,
+                    })
+                else:
+                    ping_msg = f"📦 {repo}: security {release_kind} {next_tag} ready ({linear_url})"
+                    if has_non_patch_commits:
+                        ping_msg += " ⚠️ unreleased feat/breaking commits on main"
+                    telegram_sent = False
+                    if not self.read_only_trial and self.telegram_client is not None:
+                        try:
+                            self.telegram_client.send_message(ping_msg)
+                            telegram_sent = True
+                        except Exception as exc:
+                            sys.stderr.write(
+                                f"moltis-github-companion security-patch-release telegram warning ({repo}): {exc}\n"
+                            )
+                    notified[repo] = {
+                        "dedup_key": dedup_key,
+                        "repo": repo,
+                        "current_tag": latest_tag,
+                        "next_tag": next_tag,
+                        "head_oid": head_oid,
+                        "release_kind": release_kind,
+                        "linear_issue_id": linear_id,
+                        "linear_issue_identifier": linear_identifier,
+                        "linear_url": linear_url,
+                        "has_breaking_commits": False,
+                        "breaking_commits": [],
+                        "has_feature_commits": has_feature_commits,
+                        "feature_commits": feature_commits,
+                        "has_non_patch_commits": has_non_patch_commits,
+                        "non_patch_commits": non_patch_commits,
+                        "pending": True,
+                        "notified_at_ms": current_ms,
+                    }
+                    state_dirty = True
+                    actions.append({
+                        "action": "security_release_prepared",
+                        "repo": repo,
+                        "current_tag": latest_tag,
+                        "next_tag": next_tag,
+                        "head_oid": head_oid,
+                        "release_kind": release_kind,
+                        "created": created,
+                        "linear_issue_id": linear_id,
+                        "linear_issue_identifier": linear_identifier,
+                        "linear_url": linear_url,
+                        "has_breaking_commits": False,
+                        "breaking_commits": [],
+                        "has_feature_commits": has_feature_commits,
+                        "feature_commits": feature_commits,
+                        "has_non_patch_commits": has_non_patch_commits,
+                        "non_patch_commits": non_patch_commits,
+                        "release_command": release_cmd,
+                        "telegram_sent": telegram_sent,
+                        "telegram_message": ping_msg,
+                    })
 
         if state_dirty:
             self.state_store.write_state(
@@ -10769,6 +11479,8 @@ class GithubCompanionRunner:
                     "security_releases": {
                         "last_checked_at_ms": last_checked,
                         "notified_releases": notified,
+                        "pending_releases": pending_releases,
+                        "completed_releases": completed_releases,
                     }
                 },
                 now_override_ms=current_ms,

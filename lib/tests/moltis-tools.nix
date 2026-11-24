@@ -129,6 +129,9 @@ let
         linearTokenCacheDir = "/synthetic/linear-cache";
         linearTeamKey = "WW";
       };
+  ghSecurityReleaseTag =
+    pkgs.callPackage ../../home-manager/_mixins/development/github/gh-security-release-tag
+      { };
   checkRestartInputs =
     host:
     let
@@ -375,6 +378,7 @@ let
         "gh-review-resolve"
         "gh-review-unresolve"
         "gh-review-withdraw-approval"
+        "gh-security-release-tag"
         "gh-workflow-approve"
       ];
     assert context.mainModel == expectedMainModel;
@@ -682,6 +686,7 @@ pkgs.runCommand "moltis-tools" { } ''
   test -x ${lib.getExe cloudflareWrapper}
   test -x ${lib.getExe companionWrapper}
   test -x ${lib.getExe githubCompanionWrapper}
+  test -x ${lib.getExe ghSecurityReleaseTag}
   ${pkgs.python3}/bin/python3 - ${builtins.toFile "moltis-launcher-fixtures.json" (builtins.unsafeDiscardStringContext (builtins.toJSON launcherFixtures))} ${pkgs.bash}/bin/bash ${pkgs.sqlite}/bin <<'PY'
   import json
   import os

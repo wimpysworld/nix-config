@@ -420,6 +420,16 @@ let
         # `notifications/threads/{id}` through the private gh backend. The
         # family-wide `gh api` deny below remains unchanged.
         "gh-notification-dismiss"
+        # gh-security-release-tag is a fixed GitHub write path under Fence.
+        # The helper accepts `[--dry-run] <owner>/<repo> <tag> <commit-sha>`,
+        # verifies the owner and Haberdasher publication list, confirms
+        # non-archived default-branch HEAD with SUCCESS checks, zero open
+        # security pull requests, a merged security pull request past its
+        # cooldown, no breaking commits, and the exact expected semver bump,
+        # then creates one tag via `POST repos/<owner>/<repo>/git/refs`
+        # through the private gh backend. The family-wide `gh release` and
+        # `gh api` denies below remain unchanged.
+        "gh-security-release-tag"
         # gh-workflow-approve is a fixed GitHub write path under Fence.
         # The helper accepts `<owner>/<repo> <run-id>`, verifies the owner is
         # one of the six allowed repositories, reads the workflow run to

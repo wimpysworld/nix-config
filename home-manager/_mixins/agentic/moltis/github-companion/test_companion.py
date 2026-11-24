@@ -13331,7 +13331,7 @@ class PrIssueLinkingAndPauseTests(GithubCompanionTestBase):
 
 
 class SecurityPatchReleaseGateTests(GithubCompanionTestBase):
-    """Feature #4: prepared security-patch release gate helpers, GraphQL fetch, and 4-gate orchestration."""
+    """Feature #4: automated security release pipeline helpers, GraphQL/REST fetch, auto-tag, and post-tag watching."""
 
     def test_pure_semver_commit_classification_and_security_pr_helpers(self) -> None:
         self.assertEqual(companion.parse_semver_tag("v1.2.3"), ("v", 1, 2, 3))
@@ -13339,24 +13339,37 @@ class SecurityPatchReleaseGateTests(GithubCompanionTestBase):
         for invalid in ("v1.2.3-rc.1", "v1.2.3-beta.0", "latest", "v1.2", ""):
             self.assertIsNone(companion.parse_semver_tag(invalid))
             self.assertIsNone(companion.bump_semver_patch(invalid))
+            self.assertIsNone(companion.bump_semver_minor(invalid))
         self.assertEqual(companion.bump_semver_patch("v1.2.3"), "v1.2.4")
         self.assertEqual(companion.bump_semver_patch("0.9.9"), "0.9.10")
+        self.assertEqual(companion.bump_semver_minor("v0.6.6"), "v0.7.0")
+        self.assertEqual(companion.bump_semver_minor("v1.2.3"), "v1.3.0")
+        self.assertEqual(companion.bump_semver_minor("0.9.9"), "0.10.0")
 
         classified = companion.classify_unreleased_commits([
             "fix(security): patch CVE-2026-1234",
             "chore(deps): bump golang.org/x/net",
             "feat: add interactive picker",
+            "feat(ui): add dark theme toggle",
             "feat(cli)!: drop legacy flag",
             "refactor!: rename public API",
-            "docs: note BREAKING CHANGE in config schema",
+            "docs: note breaking change in config schema",
+            "fix: note BREAKING-CHANGE in env var",
         ])
         self.assertEqual(
-            classified["non_patch"],
+            classified["breaking"],
             [
-                "feat: add interactive picker",
                 "feat(cli)!: drop legacy flag",
                 "refactor!: rename public API",
-                "docs: note BREAKING CHANGE in config schema",
+                "docs: note breaking change in config schema",
+                "fix: note BREAKING-CHANGE in env var",
+            ],
+        )
+        self.assertEqual(
+            classified["features"],
+            [
+                "feat: add interactive picker",
+                "feat(ui): add dark theme toggle",
             ],
         )
         self.assertEqual(
@@ -13365,6 +13378,10 @@ class SecurityPatchReleaseGateTests(GithubCompanionTestBase):
                 "fix(security): patch CVE-2026-1234",
                 "chore(deps): bump golang.org/x/net",
             ],
+        )
+        self.assertEqual(
+            classified["non_patch"],
+            classified["breaking"] + classified["features"],
         )
 
         self.assertTrue(companion.is_security_merged_pr({"headRefName": "security/fix-cve", "title": "Bump"}))
@@ -13381,28 +13398,190 @@ class SecurityPatchReleaseGateTests(GithubCompanionTestBase):
         )
         self.assertIn(companion.compute_repo_owner("wimpysworld/tailor"), companion.SWEEP_AGENT_ORDER)
 
+    def test_gh_client_create_security_release_tag_and_fetch_tag_release_progress(self) -> None:
+        cmds: list[list[str]] = []
+        valid_sha = "a" * 40
+
+        def fake_tag_ok(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            cmds.append(list(cmd))
+            return subprocess.CompletedProcess(cmd, 0, stdout="tagged\n", stderr="")
+
+        gh = companion.GhApiSafeClient(
+            gh_security_release_tag_bin="custom-release-tag",
+            runner=fake_tag_ok,
+        )
+        gh.create_security_release_tag("wimpysworld/tailor", "v0.6.7", valid_sha)
+        gh.create_security_release_tag("wimpysworld/tailor", "v0.7.0", valid_sha, dry_run=True)
+        self.assertEqual(
+            cmds,
+            [
+                ["custom-release-tag", "wimpysworld/tailor", "v0.6.7", valid_sha],
+                ["custom-release-tag", "--dry-run", "wimpysworld/tailor", "v0.7.0", valid_sha],
+            ],
+        )
+
+        # Validation rejects untrusted repo, non-v semver tag, prerelease tag, and bad SHA
+        for bad_repo, bad_tag, bad_sha in (
+            ("untrusted/repo", "v0.6.7", valid_sha),
+            ("wimpysworld/../escape", "v0.6.7", valid_sha),
+            ("wimpysworld/tailor", "0.6.7", valid_sha),
+            ("wimpysworld/tailor", "v0.6.7-rc.1", valid_sha),
+            ("wimpysworld/tailor", "v0.6.7", "deadbeef"),
+            ("wimpysworld/tailor", "v0.6.7", "A" * 40),
+        ):
+            with self.assertRaises(ValueError):
+                gh.create_security_release_tag(bad_repo, bad_tag, bad_sha)
+
+        # Non-zero exit raises RuntimeError with stderr
+        gh_fail = companion.GhApiSafeClient(
+            runner=lambda cmd, **k: subprocess.CompletedProcess(cmd, 1, stdout="", stderr="tag already exists"),
+        )
+        with self.assertRaises(RuntimeError) as ctx:
+            gh_fail.create_security_release_tag("wimpysworld/tailor", "v0.6.7", valid_sha)
+        self.assertIn("tag already exists", str(ctx.exception))
+
+        # fetch_tag_release_progress: 404 release + in_progress run
+        def fake_in_progress(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "repos/wimpysworld/tailor/releases/tags/v0.6.7":
+                return subprocess.CompletedProcess(cmd, 1, stdout='{"message":"Not Found"}', stderr="gh: Not Found (HTTP 404)")
+            if ep == "repos/wimpysworld/tailor/actions/runs?branch=v0.6.7&event=push&per_page=10":
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps({
+                        "workflow_runs": [
+                            {"status": "in_progress", "conclusion": None, "html_url": "https://github.com/wimpysworld/tailor/actions/runs/101"},
+                        ]
+                    }),
+                    stderr="",
+                )
+            return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="unexpected")
+
+        prog_building = companion.GhApiSafeClient(runner=fake_in_progress).fetch_tag_release_progress("wimpysworld/tailor", "v0.6.7")
+        self.assertEqual(
+            prog_building,
+            {
+                "release_published": False,
+                "release_url": None,
+                "total_runs": 1,
+                "any_in_progress": True,
+                "any_failed": False,
+                "all_succeeded": False,
+                "failed_run_url": None,
+                "latest_run_url": "https://github.com/wimpysworld/tailor/actions/runs/101",
+            },
+        )
+
+        # fetch_tag_release_progress: published release + all succeeded
+        def fake_published(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "repos/wimpysworld/tailor/releases/tags/v0.6.7":
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps({
+                        "html_url": "https://github.com/wimpysworld/tailor/releases/tag/v0.6.7",
+                        "draft": False,
+                        "prerelease": False,
+                        "published_at": "2026-04-01T15:10:00Z",
+                    }),
+                    stderr="",
+                )
+            if ep == "repos/wimpysworld/tailor/actions/runs?branch=v0.6.7&event=push&per_page=10":
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps({
+                        "workflow_runs": [
+                            {"status": "completed", "conclusion": "success", "html_url": "https://github.com/wimpysworld/tailor/actions/runs/101"},
+                            {"status": "completed", "conclusion": "skipped", "html_url": "https://github.com/wimpysworld/tailor/actions/runs/102"},
+                        ]
+                    }),
+                    stderr="",
+                )
+            return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="unexpected")
+
+        prog_done = companion.GhApiSafeClient(runner=fake_published).fetch_tag_release_progress("wimpysworld/tailor", "v0.6.7")
+        self.assertEqual(
+            prog_done,
+            {
+                "release_published": True,
+                "release_url": "https://github.com/wimpysworld/tailor/releases/tag/v0.6.7",
+                "total_runs": 2,
+                "any_in_progress": False,
+                "any_failed": False,
+                "all_succeeded": True,
+                "failed_run_url": None,
+                "latest_run_url": "https://github.com/wimpysworld/tailor/actions/runs/101",
+            },
+        )
+
+        # fetch_tag_release_progress: draft release stays unpublished; failed run sets any_failed & failed_run_url
+        def fake_failed_draft(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "repos/wimpysworld/tailor/releases/tags/v0.6.7":
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps({
+                        "html_url": "https://github.com/wimpysworld/tailor/releases/tag/v0.6.7",
+                        "draft": True,
+                        "prerelease": False,
+                        "published_at": None,
+                    }),
+                    stderr="",
+                )
+            return subprocess.CompletedProcess(
+                cmd,
+                0,
+                stdout=json.dumps({
+                    "workflow_runs": [
+                        {"status": "completed", "conclusion": "failure", "html_url": "https://github.com/wimpysworld/tailor/actions/runs/999"},
+                    ]
+                }),
+                stderr="",
+            )
+
+        prog_failed = companion.GhApiSafeClient(runner=fake_failed_draft).fetch_tag_release_progress("wimpysworld/tailor", "v0.6.7")
+        assert prog_failed is not None
+        self.assertFalse(prog_failed["release_published"])
+        self.assertTrue(prog_failed["any_failed"])
+        self.assertEqual(prog_failed["failed_run_url"], "https://github.com/wimpysworld/tailor/actions/runs/999")
+
+        # Unexpected HTTP 502 transport failure returns None
+        stderr_buf = io.StringIO()
+        with contextlib.redirect_stderr(stderr_buf):
+            prog_err = companion.GhApiSafeClient(
+                runner=lambda cmd, **k: subprocess.CompletedProcess(cmd, 1, stdout="", stderr="HTTP 502 Bad Gateway"),
+            ).fetch_tag_release_progress("wimpysworld/tailor", "v0.6.7")
+        self.assertIsNone(prog_err)
+
     def test_fetch_repo_security_release_status_and_all_four_gates(self) -> None:
         repo = "wimpysworld/tailor"
         owner_agent = companion.compute_repo_owner(repo)
         linear_stub = StubLinearSyncClient()
+        head_sha = "aaaa1111bbbb2222cccc3333dddd4444eeee5555"
+        tag_cmds: list[list[str]] = []
+        progress_phase: dict[str, str] = {"mode": "in_progress"}
 
         status_box: dict[str, object] = {
             "isArchived": False,
             "defaultBranchRef": {
                 "name": "main",
                 "target": {
-                    "oid": "aaaa1111bbbb2222cccc3333dddd4444eeee5555",
+                    "oid": head_sha,
                     "statusCheckRollup": {"state": "SUCCESS"},
                     "history": {
                         "nodes": [
                             {
-                                "oid": "aaaa1111bbbb2222cccc3333dddd4444eeee5555",
+                                "oid": head_sha,
                                 "messageHeadline": "fix(security): address CVE-2026-9999",
                                 "committedDate": "2026-04-01T08:00:00Z",
                             },
                             {
                                 "oid": "0000111122223333444455556666777788889999",
-                                "messageHeadline": "chore: release v1.4.2",
+                                "messageHeadline": "chore: release v0.6.6",
                                 "committedDate": "2026-03-20T10:00:00Z",
                             },
                         ]
@@ -13410,7 +13589,7 @@ class SecurityPatchReleaseGateTests(GithubCompanionTestBase):
                 },
             },
             "latestRelease": {
-                "tagName": "v1.4.2",
+                "tagName": "v0.6.6",
                 "publishedAt": "2026-03-20T10:05:00Z",
                 "isDraft": False,
                 "isPrerelease": False,
@@ -13441,6 +13620,9 @@ class SecurityPatchReleaseGateTests(GithubCompanionTestBase):
         }
 
         def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            if cmd[0] == "gh-security-release-tag":
+                tag_cmds.append(list(cmd))
+                return subprocess.CompletedProcess(cmd, 0, stdout="pushed\n", stderr="")
             ep = cmd[1] if len(cmd) > 1 else ""
             if ep == "notifications":
                 return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
@@ -13452,6 +13634,26 @@ class SecurityPatchReleaseGateTests(GithubCompanionTestBase):
                     stdout=json.dumps({"encoding": "base64", "content": b64}),
                     stderr="",
                 )
+            if ep == f"repos/{repo}/releases/tags/v0.6.7":
+                if progress_phase["mode"] == "published":
+                    return subprocess.CompletedProcess(
+                        cmd,
+                        0,
+                        stdout=json.dumps({
+                            "html_url": f"https://github.com/{repo}/releases/tag/v0.6.7",
+                            "draft": False,
+                            "prerelease": False,
+                            "published_at": "2026-04-01T15:10:00Z",
+                        }),
+                        stderr="",
+                    )
+                return subprocess.CompletedProcess(cmd, 1, stdout='{"message":"Not Found"}', stderr="gh: Not Found (HTTP 404)")
+            if ep == f"repos/{repo}/actions/runs?branch=v0.6.7&event=push&per_page=10":
+                if progress_phase["mode"] == "published":
+                    runs = [{"status": "completed", "conclusion": "success", "html_url": f"https://github.com/{repo}/actions/runs/501"}]
+                else:
+                    runs = [{"status": "in_progress", "conclusion": None, "html_url": f"https://github.com/{repo}/actions/runs/501"}]
+                return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"workflow_runs": runs}), stderr="")
             if ep == "graphql":
                 query_arg = " ".join(cmd)
                 if "latestRelease" in query_arg:
@@ -13478,7 +13680,7 @@ class SecurityPatchReleaseGateTests(GithubCompanionTestBase):
         fetched = gh_client.fetch_repo_security_release_status(repo)
         self.assertIsNotNone(fetched)
         assert fetched is not None
-        self.assertEqual(fetched["latest_tag"], "v1.4.2")
+        self.assertEqual(fetched["latest_tag"], "v0.6.6")
         self.assertEqual(len(fetched["commits_since_tag"]), 1)
         self.assertEqual(len(fetched["merged_prs_since_tag"]), 1)
         self.assertEqual(fetched["merged_prs_since_tag"][0]["number"], 77)
@@ -13514,19 +13716,20 @@ class SecurityPatchReleaseGateTests(GithubCompanionTestBase):
             linear_client=linear_stub,  # type: ignore[arg-type]
             telegram_client=tg_client,
             operator_digest_enabled=False,
-            security_release_repos=(repo,),
             security_release_cooldown_secs=2 * 60 * 60,
         )
         clean_poll = {"status": 304, "open_prs_poll_error": None, "open_issues_poll_error": None}
         merge_ms = LinearCommunityPullRequestsPipelineTests._utc_ms(2026, 4, 1, 8, 0)
 
         # Gate 3 hold: 1h after merge (< 2h cooldown) -> held
-        res_cooldown = runner._evaluate_security_patch_releases(
-            open_prs_by_key={},
-            poll_result=clean_poll,
-            current_ms=merge_ms + 60 * 60 * 1000,
+        self.assertEqual(
+            runner._evaluate_security_patch_releases(
+                open_prs_by_key={},
+                poll_result=clean_poll,
+                current_ms=merge_ms + 60 * 60 * 1000,
+            ),
+            [],
         )
-        self.assertEqual(res_cooldown, [])
 
         # Gate 2 hold: 3h after merge, but an open security PR exists -> held
         open_sec_pr = {
@@ -13539,23 +13742,28 @@ class SecurityPatchReleaseGateTests(GithubCompanionTestBase):
                 "labels": ["security"],
             }
         }
-        res_open_pr = runner._evaluate_security_patch_releases(
-            open_prs_by_key=open_sec_pr,
-            poll_result=clean_poll,
-            current_ms=merge_ms + 3 * 60 * 60 * 1000,
+        self.assertEqual(
+            runner._evaluate_security_patch_releases(
+                open_prs_by_key=open_sec_pr,
+                poll_result=clean_poll,
+                current_ms=merge_ms + 3 * 60 * 60 * 1000,
+            ),
+            [],
         )
-        self.assertEqual(res_open_pr, [])
 
         # Gate 4 hold: 5h after merge, no open security PR, but default branch CI is FAILURE -> held
         status_box["defaultBranchRef"]["target"]["statusCheckRollup"] = {"state": "FAILURE"}  # type: ignore[index]
-        res_red_ci = runner._evaluate_security_patch_releases(
-            open_prs_by_key={},
-            poll_result=clean_poll,
-            current_ms=merge_ms + 5 * 60 * 60 * 1000,
+        self.assertEqual(
+            runner._evaluate_security_patch_releases(
+                open_prs_by_key={},
+                poll_result=clean_poll,
+                current_ms=merge_ms + 5 * 60 * 60 * 1000,
+            ),
+            [],
         )
-        self.assertEqual(res_red_ci, [])
+        self.assertEqual(tag_cmds, [])
 
-        # All 4 gates green (clean main): creates Linear task + Telegram ping + exact gh release command
+        # All 4 gates green on Haberdasher repo: creates Linear task in In Progress + auto-tags v0.6.7 + 🏷️ Telegram
         status_box["defaultBranchRef"]["target"]["statusCheckRollup"] = {"state": "SUCCESS"}  # type: ignore[index]
         ready_ms = merge_ms + 7 * 60 * 60 * 1000
         res_ready = runner._evaluate_security_patch_releases(
@@ -13565,51 +13773,334 @@ class SecurityPatchReleaseGateTests(GithubCompanionTestBase):
         )
         self.assertEqual(len(res_ready), 1)
         act = res_ready[0]
+        self.assertEqual(act["action"], "security_release_tagged")
         self.assertEqual(act["repo"], repo)
-        self.assertEqual(act["next_tag"], "v1.4.3")
-        self.assertFalse(act["has_non_patch_commits"])
-        self.assertEqual(
-            act["release_command"],
-            f"gh release create v1.4.3 --repo {repo} --target aaaa1111bbbb2222cccc3333dddd4444eeee5555 --generate-notes",
-        )
+        self.assertEqual(act["next_tag"], "v0.6.7")
+        self.assertEqual(act["release_kind"], "patch")
+        self.assertEqual(tag_cmds, [["gh-security-release-tag", repo, "v0.6.7", head_sha]])
         self.assertEqual(len(linear_stub.release_task_calls), 1)
-        self.assertIn(act["release_command"], str(linear_stub.release_task_calls[0]["description"]))
+        self.assertEqual(linear_stub.release_task_calls[0]["state"], "In Progress")
+        lin_id = act["linear_issue_id"]
+        self.assertEqual(linear_stub.issues[lin_id]["state"]["name"], "In Progress")
+        comments = linear_stub.comments_by_issue.get(lin_id, [])
+        self.assertEqual(len(comments), 1)
+        self.assertIn(f"Pushed release tag v0.6.7 at {head_sha[:12]}", str(comments[0]["body"]))
         self.assertEqual(len(self.httpd.telegram_requests), 1)
-        tg_text = str(self.httpd.telegram_requests[0]["body"]["text"])
-        self.assertIn(f"📦 {repo}: security patch v1.4.3 ready", tg_text)
-        self.assertNotIn("⚠️", tg_text)
+        self.assertIn(f"🏷️ {repo}: tagged v0.6.7 for security release", str(self.httpd.telegram_requests[0]["body"]["text"]))
+        pending_state = store.read_state()["security_releases"]["pending_releases"]
+        self.assertIn(repo, pending_state)
+        self.assertEqual(pending_state[repo]["tag"], "v0.6.7")
 
-        # Deduplicated per (repo, tag, sha) even after the 1h check interval elapses
+        # Phase A: next poll only 5 minutes later (NOT throttled by 1h) sees workflow still in progress -> stays pending
+        res_building = runner._evaluate_security_patch_releases(
+            open_prs_by_key={},
+            poll_result=clean_poll,
+            current_ms=ready_ms + 5 * 60 * 1000,
+        )
+        self.assertEqual(res_building, [])
+        self.assertIn(repo, store.read_state()["security_releases"]["pending_releases"])
+        self.assertEqual(len(tag_cmds), 1)
+
+        # Phase A: 10 minutes later release is published & workflow succeeded -> Linear Done + 🚀 Telegram + completed_releases
+        linear_stub.update_issue(lin_id, add_labels=("needs-decision",))
+        progress_phase["mode"] = "published"
+        res_done = runner._evaluate_security_patch_releases(
+            open_prs_by_key={},
+            poll_result=clean_poll,
+            current_ms=ready_ms + 10 * 60 * 1000,
+        )
+        self.assertEqual(len(res_done), 1)
+        self.assertEqual(res_done[0]["action"], "security_release_completed")
+        self.assertEqual(res_done[0]["release_url"], f"https://github.com/{repo}/releases/tag/v0.6.7")
+        self.assertEqual(linear_stub.issues[lin_id]["state"]["name"], "Done")
+        self.assertNotIn("needs-decision", companion.extract_linear_issue_labels(linear_stub.issues[lin_id]))
+        self.assertEqual(len(linear_stub.comments_by_issue.get(lin_id, [])), 2)
+        self.assertIn(f"https://github.com/{repo}/releases/tag/v0.6.7", str(linear_stub.comments_by_issue[lin_id][1]["body"]))
+        self.assertEqual(len(self.httpd.telegram_requests), 2)
+        self.assertEqual(
+            str(self.httpd.telegram_requests[1]["body"]["text"]),
+            f"🚀 {repo} v0.6.7 released (https://github.com/{repo}/releases/tag/v0.6.7)",
+        )
+        sec_after_done = store.read_state()["security_releases"]
+        self.assertNotIn(repo, sec_after_done["pending_releases"])
+        self.assertEqual(sec_after_done["completed_releases"].get(repo), "v0.6.7")
+
+        # Deduplicated per (repo, tag, sha) even after 1h check interval elapses
         res_dup = runner._evaluate_security_patch_releases(
             open_prs_by_key={},
             poll_result=clean_poll,
             current_ms=ready_ms + companion.SECURITY_RELEASE_CHECK_INTERVAL_MS + 60_000,
         )
         self.assertEqual(res_dup, [])
-        self.assertEqual(len(self.httpd.telegram_requests), 1)
+        self.assertEqual(len(tag_cmds), 1)
 
-        # New commit with feat: on main changes head_oid -> triggers updated handoff WITH non-patch warning flag
-        new_sha = "ffff1111bbbb2222cccc3333dddd4444eeee6666"
-        status_box["defaultBranchRef"]["target"]["oid"] = new_sha  # type: ignore[index]
-        status_box["defaultBranchRef"]["target"]["history"]["nodes"].insert(  # type: ignore[index]
-            0,
-            {
-                "oid": new_sha,
-                "messageHeadline": "feat: add new exporter flag",
-                "committedDate": "2026-04-01T15:30:00Z",
-            },
+    def test_haberdasher_auto_minor_breaking_hold_workflow_failure_tag_failure_and_extra_repos(self) -> None:
+        hab_repo = "wimpysworld/tailor"
+        owner_agent = companion.compute_repo_owner(hab_repo)
+        # Pick an extra_repo owned by the same agent so both run on the same runner
+        extra_repo = next(
+            cand
+            for cand in (
+                "wimpysworld/deb-get",
+                "quickemu-project/quickemu",
+                "wimpysworld/wonkey",
+                "wimpysworld/sidra",
+                "linuxmatters/jive-vocals",
+            )
+            if cand != hab_repo and companion.compute_repo_owner(cand) == owner_agent
         )
-        res_warn = runner._evaluate_security_patch_releases(
+        linear_stub = StubLinearSyncClient()
+        tag_cmds: list[list[str]] = []
+        tag_should_fail = {"flag": False}
+        sha_minor = "bbbb1111bbbb2222cccc3333dddd4444eeee5555"
+        sha_break = "cccc1111bbbb2222cccc3333dddd4444eeee5555"
+        sha_tag_fail = "dddd1111bbbb2222cccc3333dddd4444eeee5555"
+        sha_extra = "eeee1111bbbb2222cccc3333dddd4444eeee5555"
+
+        def _make_repo_status(
+            repo_slug: str,
+            *,
+            head_oid: str,
+            latest_tag: str,
+            commit_headlines: list[str],
+        ) -> dict[str, object]:
+            nodes = [
+                {
+                    "oid": head_oid if idx == 0 else f"{idx:040x}",
+                    "messageHeadline": msg,
+                    "committedDate": "2026-04-01T08:00:00Z",
+                }
+                for idx, msg in enumerate(commit_headlines)
+            ]
+            nodes.append({
+                "oid": "0000111122223333444455556666777788889999",
+                "messageHeadline": f"chore: release {latest_tag}",
+                "committedDate": "2026-03-20T10:00:00Z",
+            })
+            return {
+                "isArchived": False,
+                "defaultBranchRef": {
+                    "name": "main",
+                    "target": {
+                        "oid": head_oid,
+                        "statusCheckRollup": {"state": "SUCCESS"},
+                        "history": {"nodes": nodes},
+                    },
+                },
+                "latestRelease": {
+                    "tagName": latest_tag,
+                    "publishedAt": "2026-03-20T10:05:00Z",
+                    "isDraft": False,
+                    "isPrerelease": False,
+                    "tagCommit": {"oid": "0000111122223333444455556666777788889999"},
+                },
+                "pullRequests": {
+                    "nodes": [
+                        {
+                            "number": 88,
+                            "title": "fix(security): patch CVE-2026-2222",
+                            "url": f"https://github.com/{repo_slug}/pull/88",
+                            "mergedAt": "2026-04-01T08:00:00Z",
+                            "headRefName": "security/cve-2026-2222",
+                            "author": {"__typename": "User", "login": "sith-skrye"},
+                            "labels": {"nodes": [{"name": "security"}]},
+                        }
+                    ]
+                },
+            }
+
+        repo_statuses: dict[str, dict[str, object]] = {
+            hab_repo: _make_repo_status(
+                hab_repo,
+                head_oid=sha_minor,
+                latest_tag="v0.6.6",
+                commit_headlines=[
+                    "feat: add json export flag",
+                    "fix(security): patch CVE-2026-2222",
+                ],
+            ),
+            extra_repo: _make_repo_status(
+                extra_repo,
+                head_oid=sha_extra,
+                latest_tag="v2.1.0",
+                commit_headlines=["fix(security): patch CVE-2026-2222"],
+            ),
+        }
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            if cmd[0] == "gh-security-release-tag":
+                tag_cmds.append(list(cmd))
+                if tag_should_fail["flag"]:
+                    return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="ref update rejected")
+                return subprocess.CompletedProcess(cmd, 0, stdout="pushed\n", stderr="")
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == f"repos/{companion.DEFAULT_HABERDASHER_CONFIG_REPO}/contents/{companion.DEFAULT_HABERDASHER_CONFIG_PATH}":
+                b64 = base64.b64encode(f"sources: [{hab_repo}]\n".encode("utf-8")).decode("ascii")
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps({"encoding": "base64", "content": b64}),
+                    stderr="",
+                )
+            if ep == f"repos/{hab_repo}/releases/tags/v0.7.0":
+                return subprocess.CompletedProcess(cmd, 1, stdout='{"message":"Not Found"}', stderr="gh: Not Found (HTTP 404)")
+            if ep == f"repos/{hab_repo}/actions/runs?branch=v0.7.0&event=push&per_page=10":
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps({
+                        "workflow_runs": [
+                            {
+                                "status": "completed",
+                                "conclusion": "failure",
+                                "html_url": f"https://github.com/{hab_repo}/actions/runs/777",
+                            }
+                        ]
+                    }),
+                    stderr="",
+                )
+            if ep == "graphql":
+                query_arg = " ".join(cmd)
+                for slug, status_payload in repo_statuses.items():
+                    owner_part, name_part = slug.split("/", 1)
+                    if f'owner: "{owner_part}"' in query_arg and f'name: "{name_part}"' in query_arg:
+                        return subprocess.CompletedProcess(
+                            cmd,
+                            0,
+                            stdout=json.dumps({"data": {"repository": status_payload}}),
+                            stderr="",
+                        )
+            return subprocess.CompletedProcess(cmd, 0, stdout="{}", stderr="")
+
+        store = self.make_store(owner_agent, state_dir=self.state_dir / "sec-release-auto-and-extra")
+        tg_client = self.make_telegram_client()
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        gh_client = companion.GhApiSafeClient(runner=fake_gh)
+        poller = companion.NotificationPoller(state_store=store, gh_client=gh_client, clock=self.clock)
+        tf = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store,
+            gh_client=gh_client,
+            telegram_client=tg_client,
+            agent_name=owner_agent,
+            clock=self.clock,
+        )
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name=owner_agent,
+            main_model="gemini::gemini-4-hydrogen",
+            telegram_client=tg_client,
+            linear_client=linear_stub,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+        runner = companion.GithubCompanionRunner(
+            state_store=store,
+            gh_client=gh_client,
+            poller=poller,
+            trust_filter=tf,
+            execution_coordinator=coord,
+            clock=self.clock,
+            linear_client=linear_stub,  # type: ignore[arg-type]
+            telegram_client=tg_client,
+            operator_digest_enabled=False,
+            security_release_extra_repos=(extra_repo,),
+            security_release_cooldown_secs=2 * 60 * 60,
+        )
+        clean_poll = {"status": 304, "open_prs_poll_error": None, "open_issues_poll_error": None}
+        t0 = LinearCommunityPullRequestsPipelineTests._utc_ms(2026, 4, 1, 12, 0)
+
+        # 1) Haberdasher repo auto-tags minor v0.7.0 on feat:, while extra_repo stays manual prepared handoff
+        res1 = runner._evaluate_security_patch_releases(open_prs_by_key={}, poll_result=clean_poll, current_ms=t0)
+        by_repo = {a["repo"]: a for a in res1}
+        self.assertEqual(set(by_repo.keys()), {hab_repo, extra_repo})
+
+        hab_act = by_repo[hab_repo]
+        self.assertEqual(hab_act["action"], "security_release_tagged")
+        self.assertEqual(hab_act["next_tag"], "v0.7.0")
+        self.assertEqual(hab_act["release_kind"], "minor")
+        self.assertEqual(tag_cmds, [["gh-security-release-tag", hab_repo, "v0.7.0", sha_minor]])
+        self.assertEqual(linear_stub.issues[hab_act["linear_issue_id"]]["state"]["name"], "In Progress")
+
+        extra_act = by_repo[extra_repo]
+        self.assertEqual(extra_act["action"], "security_release_prepared")
+        self.assertEqual(extra_act["next_tag"], "v2.1.1")
+        self.assertEqual(
+            extra_act["release_command"],
+            f'git tag -a v2.1.1 {sha_extra} -m "Release v2.1.1" && git push origin v2.1.1',
+        )
+        self.assertEqual(linear_stub.issues[extra_act["linear_issue_id"]]["state"]["name"], "Backlog")
+        self.assertIn(f"📦 {extra_repo}: security patch v2.1.1 ready", extra_act["telegram_message"])
+
+        # 2) Phase A: failed workflow on v0.7.0 moves Linear to Backlog + needs-decision + comment + 🚨 Telegram
+        res_fail = runner._evaluate_security_patch_releases(
             open_prs_by_key={},
             poll_result=clean_poll,
-            current_ms=ready_ms + 2 * companion.SECURITY_RELEASE_CHECK_INTERVAL_MS + 120_000,
+            current_ms=t0 + 10 * 60 * 1000,
         )
-        self.assertEqual(len(res_warn), 1)
-        self.assertTrue(res_warn[0]["has_non_patch_commits"])
-        self.assertIn("feat: add new exporter flag", res_warn[0]["non_patch_commits"])
-        self.assertEqual(len(self.httpd.telegram_requests), 2)
-        tg_warn_text = str(self.httpd.telegram_requests[1]["body"]["text"])
-        self.assertIn("⚠️ unreleased feat/breaking commits on main", tg_warn_text)
+        self.assertEqual(len(res_fail), 1)
+        self.assertEqual(res_fail[0]["action"], "security_release_failed")
+        hab_lin_id = hab_act["linear_issue_id"]
+        self.assertEqual(linear_stub.issues[hab_lin_id]["state"]["name"], "Backlog")
+        self.assertIn("needs-decision", companion.extract_linear_issue_labels(linear_stub.issues[hab_lin_id]))
+        self.assertIn(f"https://github.com/{hab_repo}/actions/runs/777", str(linear_stub.comments_by_issue[hab_lin_id][-1]["body"]))
+        self.assertEqual(
+            res_fail[0]["telegram_message"],
+            f"🚨 {hab_repo} v0.7.0 release workflow failed (https://github.com/{hab_repo}/actions/runs/777)",
+        )
+        self.assertNotIn(hab_repo, store.read_state()["security_releases"]["pending_releases"])
+
+        # 3) Breaking commit on Haberdasher repo holds in Backlog + needs-decision WITHOUT calling gh-security-release-tag
+        repo_statuses[hab_repo] = _make_repo_status(
+            hab_repo,
+            head_oid=sha_break,
+            latest_tag="v0.6.6",
+            commit_headlines=[
+                "feat(api)!: remove deprecated endpoint",
+                "fix(security): patch CVE-2026-2222",
+            ],
+        )
+        t_break = t0 + companion.SECURITY_RELEASE_CHECK_INTERVAL_MS + 60_000
+        res_break = runner._evaluate_security_patch_releases(
+            open_prs_by_key={},
+            poll_result=clean_poll,
+            current_ms=t_break,
+        )
+        self.assertEqual(len(res_break), 1)
+        break_act = res_break[0]
+        self.assertEqual(break_act["action"], "security_release_held")
+        self.assertEqual(len(tag_cmds), 1)  # NOT called for breaking commit!
+        self.assertEqual(linear_stub.issues[break_act["linear_issue_id"]]["state"]["name"], "Backlog")
+        self.assertIn("needs-decision", companion.extract_linear_issue_labels(linear_stub.issues[break_act["linear_issue_id"]]))
+        self.assertIn("git tag -a ", break_act["release_command"])
+        self.assertIn(f"📦 {hab_repo}: security release blocked by breaking commits", break_act["telegram_message"])
+
+        # 4) Tag failure on Haberdasher repo moves Linear to Backlog + needs-decision + failure comment + 🚨 Telegram
+        tag_should_fail["flag"] = True
+        repo_statuses[hab_repo] = _make_repo_status(
+            hab_repo,
+            head_oid=sha_tag_fail,
+            latest_tag="v0.6.6",
+            commit_headlines=["fix(security): patch CVE-2026-2222"],
+        )
+        t_tag_fail = t_break + companion.SECURITY_RELEASE_CHECK_INTERVAL_MS + 60_000
+        res_tag_fail = runner._evaluate_security_patch_releases(
+            open_prs_by_key={},
+            poll_result=clean_poll,
+            current_ms=t_tag_fail,
+        )
+        self.assertEqual(len(res_tag_fail), 1)
+        tf_act = res_tag_fail[0]
+        self.assertEqual(tf_act["action"], "security_release_tag_failed")
+        self.assertEqual(len(tag_cmds), 2)
+        self.assertEqual(tag_cmds[1], ["gh-security-release-tag", hab_repo, "v0.6.7", sha_tag_fail])
+        tf_lin_id = tf_act["linear_issue_id"]
+        self.assertEqual(linear_stub.issues[tf_lin_id]["state"]["name"], "Backlog")
+        self.assertIn("needs-decision", companion.extract_linear_issue_labels(linear_stub.issues[tf_lin_id]))
+        self.assertIn("ref update rejected", str(linear_stub.comments_by_issue[tf_lin_id][-1]["body"]))
+        self.assertIn(f"🚨 {hab_repo}: failed to tag v0.6.7", tf_act["telegram_message"])
+        self.assertNotIn(hab_repo, store.read_state()["security_releases"]["pending_releases"])
 
     def test_parse_haberdasher_sources_yaml_and_config_env_precedence(self) -> None:
         self.assertEqual(companion.DEFAULT_SECURITY_PATCH_RELEASE_REPOS, ())
@@ -13769,6 +14260,8 @@ class SecurityPatchReleaseGateTests(GithubCompanionTestBase):
         init_sec = store.read_state()["security_releases"]
         self.assertEqual(init_sec["haberdasher_sources"], [])
         self.assertEqual(init_sec["haberdasher_sources_fetched_at_ms"], 0)
+        self.assertEqual(init_sec["pending_releases"], {})
+        self.assertEqual(init_sec["completed_releases"], {})
 
         tg_client = self.make_telegram_client()
         rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)

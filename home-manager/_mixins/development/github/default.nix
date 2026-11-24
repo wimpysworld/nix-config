@@ -40,6 +40,7 @@ let
   gh-bot-merge = pkgs.callPackage ./gh-bot-merge { };
   gh-code-scanning-dismiss = pkgs.callPackage ./gh-code-scanning-dismiss { };
   gh-notification-dismiss = pkgs.callPackage ./gh-notification-dismiss { };
+  gh-security-release-tag = pkgs.callPackage ./gh-security-release-tag { };
   gh-workflow-approve = pkgs.callPackage ./gh-workflow-approve { };
   gh-release-notes-edit = pkgs.callPackage ./gh-release-notes-edit { };
   gh-review-inline = pkgs.callPackage ./gh-review-inline { };
@@ -301,6 +302,7 @@ lib.mkMerge [
         gh-bot-merge
         gh-code-scanning-dismiss
         gh-notification-dismiss
+        gh-security-release-tag
         gh-workflow-approve
         gh-release-notes-edit
         gh-review-inline
