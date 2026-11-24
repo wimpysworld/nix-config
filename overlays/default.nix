@@ -98,44 +98,50 @@ in
       inherit (final.unstable) ollama-rocm;
       inherit (final.unstable) ollama-vulkan;
 
-      # Keep this pin until nixpkgs includes Inkling model support.
-      llama-cpp = final.unstable.llama-cpp.overrideAttrs (
-        oldAttrs:
-        let
-          buildNumber = "12628";
-          rev = "8a97fa98ab1a454709bbf5ac979661feaeadec40";
-          inherit (final.lib) cmakeBool cmakeFeature hasPrefix;
-        in
-        {
-          version = "b${buildNumber}";
-          src = final.unstable.fetchFromGitHub {
-            owner = "ggml-org";
-            repo = "llama.cpp";
-            inherit rev;
-            hash = "sha256-7t6RSlRkIENJdBdkCgdmPRgVI0UfOJU/NiU9FoFz0e0=";
-          };
+      # Keep this Linux pin until nixpkgs includes Inkling model support.
+      # Darwin hosts only serve embeddings through llama-swap and use the
+      # cached nixpkgs-unstable binary instead of building from source.
+      llama-cpp =
+        if final.stdenv.hostPlatform.isLinux then
+          final.unstable.llama-cpp.overrideAttrs (
+            oldAttrs:
+            let
+              buildNumber = "12628";
+              rev = "8a97fa98ab1a454709bbf5ac979661feaeadec40";
+              inherit (final.lib) cmakeBool cmakeFeature hasPrefix;
+            in
+            {
+              version = "b${buildNumber}";
+              src = final.unstable.fetchFromGitHub {
+                owner = "ggml-org";
+                repo = "llama.cpp";
+                inherit rev;
+                hash = "sha256-7t6RSlRkIENJdBdkCgdmPRgVI0UfOJU/NiU9FoFz0e0=";
+              };
 
-          # This revision no longer ships the tools/ui npm project.
-          nativeBuildInputs = final.lib.subtractLists [
-            final.unstable.nodejs_latest
-            final.unstable.npmHooks.npmConfigHook
-          ] oldAttrs.nativeBuildInputs;
-          npmDeps = null;
-          preConfigure = null;
-          cmakeFlags =
-            builtins.filter (
-              flag: !(hasPrefix "-DLLAMA_BUILD_NUMBER:" flag || hasPrefix "-DLLAMA_BUILD_COMMIT:" flag)
-            ) oldAttrs.cmakeFlags
-            ++ [
-              (cmakeFeature "LLAMA_BUILD_NUMBER" buildNumber)
-              (cmakeFeature "LLAMA_BUILD_COMMIT" (builtins.substring 0 7 rev))
-              (cmakeBool "LLAMA_BUILD_UI" false)
-              (cmakeBool "LLAMA_USE_PREBUILT_UI" false)
-            ];
-          # Like test-conversion-fp8, this tests the Python converter and needs PyTorch.
-          disabledTests = oldAttrs.disabledTests ++ [ "test-kv-cache-scales" ];
-        }
-      );
+              # This revision no longer ships the tools/ui npm project.
+              nativeBuildInputs = final.lib.subtractLists [
+                final.unstable.nodejs_latest
+                final.unstable.npmHooks.npmConfigHook
+              ] oldAttrs.nativeBuildInputs;
+              npmDeps = null;
+              preConfigure = null;
+              cmakeFlags =
+                builtins.filter (
+                  flag: !(hasPrefix "-DLLAMA_BUILD_NUMBER:" flag || hasPrefix "-DLLAMA_BUILD_COMMIT:" flag)
+                ) oldAttrs.cmakeFlags
+                ++ [
+                  (cmakeFeature "LLAMA_BUILD_NUMBER" buildNumber)
+                  (cmakeFeature "LLAMA_BUILD_COMMIT" (builtins.substring 0 7 rev))
+                  (cmakeBool "LLAMA_BUILD_UI" false)
+                  (cmakeBool "LLAMA_USE_PREBUILT_UI" false)
+                ];
+              # Like test-conversion-fp8, this tests the Python converter and needs PyTorch.
+              disabledTests = oldAttrs.disabledTests ++ [ "test-kv-cache-scales" ];
+            }
+          )
+        else
+          final.unstable.llama-cpp;
       llama-cpp-rocm = llama-cpp.override { rocmSupport = true; };
       llama-cpp-vulkan = llama-cpp.override { vulkanSupport = true; };
 
