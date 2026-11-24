@@ -99,12 +99,12 @@ pages:
 
 ## Project icon
 
-Store every project's canonical icon as a real file at `pages/icon.svg`, even when GitHub Pages is disabled. One icon supplies the static Pages header, footer, and favicon, the repository `README.md`, and Haberdasher package pages.
+Store every project's canonical icon as a real file at `pages/icon.svg`, even when GitHub Pages is disabled. When a project uses a photographic or raster mark, store a square `pages/icon.png` instead as a fallback. One icon supplies the static Pages header, footer, and favicon, the repository `README.md`, and Haberdasher package pages (which check `pages/icon.svg` first and `pages/icon.png` second).
 
-- **Use a real file, never a symlink**: commit the SVG directly at `pages/icon.svg` (or copy it there when packaging needs a second path). GitHub's Contents API returns symlink target text instead of image bytes, and Windows checkouts break symlinks.
-- **Keep it square and self-contained**: use a `1:1` SVG with an explicit `viewBox`, readable on both light and dark surfaces, with no wide horizontal wordmark and no external fonts, images, or scripts.
+- **Use a real file, never a symlink**: commit the file directly at `pages/icon.svg` or `pages/icon.png` (or copy it there when packaging needs a second path). GitHub's Contents API returns symlink target text instead of image bytes, and Windows checkouts break symlinks.
+- **Keep it square and self-contained**: prefer a `1:1` SVG with an explicit `viewBox` (no external fonts, images, or scripts) or a square PNG when a photograph is required. Keep it readable on both light and dark surfaces, with no wide horizontal wordmark.
 - **Replace the starter placeholder**: replace Tailor's default blue `pages/icon.svg` with the project's own mark. Haberdasher ignores the placeholder bytes.
-- **Enable static Pages later**: Tailor only creates the static starter in a missing or empty `pages/` directory. When `pages/icon.svg` already exists before you enable static Pages, preserve it alongside `pages/index.html`.
+- **Enable static Pages later**: Tailor only creates the static starter in a missing or empty `pages/` directory. When `pages/icon.svg` or `pages/icon.png` already exists before you enable static Pages, preserve it alongside `pages/index.html`.
 
 ## Version numbering
 
