@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import datetime
 import fcntl
 import hashlib
 import importlib
@@ -553,6 +554,187 @@ def parse_blind_review_verdicts(
     return parsed_verdicts
 
 
+_DENIED_LINEAR_OPERATOR_NAMES = frozenset({
+    "skrye",
+    "zannah",
+    "traya",
+    "sith-skrye",
+    "sith-zannah",
+    "sith-traya",
+    "cubic",
+    "codex",
+    "linear",
+})
+_DENIED_LINEAR_OPERATOR_EMAIL_SUFFIXES = ("@oauthapp.linear.app", "@linear.linear.app")
+_OPERATOR_MENTION_AGENT_ALIASES: dict[str, str] = {
+    "skrye": "skrye",
+    "sith-skrye": "skrye",
+    "zannah": "zannah",
+    "sith-zannah": "zannah",
+    "traya": "traya",
+    "sith-traya": "traya",
+}
+_FENCED_CODE_BLOCK_RE = re.compile(r"```[\s\S]*?```")
+_INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
+_LINEAR_PLAIN_MENTION_RE = re.compile(
+    r"(?<![A-Za-z0-9_/\-])@(?:sith-)?(skrye|zannah|traya)(?![A-Za-z0-9_-])",
+    re.IGNORECASE,
+)
+_LINEAR_DELEGATE_MENTION_RE = re.compile(
+    r"(?<![A-Za-z0-9_/\-])@(delegate|agent)(?![A-Za-z0-9_-])",
+    re.IGNORECASE,
+)
+_LINEAR_PROFILE_URL_RE = re.compile(
+    r"https://linear\.app/[^/\s)]+/profiles/(skrye|zannah|traya)\b(?![A-Za-z0-9_-])",
+    re.IGNORECASE,
+)
+_LINEAR_PROFILE_MD_LINK_RE = re.compile(
+    r"\[(Skrye|Zannah|Traya)\]\(https://linear\.app/[^)\s]+/profiles/[^)\s]+\)",
+    re.IGNORECASE,
+)
+
+
+def is_verified_linear_operator_comment(comment: object) -> bool:
+    """Return True only for comments authored by a verified human Linear workspace admin or owner."""
+    if not isinstance(comment, dict):
+        return False
+    if comment.get("botActor"):
+        return False
+    user = comment.get("user")
+    if not isinstance(user, dict):
+        return False
+    if user.get("guest") is True:
+        return False
+    email = str(user.get("email") or "").strip().lower()
+    if email and email.endswith(_DENIED_LINEAR_OPERATOR_EMAIL_SUFFIXES):
+        return False
+    name = str(user.get("name") or "").strip().lower()
+    display_name = str(user.get("displayName") or "").strip().lower()
+    if name in _DENIED_LINEAR_OPERATOR_NAMES or display_name in _DENIED_LINEAR_OPERATOR_NAMES:
+        return False
+    return bool(
+        user.get("admin") is True
+        or user.get("owner") is True
+        or user.get("isAdmin") is True
+    )
+
+
+def _linear_comment_sort_key(item: tuple[int, dict[str, str]]) -> tuple[int, float, str, int]:
+    idx, entry = item
+    raw_ts = entry["created_at"]
+    if raw_ts:
+        try:
+            norm_ts = raw_ts[:-1] + "+00:00" if raw_ts.endswith(("Z", "z")) else raw_ts
+            dt = datetime.datetime.fromisoformat(norm_ts)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=datetime.timezone.utc)
+            return (0, dt.timestamp(), raw_ts, idx)
+        except ValueError:
+            return (0, 0.0, raw_ts, idx)
+    return (1, 0.0, "", idx)
+
+
+def extract_verified_operator_comments(
+    comments: object,
+    *,
+    max_comments: int = 10,
+    max_total_chars: int = 4000,
+) -> list[dict[str, str]]:
+    """Extract chronologically sorted, bounded verified operator comments from a list or GraphQL connection."""
+    if max_comments <= 0 or max_total_chars <= 0:
+        return []
+    raw_nodes: Iterable[object]
+    if isinstance(comments, dict):
+        nodes = comments.get("nodes")
+        raw_nodes = nodes if isinstance(nodes, list) else ()
+    elif isinstance(comments, (list, tuple)):
+        raw_nodes = comments
+    elif isinstance(comments, Iterable) and not isinstance(comments, (str, bytes)):
+        raw_nodes = comments
+    else:
+        return []
+
+    parsed: list[tuple[int, dict[str, str]]] = []
+    for idx, comment in enumerate(raw_nodes):
+        if not is_verified_linear_operator_comment(comment):
+            continue
+        assert isinstance(comment, dict)
+        body = str(comment.get("body") or "").strip()
+        if not body:
+            continue
+        user = comment.get("user")
+        assert isinstance(user, dict)
+        parent = comment.get("parent")
+        parent_id = str(parent.get("id") or "").strip() if isinstance(parent, dict) else ""
+        author = str(user.get("name") or user.get("displayName") or user.get("email") or "operator").strip() or "operator"
+        parsed.append(
+            (
+                idx,
+                {
+                    "id": str(comment.get("id") or "").strip(),
+                    "parent_id": parent_id,
+                    "author": author,
+                    "created_at": str(comment.get("createdAt") or "").strip(),
+                    "body": body,
+                },
+            )
+        )
+
+    if not parsed:
+        return []
+
+    parsed.sort(key=_linear_comment_sort_key)
+    ordered = [entry for _, entry in parsed[-max_comments:]]
+
+    kept_reversed: list[dict[str, str]] = []
+    used_chars = 0
+    for entry in reversed(ordered):
+        body = entry["body"]
+        if used_chars + len(body) <= max_total_chars:
+            kept_reversed.append(entry)
+            used_chars += len(body)
+        elif not kept_reversed:
+            if max_total_chars > 3:
+                truncated = body[: max_total_chars - 3].rstrip() + "..."
+            else:
+                truncated = body[:max_total_chars]
+            kept_reversed.append({**entry, "body": truncated})
+            break
+        else:
+            break
+
+    kept_reversed.reverse()
+    return kept_reversed
+
+
+def parse_linear_operator_mentions(body: str, *, delegate_agent: str | None = None) -> list[str]:
+    """Return deduplicated agent names mentioned in a Linear operator comment in order of appearance."""
+    if not isinstance(body, str) or not body:
+        return []
+    stripped = _FENCED_CODE_BLOCK_RE.sub(" ", body)
+    stripped = _INLINE_CODE_RE.sub(" ", stripped)
+
+    resolved_delegate = _OPERATOR_MENTION_AGENT_ALIASES.get(str(delegate_agent or "").strip().lower())
+    hits: list[tuple[int, str]] = []
+
+    for match in _LINEAR_PLAIN_MENTION_RE.finditer(stripped):
+        hits.append((match.start(), match.group(1).lower()))
+    for match in _LINEAR_PROFILE_MD_LINK_RE.finditer(stripped):
+        hits.append((match.start(), match.group(1).lower()))
+    for match in _LINEAR_PROFILE_URL_RE.finditer(stripped):
+        hits.append((match.start(), match.group(1).lower()))
+    if resolved_delegate is not None:
+        for match in _LINEAR_DELEGATE_MENTION_RE.finditer(stripped):
+            hits.append((match.start(), resolved_delegate))
+
+    hits.sort(key=lambda item: item[0])
+    result: list[str] = []
+    for _, agent in hits:
+        if agent not in result:
+            result.append(agent)
+    return result
+
+
 _VIEWER_QUERY = """
 query {
   viewer {
@@ -690,6 +872,11 @@ team {
   id
   key
 }
+delegate {
+  id
+  name
+  displayName
+}
 labels(first: 50) {
   nodes {
     id
@@ -780,6 +967,31 @@ query($filter: IssueFilter, $first: Int!, $after: String, $includeArchived: Bool
           title
         }}
       }}
+      comments(first: 25) {{
+        nodes {{
+          id
+          body
+          createdAt
+          updatedAt
+          parent {{
+            id
+          }}
+          user {{
+            id
+            name
+            displayName
+            email
+            admin
+            owner
+            guest
+          }}
+          botActor {{
+            id
+            name
+            type
+          }}
+        }}
+      }}
     }}
   }}
 }}
@@ -799,9 +1011,22 @@ query($issueId: String!, $first: Int!, $after: String) {
         body
         createdAt
         updatedAt
+        parent {
+          id
+        }
         user {
           id
           name
+          displayName
+          email
+          admin
+          owner
+          guest
+        }
+        botActor {
+          id
+          name
+          type
         }
       }
     }
@@ -818,6 +1043,9 @@ mutation($input: CommentCreateInput!) {
       body
       createdAt
       updatedAt
+      parent {
+        id
+      }
     }
   }
 }
@@ -2068,17 +2296,22 @@ class LinearSyncClient:
 
         return comments
 
-    def post_comment(self, issue_id: str, body: str) -> dict[str, object]:
-        """Post a plain Markdown comment on a Linear issue."""
+    def post_comment(self, issue_id: str, body: str, *, parent_id: str | None = None) -> dict[str, object]:
+        """Post a plain Markdown comment (or threaded reply) on a Linear issue."""
         clean_id = str(issue_id or "").strip()
         if not clean_id:
             raise ValueError("issue_id must be non-empty")
         clean_body = str(body or "").strip()
         if not clean_body:
             raise ValueError("comment body must be non-empty")
+        comment_input: dict[str, object] = {"issueId": clean_id, "body": clean_body}
+        if parent_id is not None:
+            clean_parent = str(parent_id).strip()
+            if clean_parent:
+                comment_input["parentId"] = clean_parent
         data = self._graphql_request(
             _COMMENT_CREATE_MUTATION,
-            {"input": {"issueId": clean_id, "body": clean_body}},
+            {"input": comment_input},
         )
         payload = data.get("commentCreate")
         comment = payload.get("comment") if isinstance(payload, dict) else None

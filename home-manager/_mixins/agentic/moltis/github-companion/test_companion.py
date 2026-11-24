@@ -5254,16 +5254,18 @@ class StubLinearSyncClient:
     def seed_issue(
         self,
         *,
-        github_url: str,
+        github_url: str | None,
         title: str,
-        repo: str,
+        repo: str = "",
         item_kind: str = "Issue",
         state: str = "Triage",
         extra_labels: tuple[str, ...] = (),
         estimate: int | None = None,
+        delegate: dict[str, object] | None = None,
+        archived_at: str | None = None,
         updated_at: str = "2026-04-01T10:00:00Z",
     ) -> dict[str, object]:
-        normalized_url = companion.linear_sync.normalize_github_url(github_url)
+        normalized_url = companion.linear_sync.normalize_github_url(github_url) if github_url else None
         self._seq += 1
         issue_id = f"lin-{self._seq}"
         identifier = f"WW-{self._seq}"
@@ -5272,6 +5274,11 @@ class StubLinearSyncClient:
             clean = str(lbl or "").strip()
             if clean and clean.lower() not in {x.lower() for x in label_names}:
                 label_names.append(clean)
+        attachments_nodes = (
+            [{"id": f"att-{self._seq}", "url": normalized_url, "title": title}]
+            if normalized_url
+            else []
+        )
         issue: dict[str, object] = {
             "id": issue_id,
             "identifier": identifier,
@@ -5280,19 +5287,21 @@ class StubLinearSyncClient:
             "url": f"https://linear.app/wimpress/issue/{identifier}",
             "estimate": estimate,
             "updatedAt": updated_at,
-            "archivedAt": None,
+            "archivedAt": archived_at,
             "state": self._state_obj(state),
             "project": {"id": "proj-community", "name": "Community Contributions"},
             "team": {"id": "team-ww", "key": "WW"},
+            "delegate": delegate,
             "labels": {
                 "nodes": [{"id": f"lbl-{name.lower()}", "name": name} for name in label_names],
             },
             "attachments": {
-                "nodes": [{"id": f"att-{self._seq}", "url": normalized_url, "title": title}],
+                "nodes": attachments_nodes,
             },
         }
         self.issues[issue_id] = issue
-        self.by_github_url[normalized_url] = issue_id
+        if normalized_url:
+            self.by_github_url[normalized_url] = issue_id
         return self._copy_issue(issue)
 
     def ensure_issue_for_github_item(
@@ -5444,7 +5453,11 @@ class StubLinearSyncClient:
             st_name = str((issue.get("state") or {}).get("name") or "").strip().lower()  # type: ignore[union-attr]
             if allowed_lower is not None and st_name not in allowed_lower:
                 continue
-            results.append(self._copy_issue(issue))
+            copied = self._copy_issue(issue)
+            copied["comments"] = {
+                "nodes": json.loads(json.dumps(self.comments_by_issue.get(str(issue["id"]), [])))
+            }
+            results.append(copied)
         return results
 
     def list_issue_comments(self, issue_id: str, *, page_size: int = 100) -> list[dict[str, object]]:
@@ -5479,7 +5492,7 @@ class StubLinearSyncClient:
                 return None
         return self._copy_issue(issue)
 
-    def post_comment(self, issue_id: str, body: str) -> dict[str, object]:
+    def post_comment(self, issue_id: str, body: str, *, parent_id: str | None = None) -> dict[str, object]:
         clean_id = str(issue_id or "").strip()
         if not clean_id:
             raise ValueError("issue_id must be non-empty")
@@ -5489,11 +5502,13 @@ class StubLinearSyncClient:
         if not clean_body:
             raise ValueError("comment body must be non-empty")
         self._comment_seq += 1
+        clean_parent = str(parent_id or "").strip()
         comment = {
             "id": f"cmt-{self._comment_seq}",
             "body": clean_body,
             "createdAt": f"2026-04-01T10:{self._comment_seq:02d}:00Z",
             "updatedAt": f"2026-04-01T10:{self._comment_seq:02d}:00Z",
+            "parent": {"id": clean_parent} if clean_parent else None,
             "user": {"id": "u-agent", "name": "Agent"},
         }
         self.comments_by_issue.setdefault(clean_id, []).append(comment)
@@ -5815,7 +5830,7 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
         self.assertEqual(self.httpd.rpc_requests, [])
         self.assertIsNone((store.get_thread_state(companion.make_pr_key(repo, zannah_issue)) or {}).get("linear_issue_id"))
 
-        # Traya never creates triage stubs or polls Linear
+        # Traya never creates triage stubs (it only polls active Linear issues for @traya operator mentions)
         traya_stub = StubLinearSyncClient(list_returns_empty=False)
         _, traya_runner, traya_rpc = self._build_pipeline_runner(
             agent_name="traya",
@@ -5824,8 +5839,9 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
         )
         res_traya = traya_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms)
         self.assertEqual(res_traya["linear_triage_stubs"], [])
+        self.assertEqual(res_traya["linear_operator_comment_dispatches"], [])
         self.assertEqual(traya_stub.ensure_calls, [])
-        self.assertEqual(traya_stub.list_calls, [])
+        self.assertEqual(len(traya_stub.list_calls), 1)
         self.assertEqual(traya_rpc, [])
 
         # linear_client=None skips intake cleanly with zero RPC turns and zero Telegram messages
@@ -5941,7 +5957,7 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
         self.assertFalse(res2["targeted_dispatches"][0]["telegram_forwarded"])
         self.assertEqual(self.httpd.telegram_requests, [])
 
-        # Traya never polls Linear or dispatches linear_triage_research
+        # Traya never dispatches linear_triage_research (polls Linear only for @traya operator mentions)
         traya_stub = StubLinearSyncClient()
         traya_stub.seed_issue(
             github_url=f"https://github.com/{repo}/issues/{eligible_nums[0]}",
@@ -5957,7 +5973,8 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
         )
         res_traya = traya_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms)
         self.assertEqual(res_traya["targeted_dispatches"], [])
-        self.assertEqual(traya_stub.list_calls, [])
+        self.assertEqual(res_traya["linear_operator_comment_dispatches"], [])
+        self.assertEqual(len(traya_stub.list_calls), 1)
         self.assertEqual(traya_rpc, [])
 
     def test_todo_implementation_team_implement_promotion_caps_revert_and_traya_exclusion(self) -> None:
@@ -6188,9 +6205,10 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
         res_traya = traya_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms)
         self.assertEqual(res_traya["linear_promoted_todos"], [])
         self.assertEqual(res_traya["targeted_dispatches"], [])
+        self.assertEqual(res_traya["linear_operator_comment_dispatches"], [])
         self.assertEqual(traya_stub.ensure_calls, [])
         self.assertEqual(traya_stub.update_calls, [])
-        self.assertEqual(traya_stub.list_calls, [])
+        self.assertEqual(len(traya_stub.list_calls), 1)
         self.assertEqual(traya_rpc, [])
 
     def test_do_not_merge_signoff_ping_deduplication_and_gates(self) -> None:
@@ -11969,6 +11987,540 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
             (store.get_thread_state(companion.make_pr_key(repo, n_tracked)) or {}).get("stale_closed_at_ms"),
             t_day31,
         )
+
+
+class LinearOperatorGuidanceAndMentionWakeTests(GithubCompanionTestBase):
+    """Tests for two-mode Linear operator guidance (Mode A passive + Lane A bypass) and @mention wake (Mode B)."""
+
+    MAIN_MODEL = "gemini::gemini-4-hydrogen@reasoning-medium"
+    REVIEW_MODEL = "gemini::gemini-4-carbon@reasoning-medium"
+
+    @staticmethod
+    def _admin_comment(
+        cid: str,
+        body: str,
+        *,
+        created_at: str = "2026-04-01T10:00:00Z",
+        parent_id: str | None = None,
+        author_name: str = "Martin Wimpress",
+    ) -> dict[str, object]:
+        return {
+            "id": cid,
+            "body": body,
+            "createdAt": created_at,
+            "updatedAt": created_at,
+            "parent": {"id": parent_id} if parent_id else None,
+            "user": {
+                "id": "u-martin",
+                "name": author_name,
+                "displayName": "Martin",
+                "email": "martin@wimpys.world",
+                "admin": True,
+                "owner": True,
+                "guest": False,
+            },
+            "botActor": None,
+        }
+
+    @staticmethod
+    def _bot_comment(cid: str, body: str, *, created_at: str = "2026-04-01T09:00:00Z") -> dict[str, object]:
+        return {
+            "id": cid,
+            "body": body,
+            "createdAt": created_at,
+            "updatedAt": created_at,
+            "parent": None,
+            "user": {
+                "id": "u-skrye",
+                "name": "Skrye",
+                "displayName": "Skrye",
+                "email": "skrye@oauthapp.linear.app",
+                "admin": False,
+                "owner": False,
+                "guest": False,
+            },
+            "botActor": {"id": "bot-skrye", "name": "Skrye", "type": "OAuthClient"},
+        }
+
+    def _build_runner(
+        self,
+        *,
+        agent_name: str = "skrye",
+        gh_runner: Callable[..., subprocess.CompletedProcess],
+        linear_client: StubLinearSyncClient,
+        rpc_reply_fn: Callable[[dict[str, str], str], tuple[bool, str]] | None = None,
+        state_dir: Path | None = None,
+    ) -> tuple[companion.CompanionStateStore, companion.GithubCompanionRunner, list[dict[str, object]]]:
+        store = self.make_store(agent_name, state_dir=state_dir)
+        tg_client = self.make_telegram_client()
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        rpc_calls: list[dict[str, object]] = []
+        self.httpd.peek_active = False
+
+        def _send_sync_handler(params: dict) -> dict:
+            msg = str(params.get("message") or "")
+            meta = LinearCommunityIssuesPipelineTests._parse_prompt_metadata(msg)
+            disp_id = meta.get("dispatch_id", "")
+            session_key = str(params.get("session_key") or companion.DEFAULT_GH_SESSION_KEY)
+            if rpc_reply_fn is not None:
+                ok, reply_text = rpc_reply_fn(meta, msg)
+            else:
+                ok, reply_text = True, "HEARTBEAT_OK"
+            rpc_calls.append({"meta": meta, "message": msg, "reply_text": reply_text, "ok": ok})
+            if ok:
+                self.write_history(
+                    session_key,
+                    [
+                        {"role": "user", "dispatch_id": disp_id, "content": msg},
+                        {"role": "assistant", "content": reply_text, "stop_reason": "end_turn"},
+                    ],
+                    agent_name=agent_name,
+                )
+                return {"ok": True, "result": {"text": reply_text, "dispatch_id": disp_id}}
+            self.write_history(
+                session_key,
+                [
+                    {"role": "user", "dispatch_id": disp_id, "content": msg},
+                    {"role": "assistant", "content": "", "error": reply_text or "simulated failure"},
+                ],
+                agent_name=agent_name,
+            )
+            return {"ok": False, "error": reply_text or "simulated failure"}
+
+        self.httpd.send_sync_handler = _send_sync_handler
+        gh_client = companion.GhApiSafeClient(runner=gh_runner)
+        poller = companion.NotificationPoller(
+            state_store=store,
+            gh_client=gh_client,
+            clock=self.clock,
+            sleeper=self.sleeper,
+            jitter_rng=lambda _lo, _hi: 5_000,
+        )
+        trust_filter = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store,
+            gh_client=gh_client,
+            telegram_client=tg_client,
+            agent_name=agent_name,
+            clock=self.clock,
+        )
+        coordinator = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name=agent_name,
+            main_model=self.MAIN_MODEL,
+            review_model=self.REVIEW_MODEL,
+            telegram_client=tg_client,
+            linear_client=linear_client,
+            completion_timeout_ms=1_000,
+            poll_interval_ms=20,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+        runner = companion.GithubCompanionRunner(
+            state_store=store,
+            poller=poller,
+            trust_filter=trust_filter,
+            execution_coordinator=coordinator,
+            gh_client=gh_client,
+            linear_client=linear_client,
+            clock=self.clock,
+        )
+        return store, runner, rpc_calls
+
+    def test_mode_a_guidance_injection_for_allowed_kinds_and_blind_review_exclusion(self) -> None:
+        repo = "wimpysworld/tailor"
+        triage_num, todo_num = LinearCommunityIssuesPipelineTests._owned_numbers(repo, "skrye", 2, kind="issue", start=400)
+        pr_lane_b_num, pr_lane_a_num = LinearCommunityIssuesPipelineTests._owned_numbers(repo, "skrye", 2, kind="pr", start=500)
+
+        linear_stub = StubLinearSyncClient()
+        lin_triage = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{triage_num}",
+            title="Triage with guidance",
+            repo=repo,
+            item_kind="Issue",
+            state="Triage",
+        )
+        linear_stub.comments_by_issue[str(lin_triage["id"])] = [
+            self._bot_comment("bot-1", "Ignore this bot note"),
+            self._admin_comment("adm-triage", "Prioritise Wayland support when researching this."),
+        ]
+
+        lin_todo = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{todo_num}",
+            title="Todo with guidance",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        linear_stub.comments_by_issue[str(lin_todo["id"])] = [
+            self._admin_comment("adm-todo", "Keep the CLI flag backward-compatible."),
+        ]
+
+        lin_pr_b = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_lane_b_num}",
+            title="Small PR with operator note",
+            repo=repo,
+            item_kind="PR",
+            state="Backlog",
+        )
+        linear_stub.comments_by_issue[str(lin_pr_b["id"])] = [
+            self._admin_comment("adm-pr-b", "Hold merge until we verify Debian packaging."),
+        ]
+
+        lin_pr_a = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_lane_a_num}",
+            title="Consensus PR with operator note",
+            repo=repo,
+            item_kind="PR",
+            state="In Review",
+        )
+        linear_stub.post_blind_review_verdict(
+            str(lin_pr_a["id"]),
+            agent="skrye",
+            model_family="gemini",
+            head_sha="sha_consensus_1",
+            verdict="pass",
+            summary="Clean diff.",
+        )
+        linear_stub.post_blind_review_verdict(
+            str(lin_pr_a["id"]),
+            agent="traya",
+            model_family="gpt",
+            head_sha="sha_consensus_1",
+            verdict="pass",
+            summary="Looks good.",
+        )
+        linear_stub.comments_by_issue[str(lin_pr_a["id"])].append(
+            self._admin_comment("adm-pr-a", "Squash merge and thank the contributor.")
+        )
+
+        open_pr_nodes = [
+            {
+                **LinearCommunityIssuesPipelineTests._graphql_pr_node(
+                    repo,
+                    pr_lane_b_num,
+                    title="Small PR with operator note",
+                    head_sha="sha_pr_b_1",
+                    author="community-dev",
+                    review_decision="",
+                    ci_state="SUCCESS",
+                ),
+                "authorAssociation": "CONTRIBUTOR",
+                "additions": 10,
+                "deletions": 2,
+                "changedFiles": 1,
+                "files": {"pageInfo": {"hasNextPage": False}, "nodes": [{"path": "README.md"}]},
+            },
+        ]
+        open_issue_nodes = [
+            LinearCommunityIssuesPipelineTests._graphql_issue_node(repo, triage_num, title="Triage with guidance"),
+            LinearCommunityIssuesPipelineTests._graphql_issue_node(repo, todo_num, title="Todo with guidance"),
+        ]
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                query_arg = " ".join(cmd)
+                if "is:issue" in query_arg:
+                    return subprocess.CompletedProcess(
+                        cmd,
+                        0,
+                        stdout=LinearCommunityIssuesPipelineTests._graphql_search_payload(open_issue_nodes),
+                        stderr="",
+                    )
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=LinearCommunityIssuesPipelineTests._graphql_search_payload(open_pr_nodes),
+                    stderr="",
+                )
+            if ep == "pulls" or (len(cmd) >= 3 and "pulls" in cmd[1]):
+                return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"merged": True, "state": "closed"}), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout="[]", stderr="")
+
+        def reply_fn(meta: dict[str, str], _msg: str) -> tuple[bool, str]:
+            kind = meta.get("dispatch_kind")
+            lin_id = meta.get("linear_issue_id", "")
+            if kind == "linear_triage_research" and lin_id:
+                linear_stub.update_issue(lin_id, state="Backlog")
+                return True, "HEARTBEAT_OK"
+            if kind == "linear_todo_implement" and lin_id:
+                linear_stub.update_issue(lin_id, state="In Review")
+                return True, "Implemented PR."
+            if kind == "community_pr_lane_b_review":
+                return True, "LANE_B_VERDICT: needs-decision\nSUMMARY: Waiting on Debian packaging."
+            if kind == "community_pr_lane_a_merge":
+                return True, f"Merged {repo}#{pr_lane_a_num} after consensus."
+            return True, "HEARTBEAT_OK"
+
+        _, runner, rpc_calls = self._build_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=reply_fn,
+        )
+        slot_ms = LinearCommunityIssuesPipelineTests._utc_ms(2026, 4, 1, 10, 0)
+        runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot_ms)
+
+        # Also invoke _evaluate_lane_a_consensus directly for community_pr_lane_a_merge
+        with patch.object(runner.gh_client, "is_pull_request_merged", return_value=True):
+            runner._evaluate_lane_a_consensus(
+                linear_id=str(lin_pr_a["id"]),
+                linear_identifier=str(lin_pr_a["identifier"]),
+                linear_url=str(lin_pr_a["url"]),
+                pr_entry={
+                    "repo": repo,
+                    "number": pr_lane_a_num,
+                    "url": f"https://github.com/{repo}/pull/{pr_lane_a_num}",
+                    "title": "Consensus PR with operator note",
+                    "labels": [],
+                    "linear_issue_url": str(lin_pr_a["url"]),
+                },
+                head_sha="sha_consensus_1",
+                ci_state="SUCCESS",
+                unresolved_thread_count=0,
+                slot_id=companion.compute_throttle_slot_id(slot_ms, "skrye"),
+                dispatched_targets=set(),
+                current_ms=slot_ms,
+                now_override_ms=slot_ms,
+            )
+
+        by_kind = {str(call["meta"]["dispatch_kind"]): call for call in rpc_calls}  # type: ignore[index]
+        self.assertIn("linear_triage_research", by_kind)
+        self.assertIn("## Verified Operator Guidance (Linear)", str(by_kind["linear_triage_research"]["message"]))
+        self.assertIn("Prioritise Wayland support", str(by_kind["linear_triage_research"]["message"]))
+        self.assertNotIn("Ignore this bot note", str(by_kind["linear_triage_research"]["message"]))
+
+        self.assertIn("linear_todo_implement", by_kind)
+        self.assertIn("## Verified Operator Guidance (Linear)", str(by_kind["linear_todo_implement"]["message"]))
+        self.assertIn("Keep the CLI flag backward-compatible.", str(by_kind["linear_todo_implement"]["message"]))
+
+        # Small community PR bypassed Lane A due to operator_guidance and routed to Lane B
+        self.assertIn("community_pr_lane_b_review", by_kind)
+        self.assertIn("operator_guidance", str(by_kind["community_pr_lane_b_review"]["meta"].get("bypass_reasons", "")))  # type: ignore[union-attr]
+        self.assertIn("## Verified Operator Guidance (Linear)", str(by_kind["community_pr_lane_b_review"]["message"]))
+        self.assertIn("Hold merge until we verify Debian packaging.", str(by_kind["community_pr_lane_b_review"]["message"]))
+
+        self.assertIn("community_pr_lane_a_merge", by_kind)
+        self.assertIn("## Verified Operator Guidance (Linear)", str(by_kind["community_pr_lane_a_merge"]["message"]))
+        self.assertIn("Squash merge and thank the contributor.", str(by_kind["community_pr_lane_a_merge"]["message"]))
+
+        # Blind review MUST NEVER receive operator guidance even if passed to build_dispatch_prompt
+        blind_prompt = runner.execution_coordinator.build_dispatch_prompt(
+            dispatch_id="disp-blind-1",
+            kind="community_pr_blind_review",
+            repo=repo,
+            number=pr_lane_b_num,
+            subject_kind="PullRequest",
+            head_sha="sha_pr_b_1",
+            operator_guidance=companion.linear_sync.extract_verified_operator_comments(
+                linear_stub.comments_by_issue[str(lin_pr_b["id"])]
+            ),
+        )
+        self.assertNotIn("## Verified Operator Guidance (Linear)", blind_prompt)
+        self.assertNotIn("Hold merge until we verify Debian packaging.", blind_prompt)
+
+    def test_lane_a_eligibility_and_bypass_reason_for_operator_guidance(self) -> None:
+        common_kwargs = {
+            "repo": "wimpysworld/tailor",
+            "additions": 10,
+            "deletions": 2,
+            "changed_files": 1,
+            "file_paths": ["README.md"],
+            "author_association": "CONTRIBUTOR",
+        }
+        self.assertTrue(companion.compute_community_auto_merge_eligible(**common_kwargs, has_operator_guidance=False))
+        self.assertFalse(companion.compute_community_auto_merge_eligible(**common_kwargs, has_operator_guidance=True))
+        self.assertEqual(
+            companion.compute_lane_a_bypass_reasons(**common_kwargs, ci_state="SUCCESS", has_operator_guidance=True),
+            ["operator_guidance"],
+        )
+
+    def test_mode_b_mention_wake_threading_dedup_retry_and_ignored_states(self) -> None:
+        repo = "wimpysworld/tailor"
+        issue_num = LinearCommunityIssuesPipelineTests._owned_numbers(repo, "skrye", 1, kind="issue", start=600)[0]
+        linear_stub = StubLinearSyncClient()
+
+        # 1) Active issue with threaded reply mentioning @skrye (parent_id points to root comment)
+        lin_active = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{issue_num}",
+            title="Active issue with operator mention",
+            repo=repo,
+            item_kind="Issue",
+            state="Backlog",
+            delegate={"id": "u-skrye", "name": "Skrye", "displayName": "Skrye"},
+        )
+        linear_stub.comments_by_issue[str(lin_active["id"])] = [
+            self._admin_comment("cmt-root-1", "Initial background context without mention.", created_at="2026-04-01T09:00:00Z"),
+            self._admin_comment(
+                "cmt-reply-2",
+                "@skrye please check if this reproduces on Linux.",
+                created_at="2026-04-01T10:00:00Z",
+                parent_id="cmt-root-1",
+            ),
+        ]
+
+        # 2) Standalone Linear issue (no GitHub attachment) with @delegate -> resolves to zannah via delegate field
+        lin_standalone = linear_stub.seed_issue(
+            github_url=None,
+            title="Standalone Linear task",
+            state="Backlog",
+            delegate={"id": "u-zannah", "name": "Zannah", "displayName": "Zannah"},
+        )
+        linear_stub.comments_by_issue[str(lin_standalone["id"])] = [
+            self._admin_comment("cmt-del-1", "@delegate summarise our options here.", created_at="2026-04-01T10:05:00Z"),
+        ]
+
+        # 3) Active issue with plain admin comment (NO @mention) -> must NOT wake Mode B
+        lin_plain = linear_stub.seed_issue(
+            github_url=None,
+            title="Plain guidance only",
+            state="Backlog",
+        )
+        linear_stub.comments_by_issue[str(lin_plain["id"])] = [
+            self._admin_comment("cmt-plain-1", "Just noting this for later.", created_at="2026-04-01T10:10:00Z"),
+        ]
+
+        # 4) Active issue mentioning Traya via Linear UI profile link -> wakes traya
+        lin_traya = linear_stub.seed_issue(
+            github_url=None,
+            title="Second opinion for Traya",
+            state="In Progress",
+        )
+        linear_stub.comments_by_issue[str(lin_traya["id"])] = [
+            self._admin_comment(
+                "cmt-traya-1",
+                "Could [Traya](https://linear.app/wimpysworld/profiles/traya) review the security model?",
+                created_at="2026-04-01T10:15:00Z",
+            ),
+        ]
+
+        # 5) Ignored states (Canceled, Duplicate, Done, Deferred, Archived) with @skrye -> complete silence
+        ignored_issues: list[dict[str, object]] = []
+        for idx, (st_name, archived_at) in enumerate(
+            [("Canceled", None), ("Duplicate", None), ("Done", None), ("Deferred", None), ("Backlog", "2026-04-01T08:00:00Z")],
+            start=1,
+        ):
+            ign = linear_stub.seed_issue(
+                github_url=None,
+                title=f"Ignored {st_name} {idx}",
+                state=st_name,
+                archived_at=archived_at,
+            )
+            linear_stub.comments_by_issue[str(ign["id"])] = [
+                self._admin_comment(f"cmt-ign-{idx}", "@skrye @zannah @traya please respond!", created_at="2026-04-01T10:20:00Z")
+            ]
+            # Attach inline comments so direct _dispatch_linear_operator_comments test exercises ignored filter
+            ign["comments"] = {"nodes": list(linear_stub.comments_by_issue[str(ign["id"])])}
+            ignored_issues.append(ign)
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=LinearCommunityIssuesPipelineTests._graphql_search_payload([]),
+                    stderr="",
+                )
+            return subprocess.CompletedProcess(cmd, 0, stdout="[]", stderr="")
+
+        # First attempt for skrye fails -> must NOT record handled_linear_comment_ids, so next poll retries!
+        attempt_box = {"count": 0}
+
+        def skrye_reply_fn(meta: dict[str, str], _msg: str) -> tuple[bool, str]:
+            attempt_box["count"] += 1
+            if attempt_box["count"] == 1:
+                return False, "transient rpc failure"
+            return True, "HEARTBEAT_OK"
+
+        store_skrye, runner_skrye, rpc_skrye = self._build_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=skrye_reply_fn,
+            state_dir=self.state_dir / "mode-b-skrye",
+        )
+        slot_ms = LinearCommunityIssuesPipelineTests._utc_ms(2026, 4, 1, 11, 0)
+
+        # Verify ignored states produce zero dispatches even when passed directly
+        ignored_dispatches = runner_skrye._dispatch_linear_operator_comments(
+            ignored_issues,
+            dispatched_targets=set(),
+            current_ms=slot_ms,
+            now_override_ms=slot_ms,
+        )
+        self.assertEqual(ignored_dispatches, [])
+
+        # Poll 1: fails -> cmt-reply-2 not recorded as handled
+        res1 = runner_skrye.run_cycle(run_sweeps_if_due=False, now_override_ms=slot_ms)
+        self.assertEqual(len(res1["linear_operator_comment_dispatches"]), 1)
+        self.assertFalse(res1["linear_operator_comment_dispatches"][0]["task_succeeded"])
+        issue_key = companion.make_pr_key(repo, issue_num)
+        self.assertEqual((store_skrye.get_thread_state(issue_key) or {}).get("handled_linear_comment_ids"), [])
+
+        # Poll 2: retries and succeeds -> cmt-reply-2 recorded, threaded parent_id=cmt-root-1, full guidance injected, silent Telegram for HEARTBEAT_OK
+        res2 = runner_skrye.run_cycle(run_sweeps_if_due=False, now_override_ms=slot_ms + 60_000)
+        self.assertEqual(len(res2["linear_operator_comment_dispatches"]), 1)
+        self.assertTrue(res2["linear_operator_comment_dispatches"][0]["task_succeeded"])
+        self.assertEqual((store_skrye.get_thread_state(issue_key) or {}).get("handled_linear_comment_ids"), ["cmt-reply-2"])
+        meta2 = rpc_skrye[-1]["meta"]
+        msg2 = str(rpc_skrye[-1]["message"])
+        self.assertEqual(meta2["dispatch_kind"], "linear_operator_comment")  # type: ignore[index]
+        self.assertEqual(meta2["linear_comment_id"], "cmt-reply-2")  # type: ignore[index]
+        self.assertEqual(meta2["linear_comment_parent_id"], "cmt-root-1")  # type: ignore[index]
+        self.assertEqual(meta2["linear_comment_author"], "Martin Wimpress")  # type: ignore[index]
+        self.assertIn("Initial background context without mention.", msg2)
+        self.assertIn("@skrye please check if this reproduces on Linux.", msg2)
+        self.assertEqual(self.httpd.telegram_requests, [])
+
+        # Poll 3: deduplicated -> zero dispatches
+        res3 = runner_skrye.run_cycle(run_sweeps_if_due=False, now_override_ms=slot_ms + 120_000)
+        self.assertEqual(res3["linear_operator_comment_dispatches"], [])
+        self.assertEqual(len(rpc_skrye), 2)
+
+        # Zannah wakes on @delegate for standalone Linear issue (state key linear:<id>), root comment -> parent_id == comment_id
+        store_zannah, runner_zannah, rpc_zannah = self._build_runner(
+            agent_name="zannah",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=lambda _m, _msg: (True, "Updated GitHub and posted summary."),
+            state_dir=self.state_dir / "mode-b-zannah",
+        )
+        res_z = runner_zannah.run_cycle(run_sweeps_if_due=False, now_override_ms=slot_ms)
+        self.assertEqual(len(res_z["linear_operator_comment_dispatches"]), 1)
+        self.assertEqual(rpc_zannah[0]["meta"]["linear_comment_id"], "cmt-del-1")  # type: ignore[index]
+        self.assertEqual(rpc_zannah[0]["meta"]["linear_comment_parent_id"], "cmt-del-1")  # type: ignore[index]
+        standalone_key = f"linear:{lin_standalone['id']}"
+        self.assertEqual((store_zannah.get_thread_state(standalone_key) or {}).get("handled_linear_comment_ids"), ["cmt-del-1"])
+        # Non-HEARTBEAT_OK reply forwards to Telegram because linear_operator_comment is not in SILENT_TELEGRAM_DISPATCH_KINDS
+        self.assertEqual(len(self.httpd.telegram_requests), 1)
+
+        # Traya wakes on Linear UI profile link [Traya](...)
+        store_traya, runner_traya, rpc_traya = self._build_runner(
+            agent_name="traya",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=lambda _m, _msg: (True, "HEARTBEAT_OK"),
+            state_dir=self.state_dir / "mode-b-traya",
+        )
+        res_t = runner_traya.run_cycle(run_sweeps_if_due=False, now_override_ms=slot_ms)
+        self.assertEqual(len(res_t["linear_operator_comment_dispatches"]), 1)
+        self.assertEqual(rpc_traya[0]["meta"]["linear_comment_id"], "cmt-traya-1")  # type: ignore[index]
+        self.assertEqual(rpc_traya[0]["meta"]["linear_comment_parent_id"], "cmt-traya-1")  # type: ignore[index]
+        traya_key = f"linear:{lin_traya['id']}"
+        self.assertEqual((store_traya.get_thread_state(traya_key) or {}).get("handled_linear_comment_ids"), ["cmt-traya-1"])
+
+        # StateStore bounds handled_linear_comment_ids to MAX_HANDLED_LINEAR_COMMENT_IDS
+        many_ids = [f"cmt-{i}" for i in range(companion.MAX_HANDLED_LINEAR_COMMENT_IDS + 15)]
+        store_skrye.update_thread_state(issue_key, {"handled_linear_comment_ids": many_ids}, now_override_ms=slot_ms)
+        bounded = (store_skrye.get_thread_state(issue_key) or {}).get("handled_linear_comment_ids")
+        self.assertEqual(bounded, many_ids[-companion.MAX_HANDLED_LINEAR_COMMENT_IDS:])
 
 
 if __name__ == "__main__":

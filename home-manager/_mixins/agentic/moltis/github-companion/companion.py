@@ -98,10 +98,12 @@ TEAM_LABEL_TRIGGER_REASONS: dict[str, str] = {
     "team:review": "team_review",
 }
 MODEL_FAMILY_BY_AGENT: dict[str, str] = {"skrye": "gemini", "zannah": "gemini", "traya": "gpt"}
-LINEAR_ISSUE_DISPATCH_KINDS = frozenset({"linear_triage_research", "linear_todo_implement"})
+LINEAR_ISSUE_DISPATCH_KINDS = frozenset({"linear_triage_research", "linear_todo_implement", "linear_operator_comment"})
 LINEAR_PR_DISPATCH_KINDS = frozenset({"community_pr_blind_review", "community_pr_lane_a_merge", "community_pr_lane_b_review"})
 MODE_1B_DISPATCH_KINDS = frozenset({"community_triage", "community_auto_review", *TEAM_LABELS, *LINEAR_ISSUE_DISPATCH_KINDS, *LINEAR_PR_DISPATCH_KINDS})
 SILENT_TELEGRAM_DISPATCH_KINDS = frozenset({"linear_triage_research", "community_pr_blind_review", "community_pr_lane_b_review"})
+MAX_LINEAR_OPERATOR_COMMENTS_PER_POLL = 3
+MAX_HANDLED_LINEAR_COMMENT_IDS = 50
 DEFAULT_COMMUNITY_AUTO_MERGE_ENABLED = True
 DEFAULT_COMMUNITY_AUTO_MERGE_MAX_LINES = 150
 DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES = 5
@@ -457,6 +459,20 @@ def extract_linear_github_target(linear_issue: dict, *, expected_kind: str | Non
             continue
         return parsed
     return None
+
+
+def _resolve_linear_operator_guidance(
+    linear_issue: dict | None,
+    *,
+    comments: Iterable[dict] | None = None,
+) -> list[dict[str, str]]:
+    """Return verified Linear workspace admin comments from `comments` or `linear_issue['comments']`."""
+    raw_comments: object = (
+        comments
+        if comments is not None
+        else (linear_issue.get("comments") if isinstance(linear_issue, dict) else None)
+    )
+    return linear_sync.extract_verified_operator_comments(raw_comments)
 
 
 def verify_team_label_from_events(events: Iterable[dict], label_name: str) -> dict | None:
@@ -937,12 +953,15 @@ def compute_community_auto_merge_eligible(
     author_association: str | None = None,
     mergeable: str | None = None,
     merge_state_status: str | None = None,
+    has_operator_guidance: bool = False,
     enabled: bool = DEFAULT_COMMUNITY_AUTO_MERGE_ENABLED,
     max_lines: int = DEFAULT_COMMUNITY_AUTO_MERGE_MAX_LINES,
     max_files: int = DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES,
     excluded_repos: Iterable[str] = DEFAULT_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS,
 ) -> bool:
     if not enabled:
+        return False
+    if has_operator_guidance:
         return False
     if is_first_time_contributor_association(author_association):
         return False
@@ -979,6 +998,7 @@ def compute_lane_a_bypass_reasons(
     author_association: str | None = None,
     mergeable: str | None = None,
     merge_state_status: str | None = None,
+    has_operator_guidance: bool = False,
     enabled: bool = DEFAULT_COMMUNITY_AUTO_MERGE_ENABLED,
     max_lines: int = DEFAULT_COMMUNITY_AUTO_MERGE_MAX_LINES,
     max_files: int = DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES,
@@ -988,6 +1008,8 @@ def compute_lane_a_bypass_reasons(
     reasons: list[str] = []
     if not enabled:
         reasons.append("disabled")
+    if has_operator_guidance:
+        reasons.append("operator_guidance")
     if is_first_time_contributor_association(author_association):
         reasons.append("first_time_contributor")
     if is_merge_conflicting(mergeable, merge_state_status):
@@ -2425,7 +2447,23 @@ class CompanionStateStore:
             "linear_issue_url": None,
             "decision_notified_sha": None,
             "ready_for_signoff_notified_sha": None,
+            "handled_linear_comment_ids": [],
         }
+
+    @staticmethod
+    def _normalize_handled_linear_comment_ids(raw: object) -> list[str]:
+        if not isinstance(raw, list):
+            return []
+        deduped: list[str] = []
+        seen: set[str] = set()
+        for item in raw:
+            clean = str(item or "").strip()
+            if clean and clean not in seen:
+                seen.add(clean)
+                deduped.append(clean)
+        if len(deduped) > MAX_HANDLED_LINEAR_COMMENT_IDS:
+            return deduped[-MAX_HANDLED_LINEAR_COMMENT_IDS:]
+        return deduped
 
     @staticmethod
     def _default_throttles() -> dict:
@@ -2630,6 +2668,7 @@ class CompanionStateStore:
                 if isinstance(v, dict):
                     entry = {**self._default_thread_entry(), **v}
                     entry["retry_count"] = max(0, _safe_int(entry.get("retry_count"), 0))
+                    entry["handled_linear_comment_ids"] = self._normalize_handled_linear_comment_ids(entry.get("handled_linear_comment_ids"))
                     norm_threads[str(k)] = entry
         merged["threads"] = norm_threads
         return merged
@@ -2648,6 +2687,7 @@ class CompanionStateStore:
                     if isinstance(v, dict):
                         entry = {**self._default_thread_entry(), **_as_dict(merged_threads.get(str(k))), **v}
                         entry["retry_count"] = max(0, _safe_int(entry.get("retry_count"), 0))
+                        entry["handled_linear_comment_ids"] = self._normalize_handled_linear_comment_ids(entry.get("handled_linear_comment_ids"))
                         merged_threads[str(k)] = entry
                 state.update({k: v for k, v in updates.items() if k not in ("threads", "throttles")})
                 state["threads"] = merged_threads
@@ -2857,6 +2897,7 @@ class CompanionStateStore:
             target_keys, entry = self._load_entry_unlocked(threads, key, repo=repo, number=number)
             mutator(entry, stamp_ms)
             entry["retry_count"] = max(0, _safe_int(entry.get("retry_count"), 0))
+            entry["handled_linear_comment_ids"] = self._normalize_handled_linear_comment_ids(entry.get("handled_linear_comment_ids"))
             entry["updated_at_ms"] = stamp_ms
             for tk in target_keys:
                 threads[tk] = dict(entry)
@@ -4448,7 +4489,7 @@ class LocalExecutionCoordinator:
         self.clock = clock
         self.sleeper = sleeper
 
-    def build_dispatch_prompt(self, *, dispatch_id: str, kind: str, thread_id: str | None = None, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, head_sha: str | None = None, trigger_reason: str | None = None, comment_id: int | str | None = None, review_id: int | str | None = None, trusted_item_id: int | str | None = None, community_auto_merge_eligible: bool | None = None, team_label: str | None = None, triaged_head_sha: str | None = None, head_sha_changed: bool = False, linear_issue_id: str | None = None, linear_issue_identifier: str | None = None, linear_issue_url: str | None = None, linear_issue_estimate: int | None = None, github_url: str | None = None, bypass_reasons: Iterable[str] | None = None, lane_a_polish_notes: str | None = None, extra_instructions: str = "") -> str:
+    def build_dispatch_prompt(self, *, dispatch_id: str, kind: str, thread_id: str | None = None, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, head_sha: str | None = None, trigger_reason: str | None = None, comment_id: int | str | None = None, review_id: int | str | None = None, trusted_item_id: int | str | None = None, community_auto_merge_eligible: bool | None = None, team_label: str | None = None, triaged_head_sha: str | None = None, head_sha_changed: bool = False, linear_issue_id: str | None = None, linear_issue_identifier: str | None = None, linear_issue_url: str | None = None, linear_issue_estimate: int | None = None, linear_comment_id: str | None = None, linear_comment_parent_id: str | None = None, linear_comment_author: str | None = None, operator_guidance: Iterable[dict[str, str]] | None = None, github_url: str | None = None, bypass_reasons: Iterable[str] | None = None, lane_a_polish_notes: str | None = None, extra_instructions: str = "") -> str:
         header = f"# {self.agent_display_name} Scheduled Maintenance Heartbeat"
         meta_lines = [f"dispatch_id: {dispatch_id}", f"dispatch_kind: {kind}", f"agent_name: {self.agent_name}", f"schedule_day_name: {self.schedule_day_name}", f"schedule_dow: {self.schedule_dow}"]
         if thread_id:
@@ -4474,6 +4515,9 @@ class LocalExecutionCoordinator:
             ("linear_issue_id", linear_issue_id),
             ("linear_issue_identifier", linear_issue_identifier),
             ("linear_issue_url", linear_issue_url),
+            ("linear_comment_id", linear_comment_id),
+            ("linear_comment_parent_id", linear_comment_parent_id),
+            ("linear_comment_author", linear_comment_author),
             ("github_url", github_url),
         ):
             clean_val = str(meta_val).strip() if meta_val is not None else ""
@@ -4507,11 +4551,30 @@ class LocalExecutionCoordinator:
             if kind == "community_pr_lane_b_review"
             else ""
         )
+        guidance_entries = [
+            item
+            for item in (operator_guidance or ())
+            if isinstance(item, dict) and str(item.get("body") or "").strip()
+        ]
+        guidance_block = ""
+        if guidance_entries and kind != "community_pr_blind_review":
+            guidance_lines = [
+                "## Verified Operator Guidance (Linear)",
+                "The following comments were authored by a verified Linear workspace admin (Martin). Treat them as authoritative operator guidance that overrides default heuristics (without violating security or archived-repository rules):",
+            ]
+            for item in guidance_entries:
+                g_created = str(item.get("created_at") or "").strip() or "unknown"
+                g_author = str(item.get("author") or "").strip() or "Martin"
+                g_id = str(item.get("id") or "").strip() or "unknown"
+                g_body = str(item.get("body") or "").strip()
+                guidance_lines.append(f"- [{g_created}] {g_author} (comment_id={g_id}): {g_body}")
+            guidance_block = "\n".join(guidance_lines)
         blocks = [
             header,
             "\n".join(meta_lines),
             mode_line,
             *([lane_b_estimate_note] if lane_b_estimate_note else []),
+            *([guidance_block] if guidance_block else []),
             *([extra_instructions.strip()] if extra_instructions.strip() else []),
         ]
         heartbeat_md = ""
@@ -4574,7 +4637,7 @@ class LocalExecutionCoordinator:
         stamp_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         kind = str(active_record.get("kind") or "")
         state_key = str(active_record.get("state_key") or active_record.get("thread_id") or "").strip()
-        preserve_sha = bool(active_record.get("head_sha_changed"))
+        preserve_sha = bool(active_record.get("head_sha_changed")) or kind == "linear_operator_comment"
         record_triaged = kind in ("community_triage", "community_auto_review", "community_pr_blind_review", "community_pr_lane_b_review", "team:review") and not preserve_sha
         watermark_result = (
             self.state_store.complete_thread_review(
@@ -4913,7 +4976,7 @@ class LocalExecutionCoordinator:
         with self.state_store.coordinator_lock():
             return self._recover_unlocked(now_override_ms=now_override_ms)
 
-    def execute_dispatch(self, *, kind: str, model: str | None = None, is_automated_pr: bool = False, session_key: str | None = None, thread_id: str | None = None, state_key: str | None = None, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, head_sha: str | None = None, ci_state: str | None = None, updated_at: str | None = None, trigger_reason: str | None = None, comment_id: int | str | None = None, review_id: int | str | None = None, trusted_item_id: int | str | None = None, community_auto_merge_eligible: bool | None = None, team_label: str | None = None, team_label_event_key: str | None = None, triaged_head_sha: str | None = None, head_sha_changed: bool = False, linear_issue_id: str | None = None, linear_issue_identifier: str | None = None, linear_issue_url: str | None = None, linear_issue_estimate: int | None = None, github_url: str | None = None, bypass_reasons: Iterable[str] | None = None, lane_a_polish_notes: str | None = None, revision: str | None = None, sweep_date: str | None = None, extra_instructions: str = "", dispatch_id: str | None = None, defer_watermark_commit: bool = False, now_override_ms: int | None = None, **_ignored: object) -> dict:
+    def execute_dispatch(self, *, kind: str, model: str | None = None, is_automated_pr: bool = False, session_key: str | None = None, thread_id: str | None = None, state_key: str | None = None, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, head_sha: str | None = None, ci_state: str | None = None, updated_at: str | None = None, trigger_reason: str | None = None, comment_id: int | str | None = None, review_id: int | str | None = None, trusted_item_id: int | str | None = None, community_auto_merge_eligible: bool | None = None, team_label: str | None = None, team_label_event_key: str | None = None, triaged_head_sha: str | None = None, head_sha_changed: bool = False, linear_issue_id: str | None = None, linear_issue_identifier: str | None = None, linear_issue_url: str | None = None, linear_issue_estimate: int | None = None, linear_comment_id: str | None = None, linear_comment_parent_id: str | None = None, linear_comment_author: str | None = None, operator_guidance: Iterable[dict[str, str]] | None = None, github_url: str | None = None, bypass_reasons: Iterable[str] | None = None, lane_a_polish_notes: str | None = None, revision: str | None = None, sweep_date: str | None = None, extra_instructions: str = "", dispatch_id: str | None = None, defer_watermark_commit: bool = False, now_override_ms: int | None = None, **_ignored: object) -> dict:
         """Serialise a model turn under coordinator.lock while allowing state.json updates under companion.lock."""
         with self.state_store.coordinator_lock():
             recovery = self._recover_unlocked(now_override_ms=now_override_ms)
@@ -4961,6 +5024,9 @@ class LocalExecutionCoordinator:
                 ("linear_issue_id", str(linear_issue_id).strip() if linear_issue_id is not None else ""),
                 ("linear_issue_identifier", str(linear_issue_identifier).strip() if linear_issue_identifier is not None else ""),
                 ("linear_issue_url", str(linear_issue_url).strip() if linear_issue_url is not None else ""),
+                ("linear_comment_id", str(linear_comment_id).strip() if linear_comment_id is not None else ""),
+                ("linear_comment_parent_id", str(linear_comment_parent_id).strip() if linear_comment_parent_id is not None else ""),
+                ("linear_comment_author", str(linear_comment_author).strip() if linear_comment_author is not None else ""),
                 ("github_url", str(github_url).strip() if github_url is not None else ""),
                 ("revision", revision),
                 ("sweep_date", sweep_date),
@@ -4975,7 +5041,7 @@ class LocalExecutionCoordinator:
 
             start_notice_text = format_start_of_work_notice(agent_display_name=self.agent_display_name, kind=kind, repo=repo, number=number, subject_kind=subject_kind, trigger_reason=trigger_reason, sweep_date=sweep_date, schedule_day_name=self.schedule_day_name)
             start_notice_sent, start_notice_error = False, None
-            prompt_message = self.build_dispatch_prompt(dispatch_id=resolved_dispatch_id, kind=kind, thread_id=thread_id, repo=repo, number=number, subject_kind=subject_kind, head_sha=head_sha, trigger_reason=trigger_reason, comment_id=comment_id, review_id=review_id, trusted_item_id=trusted_item_id, community_auto_merge_eligible=community_auto_merge_eligible, team_label=team_label, triaged_head_sha=triaged_head_sha, head_sha_changed=head_sha_changed, linear_issue_id=linear_issue_id, linear_issue_identifier=linear_issue_identifier, linear_issue_url=linear_issue_url, linear_issue_estimate=linear_issue_estimate, github_url=github_url, bypass_reasons=bypass_reasons, lane_a_polish_notes=lane_a_polish_notes, extra_instructions=extra_instructions)
+            prompt_message = self.build_dispatch_prompt(dispatch_id=resolved_dispatch_id, kind=kind, thread_id=thread_id, repo=repo, number=number, subject_kind=subject_kind, head_sha=head_sha, trigger_reason=trigger_reason, comment_id=comment_id, review_id=review_id, trusted_item_id=trusted_item_id, community_auto_merge_eligible=community_auto_merge_eligible, team_label=team_label, triaged_head_sha=triaged_head_sha, head_sha_changed=head_sha_changed, linear_issue_id=linear_issue_id, linear_issue_identifier=linear_issue_identifier, linear_issue_url=linear_issue_url, linear_issue_estimate=linear_issue_estimate, linear_comment_id=linear_comment_id, linear_comment_parent_id=linear_comment_parent_id, linear_comment_author=linear_comment_author, operator_guidance=operator_guidance, github_url=github_url, bypass_reasons=bypass_reasons, lane_a_polish_notes=lane_a_polish_notes, extra_instructions=extra_instructions)
 
             rpc_error: Exception | None = None
             rpc_response: dict | None = None
@@ -5355,7 +5421,7 @@ class GithubCompanionRunner:
         }
 
     def _poll_active_linear_issues(self) -> list[dict] | None:
-        if self.linear_client is None or self.state_store.agent_name not in SWEEP_AGENT_ORDER:
+        if self.linear_client is None or self.state_store.agent_name not in AGENT_ORDER:
             return None
         try:
             raw_issues = self.linear_client.list_project_issues_by_state(("Triage", "Backlog", "Todo", "In Progress", "In Review"))
@@ -5363,6 +5429,30 @@ class GithubCompanionRunner:
             sys.stderr.write(f"moltis-github-companion linear-poll warning ({self.state_store.agent_name}): {exc}\n")
             return None
         return [item for item in (raw_issues or ()) if isinstance(item, dict)]
+
+    def _get_linear_issue_operator_guidance(
+        self,
+        linear_issue: dict | None,
+        *,
+        fallback_issue: dict | None = None,
+        comments: Iterable[dict] | None = None,
+    ) -> list[dict[str, str]]:
+        if comments is not None:
+            return _resolve_linear_operator_guidance(linear_issue, comments=comments)
+        if isinstance(linear_issue, dict) and "comments" in linear_issue:
+            return _resolve_linear_operator_guidance(linear_issue)
+        if isinstance(fallback_issue, dict) and "comments" in fallback_issue:
+            return _resolve_linear_operator_guidance(fallback_issue)
+        if self.linear_client is not None:
+            linear_id = str(_as_dict(linear_issue).get("id") or _as_dict(fallback_issue).get("id") or "").strip()
+            if linear_id:
+                try:
+                    fetched = self.linear_client.list_issue_comments(linear_id)
+                except Exception as exc:
+                    sys.stderr.write(f"moltis-github-companion linear-guidance-comments warning ({linear_id}): {exc}\n")
+                    return []
+                return _resolve_linear_operator_guidance(linear_issue, comments=fetched)
+        return []
 
     def _sync_closed_github_items_to_linear(
         self,
@@ -5509,6 +5599,148 @@ class GithubCompanionRunner:
             "issue_key": issue_key,
         }
 
+    def _dispatch_linear_operator_comments(
+        self,
+        active_linear_issues: Iterable[dict],
+        *,
+        dispatched_targets: set[str],
+        current_ms: int,
+        now_override_ms: int | None,
+    ) -> list[dict]:
+        if self.linear_client is None or self.state_store.agent_name not in AGENT_ORDER:
+            return []
+        dispatches: list[dict] = []
+        for linear_issue in active_linear_issues or ():
+            if len(dispatches) >= MAX_LINEAR_OPERATOR_COMMENTS_PER_POLL:
+                break
+            if not isinstance(linear_issue, dict) or is_ignored_linear_issue_state(linear_issue):
+                continue
+            linear_id = str(linear_issue.get("id") or "").strip()
+            if not linear_id:
+                continue
+            target = extract_linear_github_target(linear_issue)
+            if target is not None:
+                repo, item_label, number, github_url = target
+                subject_kind = "PullRequest" if item_label == "PR" else "Issue"
+                state_key = make_pr_key(repo, number)
+            else:
+                repo, number, subject_kind, github_url = None, None, "Issue", None
+                state_key = f"linear:{linear_id}"
+            if state_key in dispatched_targets:
+                continue
+            entry = _as_dict(self.state_store.get_thread_state(state_key))
+            if bool(entry.get("in_flight")) or _safe_int(entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
+                continue
+
+            delegate_agent: str | None = None
+            delegate_obj = linear_issue.get("delegate")
+            if isinstance(delegate_obj, dict):
+                for field_name in ("name", "displayName"):
+                    raw_delegate = str(delegate_obj.get(field_name) or "").strip().lower()
+                    if raw_delegate in LOGIN_TO_AGENT_NAME:
+                        delegate_agent = LOGIN_TO_AGENT_NAME[raw_delegate]
+                        break
+            if delegate_agent is None and repo and number is not None:
+                delegate_agent = (
+                    compute_pr_owner(repo, number)
+                    if subject_kind == "PullRequest"
+                    else compute_issue_owner(repo, number)
+                )
+
+            if "comments" in linear_issue:
+                raw_comments: object = linear_issue.get("comments")
+            else:
+                try:
+                    raw_comments = self.linear_client.list_issue_comments(linear_id)
+                except Exception as exc:
+                    sys.stderr.write(
+                        f"moltis-github-companion linear-operator-comments warning ({state_key} / {linear_id}): {exc}\n"
+                    )
+                    continue
+            all_verified = linear_sync.extract_verified_operator_comments(raw_comments)
+            if not all_verified:
+                continue
+
+            handled_ids = set(
+                CompanionStateStore._normalize_handled_linear_comment_ids(
+                    entry.get("handled_linear_comment_ids")
+                )
+            )
+            matching_unhandled = [
+                comment
+                for comment in all_verified
+                if comment["id"]
+                and comment["id"] not in handled_ids
+                and self.state_store.agent_name
+                in linear_sync.parse_linear_operator_mentions(
+                    comment["body"],
+                    delegate_agent=delegate_agent,
+                )
+            ]
+            if not matching_unhandled:
+                continue
+
+            newest_comment = matching_unhandled[-1]
+            reply_parent_id = newest_comment["parent_id"] or newest_comment["id"]
+            linear_identifier = str(linear_issue.get("identifier") or "").strip() or None
+            linear_url = str(linear_issue.get("url") or "").strip() or None
+            title = (
+                str(linear_issue.get("title") or "").strip()
+                or str(entry.get("title") or "").strip()
+                or (f"{repo}#{number}" if repo and number is not None else (linear_identifier or linear_id))
+            )
+            updated_at = str(entry.get("updated_at") or linear_issue.get("updatedAt") or "").strip() or None
+            state_updates: dict[str, object] = {
+                "subject_type": subject_kind,
+                "title": title,
+                "linear_issue_id": linear_id,
+                "linear_issue_identifier": linear_identifier,
+                "linear_issue_url": linear_url,
+            }
+            if repo:
+                state_updates["repo"] = repo
+            if number is not None:
+                state_updates["number"] = number
+            if github_url:
+                state_updates["url"] = github_url
+            self.state_store.update_thread_state(state_key, state_updates, now_override_ms=current_ms)
+            dispatched_targets.add(state_key)
+            res = self.execution_coordinator.execute_dispatch(
+                kind="linear_operator_comment",
+                is_automated_pr=False,
+                state_key=state_key,
+                repo=repo,
+                number=number,
+                subject_kind=subject_kind,
+                updated_at=updated_at,
+                trigger_reason="linear_operator_comment",
+                linear_issue_id=linear_id,
+                linear_issue_identifier=linear_identifier,
+                linear_issue_url=linear_url,
+                linear_comment_id=newest_comment["id"],
+                linear_comment_parent_id=reply_parent_id,
+                linear_comment_author=newest_comment["author"],
+                operator_guidance=all_verified,
+                github_url=github_url,
+                now_override_ms=now_override_ms,
+            )
+            if res.get("task_succeeded"):
+                latest_entry = _as_dict(self.state_store.get_thread_state(state_key))
+                existing_handled = CompanionStateStore._normalize_handled_linear_comment_ids(
+                    latest_entry.get("handled_linear_comment_ids")
+                )
+                new_ids = [comment["id"] for comment in matching_unhandled if comment["id"]]
+                updated_handled = CompanionStateStore._normalize_handled_linear_comment_ids(
+                    [*existing_handled, *new_ids]
+                )
+                self.state_store.update_thread_state(
+                    state_key,
+                    {"handled_linear_comment_ids": updated_handled},
+                    now_override_ms=current_ms,
+                )
+            dispatches.append(res)
+        return dispatches
+
     def _dispatch_linear_triage_research(self, active_linear_issues: Iterable[dict], *, slot_id: str, dispatched_targets: set[str], current_ms: int, now_override_ms: int | None) -> list[dict]:
         if self.linear_client is None or self.state_store.agent_name not in SWEEP_AGENT_ORDER:
             return []
@@ -5522,6 +5754,7 @@ class GithubCompanionRunner:
             consumed, _ = self.state_store.consume_throttle("triage_research", slot_id=slot_id, now_override_ms=current_ms)
             if not consumed:
                 break
+            operator_guidance = self._get_linear_issue_operator_guidance(linear_issue)
             self.state_store.update_thread_state(
                 cand["issue_key"],
                 {
@@ -5549,6 +5782,7 @@ class GithubCompanionRunner:
                 linear_issue_id=cand["linear_id"],
                 linear_issue_identifier=cand["linear_identifier"],
                 linear_issue_url=cand["linear_url"],
+                operator_guidance=operator_guidance,
                 github_url=cand["github_url"],
                 defer_watermark_commit=True,
                 now_override_ms=now_override_ms,
@@ -5697,6 +5931,7 @@ class GithubCompanionRunner:
                             now_override_ms=current_ms,
                         )
                 break
+            operator_guidance = self._get_linear_issue_operator_guidance(linear_issue)
             self.state_store.update_thread_state(
                 cand["issue_key"],
                 {
@@ -5724,6 +5959,7 @@ class GithubCompanionRunner:
                 linear_issue_id=cand["linear_id"],
                 linear_issue_identifier=cand["linear_identifier"],
                 linear_issue_url=cand["linear_url"],
+                operator_guidance=operator_guidance,
                 github_url=cand["github_url"],
                 defer_watermark_commit=True,
                 now_override_ms=now_override_ms,
@@ -6019,6 +6255,7 @@ class GithubCompanionRunner:
                     if p_note and p_note not in polish_parts:
                         polish_parts.append(p_note)
             lane_a_polish = "; ".join(polish_parts) if polish_parts else None
+            operator_guidance = _resolve_linear_operator_guidance(None, comments=comments)
             dispatched_targets.add(pr_key)
             dispatch_res = self.execution_coordinator.execute_dispatch(
                 kind="community_pr_lane_a_merge",
@@ -6036,6 +6273,7 @@ class GithubCompanionRunner:
                 linear_issue_id=clean_linear_id,
                 linear_issue_identifier=linear_identifier,
                 linear_issue_url=linear_url,
+                operator_guidance=operator_guidance,
                 github_url=pr_url,
                 lane_a_polish_notes=lane_a_polish,
                 defer_watermark_commit=True,
@@ -6443,6 +6681,7 @@ class GithubCompanionRunner:
         linear_identifier: str | None,
         linear_url: str | None,
         linear_estimate: int | None = None,
+        operator_guidance: Iterable[dict[str, str]] | None = None,
         slot_id: str,
         dispatched_targets: set[str],
         processed_pr_keys: set[str],
@@ -6456,6 +6695,12 @@ class GithubCompanionRunner:
             return "throttled"
         is_first_time = is_first_time_contributor_association(author_association)
         has_conflicts = is_merge_conflicting(mergeable, merge_state_status)
+        guidance_list = [
+            item
+            for item in (operator_guidance or ())
+            if isinstance(item, dict) and str(item.get("body") or "").strip()
+        ]
+        has_operator_guidance = bool(guidance_list)
         bypass_reasons = compute_lane_a_bypass_reasons(
             repo=repo,
             additions=additions,  # type: ignore[arg-type]
@@ -6467,6 +6712,7 @@ class GithubCompanionRunner:
             author_association=author_association,
             mergeable=mergeable,
             merge_state_status=merge_state_status,
+            has_operator_guidance=has_operator_guidance,
             enabled=self.state_store.community_auto_merge_enabled,
             max_lines=self.state_store.community_auto_merge_max_lines,
             max_files=self.state_store.community_auto_merge_max_files,
@@ -6496,6 +6742,7 @@ class GithubCompanionRunner:
             linear_issue_identifier=linear_identifier,
             linear_issue_url=linear_url,
             linear_issue_estimate=linear_estimate,
+            operator_guidance=guidance_list,
             github_url=pr_url,
             bypass_reasons=bypass_reasons,
             defer_watermark_commit=True,
@@ -6609,6 +6856,17 @@ class GithubCompanionRunner:
         breaker = linear_breaker if linear_breaker is not None else _LinearWriteCircuitBreaker()
         processed_pr_keys: set[str] = set()
         own_family = MODEL_FAMILY_BY_AGENT.get(self.state_store.agent_name, "gemini")
+        active_linear_by_id: dict[str, dict] = {}
+        active_linear_by_pr_key: dict[str, dict] = {}
+        for active_item in active_linear_issues or ():
+            if not isinstance(active_item, dict):
+                continue
+            aid = str(active_item.get("id") or "").strip()
+            if aid:
+                active_linear_by_id[aid] = active_item
+            a_target = extract_linear_github_target(active_item, expected_kind="PR")
+            if a_target is not None:
+                active_linear_by_pr_key[make_pr_key(a_target[0], a_target[2])] = active_item
 
         for pr_item in actionable_prs or ():
             if breaker.skip_if_tripped(scope="linear-pr-ensure"):
@@ -6670,9 +6928,11 @@ class GithubCompanionRunner:
             ).strip().upper()
             is_first_time = is_first_time_contributor_association(author_association)
             has_conflicts = mergeable == "CONFLICTING"
+            pre_guidance = _resolve_linear_operator_guidance(active_linear_by_pr_key.get(pr_key))
+            pre_has_operator_guidance = bool(pre_guidance)
             raw_eligible = pr_item.get("community_auto_merge_eligible")
             auto_merge_eligible = (
-                bool(raw_eligible) and not is_first_time and not has_conflicts
+                bool(raw_eligible) and not is_first_time and not has_conflicts and not pre_has_operator_guidance
                 if isinstance(raw_eligible, bool)
                 else compute_community_auto_merge_eligible(
                     repo=repo,
@@ -6684,6 +6944,7 @@ class GithubCompanionRunner:
                     author_association=author_association,
                     mergeable=mergeable,
                     merge_state_status=merge_state_status,
+                    has_operator_guidance=pre_has_operator_guidance,
                     enabled=self.state_store.community_auto_merge_enabled,
                     max_lines=self.state_store.community_auto_merge_max_lines,
                     max_files=self.state_store.community_auto_merge_max_files,
@@ -6773,6 +7034,14 @@ class GithubCompanionRunner:
                 },
                 now_override_ms=current_ms,
             )
+
+            operator_guidance = self._get_linear_issue_operator_guidance(
+                linear_issue,
+                fallback_issue=active_linear_by_id.get(linear_id) or active_linear_by_pr_key.get(pr_key),
+            )
+            if operator_guidance:
+                auto_merge_eligible = False
+                is_lane_a = False
 
             thread_id = str(pr_item.get("thread_id") or pr_entry.get("thread_id") or "").strip() or None
             if is_lane_a:
@@ -6878,6 +7147,7 @@ class GithubCompanionRunner:
                     linear_identifier=linear_identifier,
                     linear_url=linear_url,
                     linear_estimate=linear_estimate,
+                    operator_guidance=operator_guidance,
                     slot_id=slot_id,
                     dispatched_targets=dispatched_targets,
                     processed_pr_keys=processed_pr_keys,
@@ -6947,6 +7217,8 @@ class GithubCompanionRunner:
             has_conflicts = mergeable == "CONFLICTING"
             ci_needs_approval = has_action_required_ci(live_pr.get("statusCheckRollup"))
             linear_issues_by_pr_key[pr_key] = linear_issue
+            issue_operator_guidance = self._get_linear_issue_operator_guidance(linear_issue)
+            issue_has_operator_guidance = bool(issue_operator_guidance)
 
             if pr_entry.get("linear_issue_id") != linear_id or pr_entry.get("linear_issue_url") != linear_url:
                 self.state_store.update_thread_state(
@@ -7023,6 +7295,7 @@ class GithubCompanionRunner:
                         author_association=author_association,
                         mergeable=mergeable,
                         merge_state_status=merge_state_status,
+                        has_operator_guidance=issue_has_operator_guidance,
                         enabled=self.state_store.community_auto_merge_enabled,
                         max_lines=self.state_store.community_auto_merge_max_lines,
                         max_files=self.state_store.community_auto_merge_max_files,
@@ -7518,6 +7791,7 @@ class GithubCompanionRunner:
                     author_association=author_association,
                     mergeable=mergeable,
                     merge_state_status=merge_state_status,
+                    has_operator_guidance=issue_has_operator_guidance,
                     enabled=self.state_store.community_auto_merge_enabled,
                     max_lines=self.state_store.community_auto_merge_max_lines,
                     max_files=self.state_store.community_auto_merge_max_files,
@@ -7626,6 +7900,7 @@ class GithubCompanionRunner:
                         linear_identifier=linear_identifier,
                         linear_url=linear_url,
                         linear_estimate=linear_estimate,
+                        operator_guidance=issue_operator_guidance,
                         slot_id=slot_id,
                         dispatched_targets=dispatched_targets,
                         processed_pr_keys=processed_pr_keys,
@@ -8608,9 +8883,9 @@ class GithubCompanionRunner:
         poll_result = self.poller.poll_once(now_override_ms=now_override_ms)
         dismissed_threads: list[str] = list(poll_result.get("dismissed_threads") or [])
         if self.read_only_trial:
-            return {"status": "ok", "recovery": {"status": "read_only_trial", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "merge_conflict_actions": [], "stale_issue_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": [], "linear_todo_reconciliations": []}
+            return {"status": "ok", "recovery": {"status": "read_only_trial", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "merge_conflict_actions": [], "stale_issue_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": [], "linear_todo_reconciliations": [], "linear_operator_comment_dispatches": []}
         if self._is_coordinator_busy():
-            return {"status": "turn_in_progress", "recovery": {"status": "busy", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "merge_conflict_actions": [], "stale_issue_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": [], "linear_todo_reconciliations": []}
+            return {"status": "turn_in_progress", "recovery": {"status": "busy", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "merge_conflict_actions": [], "stale_issue_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": [], "linear_todo_reconciliations": [], "linear_operator_comment_dispatches": []}
 
         recovery = self.execution_coordinator.recover_active_dispatch(now_override_ms=now_override_ms)
         if not recovery.get("can_dispatch", True):
@@ -8631,6 +8906,7 @@ class GithubCompanionRunner:
                 "needs_decision_notifications": [],
                 "traya_blind_reviews": [],
                 "linear_todo_reconciliations": [],
+                "linear_operator_comment_dispatches": [],
             }
         current_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         slot_id = compute_throttle_slot_id(current_ms, self.state_store.agent_name)
@@ -8881,6 +9157,7 @@ class GithubCompanionRunner:
         stale_issue_actions: list[dict] = []
         needs_decision_notifications: list[dict] = []
         traya_blind_reviews: list[dict] = []
+        linear_operator_comment_dispatches: list[dict] = []
         if self.linear_client is not None and self.state_store.agent_name in SWEEP_AGENT_ORDER:
             active_linear_issues = self._poll_active_linear_issues()
             remaining_linear_issues: list[dict] = []
@@ -8944,6 +9221,13 @@ class GithubCompanionRunner:
                         if str(issue.get("id") or "").strip() not in stale_closed_ids
                     ]
             if remaining_linear_issues:
+                linear_operator_comment_dispatches = self._dispatch_linear_operator_comments(
+                    remaining_linear_issues,
+                    dispatched_targets=dispatched_targets,
+                    current_ms=current_ms,
+                    now_override_ms=now_override_ms,
+                )
+                targeted_dispatches.extend(linear_operator_comment_dispatches)
                 targeted_dispatches.extend(
                     self._dispatch_linear_triage_research(
                         remaining_linear_issues,
@@ -8962,17 +9246,27 @@ class GithubCompanionRunner:
                         now_override_ms=now_override_ms,
                     )
                 )
-        elif self.linear_client is not None and self.state_store.agent_name == "traya" and poll_result.get("open_prs_poll_error") is None:
-            traya_blind_reviews = self._run_traya_blind_pr_reviews(
-                open_prs_by_key=open_prs_by_key,
-                slot_id=slot_id,
-                dispatched_targets=dispatched_targets,
-                current_ms=current_ms,
-                now_override_ms=now_override_ms,
-            )
-            for traya_item in traya_blind_reviews:
-                if isinstance(traya_item.get("dispatch"), dict):
-                    targeted_dispatches.append(traya_item["dispatch"])
+        elif self.linear_client is not None and self.state_store.agent_name == "traya":
+            if poll_result.get("open_prs_poll_error") is None:
+                traya_blind_reviews = self._run_traya_blind_pr_reviews(
+                    open_prs_by_key=open_prs_by_key,
+                    slot_id=slot_id,
+                    dispatched_targets=dispatched_targets,
+                    current_ms=current_ms,
+                    now_override_ms=now_override_ms,
+                )
+                for traya_item in traya_blind_reviews:
+                    if isinstance(traya_item.get("dispatch"), dict):
+                        targeted_dispatches.append(traya_item["dispatch"])
+            traya_active_linear_issues = self._poll_active_linear_issues()
+            if traya_active_linear_issues:
+                linear_operator_comment_dispatches = self._dispatch_linear_operator_comments(
+                    traya_active_linear_issues,
+                    dispatched_targets=dispatched_targets,
+                    current_ms=current_ms,
+                    now_override_ms=now_override_ms,
+                )
+                targeted_dispatches.extend(linear_operator_comment_dispatches)
 
         sweep_dispatch: dict | None = None
         if run_sweeps_if_due and not any(d.get("verification_deferred") for d in targeted_dispatches):
@@ -8997,6 +9291,7 @@ class GithubCompanionRunner:
             "needs_decision_notifications": needs_decision_notifications,
             "traya_blind_reviews": traya_blind_reviews,
             "linear_todo_reconciliations": linear_todo_reconciliations,
+            "linear_operator_comment_dispatches": linear_operator_comment_dispatches,
         }
 
 

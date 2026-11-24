@@ -314,6 +314,7 @@ class LoopbackLinearServer(http.server.ThreadingHTTPServer):
                 if team is not None
                 else None
             ),
+            "delegate": issue.get("delegate"),
             "labels": {"nodes": label_nodes},
         }
         if include_attachments:
@@ -323,6 +324,9 @@ class LoopbackLinearServer(http.server.ThreadingHTTPServer):
                     for att in self.attachments
                     if att["issueId"] == issue["id"]
                 ]
+            }
+            result["comments"] = {
+                "nodes": list(self.comments_by_issue.get(str(issue["id"]), []))[:25]
             }
         return result
 
@@ -586,11 +590,14 @@ class LoopbackLinearServer(http.server.ThreadingHTTPServer):
             issue_id = str(inp.get("issueId") or "")
             if issue_id not in self.issues:
                 return 200, {"data": {"commentCreate": {"success": False, "comment": None}}}
+            raw_parent = str(inp.get("parentId") or "").strip()
+            parent_obj = {"id": raw_parent} if raw_parent else None
             comment = {
                 "id": self._next_id("cmt"),
                 "body": str(inp.get("body") or ""),
                 "createdAt": "2026-11-22T00:00:00.000Z",
                 "updatedAt": "2026-11-22T00:00:00.000Z",
+                "parent": parent_obj,
                 "user": {"id": "user-bot", "name": "Moltis Bot"},
             }
             self.comments_by_issue.setdefault(issue_id, []).append(comment)
@@ -603,6 +610,7 @@ class LoopbackLinearServer(http.server.ThreadingHTTPServer):
                             "body": comment["body"],
                             "createdAt": comment["createdAt"],
                             "updatedAt": comment["updatedAt"],
+                            "parent": comment["parent"],
                         },
                     }
                 }
@@ -2040,6 +2048,195 @@ class IssueSyncPaginationAndVerdictTests(LinearSyncTestBase):
                 )
             with self.subTest(update_estimate=bad_est), self.assertRaises(ValueError):
                 client.update_issue(str(created["id"]), estimate=bad_est)  # type: ignore[arg-type]
+
+
+class OperatorGuidanceAndMentionTests(LinearSyncTestBase):
+    """Verified Linear operator comment filtering, extraction bounds, mention parsing, and threaded comments."""
+
+    @staticmethod
+    def _admin_comment(
+        cid: str,
+        body: str,
+        *,
+        created_at: str = "2026-11-22T10:00:00Z",
+        parent_id: str | None = None,
+        user_overrides: dict[str, object] | None = None,
+        bot_actor: object = None,
+    ) -> dict[str, object]:
+        user: dict[str, object] = {
+            "id": "u-martin",
+            "name": "Martin Wimpress",
+            "displayName": "Martin",
+            "email": "martin@wimpys.world",
+            "admin": True,
+            "owner": False,
+            "guest": False,
+        }
+        if user_overrides:
+            user.update(user_overrides)
+        return {
+            "id": cid,
+            "body": body,
+            "createdAt": created_at,
+            "updatedAt": created_at,
+            "parent": {"id": parent_id} if parent_id else None,
+            "user": user,
+            "botActor": bot_actor,
+        }
+
+    def test_is_verified_linear_operator_comment(self) -> None:
+        self.assertTrue(linear_sync.is_verified_linear_operator_comment(self._admin_comment("c1", "Go ahead")))
+        self.assertTrue(
+            linear_sync.is_verified_linear_operator_comment(
+                self._admin_comment("c2", "Owner", user_overrides={"admin": False, "owner": True})
+            )
+        )
+        self.assertTrue(
+            linear_sync.is_verified_linear_operator_comment(
+                self._admin_comment("c3", "Legacy isAdmin", user_overrides={"admin": False, "isAdmin": True})
+            )
+        )
+
+        # Reject non-dicts, botActor, missing user, guest, non-admin member
+        for bad in (None, "text", [], 123):
+            self.assertFalse(linear_sync.is_verified_linear_operator_comment(bad))
+        self.assertFalse(
+            linear_sync.is_verified_linear_operator_comment(
+                self._admin_comment("c-bot", "Hi", bot_actor={"id": "bot-1", "name": "Skrye", "type": "OAuthClient"})
+            )
+        )
+        self.assertFalse(linear_sync.is_verified_linear_operator_comment({"id": "c-nouser", "body": "Hi", "user": None}))
+        self.assertFalse(
+            linear_sync.is_verified_linear_operator_comment(
+                self._admin_comment("c-guest", "Hi", user_overrides={"guest": True})
+            )
+        )
+        self.assertFalse(
+            linear_sync.is_verified_linear_operator_comment(
+                self._admin_comment("c-member", "Hi", user_overrides={"admin": False, "owner": False})
+            )
+        )
+
+        # Reject Linear OAuth app / internal email domains
+        for bad_email in ("app@oauthapp.linear.app", "BOT@LINEAR.LINEAR.APP"):
+            self.assertFalse(
+                linear_sync.is_verified_linear_operator_comment(
+                    self._admin_comment("c-email", "Hi", user_overrides={"email": bad_email})
+                )
+            )
+
+        # Reject agent and bot names / displayNames
+        for denied_name in ("Skrye", "Zannah", "Traya", "sith-skrye", "sith-zannah", "sith-traya", "cubic", "Codex", "Linear"):
+            self.assertFalse(
+                linear_sync.is_verified_linear_operator_comment(
+                    self._admin_comment("c-name", "Hi", user_overrides={"name": denied_name})
+                )
+            )
+            self.assertFalse(
+                linear_sync.is_verified_linear_operator_comment(
+                    self._admin_comment("c-disp", "Hi", user_overrides={"displayName": denied_name})
+                )
+            )
+
+    def test_extract_verified_operator_comments_ordering_and_bounds(self) -> None:
+        raw_nodes = [
+            self._admin_comment("c3", "Third (newest)", created_at="2026-11-22T12:00:00Z", parent_id="c1"),
+            self._admin_comment("c-bot", "Bot noise", created_at="2026-11-22T11:30:00Z", bot_actor={"id": "b1", "name": "Skrye", "type": "app"}),
+            self._admin_comment("c-empty", "   ", created_at="2026-11-22T11:15:00Z"),
+            self._admin_comment("c1", "First (oldest)", created_at="2026-11-22T10:00:00Z"),
+            self._admin_comment("c2", "Second (middle)", created_at="2026-11-22T11:00:00Z"),
+        ]
+        # Works with GraphQL connection dict and plain list
+        from_conn = linear_sync.extract_verified_operator_comments({"nodes": raw_nodes})
+        from_list = linear_sync.extract_verified_operator_comments(raw_nodes)
+        self.assertEqual(from_conn, from_list)
+        self.assertEqual([c["id"] for c in from_conn], ["c1", "c2", "c3"])
+        self.assertEqual(from_conn[0]["parent_id"], "")
+        self.assertEqual(from_conn[2]["parent_id"], "c1")
+        self.assertEqual(from_conn[0]["author"], "Martin Wimpress")
+
+        # max_comments retains only the newest N in chronological order
+        limited_count = linear_sync.extract_verified_operator_comments(raw_nodes, max_comments=2)
+        self.assertEqual([c["id"] for c in limited_count], ["c2", "c3"])
+
+        # max_total_chars drops oldest excess cleanly
+        limited_chars = linear_sync.extract_verified_operator_comments(raw_nodes, max_total_chars=30)
+        self.assertEqual([c["id"] for c in limited_chars], ["c2", "c3"])
+        self.assertLessEqual(sum(len(c["body"]) for c in limited_chars), 30)
+
+        # Single oversized newest comment is truncated cleanly within max_total_chars
+        oversized = [self._admin_comment("c-big", "A" * 200, created_at="2026-11-22T12:00:00Z")]
+        truncated = linear_sync.extract_verified_operator_comments(oversized, max_total_chars=40)
+        self.assertEqual(len(truncated), 1)
+        self.assertLessEqual(len(truncated[0]["body"]), 40)
+        self.assertTrue(truncated[0]["body"].endswith("..."))
+
+    def test_parse_linear_operator_mentions(self) -> None:
+        self.assertEqual(
+            linear_sync.parse_linear_operator_mentions("Hi @skrye and @sith-zannah, please coordinate with @TRAYA."),
+            ["skrye", "zannah", "traya"],
+        )
+        # Linear UI profile links and deduplication in order of appearance
+        self.assertEqual(
+            linear_sync.parse_linear_operator_mentions(
+                "Ask [Traya](https://linear.app/wimpysworld/profiles/traya) then https://linear.app/wimpysworld/profiles/skrye and @traya"
+            ),
+            ["traya", "skrye"],
+        )
+        # @delegate and @agent resolve via delegate_agent
+        self.assertEqual(
+            linear_sync.parse_linear_operator_mentions("Please check this @delegate and @agent", delegate_agent="zannah"),
+            ["zannah"],
+        )
+        self.assertEqual(
+            linear_sync.parse_linear_operator_mentions("Please check this @delegate", delegate_agent=None),
+            [],
+        )
+        # Code blocks and inline code are ignored
+        code_body = (
+            "Ignore `@skrye` and ```\n@zannah\n[Traya](https://linear.app/wimpysworld/profiles/traya)\n``` "
+            "but wake @sith-traya!"
+        )
+        self.assertEqual(linear_sync.parse_linear_operator_mentions(code_body), ["traya"])
+        # Preceding alphanumeric / underscore / slash / hyphen does not match
+        self.assertEqual(
+            linear_sync.parse_linear_operator_mentions("foo@skrye a/b@zannah x-y@traya bar_@skrye @skrye2"),
+            [],
+        )
+
+    def test_post_comment_parent_id_and_schema_selections(self) -> None:
+        self.assertIn("delegate {", linear_sync._ISSUE_FIELDS)
+        for query_str in (linear_sync._ISSUE_COMMENTS_QUERY, linear_sync._PROJECT_ISSUES_QUERY):
+            self.assertIn("parent", query_str)
+            self.assertIn("botActor", query_str)
+            self.assertIn("admin", query_str)
+            self.assertIn("owner", query_str)
+            self.assertIn("guest", query_str)
+            self.assertNotIn("isAdmin", query_str)
+
+        issue = self.httpd.add_issue(issue_id="issue-thread", title="Threaded discussion")
+        self.httpd.comments_by_issue["issue-thread"] = [
+            self._admin_comment("cmt-root", "@skrye please check", created_at="2026-11-22T10:00:00Z"),
+        ]
+        client = self.make_client()
+
+        # list_project_issues_by_state returns inline comments without separate issue_comments queries
+        listed = client.list_project_issues_by_state(("Triage",))
+        self.assertEqual(len(listed), 1)
+        self.assertEqual(len(self.httpd.requests_for("issue_comments")), 0)
+        guidance = linear_sync.extract_verified_operator_comments(listed[0].get("comments"))
+        self.assertEqual([c["id"] for c in guidance], ["cmt-root"])
+
+        # post_comment with parent_id sends parentId in CommentCreateInput
+        reply = client.post_comment(str(issue["id"]), "Checking now.", parent_id="cmt-root")
+        self.assertEqual(reply["parent"], {"id": "cmt-root"})
+        reqs = self.httpd.requests_for("commentCreate")
+        self.assertEqual(reqs[-1]["variables"]["input"]["parentId"], "cmt-root")
+
+        # post_comment without parent_id omits parentId
+        plain = client.post_comment(str(issue["id"]), "Top-level update.")
+        self.assertIsNone(plain["parent"])
+        self.assertNotIn("parentId", self.httpd.requests_for("commentCreate")[-1]["variables"]["input"])
 
 
 if __name__ == "__main__":
