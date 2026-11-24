@@ -11243,6 +11243,78 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
         # Deferred draft was left untouched.
         self.assertEqual(linear_stub.issues[str(lin_def["id"])]["state"]["name"], "Deferred")  # type: ignore[index]
 
+    def test_mergeability_fetched_via_batched_nodes_query_not_search(self) -> None:
+        search_q = companion.build_open_prs_graphql_query()
+        self.assertNotIn("mergeable", search_q)
+        self.assertNotIn("mergeStateStatus", search_q)
+
+        repo = "wimpysworld/tailor"
+        pr_num = self._owned_numbers(repo, "skrye", 1, kind="pr", start=1700)[0]
+        node_id = f"PR_kw_{pr_num}"
+        search_nodes = [
+            self._graphql_pr_node(
+                repo,
+                pr_num,
+                title="Conflicting PR hydrated via nodes()",
+                head_sha="999911112222",
+                author="hydrate-dev",
+                author_association="CONTRIBUTOR",
+                mergeable="",
+                merge_state_status="",
+                ci_state="SUCCESS",
+            )
+        ]
+        batch_queries: list[str] = []
+        gh_comment_cmds: list[list[str]] = []
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            if cmd[0] == "gh" and len(cmd) >= 3 and cmd[1] == "pr" and cmd[2] == "comment":
+                gh_comment_cmds.append(list(cmd))
+                return subprocess.CompletedProcess(cmd, 0, stdout="https://github.com/comment/1\n", stderr="")
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                q_arg = next((a for a in cmd if a.startswith("query=")), "")
+                if "nodes(ids:" in q_arg:
+                    batch_queries.append(q_arg)
+                    return subprocess.CompletedProcess(
+                        cmd,
+                        0,
+                        stdout=json.dumps({
+                            "data": {
+                                "nodes": [
+                                    {"id": node_id, "mergeable": "CONFLICTING", "mergeStateStatus": "DIRTY"},
+                                ]
+                            }
+                        }),
+                        stderr="",
+                    )
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(search_nodes), stderr="")
+            if ep.startswith(f"repos/{repo}/issues/") and "/comments" in ep:
+                return subprocess.CompletedProcess(cmd, 0, stdout="[]", stderr="")
+            raise AssertionError(f"Unexpected gh command: {cmd!r}")
+
+        def skrye_reply(meta: dict[str, str], _params: dict) -> str:
+            return "LANE_B_VERDICT: ready-to-merge\nSUMMARY: Clean once rebased."
+
+        linear_stub = StubLinearSyncClient()
+        _, runner, _ = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=skrye_reply,
+            state_dir=self.state_dir / "skrye-batched-mergeable",
+        )
+        res = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 9, 10, 0))
+        self.assertEqual(len(batch_queries), 1)
+        self.assertIn(node_id, batch_queries[0])
+        self.assertEqual([a["action"] for a in res["merge_conflict_actions"]], ["merge_conflict_notified"])
+        self.assertEqual(len(gh_comment_cmds), 1)
+        lin_id = linear_stub.by_github_url[f"https://github.com/{repo}/pull/{pr_num}"]
+        self.assertEqual(linear_stub.issues[lin_id]["state"]["name"], "Backlog")  # type: ignore[index]
+        self.assertIn("merge-conflicts", companion.extract_linear_issue_labels(linear_stub.issues[lin_id]))
+
 
 if __name__ == "__main__":
     unittest.main()

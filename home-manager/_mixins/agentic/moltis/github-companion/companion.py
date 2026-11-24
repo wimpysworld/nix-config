@@ -1947,6 +1947,7 @@ def normalize_open_pull_request_record(raw: dict) -> dict | None:
     return {
         "pr_key": make_pr_key(repo_full_name, number),
         "id": raw.get("databaseId") or raw.get("id") or number,
+        "node_id": str(raw.get("node_id") or (raw.get("id") if isinstance(raw.get("id"), str) else "")).strip(),
         "repo": repo_full_name,
         "owner": repo_full_name.split("/", 1)[0].lower(),
         "number": number,
@@ -3364,7 +3365,7 @@ OPEN_PRS_GRAPHQL_QUERY_TEMPLATE = (
     "nodes { "
     "__typename "
     "... on PullRequest { "
-    "id number title body url state isDraft updatedAt headRefName headRefOid authorAssociation mergeable mergeStateStatus reviewDecision additions deletions changedFiles "
+    "id number title body url state isDraft updatedAt headRefName headRefOid authorAssociation reviewDecision additions deletions changedFiles "
     "repository { nameWithOwner isArchived } "
     "author { __typename login } "
     "labels(first: 20) { nodes { name } } "
@@ -3540,6 +3541,61 @@ class GhApiSafeClient:
         """Query open issues across the configured owners via a GraphQL search query."""
         raw_nodes = self._query_graphql_search_nodes(build_open_issues_graphql_query(owners), timeout=timeout)
         return [norm for node in raw_nodes if (norm := normalize_open_issue_record(node)) is not None]
+
+    def fetch_pull_request_mergeability(
+        self,
+        node_ids: Iterable[str],
+        *,
+        batch_size: int = 20,
+        timeout: float | None = None,
+    ) -> dict[str, tuple[str, str]]:
+        """Fetch `(mergeable, mergeStateStatus)` in small GraphQL `nodes(ids: ...)` batches to avoid search 502s."""
+        clean_ids: list[str] = []
+        seen: set[str] = set()
+        for raw_id in node_ids or ():
+            nid = str(raw_id or "").strip()
+            if nid and nid not in seen and re.fullmatch(r"[A-Za-z0-9_=-]{4,128}", nid):
+                seen.add(nid)
+                clean_ids.append(nid)
+        if not clean_ids:
+            return {}
+        chunk = max(1, _safe_int(batch_size, 20))
+        results: dict[str, tuple[str, str]] = {}
+        for idx in range(0, len(clean_ids), chunk):
+            batch = clean_ids[idx : idx + chunk]
+            query = (
+                f"query {{ nodes(ids: {json.dumps(batch)}) {{ "
+                "... on PullRequest { id mergeable mergeStateStatus } } }"
+            )
+            try:
+                proc = self.invoke(["graphql", "-f", f"query={query}"], timeout=timeout)
+                stdout = (proc.stdout or "").strip()
+                if proc.returncode != 0 or not stdout:
+                    stderr = (proc.stderr or "").strip()
+                    sys.stderr.write(
+                        f"moltis-github-companion pr-mergeability-batch warning ({len(batch)} ids): "
+                        f"exit {proc.returncode}: {stderr or stdout}\n"
+                    )
+                    continue
+                for payload in parse_gh_api_paginated_http_output(stdout)[2]:
+                    if not isinstance(payload, dict) or payload.get("errors"):
+                        continue
+                    nodes = _as_dict(payload.get("data")).get("nodes")
+                    if not isinstance(nodes, list):
+                        continue
+                    for node in nodes:
+                        if not isinstance(node, dict):
+                            continue
+                        nid = str(node.get("id") or "").strip()
+                        if not nid:
+                            continue
+                        ms = str(node.get("mergeStateStatus") or "").strip().upper()
+                        m = normalize_mergeable_state(node.get("mergeable"), ms)
+                        results[nid] = (m, ms)
+            except Exception as exc:
+                sys.stderr.write(f"moltis-github-companion pr-mergeability-batch warning ({len(batch)} ids): {exc}\n")
+                continue
+        return results
 
     def fetch_issue_events(self, repo: str, number: int, timeout: float | None = None) -> list[dict]:
         """Fetch issue or pull request events for label-actor verification."""
@@ -7979,14 +8035,61 @@ class GithubCompanionRunner:
                 if r_name and r_num > 0:
                     pk = make_pr_key(r_name, r_num)
             if pk:
-                open_prs_by_key[pk] = raw_open_pr
+                open_prs_by_key[pk] = dict(raw_open_pr)
+
+        if (
+            self.linear_client is not None
+            and poll_result.get("open_prs_poll_error") is None
+            and hasattr(self.gh_client, "fetch_pull_request_mergeability")
+        ):
+            hydrate_by_node_id: dict[str, str] = {}
+            for pk, live_pr in open_prs_by_key.items():
+                if str(live_pr.get("state") or "OPEN").upper() != "OPEN":
+                    continue
+                if is_trusted_github_actor(live_pr.get("author")):
+                    continue
+                repo_h = str(live_pr.get("repo") or "").strip()
+                num_h = _safe_int(live_pr.get("number"), 0)
+                if not repo_h or num_h <= 0:
+                    continue
+                if self.state_store.agent_name in SWEEP_AGENT_ORDER and compute_pr_owner(repo_h, num_h) != self.state_store.agent_name:
+                    continue
+                if normalize_mergeable_state(live_pr.get("mergeable"), live_pr.get("merge_state_status") or live_pr.get("mergeStateStatus")) != "UNKNOWN":
+                    continue
+                nid = str(live_pr.get("node_id") or (live_pr.get("id") if isinstance(live_pr.get("id"), str) else "")).strip()
+                if nid:
+                    hydrate_by_node_id[nid] = pk
+            if hydrate_by_node_id:
+                mergeability_map = self.gh_client.fetch_pull_request_mergeability(hydrate_by_node_id.keys())
+                for nid, (m_state, ms_state) in mergeability_map.items():
+                    pk = hydrate_by_node_id.get(nid)
+                    if not pk or pk not in open_prs_by_key:
+                        continue
+                    open_prs_by_key[pk]["mergeable"] = m_state
+                    open_prs_by_key[pk]["merge_state_status"] = ms_state
+                    open_prs_by_key[pk]["mergeStateStatus"] = ms_state
+                    open_prs_by_key[pk]["has_merge_conflicts"] = m_state == "CONFLICTING"
 
         community_actionable_prs: list[dict] = []
         for pr_item in poll_result.get("actionable_prs") or []:
             if not isinstance(pr_item, dict):
                 continue
             if self.linear_client is not None and bool(pr_item.get("is_community")):
-                community_actionable_prs.append(pr_item)
+                pr_item_copy = dict(pr_item)
+                pk_item = str(pr_item_copy.get("key") or "").strip().lower()
+                if pk_item and pk_item in open_prs_by_key:
+                    hydrated = open_prs_by_key[pk_item]
+                    m_state = normalize_mergeable_state(
+                        hydrated.get("mergeable"),
+                        hydrated.get("merge_state_status") or hydrated.get("mergeStateStatus"),
+                    )
+                    if m_state != "UNKNOWN":
+                        pr_item_copy["mergeable"] = m_state
+                        pr_item_copy["merge_state_status"] = str(hydrated.get("merge_state_status") or "").strip().upper()
+                        pr_item_copy["has_merge_conflicts"] = m_state == "CONFLICTING"
+                        if m_state == "CONFLICTING":
+                            pr_item_copy["community_auto_merge_eligible"] = False
+                community_actionable_prs.append(pr_item_copy)
                 continue
             pr_key = str(pr_item.get("key") or "").strip()
             pr_entry = _as_dict(self.state_store.get_thread_state(pr_key))
