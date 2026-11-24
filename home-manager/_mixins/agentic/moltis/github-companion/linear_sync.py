@@ -417,6 +417,11 @@ def _normalize_repo_name(repo: str) -> str:
     return clean
 
 
+def _normalize_repo_label_name(repo: str) -> str:
+    """Return the short `<repo>` label name from an `<owner>/<repo>` slug."""
+    return _normalize_repo_name(repo).split("/", 1)[1]
+
+
 def _normalize_item_kind_label(item_kind: str) -> str:
     norm = str(item_kind or "").strip().lower()
     if norm in ("pr", "pull", "pulls", "pull_request", "pullrequest", "pull request"):
@@ -1321,21 +1326,23 @@ class LinearSyncClient:
         return self._repository_label_group_id
 
     def ensure_repository_label(self, repo: str) -> str:
-        """Resolve or create an `<owner>/<repo>` child label under the `Repository` group."""
+        """Resolve or create a `<repo>` child label under the `Repository` group."""
         clean_repo = _normalize_repo_name(repo)
+        label_name = clean_repo.split("/", 1)[1]
         self._load_labels()
-        existing = self._repo_labels_by_lower_name.get(clean_repo)
+        existing = self._repo_labels_by_lower_name.get(label_name)
         if existing is not None:
             return str(existing["id"])
         group_id = self.ensure_repository_label_group()
-        created = self._create_label(name=clean_repo, parent_id=group_id)
+        created = self._create_label(name=label_name, parent_id=group_id)
         return str(created["id"])
 
     def _ensure_optional_repository_label(self, repo: str) -> str | None:
         """Resolve or create a repository label, degrading cleanly to None if label creation is denied."""
         clean_repo = _normalize_repo_name(repo)
+        label_name = clean_repo.split("/", 1)[1]
         self._load_labels()
-        existing = self._repo_labels_by_lower_name.get(clean_repo)
+        existing = self._repo_labels_by_lower_name.get(label_name)
         if existing is not None:
             return str(existing["id"])
         if self._label_creation_forbidden:
@@ -1396,10 +1403,16 @@ class LinearSyncClient:
         self._load_labels()
         if raw in self._labels_by_id:
             return raw
-        for table in (self._flat_labels_by_lower_name, self._repo_labels_by_lower_name):
-            found = table.get(lowered)
-            if found is not None:
-                return str(found["id"])
+        candidates = [lowered]
+        if _REPO_SLUG_RE.match(raw):
+            short_repo = _normalize_repo_label_name(raw)
+            if short_repo not in candidates:
+                candidates.append(short_repo)
+        for cand in candidates:
+            for table in (self._flat_labels_by_lower_name, self._repo_labels_by_lower_name):
+                found = table.get(cand)
+                if found is not None:
+                    return str(found["id"])
         return None
 
     def get_issue(self, issue_id: str) -> dict[str, object]:

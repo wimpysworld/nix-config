@@ -1014,7 +1014,7 @@ class LabelManagementTests(LinearSyncTestBase):
         )
         self.assertEqual(
             create_reqs[1]["variables"],
-            {"input": {"name": "wimpysworld/nix-config", "teamId": "team-ww", "parentId": group_id}},
+            {"input": {"name": "nix-config", "teamId": "team-ww", "parentId": group_id}},
         )
 
         # Fresh client reuses both the existing Repository group and child label without mutations.
@@ -1147,7 +1147,7 @@ class IssueSyncPaginationAndVerdictTests(LinearSyncTestBase):
         self.assertEqual(create_input["priority"], 2)
         self.assertEqual(create_input["estimate"], 3)
         created_label_names = {node["name"] for node in first["labels"]["nodes"]}
-        self.assertEqual(created_label_names, {"wimpysworld/nix-config", "PR", "ready-to-implement"})
+        self.assertEqual(created_label_names, {"nix-config", "PR", "ready-to-implement"})
 
         att_input = self.httpd.requests_for("attachmentCreate")[0]["variables"]["input"]
         self.assertEqual(att_input["issueId"], first["id"])
@@ -1386,7 +1386,7 @@ class IssueSyncPaginationAndVerdictTests(LinearSyncTestBase):
         self.assertEqual(updated["priority"], 1)
         self.assertEqual(
             {node["name"] for node in updated["labels"]["nodes"]},
-            {"wimpysworld/nix-config", "Issue", "sign-off-required"},
+            {"nix-config", "Issue", "sign-off-required"},
         )
 
         # Explicit labels replace labelIds; mixing explicit and delta labels raises ValueError.
@@ -1721,7 +1721,7 @@ class IssueSyncPaginationAndVerdictTests(LinearSyncTestBase):
             state="Triage",
         )
         label_names = {node["name"] for node in created["labels"]["nodes"]}
-        self.assertEqual(label_names, {"wimpysworld/tailor", "Issue"})
+        self.assertEqual(label_names, {"tailor", "Issue"})
 
         label_reqs = self.httpd.requests_for("issueLabelCreate")
         self.assertEqual(len(label_reqs), 2)
@@ -1743,7 +1743,7 @@ class IssueSyncPaginationAndVerdictTests(LinearSyncTestBase):
                 },
                 {
                     "id": "lbl-existing-repo",
-                    "name": "wimpysworld/existing",
+                    "name": "existing",
                     "isGroup": False,
                     "parent": {"id": "lbl-repo-group", "name": "Repository"},
                     "team": {"id": "team-ww"},
@@ -1792,7 +1792,7 @@ class IssueSyncPaginationAndVerdictTests(LinearSyncTestBase):
 
         self.assertEqual({node["name"] for node in first["labels"]["nodes"]}, {"Issue"})
         self.assertEqual({node["name"] for node in second["labels"]["nodes"]}, {"Issue"})
-        self.assertEqual({node["name"] for node in third["labels"]["nodes"]}, {"wimpysworld/existing", "Issue"})
+        self.assertEqual({node["name"] for node in third["labels"]["nodes"]}, {"existing", "Issue"})
         # Only the first missing repo attempted issueLabelCreate; the second skipped it cleanly.
         self.assertEqual(len(self.httpd.requests_for("issueLabelCreate")), 1)
         self.assertEqual(len(self.httpd.requests_for("issueCreate")), 3)
