@@ -316,7 +316,9 @@ let
     ++ fenceChromium.runtimeInputs
     ++ fenceLogging.runtimeInputs;
     text = ''
-      pi_rea_mcp="''${NOUGHTY_PI_REA_MCP:-0}"
+      ${lib.optionalString reaMcpEnabled ''
+        pi_rea_mcp="''${NOUGHTY_PI_REA_MCP:-0}"
+      ''}
       unset NOUGHTY_PI_REA_MCP
 
       if [[ "''${FENCE_SANDBOX:-0}" == 1 ]]; then

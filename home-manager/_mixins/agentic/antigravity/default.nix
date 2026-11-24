@@ -186,7 +186,9 @@ let
     ++ fenceChromium.runtimeInputs
     ++ fenceLogging.runtimeInputs;
     text = ''
-      agy_rea_mcp="''${NOUGHTY_AGY_REA_MCP:-0}"
+      ${lib.optionalString reaMcpEnabled ''
+        agy_rea_mcp="''${NOUGHTY_AGY_REA_MCP:-0}"
+      ''}
       unset NOUGHTY_AGY_REA_MCP
 
       if [[ "''${FENCE_SANDBOX:-0}" == 1 ]]; then

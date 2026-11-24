@@ -173,7 +173,9 @@ let
     text = ''
       ${opencodeApiKeyShell}
       export HERDR_AGENT=opencode
-      opencode_rea_mcp="''${NOUGHTY_OPENCODE_REA_MCP:-0}"
+      ${lib.optionalString reaMcpEnabled ''
+        opencode_rea_mcp="''${NOUGHTY_OPENCODE_REA_MCP:-0}"
+      ''}
       unset NOUGHTY_OPENCODE_REA_MCP
       if [[ "''${FENCE_SANDBOX:-0}" == 1 ]]; then
         ${lib.optionalString reaMcpEnabled ''
