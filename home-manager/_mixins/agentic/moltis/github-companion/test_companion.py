@@ -5446,6 +5446,49 @@ class StubLinearSyncClient:
         self.list_comments_calls.append(clean_id)
         return json.loads(json.dumps(self.comments_by_issue.get(clean_id, [])))
 
+    def find_issue_by_github_url(
+        self,
+        github_url: str,
+        *,
+        item_kind: str | None = None,
+        include_archived: bool = False,
+    ) -> dict[str, object] | None:
+        canonical = companion.linear_sync.normalize_github_url(github_url)
+        issue_id = self.by_github_url.get(canonical)
+        if not issue_id or issue_id not in self.issues:
+            return None
+        issue = self.issues[issue_id]
+        if not include_archived and issue.get("archivedAt"):
+            return None
+        if item_kind is not None:
+            labels = companion.extract_linear_issue_labels(issue)
+            if item_kind.strip().lower() == "pr" and "issue" in labels and "pr" not in labels:
+                return None
+            if item_kind.strip().lower() == "issue" and "pr" in labels and "issue" not in labels:
+                return None
+        return self._copy_issue(issue)
+
+    def post_comment(self, issue_id: str, body: str) -> dict[str, object]:
+        clean_id = str(issue_id or "").strip()
+        if not clean_id:
+            raise ValueError("issue_id must be non-empty")
+        if clean_id not in self.issues:
+            raise companion.linear_sync.LinearAPIError(f"Linear issue not found: {clean_id!r}")
+        clean_body = str(body or "").strip()
+        if not clean_body:
+            raise ValueError("comment body must be non-empty")
+        self._comment_seq += 1
+        comment = {
+            "id": f"cmt-{self._comment_seq}",
+            "body": clean_body,
+            "createdAt": f"2026-04-01T10:{self._comment_seq:02d}:00Z",
+            "updatedAt": f"2026-04-01T10:{self._comment_seq:02d}:00Z",
+            "user": {"id": "u-agent", "name": "Agent"},
+        }
+        self.comments_by_issue.setdefault(clean_id, []).append(comment)
+        self.event_log.append(("linear_comment", clean_id, clean_body))
+        return json.loads(json.dumps(comment))
+
     def post_blind_review_verdict(
         self,
         issue_id: str,
@@ -6274,7 +6317,7 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
             "sha_v2",
         )
         self.assertEqual(self.httpd.rpc_requests, [])
-        self.assertFalse(any("merge" in " ".join(cmd).lower() for cmd in gh_commands))
+        self.assertFalse(any(cmd[0] != "gh-api-safe" and "merge" in " ".join(cmd).lower() for cmd in gh_commands))
 
         # Traya never sends sign-off pings
         _, traya_runner, _ = self._build_pipeline_runner(
@@ -7343,6 +7386,8 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
         author: str = "community-contributor",
         author_typename: str = "User",
         author_association: str = "CONTRIBUTOR",
+        mergeable: str = "",
+        merge_state_status: str = "",
         body: str = "Small community fix.",
         review_decision: str = "REVIEW_REQUIRED",
         ci_state: str = "SUCCESS",
@@ -7387,6 +7432,8 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
             "headRefName": f"contrib/pr-{number}",
             "headRefOid": head_sha,
             "authorAssociation": author_association,
+            "mergeable": mergeable,
+            "mergeStateStatus": merge_state_status,
             "reviewDecision": review_decision,
             "additions": additions,
             "deletions": deletions,
@@ -10864,6 +10911,337 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
         # Second poll with unchanged SHAs must NOT call gh-workflow-approve again.
         runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 8, 12, 30))
         self.assertEqual(len(approved_cmds), 2)
+
+    def test_merge_conflicts_notify_review_resolve_and_30d_close(self) -> None:
+        repo = "wimpysworld/tailor"
+        pr_close, pr_resolve, pr_replied, pr_unknown = self._owned_numbers(repo, "skrye", 4, kind="pr", start=1500)
+        sha_close = "aaa111111111"
+        sha_resolve_v1 = "bbb111111111"
+        sha_resolve_v2 = "bbb222222222"
+        sha_replied = "ccc111111111"
+        sha_unknown = "ddd111111111"
+
+        t_day0 = self._utc_ms(2026, 4, 1, 10, 0)
+        t_day15 = t_day0 + 15 * 24 * 60 * 60 * 1000
+        t_day31 = t_day0 + 31 * 24 * 60 * 60 * 1000
+
+        state_box: dict[str, object] = {
+            "nodes": [
+                self._graphql_pr_node(
+                    repo,
+                    pr_close,
+                    title="Conflicting PR that goes silent",
+                    head_sha=sha_close,
+                    author="silent-dev",
+                    author_association="CONTRIBUTOR",
+                    mergeable="CONFLICTING",
+                    merge_state_status="DIRTY",
+                    ci_state="SUCCESS",
+                ),
+                self._graphql_pr_node(
+                    repo,
+                    pr_resolve,
+                    title="Conflicting PR later rebased",
+                    head_sha=sha_resolve_v1,
+                    author="active-dev",
+                    author_association="CONTRIBUTOR",
+                    mergeable="CONFLICTING",
+                    merge_state_status="DIRTY",
+                    ci_state="SUCCESS",
+                ),
+                self._graphql_pr_node(
+                    repo,
+                    pr_replied,
+                    title="Conflicting PR where author replies",
+                    head_sha=sha_replied,
+                    author="chatty-dev",
+                    author_association="CONTRIBUTOR",
+                    mergeable="CONFLICTING",
+                    merge_state_status="DIRTY",
+                    ci_state="SUCCESS",
+                ),
+                self._graphql_pr_node(
+                    repo,
+                    pr_unknown,
+                    title="PR with UNKNOWN mergeability",
+                    head_sha=sha_unknown,
+                    author="other-dev",
+                    author_association="CONTRIBUTOR",
+                    mergeable="UNKNOWN",
+                    merge_state_status="UNKNOWN",
+                    ci_state="SUCCESS",
+                ),
+            ],
+            "comments_by_pr": {pr_close: [], pr_resolve: [], pr_replied: [], pr_unknown: []},
+        }
+        gh_comment_cmds: list[list[str]] = []
+        gh_close_cmds: list[list[str]] = []
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            if cmd[0] == "gh" and len(cmd) >= 3 and cmd[1] == "pr" and cmd[2] == "comment":
+                gh_comment_cmds.append(list(cmd))
+                return subprocess.CompletedProcess(cmd, 0, stdout="https://github.com/comment/1\n", stderr="")
+            if cmd[0] == "gh" and len(cmd) >= 3 and cmd[1] == "pr" and cmd[2] == "close":
+                gh_close_cmds.append(list(cmd))
+                return subprocess.CompletedProcess(cmd, 0, stdout="Closed\n", stderr="")
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=self._graphql_search_payload(state_box["nodes"]),  # type: ignore[arg-type]
+                    stderr="",
+                )
+            if ep.startswith(f"repos/{repo}/issues/") and "/comments" in ep:
+                num = int(ep.split("/issues/", 1)[1].split("/", 1)[0])
+                comments = state_box["comments_by_pr"].get(num, [])  # type: ignore[union-attr]
+                return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(comments), stderr="")
+            raise AssertionError(f"Unexpected gh command: {cmd!r}")
+
+        def skrye_reply(meta: dict[str, str], _params: dict) -> str:
+            if meta.get("dispatch_kind") == "community_pr_lane_b_review":
+                return "LANE_B_VERDICT: ready-to-merge\nSUMMARY: Code looks clean once conflicts are fixed."
+            return "BLIND_REVIEW_VERDICT: PASS\nFINDINGS: None."
+
+        linear_stub = StubLinearSyncClient()
+        store, runner, _ = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=skrye_reply,
+            state_dir=self.state_dir / "skrye-conflicts",
+        )
+
+        # Day 0: conflicting PRs stay in Backlog with merge-conflicts (never ready-to-merge), get 1 GitHub comment + 1 Linear comment each; UNKNOWN is untouched.
+        res0 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t_day0)
+        notified_nums = sorted(a["number"] for a in res0["merge_conflict_actions"] if a["action"] == "merge_conflict_notified")
+        self.assertEqual(notified_nums, sorted([pr_close, pr_resolve, pr_replied]))
+        self.assertEqual(len(gh_comment_cmds), 3)
+        self.assertTrue(any("@silent-dev" in c[-1] for c in gh_comment_cmds))
+        self.assertEqual(gh_close_cmds, [])
+
+        for num in (pr_close, pr_resolve, pr_replied):
+            lin_id = linear_stub.by_github_url[f"https://github.com/{repo}/pull/{num}"]
+            lin_issue = linear_stub.issues[lin_id]
+            self.assertEqual(lin_issue["state"]["name"], "Backlog")  # type: ignore[index]
+            lbls = companion.extract_linear_issue_labels(lin_issue)
+            self.assertIn("merge-conflicts", lbls)
+            self.assertNotIn("ready-to-merge", lbls)
+            lin_comments = linear_stub.list_issue_comments(lin_id)
+            self.assertTrue(any("Posted merge-conflict request" in str(c["body"]) for c in lin_comments))
+
+        lin_unknown_id = linear_stub.by_github_url[f"https://github.com/{repo}/pull/{pr_unknown}"]
+        self.assertNotIn("merge-conflicts", companion.extract_linear_issue_labels(linear_stub.issues[lin_unknown_id]))
+
+        # Day 15: pr_resolve is rebased clean; pr_close and pr_replied still conflict (no duplicate comments, no close yet).
+        state_box["nodes"] = [
+            self._graphql_pr_node(
+                repo,
+                pr_close,
+                title="Conflicting PR that goes silent",
+                head_sha=sha_close,
+                author="silent-dev",
+                author_association="CONTRIBUTOR",
+                mergeable="CONFLICTING",
+                merge_state_status="DIRTY",
+                ci_state="SUCCESS",
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_resolve,
+                title="Conflicting PR later rebased",
+                head_sha=sha_resolve_v2,
+                author="active-dev",
+                author_association="CONTRIBUTOR",
+                mergeable="MERGEABLE",
+                merge_state_status="CLEAN",
+                ci_state="SUCCESS",
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_replied,
+                title="Conflicting PR where author replies",
+                head_sha=sha_replied,
+                author="chatty-dev",
+                author_association="CONTRIBUTOR",
+                mergeable="CONFLICTING",
+                merge_state_status="DIRTY",
+                ci_state="SUCCESS",
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_unknown,
+                title="PR with UNKNOWN mergeability",
+                head_sha=sha_unknown,
+                author="other-dev",
+                author_association="CONTRIBUTOR",
+                mergeable="UNKNOWN",
+                merge_state_status="UNKNOWN",
+                ci_state="SUCCESS",
+            ),
+        ]
+        res15 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t_day15)
+        self.assertEqual([a["action"] for a in res15["merge_conflict_actions"]], ["merge_conflicts_resolved"])
+        self.assertEqual(res15["merge_conflict_actions"][0]["number"], pr_resolve)
+        self.assertEqual(len(gh_comment_cmds), 3)
+        self.assertEqual(gh_close_cmds, [])
+
+        lin_resolve_id = linear_stub.by_github_url[f"https://github.com/{repo}/pull/{pr_resolve}"]
+        self.assertNotIn("merge-conflicts", companion.extract_linear_issue_labels(linear_stub.issues[lin_resolve_id]))
+        self.assertTrue(
+            any("Merge conflicts resolved" in str(c["body"]) for c in linear_stub.list_issue_comments(lin_resolve_id))
+        )
+        self.assertIsNone((store.get_thread_state(companion.make_pr_key(repo, pr_resolve)) or {}).get("conflict_notified_head_sha"))
+
+        # Day 31: author replied on pr_replied on day 20 (resets timer); pr_close had no activity and closes with Canceled + stale-closed.
+        state_box["comments_by_pr"][pr_replied] = [  # type: ignore[index]
+            {"user": {"login": "chatty-dev"}, "body": "Working on the rebase this week.", "created_at": "2026-04-21T10:00:00Z"}
+        ]
+        res31 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t_day31)
+        self.assertEqual([a["action"] for a in res31["merge_conflict_actions"]], ["merge_conflict_closed"])
+        self.assertEqual(res31["merge_conflict_actions"][0]["number"], pr_close)
+        self.assertEqual(len(gh_close_cmds), 1)
+        self.assertIn(f"https://github.com/{repo}/pull/{pr_close}", gh_close_cmds[0])
+        self.assertIn("@silent-dev", gh_close_cmds[0][-1])
+
+        lin_close_id = linear_stub.by_github_url[f"https://github.com/{repo}/pull/{pr_close}"]
+        lin_close_issue = linear_stub.issues[lin_close_id]
+        self.assertEqual(lin_close_issue["state"]["name"], "Canceled")  # type: ignore[index]
+        close_lbls = companion.extract_linear_issue_labels(lin_close_issue)
+        self.assertIn("merge-conflicts", close_lbls)
+        self.assertIn("stale-closed", close_lbls)
+        self.assertNotIn("ready-to-merge", close_lbls)
+        self.assertTrue(
+            any("Closed pull request" in str(c["body"]) and "30 days" in str(c["body"]) for c in linear_stub.list_issue_comments(lin_close_id))
+        )
+
+        # pr_replied stays open and Backlog because author commented after the notice.
+        lin_replied_id = linear_stub.by_github_url[f"https://github.com/{repo}/pull/{pr_replied}"]
+        self.assertEqual(linear_stub.issues[lin_replied_id]["state"]["name"], "Backlog")  # type: ignore[index]
+
+    def test_stale_draft_pr_with_merge_conflicts_closed_after_90_days(self) -> None:
+        repo = "wimpysworld/tailor"
+        draft_no_lin, draft_with_lin, draft_deferred, draft_recent, draft_maintainer = self._owned_numbers(
+            repo, "skrye", 5, kind="pr", start=1600
+        )
+        t_now = self._utc_ms(2026, 7, 15, 10, 0)
+        old_ts = "2026-04-01T10:00:00Z"     # > 90 days old
+        recent_ts = "2026-06-20T10:00:00Z"  # < 90 days old
+
+        nodes = [
+            self._graphql_pr_node(
+                repo,
+                draft_no_lin,
+                title="Old untriaged draft",
+                head_sha="d11111111111",
+                author="driveby-dev",
+                is_draft=True,
+                mergeable="CONFLICTING",
+                merge_state_status="DIRTY",
+                updated_at=old_ts,
+            ),
+            self._graphql_pr_node(
+                repo,
+                draft_with_lin,
+                title="Old tracked draft",
+                head_sha="d22222222222",
+                author="tracked-dev",
+                is_draft=True,
+                mergeable="CONFLICTING",
+                merge_state_status="DIRTY",
+                updated_at=old_ts,
+            ),
+            self._graphql_pr_node(
+                repo,
+                draft_deferred,
+                title="Old deferred draft",
+                head_sha="d33333333333",
+                author="deferred-dev",
+                is_draft=True,
+                mergeable="CONFLICTING",
+                merge_state_status="DIRTY",
+                updated_at=old_ts,
+            ),
+            self._graphql_pr_node(
+                repo,
+                draft_recent,
+                title="Recent conflicting draft",
+                head_sha="d44444444444",
+                author="recent-dev",
+                is_draft=True,
+                mergeable="CONFLICTING",
+                merge_state_status="DIRTY",
+                updated_at=recent_ts,
+            ),
+            self._graphql_pr_node(
+                repo,
+                draft_maintainer,
+                title="Maintainer long-lived draft",
+                head_sha="d55555555555",
+                author="flexiondotorg",
+                is_draft=True,
+                mergeable="CONFLICTING",
+                merge_state_status="DIRTY",
+                updated_at=old_ts,
+            ),
+        ]
+
+        gh_close_cmds: list[list[str]] = []
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            if cmd[0] == "gh" and len(cmd) >= 3 and cmd[1] == "pr" and cmd[2] == "close":
+                gh_close_cmds.append(list(cmd))
+                return subprocess.CompletedProcess(cmd, 0, stdout="Closed\n", stderr="")
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(nodes), stderr="")
+            raise AssertionError(f"Unexpected gh command: {cmd!r}")
+
+        linear_stub = StubLinearSyncClient()
+        lin_tracked = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{draft_with_lin}",
+            title="Old tracked draft",
+            repo=repo,
+            item_kind="PR",
+            state="Backlog",
+        )
+        lin_def = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{draft_deferred}",
+            title="Old deferred draft",
+            repo=repo,
+            item_kind="PR",
+            state="Deferred",
+        )
+        initial_linear_count = len(linear_stub.issues)
+
+        _, runner, _ = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            state_dir=self.state_dir / "skrye-draft-conflicts",
+        )
+
+        res = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t_now)
+        closed_nums = sorted(a["number"] for a in res["merge_conflict_actions"] if a["action"] == "draft_conflict_closed")
+        self.assertEqual(closed_nums, sorted([draft_no_lin, draft_with_lin]))
+        self.assertEqual(len(gh_close_cmds), 2)
+        # No new Linear issue created for the untriaged draft.
+        self.assertEqual(len(linear_stub.issues), initial_linear_count)
+        # Existing Linear issue for draft_with_lin is updated to Canceled + stale-closed + merge-conflicts with an audit comment.
+        lin_tracked_id = str(lin_tracked["id"])
+        self.assertEqual(linear_stub.issues[lin_tracked_id]["state"]["name"], "Canceled")  # type: ignore[index]
+        tracked_lbls = companion.extract_linear_issue_labels(linear_stub.issues[lin_tracked_id])
+        self.assertIn("merge-conflicts", tracked_lbls)
+        self.assertIn("stale-closed", tracked_lbls)
+        self.assertTrue(
+            any("Closed draft pull request" in str(c["body"]) and "90 days" in str(c["body"]) for c in linear_stub.list_issue_comments(lin_tracked_id))
+        )
+        # Deferred draft was left untouched.
+        self.assertEqual(linear_stub.issues[str(lin_def["id"])]["state"]["name"], "Deferred")  # type: ignore[index]
 
 
 if __name__ == "__main__":

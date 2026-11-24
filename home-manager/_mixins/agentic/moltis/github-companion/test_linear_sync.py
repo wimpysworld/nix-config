@@ -1941,6 +1941,19 @@ class IssueSyncPaginationAndVerdictTests(LinearSyncTestBase):
         )
         self.assertNotEqual(created_pr["id"], "issue-2114")
 
+    def test_post_comment_and_conflict_workflow_labels(self) -> None:
+        self.assertIn("merge-conflicts", linear_sync.WORKFLOW_LABELS)
+        self.assertIn("stale-closed", linear_sync.WORKFLOW_LABELS)
+        issue = self.httpd.add_issue(issue_id="issue-audit", title="Tracked PR")
+        client = self.make_client()
+        comment = client.post_comment(str(issue["id"]), "Posted merge-conflict request to @dev.")
+        self.assertEqual(comment["body"], "Posted merge-conflict request to @dev.")
+        self.assertEqual(len(self.httpd.requests_for("commentCreate")), 1)
+        with self.assertRaises(ValueError):
+            client.post_comment("", "body")
+        with self.assertRaises(ValueError):
+            client.post_comment(str(issue["id"]), "   ")
+
 
 if __name__ == "__main__":
     unittest.main()

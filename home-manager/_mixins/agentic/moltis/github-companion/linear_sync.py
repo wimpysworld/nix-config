@@ -32,6 +32,8 @@ WORKFLOW_LABELS = (
     "ready-to-merge",
     "needs-decision",
     "first-time",
+    "merge-conflicts",
+    "stale-closed",
 )
 DEFAULT_TIMEOUT_SECS = 20.0
 DEFAULT_MARKER_INDEX_TTL_SECS = 300.0
@@ -2010,6 +2012,24 @@ class LinearSyncClient:
             after = end_cursor
 
         return comments
+
+    def post_comment(self, issue_id: str, body: str) -> dict[str, object]:
+        """Post a plain Markdown comment on a Linear issue."""
+        clean_id = str(issue_id or "").strip()
+        if not clean_id:
+            raise ValueError("issue_id must be non-empty")
+        clean_body = str(body or "").strip()
+        if not clean_body:
+            raise ValueError("comment body must be non-empty")
+        data = self._graphql_request(
+            _COMMENT_CREATE_MUTATION,
+            {"input": {"issueId": clean_id, "body": clean_body}},
+        )
+        payload = data.get("commentCreate")
+        comment = payload.get("comment") if isinstance(payload, dict) else None
+        if not isinstance(payload, dict) or not payload.get("success") or not isinstance(comment, dict):
+            raise LinearAPIError(f"Failed to post comment on issue {clean_id!r}")
+        return comment
 
     def post_blind_review_verdict(
         self,
