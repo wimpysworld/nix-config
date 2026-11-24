@@ -47,12 +47,19 @@ ENV_LINEAR_API_URL = "MOLTIS_GITHUB_COMPANION_LINEAR_API_URL"
 
 _WORKFLOW_LABEL_BY_LOWER: dict[str, str] = {label.lower(): label for label in WORKFLOW_LABELS}
 _REPO_SLUG_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+_BLIND_REVIEW_HEADER_RE = re.compile(
+    r"\A\s*\*\*Blind review verdict \(([^()\r\n/]+?)\s*/\s*([^()\r\n/]+?)\)(?:\*\*:|:\*\*)\s*`([^`\r\n]+)`\s+on\s+`([^`\r\n]+)`[ \t]*(?:\r?\n|\Z)",
+)
 _BLIND_REVIEW_MARKER_RE = re.compile(
-    r"\A\s*<!--\s*" + re.escape(BLIND_REVIEW_MARKER_PREFIX) + r"\s+(\{[^\r\n]*?\})\s*-->[ \t]*(?:\r?\n|\Z)",
+    r"\A\s*<!--\s*" + re.escape(BLIND_REVIEW_MARKER_PREFIX) + r"\s+(\{[^\r\n]*?\})\s*(?:-->|\u2192)[ \t]*(?:\r?\n|\Z)",
+)
+_GITHUB_URL_SOURCE_LINE_RE = re.compile(
+    r"\A\s*Source:\s*\[[^\]\r\n]+\]\(<?(https?://[^)\s>\r\n]+)>?\)[ \t]*(?:\r?\n|\Z)",
 )
 _GITHUB_URL_MARKER_RE = re.compile(
-    r"\A\s*<!--\s*" + re.escape(GITHUB_URL_MARKER_PREFIX) + r"\s+(\{[^\r\n]*?\})\s*-->[ \t]*(?:\r?\n|\Z)",
+    r"\A\s*<!--\s*" + re.escape(GITHUB_URL_MARKER_PREFIX) + r"\s+(\{[^\r\n]*?\})\s*(?:-->|\u2192)[ \t]*(?:\r?\n|\Z)",
 )
+_MARKDOWN_LINK_VALUE_RE = re.compile(r"^\[[^\]]+\]\(<?(https?://[^)\s>]+)>?\)$")
 
 _CANONICAL_STATE_ALIASES: dict[str, str] = {
     "triage": "Triage",
@@ -351,17 +358,23 @@ def _parse_github_url_parts(normalized_url: str) -> tuple[str, str | None, int |
 
 
 def format_github_url_marker(github_url: str) -> str:
-    """Format a deterministic leading HTML comment marker for a canonical GitHub URL."""
+    """Format a deterministic leading Markdown source link for a canonical GitHub URL."""
     normalized_url = normalize_github_url(github_url)
-    encoded = json.dumps({"url": normalized_url}, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
-    encoded = encoded.replace("<", "\\u003c").replace(">", "\\u003e")
-    return f"<!-- {GITHUB_URL_MARKER_PREFIX} {encoded} -->"
+    repo, _, number = _parse_github_url_parts(normalized_url)
+    label = f"{repo}#{number}" if repo and number is not None else normalized_url
+    return f"Source: [{label}]({normalized_url})"
 
 
 def parse_github_url_marker(description: object) -> str | None:
     """Extract and normalise the canonical GitHub URL from a leading issue description marker."""
     if not isinstance(description, str) or not description:
         return None
+    source_match = _GITHUB_URL_SOURCE_LINE_RE.match(description)
+    if source_match is not None:
+        try:
+            return normalize_github_url(source_match.group(1))
+        except ValueError:
+            return None
     match = _GITHUB_URL_MARKER_RE.match(description)
     if match is None:
         return None
@@ -374,8 +387,10 @@ def parse_github_url_marker(description: object) -> str | None:
     raw_url = payload.get("url")
     if not isinstance(raw_url, str) or not raw_url.strip():
         return None
+    link_match = _MARKDOWN_LINK_VALUE_RE.match(raw_url.strip())
+    candidate_url = link_match.group(1) if link_match is not None else raw_url
     try:
-        return normalize_github_url(raw_url)
+        return normalize_github_url(candidate_url)
     except ValueError:
         return None
 
@@ -421,7 +436,7 @@ def _normalize_verdict_fields(
         "verdict": str(verdict or "").strip().lower(),
     }
     for field_name, value in values.items():
-        if not value or "\n" in value or "\r" in value or "-->" in value:
+        if not value or any(token in value for token in ("\n", "\r", "-->", "/", "(", ")", "`", "*")):
             raise ValueError(f"Invalid blind review verdict field {field_name!r}")
     return values
 
@@ -438,12 +453,9 @@ def format_blind_review_verdict_comment(
     verdict: str,
     summary: str = "",
 ) -> str:
-    """Format a deterministic blind review verdict comment with a structured HTML comment marker."""
+    """Format a deterministic blind review verdict comment with a structured leading Markdown header."""
     fields = _normalize_verdict_fields(agent, model_family, head_sha, verdict)
-    encoded = json.dumps(fields, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
-    marker = f"<!-- {BLIND_REVIEW_MARKER_PREFIX} {encoded} -->"
     lines = [
-        marker,
         f"**Blind review verdict ({fields['agent']} / {fields['model_family']})**: `{fields['verdict']}` on `{fields['head_sha']}`",
     ]
     clean_summary = _escape_verdict_summary(summary)
@@ -456,7 +468,7 @@ def parse_blind_review_verdicts(
     comments: Iterable[dict[str, object] | str],
     head_sha: str | None = None,
 ) -> list[dict[str, object]]:
-    """Parse one canonical leading blind review verdict marker per Linear comment."""
+    """Parse one canonical leading blind review verdict header or legacy marker per Linear comment."""
     target_sha = str(head_sha).strip().lower() if head_sha is not None else None
     parsed_verdicts: list[dict[str, object]] = []
 
@@ -464,24 +476,37 @@ def parse_blind_review_verdicts(
         body = comment if isinstance(comment, str) else (comment.get("body") if isinstance(comment, dict) else "")
         if not isinstance(body, str) or not body:
             continue
-        match = _BLIND_REVIEW_MARKER_RE.match(body)
-        if match is None:
-            continue
-        try:
-            raw_payload = json.loads(match.group(1))
-        except ValueError:
-            continue
-        if not isinstance(raw_payload, dict):
-            continue
-        try:
-            fields = _normalize_verdict_fields(
-                str(raw_payload.get("agent") or ""),
-                str(raw_payload.get("model_family") or ""),
-                str(raw_payload.get("head_sha") or ""),
-                str(raw_payload.get("verdict") or ""),
-            )
-        except ValueError:
-            continue
+        fields: dict[str, str] | None = None
+        header_match = _BLIND_REVIEW_HEADER_RE.match(body)
+        if header_match is not None:
+            try:
+                fields = _normalize_verdict_fields(
+                    header_match.group(1),
+                    header_match.group(2),
+                    header_match.group(4),
+                    header_match.group(3),
+                )
+            except ValueError:
+                continue
+        else:
+            match = _BLIND_REVIEW_MARKER_RE.match(body)
+            if match is None:
+                continue
+            try:
+                raw_payload = json.loads(match.group(1))
+            except ValueError:
+                continue
+            if not isinstance(raw_payload, dict):
+                continue
+            try:
+                fields = _normalize_verdict_fields(
+                    str(raw_payload.get("agent") or ""),
+                    str(raw_payload.get("model_family") or ""),
+                    str(raw_payload.get("head_sha") or ""),
+                    str(raw_payload.get("verdict") or ""),
+                )
+            except ValueError:
+                continue
         if target_sha is not None and fields["head_sha"] != target_sha:
             continue
         entry: dict[str, object] = dict(fields)

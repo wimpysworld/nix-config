@@ -1457,6 +1457,24 @@ class IssueSyncPaginationAndVerdictTests(LinearSyncTestBase):
             with self.subTest(page_size=bad_size), self.assertRaises(ValueError):
                 client.list_project_issues_by_state(page_size=bad_size)
 
+    def test_github_url_marker_formats_clean_markdown_and_parses_legacy_linear_rewrites(self) -> None:
+        url = "https://github.com/wimpysworld/deb-get/pull/2121"
+        formatted = linear_sync.format_github_url_marker(url)
+        self.assertEqual(formatted, "Source: [wimpysworld/deb-get#2121](https://github.com/wimpysworld/deb-get/pull/2121)")
+        self.assertNotIn("<!--", formatted)
+
+        for variant in (
+            formatted,
+            "Source: [wimpysworld/deb-get#2121](<https://github.com/wimpysworld/deb-get/pull/2121>)\n\n## Outcome",
+            '<!-- moltis:github-url:v1 {"url":"https://github.com/wimpysworld/deb-get/pull/2121"} -->',
+            '<!-- moltis:github-url:v1 {"url":"[https://github.com/wimpysworld/deb-get/pull/2121](<https://github.com/wimpysworld/deb-get/pull/2121>)"} -->\n\n## Outcome',
+            '<!-- moltis:github-url:v1 {"url":"[https://github.com/wimpysworld/deb-get/pull/2121](<https://github.com/wimpysworld/deb-get/pull/2121>)"} \u2192',
+        ):
+            with self.subTest(variant=variant):
+                self.assertEqual(linear_sync.parse_github_url_marker(variant), url)
+
+        self.assertIsNone(linear_sync.parse_github_url_marker(f"Body line\n{formatted}"))
+
     def test_blind_review_verdict_format_parse_filter_and_idempotent_post(self) -> None:
         formatted = linear_sync.format_blind_review_verdict_comment(
             agent="Skrye",
@@ -1465,13 +1483,16 @@ class IssueSyncPaginationAndVerdictTests(LinearSyncTestBase):
             verdict="APPROVE",
             summary="Checks pass.",
         )
-        self.assertIn(linear_sync.BLIND_REVIEW_MARKER_PREFIX, formatted)
+        self.assertNotIn("<!--", formatted)
+        self.assertTrue(formatted.startswith("**Blind review verdict (skrye / claude)**: `approve` on `abcdef1234`"))
         self.assertIn("Checks pass.", formatted)
 
         for bad_kwargs in (
             {"agent": "", "model_family": "claude", "head_sha": "abc", "verdict": "approve"},
             {"agent": "skrye\ninjected", "model_family": "claude", "head_sha": "abc", "verdict": "approve"},
             {"agent": "skrye", "model_family": "claude-->", "head_sha": "abc", "verdict": "approve"},
+            {"agent": "skrye/extra", "model_family": "claude", "head_sha": "abc", "verdict": "approve"},
+            {"agent": "skrye", "model_family": "claude", "head_sha": "abc`def", "verdict": "approve"},
         ):
             with self.subTest(bad=bad_kwargs), self.assertRaises(ValueError):
                 linear_sync.format_blind_review_verdict_comment(**bad_kwargs)
@@ -1481,6 +1502,7 @@ class IssueSyncPaginationAndVerdictTests(LinearSyncTestBase):
             {"id": "c-2", "body": "Plain human comment without a marker"},
             {"id": "c-3", "body": f"<!-- {linear_sync.BLIND_REVIEW_MARKER_PREFIX} {{not-json}} -->"},
             {"id": "c-4", "body": f'<!-- {linear_sync.BLIND_REVIEW_MARKER_PREFIX} {{"agent":"traya"}} -->'},
+            {"id": "c-legacy", "body": f'<!-- {linear_sync.BLIND_REVIEW_MARKER_PREFIX} {{"agent":"traya","head_sha":"11112222","model_family":"gpt","verdict":"pass"}} -->'},
             linear_sync.format_blind_review_verdict_comment(
                 agent="zannah",
                 model_family="gpt",
@@ -1489,12 +1511,13 @@ class IssueSyncPaginationAndVerdictTests(LinearSyncTestBase):
             ),
         ]
         all_parsed = linear_sync.parse_blind_review_verdicts(raw_comments)
-        self.assertEqual(len(all_parsed), 2)
+        self.assertEqual(len(all_parsed), 3)
         self.assertEqual(all_parsed[0]["agent"], "skrye")
         self.assertEqual(all_parsed[0]["model_family"], "claude")
         self.assertEqual(all_parsed[0]["head_sha"], "abcdef1234")
         self.assertEqual(all_parsed[0]["verdict"], "approve")
         self.assertEqual(all_parsed[0]["comment_id"], "c-1")
+        self.assertEqual((all_parsed[1]["comment_id"], all_parsed[1]["agent"], all_parsed[1]["verdict"]), ("c-legacy", "traya", "pass"))
 
         filtered = linear_sync.parse_blind_review_verdicts(raw_comments, head_sha="9999AAAA")
         self.assertEqual(len(filtered), 1)
