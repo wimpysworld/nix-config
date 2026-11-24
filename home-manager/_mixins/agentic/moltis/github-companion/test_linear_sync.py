@@ -42,6 +42,8 @@ def _detect_operation(query: str) -> str:
             return name
     if "teams(" in query:
         return "teams"
+    if "viewer" in query:
+        return "viewer"
     if "projects(" in query:
         return "team_projects"
     if "states(" in query:
@@ -199,6 +201,7 @@ class LoopbackLinearServer(http.server.ThreadingHTTPServer):
         self.comments_page_size = 100
 
         self._seq = 0
+        self.viewer: dict[str, object] = {"id": "user-agent-skrye", "name": "Skrye"}
         self.teams: list[dict[str, object]] = [
             {"id": "team-ww", "key": "WW", "name": "Wimpy's World"},
         ]
@@ -375,6 +378,9 @@ class LoopbackLinearServer(http.server.ThreadingHTTPServer):
         operation: str,
         variables: dict[str, object],
     ) -> tuple[int, dict[str, object]]:
+        if operation == "viewer":
+            return 200, {"data": {"viewer": dict(self.viewer)}}
+
         if operation == "teams":
             key = str(variables.get("key") or "")
             matched = [team for team in self.teams if str(team["key"]).upper() == key.upper()]
@@ -1816,6 +1822,67 @@ class IssueSyncPaginationAndVerdictTests(LinearSyncTestBase):
         self.assertFalse(transient.is_permission_error())
         self.assertFalse(transient.is_auth_error())
         self.assertFalse(transient.is_permission_or_auth_error())
+
+    def test_ensure_issue_sets_delegate_id_to_viewer_and_falls_back_when_unsupported(self) -> None:
+        client = self.make_client()
+        first = client.ensure_issue_for_github_item(
+            github_url="https://github.com/wimpysworld/deb-get/issues/3001",
+            title="Delegated issue one",
+            item_kind="Issue",
+            state="Triage",
+        )
+        second = client.ensure_issue_for_github_item(
+            github_url="https://github.com/wimpysworld/deb-get/issues/3002",
+            title="Delegated issue two",
+            item_kind="Issue",
+            state="Triage",
+        )
+        self.assertNotEqual(first["id"], second["id"])
+        # Viewer lookup is cached once per client and sent as delegateId on every issueCreate.
+        self.assertEqual(len(self.httpd.requests_for("viewer")), 1)
+        create_reqs = self.httpd.requests_for("issueCreate")
+        self.assertEqual(len(create_reqs), 2)
+        self.assertEqual(create_reqs[0]["variables"]["input"]["delegateId"], "user-agent-skrye")
+        self.assertEqual(create_reqs[1]["variables"]["input"]["delegateId"], "user-agent-skrye")
+
+        # When Linear rejects delegateId due to missing app:assignable capability, retry once without delegateId and cache refusal.
+        def reject_delegate(handler: MockLinearGraphQLHandler, record: dict[str, object]) -> bool:
+            if record["operation"] == "issueCreate":
+                inp = record["variables"].get("input") if isinstance(record["variables"], dict) else {}
+                if isinstance(inp, dict) and "delegateId" in inp:
+                    handler._send_json(
+                        400,
+                        {"errors": [{"message": "One or more app users lack the required capability."}]},
+                    )
+                    return True
+            return False
+
+        self.httpd.custom_handler = reject_delegate
+        fallback_client = self.make_client()
+        stderr_buf = io.StringIO()
+        with contextlib.redirect_stderr(stderr_buf):
+            third = fallback_client.ensure_issue_for_github_item(
+                github_url="https://github.com/wimpysworld/deb-get/issues/3003",
+                title="Fallback issue three",
+                item_kind="Issue",
+                state="Triage",
+            )
+            fourth = fallback_client.ensure_issue_for_github_item(
+                github_url="https://github.com/wimpysworld/deb-get/issues/3004",
+                title="Fallback issue four",
+                item_kind="Issue",
+                state="Triage",
+            )
+        self.assertNotEqual(third["id"], fourth["id"])
+        fallback_creates = self.httpd.requests_for("issueCreate")[2:]
+        # 1 rejected with delegateId + 1 retry without + 1 clean without = 3 calls total.
+        self.assertEqual(len(fallback_creates), 3)
+        self.assertIn("delegateId", fallback_creates[0]["variables"]["input"])
+        self.assertNotIn("delegateId", fallback_creates[1]["variables"]["input"])
+        self.assertNotIn("delegateId", fallback_creates[2]["variables"]["input"])
+        warnings = [line for line in stderr_buf.getvalue().splitlines() if line.strip()]
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("Linear issue delegation rejected", warnings[0])
 
 
 if __name__ == "__main__":

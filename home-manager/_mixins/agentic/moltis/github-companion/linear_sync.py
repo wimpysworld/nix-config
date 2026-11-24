@@ -522,6 +522,15 @@ def parse_blind_review_verdicts(
     return parsed_verdicts
 
 
+_VIEWER_QUERY = """
+query {
+  viewer {
+    id
+    name
+  }
+}
+""".strip()
+
 _TEAM_BY_KEY_QUERY = """
 query($key: String!) {
   teams(filter: { key: { eq: $key } }, first: 10) {
@@ -823,6 +832,9 @@ class LinearSyncClient:
         self._linear_token_module = linear_token_module
 
         self._team_id: str | None = None
+        self._viewer_id: str | None = None
+        self._delegate_unsupported = False
+        self._delegate_warned = False
         self._project_ids_by_lower_name: dict[str, str] = {}
         self._project_marker_index_by_project_id: dict[str, dict[str, dict[str, object]]] = {}
         self._project_marker_index_expires_at: dict[str, float] = {}
@@ -961,6 +973,35 @@ class LinearSyncClient:
             timeout=self.timeout,
             refresh_token=None,
         )
+
+    def resolve_viewer_id(self) -> str:
+        """Resolve and cache the authenticated Linear viewer user/app ID."""
+        if self._viewer_id is not None:
+            return self._viewer_id
+        data = self._graphql_request(_VIEWER_QUERY)
+        viewer = data.get("viewer")
+        viewer_id = str(viewer.get("id") or "").strip() if isinstance(viewer, dict) else ""
+        if not viewer_id:
+            raise LinearAPIError("Linear viewer lookup did not return an id")
+        self._viewer_id = viewer_id
+        return viewer_id
+
+    @staticmethod
+    def _is_delegate_capability_error(exc: LinearAPIError) -> bool:
+        _, messages = exc._error_codes_and_messages()
+        return any(
+            phrase in msg
+            for msg in messages
+            for phrase in ("lack the required capability", "app:assignable", "delegateid", "delegate")
+        )
+
+    def _resolve_optional_delegate_id(self) -> str | None:
+        if self._delegate_unsupported:
+            return None
+        try:
+            return self.resolve_viewer_id()
+        except LinearAPIError:
+            return None
 
     def resolve_team_id(self) -> str:
         """Resolve and cache the Linear team ID for `self.team_key`."""
@@ -1687,12 +1728,27 @@ class LinearSyncClient:
             "description": format_issue_description_with_github_url(description, normalized_url),
             "labelIds": label_ids,
         }
+        delegate_id = self._resolve_optional_delegate_id()
+        if delegate_id is not None:
+            issue_input["delegateId"] = delegate_id
         if priority is not None:
             issue_input["priority"] = priority
         if estimate is not None:
             issue_input["estimate"] = estimate
 
-        created = self._graphql_request(_ISSUE_CREATE_MUTATION, {"input": issue_input})
+        try:
+            created = self._graphql_request(_ISSUE_CREATE_MUTATION, {"input": issue_input})
+        except LinearAPIError as exc:
+            if "delegateId" not in issue_input or not self._is_delegate_capability_error(exc):
+                raise
+            self._delegate_unsupported = True
+            if not self._delegate_warned:
+                self._delegate_warned = True
+                sys.stderr.write(
+                    f"linear_sync: Linear issue delegation rejected ({exc}); continuing without delegateId\n"
+                )
+            issue_input.pop("delegateId", None)
+            created = self._graphql_request(_ISSUE_CREATE_MUTATION, {"input": issue_input})
         create_payload = created.get("issueCreate")
         issue = create_payload.get("issue") if isinstance(create_payload, dict) else None
         issue_id = str(issue.get("id") or "").strip() if isinstance(issue, dict) else ""

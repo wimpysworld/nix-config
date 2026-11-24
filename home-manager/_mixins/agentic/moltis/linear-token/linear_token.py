@@ -15,7 +15,8 @@ from pathlib import Path
 
 TOKEN_URL = "https://api.linear.app/oauth/token"
 # Project/document changes and comment edits need write, not only create scopes.
-SCOPE = "read,write"
+# app:assignable allows delegating issues to the app actor without granting admin.
+SCOPE = "read,write,app:assignable"
 RENEW_BEFORE = 86400
 MIN_VALIDITY = 3600
 MAX_RESPONSE = 65536
