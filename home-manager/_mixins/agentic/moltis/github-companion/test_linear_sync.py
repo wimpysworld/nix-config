@@ -31,6 +31,7 @@ def _detect_operation(query: str) -> str:
     for name in (
         "projectCreate",
         "issueLabelCreate",
+        "issueRelationCreate",
         "issueCreate",
         "issueUpdate",
         "attachmentCreate",
@@ -227,6 +228,7 @@ class LoopbackLinearServer(http.server.ThreadingHTTPServer):
         self.issue_order: list[str] = []
         self.attachments: list[dict[str, object]] = []
         self.comments_by_issue: dict[str, list[dict[str, object]]] = {}
+        self.relations: list[dict[str, object]] = []
 
     @property
     def base_url(self) -> str:
@@ -612,6 +614,43 @@ class LoopbackLinearServer(http.server.ThreadingHTTPServer):
                             "updatedAt": comment["updatedAt"],
                             "parent": comment["parent"],
                         },
+                    }
+                }
+            }
+
+        if operation == "issueRelationCreate":
+            inp = variables.get("input") if isinstance(variables.get("input"), dict) else {}
+            issue_id = str(inp.get("issueId") or "")
+            related_id = str(inp.get("relatedIssueId") or "")
+            rel_type = str(inp.get("type") or "")
+            if issue_id not in self.issues or related_id not in self.issues:
+                return 200, {"data": {"issueRelationCreate": {"success": False, "issueRelation": None}}}
+            for existing in self.relations:
+                if (
+                    existing["issueId"] == issue_id
+                    and existing["relatedIssueId"] == related_id
+                    and existing["type"] == rel_type
+                ):
+                    return 200, {
+                        "data": {
+                            "issueRelationCreate": {
+                                "success": True,
+                                "issueRelation": {"id": existing["id"], "type": existing["type"]},
+                            }
+                        }
+                    }
+            rel = {
+                "id": self._next_id("rel"),
+                "issueId": issue_id,
+                "relatedIssueId": related_id,
+                "type": rel_type,
+            }
+            self.relations.append(rel)
+            return 200, {
+                "data": {
+                    "issueRelationCreate": {
+                        "success": True,
+                        "issueRelation": {"id": rel["id"], "type": rel["type"]},
                     }
                 }
             }
@@ -2237,6 +2276,110 @@ class OperatorGuidanceAndMentionTests(LinearSyncTestBase):
         plain = client.post_comment(str(issue["id"]), "Top-level update.")
         self.assertIsNone(plain["parent"])
         self.assertNotIn("parentId", self.httpd.requests_for("commentCreate")[-1]["variables"]["input"])
+
+
+class RelationAndReleaseTaskTests(LinearSyncTestBase):
+    """Tests for create_issue_relation and ensure_release_task."""
+
+    def test_create_issue_relation_validation_success_and_graphql_failure(self) -> None:
+        issue_a = self.httpd.add_issue(issue_id="issue-pr-1", title="PR #10")
+        issue_b = self.httpd.add_issue(issue_id="issue-iss-2", title="Issue #5")
+        client = self.make_client()
+
+        # Valid relation creation (default 'related' and explicit 'blocks'/'duplicate')
+        rel = client.create_issue_relation(str(issue_a["id"]), str(issue_b["id"]))
+        self.assertEqual(rel["type"], "related")
+        self.assertTrue(str(rel["id"]).startswith("rel-"))
+        # Idempotent duplicate call returns same relation id
+        rel_again = client.create_issue_relation(str(issue_a["id"]), str(issue_b["id"]), relation_type="related")
+        self.assertEqual(rel_again["id"], rel["id"])
+
+        rel_blocks = client.create_issue_relation(str(issue_a["id"]), str(issue_b["id"]), relation_type="blocks")
+        self.assertEqual(rel_blocks["type"], "blocks")
+        rel_dup = client.create_issue_relation(str(issue_a["id"]), str(issue_b["id"]), relation_type="duplicate")
+        self.assertEqual(rel_dup["type"], "duplicate")
+
+        # Invalid inputs rejected locally
+        with self.assertRaises(ValueError):
+            client.create_issue_relation("", str(issue_b["id"]))
+        with self.assertRaises(ValueError):
+            client.create_issue_relation(str(issue_a["id"]), "   ")
+        with self.assertRaises(ValueError):
+            client.create_issue_relation(str(issue_a["id"]), str(issue_a["id"]))
+        with self.assertRaises(ValueError):
+            client.create_issue_relation(str(issue_a["id"]), str(issue_b["id"]), relation_type="parent")
+
+        # Unsuccessful GraphQL payload raises LinearAPIError
+        with self.assertRaises(linear_sync.LinearAPIError):
+            client.create_issue_relation("missing-issue", str(issue_b["id"]))
+
+    def test_ensure_release_task_create_idempotent_update_and_ignored_states(self) -> None:
+        self.assertIn("release", linear_sync.WORKFLOW_LABELS)
+        client = self.make_client()
+
+        # Create release task with repository + release labels and deterministic attachment
+        created_issue, was_created = client.ensure_release_task(
+            repo="wimpysworld/tailor",
+            next_tag="v1.2.4",
+            title="Release wimpysworld/tailor v1.2.4 (security patch)",
+            description="Patch body v1",
+            state="Backlog",
+        )
+        self.assertTrue(was_created)
+        self.assertEqual(created_issue["state"]["name"], "Backlog")
+        label_names = {node["name"] for node in created_issue["labels"]["nodes"]}
+        self.assertEqual(label_names, {"tailor", "release"})
+        att_nodes = created_issue["attachments"]["nodes"]
+        self.assertEqual(len(att_nodes), 1)
+        self.assertEqual(att_nodes[0]["url"], "https://github.com/wimpysworld/tailor/releases/tag/v1.2.4")
+        self.assertEqual(att_nodes[0]["title"], "wimpysworld/tailor@v1.2.4")
+        self.assertIn("https://github.com/wimpysworld/tailor/releases/tag/v1.2.4", str(created_issue["description"]))
+        self.assertIn("Patch body v1", str(created_issue["description"]))
+
+        # Identical call is idempotent without calling issueUpdate or issueCreate
+        before_updates = len(self.httpd.requests_for("issueUpdate"))
+        before_creates = len(self.httpd.requests_for("issueCreate"))
+        same_issue, was_created_again = client.ensure_release_task(
+            repo="wimpysworld/tailor",
+            next_tag="v1.2.4",
+            title="Release wimpysworld/tailor v1.2.4 (security patch)",
+            description="Patch body v1",
+            state="Backlog",
+        )
+        self.assertFalse(was_created_again)
+        self.assertEqual(same_issue["id"], created_issue["id"])
+        self.assertEqual(len(self.httpd.requests_for("issueUpdate")), before_updates)
+        self.assertEqual(len(self.httpd.requests_for("issueCreate")), before_creates)
+
+        # Updated title/description updates existing active issue in place
+        updated_issue, was_created_update = client.ensure_release_task(
+            repo="wimpysworld/tailor",
+            next_tag="v1.2.4",
+            title="Release wimpysworld/tailor v1.2.4 (updated)",
+            description="Patch body v2",
+            state="Backlog",
+        )
+        self.assertFalse(was_created_update)
+        self.assertEqual(updated_issue["id"], created_issue["id"])
+        self.assertEqual(updated_issue["title"], "Release wimpysworld/tailor v1.2.4 (updated)")
+        self.assertIn("Patch body v2", str(updated_issue["description"]))
+        self.assertEqual(len(self.httpd.requests_for("issueUpdate")), before_updates + 1)
+
+        # Ignored states (Done, Canceled, Duplicate) are returned untouched without update
+        for ignored_state_id in ("st-done", "st-canceled", "st-duplicate"):
+            self.httpd.issues[str(created_issue["id"])]["stateId"] = ignored_state_id
+            pre_updates = len(self.httpd.requests_for("issueUpdate"))
+            returned, was_created_ign = client.ensure_release_task(
+                repo="wimpysworld/tailor",
+                next_tag="v1.2.4",
+                title="Should not overwrite ignored issue",
+                description="Should not overwrite",
+                state="Backlog",
+            )
+            self.assertFalse(was_created_ign)
+            self.assertEqual(returned["id"], created_issue["id"])
+            self.assertEqual(returned["title"], "Release wimpysworld/tailor v1.2.4 (updated)")
+            self.assertEqual(len(self.httpd.requests_for("issueUpdate")), pre_updates)
 
 
 if __name__ == "__main__":

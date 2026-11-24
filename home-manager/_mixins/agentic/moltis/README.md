@@ -204,7 +204,7 @@ Alerts group by `<owner>/<repo>:dependabot:<ecosystem>:<package>` or `<owner>/<r
 > [!IMPORTANT]
 > Breaking and migration changes: `team:implement` replaces the retired `team:fix` label on community issues. On startup, `state.json` migrates selectively from schema v2 to v3 (`STATE_SCHEMA_VERSION = 3`) and `--reprocess-community` repeats that community-only reset on demand.
 
-`linear_sync.py` reuses per-agent OAuth `client_credentials` tokens from `linear_token.py` for queries, issue writes, attachments, and verdict comments. It targets Linear team `WW` and project `Community Contributions`. It manages the `Repository` label group with on-demand `<repo>` labels and nine workflow labels: `Issue`, `PR`, `ready-to-implement`, `sign-off-required`, `ready-to-merge`, `needs-decision`, `first-time`, `merge-conflicts`, and `stale-closed`. Because Linear restricts `issueLabelCreate` for OAuth app actors, `moltis-github-companion` reads a dedicated team-scoped (`WW`) Personal API Key from `secrets/linear.yaml` (`moltis/label_api_key`, mode `0400`) via `MOLTIS_GITHUB_COMPANION_LINEAR_LABEL_API_KEY_PATH` exclusively for `_create_label()`. That secret never enters `moltis.toml` or the Moltis gateway environment. If label creation is ever denied, `linear_sync.py` warns once, skips creating missing repository labels, and still creates Linear issues with workflow labels and GitHub attachments. A per-poll circuit breaker in `companion.py` stops Linear write loops on the first auth or permission error or after 3 consecutive `LinearAPIError` failures so a poll never repeats failing mutations.
+`linear_sync.py` reuses per-agent OAuth `client_credentials` tokens from `linear_token.py` for queries, issue writes, attachments, and verdict comments. It targets Linear team `WW` and project `Community Contributions`. It manages the `Repository` label group with on-demand `<repo>` labels and ten workflow labels: `Issue`, `PR`, `ready-to-implement`, `sign-off-required`, `ready-to-merge`, `needs-decision`, `first-time`, `merge-conflicts`, `stale-closed`, and `release`. Because Linear restricts `issueLabelCreate` for OAuth app actors, `moltis-github-companion` reads a dedicated team-scoped (`WW`) Personal API Key from `secrets/linear.yaml` (`moltis/label_api_key`, mode `0400`) via `MOLTIS_GITHUB_COMPANION_LINEAR_LABEL_API_KEY_PATH` exclusively for `_create_label()`. That secret never enters `moltis.toml` or the Moltis gateway environment. If label creation is ever denied, `linear_sync.py` warns once, skips creating missing repository labels, and still creates Linear issues with workflow labels and GitHub attachments. A per-poll circuit breaker in `companion.py` stops Linear write loops on the first auth or permission error or after 3 consecutive `LinearAPIError` failures so a poll never repeats failing mutations.
 
 **Community Issues pipeline (`skrye` and `zannah` only)**
 
@@ -237,6 +237,10 @@ Community pull requests route into two lanes:
 
 `traya` handles Mode 1 human and peer code review, explicit `@traya` or `@sith-traya` mentions, Lane A blind second-check pull-request reviews (`community_pr_blind_review`), and explicit `@traya` Linear operator comment turns (`linear_operator_comment`) only. `traya` is excluded from sweeps, automated updates, Lane B reviews, and Community Issues automation.
 
+**PR-to-issue linking and duplicate-implementation guard**
+
+For each open pull request, the companion reads `closingIssuesReferences` and falls back to pull-request body keywords. When matching Linear `PR` and `Issue` cards exist, the companion links them via `issueRelationCreate` (`related`). The companion pauses `linear_todo_implement` on any `Todo` issue that an open pull request already references. If that pull request closes unmerged, the companion resumes `linear_todo_implement` automatically.
+
 **Linear operator guidance and `@mention` wake workflow**
 
 Martin can steer agents from Linear issue comments through two modes:
@@ -255,6 +259,33 @@ Per-agent counters in `state.json` (`throttles`) enforce these defaults:
 | Community pull-request reviews (`community_pr_reviews`) | `2` | Per 30-minute slot |
 | `Todo` implementations (`todo_implementations`) | `1` | Per 30-minute slot |
 | Autonomous implementations (`daily_implementations`) | `3` | Per agent per `Europe/London` day |
+
+### Prepared security-patch release gate
+
+Every hour, `skrye` and `zannah` check release-managed repositories, split with `mod 2` ownership. `companion.py` discovers these repositories dynamically from `haberdasher.yaml` (`sources`) in `wimpysworld/Haberdasher` via `gh-api-safe`. The companion caches the list in `state.json` for 6 hours and retains the last cached list on transient GitHub failures. The companion validates every entry against `ALLOWED_NOTIFICATION_OWNERS` and merges optional non-Haberdasher entries from `MOLTIS_GITHUB_COMPANION_SECURITY_RELEASE_EXTRA_REPOS` (Nix wrapper parameter `securityPatchReleaseExtraRepos`, default empty). After security fixes merge past the latest stable semantic version (semver) tag (`vX.Y.Z`), the assigned agent enforces four gates:
+
+- The cooldown elapses (`MOLTIS_GITHUB_COMPANION_SECURITY_RELEASE_COOLDOWN_SECS`, Nix wrapper parameter `securityPatchReleaseCooldownSecs`, default `7200` seconds, or 2 hours).
+- Zero open security pull requests remain.
+- Default-branch CI is green or empty.
+- Clean-main inspection checks commits since the latest tag and flags any unreleased `feat:` or breaking commits.
+
+When those gates pass, the companion opens one deduplicated Linear `Backlog` task labelled `release` and sends one Telegram alert (`📦 <repo>: security patch <next_tag> ready`). That alert includes drafted release notes and the exact unfenced release command. Agents never push tags or call `gh release create` inside Fence.
+
+### Silent-failure and dead-letter health alerts
+
+`moltis-github-companion` sends deduplicated Telegram health alerts (`🚨 [<Agent> health]`) when any of three failure conditions occurs:
+
+- Three or more consecutive poll failures occur.
+- The Linear write circuit breaker trips.
+- An item enters dead-letter state (`retry_count >= 3`).
+
+Each alert uses a 12-hour cooldown. While the companion stays healthy, it sends zero health alerts.
+
+### Scheduled "Waiting on Martin" digest
+
+On weekdays at or after `08:30 Europe/London`, `skrye` sends a Telegram digest (`📋 Community Contributions digest`). The digest groups six waiting queues: `ready-to-merge`, `needs-decision`, and `first-time` pull requests, `sign-off-required` issues, ready security-patch releases, and dead-lettered items. The companion sorts items in each group by Linear `estimate`, with `XS` to `XL` first.
+
+Quiet Tuesday to Friday mornings with zero waiting items stay silent. `skrye` always sends the Monday digest, even when zero items wait. `MOLTIS_GITHUB_COMPANION_DIGEST_ENABLED` (Nix wrapper parameter `operatorDigestEnabled`, default `true`) controls this digest.
 
 ### Commit-pinned merge verification in `gh-bot-merge`
 

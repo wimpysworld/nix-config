@@ -3,12 +3,14 @@
 
 from __future__ import annotations
 
+import base64
 import concurrent.futures
 import contextlib
 import datetime
 import http.server
 import io
 import json
+import os
 import re
 import stat
 import subprocess
@@ -5235,10 +5237,13 @@ class StubLinearSyncClient:
         self.list_calls: list[dict[str, object]] = []
         self.list_comments_calls: list[str] = []
         self.post_verdict_calls: list[dict[str, object]] = []
+        self.relation_calls: list[dict[str, object]] = []
+        self.release_task_calls: list[dict[str, object]] = []
         self.event_log: list[tuple[object, ...]] = event_log if event_log is not None else []
         self.list_returns_empty = list_returns_empty
         self._seq = 100
         self._comment_seq = 0
+        self._relation_seq = 0
 
     @classmethod
     def _state_obj(cls, state: str) -> dict[str, str]:
@@ -5583,6 +5588,79 @@ class StubLinearSyncClient:
         self.event_log.append(("linear_blind_verdict", clean_id, norm_agent, norm_family, norm_sha, norm_verdict))
         return json.loads(json.dumps(comment))
 
+    def create_issue_relation(
+        self,
+        issue_id: str,
+        related_issue_id: str,
+        *,
+        relation_type: str = "related",
+    ) -> dict[str, object]:
+        clean_issue = str(issue_id or "").strip()
+        clean_related = str(related_issue_id or "").strip()
+        if not clean_issue or not clean_related or clean_issue == clean_related:
+            raise ValueError("Invalid issue relation ids")
+        if relation_type not in ("related", "blocks", "duplicate"):
+            raise ValueError(f"Unsupported relation type: {relation_type!r}")
+        self._relation_seq += 1
+        rel = {"id": f"rel-{self._relation_seq}", "type": relation_type}
+        self.relation_calls.append(
+            {
+                "issue_id": clean_issue,
+                "related_issue_id": clean_related,
+                "relation_type": relation_type,
+                "relation_id": rel["id"],
+            }
+        )
+        self.event_log.append(("linear_relation", clean_issue, clean_related, relation_type))
+        return dict(rel)
+
+    def ensure_release_task(
+        self,
+        *,
+        repo: str,
+        next_tag: str,
+        title: str,
+        description: str,
+        state: str = "Backlog",
+    ) -> tuple[dict[str, object], bool]:
+        resolved_repo = repo.strip().lower()
+        clean_tag = str(next_tag or "").strip()
+        release_url = companion.linear_sync.normalize_github_url(
+            f"https://github.com/{resolved_repo}/releases/tag/{clean_tag}"
+        )
+        formatted_desc = companion.linear_sync.format_issue_description_with_github_url(description, release_url)
+        self.release_task_calls.append(
+            {
+                "repo": resolved_repo,
+                "next_tag": clean_tag,
+                "title": title,
+                "description": description,
+                "state": state,
+                "release_url": release_url,
+            }
+        )
+        existing_id = self.by_github_url.get(release_url)
+        if existing_id is not None and existing_id in self.issues:
+            existing = self.issues[existing_id]
+            if not companion.is_ignored_linear_issue_state(existing):
+                if str(existing.get("title") or "") != title:
+                    existing["title"] = title
+                if str(existing.get("description") or "") != formatted_desc:
+                    existing["description"] = formatted_desc
+            return self._copy_issue(existing), False
+        short_repo = resolved_repo.split("/", 1)[1]
+        created = self.seed_issue(
+            github_url=release_url,
+            title=title,
+            repo=short_repo,
+            item_kind="release",
+            state=state,
+        )
+        self.issues[str(created["id"])]["description"] = formatted_desc
+        created["description"] = formatted_desc
+        self.event_log.append(("linear_release_task", str(created["id"]), resolved_repo, clean_tag))
+        return created, True
+
 
 class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
     """End-to-end tests for WW-397 Linear-backed Community Issues intake, research, implementation, sign-off pings, and close/merge sync."""
@@ -5769,6 +5847,8 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
             execution_coordinator=coord,
             clock=self.clock,
             linear_client=linear_client,  # type: ignore[arg-type]
+            # Keep PR pipeline Telegram assertions isolated from the 08:30 daily digest (tested in OperatorDigestTests).
+            operator_digest_enabled=False,
         )
         return store, runner, rpc_calls
 
@@ -5784,6 +5864,8 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
         ]
         gh_commands: list[list[str]] = []
 
+        haberdasher_ep = f"repos/{companion.DEFAULT_HABERDASHER_CONFIG_REPO}/contents/{companion.DEFAULT_HABERDASHER_CONFIG_PATH}"
+
         def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
             gh_commands.append(list(cmd))
             ep = cmd[1] if len(cmd) > 1 else ""
@@ -5791,6 +5873,14 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
                 return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
             if ep == "graphql":
                 return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(nodes), stderr="")
+            if ep == haberdasher_ep:
+                b64 = base64.b64encode(b"sources: []\n").decode("ascii")
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps({"encoding": "base64", "content": b64}),
+                    stderr="",
+                )
             raise AssertionError(f"Unexpected gh command during silent intake: {cmd!r}")
 
         linear_stub = StubLinearSyncClient(list_returns_empty=True)
@@ -5814,7 +5904,7 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
         self.assertEqual(self.httpd.telegram_requests, [])
         self.assertEqual(self.httpd.rpc_requests, [])
         self.assertEqual(rpc_calls, [])
-        self.assertTrue(all(cmd[1] in ("notifications", "graphql") for cmd in gh_commands))
+        self.assertTrue(all(cmd[1] in ("notifications", "graphql", haberdasher_ep) for cmd in gh_commands))
 
         # Re-polling within the same 30-minute slot keeps the 2 excess issues deferred
         res1_same_slot = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms + 5 * 60 * 1000)
@@ -7580,6 +7670,8 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
             execution_coordinator=coord,
             clock=self.clock,
             linear_client=linear_client,  # type: ignore[arg-type]
+            # Keep PR pipeline Telegram assertions isolated from the 08:30 daily digest (tested in OperatorDigestTests).
+            operator_digest_enabled=False,
         )
         return store, runner, rpc_calls
 
@@ -12521,6 +12613,1229 @@ class LinearOperatorGuidanceAndMentionWakeTests(GithubCompanionTestBase):
         store_skrye.update_thread_state(issue_key, {"handled_linear_comment_ids": many_ids}, now_override_ms=slot_ms)
         bounded = (store_skrye.get_thread_state(issue_key) or {}).get("handled_linear_comment_ids")
         self.assertEqual(bounded, many_ids[-companion.MAX_HANDLED_LINEAR_COMMENT_IDS:])
+
+
+class HealthAlertsTests(GithubCompanionTestBase):
+    """Feature #1: silent-failure and dead-letter health alerts across all agents."""
+
+    def _make_runner(
+        self,
+        *,
+        agent_name: str = "skrye",
+        gh_runner: Callable[..., subprocess.CompletedProcess] | None = None,
+        read_only_trial: bool = False,
+        state_dir: Path | None = None,
+    ) -> tuple[companion.CompanionStateStore, companion.GithubCompanionRunner]:
+        store = self.make_store(agent_name, state_dir=state_dir)
+        tg_client = self.make_telegram_client()
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        self.httpd.peek_active = False
+
+        def default_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            return subprocess.CompletedProcess(
+                cmd,
+                0,
+                stdout=LinearCommunityPullRequestsPipelineTests._graphql_search_payload([]),
+                stderr="",
+            )
+
+        gh_client = companion.GhApiSafeClient(runner=gh_runner or default_gh)
+        poller = companion.NotificationPoller(
+            state_store=store,
+            gh_client=gh_client,
+            read_only_trial=read_only_trial,
+            clock=self.clock,
+            sleeper=self.sleeper,
+            jitter_rng=lambda _lo, _hi: 5_000,
+        )
+        tf = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store,
+            gh_client=gh_client,
+            telegram_client=tg_client,
+            agent_name=agent_name,
+            clock=self.clock,
+        )
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name=agent_name,
+            main_model="gemini::gemini-4-hydrogen",
+            telegram_client=tg_client,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+        runner = companion.GithubCompanionRunner(
+            state_store=store,
+            gh_client=gh_client,
+            poller=poller,
+            trust_filter=tf,
+            execution_coordinator=coord,
+            read_only_trial=read_only_trial,
+            clock=self.clock,
+            telegram_client=tg_client,
+            operator_digest_enabled=False,
+        )
+        return store, runner
+
+    def test_consecutive_poll_failure_threshold_cooldown_and_reset(self) -> None:
+        store, runner = self._make_runner(agent_name="skrye", state_dir=self.state_dir / "health-poll")
+        t0 = LinearCommunityPullRequestsPipelineTests._utc_ms(2026, 4, 1, 7, 0)
+
+        err_poll = {"status": 200, "open_prs_poll_error": "GraphQL timeout", "open_issues_poll_error": None}
+        clean_poll = {"status": 304, "open_prs_poll_error": None, "open_issues_poll_error": None}
+
+        # Failures 1 and 2 stay silent
+        self.assertEqual(runner._evaluate_health_alerts(poll_result=err_poll, linear_breaker=None, current_ms=t0), [])
+        self.assertEqual(runner._evaluate_health_alerts(poll_result=err_poll, linear_breaker=None, current_ms=t0 + 60_000), [])
+        self.assertEqual(self.httpd.telegram_requests, [])
+        self.assertEqual(store.read_state()["health"]["consecutive_poll_failures"], 2)
+
+        # Failure 3 triggers alert
+        alerts3 = runner._evaluate_health_alerts(poll_result=err_poll, linear_breaker=None, current_ms=t0 + 120_000)
+        self.assertEqual(len(alerts3), 1)
+        self.assertEqual(alerts3[0]["key"], "poll_failures")
+        self.assertIn("🚨 [Skrye health]", alerts3[0]["message"])
+        self.assertIn("3 consecutive poll failures", alerts3[0]["message"])
+        self.assertEqual(len(self.httpd.telegram_requests), 1)
+
+        # Failure 4 within 12h cooldown is suppressed
+        alerts4 = runner._evaluate_health_alerts(
+            poll_result={"status": 429, "open_prs_poll_error": None, "open_issues_poll_error": None},
+            linear_breaker=None,
+            current_ms=t0 + 180_000,
+        )
+        self.assertEqual(alerts4, [])
+        self.assertEqual(store.read_state()["health"]["consecutive_poll_failures"], 4)
+        self.assertEqual(len(self.httpd.telegram_requests), 1)
+
+        # Clean poll resets consecutive_poll_failures to 0
+        self.assertEqual(
+            runner._evaluate_health_alerts(poll_result=clean_poll, linear_breaker=None, current_ms=t0 + 240_000),
+            [],
+        )
+        self.assertEqual(store.read_state()["health"]["consecutive_poll_failures"], 0)
+
+        # After 12h cooldown expires, 3 new failures alert again
+        after_cooldown = t0 + 120_000 + companion.HEALTH_ALERT_COOLDOWN_MS + 1_000
+        runner._evaluate_health_alerts(poll_result=err_poll, linear_breaker=None, current_ms=after_cooldown)
+        runner._evaluate_health_alerts(poll_result=err_poll, linear_breaker=None, current_ms=after_cooldown + 1_000)
+        alerts_again = runner._evaluate_health_alerts(poll_result=err_poll, linear_breaker=None, current_ms=after_cooldown + 2_000)
+        self.assertEqual(len(alerts_again), 1)
+        self.assertEqual(len(self.httpd.telegram_requests), 2)
+
+    def test_linear_circuit_breaker_alert_sanitises_secrets_and_respects_cooldown(self) -> None:
+        _, runner = self._make_runner(agent_name="zannah", state_dir=self.state_dir / "health-breaker")
+        t0 = LinearCommunityPullRequestsPipelineTests._utc_ms(2026, 4, 1, 7, 0)
+        clean_poll = {"status": 304, "open_prs_poll_error": None, "open_issues_poll_error": None}
+
+        breaker = companion._LinearWriteCircuitBreaker(consecutive_limit=1)
+        breaker.record_error(
+            companion.linear_sync.LinearAPIError("Unauthorized Bearer supersecret_token_12345 lin_api_abc123", status=401),
+            scope="test",
+            item_key="wimpysworld/tailor#1",
+        )
+        self.assertTrue(breaker.tripped)
+
+        alerts1 = runner._evaluate_health_alerts(poll_result=clean_poll, linear_breaker=breaker, current_ms=t0)
+        self.assertEqual(len(alerts1), 1)
+        self.assertEqual(alerts1[0]["key"], "linear_circuit_breaker")
+        msg = alerts1[0]["message"]
+        self.assertIn("🚨 [Zannah health]", msg)
+        self.assertNotIn("supersecret_token_12345", msg)
+        self.assertNotIn("lin_api_abc123", msg)
+        self.assertIn("[redacted]", msg)
+
+        # Suppressed within 12h cooldown
+        self.assertEqual(
+            runner._evaluate_health_alerts(poll_result=clean_poll, linear_breaker=breaker, current_ms=t0 + 3_600_000),
+            [],
+        )
+        # Re-alerts after 12h cooldown
+        alerts2 = runner._evaluate_health_alerts(
+            poll_result=clean_poll,
+            linear_breaker=breaker,
+            current_ms=t0 + companion.HEALTH_ALERT_COOLDOWN_MS + 1_000,
+        )
+        self.assertEqual(len(alerts2), 1)
+
+    def test_dead_letter_alert_dedup_recovery_clear_and_read_only_trial_skip(self) -> None:
+        store, runner = self._make_runner(agent_name="traya", state_dir=self.state_dir / "health-dl")
+        t0 = LinearCommunityPullRequestsPipelineTests._utc_ms(2026, 4, 1, 7, 0)
+
+        store.update_thread_state(
+            "wimpysworld/tailor#99",
+            {
+                "repo": "wimpysworld/tailor",
+                "number": 99,
+                "retry_count": companion.MAX_THREAD_FAILURE_RETRIES,
+                "last_failure_reason": "rpc_timeout",
+            },
+            now_override_ms=t0,
+        )
+
+        # Runs through run_cycle for traya too
+        res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0)
+        self.assertEqual(len(res1["health_alerts"]), 1)
+        self.assertEqual(res1["health_alerts"][0]["key"], "dead_letter")
+        self.assertIn("🚨 [Traya health]", res1["health_alerts"][0]["message"])
+        self.assertIn("wimpysworld/tailor#99", res1["health_alerts"][0]["message"])
+        self.assertEqual(
+            store.read_state()["health"]["notified_dead_letter_keys"].get("wimpysworld/tailor#99"),
+            f"{companion.MAX_THREAD_FAILURE_RETRIES}:rpc_timeout",
+        )
+
+        # Unchanged fingerprint is deduplicated
+        res2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0 + 60_000)
+        self.assertEqual(res2["health_alerts"], [])
+        self.assertEqual(len(self.httpd.telegram_requests), 1)
+
+        # Changed failure reason triggers a fresh alert
+        store.update_thread_state(
+            "wimpysworld/tailor#99",
+            {"retry_count": companion.MAX_THREAD_FAILURE_RETRIES + 1, "last_failure_reason": "linear_503"},
+            now_override_ms=t0 + 120_000,
+        )
+        res3 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0 + 120_000)
+        self.assertEqual(len(res3["health_alerts"]), 1)
+        self.assertEqual(len(self.httpd.telegram_requests), 2)
+
+        # Recovery (retry_count < MAX_THREAD_FAILURE_RETRIES) clears notified_dead_letter_keys
+        store.update_thread_state("wimpysworld/tailor#99", {"retry_count": 0}, now_override_ms=t0 + 180_000)
+        res4 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0 + 180_000)
+        self.assertEqual(res4["health_alerts"], [])
+        self.assertNotIn("wimpysworld/tailor#99", store.read_state()["health"]["notified_dead_letter_keys"])
+
+        # Re-entering dead-letter after recovery alerts again
+        store.update_thread_state(
+            "wimpysworld/tailor#99",
+            {"retry_count": companion.MAX_THREAD_FAILURE_RETRIES, "last_failure_reason": "rpc_timeout"},
+            now_override_ms=t0 + 240_000,
+        )
+        res5 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0 + 240_000)
+        self.assertEqual(len(res5["health_alerts"]), 1)
+        self.assertEqual(len(self.httpd.telegram_requests), 3)
+
+        # read_only_trial never sends health alerts
+        ro_store, ro_runner = self._make_runner(
+            agent_name="skrye",
+            read_only_trial=True,
+            state_dir=self.state_dir / "health-ro",
+        )
+        ro_store.update_thread_state(
+            "wimpysworld/tailor#88",
+            {"retry_count": companion.MAX_THREAD_FAILURE_RETRIES, "last_failure_reason": "boom"},
+            now_override_ms=t0,
+        )
+        ro_res = ro_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0)
+        self.assertEqual(ro_res["health_alerts"], [])
+        self.assertEqual(len(self.httpd.telegram_requests), 3)
+
+
+class OperatorDigestTests(GithubCompanionTestBase):
+    """Feature #2: scheduled weekday 08:30 Europe/London 'Waiting on Martin' digest."""
+
+    def _make_digest_runner(
+        self,
+        *,
+        agent_name: str = "skrye",
+        linear_client: StubLinearSyncClient | None = None,
+        state_dir: Path | None = None,
+    ) -> tuple[companion.CompanionStateStore, companion.GithubCompanionRunner]:
+        store = self.make_store(agent_name, state_dir=state_dir)
+        tg_client = self.make_telegram_client()
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        self.httpd.peek_active = False
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            return subprocess.CompletedProcess(
+                cmd,
+                0,
+                stdout=LinearCommunityPullRequestsPipelineTests._graphql_search_payload([]),
+                stderr="",
+            )
+
+        gh_client = companion.GhApiSafeClient(runner=fake_gh)
+        poller = companion.NotificationPoller(state_store=store, gh_client=gh_client, clock=self.clock)
+        tf = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store,
+            gh_client=gh_client,
+            telegram_client=tg_client,
+            agent_name=agent_name,
+            clock=self.clock,
+        )
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name=agent_name,
+            main_model="gemini::gemini-4-hydrogen",
+            telegram_client=tg_client,
+            linear_client=linear_client,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+        runner = companion.GithubCompanionRunner(
+            state_store=store,
+            gh_client=gh_client,
+            poller=poller,
+            trust_filter=tf,
+            execution_coordinator=coord,
+            clock=self.clock,
+            linear_client=linear_client,  # type: ignore[arg-type]
+            telegram_client=tg_client,
+        )
+        return store, runner
+
+    def test_format_operator_digest_ordering_caps_and_quiet_rules(self) -> None:
+        # Quiet Tue-Fri -> empty string
+        self.assertEqual(
+            companion.format_operator_digest(
+                date_str="2026-04-01",
+                ready_to_merge=[],
+                needs_decision=[],
+                first_time_prs=[],
+                signoff_issues=[],
+                security_releases=[],
+                dead_letter_keys=[],
+                is_monday=False,
+            ),
+            "",
+        )
+        # Quiet Monday -> All clear summary
+        monday_clear = companion.format_operator_digest(
+            date_str="2026-04-06",
+            ready_to_merge=[],
+            needs_decision=[],
+            first_time_prs=[],
+            signoff_issues=[],
+            security_releases=[],
+            dead_letter_keys=[],
+            is_monday=True,
+        )
+        self.assertIn("📋 Community Contributions digest (2026-04-06)", monday_clear)
+        self.assertIn("All clear", monday_clear)
+
+        # Sorting XS -> S -> M -> L -> XL -> ? and capping at 10 with +N more
+        unsorted_prs = [
+            {"identifier": "WW-6", "title": "Unknown size", "estimate": None, "url": "https://linear.app/ww/WW-6"},
+            {"identifier": "WW-5", "title": "XL change", "estimate": 8, "url": "https://linear.app/ww/WW-5"},
+            {"identifier": "WW-2", "title": "Small change", "estimate": 2, "url": "https://linear.app/ww/WW-2"},
+            {"identifier": "WW-4", "title": "Large change", "estimate": 5, "url": "https://linear.app/ww/WW-4"},
+            {"identifier": "WW-1", "title": "XS quick win", "estimate": 1, "url": "https://linear.app/ww/WW-1"},
+            {"identifier": "WW-3", "title": "Medium change", "estimate": 3, "url": "https://linear.app/ww/WW-3"},
+        ]
+        many_dl = [f"wimpysworld/tailor#{i}" for i in range(1, 13)]
+        text = companion.format_operator_digest(
+            date_str="2026-04-01",
+            ready_to_merge=unsorted_prs,
+            needs_decision=[],
+            first_time_prs=[],
+            signoff_issues=[],
+            security_releases=[{"repo": "wimpysworld/tailor", "next_tag": "v1.2.4", "linear_url": "https://linear.app/ww/WW-99", "has_non_patch_commits": True}],
+            dead_letter_keys=many_dl,
+            is_monday=False,
+        )
+        positions = [text.index(tok) for tok in ("[XS] WW-1", "[S] WW-2", "[M] WW-3", "[L] WW-4", "[XL] WW-5", "[?] WW-6")]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn("Security patch releases (1):", text)
+        self.assertIn("wimpysworld/tailor v1.2.4", text)
+        self.assertIn("Dead-lettered items (12):", text)
+        self.assertIn("+2 more", text)
+
+    def test_schedule_skrye_only_weekend_skip_quiet_monday_and_dedup(self) -> None:
+        linear_stub = StubLinearSyncClient()
+        # Seed classified items (note: first-time + needs-decision must appear in needs-decision only, not first-time)
+        linear_stub.seed_issue(
+            github_url="https://github.com/wimpysworld/tailor/pull/10",
+            title="Quick typo fix",
+            repo="wimpysworld/tailor",
+            item_kind="PR",
+            state="Backlog",
+            extra_labels=("ready-to-merge",),
+            estimate=1,
+        )
+        linear_stub.seed_issue(
+            github_url="https://github.com/wimpysworld/tailor/pull/11",
+            title="First-time PR needing decision",
+            repo="wimpysworld/tailor",
+            item_kind="PR",
+            state="Backlog",
+            extra_labels=("first-time", "needs-decision"),
+            estimate=3,
+        )
+        linear_stub.seed_issue(
+            github_url="https://github.com/wimpysworld/tailor/pull/12",
+            title="Friendly first-time PR",
+            repo="wimpysworld/tailor",
+            item_kind="PR",
+            state="Backlog",
+            extra_labels=("first-time",),
+            estimate=2,
+        )
+        linear_stub.seed_issue(
+            github_url="https://github.com/wimpysworld/tailor/issues/13",
+            title="Feature awaiting sign-off",
+            repo="wimpysworld/tailor",
+            item_kind="Issue",
+            state="Backlog",
+            extra_labels=("sign-off-required",),
+            estimate=5,
+        )
+
+        # In January (GMT == UTC): 2026-01-05 is Monday, 2026-01-06 is Tuesday, 2026-01-10 is Saturday
+        mon_0829_ms = LinearCommunityPullRequestsPipelineTests._utc_ms(2026, 1, 5, 8, 29)
+        mon_0830_ms = LinearCommunityPullRequestsPipelineTests._utc_ms(2026, 1, 5, 8, 30)
+        sat_1000_ms = LinearCommunityPullRequestsPipelineTests._utc_ms(2026, 1, 10, 10, 0)
+        tue_0900_ms = LinearCommunityPullRequestsPipelineTests._utc_ms(2026, 1, 6, 9, 0)
+
+        # Non-skrye agents (zannah, traya) never send digest
+        for other_agent in ("zannah", "traya"):
+            _, other_runner = self._make_digest_runner(
+                agent_name=other_agent,
+                linear_client=linear_stub,
+                state_dir=self.state_dir / f"digest-{other_agent}",
+            )
+            self.assertIsNone(
+                other_runner._maybe_send_operator_digest(
+                    active_linear_issues=linear_stub.list_project_issues_by_state(),
+                    pending_security_releases=[],
+                    current_ms=mon_0830_ms,
+                )
+            )
+        self.assertEqual(self.httpd.telegram_requests, [])
+
+        store, runner = self._make_digest_runner(
+            agent_name="skrye",
+            linear_client=linear_stub,
+            state_dir=self.state_dir / "digest-skrye",
+        )
+        all_issues = linear_stub.list_project_issues_by_state()
+
+        # Before 08:30 Europe/London -> skipped
+        self.assertIsNone(
+            runner._maybe_send_operator_digest(
+                active_linear_issues=all_issues,
+                pending_security_releases=[],
+                current_ms=mon_0829_ms,
+            )
+        )
+        # Weekend -> skipped
+        self.assertIsNone(
+            runner._maybe_send_operator_digest(
+                active_linear_issues=all_issues,
+                pending_security_releases=[],
+                current_ms=sat_1000_ms,
+            )
+        )
+        # Disabled via env var -> skipped
+        with patch.dict(companion.os.environ, {"MOLTIS_GITHUB_COMPANION_DIGEST_ENABLED": "false"}):
+            self.assertIsNone(
+                runner._maybe_send_operator_digest(
+                    active_linear_issues=all_issues,
+                    pending_security_releases=[],
+                    current_ms=mon_0830_ms,
+                )
+            )
+        self.assertEqual(self.httpd.telegram_requests, [])
+
+        # Transient Telegram failure must NOT persist last_digest_date
+        self.httpd.fail_next_telegram_send = True
+        self.assertIsNone(
+            runner._maybe_send_operator_digest(
+                active_linear_issues=all_issues,
+                pending_security_releases=[],
+                current_ms=mon_0830_ms,
+            )
+        )
+        self.assertIsNone(store.read_state()["digest"]["last_digest_date"])
+
+        # Retry succeeds at 08:30 Monday and persists last_digest_date
+        sent = runner._maybe_send_operator_digest(
+            active_linear_issues=all_issues,
+            pending_security_releases=[],
+            current_ms=mon_0830_ms,
+        )
+        self.assertIsNotNone(sent)
+        assert sent is not None
+        self.assertEqual(sent["counts"]["ready_to_merge"], 1)
+        self.assertEqual(sent["counts"]["needs_decision"], 1)
+        self.assertEqual(sent["counts"]["first_time_prs"], 1)
+        self.assertEqual(sent["counts"]["signoff_issues"], 1)
+        self.assertEqual(store.read_state()["digest"]["last_digest_date"], "2026-01-05")
+        self.assertIn("Friendly first-time PR", sent["message"])
+        # Ensure PR #11 is only in Needs decision, not duplicated in First-time contributor PRs
+        self.assertEqual(sent["message"].count("First-time PR needing decision"), 1)
+
+        # Same day duplicate call is skipped
+        self.assertIsNone(
+            runner._maybe_send_operator_digest(
+                active_linear_issues=all_issues,
+                pending_security_releases=[],
+                current_ms=mon_0830_ms + 3_600_000,
+            )
+        )
+
+        # Quiet Tuesday stays completely silent; quiet Monday sends All clear
+        self.assertIsNone(
+            runner._maybe_send_operator_digest(
+                active_linear_issues=[],
+                pending_security_releases=[],
+                current_ms=tue_0900_ms,
+            )
+        )
+        next_mon_ms = LinearCommunityPullRequestsPipelineTests._utc_ms(2026, 1, 12, 8, 30)
+        quiet_mon = runner._maybe_send_operator_digest(
+            active_linear_issues=[],
+            pending_security_releases=[],
+            current_ms=next_mon_ms,
+        )
+        self.assertIsNotNone(quiet_mon)
+        assert quiet_mon is not None
+        self.assertIn("All clear", quiet_mon["message"])
+        self.assertEqual(store.read_state()["digest"]["last_digest_date"], "2026-01-12")
+
+
+class PrIssueLinkingAndPauseTests(GithubCompanionTestBase):
+    """Feature #3: PR-to-issue linking and pausing duplicate Todo implementation."""
+
+    def test_extract_pr_closing_issues_graphql_and_body_fallback(self) -> None:
+        self.assertIn("closingIssuesReferences", companion.OPEN_PRS_GRAPHQL_QUERY_TEMPLATE)
+
+        raw_pr = {
+            "closingIssuesReferences": {
+                "nodes": [
+                    {
+                        "number": 10,
+                        "url": "https://github.com/wimpysworld/tailor/issues/10",
+                        "repository": {"nameWithOwner": "wimpysworld/tailor"},
+                    },
+                    {
+                        "number": 99,
+                        "url": "https://github.com/external-org/other/issues/99",
+                        "repository": {"nameWithOwner": "external-org/other"},
+                    },
+                ]
+            },
+            "body": (
+                "Closes #10\n"
+                "Fixes: #11\n"
+                "Resolves wimpysworld/sidra#22\n"
+                "Closed https://github.com/linuxmatters/jive-vocals/issues/33\n"
+                "Fixes external-org/disallowed#44\n"
+                "Inline `Fixes #55` and fenced:\n"
+                "```\nCloses #66\n```\n"
+            ),
+        }
+        refs = companion.extract_pr_closing_issues(raw_pr, default_repo="wimpysworld/tailor")
+        keys = [r["issue_key"] for r in refs]
+        self.assertEqual(
+            keys,
+            [
+                "wimpysworld/tailor#10",
+                "wimpysworld/tailor#11",
+                "wimpysworld/sidra#22",
+                "linuxmatters/jive-vocals#33",
+            ],
+        )
+
+    def test_link_open_prs_to_linear_issues_and_pause_resume_todo_implementation(self) -> None:
+        repo = "wimpysworld/tailor"
+        pr_num = LinearCommunityPullRequestsPipelineTests._owned_numbers(repo, "skrye", 1, kind="pr", start=900)[0]
+        issue_num = LinearCommunityPullRequestsPipelineTests._owned_numbers(repo, "skrye", 1, kind="issue", start=900)[0]
+        linear_stub = StubLinearSyncClient()
+
+        lin_pr = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_num}",
+            title="Fix crash on empty config",
+            repo=repo,
+            item_kind="PR",
+            state="Backlog",
+        )
+        lin_issue = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{issue_num}",
+            title="Crash on empty config",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+
+        pr_open = True
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                nodes: list[dict[str, object]] = [
+                    LinearCommunityPullRequestsPipelineTests._graphql_issue_node(
+                        repo,
+                        issue_num,
+                        title="Crash on empty config",
+                    )
+                ]
+                if pr_open:
+                    pr_node = LinearCommunityPullRequestsPipelineTests._graphql_pr_node(
+                        repo,
+                        pr_num,
+                        title="Fix crash on empty config",
+                        head_sha="sha_link_1",
+                        author="flexiondotorg",
+                        body=f"Fixes #{issue_num}",
+                    )
+                    pr_node["closingIssuesReferences"] = {
+                        "nodes": [
+                            {
+                                "number": issue_num,
+                                "url": f"https://github.com/{repo}/issues/{issue_num}",
+                                "repository": {"nameWithOwner": repo},
+                            }
+                        ]
+                    }
+                    nodes.append(pr_node)
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=LinearCommunityPullRequestsPipelineTests._graphql_search_payload(nodes),
+                    stderr="",
+                )
+            if ep == f"repos/{repo}/pulls/{pr_num}":
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps({"state": "closed", "merged": False}),
+                    stderr="",
+                )
+            return subprocess.CompletedProcess(cmd, 0, stdout="{}", stderr="")
+
+        store = self.make_store("skrye", state_dir=self.state_dir / "pr-link-pause")
+        tg_client = self.make_telegram_client()
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        rpc_calls: list[dict[str, object]] = []
+        self.httpd.peek_active = False
+
+        def send_sync_handler(params: dict) -> dict:
+            msg = str(params.get("message") or "")
+            meta = LinearCommunityPullRequestsPipelineTests._parse_prompt_metadata(msg)
+            disp_id = meta.get("dispatch_id", "")
+            rpc_calls.append(meta)
+            if meta.get("dispatch_kind") == "linear_todo_implement":
+                linear_stub.update_issue(str(lin_issue["id"]), state="In Review")
+            self.write_history(
+                companion.DEFAULT_GH_SESSION_KEY,
+                [
+                    {"role": "user", "dispatch_id": disp_id, "content": msg},
+                    {"role": "assistant", "content": "HEARTBEAT_OK", "stop_reason": "end_turn"},
+                ],
+                agent_name="skrye",
+            )
+            return {"ok": True, "result": {"text": "HEARTBEAT_OK"}}
+
+        self.httpd.send_sync_handler = send_sync_handler
+        gh_client = companion.GhApiSafeClient(runner=fake_gh)
+        poller = companion.NotificationPoller(state_store=store, gh_client=gh_client, clock=self.clock)
+        tf = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store,
+            gh_client=gh_client,
+            telegram_client=tg_client,
+            agent_name="skrye",
+            clock=self.clock,
+        )
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="skrye",
+            main_model="gemini::gemini-4-hydrogen",
+            telegram_client=tg_client,
+            linear_client=linear_stub,
+            completion_timeout_ms=1_000,
+            poll_interval_ms=20,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+        runner = companion.GithubCompanionRunner(
+            state_store=store,
+            gh_client=gh_client,
+            poller=poller,
+            trust_filter=tf,
+            execution_coordinator=coord,
+            clock=self.clock,
+            linear_client=linear_stub,  # type: ignore[arg-type]
+            telegram_client=tg_client,
+            operator_digest_enabled=False,
+        )
+
+        slot_ms = LinearCommunityPullRequestsPipelineTests._utc_ms(2026, 4, 1, 7, 0)
+        pr_url = f"https://github.com/{repo}/pull/{pr_num}"
+        issue_key = companion.make_pr_key(repo, issue_num)
+
+        # Cycle 1: PR links to Issue via create_issue_relation; Todo implementation is PAUSED with one audit comment
+        res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot_ms)
+        self.assertEqual(len(res1["linked_pr_issue_relations"]), 1)
+        self.assertEqual(len(linear_stub.relation_calls), 1)
+        self.assertEqual(linear_stub.relation_calls[0]["issue_id"], lin_pr["id"])
+        self.assertEqual(linear_stub.relation_calls[0]["related_issue_id"], lin_issue["id"])
+        self.assertEqual(linear_stub.relation_calls[0]["relation_type"], "related")
+        self.assertEqual([c for c in rpc_calls if c.get("dispatch_kind") == "linear_todo_implement"], [])
+        self.assertEqual(linear_stub.issues[str(lin_issue["id"])]["state"]["name"], "Todo")
+        issue_comments = linear_stub.comments_by_issue.get(str(lin_issue["id"]), [])
+        self.assertEqual(len(issue_comments), 1)
+        self.assertIn(pr_url, str(issue_comments[0]["body"]))
+        self.assertEqual((store.get_thread_state(issue_key) or {}).get("paused_by_open_pr_url"), pr_url)
+
+        # Cycle 2: relation and pause comment are both deduplicated
+        res2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot_ms + 60_000)
+        self.assertEqual(res2["linked_pr_issue_relations"], [])
+        self.assertEqual(len(linear_stub.relation_calls), 1)
+        self.assertEqual(len(linear_stub.comments_by_issue.get(str(lin_issue["id"]), [])), 1)
+        self.assertEqual([c for c in rpc_calls if c.get("dispatch_kind") == "linear_todo_implement"], [])
+
+        # Cycle 3: PR closes -> pause clears and Todo implementation resumes cleanly!
+        pr_open = False
+        res3 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot_ms + 120_000)
+        self.assertIsNone((store.get_thread_state(issue_key) or {}).get("paused_by_open_pr_url"))
+        todo_dispatches = [c for c in rpc_calls if c.get("dispatch_kind") == "linear_todo_implement"]
+        self.assertEqual(len(todo_dispatches), 1)
+        self.assertEqual(linear_stub.issues[str(lin_issue["id"])]["state"]["name"], "In Review")
+        self.assertEqual(res3["linked_pr_issue_relations"], [])
+
+
+class SecurityPatchReleaseGateTests(GithubCompanionTestBase):
+    """Feature #4: prepared security-patch release gate helpers, GraphQL fetch, and 4-gate orchestration."""
+
+    def test_pure_semver_commit_classification_and_security_pr_helpers(self) -> None:
+        self.assertEqual(companion.parse_semver_tag("v1.2.3"), ("v", 1, 2, 3))
+        self.assertEqual(companion.parse_semver_tag("2.0.10"), ("", 2, 0, 10))
+        for invalid in ("v1.2.3-rc.1", "v1.2.3-beta.0", "latest", "v1.2", ""):
+            self.assertIsNone(companion.parse_semver_tag(invalid))
+            self.assertIsNone(companion.bump_semver_patch(invalid))
+        self.assertEqual(companion.bump_semver_patch("v1.2.3"), "v1.2.4")
+        self.assertEqual(companion.bump_semver_patch("0.9.9"), "0.9.10")
+
+        classified = companion.classify_unreleased_commits([
+            "fix(security): patch CVE-2026-1234",
+            "chore(deps): bump golang.org/x/net",
+            "feat: add interactive picker",
+            "feat(cli)!: drop legacy flag",
+            "refactor!: rename public API",
+            "docs: note BREAKING CHANGE in config schema",
+        ])
+        self.assertEqual(
+            classified["non_patch"],
+            [
+                "feat: add interactive picker",
+                "feat(cli)!: drop legacy flag",
+                "refactor!: rename public API",
+                "docs: note BREAKING CHANGE in config schema",
+            ],
+        )
+        self.assertEqual(
+            classified["patch_safe"],
+            [
+                "fix(security): patch CVE-2026-1234",
+                "chore(deps): bump golang.org/x/net",
+            ],
+        )
+
+        self.assertTrue(companion.is_security_merged_pr({"headRefName": "security/fix-cve", "title": "Bump"}))
+        self.assertTrue(
+            companion.is_security_merged_pr(
+                {"author": {"__typename": "Bot", "login": "dependabot"}, "labels": ["dependencies", "security"], "title": "Bump foo"}
+            )
+        )
+        self.assertTrue(companion.is_security_merged_pr({"title": "Fix GHSA-abcd-1234-efgh", "labels": []}))
+        self.assertFalse(
+            companion.is_security_merged_pr(
+                {"author": {"__typename": "Bot", "login": "dependabot"}, "headRefName": "dependabot/go/foo", "labels": ["dependencies"], "title": "chore(deps): bump foo"}
+            )
+        )
+        self.assertIn(companion.compute_repo_owner("wimpysworld/tailor"), companion.SWEEP_AGENT_ORDER)
+
+    def test_fetch_repo_security_release_status_and_all_four_gates(self) -> None:
+        repo = "wimpysworld/tailor"
+        owner_agent = companion.compute_repo_owner(repo)
+        linear_stub = StubLinearSyncClient()
+
+        status_box: dict[str, object] = {
+            "isArchived": False,
+            "defaultBranchRef": {
+                "name": "main",
+                "target": {
+                    "oid": "aaaa1111bbbb2222cccc3333dddd4444eeee5555",
+                    "statusCheckRollup": {"state": "SUCCESS"},
+                    "history": {
+                        "nodes": [
+                            {
+                                "oid": "aaaa1111bbbb2222cccc3333dddd4444eeee5555",
+                                "messageHeadline": "fix(security): address CVE-2026-9999",
+                                "committedDate": "2026-04-01T08:00:00Z",
+                            },
+                            {
+                                "oid": "0000111122223333444455556666777788889999",
+                                "messageHeadline": "chore: release v1.4.2",
+                                "committedDate": "2026-03-20T10:00:00Z",
+                            },
+                        ]
+                    },
+                },
+            },
+            "latestRelease": {
+                "tagName": "v1.4.2",
+                "publishedAt": "2026-03-20T10:05:00Z",
+                "isDraft": False,
+                "isPrerelease": False,
+                "tagCommit": {"oid": "0000111122223333444455556666777788889999"},
+            },
+            "pullRequests": {
+                "nodes": [
+                    {
+                        "number": 77,
+                        "title": "fix(security): address CVE-2026-9999",
+                        "url": f"https://github.com/{repo}/pull/77",
+                        "mergedAt": "2026-04-01T08:00:00Z",
+                        "headRefName": "security/cve-2026-9999",
+                        "author": {"__typename": "User", "login": "sith-skrye"},
+                        "labels": {"nodes": [{"name": "security"}]},
+                    },
+                    {
+                        "number": 50,
+                        "title": "fix: older merged PR before release",
+                        "url": f"https://github.com/{repo}/pull/50",
+                        "mergedAt": "2026-03-10T10:00:00Z",
+                        "headRefName": "security/old",
+                        "author": {"__typename": "User", "login": "sith-skrye"},
+                        "labels": {"nodes": [{"name": "security"}]},
+                    },
+                ]
+            },
+        }
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == f"repos/{companion.DEFAULT_HABERDASHER_CONFIG_REPO}/contents/{companion.DEFAULT_HABERDASHER_CONFIG_PATH}":
+                b64 = base64.b64encode(f"sources: [{repo}]\n".encode("utf-8")).decode("ascii")
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps({"encoding": "base64", "content": b64}),
+                    stderr="",
+                )
+            if ep == "graphql":
+                query_arg = " ".join(cmd)
+                if "latestRelease" in query_arg:
+                    return subprocess.CompletedProcess(
+                        cmd,
+                        0,
+                        stdout=json.dumps({"data": {"repository": status_box}}),
+                        stderr="",
+                    )
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=LinearCommunityPullRequestsPipelineTests._graphql_search_payload([]),
+                    stderr="",
+                )
+            return subprocess.CompletedProcess(cmd, 0, stdout="{}", stderr="")
+
+        store = self.make_store(owner_agent, state_dir=self.state_dir / "sec-release-gate")
+        tg_client = self.make_telegram_client()
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        gh_client = companion.GhApiSafeClient(runner=fake_gh)
+
+        # Verify GhApiSafeClient.fetch_repo_security_release_status parsing
+        fetched = gh_client.fetch_repo_security_release_status(repo)
+        self.assertIsNotNone(fetched)
+        assert fetched is not None
+        self.assertEqual(fetched["latest_tag"], "v1.4.2")
+        self.assertEqual(len(fetched["commits_since_tag"]), 1)
+        self.assertEqual(len(fetched["merged_prs_since_tag"]), 1)
+        self.assertEqual(fetched["merged_prs_since_tag"][0]["number"], 77)
+        with self.assertRaises(ValueError):
+            gh_client.fetch_repo_security_release_status("untrusted/repo")
+
+        poller = companion.NotificationPoller(state_store=store, gh_client=gh_client, clock=self.clock)
+        tf = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store,
+            gh_client=gh_client,
+            telegram_client=tg_client,
+            agent_name=owner_agent,
+            clock=self.clock,
+        )
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name=owner_agent,
+            main_model="gemini::gemini-4-hydrogen",
+            telegram_client=tg_client,
+            linear_client=linear_stub,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+        runner = companion.GithubCompanionRunner(
+            state_store=store,
+            gh_client=gh_client,
+            poller=poller,
+            trust_filter=tf,
+            execution_coordinator=coord,
+            clock=self.clock,
+            linear_client=linear_stub,  # type: ignore[arg-type]
+            telegram_client=tg_client,
+            operator_digest_enabled=False,
+            security_release_repos=(repo,),
+            security_release_cooldown_secs=2 * 60 * 60,
+        )
+        clean_poll = {"status": 304, "open_prs_poll_error": None, "open_issues_poll_error": None}
+        merge_ms = LinearCommunityPullRequestsPipelineTests._utc_ms(2026, 4, 1, 8, 0)
+
+        # Gate 3 hold: 1h after merge (< 2h cooldown) -> held
+        res_cooldown = runner._evaluate_security_patch_releases(
+            open_prs_by_key={},
+            poll_result=clean_poll,
+            current_ms=merge_ms + 60 * 60 * 1000,
+        )
+        self.assertEqual(res_cooldown, [])
+
+        # Gate 2 hold: 3h after merge, but an open security PR exists -> held
+        open_sec_pr = {
+            f"{repo}#78": {
+                "repo": repo,
+                "number": 78,
+                "state": "OPEN",
+                "head_ref": "security/cve-2026-10000",
+                "title": "fix: second CVE",
+                "labels": ["security"],
+            }
+        }
+        res_open_pr = runner._evaluate_security_patch_releases(
+            open_prs_by_key=open_sec_pr,
+            poll_result=clean_poll,
+            current_ms=merge_ms + 3 * 60 * 60 * 1000,
+        )
+        self.assertEqual(res_open_pr, [])
+
+        # Gate 4 hold: 5h after merge, no open security PR, but default branch CI is FAILURE -> held
+        status_box["defaultBranchRef"]["target"]["statusCheckRollup"] = {"state": "FAILURE"}  # type: ignore[index]
+        res_red_ci = runner._evaluate_security_patch_releases(
+            open_prs_by_key={},
+            poll_result=clean_poll,
+            current_ms=merge_ms + 5 * 60 * 60 * 1000,
+        )
+        self.assertEqual(res_red_ci, [])
+
+        # All 4 gates green (clean main): creates Linear task + Telegram ping + exact gh release command
+        status_box["defaultBranchRef"]["target"]["statusCheckRollup"] = {"state": "SUCCESS"}  # type: ignore[index]
+        ready_ms = merge_ms + 7 * 60 * 60 * 1000
+        res_ready = runner._evaluate_security_patch_releases(
+            open_prs_by_key={},
+            poll_result=clean_poll,
+            current_ms=ready_ms,
+        )
+        self.assertEqual(len(res_ready), 1)
+        act = res_ready[0]
+        self.assertEqual(act["repo"], repo)
+        self.assertEqual(act["next_tag"], "v1.4.3")
+        self.assertFalse(act["has_non_patch_commits"])
+        self.assertEqual(
+            act["release_command"],
+            f"gh release create v1.4.3 --repo {repo} --target aaaa1111bbbb2222cccc3333dddd4444eeee5555 --generate-notes",
+        )
+        self.assertEqual(len(linear_stub.release_task_calls), 1)
+        self.assertIn(act["release_command"], str(linear_stub.release_task_calls[0]["description"]))
+        self.assertEqual(len(self.httpd.telegram_requests), 1)
+        tg_text = str(self.httpd.telegram_requests[0]["body"]["text"])
+        self.assertIn(f"📦 {repo}: security patch v1.4.3 ready", tg_text)
+        self.assertNotIn("⚠️", tg_text)
+
+        # Deduplicated per (repo, tag, sha) even after the 1h check interval elapses
+        res_dup = runner._evaluate_security_patch_releases(
+            open_prs_by_key={},
+            poll_result=clean_poll,
+            current_ms=ready_ms + companion.SECURITY_RELEASE_CHECK_INTERVAL_MS + 60_000,
+        )
+        self.assertEqual(res_dup, [])
+        self.assertEqual(len(self.httpd.telegram_requests), 1)
+
+        # New commit with feat: on main changes head_oid -> triggers updated handoff WITH non-patch warning flag
+        new_sha = "ffff1111bbbb2222cccc3333dddd4444eeee6666"
+        status_box["defaultBranchRef"]["target"]["oid"] = new_sha  # type: ignore[index]
+        status_box["defaultBranchRef"]["target"]["history"]["nodes"].insert(  # type: ignore[index]
+            0,
+            {
+                "oid": new_sha,
+                "messageHeadline": "feat: add new exporter flag",
+                "committedDate": "2026-04-01T15:30:00Z",
+            },
+        )
+        res_warn = runner._evaluate_security_patch_releases(
+            open_prs_by_key={},
+            poll_result=clean_poll,
+            current_ms=ready_ms + 2 * companion.SECURITY_RELEASE_CHECK_INTERVAL_MS + 120_000,
+        )
+        self.assertEqual(len(res_warn), 1)
+        self.assertTrue(res_warn[0]["has_non_patch_commits"])
+        self.assertIn("feat: add new exporter flag", res_warn[0]["non_patch_commits"])
+        self.assertEqual(len(self.httpd.telegram_requests), 2)
+        tg_warn_text = str(self.httpd.telegram_requests[1]["body"]["text"])
+        self.assertIn("⚠️ unreleased feat/breaking commits on main", tg_warn_text)
+
+    def test_parse_haberdasher_sources_yaml_and_config_env_precedence(self) -> None:
+        self.assertEqual(companion.DEFAULT_SECURITY_PATCH_RELEASE_REPOS, ())
+        self.assertEqual(companion.DEFAULT_HABERDASHER_CONFIG_REPO, "wimpysworld/Haberdasher")
+        self.assertEqual(companion.DEFAULT_HABERDASHER_CONFIG_PATH, "haberdasher.yaml")
+        self.assertEqual(companion.HABERDASHER_SOURCES_CACHE_TTL_MS, 6 * 60 * 60 * 1000)
+
+        # Inline list matching live wimpysworld/Haberdasher haberdasher.yaml shape, plus quotes, comments, dupes, and bad entries
+        inline_yaml = (
+            "# Haberdasher config\n"
+            "sources: [wimpysworld/tailor, \"wimpysworld/sidra\", 'wimpysworld/WonKey', "
+            "wimpysworld/wonkey, linuxmatters/jive-vocals, untrusted-org/evil, "
+            "invalid-slug, wimpysworld/, ../escape, wimpysworld/a/b, wimpysworld/bad#hash] # inline comment\n"
+        )
+        self.assertEqual(
+            companion.parse_haberdasher_sources_yaml(inline_yaml),
+            (
+                "wimpysworld/tailor",
+                "wimpysworld/sidra",
+                "wimpysworld/wonkey",
+                "linuxmatters/jive-vocals",
+            ),
+        )
+
+        # Multiline inline list with comments
+        multiline_inline_yaml = (
+            "sources: [\n"
+            "  wimpysworld/ia-get, # archive tool\n"
+            "  \"wimpysworld/nyala\",\n"
+            "  'wimpysworld/hue-jackman', # lighting\n"
+            "]\n"
+        )
+        self.assertEqual(
+            companion.parse_haberdasher_sources_yaml(multiline_inline_yaml),
+            ("wimpysworld/ia-get", "wimpysworld/nyala", "wimpysworld/hue-jackman"),
+        )
+
+        # Multiline block list with quotes, comments, nested sources ignored, and trailing top-level key
+        block_yaml = (
+            "nested:\n"
+            "  sources:\n"
+            "    - wimpysworld/should-ignore\n"
+            "sources: # managed releases\n"
+            "  - wimpysworld/tailor # cli\n"
+            "  # - wimpysworld/commented-out\n"
+            "  - 'linuxmatters/jive-encoder'\n"
+            "  - \"wimpysworld/WonKey\"\n"
+            "  - evilorg/not-allowed\n"
+            "  - wimpysworld/bad slug\n"
+            "  - wimpysworld/tailor\n"
+            "targets:\n"
+            "  - wimpysworld/not-in-sources\n"
+        )
+        self.assertEqual(
+            companion.parse_haberdasher_sources_yaml(block_yaml),
+            ("wimpysworld/tailor", "linuxmatters/jive-encoder", "wimpysworld/wonkey"),
+        )
+        self.assertEqual(companion.parse_haberdasher_sources_yaml(""), ())
+        self.assertEqual(companion.parse_haberdasher_sources_yaml("sources: []\n"), ())
+
+        # Environment precedence: EXTRA_REPOS -> REPOS -> empty ()
+        with patch.dict(os.environ, {}, clear=True):
+            cfg_default = companion.resolve_security_release_config()
+            self.assertEqual(cfg_default["extra_repos"], ())
+            self.assertEqual(cfg_default["repos"], ())
+        with patch.dict(
+            os.environ,
+            {"MOLTIS_GITHUB_COMPANION_SECURITY_RELEASE_REPOS": "quickemu-project/quickemu, wimpysworld/deb-get"},
+            clear=True,
+        ):
+            cfg_fallback = companion.resolve_security_release_config()
+            self.assertEqual(cfg_fallback["extra_repos"], ("quickemu-project/quickemu", "wimpysworld/deb-get"))
+        with patch.dict(
+            os.environ,
+            {
+                "MOLTIS_GITHUB_COMPANION_SECURITY_RELEASE_EXTRA_REPOS": "wimpysworld/deb-get",
+                "MOLTIS_GITHUB_COMPANION_SECURITY_RELEASE_REPOS": "quickemu-project/quickemu",
+            },
+            clear=True,
+        ):
+            cfg_extra = companion.resolve_security_release_config()
+            self.assertEqual(cfg_extra["extra_repos"], ("wimpysworld/deb-get",))
+
+    def test_fetch_haberdasher_sources_base64_decode_and_failure_handling(self) -> None:
+        yaml_text = (
+            "sources: [wimpysworld/tailor, wimpysworld/sidra, wimpysworld/WonKey, "
+            "linuxmatters/jive-vocals, external-org/ignored]\n"
+        )
+        encoded = base64.b64encode(yaml_text.encode("utf-8")).decode("ascii")
+        chunked_b64 = "\n".join(encoded[i : i + 60] for i in range(0, len(encoded), 60)) + "\n"
+        seen_cmds: list[list[str]] = []
+
+        def fake_ok(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            seen_cmds.append(list(cmd))
+            payload = {"name": "haberdasher.yaml", "encoding": "base64", "content": chunked_b64}
+            return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(payload), stderr="")
+
+        client_ok = companion.GhApiSafeClient(runner=fake_ok)
+        parsed = client_ok.fetch_haberdasher_sources()
+        self.assertEqual(
+            parsed,
+            ("wimpysworld/tailor", "wimpysworld/sidra", "wimpysworld/wonkey", "linuxmatters/jive-vocals"),
+        )
+        self.assertEqual(seen_cmds, [["gh-api-safe", "repos/wimpysworld/Haberdasher/contents/haberdasher.yaml"]])
+
+        # Non-zero exit, invalid JSON, bad base64, and missing content all log a concise warning and return None
+        for label, proc_result in (
+            ("exit_error", subprocess.CompletedProcess(["gh-api-safe"], 1, stdout="", stderr="HTTP 502 Bad Gateway")),
+            ("bad_json", subprocess.CompletedProcess(["gh-api-safe"], 0, stdout="{not-json", stderr="")),
+            (
+                "bad_base64",
+                subprocess.CompletedProcess(
+                    ["gh-api-safe"],
+                    0,
+                    stdout=json.dumps({"encoding": "base64", "content": "!!!not-base64!!!"}),
+                    stderr="",
+                ),
+            ),
+            ("missing_content", subprocess.CompletedProcess(["gh-api-safe"], 0, stdout=json.dumps({}), stderr="")),
+        ):
+            stderr_buf = io.StringIO()
+            client_bad = companion.GhApiSafeClient(runner=lambda *a, _res=proc_result, **k: _res)
+            with contextlib.redirect_stderr(stderr_buf):
+                result = client_bad.fetch_haberdasher_sources()
+            self.assertIsNone(result, f"Expected None for {label}")
+            self.assertIn("haberdasher-sources warning", stderr_buf.getvalue(), f"Expected stderr warning for {label}")
+
+    def test_haberdasher_cache_ttl_transient_fallback_extra_repos_and_stub_client(self) -> None:
+        fetch_calls = 0
+        next_response: list[tuple[str, ...] | None] = [
+            ("wimpysworld/tailor", "wimpysworld/wonkey"),
+            None,
+            ("wimpysworld/tailor", "linuxmatters/jive-vocals"),
+        ]
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            nonlocal fetch_calls
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "repos/wimpysworld/Haberdasher/contents/haberdasher.yaml":
+                fetch_calls += 1
+                item = next_response.pop(0)
+                if item is None:
+                    return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="HTTP 503 Service Unavailable")
+                raw_yaml = "sources:\n" + "".join(f"  - {r}\n" for r in item)
+                b64 = base64.b64encode(raw_yaml.encode("utf-8")).decode("ascii")
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout=json.dumps({"encoding": "base64", "content": b64}),
+                    stderr="",
+                )
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout="{}", stderr="")
+
+        store = self.make_store("skrye", state_dir=self.state_dir / "haberdasher-cache")
+        init_sec = store.read_state()["security_releases"]
+        self.assertEqual(init_sec["haberdasher_sources"], [])
+        self.assertEqual(init_sec["haberdasher_sources_fetched_at_ms"], 0)
+
+        tg_client = self.make_telegram_client()
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        gh_client = companion.GhApiSafeClient(runner=fake_gh)
+        poller = companion.NotificationPoller(state_store=store, gh_client=gh_client, clock=self.clock)
+        tf = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store,
+            gh_client=gh_client,
+            telegram_client=tg_client,
+            agent_name="skrye",
+            clock=self.clock,
+        )
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="skrye",
+            main_model="gemini::gemini-4-hydrogen",
+            telegram_client=tg_client,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+        runner = companion.GithubCompanionRunner(
+            state_store=store,
+            gh_client=gh_client,
+            poller=poller,
+            trust_filter=tf,
+            execution_coordinator=coord,
+            clock=self.clock,
+            telegram_client=tg_client,
+            operator_digest_enabled=False,
+            security_release_extra_repos=("quickemu-project/quickemu", "wimpysworld/tailor"),
+        )
+
+        t0 = 1_750_000_000_000
+        # Initial fetch populates state.json cache and merges deduplicated extra repos
+        repos_t0 = runner._resolve_security_release_repos(current_ms=t0)
+        self.assertEqual(fetch_calls, 1)
+        self.assertEqual(repos_t0, ("wimpysworld/tailor", "wimpysworld/wonkey", "quickemu-project/quickemu"))
+        persisted = store.read_state()["security_releases"]
+        self.assertEqual(persisted["haberdasher_sources"], ["wimpysworld/tailor", "wimpysworld/wonkey"])
+        self.assertEqual(persisted["haberdasher_sources_fetched_at_ms"], t0)
+
+        # Within 6 hours: served strictly from state.json cache without calling GitHub again
+        repos_within_ttl = runner._resolve_security_release_repos(
+            current_ms=t0 + companion.HABERDASHER_SOURCES_CACHE_TTL_MS - 1_000
+        )
+        self.assertEqual(fetch_calls, 1)
+        self.assertEqual(repos_within_ttl, repos_t0)
+
+        # After 6 hours: transient GitHub failure keeps last cached list intact without clobbering cache
+        t_after_ttl = t0 + companion.HABERDASHER_SOURCES_CACHE_TTL_MS
+        stderr_buf = io.StringIO()
+        with contextlib.redirect_stderr(stderr_buf):
+            repos_transient = runner._resolve_security_release_repos(current_ms=t_after_ttl)
+        self.assertEqual(fetch_calls, 2)
+        self.assertIn("haberdasher-sources warning", stderr_buf.getvalue())
+        self.assertEqual(repos_transient, ("wimpysworld/tailor", "wimpysworld/wonkey", "quickemu-project/quickemu"))
+        persisted_after_err = store.read_state()["security_releases"]
+        self.assertEqual(persisted_after_err["haberdasher_sources"], ["wimpysworld/tailor", "wimpysworld/wonkey"])
+        self.assertEqual(persisted_after_err["haberdasher_sources_fetched_at_ms"], t0)
+
+        # Next attempt succeeds and refreshes cache + timestamp
+        t_recovered = t_after_ttl + 60_000
+        repos_refreshed = runner._resolve_security_release_repos(current_ms=t_recovered)
+        self.assertEqual(fetch_calls, 3)
+        self.assertEqual(repos_refreshed, ("wimpysworld/tailor", "linuxmatters/jive-vocals", "quickemu-project/quickemu"))
+        persisted_refreshed = store.read_state()["security_releases"]
+        self.assertEqual(persisted_refreshed["haberdasher_sources"], ["wimpysworld/tailor", "linuxmatters/jive-vocals"])
+        self.assertEqual(persisted_refreshed["haberdasher_sources_fetched_at_ms"], t_recovered)
+
+        # Stub gh_client without fetch_haberdasher_sources gracefully falls back to cached sources + extra repos
+        class MinimalGhStub:
+            pass
+
+        runner_stub = companion.GithubCompanionRunner(
+            state_store=store,
+            gh_client=MinimalGhStub(),  # type: ignore[arg-type]
+            poller=poller,
+            trust_filter=tf,
+            execution_coordinator=coord,
+            clock=self.clock,
+            telegram_client=tg_client,
+            operator_digest_enabled=False,
+            security_release_extra_repos=("wimpysworld/deb-get",),
+        )
+        repos_stub = runner_stub._resolve_security_release_repos(
+            current_ms=t_recovered + 2 * companion.HABERDASHER_SOURCES_CACHE_TTL_MS
+        )
+        self.assertEqual(repos_stub, ("wimpysworld/tailor", "linuxmatters/jive-vocals", "wimpysworld/deb-get"))
 
 
 if __name__ == "__main__":

@@ -43,6 +43,9 @@
   communityAutoMergeMaxLines ? 150,
   communityAutoMergeMaxFiles ? 5,
   communityAutoMergeExcludedRepos ? [ "wimpysworld/nix-config" ],
+  operatorDigestEnabled ? true,
+  securityPatchReleaseExtraRepos ? [ ],
+  securityPatchReleaseCooldownSecs ? 7200,
   linearClientIdPath ? "",
   linearClientSecretPath ? "",
   linearLabelApiKeyPath ? "",
@@ -94,6 +97,9 @@ pkgs.writeShellApplication {
       communityAutoMergeMaxLines
       communityAutoMergeMaxFiles
       communityAutoMergeExcludedRepos
+      operatorDigestEnabled
+      securityPatchReleaseExtraRepos
+      securityPatchReleaseCooldownSecs
       linearClientIdPath
       linearClientSecretPath
       linearLabelApiKeyPath
@@ -123,6 +129,9 @@ pkgs.writeShellApplication {
     export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_LINES=${lib.escapeShellArg (toString communityAutoMergeMaxLines)}
     export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_FILES=${lib.escapeShellArg (toString communityAutoMergeMaxFiles)}
     export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS=${lib.escapeShellArg (lib.concatStringsSep "," communityAutoMergeExcludedRepos)}
+    export MOLTIS_GITHUB_COMPANION_DIGEST_ENABLED=${lib.escapeShellArg (lib.boolToString operatorDigestEnabled)}
+    export MOLTIS_GITHUB_COMPANION_SECURITY_RELEASE_EXTRA_REPOS=${lib.escapeShellArg (lib.concatStringsSep "," securityPatchReleaseExtraRepos)}
+    export MOLTIS_GITHUB_COMPANION_SECURITY_RELEASE_COOLDOWN_SECS=${lib.escapeShellArg (toString securityPatchReleaseCooldownSecs)}
     export MOLTIS_GITHUB_COMPANION_LINEAR_CLIENT_ID_PATH=${lib.escapeShellArg linearClientIdPath}
     export MOLTIS_GITHUB_COMPANION_LINEAR_CLIENT_SECRET_PATH=${lib.escapeShellArg linearClientSecretPath}
     export MOLTIS_GITHUB_COMPANION_LINEAR_LABEL_API_KEY_PATH=${lib.escapeShellArg linearLabelApiKeyPath}

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import contextlib
 import datetime
 import fcntl
@@ -108,6 +109,18 @@ DEFAULT_COMMUNITY_AUTO_MERGE_ENABLED = True
 DEFAULT_COMMUNITY_AUTO_MERGE_MAX_LINES = 150
 DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES = 5
 DEFAULT_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS = ("wimpysworld/nix-config",)
+HEALTH_POLL_FAILURE_THRESHOLD = 3
+HEALTH_ALERT_COOLDOWN_MS = 12 * 60 * 60 * 1000
+OPERATOR_DIGEST_AGENT = "skrye"
+OPERATOR_DIGEST_HOUR_LONDON = 8
+OPERATOR_DIGEST_MINUTE_LONDON = 30
+DEFAULT_OPERATOR_DIGEST_ENABLED = True
+DEFAULT_SECURITY_PATCH_RELEASE_REPOS: tuple[str, ...] = ()
+DEFAULT_HABERDASHER_CONFIG_REPO = "wimpysworld/Haberdasher"
+DEFAULT_HABERDASHER_CONFIG_PATH = "haberdasher.yaml"
+HABERDASHER_SOURCES_CACHE_TTL_MS = 6 * 60 * 60 * 1000
+DEFAULT_SECURITY_PATCH_RELEASE_COOLDOWN_SECS = 2 * 60 * 60
+SECURITY_RELEASE_CHECK_INTERVAL_MS = 60 * 60 * 1000
 SENSITIVE_COMMUNITY_PR_FILENAMES = frozenset({
     "flake.nix", "flake.lock",
     "cargo.toml", "cargo.lock",
@@ -305,6 +318,12 @@ compute_automated_pr_owner = compute_pr_owner
 def compute_issue_owner(repo: str, number: int) -> str:
     owner_repo = (repo or "").strip().lower()
     digest = hashlib.sha256(f"v1:{owner_repo}:issue:{_safe_int(number, 0)}".encode()).digest()
+    return SWEEP_AGENT_ORDER[int.from_bytes(digest, "big") % 2]
+
+
+def compute_repo_owner(repo: str) -> str:
+    owner_repo = (repo or "").strip().lower()
+    digest = hashlib.sha256(f"v1:{owner_repo}:repo".encode()).digest()
     return SWEEP_AGENT_ORDER[int.from_bytes(digest, "big") % 2]
 
 
@@ -630,6 +649,494 @@ def resolve_community_auto_merge_config(
         "max_files": max(0, _safe_int(raw_max_files, DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES)) if raw_max_files is not None and str(raw_max_files).strip() != "" else DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES,
         "excluded_repos": parse_repo_list(raw_excluded, default=DEFAULT_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS),
     }
+
+
+def resolve_operator_digest_enabled(enabled: bool | str | None = None) -> bool:
+    raw = os.environ.get("MOLTIS_GITHUB_COMPANION_DIGEST_ENABLED") if enabled is None else enabled
+    return _parse_bool_flag(raw, default=DEFAULT_OPERATOR_DIGEST_ENABLED)
+
+
+_HABERDASHER_REPO_SLUG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$")
+
+
+def _normalize_valid_haberdasher_repo(raw: object) -> str | None:
+    if not isinstance(raw, str):
+        return None
+    clean = raw.strip()
+    if (
+        not clean
+        or not _HABERDASHER_REPO_SLUG_RE.fullmatch(clean)
+        or any(part in (".", "..") for part in clean.split("/"))
+    ):
+        return None
+    norm = clean.lower()
+    if not is_allowed_notification_repo(norm):
+        return None
+    return norm
+
+
+def _strip_yaml_comment(line: str) -> str:
+    in_single = False
+    in_double = False
+    idx = 0
+    length = len(line)
+    while idx < length:
+        ch = line[idx]
+        if in_double:
+            if ch == "\\" and idx + 1 < length:
+                idx += 2
+                continue
+            if ch == '"':
+                in_double = False
+        elif in_single:
+            if ch == "'":
+                if idx + 1 < length and line[idx + 1] == "'":
+                    idx += 2
+                    continue
+                in_single = False
+        else:
+            if ch == '"':
+                in_double = True
+            elif ch == "'":
+                in_single = True
+            elif ch == "#" and (idx == 0 or line[idx - 1].isspace()):
+                return line[:idx]
+        idx += 1
+    return line
+
+
+def _find_unquoted_char(text: str, target: str) -> int:
+    in_single = False
+    in_double = False
+    idx = 0
+    length = len(text)
+    while idx < length:
+        ch = text[idx]
+        if in_double:
+            if ch == "\\" and idx + 1 < length:
+                idx += 2
+                continue
+            if ch == '"':
+                in_double = False
+        elif in_single:
+            if ch == "'":
+                if idx + 1 < length and text[idx + 1] == "'":
+                    idx += 2
+                    continue
+                in_single = False
+        else:
+            if ch == '"':
+                in_double = True
+            elif ch == "'":
+                in_single = True
+            elif ch == target:
+                return idx
+        idx += 1
+    return -1
+
+
+def _split_yaml_inline_list(inner: str) -> list[str]:
+    items: list[str] = []
+    buf: list[str] = []
+    in_single = False
+    in_double = False
+    idx = 0
+    length = len(inner)
+    while idx < length:
+        ch = inner[idx]
+        if in_double:
+            buf.append(ch)
+            if ch == "\\" and idx + 1 < length:
+                buf.append(inner[idx + 1])
+                idx += 2
+                continue
+            if ch == '"':
+                in_double = False
+        elif in_single:
+            buf.append(ch)
+            if ch == "'":
+                if idx + 1 < length and inner[idx + 1] == "'":
+                    buf.append(inner[idx + 1])
+                    idx += 2
+                    continue
+                in_single = False
+        else:
+            if ch == '"':
+                in_double = True
+                buf.append(ch)
+            elif ch == "'":
+                in_single = True
+                buf.append(ch)
+            elif ch == ",":
+                items.append("".join(buf))
+                buf = []
+            else:
+                buf.append(ch)
+        idx += 1
+    if buf:
+        items.append("".join(buf))
+    return items
+
+
+def _unquote_yaml_scalar(raw: str) -> str:
+    s = raw.strip()
+    if len(s) >= 2 and s[0] == '"' and s[-1] == '"':
+        return re.sub(r'\\(["\\])', r"\1", s[1:-1]).strip()
+    if len(s) >= 2 and s[0] == "'" and s[-1] == "'":
+        return s[1:-1].replace("''", "'").strip()
+    return s
+
+
+def parse_haberdasher_sources_yaml(raw_yaml: str) -> tuple[str, ...]:
+    """Parse top-level `sources` repository slugs from `haberdasher.yaml` (inline or block list)."""
+    if not isinstance(raw_yaml, str) or not raw_yaml.strip():
+        return ()
+    lines = raw_yaml.lstrip("\ufeff").splitlines()
+    raw_entries: list[str] = []
+
+    line_idx = 0
+    total_lines = len(lines)
+    while line_idx < total_lines:
+        raw_line = lines[line_idx]
+        line_idx += 1
+        if not raw_line or raw_line[0].isspace():
+            continue
+        uncommented = _strip_yaml_comment(raw_line).rstrip()
+        match = re.match(r"^sources\s*:(.*)$", uncommented)
+        if not match:
+            continue
+        rest = match.group(1).strip()
+        if rest.startswith("["):
+            flow_parts = [rest[1:]]
+            close_pos = _find_unquoted_char(flow_parts[0], "]")
+            if close_pos >= 0:
+                inner = flow_parts[0][:close_pos]
+            else:
+                inner = ""
+                while line_idx < total_lines:
+                    next_clean = _strip_yaml_comment(lines[line_idx]).strip()
+                    line_idx += 1
+                    close_pos = _find_unquoted_char(next_clean, "]")
+                    if close_pos >= 0:
+                        flow_parts.append(next_clean[:close_pos])
+                        inner = " ".join(flow_parts)
+                        break
+                    flow_parts.append(next_clean)
+            for token in _split_yaml_inline_list(inner):
+                scalar = _unquote_yaml_scalar(token)
+                if scalar:
+                    raw_entries.append(scalar)
+        elif not rest:
+            seq_indent: int | None = None
+            while line_idx < total_lines:
+                sub_clean = _strip_yaml_comment(lines[line_idx]).rstrip()
+                if not sub_clean.strip():
+                    line_idx += 1
+                    continue
+                indent = len(sub_clean) - len(sub_clean.lstrip(" \t"))
+                item_match = re.match(r"^[ \t]*-(?:\s+(.*))?$", sub_clean)
+                if item_match:
+                    if seq_indent is None:
+                        seq_indent = indent
+                    elif indent < seq_indent:
+                        break
+                    if indent == seq_indent:
+                        val = _unquote_yaml_scalar(item_match.group(1) or "")
+                        if val:
+                            raw_entries.append(val)
+                    line_idx += 1
+                    continue
+                if seq_indent is None or indent <= seq_indent:
+                    break
+                line_idx += 1
+        break
+
+    seen: list[str] = []
+    for entry in raw_entries:
+        norm = _normalize_valid_haberdasher_repo(entry)
+        if norm and norm not in seen:
+            seen.append(norm)
+    return tuple(seen)
+
+
+def resolve_security_release_config(
+    *,
+    extra_repos: Iterable[str] | str | None = None,
+    repos: Iterable[str] | str | None = None,
+    cooldown_secs: int | str | None = None,
+) -> dict[str, object]:
+    if extra_repos is not None:
+        raw_repos: object = extra_repos
+    elif repos is not None:
+        raw_repos = repos
+    else:
+        raw_extra = os.environ.get("MOLTIS_GITHUB_COMPANION_SECURITY_RELEASE_EXTRA_REPOS")
+        if raw_extra is not None and raw_extra.strip() != "":
+            raw_repos = raw_extra
+        else:
+            raw_repos = os.environ.get("MOLTIS_GITHUB_COMPANION_SECURITY_RELEASE_REPOS")
+    resolved_extra = parse_repo_list(raw_repos, default=DEFAULT_SECURITY_PATCH_RELEASE_REPOS)
+    raw_cooldown = os.environ.get("MOLTIS_GITHUB_COMPANION_SECURITY_RELEASE_COOLDOWN_SECS") if cooldown_secs is None else cooldown_secs
+    return {
+        "extra_repos": resolved_extra,
+        "repos": resolved_extra,
+        "cooldown_secs": (
+            max(0, _safe_int(raw_cooldown, DEFAULT_SECURITY_PATCH_RELEASE_COOLDOWN_SECS))
+            if raw_cooldown is not None and str(raw_cooldown).strip() != ""
+            else DEFAULT_SECURITY_PATCH_RELEASE_COOLDOWN_SECS
+        ),
+    }
+
+
+_HEALTH_SECRET_REDACT_RE = re.compile(
+    r"(?:gh[pousr]_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+|lin_api_[A-Za-z0-9_]+|bot\d+:[A-Za-z0-9_-]+|Bearer\s+[A-Za-z0-9._~+/=-]+)",
+    re.IGNORECASE,
+)
+
+
+def _sanitize_health_reason(raw: object, *, max_len: int = 120) -> str:
+    text = " ".join(str(raw or "").splitlines()).strip()
+    if not text:
+        return ""
+    text = _HEALTH_SECRET_REDACT_RE.sub("[redacted]", text)
+    text = re.sub(r"[\x00-\x1f\x7f]+", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    if len(text) > max_len:
+        return text[: max(1, max_len - 3)].rstrip() + "..."
+    return text
+
+
+_ESTIMATE_SIZE_LABELS: dict[int, str] = {1: "XS", 2: "S", 3: "M", 5: "L", 8: "XL"}
+
+
+def _estimate_size_label(estimate: object) -> str:
+    if isinstance(estimate, int) and not isinstance(estimate, bool):
+        return _ESTIMATE_SIZE_LABELS.get(estimate, "?")
+    return "?"
+
+
+def _estimate_sort_key(item: dict) -> tuple[int, str, str]:
+    est = item.get("estimate")
+    est_rank = est if isinstance(est, int) and not isinstance(est, bool) and est in _ESTIMATE_SIZE_LABELS else 999
+    ident = str(item.get("identifier") or item.get("id") or "").strip()
+    title = str(item.get("title") or "").strip()
+    return (est_rank, ident, title)
+
+
+def format_operator_digest(
+    *,
+    date_str: str,
+    ready_to_merge: list[dict],
+    needs_decision: list[dict],
+    first_time_prs: list[dict],
+    signoff_issues: list[dict],
+    security_releases: list[dict],
+    dead_letter_keys: list[str],
+    is_monday: bool = False,
+) -> str:
+    """Format the daily weekday 'Waiting on Martin' Telegram digest in plain British English."""
+    clean_date = str(date_str or "").strip() or "unknown"
+    rtm = [item for item in (ready_to_merge or []) if isinstance(item, dict)]
+    nd = [item for item in (needs_decision or []) if isinstance(item, dict)]
+    ftp = [item for item in (first_time_prs or []) if isinstance(item, dict)]
+    soi = [item for item in (signoff_issues or []) if isinstance(item, dict)]
+    sec = [item for item in (security_releases or []) if isinstance(item, dict)]
+    dlk = [str(k).strip() for k in (dead_letter_keys or []) if str(k or "").strip()]
+
+    if not (rtm or nd or ftp or soi or sec or dlk):
+        if not is_monday:
+            return ""
+        return f"📋 Community Contributions digest ({clean_date})\nAll clear. No items waiting for action."
+
+    lines = [f"📋 Community Contributions digest ({clean_date})"]
+
+    def _append_linear_section(heading: str, items: list[dict]) -> None:
+        if not items:
+            return
+        ordered = sorted(items, key=_estimate_sort_key)
+        lines.append("")
+        lines.append(f"{heading} ({len(ordered)}):")
+        for item in ordered[:10]:
+            size = _estimate_size_label(item.get("estimate"))
+            ident = str(item.get("identifier") or item.get("id") or "").strip()
+            title = " ".join(str(item.get("title") or "").splitlines()).strip() or ident or "Untitled"
+            url = str(item.get("url") or "").strip()
+            label = f"[{size}] {ident}: {title}" if ident else f"[{size}] {title}"
+            lines.append(f"- {label} ({url})" if url else f"- {label}")
+        if len(ordered) > 10:
+            lines.append(f"- +{len(ordered) - 10} more")
+
+    _append_linear_section("Ready to merge", rtm)
+    _append_linear_section("Needs decision", nd)
+    _append_linear_section("First-time contributor PRs", ftp)
+    _append_linear_section("Sign-off required", soi)
+
+    if sec:
+        lines.append("")
+        lines.append(f"Security patch releases ({len(sec)}):")
+        for item in sec[:10]:
+            repo = str(item.get("repo") or "").strip()
+            next_tag = str(item.get("next_tag") or "").strip()
+            title = " ".join(str(item.get("title") or "").splitlines()).strip()
+            url = str(item.get("linear_url") or item.get("url") or "").strip()
+            warn = " [unreleased feat/breaking commits]" if item.get("has_non_patch_commits") else ""
+            label = f"{repo} {next_tag}".strip() if (repo or next_tag) else (title or "Security patch release")
+            lines.append(f"- {label}{warn} ({url})" if url else f"- {label}{warn}")
+        if len(sec) > 10:
+            lines.append(f"- +{len(sec) - 10} more")
+
+    if dlk:
+        lines.append("")
+        lines.append(f"Dead-lettered items ({len(dlk)}):")
+        for key in dlk[:10]:
+            lines.append(f"- {key}")
+        if len(dlk) > 10:
+            lines.append(f"- +{len(dlk) - 10} more")
+
+    return "\n".join(lines)
+
+
+_FENCED_CODE_BLOCK_RE = re.compile(r"```[\s\S]*?```")
+_INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
+_PR_CLOSING_KEYWORD_RE = re.compile(
+    r"\b(?:closes|closed|close|fixes|fixed|fix|resolves|resolved|resolve)\s*:?\s*"
+    r"(?:https?://(?:www\.)?github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/issues/(\d+)"
+    r"|([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)#(\d+)"
+    r"|#(\d+))(?![0-9A-Za-z_])",
+    re.IGNORECASE,
+)
+
+
+def extract_pr_closing_issues(raw_pr: dict, *, default_repo: str) -> list[dict[str, object]]:
+    """Extract deduplicated allowlisted closing issue references from GraphQL nodes and PR body keywords."""
+    if not isinstance(raw_pr, dict):
+        return []
+    clean_default_repo = str(default_repo or "").strip().lower()
+    results: list[dict[str, object]] = []
+    seen_keys: set[str] = set()
+
+    def _add_ref(repo_raw: str, num_raw: object, url_raw: str = "") -> None:
+        clean_repo = str(repo_raw or "").strip().lower()
+        num = _safe_int(num_raw, 0)
+        if not clean_repo or "/" not in clean_repo or num <= 0:
+            return
+        if not is_allowed_notification_repo(clean_repo):
+            return
+        issue_key = make_pr_key(clean_repo, num)
+        if issue_key in seen_keys:
+            return
+        seen_keys.add(issue_key)
+        canonical_url = f"https://github.com/{clean_repo}/issues/{num}"
+        if url_raw:
+            with contextlib.suppress(ValueError):
+                canonical_url = linear_sync.normalize_github_url(url_raw)
+        results.append({
+            "repo": clean_repo,
+            "number": num,
+            "issue_key": issue_key,
+            "url": canonical_url,
+        })
+
+    # Pre-normalised list if already present
+    existing_list = raw_pr.get("closing_issues")
+    if isinstance(existing_list, list):
+        for item in existing_list:
+            if isinstance(item, dict):
+                _add_ref(str(item.get("repo") or clean_default_repo), item.get("number"), str(item.get("url") or ""))
+
+    # GraphQL closingIssuesReferences.nodes
+    raw_refs = raw_pr.get("closingIssuesReferences")
+    nodes = (
+        raw_refs.get("nodes")
+        if isinstance(raw_refs, dict) and isinstance(raw_refs.get("nodes"), list)
+        else (raw_refs if isinstance(raw_refs, list) else [])
+    )
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        repo_obj = node.get("repository")
+        node_repo = (
+            str(repo_obj.get("nameWithOwner") or repo_obj.get("full_name") or "").strip()
+            if isinstance(repo_obj, dict)
+            else str(node.get("repo") or "").strip()
+        )
+        node_url = str(node.get("url") or "").strip()
+        if not node_repo and node_url:
+            parsed = parse_github_item_url(node_url)
+            if parsed is not None:
+                node_repo = parsed[0]
+        _add_ref(node_repo or clean_default_repo, node.get("number"), node_url)
+
+    # Body fallback using standard GitHub closing keywords (ignoring code blocks)
+    body = str(raw_pr.get("body") or "")
+    if body:
+        stripped = _FENCED_CODE_BLOCK_RE.sub(" ", body)
+        stripped = _INLINE_CODE_RE.sub(" ", stripped)
+        for match in _PR_CLOSING_KEYWORD_RE.finditer(stripped):
+            if match.group(1) and match.group(2):
+                _add_ref(match.group(1), int(match.group(2)))
+            elif match.group(3) and match.group(4):
+                _add_ref(match.group(3), int(match.group(4)))
+            elif match.group(5) and clean_default_repo:
+                _add_ref(clean_default_repo, int(match.group(5)))
+
+    return results
+
+
+_SEMVER_TAG_RE = re.compile(r"^(v?)(\d+)\.(\d+)\.(\d+)$")
+_NON_PATCH_COMMIT_RE = re.compile(r"^(?:feat(?:\([^)]+\))?!?|[a-z]+(?:\([^)]+\))?!):", re.IGNORECASE)
+_SECURITY_INDICATOR_RE = re.compile(r"(?:\bsecurity\b|\bcve-\d{4}-\d+\b|\bghsa-[a-z0-9-]+\b)", re.IGNORECASE)
+
+
+def parse_semver_tag(tag: str) -> tuple[str, int, int, int] | None:
+    """Parse a strict stable semver tag (`v?MAJOR.MINOR.PATCH`), rejecting prereleases and aliases."""
+    if not isinstance(tag, str):
+        return None
+    match = _SEMVER_TAG_RE.fullmatch(tag.strip())
+    if match is None:
+        return None
+    return match.group(1), int(match.group(2)), int(match.group(3)), int(match.group(4))
+
+
+def bump_semver_patch(tag: str) -> str | None:
+    """Increment the patch component of a strict stable semver tag."""
+    parsed = parse_semver_tag(tag)
+    if parsed is None:
+        return None
+    prefix, major, minor, patch = parsed
+    return f"{prefix}{major}.{minor}.{patch + 1}"
+
+
+def classify_unreleased_commits(commit_subjects: Iterable[str]) -> dict[str, list[str]]:
+    """Classify unreleased commit subjects into `non_patch` (features/breaking) and `patch_safe`."""
+    non_patch: list[str] = []
+    patch_safe: list[str] = []
+    for raw in commit_subjects or ():
+        subject = " ".join(str(raw or "").splitlines()).strip()
+        if not subject:
+            continue
+        if _NON_PATCH_COMMIT_RE.match(subject) or "BREAKING CHANGE" in subject or "BREAKING-CHANGE" in subject:
+            non_patch.append(subject)
+        else:
+            patch_safe.append(subject)
+    return {"non_patch": non_patch, "patch_safe": patch_safe}
+
+
+def is_security_merged_pr(pr: dict) -> bool:
+    """Return True when a pull request represents a security fix (branch, Dependabot security, or CVE/GHSA/security indicator)."""
+    if not isinstance(pr, dict):
+        return False
+    head_ref = str(pr.get("headRefName") or pr.get("head_ref") or _as_dict(pr.get("head")).get("ref") or "").strip().lower()
+    if head_ref.startswith("security/"):
+        return True
+    labels = [lbl.strip().lower() for lbl in extract_label_names(pr.get("labels"))]
+    title = str(pr.get("title") or "").strip()
+    has_security_label = any("security" in lbl or "cve-" in lbl or "ghsa-" in lbl for lbl in labels)
+    has_security_title = bool(_SECURITY_INDICATOR_RE.search(title))
+    author_norm = normalize_github_actor(pr.get("author") or pr.get("user"))
+    if author_norm in ("dependabot[bot]", "app/dependabot", "dependabot") and (has_security_label or has_security_title):
+        return True
+    return has_security_label or has_security_title
 
 
 FIRST_TIME_AUTHOR_ASSOCIATIONS = frozenset({"FIRST_TIMER", "FIRST_TIME_CONTRIBUTOR", "NONE"})
@@ -2183,6 +2690,7 @@ def normalize_open_pull_request_record(raw: dict) -> dict | None:
     file_paths, files_has_next_page = extract_pr_file_paths(raw.get("files") if "files" in raw else raw.get("file_paths"))
     if "files_has_next_page" in raw:
         files_has_next_page = bool(raw.get("files_has_next_page"))
+    closing_issues = extract_pr_closing_issues(raw, default_repo=repo_full_name)
     return {
         "pr_key": make_pr_key(repo_full_name, number),
         "id": raw.get("databaseId") or raw.get("id") or number,
@@ -2218,6 +2726,7 @@ def normalize_open_pull_request_record(raw: dict) -> dict | None:
         "changed_files": changed_files,
         "file_paths": file_paths,
         "files_has_next_page": files_has_next_page,
+        "closing_issues": closing_issues,
         "is_draft": bool(raw.get("isDraft") or raw.get("draft", False)),
         "state": str(raw.get("state") or "OPEN").strip().upper(),
         "title": str(raw.get("title") or "").strip(),
@@ -2448,6 +2957,8 @@ class CompanionStateStore:
             "decision_notified_sha": None,
             "ready_for_signoff_notified_sha": None,
             "handled_linear_comment_ids": [],
+            "linked_linear_issue_ids": [],
+            "paused_by_open_pr_url": None,
         }
 
     @staticmethod
@@ -2548,8 +3059,91 @@ class CompanionStateStore:
             }
         return normalized
 
+    @staticmethod
+    def _default_health() -> dict:
+        return {
+            "consecutive_poll_failures": 0,
+            "last_health_alerts": {},
+            "notified_dead_letter_keys": {},
+        }
+
+    @classmethod
+    def _normalize_health(cls, raw: object) -> dict:
+        data = _as_dict(raw)
+        raw_alerts = _as_dict(data.get("last_health_alerts"))
+        last_alerts: dict[str, int] = {}
+        for k, v in raw_alerts.items():
+            clean_k = str(k or "").strip()
+            ts_ms = _safe_int(v, 0)
+            if clean_k and ts_ms > 0:
+                last_alerts[clean_k] = ts_ms
+        raw_dl = _as_dict(data.get("notified_dead_letter_keys"))
+        notified_dl: dict[str, str] = {}
+        for k, v in raw_dl.items():
+            clean_k = str(k or "").strip()
+            clean_v = str(v or "").strip()
+            if clean_k and clean_v:
+                notified_dl[clean_k] = clean_v
+        return {
+            "consecutive_poll_failures": max(0, _safe_int(data.get("consecutive_poll_failures"), 0)),
+            "last_health_alerts": last_alerts,
+            "notified_dead_letter_keys": notified_dl,
+        }
+
+    @staticmethod
+    def _default_digest() -> dict:
+        return {"last_digest_date": None}
+
+    @classmethod
+    def _normalize_digest(cls, raw: object) -> dict:
+        data = _as_dict(raw)
+        raw_date = data.get("last_digest_date")
+        return {
+            "last_digest_date": raw_date.strip() if isinstance(raw_date, str) and raw_date.strip() else None,
+        }
+
+    @staticmethod
+    def _default_security_releases() -> dict:
+        return {
+            "last_checked_at_ms": {},
+            "notified_releases": {},
+            "haberdasher_sources": [],
+            "haberdasher_sources_fetched_at_ms": 0,
+        }
+
+    @classmethod
+    def _normalize_security_releases(cls, raw: object) -> dict:
+        data = _as_dict(raw)
+        raw_checked = _as_dict(data.get("last_checked_at_ms"))
+        last_checked: dict[str, int] = {}
+        for k, v in raw_checked.items():
+            clean_k = str(k or "").strip().lower()
+            ts_ms = _safe_int(v, 0)
+            if clean_k and ts_ms > 0:
+                last_checked[clean_k] = ts_ms
+        raw_notified = _as_dict(data.get("notified_releases"))
+        notified: dict[str, dict[str, object]] = {}
+        for k, v in raw_notified.items():
+            clean_k = str(k or "").strip().lower()
+            if clean_k and isinstance(v, dict):
+                notified[clean_k] = dict(v)
+        raw_sources = data.get("haberdasher_sources")
+        haberdasher_sources: list[str] = []
+        if isinstance(raw_sources, list):
+            for entry in raw_sources:
+                norm = _normalize_valid_haberdasher_repo(entry)
+                if norm and norm not in haberdasher_sources:
+                    haberdasher_sources.append(norm)
+        fetched_at_ms = max(0, _safe_int(data.get("haberdasher_sources_fetched_at_ms"), 0))
+        return {
+            "last_checked_at_ms": last_checked,
+            "notified_releases": notified,
+            "haberdasher_sources": haberdasher_sources,
+            "haberdasher_sources_fetched_at_ms": fetched_at_ms,
+        }
+
     def _default_state(self) -> dict:
-        return {"version": STATE_SCHEMA_VERSION, "agent_name": self.agent_name, "next_poll_at_ms": None, "last_poll_started_at_ms": None, "last_poll_completed_at_ms": None, "last_status": None, "last_modified": None, "poll_interval_secs": 0, "retry_after_secs": 0, "last_poll_rate_limited": False, "ratelimit_reset_epoch": None, "last_jitter_ms": None, "last_open_prs_poll_error": None, "last_open_issues_poll_error": None, "last_reconcile_sweep_at_ms": None, "last_reconcile_sweep_attempt_at_ms": None, "reconcile_sweep_retry_after_ms": None, "reconcile_sweep_failure_count": 0, "last_reconcile_sweep_failure_reason": None, "last_weekly_sweep_date": None, "last_weekly_sweep_attempt_at_ms": None, "weekly_sweep_retry_after_ms": None, "weekly_sweep_failure_count": 0, "last_weekly_sweep_failure_reason": None, "throttles": self._default_throttles(), "pending_linear_todo_reconciliations": {}, "threads": {}, "updated_at_ms": self.started_at_ms}
+        return {"version": STATE_SCHEMA_VERSION, "agent_name": self.agent_name, "next_poll_at_ms": None, "last_poll_started_at_ms": None, "last_poll_completed_at_ms": None, "last_status": None, "last_modified": None, "poll_interval_secs": 0, "retry_after_secs": 0, "last_poll_rate_limited": False, "ratelimit_reset_epoch": None, "last_jitter_ms": None, "last_open_prs_poll_error": None, "last_open_issues_poll_error": None, "last_reconcile_sweep_at_ms": None, "last_reconcile_sweep_attempt_at_ms": None, "reconcile_sweep_retry_after_ms": None, "reconcile_sweep_failure_count": 0, "last_reconcile_sweep_failure_reason": None, "last_weekly_sweep_date": None, "last_weekly_sweep_attempt_at_ms": None, "weekly_sweep_retry_after_ms": None, "weekly_sweep_failure_count": 0, "last_weekly_sweep_failure_reason": None, "throttles": self._default_throttles(), "health": self._default_health(), "digest": self._default_digest(), "security_releases": self._default_security_releases(), "pending_linear_todo_reconciliations": {}, "threads": {}, "updated_at_ms": self.started_at_ms}
 
     def _default_active_dispatch(self) -> dict:
         return {"version": 1, "agent_name": self.agent_name, "active": None, "updated_at_ms": self.started_at_ms}
@@ -2658,6 +3252,9 @@ class CompanionStateStore:
         merged = {**default, **{k: v for k, v in data.items() if k not in ("poll_offset_secs", "initial_offset_applied")}, "agent_name": self.agent_name}
         self._normalize_sweep_fields(merged)
         merged["throttles"] = self._normalize_throttles(merged.get("throttles"))
+        merged["health"] = self._normalize_health(merged.get("health"))
+        merged["digest"] = self._normalize_digest(merged.get("digest"))
+        merged["security_releases"] = self._normalize_security_releases(merged.get("security_releases"))
         merged["pending_linear_todo_reconciliations"] = self._normalize_pending_linear_todo_reconciliations(
             merged.get("pending_linear_todo_reconciliations")
         )
@@ -2679,6 +3276,7 @@ class CompanionStateStore:
 
     def write_state(self, updates: dict, now_override_ms: int | None = None) -> dict:
         stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
+        nested_keys = ("threads", "throttles", "health", "digest", "security_releases")
         with self._locked_dir() as dir_fd:
             state = self._read_state_unlocked(dir_fd)
             if "threads" in updates and isinstance(updates["threads"], dict):
@@ -2689,14 +3287,28 @@ class CompanionStateStore:
                         entry["retry_count"] = max(0, _safe_int(entry.get("retry_count"), 0))
                         entry["handled_linear_comment_ids"] = self._normalize_handled_linear_comment_ids(entry.get("handled_linear_comment_ids"))
                         merged_threads[str(k)] = entry
-                state.update({k: v for k, v in updates.items() if k not in ("threads", "throttles")})
+                state.update({k: v for k, v in updates.items() if k not in nested_keys})
                 state["threads"] = merged_threads
             else:
-                state.update({k: v for k, v in updates.items() if k != "throttles"})
+                state.update({k: v for k, v in updates.items() if k not in nested_keys})
             if "throttles" in updates and isinstance(updates["throttles"], dict):
                 state["throttles"] = self._normalize_throttles({**self._normalize_throttles(state.get("throttles")), **updates["throttles"]})
             else:
                 state["throttles"] = self._normalize_throttles(state.get("throttles"))
+            if "health" in updates and isinstance(updates["health"], dict):
+                state["health"] = self._normalize_health({**self._normalize_health(state.get("health")), **updates["health"]})
+            else:
+                state["health"] = self._normalize_health(state.get("health"))
+            if "digest" in updates and isinstance(updates["digest"], dict):
+                state["digest"] = self._normalize_digest({**self._normalize_digest(state.get("digest")), **updates["digest"]})
+            else:
+                state["digest"] = self._normalize_digest(state.get("digest"))
+            if "security_releases" in updates and isinstance(updates["security_releases"], dict):
+                state["security_releases"] = self._normalize_security_releases(
+                    {**self._normalize_security_releases(state.get("security_releases")), **updates["security_releases"]}
+                )
+            else:
+                state["security_releases"] = self._normalize_security_releases(state.get("security_releases"))
             state["pending_linear_todo_reconciliations"] = self._normalize_pending_linear_todo_reconciliations(
                 state.get("pending_linear_todo_reconciliations")
             )
@@ -3628,6 +4240,7 @@ OPEN_PRS_GRAPHQL_QUERY_TEMPLATE = (
     "author { __typename login } "
     "labels(first: 20) { nodes { name } } "
     "files(first: 25) { pageInfo { hasNextPage } nodes { path } } "
+    "closingIssuesReferences(first: 10) { nodes { number url repository { nameWithOwner } } } "
     "reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } } } } "
     "reviewThreads(first: 100) { pageInfo { hasNextPage } nodes { isResolved } } "
     "statusCheckRollup { state contexts(first: 100) { nodes { __typename ... on CheckRun { status conclusion } ... on StatusContext { state } } } } "
@@ -3936,6 +4549,187 @@ class GhApiSafeClient:
                 )
                 continue
         return results
+
+    def fetch_haberdasher_sources(
+        self,
+        *,
+        repo: str = DEFAULT_HABERDASHER_CONFIG_REPO,
+        path: str = DEFAULT_HABERDASHER_CONFIG_PATH,
+        timeout: float | None = None,
+    ) -> tuple[str, ...] | None:
+        """Fetch and parse `sources` from `haberdasher.yaml` via `gh-api-safe`."""
+        clean_repo = (repo or "").strip()
+        clean_path = (path or "").strip().lstrip("/")
+        endpoint = f"repos/{clean_repo}/contents/{clean_path}"
+        try:
+            proc = self.invoke([endpoint], timeout=timeout)
+        except Exception as exc:
+            sys.stderr.write(f"moltis-github-companion haberdasher-sources warning ({clean_repo}/{clean_path}): {exc}\n")
+            return None
+        stdout = (proc.stdout or "").strip()
+        if proc.returncode != 0 or not stdout:
+            stderr = (proc.stderr or "").strip()
+            sys.stderr.write(
+                f"moltis-github-companion haberdasher-sources warning ({clean_repo}/{clean_path}): "
+                f"exit {proc.returncode}: {stderr or stdout}\n"
+            )
+            return None
+        try:
+            payload = json.loads(stdout)
+        except ValueError as exc:
+            sys.stderr.write(
+                f"moltis-github-companion haberdasher-sources warning ({clean_repo}/{clean_path}): "
+                f"invalid JSON: {exc}\n"
+            )
+            return None
+        if not isinstance(payload, dict):
+            sys.stderr.write(
+                f"moltis-github-companion haberdasher-sources warning ({clean_repo}/{clean_path}): "
+                "unexpected non-object contents payload\n"
+            )
+            return None
+        encoding = str(payload.get("encoding") or "").strip().lower()
+        raw_content = payload.get("content")
+        if not isinstance(raw_content, str):
+            sys.stderr.write(
+                f"moltis-github-companion haberdasher-sources warning ({clean_repo}/{clean_path}): "
+                "missing content in contents payload\n"
+            )
+            return None
+        if encoding == "base64":
+            try:
+                compact = re.sub(r"\s+", "", raw_content)
+                decoded_yaml = base64.b64decode(compact, validate=True).decode("utf-8")
+            except Exception as exc:
+                sys.stderr.write(
+                    f"moltis-github-companion haberdasher-sources warning ({clean_repo}/{clean_path}): "
+                    f"base64 decode failed: {exc}\n"
+                )
+                return None
+        elif encoding in ("", "utf-8", "utf8", "none"):
+            decoded_yaml = raw_content
+        else:
+            sys.stderr.write(
+                f"moltis-github-companion haberdasher-sources warning ({clean_repo}/{clean_path}): "
+                f"unsupported content encoding {encoding!r}\n"
+            )
+            return None
+        return parse_haberdasher_sources_yaml(decoded_yaml)
+
+    def fetch_repo_security_release_status(self, repo: str, *, timeout: float | None = None) -> dict | None:
+        """Read-only GraphQL query via `gh-api-safe` for security-patch release gate evaluation."""
+        clean_repo = (repo or "").strip().lower()
+        if (
+            not clean_repo
+            or not re.fullmatch(r"[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*", clean_repo)
+            or any(part in (".", "..") for part in clean_repo.split("/"))
+            or not is_allowed_notification_repo(clean_repo)
+        ):
+            raise ValueError(f"Unsupported repository for security release status: {repo!r}")
+        owner, name = clean_repo.split("/", 1)
+        query = (
+            f"query {{ repository(owner: {json.dumps(owner)}, name: {json.dumps(name)}) {{ "
+            "isArchived "
+            "defaultBranchRef { name target { ... on Commit { oid statusCheckRollup { state } "
+            "history(first: 50) { nodes { oid messageHeadline committedDate } } } } } "
+            "latestRelease { tagName publishedAt isDraft isPrerelease tagCommit { oid } } "
+            "pullRequests(states: MERGED, first: 20, orderBy: { field: UPDATED_AT, direction: DESC }) { "
+            "nodes { number title url mergedAt headRefName author { __typename login } labels(first: 10) { nodes { name } } } "
+            "} } }"
+        )
+        try:
+            proc = self.invoke(["graphql", "-f", f"query={query}"], timeout=timeout)
+            stdout = (proc.stdout or "").strip()
+            if proc.returncode != 0 or not stdout:
+                stderr = (proc.stderr or "").strip()
+                sys.stderr.write(
+                    f"moltis-github-companion security-release-status warning ({clean_repo}): "
+                    f"exit {proc.returncode}: {stderr or stdout}\n"
+                )
+                return None
+            repo_obj: dict | None = None
+            for payload in parse_gh_api_paginated_http_output(stdout)[2]:
+                if not isinstance(payload, dict) or payload.get("errors"):
+                    continue
+                candidate = _as_dict(payload.get("data")).get("repository")
+                if isinstance(candidate, dict) and candidate:
+                    repo_obj = candidate
+                    break
+            if repo_obj is None:
+                return None
+        except Exception as exc:
+            sys.stderr.write(f"moltis-github-companion security-release-status warning ({clean_repo}): {exc}\n")
+            return None
+
+        is_archived = bool(repo_obj.get("isArchived"))
+        default_branch_ref = _as_dict(repo_obj.get("defaultBranchRef"))
+        default_branch = str(default_branch_ref.get("name") or "").strip()
+        target = _as_dict(default_branch_ref.get("target"))
+        head_oid = str(target.get("oid") or "").strip()
+        ci_state = normalize_ci_state(target.get("statusCheckRollup"))
+
+        latest_release = _as_dict(repo_obj.get("latestRelease"))
+        latest_tag = str(latest_release.get("tagName") or "").strip()
+        latest_published_at = str(latest_release.get("publishedAt") or "").strip()
+        latest_is_draft = bool(latest_release.get("isDraft"))
+        latest_is_prerelease = bool(latest_release.get("isPrerelease"))
+        latest_tag_oid = str(_as_dict(latest_release.get("tagCommit")).get("oid") or "").strip()
+        _, latest_published_ms = normalize_ts(latest_published_at)
+
+        raw_history_nodes = _as_dict(target.get("history")).get("nodes")
+        history_nodes = [n for n in raw_history_nodes if isinstance(n, dict)] if isinstance(raw_history_nodes, list) else []
+        tag_oid_in_history = bool(latest_tag_oid and any(str(n.get("oid") or "").strip() == latest_tag_oid for n in history_nodes))
+        commits_since_tag: list[dict] = []
+        for node in history_nodes:
+            node_oid = str(node.get("oid") or "").strip()
+            committed_date = str(node.get("committedDate") or "").strip()
+            _, committed_ms = normalize_ts(committed_date)
+            if latest_tag_oid and node_oid == latest_tag_oid:
+                break
+            if not tag_oid_in_history and latest_published_ms > 0 and committed_ms > 0 and committed_ms <= latest_published_ms:
+                break
+            commits_since_tag.append({
+                "oid": node_oid,
+                "messageHeadline": str(node.get("messageHeadline") or "").strip(),
+                "committedDate": committed_date,
+            })
+
+        raw_pr_nodes = _as_dict(repo_obj.get("pullRequests")).get("nodes")
+        pr_nodes = [n for n in raw_pr_nodes if isinstance(n, dict)] if isinstance(raw_pr_nodes, list) else []
+        merged_prs_since_tag: list[dict] = []
+        for pr_node in pr_nodes:
+            merged_at = str(pr_node.get("mergedAt") or "").strip()
+            _, merged_ms = normalize_ts(merged_at)
+            if latest_published_ms > 0 and (merged_ms <= 0 or merged_ms <= latest_published_ms):
+                continue
+            pr_num = _safe_int(pr_node.get("number"), 0)
+            merged_prs_since_tag.append({
+                "number": pr_num,
+                "title": str(pr_node.get("title") or "").strip(),
+                "url": str(pr_node.get("url") or "").strip() or (f"https://github.com/{clean_repo}/pull/{pr_num}" if pr_num > 0 else ""),
+                "mergedAt": merged_at,
+                "merged_at": merged_at,
+                "merged_at_ms": merged_ms,
+                "headRefName": str(pr_node.get("headRefName") or "").strip(),
+                "head_ref": str(pr_node.get("headRefName") or "").strip(),
+                "author": extract_actor_login(pr_node.get("author")),
+                "labels": extract_label_names(pr_node.get("labels")),
+            })
+
+        return {
+            "repo": clean_repo,
+            "is_archived": is_archived,
+            "default_branch": default_branch,
+            "head_oid": head_oid,
+            "ci_state": ci_state,
+            "latest_tag": latest_tag,
+            "latest_tag_oid": latest_tag_oid,
+            "latest_published_at": latest_published_at,
+            "latest_is_draft": latest_is_draft,
+            "latest_is_prerelease": latest_is_prerelease,
+            "commits_since_tag": commits_since_tag,
+            "merged_prs_since_tag": merged_prs_since_tag,
+        }
 
     def fetch_issue_events(self, repo: str, number: int, timeout: float | None = None) -> list[dict]:
         """Fetch issue or pull request events for label-actor verification."""
@@ -5132,14 +5926,23 @@ class GithubCompanionRunner:
         reconcile_interval_ms: int = RECONCILE_SWEEP_INTERVAL_MS,
         clock: Callable[[], int] = now_ms,
         linear_client: linear_sync.LinearSyncClient | None = None,
+        telegram_client: TelegramClient | None = None,
+        operator_digest_enabled: bool | str | None = None,
+        security_release_repos: Iterable[str] | str | None = None,
+        security_release_extra_repos: Iterable[str] | str | None = None,
+        security_release_cooldown_secs: int | str | None = None,
     ):
         self.state_store = state_store
         self.gh_client = gh_client
         self.poller = poller
         self.trust_filter = trust_filter
         self.execution_coordinator = execution_coordinator
-        if self.trust_filter.telegram_client is None and self.execution_coordinator.telegram_client is not None:
-            self.trust_filter.telegram_client = self.execution_coordinator.telegram_client
+        resolved_telegram = telegram_client or self.execution_coordinator.telegram_client or self.trust_filter.telegram_client
+        self.telegram_client = resolved_telegram
+        if self.trust_filter.telegram_client is None and resolved_telegram is not None:
+            self.trust_filter.telegram_client = resolved_telegram
+        if self.execution_coordinator.telegram_client is None and resolved_telegram is not None:
+            self.execution_coordinator.telegram_client = resolved_telegram
         self.matrix_client = matrix_client
         self.linear_client = linear_client
         if self.execution_coordinator.linear_client is None and self.linear_client is not None:
@@ -5147,6 +5950,12 @@ class GithubCompanionRunner:
         self.read_only_trial = bool(read_only_trial)
         self.reconcile_interval_ms = max(60_000, _safe_int(reconcile_interval_ms, RECONCILE_SWEEP_INTERVAL_MS))
         self.clock = clock
+        self._operator_digest_enabled = operator_digest_enabled
+        self._security_release_extra_repos = (
+            security_release_extra_repos if security_release_extra_repos is not None else security_release_repos
+        )
+        self._security_release_repos = self._security_release_extra_repos
+        self._security_release_cooldown_secs = security_release_cooldown_secs
 
     @contextlib.contextmanager
     def _deferred_dispatch_guard(self, dispatch_result: dict, *, now_override_ms: int | None = None) -> Iterator[None]:
@@ -5902,7 +6711,17 @@ class GithubCompanionRunner:
                 })
         return results
 
-    def _dispatch_linear_todo_implementations(self, active_linear_issues: Iterable[dict], *, slot_id: str, dispatched_targets: set[str], current_ms: int, now_override_ms: int | None) -> list[dict]:
+    def _dispatch_linear_todo_implementations(
+        self,
+        active_linear_issues: Iterable[dict],
+        *,
+        slot_id: str,
+        dispatched_targets: set[str],
+        current_ms: int,
+        now_override_ms: int | None,
+        open_pr_by_closing_issue_key: dict[str, list[dict]] | None = None,
+        linear_breaker: _LinearWriteCircuitBreaker | None = None,
+    ) -> list[dict]:
         if self.linear_client is None or self.state_store.agent_name not in SWEEP_AGENT_ORDER:
             return []
         dispatches: list[dict] = []
@@ -5910,6 +6729,60 @@ class GithubCompanionRunner:
             cand = self._resolve_owned_linear_issue_candidate(linear_issue, dispatched_targets=dispatched_targets)
             if cand is None or (cand["state_name"] != "todo" and cand["state_type"] != "unstarted"):
                 continue
+            linking_prs = (open_pr_by_closing_issue_key or {}).get(cand["issue_key"]) or []
+            issue_entry = _as_dict(self.state_store.get_thread_state(cand["issue_key"]))
+            if linking_prs:
+                first_pr = linking_prs[0] if isinstance(linking_prs[0], dict) else {}
+                pr_url = str(first_pr.get("url") or "").strip()
+                if not pr_url:
+                    pr_repo = str(first_pr.get("repo") or "").strip()
+                    pr_num = _safe_int(first_pr.get("number"), 0)
+                    if pr_repo and pr_num > 0:
+                        pr_url = f"https://github.com/{pr_repo}/pull/{pr_num}"
+                if pr_url and issue_entry.get("paused_by_open_pr_url") != pr_url:
+                    comment_posted = False
+                    can_comment = hasattr(self.linear_client, "post_comment") and (
+                        linear_breaker is None or not linear_breaker.skip_if_tripped(scope="linear-todo-pause-comment")
+                    )
+                    if can_comment:
+                        try:
+                            self.linear_client.post_comment(
+                                cand["linear_id"],
+                                f"Autonomous implementation is paused while open pull request {pr_url} already references this issue.",
+                            )
+                            comment_posted = True
+                            if linear_breaker is not None:
+                                linear_breaker.record_success()
+                        except Exception as exc:
+                            if linear_breaker is not None:
+                                linear_breaker.record_error(
+                                    exc,
+                                    scope="linear-todo-pause-comment",
+                                    item_key=cand["issue_key"],
+                                )
+                            sys.stderr.write(
+                                f"moltis-github-companion linear-todo-pause-comment warning ({cand['issue_key']} / {cand['linear_id']}): {exc}\n"
+                            )
+                    if comment_posted or not hasattr(self.linear_client, "post_comment"):
+                        self.state_store.update_thread_state(
+                            cand["issue_key"],
+                            {
+                                "repo": cand["repo"],
+                                "number": cand["number"],
+                                "subject_type": "Issue",
+                                "url": cand["github_url"],
+                                "linear_issue_id": cand["linear_id"],
+                                "paused_by_open_pr_url": pr_url,
+                            },
+                            now_override_ms=current_ms,
+                        )
+                continue
+            if issue_entry.get("paused_by_open_pr_url"):
+                self.state_store.update_thread_state(
+                    cand["issue_key"],
+                    {"paused_by_open_pr_url": None},
+                    now_override_ms=current_ms,
+                )
             if not self.state_store.can_consume_throttle("todo_implementations", slot_id=slot_id, now_override_ms=current_ms):
                 break
             try:
@@ -8875,6 +9748,679 @@ class GithubCompanionRunner:
 
         return actions
 
+    def _evaluate_health_alerts(
+        self,
+        *,
+        poll_result: dict,
+        linear_breaker: _LinearWriteCircuitBreaker | None,
+        current_ms: int,
+    ) -> list[dict]:
+        """Track consecutive poll failures, Linear circuit breaker trips, and dead-lettered items, emitting deduplicated Telegram alerts."""
+        state = self.state_store.read_state()
+        health = dict(state.get("health") or self.state_store._default_health())
+        last_alerts = dict(_as_dict(health.get("last_health_alerts")))
+        notified_dl = dict(_as_dict(health.get("notified_dead_letter_keys")))
+        threads = _as_dict(state.get("threads"))
+
+        has_poll_error = bool(
+            poll_result.get("open_prs_poll_error")
+            or poll_result.get("open_issues_poll_error")
+            or poll_result.get("status") in (403, 429)
+        )
+        if has_poll_error:
+            consecutive_poll_failures = max(0, _safe_int(health.get("consecutive_poll_failures"), 0)) + 1
+        else:
+            consecutive_poll_failures = 0
+
+        display_name = derive_display_name(self.state_store.agent_name, self.execution_coordinator.agent_display_name)
+        emitted: list[dict] = []
+
+        def _cooldown_allows(alert_key: str) -> bool:
+            last_sent = _safe_int(last_alerts.get(alert_key), 0)
+            return last_sent <= 0 or (current_ms - last_sent) >= HEALTH_ALERT_COOLDOWN_MS
+
+        def _try_send(message: str) -> bool:
+            if self.read_only_trial or self.telegram_client is None:
+                return False
+            try:
+                self.telegram_client.send_message(message)
+                return True
+            except Exception as exc:
+                sys.stderr.write(f"moltis-github-companion health-alert telegram warning ({self.state_store.agent_name}): {exc}\n")
+                return False
+
+        if consecutive_poll_failures >= HEALTH_POLL_FAILURE_THRESHOLD and _cooldown_allows("poll_failures"):
+            parts: list[str] = []
+            if poll_result.get("status") in (403, 429):
+                parts.append(f"GitHub HTTP {poll_result.get('status')}")
+            if poll_result.get("open_prs_poll_error"):
+                parts.append("open PRs poll error")
+            if poll_result.get("open_issues_poll_error"):
+                parts.append("open issues poll error")
+            detail = ", ".join(parts) or "poll error"
+            msg = f"🚨 [{display_name} health] {consecutive_poll_failures} consecutive poll failures ({detail})."
+            if _try_send(msg):
+                last_alerts["poll_failures"] = current_ms
+                emitted.append({
+                    "key": "poll_failures",
+                    "consecutive_poll_failures": consecutive_poll_failures,
+                    "message": msg,
+                    "sent": True,
+                })
+
+        if linear_breaker is not None and linear_breaker.tripped and _cooldown_allows("linear_circuit_breaker"):
+            reason_safe = _sanitize_health_reason(linear_breaker.reason or "Linear write errors") or "Linear write errors"
+            msg = f"🚨 [{display_name} health] Linear write circuit breaker tripped ({reason_safe})."
+            if _try_send(msg):
+                last_alerts["linear_circuit_breaker"] = current_ms
+                emitted.append({
+                    "key": "linear_circuit_breaker",
+                    "reason": reason_safe,
+                    "message": msg,
+                    "sent": True,
+                })
+
+        new_dead_letters: list[tuple[str, int, str, str]] = []
+        active_thread_keys = set(threads.keys())
+        for stale_key in list(notified_dl.keys()):
+            if stale_key not in active_thread_keys:
+                notified_dl.pop(stale_key, None)
+        for key, entry in sorted(threads.items()):
+            if not isinstance(entry, dict):
+                continue
+            retry_count = _safe_int(entry.get("retry_count"), 0)
+            if retry_count < MAX_THREAD_FAILURE_RETRIES:
+                notified_dl.pop(key, None)
+                continue
+            raw_reason = str(entry.get("last_failure_reason") or "").strip()
+            fingerprint = f"{retry_count}:{raw_reason}"
+            if notified_dl.get(key) != fingerprint:
+                new_dead_letters.append((key, retry_count, raw_reason, fingerprint))
+
+        if new_dead_letters:
+            lines = [f"🚨 [{display_name} health] Dead-lettered items ({len(new_dead_letters)}):"]
+            for dl_key, dl_retries, dl_reason, _ in new_dead_letters[:10]:
+                safe_reason = _sanitize_health_reason(dl_reason, max_len=60) if dl_reason else "max retries reached"
+                lines.append(f"- {dl_key} ({dl_retries} retries, {safe_reason})")
+            if len(new_dead_letters) > 10:
+                lines.append(f"- +{len(new_dead_letters) - 10} more")
+            msg = "\n".join(lines)
+            if _try_send(msg):
+                for dl_key, _, _, dl_fp in new_dead_letters:
+                    notified_dl[dl_key] = dl_fp
+                emitted.append({
+                    "key": "dead_letter",
+                    "items": [dl_key for dl_key, _, _, _ in new_dead_letters],
+                    "message": msg,
+                    "sent": True,
+                })
+
+        self.state_store.write_state(
+            {
+                "health": {
+                    "consecutive_poll_failures": consecutive_poll_failures,
+                    "last_health_alerts": last_alerts,
+                    "notified_dead_letter_keys": notified_dl,
+                }
+            },
+            now_override_ms=current_ms,
+        )
+        return emitted
+
+    def _collect_pending_security_releases(self, *, active_linear_issues: Iterable[dict]) -> list[dict]:
+        """Collect pending security patch releases from active Linear release cards and local state."""
+        pending: list[dict] = []
+        seen_ids: set[str] = set()
+        seen_urls: set[str] = set()
+
+        for issue in active_linear_issues or ():
+            if not isinstance(issue, dict) or is_ignored_linear_issue_state(issue):
+                continue
+            labels = extract_linear_issue_labels(issue)
+            if "release" not in labels:
+                continue
+            lin_id = str(issue.get("id") or "").strip()
+            lin_url = str(issue.get("url") or "").strip()
+            if lin_id:
+                seen_ids.add(lin_id)
+            if lin_url:
+                seen_urls.add(lin_url)
+            pending.append({
+                "title": str(issue.get("title") or "").strip(),
+                "linear_issue_id": lin_id,
+                "linear_url": lin_url,
+                "url": lin_url,
+                "has_non_patch_commits": "unreleased feat" in str(issue.get("description") or "").lower()
+                or "non-patch" in str(issue.get("description") or "").lower(),
+            })
+
+        state = self.state_store.read_state()
+        notified = _as_dict(_as_dict(state.get("security_releases")).get("notified_releases"))
+        for repo_key in sorted(notified.keys()):
+            rec = notified.get(repo_key)
+            if not isinstance(rec, dict) or not rec.get("pending", True):
+                continue
+            lin_id = str(rec.get("linear_issue_id") or "").strip()
+            lin_url = str(rec.get("linear_url") or "").strip()
+            if (lin_id and lin_id in seen_ids) or (lin_url and lin_url in seen_urls):
+                continue
+            pending.append({
+                "repo": str(rec.get("repo") or repo_key).strip(),
+                "next_tag": str(rec.get("next_tag") or "").strip(),
+                "linear_issue_id": lin_id,
+                "linear_url": lin_url,
+                "url": lin_url,
+                "has_non_patch_commits": bool(rec.get("has_non_patch_commits")),
+            })
+        return pending
+
+    def _maybe_send_operator_digest(
+        self,
+        *,
+        active_linear_issues: Iterable[dict],
+        pending_security_releases: list[dict],
+        current_ms: int,
+    ) -> dict | None:
+        """Send the scheduled weekday 08:30 Europe/London 'Waiting on Martin' digest from `skrye`."""
+        if self.read_only_trial:
+            return None
+        if self.state_store.agent_name != OPERATOR_DIGEST_AGENT:
+            return None
+        if not resolve_operator_digest_enabled(self._operator_digest_enabled):
+            return None
+        if self.telegram_client is None:
+            return None
+
+        dt = _london_datetime(current_ms)
+        if dt.weekday() >= 5:
+            return None
+        if (dt.hour, dt.minute) < (OPERATOR_DIGEST_HOUR_LONDON, OPERATOR_DIGEST_MINUTE_LONDON):
+            return None
+
+        today_str = dt.strftime("%Y-%m-%d")
+        is_monday = dt.weekday() == 0
+        state = self.state_store.read_state()
+        if _as_dict(state.get("digest")).get("last_digest_date") == today_str:
+            return None
+
+        ready_to_merge: list[dict] = []
+        needs_decision: list[dict] = []
+        first_time_prs: list[dict] = []
+        signoff_issues: list[dict] = []
+        for issue in active_linear_issues or ():
+            if not isinstance(issue, dict) or is_ignored_linear_issue_state(issue):
+                continue
+            labels = extract_linear_issue_labels(issue)
+            is_pr = "pr" in labels
+            is_issue = "issue" in labels
+            if is_pr and "ready-to-merge" in labels:
+                ready_to_merge.append(issue)
+            if (is_pr or is_issue) and "needs-decision" in labels:
+                needs_decision.append(issue)
+            if is_pr and "first-time" in labels and "needs-decision" not in labels:
+                first_time_prs.append(issue)
+            if is_issue and "sign-off-required" in labels:
+                signoff_issues.append(issue)
+
+        threads = _as_dict(state.get("threads"))
+        dead_letter_keys = sorted(
+            str(k)
+            for k, entry in threads.items()
+            if isinstance(entry, dict) and _safe_int(entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES
+        )
+
+        text = format_operator_digest(
+            date_str=today_str,
+            ready_to_merge=ready_to_merge,
+            needs_decision=needs_decision,
+            first_time_prs=first_time_prs,
+            signoff_issues=signoff_issues,
+            security_releases=list(pending_security_releases or []),
+            dead_letter_keys=dead_letter_keys,
+            is_monday=is_monday,
+        )
+        if not text:
+            return None
+
+        try:
+            self.telegram_client.send_message(text)
+        except Exception as exc:
+            sys.stderr.write(f"moltis-github-companion operator-digest telegram warning ({self.state_store.agent_name}): {exc}\n")
+            return None
+
+        self.state_store.write_state(
+            {"digest": {"last_digest_date": today_str}},
+            now_override_ms=current_ms,
+        )
+        return {
+            "date": today_str,
+            "is_monday": is_monday,
+            "sent": True,
+            "counts": {
+                "ready_to_merge": len(ready_to_merge),
+                "needs_decision": len(needs_decision),
+                "first_time_prs": len(first_time_prs),
+                "signoff_issues": len(signoff_issues),
+                "security_releases": len(pending_security_releases or []),
+                "dead_letter_keys": len(dead_letter_keys),
+            },
+            "message": text,
+        }
+
+    def _link_open_prs_to_linear_issues(
+        self,
+        *,
+        open_prs_by_key: dict[str, dict],
+        active_linear_issues: Iterable[dict],
+        known_linear_issues_by_pr_key: dict[str, dict] | None = None,
+        current_ms: int,
+        linear_breaker: _LinearWriteCircuitBreaker | None = None,
+    ) -> list[dict]:
+        """Link owned open PR Linear cards to referenced active GitHub Issue Linear cards via `related` relations."""
+        if (
+            self.linear_client is None
+            or self.state_store.agent_name not in SWEEP_AGENT_ORDER
+            or not hasattr(self.linear_client, "create_issue_relation")
+        ):
+            return []
+        breaker = linear_breaker if linear_breaker is not None else _LinearWriteCircuitBreaker()
+        if breaker.skip_if_tripped(scope="linear-pr-issue-link"):
+            return []
+
+        linear_pr_by_key: dict[str, dict] = {}
+        for k, val in (known_linear_issues_by_pr_key or {}).items():
+            if isinstance(val, dict) and not is_ignored_linear_issue_state(val):
+                linear_pr_by_key[str(k).strip().lower()] = val
+
+        linear_issue_by_key: dict[str, dict] = {}
+        for issue in active_linear_issues or ():
+            if not isinstance(issue, dict) or is_ignored_linear_issue_state(issue):
+                continue
+            labels = extract_linear_issue_labels(issue)
+            if "pr" in labels:
+                pr_target = extract_linear_github_target(issue, expected_kind="PR")
+                if pr_target is not None:
+                    pk = make_pr_key(pr_target[0], pr_target[2])
+                    linear_pr_by_key.setdefault(pk, issue)
+            if "issue" in labels and "pr" not in labels:
+                iss_target = extract_linear_github_target(issue, expected_kind="Issue")
+                if iss_target is not None:
+                    ik = make_pr_key(iss_target[0], iss_target[2])
+                    linear_issue_by_key.setdefault(ik, issue)
+
+        linked: list[dict] = []
+        for pr_key, live_pr in sorted((open_prs_by_key or {}).items()):
+            if not isinstance(live_pr, dict) or str(live_pr.get("state") or "OPEN").upper() != "OPEN":
+                continue
+            repo = str(live_pr.get("repo") or "").strip()
+            number = _safe_int(live_pr.get("number"), 0)
+            if not repo or number <= 0 or not is_allowed_notification_repo(repo):
+                continue
+            if compute_pr_owner(repo, number) != self.state_store.agent_name:
+                continue
+            pr_linear = linear_pr_by_key.get(pr_key.lower())
+            if pr_linear is None:
+                continue
+            pr_linear_id = str(pr_linear.get("id") or "").strip()
+            if not pr_linear_id:
+                continue
+            closing_issues = extract_pr_closing_issues(live_pr, default_repo=repo)
+            if not closing_issues:
+                continue
+            pr_entry = _as_dict(self.state_store.get_thread_state(pr_key))
+            linked_ids = [
+                str(x).strip()
+                for x in (pr_entry.get("linked_linear_issue_ids") or [])
+                if str(x or "").strip()
+            ]
+            for ref in closing_issues:
+                issue_key = str(ref.get("issue_key") or "").strip().lower()
+                issue_linear = linear_issue_by_key.get(issue_key)
+                if issue_linear is None:
+                    continue
+                issue_linear_id = str(issue_linear.get("id") or "").strip()
+                if not issue_linear_id or issue_linear_id == pr_linear_id or issue_linear_id in linked_ids:
+                    continue
+                if breaker.skip_if_tripped(scope="linear-pr-issue-link"):
+                    return linked
+                try:
+                    relation = self.linear_client.create_issue_relation(
+                        pr_linear_id,
+                        issue_linear_id,
+                        relation_type="related",
+                    )
+                except Exception as exc:
+                    if breaker.record_error(exc, scope="linear-pr-issue-link", item_key=f"{pr_key}->{issue_key}"):
+                        return linked
+                    sys.stderr.write(
+                        f"moltis-github-companion linear-pr-issue-link warning ({pr_key} -> {issue_key}): {exc}\n"
+                    )
+                    continue
+                breaker.record_success()
+                linked_ids.append(issue_linear_id)
+                self.state_store.update_thread_state(
+                    pr_key,
+                    {
+                        "repo": repo,
+                        "number": number,
+                        "linked_linear_issue_ids": list(linked_ids),
+                    },
+                    now_override_ms=current_ms,
+                )
+                linked.append({
+                    "pr_key": pr_key,
+                    "issue_key": issue_key,
+                    "pr_linear_id": pr_linear_id,
+                    "issue_linear_id": issue_linear_id,
+                    "relation_id": str(_as_dict(relation).get("id") or "").strip() or None,
+                    "relation_type": "related",
+                })
+        return linked
+
+    def _resolve_security_release_repos(
+        self,
+        *,
+        current_ms: int,
+        extra_repos: Iterable[str] | str | None = None,
+    ) -> tuple[str, ...]:
+        """Resolve release-managed repos from 6h-cached Haberdasher discovery plus configured extra repos."""
+        state = self.state_store.read_state()
+        sec_state = dict(state.get("security_releases") or self.state_store._default_security_releases())
+        cached_sources = [
+            norm
+            for entry in (sec_state.get("haberdasher_sources") or [])
+            if (norm := _normalize_valid_haberdasher_repo(entry)) is not None
+        ]
+        fetched_at_ms = _safe_int(sec_state.get("haberdasher_sources_fetched_at_ms"), 0)
+        cache_stale = (
+            not cached_sources
+            or fetched_at_ms <= 0
+            or (current_ms - fetched_at_ms) >= HABERDASHER_SOURCES_CACHE_TTL_MS
+        )
+
+        fetcher = getattr(self.gh_client, "fetch_haberdasher_sources", None)
+        if cache_stale and callable(fetcher):
+            fetched: tuple[str, ...] | None = None
+            try:
+                raw_fetched = fetcher()
+                if raw_fetched is not None:
+                    fetched = tuple(
+                        norm
+                        for entry in raw_fetched
+                        if (norm := _normalize_valid_haberdasher_repo(entry)) is not None
+                    )
+            except Exception as exc:
+                sys.stderr.write(f"moltis-github-companion haberdasher-sources warning: {exc}\n")
+                fetched = None
+            if fetched is not None:
+                deduped_fetched: list[str] = []
+                for repo in fetched:
+                    if repo not in deduped_fetched:
+                        deduped_fetched.append(repo)
+                cached_sources = deduped_fetched
+                self.state_store.write_state(
+                    {
+                        "security_releases": {
+                            "haberdasher_sources": cached_sources,
+                            "haberdasher_sources_fetched_at_ms": current_ms,
+                        }
+                    },
+                    now_override_ms=current_ms,
+                )
+
+        if extra_repos is None:
+            sec_cfg = resolve_security_release_config(
+                extra_repos=self._security_release_extra_repos,
+                cooldown_secs=self._security_release_cooldown_secs,
+            )
+            resolved_extra = tuple(sec_cfg["extra_repos"])  # type: ignore[arg-type]
+        else:
+            resolved_extra = parse_repo_list(extra_repos, default=())
+
+        combined: list[str] = []
+        for candidate in (*cached_sources, *resolved_extra):
+            norm = _normalize_valid_haberdasher_repo(candidate)
+            if norm and norm not in combined:
+                combined.append(norm)
+        return tuple(combined)
+
+    def _evaluate_security_patch_releases(
+        self,
+        *,
+        open_prs_by_key: dict[str, dict],
+        poll_result: dict,
+        current_ms: int,
+        linear_breaker: _LinearWriteCircuitBreaker | None = None,
+    ) -> list[dict]:
+        """Evaluate owned repos for prepared security-patch releases and hand off a Linear task plus Telegram ping."""
+        if (
+            self.linear_client is None
+            or self.state_store.agent_name not in SWEEP_AGENT_ORDER
+            or poll_result.get("open_prs_poll_error") is not None
+            or poll_result.get("status") in (403, 429)
+            or not hasattr(self.gh_client, "fetch_repo_security_release_status")
+            or not hasattr(self.linear_client, "ensure_release_task")
+        ):
+            return []
+
+        breaker = linear_breaker if linear_breaker is not None else _LinearWriteCircuitBreaker()
+        if breaker.skip_if_tripped(scope="security-patch-release"):
+            return []
+
+        sec_cfg = resolve_security_release_config(
+            extra_repos=self._security_release_extra_repos,
+            cooldown_secs=self._security_release_cooldown_secs,
+        )
+        candidate_repos = self._resolve_security_release_repos(
+            current_ms=current_ms,
+            extra_repos=sec_cfg["extra_repos"],  # type: ignore[arg-type]
+        )
+        owned_repos = [
+            repo
+            for repo in candidate_repos
+            if is_allowed_notification_repo(repo) and compute_repo_owner(repo) == self.state_store.agent_name
+        ]
+        if not owned_repos:
+            return []
+
+        cooldown_ms = _safe_int(sec_cfg["cooldown_secs"], DEFAULT_SECURITY_PATCH_RELEASE_COOLDOWN_SECS) * 1000
+        state = self.state_store.read_state()
+        sec_state = dict(state.get("security_releases") or self.state_store._default_security_releases())
+        last_checked = dict(_as_dict(sec_state.get("last_checked_at_ms")))
+        notified = dict(_as_dict(sec_state.get("notified_releases")))
+        state_dirty = False
+        actions: list[dict] = []
+
+        for repo in owned_repos:
+            prev_checked_ms = _safe_int(last_checked.get(repo), 0)
+            if prev_checked_ms > 0 and (current_ms - prev_checked_ms) < SECURITY_RELEASE_CHECK_INTERVAL_MS:
+                continue
+
+            status = self.gh_client.fetch_repo_security_release_status(repo)
+            last_checked[repo] = current_ms
+            state_dirty = True
+            if not isinstance(status, dict):
+                continue
+
+            # Gate 1: not archived, valid stable semver latest_tag, head moved past tag
+            if status.get("is_archived") or status.get("latest_is_draft") or status.get("latest_is_prerelease"):
+                continue
+            latest_tag = str(status.get("latest_tag") or "").strip()
+            latest_tag_oid = str(status.get("latest_tag_oid") or "").strip()
+            head_oid = str(status.get("head_oid") or "").strip()
+            next_tag = bump_semver_patch(latest_tag)
+            if not next_tag or not head_oid:
+                continue
+            if head_oid == latest_tag_oid:
+                if repo in notified and isinstance(notified[repo], dict) and notified[repo].get("pending", True):
+                    notified[repo] = {**notified[repo], "pending": False}
+                    state_dirty = True
+                continue
+
+            # Gate 2: zero open security PRs for this repo
+            has_open_security_pr = any(
+                isinstance(live_pr, dict)
+                and str(live_pr.get("repo") or "").strip().lower() == repo
+                and str(live_pr.get("state") or "OPEN").upper() == "OPEN"
+                and is_security_merged_pr(live_pr)
+                for live_pr in (open_prs_by_key or {}).values()
+            )
+            if has_open_security_pr:
+                continue
+
+            # Gate 3: at least one security PR merged since latest release and cooldown elapsed
+            merged_security_prs = [
+                pr
+                for pr in (status.get("merged_prs_since_tag") or ())
+                if isinstance(pr, dict) and is_security_merged_pr(pr)
+            ]
+            if not merged_security_prs:
+                if repo in notified and isinstance(notified[repo], dict) and notified[repo].get("pending", True):
+                    notified[repo] = {**notified[repo], "pending": False}
+                    state_dirty = True
+                continue
+            latest_security_merge_ms = max(
+                (_safe_int(pr.get("merged_at_ms"), 0) or normalize_ts(pr.get("mergedAt") or pr.get("merged_at"))[1])
+                for pr in merged_security_prs
+            )
+            if latest_security_merge_ms <= 0 or (current_ms - latest_security_merge_ms) < cooldown_ms:
+                continue
+
+            # Gate 4: default-branch CI on head_oid is green or empty
+            ci_state = normalize_ci_state(status.get("ci_state"))
+            if ci_state not in ("SUCCESS", "NONE"):
+                continue
+
+            # Deduplicate per (repo, latest_tag, head_oid)
+            dedup_key = f"{repo}:{latest_tag}:{head_oid}"
+            if _as_dict(notified.get(repo)).get("dedup_key") == dedup_key:
+                continue
+
+            commit_subjects = [
+                str(c.get("messageHeadline") or c.get("subject") or "").strip()
+                for c in (status.get("commits_since_tag") or ())
+                if isinstance(c, dict)
+            ]
+            classified = classify_unreleased_commits(commit_subjects)
+            non_patch_commits = classified["non_patch"]
+            has_non_patch_commits = bool(non_patch_commits)
+            default_branch = str(status.get("default_branch") or "main").strip() or "main"
+
+            pr_lines = []
+            for pr in merged_security_prs:
+                pr_num = _safe_int(pr.get("number"), 0)
+                pr_title = " ".join(str(pr.get("title") or "").splitlines()).strip()
+                pr_url = str(pr.get("url") or "").strip()
+                ref_label = f"#{pr_num}" if pr_num > 0 else "PR"
+                pr_lines.append(f"- {ref_label}: {pr_title} ({pr_url})" if pr_url else f"- {ref_label}: {pr_title}")
+
+            if has_non_patch_commits:
+                branch_status_lines = [
+                    f"Warning: `{default_branch}` contains unreleased feature or breaking commits since `{latest_tag}`:",
+                    *(f"- {subj}" for subj in non_patch_commits[:10]),
+                ]
+            else:
+                branch_status_lines = [
+                    f"Clean `{default_branch}`: all unreleased commits since `{latest_tag}` are patch-safe.",
+                ]
+
+            notes_lines = [f"- {subj}" for subj in commit_subjects[:15] if subj] or pr_lines
+            release_cmd = f"gh release create {next_tag} --repo {repo} --target {head_oid} --generate-notes"
+            title = f"Release {repo} {next_tag} (security patch)"
+            description = "\n".join([
+                f"Prepared security-patch release `{latest_tag}` -> `{next_tag}` on `{default_branch}` (`{head_oid}`).",
+                "",
+                "## Merged security pull requests",
+                *pr_lines,
+                "",
+                "## Branch cleanliness",
+                *branch_status_lines,
+                "",
+                "## Draft release notes",
+                *notes_lines,
+                "",
+                "## Unfenced release command",
+                "```sh",
+                release_cmd,
+                "```",
+            ])
+
+            if breaker.skip_if_tripped(scope="security-patch-release"):
+                break
+            try:
+                linear_issue, created = self.linear_client.ensure_release_task(
+                    repo=repo,
+                    next_tag=next_tag,
+                    title=title,
+                    description=description,
+                    state="Backlog",
+                )
+            except Exception as exc:
+                if breaker.record_error(exc, scope="security-patch-release", item_key=repo):
+                    break
+                sys.stderr.write(f"moltis-github-companion security-patch-release warning ({repo}): {exc}\n")
+                continue
+            breaker.record_success()
+
+            linear_id = str(linear_issue.get("id") or "").strip()
+            linear_identifier = str(linear_issue.get("identifier") or "").strip() or None
+            linear_url = str(linear_issue.get("url") or "").strip()
+
+            ping_msg = f"📦 {repo}: security patch {next_tag} ready ({linear_url})"
+            if has_non_patch_commits:
+                ping_msg += " ⚠️ unreleased feat/breaking commits on main"
+            telegram_sent = False
+            if not self.read_only_trial and self.telegram_client is not None:
+                try:
+                    self.telegram_client.send_message(ping_msg)
+                    telegram_sent = True
+                except Exception as exc:
+                    sys.stderr.write(f"moltis-github-companion security-patch-release telegram warning ({repo}): {exc}\n")
+
+            notified[repo] = {
+                "dedup_key": dedup_key,
+                "repo": repo,
+                "current_tag": latest_tag,
+                "next_tag": next_tag,
+                "head_oid": head_oid,
+                "linear_issue_id": linear_id,
+                "linear_issue_identifier": linear_identifier,
+                "linear_url": linear_url,
+                "has_non_patch_commits": has_non_patch_commits,
+                "non_patch_commits": non_patch_commits,
+                "pending": True,
+                "notified_at_ms": current_ms,
+            }
+            state_dirty = True
+            actions.append({
+                "repo": repo,
+                "current_tag": latest_tag,
+                "next_tag": next_tag,
+                "head_oid": head_oid,
+                "created": created,
+                "linear_issue_id": linear_id,
+                "linear_issue_identifier": linear_identifier,
+                "linear_url": linear_url,
+                "has_non_patch_commits": has_non_patch_commits,
+                "non_patch_commits": non_patch_commits,
+                "release_command": release_cmd,
+                "telegram_sent": telegram_sent,
+                "telegram_message": ping_msg,
+            })
+
+        if state_dirty:
+            self.state_store.write_state(
+                {
+                    "security_releases": {
+                        "last_checked_at_ms": last_checked,
+                        "notified_releases": notified,
+                    }
+                },
+                now_override_ms=current_ms,
+            )
+
+        return actions
+
     def run_cycle(self, *, run_sweeps_if_due: bool = True, now_override_ms: int | None = None) -> dict:
         if self.matrix_client is not None:
             with contextlib.suppress(Exception):
@@ -8883,9 +10429,9 @@ class GithubCompanionRunner:
         poll_result = self.poller.poll_once(now_override_ms=now_override_ms)
         dismissed_threads: list[str] = list(poll_result.get("dismissed_threads") or [])
         if self.read_only_trial:
-            return {"status": "ok", "recovery": {"status": "read_only_trial", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "merge_conflict_actions": [], "stale_issue_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": [], "linear_todo_reconciliations": [], "linear_operator_comment_dispatches": []}
+            return {"status": "ok", "recovery": {"status": "read_only_trial", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "merge_conflict_actions": [], "stale_issue_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": [], "linear_todo_reconciliations": [], "linear_operator_comment_dispatches": [], "health_alerts": [], "operator_digest": None, "linked_pr_issue_relations": [], "security_release_actions": []}
         if self._is_coordinator_busy():
-            return {"status": "turn_in_progress", "recovery": {"status": "busy", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "merge_conflict_actions": [], "stale_issue_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": [], "linear_todo_reconciliations": [], "linear_operator_comment_dispatches": []}
+            return {"status": "turn_in_progress", "recovery": {"status": "busy", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "merge_conflict_actions": [], "stale_issue_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": [], "linear_todo_reconciliations": [], "linear_operator_comment_dispatches": [], "health_alerts": [], "operator_digest": None, "linked_pr_issue_relations": [], "security_release_actions": []}
 
         recovery = self.execution_coordinator.recover_active_dispatch(now_override_ms=now_override_ms)
         if not recovery.get("can_dispatch", True):
@@ -8907,6 +10453,10 @@ class GithubCompanionRunner:
                 "traya_blind_reviews": [],
                 "linear_todo_reconciliations": [],
                 "linear_operator_comment_dispatches": [],
+                "health_alerts": [],
+                "operator_digest": None,
+                "linked_pr_issue_relations": [],
+                "security_release_actions": [],
             }
         current_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
         slot_id = compute_throttle_slot_id(current_ms, self.state_store.agent_name)
@@ -9064,16 +10614,25 @@ class GithubCompanionRunner:
             )
 
         open_prs_by_key: dict[str, dict] = {}
+        open_pr_by_closing_issue_key: dict[str, list[dict]] = {}
         for raw_open_pr in poll_result.get("open_pull_requests") or ():
             if not isinstance(raw_open_pr, dict):
                 continue
             pk = str(raw_open_pr.get("pr_key") or "").strip().lower()
-            if not pk:
-                r_name, r_num = str(raw_open_pr.get("repo") or "").strip(), _safe_int(raw_open_pr.get("number"), 0)
-                if r_name and r_num > 0:
-                    pk = make_pr_key(r_name, r_num)
+            r_name = str(raw_open_pr.get("repo") or "").strip()
+            r_num = _safe_int(raw_open_pr.get("number"), 0)
+            if not pk and r_name and r_num > 0:
+                pk = make_pr_key(r_name, r_num)
             if pk:
-                open_prs_by_key[pk] = dict(raw_open_pr)
+                pr_copy = dict(raw_open_pr)
+                if "closing_issues" not in pr_copy:
+                    pr_copy["closing_issues"] = extract_pr_closing_issues(pr_copy, default_repo=r_name)
+                open_prs_by_key[pk] = pr_copy
+                if str(pr_copy.get("state") or "OPEN").upper() == "OPEN":
+                    for ref in pr_copy.get("closing_issues") or ():
+                        ik = str(ref.get("issue_key") or "").strip().lower()
+                        if ik:
+                            open_pr_by_closing_issue_key.setdefault(ik, []).append(pr_copy)
 
         if (
             self.linear_client is not None
@@ -9158,9 +10717,11 @@ class GithubCompanionRunner:
         needs_decision_notifications: list[dict] = []
         traya_blind_reviews: list[dict] = []
         linear_operator_comment_dispatches: list[dict] = []
+        linked_pr_issue_relations: list[dict] = []
+        security_release_actions: list[dict] = []
+        remaining_linear_issues: list[dict] = []
         if self.linear_client is not None and self.state_store.agent_name in SWEEP_AGENT_ORDER:
             active_linear_issues = self._poll_active_linear_issues()
-            remaining_linear_issues: list[dict] = []
             if active_linear_issues:
                 linear_synced_closed = self._sync_closed_github_items_to_linear(
                     active_linear_issues,
@@ -9191,6 +10752,13 @@ class GithubCompanionRunner:
             targeted_dispatches.extend(pr_pipeline["dispatches"])
             linear_pr_actions.extend(pr_pipeline["linear_pr_actions"])
             needs_decision_notifications.extend(pr_pipeline["needs_decision_notifications"])
+            linked_pr_issue_relations = self._link_open_prs_to_linear_issues(
+                open_prs_by_key=open_prs_by_key,
+                active_linear_issues=remaining_linear_issues,
+                known_linear_issues_by_pr_key=pr_pipeline.get("linear_issues_by_pr_key"),
+                current_ms=current_ms,
+                linear_breaker=linear_breaker,
+            )
             merge_conflict_actions = self._reconcile_community_pr_merge_conflicts(
                 open_prs_by_key=open_prs_by_key,
                 active_linear_issues=remaining_linear_issues,
@@ -9244,8 +10812,16 @@ class GithubCompanionRunner:
                         dispatched_targets=dispatched_targets,
                         current_ms=current_ms,
                         now_override_ms=now_override_ms,
+                        open_pr_by_closing_issue_key=open_pr_by_closing_issue_key,
+                        linear_breaker=linear_breaker,
                     )
                 )
+            security_release_actions = self._evaluate_security_patch_releases(
+                open_prs_by_key=open_prs_by_key,
+                poll_result=poll_result,
+                current_ms=current_ms,
+                linear_breaker=linear_breaker,
+            )
         elif self.linear_client is not None and self.state_store.agent_name == "traya":
             if poll_result.get("open_prs_poll_error") is None:
                 traya_blind_reviews = self._run_traya_blind_pr_reviews(
@@ -9274,6 +10850,20 @@ class GithubCompanionRunner:
             if weekly_due or self.is_reconcile_sweep_due(now_override_ms=now_override_ms):
                 sweep_dispatch = self.execution_coordinator.execute_dispatch(kind="weekly_sweep" if weekly_due else "reconcile_sweep", sweep_date=today_str if weekly_due else None, now_override_ms=now_override_ms)
 
+        health_alerts = self._evaluate_health_alerts(
+            poll_result=poll_result,
+            linear_breaker=linear_breaker,
+            current_ms=current_ms,
+        )
+        pending_security_releases = self._collect_pending_security_releases(
+            active_linear_issues=remaining_linear_issues,
+        )
+        operator_digest = self._maybe_send_operator_digest(
+            active_linear_issues=remaining_linear_issues,
+            pending_security_releases=pending_security_releases,
+            current_ms=current_ms,
+        )
+
         return {
             "status": "ok",
             "recovery": recovery,
@@ -9292,6 +10882,10 @@ class GithubCompanionRunner:
             "traya_blind_reviews": traya_blind_reviews,
             "linear_todo_reconciliations": linear_todo_reconciliations,
             "linear_operator_comment_dispatches": linear_operator_comment_dispatches,
+            "health_alerts": health_alerts,
+            "operator_digest": operator_digest,
+            "linked_pr_issue_relations": linked_pr_issue_relations,
+            "security_release_actions": security_release_actions,
         }
 
 
@@ -9390,7 +10984,7 @@ def main(argv: list[str] | None = None) -> int:
     trust_filter = TrustFilterAndSnapshotBuilder(state_store=store, gh_client=gh_client, matrix_client=matrix_client, telegram_client=telegram_client, agent_name=cfg["agent_name"])
     linear_client = linear_sync.LinearSyncClient.from_env()
     execution_coordinator = LocalExecutionCoordinator(state_store=store, rpc_client=rpc_client, data_dir=cfg["data_dir"], agent_name=cfg["agent_name"], agent_display_name=cfg["agent_display_name"], main_model=cfg["main_model"], review_model=cfg["review_model"], matrix_client=matrix_client, telegram_client=telegram_client, room_id=cfg["room_id"], schedule_dow=cfg["schedule_dow"], schedule_day_name=cfg["schedule_day_name"], linear_client=linear_client)
-    runner = GithubCompanionRunner(state_store=store, gh_client=gh_client, poller=poller, trust_filter=trust_filter, execution_coordinator=execution_coordinator, matrix_client=matrix_client, read_only_trial=cfg["read_only_trial"], linear_client=linear_client)
+    runner = GithubCompanionRunner(state_store=store, gh_client=gh_client, poller=poller, trust_filter=trust_filter, execution_coordinator=execution_coordinator, matrix_client=matrix_client, read_only_trial=cfg["read_only_trial"], linear_client=linear_client, telegram_client=telegram_client)
     if cfg["once"]:
         poller.wait_until_due()
         runner.run_cycle()

@@ -35,6 +35,7 @@ WORKFLOW_LABELS = (
     "first-time",
     "merge-conflicts",
     "stale-closed",
+    "release",
 )
 DEFAULT_TIMEOUT_SECS = 20.0
 DEFAULT_MARKER_INDEX_TTL_SECS = 300.0
@@ -1046,6 +1047,18 @@ mutation($input: CommentCreateInput!) {
       parent {
         id
       }
+    }
+  }
+}
+""".strip()
+
+_ISSUE_RELATION_CREATE_MUTATION = """
+mutation($input: IssueRelationCreateInput!) {
+  issueRelationCreate(input: $input) {
+    success
+    issueRelation {
+      id
+      type
     }
   }
 }
@@ -2369,3 +2382,139 @@ class LinearSyncClient:
         if not isinstance(payload, dict) or not payload.get("success") or not isinstance(comment, dict):
             raise LinearAPIError(f"Failed to post blind review verdict comment on issue {clean_id!r}")
         return comment
+
+    def create_issue_relation(
+        self,
+        issue_id: str,
+        related_issue_id: str,
+        *,
+        relation_type: str = "related",
+    ) -> dict[str, object]:
+        """Create a Linear issue relation between two distinct issues."""
+        clean_issue_id = str(issue_id or "").strip()
+        clean_related_id = str(related_issue_id or "").strip()
+        if not clean_issue_id or not clean_related_id:
+            raise ValueError("issue_id and related_issue_id must be non-empty")
+        if clean_issue_id == clean_related_id:
+            raise ValueError("issue_id and related_issue_id must be distinct")
+        clean_type = str(relation_type or "").strip().lower()
+        if clean_type not in ("related", "blocks", "duplicate"):
+            raise ValueError(f"Unsupported issue relation type: {relation_type!r}")
+        data = self._graphql_request(
+            _ISSUE_RELATION_CREATE_MUTATION,
+            {
+                "input": {
+                    "issueId": clean_issue_id,
+                    "relatedIssueId": clean_related_id,
+                    "type": clean_type,
+                }
+            },
+        )
+        payload = data.get("issueRelationCreate")
+        relation = payload.get("issueRelation") if isinstance(payload, dict) else None
+        if not isinstance(payload, dict) or not payload.get("success") or not isinstance(relation, dict):
+            raise LinearAPIError(
+                f"Failed to create Linear issue relation ({clean_type}) between {clean_issue_id!r} and {clean_related_id!r}"
+            )
+        return relation
+
+    def ensure_release_task(
+        self,
+        *,
+        repo: str,
+        next_tag: str,
+        title: str,
+        description: str,
+        state: str = "Backlog",
+    ) -> tuple[dict[str, object], bool]:
+        """Ensure a deterministic release-gate task exists for `repo` and `next_tag`."""
+        resolved_repo = _normalize_repo_name(repo)
+        clean_tag = str(next_tag or "").strip()
+        if not clean_tag or any(ch.isspace() or ch == "/" for ch in clean_tag):
+            raise ValueError(f"Invalid release tag: {next_tag!r}")
+        clean_title = str(title or "").strip()
+        if not clean_title:
+            raise ValueError("Release task title must be non-empty")
+
+        release_url = normalize_github_url(f"https://github.com/{resolved_repo}/releases/tag/{clean_tag}")
+        formatted_description = format_issue_description_with_github_url(description, release_url)
+
+        existing = self.find_issue_by_github_url(release_url)
+        if existing is not None:
+            if _is_ignored_issue_state(existing):
+                return existing, False
+            updates: dict[str, str] = {}
+            if str(existing.get("title") or "") != clean_title:
+                updates["title"] = clean_title
+            if str(existing.get("description") or "") != formatted_description:
+                updates["description"] = formatted_description
+            if updates:
+                updated = self.update_issue(str(existing["id"]), **updates)
+                if "attachments" in existing and "attachments" not in updated:
+                    updated = dict(updated)
+                    updated["attachments"] = existing["attachments"]
+                return updated, False
+            return existing, False
+
+        team_id = self.resolve_team_id()
+        project_id = self.ensure_project()
+        state_id = self.resolve_state_id(state)
+
+        label_ids: list[str] = []
+        for label_id in (
+            self._ensure_optional_repository_label(resolved_repo),
+            self.ensure_workflow_label("release"),
+        ):
+            if label_id and label_id not in label_ids:
+                label_ids.append(label_id)
+
+        issue_input: dict[str, object] = {
+            "teamId": team_id,
+            "projectId": project_id,
+            "stateId": state_id,
+            "title": clean_title,
+            "description": formatted_description,
+            "labelIds": label_ids,
+        }
+        delegate_id = self._resolve_optional_delegate_id()
+        if delegate_id is not None:
+            issue_input["delegateId"] = delegate_id
+
+        try:
+            created = self._graphql_request(_ISSUE_CREATE_MUTATION, {"input": issue_input})
+        except LinearAPIError as exc:
+            if "delegateId" not in issue_input or not self._is_delegate_capability_error(exc):
+                raise
+            self._delegate_unsupported = True
+            if not self._delegate_warned:
+                self._delegate_warned = True
+                sys.stderr.write(
+                    f"linear_sync: Linear issue delegation rejected ({exc}); continuing without delegateId\n"
+                )
+            issue_input.pop("delegateId", None)
+            created = self._graphql_request(_ISSUE_CREATE_MUTATION, {"input": issue_input})
+
+        create_payload = created.get("issueCreate")
+        issue = create_payload.get("issue") if isinstance(create_payload, dict) else None
+        issue_id = str(issue.get("id") or "").strip() if isinstance(issue, dict) else ""
+        if not isinstance(create_payload, dict) or not create_payload.get("success") or not issue_id:
+            raise LinearAPIError(f"Failed to create Linear release task for {resolved_repo}@{clean_tag}")
+
+        self._record_issue_in_marker_index(project_id, issue, marker_url=release_url)
+
+        created_attachment = self._attach_github_url(
+            issue_id=issue_id,
+            normalized_url=release_url,
+            resolved_repo=resolved_repo,
+            parsed_num=None,
+            fallback_title=clean_title,
+            attachment_title=f"{resolved_repo}@{clean_tag}",
+        )
+        if created_attachment is not None:
+            att_conn = issue.get("attachments")
+            if isinstance(att_conn, dict) and isinstance(att_conn.get("nodes"), list):
+                att_conn["nodes"].append(created_attachment)
+            else:
+                issue["attachments"] = {"nodes": [created_attachment]}
+
+        return issue, True
