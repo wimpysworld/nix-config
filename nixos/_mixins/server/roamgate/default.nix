@@ -91,7 +91,7 @@ lib.mkIf (noughtyLib.hostHasTag "roamgate") {
         AUTH_SECURECOOKIE = true;
         AUTH_SESSIONEXPIRY = 2592000;
         AUTH_SESSIONMAXLIFETIME = 0;
-        AUTH_LOGINMAXRETRIES = 3;
+        AUTH_LOGINMAXRETRIES = 5;
         AUTH_LOGINTIMEOUT = 300;
         AUTH_TRUSTEDPROXIES = "127.0.0.1,::1";
         ANALYTICS_ENABLED = false;

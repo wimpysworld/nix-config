@@ -25,7 +25,7 @@ Local access to `http://localhost:8787` and `http://127.0.0.1:8787` is blocked b
 
 The server runs outside Fence as the `roamgate.service` systemd user service, on `127.0.0.1:8787`, with `Restart=on-failure` and `NODE_ENV=development`. Setting `NODE_ENV=development` on a loopback bind disables Roamgate's built-in login screen so Tinyauth is the sole login gate. It starts after `herdr.service` and connects to the Herdr sockets directly. It is not the Roamgate Herdr plugin, which downloads a prebuilt binary, so do not run `herdr plugin install` or `herdr plugin link` for it. It runs from source on Bun, so the self-updater cannot replace it, and `ROAMGATE_DISABLE_UPDATE_CHECK=1` turns off update checks (see [Browser settings](#browser-settings)).
 
-NixOS configures the loopback firewall rule in `nixos/_mixins/server/roamgate/default.nix` so only the `caddy` system user can connect to loopback TCP port `8787`. When `TINYAUTH_AUTH_USERS` exists in `secrets/roamgate.yaml`, NixOS also enables Tinyauth and Caddy. `tinyauth.service` listens on `127.0.0.1:8789` for `https://auth-<host>.wimpys.world` with secure cookies, a 30-day session expiry (`AUTH_SESSIONEXPIRY = 2592000`), and a 300-second lockout after 3 failed logins. `caddy.service` binds `127.0.0.1:8788` for both `auth-<host>.wimpys.world` and `herdr-<host>.wimpys.world`, and logs to `/var/log/caddy/roamgate.log`. Caddy proxies `auth-<host>.wimpys.world` to Tinyauth on `127.0.0.1:8789`. For `herdr-<host>.wimpys.world`, Caddy runs `forward_auth` against `127.0.0.1:8789/api/auth/caddy`, then proxies traffic to Roamgate on `127.0.0.1:8787`. Both virtual hosts forward `X-Forwarded-Proto: https` and `X-Forwarded-For` from `CF-Connecting-IP`.
+NixOS configures the loopback firewall rule in `nixos/_mixins/server/roamgate/default.nix` so only the `caddy` system user can connect to loopback TCP port `8787`. When `TINYAUTH_AUTH_USERS` exists in `secrets/roamgate.yaml`, NixOS also enables Tinyauth and Caddy. `tinyauth.service` listens on `127.0.0.1:8789` for `https://auth-<host>.wimpys.world` with secure cookies, a 30-day session expiry (`AUTH_SESSIONEXPIRY = 2592000`), and a 300-second lockout after 5 failed logins. `caddy.service` binds `127.0.0.1:8788` for both `auth-<host>.wimpys.world` and `herdr-<host>.wimpys.world`, and logs to `/var/log/caddy/roamgate.log`. Caddy proxies `auth-<host>.wimpys.world` to Tinyauth on `127.0.0.1:8789`. For `herdr-<host>.wimpys.world`, Caddy runs `forward_auth` against `127.0.0.1:8789/api/auth/caddy`, then proxies traffic to Roamgate on `127.0.0.1:8787`. Both virtual hosts forward `X-Forwarded-Proto: https` and `X-Forwarded-For` from `CF-Connecting-IP`.
 
 `cloudflared-roamgate.service` starts after `caddy.service` and `tinyauth.service`, and requires both units. It runs `cloudflared tunnel --no-autoupdate run --token-file` with the host's tunnel token. NixOS enables `cloudflared-roamgate.service` only when both `TINYAUTH_AUTH_USERS` and `CLOUDFLARE_TUNNEL_TOKEN_ROAMGATE_<HOST>` exist in `secrets/roamgate.yaml`.
 
@@ -40,20 +40,16 @@ Each Home Manager activation decrypts `OPENCODE_API_KEY` from `secrets/ai.yaml` 
 | File | Key | Consumer | Value |
 | --- | --- | --- | --- |
 | `secrets/ai.yaml` | `OPENCODE_API_KEY` | `OPENCODE_API_KEY` in `~/.config/roamgate/roamgate.env` | Workspace API key for the OpenCode Go subscription, for [Ranger](#ranger). |
-| `secrets/roamgate.yaml` | `ROAMGATE_PASSWORD` | [sync-tinyauth.sh](../../../../nixos/_mixins/server/roamgate/sync-tinyauth.sh) | Shared Tinyauth password across `skrye` and `zannah`. |
+| `secrets/roamgate.yaml` | `ROAMGATE_PASSWORD` | [herdr-qr-code](../../scripts/herdr-qr-code/herdr-qr-code.sh) | Shared Tinyauth password across `skrye` and `zannah`. |
 | `secrets/roamgate.yaml` | `TINYAUTH_AUTH_USERS` | `tinyauth.service` via sops template `tinyauth-roamgate.env` | Tinyauth user credential (`martin:<bcrypt-hash-of-ROAMGATE_PASSWORD>:<totp-secret>`), shared across `skrye` and `zannah`. |
-| `secrets/roamgate.yaml` | `TINYAUTH_TOTP_URI` | Local operator setup | `otpauth://` URI for adding the shared TOTP secret to an authenticator app or password manager. |
+| `secrets/roamgate.yaml` | `TINYAUTH_TOTP_URI` | `herdr-qr-code` | `otpauth://` URI for adding the shared TOTP secret to an authenticator app or password manager. |
 | `secrets/roamgate.yaml` | `CLOUDFLARE_TUNNEL_TOKEN_ROAMGATE_<HOST>` | `cloudflared-roamgate.service` (`--token-file`) | Per-host Cloudflare Tunnel token (`CLOUDFLARE_TUNNEL_TOKEN_ROAMGATE_SKRYE`, `CLOUDFLARE_TUNNEL_TOKEN_ROAMGATE_ZANNAH`). |
 
-Run [sync-tinyauth.sh](../../../../nixos/_mixins/server/roamgate/sync-tinyauth.sh) to update `TINYAUTH_AUTH_USERS` from `ROAMGATE_PASSWORD` and the existing TOTP secret (pass `--qr` to display the TOTP QR code):
-
-```sh
-./nixos/_mixins/server/roamgate/sync-tinyauth.sh
-```
+Run `herdr-qr-code` (installed by Home Manager from [herdr-qr-code](../../scripts/herdr-qr-code/default.nix)) to verify alignment and display the TOTP QR code, `herdr-qr-code --sync` to re-hash `ROAMGATE_PASSWORD`, or `herdr-qr-code --rotate` to generate a fresh TOTP secret.
 
 If the age key is missing, a file or key is missing, decryption fails, or `OPENCODE_API_KEY` is empty, activation prints a `roamgateEnv` warning with the reason and leaves the old file. Activation also warns when the file is still missing. Without the file, the pre-start check fails and logs `missing ~/.config/roamgate/roamgate.env`.
 
-Sign in through Tinyauth with username `martin`, `ROAMGATE_PASSWORD`, and your TOTP code. The Tinyauth session lasts 30 days. To rotate the password, change `ROAMGATE_PASSWORD` in `secrets/roamgate.yaml`, run `./nixos/_mixins/server/roamgate/sync-tinyauth.sh`, then run `just switch-host`. To rotate a Cloudflare Tunnel token, update `secrets/roamgate.yaml`, then run `just switch-host`.
+Sign in through Tinyauth with username `martin`, `ROAMGATE_PASSWORD`, and your TOTP code. The Tinyauth session lasts 30 days. To rotate the password, change `ROAMGATE_PASSWORD` in `secrets/roamgate.yaml`, run `herdr-qr-code --sync`, then run `just switch-host`. To rotate a Cloudflare Tunnel token, update `secrets/roamgate.yaml`, then run `just switch-host`.
 
 ## Worktree hooks
 
@@ -99,7 +95,7 @@ Upstream declares Bun 1.4.3. The flake has Bun 1.4.2, and the build and a short 
 
 1. Create one Cloudflare Tunnel per host (`skrye` and `zannah`). Route both `herdr-<host>.wimpys.world` and `auth-<host>.wimpys.world` to `http://127.0.0.1:8788`.
 2. Check that `secrets/roamgate.yaml` holds `ROAMGATE_PASSWORD`, `CLOUDFLARE_TUNNEL_TOKEN_ROAMGATE_SKRYE`, `CLOUDFLARE_TUNNEL_TOKEN_ROAMGATE_ZANNAH`, `TINYAUTH_AUTH_USERS`, and `TINYAUTH_TOTP_URI`, and `secrets/ai.yaml` holds `OPENCODE_API_KEY`.
-3. Run `./nixos/_mixins/server/roamgate/sync-tinyauth.sh --qr` to sync `TINYAUTH_AUTH_USERS` with `ROAMGATE_PASSWORD` and scan the displayed TOTP QR code into your authenticator app.
+3. Run `herdr-qr-code --sync` to sync `TINYAUTH_AUTH_USERS` with `ROAMGATE_PASSWORD` and scan the displayed TOTP QR code into your authenticator app.
 4. Run `just switch-host` and `just switch-home` on `skrye` and on `zannah`.
 5. Open `https://herdr-skrye.wimpys.world` or `https://herdr-zannah.wimpys.world`. Sign in once through Tinyauth at `https://auth-<host>.wimpys.world` with username `martin`, `ROAMGATE_PASSWORD`, and your TOTP code.
 6. Add the app to the Home Screen on the phone, so that web push works.
