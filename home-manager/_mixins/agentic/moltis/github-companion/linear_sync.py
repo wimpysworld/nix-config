@@ -205,6 +205,29 @@ def _validate_non_negative_seconds(value: float, *, field_name: str) -> float:
     return float(value)
 
 
+_IGNORED_ISSUE_STATE_NAMES = frozenset({"canceled", "cancelled", "duplicate", "done", "deferred"})
+_IGNORED_ISSUE_STATE_TYPES = frozenset({"canceled", "completed", "duplicate"})
+
+
+def _validate_estimate(estimate: object) -> int | None:
+    if estimate is None:
+        return None
+    if isinstance(estimate, bool) or not isinstance(estimate, int) or estimate <= 0:
+        raise ValueError(f"estimate must be a positive integer: {estimate!r}")
+    return estimate
+
+
+def _is_ignored_issue_state(issue: Mapping[str, object]) -> bool:
+    if issue.get("archivedAt"):
+        return True
+    state_obj = issue.get("state")
+    if not isinstance(state_obj, Mapping):
+        return False
+    state_name = str(state_obj.get("name") or "").strip().lower()
+    state_type = str(state_obj.get("type") or "").strip().lower()
+    return state_name in _IGNORED_ISSUE_STATE_NAMES or state_type in _IGNORED_ISSUE_STATE_TYPES
+
+
 def _extract_graphql_errors(raw: bytes) -> tuple[str, list[dict[str, object]]]:
     if not raw:
         return "", []
@@ -1728,6 +1751,23 @@ class LinearSyncClient:
             return by_marker
         return None
 
+    def _backfill_missing_estimate(
+        self,
+        issue: dict[str, object],
+        estimate: int | None,
+    ) -> dict[str, object]:
+        """Set estimate on an existing issue only when estimate is null and state is not ignored."""
+        if estimate is None or issue.get("estimate") is not None or _is_ignored_issue_state(issue):
+            return issue
+        issue_id = str(issue.get("id") or "").strip()
+        if not issue_id:
+            return issue
+        updated = self.update_issue(issue_id, estimate=estimate)
+        if "attachments" in issue and "attachments" not in updated:
+            updated = dict(updated)
+            updated["attachments"] = issue["attachments"]
+        return updated
+
     def ensure_issue_for_github_item(
         self,
         *,
@@ -1744,13 +1784,14 @@ class LinearSyncClient:
         attachment_subtitle: str | None = None,
     ) -> dict[str, object]:
         """Return an existing issue for the GitHub item, or create it with labels and attachment."""
+        validated_estimate = _validate_estimate(estimate)
         normalized_url = normalize_github_url(github_url)
         parsed_repo, parsed_kind, parsed_num = _parse_github_url_parts(normalized_url)
         expected_kind = _normalize_item_kind_label(item_kind) if item_kind is not None else parsed_kind
         team_id = self.resolve_team_id()
         existing = self._find_issue_by_attachment_url(normalized_url, team_id, expected_kind=expected_kind)
         if existing is not None:
-            return existing
+            return self._backfill_missing_estimate(existing, validated_estimate)
 
         orphaned = self._find_issue_by_description_marker(normalized_url, team_id)
         if orphaned is not None and self._issue_matches_item_kind(orphaned, expected_kind):
@@ -1772,7 +1813,7 @@ class LinearSyncClient:
                         att_conn["nodes"].append(created_attachment)
                     else:
                         orphaned["attachments"] = {"nodes": [created_attachment]}
-            return orphaned
+            return self._backfill_missing_estimate(orphaned, validated_estimate)
 
         clean_title = str(title or "").strip()
         if not clean_title:
@@ -1806,8 +1847,8 @@ class LinearSyncClient:
             issue_input["delegateId"] = delegate_id
         if priority is not None:
             issue_input["priority"] = priority
-        if estimate is not None:
-            issue_input["estimate"] = estimate
+        if validated_estimate is not None:
+            issue_input["estimate"] = validated_estimate
 
         try:
             created = self._graphql_request(_ISSUE_CREATE_MUTATION, {"input": issue_input})
@@ -1865,6 +1906,7 @@ class LinearSyncClient:
         clean_id = str(issue_id or "").strip()
         if not clean_id:
             raise ValueError("issue_id must be non-empty")
+        validated_estimate = _validate_estimate(estimate)
 
         add_list = [str(lbl).strip() for lbl in add_labels if str(lbl or "").strip()]
         remove_list = [str(lbl).strip() for lbl in remove_labels if str(lbl or "").strip()]
@@ -1878,8 +1920,8 @@ class LinearSyncClient:
             update_input["title"] = title
         if description is not None:
             update_input["description"] = description
-        if estimate is not None:
-            update_input["estimate"] = estimate
+        if validated_estimate is not None:
+            update_input["estimate"] = validated_estimate
         if priority is not None:
             update_input["priority"] = priority
 

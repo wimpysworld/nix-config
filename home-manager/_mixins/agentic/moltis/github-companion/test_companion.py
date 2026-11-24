@@ -9,6 +9,7 @@ import datetime
 import http.server
 import io
 import json
+import re
 import stat
 import subprocess
 import sys
@@ -5259,6 +5260,7 @@ class StubLinearSyncClient:
         item_kind: str = "Issue",
         state: str = "Triage",
         extra_labels: tuple[str, ...] = (),
+        estimate: int | None = None,
         updated_at: str = "2026-04-01T10:00:00Z",
     ) -> dict[str, object]:
         normalized_url = companion.linear_sync.normalize_github_url(github_url)
@@ -5276,6 +5278,7 @@ class StubLinearSyncClient:
             "title": title,
             "description": "",
             "url": f"https://linear.app/wimpress/issue/{identifier}",
+            "estimate": estimate,
             "updatedAt": updated_at,
             "archivedAt": None,
             "state": self._state_obj(state),
@@ -5325,8 +5328,15 @@ class StubLinearSyncClient:
         normalized_url = companion.linear_sync.normalize_github_url(github_url)
         existing_id = self.by_github_url.get(normalized_url)
         if existing_id is not None and existing_id in self.issues:
+            existing = self.issues[existing_id]
+            if (
+                estimate is not None
+                and existing.get("estimate") is None
+                and not companion.is_ignored_linear_issue_state(existing)
+            ):
+                existing["estimate"] = estimate
             self.event_log.append(("linear_ensure_existing", existing_id, state))
-            return self._copy_issue(self.issues[existing_id])
+            return self._copy_issue(existing)
         resolved_repo = str(repo or "").strip().lower()
         resolved_kind = str(item_kind or "Issue").strip()
         created = self.seed_issue(
@@ -5336,6 +5346,7 @@ class StubLinearSyncClient:
             item_kind=resolved_kind,
             state=state,
             extra_labels=tuple(extra_labels),
+            estimate=estimate,
         )
         if description:
             self.issues[str(created["id"])]["description"] = description
@@ -11314,6 +11325,650 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
         lin_id = linear_stub.by_github_url[f"https://github.com/{repo}/pull/{pr_num}"]
         self.assertEqual(linear_stub.issues[lin_id]["state"]["name"], "Backlog")  # type: ignore[index]
         self.assertIn("merge-conflicts", companion.extract_linear_issue_labels(linear_stub.issues[lin_id]))
+
+    def test_pr_size_estimate_scale_sensitive_floor_and_lane_b_prompt(self) -> None:
+        # 1) Pure boundary checks for compute_pr_size_estimate on the WW scale.
+        self.assertEqual(companion.PR_SIZE_ESTIMATE_POINTS, {"XS": 1, "S": 2, "M": 3, "L": 5, "XL": 8})
+        self.assertEqual(
+            companion.compute_pr_size_estimate(additions=20, deletions=5, changed_files=1, file_paths=["README.md"]),
+            1,
+        )
+        self.assertEqual(
+            companion.compute_pr_size_estimate(additions=26, deletions=0, changed_files=1, file_paths=["src/a.py"]),
+            2,
+        )
+        self.assertEqual(
+            companion.compute_pr_size_estimate(additions=100, deletions=50, changed_files=5, file_paths=["src/a.py"]),
+            2,
+        )
+        self.assertEqual(
+            companion.compute_pr_size_estimate(additions=151, deletions=0, changed_files=1, file_paths=["src/a.py"]),
+            3,
+        )
+        self.assertEqual(
+            companion.compute_pr_size_estimate(additions=200, deletions=200, changed_files=12, file_paths=["src/a.py"]),
+            3,
+        )
+        self.assertEqual(
+            companion.compute_pr_size_estimate(additions=401, deletions=0, changed_files=2, file_paths=["src/a.py"]),
+            5,
+        )
+        self.assertEqual(
+            companion.compute_pr_size_estimate(additions=600, deletions=400, changed_files=25, file_paths=["src/a.py"]),
+            5,
+        )
+        self.assertEqual(
+            companion.compute_pr_size_estimate(additions=1001, deletions=0, changed_files=1, file_paths=["src/a.py"]),
+            8,
+        )
+        self.assertEqual(
+            companion.compute_pr_size_estimate(additions=10, deletions=5, changed_files=26, file_paths=["src/a.py"]),
+            8,
+        )
+        # Sensitive path raises XS/S up to M (3), while L/XL remain unchanged.
+        self.assertEqual(
+            companion.compute_pr_size_estimate(additions=5, deletions=2, changed_files=1, file_paths=["flake.nix"]),
+            3,
+        )
+        self.assertEqual(
+            companion.compute_pr_size_estimate(
+                additions=50, deletions=20, changed_files=2, file_paths=["src/a.py", ".github/workflows/ci.yml"]
+            ),
+            3,
+        )
+        self.assertEqual(
+            companion.compute_pr_size_estimate(additions=500, deletions=100, changed_files=3, file_paths=["flake.nix"]),
+            5,
+        )
+        # Fallback to len(file_paths) when changed_files is missing/0, and None on invalid stats.
+        self.assertEqual(
+            companion.compute_pr_size_estimate(additions=10, deletions=5, changed_files=None, file_paths=["a.py", "b.py"]),
+            2,
+        )
+        for bad_kwargs in (
+            {"additions": None, "deletions": 5, "changed_files": 1},
+            {"additions": 5, "deletions": None, "changed_files": 1},
+            {"additions": True, "deletions": 5, "changed_files": 1},
+            {"additions": 5, "deletions": False, "changed_files": 1},
+            {"additions": -1, "deletions": 5, "changed_files": 1},
+            {"additions": 5, "deletions": 5, "changed_files": 0, "file_paths": []},
+            {"additions": 5, "deletions": 5, "changed_files": None, "file_paths": None},
+        ):
+            with self.subTest(bad=bad_kwargs):
+                self.assertIsNone(companion.compute_pr_size_estimate(**bad_kwargs))  # type: ignore[arg-type]
+
+        # 2) End-to-end PR intake passes estimate and Lane B prompt includes estimate + WW-scale note.
+        repo = "wimpysworld/tailor"
+        pr_sens, pr_preset = self._owned_numbers(repo, "skrye", 2, kind="pr", start=1800)
+        nodes = [
+            self._graphql_pr_node(
+                repo,
+                pr_sens,
+                title="build: update flake input",
+                head_sha="est111111111",
+                author="returning-dev",
+                author_association="CONTRIBUTOR",
+                additions=6,
+                deletions=2,
+                file_paths=["flake.nix"],
+                ci_state="SUCCESS",
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_preset,
+                title="feat: large refactor with human estimate",
+                head_sha="est222222222",
+                author="returning-dev",
+                author_association="CONTRIBUTOR",
+                additions=180,
+                deletions=40,
+                file_paths=["src/core.py"],
+                ci_state="SUCCESS",
+            ),
+        ]
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(nodes), stderr="")
+            raise AssertionError(f"Unexpected gh command: {cmd!r}")
+
+        def skrye_reply(_meta: dict[str, str], _params: dict) -> str:
+            return "LANE_B_VERDICT: ready-to-merge\nSUMMARY: Checked."
+
+        linear_stub = StubLinearSyncClient()
+        # Pre-seed pr_preset with a human-set estimate=5 so intake must preserve 5 instead of overwriting with 3.
+        linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_preset}",
+            title="feat: large refactor with human estimate",
+            repo=repo,
+            item_kind="PR",
+            state="Backlog",
+            estimate=5,
+        )
+
+        _, runner, rpc_calls = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=skrye_reply,
+            state_dir=self.state_dir / "skrye-pr-sizing",
+        )
+        runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 10, 10, 0))
+
+        lin_sens_id = linear_stub.by_github_url[f"https://github.com/{repo}/pull/{pr_sens}"]
+        lin_preset_id = linear_stub.by_github_url[f"https://github.com/{repo}/pull/{pr_preset}"]
+        self.assertEqual(linear_stub.issues[lin_sens_id]["estimate"], 3)
+        self.assertEqual(linear_stub.issues[lin_preset_id]["estimate"], 5)
+
+        calls_by_num = {int(c["meta"]["number"]): c for c in rpc_calls}  # type: ignore[index]
+        self.assertEqual(calls_by_num[pr_sens]["meta"].get("linear_issue_estimate"), "3")  # type: ignore[union-attr]
+        self.assertEqual(calls_by_num[pr_preset]["meta"].get("linear_issue_estimate"), "5")  # type: ignore[union-attr]
+        for num in (pr_sens, pr_preset):
+            msg = str(calls_by_num[num]["message"])
+            self.assertIn("XS=1, S=2, M=3, L=5, XL=8", msg)
+            self.assertIn("estimate", msg)
+
+    @staticmethod
+    def _stale_detail_node(
+        *,
+        state: str = "OPEN",
+        updated_at: str = "2024-01-01T00:00:00Z",
+        author_login: str = "community-user",
+        author_typename: str = "User",
+        author_association: str = "NONE",
+        labels: list[str] | None = None,
+        reactions_count: int = 0,
+        comments: list[dict[str, object]] | None = None,
+        timeline_nodes: list[dict[str, object]] | None = None,
+    ) -> dict[str, object]:
+        cm_list = list(comments or [])
+        return {
+            "state": state,
+            "updatedAt": updated_at,
+            "author": {"__typename": author_typename, "login": author_login},
+            "authorAssociation": author_association,
+            "labels": {"nodes": [{"name": lbl} for lbl in (labels or [])]},
+            "reactions": {"totalCount": reactions_count},
+            "comments": {"totalCount": len(cm_list), "nodes": cm_list},
+            "timelineItems": {"nodes": list(timeline_nodes or [])},
+        }
+
+    def test_stale_issue_exclusions_and_qualifying_type_guards(self) -> None:
+        t_now = self._utc_ms(2026, 6, 1, 10, 0)
+        old_ts = "2024-05-01T10:00:00Z"  # > 365 days before 2026-06-01
+        main_repo = "wimpysworld/tailor"
+
+        # Excluded org & repos.
+        n_oval = self._owned_numbers("Oval-Tutu/app", "skrye", 1, kind="issue", start=2000)[0]
+        n_qtest = self._owned_numbers("wimpysworld/quicktest", "skrye", 1, kind="issue", start=2000)[0]
+        n_qgui = self._owned_numbers("quickemu-project/quickgui", "skrye", 1, kind="issue", start=2000)[0]
+        n_pages = self._owned_numbers("flexiondotorg/flexiondotorg.github.io", "skrye", 1, kind="issue", start=2000)[0]
+
+        (
+            n_popey,
+            n_lj,
+            n_lukewh,
+            n_member,
+            n_bug_lbl,
+            n_unlabelled_no_lin,
+            n_unlabelled_lin_feat,
+            n_unlabelled_lin_bug,
+            n_linked_pr_xref,
+            n_linked_pr_conn,
+            n_reactions,
+            n_comm_commenter,
+            n_bot_and_maint_only,
+        ) = self._owned_numbers(main_repo, "skrye", 13, kind="issue", start=2010)
+
+        open_issues = [
+            companion.normalize_open_issue_record(self._graphql_issue_node("Oval-Tutu/app", n_oval, title="Oval", updated_at=old_ts, labels=["enhancement"])),
+            companion.normalize_open_issue_record(self._graphql_issue_node("wimpysworld/quicktest", n_qtest, title="Qtest", updated_at=old_ts, labels=["enhancement"])),
+            companion.normalize_open_issue_record(self._graphql_issue_node("quickemu-project/quickgui", n_qgui, title="Qgui", updated_at=old_ts, labels=["enhancement"])),
+            companion.normalize_open_issue_record(self._graphql_issue_node("flexiondotorg/flexiondotorg.github.io", n_pages, title="Pages", updated_at=old_ts, labels=["enhancement"])),
+            companion.normalize_open_issue_record(self._graphql_issue_node(main_repo, n_popey, title="Popey", author="popey", updated_at=old_ts, labels=["enhancement"])),
+            companion.normalize_open_issue_record(self._graphql_issue_node(main_repo, n_lj, title="LJ", author="lj3954", updated_at=old_ts, labels=["enhancement"])),
+            companion.normalize_open_issue_record(self._graphql_issue_node(main_repo, n_lukewh, title="Luke", author="Lukewh", updated_at=old_ts, labels=["enhancement"])),
+            companion.normalize_open_issue_record(self._graphql_issue_node(main_repo, n_member, title="Member", author="org-member", updated_at=old_ts, labels=["enhancement"])),
+            companion.normalize_open_issue_record(self._graphql_issue_node(main_repo, n_bug_lbl, title="Bug", updated_at=old_ts, labels=["bug", "enhancement"])),
+            companion.normalize_open_issue_record(self._graphql_issue_node(main_repo, n_unlabelled_no_lin, title="Unlabelled", updated_at=old_ts, labels=[])),
+            companion.normalize_open_issue_record(self._graphql_issue_node(main_repo, n_unlabelled_lin_feat, title="Unlabelled Linear Feature", updated_at=old_ts, labels=[])),
+            companion.normalize_open_issue_record(self._graphql_issue_node(main_repo, n_unlabelled_lin_bug, title="Unlabelled Linear Bug", updated_at=old_ts, labels=["enhancement"])),
+            companion.normalize_open_issue_record(self._graphql_issue_node(main_repo, n_linked_pr_xref, title="Linked Xref", updated_at=old_ts, labels=["enhancement"])),
+            companion.normalize_open_issue_record(self._graphql_issue_node(main_repo, n_linked_pr_conn, title="Linked Conn", updated_at=old_ts, labels=["enhancement"])),
+            companion.normalize_open_issue_record(self._graphql_issue_node(main_repo, n_reactions, title="Upvoted", updated_at=old_ts, labels=["enhancement"])),
+            companion.normalize_open_issue_record(self._graphql_issue_node(main_repo, n_comm_commenter, title="Community Commenter", updated_at=old_ts, labels=["enhancement"])),
+            companion.normalize_open_issue_record(self._graphql_issue_node(main_repo, n_bot_and_maint_only, title="Bot and Maintainer Comments Only", author="orig-author", updated_at=old_ts, labels=["enhancement"])),
+        ]
+
+        details_map: dict[str, dict[str, object]] = {
+            companion.make_pr_key(main_repo, n_member): self._stale_detail_node(
+                updated_at=old_ts, author_login="org-member", author_association="MEMBER", labels=["enhancement"]
+            ),
+            companion.make_pr_key(main_repo, n_unlabelled_no_lin): self._stale_detail_node(
+                updated_at=old_ts, labels=[]
+            ),
+            companion.make_pr_key(main_repo, n_unlabelled_lin_feat): self._stale_detail_node(
+                updated_at=old_ts, labels=[], reactions_count=1
+            ),
+            companion.make_pr_key(main_repo, n_unlabelled_lin_bug): self._stale_detail_node(
+                updated_at=old_ts, labels=["enhancement"]
+            ),
+            companion.make_pr_key(main_repo, n_linked_pr_xref): self._stale_detail_node(
+                updated_at=old_ts,
+                labels=["enhancement"],
+                timeline_nodes=[{"__typename": "CrossReferencedEvent", "source": {"__typename": "PullRequest", "number": 99, "state": "CLOSED"}}],
+            ),
+            companion.make_pr_key(main_repo, n_linked_pr_conn): self._stale_detail_node(
+                updated_at=old_ts,
+                labels=["enhancement"],
+                timeline_nodes=[{"__typename": "ConnectedEvent", "subject": {"__typename": "PullRequest", "number": 100, "state": "OPEN"}}],
+            ),
+            companion.make_pr_key(main_repo, n_reactions): self._stale_detail_node(
+                updated_at=old_ts, labels=["enhancement"], reactions_count=2
+            ),
+            companion.make_pr_key(main_repo, n_comm_commenter): self._stale_detail_node(
+                updated_at=old_ts,
+                author_login="orig-author",
+                labels=["enhancement"],
+                comments=[
+                    {
+                        "author": {"__typename": "User", "login": "second-human"},
+                        "authorAssociation": "NONE",
+                        "createdAt": "2024-04-01T10:00:00Z",
+                        "body": "Me too, would love this!",
+                    }
+                ],
+            ),
+            companion.make_pr_key(main_repo, n_bot_and_maint_only): self._stale_detail_node(
+                updated_at=old_ts,
+                author_login="orig-author",
+                labels=["enhancement"],
+                reactions_count=1,
+                comments=[
+                    {
+                        "author": {"__typename": "User", "login": "orig-author"},
+                        "authorAssociation": "NONE",
+                        "createdAt": "2024-04-01T10:00:00Z",
+                        "body": "Extra detail from OP.",
+                    },
+                    {
+                        "author": {"__typename": "Bot", "login": "stale-helper"},
+                        "authorAssociation": "NONE",
+                        "createdAt": "2024-04-02T10:00:00Z",
+                        "body": "Bot note.",
+                    },
+                    {
+                        "author": {"__typename": "User", "login": "dependabot"},
+                        "authorAssociation": "NONE",
+                        "createdAt": "2024-04-03T10:00:00Z",
+                        "body": "Bot note 2.",
+                    },
+                    {
+                        "author": {"__typename": "User", "login": "flexiondotorg"},
+                        "authorAssociation": "OWNER",
+                        "createdAt": "2024-04-04T10:00:00Z",
+                        "body": "Maintainer note.",
+                    },
+                    {
+                        "author": {"__typename": "User", "login": "popey"},
+                        "authorAssociation": "NONE",
+                        "createdAt": "2024-04-05T10:00:00Z",
+                        "body": "Excluded maintainer note.",
+                    },
+                ],
+            ),
+        }
+
+        fetched_pairs: list[tuple[str, int]] = []
+        commented_cmds: list[list[str]] = []
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            if cmd[0] == "gh" and cmd[1:3] == ["issue", "comment"]:
+                commented_cmds.append(list(cmd))
+                return subprocess.CompletedProcess(cmd, 0, stdout="https://github.com/comment/1\n", stderr="")
+            if cmd[1] == "graphql":
+                q_arg = next((a for a in cmd if a.startswith("query=")), "")
+                # Parse aliases back into a GraphQL response matching requested (repo, number) pairs.
+                data_obj: dict[str, object] = {}
+                for m in re.finditer(r'(i\d+): repository\(owner: "([^"]+)", name: "([^"]+)"\) \{ issue\(number: (\d+)\)', q_arg):
+                    alias, owner, name, num_s = m.group(1), m.group(2), m.group(3), m.group(4)
+                    repo_s = f"{owner}/{name}"
+                    num_i = int(num_s)
+                    fetched_pairs.append((repo_s.lower(), num_i))
+                    key = companion.make_pr_key(repo_s, num_i)
+                    data_obj[alias] = {"issue": details_map.get(key)}
+                return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"data": data_obj}), stderr="")
+            raise AssertionError(f"Unexpected gh command: {cmd!r}")
+
+        linear_stub = StubLinearSyncClient()
+        linear_stub.seed_issue(
+            github_url=f"https://github.com/{main_repo}/issues/{n_unlabelled_lin_feat}",
+            title="Unlabelled Linear Feature",
+            repo=main_repo,
+            item_kind="Issue",
+            state="Backlog",
+            extra_labels=("Feature",),
+        )
+        linear_stub.seed_issue(
+            github_url=f"https://github.com/{main_repo}/issues/{n_unlabelled_lin_bug}",
+            title="Unlabelled Linear Bug",
+            repo=main_repo,
+            item_kind="Issue",
+            state="Backlog",
+            extra_labels=("Bug",),
+        )
+
+        _, runner, _ = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            state_dir=self.state_dir / "skrye-stale-exclusions",
+        )
+        actions = runner._process_stale_issues(
+            open_issues=[i for i in open_issues if i is not None],
+            active_linear_issues=linear_stub.list_project_issues_by_state(("Triage", "Backlog", "Todo", "In Progress", "In Review")),
+            poll_result={"status": 200},
+            current_ms=t_now,
+        )
+
+        # Excluded orgs/repos/authors/labels were pre-filtered BEFORE calling fetch_issue_stale_details.
+        fetched_set = set(fetched_pairs)
+        for skipped_pair in (
+            ("oval-tutu/app", n_oval),
+            ("wimpysworld/quicktest", n_qtest),
+            ("quickemu-project/quickgui", n_qgui),
+            ("flexiondotorg/flexiondotorg.github.io", n_pages),
+            (main_repo, n_popey),
+            (main_repo, n_lj),
+            (main_repo, n_lukewh),
+            (main_repo, n_bug_lbl),
+        ):
+            self.assertNotIn(skipped_pair, fetched_set)
+
+        # ONLY n_unlabelled_lin_feat (Linear Feature) and n_bot_and_maint_only qualified for check-in.
+        self.assertEqual(
+            sorted((a["number"], a["action"]) for a in actions),
+            sorted([
+                (n_unlabelled_lin_feat, "stale_issue_checkin_posted"),
+                (n_bot_and_maint_only, "stale_issue_checkin_posted"),
+            ]),
+        )
+        self.assertEqual(len(commented_cmds), 2)
+        self.assertEqual(len(linear_stub.ensure_calls), 0)
+
+    def test_stale_issue_never_touches_ignored_or_active_linear_states(self) -> None:
+        t_now = self._utc_ms(2026, 6, 1, 10, 0)
+        old_ts = "2024-05-01T10:00:00Z"
+        repo = "wimpysworld/tailor"
+        protected_states = ("Canceled", "Deferred", "Done", "Duplicate", "In Progress", "In Review")
+        nums = self._owned_numbers(repo, "skrye", len(protected_states), kind="issue", start=2200)
+
+        open_issues = [
+            companion.normalize_open_issue_record(
+                self._graphql_issue_node(repo, num, title=f"Protected {st}", updated_at=old_ts, labels=["enhancement"])
+            )
+            for num, st in zip(nums, protected_states)
+        ]
+        details_map = {
+            companion.make_pr_key(repo, num): self._stale_detail_node(updated_at=old_ts, labels=["enhancement"])
+            for num in nums
+        }
+
+        gh_mutating_cmds: list[list[str]] = []
+        fetched_keys: list[str] = []
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            if cmd[0] == "gh":
+                gh_mutating_cmds.append(list(cmd))
+                return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+            if cmd[1] == "graphql":
+                q_arg = next((a for a in cmd if a.startswith("query=")), "")
+                data_obj: dict[str, object] = {}
+                for m in re.finditer(r'(i\d+): repository\(owner: "([^"]+)", name: "([^"]+)"\) \{ issue\(number: (\d+)\)', q_arg):
+                    alias, owner, name, num_s = m.group(1), m.group(2), m.group(3), m.group(4)
+                    key = companion.make_pr_key(f"{owner}/{name}", int(num_s))
+                    fetched_keys.append(key)
+                    data_obj[alias] = {"issue": details_map.get(key)}
+                return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"data": data_obj}), stderr="")
+            raise AssertionError(f"Unexpected gh command: {cmd!r}")
+
+        linear_stub = StubLinearSyncClient()
+        for num, st in zip(nums, protected_states):
+            linear_stub.seed_issue(
+                github_url=f"https://github.com/{repo}/issues/{num}",
+                title=f"Protected {st}",
+                repo=repo,
+                item_kind="Issue",
+                state=st,
+            )
+
+        _, runner, _ = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            state_dir=self.state_dir / "skrye-stale-protected-linear",
+        )
+        actions = runner._process_stale_issues(
+            open_issues=[i for i in open_issues if i is not None],
+            active_linear_issues=linear_stub.list_project_issues_by_state(("Triage", "Backlog", "Todo", "In Progress", "In Review")),
+            poll_result={"status": 200},
+            current_ms=t_now,
+        )
+        self.assertEqual(len(fetched_keys), len(protected_states))
+        self.assertEqual(actions, [])
+        self.assertEqual(gh_mutating_cmds, [])
+        self.assertEqual(linear_stub.update_calls, [])
+        self.assertEqual(linear_stub.comments_by_issue, {})
+
+    def test_stale_issue_stage1_checkin_activity_reset_stage2_close_and_cap(self) -> None:
+        repo = "wimpysworld/tailor"
+        n_tracked, n_untracked, n_reset, n_cap4 = self._owned_numbers(repo, "skrye", 4, kind="issue", start=2400)
+        t_day0 = self._utc_ms(2026, 6, 1, 10, 0)
+        t_day15 = t_day0 + 15 * 24 * 60 * 60 * 1000
+        t_day31 = t_day0 + 31 * 24 * 60 * 60 * 1000
+        old_ts = "2024-05-01T10:00:00Z"
+        checkin_iso = "2026-06-01T10:00:00Z"
+
+        state_box: dict[str, object] = {
+            "open_nodes": [
+                self._graphql_issue_node(repo, n_tracked, title="Tracked stale feature", updated_at=old_ts, labels=["enhancement"]),
+                self._graphql_issue_node(repo, n_untracked, title="Untracked stale docs", updated_at=old_ts, labels=["documentation"]),
+                self._graphql_issue_node(repo, n_reset, title="Resettable stale feature", updated_at=old_ts, labels=["feature"]),
+                self._graphql_issue_node(repo, n_cap4, title="Fourth stale feature deferred by cap", updated_at=old_ts, labels=["feature request"]),
+            ],
+            "details": {
+                companion.make_pr_key(repo, n_tracked): self._stale_detail_node(updated_at=old_ts, labels=["enhancement"]),
+                companion.make_pr_key(repo, n_untracked): self._stale_detail_node(updated_at=old_ts, labels=["documentation"]),
+                companion.make_pr_key(repo, n_reset): self._stale_detail_node(updated_at=old_ts, labels=["feature"]),
+                companion.make_pr_key(repo, n_cap4): self._stale_detail_node(updated_at=old_ts, labels=["feature request"]),
+            },
+        }
+        gh_comment_cmds: list[list[str]] = []
+        gh_close_cmds: list[list[str]] = []
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            if cmd[0] == "gh" and cmd[1:3] == ["issue", "comment"]:
+                gh_comment_cmds.append(list(cmd))
+                return subprocess.CompletedProcess(cmd, 0, stdout="https://github.com/comment/1\n", stderr="")
+            if cmd[0] == "gh" and cmd[1:3] == ["issue", "close"]:
+                gh_close_cmds.append(list(cmd))
+                return subprocess.CompletedProcess(cmd, 0, stdout="Closed\n", stderr="")
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                q_arg = next((a for a in cmd if a.startswith("query=")), "")
+                if "search(query:" in q_arg:
+                    return subprocess.CompletedProcess(
+                        cmd, 0, stdout=self._graphql_search_payload(state_box["open_nodes"]), stderr=""  # type: ignore[arg-type]
+                    )
+                data_obj: dict[str, object] = {}
+                details_dict: dict[str, dict[str, object]] = state_box["details"]  # type: ignore[assignment]
+                for m in re.finditer(r'(i\d+): repository\(owner: "([^"]+)", name: "([^"]+)"\) \{ issue\(number: (\d+)\)', q_arg):
+                    alias, owner, name, num_s = m.group(1), m.group(2), m.group(3), m.group(4)
+                    key = companion.make_pr_key(f"{owner}/{name}", int(num_s))
+                    data_obj[alias] = {"issue": details_dict.get(key)}
+                return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"data": data_obj}), stderr="")
+            raise AssertionError(f"Unexpected gh command: {cmd!r}")
+
+        linear_stub = StubLinearSyncClient()
+        lin_tracked = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{n_tracked}",
+            title="Tracked stale feature",
+            repo=repo,
+            item_kind="Issue",
+            state="Backlog",
+        )
+        initial_linear_count = len(linear_stub.issues)
+
+        store, runner, _ = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            state_dir=self.state_dir / "skrye-stale-lifecycle",
+        )
+        # Pre-seed handled_updated_at so triage intake does not create stubs for old already-seen issues.
+        for num in (n_tracked, n_untracked, n_reset, n_cap4):
+            store.update_thread_state(
+                companion.make_pr_key(repo, num),
+                {"repo": repo, "number": num, "handled_updated_at": old_ts},
+                now_override_ms=t_day0 - 1_000,
+            )
+
+        # Day 0: per-poll cap (MAX_STALE_ISSUE_ACTIONS_PER_POLL == 3) posts 3 check-ins and defers n_cap4.
+        res0 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t_day0)
+        self.assertEqual(len(res0["stale_issue_actions"]), companion.MAX_STALE_ISSUE_ACTIONS_PER_POLL)
+        self.assertEqual(len(gh_comment_cmds), 3)
+        self.assertEqual(gh_close_cmds, [])
+        self.assertEqual(len(linear_stub.issues), initial_linear_count)
+        self.assertEqual(
+            [a["number"] for a in res0["stale_issue_actions"]],
+            sorted([n_tracked, n_untracked, n_reset, n_cap4], key=lambda n: companion.make_pr_key(repo, n))[:3],
+        )
+        # Verify exact gh issue comment invocation format and check-in marker phrase.
+        for cmd in gh_comment_cmds:
+            self.assertEqual(cmd[:3], ["gh", "issue", "comment"])
+            self.assertIn("--repo", cmd)
+            self.assertIn("--body", cmd)
+            self.assertIn(companion.STALE_ISSUE_CHECKIN_MARKER_PHRASE, cmd[-1])
+        # Tracked issue received a Linear audit comment; state recorded stale_checkin_posted_at.
+        lin_tracked_id = str(lin_tracked["id"])
+        self.assertTrue(
+            any("stale check-in comment" in str(c["body"]) for c in linear_stub.list_issue_comments(lin_tracked_id))
+        )
+        self.assertEqual(
+            (store.get_thread_state(companion.make_pr_key(repo, n_tracked)) or {}).get("stale_checkin_posted_at"),
+            t_day0,
+        )
+
+        # Day 15: check-in posted < 30 days ago on first 3 (updatedAt bumped by check-in comment); n_cap4 gets Stage 1 check-in now.
+        checkin_comment_node = {
+            "author": {"__typename": "User", "login": "sith-skrye"},
+            "authorAssociation": "COLLABORATOR",
+            "createdAt": checkin_iso,
+            "body": companion.format_stale_issue_checkin_github_comment(),
+        }
+        state_box["open_nodes"] = [
+            self._graphql_issue_node(repo, n_tracked, title="Tracked stale feature", updated_at=checkin_iso, labels=["enhancement"]),
+            self._graphql_issue_node(repo, n_untracked, title="Untracked stale docs", updated_at=checkin_iso, labels=["documentation"]),
+            self._graphql_issue_node(repo, n_reset, title="Resettable stale feature", updated_at="2026-06-10T10:00:00Z", labels=["feature"]),
+            self._graphql_issue_node(repo, n_cap4, title="Fourth stale feature deferred by cap", updated_at=old_ts, labels=["feature request"]),
+        ]
+        state_box["details"] = {
+            companion.make_pr_key(repo, n_tracked): self._stale_detail_node(
+                updated_at=checkin_iso,
+                labels=["enhancement"],
+                comments=[
+                    checkin_comment_node,
+                    # Bot comment after check-in must NOT reset the 30-day timer.
+                    {
+                        "author": {"__typename": "Bot", "login": "github-actions"},
+                        "authorAssociation": "NONE",
+                        "createdAt": "2026-06-12T10:00:00Z",
+                        "body": "Automated label check.",
+                    },
+                ],
+            ),
+            companion.make_pr_key(repo, n_untracked): self._stale_detail_node(
+                updated_at=checkin_iso,
+                labels=["documentation"],
+                comments=[checkin_comment_node],
+            ),
+            companion.make_pr_key(repo, n_reset): self._stale_detail_node(
+                updated_at="2026-06-10T10:00:00Z",
+                labels=["feature"],
+                comments=[
+                    checkin_comment_node,
+                    # Human author reply after check-in resets timer and clears stale_checkin_posted_at.
+                    {
+                        "author": {"__typename": "User", "login": "community-user"},
+                        "authorAssociation": "NONE",
+                        "createdAt": "2026-06-10T10:00:00Z",
+                        "body": "I still plan to work on this next month.",
+                    },
+                ],
+            ),
+            companion.make_pr_key(repo, n_cap4): self._stale_detail_node(updated_at=old_ts, labels=["feature request"]),
+        }
+
+        res15 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t_day15)
+        self.assertEqual(
+            [(a["number"], a["action"]) for a in res15["stale_issue_actions"]],
+            [(n_cap4, "stale_issue_checkin_posted")],
+        )
+        self.assertEqual(gh_close_cmds, [])
+        # n_reset had stale_checkin_posted_at cleared after human reply.
+        self.assertIsNone(
+            (store.get_thread_state(companion.make_pr_key(repo, n_reset)) or {}).get("stale_checkin_posted_at")
+        )
+
+        # Day 31: n_tracked and n_untracked close (not planned); n_reset stays open; n_cap4 still < 30d since day 15.
+        state_box["details"][companion.make_pr_key(repo, n_cap4)] = self._stale_detail_node(  # type: ignore[index]
+            updated_at="2026-06-16T10:00:00Z",
+            labels=["feature request"],
+            comments=[
+                {
+                    "author": {"__typename": "User", "login": "sith-skrye"},
+                    "authorAssociation": "COLLABORATOR",
+                    "createdAt": "2026-06-16T10:00:00Z",
+                    "body": companion.format_stale_issue_checkin_github_comment(),
+                }
+            ],
+        )
+        state_box["open_nodes"][3] = self._graphql_issue_node(  # type: ignore[index]
+            repo, n_cap4, title="Fourth stale feature deferred by cap", updated_at="2026-06-16T10:00:00Z", labels=["feature request"]
+        )
+
+        res31 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t_day31)
+        self.assertEqual(
+            sorted((a["number"], a["action"]) for a in res31["stale_issue_actions"]),
+            sorted([(n_tracked, "stale_issue_closed"), (n_untracked, "stale_issue_closed")]),
+        )
+        self.assertEqual(len(gh_close_cmds), 2)
+        for cmd in gh_close_cmds:
+            self.assertEqual(cmd[:3], ["gh", "issue", "close"])
+            self.assertIn("--reason", cmd)
+            self.assertEqual(cmd[cmd.index("--reason") + 1], "not planned")
+            self.assertIn("--comment", cmd)
+            self.assertEqual(cmd[cmd.index("--comment") + 1], companion.format_stale_issue_close_github_comment())
+
+        # No new Linear issue created for n_untracked; existing Linear issue for n_tracked became Canceled + stale-closed + audit comment.
+        self.assertEqual(len(linear_stub.issues), initial_linear_count)
+        self.assertEqual(linear_stub.issues[lin_tracked_id]["state"]["name"], "Canceled")  # type: ignore[index]
+        self.assertIn("stale-closed", companion.extract_linear_issue_labels(linear_stub.issues[lin_tracked_id]))
+        self.assertTrue(
+            any("Closed stale issue" in str(c["body"]) for c in linear_stub.list_issue_comments(lin_tracked_id))
+        )
+        self.assertIsNone(
+            (store.get_thread_state(companion.make_pr_key(repo, n_tracked)) or {}).get("stale_checkin_posted_at")
+        )
+        self.assertEqual(
+            (store.get_thread_state(companion.make_pr_key(repo, n_tracked)) or {}).get("stale_closed_at_ms"),
+            t_day31,
+        )
 
 
 if __name__ == "__main__":

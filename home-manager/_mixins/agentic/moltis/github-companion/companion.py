@@ -624,6 +624,59 @@ DRAFT_CONFLICT_CLOSE_AFTER_MS = 90 * 24 * 60 * 60 * 1000
 MAX_CONFLICT_CLOSURES_PER_POLL = 3
 CONFLICT_NOTICE_MARKER_PHRASE = "currently has merge conflicts with the base branch"
 
+PR_SIZE_ESTIMATE_POINTS: dict[str, int] = {"XS": 1, "S": 2, "M": 3, "L": 5, "XL": 8}
+
+STALE_ISSUE_INACTIVE_AFTER_MS = 365 * 24 * 60 * 60 * 1000
+STALE_ISSUE_CLOSE_AFTER_MS = 30 * 24 * 60 * 60 * 1000
+MAX_STALE_ISSUE_ACTIONS_PER_POLL = 3
+STALE_ISSUE_EXCLUDED_ORGS = frozenset({"oval-tutu"})
+STALE_ISSUE_EXCLUDED_REPOS = frozenset({"quicktest", "quickgui", "flexiondotorg.github.io"})
+STALE_ISSUE_EXCLUDED_AUTHORS = frozenset({"flexiondotorg", "popey", "lj3954", "lukewh"})
+STALE_ISSUE_EXCLUDED_AUTHOR_ASSOCIATIONS = frozenset({"OWNER", "MEMBER", "COLLABORATOR"})
+STALE_ISSUE_EXCLUDED_LABELS = frozenset({"bug", "security", "pinned", "help wanted", "keep-open", "team:implement"})
+STALE_ISSUE_QUALIFYING_GITHUB_LABELS = frozenset({"enhancement", "new package", "feature", "feature request", "app request", "documentation"})
+STALE_ISSUE_QUALIFYING_LINEAR_LABELS = frozenset({"feature", "improvement"})
+STALE_ISSUE_CHECKIN_MARKER_PHRASE = "had no community activity or pull request for over a year"
+STALE_ISSUE_EXCLUDED_LINEAR_STATES = frozenset({"in progress", "in_progress", "in review", "in_review"})
+_STALE_ISSUE_BOT_LOGINS = frozenset({"github-actions", "dependabot", "renovate", "app/github-actions", "app/dependabot", "app/renovate"})
+
+
+def compute_pr_size_estimate(
+    *,
+    additions: int | None,
+    deletions: int | None,
+    changed_files: int | None,
+    file_paths: Iterable[str] | None = None,
+    files_has_next_page: bool = False,
+) -> int | None:
+    """Compute a Linear point estimate on the WW T-shirt scale from pull request diff stats."""
+    _ = files_has_next_page
+    if additions is None or deletions is None or isinstance(additions, bool) or isinstance(deletions, bool):
+        return None
+    add_val = _safe_int(additions, -1)
+    del_val = _safe_int(deletions, -1)
+    if add_val < 0 or del_val < 0:
+        return None
+    paths_list = [str(p).strip() for p in (file_paths or ()) if isinstance(p, str) and str(p).strip()]
+    raw_files = _safe_int(changed_files, -1) if (changed_files is not None and not isinstance(changed_files, bool)) else -1
+    eff_files = raw_files if raw_files > 0 else len(paths_list)
+    if eff_files <= 0:
+        return None
+    total_lines = add_val + del_val
+    if total_lines <= 25 and eff_files == 1:
+        points = PR_SIZE_ESTIMATE_POINTS["XS"]
+    elif total_lines <= 150 and eff_files <= 5:
+        points = PR_SIZE_ESTIMATE_POINTS["S"]
+    elif total_lines <= 400 and eff_files <= 12:
+        points = PR_SIZE_ESTIMATE_POINTS["M"]
+    elif total_lines <= 1000 and eff_files <= 25:
+        points = PR_SIZE_ESTIMATE_POINTS["L"]
+    else:
+        points = PR_SIZE_ESTIMATE_POINTS["XL"]
+    if any(is_sensitive_community_pr_path(p) for p in paths_list):
+        points = max(points, PR_SIZE_ESTIMATE_POINTS["M"])
+    return points
+
 
 def is_first_time_contributor_association(author_association: object) -> bool:
     norm = str(author_association or "").strip().upper()
@@ -707,6 +760,170 @@ def format_linear_conflict_closed_comment(*, pr_url: str, is_draft: bool) -> str
     if is_draft:
         return f"Closed draft pull request {pr_url} on GitHub after 90 days of inactivity with unresolved merge conflicts."
     return f"Closed pull request {pr_url} on GitHub after 30 days with unresolved merge conflicts and no author activity."
+
+
+def format_stale_issue_checkin_github_comment() -> str:
+    return (
+        "This issue had no community activity or pull request for over a year. "
+        "If someone still wants to work on it, leave a comment within 30 days. "
+        "Otherwise we will close it as not planned."
+    )
+
+
+def format_stale_issue_close_github_comment() -> str:
+    return (
+        "We close issues that receive no community interest or pull request for over a year, "
+        "so this one closes as not planned. "
+        "If you want to pick this up later, open a pull request or leave a comment and we will reopen it."
+    )
+
+
+def format_linear_stale_issue_checkin_comment(*, issue_url: str) -> str:
+    return (
+        f"Posted a 30-day stale check-in comment on {issue_url}. "
+        "We will close this issue as not planned after 30 days if no human replies."
+    )
+
+
+def format_linear_stale_issue_closed_comment(*, issue_url: str) -> str:
+    return (
+        f"Closed stale issue {issue_url} on GitHub as not planned "
+        "after 30 days with no reply to the stale check-in comment."
+    )
+
+
+def _is_stale_issue_bot_actor(actor_obj: object) -> bool:
+    if isinstance(actor_obj, dict):
+        typename = str(actor_obj.get("__typename") or actor_obj.get("type") or "").strip().lower()
+        if typename == "bot":
+            return True
+    login_norm = normalize_github_actor(actor_obj)
+    if not login_norm:
+        return False
+    if login_norm.endswith("[bot]") or login_norm.startswith("app/"):
+        return True
+    return login_norm in _STALE_ISSUE_BOT_LOGINS
+
+
+def is_stale_issue_excluded_repo(repo: str) -> bool:
+    norm = (repo or "").strip().lower()
+    if not norm or "/" not in norm:
+        return True
+    org, basename = norm.split("/", 1)
+    return (
+        org in STALE_ISSUE_EXCLUDED_ORGS
+        or norm in STALE_ISSUE_EXCLUDED_REPOS
+        or basename in STALE_ISSUE_EXCLUDED_REPOS
+    )
+
+
+def is_stale_issue_excluded_author(author_obj: object, author_association: object = None) -> bool:
+    if _is_stale_issue_bot_actor(author_obj):
+        return True
+    login_norm = normalize_github_actor(author_obj)
+    if login_norm and (
+        login_norm in STALE_ISSUE_EXCLUDED_AUTHORS
+        or login_norm in TRUSTED_INSTRUCTION_ACTORS
+        or login_norm.startswith("sith-")
+    ):
+        return True
+    assoc = str(author_association or "").strip().upper()
+    return assoc in STALE_ISSUE_EXCLUDED_AUTHOR_ASSOCIATIONS
+
+
+def _has_stale_issue_excluded_label(labels: Iterable[str]) -> bool:
+    return any(str(lbl or "").strip().lower() in STALE_ISSUE_EXCLUDED_LABELS for lbl in (labels or ()))
+
+
+def _stale_issue_has_linked_pr(timeline_items: object) -> bool:
+    if isinstance(timeline_items, dict):
+        raw_nodes = timeline_items.get("nodes")
+        nodes = raw_nodes if isinstance(raw_nodes, list) else []
+    elif isinstance(timeline_items, list):
+        nodes = timeline_items
+    else:
+        return False
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        for key in ("source", "subject"):
+            ref = _as_dict(node.get(key))
+            if str(ref.get("__typename") or "").strip().lower() == "pullrequest":
+                return True
+    return False
+
+
+def _stale_issue_comment_nodes(raw_comments: object) -> list[dict]:
+    if isinstance(raw_comments, dict):
+        nodes = raw_comments.get("nodes")
+        return [n for n in nodes if isinstance(n, dict)] if isinstance(nodes, list) else []
+    if isinstance(raw_comments, list):
+        return [n for n in raw_comments if isinstance(n, dict)]
+    return []
+
+
+def _stale_issue_has_community_commenter(comments: object, *, issue_author_norm: str) -> bool:
+    for cm in _stale_issue_comment_nodes(comments):
+        cm_author = cm.get("author") or cm.get("user")
+        if _is_stale_issue_bot_actor(cm_author):
+            continue
+        cm_assoc = str(cm.get("authorAssociation") or cm.get("author_association") or "").strip().upper()
+        if cm_assoc in STALE_ISSUE_EXCLUDED_AUTHOR_ASSOCIATIONS:
+            continue
+        cm_login_norm = normalize_github_actor(cm_author)
+        if not cm_login_norm:
+            continue
+        if (
+            cm_login_norm == issue_author_norm
+            or cm_login_norm in TRUSTED_INSTRUCTION_ACTORS
+            or cm_login_norm in STALE_ISSUE_EXCLUDED_AUTHORS
+            or cm_login_norm.startswith("sith-")
+        ):
+            continue
+        return True
+    return False
+
+
+def is_stale_issue_protected_linear_issue(linear_issue: object) -> bool:
+    if not isinstance(linear_issue, dict):
+        return False
+    if is_ignored_linear_issue_state(linear_issue):
+        return True
+    state_name = str(_as_dict(linear_issue.get("state")).get("name") or "").strip().lower()
+    if state_name in STALE_ISSUE_EXCLUDED_LINEAR_STATES:
+        return True
+    return "bug" in extract_linear_issue_labels(linear_issue)
+
+
+def _find_stale_issue_checkin_ts(comment_nodes: list[dict], *, after_ms: int = 0) -> int:
+    latest_ms = 0
+    for cm in comment_nodes:
+        cm_author = cm.get("author") or cm.get("user")
+        cm_login_norm = normalize_github_actor(cm_author)
+        if cm_login_norm not in TRUSTED_INSTRUCTION_ACTORS:
+            continue
+        cm_body_lower = str(cm.get("body") or "").lower()
+        if STALE_ISSUE_CHECKIN_MARKER_PHRASE not in cm_body_lower:
+            continue
+        _, cm_ms = normalize_ts(cm.get("createdAt") or cm.get("created_at"))
+        if cm_ms > after_ms and cm_ms > latest_ms:
+            latest_ms = cm_ms
+    return latest_ms
+
+
+def _has_human_comment_after(comment_nodes: list[dict], checkin_ts_ms: int) -> bool:
+    for cm in comment_nodes:
+        cm_author = cm.get("author") or cm.get("user")
+        if _is_stale_issue_bot_actor(cm_author):
+            continue
+        cm_login_norm = normalize_github_actor(cm_author)
+        cm_body_lower = str(cm.get("body") or "").lower()
+        if cm_login_norm in TRUSTED_INSTRUCTION_ACTORS and STALE_ISSUE_CHECKIN_MARKER_PHRASE in cm_body_lower:
+            continue
+        _, cm_ms = normalize_ts(cm.get("createdAt") or cm.get("created_at"))
+        if cm_ms > checkin_ts_ms:
+            return True
+    return False
 
 
 def compute_community_auto_merge_eligible(
@@ -3597,6 +3814,88 @@ class GhApiSafeClient:
                 continue
         return results
 
+    def fetch_issue_stale_details(
+        self,
+        issues: Iterable[tuple[str, int]],
+        *,
+        batch_size: int = 20,
+        timeout: float | None = None,
+    ) -> dict[str, dict]:
+        """Fetch stale-issue guard fields in small inline GraphQL batches compatible with `gh-api-safe`."""
+        clean_targets: list[tuple[str, int, str]] = []
+        seen: set[str] = set()
+        for raw_pair in issues or ():
+            if not isinstance(raw_pair, (tuple, list)) or len(raw_pair) != 2:
+                continue
+            try:
+                clean_repo, clean_num, _ = self._validate_issue_target(str(raw_pair[0]), _safe_int(raw_pair[1], 0))
+            except ValueError:
+                continue
+            issue_key = make_pr_key(clean_repo, clean_num)
+            if issue_key not in seen:
+                seen.add(issue_key)
+                clean_targets.append((clean_repo, clean_num, issue_key))
+        if not clean_targets:
+            return {}
+        chunk = max(1, _safe_int(batch_size, 20))
+        results: dict[str, dict] = {}
+        for idx in range(0, len(clean_targets), chunk):
+            batch = clean_targets[idx : idx + chunk]
+            alias_map: dict[str, str] = {}
+            parts: list[str] = []
+            for item_idx, (clean_repo, clean_num, issue_key) in enumerate(batch):
+                alias = f"i{item_idx}"
+                alias_map[alias] = issue_key
+                owner, name = clean_repo.split("/", 1)
+                parts.append(
+                    f"{alias}: repository(owner: {json.dumps(owner)}, name: {json.dumps(name)}) {{ "
+                    f"issue(number: {clean_num}) {{ "
+                    "state updatedAt "
+                    "author { __typename login } "
+                    "authorAssociation "
+                    "labels(first: 20) { nodes { name } } "
+                    "reactions { totalCount } "
+                    "comments(last: 30) { totalCount nodes { author { __typename login } authorAssociation createdAt body } } "
+                    "timelineItems(first: 20, itemTypes: [CROSS_REFERENCED_EVENT, CONNECTED_EVENT]) { "
+                    "nodes { __typename "
+                    "... on CrossReferencedEvent { source { __typename ... on PullRequest { number state } } } "
+                    "... on ConnectedEvent { subject { __typename ... on PullRequest { number state } } } "
+                    "} } "
+                    "} }"
+                )
+            query = f"query {{ {' '.join(parts)} }}"
+            try:
+                proc = self.invoke(["graphql", "-f", f"query={query}"], timeout=timeout)
+                stdout = (proc.stdout or "").strip()
+                if proc.returncode != 0 or not stdout:
+                    stderr = (proc.stderr or "").strip()
+                    sys.stderr.write(
+                        f"moltis-github-companion issue-stale-details-batch warning ({len(batch)} issues): "
+                        f"exit {proc.returncode}: {stderr or stdout}\n"
+                    )
+                    continue
+                for payload in parse_gh_api_paginated_http_output(stdout)[2]:
+                    if not isinstance(payload, dict):
+                        continue
+                    if payload.get("errors"):
+                        sys.stderr.write(
+                            f"moltis-github-companion issue-stale-details-batch warning ({len(batch)} issues): "
+                            "GraphQL returned partial errors\n"
+                        )
+                    data_obj = _as_dict(payload.get("data"))
+                    if not data_obj:
+                        continue
+                    for alias, issue_key in alias_map.items():
+                        issue_obj = _as_dict(_as_dict(data_obj.get(alias)).get("issue"))
+                        if issue_obj:
+                            results[issue_key] = issue_obj
+            except Exception as exc:
+                sys.stderr.write(
+                    f"moltis-github-companion issue-stale-details-batch warning ({len(batch)} issues): {exc}\n"
+                )
+                continue
+        return results
+
     def fetch_issue_events(self, repo: str, number: int, timeout: float | None = None) -> list[dict]:
         """Fetch issue or pull request events for label-actor verification."""
         return self.fetch_json_items(f"repos/{repo}/issues/{number}/events?per_page=100", paginate=True, timeout=timeout)
@@ -3645,6 +3944,69 @@ class GhApiSafeClient:
         if clean_label not in TEAM_LABELS:
             raise ValueError(f"Unsupported pull request team label: {label!r}")
         return clean_repo, pr_url, clean_label
+
+    @staticmethod
+    def _validate_issue_target(repo: str, number: int) -> tuple[str, int, str]:
+        clean_repo = (repo or "").strip()
+        if (
+            not clean_repo
+            or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*", clean_repo)
+            or any(part in (".", "..") for part in clean_repo.split("/"))
+            or not is_allowed_notification_repo(clean_repo)
+        ):
+            raise ValueError(f"Unsupported repository for issue action: {repo!r}")
+        clean_num = _safe_int(number, 0)
+        if clean_num <= 0:
+            raise ValueError(f"Invalid issue number for action: {number!r}")
+        return clean_repo, clean_num, f"https://github.com/{clean_repo}/issues/{clean_num}"
+
+    def comment_on_issue(self, repo: str, number: int, body: str, *, timeout: float | None = None) -> subprocess.CompletedProcess:
+        """Post a comment on an allowlisted issue via `gh issue comment`."""
+        clean_repo, clean_num, issue_url = self._validate_issue_target(repo, number)
+        clean_body = str(body or "").strip()
+        if not clean_body:
+            raise ValueError("Issue comment body must be non-empty")
+        cmd = [self.gh_bin, "issue", "comment", str(clean_num), "--repo", clean_repo, "--body", clean_body]
+        proc = self.runner(cmd, capture_output=True, text=True, timeout=timeout or self.timeout, check=False)
+        if proc.returncode != 0:
+            err_text = (proc.stderr or proc.stdout or "").strip()
+            raise RuntimeError(f"gh issue comment {issue_url} exited {proc.returncode}: {err_text}")
+        return proc
+
+    def close_issue(
+        self,
+        repo: str,
+        number: int,
+        *,
+        comment: str,
+        reason: str = "not planned",
+        timeout: float | None = None,
+    ) -> subprocess.CompletedProcess:
+        """Close an allowlisted issue with a reason and explanation comment via `gh issue close`."""
+        clean_repo, clean_num, issue_url = self._validate_issue_target(repo, number)
+        clean_comment = str(comment or "").strip()
+        if not clean_comment:
+            raise ValueError("Issue close comment must be non-empty")
+        clean_reason = str(reason or "").strip()
+        if clean_reason not in ("not planned", "completed"):
+            raise ValueError(f"Unsupported issue close reason: {reason!r}")
+        cmd = [
+            self.gh_bin,
+            "issue",
+            "close",
+            str(clean_num),
+            "--repo",
+            clean_repo,
+            "--reason",
+            clean_reason,
+            "--comment",
+            clean_comment,
+        ]
+        proc = self.runner(cmd, capture_output=True, text=True, timeout=timeout or self.timeout, check=False)
+        if proc.returncode != 0:
+            err_text = (proc.stderr or proc.stdout or "").strip()
+            raise RuntimeError(f"gh issue close {issue_url} exited {proc.returncode}: {err_text}")
+        return proc
 
     def post_pull_request_comment(self, repo: str, number: int, body: str, *, timeout: float | None = None) -> subprocess.CompletedProcess:
         """Post a comment on an allowlisted pull request via `gh pr comment`."""
@@ -4086,7 +4448,7 @@ class LocalExecutionCoordinator:
         self.clock = clock
         self.sleeper = sleeper
 
-    def build_dispatch_prompt(self, *, dispatch_id: str, kind: str, thread_id: str | None = None, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, head_sha: str | None = None, trigger_reason: str | None = None, comment_id: int | str | None = None, review_id: int | str | None = None, trusted_item_id: int | str | None = None, community_auto_merge_eligible: bool | None = None, team_label: str | None = None, triaged_head_sha: str | None = None, head_sha_changed: bool = False, linear_issue_id: str | None = None, linear_issue_identifier: str | None = None, linear_issue_url: str | None = None, github_url: str | None = None, bypass_reasons: Iterable[str] | None = None, lane_a_polish_notes: str | None = None, extra_instructions: str = "") -> str:
+    def build_dispatch_prompt(self, *, dispatch_id: str, kind: str, thread_id: str | None = None, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, head_sha: str | None = None, trigger_reason: str | None = None, comment_id: int | str | None = None, review_id: int | str | None = None, trusted_item_id: int | str | None = None, community_auto_merge_eligible: bool | None = None, team_label: str | None = None, triaged_head_sha: str | None = None, head_sha_changed: bool = False, linear_issue_id: str | None = None, linear_issue_identifier: str | None = None, linear_issue_url: str | None = None, linear_issue_estimate: int | None = None, github_url: str | None = None, bypass_reasons: Iterable[str] | None = None, lane_a_polish_notes: str | None = None, extra_instructions: str = "") -> str:
         header = f"# {self.agent_display_name} Scheduled Maintenance Heartbeat"
         meta_lines = [f"dispatch_id: {dispatch_id}", f"dispatch_kind: {kind}", f"agent_name: {self.agent_name}", f"schedule_day_name: {self.schedule_day_name}", f"schedule_dow: {self.schedule_dow}"]
         if thread_id:
@@ -4117,6 +4479,12 @@ class LocalExecutionCoordinator:
             clean_val = str(meta_val).strip() if meta_val is not None else ""
             if clean_val:
                 meta_lines.append(f"{meta_key}: {clean_val}")
+        if (
+            linear_issue_estimate is not None
+            and not isinstance(linear_issue_estimate, bool)
+            and _safe_int(linear_issue_estimate, 0) > 0
+        ):
+            meta_lines.append(f"linear_issue_estimate: {_safe_int(linear_issue_estimate, 0)}")
         clean_bypass = [str(r).strip() for r in (bypass_reasons or ()) if str(r or "").strip()]
         if clean_bypass:
             meta_lines.append(f"bypass_reasons: {', '.join(clean_bypass)}")
@@ -4133,7 +4501,19 @@ class LocalExecutionCoordinator:
         else:
             mode_line = "Mode 2 - 6-Hour Reconciliation Sweep."
 
-        blocks = [header, "\n".join(meta_lines), mode_line, *([extra_instructions.strip()] if extra_instructions.strip() else [])]
+        lane_b_estimate_note = (
+            "Adjust Linear `estimate` on the `WW` scale (`XS=1, S=2, M=3, L=5, XL=8`) "
+            "only if diff stats misrepresent real scope or risk."
+            if kind == "community_pr_lane_b_review"
+            else ""
+        )
+        blocks = [
+            header,
+            "\n".join(meta_lines),
+            mode_line,
+            *([lane_b_estimate_note] if lane_b_estimate_note else []),
+            *([extra_instructions.strip()] if extra_instructions.strip() else []),
+        ]
         heartbeat_md = ""
         heartbeat_path = self.data_dir / "HEARTBEAT.md"
         if heartbeat_path.is_file():
@@ -4533,7 +4913,7 @@ class LocalExecutionCoordinator:
         with self.state_store.coordinator_lock():
             return self._recover_unlocked(now_override_ms=now_override_ms)
 
-    def execute_dispatch(self, *, kind: str, model: str | None = None, is_automated_pr: bool = False, session_key: str | None = None, thread_id: str | None = None, state_key: str | None = None, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, head_sha: str | None = None, ci_state: str | None = None, updated_at: str | None = None, trigger_reason: str | None = None, comment_id: int | str | None = None, review_id: int | str | None = None, trusted_item_id: int | str | None = None, community_auto_merge_eligible: bool | None = None, team_label: str | None = None, team_label_event_key: str | None = None, triaged_head_sha: str | None = None, head_sha_changed: bool = False, linear_issue_id: str | None = None, linear_issue_identifier: str | None = None, linear_issue_url: str | None = None, github_url: str | None = None, bypass_reasons: Iterable[str] | None = None, lane_a_polish_notes: str | None = None, revision: str | None = None, sweep_date: str | None = None, extra_instructions: str = "", dispatch_id: str | None = None, defer_watermark_commit: bool = False, now_override_ms: int | None = None, **_ignored: object) -> dict:
+    def execute_dispatch(self, *, kind: str, model: str | None = None, is_automated_pr: bool = False, session_key: str | None = None, thread_id: str | None = None, state_key: str | None = None, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, head_sha: str | None = None, ci_state: str | None = None, updated_at: str | None = None, trigger_reason: str | None = None, comment_id: int | str | None = None, review_id: int | str | None = None, trusted_item_id: int | str | None = None, community_auto_merge_eligible: bool | None = None, team_label: str | None = None, team_label_event_key: str | None = None, triaged_head_sha: str | None = None, head_sha_changed: bool = False, linear_issue_id: str | None = None, linear_issue_identifier: str | None = None, linear_issue_url: str | None = None, linear_issue_estimate: int | None = None, github_url: str | None = None, bypass_reasons: Iterable[str] | None = None, lane_a_polish_notes: str | None = None, revision: str | None = None, sweep_date: str | None = None, extra_instructions: str = "", dispatch_id: str | None = None, defer_watermark_commit: bool = False, now_override_ms: int | None = None, **_ignored: object) -> dict:
         """Serialise a model turn under coordinator.lock while allowing state.json updates under companion.lock."""
         with self.state_store.coordinator_lock():
             recovery = self._recover_unlocked(now_override_ms=now_override_ms)
@@ -4595,7 +4975,7 @@ class LocalExecutionCoordinator:
 
             start_notice_text = format_start_of_work_notice(agent_display_name=self.agent_display_name, kind=kind, repo=repo, number=number, subject_kind=subject_kind, trigger_reason=trigger_reason, sweep_date=sweep_date, schedule_day_name=self.schedule_day_name)
             start_notice_sent, start_notice_error = False, None
-            prompt_message = self.build_dispatch_prompt(dispatch_id=resolved_dispatch_id, kind=kind, thread_id=thread_id, repo=repo, number=number, subject_kind=subject_kind, head_sha=head_sha, trigger_reason=trigger_reason, comment_id=comment_id, review_id=review_id, trusted_item_id=trusted_item_id, community_auto_merge_eligible=community_auto_merge_eligible, team_label=team_label, triaged_head_sha=triaged_head_sha, head_sha_changed=head_sha_changed, linear_issue_id=linear_issue_id, linear_issue_identifier=linear_issue_identifier, linear_issue_url=linear_issue_url, github_url=github_url, bypass_reasons=bypass_reasons, lane_a_polish_notes=lane_a_polish_notes, extra_instructions=extra_instructions)
+            prompt_message = self.build_dispatch_prompt(dispatch_id=resolved_dispatch_id, kind=kind, thread_id=thread_id, repo=repo, number=number, subject_kind=subject_kind, head_sha=head_sha, trigger_reason=trigger_reason, comment_id=comment_id, review_id=review_id, trusted_item_id=trusted_item_id, community_auto_merge_eligible=community_auto_merge_eligible, team_label=team_label, triaged_head_sha=triaged_head_sha, head_sha_changed=head_sha_changed, linear_issue_id=linear_issue_id, linear_issue_identifier=linear_issue_identifier, linear_issue_url=linear_issue_url, linear_issue_estimate=linear_issue_estimate, github_url=github_url, bypass_reasons=bypass_reasons, lane_a_polish_notes=lane_a_polish_notes, extra_instructions=extra_instructions)
 
             rpc_error: Exception | None = None
             rpc_response: dict | None = None
@@ -6062,6 +6442,7 @@ class GithubCompanionRunner:
         linear_id: str,
         linear_identifier: str | None,
         linear_url: str | None,
+        linear_estimate: int | None = None,
         slot_id: str,
         dispatched_targets: set[str],
         processed_pr_keys: set[str],
@@ -6114,6 +6495,7 @@ class GithubCompanionRunner:
             linear_issue_id=linear_id,
             linear_issue_identifier=linear_identifier,
             linear_issue_url=linear_url,
+            linear_issue_estimate=linear_estimate,
             github_url=pr_url,
             bypass_reasons=bypass_reasons,
             defer_watermark_commit=True,
@@ -6319,6 +6701,14 @@ class GithubCompanionRunner:
                 if cond
             )
 
+            pr_estimate = compute_pr_size_estimate(
+                additions=additions,  # type: ignore[arg-type]
+                deletions=deletions,  # type: ignore[arg-type]
+                changed_files=changed_files,  # type: ignore[arg-type]
+                file_paths=file_paths,  # type: ignore[arg-type]
+                files_has_next_page=files_has_next_page,
+            )
+
             try:
                 linear_issue = self.linear_client.ensure_issue_for_github_item(
                     github_url=pr_url,
@@ -6327,6 +6717,7 @@ class GithubCompanionRunner:
                     item_kind="PR",
                     state=initial_state,
                     extra_labels=initial_extra_labels,
+                    estimate=pr_estimate,
                 )
                 linear_id = str(linear_issue.get("id") or "").strip()
                 if not linear_id:
@@ -6458,6 +6849,12 @@ class GithubCompanionRunner:
                             issue_labels.add(lbl)
                         for lbl in upfront_rem:
                             issue_labels.discard(lbl)
+                raw_lin_est = linear_issue.get("estimate")
+                linear_estimate = (
+                    raw_lin_est
+                    if isinstance(raw_lin_est, int) and not isinstance(raw_lin_est, bool) and raw_lin_est > 0
+                    else pr_estimate
+                )
                 lane_b_outcome = self._run_lane_b_pr_review(
                     pr_key=pr_key,
                     repo=repo,
@@ -6480,6 +6877,7 @@ class GithubCompanionRunner:
                     linear_id=linear_id,
                     linear_identifier=linear_identifier,
                     linear_url=linear_url,
+                    linear_estimate=linear_estimate,
                     slot_id=slot_id,
                     dispatched_targets=dispatched_targets,
                     processed_pr_keys=processed_pr_keys,
@@ -7199,6 +7597,12 @@ class GithubCompanionRunner:
                         now_override_ms=now_override_ms,
                     )
                 else:
+                    raw_lin_est = linear_issue.get("estimate")
+                    linear_estimate = (
+                        raw_lin_est
+                        if isinstance(raw_lin_est, int) and not isinstance(raw_lin_est, bool) and raw_lin_est > 0
+                        else None
+                    )
                     lane_b_outcome = self._run_lane_b_pr_review(
                         pr_key=pr_key,
                         repo=repo,
@@ -7221,6 +7625,7 @@ class GithubCompanionRunner:
                         linear_id=linear_id,
                         linear_identifier=linear_identifier,
                         linear_url=linear_url,
+                        linear_estimate=linear_estimate,
                         slot_id=slot_id,
                         dispatched_targets=dispatched_targets,
                         processed_pr_keys=processed_pr_keys,
@@ -7839,6 +8244,362 @@ class GithubCompanionRunner:
 
         return actions
 
+    def _process_stale_issues(
+        self,
+        *,
+        open_issues: Iterable[dict],
+        active_linear_issues: Iterable[dict],
+        poll_result: dict,
+        current_ms: int,
+        linear_breaker: _LinearWriteCircuitBreaker | None = None,
+    ) -> list[dict]:
+        """Run ongoing 365-day stale-issue check-in and 30-day closure for owned community issues."""
+        if (
+            self.linear_client is None
+            or self.state_store.agent_name not in SWEEP_AGENT_ORDER
+            or poll_result.get("open_prs_poll_error") is not None
+            or poll_result.get("open_issues_poll_error") is not None
+            or poll_result.get("status") in (403, 429)
+            or not hasattr(self.gh_client, "fetch_issue_stale_details")
+        ):
+            return []
+
+        breaker = linear_breaker if linear_breaker is not None else _LinearWriteCircuitBreaker()
+
+        # Pre-filter cheap checks before calling batched GraphQL details.
+        candidates: dict[str, dict] = {}
+        for raw_issue in open_issues or ():
+            if not isinstance(raw_issue, dict):
+                continue
+            if str(raw_issue.get("state") or "OPEN").upper() != "OPEN":
+                continue
+            repo = str(raw_issue.get("repo") or "").strip()
+            number = _safe_int(raw_issue.get("number"), 0)
+            if not repo or number <= 0 or not is_allowed_notification_repo(repo):
+                continue
+            if compute_issue_owner(repo, number) != self.state_store.agent_name:
+                continue
+            if is_stale_issue_excluded_repo(repo):
+                continue
+            if is_stale_issue_excluded_author(raw_issue.get("author")):
+                continue
+            if _has_stale_issue_excluded_label(extract_label_names(raw_issue.get("labels"))):
+                continue
+            issue_key = make_pr_key(repo, number)
+            issue_entry = _as_dict(self.state_store.get_thread_state(issue_key))
+            if bool(issue_entry.get("coercion_blocked")):
+                continue
+            _, state_checkin_ms = normalize_ts(issue_entry.get("stale_checkin_posted_at"))
+            has_pending_checkin = state_checkin_ms > 0
+            if not has_pending_checkin:
+                latest_cm = _as_dict(raw_issue.get("latest_comment"))
+                latest_actor = normalize_github_actor(latest_cm.get("author") or latest_cm.get("user"))
+                latest_body = str(latest_cm.get("body") or "").lower()
+                if latest_actor in TRUSTED_INSTRUCTION_ACTORS and STALE_ISSUE_CHECKIN_MARKER_PHRASE in latest_body:
+                    has_pending_checkin = True
+            _, updated_at_ms = normalize_ts(raw_issue.get("updated_at") or raw_issue.get("updatedAt"))
+            if not has_pending_checkin and (updated_at_ms <= 0 or (current_ms - updated_at_ms) < STALE_ISSUE_INACTIVE_AFTER_MS):
+                continue
+            candidates[issue_key] = {
+                "repo": repo,
+                "number": number,
+                "issue_key": issue_key,
+                "live_issue": raw_issue,
+                "issue_entry": issue_entry,
+                "state_checkin_ms": state_checkin_ms,
+            }
+
+        if not candidates:
+            return []
+
+        details_by_key = self.gh_client.fetch_issue_stale_details(
+            [(c["repo"], c["number"]) for c in candidates.values()]
+        )
+        if not details_by_key:
+            return []
+
+        linear_by_issue_key: dict[str, dict] = {}
+        for issue in active_linear_issues or ():
+            if not isinstance(issue, dict):
+                continue
+            labels = extract_linear_issue_labels(issue)
+            if "pr" in labels and "issue" not in labels:
+                continue
+            target = extract_linear_github_target(issue, expected_kind="Issue")
+            if target is None:
+                continue
+            t_repo, _, t_num, _ = target
+            linear_by_issue_key[make_pr_key(t_repo, t_num)] = issue
+
+        def _resolve_existing_linear_issue(issue_key: str, issue_url: str, issue_entry: dict) -> tuple[dict | None, bool]:
+            if issue_key in linear_by_issue_key:
+                cand = linear_by_issue_key[issue_key]
+            else:
+                cand = None
+                stored_id = str(issue_entry.get("linear_issue_id") or "").strip()
+                if stored_id:
+                    try:
+                        cand = self.linear_client.get_issue(stored_id)
+                    except Exception as exc:
+                        if not _is_linear_issue_not_found_error(exc):
+                            sys.stderr.write(
+                                f"moltis-github-companion stale-issue linear-get warning ({issue_key} / {stored_id}): {exc}\n"
+                            )
+                            return None, False
+                        cand = None
+                if cand is None:
+                    try:
+                        cand = self.linear_client.find_issue_by_github_url(issue_url, item_kind="Issue")
+                    except Exception as exc:
+                        sys.stderr.write(
+                            f"moltis-github-companion stale-issue linear-find warning ({issue_key}): {exc}\n"
+                        )
+                        return None, False
+                if isinstance(cand, dict):
+                    linear_by_issue_key[issue_key] = cand
+            if not isinstance(cand, dict):
+                return None, True
+            c_labels = extract_linear_issue_labels(cand)
+            if "pr" in c_labels and "issue" not in c_labels:
+                return None, True
+            return cand, True
+
+        def _post_linear_comment_safe(linear_id: str, body: str, issue_key: str) -> bool:
+            if not linear_id or not hasattr(self.linear_client, "post_comment"):
+                return False
+            if breaker.skip_if_tripped(scope="linear-stale-issue-comment"):
+                return False
+            try:
+                self.linear_client.post_comment(linear_id, body)
+            except Exception as exc:
+                breaker.record_error(exc, scope="linear-stale-issue-comment", item_key=issue_key)
+                sys.stderr.write(
+                    f"moltis-github-companion linear-stale-issue-comment warning ({issue_key} / {linear_id}): {exc}\n"
+                )
+                return False
+            breaker.record_success()
+            return True
+
+        def _update_linear_safe(
+            linear_id: str,
+            *,
+            issue_key: str,
+            state: str | None = None,
+            add_labels: tuple[str, ...] = (),
+        ) -> dict | None:
+            if not linear_id or breaker.skip_if_tripped(scope="linear-stale-issue-update"):
+                return None
+            try:
+                updated = self.linear_client.update_issue(
+                    linear_id,
+                    state=state,
+                    add_labels=add_labels,
+                )
+            except Exception as exc:
+                breaker.record_error(exc, scope="linear-stale-issue-update", item_key=issue_key)
+                sys.stderr.write(
+                    f"moltis-github-companion linear-stale-issue-update warning ({issue_key} / {linear_id}): {exc}\n"
+                )
+                return None
+            breaker.record_success()
+            if isinstance(updated, dict):
+                linear_by_issue_key[issue_key] = updated
+            return updated
+
+        def _clear_pending_checkin_if_set(issue_key: str, state_checkin_ms: int) -> None:
+            if state_checkin_ms > 0:
+                self.state_store.update_thread_state(
+                    issue_key,
+                    {"stale_checkin_posted_at": None},
+                    now_override_ms=current_ms,
+                )
+
+        actions: list[dict] = []
+        actions_this_poll = 0
+
+        for issue_key in sorted(candidates):
+            if actions_this_poll >= MAX_STALE_ISSUE_ACTIONS_PER_POLL:
+                break
+            cand = candidates[issue_key]
+            details = details_by_key.get(issue_key)
+            if not isinstance(details, dict):
+                continue
+
+            repo = str(cand["repo"])
+            number = int(cand["number"])
+            live_issue = _as_dict(cand["live_issue"])
+            issue_entry = _as_dict(cand["issue_entry"])
+            state_checkin_ms = int(cand["state_checkin_ms"])
+            issue_url = (
+                str(live_issue.get("url") or issue_entry.get("url") or "").strip()
+                or f"https://github.com/{repo}/issues/{number}"
+            )
+
+            # Full guard checks on fetched issue details.
+            if str(details.get("state") or "").strip().upper() != "OPEN":
+                _clear_pending_checkin_if_set(issue_key, state_checkin_ms)
+                continue
+            if is_stale_issue_excluded_repo(repo):
+                _clear_pending_checkin_if_set(issue_key, state_checkin_ms)
+                continue
+            detail_author_obj = details.get("author")
+            detail_author_assoc = details.get("authorAssociation")
+            if is_stale_issue_excluded_author(detail_author_obj, detail_author_assoc):
+                _clear_pending_checkin_if_set(issue_key, state_checkin_ms)
+                continue
+            detail_labels = extract_label_names(details.get("labels"))
+            if _has_stale_issue_excluded_label(detail_labels):
+                _clear_pending_checkin_if_set(issue_key, state_checkin_ms)
+                continue
+            if _stale_issue_has_linked_pr(details.get("timelineItems")):
+                _clear_pending_checkin_if_set(issue_key, state_checkin_ms)
+                continue
+            if _safe_int(_as_dict(details.get("reactions")).get("totalCount"), 0) > 1:
+                _clear_pending_checkin_if_set(issue_key, state_checkin_ms)
+                continue
+
+            # CRITICAL Linear guard: look up existing Linear issue without ever creating one.
+            linear_issue, lookup_ok = _resolve_existing_linear_issue(issue_key, issue_url, issue_entry)
+            if not lookup_ok:
+                continue
+            if linear_issue is not None and is_stale_issue_protected_linear_issue(linear_issue):
+                _clear_pending_checkin_if_set(issue_key, state_checkin_ms)
+                continue
+
+            # Qualifying type guard: require a qualifying GitHub label OR Linear Feature/Improvement (never bug).
+            gh_labels_lower = {lbl.strip().lower() for lbl in detail_labels if lbl.strip()}
+            lin_labels_lower = extract_linear_issue_labels(linear_issue) if linear_issue is not None else set()
+            has_qualifying_gh_label = bool(gh_labels_lower & STALE_ISSUE_QUALIFYING_GITHUB_LABELS)
+            has_qualifying_linear_label = (
+                linear_issue is not None
+                and "bug" not in lin_labels_lower
+                and bool(lin_labels_lower & STALE_ISSUE_QUALIFYING_LINEAR_LABELS)
+            )
+            if not (has_qualifying_gh_label or has_qualifying_linear_label):
+                _clear_pending_checkin_if_set(issue_key, state_checkin_ms)
+                continue
+
+            detail_author = extract_actor_login(detail_author_obj) or str(live_issue.get("author") or "").strip()
+            detail_author_norm = normalize_github_actor(detail_author_obj) or normalize_github_actor(detail_author)
+            comment_nodes = _stale_issue_comment_nodes(details.get("comments"))
+            prior_closed_ms = _safe_int(issue_entry.get("stale_closed_at_ms"), 0)
+            gh_checkin_ms = _find_stale_issue_checkin_ts(comment_nodes, after_ms=prior_closed_ms)
+            checkin_ts_ms = gh_checkin_ms if gh_checkin_ms > 0 else state_checkin_ms
+
+            lin_id = str(_as_dict(linear_issue).get("id") or "").strip() or None
+            lin_ident = str(_as_dict(linear_issue).get("identifier") or "").strip() or None
+            lin_url = str(_as_dict(linear_issue).get("url") or "").strip() or None
+
+            # Stage 2: a prior check-in comment exists.
+            if checkin_ts_ms > 0:
+                if _has_human_comment_after(comment_nodes, checkin_ts_ms):
+                    _clear_pending_checkin_if_set(issue_key, state_checkin_ms)
+                    continue
+                if _stale_issue_has_community_commenter(comment_nodes, issue_author_norm=detail_author_norm):
+                    _clear_pending_checkin_if_set(issue_key, state_checkin_ms)
+                    continue
+                if (current_ms - checkin_ts_ms) < STALE_ISSUE_CLOSE_AFTER_MS:
+                    if state_checkin_ms != checkin_ts_ms:
+                        self.state_store.update_thread_state(
+                            issue_key,
+                            {"stale_checkin_posted_at": checkin_ts_ms},
+                            now_override_ms=current_ms,
+                        )
+                    continue
+                try:
+                    self.gh_client.close_issue(
+                        repo,
+                        number,
+                        comment=format_stale_issue_close_github_comment(),
+                        reason="not planned",
+                    )
+                except Exception as exc:
+                    sys.stderr.write(f"moltis-github-companion stale-issue-close warning ({issue_key}): {exc}\n")
+                    continue
+                actions_this_poll += 1
+                self.state_store.update_thread_state(
+                    issue_key,
+                    {
+                        "repo": repo,
+                        "number": number,
+                        "subject_type": "Issue",
+                        "url": issue_url,
+                        "stale_checkin_posted_at": None,
+                        "stale_closed_at_ms": current_ms,
+                        "stale_closed_reason": "issue_365d_inactive_30d_checkin",
+                    },
+                    now_override_ms=current_ms,
+                )
+                if lin_id:
+                    _update_linear_safe(
+                        lin_id,
+                        issue_key=issue_key,
+                        state="Canceled",
+                        add_labels=("stale-closed",),
+                    )
+                    _post_linear_comment_safe(
+                        lin_id,
+                        format_linear_stale_issue_closed_comment(issue_url=issue_url),
+                        issue_key,
+                    )
+                actions.append({
+                    "action": "stale_issue_closed",
+                    "key": issue_key,
+                    "repo": repo,
+                    "number": number,
+                    "author": detail_author,
+                    "linear_issue_id": lin_id,
+                    "linear_issue_identifier": lin_ident,
+                    "linear_issue_url": lin_url,
+                })
+                continue
+
+            # Stage 1: no prior check-in comment exists.
+            if _stale_issue_has_community_commenter(comment_nodes, issue_author_norm=detail_author_norm):
+                continue
+            _, detail_updated_at_ms = normalize_ts(details.get("updatedAt") or live_issue.get("updated_at"))
+            if detail_updated_at_ms <= 0 or (current_ms - detail_updated_at_ms) < STALE_ISSUE_INACTIVE_AFTER_MS:
+                continue
+            try:
+                self.gh_client.comment_on_issue(
+                    repo,
+                    number,
+                    format_stale_issue_checkin_github_comment(),
+                )
+            except Exception as exc:
+                sys.stderr.write(f"moltis-github-companion stale-issue-checkin warning ({issue_key}): {exc}\n")
+                continue
+            actions_this_poll += 1
+            self.state_store.update_thread_state(
+                issue_key,
+                {
+                    "repo": repo,
+                    "number": number,
+                    "subject_type": "Issue",
+                    "url": issue_url,
+                    "stale_checkin_posted_at": current_ms,
+                },
+                now_override_ms=current_ms,
+            )
+            if lin_id:
+                _post_linear_comment_safe(
+                    lin_id,
+                    format_linear_stale_issue_checkin_comment(issue_url=issue_url),
+                    issue_key,
+                )
+            actions.append({
+                "action": "stale_issue_checkin_posted",
+                "key": issue_key,
+                "repo": repo,
+                "number": number,
+                "author": detail_author,
+                "linear_issue_id": lin_id,
+                "linear_issue_identifier": lin_ident,
+                "linear_issue_url": lin_url,
+            })
+
+        return actions
+
     def run_cycle(self, *, run_sweeps_if_due: bool = True, now_override_ms: int | None = None) -> dict:
         if self.matrix_client is not None:
             with contextlib.suppress(Exception):
@@ -7847,9 +8608,9 @@ class GithubCompanionRunner:
         poll_result = self.poller.poll_once(now_override_ms=now_override_ms)
         dismissed_threads: list[str] = list(poll_result.get("dismissed_threads") or [])
         if self.read_only_trial:
-            return {"status": "ok", "recovery": {"status": "read_only_trial", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "merge_conflict_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": [], "linear_todo_reconciliations": []}
+            return {"status": "ok", "recovery": {"status": "read_only_trial", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "merge_conflict_actions": [], "stale_issue_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": [], "linear_todo_reconciliations": []}
         if self._is_coordinator_busy():
-            return {"status": "turn_in_progress", "recovery": {"status": "busy", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "merge_conflict_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": [], "linear_todo_reconciliations": []}
+            return {"status": "turn_in_progress", "recovery": {"status": "busy", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "merge_conflict_actions": [], "stale_issue_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": [], "linear_todo_reconciliations": []}
 
         recovery = self.execution_coordinator.recover_active_dispatch(now_override_ms=now_override_ms)
         if not recovery.get("can_dispatch", True):
@@ -7866,6 +8627,7 @@ class GithubCompanionRunner:
                 "signoff_notifications": [],
                 "linear_pr_actions": [],
                 "merge_conflict_actions": [],
+                "stale_issue_actions": [],
                 "needs_decision_notifications": [],
                 "traya_blind_reviews": [],
                 "linear_todo_reconciliations": [],
@@ -8116,6 +8878,7 @@ class GithubCompanionRunner:
         linear_synced_closed: list[dict] = []
         linear_pr_actions: list[dict] = []
         merge_conflict_actions: list[dict] = []
+        stale_issue_actions: list[dict] = []
         needs_decision_notifications: list[dict] = []
         traya_blind_reviews: list[dict] = []
         if self.linear_client is not None and self.state_store.agent_name in SWEEP_AGENT_ORDER:
@@ -8160,6 +8923,26 @@ class GithubCompanionRunner:
                 linear_breaker=linear_breaker,
             )
             linear_pr_actions.extend(merge_conflict_actions)
+            stale_issue_actions = self._process_stale_issues(
+                open_issues=poll_result.get("open_issues") or [],
+                active_linear_issues=remaining_linear_issues,
+                poll_result=poll_result,
+                current_ms=current_ms,
+                linear_breaker=linear_breaker,
+            )
+            if stale_issue_actions and remaining_linear_issues:
+                stale_closed_ids = {
+                    str(item.get("linear_issue_id") or "").strip()
+                    for item in stale_issue_actions
+                    if item.get("action") == "stale_issue_closed"
+                    and str(item.get("linear_issue_id") or "").strip()
+                }
+                if stale_closed_ids:
+                    remaining_linear_issues = [
+                        issue
+                        for issue in remaining_linear_issues
+                        if str(issue.get("id") or "").strip() not in stale_closed_ids
+                    ]
             if remaining_linear_issues:
                 targeted_dispatches.extend(
                     self._dispatch_linear_triage_research(
@@ -8210,6 +8993,7 @@ class GithubCompanionRunner:
             "signoff_notifications": signoff_notifications,
             "linear_pr_actions": linear_pr_actions,
             "merge_conflict_actions": merge_conflict_actions,
+            "stale_issue_actions": stale_issue_actions,
             "needs_decision_notifications": needs_decision_notifications,
             "traya_blind_reviews": traya_blind_reviews,
             "linear_todo_reconciliations": linear_todo_reconciliations,

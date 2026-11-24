@@ -1954,6 +1954,93 @@ class IssueSyncPaginationAndVerdictTests(LinearSyncTestBase):
         with self.assertRaises(ValueError):
             client.post_comment(str(issue["id"]), "   ")
 
+    def test_estimate_on_create_backfill_preservation_ignored_states_and_validation(self) -> None:
+        client = self.make_client()
+
+        # 1) Create with estimate passes estimate in issueCreate input.
+        pr_create_url = "https://github.com/wimpysworld/tailor/pull/4101"
+        created = client.ensure_issue_for_github_item(
+            github_url=pr_create_url,
+            title="feat: sized PR on create",
+            item_kind="PR",
+            state="Backlog",
+            estimate=3,
+        )
+        self.assertEqual(created["estimate"], 3)
+        create_reqs = self.httpd.requests_for("issueCreate")
+        self.assertEqual(create_reqs[-1]["variables"]["input"]["estimate"], 3)
+
+        # 2) Existing issue with non-null estimate is preserved (no issueUpdate issued).
+        updates_before = len(self.httpd.requests_for("issueUpdate"))
+        preserved = client.ensure_issue_for_github_item(
+            github_url=pr_create_url,
+            title="feat: sized PR on create",
+            item_kind="PR",
+            state="Backlog",
+            estimate=8,
+        )
+        self.assertEqual(preserved["id"], created["id"])
+        self.assertEqual(preserved["estimate"], 3)
+        self.assertEqual(len(self.httpd.requests_for("issueUpdate")), updates_before)
+
+        # 3) Existing issue with null estimate is backfilled via issueUpdate.
+        pr_backfill_url = "https://github.com/wimpysworld/tailor/pull/4102"
+        existing_unestimated = client.ensure_issue_for_github_item(
+            github_url=pr_backfill_url,
+            title="feat: unestimated PR",
+            item_kind="PR",
+            state="Backlog",
+        )
+        self.assertIsNone(existing_unestimated["estimate"])
+        backfilled = client.ensure_issue_for_github_item(
+            github_url=pr_backfill_url,
+            title="feat: unestimated PR",
+            item_kind="PR",
+            state="Backlog",
+            estimate=2,
+        )
+        self.assertEqual(backfilled["id"], existing_unestimated["id"])
+        self.assertEqual(backfilled["estimate"], 2)
+        self.assertEqual(self.httpd.issues[str(existing_unestimated["id"])]["estimate"], 2)
+
+        # 4) Ignored states (Canceled / Done / Duplicate / Deferred) are never backfilled.
+        self.httpd.states_by_team["team-ww"].append(
+            {"id": "st-deferred", "name": "Deferred", "type": "backlog", "position": 8.0}
+        )
+        for state_id, num in (("st-canceled", 4103), ("st-done", 4104), ("st-duplicate", 4105), ("st-deferred", 4106)):
+            url = f"https://github.com/wimpysworld/tailor/pull/{num}"
+            rec = self.httpd.add_issue(
+                state_id=state_id,
+                title=f"Ignored state PR {num}",
+                description=linear_sync.format_issue_description_with_github_url("", url),
+                estimate=None,
+            )
+            self.httpd.add_attachment(issue_id=str(rec["id"]), url=url, title=f"wimpysworld/tailor#{num}")
+            before = len(self.httpd.requests_for("issueUpdate"))
+            res = client.ensure_issue_for_github_item(
+                github_url=url,
+                title=f"Ignored state PR {num}",
+                item_kind="PR",
+                state="Backlog",
+                estimate=5,
+            )
+            self.assertIsNone(res["estimate"])
+            self.assertEqual(len(self.httpd.requests_for("issueUpdate")), before)
+
+        # 5) Explicit update_issue(estimate=...) updates estimate, and invalid estimates raise ValueError.
+        updated = client.update_issue(str(created["id"]), estimate=5)
+        self.assertEqual(updated["estimate"], 5)
+        for bad_est in (0, -1, True, False, 2.5, "3"):
+            with self.subTest(estimate=bad_est), self.assertRaises(ValueError):
+                client.ensure_issue_for_github_item(
+                    github_url=pr_create_url,
+                    title="bad estimate",
+                    item_kind="PR",
+                    estimate=bad_est,  # type: ignore[arg-type]
+                )
+            with self.subTest(update_estimate=bad_est), self.assertRaises(ValueError):
+                client.update_issue(str(created["id"]), estimate=bad_est)  # type: ignore[arg-type]
+
 
 if __name__ == "__main__":
     unittest.main()
