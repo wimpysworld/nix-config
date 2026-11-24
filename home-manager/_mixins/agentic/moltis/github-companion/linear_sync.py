@@ -36,6 +36,10 @@ WORKFLOW_LABELS = (
     "merge-conflicts",
     "stale-closed",
     "release",
+    "approved",
+    "ci-failing",
+    "changes-requested",
+    "allow-merge",
 )
 DEFAULT_TIMEOUT_SECS = 20.0
 DEFAULT_MARKER_INDEX_TTL_SECS = 300.0
@@ -595,29 +599,33 @@ _LINEAR_PROFILE_MD_LINK_RE = re.compile(
 )
 
 
+def is_verified_linear_admin_actor(actor: object, *, bot_actor: object = None) -> bool:
+    """Return True only for a verified human Linear workspace admin or owner actor."""
+    if bot_actor:
+        return False
+    if not isinstance(actor, dict):
+        return False
+    if actor.get("guest") is True:
+        return False
+    email = str(actor.get("email") or "").strip().lower()
+    if email and email.endswith(_DENIED_LINEAR_OPERATOR_EMAIL_SUFFIXES):
+        return False
+    name = str(actor.get("name") or "").strip().lower()
+    display_name = str(actor.get("displayName") or "").strip().lower()
+    if name in _DENIED_LINEAR_OPERATOR_NAMES or display_name in _DENIED_LINEAR_OPERATOR_NAMES:
+        return False
+    return bool(
+        actor.get("admin") is True
+        or actor.get("owner") is True
+        or actor.get("isAdmin") is True
+    )
+
+
 def is_verified_linear_operator_comment(comment: object) -> bool:
     """Return True only for comments authored by a verified human Linear workspace admin or owner."""
     if not isinstance(comment, dict):
         return False
-    if comment.get("botActor"):
-        return False
-    user = comment.get("user")
-    if not isinstance(user, dict):
-        return False
-    if user.get("guest") is True:
-        return False
-    email = str(user.get("email") or "").strip().lower()
-    if email and email.endswith(_DENIED_LINEAR_OPERATOR_EMAIL_SUFFIXES):
-        return False
-    name = str(user.get("name") or "").strip().lower()
-    display_name = str(user.get("displayName") or "").strip().lower()
-    if name in _DENIED_LINEAR_OPERATOR_NAMES or display_name in _DENIED_LINEAR_OPERATOR_NAMES:
-        return False
-    return bool(
-        user.get("admin") is True
-        or user.get("owner") is True
-        or user.get("isAdmin") is True
-    )
+    return is_verified_linear_admin_actor(comment.get("user"), bot_actor=comment.get("botActor"))
 
 
 def _linear_comment_sort_key(item: tuple[int, dict[str, str]]) -> tuple[int, float, str, int]:
@@ -1016,6 +1024,46 @@ query($issueId: String!, $first: Int!, $after: String) {
           id
         }
         user {
+          id
+          name
+          displayName
+          email
+          admin
+          owner
+          guest
+        }
+        botActor {
+          id
+          name
+          type
+        }
+      }
+    }
+  }
+}
+""".strip()
+
+_ISSUE_HISTORY_QUERY = """
+query($issueId: String!, $first: Int!, $after: String) {
+  issue(id: $issueId) {
+    id
+    history(first: $first, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
+        id
+        createdAt
+        addedLabels {
+          id
+          name
+        }
+        removedLabels {
+          id
+          name
+        }
+        actor {
           id
           name
           displayName
@@ -2308,6 +2356,132 @@ class LinearSyncClient:
             after = end_cursor
 
         return comments
+
+    @staticmethod
+    def _extract_history_label_names(raw_labels: object) -> set[str]:
+        if isinstance(raw_labels, dict):
+            raw_items = raw_labels.get("nodes")
+            items = raw_items if isinstance(raw_items, list) else ()
+        elif isinstance(raw_labels, (list, tuple)):
+            items = raw_labels
+        else:
+            items = ()
+        names: set[str] = set()
+        for item in items:
+            if isinstance(item, dict):
+                name = str(item.get("name") or "").strip().lower()
+            elif isinstance(item, str):
+                name = item.strip().lower()
+            else:
+                name = ""
+            if name:
+                names.add(name)
+        return names
+
+    @staticmethod
+    def _parse_history_created_at(raw_ts: object) -> tuple[int, float, str]:
+        text = str(raw_ts or "").strip()
+        if not text:
+            return (0, 0.0, "")
+        try:
+            norm = text[:-1] + "+00:00" if text.endswith(("Z", "z")) else text
+            dt = datetime.datetime.fromisoformat(norm)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=datetime.timezone.utc)
+            return (1, dt.timestamp(), text)
+        except ValueError:
+            return (0, 0.0, text)
+
+    def list_issue_history(
+        self,
+        issue_id: str,
+        *,
+        page_size: int = 50,
+        max_pages: int = 4,
+    ) -> list[dict[str, object]]:
+        """List issue history entries using bounded cursor pagination."""
+        clean_id = str(issue_id or "").strip()
+        if not clean_id:
+            raise ValueError("issue_id must be non-empty")
+        if isinstance(page_size, bool) or not isinstance(page_size, int) or page_size <= 0:
+            raise ValueError("page_size must be a positive integer")
+        if isinstance(max_pages, bool) or not isinstance(max_pages, int) or max_pages <= 0:
+            raise ValueError("max_pages must be a positive integer")
+
+        entries: list[dict[str, object]] = []
+        after: str | None = None
+        seen_cursors: set[str] = set()
+        pages_fetched = 0
+
+        while pages_fetched < max_pages:
+            data = self._graphql_request(
+                _ISSUE_HISTORY_QUERY,
+                {"issueId": clean_id, "first": page_size, "after": after},
+            )
+            pages_fetched += 1
+            issue = data.get("issue")
+            if not isinstance(issue, dict) or not issue.get("id"):
+                raise LinearAPIError(f"Linear issue not found: {clean_id!r}")
+            conn = issue.get("history")
+            nodes = conn.get("nodes") if isinstance(conn, dict) else None
+            if isinstance(nodes, list):
+                for node in nodes:
+                    if isinstance(node, dict):
+                        entries.append(node)
+
+            page_info = conn.get("pageInfo") if isinstance(conn, dict) else None
+            has_next = bool(page_info.get("hasNextPage")) if isinstance(page_info, dict) else False
+            end_cursor = str(page_info.get("endCursor") or "").strip() if isinstance(page_info, dict) else ""
+            if not has_next or not end_cursor or end_cursor in seen_cursors:
+                break
+            seen_cursors.add(end_cursor)
+            after = end_cursor
+
+        return entries
+
+    def verify_label_added_by_admin(self, issue_id: str, label_name: str) -> dict[str, object] | None:
+        """Verify that the latest history event for `label_name` is an addition by a verified Linear admin."""
+        clean_id = str(issue_id or "").strip()
+        target = str(label_name or "").strip().lower()
+        if not clean_id or not target:
+            return None
+
+        entries = self.list_issue_history(clean_id)
+        latest_entry: dict[str, object] | None = None
+        latest_added: set[str] = set()
+        latest_removed: set[str] = set()
+        latest_key: tuple[int, float, str, int, int] = (-1, 0.0, "", -1, -1)
+
+        for idx, entry in enumerate(entries):
+            if not isinstance(entry, dict):
+                continue
+            added = self._extract_history_label_names(entry.get("addedLabels"))
+            removed = self._extract_history_label_names(entry.get("removedLabels"))
+            in_added = target in added
+            in_removed = target in removed
+            if not in_added and not in_removed:
+                continue
+            ts_key = self._parse_history_created_at(entry.get("createdAt"))
+            # On an exact timestamp tie, prefer removal so verification fails closed.
+            sort_key = (ts_key[0], ts_key[1], ts_key[2], 1 if in_removed else 0, idx)
+            if latest_entry is None or sort_key >= latest_key:
+                latest_entry = entry
+                latest_added = added
+                latest_removed = removed
+                latest_key = sort_key
+
+        if latest_entry is None:
+            return None
+        if target not in latest_added or target in latest_removed:
+            return None
+        actor = latest_entry.get("actor")
+        if not is_verified_linear_admin_actor(actor, bot_actor=latest_entry.get("botActor")):
+            return None
+        return {
+            "history_id": str(latest_entry.get("id") or "").strip(),
+            "created_at": str(latest_entry.get("createdAt") or "").strip(),
+            "actor": actor,
+        }
 
     def post_comment(self, issue_id: str, body: str, *, parent_id: str | None = None) -> dict[str, object]:
         """Post a plain Markdown comment (or threaded reply) on a Linear issue."""

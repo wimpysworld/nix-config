@@ -93,6 +93,24 @@ TEAM_LABELS = ("team:implement", "team:merge", "team:review")
 PR_TEAM_LABELS = ("team:merge", "team:review", "team:implement")
 ISSUE_TEAM_LABELS = ("team:implement", "team:review")
 DO_NOT_MERGE_LABEL = "team:do-not-merge"
+MERGE_CONFLICTS_LABEL = "merge-conflicts"
+ALLOW_MERGE_LINEAR_LABEL = "allow-merge"
+APPROVED_LINEAR_LABEL = "approved"
+CI_FAILING_LINEAR_LABEL = "ci-failing"
+CHANGES_REQUESTED_LINEAR_LABEL = "changes-requested"
+IN_REVIEW_BLOCKER_LABELS = (
+    MERGE_CONFLICTS_LABEL,
+    CI_FAILING_LINEAR_LABEL,
+    CHANGES_REQUESTED_LINEAR_LABEL,
+)
+IN_REVIEW_APPROVED_CLEAR_LABELS = (
+    "ready-to-implement",
+    "sign-off-required",
+    "needs-decision",
+    MERGE_CONFLICTS_LABEL,
+    CI_FAILING_LINEAR_LABEL,
+    CHANGES_REQUESTED_LINEAR_LABEL,
+)
 TEAM_LABEL_TRIGGER_REASONS: dict[str, str] = {
     "team:implement": "team_implement",
     "team:merge": "team_merge",
@@ -926,6 +944,7 @@ def _estimate_sort_key(item: dict) -> tuple[int, str, str]:
 def format_operator_digest(
     *,
     date_str: str,
+    approved: list[dict] | None = None,
     ready_to_merge: list[dict],
     needs_decision: list[dict],
     first_time_prs: list[dict],
@@ -936,6 +955,7 @@ def format_operator_digest(
 ) -> str:
     """Format the daily weekday 'Waiting on Martin' Telegram digest in plain British English."""
     clean_date = str(date_str or "").strip() or "unknown"
+    app = [item for item in (approved or []) if isinstance(item, dict)]
     rtm = [item for item in (ready_to_merge or []) if isinstance(item, dict)]
     nd = [item for item in (needs_decision or []) if isinstance(item, dict)]
     ftp = [item for item in (first_time_prs or []) if isinstance(item, dict)]
@@ -943,7 +963,7 @@ def format_operator_digest(
     sec = [item for item in (security_releases or []) if isinstance(item, dict)]
     dlk = [str(k).strip() for k in (dead_letter_keys or []) if str(k or "").strip()]
 
-    if not (rtm or nd or ftp or soi or sec or dlk):
+    if not (app or rtm or nd or ftp or soi or sec or dlk):
         if not is_monday:
             return ""
         return f"📋 Community Contributions digest ({clean_date})\nAll clear. No items waiting for action."
@@ -966,6 +986,7 @@ def format_operator_digest(
         if len(ordered) > 10:
             lines.append(f"- +{len(ordered) - 10} more")
 
+    _append_linear_section("Approved (sign-off ready)", app)
     _append_linear_section("Ready to merge", rtm)
     _append_linear_section("Needs decision", nd)
     _append_linear_section("First-time contributor PRs", ftp)
@@ -4773,10 +4794,16 @@ class GhApiSafeClient:
         return clean_repo, f"https://github.com/{clean_repo}/pull/{clean_num}"
 
     @staticmethod
-    def _validate_pr_label_target(repo: str, number: int, label: str) -> tuple[str, str, str]:
+    def _validate_pr_label_target(
+        repo: str,
+        number: int,
+        label: str,
+        *,
+        allowed_labels: Iterable[str] = TEAM_LABELS,
+    ) -> tuple[str, str, str]:
         clean_repo, pr_url = GhApiSafeClient._validate_pr_target(repo, number)
         clean_label = (label or "").strip()
-        if clean_label not in TEAM_LABELS:
+        if clean_label not in tuple(allowed_labels):
             raise ValueError(f"Unsupported pull request team label: {label!r}")
         return clean_repo, pr_url, clean_label
 
@@ -4900,8 +4927,13 @@ class GhApiSafeClient:
         return proc
 
     def remove_pull_request_label(self, repo: str, number: int, label: str, *, timeout: float | None = None) -> subprocess.CompletedProcess:
-        """Remove an allowlisted `team:` label from a pull request via `gh pr edit --remove-label`."""
-        _, pr_url, clean_label = self._validate_pr_label_target(repo, number, label)
+        """Remove an allowlisted `team:` label (including `team:do-not-merge`) from a pull request via `gh pr edit --remove-label`."""
+        _, pr_url, clean_label = self._validate_pr_label_target(
+            repo,
+            number,
+            label,
+            allowed_labels=(*TEAM_LABELS, DO_NOT_MERGE_LABEL),
+        )
         cmd = [self.gh_bin, "pr", "edit", pr_url, "--remove-label", clean_label]
         proc = self.runner(cmd, capture_output=True, text=True, timeout=timeout or self.timeout, check=False)
         if proc.returncode != 0:
@@ -9392,6 +9424,323 @@ class GithubCompanionRunner:
 
         return actions
 
+    def _reconcile_in_review_linear_pr_status(
+        self,
+        *,
+        active_linear_issues: Iterable[dict],
+        open_prs_by_key: dict[str, dict],
+        signoff_ready_pr_keys: set[str],
+        poll_result: dict,
+        current_ms: int,
+        linear_breaker: _LinearWriteCircuitBreaker | None = None,
+        hydrated_mergeability_node_ids: set[str] | None = None,
+    ) -> list[dict]:
+        """Reconcile Linear `allow-merge` one-shot triggers and live `In Review` PR status labels."""
+        _ = current_ms
+        if (
+            self.linear_client is None
+            or self.state_store.agent_name not in SWEEP_AGENT_ORDER
+            or poll_result.get("open_prs_poll_error") is not None
+            or poll_result.get("status") in (403, 429)
+        ):
+            return []
+
+        breaker = linear_breaker if linear_breaker is not None else _LinearWriteCircuitBreaker()
+        norm_signoff_keys = {
+            str(k).strip().lower()
+            for k in (signoff_ready_pr_keys or ())
+            if str(k or "").strip()
+        }
+        issues_list = [issue for issue in (active_linear_issues or ()) if isinstance(issue, dict)]
+
+        # Hydrate mergeability for open PRs attached to owned `In Review` Linear issues (including trusted/agent PRs).
+        already_hydrated = hydrated_mergeability_node_ids if hydrated_mergeability_node_ids is not None else set()
+        if hasattr(self.gh_client, "fetch_pull_request_mergeability"):
+            in_review_hydrate_by_node_id: dict[str, str] = {}
+            for issue in issues_list:
+                if is_ignored_linear_issue_state(issue):
+                    continue
+                st_name = str(_as_dict(issue.get("state")).get("name") or "").strip().lower()
+                if st_name not in ("in review", "in_review"):
+                    continue
+                target = extract_linear_github_target(issue, expected_kind="PR")
+                if target is None:
+                    continue
+                t_repo, _, t_num, _ = target
+                if not is_allowed_notification_repo(t_repo) or compute_pr_owner(t_repo, t_num) != self.state_store.agent_name:
+                    continue
+                pk = make_pr_key(t_repo, t_num)
+                live_pr = (open_prs_by_key or {}).get(pk)
+                if not isinstance(live_pr, dict) or str(live_pr.get("state") or "OPEN").upper() != "OPEN":
+                    continue
+                if (
+                    normalize_mergeable_state(
+                        live_pr.get("mergeable"),
+                        live_pr.get("merge_state_status") or live_pr.get("mergeStateStatus"),
+                    )
+                    != "UNKNOWN"
+                ):
+                    continue
+                nid = str(live_pr.get("node_id") or (live_pr.get("id") if isinstance(live_pr.get("id"), str) else "")).strip()
+                if nid and nid not in already_hydrated:
+                    in_review_hydrate_by_node_id[nid] = pk
+            if in_review_hydrate_by_node_id:
+                already_hydrated.update(in_review_hydrate_by_node_id.keys())
+                try:
+                    mergeability_map = self.gh_client.fetch_pull_request_mergeability(in_review_hydrate_by_node_id.keys())
+                except Exception as exc:
+                    sys.stderr.write(
+                        f"moltis-github-companion in-review-mergeability warning ({self.state_store.agent_name}): {exc}\n"
+                    )
+                    mergeability_map = {}
+                for nid, (m_state, ms_state) in (mergeability_map or {}).items():
+                    pk = in_review_hydrate_by_node_id.get(nid)
+                    if not pk or pk not in open_prs_by_key:
+                        continue
+                    open_prs_by_key[pk]["mergeable"] = m_state
+                    open_prs_by_key[pk]["merge_state_status"] = ms_state
+                    open_prs_by_key[pk]["mergeStateStatus"] = ms_state
+                    open_prs_by_key[pk]["has_merge_conflicts"] = m_state == "CONFLICTING"
+
+        def _merge_updated_issue(original: dict, updated: dict | None) -> dict:
+            if not isinstance(updated, dict):
+                return original
+            merged = dict(updated)
+            for preserve_key in ("attachments", "comments"):
+                if preserve_key in original and preserve_key not in merged:
+                    merged[preserve_key] = original[preserve_key]
+            return merged
+
+        def _update_linear_labels(
+            linear_id: str,
+            original_issue: dict,
+            *,
+            scope: str,
+            pr_key: str,
+            add_labels: tuple[str, ...] = (),
+            remove_labels: tuple[str, ...] = (),
+        ) -> dict | None:
+            if not linear_id or breaker.skip_if_tripped(scope=scope):
+                return None
+            try:
+                updated = self.linear_client.update_issue(
+                    linear_id,
+                    add_labels=add_labels,
+                    remove_labels=remove_labels,
+                )
+            except Exception as exc:
+                breaker.record_error(exc, scope=scope, item_key=pr_key)
+                sys.stderr.write(f"moltis-github-companion {scope} warning ({pr_key} / {linear_id}): {exc}\n")
+                return None
+            breaker.record_success()
+            return _merge_updated_issue(original_issue, updated)
+
+        actions: list[dict] = []
+
+        for raw_issue in issues_list:
+            linear_issue = raw_issue
+            if is_ignored_linear_issue_state(linear_issue):
+                continue
+            linear_id = str(linear_issue.get("id") or "").strip()
+            if not linear_id:
+                continue
+            linear_identifier = str(linear_issue.get("identifier") or linear_id).strip()
+            target = extract_linear_github_target(linear_issue, expected_kind="PR")
+            if target is None:
+                continue
+            pr_repo, _, pr_number, normalized_pr_url = target
+            if not is_allowed_notification_repo(pr_repo):
+                continue
+            if compute_pr_owner(pr_repo, pr_number) != self.state_store.agent_name:
+                continue
+            pr_key = make_pr_key(pr_repo, pr_number)
+            pr = (open_prs_by_key or {}).get(pr_key)
+            if not isinstance(pr, dict) or str(pr.get("state") or "OPEN").upper() != "OPEN":
+                continue
+            pr_url = str(pr.get("url") or normalized_pr_url or f"https://github.com/{pr_repo}/pull/{pr_number}").strip()
+            linear_labels = extract_linear_issue_labels(linear_issue)
+
+            # Part 1 — `allow-merge` one-shot trigger (any active state, open trusted PR only).
+            if ALLOW_MERGE_LINEAR_LABEL in linear_labels:
+                if (
+                    is_trusted_instruction_actor(pr.get("author"))
+                    and hasattr(self.linear_client, "verify_label_added_by_admin")
+                    and not breaker.skip_if_tripped(scope="linear-allow-merge-verify")
+                ):
+                    verified: dict | None = None
+                    verify_ok = False
+                    try:
+                        raw_verified = self.linear_client.verify_label_added_by_admin(linear_id, ALLOW_MERGE_LINEAR_LABEL)
+                        verified = raw_verified if isinstance(raw_verified, dict) else None
+                        verify_ok = True
+                    except Exception as exc:
+                        breaker.record_error(exc, scope="linear-allow-merge-verify", item_key=pr_key)
+                        sys.stderr.write(
+                            f"moltis-github-companion linear-allow-merge-verify warning ({pr_key} / {linear_id}): {exc}\n"
+                        )
+                    if verify_ok:
+                        breaker.record_success()
+                    if verified is not None:
+                        if has_do_not_merge_label(pr.get("labels")):
+                            gh_removed = False
+                            try:
+                                self.gh_client.remove_pull_request_label(pr_repo, pr_number, DO_NOT_MERGE_LABEL)
+                                gh_removed = True
+                            except Exception as exc:
+                                sys.stderr.write(
+                                    f"moltis-github-companion allow-merge-github-label warning ({pr_key} / {linear_id}): {exc}\n"
+                                )
+                            if gh_removed:
+                                pr["labels"] = [
+                                    lbl
+                                    for lbl in extract_label_names(pr.get("labels"))
+                                    if lbl.strip().lower() != DO_NOT_MERGE_LABEL
+                                ]
+                                updated_issue = _update_linear_labels(
+                                    linear_id,
+                                    linear_issue,
+                                    scope="linear-allow-merge-clear",
+                                    pr_key=pr_key,
+                                    remove_labels=(ALLOW_MERGE_LINEAR_LABEL,),
+                                )
+                                if updated_issue is not None:
+                                    linear_issue = updated_issue
+                                    linear_labels = extract_linear_issue_labels(linear_issue)
+                                comment_posted = False
+                                if hasattr(self.linear_client, "post_comment") and not breaker.skip_if_tripped(
+                                    scope="linear-allow-merge-comment"
+                                ):
+                                    audit_body = (
+                                        f"Removed `{DO_NOT_MERGE_LABEL}` on {pr_url} after admin `{ALLOW_MERGE_LINEAR_LABEL}` "
+                                        "approval; automated review and merge checks are active."
+                                    )
+                                    try:
+                                        self.linear_client.post_comment(linear_id, audit_body)
+                                        breaker.record_success()
+                                        comment_posted = True
+                                    except Exception as exc:
+                                        breaker.record_error(exc, scope="linear-allow-merge-comment", item_key=pr_key)
+                                        sys.stderr.write(
+                                            f"moltis-github-companion linear-allow-merge-comment warning ({pr_key} / {linear_id}): {exc}\n"
+                                        )
+                                actions.append({
+                                    "action": "allow_merge_hold_lifted",
+                                    "pr_key": pr_key,
+                                    "repo": pr_repo,
+                                    "number": pr_number,
+                                    "pr_url": pr_url,
+                                    "linear_issue_id": linear_id,
+                                    "linear_identifier": linear_identifier,
+                                    "verified_by": verified,
+                                    "comment_posted": comment_posted,
+                                    "updated_issue": linear_issue,
+                                })
+                        else:
+                            updated_issue = _update_linear_labels(
+                                linear_id,
+                                linear_issue,
+                                scope="linear-allow-merge-clear",
+                                pr_key=pr_key,
+                                remove_labels=(ALLOW_MERGE_LINEAR_LABEL,),
+                            )
+                            if updated_issue is not None:
+                                linear_issue = updated_issue
+                                linear_labels = extract_linear_issue_labels(linear_issue)
+                                actions.append({
+                                    "action": "allow_merge_cleared",
+                                    "pr_key": pr_key,
+                                    "repo": pr_repo,
+                                    "number": pr_number,
+                                    "pr_url": pr_url,
+                                    "linear_issue_id": linear_id,
+                                    "linear_identifier": linear_identifier,
+                                    "verified_by": verified,
+                                    "updated_issue": linear_issue,
+                                })
+
+            # Part 2 — Live `In Review` status labels (`approved`, `merge-conflicts`, `ci-failing`, `changes-requested`).
+            state_name = str(_as_dict(linear_issue.get("state")).get("name") or "").strip().lower()
+            if state_name not in ("in review", "in_review"):
+                continue
+
+            has_conflicts = is_merge_conflicting(
+                pr.get("mergeable"),
+                pr.get("merge_state_status") or pr.get("mergeStateStatus"),
+            )
+            ci_norm = normalize_ci_state(pr.get("ci_state") if "ci_state" in pr else pr.get("statusCheckRollup"))
+            has_ci_failure = ci_norm in ("FAILURE", "ERROR")
+            review_decision = str(pr.get("review_decision") or pr.get("reviewDecision") or "").strip().upper()
+            unresolved_thread_count = (
+                max(0, _safe_int(pr.get("unresolved_thread_count"), 0))
+                if "unresolved_thread_count" in pr
+                else count_unresolved_review_threads(
+                    pr.get("reviewThreads") if "reviewThreads" in pr else pr.get("review_threads")
+                )
+            )
+            has_unresolved_threads = unresolved_thread_count > 0 or bool(pr.get("has_unresolved_review_threads"))
+            has_changes_requested = (review_decision == "CHANGES_REQUESTED") or has_unresolved_threads
+            has_do_not_merge = has_do_not_merge_label(pr.get("labels"))
+            is_approved_signoff_ready = (
+                not has_conflicts
+                and not has_ci_failure
+                and not has_changes_requested
+                and ci_norm in ("SUCCESS", "NONE")
+                and has_do_not_merge
+                and (pr_key in norm_signoff_keys or review_decision == "APPROVED")
+            )
+
+            add_labels: list[str] = []
+            remove_labels: list[str] = []
+            if is_approved_signoff_ready:
+                if APPROVED_LINEAR_LABEL not in linear_labels:
+                    add_labels.append(APPROVED_LINEAR_LABEL)
+                for lbl in IN_REVIEW_APPROVED_CLEAR_LABELS:
+                    if lbl in linear_labels:
+                        remove_labels.append(lbl)
+            else:
+                blocker_flags = (
+                    (MERGE_CONFLICTS_LABEL, has_conflicts),
+                    (CI_FAILING_LINEAR_LABEL, has_ci_failure),
+                    (CHANGES_REQUESTED_LINEAR_LABEL, has_changes_requested),
+                )
+                for lbl, is_active in blocker_flags:
+                    if is_active and lbl not in linear_labels:
+                        add_labels.append(lbl)
+                if APPROVED_LINEAR_LABEL in linear_labels:
+                    remove_labels.append(APPROVED_LINEAR_LABEL)
+                for lbl, is_active in blocker_flags:
+                    if not is_active and lbl in linear_labels:
+                        remove_labels.append(lbl)
+                if has_conflicts and "ready-to-merge" in linear_labels:
+                    remove_labels.append("ready-to-merge")
+
+            if not add_labels and not remove_labels:
+                continue
+
+            updated_issue = _update_linear_labels(
+                linear_id,
+                linear_issue,
+                scope="linear-in-review-labels",
+                pr_key=pr_key,
+                add_labels=tuple(add_labels),
+                remove_labels=tuple(remove_labels),
+            )
+            if updated_issue is not None:
+                actions.append({
+                    "action": "in_review_labels_synced",
+                    "pr_key": pr_key,
+                    "repo": pr_repo,
+                    "number": pr_number,
+                    "pr_url": pr_url,
+                    "linear_issue_id": linear_id,
+                    "linear_identifier": linear_identifier,
+                    "added": list(add_labels),
+                    "removed": list(remove_labels),
+                    "updated_issue": updated_issue,
+                })
+
+        return actions
+
     def _process_stale_issues(
         self,
         *,
@@ -9943,6 +10292,7 @@ class GithubCompanionRunner:
         if _as_dict(state.get("digest")).get("last_digest_date") == today_str:
             return None
 
+        approved: list[dict] = []
         ready_to_merge: list[dict] = []
         needs_decision: list[dict] = []
         first_time_prs: list[dict] = []
@@ -9953,13 +10303,16 @@ class GithubCompanionRunner:
             labels = extract_linear_issue_labels(issue)
             is_pr = "pr" in labels
             is_issue = "issue" in labels
-            if is_pr and "ready-to-merge" in labels:
+            is_approved = APPROVED_LINEAR_LABEL in labels
+            if is_approved:
+                approved.append(issue)
+            if is_pr and "ready-to-merge" in labels and not is_approved:
                 ready_to_merge.append(issue)
             if (is_pr or is_issue) and "needs-decision" in labels:
                 needs_decision.append(issue)
             if is_pr and "first-time" in labels and "needs-decision" not in labels:
                 first_time_prs.append(issue)
-            if is_issue and "sign-off-required" in labels:
+            if is_issue and "sign-off-required" in labels and not is_approved:
                 signoff_issues.append(issue)
 
         threads = _as_dict(state.get("threads"))
@@ -9971,6 +10324,7 @@ class GithubCompanionRunner:
 
         text = format_operator_digest(
             date_str=today_str,
+            approved=approved,
             ready_to_merge=ready_to_merge,
             needs_decision=needs_decision,
             first_time_prs=first_time_prs,
@@ -9997,6 +10351,7 @@ class GithubCompanionRunner:
             "is_monday": is_monday,
             "sent": True,
             "counts": {
+                "approved": len(approved),
                 "ready_to_merge": len(ready_to_merge),
                 "needs_decision": len(needs_decision),
                 "first_time_prs": len(first_time_prs),
@@ -10429,9 +10784,9 @@ class GithubCompanionRunner:
         poll_result = self.poller.poll_once(now_override_ms=now_override_ms)
         dismissed_threads: list[str] = list(poll_result.get("dismissed_threads") or [])
         if self.read_only_trial:
-            return {"status": "ok", "recovery": {"status": "read_only_trial", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "merge_conflict_actions": [], "stale_issue_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": [], "linear_todo_reconciliations": [], "linear_operator_comment_dispatches": [], "health_alerts": [], "operator_digest": None, "linked_pr_issue_relations": [], "security_release_actions": []}
+            return {"status": "ok", "recovery": {"status": "read_only_trial", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "merge_conflict_actions": [], "in_review_pr_actions": [], "stale_issue_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": [], "linear_todo_reconciliations": [], "linear_operator_comment_dispatches": [], "health_alerts": [], "operator_digest": None, "linked_pr_issue_relations": [], "security_release_actions": []}
         if self._is_coordinator_busy():
-            return {"status": "turn_in_progress", "recovery": {"status": "busy", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "merge_conflict_actions": [], "stale_issue_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": [], "linear_todo_reconciliations": [], "linear_operator_comment_dispatches": [], "health_alerts": [], "operator_digest": None, "linked_pr_issue_relations": [], "security_release_actions": []}
+            return {"status": "turn_in_progress", "recovery": {"status": "busy", "can_dispatch": False}, "poll_result": poll_result, "targeted_dispatches": [], "dismissed_threads": dismissed_threads, "sweep_dispatch": None, "linear_triage_stubs": [], "linear_promoted_todos": [], "linear_synced_closed": [], "signoff_notifications": [], "linear_pr_actions": [], "merge_conflict_actions": [], "in_review_pr_actions": [], "stale_issue_actions": [], "needs_decision_notifications": [], "traya_blind_reviews": [], "linear_todo_reconciliations": [], "linear_operator_comment_dispatches": [], "health_alerts": [], "operator_digest": None, "linked_pr_issue_relations": [], "security_release_actions": []}
 
         recovery = self.execution_coordinator.recover_active_dispatch(now_override_ms=now_override_ms)
         if not recovery.get("can_dispatch", True):
@@ -10448,6 +10803,7 @@ class GithubCompanionRunner:
                 "signoff_notifications": [],
                 "linear_pr_actions": [],
                 "merge_conflict_actions": [],
+                "in_review_pr_actions": [],
                 "stale_issue_actions": [],
                 "needs_decision_notifications": [],
                 "traya_blind_reviews": [],
@@ -10634,6 +10990,7 @@ class GithubCompanionRunner:
                         if ik:
                             open_pr_by_closing_issue_key.setdefault(ik, []).append(pr_copy)
 
+        hydrated_mergeability_node_ids: set[str] = set()
         if (
             self.linear_client is not None
             and poll_result.get("open_prs_poll_error") is None
@@ -10657,6 +11014,7 @@ class GithubCompanionRunner:
                 if nid:
                     hydrate_by_node_id[nid] = pk
             if hydrate_by_node_id:
+                hydrated_mergeability_node_ids.update(hydrate_by_node_id.keys())
                 mergeability_map = self.gh_client.fetch_pull_request_mergeability(hydrate_by_node_id.keys())
                 for nid, (m_state, ms_state) in mergeability_map.items():
                     pk = hydrate_by_node_id.get(nid)
@@ -10713,6 +11071,7 @@ class GithubCompanionRunner:
         linear_synced_closed: list[dict] = []
         linear_pr_actions: list[dict] = []
         merge_conflict_actions: list[dict] = []
+        in_review_pr_actions: list[dict] = []
         stale_issue_actions: list[dict] = []
         needs_decision_notifications: list[dict] = []
         traya_blind_reviews: list[dict] = []
@@ -10768,6 +11127,38 @@ class GithubCompanionRunner:
                 linear_breaker=linear_breaker,
             )
             linear_pr_actions.extend(merge_conflict_actions)
+            signoff_ready_pr_keys: set[str] = set()
+            for item in poll_result.get("signoff_ready_prs") or ():
+                if not isinstance(item, dict):
+                    continue
+                sk = str(item.get("key") or "").strip().lower()
+                if not sk:
+                    s_repo = str(item.get("repo") or "").strip()
+                    s_num = _safe_int(item.get("number"), 0)
+                    if s_repo and s_num > 0:
+                        sk = make_pr_key(s_repo, s_num)
+                if sk:
+                    signoff_ready_pr_keys.add(sk)
+            in_review_pr_actions = self._reconcile_in_review_linear_pr_status(
+                active_linear_issues=remaining_linear_issues,
+                open_prs_by_key=open_prs_by_key,
+                signoff_ready_pr_keys=signoff_ready_pr_keys,
+                poll_result=poll_result,
+                current_ms=current_ms,
+                linear_breaker=linear_breaker,
+                hydrated_mergeability_node_ids=hydrated_mergeability_node_ids,
+            )
+            if in_review_pr_actions and remaining_linear_issues:
+                updated_in_review_by_id: dict[str, dict] = {}
+                for act in in_review_pr_actions:
+                    upd = act.get("updated_issue")
+                    if isinstance(upd, dict) and str(upd.get("id") or "").strip():
+                        updated_in_review_by_id[str(upd["id"]).strip()] = upd
+                if updated_in_review_by_id:
+                    remaining_linear_issues = [
+                        updated_in_review_by_id.get(str(issue.get("id") or "").strip(), issue)
+                        for issue in remaining_linear_issues
+                    ]
             stale_issue_actions = self._process_stale_issues(
                 open_issues=poll_result.get("open_issues") or [],
                 active_linear_issues=remaining_linear_issues,
@@ -10877,6 +11268,7 @@ class GithubCompanionRunner:
             "signoff_notifications": signoff_notifications,
             "linear_pr_actions": linear_pr_actions,
             "merge_conflict_actions": merge_conflict_actions,
+            "in_review_pr_actions": in_review_pr_actions,
             "stale_issue_actions": stale_issue_actions,
             "needs_decision_notifications": needs_decision_notifications,
             "traya_blind_reviews": traya_blind_reviews,

@@ -53,6 +53,8 @@ def _detect_operation(query: str) -> str:
         return "issues"
     if "comments(" in query:
         return "issue_comments"
+    if "history(" in query:
+        return "issue_history"
     if "issue(" in query:
         return "issue_get"
     return "unknown"
@@ -200,6 +202,7 @@ class LoopbackLinearServer(http.server.ThreadingHTTPServer):
         self.attachments_page_size = 50
         self.issues_page_size = 50
         self.comments_page_size = 100
+        self.history_page_size = 50
 
         self._seq = 0
         self.viewer: dict[str, object] = {"id": "user-agent-skrye", "name": "Skrye"}
@@ -228,6 +231,7 @@ class LoopbackLinearServer(http.server.ThreadingHTTPServer):
         self.issue_order: list[str] = []
         self.attachments: list[dict[str, object]] = []
         self.comments_by_issue: dict[str, list[dict[str, object]]] = {}
+        self.history_by_issue: dict[str, list[dict[str, object]]] = {}
         self.relations: list[dict[str, object]] = []
 
     @property
@@ -367,6 +371,7 @@ class LoopbackLinearServer(http.server.ThreadingHTTPServer):
         self.issues[iid] = record
         self.issue_order.append(iid)
         self.comments_by_issue.setdefault(iid, [])
+        self.history_by_issue.setdefault(iid, [])
         return record
 
     def add_attachment(self, *, issue_id: str, url: str, title: str = "GitHub") -> dict[str, object]:
@@ -583,6 +588,22 @@ class LoopbackLinearServer(http.server.ThreadingHTTPServer):
                     "issue": {
                         "id": issue_id,
                         "comments": {"pageInfo": page_info, "nodes": nodes},
+                    }
+                }
+            }
+
+        if operation == "issue_history":
+            issue_id = str(variables.get("issueId") or "")
+            if issue_id not in self.issues:
+                return 200, {"data": {"issue": None}}
+            first = min(int(variables.get("first") or 50), self.history_page_size)
+            history = list(self.history_by_issue.get(issue_id, []))
+            nodes, page_info = _paginate(history, variables.get("after"), first)
+            return 200, {
+                "data": {
+                    "issue": {
+                        "id": issue_id,
+                        "history": {"pageInfo": page_info, "nodes": nodes},
                     }
                 }
             }
@@ -2380,6 +2401,187 @@ class RelationAndReleaseTaskTests(LinearSyncTestBase):
             self.assertEqual(returned["id"], created_issue["id"])
             self.assertEqual(returned["title"], "Release wimpysworld/tailor v1.2.4 (updated)")
             self.assertEqual(len(self.httpd.requests_for("issueUpdate")), pre_updates)
+
+
+class IssueHistoryAndAdminLabelVerificationTests(LinearSyncTestBase):
+    """Tests for is_verified_linear_admin_actor, list_issue_history, and verify_label_added_by_admin."""
+
+    @staticmethod
+    def _admin_actor(**overrides: object) -> dict[str, object]:
+        actor: dict[str, object] = {
+            "id": "u-martin",
+            "name": "Martin Wimpress",
+            "displayName": "Martin",
+            "email": "martin@wimpys.world",
+            "admin": True,
+            "owner": False,
+            "guest": False,
+        }
+        actor.update(overrides)
+        return actor
+
+    @staticmethod
+    def _history_entry(
+        entry_id: str,
+        *,
+        created_at: str,
+        added_labels: tuple[str, ...] = (),
+        removed_labels: tuple[str, ...] = (),
+        actor: dict[str, object] | None = None,
+        bot_actor: dict[str, object] | None = None,
+    ) -> dict[str, object]:
+        return {
+            "id": entry_id,
+            "createdAt": created_at,
+            "addedLabels": [{"id": f"lbl-{lbl.lower()}", "name": lbl} for lbl in added_labels],
+            "removedLabels": [{"id": f"lbl-{lbl.lower()}", "name": lbl} for lbl in removed_labels],
+            "actor": actor,
+            "botActor": bot_actor,
+        }
+
+    def test_workflow_labels_include_in_review_and_allow_merge_labels(self) -> None:
+        for expected in ("approved", "ci-failing", "changes-requested", "allow-merge"):
+            self.assertIn(expected, linear_sync.WORKFLOW_LABELS)
+
+    def test_is_verified_linear_admin_actor_accepts_admin_and_rejects_bots_guests_and_agents(self) -> None:
+        self.assertTrue(linear_sync.is_verified_linear_admin_actor(self._admin_actor()))
+        self.assertTrue(linear_sync.is_verified_linear_admin_actor(self._admin_actor(admin=False, owner=True)))
+        self.assertTrue(linear_sync.is_verified_linear_admin_actor(self._admin_actor(admin=False, isAdmin=True)))
+
+        for bad_actor in (None, "admin", [], 42):
+            self.assertFalse(linear_sync.is_verified_linear_admin_actor(bad_actor))
+        self.assertFalse(
+            linear_sync.is_verified_linear_admin_actor(
+                self._admin_actor(),
+                bot_actor={"id": "bot-1", "name": "Skrye", "type": "OAuthClient"},
+            )
+        )
+        self.assertFalse(linear_sync.is_verified_linear_admin_actor(self._admin_actor(guest=True)))
+        self.assertFalse(linear_sync.is_verified_linear_admin_actor(self._admin_actor(admin=False, owner=False)))
+        for bad_email in ("app@oauthapp.linear.app", "BOT@LINEAR.LINEAR.APP"):
+            self.assertFalse(linear_sync.is_verified_linear_admin_actor(self._admin_actor(email=bad_email)))
+        for denied in ("Skrye", "Zannah", "Traya", "sith-skrye", "sith-zannah", "sith-traya", "cubic", "Codex", "Linear"):
+            self.assertFalse(linear_sync.is_verified_linear_admin_actor(self._admin_actor(name=denied)))
+            self.assertFalse(linear_sync.is_verified_linear_admin_actor(self._admin_actor(displayName=denied)))
+
+    def test_list_issue_history_pagination_bounds_and_validation(self) -> None:
+        issue = self.httpd.add_issue(issue_id="issue-hist-1", title="History pagination test")
+        self.httpd.history_page_size = 2
+        self.httpd.history_by_issue["issue-hist-1"] = [
+            self._history_entry(f"h-{idx}", created_at=f"2026-11-24T10:0{idx}:00Z", added_labels=(f"lbl-{idx}",), actor=self._admin_actor())
+            for idx in range(1, 6)
+        ]
+        client = self.make_client()
+
+        # Default max_pages=4 fetches all 5 entries across 3 pages (2 + 2 + 1).
+        entries = client.list_issue_history(str(issue["id"]), page_size=2)
+        self.assertEqual([e["id"] for e in entries], ["h-1", "h-2", "h-3", "h-4", "h-5"])
+        self.assertEqual(len(self.httpd.requests_for("issue_history")), 3)
+
+        # max_pages=2 stops after 2 pages (4 entries).
+        capped = client.list_issue_history(str(issue["id"]), page_size=2, max_pages=2)
+        self.assertEqual([e["id"] for e in capped], ["h-1", "h-2", "h-3", "h-4"])
+
+        # Validation and missing issue error.
+        with self.assertRaises(ValueError):
+            client.list_issue_history("")
+        with self.assertRaises(ValueError):
+            client.list_issue_history(str(issue["id"]), page_size=0)
+        with self.assertRaises(ValueError):
+            client.list_issue_history(str(issue["id"]), max_pages=0)
+        with self.assertRaises(linear_sync.LinearAPIError):
+            client.list_issue_history("missing-issue")
+
+    def test_verify_label_added_by_admin_accepts_rejects_removals_and_paginates(self) -> None:
+        issue = self.httpd.add_issue(issue_id="issue-allow-1", title="Allow merge verification")
+        self.httpd.history_page_size = 2
+        client = self.make_client()
+
+        # 1) Admin add on page 2 (after unrelated page 1 entries) succeeds with case-insensitive match.
+        self.httpd.history_by_issue["issue-allow-1"] = [
+            self._history_entry("h-1", created_at="2026-11-24T09:00:00Z", added_labels=("PR",), actor=self._admin_actor()),
+            self._history_entry("h-2", created_at="2026-11-24T09:10:00Z", added_labels=("approved",), actor=self._admin_actor()),
+            self._history_entry(
+                "h-3",
+                created_at="2026-11-24T09:20:00Z",
+                added_labels=("Allow-Merge",),
+                actor=self._admin_actor(),
+            ),
+        ]
+        verified = client.verify_label_added_by_admin(str(issue["id"]), "allow-merge")
+        self.assertIsNotNone(verified)
+        assert verified is not None
+        self.assertEqual(verified["history_id"], "h-3")
+        self.assertEqual(verified["created_at"], "2026-11-24T09:20:00Z")
+        self.assertEqual(verified["actor"]["name"], "Martin Wimpress")  # type: ignore[index]
+
+        # 2) Latest event is a removal -> rejected even though an earlier admin add existed.
+        self.httpd.history_by_issue["issue-allow-1"].append(
+            self._history_entry(
+                "h-4",
+                created_at="2026-11-24T09:30:00Z",
+                removed_labels=("allow-merge",),
+                actor=self._admin_actor(),
+            )
+        )
+        self.assertIsNone(client.verify_label_added_by_admin(str(issue["id"]), "allow-merge"))
+
+        # 3) Non-admin / bot / guest / agent re-adds after removal -> rejected.
+        for bad_label, actor, bot_actor in (
+            ("bot", self._admin_actor(), {"id": "bot-skrye", "name": "Skrye", "type": "OAuthClient"}),
+            ("agent_name", self._admin_actor(name="Skrye"), None),
+            ("guest", self._admin_actor(guest=True), None),
+            ("member", self._admin_actor(admin=False, owner=False), None),
+            ("oauth_email", self._admin_actor(email="agent@oauthapp.linear.app"), None),
+        ):
+            with self.subTest(rejected_actor=bad_label):
+                self.httpd.history_by_issue["issue-allow-1"] = [
+                    self._history_entry(
+                        f"h-bad-{bad_label}",
+                        created_at="2026-11-24T10:00:00Z",
+                        added_labels=("allow-merge",),
+                        actor=actor,
+                        bot_actor=bot_actor,
+                    )
+                ]
+                self.assertIsNone(client.verify_label_added_by_admin(str(issue["id"]), "allow-merge"))
+
+        # 4) Label present in both addedLabels and removedLabels on latest event -> rejected.
+        self.httpd.history_by_issue["issue-allow-1"] = [
+            self._history_entry(
+                "h-both",
+                created_at="2026-11-24T10:05:00Z",
+                added_labels=("allow-merge",),
+                removed_labels=("allow-merge",),
+                actor=self._admin_actor(),
+            )
+        ]
+        self.assertIsNone(client.verify_label_added_by_admin(str(issue["id"]), "allow-merge"))
+
+        # 5) Unsorted nodes (newer admin add listed before older removal) still resolves latest chronologically.
+        self.httpd.history_by_issue["issue-allow-1"] = [
+            self._history_entry(
+                "h-readd",
+                created_at="2026-11-24T11:00:00Z",
+                added_labels=("allow-merge",),
+                actor=self._admin_actor(admin=False, owner=True),
+            ),
+            self._history_entry(
+                "h-old-remove",
+                created_at="2026-11-24T10:30:00Z",
+                removed_labels=("allow-merge",),
+                actor=self._admin_actor(),
+            ),
+        ]
+        readded = client.verify_label_added_by_admin(str(issue["id"]), "allow-merge")
+        self.assertIsNotNone(readded)
+        assert readded is not None
+        self.assertEqual(readded["history_id"], "h-readd")
+
+        # 6) Missing label or empty args return None cleanly.
+        self.assertIsNone(client.verify_label_added_by_admin(str(issue["id"]), "nonexistent-label"))
+        self.assertIsNone(client.verify_label_added_by_admin("", "allow-merge"))
+        self.assertIsNone(client.verify_label_added_by_admin(str(issue["id"]), ""))
 
 
 if __name__ == "__main__":

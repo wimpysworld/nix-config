@@ -5231,11 +5231,13 @@ class StubLinearSyncClient:
         self.issues: dict[str, dict[str, object]] = {}
         self.by_github_url: dict[str, str] = {}
         self.comments_by_issue: dict[str, list[dict[str, object]]] = {}
+        self.history_by_issue: dict[str, list[dict[str, object]]] = {}
         self.ensure_calls: list[dict[str, object]] = []
         self.update_calls: list[dict[str, object]] = []
         self.get_issue_calls: list[str] = []
         self.list_calls: list[dict[str, object]] = []
         self.list_comments_calls: list[str] = []
+        self.list_history_calls: list[str] = []
         self.post_verdict_calls: list[dict[str, object]] = []
         self.relation_calls: list[dict[str, object]] = []
         self.release_task_calls: list[dict[str, object]] = []
@@ -5474,6 +5476,27 @@ class StubLinearSyncClient:
             raise companion.linear_sync.LinearAPIError(f"Linear issue not found: {clean_id!r}")
         self.list_comments_calls.append(clean_id)
         return json.loads(json.dumps(self.comments_by_issue.get(clean_id, [])))
+
+    def list_issue_history(
+        self,
+        issue_id: str,
+        *,
+        page_size: int = 50,
+        max_pages: int = 4,
+    ) -> list[dict[str, object]]:
+        _ = page_size, max_pages
+        clean_id = str(issue_id or "").strip()
+        if not clean_id:
+            raise ValueError("issue_id must be non-empty")
+        if clean_id not in self.issues:
+            raise companion.linear_sync.LinearAPIError(f"Linear issue not found: {clean_id!r}")
+        self.list_history_calls.append(clean_id)
+        return json.loads(json.dumps(self.history_by_issue.get(clean_id, [])))
+
+    def verify_label_added_by_admin(self, issue_id: str, label_name: str) -> dict[str, object] | None:
+        self._extract_history_label_names = companion.linear_sync.LinearSyncClient._extract_history_label_names
+        self._parse_history_created_at = companion.linear_sync.LinearSyncClient._parse_history_created_at
+        return companion.linear_sync.LinearSyncClient.verify_label_added_by_admin(self, issue_id, label_name)  # type: ignore[arg-type]
 
     def find_issue_by_github_url(
         self,
@@ -13836,6 +13859,642 @@ class SecurityPatchReleaseGateTests(GithubCompanionTestBase):
             current_ms=t_recovered + 2 * companion.HABERDASHER_SOURCES_CACHE_TTL_MS
         )
         self.assertEqual(repos_stub, ("wimpysworld/tailor", "linuxmatters/jive-vocals", "wimpysworld/deb-get"))
+
+
+class InReviewStatusLabelsAndAllowMergeTests(GithubCompanionTestBase):
+    """Tests for live `In Review` PR status labels, `allow-merge` one-shot trigger, and digest `approved` surfacing."""
+
+    @staticmethod
+    def _admin_actor(**overrides: object) -> dict[str, object]:
+        actor: dict[str, object] = {
+            "id": "u-martin",
+            "name": "Martin Wimpress",
+            "displayName": "Martin",
+            "email": "martin@wimpys.world",
+            "admin": True,
+            "owner": False,
+            "guest": False,
+        }
+        actor.update(overrides)
+        return actor
+
+    @staticmethod
+    def _history_add(
+        entry_id: str,
+        label_name: str,
+        *,
+        created_at: str = "2026-11-24T08:00:00Z",
+        actor: dict[str, object] | None = None,
+        bot_actor: dict[str, object] | None = None,
+    ) -> dict[str, object]:
+        return {
+            "id": entry_id,
+            "createdAt": created_at,
+            "addedLabels": [{"id": f"lbl-{label_name.lower()}", "name": label_name}],
+            "removedLabels": [],
+            "actor": actor,
+            "botActor": bot_actor,
+        }
+
+    def _make_runner(
+        self,
+        *,
+        agent_name: str = "skrye",
+        linear_client: StubLinearSyncClient,
+        gh_runner: Callable[..., subprocess.CompletedProcess] | None = None,
+        state_subdir: str = "in-review-test",
+        operator_digest_enabled: bool = False,
+    ) -> tuple[companion.CompanionStateStore, companion.GithubCompanionRunner, companion.GhApiSafeClient]:
+        store = self.make_store(agent_name, state_dir=self.state_dir / state_subdir)
+        tg_client = self.make_telegram_client()
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        gh_client = companion.GhApiSafeClient(
+            runner=gh_runner or (lambda cmd, **k: subprocess.CompletedProcess(cmd, 0, stdout="{}", stderr=""))
+        )
+        poller = companion.NotificationPoller(state_store=store, gh_client=gh_client, clock=self.clock)
+        tf = companion.TrustFilterAndSnapshotBuilder(
+            state_store=store,
+            gh_client=gh_client,
+            telegram_client=tg_client,
+            agent_name=agent_name,
+            clock=self.clock,
+        )
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name=agent_name,
+            main_model="gemini::gemini-4-hydrogen",
+            telegram_client=tg_client,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+        runner = companion.GithubCompanionRunner(
+            state_store=store,
+            gh_client=gh_client,
+            poller=poller,
+            trust_filter=tf,
+            execution_coordinator=coord,
+            clock=self.clock,
+            linear_client=linear_client,  # type: ignore[arg-type]
+            telegram_client=tg_client,
+            operator_digest_enabled=operator_digest_enabled,
+        )
+        return store, runner, gh_client
+
+    def test_remove_pull_request_label_accepts_do_not_merge_and_rejects_arbitrary_labels(self) -> None:
+        cmds: list[list[str]] = []
+
+        def fake_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            cmds.append(list(cmd))
+            return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+        gh = companion.GhApiSafeClient(runner=fake_runner)
+        gh.remove_pull_request_label("wimpysworld/tailor", 42, companion.DO_NOT_MERGE_LABEL)
+        self.assertEqual(
+            cmds,
+            [["gh", "pr", "edit", "https://github.com/wimpysworld/tailor/pull/42", "--remove-label", "team:do-not-merge"]],
+        )
+        with self.assertRaises(ValueError):
+            gh.add_pull_request_label("wimpysworld/tailor", 42, companion.DO_NOT_MERGE_LABEL)
+        with self.assertRaises(ValueError):
+            gh.remove_pull_request_label("wimpysworld/tailor", 42, "arbitrary:label")
+        with self.assertRaises(ValueError):
+            gh.remove_pull_request_label("untrusted/repo", 42, companion.DO_NOT_MERGE_LABEL)
+
+    def test_in_review_approved_label_added_hydrates_agent_pr_and_strips_stale_labels(self) -> None:
+        repo = "wimpysworld/tailor"
+        pr_num = LinearCommunityPullRequestsPipelineTests._owned_numbers(repo, "skrye", 1, kind="pr", start=950)[0]
+        pr_key = companion.make_pr_key(repo, pr_num)
+        pr_url = f"https://github.com/{repo}/pull/{pr_num}"
+
+        linear_stub = StubLinearSyncClient()
+        lin_issue = linear_stub.seed_issue(
+            github_url=pr_url,
+            title="Agent PR ready for sign-off",
+            repo=repo,
+            item_kind="PR",
+            state="In Review",
+            extra_labels=(
+                "ready-to-implement",
+                "sign-off-required",
+                "needs-decision",
+                "merge-conflicts",
+                "ci-failing",
+                "changes-requested",
+            ),
+            estimate=2,
+        )
+        lin_id = str(lin_issue["id"])
+
+        mergeability_queries: list[list[str]] = []
+        _, runner, gh_client = self._make_runner(
+            agent_name="skrye",
+            linear_client=linear_stub,
+            state_subdir="in-review-approved",
+        )
+
+        def fake_mergeability(node_ids: Iterable[str], **kwargs: object) -> dict[str, tuple[str, str]]:
+            ids = list(node_ids)
+            mergeability_queries.append(ids)
+            return {nid: ("MERGEABLE", "CLEAN") for nid in ids}
+
+        gh_client.fetch_pull_request_mergeability = fake_mergeability  # type: ignore[method-assign]
+
+        open_prs_by_key = {
+            pr_key: {
+                "pr_key": pr_key,
+                "node_id": "PR_node_agent_approved",
+                "repo": repo,
+                "number": pr_num,
+                "author": "sith-skrye",
+                "state": "OPEN",
+                "url": pr_url,
+                "head_sha": "abc1234",
+                "mergeable": "UNKNOWN",
+                "merge_state_status": "",
+                "ci_state": "SUCCESS",
+                "review_decision": "APPROVED",
+                "unresolved_thread_count": 0,
+                "labels": ["team:do-not-merge"],
+            }
+        }
+
+        actions = runner._reconcile_in_review_linear_pr_status(
+            active_linear_issues=linear_stub.list_project_issues_by_state(),
+            open_prs_by_key=open_prs_by_key,
+            signoff_ready_pr_keys={pr_key},
+            poll_result={"status": 200, "open_prs_poll_error": None},
+            current_ms=1_750_000_000_000,
+        )
+        self.assertEqual(mergeability_queries, [["PR_node_agent_approved"]])
+        self.assertEqual(open_prs_by_key[pr_key]["mergeable"], "MERGEABLE")
+        self.assertEqual(len(actions), 1)
+        self.assertEqual(actions[0]["action"], "in_review_labels_synced")
+        self.assertEqual(actions[0]["added"], ["approved"])
+        self.assertEqual(
+            set(actions[0]["removed"]),
+            {
+                "ready-to-implement",
+                "sign-off-required",
+                "needs-decision",
+                "merge-conflicts",
+                "ci-failing",
+                "changes-requested",
+            },
+        )
+        updated_labels = companion.extract_linear_issue_labels(linear_stub.issues[lin_id])
+        self.assertIn("approved", updated_labels)
+        for cleared in companion.IN_REVIEW_APPROVED_CLEAR_LABELS:
+            self.assertNotIn(cleared, updated_labels)
+
+        # Second pass with identical state is idempotent (no further Linear update).
+        updates_before = len(linear_stub.update_calls)
+        second_actions = runner._reconcile_in_review_linear_pr_status(
+            active_linear_issues=linear_stub.list_project_issues_by_state(),
+            open_prs_by_key=open_prs_by_key,
+            signoff_ready_pr_keys=set(),
+            poll_result={"status": 200, "open_prs_poll_error": None},
+            current_ms=1_750_000_060_000,
+        )
+        self.assertEqual(second_actions, [])
+        self.assertEqual(len(linear_stub.update_calls), updates_before)
+
+    def test_in_review_blocker_labels_added_removed_and_cleared_on_resolution(self) -> None:
+        repo = "wimpysworld/tailor"
+        pr_num = LinearCommunityPullRequestsPipelineTests._owned_numbers(repo, "skrye", 1, kind="pr", start=960)[0]
+        pr_key = companion.make_pr_key(repo, pr_num)
+        pr_url = f"https://github.com/{repo}/pull/{pr_num}"
+
+        linear_stub = StubLinearSyncClient()
+        lin_issue = linear_stub.seed_issue(
+            github_url=pr_url,
+            title="PR transitioning through blockers",
+            repo=repo,
+            item_kind="PR",
+            state="In Review",
+            extra_labels=("approved", "ready-to-merge"),
+            estimate=3,
+        )
+        lin_id = str(lin_issue["id"])
+        _, runner, _ = self._make_runner(
+            agent_name="skrye",
+            linear_client=linear_stub,
+            state_subdir="in-review-blockers",
+        )
+
+        # 1) Active conflicts + CI failure + unresolved review thread -> adds all three blockers, clears approved + ready-to-merge.
+        open_prs = {
+            pr_key: {
+                "pr_key": pr_key,
+                "repo": repo,
+                "number": pr_num,
+                "author": "sith-zannah",
+                "state": "OPEN",
+                "url": pr_url,
+                "mergeable": "CONFLICTING",
+                "merge_state_status": "DIRTY",
+                "ci_state": "FAILURE",
+                "review_decision": "APPROVED",
+                "unresolved_thread_count": 2,
+                "labels": ["team:do-not-merge"],
+            }
+        }
+        a1 = runner._reconcile_in_review_linear_pr_status(
+            active_linear_issues=linear_stub.list_project_issues_by_state(),
+            open_prs_by_key=open_prs,
+            signoff_ready_pr_keys=set(),
+            poll_result={"status": 200, "open_prs_poll_error": None},
+            current_ms=1_750_000_000_000,
+        )
+        self.assertEqual(len(a1), 1)
+        self.assertEqual(set(a1[0]["added"]), {"merge-conflicts", "ci-failing", "changes-requested"})
+        self.assertEqual(set(a1[0]["removed"]), {"approved", "ready-to-merge"})
+        lbls_1 = companion.extract_linear_issue_labels(linear_stub.issues[lin_id])
+        self.assertTrue({"merge-conflicts", "ci-failing", "changes-requested"}.issubset(lbls_1))
+        self.assertNotIn("approved", lbls_1)
+        self.assertNotIn("ready-to-merge", lbls_1)
+
+        # 2) Conflicts and CI fixed, but reviewDecision == CHANGES_REQUESTED -> clears merge-conflicts and ci-failing, keeps changes-requested.
+        open_prs[pr_key].update({
+            "mergeable": "MERGEABLE",
+            "merge_state_status": "CLEAN",
+            "ci_state": "SUCCESS",
+            "review_decision": "CHANGES_REQUESTED",
+            "unresolved_thread_count": 0,
+        })
+        a2 = runner._reconcile_in_review_linear_pr_status(
+            active_linear_issues=linear_stub.list_project_issues_by_state(),
+            open_prs_by_key=open_prs,
+            signoff_ready_pr_keys=set(),
+            poll_result={"status": 200, "open_prs_poll_error": None},
+            current_ms=1_750_000_060_000,
+        )
+        self.assertEqual(len(a2), 1)
+        self.assertEqual(a2[0]["added"], [])
+        self.assertEqual(set(a2[0]["removed"]), {"merge-conflicts", "ci-failing"})
+        lbls_2 = companion.extract_linear_issue_labels(linear_stub.issues[lin_id])
+        self.assertIn("changes-requested", lbls_2)
+        self.assertNotIn("merge-conflicts", lbls_2)
+        self.assertNotIn("ci-failing", lbls_2)
+        self.assertNotIn("approved", lbls_2)
+
+        # 3) Review approved -> clears changes-requested and adds approved.
+        open_prs[pr_key]["review_decision"] = "APPROVED"
+        a3 = runner._reconcile_in_review_linear_pr_status(
+            active_linear_issues=linear_stub.list_project_issues_by_state(),
+            open_prs_by_key=open_prs,
+            signoff_ready_pr_keys=set(),
+            poll_result={"status": 200, "open_prs_poll_error": None},
+            current_ms=1_750_000_120_000,
+        )
+        self.assertEqual(len(a3), 1)
+        self.assertEqual(a3[0]["added"], ["approved"])
+        self.assertEqual(a3[0]["removed"], ["changes-requested"])
+        lbls_3 = companion.extract_linear_issue_labels(linear_stub.issues[lin_id])
+        self.assertIn("approved", lbls_3)
+        self.assertNotIn("changes-requested", lbls_3)
+
+        # 4) Pending CI (new commit pushed) clears approved without adding ci-failing.
+        open_prs[pr_key]["ci_state"] = "PENDING"
+        a4 = runner._reconcile_in_review_linear_pr_status(
+            active_linear_issues=linear_stub.list_project_issues_by_state(),
+            open_prs_by_key=open_prs,
+            signoff_ready_pr_keys=set(),
+            poll_result={"status": 200, "open_prs_poll_error": None},
+            current_ms=1_750_000_180_000,
+        )
+        self.assertEqual(len(a4), 1)
+        self.assertEqual(a4[0]["added"], [])
+        self.assertEqual(a4[0]["removed"], ["approved"])
+        lbls_4 = companion.extract_linear_issue_labels(linear_stub.issues[lin_id])
+        self.assertNotIn("approved", lbls_4)
+        self.assertNotIn("ci-failing", lbls_4)
+
+    def test_allow_merge_one_shot_trigger_security_gates_and_clear(self) -> None:
+        repo = "wimpysworld/tailor"
+        pr_trusted, pr_already_clear, pr_non_admin, pr_untrusted = (
+            LinearCommunityPullRequestsPipelineTests._owned_numbers(repo, "skrye", 4, kind="pr", start=970)
+        )
+        linear_stub = StubLinearSyncClient()
+
+        # 1) Trusted PR in In Review with team:do-not-merge + admin allow-merge + approved.
+        url_trusted = f"https://github.com/{repo}/pull/{pr_trusted}"
+        iss_trusted = linear_stub.seed_issue(
+            github_url=url_trusted,
+            title="Trusted PR allow-merge",
+            repo=repo,
+            item_kind="PR",
+            state="In Review",
+            extra_labels=("approved", "allow-merge"),
+        )
+        linear_stub.history_by_issue[str(iss_trusted["id"])] = [
+            self._history_add("h-admin-1", "allow-merge", actor=self._admin_actor())
+        ]
+
+        # 2) Trusted PR in Backlog (non-In-Review active state) without team:do-not-merge + admin allow-merge.
+        url_clear = f"https://github.com/{repo}/pull/{pr_already_clear}"
+        iss_clear = linear_stub.seed_issue(
+            github_url=url_clear,
+            title="Trusted PR already unblocked",
+            repo=repo,
+            item_kind="PR",
+            state="Backlog",
+            extra_labels=("allow-merge",),
+        )
+        linear_stub.history_by_issue[str(iss_clear["id"])] = [
+            self._history_add("h-admin-2", "allow-merge", actor=self._admin_actor(admin=False, owner=True))
+        ]
+
+        # 3) Trusted PR with bot/non-admin allow-merge -> rejected.
+        url_non_admin = f"https://github.com/{repo}/pull/{pr_non_admin}"
+        iss_non_admin = linear_stub.seed_issue(
+            github_url=url_non_admin,
+            title="Non-admin allow-merge attempt",
+            repo=repo,
+            item_kind="PR",
+            state="In Review",
+            extra_labels=("approved", "allow-merge"),
+        )
+        linear_stub.history_by_issue[str(iss_non_admin["id"])] = [
+            self._history_add(
+                "h-bot-1",
+                "allow-merge",
+                actor=self._admin_actor(),
+                bot_actor={"id": "bot-skrye", "name": "Skrye", "type": "OAuthClient"},
+            )
+        ]
+
+        # 4) External community PR with admin allow-merge -> ignored (never touches GitHub).
+        url_untrusted = f"https://github.com/{repo}/pull/{pr_untrusted}"
+        iss_untrusted = linear_stub.seed_issue(
+            github_url=url_untrusted,
+            title="External contributor PR",
+            repo=repo,
+            item_kind="PR",
+            state="In Review",
+            extra_labels=("allow-merge",),
+        )
+        linear_stub.history_by_issue[str(iss_untrusted["id"])] = [
+            self._history_add("h-admin-ext", "allow-merge", actor=self._admin_actor())
+        ]
+
+        gh_cmds: list[list[str]] = []
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            gh_cmds.append(list(cmd))
+            return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+        _, runner, _ = self._make_runner(
+            agent_name="skrye",
+            linear_client=linear_stub,
+            gh_runner=fake_gh,
+            state_subdir="in-review-allow-merge",
+        )
+
+        key_trusted = companion.make_pr_key(repo, pr_trusted)
+        key_clear = companion.make_pr_key(repo, pr_already_clear)
+        key_non_admin = companion.make_pr_key(repo, pr_non_admin)
+        key_untrusted = companion.make_pr_key(repo, pr_untrusted)
+        open_prs = {
+            key_trusted: {
+                "pr_key": key_trusted,
+                "repo": repo,
+                "number": pr_trusted,
+                "author": "sith-skrye",
+                "state": "OPEN",
+                "url": url_trusted,
+                "mergeable": "MERGEABLE",
+                "ci_state": "SUCCESS",
+                "review_decision": "APPROVED",
+                "unresolved_thread_count": 0,
+                "labels": ["team:do-not-merge"],
+            },
+            key_clear: {
+                "pr_key": key_clear,
+                "repo": repo,
+                "number": pr_already_clear,
+                "author": "flexiondotorg",
+                "state": "OPEN",
+                "url": url_clear,
+                "mergeable": "MERGEABLE",
+                "ci_state": "SUCCESS",
+                "review_decision": "APPROVED",
+                "unresolved_thread_count": 0,
+                "labels": [],
+            },
+            key_non_admin: {
+                "pr_key": key_non_admin,
+                "repo": repo,
+                "number": pr_non_admin,
+                "author": "sith-zannah",
+                "state": "OPEN",
+                "url": url_non_admin,
+                "mergeable": "MERGEABLE",
+                "ci_state": "SUCCESS",
+                "review_decision": "APPROVED",
+                "unresolved_thread_count": 0,
+                "labels": ["team:do-not-merge"],
+            },
+            key_untrusted: {
+                "pr_key": key_untrusted,
+                "repo": repo,
+                "number": pr_untrusted,
+                "author": "external-contributor",
+                "state": "OPEN",
+                "url": url_untrusted,
+                "mergeable": "MERGEABLE",
+                "ci_state": "SUCCESS",
+                "review_decision": "APPROVED",
+                "unresolved_thread_count": 0,
+                "labels": ["team:do-not-merge"],
+            },
+        }
+
+        actions = runner._reconcile_in_review_linear_pr_status(
+            active_linear_issues=linear_stub.list_project_issues_by_state(),
+            open_prs_by_key=open_prs,
+            signoff_ready_pr_keys=set(),
+            poll_result={"status": 200, "open_prs_poll_error": None},
+            current_ms=1_750_000_000_000,
+        )
+
+        # Only the verified trusted PR with team:do-not-merge triggers `gh pr edit --remove-label team:do-not-merge`.
+        self.assertEqual(
+            gh_cmds,
+            [["gh", "pr", "edit", url_trusted, "--remove-label", "team:do-not-merge"]],
+        )
+        # Local in-memory labels updated, Linear allow-merge & approved removed, and audit comment posted.
+        self.assertEqual(open_prs[key_trusted]["labels"], [])
+        trusted_labels = companion.extract_linear_issue_labels(linear_stub.issues[str(iss_trusted["id"])])
+        self.assertNotIn("allow-merge", trusted_labels)
+        self.assertNotIn("approved", trusted_labels)
+        trusted_comments = linear_stub.comments_by_issue.get(str(iss_trusted["id"]), [])
+        self.assertEqual(len(trusted_comments), 1)
+        self.assertIn(
+            f"Removed `team:do-not-merge` on {url_trusted} after admin `allow-merge` approval; automated review and merge checks are active.",
+            str(trusted_comments[0]["body"]),
+        )
+        action_kinds = [(a["pr_key"], a["action"]) for a in actions]
+        self.assertIn((key_trusted, "allow_merge_hold_lifted"), action_kinds)
+        self.assertIn((key_trusted, "in_review_labels_synced"), action_kinds)
+
+        # Trusted PR without team:do-not-merge simply clears allow-merge in Linear (no GitHub edit, no audit comment).
+        self.assertIn((key_clear, "allow_merge_cleared"), action_kinds)
+        self.assertNotIn("allow-merge", companion.extract_linear_issue_labels(linear_stub.issues[str(iss_clear["id"])]))
+        self.assertEqual(linear_stub.comments_by_issue.get(str(iss_clear["id"]), []), [])
+
+        # Non-admin allow-merge leaves GitHub and allow-merge untouched.
+        self.assertEqual(open_prs[key_non_admin]["labels"], ["team:do-not-merge"])
+        self.assertIn("allow-merge", companion.extract_linear_issue_labels(linear_stub.issues[str(iss_non_admin["id"])]))
+
+        # Untrusted external PR leaves GitHub and allow-merge untouched (does not even inspect history for it).
+        self.assertEqual(open_prs[key_untrusted]["labels"], ["team:do-not-merge"])
+        self.assertIn("allow-merge", companion.extract_linear_issue_labels(linear_stub.issues[str(iss_untrusted["id"])]))
+        self.assertNotIn(str(iss_untrusted["id"]), linear_stub.list_history_calls)
+
+    def test_approved_items_top_of_weekday_digest_and_run_cycle_propagation(self) -> None:
+        # 1) format_operator_digest places Approved (sign-off ready) first, sorted XS -> XL.
+        digest_text = companion.format_operator_digest(
+            date_str="2026-01-05",
+            approved=[
+                {"identifier": "WW-20", "title": "Large approved PR", "estimate": 5, "url": "https://linear.app/ww/WW-20"},
+                {"identifier": "WW-10", "title": "XS approved PR", "estimate": 1, "url": "https://linear.app/ww/WW-10"},
+            ],
+            ready_to_merge=[
+                {"identifier": "WW-30", "title": "Ready to merge PR", "estimate": 2, "url": "https://linear.app/ww/WW-30"},
+            ],
+            needs_decision=[],
+            first_time_prs=[],
+            signoff_issues=[],
+            security_releases=[],
+            dead_letter_keys=[],
+            is_monday=False,
+        )
+        self.assertIn("Approved (sign-off ready) (2):", digest_text)
+        self.assertLess(digest_text.index("Approved (sign-off ready) (2):"), digest_text.index("Ready to merge (1):"))
+        self.assertLess(digest_text.index("[XS] WW-10"), digest_text.index("[L] WW-20"))
+
+        # 2) _maybe_send_operator_digest excludes approved items from ready_to_merge and signoff_issues.
+        linear_stub = StubLinearSyncClient()
+        linear_stub.seed_issue(
+            github_url="https://github.com/wimpysworld/tailor/pull/981",
+            title="Approved PR also carrying ready-to-merge",
+            repo="wimpysworld/tailor",
+            item_kind="PR",
+            state="In Review",
+            extra_labels=("approved", "ready-to-merge"),
+            estimate=1,
+        )
+        linear_stub.seed_issue(
+            github_url="https://github.com/wimpysworld/tailor/issues/982",
+            title="Approved issue also carrying sign-off-required",
+            repo="wimpysworld/tailor",
+            item_kind="Issue",
+            state="In Review",
+            extra_labels=("approved", "sign-off-required"),
+            estimate=2,
+        )
+        linear_stub.seed_issue(
+            github_url="https://github.com/wimpysworld/tailor/pull/983",
+            title="Separate ready-to-merge PR",
+            repo="wimpysworld/tailor",
+            item_kind="PR",
+            state="Backlog",
+            extra_labels=("ready-to-merge",),
+            estimate=3,
+        )
+        mon_0830_ms = LinearCommunityPullRequestsPipelineTests._utc_ms(2026, 1, 5, 8, 30)
+        _, runner, _ = self._make_runner(
+            agent_name="skrye",
+            linear_client=linear_stub,
+            state_subdir="in-review-digest-dedup",
+            operator_digest_enabled=True,
+        )
+        digest_res = runner._maybe_send_operator_digest(
+            active_linear_issues=linear_stub.list_project_issues_by_state(),
+            pending_security_releases=[],
+            current_ms=mon_0830_ms,
+        )
+        self.assertIsNotNone(digest_res)
+        assert digest_res is not None
+        self.assertEqual(digest_res["counts"]["approved"], 2)
+        self.assertEqual(digest_res["counts"]["ready_to_merge"], 1)
+        self.assertEqual(digest_res["counts"]["signoff_issues"], 0)
+        msg = str(digest_res["message"])
+        self.assertEqual(msg.count("Approved PR also carrying ready-to-merge"), 1)
+        self.assertEqual(msg.count("Approved issue also carrying sign-off-required"), 1)
+        self.assertLess(msg.index("Approved (sign-off ready) (2):"), msg.index("Ready to merge (1):"))
+
+        # 3) End-to-end run_cycle applies `approved` to an In Review PR and surfaces it immediately in the same cycle's digest.
+        repo = "wimpysworld/tailor"
+        pr_num = LinearCommunityPullRequestsPipelineTests._owned_numbers(repo, "skrye", 1, kind="pr", start=985)[0]
+        pr_url = f"https://github.com/{repo}/pull/{pr_num}"
+        cycle_linear = StubLinearSyncClient()
+        cycle_linear.seed_issue(
+            github_url=pr_url,
+            title="Freshly approved PR in run_cycle",
+            repo=repo,
+            item_kind="PR",
+            state="In Review",
+            extra_labels=("ready-to-implement",),
+            estimate=1,
+        )
+
+        pr_node = {
+            "__typename": "PullRequest",
+            "id": "PR_node_cycle_985",
+            "databaseId": pr_num,
+            "number": pr_num,
+            "title": "Freshly approved PR in run_cycle",
+            "body": "",
+            "url": pr_url,
+            "state": "OPEN",
+            "isDraft": False,
+            "updatedAt": "2026-01-05T08:00:00Z",
+            "headRefOid": "sha985",
+            "headRefName": "fix/cycle-985",
+            "author": {"login": "sith-skrye"},
+            "authorAssociation": "COLLABORATOR",
+            "reviewDecision": "APPROVED",
+            "statusCheckRollup": {"state": "SUCCESS"},
+            "reviewRequests": {"nodes": []},
+            "reviewThreads": {"nodes": [], "pageInfo": {"hasNextPage": False}},
+            "labels": {"nodes": [{"name": "team:do-not-merge"}]},
+            "repository": {"nameWithOwner": repo, "isArchived": False},
+        }
+
+        def fake_cycle_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                joined = " ".join(cmd)
+                if "nodes(ids:" in joined:
+                    payload = {"data": {"nodes": [{"id": "PR_node_cycle_985", "mergeable": "MERGEABLE", "mergeStateStatus": "CLEAN"}]}}
+                    return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(payload), stderr="")
+                payload = {"data": {"search": {"pageInfo": {"hasNextPage": False, "endCursor": None}, "nodes": [pr_node]}}}
+                return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(payload), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout="{}", stderr="")
+
+        _, cycle_runner, _ = self._make_runner(
+            agent_name="skrye",
+            linear_client=cycle_linear,
+            gh_runner=fake_cycle_gh,
+            state_subdir="in-review-run-cycle",
+            operator_digest_enabled=True,
+        )
+        cycle_res = cycle_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=mon_0830_ms)
+        self.assertEqual(cycle_res["status"], "ok")
+        self.assertEqual(len(cycle_res["in_review_pr_actions"]), 1)
+        self.assertEqual(cycle_res["in_review_pr_actions"][0]["action"], "in_review_labels_synced")
+        self.assertEqual(cycle_res["in_review_pr_actions"][0]["added"], ["approved"])
+        self.assertEqual(cycle_res["in_review_pr_actions"][0]["removed"], ["ready-to-implement"])
+        self.assertIsNotNone(cycle_res["operator_digest"])
+        assert cycle_res["operator_digest"] is not None
+        self.assertEqual(cycle_res["operator_digest"]["counts"]["approved"], 1)
+        self.assertIn("Approved (sign-off ready) (1):", str(cycle_res["operator_digest"]["message"]))
+        self.assertIn("Freshly approved PR in run_cycle", str(cycle_res["operator_digest"]["message"]))
 
 
 if __name__ == "__main__":
