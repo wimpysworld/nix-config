@@ -40,6 +40,7 @@ GITHUB_URL_MARKER_PREFIX = "moltis:github-url:v1"
 
 ENV_LINEAR_CLIENT_ID_PATH = "MOLTIS_GITHUB_COMPANION_LINEAR_CLIENT_ID_PATH"
 ENV_LINEAR_CLIENT_SECRET_PATH = "MOLTIS_GITHUB_COMPANION_LINEAR_CLIENT_SECRET_PATH"
+ENV_LINEAR_LABEL_API_KEY_PATH = "MOLTIS_GITHUB_COMPANION_LINEAR_LABEL_API_KEY_PATH"
 ENV_LINEAR_TOKEN_CACHE_DIR = "MOLTIS_GITHUB_COMPANION_LINEAR_TOKEN_CACHE_DIR"
 ENV_LINEAR_TEAM_KEY = "MOLTIS_GITHUB_COMPANION_LINEAR_TEAM_KEY"
 ENV_LINEAR_API_URL = "MOLTIS_GITHUB_COMPANION_LINEAR_API_URL"
@@ -80,6 +81,21 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 class LinearAPIError(RuntimeError):
     """Structured Linear HTTP or GraphQL API error."""
 
+    _PERMISSION_CODES = frozenset({"FORBIDDEN", "PERMISSION_DENIED"})
+    _AUTH_CODES = frozenset({"AUTHENTICATION_ERROR", "UNAUTHENTICATED", "UNAUTHORIZED"})
+    _PERMISSION_PHRASES = (
+        "not allowed to take action",
+        "permission denied",
+        "insufficient permission",
+        "forbidden",
+    )
+    _AUTH_PHRASES = (
+        "authentication required",
+        "not authenticated",
+        "invalid api key",
+        "unauthorized",
+    )
+
     def __init__(
         self,
         message: str = "",
@@ -91,6 +107,44 @@ class LinearAPIError(RuntimeError):
         super().__init__(message or default_msg)
         self.status = status
         self.errors = list(errors) if errors else []
+
+    def _error_codes_and_messages(self) -> tuple[set[str], list[str]]:
+        codes: set[str] = set()
+        messages: list[str] = [str(self).lower()]
+        for err in self.errors:
+            if not isinstance(err, dict):
+                continue
+            msg = str(err.get("message") or "").strip().lower()
+            if msg:
+                messages.append(msg)
+            ext = err.get("extensions")
+            if isinstance(ext, dict):
+                code = str(ext.get("code") or "").strip().upper()
+                if code:
+                    codes.add(code)
+                user_msg = str(ext.get("userPresentableMessage") or "").strip().lower()
+                if user_msg:
+                    messages.append(user_msg)
+        return codes, messages
+
+    def is_permission_error(self) -> bool:
+        if self.status == 403:
+            return True
+        codes, messages = self._error_codes_and_messages()
+        if codes & self._PERMISSION_CODES:
+            return True
+        return any(phrase in msg for msg in messages for phrase in self._PERMISSION_PHRASES)
+
+    def is_auth_error(self) -> bool:
+        if self.status == 401:
+            return True
+        codes, messages = self._error_codes_and_messages()
+        if codes & self._AUTH_CODES:
+            return True
+        return any(phrase in msg for msg in messages for phrase in self._AUTH_PHRASES)
+
+    def is_permission_or_auth_error(self) -> bool:
+        return self.is_permission_error() or self.is_auth_error()
 
 
 def load_linear_token_module() -> ModuleType:
@@ -168,6 +222,7 @@ def _graphql_request(
     variables: dict[str, object] | None = None,
     *,
     token: str,
+    auth_scheme: str = "Bearer",
     timeout: float = DEFAULT_TIMEOUT_SECS,
     refresh_token: Callable[[str], str] | None = None,
 ) -> dict[str, object]:
@@ -182,6 +237,7 @@ def _graphql_request(
     current_token = token
 
     for attempt in range(2):
+        auth_header = f"{auth_scheme} {current_token}" if auth_scheme else current_token
         request = urllib.request.Request(
             url,
             data=body,
@@ -189,7 +245,7 @@ def _graphql_request(
             headers={
                 "Content-Type": "application/json",
                 "Accept": "application/json",
-                "Authorization": f"Bearer {current_token}",
+                "Authorization": auth_header,
             },
         )
         try:
@@ -712,6 +768,7 @@ class LinearSyncClient:
         client_id_path: Path | str,
         client_secret_path: Path | str,
         token_cache_dir: Path | str,
+        label_api_key_path: Path | str | None = None,
         team_key: str = DEFAULT_TEAM_KEY,
         project_name: str = DEFAULT_PROJECT_NAME,
         api_url: str = DEFAULT_GRAPHQL_URL,
@@ -727,6 +784,7 @@ class LinearSyncClient:
 
         self.client_id_path = clean_client_id
         self.client_secret_path = clean_client_secret
+        self.label_api_key_path = str(label_api_key_path or "").strip() or None
         self.token_cache_dir = clean_cache_dir
         self.team_key = (team_key or DEFAULT_TEAM_KEY).strip() or DEFAULT_TEAM_KEY
         self.project_name = (project_name or DEFAULT_PROJECT_NAME).strip() or DEFAULT_PROJECT_NAME
@@ -755,6 +813,8 @@ class LinearSyncClient:
         self._repo_labels_by_lower_name: dict[str, dict[str, object]] = {}
         self._flat_labels_by_lower_name: dict[str, dict[str, object]] = {}
         self._repository_label_group_id: str | None = None
+        self._label_creation_forbidden = False
+        self._label_creation_warned = False
 
     def __repr__(self) -> str:
         return (
@@ -771,11 +831,13 @@ class LinearSyncClient:
         token_cache_dir = str(source.get(ENV_LINEAR_TOKEN_CACHE_DIR) or "").strip()
         if not client_id_path or not client_secret_path or not token_cache_dir:
             return None
+        label_api_key_path = str(source.get(ENV_LINEAR_LABEL_API_KEY_PATH) or "").strip() or None
         team_key = str(source.get(ENV_LINEAR_TEAM_KEY) or "").strip() or DEFAULT_TEAM_KEY
         api_url = str(source.get(ENV_LINEAR_API_URL) or "").strip() or DEFAULT_GRAPHQL_URL
         return cls(
             client_id_path=client_id_path,
             client_secret_path=client_secret_path,
+            label_api_key_path=label_api_key_path,
             token_cache_dir=token_cache_dir,
             team_key=team_key,
             api_url=api_url,
@@ -849,6 +911,30 @@ class LinearSyncClient:
             token=token,
             timeout=self.timeout,
             refresh_token=self._refresh_access_token,
+        )
+
+    def _read_label_api_key(self) -> str | None:
+        if not self.label_api_key_path:
+            return None
+        lt = self._get_linear_token_module()
+        return str(lt.read_credential(self.label_api_key_path))
+
+    def _label_graphql_request(
+        self,
+        query: str,
+        variables: dict[str, object] | None = None,
+    ) -> dict[str, object]:
+        label_api_key = self._read_label_api_key()
+        if label_api_key is None:
+            return self._graphql_request(query, variables)
+        return _graphql_request(
+            self.api_url,
+            query,
+            variables,
+            token=label_api_key,
+            auth_scheme="",
+            timeout=self.timeout,
+            refresh_token=None,
         )
 
     def resolve_team_id(self) -> str:
@@ -1144,7 +1230,7 @@ class LinearSyncClient:
             payload_input["isGroup"] = True
         if parent_id is not None:
             payload_input["parentId"] = parent_id
-        data = self._graphql_request(_ISSUE_LABEL_CREATE_MUTATION, {"input": payload_input})
+        data = self._label_graphql_request(_ISSUE_LABEL_CREATE_MUTATION, {"input": payload_input})
         result = data.get("issueLabelCreate")
         label = result.get("issueLabel") if isinstance(result, dict) else None
         if not isinstance(result, dict) or not result.get("success") or not isinstance(label, dict) or not label.get("id"):
@@ -1175,6 +1261,28 @@ class LinearSyncClient:
         group_id = self.ensure_repository_label_group()
         created = self._create_label(name=clean_repo, parent_id=group_id)
         return str(created["id"])
+
+    def _ensure_optional_repository_label(self, repo: str) -> str | None:
+        """Resolve or create a repository label, degrading cleanly to None if label creation is denied."""
+        clean_repo = _normalize_repo_name(repo)
+        self._load_labels()
+        existing = self._repo_labels_by_lower_name.get(clean_repo)
+        if existing is not None:
+            return str(existing["id"])
+        if self._label_creation_forbidden:
+            return None
+        try:
+            return self.ensure_repository_label(clean_repo)
+        except LinearAPIError as exc:
+            if not exc.is_permission_error():
+                raise
+            self._label_creation_forbidden = True
+            if not self._label_creation_warned:
+                self._label_creation_warned = True
+                sys.stderr.write(
+                    f"linear_sync: Linear label creation denied ({exc}); continuing without missing repository labels\n"
+                )
+            return None
 
     def ensure_workflow_label(self, label_name: str) -> str:
         """Resolve or create one of the six workflow labels on demand."""
@@ -1539,11 +1647,11 @@ class LinearSyncClient:
 
         label_ids: list[str] = []
         for label_id in (
-            self.ensure_repository_label(resolved_repo),
+            self._ensure_optional_repository_label(resolved_repo),
             self.ensure_workflow_label(resolved_kind),
             *(self.ensure_label(extra) for extra in extra_labels if str(extra or "").strip()),
         ):
-            if label_id not in label_ids:
+            if label_id and label_id not in label_ids:
                 label_ids.append(label_id)
 
         issue_input: dict[str, object] = {

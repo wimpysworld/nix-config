@@ -163,7 +163,7 @@ class MockLinearGraphQLHandler(http.server.BaseHTTPRequestHandler):
             return
 
         with srv.lock:
-            expected_headers = {f"Bearer {tok}" for tok in srv.valid_tokens}
+            expected_headers = {f"Bearer {tok}" for tok in srv.valid_tokens} | set(srv.valid_api_keys)
             on_auth_failure = srv.on_auth_failure
 
         if auth not in expected_headers:
@@ -185,6 +185,7 @@ class LoopbackLinearServer(http.server.ThreadingHTTPServer):
         super().__init__(("127.0.0.1", 0), MockLinearGraphQLHandler)
         self.lock = threading.Lock()
         self.valid_tokens: set[str] = {"synthetic-token"}
+        self.valid_api_keys: set[str] = set()
         self.requests: list[dict[str, object]] = []
         self.redirected_requests: list[dict[str, object]] = []
         self.custom_handler: Callable[[MockLinearGraphQLHandler, dict[str, object]], bool] | None = None
@@ -653,10 +654,12 @@ class LinearSyncTestBase(unittest.TestCase):
         timeout: float = linear_sync.DEFAULT_TIMEOUT_SECS,
         marker_index_ttl_secs: float = linear_sync.DEFAULT_MARKER_INDEX_TTL_SECS,
         api_url: str | None = None,
+        label_api_key_path: Path | str | None = None,
     ) -> linear_sync.LinearSyncClient:
         return linear_sync.LinearSyncClient(
             client_id_path=self.client_id_path,
             client_secret_path=self.client_secret_path,
+            label_api_key_path=label_api_key_path,
             token_cache_dir=self.token_cache_dir,
             team_key=team_key,
             project_name=project_name,
@@ -1624,10 +1627,14 @@ class IssueSyncPaginationAndVerdictTests(LinearSyncTestBase):
         self.assertEqual(default_client.api_url, linear_sync.DEFAULT_GRAPHQL_URL)
 
         self.httpd.teams.append({"id": "team-alt", "key": "ALT", "name": "Alternate"})
+        label_key_path = self.root / "label-api-key"
+        label_key_path.write_text("lin_api_synthetic_label_key\n", encoding="utf-8")
+        label_key_path.chmod(0o400)
         custom_client = linear_sync.LinearSyncClient.from_env(
             {
                 linear_sync.ENV_LINEAR_CLIENT_ID_PATH: str(self.client_id_path),
                 linear_sync.ENV_LINEAR_CLIENT_SECRET_PATH: str(self.client_secret_path),
+                linear_sync.ENV_LINEAR_LABEL_API_KEY_PATH: str(label_key_path),
                 linear_sync.ENV_LINEAR_TOKEN_CACHE_DIR: str(self.token_cache_dir),
                 linear_sync.ENV_LINEAR_TEAM_KEY: "ALT",
                 linear_sync.ENV_LINEAR_API_URL: self.httpd.graphql_url,
@@ -1636,7 +1643,156 @@ class IssueSyncPaginationAndVerdictTests(LinearSyncTestBase):
         assert custom_client is not None
         self.assertEqual(custom_client.team_key, "ALT")
         self.assertEqual(custom_client.api_url, self.httpd.graphql_url)
+        self.assertEqual(custom_client.label_api_key_path, str(label_key_path))
         self.assertEqual(custom_client.resolve_team_id(), "team-alt")
+
+    def test_label_creation_uses_raw_personal_api_key_while_other_ops_use_oauth_bearer(self) -> None:
+        label_key = "lin_api_synthetic_team_ww_label_key"
+        label_key_path = self.root / "label-api-key"
+        label_key_path.write_text(label_key + "\n", encoding="utf-8")
+        label_key_path.chmod(0o400)
+        self.httpd.valid_api_keys = {label_key}
+
+        # Pre-seed workflow label so only Repository group and repo child label invoke issueLabelCreate.
+        self.httpd.labels.append(
+            {
+                "id": "lbl-issue",
+                "name": "Issue",
+                "isGroup": False,
+                "parent": None,
+                "team": {"id": "team-ww"},
+            }
+        )
+
+        # Reject issueLabelCreate when authenticated with the OAuth Bearer token, mimicking Linear app-actor rules.
+        def reject_oauth_label_create(handler: MockLinearGraphQLHandler, record: dict[str, object]) -> bool:
+            if record["operation"] == "issueLabelCreate" and str(record["authorization"]).startswith("Bearer "):
+                handler._send_json(
+                    200,
+                    {
+                        "errors": [
+                            {
+                                "message": "not allowed to take action",
+                                "extensions": {"code": "FORBIDDEN"},
+                            }
+                        ]
+                    },
+                )
+                return True
+            return False
+
+        self.httpd.custom_handler = reject_oauth_label_create
+        client = self.make_client(label_api_key_path=label_key_path)
+        self.assertNotIn(label_key, repr(client))
+
+        created = client.ensure_issue_for_github_item(
+            github_url="https://github.com/wimpysworld/tailor/issues/5",
+            title="Create repo label with personal key",
+            item_kind="Issue",
+            state="Triage",
+        )
+        label_names = {node["name"] for node in created["labels"]["nodes"]}
+        self.assertEqual(label_names, {"wimpysworld/tailor", "Issue"})
+
+        label_reqs = self.httpd.requests_for("issueLabelCreate")
+        self.assertEqual(len(label_reqs), 2)
+        self.assertEqual([req["authorization"] for req in label_reqs], [label_key, label_key])
+
+        non_label_reqs = [req for req in self.httpd.requests if req["operation"] != "issueLabelCreate"]
+        self.assertTrue(non_label_reqs)
+        self.assertTrue(all(req["authorization"] == f"Bearer {self.INITIAL_TOKEN}" for req in non_label_reqs))
+
+    def test_ensure_issue_degrades_gracefully_when_label_creation_is_denied(self) -> None:
+        self.httpd.labels.extend(
+            [
+                {
+                    "id": "lbl-repo-group",
+                    "name": "Repository",
+                    "isGroup": True,
+                    "parent": None,
+                    "team": {"id": "team-ww"},
+                },
+                {
+                    "id": "lbl-existing-repo",
+                    "name": "wimpysworld/existing",
+                    "isGroup": False,
+                    "parent": {"id": "lbl-repo-group", "name": "Repository"},
+                    "team": {"id": "team-ww"},
+                },
+                {
+                    "id": "lbl-issue",
+                    "name": "Issue",
+                    "isGroup": False,
+                    "parent": None,
+                    "team": {"id": "team-ww"},
+                },
+            ]
+        )
+
+        def deny_label_create(handler: MockLinearGraphQLHandler, record: dict[str, object]) -> bool:
+            if record["operation"] == "issueLabelCreate":
+                handler._send_json(
+                    200,
+                    {"errors": [{"message": "not allowed to take action"}]},
+                )
+                return True
+            return False
+
+        self.httpd.custom_handler = deny_label_create
+        client = self.make_client()
+        stderr_buf = io.StringIO()
+        with contextlib.redirect_stderr(stderr_buf):
+            first = client.ensure_issue_for_github_item(
+                github_url="https://github.com/wimpysworld/missing-one/issues/1",
+                title="First missing repo",
+                item_kind="Issue",
+                state="Triage",
+            )
+            second = client.ensure_issue_for_github_item(
+                github_url="https://github.com/wimpysworld/missing-two/issues/2",
+                title="Second missing repo",
+                item_kind="Issue",
+                state="Triage",
+            )
+            third = client.ensure_issue_for_github_item(
+                github_url="https://github.com/wimpysworld/existing/issues/3",
+                title="Existing repo still gets label",
+                item_kind="Issue",
+                state="Triage",
+            )
+
+        self.assertEqual({node["name"] for node in first["labels"]["nodes"]}, {"Issue"})
+        self.assertEqual({node["name"] for node in second["labels"]["nodes"]}, {"Issue"})
+        self.assertEqual({node["name"] for node in third["labels"]["nodes"]}, {"wimpysworld/existing", "Issue"})
+        # Only the first missing repo attempted issueLabelCreate; the second skipped it cleanly.
+        self.assertEqual(len(self.httpd.requests_for("issueLabelCreate")), 1)
+        self.assertEqual(len(self.httpd.requests_for("issueCreate")), 3)
+        self.assertEqual(len(self.httpd.requests_for("attachmentCreate")), 3)
+        warnings = [line for line in stderr_buf.getvalue().splitlines() if line.strip()]
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("Linear label creation denied", warnings[0])
+
+    def test_linear_api_error_permission_and_auth_classification(self) -> None:
+        perm_msg = linear_sync.LinearAPIError("not allowed to take action", status=200)
+        self.assertTrue(perm_msg.is_permission_error())
+        self.assertFalse(perm_msg.is_auth_error())
+        self.assertTrue(perm_msg.is_permission_or_auth_error())
+
+        perm_code = linear_sync.LinearAPIError(
+            "Action rejected",
+            status=200,
+            errors=[{"message": "Action rejected", "extensions": {"code": "FORBIDDEN"}}],
+        )
+        self.assertTrue(perm_code.is_permission_error())
+
+        auth_http = linear_sync.LinearAPIError("Unauthorized", status=401)
+        self.assertTrue(auth_http.is_auth_error())
+        self.assertTrue(auth_http.is_permission_or_auth_error())
+
+        transient = linear_sync.LinearAPIError("Rate limit exceeded", status=429)
+        self.assertFalse(transient.is_permission_error())
+        self.assertFalse(transient.is_auth_error())
+        self.assertFalse(transient.is_permission_or_auth_error())
 
 
 if __name__ == "__main__":

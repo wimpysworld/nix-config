@@ -4327,6 +4327,66 @@ class LocalExecutionCoordinator:
             return self._resolve_turn_outcome(active_record, check, rpc_response=rpc_response, rpc_error=rpc_error, recovery=recovery, start_notice=(start_notice_sent, start_notice_text, start_notice_error), is_recovery=False, defer_watermark_commit=defer_watermark_commit, now_override_ms=finish_ms)
 
 
+LINEAR_WRITE_CONSECUTIVE_FAILURE_LIMIT = 3
+
+
+def _is_linear_permission_or_auth_error(exc: Exception) -> bool:
+    if isinstance(exc, linear_sync.LinearAPIError):
+        return exc.is_permission_or_auth_error()
+    return False
+
+
+class _LinearWriteCircuitBreaker:
+    """Fail-fast per-poll circuit breaker for Linear write batches."""
+
+    def __init__(self, *, consecutive_limit: int = LINEAR_WRITE_CONSECUTIVE_FAILURE_LIMIT):
+        self.consecutive_limit = max(1, int(consecutive_limit))
+        self.consecutive_errors = 0
+        self.tripped = False
+        self.reason: str | None = None
+        self._logged_scopes: set[str] = set()
+
+    def record_success(self) -> None:
+        self.consecutive_errors = 0
+
+    def record_error(self, exc: Exception, *, scope: str, item_key: str) -> bool:
+        """Record a Linear write exception; return True when the breaker trips."""
+        if _is_linear_permission_or_auth_error(exc):
+            self.tripped = True
+            self.reason = str(exc)
+            self._emit_trip_warning(scope=scope, item_key=item_key, immediate=True)
+            return True
+        if isinstance(exc, linear_sync.LinearAPIError):
+            self.consecutive_errors += 1
+            if self.consecutive_errors >= self.consecutive_limit:
+                self.tripped = True
+                self.reason = str(exc)
+                self._emit_trip_warning(scope=scope, item_key=item_key, immediate=False)
+                return True
+        return False
+
+    def skip_if_tripped(self, *, scope: str) -> bool:
+        if not self.tripped:
+            return False
+        if scope not in self._logged_scopes:
+            self._logged_scopes.add(scope)
+            sys.stderr.write(
+                f"moltis-github-companion {scope} skipped: Linear write circuit breaker tripped ({self.reason})\n"
+            )
+        return True
+
+    def _emit_trip_warning(self, *, scope: str, item_key: str, immediate: bool) -> None:
+        self._logged_scopes.add(scope)
+        if immediate:
+            sys.stderr.write(
+                f"moltis-github-companion {scope} circuit breaker tripped on auth/permission error ({item_key}): {self.reason}\n"
+            )
+        else:
+            sys.stderr.write(
+                f"moltis-github-companion {scope} circuit breaker tripped after {self.consecutive_errors} consecutive Linear API errors ({item_key}): {self.reason}\n"
+            )
+
+
 class GithubCompanionRunner:
     """Orchestrate 300s notification and open-PR polling, inline trigger evaluation, and serialised turns."""
 
@@ -4423,8 +4483,18 @@ class GithubCompanionRunner:
         except BlockingIOError:
             return True
 
-    def _create_linear_triage_stubs(self, actionable_issues: Iterable[dict], *, slot_id: str, current_ms: int) -> list[dict]:
+    def _create_linear_triage_stubs(
+        self,
+        actionable_issues: Iterable[dict],
+        *,
+        slot_id: str,
+        current_ms: int,
+        linear_breaker: _LinearWriteCircuitBreaker | None = None,
+    ) -> list[dict]:
         if self.linear_client is None or self.state_store.agent_name not in SWEEP_AGENT_ORDER:
+            return []
+        breaker = linear_breaker if linear_breaker is not None else _LinearWriteCircuitBreaker()
+        if breaker.skip_if_tripped(scope="linear-triage-stub"):
             return []
         created_stubs: list[dict] = []
         for issue_item in actionable_issues or ():
@@ -4461,8 +4531,11 @@ class GithubCompanionRunner:
                 linear_identifier = str(linear_issue.get("identifier") or "").strip() or None
                 linear_url = str(linear_issue.get("url") or "").strip() or None
             except Exception as exc:
+                if breaker.record_error(exc, scope="linear-triage-stub", item_key=issue_key):
+                    break
                 sys.stderr.write(f"moltis-github-companion linear-triage-stub warning ({issue_key}): {exc}\n")
                 continue
+            breaker.record_success()
             self.state_store.consume_throttle("triage_stubs", slot_id=slot_id, now_override_ms=current_ms)
             self.state_store.update_thread_state(
                 issue_key,
@@ -4491,8 +4564,18 @@ class GithubCompanionRunner:
             })
         return created_stubs
 
-    def _promote_team_implement_issue_to_linear(self, *, cand: dict, cand_key: str, verified_event_key: str | None, current_ms: int) -> dict | None:
+    def _promote_team_implement_issue_to_linear(
+        self,
+        *,
+        cand: dict,
+        cand_key: str,
+        verified_event_key: str | None,
+        current_ms: int,
+        linear_breaker: _LinearWriteCircuitBreaker | None = None,
+    ) -> dict | None:
         if self.linear_client is None or self.state_store.agent_name not in SWEEP_AGENT_ORDER:
+            return None
+        if linear_breaker is not None and linear_breaker.skip_if_tripped(scope="linear-promote"):
             return None
         repo = str(cand.get("repo") or "").strip()
         number = _safe_int(cand.get("number"), 0)
@@ -4530,8 +4613,12 @@ class GithubCompanionRunner:
             linear_url = str(linear_issue.get("url") or "").strip() or None
             final_state_name = str(_as_dict(linear_issue.get("state")).get("name") or "").strip() or None
         except Exception as exc:
+            if linear_breaker is not None and linear_breaker.record_error(exc, scope="linear-promote", item_key=cand_key):
+                return None
             sys.stderr.write(f"moltis-github-companion linear-promote warning ({cand_key}): {exc}\n")
             return None
+        if linear_breaker is not None:
+            linear_breaker.record_success()
         handled_team_labels = dict(_as_dict(cand_entry.get("handled_team_labels")))
         if verified_event_key:
             handled_team_labels["team:implement"] = verified_event_key
@@ -4573,7 +4660,14 @@ class GithubCompanionRunner:
             return None
         return [item for item in (raw_issues or ()) if isinstance(item, dict)]
 
-    def _sync_closed_github_items_to_linear(self, active_linear_issues: Iterable[dict], *, poll_result: dict, current_ms: int) -> list[dict]:
+    def _sync_closed_github_items_to_linear(
+        self,
+        active_linear_issues: Iterable[dict],
+        *,
+        poll_result: dict,
+        current_ms: int,
+        linear_breaker: _LinearWriteCircuitBreaker | None = None,
+    ) -> list[dict]:
         _ = current_ms
         if (
             self.linear_client is None
@@ -4582,6 +4676,9 @@ class GithubCompanionRunner:
             or poll_result.get("open_issues_poll_error") is not None
             or poll_result.get("status") in (403, 429)
         ):
+            return []
+        breaker = linear_breaker if linear_breaker is not None else _LinearWriteCircuitBreaker()
+        if breaker.skip_if_tripped(scope="linear-close-sync"):
             return []
         open_issue_keys: set[str] = set()
         for item in poll_result.get("open_issues") or ():
@@ -4657,8 +4754,11 @@ class GithubCompanionRunner:
             try:
                 self.linear_client.update_issue(linear_id, state=target_state)
             except Exception as exc:
+                if breaker.record_error(exc, scope="linear-close-sync", item_key=item_key):
+                    break
                 sys.stderr.write(f"moltis-github-companion linear-close-sync update warning ({item_key} / {linear_id}): {exc}\n")
                 continue
+            breaker.record_success()
             synced.append({
                 "key": item_key,
                 "repo": repo,
@@ -5686,6 +5786,7 @@ class GithubCompanionRunner:
         dispatched_targets: set[str],
         current_ms: int,
         now_override_ms: int | None,
+        linear_breaker: _LinearWriteCircuitBreaker | None = None,
     ) -> dict:
         dispatches: list[dict] = []
         linear_pr_actions: list[dict] = []
@@ -5697,10 +5798,13 @@ class GithubCompanionRunner:
                 "needs_decision_notifications": notifications,
             }
 
+        breaker = linear_breaker if linear_breaker is not None else _LinearWriteCircuitBreaker()
         processed_pr_keys: set[str] = set()
         own_family = MODEL_FAMILY_BY_AGENT.get(self.state_store.agent_name, "gemini")
 
         for pr_item in actionable_prs or ():
+            if breaker.skip_if_tripped(scope="linear-pr-ensure"):
+                break
             if not isinstance(pr_item, dict) or not bool(pr_item.get("is_community")):
                 continue
             pr_key = str(pr_item.get("key") or "").strip()
@@ -5773,8 +5877,11 @@ class GithubCompanionRunner:
                 linear_identifier = str(linear_issue.get("identifier") or "").strip() or None
                 linear_url = str(linear_issue.get("url") or "").strip() or None
             except Exception as exc:
+                if breaker.record_error(exc, scope="linear-pr-ensure", item_key=pr_key):
+                    break
                 sys.stderr.write(f"moltis-github-companion linear-pr-ensure warning ({pr_key}): {exc}\n")
                 continue
+            breaker.record_success()
 
             self.state_store.update_thread_state(
                 pr_key,
@@ -6841,6 +6948,7 @@ class GithubCompanionRunner:
             current_ms=current_ms,
         )
 
+        linear_breaker = _LinearWriteCircuitBreaker()
         linear_promoted_todos: list[dict] = []
         for cand in poll_result.get("team_label_candidates") or []:
             if not isinstance(cand, dict):
@@ -6886,6 +6994,7 @@ class GithubCompanionRunner:
                     cand_key=cand_key,
                     verified_event_key=verified_event_key,
                     current_ms=current_ms,
+                    linear_breaker=linear_breaker,
                 )
                 if promoted is not None:
                     linear_promoted_todos.append(promoted)
@@ -6962,6 +7071,7 @@ class GithubCompanionRunner:
             poll_result.get("actionable_issues") or [],
             slot_id=slot_id,
             current_ms=current_ms,
+            linear_breaker=linear_breaker,
         )
 
         linear_synced_closed: list[dict] = []
@@ -6976,6 +7086,7 @@ class GithubCompanionRunner:
                     active_linear_issues,
                     poll_result=poll_result,
                     current_ms=current_ms,
+                    linear_breaker=linear_breaker,
                 )
                 synced_closed_ids = {
                     str(item.get("linear_issue_id") or "").strip()
@@ -6995,6 +7106,7 @@ class GithubCompanionRunner:
                 dispatched_targets=dispatched_targets,
                 current_ms=current_ms,
                 now_override_ms=now_override_ms,
+                linear_breaker=linear_breaker,
             )
             targeted_dispatches.extend(pr_pipeline["dispatches"])
             linear_pr_actions.extend(pr_pipeline["linear_pr_actions"])

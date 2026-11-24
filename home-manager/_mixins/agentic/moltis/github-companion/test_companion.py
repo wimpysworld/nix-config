@@ -10402,6 +10402,86 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
         self.assertIsNone(store.read_active_dispatch()["active"])
         self.assertFalse((store.get_thread_state(companion.make_pr_key(repo, n_ok)) or {}).get("in_flight"))
 
+    def test_linear_write_circuit_breaker_stops_permission_and_consecutive_api_errors(self) -> None:
+        repo = "wimpysworld/tailor"
+        skrye_issues = self._owned_numbers(repo, "skrye", 5, kind="issue", start=200)
+        skrye_prs = self._owned_numbers(repo, "skrye", 3, kind="pr", start=200)
+        nodes = [
+            self._graphql_issue_node(repo, num, title=f"Issue #{num}")
+            for num in skrye_issues
+        ] + [
+            self._graphql_pr_node(repo, num, author="community-user", head_sha=f"deadbeef{num:04d}", title=f"Community PR #{num}")
+            for num in skrye_prs
+        ]
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(nodes), stderr="")
+            raise AssertionError(f"Unexpected gh command: {cmd!r}")
+
+        class FailingLinearClient(StubLinearSyncClient):
+            def __init__(self, errors: list[Exception | None]) -> None:
+                super().__init__(list_returns_empty=True)
+                self._errors = list(errors)
+                self.attempts = 0
+
+            def ensure_issue_for_github_item(self, **kwargs: object) -> dict[str, object]:
+                self.attempts += 1
+                err = self._errors.pop(0) if self._errors else None
+                if err is not None:
+                    raise err
+                return super().ensure_issue_for_github_item(**kwargs)
+
+        # 1) Permission error trips on the first call and skips remaining issues and community PRs in the same poll.
+        perm_client = FailingLinearClient(
+            [companion.linear_sync.LinearAPIError("not allowed to take action", status=200)]
+        )
+        _, runner_perm, _ = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=perm_client,
+            state_dir=self.state_dir / "skrye-perm-breaker",
+        )
+        stderr_perm = io.StringIO()
+        with contextlib.redirect_stderr(stderr_perm):
+            res_perm = runner_perm.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 7, 10, 0))
+        self.assertEqual(res_perm["linear_triage_stubs"], [])
+        self.assertEqual(perm_client.attempts, 1)
+        self.assertIn("circuit breaker tripped on auth/permission error", stderr_perm.getvalue())
+        self.assertIn("linear-pr-ensure skipped: Linear write circuit breaker tripped", stderr_perm.getvalue())
+
+        # Next poll creates a fresh breaker and succeeds once permissions are fixed.
+        res_recovered = runner_perm.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 7, 10, 30))
+        self.assertEqual(len(res_recovered["linear_triage_stubs"]), 5)
+
+        # 2) Non-permission LinearAPIError trips after 3 consecutive errors and resets after a success.
+        transient_client = FailingLinearClient(
+            [
+                companion.linear_sync.LinearAPIError("HTTP 503", status=503),
+                None,
+                companion.linear_sync.LinearAPIError("HTTP 503", status=503),
+                companion.linear_sync.LinearAPIError("HTTP 503", status=503),
+                companion.linear_sync.LinearAPIError("HTTP 503", status=503),
+                companion.linear_sync.LinearAPIError("HTTP 503", status=503),
+            ]
+        )
+        _, runner_transient, _ = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=transient_client,
+            state_dir=self.state_dir / "skrye-transient-breaker",
+        )
+        stderr_transient = io.StringIO()
+        with contextlib.redirect_stderr(stderr_transient):
+            res_transient = runner_transient.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 7, 11, 0))
+        self.assertEqual(len(res_transient["linear_triage_stubs"]), 1)
+        # 1 fail + 1 success (resets streak) + 3 consecutive fails = 5 total attempts, skipping all PRs in the same poll.
+        self.assertEqual(transient_client.attempts, 5)
+        self.assertIn("circuit breaker tripped after 3 consecutive Linear API errors", stderr_transient.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

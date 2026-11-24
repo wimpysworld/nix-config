@@ -41,19 +41,32 @@ Run `just --list --unsorted` before inventing commands.
 
 `apply`, `apply-home`, and `apply-host` activate configurations published to FlakeHub Cache from a CI release. They ignore the local working tree. Do not use them during local iteration; use `build-` and `switch-` commands instead.
 
-Run `just eval` before finishing Nix changes. Run `just lint-registry` after editing registry TOML.
+Run `just lint-registry` after editing registry TOML.
 
 ## Validation economy
 
-Match validation cost to the change. Start with the cheapest option that can fail, and escalate only when that passes or the options below it cannot catch the defect.
+Keep verification cheap and proportional to the change. Stop at the lowest step that can catch the failure:
 
-- Formatting or a lint-style fix: run `just format` on the touched files.
-- One module or a Nix value: run a targeted `nix eval` against the specific attribute, not a whole-flake eval.
-- Generated file content: use `nix repl :lf .` with `:p` on the file's `.text`.
-- Local iteration on NixOS or Home Manager: build and switch only the current host with `just build-home`, `just build-host`, `just switch-home`, or `just switch-host`; a remote or non-current host needs `just build-host <host>`, only when its config actually changed.
-- New packages or overlays: build the one package with `just build-pkg <pkg> [host]` before any host build.
+1. Formatting or lint fixes: run `nixfmt <touched-files>` or `just format <touched-files>`.
+2. Registry TOML edits: run `just lint-registry`.
+3. Scripts, hooks, or companion code: run the script's own unit tests directly (for example `python3 ...`) or build only its matching check with `nix build --no-link .#checks.<system>.<name>`.
+4. Nix module, option, or wiring changes: evaluate only the affected attribute or derivation path with `nix eval`, for example:
+   - `nix eval .#nixosConfigurations.<host>.config.<option>`
+   - `nix eval .#homeConfigurations."<user>@<host>".config.<option>`
+   - `nix eval --raw .#homeConfigurations."<user>@<host>".activationPackage.drvPath`
+   - `nix eval --raw .#nixosConfigurations.<host>.config.system.build.toplevel.drvPath`
+   Evaluating `.drvPath` checks the full module graph and every `assert` without building derivations.
+5. Generated file content: inspect `.text` with `nix eval --raw` or `nix repl :lf .` and `:p`.
+6. New or changed packages under `pkgs/` or overlays: build only that package with `just build-pkg <pkg> [host]`.
 
-Never run `just eval`, `just check`, or `just build` for an iterative change unless the change spans many configs or CI will run those gates anyway. Both recipes deep-evaluate every configuration and take substantially longer.
+### Forbidden verification commands
+
+Do not run these commands for verification unless the user explicitly asks for them:
+
+- Never build a NixOS, nix-darwin, or Home Manager configuration for any host other than the current machine (`just build-host <other>`, `just build-home <user> <other>`).
+- Never run a full NixOS or Home Manager build even for the current host (`just build-host`, `just build-home`, `just host`, `just home`) as a verification step. Evaluate `.drvPath` or run a targeted check instead.
+- Never run whole-flake gates (`just eval`, `just check`, `just build`). CI runs those gates.
+- Never activate or push configurations (`just switch*`, `just push*`) without explicit user approval.
 
 ## Tests
 
@@ -270,6 +283,7 @@ Read `.github/workflows/` before changing CI assumptions. Auto-merge of update P
 
 ## Constraints
 
+- Never run full NixOS, nix-darwin, Home Manager, or whole-flake builds (`just build*`, `just host`, `just home`, `just eval`, `just check`) for verification unless explicitly asked; use targeted `nix eval`, `.drvPath`, unit tests, or one `checks.<system>.<name>` target.
 - Never run Session Obliterate.
 - Never run graphical checks that lock, suspend, log out, or disrupt the active desktop.
 - Never run checks that restart portals, start or stop compositors, capture, or record.

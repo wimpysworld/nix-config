@@ -125,6 +125,7 @@ let
         stateDir = "/synthetic/github-state";
         linearClientIdPath = "/synthetic/linear-client-id";
         linearClientSecretPath = "/synthetic/linear-client-secret";
+        linearLabelApiKeyPath = "/synthetic/linear-label-api-key";
         linearTokenCacheDir = "/synthetic/linear-cache";
         linearTeamKey = "WW";
       };
@@ -176,6 +177,10 @@ let
     assert
       withChanges {
         sops.secrets.MOLTIS_LINEAR_CLIENT_SECRET.key = lib.mkForce "moltis/restart-test/client_secret";
+      } != original;
+    assert
+      withChanges {
+        sops.secrets.MOLTIS_LINEAR_LABEL_API_KEY.key = lib.mkForce "moltis/restart-test/label_api_key";
       } != original;
     assert withHeartbeat c.agentic.assistants.moltis.heartbeatHash == original;
     assert withHeartbeat "moltis-restart-test" != original;
@@ -359,6 +364,7 @@ let
         ++ [
           "MOLTIS_LINEAR_CLIENT_ID"
           "MOLTIS_LINEAR_CLIENT_SECRET"
+          "MOLTIS_LINEAR_LABEL_API_KEY"
           "CLOUDFLARE_API_TOKEN"
           "MATRIX_PASSWORD"
         ]
@@ -492,6 +498,9 @@ let
       "export MOLTIS_GITHUB_COMPANION_LINEAR_CLIENT_SECRET_PATH=${lib.escapeShellArg c.sops.secrets.MOLTIS_LINEAR_CLIENT_SECRET.path}"
       scripts.githubCompanion;
     assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_LINEAR_LABEL_API_KEY_PATH=${lib.escapeShellArg c.sops.secrets.MOLTIS_LINEAR_LABEL_API_KEY.path}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
       "export MOLTIS_GITHUB_COMPANION_LINEAR_TOKEN_CACHE_DIR=${lib.escapeShellArg "${c.xdg.stateHome}/moltis/linear-${agentName}"}"
       scripts.githubCompanion;
     assert lib.hasInfix "export MOLTIS_GITHUB_COMPANION_LINEAR_TEAM_KEY=${lib.escapeShellArg "WW"}"
@@ -499,12 +508,16 @@ let
     assert !(lib.hasInfix "CLOUDFLARE_API_TOKEN" scripts.inner);
     assert !(lib.hasInfix "export CLOUDFLARE_API_TOKEN" scripts.outer);
     assert !(lib.hasInfix "export LINEAR_API_KEY" scripts.inner);
+    assert !(lib.hasInfix "MOLTIS_LINEAR_LABEL_API_KEY" scripts.inner);
     assert lib.hasInfix "unset LINEAR_API_KEY" scripts.inner;
     assert c.sops.secrets.MOLTIS_LINEAR_CLIENT_ID.key == "moltis/${host}/client_id";
     assert c.sops.secrets.MOLTIS_LINEAR_CLIENT_SECRET.key == "moltis/${host}/client_secret";
     assert c.sops.secrets.MOLTIS_LINEAR_CLIENT_SECRET.mode == "0400";
+    assert c.sops.secrets.MOLTIS_LINEAR_LABEL_API_KEY.key == "moltis/label_api_key";
+    assert c.sops.secrets.MOLTIS_LINEAR_LABEL_API_KEY.mode == "0400";
     assert !(disabled.sops.secrets ? MOLTIS_LINEAR_CLIENT_ID);
     assert !(disabled.sops.secrets ? MOLTIS_LINEAR_CLIENT_SECRET);
+    assert !(disabled.sops.secrets ? MOLTIS_LINEAR_LABEL_API_KEY);
     assert c.sops.secrets.LINEAR_API_KEY.key == disabled.sops.secrets.LINEAR_API_KEY.key;
     assert lib.hasInfix "-systemd-" scripts.inner == !darwin;
     assert
@@ -533,6 +546,7 @@ let
     assert !(lib.elem "LINEAR_API_KEY" envNames);
     assert !(settings.env ? LINEAR_API_KEY);
     assert !(settings.env ? MOLTIS_LINEAR_CLIENT_SECRET);
+    assert !(settings.env ? MOLTIS_LINEAR_LABEL_API_KEY);
     assert settings.mcp.servers == { };
     assert settings.tools.policy.deny == [ "mcp_*" ];
     assert builtins.all (name: lib.hasPrefix "mcp_" name) (
@@ -708,7 +722,7 @@ pkgs.runCommand "moltis-tools" { } ''
           marker.unlink()
           ready = re.search(r"(\[\[ -r .*?\]\]) && break", outer).group(1)
           failed = re.search(r"if (\[\[ ! -r .*?\]\]); then", outer).group(1)
-          for missing in (None, "MOLTIS_LINEAR_CLIENT_ID", "MOLTIS_LINEAR_CLIENT_SECRET", "CONTEXT7_API_KEY", "CLOUDFLARE_API_TOKEN", "MATRIX_PASSWORD"):
+          for missing in (None, "MOLTIS_LINEAR_CLIENT_ID", "MOLTIS_LINEAR_CLIENT_SECRET", "MOLTIS_LINEAR_LABEL_API_KEY", "CONTEXT7_API_KEY", "CLOUDFLARE_API_TOKEN", "MATRIX_PASSWORD"):
               if missing:
                   paths[missing].unlink()
               for condition, expected in ((ready, missing is None), (failed, missing is not None)):

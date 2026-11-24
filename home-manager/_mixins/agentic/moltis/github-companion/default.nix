@@ -45,6 +45,7 @@
   communityAutoMergeExcludedRepos ? [ "wimpysworld/nix-config" ],
   linearClientIdPath ? "",
   linearClientSecretPath ? "",
+  linearLabelApiKeyPath ? "",
   linearTokenCacheDir ? "",
   linearTeamKey ? "WW",
   ghApiSafe ? null,
@@ -95,6 +96,7 @@ pkgs.writeShellApplication {
       communityAutoMergeExcludedRepos
       linearClientIdPath
       linearClientSecretPath
+      linearLabelApiKeyPath
       linearTokenCacheDir
       linearTeamKey
       ghApiSafe
@@ -123,6 +125,7 @@ pkgs.writeShellApplication {
     export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS=${lib.escapeShellArg (lib.concatStringsSep "," communityAutoMergeExcludedRepos)}
     export MOLTIS_GITHUB_COMPANION_LINEAR_CLIENT_ID_PATH=${lib.escapeShellArg linearClientIdPath}
     export MOLTIS_GITHUB_COMPANION_LINEAR_CLIENT_SECRET_PATH=${lib.escapeShellArg linearClientSecretPath}
+    export MOLTIS_GITHUB_COMPANION_LINEAR_LABEL_API_KEY_PATH=${lib.escapeShellArg linearLabelApiKeyPath}
     export MOLTIS_GITHUB_COMPANION_LINEAR_TOKEN_CACHE_DIR=${lib.escapeShellArg linearTokenCacheDir}
     export MOLTIS_GITHUB_COMPANION_LINEAR_TEAM_KEY=${lib.escapeShellArg linearTeamKey}
     exec python3 ${companionSrc}/github-companion/companion.py "$@"

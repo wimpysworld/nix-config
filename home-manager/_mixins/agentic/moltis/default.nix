@@ -45,7 +45,8 @@ let
   linearSecrets = [
     "MOLTIS_LINEAR_CLIENT_ID"
     "MOLTIS_LINEAR_CLIENT_SECRET"
-  ];
+  ]
+  ++ lib.optional githubCompanionCfg.enable "MOLTIS_LINEAR_LABEL_API_KEY";
   mcpExportedSecrets = lib.intersectLists [ "CONTEXT7_API_KEY" ] mcpRequiredSecrets;
   mcpReadySecrets =
     mcpRequiredSecrets
@@ -237,9 +238,11 @@ let
     if lib.elem name linearSecrets then
       {
         sopsFile = linearSopsFile;
-        key = "moltis/${agentName}/${
-          if name == "MOLTIS_LINEAR_CLIENT_ID" then "client_id" else "client_secret"
-        }";
+        key =
+          if name == "MOLTIS_LINEAR_LABEL_API_KEY" then
+            "moltis/label_api_key"
+          else
+            "moltis/${agentName}/${if name == "MOLTIS_LINEAR_CLIENT_ID" then "client_id" else "client_secret"}";
         mode = "0400";
       }
     else if name == "MATRIX_PASSWORD" then
@@ -980,6 +983,7 @@ let
     communityAutoMergeExcludedRepos = [ "wimpysworld/nix-config" ];
     linearClientIdPath = config.sops.secrets.MOLTIS_LINEAR_CLIENT_ID.path;
     linearClientSecretPath = config.sops.secrets.MOLTIS_LINEAR_CLIENT_SECRET.path;
+    linearLabelApiKeyPath = lib.optionalString githubCompanionCfg.enable config.sops.secrets.MOLTIS_LINEAR_LABEL_API_KEY.path;
     linearTokenCacheDir = "${stateDir}/linear-${agentName}";
     linearTeamKey = "WW";
   };
