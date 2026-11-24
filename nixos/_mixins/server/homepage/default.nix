@@ -31,6 +31,10 @@ let
   tailnetHosts = lib.attrNames (lib.filterAttrs isNixOSTailnetHost registry);
   syncthingHosts = lib.filter (node: builtins.hasAttr node syncDefs.devices) tailnetHosts;
   roamgateHosts = hostsWithTag "roamgate";
+  roamgateTunnelIds = {
+    skrye = "070f7266-acd1-445c-9128-90ebda04a95e";
+    zannah = "2fc365ae-359c-46fa-9f02-301946b8db15";
+  };
   reframeHosts = hostsWithTag "reframe";
   remoteInferenceHosts = lib.filter (name: name != host.name) (hostsWithTag "inference");
 in
@@ -351,9 +355,17 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
           ++ (map (node: {
             "Roamgate (${node})" = {
               icon = "terminal.svg";
-              href = "https://${node}.${tailNet}:10000/";
+              href = "https://herdr-${node}.wimpys.world";
               description = "Herdr Roamgate web terminal on ${node}";
               ping = "${node}.${tailNet}";
+            }
+            // lib.optionalAttrs (builtins.hasAttr node roamgateTunnelIds) {
+              widget = {
+                type = "cloudflared";
+                accountid = "{{HOMEPAGE_VAR_CLOUDFLARE_ACCOUNT_ID}}";
+                tunnelid = roamgateTunnelIds.${node};
+                key = "{{HOMEPAGE_VAR_CLOUDFLARE_API_TOKEN}}";
+              };
             };
           }) roamgateHosts);
         }

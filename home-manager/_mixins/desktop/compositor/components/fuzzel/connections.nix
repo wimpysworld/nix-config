@@ -10,9 +10,6 @@ let
   inherit (pkgs) lib;
   systems = builtins.fromTOML (builtins.readFile ../../../../../../lib/registry-systems.toml);
 
-  # The HTTPS port that the `roamgate-serve` user service in
-  # `home-manager/_mixins/terminal/herdr.nix` publishes with Tailscale Serve.
-  roamgatePort = "10000";
   # The noVNC path that the Caddy virtual host in
   # `nixos/_mixins/server/caddy/default.nix` serves on ReFrame hosts.
   reframePath = "/novnc";
@@ -34,7 +31,8 @@ let
     in
     lib.hasSuffix "-linux" entry.platform && !homeOnly && (workstation || entry.kind == "server");
 
-  # Roamgate and ReFrame run on the tailnet hosts that have their registry tag.
+  # ReFrame and Roamgate run on the NixOS workstation and server hosts that
+  # have their registry tag.
   taggedHosts =
     tag:
     lib.attrNames (
@@ -53,7 +51,7 @@ let
     map (host: {
       inherit host service;
       label = "${glyph} ${service} (${host})";
-      url = mkUrl "${host}.${tailNet}";
+      url = mkUrl host;
     }) (taggedHosts tag);
 
   # Weave is published through a Cloudflare Tunnel, so its public hostname is
@@ -72,13 +70,15 @@ let
           tag = "reframe";
           service = "ReFrame";
           glyph = "󰢹";
-          mkUrl = fqdn: "https://${fqdn}${reframePath}";
+          mkUrl = host: "https://${host}.${tailNet}${reframePath}";
         }
         ++ mkEntries {
           tag = "roamgate";
           service = "Roamgate";
           glyph = "󰳆";
-          mkUrl = fqdn: "https://${fqdn}:${roamgatePort}/";
+          # Roamgate is published through a Cloudflare Tunnel and Caddy virtual
+          # host in `nixos/_mixins/server/roamgate/default.nix`.
+          mkUrl = host: "https://herdr-${host}.wimpys.world";
         }
       );
 

@@ -113,7 +113,7 @@ tsExitNodes = [
 
 When `services.caddy.enable` is true, `permitCertUid` grants Caddy access to acquire TLS certificates from the Tailscale daemon.
 
-Hosts with the `roamgate` tag, skrye and zannah, also publish Roamgate at `https://<host>.drongo-gamma.ts.net:10000` with Tailscale Serve, not Caddy. A Home Manager user unit runs `tailscale serve` as the operator. See the [Roamgate README](../../../../home-manager/_mixins/terminal/herdr/roamgate.md).
+Roamgate on `skrye` and `zannah` does not use Tailscale Serve or Tailscale certificates. It uses a Cloudflare Tunnel, local Caddy, and Tinyauth instead. See the [Roamgate README](../../../../home-manager/_mixins/terminal/herdr/roamgate.md).
 
 ### Operator
 

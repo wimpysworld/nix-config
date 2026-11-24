@@ -422,7 +422,7 @@ let
           {
             var,
             key,
-            sopsFile ? ../../../secrets/herdr.yaml,
+            sopsFile,
             pattern ? "",
             rule ? "",
           }:
@@ -456,8 +456,11 @@ let
     "/run/wrappers/bin"
   ];
 
-  # Roamgate runs on hosts with the `roamgate` tag. All of them share the
-  # `ROAMGATE_PIN` value in `secrets/herdr.yaml`.
+  # Roamgate runs on hosts with the `roamgate` tag behind Cloudflare Tunnel,
+  # Caddy, and Tinyauth (`ROAMGATE_PASSWORD` plus shared TOTP in
+  # `secrets/roamgate.yaml`). The NixOS firewall restricts `127.0.0.1:8787` to
+  # the `caddy` user so Roamgate runs with `NODE_ENV=development` (no second
+  # login prompt).
   roamgateEnabled = noughtyLib.hostHasTag "roamgate";
   # Roamgate fixes its data directory to `~/.config/roamgate`, refuses a
   # symlink in that path, and can migrate files from the legacy
@@ -527,54 +530,6 @@ let
     '';
   };
 
-  # Tailscale Serve publishes each app on the tailnet from a user unit. The
-  # user is the Tailscale operator, so `tailscale serve` needs no root. The
-  # system CLI matches the running tailscaled. The serve configuration
-  # persists in the tailscaled state, and each start sets the same mapping
-  # again, so the unit is idempotent. A stop removes the mapping.
-  tailscale = "/run/current-system/sw/bin/tailscale";
-  mkTailscaleServe =
-    {
-      description,
-      app,
-      httpsPort,
-      target,
-    }:
-    let
-      serve = pkgs.writeShellApplication {
-        name = "${app}-serve";
-        runtimeInputs = [ pkgs.jq ];
-        # Serve needs the node to be logged in, so wait up to 60 seconds for
-        # it. If serve still fails, systemd tries again after `RestartSec`.
-        text = ''
-          for _ in {1..120}; do
-            if ${tailscale} status --peers=false --json \
-              | jq -e '.BackendState == "Running"' >/dev/null 2>&1; then
-              break
-            fi
-            sleep 0.5
-          done
-          exec ${tailscale} serve --bg --yes --https=${httpsPort} ${target}
-        '';
-      };
-    in
-    {
-      Unit = {
-        Description = description;
-        After = [ "${app}.service" ];
-        Wants = [ "${app}.service" ];
-      };
-      Service = {
-        Type = "oneshot";
-        RemainAfterExit = true;
-        ExecStart = lib.getExe serve;
-        ExecStop = "${tailscale} serve --https=${httpsPort} off";
-        Restart = "on-failure";
-        RestartSec = 30;
-      };
-      Install.WantedBy = [ "default.target" ];
-    };
-
   herdrCtxBar = pkgs.herdr-ctx-bar;
   herdrDispModel = pkgs.herdr-disp-model;
 
@@ -636,8 +591,7 @@ in
       ${pkgs.herdr}/bin/herdr plugin link ${herdrDispModel.passthru.pluginRoot} --enabled
     '';
 
-    # The env file must exist before sd-switch starts the service. Roamgate
-    # exits at start when the PIN is not 6 to 12 ASCII digits. Ranger's
+    # The env file must exist before sd-switch starts the service. Ranger's
     # `opencode-go` provider reads the workspace key from `OPENCODE_API_KEY`.
     home.activation.roamgateEnv = lib.mkIf roamgateEnabled (mkEnvFileStep {
       step = "roamgateEnv";
@@ -649,12 +603,6 @@ in
       ];
       envFile = roamgateEnv;
       entries = [
-        {
-          var = "ROAMGATE_PIN";
-          key = "ROAMGATE_PIN";
-          pattern = "^[0-9]{6,12}$";
-          rule = "use 6 to 12 ASCII digits";
-        }
         {
           var = "OPENCODE_API_KEY";
           key = "OPENCODE_API_KEY";
@@ -751,12 +699,12 @@ in
 
     # Roamgate runs as a user service from the Nix store, not as its Herdr
     # plugin, which downloads a prebuilt binary. It runs from source on Bun,
-    # so the self-updater cannot replace it. The env file holds
-    # `ROAMGATE_PIN` and Ranger's `OPENCODE_API_KEY`. Without it the pre-start
-    # check fails, so the server never runs without the PIN. With no password set, Roamgate also
-    # generates a login token in `~/.config/roamgate`. `NODE_ENV` stays unset,
-    # because `development` on a loopback bind turns login off. The package
-    # turns worktree hooks off by default for every repository.
+    # so the self-updater cannot replace it. The env file holds Ranger's
+    # `OPENCODE_API_KEY`. `NODE_ENV=development` on `127.0.0.1` disables
+    # Roamgate's built-in login screen so Tinyauth is the sole login gate; the
+    # NixOS firewall in `nixos/_mixins/server/roamgate/default.nix` restricts
+    # loopback port 8787 to the `caddy` user only. The package turns worktree
+    # hooks off by default for every repository.
     systemd.user.services.roamgate = lib.mkIf (roamgateEnabled && host.is.linux) {
       Unit = {
         Description = "Roamgate";
@@ -779,10 +727,14 @@ in
         ];
         EnvironmentFile = "-${roamgateEnv}";
         Environment = [
-          # Keep `HOST` and `PORT` in sync with the Tailscale Serve target of
-          # `roamgate-serve`.
+          # Keep `HOST` and `PORT` in sync with the Caddy reverse proxy upstream
+          # and loopback firewall rule in `nixos/_mixins/server/roamgate/default.nix`.
           "HOST=127.0.0.1"
           "PORT=8787"
+          # Disables Roamgate's own login on loopback so Tinyauth is the single
+          # login screen. Protected locally by the `caddy`-only OUTPUT rule on
+          # loopback port 8787.
+          "NODE_ENV=development"
           # The server answers every update check with no update and makes no
           # network request. The "Automatic update checks" toggle in the
           # settings is a browser `localStorage` value, so it still shows
@@ -795,18 +747,6 @@ in
       };
       Install.WantedBy = [ "default.target" ];
     };
-
-    # Roamgate needs its own origin, because its web app uses absolute paths,
-    # so it gets its own HTTPS port. It trusts no proxy header, so Serve adds
-    # no login.
-    systemd.user.services.roamgate-serve =
-      lib.mkIf (roamgateEnabled && host.is.linux)
-        (mkTailscaleServe {
-          description = "Publish Roamgate on the tailnet with Tailscale Serve";
-          app = "roamgate";
-          httpsPort = "10000";
-          target = "http://127.0.0.1:8787";
-        });
 
     xdg.configFile."herdr/config.toml".source = lib.mkDefault (
       tomlFormat.generate "herdr-config.toml" settings

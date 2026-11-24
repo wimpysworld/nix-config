@@ -17,8 +17,11 @@ let
       }
     }
   '';
-  # Only enable caddy if tailscale is enabled or the host is malak
-  useCaddy = config.services.tailscale.enable || noughtyLib.isHost [ "malak" ];
+  # Only enable caddy if tailscale is enabled, the host is malak, or it runs Roamgate.
+  useCaddy =
+    config.services.tailscale.enable
+    || noughtyLib.isHost [ "malak" ]
+    || noughtyLib.hostHasTag "roamgate";
 in
 lib.mkIf useCaddy {
   environment = {

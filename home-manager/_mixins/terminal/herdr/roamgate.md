@@ -1,53 +1,59 @@
 # Roamgate
 
-[Roamgate](https://github.com/powerfooI/roamgate) is a browser and phone client for Herdr workspaces, panes, agents, files, diffs, and Git worktrees. It can type into every pane and read any file of the user. Hosts with the `roamgate` tag in `lib/registry-systems.toml` run it, which are skrye and zannah, and Tailscale Serve publishes it on the tailnet. No other host runs it. The [Herdr README](README.md) documents the Herdr server.
+[Roamgate](https://github.com/powerfooI/roamgate) is a browser and phone client for Herdr workspaces, panes, agents, files, diffs, and Git worktrees. It can type into every pane and read any file of the user. Hosts with the `roamgate` tag in `lib/registry-systems.toml` run it, which are `skrye` and `zannah`. No other host runs it. Each host publishes Roamgate through a Cloudflare Tunnel, Caddy, and Tinyauth. The [Herdr README](README.md) documents the Herdr server.
 
 ## URLs
 
-| Host | URL |
-| --- | --- |
-| skrye | `https://skrye.drongo-gamma.ts.net:10000` |
-| zannah | `https://zannah.drongo-gamma.ts.net:10000` |
+| Host | Roamgate URL | Tinyauth URL |
+| --- | --- | --- |
+| skrye | `https://herdr-skrye.wimpys.world` | `https://auth-skrye.wimpys.world` |
+| zannah | `https://herdr-zannah.wimpys.world` | `https://auth-zannah.wimpys.world` |
 
-Each host is its own origin, so log in and install the app on each host separately. Funnel stays off, so the app is not on the internet.
+Each host is its own origin, so log in and install the app on each host separately. Tinyauth at `https://auth-<host>.wimpys.world` is the single login screen (username `martin`, `ROAMGATE_PASSWORD`, and your TOTP code). After Tinyauth approves a session, `https://herdr-<host>.wimpys.world` opens directly into Herdr with no second login prompt.
 
-Never open Roamgate at `http://localhost:8787` or `http://127.0.0.1:8787`, even though its log prints a `localhost` URL. The `/ws` WebSocket checks only the login cookie, not the page origin. On `localhost`, a page that a fenced agent serves on another local port is same-site, so it can use the cookie to drive the panes outside Fence.
+Local access to `http://localhost:8787` and `http://127.0.0.1:8787` is blocked by the NixOS firewall for every local user except `caddy`, so fenced agents cannot reach Roamgate directly.
 
 ## Parts
 
 | Part | Source |
 | --- | --- |
 | Package: built from source, with a fixed-output `node_modules` | [pkgs/roamgate/default.nix](../../../../pkgs/roamgate/default.nix) |
-| User services, sops decryption, the env file, the Ranger provider merge, and the Tailscale Serve unit on port 10000 | [home-manager/_mixins/terminal/herdr.nix](../herdr.nix) |
+| User service, sops decryption, the env file, and the Ranger provider merge | [home-manager/_mixins/terminal/herdr.nix](../herdr.nix) |
+| System services: Tinyauth, Caddy virtual hosts, and `cloudflared-roamgate` | [nixos/_mixins/server/roamgate/default.nix](../../../../nixos/_mixins/server/roamgate/default.nix) |
 | Fence read and write denial | [home-manager/_mixins/agentic/fence/default.nix](../../../../home-manager/_mixins/agentic/fence/default.nix) |
 | Freshener job | [.github/freshener/roamgate.sh](../../../../.github/freshener/roamgate.sh) |
 
-The server runs outside Fence as the `roamgate.service` systemd user service, on `127.0.0.1:8787`, with `Restart=on-failure`. It starts after `herdr.service` and connects to the Herdr sockets directly. It is not the Roamgate Herdr plugin, which downloads a prebuilt binary, so do not run `herdr plugin install` or `herdr plugin link` for it. It runs from source on Bun, so the self-updater cannot replace it, and `ROAMGATE_DISABLE_UPDATE_CHECK=1` turns off update checks (see [Browser settings](#browser-settings)). The unit does not set `NODE_ENV`, because `NODE_ENV=development` on a loopback bind turns login off.
+The server runs outside Fence as the `roamgate.service` systemd user service, on `127.0.0.1:8787`, with `Restart=on-failure` and `NODE_ENV=development`. Setting `NODE_ENV=development` on a loopback bind disables Roamgate's built-in login screen so Tinyauth is the sole login gate. It starts after `herdr.service` and connects to the Herdr sockets directly. It is not the Roamgate Herdr plugin, which downloads a prebuilt binary, so do not run `herdr plugin install` or `herdr plugin link` for it. It runs from source on Bun, so the self-updater cannot replace it, and `ROAMGATE_DISABLE_UPDATE_CHECK=1` turns off update checks (see [Browser settings](#browser-settings)).
 
-The `roamgate-serve.service` user unit starts after `roamgate.service`, waits for `tailscaled` to log in, then runs `tailscale serve --bg --yes --https=10000 http://127.0.0.1:8787`. The user is the Tailscale operator, so the unit needs no root. The mapping persists in the tailscaled state, each start sets the same mapping again, and a stop of the unit removes it.
+NixOS configures the loopback firewall rule in `nixos/_mixins/server/roamgate/default.nix` so only the `caddy` system user can connect to loopback TCP port `8787`. When `TINYAUTH_AUTH_USERS` exists in `secrets/roamgate.yaml`, NixOS also enables Tinyauth and Caddy. `tinyauth.service` listens on `127.0.0.1:8789` for `https://auth-<host>.wimpys.world` with secure cookies, a 30-day session expiry (`AUTH_SESSIONEXPIRY = 2592000`), and a 300-second lockout after 3 failed logins. `caddy.service` binds `127.0.0.1:8788` for both `auth-<host>.wimpys.world` and `herdr-<host>.wimpys.world`, and logs to `/var/log/caddy/roamgate.log`. Caddy proxies `auth-<host>.wimpys.world` to Tinyauth on `127.0.0.1:8789`. For `herdr-<host>.wimpys.world`, Caddy runs `forward_auth` against `127.0.0.1:8789/api/auth/caddy`, then proxies traffic to Roamgate on `127.0.0.1:8787`. Both virtual hosts forward `X-Forwarded-Proto: https` and `X-Forwarded-For` from `CF-Connecting-IP`.
 
-State is in `~/.config/roamgate/`: the env file `roamgate.env`, the generated login token, the session secret, settings, connection profiles, push keys, Ranger data, and uploads. Roamgate refuses a symlink in that path, so Home Manager links no file into it. Fence denies reads and writes of this directory and of the legacy `~/.config/herdr-gui/`, because the session secret signs a cookie that opens every route of the server.
+`cloudflared-roamgate.service` starts after `caddy.service` and `tinyauth.service`, and requires both units. It runs `cloudflared tunnel --no-autoupdate run --token-file` with the host's tunnel token. NixOS enables `cloudflared-roamgate.service` only when both `TINYAUTH_AUTH_USERS` and `CLOUDFLARE_TUNNEL_TOKEN_ROAMGATE_<HOST>` exist in `secrets/roamgate.yaml`.
 
-## Login
+State is in `~/.config/roamgate/`: the env file `roamgate.env`, the session secret, settings, connection profiles, push keys, Ranger data, and uploads. Roamgate refuses a symlink in that path, so Home Manager links no file into it. Fence denies reads and writes of this directory and of the legacy `~/.config/herdr-gui/`, because the session secret signs a cookie that opens every route of the server.
 
-Each activation decrypts two keys with `sops` and the user's age key, and writes `~/.config/roamgate/roamgate.env` with mode 0600. sops-nix does not render the values, because Fence keeps `~/.config/sops-nix` readable.
+## Login and secrets
 
-| File | Key | Variable | Value |
+Tinyauth is the sole authentication layer (username `martin`, `ROAMGATE_PASSWORD`, and a shared TOTP secret, with 30-day sessions). Roamgate runs with `NODE_ENV=development` on `127.0.0.1:8787` and accepts connections only from the `caddy` system user.
+
+Each Home Manager activation decrypts `OPENCODE_API_KEY` from `secrets/ai.yaml` with `sops` and the user's age key, then writes `~/.config/roamgate/roamgate.env` with mode 0600. sops-nix does not render that user value, because Fence keeps `~/.config/sops-nix` readable. NixOS renders the Tinyauth and Cloudflare Tunnel secrets from `secrets/roamgate.yaml` with sops-nix as `root` with mode 0400.
+
+| File | Key | Consumer | Value |
 | --- | --- | --- | --- |
-| `secrets/herdr.yaml` | `ROAMGATE_PIN` | `ROAMGATE_PIN` | The login PIN for skrye and zannah. 6 to 12 ASCII digits. |
-| `secrets/ai.yaml` | `OPENCODE_API_KEY` | `OPENCODE_API_KEY` | The workspace API key for the OpenCode Go subscription, for [Ranger](#ranger). |
+| `secrets/ai.yaml` | `OPENCODE_API_KEY` | `OPENCODE_API_KEY` in `~/.config/roamgate/roamgate.env` | Workspace API key for the OpenCode Go subscription, for [Ranger](#ranger). |
+| `secrets/roamgate.yaml` | `ROAMGATE_PASSWORD` | [sync-tinyauth.sh](../../../../nixos/_mixins/server/roamgate/sync-tinyauth.sh) | Shared Tinyauth password across `skrye` and `zannah`. |
+| `secrets/roamgate.yaml` | `TINYAUTH_AUTH_USERS` | `tinyauth.service` via sops template `tinyauth-roamgate.env` | Tinyauth user credential (`martin:<bcrypt-hash-of-ROAMGATE_PASSWORD>:<totp-secret>`), shared across `skrye` and `zannah`. |
+| `secrets/roamgate.yaml` | `TINYAUTH_TOTP_URI` | Local operator setup | `otpauth://` URI for adding the shared TOTP secret to an authenticator app or password manager. |
+| `secrets/roamgate.yaml` | `CLOUDFLARE_TUNNEL_TOKEN_ROAMGATE_<HOST>` | `cloudflared-roamgate.service` (`--token-file`) | Per-host Cloudflare Tunnel token (`CLOUDFLARE_TUNNEL_TOKEN_ROAMGATE_SKRYE`, `CLOUDFLARE_TUNNEL_TOKEN_ROAMGATE_ZANNAH`). |
 
-If the age key is missing, a file or a key is missing, decryption fails, a value is empty, or the PIN is not 6 to 12 digits, activation prints a `roamgateEnv` warning with the reason and leaves the old file. One failed key keeps both old values, so a missing API key also stops a PIN change. Roamgate exits at start with a PIN outside that rule. Activation also warns when the file is still missing. Without the file the pre-start check fails and logs `missing ~/.config/roamgate/roamgate.env`, so the server never runs without the PIN.
+Run [sync-tinyauth.sh](../../../../nixos/_mixins/server/roamgate/sync-tinyauth.sh) to update `TINYAUTH_AUTH_USERS` from `ROAMGATE_PASSWORD` and the existing TOTP secret (pass `--qr` to display the TOTP QR code):
 
-No password is set, so Roamgate generates a 64-character login token in `~/.config/roamgate/auth-token` at its first start. The PIN login is an addition to the token login, not a replacement. Keep the token for recovery: read it from that file outside Fence, and log in with it as the password.
+```sh
+./nixos/_mixins/server/roamgate/sync-tinyauth.sh
+```
 
-Log in with the PIN. The login cookie `herdr_auth` lasts 30 days, and logout does not revoke a copied cookie. To rotate the PIN, change it in `secrets/herdr.yaml`, run `just switch-home`, then run `systemctl --user restart roamgate`.
+If the age key is missing, a file or key is missing, decryption fails, or `OPENCODE_API_KEY` is empty, activation prints a `roamgateEnv` warning with the reason and leaves the old file. Activation also warns when the file is still missing. Without the file, the pre-start check fails and logs `missing ~/.config/roamgate/roamgate.env`.
 
-A PIN is much weaker than a password or the token, and Roamgate itself warns to use it only behind a trusted private network or VPN. Keep Funnel off. All proxied clients arrive from `127.0.0.1`, so they share one login rate limit. Five failed PIN logins from any tailnet device lock PIN login for five minutes. Ten failed PIN logins in a row lock PIN login for one hour for every client. A PIN lock does not lock the token login.
-
-## Shared hostname and cookies
-
-Roamgate and the Caddy apps on port 443 use the same hostname. Browsers ignore the port for cookies, so each app receives the cookies of the others. The cookie names differ, so the apps do not overwrite each other. All `*.drongo-gamma.ts.net` hosts are one site, so a script on any tailnet origin can open the Roamgate WebSocket with the cookie. Keep untrusted HTML off the tailnet origins.
+Sign in through Tinyauth with username `martin`, `ROAMGATE_PASSWORD`, and your TOTP code. The Tinyauth session lasts 30 days. To rotate the password, change `ROAMGATE_PASSWORD` in `secrets/roamgate.yaml`, run `./nixos/_mixins/server/roamgate/sync-tinyauth.sh`, then run `just switch-host`. To rotate a Cloudflare Tunnel token, update `secrets/roamgate.yaml`, then run `just switch-host`.
 
 ## Worktree hooks
 
@@ -91,10 +97,11 @@ Upstream declares Bun 1.4.3. The flake has Bun 1.4.2, and the build and a short 
 
 ## Set up
 
-1. Put the PIN in `secrets/herdr.yaml` as `ROAMGATE_PIN` with `sops`.
-2. Make sure that `secrets/ai.yaml` has `OPENCODE_API_KEY`, the workspace key for the OpenCode Go subscription.
-3. Run `just switch-home` on skrye and on zannah.
-4. Open the host URL and log in with the PIN.
-5. Add the app to the Home Screen on the phone, so that web push works.
-6. In each browser and in the phone app, open the settings, then the **Behavior** tab. Turn off **Automatic update checks**.
-7. On the same tab, turn on **Task notifications** and allow notifications when the browser asks. Wait until the status shows **On · Background push**.
+1. Create one Cloudflare Tunnel per host (`skrye` and `zannah`). Route both `herdr-<host>.wimpys.world` and `auth-<host>.wimpys.world` to `http://127.0.0.1:8788`.
+2. Check that `secrets/roamgate.yaml` holds `ROAMGATE_PASSWORD`, `CLOUDFLARE_TUNNEL_TOKEN_ROAMGATE_SKRYE`, `CLOUDFLARE_TUNNEL_TOKEN_ROAMGATE_ZANNAH`, `TINYAUTH_AUTH_USERS`, and `TINYAUTH_TOTP_URI`, and `secrets/ai.yaml` holds `OPENCODE_API_KEY`.
+3. Run `./nixos/_mixins/server/roamgate/sync-tinyauth.sh --qr` to sync `TINYAUTH_AUTH_USERS` with `ROAMGATE_PASSWORD` and scan the displayed TOTP QR code into your authenticator app.
+4. Run `just switch-host` and `just switch-home` on `skrye` and on `zannah`.
+5. Open `https://herdr-skrye.wimpys.world` or `https://herdr-zannah.wimpys.world`. Sign in once through Tinyauth at `https://auth-<host>.wimpys.world` with username `martin`, `ROAMGATE_PASSWORD`, and your TOTP code.
+6. Add the app to the Home Screen on the phone, so that web push works.
+7. In each browser and in the phone app, open the settings, then the **Behavior** tab. Turn off **Automatic update checks**.
+8. On the same tab, turn on **Task notifications** and allow notifications when the browser asks. Wait until the status shows **On · Background push**.
