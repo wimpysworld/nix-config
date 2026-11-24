@@ -375,6 +375,7 @@ let
         "gh-review-resolve"
         "gh-review-unresolve"
         "gh-review-withdraw-approval"
+        "gh-workflow-approve"
       ];
     assert context.mainModel == expectedMainModel;
     assert c.agentic.moltis.matrix.enable;

@@ -1884,6 +1884,63 @@ class IssueSyncPaginationAndVerdictTests(LinearSyncTestBase):
         self.assertEqual(len(warnings), 1)
         self.assertIn("Linear issue delegation rejected", warnings[0])
 
+    def test_find_and_ensure_issue_ignore_mismatched_item_kind_attachments(self) -> None:
+        # Reproduce WW-407 / WW-424: an Issue item in Backlog has a related open PR attached to it.
+        self.httpd.labels.extend(
+            [
+                {"id": "lbl-issue", "name": "Issue", "isGroup": False, "parent": None, "team": {"id": "team-ww"}},
+                {"id": "lbl-pr", "name": "PR", "isGroup": False, "parent": None, "team": {"id": "team-ww"}},
+            ]
+        )
+        issue_url = "https://github.com/wimpysworld/deb-get/issues/2114"
+        pr_url = "https://github.com/wimpysworld/deb-get/pull/2115"
+        issue_rec = self.httpd.add_issue(
+            issue_id="issue-2114",
+            state_id="st-backlog",
+            title="App Request: freeze",
+            description=linear_sync.format_issue_description_with_github_url("Tracked issue.", issue_url),
+            label_ids=["lbl-issue"],
+        )
+        pr_rec = self.httpd.add_issue(
+            issue_id="pr-2115",
+            state_id="st-in-review",
+            title="feat: add freeze",
+            description=linear_sync.format_issue_description_with_github_url("", pr_url),
+            label_ids=["lbl-pr"],
+        )
+        # Attach the PR URL to the Issue item first so attachmentsForURL returns it before the PR item.
+        self.httpd.add_attachment(issue_id=str(issue_rec["id"]), url=issue_url, title="wimpysworld/deb-get#2114")
+        self.httpd.add_attachment(issue_id=str(issue_rec["id"]), url=pr_url, title="Open PR: #2115")
+        self.httpd.add_attachment(issue_id=str(pr_rec["id"]), url=pr_url, title="wimpysworld/deb-get#2115")
+
+        client = self.make_client()
+        found_pr = client.find_issue_by_github_url(pr_url)
+        assert found_pr is not None
+        self.assertEqual(found_pr["id"], "pr-2115")
+
+        ensured_pr = client.ensure_issue_for_github_item(
+            github_url=pr_url,
+            title="feat: add freeze",
+            item_kind="PR",
+            state="In Review",
+        )
+        self.assertEqual(ensured_pr["id"], "pr-2115")
+        self.assertEqual(len(self.httpd.requests_for("issueCreate")), 0)
+
+        # Even if no PR item exists yet, looking up a PR must not hijack the Backlog Issue item.
+        self.httpd.attachments = [att for att in self.httpd.attachments if att["issueId"] != "pr-2115"]
+        self.httpd.issues.pop("pr-2115", None)
+        self.httpd.issue_order = [iid for iid in self.httpd.issue_order if iid != "pr-2115"]
+        fresh_client = self.make_client()
+        self.assertIsNone(fresh_client.find_issue_by_github_url(pr_url))
+        created_pr = fresh_client.ensure_issue_for_github_item(
+            github_url=pr_url,
+            title="feat: add freeze",
+            item_kind="PR",
+            state="In Review",
+        )
+        self.assertNotEqual(created_pr["id"], "issue-2114")
+
 
 if __name__ == "__main__":
     unittest.main()

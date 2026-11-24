@@ -7342,6 +7342,7 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
         head_sha: str,
         author: str = "community-contributor",
         author_typename: str = "User",
+        author_association: str = "CONTRIBUTOR",
         body: str = "Small community fix.",
         review_decision: str = "REVIEW_REQUIRED",
         ci_state: str = "SUCCESS",
@@ -7360,6 +7361,15 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
         rollup: dict[str, object] | None
         if ci_state == "NONE":
             rollup = None
+        elif ci_state == "ACTION_REQUIRED":
+            rollup = {
+                "state": "FAILURE",
+                "contexts": {
+                    "nodes": [
+                        {"__typename": "CheckRun", "status": "COMPLETED", "conclusion": "ACTION_REQUIRED"},
+                    ]
+                },
+            }
         else:
             rollup = {"state": ci_state, "contexts": {"nodes": []}}
         thread_nodes = [{"isResolved": False} for _ in range(unresolved_threads)]
@@ -7376,6 +7386,7 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
             "updatedAt": updated_at,
             "headRefName": f"contrib/pr-{number}",
             "headRefOid": head_sha,
+            "authorAssociation": author_association,
             "reviewDecision": review_decision,
             "additions": additions,
             "deletions": deletions,
@@ -10481,6 +10492,378 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
         # 1 fail + 1 success (resets streak) + 3 consecutive fails = 5 total attempts, skipping all PRs in the same poll.
         self.assertEqual(transient_client.attempts, 5)
         self.assertIn("circuit breaker tripped after 3 consecutive Linear API errors", stderr_transient.getvalue())
+
+    def test_first_time_contributor_pr_always_gets_first_time_label(self) -> None:
+        repo = "wimpysworld/tailor"
+        for assoc in ("FIRST_TIME_CONTRIBUTOR", "FIRST_TIMER", "NONE"):
+            self.assertFalse(
+                companion.compute_community_auto_merge_eligible(
+                    repo=repo,
+                    additions=5,
+                    deletions=2,
+                    changed_files=1,
+                    file_paths=["src/app.py"],
+                    author_association=assoc,
+                )
+            )
+            self.assertIn(
+                "first_time_contributor",
+                companion.compute_lane_a_bypass_reasons(
+                    repo=repo,
+                    additions=5,
+                    deletions=2,
+                    changed_files=1,
+                    file_paths=["src/app.py"],
+                    ci_state="SUCCESS",
+                    author_association=assoc,
+                ),
+            )
+        self.assertTrue(
+            companion.compute_community_auto_merge_eligible(
+                repo=repo,
+                additions=5,
+                deletions=2,
+                changed_files=1,
+                file_paths=["src/app.py"],
+                author_association="CONTRIBUTOR",
+            )
+        )
+
+        pr_ready, pr_decision = self._owned_numbers(repo, "skrye", 2, kind="pr", start=1200)
+        nodes = [
+            self._graphql_pr_node(
+                repo,
+                pr_ready,
+                title="First-time clean fix",
+                head_sha="1111111aaaaaaa",
+                author="newcomer-one",
+                author_association="FIRST_TIME_CONTRIBUTOR",
+                additions=4,
+                deletions=1,
+                file_paths=["src/app.py"],
+                ci_state="SUCCESS",
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_decision,
+                title="First-time risky fix",
+                head_sha="2222222bbbbbbb",
+                author="newcomer-two",
+                author_association="FIRST_TIMER",
+                additions=4,
+                deletions=1,
+                file_paths=["src/app.py"],
+                ci_state="SUCCESS",
+            ),
+        ]
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(nodes), stderr="")
+            raise AssertionError(f"Unexpected gh command: {cmd!r}")
+
+        def skrye_reply(meta: dict[str, str], _params: dict) -> str:
+            if int(meta["number"]) == pr_ready:
+                return "LANE_B_VERDICT: ready-to-merge\nSUMMARY: Clean diff."
+            return "LANE_B_VERDICT: needs-decision\nSUMMARY: Needs maintainer product choice."
+
+        linear_stub = StubLinearSyncClient()
+        _, runner, _ = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=skrye_reply,
+            state_dir=self.state_dir / "skrye-first-time",
+        )
+        res = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 8, 10, 0))
+        self.assertEqual([a["action"] for a in res["linear_pr_actions"]], ["lane_b_reviewed", "lane_b_reviewed"])
+
+        issue_ready = linear_stub.issues[linear_stub.by_github_url[f"https://github.com/{repo}/pull/{pr_ready}"]]
+        self.assertEqual(issue_ready["state"]["name"], "Backlog")  # type: ignore[index]
+        ready_labels = companion.extract_linear_issue_labels(issue_ready)
+        self.assertIn("first-time", ready_labels)
+        self.assertNotIn("sign-off-required", ready_labels)
+        self.assertNotIn("ready-to-merge", ready_labels)
+        self.assertNotIn("needs-decision", ready_labels)
+
+        issue_dec = linear_stub.issues[linear_stub.by_github_url[f"https://github.com/{repo}/pull/{pr_decision}"]]
+        self.assertEqual(issue_dec["state"]["name"], "Backlog")  # type: ignore[index]
+        dec_labels = companion.extract_linear_issue_labels(issue_dec)
+        self.assertIn("first-time", dec_labels)
+        self.assertIn("needs-decision", dec_labels)
+        self.assertNotIn("sign-off-required", dec_labels)
+        self.assertNotIn("ready-to-merge", dec_labels)
+
+    def test_ignored_linear_states_and_mismatched_kind_items_are_not_touched(self) -> None:
+        repo = "wimpysworld/tailor"
+        pr_canceled, pr_deferred, pr_mismatched = self._owned_numbers(repo, "skrye", 3, kind="pr", start=1300)
+        iss_canceled, iss_deferred = self._owned_numbers(repo, "skrye", 2, kind="issue", start=1300)
+
+        nodes = [
+            self._graphql_pr_node(
+                repo,
+                pr_canceled,
+                title="Canceled PR",
+                head_sha="aaaa1111bbbb",
+                author="returning-dev",
+                author_association="CONTRIBUTOR",
+                ci_state="SUCCESS",
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_deferred,
+                title="Deferred PR",
+                head_sha="cccc2222dddd",
+                author="returning-dev",
+                author_association="CONTRIBUTOR",
+                ci_state="SUCCESS",
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_mismatched,
+                title="Mismatched kind PR",
+                head_sha="eeee3333ffff",
+                author="returning-dev",
+                author_association="CONTRIBUTOR",
+                ci_state="SUCCESS",
+            ),
+            self._graphql_issue_node(repo, iss_canceled, title="Canceled issue"),
+            self._graphql_issue_node(repo, iss_deferred, title="Deferred issue"),
+        ]
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(nodes), stderr="")
+            raise AssertionError(f"Unexpected gh command: {cmd!r}")
+
+        linear_stub = StubLinearSyncClient()
+        lin_pr_canceled = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_canceled}",
+            title="Canceled PR",
+            repo=repo,
+            item_kind="PR",
+            state="Canceled",
+        )
+        lin_pr_deferred = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_deferred}",
+            title="Deferred PR",
+            repo=repo,
+            item_kind="PR",
+            state="Deferred",
+        )
+        # Reproduce the WW-407 mismatch: an Issue-labelled Linear item accidentally indexed under a PR URL.
+        lin_issue_wrong = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_mismatched}",
+            title="Backlog Issue",
+            repo=repo,
+            item_kind="Issue",
+            state="Backlog",
+            extra_labels=("sign-off-required",),
+        )
+        linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{iss_canceled}",
+            title="Canceled issue",
+            repo=repo,
+            item_kind="Issue",
+            state="Canceled",
+        )
+        linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{iss_deferred}",
+            title="Deferred issue",
+            repo=repo,
+            item_kind="Issue",
+            state="Deferred",
+        )
+
+        _, runner, rpc_calls = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            state_dir=self.state_dir / "skrye-ignored-states",
+        )
+        stderr_buf = io.StringIO()
+        with contextlib.redirect_stderr(stderr_buf):
+            res = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 8, 11, 0))
+        self.assertEqual(res["linear_triage_stubs"], [])
+        self.assertEqual(res["linear_pr_actions"], [])
+        self.assertEqual(res["targeted_dispatches"], [])
+        self.assertEqual(rpc_calls, [])
+        self.assertEqual(linear_stub.update_calls, [])
+        self.assertEqual(linear_stub.issues[str(lin_pr_canceled["id"])]["state"]["name"], "Canceled")  # type: ignore[index]
+        self.assertEqual(linear_stub.issues[str(lin_pr_deferred["id"])]["state"]["name"], "Deferred")  # type: ignore[index]
+        self.assertEqual(linear_stub.issues[str(lin_issue_wrong["id"])]["state"]["name"], "Backlog")  # type: ignore[index]
+        self.assertIn("linear-pr-kind-mismatch warning", stderr_buf.getvalue())
+
+    def test_action_required_ci_approved_only_after_safe_review(self) -> None:
+        repo = "wimpysworld/tailor"
+        pr_pass, pr_fail, pr_first_time, pr_todo_safe, pr_todo_sensitive = self._owned_numbers(repo, "skrye", 5, kind="pr", start=1400)
+        sha_pass = "1111111111111111"
+        sha_fail = "2222222222222222"
+        sha_first = "3333333333333333"
+        sha_todo_safe = "4444444444444444"
+        sha_todo_sens = "5555555555555555"
+
+        nodes = [
+            self._graphql_pr_node(
+                repo,
+                pr_pass,
+                title="Safe fork PR needing CI approval",
+                head_sha=sha_pass,
+                author="returning-dev",
+                author_association="CONTRIBUTOR",
+                additions=10,
+                deletions=2,
+                file_paths=["src/app.py"],
+                ci_state="ACTION_REQUIRED",
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_fail,
+                title="Unsafe fork PR failing blind review",
+                head_sha=sha_fail,
+                author="returning-dev",
+                author_association="CONTRIBUTOR",
+                additions=10,
+                deletions=2,
+                file_paths=["src/app.py"],
+                ci_state="ACTION_REQUIRED",
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_first_time,
+                title="First-time fork PR needing sign-off",
+                head_sha=sha_first,
+                author="brand-new-dev",
+                author_association="FIRST_TIME_CONTRIBUTOR",
+                additions=10,
+                deletions=2,
+                file_paths=["src/app.py"],
+                ci_state="ACTION_REQUIRED",
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_todo_safe,
+                title="Todo-promoted safe fork PR",
+                head_sha=sha_todo_safe,
+                author="brand-new-dev",
+                author_association="FIRST_TIME_CONTRIBUTOR",
+                additions=10,
+                deletions=2,
+                file_paths=["src/app.py"],
+                ci_state="ACTION_REQUIRED",
+            ),
+            self._graphql_pr_node(
+                repo,
+                pr_todo_sensitive,
+                title="Todo-promoted workflow fork PR",
+                head_sha=sha_todo_sens,
+                author="returning-dev",
+                author_association="CONTRIBUTOR",
+                additions=10,
+                deletions=2,
+                file_paths=[".github/workflows/ci.yml"],
+                ci_state="ACTION_REQUIRED",
+            ),
+        ]
+
+        runs_by_sha = {
+            sha_pass: [{"id": 9001, "event": "pull_request", "status": "action_required", "conclusion": "action_required"}],
+            sha_fail: [{"id": 9002, "event": "pull_request", "status": "action_required", "conclusion": "action_required"}],
+            sha_first: [{"id": 9003, "event": "pull_request", "status": "action_required", "conclusion": "action_required"}],
+            sha_todo_safe: [{"id": 9004, "event": "pull_request", "status": "action_required", "conclusion": "action_required"}],
+            sha_todo_sens: [{"id": 9005, "event": "pull_request", "status": "action_required", "conclusion": "action_required"}],
+        }
+        approved_cmds: list[list[str]] = []
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            if cmd[0] == "gh-workflow-approve":
+                approved_cmds.append(list(cmd))
+                return subprocess.CompletedProcess(cmd, 0, stdout=f"gh-workflow-approve: approved workflow run {cmd[2]} in {cmd[1]}.\n", stderr="")
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications":
+                return subprocess.CompletedProcess(cmd, 0, stdout="HTTP/2.0 304 Not Modified\r\n\r\n", stderr="")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(cmd, 0, stdout=self._graphql_search_payload(nodes), stderr="")
+            if ep.startswith(f"repos/{repo}/actions/runs?head_sha="):
+                sha_q = ep.split("head_sha=", 1)[1].split("&", 1)[0]
+                return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"workflow_runs": runs_by_sha.get(sha_q, [])}), stderr="")
+            raise AssertionError(f"Unexpected gh command: {cmd!r}")
+
+        def skrye_reply(meta: dict[str, str], _params: dict) -> str:
+            num = int(meta["number"])
+            kind = meta.get("dispatch_kind") or ""
+            if kind == "community_pr_blind_review":
+                if num == pr_pass:
+                    return "BLIND_REVIEW_VERDICT: PASS\nFINDINGS: None."
+                return "BLIND_REVIEW_VERDICT: FAIL\nFINDINGS: Suspicious change."
+            if kind == "community_pr_lane_b_review":
+                return "LANE_B_VERDICT: ready-to-merge\nSUMMARY: First-time contributor awaiting sign-off."
+            return f"Reviewed PR #{num}."
+
+        linear_stub = StubLinearSyncClient()
+        linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_todo_safe}",
+            title="Todo-promoted safe fork PR",
+            repo=repo,
+            item_kind="PR",
+            state="Todo",
+            extra_labels=("first-time",),
+        )
+        linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_todo_sensitive}",
+            title="Todo-promoted workflow fork PR",
+            repo=repo,
+            item_kind="PR",
+            state="Todo",
+            extra_labels=("needs-decision",),
+        )
+
+        store, runner, _ = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=skrye_reply,
+            state_dir=self.state_dir / "skrye-action-required",
+        )
+        # Mark Todo-seeded PRs as already handled in state so Loop 1 does not overwrite their Todo state.
+        for pr_num, sha in ((pr_todo_safe, sha_todo_safe), (pr_todo_sensitive, sha_todo_sens)):
+            store.update_thread_state(
+                companion.make_pr_key(repo, pr_num),
+                {
+                    "repo": repo,
+                    "number": pr_num,
+                    "handled_head_sha": sha,
+                    "handled_updated_at": "2026-04-01T10:00:00Z",
+                    "handled_ci_state": "FAILURE",
+                },
+            )
+
+        res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 8, 12, 0))
+        # Only pr_pass (after Gemini PASS) and pr_todo_safe (Todo -> team:review -> In Review, non-sensitive) are approved.
+        self.assertEqual(
+            approved_cmds,
+            [
+                ["gh-workflow-approve", repo, "9001"],
+                ["gh-workflow-approve", repo, "9004"],
+            ],
+        )
+        approved_actions = [a for a in res1["linear_pr_actions"] if a.get("action") == "ci_workflows_approved"]
+        self.assertEqual([a["number"] for a in approved_actions], [pr_pass, pr_todo_safe])
+        self.assertEqual((store.get_thread_state(companion.make_pr_key(repo, pr_pass)) or {}).get("ci_approved_head_sha"), sha_pass)
+        self.assertEqual((store.get_thread_state(companion.make_pr_key(repo, pr_todo_safe)) or {}).get("ci_approved_head_sha"), sha_todo_safe)
+        self.assertIsNone((store.get_thread_state(companion.make_pr_key(repo, pr_fail)) or {}).get("ci_approved_head_sha"))
+        self.assertIsNone((store.get_thread_state(companion.make_pr_key(repo, pr_first_time)) or {}).get("ci_approved_head_sha"))
+        self.assertIsNone((store.get_thread_state(companion.make_pr_key(repo, pr_todo_sensitive)) or {}).get("ci_approved_head_sha"))
+
+        # Second poll with unchanged SHAs must NOT call gh-workflow-approve again.
+        runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 8, 12, 30))
+        self.assertEqual(len(approved_cmds), 2)
 
 
 if __name__ == "__main__":

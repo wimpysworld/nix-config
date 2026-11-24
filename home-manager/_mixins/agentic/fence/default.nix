@@ -420,6 +420,14 @@ let
         # `notifications/threads/{id}` through the private gh backend. The
         # family-wide `gh api` deny below remains unchanged.
         "gh-notification-dismiss"
+        # gh-workflow-approve is a fixed GitHub write path under Fence.
+        # The helper accepts `<owner>/<repo> <run-id>`, verifies the owner is
+        # one of the six allowed repositories, reads the workflow run to
+        # confirm `.event == "pull_request"` and `action_required`, then calls
+        # `POST repos/<owner>/<repo>/actions/runs/<run-id>/approve` through the
+        # private gh backend. The family-wide `gh api` deny below remains
+        # unchanged.
+        "gh-workflow-approve"
         # gh-release-notes-edit is a fixed GitHub write path under Fence.
         # The helper accepts `<owner/repo> <tag> --notes-file <file>`, resolves
         # an existing published or draft release via GET, and sends one PATCH

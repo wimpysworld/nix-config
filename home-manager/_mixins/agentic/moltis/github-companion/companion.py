@@ -616,6 +616,27 @@ def resolve_community_auto_merge_config(
     }
 
 
+FIRST_TIME_AUTHOR_ASSOCIATIONS = frozenset({"FIRST_TIMER", "FIRST_TIME_CONTRIBUTOR", "NONE"})
+IGNORED_LINEAR_STATE_NAMES = frozenset({"canceled", "cancelled", "duplicate", "done", "deferred"})
+IGNORED_LINEAR_STATE_TYPES = frozenset({"canceled", "completed", "duplicate"})
+
+
+def is_first_time_contributor_association(author_association: object) -> bool:
+    norm = str(author_association or "").strip().upper()
+    return norm in FIRST_TIME_AUTHOR_ASSOCIATIONS
+
+
+def is_ignored_linear_issue_state(linear_issue: object) -> bool:
+    if not isinstance(linear_issue, dict):
+        return False
+    if linear_issue.get("archivedAt"):
+        return True
+    state_obj = _as_dict(linear_issue.get("state"))
+    state_name = str(state_obj.get("name") or "").strip().lower()
+    state_type = str(state_obj.get("type") or "").strip().lower()
+    return state_name in IGNORED_LINEAR_STATE_NAMES or state_type in IGNORED_LINEAR_STATE_TYPES
+
+
 def compute_community_auto_merge_eligible(
     *,
     repo: str,
@@ -624,12 +645,15 @@ def compute_community_auto_merge_eligible(
     changed_files: int | None,
     file_paths: Iterable[str] | None,
     files_has_next_page: bool = False,
+    author_association: str | None = None,
     enabled: bool = DEFAULT_COMMUNITY_AUTO_MERGE_ENABLED,
     max_lines: int = DEFAULT_COMMUNITY_AUTO_MERGE_MAX_LINES,
     max_files: int = DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES,
     excluded_repos: Iterable[str] = DEFAULT_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS,
 ) -> bool:
     if not enabled:
+        return False
+    if is_first_time_contributor_association(author_association):
         return False
     norm_repo = (repo or "").strip().lower()
     excluded = set(parse_repo_list(excluded_repos, default=()))
@@ -659,6 +683,7 @@ def compute_lane_a_bypass_reasons(
     file_paths: Iterable[str] | None,
     files_has_next_page: bool = False,
     ci_state: str | None = None,
+    author_association: str | None = None,
     enabled: bool = DEFAULT_COMMUNITY_AUTO_MERGE_ENABLED,
     max_lines: int = DEFAULT_COMMUNITY_AUTO_MERGE_MAX_LINES,
     max_files: int = DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES,
@@ -668,6 +693,8 @@ def compute_lane_a_bypass_reasons(
     reasons: list[str] = []
     if not enabled:
         reasons.append("disabled")
+    if is_first_time_contributor_association(author_association):
+        reasons.append("first_time_contributor")
     norm_repo = (repo or "").strip().lower()
     excluded = set(parse_repo_list(excluded_repos, default=()))
     if not norm_repo or norm_repo in excluded:
@@ -968,7 +995,7 @@ def extract_mentioned_github_agents(text: str | None) -> set[str]:
 _COERCION_RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("ignore_previous_instructions", re.compile(r"\b(?:ignore|disregard|forget|override|bypass)\s+(?:all\s+|any\s+|the\s+)?(?:previous|prior|above|earlier|system|developer|safety|security)\s+(?:instructions?|prompts?|rules?|constraints?|directives?|guardrails?)\b", re.IGNORECASE)),
     ("system_prompt_override", re.compile(r"(?:\[\s*(?:system|inst|admin|developer)\s*\]|<\|\s*(?:im_start|system|user|assistant)\s*\|>|^\s*(?:system\s+prompt|developer\s+message|new\s+system\s+instructions?)\s*:)", re.IGNORECASE | re.MULTILINE)),
-    ("tool_invocation_directive", re.compile(r"\b(?:gh-bot-merge|gh-code-scanning-dismiss|gh-notification-dismiss|gh-review-resolve|gh-review-unresolve|gh-review-inline|gh-review-reply|moltis-telegram-voice|chat\.send_sync|exec_command|tool_call)\b", re.IGNORECASE)),
+    ("tool_invocation_directive", re.compile(r"\b(?:gh-bot-merge|gh-code-scanning-dismiss|gh-notification-dismiss|gh-workflow-approve|gh-review-resolve|gh-review-unresolve|gh-review-inline|gh-review-reply|moltis-telegram-voice|chat\.send_sync|exec_command|tool_call)\b", re.IGNORECASE)),
     ("unauthorized_merge_or_dismiss_command", re.compile(r"\b(?:gh\s+pr\s+merge|merge\s+this\s+(?:pr|pull\s+request)|approve\s+and\s+merge|dismiss\s+(?:this\s+|all\s+)?(?:alert|notification|review)s?|@dependabot\s+(?:merge|squash\s+and\s+merge|ignore|close))\b", re.IGNORECASE)),
     ("role_spoofing", re.compile(r"\b(?:i\s+am\s+flexiondotorg|speaking\s+as\s+flexiondotorg|on\s+behalf\s+of\s+flexiondotorg|acting\s+as\s+(?:flexiondotorg|sith-skrye|sith-traya|sith-zannah)|from\s+flexiondotorg\s*:|authorized\s+by\s+flexiondotorg)\b", re.IGNORECASE)),
 )
@@ -1059,7 +1086,7 @@ def is_heartbeat_ok_reply(text: str | None) -> bool:
 
 TURN_FAILURE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("explicit_error_token", re.compile(r"^\s*`?(?:(?:HEARTBEAT_ERROR|HEARTBEAT_FAILED|TURN_FAILED|COMPANION_RESULT:\s*(?:ERROR|FAILED))\b|(?:ERROR|FAILED)\s*:)", re.IGNORECASE)),
-    ("tool_or_turn_failed", re.compile(r"^\s*(?:the\s+)?(?:github|gh|gh-api-safe|gh-bot-merge|gh-review-inline|gh-review-reply|gh-review-resolve|gh-review-unresolve|gh-notification-dismiss|git|exec|shell|rpc|model|provider|api|command|request|turn|dispatch|tool)\s+(?:tool\s+|command\s+|call\s+|request\s+|execution\s+|turn\s+|helper\s+)?(?:failed|errored|timed\s+out|aborted|crashed|was\s+blocked|is\s+unavailable)\b", re.IGNORECASE)),
+    ("tool_or_turn_failed", re.compile(r"^\s*(?:the\s+)?(?:github|gh|gh-api-safe|gh-bot-merge|gh-review-inline|gh-review-reply|gh-review-resolve|gh-review-unresolve|gh-notification-dismiss|gh-workflow-approve|git|exec|shell|rpc|model|provider|api|command|request|turn|dispatch|tool)\s+(?:tool\s+|command\s+|call\s+|request\s+|execution\s+|turn\s+|helper\s+)?(?:failed|errored|timed\s+out|aborted|crashed|was\s+blocked|is\s+unavailable)\b", re.IGNORECASE)),
     ("unable_to_complete", re.compile(r"^\s*(?:i\s+(?:was\s+|am\s+)?)?(?:failed|unable|could\s+not|cannot|can\s+not)\s+(?:to\s+)?(?:complete|finish|run|execute|fetch|query|read|inspect|review|merge|dismiss|post|reply|process|reach|connect|authenticate|proceed|continue)\b", re.IGNORECASE)),
 )
 
@@ -1758,6 +1785,26 @@ def normalize_ci_state(rollup: object) -> str:
     return "NONE"
 
 
+def has_action_required_ci(rollup: object) -> bool:
+    """Return True when statusCheckRollup reports an ACTION_REQUIRED check waiting for workflow approval."""
+    if rollup is None:
+        return False
+    if isinstance(rollup, str):
+        return rollup.strip().upper() == "ACTION_REQUIRED"
+    if isinstance(rollup, dict):
+        contexts = rollup.get("contexts")
+        nodes = contexts.get("nodes") if isinstance(contexts, dict) and isinstance(contexts.get("nodes"), list) else (contexts if isinstance(contexts, list) else rollup.get("nodes"))
+        if isinstance(nodes, list) and any(has_action_required_ci(node) for node in nodes):
+            return True
+        for key in ("state", "status", "conclusion"):
+            if str(rollup.get(key) or "").strip().upper() == "ACTION_REQUIRED":
+                return True
+        return False
+    if isinstance(rollup, list):
+        return any(has_action_required_ci(item) for item in rollup)
+    return False
+
+
 def extract_review_request_logins(raw_requests: object) -> list[str]:
     nodes = raw_requests["nodes"] if isinstance(raw_requests, dict) and isinstance(raw_requests.get("nodes"), list) else (raw_requests if isinstance(raw_requests, list) else [])
     logins: list[str] = []
@@ -1796,6 +1843,7 @@ def normalize_open_pull_request_record(raw: dict) -> dict | None:
         return None
     head_sha = str(raw.get("headRefOid") or _as_dict(raw.get("head")).get("sha") or raw.get("head_sha") or "").strip()
     head_ref = str(raw.get("headRefName") or _as_dict(raw.get("head")).get("ref") or raw.get("head_ref") or "").strip()
+    author_association = str(raw.get("authorAssociation") or raw.get("author_association") or "").strip().upper()
     review_decision = str(raw.get("reviewDecision") or raw.get("review_decision") or "").strip().upper()
     ci_raw = raw.get("statusCheckRollup") if "statusCheckRollup" in raw else raw.get("ci_state")
     updated_at = str(raw.get("updatedAt") or raw.get("updated_at") or "").strip()
@@ -1820,6 +1868,8 @@ def normalize_open_pull_request_record(raw: dict) -> dict | None:
         "owner": repo_full_name.split("/", 1)[0].lower(),
         "number": number,
         "author": extract_actor_login(raw.get("author") or raw.get("user")),
+        "author_association": author_association,
+        "authorAssociation": author_association,
         "head_sha": head_sha,
         "headRefOid": head_sha,
         "head_ref": head_ref,
@@ -2588,6 +2638,7 @@ class CompanionStateStore:
                     continue
                 pr_key, author = make_pr_key(repo, number), str(norm_pr.get("author") or "").strip()
                 author_norm = normalize_github_actor(author)
+                author_association = str(norm_pr.get("author_association") or norm_pr.get("authorAssociation") or "").strip().upper()
                 head_sha = str(norm_pr.get("head_sha") or norm_pr.get("headRefOid") or "").strip()
                 review_decision = str(norm_pr.get("review_decision") or norm_pr.get("reviewDecision") or "").strip().upper()
                 ci_state = normalize_ci_state(norm_pr.get("ci_state") or norm_pr.get("statusCheckRollup"))
@@ -2679,6 +2730,7 @@ class CompanionStateStore:
                         changed_files=norm_pr.get("changed_files"),
                         file_paths=norm_pr.get("file_paths"),
                         files_has_next_page=bool(norm_pr.get("files_has_next_page", False)),
+                        author_association=author_association,
                         enabled=self.community_auto_merge_enabled,
                         max_lines=self.community_auto_merge_max_lines,
                         max_files=self.community_auto_merge_max_files,
@@ -2769,8 +2821,10 @@ class CompanionStateStore:
                             "dispatch_kind": dispatch_kind,
                             "head_sha": head_sha,
                             "ci_state": ci_state,
+                            "statusCheckRollup": norm_pr.get("statusCheckRollup"),
                             "updated_at": updated_at,
                             "trigger_reason": trigger_reason,
+                            "author_association": author_association,
                             "is_automated_pr": is_auto_update,
                             "is_community": is_community,
                             "community_auto_merge_eligible": auto_merge_eligible,
@@ -2780,7 +2834,7 @@ class CompanionStateStore:
                             "file_paths": norm_pr.get("file_paths"),
                             "files_has_next_page": bool(norm_pr.get("files_has_next_page", False)),
                         })
-                entry = {**existing, "pr_key": pr_key, "repo": repo, "number": number, "subject_type": "PullRequest", "author": author, "title": title or existing.get("title") or "", "url": resolved_pr_url, "head_sha": head_sha, "ci_state": ci_state, "review_decision": review_decision, "review_requests": review_requests, "unresolved_thread_count": unresolved_thread_count, "labels": labels, "updated_at": updated_at or existing.get("updated_at"), "handled_updated_at": handled_u, "handled_head_sha": handled_sha, "handled_ci_state": handled_ci, "retry_count": retry_count, "trigger_reason": trigger_reason or existing.get("trigger_reason"), "is_automated_pr": is_auto_update, "is_community": is_community, "community_auto_merge_eligible": auto_merge_eligible, "coercion_blocked": False, "in_flight": in_flight, "pending_followup": pending_followup, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
+                entry = {**existing, "pr_key": pr_key, "repo": repo, "number": number, "subject_type": "PullRequest", "author": author, "author_association": author_association or existing.get("author_association") or "", "title": title or existing.get("title") or "", "url": resolved_pr_url, "head_sha": head_sha, "ci_state": ci_state, "review_decision": review_decision, "review_requests": review_requests, "unresolved_thread_count": unresolved_thread_count, "labels": labels, "updated_at": updated_at or existing.get("updated_at"), "handled_updated_at": handled_u, "handled_head_sha": handled_sha, "handled_ci_state": handled_ci, "retry_count": retry_count, "trigger_reason": trigger_reason or existing.get("trigger_reason"), "is_automated_pr": is_auto_update, "is_community": is_community, "community_auto_merge_eligible": auto_merge_eligible, "coercion_blocked": False, "in_flight": in_flight, "pending_followup": pending_followup, "last_polled_at_ms": stamp_ms, "updated_at_ms": stamp_ms}
                 for tk in target_keys:
                     threads[tk] = dict(entry)
             state["updated_at_ms"] = stamp_ms
@@ -3213,7 +3267,7 @@ OPEN_PRS_GRAPHQL_QUERY_TEMPLATE = (
     "nodes { "
     "__typename "
     "... on PullRequest { "
-    "id number title body url state isDraft updatedAt headRefName headRefOid reviewDecision additions deletions changedFiles "
+    "id number title body url state isDraft updatedAt headRefName headRefOid authorAssociation reviewDecision additions deletions changedFiles "
     "repository { nameWithOwner isArchived } "
     "author { __typename login } "
     "labels(first: 20) { nodes { name } } "
@@ -3256,11 +3310,12 @@ def build_open_issues_graphql_query(owners: Iterable[str] = POLL_ISSUE_OWNERS) -
 
 
 class GhApiSafeClient:
-    """Subprocess wrapper around `gh-api-safe`, `gh-notification-dismiss`, and scoped `gh` PR label edits."""
+    """Subprocess wrapper around `gh-api-safe`, `gh-notification-dismiss`, `gh-workflow-approve`, and scoped `gh` PR label edits."""
 
-    def __init__(self, gh_api_safe_bin: str = "gh-api-safe", gh_notification_dismiss_bin: str = "gh-notification-dismiss", gh_bin: str = "gh", runner: Callable[..., subprocess.CompletedProcess] | None = None, timeout: float = 45.0):
+    def __init__(self, gh_api_safe_bin: str = "gh-api-safe", gh_notification_dismiss_bin: str = "gh-notification-dismiss", gh_workflow_approve_bin: str = "gh-workflow-approve", gh_bin: str = "gh", runner: Callable[..., subprocess.CompletedProcess] | None = None, timeout: float = 45.0):
         self.gh_api_safe_bin = gh_api_safe_bin
         self.gh_notification_dismiss_bin = gh_notification_dismiss_bin
+        self.gh_workflow_approve_bin = gh_workflow_approve_bin
         self.gh_bin = gh_bin
         self.runner = runner or subprocess.run
         self.timeout = timeout
@@ -3278,6 +3333,46 @@ class GhApiSafeClient:
         if proc.returncode != 0:
             raise RuntimeError(f"gh-notification-dismiss {clean_tid} exited {proc.returncode}: {(proc.stderr or proc.stdout or '').strip()}")
         return proc
+
+    def approve_pending_pr_workflow_runs(self, repo: str, head_sha: str, *, timeout: float | None = None) -> list[int]:
+        """Approve pending `action_required` `pull_request` workflow runs for `head_sha` via `gh-workflow-approve`."""
+        clean_repo = (repo or "").strip()
+        if (
+            not clean_repo
+            or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*", clean_repo)
+            or any(part in (".", "..") for part in clean_repo.split("/"))
+            or not is_allowed_notification_repo(clean_repo)
+        ):
+            raise ValueError(f"Unsupported repository for workflow approval: {repo!r}")
+        clean_sha = (head_sha or "").strip()
+        if not re.fullmatch(r"[0-9a-fA-F]{7,40}", clean_sha):
+            raise ValueError(f"Invalid head_sha for workflow approval: {head_sha!r}")
+        data = self.fetch_json_object(
+            f"repos/{clean_repo}/actions/runs?head_sha={clean_sha}&event=pull_request&status=action_required&per_page=100",
+            paginate=False,
+            timeout=timeout,
+        )
+        runs = data.get("workflow_runs") if isinstance(data, dict) else None
+        if not isinstance(runs, list):
+            return []
+        approved: list[int] = []
+        for run in runs:
+            if not isinstance(run, dict):
+                continue
+            run_id = _safe_int(run.get("id"), 0)
+            if run_id <= 0:
+                continue
+            run_event = str(run.get("event") or "").strip().lower()
+            run_status = str(run.get("status") or "").strip().lower()
+            run_conclusion = str(run.get("conclusion") or "").strip().lower()
+            if run_event != "pull_request" or (run_status != "action_required" and run_conclusion != "action_required"):
+                continue
+            cmd = [self.gh_workflow_approve_bin, clean_repo, str(run_id)]
+            proc = self.runner(cmd, capture_output=True, text=True, timeout=timeout or self.timeout, check=False)
+            if proc.returncode != 0:
+                raise RuntimeError(f"gh-workflow-approve {clean_repo} {run_id} exited {proc.returncode}: {(proc.stderr or proc.stdout or '').strip()}")
+            approved.append(run_id)
+        return approved
 
     def fetch_json_items(self, endpoint: str, *, paginate: bool = False, timeout: float | None = None) -> list[dict]:
         """Invoke `gh-api-safe <endpoint> [--paginate]` and return parsed dict items."""
@@ -4536,6 +4631,23 @@ class GithubCompanionRunner:
                 sys.stderr.write(f"moltis-github-companion linear-triage-stub warning ({issue_key}): {exc}\n")
                 continue
             breaker.record_success()
+            if is_ignored_linear_issue_state(linear_issue):
+                self.state_store.update_thread_state(
+                    issue_key,
+                    {
+                        "repo": repo,
+                        "number": number,
+                        "subject_type": "Issue",
+                        "url": issue_url,
+                        "title": title,
+                        "linear_issue_id": linear_id,
+                        "linear_issue_identifier": linear_identifier,
+                        "linear_issue_url": linear_url,
+                        "handled_updated_at": updated_at or issue_entry.get("handled_updated_at"),
+                    },
+                    now_override_ms=current_ms,
+                )
+                continue
             self.state_store.consume_throttle("triage_stubs", slot_id=slot_id, now_override_ms=current_ms)
             self.state_store.update_thread_state(
                 issue_key,
@@ -4597,6 +4709,29 @@ class GithubCompanionRunner:
             linear_id = str(linear_issue.get("id") or "").strip()
             if not linear_id:
                 raise RuntimeError("Linear issue response missing id")
+            if is_ignored_linear_issue_state(linear_issue):
+                if linear_breaker is not None:
+                    linear_breaker.record_success()
+                handled_team_labels = dict(_as_dict(cand_entry.get("handled_team_labels")))
+                if verified_event_key:
+                    handled_team_labels["team:implement"] = verified_event_key
+                self.state_store.update_thread_state(
+                    cand_key,
+                    {
+                        "repo": repo,
+                        "number": number,
+                        "subject_type": "Issue",
+                        "url": issue_url,
+                        "title": title,
+                        "linear_issue_id": linear_id,
+                        "linear_issue_identifier": str(linear_issue.get("identifier") or "").strip() or None,
+                        "linear_issue_url": str(linear_issue.get("url") or "").strip() or None,
+                        "handled_team_labels": handled_team_labels,
+                        **({"handled_updated_at": updated_at} if updated_at and not cand_entry.get("handled_updated_at") else {}),
+                    },
+                    now_override_ms=current_ms,
+                )
+                return None
             state_obj = _as_dict(linear_issue.get("state"))
             state_name = str(state_obj.get("name") or "").strip().lower()
             state_type = str(state_obj.get("type") or "").strip().lower()
@@ -4710,10 +4845,7 @@ class GithubCompanionRunner:
             linear_id = str(linear_issue.get("id") or "").strip()
             if not linear_id:
                 continue
-            state_obj = _as_dict(linear_issue.get("state"))
-            state_name = str(state_obj.get("name") or "").strip().lower()
-            state_type = str(state_obj.get("type") or "").strip().lower()
-            if state_type in ("completed", "canceled", "cancelled", "duplicate") or state_name in ("done", "canceled", "cancelled", "duplicate"):
+            if is_ignored_linear_issue_state(linear_issue):
                 continue
             labels = extract_linear_issue_labels(linear_issue)
             expected_kind = "PR" if "pr" in labels else ("Issue" if "issue" in labels else None)
@@ -4773,7 +4905,7 @@ class GithubCompanionRunner:
         return synced
 
     def _resolve_owned_linear_issue_candidate(self, linear_issue: object, *, dispatched_targets: set[str]) -> dict | None:
-        if not isinstance(linear_issue, dict) or linear_issue.get("archivedAt"):
+        if not isinstance(linear_issue, dict) or is_ignored_linear_issue_state(linear_issue):
             return None
         linear_id = str(linear_issue.get("id") or "").strip()
         if not linear_id:
@@ -5533,6 +5665,67 @@ class GithubCompanionRunner:
             "linear_issue_url": linear_url,
         }
 
+    def _maybe_approve_action_required_ci(
+        self,
+        *,
+        pr_key: str,
+        repo: str,
+        number: int,
+        head_sha: str,
+        live_pr: dict,
+        pr_entry: dict,
+        linear_id: str,
+        linear_identifier: str | None,
+        linear_url: str | None,
+        current_ms: int,
+        allow_first_time: bool = False,
+    ) -> dict | None:
+        clean_sha = str(head_sha or "").strip()
+        if not clean_sha or not hasattr(self.gh_client, "approve_pending_pr_workflow_runs"):
+            return None
+        rollup = live_pr.get("statusCheckRollup") if "statusCheckRollup" in live_pr else pr_entry.get("statusCheckRollup")
+        if not has_action_required_ci(rollup):
+            return None
+        author_association = str(
+            live_pr.get("author_association")
+            or live_pr.get("authorAssociation")
+            or pr_entry.get("author_association")
+            or ""
+        ).strip().upper()
+        if not allow_first_time and is_first_time_contributor_association(author_association):
+            return None
+        file_paths = live_pr.get("file_paths") if "file_paths" in live_pr else pr_entry.get("file_paths")
+        files_has_next_page = bool(live_pr.get("files_has_next_page", pr_entry.get("files_has_next_page", False)))
+        paths_list = [str(p).strip() for p in (file_paths or ()) if isinstance(p, str) and str(p).strip()] if file_paths is not None else []
+        if files_has_next_page or not paths_list or any(is_sensitive_community_pr_path(p) for p in paths_list):
+            return None
+        stored_entry = _as_dict(self.state_store.get_thread_state(pr_key))
+        if stored_entry.get("ci_approved_head_sha") == clean_sha:
+            return None
+        try:
+            approved_ids = self.gh_client.approve_pending_pr_workflow_runs(repo, clean_sha)
+        except Exception as exc:
+            sys.stderr.write(f"moltis-github-companion ci-workflow-approve warning ({pr_key} / {linear_id}): {exc}\n")
+            return None
+        if not approved_ids:
+            return None
+        self.state_store.update_thread_state(
+            pr_key,
+            {"ci_approved_head_sha": clean_sha},
+            now_override_ms=current_ms,
+        )
+        return {
+            "action": "ci_workflows_approved",
+            "key": pr_key,
+            "repo": repo,
+            "number": number,
+            "head_sha": clean_sha,
+            "approved_run_ids": list(approved_ids),
+            "linear_issue_id": linear_id,
+            "linear_issue_identifier": linear_identifier,
+            "linear_issue_url": linear_url,
+        }
+
     def _run_lane_a_pr_evaluation(
         self,
         *,
@@ -5570,12 +5763,13 @@ class GithubCompanionRunner:
             sys.stderr.write(f"moltis-github-companion lane-a-comments warning ({pr_key} / {linear_id}): {exc}\n")
             return
         existing_verdicts = linear_sync.parse_blind_review_verdicts(existing_comments, head_sha=head_sha)
-        has_own_verdict = any(
-            str(v.get("agent") or "").strip().lower() == self.state_store.agent_name
-            or str(v.get("model_family") or "").strip().lower() == own_family
-            for v in existing_verdicts
+        own_verdict = self._latest_blind_verdict(
+            existing_verdicts,
+            lambda v: str(v.get("agent") or "").strip().lower() == self.state_store.agent_name
+            or str(v.get("model_family") or "").strip().lower() == own_family,
         )
-        if not has_own_verdict:
+        own_verdict_is_pass = bool(own_verdict and str(own_verdict.get("verdict") or "").strip().lower() == "pass")
+        if own_verdict is None:
             review_res, action_rec = self._run_own_blind_review_and_post(
                 pr_key=pr_key,
                 repo=repo,
@@ -5601,6 +5795,7 @@ class GithubCompanionRunner:
                 linear_pr_actions.append(action_rec)
             if not review_res.get("task_succeeded") or action_rec is None:
                 return
+            own_verdict_is_pass = str(action_rec.get("verdict") or "").strip().lower() == "pass"
         else:
             processed_pr_keys.add(pr_key)
 
@@ -5637,6 +5832,22 @@ class GithubCompanionRunner:
                 dispatches.append(consensus["dispatch"])
             if isinstance(consensus.get("needs_decision_notification"), dict):
                 notifications.append(consensus["needs_decision_notification"])
+        elif own_verdict_is_pass:
+            ci_action = self._maybe_approve_action_required_ci(
+                pr_key=pr_key,
+                repo=repo,
+                number=number,
+                head_sha=head_sha,
+                live_pr=live_pr,
+                pr_entry=pr_entry,
+                linear_id=linear_id,
+                linear_identifier=linear_identifier,
+                linear_url=linear_url,
+                current_ms=current_ms,
+                allow_first_time=False,
+            )
+            if ci_action is not None:
+                linear_pr_actions.append(ci_action)
 
     def _run_lane_b_pr_review(
         self,
@@ -5654,6 +5865,7 @@ class GithubCompanionRunner:
         changed_files: object,
         file_paths: object,
         files_has_next_page: bool,
+        author_association: str | None = None,
         auto_merge_eligible: bool,
         thread_id: str | None,
         linear_id: str,
@@ -5670,6 +5882,7 @@ class GithubCompanionRunner:
     ) -> str:
         if self.linear_client is None:
             return "throttled"
+        is_first_time = is_first_time_contributor_association(author_association)
         bypass_reasons = compute_lane_a_bypass_reasons(
             repo=repo,
             additions=additions,  # type: ignore[arg-type]
@@ -5678,6 +5891,7 @@ class GithubCompanionRunner:
             file_paths=file_paths,  # type: ignore[arg-type]
             files_has_next_page=files_has_next_page,
             ci_state=ci_state,
+            author_association=author_association,
             enabled=self.state_store.community_auto_merge_enabled,
             max_lines=self.state_store.community_auto_merge_max_lines,
             max_files=self.state_store.community_auto_merge_max_files,
@@ -5727,7 +5941,14 @@ class GithubCompanionRunner:
             return "dispatch_failed"
         with self._deferred_dispatch_guard(lane_b_res, now_override_ms=now_override_ms):
             lane_b_verdict, lane_b_summary = parse_lane_b_reply(str(lane_b_res.get("reply_text") or ""))
-            if lane_b_verdict == "ready-to-merge":
+            if is_first_time:
+                if lane_b_verdict == "needs-decision":
+                    add_lbls: tuple[str, ...] = ("first-time", "needs-decision")
+                    rem_lbls: tuple[str, ...] = ("ready-to-merge",)
+                else:
+                    add_lbls = ("first-time",)
+                    rem_lbls = ("ready-to-merge", "needs-decision")
+            elif lane_b_verdict == "ready-to-merge":
                 add_lbls, rem_lbls = ("ready-to-merge",), ("needs-decision",)
             else:
                 add_lbls, rem_lbls = ("needs-decision",), ("ready-to-merge",)
@@ -5843,9 +6064,17 @@ class GithubCompanionRunner:
             changed_files = pr_item.get("changed_files") if "changed_files" in pr_item else live_pr.get("changed_files")
             file_paths = pr_item.get("file_paths") if "file_paths" in pr_item else live_pr.get("file_paths")
             files_has_next_page = bool(pr_item.get("files_has_next_page", live_pr.get("files_has_next_page", False)))
+            author_association = str(
+                pr_item.get("author_association")
+                or live_pr.get("author_association")
+                or live_pr.get("authorAssociation")
+                or pr_entry.get("author_association")
+                or ""
+            ).strip().upper()
+            is_first_time = is_first_time_contributor_association(author_association)
             raw_eligible = pr_item.get("community_auto_merge_eligible")
             auto_merge_eligible = (
-                bool(raw_eligible)
+                bool(raw_eligible) and not is_first_time
                 if isinstance(raw_eligible, bool)
                 else compute_community_auto_merge_eligible(
                     repo=repo,
@@ -5854,13 +6083,17 @@ class GithubCompanionRunner:
                     changed_files=changed_files,
                     file_paths=file_paths,
                     files_has_next_page=files_has_next_page,
+                    author_association=author_association,
                     enabled=self.state_store.community_auto_merge_enabled,
                     max_lines=self.state_store.community_auto_merge_max_lines,
                     max_files=self.state_store.community_auto_merge_max_files,
                     excluded_repos=self.state_store.community_auto_merge_excluded_repos,
                 )
             )
-            is_lane_a = bool(auto_merge_eligible) and ci_state in ("SUCCESS", "NONE") and not has_dnm
+            ci_needs_approval = has_action_required_ci(
+                live_pr.get("statusCheckRollup") if "statusCheckRollup" in live_pr else pr_item.get("statusCheckRollup")
+            )
+            is_lane_a = bool(auto_merge_eligible) and (ci_state in ("SUCCESS", "NONE") or ci_needs_approval) and not has_dnm
             initial_state = "In Review" if is_lane_a else "Backlog"
 
             try:
@@ -5870,6 +6103,7 @@ class GithubCompanionRunner:
                     repo=repo,
                     item_kind="PR",
                     state=initial_state,
+                    extra_labels=("first-time",) if is_first_time else (),
                 )
                 linear_id = str(linear_issue.get("id") or "").strip()
                 if not linear_id:
@@ -5882,6 +6116,33 @@ class GithubCompanionRunner:
                 sys.stderr.write(f"moltis-github-companion linear-pr-ensure warning ({pr_key}): {exc}\n")
                 continue
             breaker.record_success()
+
+            resolved_labels = extract_linear_issue_labels(linear_issue)
+            if "issue" in resolved_labels and "pr" not in resolved_labels:
+                sys.stderr.write(
+                    f"moltis-github-companion linear-pr-kind-mismatch warning ({pr_key} / {linear_id}): refusing to update Issue-labelled Linear item\n"
+                )
+                continue
+            if is_ignored_linear_issue_state(linear_issue):
+                self.state_store.update_thread_state(
+                    pr_key,
+                    {
+                        "repo": repo,
+                        "number": number,
+                        "subject_type": "PullRequest",
+                        "url": pr_url,
+                        "title": title,
+                        "linear_issue_id": linear_id,
+                        "linear_issue_identifier": linear_identifier,
+                        "linear_issue_url": linear_url,
+                        "handled_updated_at": updated_at or pr_entry.get("handled_updated_at"),
+                        "handled_head_sha": head_sha or pr_entry.get("handled_head_sha"),
+                        "handled_ci_state": ci_state or pr_entry.get("handled_ci_state"),
+                    },
+                    now_override_ms=current_ms,
+                )
+                processed_pr_keys.add(pr_key)
+                continue
 
             self.state_store.update_thread_state(
                 pr_key,
@@ -5901,7 +6162,7 @@ class GithubCompanionRunner:
             thread_id = str(pr_item.get("thread_id") or pr_entry.get("thread_id") or "").strip() or None
             if is_lane_a:
                 issue_state_name = str(_as_dict(linear_issue.get("state")).get("name") or "").strip().lower()
-                issue_labels = extract_linear_issue_labels(linear_issue)
+                issue_labels = resolved_labels
                 if (
                     issue_state_name != "in review"
                     or "needs-decision" in issue_labels
@@ -5931,7 +6192,7 @@ class GithubCompanionRunner:
                     unresolved_threads=unresolved_threads,
                     thread_id=thread_id,
                     pr_entry=pr_entry,
-                    live_pr=live_pr,
+                    live_pr={**live_pr, **({"statusCheckRollup": pr_item["statusCheckRollup"]} if "statusCheckRollup" in pr_item and "statusCheckRollup" not in live_pr else {}), **({"file_paths": file_paths} if file_paths is not None and "file_paths" not in live_pr else {}), **({"files_has_next_page": files_has_next_page} if "files_has_next_page" not in live_pr else {})},
                     linear_id=linear_id,
                     linear_identifier=linear_identifier,
                     linear_url=linear_url,
@@ -5946,8 +6207,22 @@ class GithubCompanionRunner:
                     now_override_ms=now_override_ms,
                 )
             else:
-                issue_labels = extract_linear_issue_labels(linear_issue)
-                if "ready-to-merge" in issue_labels:
+                issue_labels = resolved_labels
+                if is_first_time and ("first-time" not in issue_labels or "ready-to-merge" in issue_labels):
+                    try:
+                        self.linear_client.update_issue(
+                            linear_id,
+                            add_labels=("first-time",),
+                            remove_labels=("ready-to-merge",),
+                        )
+                    except Exception as exc:
+                        sys.stderr.write(
+                            f"moltis-github-companion lane-b-first-time-label warning ({pr_key} / {linear_id}): {exc}\n"
+                        )
+                    else:
+                        issue_labels.add("first-time")
+                        issue_labels.discard("ready-to-merge")
+                elif "ready-to-merge" in issue_labels:
                     try:
                         self.linear_client.update_issue(linear_id, remove_labels=("ready-to-merge",))
                     except Exception as exc:
@@ -5970,6 +6245,7 @@ class GithubCompanionRunner:
                     changed_files=changed_files,
                     file_paths=file_paths,
                     files_has_next_page=files_has_next_page,
+                    author_association=author_association,
                     auto_merge_eligible=bool(auto_merge_eligible),
                     thread_id=thread_id,
                     linear_id=linear_id,
@@ -5993,7 +6269,7 @@ class GithubCompanionRunner:
                         )
 
         for linear_issue in active_linear_issues or ():
-            if not isinstance(linear_issue, dict) or linear_issue.get("archivedAt"):
+            if not isinstance(linear_issue, dict) or is_ignored_linear_issue_state(linear_issue):
                 continue
             linear_id = str(linear_issue.get("id") or "").strip()
             if not linear_id:
@@ -6030,6 +6306,13 @@ class GithubCompanionRunner:
             pr_labels = extract_label_names(live_pr.get("labels"))
             unresolved_threads = max(0, _safe_int(live_pr.get("unresolved_thread_count"), 0))
             thread_id = str(pr_entry.get("thread_id") or "").strip() or None
+            author_association = str(
+                live_pr.get("author_association")
+                or live_pr.get("authorAssociation")
+                or pr_entry.get("author_association")
+                or ""
+            ).strip().upper()
+            ci_needs_approval = has_action_required_ci(live_pr.get("statusCheckRollup"))
 
             if pr_entry.get("linear_issue_id") != linear_id or pr_entry.get("linear_issue_url") != linear_url:
                 self.state_store.update_thread_state(
@@ -6087,13 +6370,14 @@ class GithubCompanionRunner:
                 elif (
                     not is_trusted_github_actor(live_pr.get("author"))
                     and not has_do_not_merge_label(pr_labels)
-                    and ci_state in ("SUCCESS", "NONE")
+                    and (ci_state in ("SUCCESS", "NONE") or ci_needs_approval)
                     and (
                         pr_entry.get("handled_head_sha") != head_sha
                         or (
                             bool(pr_entry.get("handled_ci_state"))
                             and normalize_ci_state(pr_entry.get("handled_ci_state")) not in ("SUCCESS", "NONE")
                         )
+                        or (ci_needs_approval and pr_entry.get("ci_approved_head_sha") != head_sha)
                     )
                     and compute_community_auto_merge_eligible(
                         repo=repo,
@@ -6102,6 +6386,7 @@ class GithubCompanionRunner:
                         changed_files=live_pr.get("changed_files"),
                         file_paths=live_pr.get("file_paths"),
                         files_has_next_page=bool(live_pr.get("files_has_next_page", False)),
+                        author_association=author_association,
                         enabled=self.state_store.community_auto_merge_enabled,
                         max_lines=self.state_store.community_auto_merge_max_lines,
                         max_files=self.state_store.community_auto_merge_max_files,
@@ -6113,12 +6398,12 @@ class GithubCompanionRunner:
                     except Exception:
                         continue
                     existing_verdicts = linear_sync.parse_blind_review_verdicts(existing_comments, head_sha=head_sha)
-                    has_own_verdict = any(
-                        str(v.get("agent") or "").strip().lower() == self.state_store.agent_name
-                        or str(v.get("model_family") or "").strip().lower() == own_family
-                        for v in existing_verdicts
+                    own_verdict = self._latest_blind_verdict(
+                        existing_verdicts,
+                        lambda v: str(v.get("agent") or "").strip().lower() == self.state_store.agent_name
+                        or str(v.get("model_family") or "").strip().lower() == own_family,
                     )
-                    if not has_own_verdict:
+                    if own_verdict is None:
                         review_res, action_rec = self._run_own_blind_review_and_post(
                             pr_key=pr_key,
                             repo=repo,
@@ -6161,6 +6446,39 @@ class GithubCompanionRunner:
                                         dispatches.append(post_consensus["dispatch"])
                                     if isinstance(post_consensus.get("needs_decision_notification"), dict):
                                         notifications.append(post_consensus["needs_decision_notification"])
+                                elif str(action_rec.get("verdict") or "").strip().lower() == "pass":
+                                    ci_action = self._maybe_approve_action_required_ci(
+                                        pr_key=pr_key,
+                                        repo=repo,
+                                        number=number,
+                                        head_sha=head_sha,
+                                        live_pr=live_pr,
+                                        pr_entry=pr_entry,
+                                        linear_id=linear_id,
+                                        linear_identifier=linear_identifier,
+                                        linear_url=linear_url,
+                                        current_ms=current_ms,
+                                        allow_first_time=False,
+                                    )
+                                    if ci_action is not None:
+                                        linear_pr_actions.append(ci_action)
+                    elif str(own_verdict.get("verdict") or "").strip().lower() == "pass":
+                        ci_action = self._maybe_approve_action_required_ci(
+                            pr_key=pr_key,
+                            repo=repo,
+                            number=number,
+                            head_sha=head_sha,
+                            live_pr=live_pr,
+                            pr_entry=pr_entry,
+                            linear_id=linear_id,
+                            linear_identifier=linear_identifier,
+                            linear_url=linear_url,
+                            current_ms=current_ms,
+                            allow_first_time=False,
+                        )
+                        if ci_action is not None:
+                            processed_pr_keys.add(pr_key)
+                            linear_pr_actions.append(ci_action)
             elif state_name == "todo" or state_type == "unstarted":
                 triaged_sha = str(pr_entry.get("triaged_head_sha") or "").strip() or None
                 if "ready-to-merge" in lin_labels:
@@ -6433,6 +6751,21 @@ class GithubCompanionRunner:
                                         {"linear_todo_reviewed_sha": head_sha},
                                         now_override_ms=current_ms,
                                     )
+                                    ci_action = self._maybe_approve_action_required_ci(
+                                        pr_key=pr_key,
+                                        repo=repo,
+                                        number=number,
+                                        head_sha=head_sha,
+                                        live_pr=live_pr,
+                                        pr_entry=pr_entry,
+                                        linear_id=linear_id,
+                                        linear_identifier=linear_identifier,
+                                        linear_url=linear_url,
+                                        current_ms=current_ms,
+                                        allow_first_time=True,
+                                    )
+                                    if ci_action is not None:
+                                        linear_pr_actions.append(ci_action)
                                 review_action = "linear_todo_reviewed"
                     linear_pr_actions.append({
                         "action": review_action,
@@ -6544,12 +6877,13 @@ class GithubCompanionRunner:
                     changed_files=changed_files,
                     file_paths=file_paths,
                     files_has_next_page=files_has_next_page,
+                    author_association=author_association,
                     enabled=self.state_store.community_auto_merge_enabled,
                     max_lines=self.state_store.community_auto_merge_max_lines,
                     max_files=self.state_store.community_auto_merge_max_files,
                     excluded_repos=self.state_store.community_auto_merge_excluded_repos,
                 )
-                is_lane_a = bool(auto_merge_eligible) and ci_state in ("SUCCESS", "NONE") and not has_dnm
+                is_lane_a = bool(auto_merge_eligible) and (ci_state in ("SUCCESS", "NONE") or ci_needs_approval) and not has_dnm
                 ci_turned_green_for_lane_a = (
                     sha_unchanged
                     and is_lane_a
@@ -6637,6 +6971,7 @@ class GithubCompanionRunner:
                         changed_files=changed_files,
                         file_paths=file_paths,
                         files_has_next_page=files_has_next_page,
+                        author_association=author_association,
                         auto_merge_eligible=bool(auto_merge_eligible),
                         thread_id=thread_id,
                         linear_id=linear_id,
@@ -6682,7 +7017,7 @@ class GithubCompanionRunner:
             if has_do_not_merge_label(live_pr.get("labels")):
                 continue
             ci_state = normalize_ci_state(live_pr.get("ci_state") or live_pr.get("statusCheckRollup"))
-            if ci_state not in ("SUCCESS", "NONE"):
+            if ci_state not in ("SUCCESS", "NONE") and not has_action_required_ci(live_pr.get("statusCheckRollup")):
                 continue
             repo = str(live_pr.get("repo") or "").strip()
             number = _safe_int(live_pr.get("number"), 0)
@@ -6701,6 +7036,7 @@ class GithubCompanionRunner:
                 changed_files=live_pr.get("changed_files"),
                 file_paths=live_pr.get("file_paths"),
                 files_has_next_page=bool(live_pr.get("files_has_next_page", False)),
+                author_association=live_pr.get("author_association") or live_pr.get("authorAssociation"),
                 enabled=self.state_store.community_auto_merge_enabled,
                 max_lines=self.state_store.community_auto_merge_max_lines,
                 max_files=self.state_store.community_auto_merge_max_files,
@@ -6720,7 +7056,7 @@ class GithubCompanionRunner:
 
         results: list[dict] = []
         for linear_issue in in_review_issues or ():
-            if not isinstance(linear_issue, dict) or linear_issue.get("archivedAt"):
+            if not isinstance(linear_issue, dict) or is_ignored_linear_issue_state(linear_issue):
                 continue
             linear_id = str(linear_issue.get("id") or "").strip()
             if not linear_id:

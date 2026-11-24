@@ -31,6 +31,7 @@ WORKFLOW_LABELS = (
     "sign-off-required",
     "ready-to-merge",
     "needs-decision",
+    "first-time",
 )
 DEFAULT_TIMEOUT_SECS = 20.0
 DEFAULT_MARKER_INDEX_TTL_SECS = 300.0
@@ -1410,11 +1411,48 @@ class LinearSyncClient:
             raise LinearAPIError(f"Linear issue not found: {clean_id!r}")
         return issue
 
-    def _find_issue_by_attachment_url(self, normalized_url: str, team_id: str) -> dict[str, object] | None:
+    @staticmethod
+    def _issue_matches_item_kind(issue: Mapping[str, object], expected_kind: str | None) -> bool:
+        if expected_kind is None:
+            return True
+        norm_expected = str(expected_kind).strip().lower()
+        if norm_expected not in ("pr", "issue"):
+            return True
+        raw_labels = issue.get("labels")
+        nodes = raw_labels.get("nodes") if isinstance(raw_labels, dict) else (raw_labels if isinstance(raw_labels, list) else None)
+        label_names = {
+            str(node.get("name") or "").strip().lower()
+            for node in (nodes or ())
+            if isinstance(node, dict) and str(node.get("name") or "").strip()
+        }
+        if norm_expected == "pr" and "issue" in label_names and "pr" not in label_names:
+            return False
+        if norm_expected == "issue" and "pr" in label_names and "issue" not in label_names:
+            return False
+        marker_url = parse_github_url_marker(issue.get("description"))
+        if marker_url:
+            _, marker_kind, _ = _parse_github_url_parts(marker_url)
+            if marker_kind is not None:
+                norm_marker = marker_kind.strip().lower()
+                if norm_expected == "pr" and norm_marker == "issue" and "pr" not in label_names:
+                    return False
+                if norm_expected == "issue" and norm_marker == "pr" and "issue" not in label_names:
+                    return False
+        return True
+
+    def _find_issue_by_attachment_url(
+        self,
+        normalized_url: str,
+        team_id: str,
+        *,
+        expected_kind: str | None = None,
+    ) -> dict[str, object] | None:
         after: str | None = None
         seen_cursors: set[str] = set()
+        project_fallback: dict[str, object] | None = None
         team_fallback: dict[str, object] | None = None
         project_lower = self.project_name.lower()
+        norm_expected = str(expected_kind or "").strip().lower() or None
 
         while True:
             data = self._graphql_request(_ATTACHMENTS_FOR_URL_QUERY, {"url": normalized_url, "after": after})
@@ -1435,6 +1473,8 @@ class LinearSyncClient:
                     issue = node.get("issue")
                     if not isinstance(issue, dict) or not issue.get("id") or issue.get("archivedAt"):
                         continue
+                    if not self._issue_matches_item_kind(issue, expected_kind):
+                        continue
                     issue_team = issue.get("team")
                     issue_team_id = str(issue_team.get("id") or "").strip() if isinstance(issue_team, dict) else ""
                     if issue_team_id and issue_team_id != team_id:
@@ -1446,8 +1486,20 @@ class LinearSyncClient:
                         else ""
                     )
                     if issue_project_name == project_lower:
-                        return issue
-                    if team_fallback is None:
+                        if norm_expected is None:
+                            return issue
+                        raw_labels = issue.get("labels")
+                        lbl_nodes = raw_labels.get("nodes") if isinstance(raw_labels, dict) else None
+                        lbl_names = {
+                            str(lbl.get("name") or "").strip().lower()
+                            for lbl in (lbl_nodes or ())
+                            if isinstance(lbl, dict)
+                        }
+                        if norm_expected in lbl_names or parse_github_url_marker(issue.get("description")) == normalized_url:
+                            return issue
+                        if project_fallback is None:
+                            project_fallback = issue
+                    elif team_fallback is None:
                         team_fallback = issue
 
             page_info = attachments.get("pageInfo") if isinstance(attachments, dict) else None
@@ -1458,7 +1510,7 @@ class LinearSyncClient:
             seen_cursors.add(end_cursor)
             after = end_cursor
 
-        return team_fallback
+        return project_fallback if project_fallback is not None else team_fallback
 
     def _get_project_marker_index(
         self,
@@ -1647,14 +1699,19 @@ class LinearSyncClient:
         attachment = att_payload.get("attachment")
         return attachment if isinstance(attachment, dict) else None
 
-    def find_issue_by_github_url(self, github_url: str) -> dict[str, object] | None:
+    def find_issue_by_github_url(self, github_url: str, *, item_kind: str | None = None) -> dict[str, object] | None:
         """Find an existing Linear issue linked to the normalised GitHub URL via attachments or description marker."""
         normalized_url = normalize_github_url(github_url)
+        _, parsed_kind, _ = _parse_github_url_parts(normalized_url)
+        expected_kind = _normalize_item_kind_label(item_kind) if item_kind is not None else parsed_kind
         team_id = self.resolve_team_id()
-        found = self._find_issue_by_attachment_url(normalized_url, team_id)
+        found = self._find_issue_by_attachment_url(normalized_url, team_id, expected_kind=expected_kind)
         if found is not None:
             return found
-        return self._find_issue_by_description_marker(normalized_url, team_id)
+        by_marker = self._find_issue_by_description_marker(normalized_url, team_id)
+        if by_marker is not None and self._issue_matches_item_kind(by_marker, expected_kind):
+            return by_marker
+        return None
 
     def ensure_issue_for_github_item(
         self,
@@ -1673,14 +1730,15 @@ class LinearSyncClient:
     ) -> dict[str, object]:
         """Return an existing issue for the GitHub item, or create it with labels and attachment."""
         normalized_url = normalize_github_url(github_url)
+        parsed_repo, parsed_kind, parsed_num = _parse_github_url_parts(normalized_url)
+        expected_kind = _normalize_item_kind_label(item_kind) if item_kind is not None else parsed_kind
         team_id = self.resolve_team_id()
-        existing = self._find_issue_by_attachment_url(normalized_url, team_id)
+        existing = self._find_issue_by_attachment_url(normalized_url, team_id, expected_kind=expected_kind)
         if existing is not None:
             return existing
 
-        parsed_repo, parsed_kind, parsed_num = _parse_github_url_parts(normalized_url)
         orphaned = self._find_issue_by_description_marker(normalized_url, team_id)
-        if orphaned is not None:
+        if orphaned is not None and self._issue_matches_item_kind(orphaned, expected_kind):
             if not self._issue_has_github_attachment(orphaned, normalized_url):
                 reconcile_repo = _normalize_repo_name(repo) if repo is not None else parsed_repo
                 fallback_title = str(title or "").strip() or str(orphaned.get("title") or "").strip()
