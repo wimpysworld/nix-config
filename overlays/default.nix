@@ -124,6 +124,13 @@ in
                 final.unstable.nodejs_latest
                 final.unstable.npmHooks.npmConfigHook
               ] oldAttrs.nativeBuildInputs;
+              # Upstream llama.cpp includes <nvml.h> unconditionally for CUDA builds,
+              # and nixpkgs-unstable omits cuda_nvml_dev from llama-cpp's buildInputs.
+              buildInputs =
+                (oldAttrs.buildInputs or [ ])
+                ++ final.lib.optionals (builtins.elem (cmakeBool "GGML_CUDA" true) (oldAttrs.cmakeFlags or [ ])) [
+                  final.unstable.cudaPackages.cuda_nvml_dev
+                ];
               npmDeps = null;
               preConfigure = null;
               cmakeFlags =
