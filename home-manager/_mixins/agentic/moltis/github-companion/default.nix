@@ -43,6 +43,7 @@
   communityAutoMergeMaxLines ? 150,
   communityAutoMergeMaxFiles ? 5,
   communityAutoMergeExcludedRepos ? [ "wimpysworld/nix-config" ],
+  dailyImplementationsCap ? 24,
   operatorDigestEnabled ? true,
   securityPatchReleaseExtraRepos ? [ ],
   securityPatchReleaseCooldownSecs ? 7200,
@@ -97,6 +98,7 @@ pkgs.writeShellApplication {
       communityAutoMergeMaxLines
       communityAutoMergeMaxFiles
       communityAutoMergeExcludedRepos
+      dailyImplementationsCap
       operatorDigestEnabled
       securityPatchReleaseExtraRepos
       securityPatchReleaseCooldownSecs
@@ -129,6 +131,7 @@ pkgs.writeShellApplication {
     export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_LINES=${lib.escapeShellArg (toString communityAutoMergeMaxLines)}
     export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_FILES=${lib.escapeShellArg (toString communityAutoMergeMaxFiles)}
     export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS=${lib.escapeShellArg (lib.concatStringsSep "," communityAutoMergeExcludedRepos)}
+    export MOLTIS_GITHUB_COMPANION_DAILY_IMPLEMENTATIONS_CAP=${lib.escapeShellArg (toString dailyImplementationsCap)}
     export MOLTIS_GITHUB_COMPANION_DIGEST_ENABLED=${lib.escapeShellArg (lib.boolToString operatorDigestEnabled)}
     export MOLTIS_GITHUB_COMPANION_SECURITY_RELEASE_EXTRA_REPOS=${lib.escapeShellArg (lib.concatStringsSep "," securityPatchReleaseExtraRepos)}
     export MOLTIS_GITHUB_COMPANION_SECURITY_RELEASE_COOLDOWN_SECS=${lib.escapeShellArg (toString securityPatchReleaseCooldownSecs)}

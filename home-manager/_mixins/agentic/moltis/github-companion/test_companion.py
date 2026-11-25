@@ -943,36 +943,38 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
         self.assertEqual(rolled_slot2["daily_implementations"], 1)
 
         # Consume 2nd and 3rd daily implementations in slot-2 and slot-3 (22:30 UTC / 23:30 BST)
+        # using an explicit 3/day limits override to verify daily cap enforcement and midnight rollover.
+        three_per_day = {"daily_implementations": 3}
         ok_impl2, snap_impl2 = store.consume_throttle(
-            "todo_implementations", slot_id="slot-2", now_override_ms=slot2_ms
+            "todo_implementations", slot_id="slot-2", limits=three_per_day, now_override_ms=slot2_ms
         )
         self.assertTrue(ok_impl2)
         self.assertEqual(snap_impl2["daily_implementations"], 2)
         self.assertEqual(snap_impl2["slot_todo_implementations"], 1)
 
         ok_impl3, snap_impl3 = store.consume_throttle(
-            "todo_implementations", slot_id="slot-3", now_override_ms=slot3_bst_same_day_ms
+            "todo_implementations", slot_id="slot-3", limits=three_per_day, now_override_ms=slot3_bst_same_day_ms
         )
         self.assertTrue(ok_impl3)
         self.assertEqual(snap_impl3["daily_date"], "2026-07-15")
         self.assertEqual(snap_impl3["daily_implementations"], 3)
         self.assertEqual(snap_impl3["slot_todo_implementations"], 1)
 
-        # 4th implementation in a new slot on the same Europe/London date is rejected by daily cap (3)
+        # 4th implementation in a new slot on the same Europe/London date is rejected by explicit daily cap (3)
         self.assertFalse(
             store.can_consume_throttle(
-                "todo_implementations", slot_id="slot-4", now_override_ms=slot4_bst_same_day_ms
+                "todo_implementations", slot_id="slot-4", limits=three_per_day, now_override_ms=slot4_bst_same_day_ms
             )
         )
         ok_impl4, snap_impl4 = store.consume_throttle(
-            "todo_implementations", slot_id="slot-4", now_override_ms=slot4_bst_same_day_ms
+            "todo_implementations", slot_id="slot-4", limits=three_per_day, now_override_ms=slot4_bst_same_day_ms
         )
         self.assertFalse(ok_impl4)
         self.assertEqual(snap_impl4["daily_date"], "2026-07-15")
         self.assertEqual(snap_impl4["daily_implementations"], 3)
         self.assertEqual(snap_impl4["slot_todo_implementations"], 0)
         self.assertTrue(
-            store.can_consume_throttle("triage_stubs", slot_id="slot-4", now_override_ms=slot4_bst_same_day_ms)
+            store.can_consume_throttle("triage_stubs", slot_id="slot-4", limits=three_per_day, now_override_ms=slot4_bst_same_day_ms)
         )
 
         # BST midnight rollover: 23:30 UTC on 2026-07-15 is 00:30 BST on 2026-07-16 in Europe/London
@@ -981,11 +983,11 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
         self.assertEqual(rolled_next_day["daily_implementations"], 0)
         self.assertTrue(
             store.can_consume_throttle(
-                "todo_implementations", slot_id="slot-5", now_override_ms=slot5_bst_next_day_ms
+                "todo_implementations", slot_id="slot-5", limits=three_per_day, now_override_ms=slot5_bst_next_day_ms
             )
         )
         ok_next_day, snap_next_day = store.consume_throttle(
-            "todo_implementations", slot_id="slot-5", now_override_ms=slot5_bst_next_day_ms
+            "todo_implementations", slot_id="slot-5", limits=three_per_day, now_override_ms=slot5_bst_next_day_ms
         )
         self.assertTrue(ok_next_day)
         self.assertEqual(snap_next_day["daily_date"], "2026-07-16")
@@ -1004,17 +1006,74 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
             start=1,
         ):
             ok_w, snap_w = winter_store.consume_throttle(
-                "todo_implementations", slot_id=slot_label, now_override_ms=ts_val
+                "todo_implementations", slot_id=slot_label, limits=three_per_day, now_override_ms=ts_val
             )
             self.assertTrue(ok_w)
             self.assertEqual(snap_w["daily_date"], "2026-01-15")
             self.assertEqual(snap_w["daily_implementations"], idx)
         self.assertFalse(
-            winter_store.can_consume_throttle("todo_implementations", slot_id="w4", now_override_ms=winter_2330)
+            winter_store.can_consume_throttle(
+                "todo_implementations", slot_id="w4", limits=three_per_day, now_override_ms=winter_2330
+            )
         )
         self.assertTrue(
-            winter_store.can_consume_throttle("todo_implementations", slot_id="w5", now_override_ms=winter_0005)
+            winter_store.can_consume_throttle(
+                "todo_implementations", slot_id="w5", limits=three_per_day, now_override_ms=winter_0005
+            )
         )
+
+    def test_daily_implementations_cap_default_24_and_env_override(self) -> None:
+        self.assertEqual(companion.DEFAULT_DAILY_IMPLEMENTATIONS_CAP, 24)
+        self.assertEqual(companion.DEFAULT_THROTTLE_LIMITS["daily_implementations"], 24)
+
+        base_ms = int(datetime.datetime(2026, 7, 15, 9, 0, tzinfo=datetime.timezone.utc).timestamp() * 1000)
+
+        # Unset env var uses the default 24/day cap.
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("MOLTIS_GITHUB_COMPANION_DAILY_IMPLEMENTATIONS_CAP", None)
+            self.assertEqual(companion.CompanionStateStore._resolve_throttle_limits()["daily_implementations"], 24)
+            default_store = self.make_store("skrye", state_dir=self.state_dir / "throttles-default-24")
+            for idx in range(1, 25):
+                ok, snap = default_store.consume_throttle(
+                    "todo_implementations", slot_id=f"slot-{idx}", now_override_ms=base_ms + idx * 1000
+                )
+                self.assertTrue(ok, f"expected implementation {idx}/24 to succeed")
+                self.assertEqual(snap["daily_implementations"], idx)
+            self.assertFalse(
+                default_store.can_consume_throttle(
+                    "todo_implementations", slot_id="slot-25", now_override_ms=base_ms + 25_000
+                )
+            )
+
+        # Positive integer env override is honoured and explicit `limits` overrides still take precedence.
+        with patch.dict(os.environ, {"MOLTIS_GITHUB_COMPANION_DAILY_IMPLEMENTATIONS_CAP": "5"}, clear=False):
+            self.assertEqual(companion.CompanionStateStore._resolve_throttle_limits()["daily_implementations"], 5)
+            self.assertEqual(
+                companion.CompanionStateStore._resolve_throttle_limits({"daily_implementations": 2})[
+                    "daily_implementations"
+                ],
+                2,
+            )
+            env_store = self.make_store("zannah", state_dir=self.state_dir / "throttles-env-5")
+            for idx in range(1, 6):
+                ok, _ = env_store.consume_throttle(
+                    "todo_implementations", slot_id=f"env-slot-{idx}", now_override_ms=base_ms + idx * 1000
+                )
+                self.assertTrue(ok)
+            self.assertFalse(
+                env_store.can_consume_throttle(
+                    "todo_implementations", slot_id="env-slot-6", now_override_ms=base_ms + 6_000
+                )
+            )
+
+        # Non-positive, empty, or non-integer env values fall back to default 24.
+        for bad_val in ("", "   ", "0", "-4", "not-a-number"):
+            with patch.dict(os.environ, {"MOLTIS_GITHUB_COMPANION_DAILY_IMPLEMENTATIONS_CAP": bad_val}, clear=False):
+                self.assertEqual(
+                    companion.CompanionStateStore._resolve_throttle_limits()["daily_implementations"],
+                    24,
+                    f"expected invalid env value {bad_val!r} to fall back to 24",
+                )
 
 
 class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
@@ -6249,7 +6308,7 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
         self.assertEqual(len(res3["targeted_dispatches"]), 1)
         self.assertEqual(rpc_calls[-1]["meta"]["linear_issue_id"], lin3_id)  # type: ignore[index]
 
-        # Slot 4 (11:30 UTC, same Europe/London day): n4 blocked by 3/day cap
+        # Slot 4 (11:30 UTC, same Europe/London day): n4 blocked when daily cap is set to 3/day
         lin4 = linear_stub.seed_issue(
             github_url=f"https://github.com/{repo}/issues/{n4}",
             title=f"Fourth daily feature #{n4}",
@@ -6259,15 +6318,16 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
         )
         lin4_id = str(lin4["id"])
         slot4_ms = self._utc_ms(2026, 4, 1, 11, 30)
-        res4_blocked = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot4_ms)
-        self.assertEqual(res4_blocked["targeted_dispatches"], [])
-        self.assertEqual(linear_stub.issues[lin4_id]["state"]["name"], "Todo")  # type: ignore[index]
+        with patch.dict(os.environ, {"MOLTIS_GITHUB_COMPANION_DAILY_IMPLEMENTATIONS_CAP": "3"}, clear=False):
+            res4_blocked = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot4_ms)
+            self.assertEqual(res4_blocked["targeted_dispatches"], [])
+            self.assertEqual(linear_stub.issues[lin4_id]["state"]["name"], "Todo")  # type: ignore[index]
 
-        # Next Europe/London day (2026-04-02 09:00 UTC): daily cap resets and n4 dispatches
-        next_day_ms = self._utc_ms(2026, 4, 2, 9, 0)
-        res4_next_day = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=next_day_ms)
-        self.assertEqual(len(res4_next_day["targeted_dispatches"]), 1)
-        self.assertEqual(rpc_calls[-1]["meta"]["linear_issue_id"], lin4_id)  # type: ignore[index]
+            # Next Europe/London day (2026-04-02 09:00 UTC): daily cap resets and n4 dispatches
+            next_day_ms = self._utc_ms(2026, 4, 2, 9, 0)
+            res4_next_day = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=next_day_ms)
+            self.assertEqual(len(res4_next_day["targeted_dispatches"]), 1)
+            self.assertEqual(rpc_calls[-1]["meta"]["linear_issue_id"], lin4_id)  # type: ignore[index]
 
         # 4) Failed turn reverts Linear issue back to Todo for bounded retry (max 3 attempts)
         lin5 = linear_stub.seed_issue(
@@ -14988,6 +15048,543 @@ class InReviewStatusLabelsAndAllowMergeTests(GithubCompanionTestBase):
         self.assertEqual(cycle_res["operator_digest"]["counts"]["approved"], 1)
         self.assertIn("Approved (sign-off ready) (1):", str(cycle_res["operator_digest"]["message"]))
         self.assertIn("Freshly approved PR in run_cycle", str(cycle_res["operator_digest"]["message"]))
+
+    def test_fetch_pull_request_mergeability_latest_opinionated_reviews_and_add_reviewer(self) -> None:
+        captured_cmds: list[list[str]] = []
+
+        def fake_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            captured_cmds.append(list(cmd))
+            if cmd[0] == "gh-api-safe" and len(cmd) > 1 and cmd[1] == "graphql":
+                payload = {
+                    "data": {
+                        "nodes": [
+                            {
+                                "id": "PR_node_dual_1",
+                                "mergeable": "MERGEABLE",
+                                "mergeStateStatus": "CLEAN",
+                                "latestOpinionatedReviews": {
+                                    "nodes": [
+                                        {
+                                            "state": "APPROVED",
+                                            "author": {"__typename": "User", "login": "sith-zannah"},
+                                            "commit": {"oid": "sha111122223333"},
+                                        },
+                                        {
+                                            "state": "APPROVED",
+                                            "author": {"__typename": "User", "login": "sith-traya"},
+                                            "commit": {"oid": "sha111122223333"},
+                                        },
+                                    ]
+                                },
+                            }
+                        ]
+                    }
+                }
+                return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(payload), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+        client = companion.GhApiSafeClient(runner=fake_runner)
+        hydrated = client.fetch_pull_request_mergeability(["PR_node_dual_1"])
+        self.assertEqual(len(captured_cmds), 1)
+        q_arg = next((a for a in captured_cmds[0] if a.startswith("query=")), "")
+        self.assertIn(
+            "latestOpinionatedReviews(first: 20) { nodes { state author { __typename login } commit { oid } } }",
+            q_arg,
+        )
+        self.assertEqual(
+            hydrated["PR_node_dual_1"],
+            {
+                "mergeable": "MERGEABLE",
+                "merge_state_status": "CLEAN",
+                "latest_opinionated_reviews": [
+                    {"state": "APPROVED", "author": "sith-zannah", "commit_oid": "sha111122223333"},
+                    {"state": "APPROVED", "author": "sith-traya", "commit_oid": "sha111122223333"},
+                ],
+            },
+        )
+
+        captured_cmds.clear()
+        for reviewer in ("sith-traya", "sith-skrye", "Sith-Zannah"):
+            client.add_pull_request_reviewer("wimpysworld/tailor", 42, reviewer)
+        self.assertEqual(
+            captured_cmds,
+            [
+                ["gh", "pr", "edit", "https://github.com/wimpysworld/tailor/pull/42", "--add-reviewer", "sith-traya"],
+                ["gh", "pr", "edit", "https://github.com/wimpysworld/tailor/pull/42", "--add-reviewer", "sith-skrye"],
+                ["gh", "pr", "edit", "https://github.com/wimpysworld/tailor/pull/42", "--add-reviewer", "sith-zannah"],
+            ],
+        )
+        with self.assertRaises(ValueError):
+            client.add_pull_request_reviewer("wimpysworld/tailor", 42, "external-reviewer")
+        with self.assertRaises(ValueError):
+            client.add_pull_request_reviewer("untrusted/repo", 42, "sith-traya")
+
+    def test_is_small_agent_pr_auto_merge_eligible_and_dual_family_head_approvals(self) -> None:
+        base_xs = {
+            "author": "sith-skrye",
+            "repo": "wimpysworld/tailor",
+            "is_draft": False,
+            "additions": 10,
+            "deletions": 5,
+            "changed_files": 1,
+            "file_paths": ["cmd/tailor/main.go"],
+            "files_has_next_page": False,
+        }
+        self.assertTrue(companion.is_small_agent_pr_auto_merge_eligible(base_xs))
+
+        # S-sized sith-zannah PR (<= 150 lines, <= 5 files) is eligible.
+        small_zannah = {
+            **base_xs,
+            "author": "sith-zannah",
+            "additions": 100,
+            "deletions": 50,
+            "changed_files": 5,
+            "file_paths": ["a.go", "b.go", "c.go", "d.go", "e.go"],
+        }
+        self.assertTrue(companion.is_small_agent_pr_auto_merge_eligible(small_zannah))
+
+        # Rejections: M/L/XL sizes, sensitive paths, excluded repo, draft, operator guidance, external/non-Gemini authors, incomplete files.
+        self.assertFalse(companion.is_small_agent_pr_auto_merge_eligible({**base_xs, "additions": 151, "deletions": 0}))
+        self.assertFalse(
+            companion.is_small_agent_pr_auto_merge_eligible(
+                {**base_xs, "changed_files": 6, "file_paths": ["a.go", "b.go", "c.go", "d.go", "e.go", "f.go"]}
+            )
+        )
+        self.assertFalse(companion.is_small_agent_pr_auto_merge_eligible({**base_xs, "file_paths": ["flake.nix"]}))
+        self.assertFalse(companion.is_small_agent_pr_auto_merge_eligible({**base_xs, "file_paths": ["go.mod"]}))
+        self.assertFalse(
+            companion.is_small_agent_pr_auto_merge_eligible({**base_xs, "repo": "wimpysworld/nix-config"})
+        )
+        self.assertFalse(companion.is_small_agent_pr_auto_merge_eligible({**base_xs, "is_draft": True}))
+        self.assertFalse(companion.is_small_agent_pr_auto_merge_eligible(base_xs, has_operator_guidance=True))
+        self.assertFalse(companion.is_small_agent_pr_auto_merge_eligible({**base_xs, "author": "external-dev"}))
+        self.assertFalse(companion.is_small_agent_pr_auto_merge_eligible({**base_xs, "author": "flexiondotorg"}))
+        self.assertFalse(companion.is_small_agent_pr_auto_merge_eligible({**base_xs, "author": "sith-traya"}))
+        self.assertFalse(companion.is_small_agent_pr_auto_merge_eligible({**base_xs, "files_has_next_page": True}))
+        self.assertFalse(
+            companion.is_small_agent_pr_auto_merge_eligible({**base_xs, "changed_files": 2, "file_paths": ["only.go"]})
+        )
+        self.assertFalse(
+            companion.is_small_agent_pr_auto_merge_eligible({**base_xs, "changed_files": 0, "file_paths": []})
+        )
+
+        # Dual-family head approvals checks.
+        head_sha = "abcdef1234567890"
+        self.assertTrue(
+            companion.has_dual_family_head_approvals({
+                "author": "sith-skrye",
+                "head_sha": head_sha,
+                "latest_opinionated_reviews": [
+                    {"state": "APPROVED", "author": "sith-zannah", "commit_oid": head_sha},
+                    {"state": "APPROVED", "author": "sith-traya", "commit_oid": head_sha},
+                ],
+            })
+        )
+        self.assertTrue(
+            companion.has_dual_family_head_approvals({
+                "author": "sith-zannah",
+                "head_sha": head_sha,
+                "latest_opinionated_reviews": [
+                    {"state": "APPROVED", "author": "sith-skrye", "commit_oid": head_sha},
+                    {"state": "APPROVED", "author": "sith-traya", "commit_oid": head_sha},
+                ],
+            })
+        )
+        # Reject stale commit OID on either reviewer.
+        self.assertFalse(
+            companion.has_dual_family_head_approvals({
+                "author": "sith-skrye",
+                "head_sha": head_sha,
+                "latest_opinionated_reviews": [
+                    {"state": "APPROVED", "author": "sith-zannah", "commit_oid": "stale0000"},
+                    {"state": "APPROVED", "author": "sith-traya", "commit_oid": head_sha},
+                ],
+            })
+        )
+        self.assertFalse(
+            companion.has_dual_family_head_approvals({
+                "author": "sith-skrye",
+                "head_sha": head_sha,
+                "latest_opinionated_reviews": [
+                    {"state": "APPROVED", "author": "sith-zannah", "commit_oid": head_sha},
+                    {"state": "APPROVED", "author": "sith-traya", "commit_oid": "stale0000"},
+                ],
+            })
+        )
+        # Reject single-family approval.
+        self.assertFalse(
+            companion.has_dual_family_head_approvals({
+                "author": "sith-skrye",
+                "head_sha": head_sha,
+                "latest_opinionated_reviews": [
+                    {"state": "APPROVED", "author": "sith-zannah", "commit_oid": head_sha},
+                ],
+            })
+        )
+        self.assertFalse(
+            companion.has_dual_family_head_approvals({
+                "author": "sith-skrye",
+                "head_sha": head_sha,
+                "latest_opinionated_reviews": [
+                    {"state": "APPROVED", "author": "sith-traya", "commit_oid": head_sha},
+                ],
+            })
+        )
+        # Reject CHANGES_REQUESTED from any trusted actor.
+        self.assertFalse(
+            companion.has_dual_family_head_approvals({
+                "author": "sith-skrye",
+                "head_sha": head_sha,
+                "latest_opinionated_reviews": [
+                    {"state": "APPROVED", "author": "sith-zannah", "commit_oid": head_sha},
+                    {"state": "APPROVED", "author": "sith-traya", "commit_oid": head_sha},
+                    {"state": "CHANGES_REQUESTED", "author": "flexiondotorg", "commit_oid": head_sha},
+                ],
+            })
+        )
+        # Reject missing head_sha or external author.
+        self.assertFalse(
+            companion.has_dual_family_head_approvals({
+                "author": "sith-skrye",
+                "head_sha": "",
+                "latest_opinionated_reviews": [
+                    {"state": "APPROVED", "author": "sith-zannah", "commit_oid": ""},
+                    {"state": "APPROVED", "author": "sith-traya", "commit_oid": ""},
+                ],
+            })
+        )
+        self.assertFalse(
+            companion.has_dual_family_head_approvals({
+                "author": "external-dev",
+                "head_sha": head_sha,
+                "latest_opinionated_reviews": [
+                    {"state": "APPROVED", "author": "sith-zannah", "commit_oid": head_sha},
+                    {"state": "APPROVED", "author": "sith-traya", "commit_oid": head_sha},
+                ],
+            })
+        )
+
+    def test_reconcile_small_agent_pr_requests_traya_once_per_sha_lifts_hold_and_preserves_ineligible_holds(
+        self,
+    ) -> None:
+        repo = "wimpysworld/tailor"
+        nix_repo = "wimpysworld/nix-config"
+        pr_small, pr_medium, pr_sensitive, pr_guided = (
+            LinearCommunityPullRequestsPipelineTests._owned_numbers(repo, "skrye", 4, kind="pr", start=990)
+        )
+        pr_nix = LinearCommunityPullRequestsPipelineTests._owned_numbers(nix_repo, "skrye", 1, kind="pr", start=990)[0]
+
+        url_small = f"https://github.com/{repo}/pull/{pr_small}"
+        url_medium = f"https://github.com/{repo}/pull/{pr_medium}"
+        url_sensitive = f"https://github.com/{repo}/pull/{pr_sensitive}"
+        url_guided = f"https://github.com/{repo}/pull/{pr_guided}"
+        url_nix = f"https://github.com/{nix_repo}/pull/{pr_nix}"
+
+        key_small = companion.make_pr_key(repo, pr_small)
+        key_medium = companion.make_pr_key(repo, pr_medium)
+        key_sensitive = companion.make_pr_key(repo, pr_sensitive)
+        key_guided = companion.make_pr_key(repo, pr_guided)
+        key_nix = companion.make_pr_key(nix_repo, pr_nix)
+
+        linear_stub = StubLinearSyncClient()
+        iss_small = linear_stub.seed_issue(
+            github_url=url_small,
+            title="XS agent PR for dual-family lift",
+            repo=repo,
+            item_kind="PR",
+            state="In Review",
+            extra_labels=("approved", "allow-merge"),
+            estimate=1,
+        )
+        iss_medium = linear_stub.seed_issue(
+            github_url=url_medium,
+            title="M agent PR keeps manual hold",
+            repo=repo,
+            item_kind="PR",
+            state="In Review",
+            estimate=3,
+        )
+        iss_sensitive = linear_stub.seed_issue(
+            github_url=url_sensitive,
+            title="Sensitive path agent PR keeps manual hold",
+            repo=repo,
+            item_kind="PR",
+            state="In Review",
+            estimate=3,
+        )
+        iss_guided = linear_stub.seed_issue(
+            github_url=url_guided,
+            title="Operator-guided XS agent PR keeps manual hold",
+            repo=repo,
+            item_kind="PR",
+            state="In Review",
+            estimate=1,
+        )
+        linear_stub.comments_by_issue[str(iss_guided["id"])] = [
+            {
+                "id": "cm-martin-1",
+                "body": "Hold this until after the release cut.",
+                "createdAt": "2026-04-01T10:00:00Z",
+                "user": {
+                    "id": "u-martin",
+                    "name": "Martin Wimpress",
+                    "displayName": "Martin Wimpress",
+                    "admin": True,
+                    "isMe": False,
+                    "isBot": False,
+                },
+                "botActor": None,
+            }
+        ]
+        iss_nix = linear_stub.seed_issue(
+            github_url=url_nix,
+            title="nix-config XS agent PR keeps manual hold",
+            repo=nix_repo,
+            item_kind="PR",
+            state="In Review",
+            estimate=1,
+        )
+
+        gh_cmds: list[list[str]] = []
+        hydrated_reviews_by_node: dict[str, list[dict[str, object]]] = {
+            "PR_node_small": [
+                {
+                    "state": "APPROVED",
+                    "author": {"__typename": "User", "login": "sith-zannah"},
+                    "commit": {"oid": "sha1111222233334444"},
+                }
+            ]
+        }
+
+        def fake_gh(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            gh_cmds.append(list(cmd))
+            if cmd[0] == "gh-api-safe" and len(cmd) > 1 and cmd[1] == "graphql":
+                nodes = []
+                for nid, revs in hydrated_reviews_by_node.items():
+                    if nid in " ".join(cmd):
+                        nodes.append({
+                            "id": nid,
+                            "mergeable": "MERGEABLE",
+                            "mergeStateStatus": "CLEAN",
+                            "latestOpinionatedReviews": {"nodes": revs},
+                        })
+                return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"data": {"nodes": nodes}}), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+        store, runner, _ = self._make_runner(
+            agent_name="skrye",
+            linear_client=linear_stub,
+            gh_runner=fake_gh,
+            state_subdir="in-review-small-agent-dual-family",
+        )
+
+        sha_v1 = "sha1111222233334444"
+        sha_v2 = "sha5555666677778888"
+        dual_v1 = [
+            {"state": "APPROVED", "author": "sith-zannah", "commit_oid": sha_v1},
+            {"state": "APPROVED", "author": "sith-traya", "commit_oid": sha_v1},
+        ]
+
+        open_prs = {
+            key_small: {
+                "pr_key": key_small,
+                "node_id": "PR_node_small",
+                "repo": repo,
+                "number": pr_small,
+                "author": "sith-skrye",
+                "state": "OPEN",
+                "url": url_small,
+                "head_sha": sha_v1,
+                "is_draft": False,
+                "additions": 12,
+                "deletions": 4,
+                "changed_files": 1,
+                "file_paths": ["cmd/tailor/main.go"],
+                "files_has_next_page": False,
+                "mergeable": "UNKNOWN",
+                "merge_state_status": "",
+                "ci_state": "SUCCESS",
+                "review_decision": "APPROVED",
+                "unresolved_thread_count": 0,
+                "requested_reviewers": [],
+                "labels": ["team:do-not-merge"],
+            },
+            key_medium: {
+                "pr_key": key_medium,
+                "repo": repo,
+                "number": pr_medium,
+                "author": "sith-skrye",
+                "state": "OPEN",
+                "url": url_medium,
+                "head_sha": sha_v1,
+                "is_draft": False,
+                "additions": 180,
+                "deletions": 30,
+                "changed_files": 2,
+                "file_paths": ["a.go", "b.go"],
+                "files_has_next_page": False,
+                "mergeable": "MERGEABLE",
+                "ci_state": "SUCCESS",
+                "review_decision": "APPROVED",
+                "unresolved_thread_count": 0,
+                "requested_reviewers": [],
+                "latest_opinionated_reviews": dual_v1,
+                "labels": ["team:do-not-merge"],
+            },
+            key_sensitive: {
+                "pr_key": key_sensitive,
+                "repo": repo,
+                "number": pr_sensitive,
+                "author": "sith-skrye",
+                "state": "OPEN",
+                "url": url_sensitive,
+                "head_sha": sha_v1,
+                "is_draft": False,
+                "additions": 5,
+                "deletions": 2,
+                "changed_files": 1,
+                "file_paths": ["flake.nix"],
+                "files_has_next_page": False,
+                "mergeable": "MERGEABLE",
+                "ci_state": "SUCCESS",
+                "review_decision": "APPROVED",
+                "unresolved_thread_count": 0,
+                "requested_reviewers": [],
+                "latest_opinionated_reviews": dual_v1,
+                "labels": ["team:do-not-merge"],
+            },
+            key_guided: {
+                "pr_key": key_guided,
+                "repo": repo,
+                "number": pr_guided,
+                "author": "sith-skrye",
+                "state": "OPEN",
+                "url": url_guided,
+                "head_sha": sha_v1,
+                "is_draft": False,
+                "additions": 8,
+                "deletions": 2,
+                "changed_files": 1,
+                "file_paths": ["cmd/tailor/help.go"],
+                "files_has_next_page": False,
+                "mergeable": "MERGEABLE",
+                "ci_state": "SUCCESS",
+                "review_decision": "APPROVED",
+                "unresolved_thread_count": 0,
+                "requested_reviewers": [],
+                "latest_opinionated_reviews": dual_v1,
+                "labels": ["team:do-not-merge"],
+            },
+            key_nix: {
+                "pr_key": key_nix,
+                "repo": nix_repo,
+                "number": pr_nix,
+                "author": "sith-skrye",
+                "state": "OPEN",
+                "url": url_nix,
+                "head_sha": sha_v1,
+                "is_draft": False,
+                "additions": 4,
+                "deletions": 1,
+                "changed_files": 1,
+                "file_paths": ["README.md"],
+                "files_has_next_page": False,
+                "mergeable": "MERGEABLE",
+                "ci_state": "SUCCESS",
+                "review_decision": "APPROVED",
+                "unresolved_thread_count": 0,
+                "requested_reviewers": [],
+                "latest_opinionated_reviews": dual_v1,
+                "labels": ["team:do-not-merge"],
+            },
+        }
+
+        # Pass 1: XS agent PR has only sith-zannah approval -> requests sith-traya once and keeps hold.
+        # Ineligible PRs (M, sensitive, operator-guided, nix-config) keep team:do-not-merge and receive `approved` in Linear.
+        actions1 = runner._reconcile_in_review_linear_pr_status(
+            active_linear_issues=linear_stub.list_project_issues_by_state(),
+            open_prs_by_key=open_prs,
+            signoff_ready_pr_keys=set(),
+            poll_result={"status": 200, "open_prs_poll_error": None},
+            current_ms=1_750_000_000_000,
+        )
+        add_reviewer_cmds_1 = [c for c in gh_cmds if "--add-reviewer" in c]
+        remove_label_cmds_1 = [c for c in gh_cmds if "--remove-label" in c]
+        self.assertEqual(add_reviewer_cmds_1, [["gh", "pr", "edit", url_small, "--add-reviewer", "sith-traya"]])
+        self.assertEqual(remove_label_cmds_1, [])
+        self.assertEqual(open_prs[key_small]["labels"], ["team:do-not-merge"])
+        self.assertEqual(
+            (store.get_thread_state(key_small) or {}).get("traya_review_requested_sha"),
+            sha_v1,
+        )
+        self.assertIn((key_small, "traya_review_requested"), [(a["pr_key"], a["action"]) for a in actions1])
+        for kept_key, kept_issue in (
+            (key_medium, iss_medium),
+            (key_sensitive, iss_sensitive),
+            (key_guided, iss_guided),
+            (key_nix, iss_nix),
+        ):
+            self.assertEqual(open_prs[kept_key]["labels"], ["team:do-not-merge"])
+            self.assertIn("approved", companion.extract_linear_issue_labels(linear_stub.issues[str(kept_issue["id"])]))
+
+        # Pass 2: Repeat on same head_sha -> deduplicated (no second --add-reviewer call).
+        gh_cmds.clear()
+        runner._reconcile_in_review_linear_pr_status(
+            active_linear_issues=linear_stub.list_project_issues_by_state(),
+            open_prs_by_key=open_prs,
+            signoff_ready_pr_keys=set(),
+            poll_result={"status": 200, "open_prs_poll_error": None},
+            current_ms=1_750_000_060_000,
+        )
+        self.assertEqual([c for c in gh_cmds if "--add-reviewer" in c], [])
+        self.assertEqual([c for c in gh_cmds if "--remove-label" in c], [])
+
+        # Pass 3: New commit sha_v2 pushed and BOTH sith-zannah + sith-traya approve on exact sha_v2 ->
+        # does not re-request Traya (already reviewed head_sha), removes team:do-not-merge, clears approved & allow-merge,
+        # and posts the Linear audit comment.
+        gh_cmds.clear()
+        open_prs[key_small]["head_sha"] = sha_v2
+        open_prs[key_small].pop("latest_opinionated_reviews", None)
+        hydrated_reviews_by_node["PR_node_small"] = [
+            {
+                "state": "APPROVED",
+                "author": {"__typename": "User", "login": "sith-zannah"},
+                "commit": {"oid": sha_v2},
+            },
+            {
+                "state": "APPROVED",
+                "author": {"__typename": "User", "login": "sith-traya"},
+                "commit": {"oid": sha_v2},
+            },
+        ]
+        actions3 = runner._reconcile_in_review_linear_pr_status(
+            active_linear_issues=linear_stub.list_project_issues_by_state(),
+            open_prs_by_key=open_prs,
+            signoff_ready_pr_keys=set(),
+            poll_result={"status": 200, "open_prs_poll_error": None},
+            current_ms=1_750_000_120_000,
+        )
+        self.assertEqual([c for c in gh_cmds if "--add-reviewer" in c], [])
+        self.assertEqual(
+            [c for c in gh_cmds if "--remove-label" in c],
+            [["gh", "pr", "edit", url_small, "--remove-label", "team:do-not-merge"]],
+        )
+        self.assertEqual(open_prs[key_small]["labels"], [])
+        small_linear_labels = companion.extract_linear_issue_labels(linear_stub.issues[str(iss_small["id"])])
+        self.assertNotIn("approved", small_linear_labels)
+        self.assertNotIn("allow-merge", small_linear_labels)
+        small_comments = linear_stub.comments_by_issue.get(str(iss_small["id"]), [])
+        self.assertEqual(len(small_comments), 1)
+        self.assertEqual(
+            str(small_comments[0]["body"]),
+            f"Dual-family consensus (Gemini + Traya) verified on {url_small} ({sha_v2[:12]}); "
+            "removed `team:do-not-merge` for automated merge.",
+        )
+        self.assertIn((key_small, "small_agent_pr_hold_lifted"), [(a["pr_key"], a["action"]) for a in actions3])
+
+        # All four ineligible PRs still keep team:do-not-merge untouched.
+        for kept_key in (key_medium, key_sensitive, key_guided, key_nix):
+            self.assertEqual(open_prs[kept_key]["labels"], ["team:do-not-merge"])
 
 
 if __name__ == "__main__":

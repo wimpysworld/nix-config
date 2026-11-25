@@ -216,7 +216,7 @@ The owning Gemini agent (`skrye` or `zannah` via `mod 2`) creates `Triage` intak
 - Scope is safe and excludes `wimpysworld/nix-config`, `.github/workflows/*`, `.github/actions/*`, lockfiles, Nix packaging, authentication, secrets, and new dependencies.
 - Verification is deterministic, and no duplicate issue or open pull request exists.
 
-Issues that fail any gate move to `Backlog` with label `sign-off-required`. Issues that pass every gate move to `Todo` with label `ready-to-implement`, and a verified GitHub `team:implement` label (which replaces `team:fix`) also promotes an issue to `Todo`. Throttled `linear_todo_implement` turns claim `Todo` issues into `In Progress`, implement and verify the change, and open a pull request labelled `team:do-not-merge` for the other Gemini peer. They remove `team:implement` when present, move the Linear issue to `In Review`, and report `🤲🏻 <pr-url> - <title>`. Once that `team:do-not-merge` pull request has a peer approval on `headRefOid`, zero unresolved review threads, and green or `NONE` CI, `moltis-github-companion` sends one deduplicated Telegram sign-off ping (`🚦 <pr-url> - <title>`, keyed by `ready_for_signoff_notified_sha`). Zero-token Python close and merge sync transitions active Linear items to `Done` (merged pull request or completed issue) or `Canceled` (closed unmerged pull request, or issue closed as `not_planned` or `duplicate`).
+Issues that fail any gate move to `Backlog` with label `sign-off-required`. Issues that pass every gate move to `Todo` with label `ready-to-implement`, and a verified GitHub `team:implement` label (which replaces `team:fix`) also promotes an issue to `Todo`. Throttled `linear_todo_implement` turns claim `Todo` issues into `In Progress`, implement and verify the change, and open a pull request labelled `team:do-not-merge`. Eligible `XS` and `S` pull requests (`<= 150` changed lines, `<= 5` files, zero sensitive paths, and not `wimpysworld/nix-config`) request review from both the other Gemini peer and `sith-traya`. Larger, sensitive-path, or `wimpysworld/nix-config` pull requests request review only from the other Gemini peer. They remove `team:implement` when present, move the Linear issue to `In Review`, and report `🤲🏻 <pr-url> - <title>`. For eligible `XS` and `S` agent-authored pull requests without Linear operator guidance, `moltis-github-companion` removes `team:do-not-merge` automatically once both model families (`Gemini` and `Traya`) approve `headRefOid` with zero unresolved review threads and green or `NONE` CI. For `M`, `L`, `XL`, sensitive-path, `wimpysworld/nix-config`, or operator-guided pull requests held by `team:do-not-merge`, once peer approval on `headRefOid`, zero unresolved review threads, and green or `NONE` CI hold, `moltis-github-companion` sends one deduplicated Telegram sign-off ping (`🚦 <pr-url> - <title>`, keyed by `ready_for_signoff_notified_sha`). Zero-token Python close and merge sync transitions active Linear items to `Done` (merged pull request or completed issue) or `Canceled` (closed unmerged pull request, or issue closed as `not_planned` or `duplicate`).
 
 **Ongoing stale-issue management (`skrye` and `zannah` only)**
 
@@ -254,6 +254,8 @@ Martin can steer agents from Linear issue comments through two modes:
 
 `allow-merge` is a one-shot admin trigger in Linear that agents must never add. When Martin (a verified Linear workspace admin in issue history) adds `allow-merge` to an active Linear card with an attached open GitHub pull request authored by a trusted actor (`sith-skrye`, `sith-zannah`, `sith-traya`, or `flexiondotorg`), `companion.py` removes `team:do-not-merge` on GitHub (`gh pr edit --remove-label team:do-not-merge`). It removes `allow-merge` from Linear and posts a short audit comment in Linear. Existing Step 3A `Case B`, `Case C`, and `gh-bot-merge` rules then finish peer review and merge the pull request once CI is green. The `allow-merge` trigger ignores untrusted external community pull requests, which keep their existing Lane B gates.
 
+For eligible `XS` and `S` agent-authored pull requests (`<= 150` changed lines, `<= 5` files, zero sensitive paths, excluding `wimpysworld/nix-config` and cards with verified Linear operator guidance comments), `companion.py` requests `sith-traya` review automatically on existing eligible `XS` and `S` agent pull requests when missing. Once both model families (`Gemini` and `Traya`) approve `headRefOid` with zero unresolved review threads and green or `NONE` CI, `companion.py` removes `team:do-not-merge` on GitHub automatically and posts an audit comment in Linear so that Step 3A `Case C` and `gh-bot-merge` merge the pull request. Larger (`M`, `L`, `XL`), sensitive-path, `wimpysworld/nix-config`, and operator-guided pull requests remain gated on `approved` plus `allow-merge`.
+
 **Default burst throttles**
 
 Per-agent counters in `state.json` (`throttles`) enforce these defaults:
@@ -264,7 +266,9 @@ Per-agent counters in `state.json` (`throttles`) enforce these defaults:
 | `Triage` research turns (`triage_research`) | `2` | Per 30-minute slot |
 | Community pull-request reviews (`community_pr_reviews`) | `2` | Per 30-minute slot |
 | `Todo` implementations (`todo_implementations`) | `1` | Per 30-minute slot |
-| Autonomous implementations (`daily_implementations`) | `3` | Per agent per `Europe/London` day |
+| Autonomous implementations (`daily_implementations`) | `24` | Per agent per `Europe/London` day |
+
+`MOLTIS_GITHUB_COMPANION_DAILY_IMPLEMENTATIONS_CAP` (Nix wrapper parameter `dailyImplementationsCap`, default `24`) configures `daily_implementations`.
 
 ### Automated security release pipeline
 

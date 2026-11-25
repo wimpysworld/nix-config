@@ -67,7 +67,7 @@ DEFAULT_SLOT_TRIAGE_STUBS_CAP = 10
 DEFAULT_SLOT_TRIAGE_RESEARCH_CAP = 2
 DEFAULT_SLOT_COMMUNITY_PR_REVIEWS_CAP = 2
 DEFAULT_SLOT_TODO_IMPLEMENTATIONS_CAP = 1
-DEFAULT_DAILY_IMPLEMENTATIONS_CAP = 3
+DEFAULT_DAILY_IMPLEMENTATIONS_CAP = 24
 DEFAULT_THROTTLE_LIMITS: dict[str, int] = {
     "triage_stubs": DEFAULT_SLOT_TRIAGE_STUBS_CAP,
     "triage_research": DEFAULT_SLOT_TRIAGE_RESEARCH_CAP,
@@ -667,6 +667,16 @@ def resolve_community_auto_merge_config(
         "max_files": max(0, _safe_int(raw_max_files, DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES)) if raw_max_files is not None and str(raw_max_files).strip() != "" else DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES,
         "excluded_repos": parse_repo_list(raw_excluded, default=DEFAULT_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS),
     }
+
+
+def resolve_daily_implementations_cap(raw: int | str | None = None) -> int:
+    value = os.environ.get("MOLTIS_GITHUB_COMPANION_DAILY_IMPLEMENTATIONS_CAP") if raw is None else raw
+    if value is None or isinstance(value, bool):
+        return DEFAULT_DAILY_IMPLEMENTATIONS_CAP
+    if isinstance(value, str) and not value.strip():
+        return DEFAULT_DAILY_IMPLEMENTATIONS_CAP
+    parsed = _safe_int(value, 0)
+    return parsed if parsed > 0 else DEFAULT_DAILY_IMPLEMENTATIONS_CAP
 
 
 def resolve_operator_digest_enabled(enabled: bool | str | None = None) -> bool:
@@ -1532,6 +1542,155 @@ def compute_community_auto_merge_eligible(
     if eff_changed <= 0 or eff_changed > max_f or not paths_list or len(paths_list) < eff_changed:
         return False
     return not any(is_sensitive_community_pr_path(p) for p in paths_list)
+
+
+def extract_latest_opinionated_reviews(raw_reviews: object) -> list[dict[str, str]]:
+    """Normalise GraphQL `latestOpinionatedReviews` into `[{'state', 'author', 'commit_oid'}]`."""
+    nodes = (
+        raw_reviews["nodes"]
+        if isinstance(raw_reviews, dict) and isinstance(raw_reviews.get("nodes"), list)
+        else (raw_reviews if isinstance(raw_reviews, list) else [])
+    )
+    reviews: list[dict[str, str]] = []
+    for item in nodes:
+        if not isinstance(item, dict):
+            continue
+        state = str(item.get("state") or "").strip().upper()
+        author = normalize_github_actor(item.get("author"))
+        commit_obj = item.get("commit")
+        commit_oid = str(
+            (commit_obj.get("oid") if isinstance(commit_obj, dict) else None)
+            or item.get("commit_oid")
+            or item.get("commit_id")
+            or ""
+        ).strip()
+        if state or author or commit_oid:
+            reviews.append({
+                "state": state,
+                "author": author,
+                "commit_oid": commit_oid,
+            })
+    return reviews
+
+
+def _apply_pull_request_mergeability_entry(pr: dict, entry: object) -> None:
+    """Attach hydrated mergeability and opinionated reviews from `fetch_pull_request_mergeability` onto `pr`."""
+    if isinstance(entry, dict):
+        ms_state = str(entry.get("merge_state_status") or entry.get("mergeStateStatus") or "").strip().upper()
+        m_state = normalize_mergeable_state(entry.get("mergeable"), ms_state)
+        raw_reviews = (
+            entry.get("latest_opinionated_reviews")
+            if "latest_opinionated_reviews" in entry
+            else entry.get("latestOpinionatedReviews")
+        )
+        reviews = extract_latest_opinionated_reviews(raw_reviews) if raw_reviews is not None else []
+    elif isinstance(entry, (tuple, list)) and len(entry) >= 2:
+        ms_state = str(entry[1] or "").strip().upper()
+        m_state = normalize_mergeable_state(entry[0], ms_state)
+        reviews = extract_latest_opinionated_reviews(entry[2]) if len(entry) >= 3 else None
+    else:
+        return
+    pr["mergeable"] = m_state
+    pr["merge_state_status"] = ms_state
+    pr["mergeStateStatus"] = ms_state
+    pr["has_merge_conflicts"] = m_state == "CONFLICTING"
+    if reviews is not None:
+        pr["latest_opinionated_reviews"] = reviews
+
+
+def is_small_agent_pr_auto_merge_eligible(
+    pr: dict,
+    *,
+    max_lines: int = DEFAULT_COMMUNITY_AUTO_MERGE_MAX_LINES,
+    max_files: int = DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES,
+    excluded_repos: Iterable[str] = DEFAULT_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS,
+    has_operator_guidance: bool = False,
+) -> bool:
+    """Return True when an agent-authored XS/S pull request qualifies for dual-family auto-merge hold-lifting."""
+    if not isinstance(pr, dict):
+        return False
+    author = normalize_github_actor(pr.get("author") or pr.get("user"))
+    if author not in ("sith-skrye", "sith-zannah"):
+        return False
+    if pr.get("is_draft") or pr.get("isDraft") or pr.get("draft"):
+        return False
+    if has_operator_guidance:
+        return False
+    repo_val = pr.get("repo")
+    if not isinstance(repo_val, str) or not repo_val.strip():
+        raw_repo = pr.get("repository")
+        repo_val = (
+            raw_repo.get("nameWithOwner") or raw_repo.get("full_name")
+            if isinstance(raw_repo, dict)
+            else (raw_repo if isinstance(raw_repo, str) else "")
+        )
+    norm_repo = str(repo_val or "").strip().lower()
+    excluded = set(parse_repo_list(excluded_repos, default=()))
+    if not norm_repo or norm_repo in excluded:
+        return False
+    raw_add = pr.get("additions")
+    raw_del = pr.get("deletions")
+    if raw_add is None or raw_del is None or isinstance(raw_add, bool) or isinstance(raw_del, bool):
+        return False
+    add_val = _safe_int(raw_add, -1)
+    del_val = _safe_int(raw_del, -1)
+    max_l = max(0, _safe_int(max_lines, DEFAULT_COMMUNITY_AUTO_MERGE_MAX_LINES))
+    if add_val < 0 or del_val < 0 or (add_val + del_val) > max_l:
+        return False
+    if "file_paths" in pr:
+        raw_files = pr.get("file_paths")
+    elif "files" in pr:
+        raw_files = pr.get("files")
+    else:
+        return False
+    if isinstance(raw_files, tuple):
+        raw_files = list(raw_files)
+    paths_list, extracted_has_next = extract_pr_file_paths(raw_files)
+    files_has_next_page = bool(pr.get("files_has_next_page", extracted_has_next))
+    if paths_list is None or files_has_next_page:
+        return False
+    raw_chg = pr.get("changed_files") if "changed_files" in pr else pr.get("changedFiles")
+    if isinstance(raw_chg, bool):
+        return False
+    eff_changed = _safe_int(raw_chg, -1) if raw_chg is not None else len(paths_list)
+    max_f = max(0, _safe_int(max_files, DEFAULT_COMMUNITY_AUTO_MERGE_MAX_FILES))
+    if eff_changed <= 0 or eff_changed > max_f or not paths_list or len(paths_list) < eff_changed:
+        return False
+    estimate = compute_pr_size_estimate(
+        additions=add_val,
+        deletions=del_val,
+        changed_files=eff_changed,
+        file_paths=paths_list,
+        files_has_next_page=files_has_next_page,
+    )
+    return estimate in (1, 2)
+
+
+def has_dual_family_head_approvals(pr: dict) -> bool:
+    """Return True when both the peer Gemini agent and `sith-traya` approved `pr` on its exact `head_sha` with no trusted changes requested."""
+    if not isinstance(pr, dict):
+        return False
+    author = normalize_github_actor(pr.get("author") or pr.get("user"))
+    head_sha = str(pr.get("head_sha") or pr.get("headRefOid") or "").strip()
+    if author not in ("sith-skrye", "sith-zannah") or not head_sha:
+        return False
+    other_gemini = "sith-zannah" if author == "sith-skrye" else "sith-skrye"
+    raw_reviews = (
+        pr.get("latest_opinionated_reviews")
+        if "latest_opinionated_reviews" in pr
+        else pr.get("latestOpinionatedReviews")
+    )
+    reviews = extract_latest_opinionated_reviews(raw_reviews)
+    head_sha_norm = head_sha.lower()
+    approved_head_actors: set[str] = set()
+    for review in reviews:
+        reviewer = review["author"]
+        state = review["state"]
+        if reviewer in TRUSTED_INSTRUCTION_ACTORS and state == "CHANGES_REQUESTED":
+            return False
+        if state == "APPROVED" and review["commit_oid"].lower() == head_sha_norm:
+            approved_head_actors.add(reviewer)
+    return other_gemini in approved_head_actors and "sith-traya" in approved_head_actors
 
 
 def compute_lane_a_bypass_reasons(
@@ -2997,6 +3156,7 @@ class CompanionStateStore:
             "linear_issue_url": None,
             "decision_notified_sha": None,
             "ready_for_signoff_notified_sha": None,
+            "traya_review_requested_sha": None,
             "handled_linear_comment_ids": [],
             "linked_linear_issue_ids": [],
             "paused_by_open_pr_url": None,
@@ -3070,6 +3230,7 @@ class CompanionStateStore:
     @staticmethod
     def _resolve_throttle_limits(limits: dict | None = None) -> dict[str, int]:
         resolved = dict(DEFAULT_THROTTLE_LIMITS)
+        resolved["daily_implementations"] = resolve_daily_implementations_cap()
         if isinstance(limits, dict):
             for key, default_val in DEFAULT_THROTTLE_LIMITS.items():
                 if key in limits and limits[key] is not None and not isinstance(limits[key], bool):
@@ -4664,8 +4825,8 @@ class GhApiSafeClient:
         *,
         batch_size: int = 20,
         timeout: float | None = None,
-    ) -> dict[str, tuple[str, str]]:
-        """Fetch `(mergeable, mergeStateStatus)` in small GraphQL `nodes(ids: ...)` batches to avoid search 502s."""
+    ) -> dict[str, dict[str, object]]:
+        """Fetch mergeability and latest opinionated reviews in small GraphQL `nodes(ids: ...)` batches."""
         clean_ids: list[str] = []
         seen: set[str] = set()
         for raw_id in node_ids or ():
@@ -4676,12 +4837,14 @@ class GhApiSafeClient:
         if not clean_ids:
             return {}
         chunk = max(1, _safe_int(batch_size, 20))
-        results: dict[str, tuple[str, str]] = {}
+        results: dict[str, dict[str, object]] = {}
         for idx in range(0, len(clean_ids), chunk):
             batch = clean_ids[idx : idx + chunk]
             query = (
                 f"query {{ nodes(ids: {json.dumps(batch)}) {{ "
-                "... on PullRequest { id mergeable mergeStateStatus } } }"
+                "... on PullRequest { id mergeable mergeStateStatus "
+                "latestOpinionatedReviews(first: 20) { nodes { state author { __typename login } commit { oid } } } "
+                "} } }"
             )
             try:
                 proc = self.invoke(["graphql", "-f", f"query={query}"], timeout=timeout)
@@ -4707,7 +4870,12 @@ class GhApiSafeClient:
                             continue
                         ms = str(node.get("mergeStateStatus") or "").strip().upper()
                         m = normalize_mergeable_state(node.get("mergeable"), ms)
-                        results[nid] = (m, ms)
+                        reviews = extract_latest_opinionated_reviews(node.get("latestOpinionatedReviews"))
+                        results[nid] = {
+                            "mergeable": m,
+                            "merge_state_status": ms,
+                            "latest_opinionated_reviews": reviews,
+                        }
             except Exception as exc:
                 sys.stderr.write(f"moltis-github-companion pr-mergeability-batch warning ({len(batch)} ids): {exc}\n")
                 continue
@@ -5163,6 +5331,26 @@ class GhApiSafeClient:
         if proc.returncode != 0:
             err_text = (proc.stderr or proc.stdout or "").strip()
             raise RuntimeError(f"gh pr edit {pr_url} --remove-label {clean_label} exited {proc.returncode}: {err_text}")
+        return proc
+
+    def add_pull_request_reviewer(
+        self,
+        repo: str,
+        number: int,
+        reviewer: str,
+        *,
+        timeout: float | None = None,
+    ) -> subprocess.CompletedProcess:
+        """Request a peer agent review on an allowlisted pull request via `gh pr edit --add-reviewer`."""
+        _, pr_url = self._validate_pr_target(repo, number)
+        clean_reviewer = str(reviewer or "").strip().lower()
+        if clean_reviewer not in ("sith-skrye", "sith-zannah", "sith-traya"):
+            raise ValueError(f"Unsupported pull request reviewer: {reviewer!r}")
+        cmd = [self.gh_bin, "pr", "edit", pr_url, "--add-reviewer", clean_reviewer]
+        proc = self.runner(cmd, capture_output=True, text=True, timeout=timeout or self.timeout, check=False)
+        if proc.returncode != 0:
+            err_text = (proc.stderr or proc.stdout or "").strip()
+            raise RuntimeError(f"gh pr edit {pr_url} --add-reviewer {clean_reviewer} exited {proc.returncode}: {err_text}")
         return proc
 
 
@@ -9697,13 +9885,24 @@ class GithubCompanionRunner:
                 live_pr = (open_prs_by_key or {}).get(pk)
                 if not isinstance(live_pr, dict) or str(live_pr.get("state") or "OPEN").upper() != "OPEN":
                     continue
-                if (
+                needs_mergeability = (
                     normalize_mergeable_state(
                         live_pr.get("mergeable"),
                         live_pr.get("merge_state_status") or live_pr.get("mergeStateStatus"),
                     )
-                    != "UNKNOWN"
-                ):
+                    == "UNKNOWN"
+                )
+                needs_reviews = (
+                    "latest_opinionated_reviews" not in live_pr
+                    and has_do_not_merge_label(live_pr.get("labels"))
+                    and is_small_agent_pr_auto_merge_eligible(
+                        live_pr,
+                        max_lines=self.state_store.community_auto_merge_max_lines,
+                        max_files=self.state_store.community_auto_merge_max_files,
+                        excluded_repos=self.state_store.community_auto_merge_excluded_repos,
+                    )
+                )
+                if not needs_mergeability and not needs_reviews:
                     continue
                 nid = str(live_pr.get("node_id") or (live_pr.get("id") if isinstance(live_pr.get("id"), str) else "")).strip()
                 if nid and nid not in already_hydrated:
@@ -9717,14 +9916,11 @@ class GithubCompanionRunner:
                         f"moltis-github-companion in-review-mergeability warning ({self.state_store.agent_name}): {exc}\n"
                     )
                     mergeability_map = {}
-                for nid, (m_state, ms_state) in (mergeability_map or {}).items():
+                for nid, entry in (mergeability_map or {}).items():
                     pk = in_review_hydrate_by_node_id.get(nid)
                     if not pk or pk not in open_prs_by_key:
                         continue
-                    open_prs_by_key[pk]["mergeable"] = m_state
-                    open_prs_by_key[pk]["merge_state_status"] = ms_state
-                    open_prs_by_key[pk]["mergeStateStatus"] = ms_state
-                    open_prs_by_key[pk]["has_merge_conflicts"] = m_state == "CONFLICTING"
+                    _apply_pull_request_mergeability_entry(open_prs_by_key[pk], entry)
 
         def _merge_updated_issue(original: dict, updated: dict | None) -> dict:
             if not isinstance(updated, dict):
@@ -9904,6 +10100,145 @@ class GithubCompanionRunner:
             has_unresolved_threads = unresolved_thread_count > 0 or bool(pr.get("has_unresolved_review_threads"))
             has_changes_requested = (review_decision == "CHANGES_REQUESTED") or has_unresolved_threads
             has_do_not_merge = has_do_not_merge_label(pr.get("labels"))
+
+            if has_do_not_merge and is_small_agent_pr_auto_merge_eligible(
+                pr,
+                max_lines=self.state_store.community_auto_merge_max_lines,
+                max_files=self.state_store.community_auto_merge_max_files,
+                excluded_repos=self.state_store.community_auto_merge_excluded_repos,
+                has_operator_guidance=False,
+            ):
+                operator_guidance = self._get_linear_issue_operator_guidance(linear_issue)
+                if is_small_agent_pr_auto_merge_eligible(
+                    pr,
+                    max_lines=self.state_store.community_auto_merge_max_lines,
+                    max_files=self.state_store.community_auto_merge_max_files,
+                    excluded_repos=self.state_store.community_auto_merge_excluded_repos,
+                    has_operator_guidance=bool(operator_guidance),
+                ):
+                    head_sha = str(pr.get("head_sha") or pr.get("headRefOid") or "").strip()
+                    if head_sha:
+                        raw_req_reviewers = (
+                            pr.get("requested_reviewers")
+                            if "requested_reviewers" in pr
+                            else (pr.get("review_requests") if "review_requests" in pr else pr.get("reviewRequests"))
+                        )
+                        requested_reviewers = set(extract_review_request_logins(raw_req_reviewers))
+                        opinionated_reviews = extract_latest_opinionated_reviews(
+                            pr.get("latest_opinionated_reviews")
+                            if "latest_opinionated_reviews" in pr
+                            else pr.get("latestOpinionatedReviews")
+                        )
+                        traya_reviewed_head = any(
+                            r["author"] == "sith-traya" and r["commit_oid"].lower() == head_sha.lower()
+                            for r in opinionated_reviews
+                        )
+                        pr_entry = _as_dict(self.state_store.get_thread_state(pr_key))
+                        if (
+                            "sith-traya" not in requested_reviewers
+                            and not traya_reviewed_head
+                            and str(pr_entry.get("traya_review_requested_sha") or "").strip() != head_sha
+                            and hasattr(self.gh_client, "add_pull_request_reviewer")
+                        ):
+                            try:
+                                self.gh_client.add_pull_request_reviewer(pr_repo, pr_number, "sith-traya")
+                                self.state_store.update_thread_state(
+                                    pr_key,
+                                    {
+                                        "repo": pr_repo,
+                                        "number": pr_number,
+                                        "subject_type": "PullRequest",
+                                        "traya_review_requested_sha": head_sha,
+                                    },
+                                    now_override_ms=current_ms,
+                                )
+                                actions.append({
+                                    "action": "traya_review_requested",
+                                    "pr_key": pr_key,
+                                    "repo": pr_repo,
+                                    "number": pr_number,
+                                    "pr_url": pr_url,
+                                    "head_sha": head_sha,
+                                    "linear_issue_id": linear_id,
+                                    "linear_identifier": linear_identifier,
+                                })
+                            except Exception as exc:
+                                sys.stderr.write(
+                                    f"moltis-github-companion small-agent-pr-traya-reviewer warning ({pr_key} / {linear_id}): {exc}\n"
+                                )
+
+                        if (
+                            not has_conflicts
+                            and not has_ci_failure
+                            and not has_changes_requested
+                            and ci_norm in ("SUCCESS", "NONE")
+                            and has_dual_family_head_approvals(pr)
+                        ):
+                            gh_removed = False
+                            try:
+                                self.gh_client.remove_pull_request_label(pr_repo, pr_number, DO_NOT_MERGE_LABEL)
+                                gh_removed = True
+                            except Exception as exc:
+                                sys.stderr.write(
+                                    f"moltis-github-companion small-agent-pr-remove-hold warning ({pr_key} / {linear_id}): {exc}\n"
+                                )
+                            if gh_removed:
+                                pr["labels"] = [
+                                    lbl
+                                    for lbl in extract_label_names(pr.get("labels"))
+                                    if lbl.strip().lower() != DO_NOT_MERGE_LABEL
+                                ]
+                                has_do_not_merge = False
+                                clear_labels = tuple(
+                                    lbl
+                                    for lbl in (APPROVED_LINEAR_LABEL, ALLOW_MERGE_LINEAR_LABEL)
+                                    if lbl in linear_labels
+                                )
+                                if clear_labels:
+                                    updated_issue = _update_linear_labels(
+                                        linear_id,
+                                        linear_issue,
+                                        scope="linear-small-agent-pr-hold-clear",
+                                        pr_key=pr_key,
+                                        remove_labels=clear_labels,
+                                    )
+                                    if updated_issue is not None:
+                                        linear_issue = updated_issue
+                                        linear_labels = extract_linear_issue_labels(linear_issue)
+                                comment_posted = False
+                                if hasattr(self.linear_client, "post_comment") and not breaker.skip_if_tripped(
+                                    scope="linear-small-agent-pr-hold-comment"
+                                ):
+                                    audit_body = (
+                                        f"Dual-family consensus (Gemini + Traya) verified on {pr_url} ({head_sha[:12]}); "
+                                        f"removed `{DO_NOT_MERGE_LABEL}` for automated merge."
+                                    )
+                                    try:
+                                        self.linear_client.post_comment(linear_id, audit_body)
+                                        breaker.record_success()
+                                        comment_posted = True
+                                    except Exception as exc:
+                                        breaker.record_error(
+                                            exc,
+                                            scope="linear-small-agent-pr-hold-comment",
+                                            item_key=pr_key,
+                                        )
+                                        sys.stderr.write(
+                                            f"moltis-github-companion linear-small-agent-pr-hold-comment warning ({pr_key} / {linear_id}): {exc}\n"
+                                        )
+                                actions.append({
+                                    "action": "small_agent_pr_hold_lifted",
+                                    "pr_key": pr_key,
+                                    "repo": pr_repo,
+                                    "number": pr_number,
+                                    "pr_url": pr_url,
+                                    "head_sha": head_sha,
+                                    "linear_issue_id": linear_id,
+                                    "linear_identifier": linear_identifier,
+                                    "comment_posted": comment_posted,
+                                    "updated_issue": linear_issue,
+                                })
+
             is_approved_signoff_ready = (
                 not has_conflicts
                 and not has_ci_failure
@@ -11728,14 +12063,11 @@ class GithubCompanionRunner:
             if hydrate_by_node_id:
                 hydrated_mergeability_node_ids.update(hydrate_by_node_id.keys())
                 mergeability_map = self.gh_client.fetch_pull_request_mergeability(hydrate_by_node_id.keys())
-                for nid, (m_state, ms_state) in mergeability_map.items():
+                for nid, entry in (mergeability_map or {}).items():
                     pk = hydrate_by_node_id.get(nid)
                     if not pk or pk not in open_prs_by_key:
                         continue
-                    open_prs_by_key[pk]["mergeable"] = m_state
-                    open_prs_by_key[pk]["merge_state_status"] = ms_state
-                    open_prs_by_key[pk]["mergeStateStatus"] = ms_state
-                    open_prs_by_key[pk]["has_merge_conflicts"] = m_state == "CONFLICTING"
+                    _apply_pull_request_mergeability_entry(open_prs_by_key[pk], entry)
 
         community_actionable_prs: list[dict] = []
         for pr_item in poll_result.get("actionable_prs") or []:
