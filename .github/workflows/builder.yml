@@ -43,7 +43,7 @@ jobs:
           extra-conf: |
             build-dir = /nix/build
             eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@f00fba8dc0949d63cbbb7d33da7912417d588d75 # v3.24.2
+      - uses: DeterminateSystems/flakehub-cache-action@599f4b231216aed692532bc717021b9b0aafb35d # v3.24.3
       - name: Inventory
         id: inventory
         run: bash home-manager/_mixins/scripts/flake-inventory/flake-inventory.sh
@@ -76,7 +76,7 @@ jobs:
           extra-conf: |
             ${{ runner.os == 'Linux' && 'build-dir = /nix/build' || '' }}
             eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@f00fba8dc0949d63cbbb7d33da7912417d588d75 # v3.24.2
+      - uses: DeterminateSystems/flakehub-cache-action@599f4b231216aed692532bc717021b9b0aafb35d # v3.24.3
       - name: Build checks, devShells & formatter
         env:
           SYSTEM: ${{ matrix.target.system }}
@@ -171,7 +171,7 @@ jobs:
           extra-conf: |
             ${{ runner.os == 'Linux' && 'build-dir = /nix/build' || '' }}
             eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@f00fba8dc0949d63cbbb7d33da7912417d588d75 # v3.24.2
+      - uses: DeterminateSystems/flakehub-cache-action@599f4b231216aed692532bc717021b9b0aafb35d # v3.24.3
       - name: Build packages
         env:
           SYSTEM: ${{ matrix.target.system }}
@@ -264,7 +264,7 @@ jobs:
           extra-conf: |
             build-dir = /nix/build
             eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@f00fba8dc0949d63cbbb7d33da7912417d588d75 # v3.24.2
+      - uses: DeterminateSystems/flakehub-cache-action@599f4b231216aed692532bc717021b9b0aafb35d # v3.24.3
       - name: Build NixOS ${{ matrix.target.name }}
         run: |
           nix build ".#nixosConfigurations.${{ matrix.target.name }}.config.system.build.toplevel" --no-link -L
@@ -292,7 +292,7 @@ jobs:
         with:
           extra-conf: |
             eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@f00fba8dc0949d63cbbb7d33da7912417d588d75 # v3.24.2
+      - uses: DeterminateSystems/flakehub-cache-action@599f4b231216aed692532bc717021b9b0aafb35d # v3.24.3
       - name: Build Darwin ${{ matrix.target.name }}
         run: |
           nix build ".#darwinConfigurations.${{ matrix.target.name }}.config.system.build.toplevel" --no-link -L
@@ -326,7 +326,7 @@ jobs:
           extra-conf: |
             ${{ runner.os == 'Linux' && 'build-dir = /nix/build' || '' }}
             eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@f00fba8dc0949d63cbbb7d33da7912417d588d75 # v3.24.2
+      - uses: DeterminateSystems/flakehub-cache-action@599f4b231216aed692532bc717021b9b0aafb35d # v3.24.3
       - name: Build Home ${{ matrix.target.name }}
         run: |
           nix build ".#homeConfigurations.\"${{ matrix.target.name }}\".activationPackage" --no-link -L
@@ -362,7 +362,7 @@ jobs:
         with:
           extra-conf: |
             eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@f00fba8dc0949d63cbbb7d33da7912417d588d75 # v3.24.2
+      - uses: DeterminateSystems/flakehub-cache-action@599f4b231216aed692532bc717021b9b0aafb35d # v3.24.3
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       - name: Derive version
         id: version
@@ -399,7 +399,7 @@ jobs:
         with:
           extra-conf: |
             eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@f00fba8dc0949d63cbbb7d33da7912417d588d75 # v3.24.2
+      - uses: DeterminateSystems/flakehub-cache-action@599f4b231216aed692532bc717021b9b0aafb35d # v3.24.3
       - uses: DeterminateSystems/flakehub-push@e001ee821cdb763ef120c01f1048bfb2f938bb9c # v7
         with:
           tag: v${{ needs.sentinel.outputs.publish_ver }}
@@ -444,7 +444,7 @@ jobs:
           extra-conf: |
             build-dir = /nix/build
             eval-cores = 0
-      - uses: DeterminateSystems/flakehub-cache-action@f00fba8dc0949d63cbbb7d33da7912417d588d75 # v3.24.2
+      - uses: DeterminateSystems/flakehub-cache-action@599f4b231216aed692532bc717021b9b0aafb35d # v3.24.3
         if: steps.check-release.outputs.exists == 'false'
       - name: Build ISO 💿️
         if: steps.check-release.outputs.exists == 'false'
