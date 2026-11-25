@@ -14162,6 +14162,109 @@ class SecurityPatchReleaseGateTests(GithubCompanionTestBase):
         self.assertIn(f"🚨 {hab_repo}: failed to tag v0.6.7", tf_act["telegram_message"])
         self.assertNotIn(hab_repo, store.read_state()["security_releases"]["pending_releases"])
 
+        # Failed auto-tag stays deduplicated on the next hourly check (no retry spam)
+        t_after_fail = t_tag_fail + companion.SECURITY_RELEASE_CHECK_INTERVAL_MS + 60_000
+        res_after_fail = runner._evaluate_security_patch_releases(
+            open_prs_by_key={},
+            poll_result=clean_poll,
+            current_ms=t_after_fail,
+        )
+        self.assertEqual(res_after_fail, [])
+        self.assertEqual(len(tag_cmds), 2)
+
+        # 5) Legacy untagged notified_releases entry (pre-auto-tag WW-723 shape) upgrades to auto-tag v0.7.0,
+        # supersedes the old v0.6.7 Linear issue, and stays deduplicated afterwards.
+        tag_should_fail["flag"] = False
+        sha_legacy = "ffff1111bbbb2222cccc3333dddd4444eeee5555"
+        legacy_issue, _ = linear_stub.ensure_release_task(
+            repo=hab_repo,
+            next_tag="v0.6.7",
+            title=f"Release {hab_repo} v0.6.7 (security patch)",
+            description="Legacy pre-auto-tag prepared release.",
+            state="Todo",
+        )
+        legacy_id = str(legacy_issue["id"])
+        prev_sec = store.read_state()["security_releases"]
+        store.write_state(
+            {
+                "security_releases": {
+                    "notified_releases": {
+                        **prev_sec["notified_releases"],
+                        hab_repo: {
+                            "dedup_key": f"{hab_repo}:v0.6.6:{sha_legacy}",
+                            "repo": hab_repo,
+                            "current_tag": "v0.6.6",
+                            "next_tag": "v0.6.7",
+                            "head_oid": sha_legacy,
+                            "linear_issue_id": legacy_id,
+                            "linear_url": str(legacy_issue["url"]),
+                            "has_non_patch_commits": True,
+                            "non_patch_commits": ["feat(pages): frame Tailor shears icon"],
+                            "pending": True,
+                            "notified_at_ms": t_after_fail - 60_000,
+                        },
+                    },
+                    "last_checked_at_ms": {
+                        **prev_sec["last_checked_at_ms"],
+                        hab_repo: t_after_fail,
+                    },
+                }
+            },
+            now_override_ms=t_after_fail,
+        )
+        repo_statuses[hab_repo] = _make_repo_status(
+            hab_repo,
+            head_oid=sha_legacy,
+            latest_tag="v0.6.6",
+            commit_headlines=[
+                "fix(alter): guard dependabot output allocation size against overflow",
+                "feat(pages): frame Tailor shears icon on flat squircle badge",
+            ],
+        )
+        t_upgrade = t_after_fail + companion.SECURITY_RELEASE_CHECK_INTERVAL_MS + 60_000
+        res_upgrade = runner._evaluate_security_patch_releases(
+            open_prs_by_key={},
+            poll_result=clean_poll,
+            current_ms=t_upgrade,
+        )
+        self.assertEqual(len(res_upgrade), 1)
+        up_act = res_upgrade[0]
+        self.assertEqual(up_act["action"], "security_release_tagged")
+        self.assertEqual(up_act["next_tag"], "v0.7.0")
+        self.assertEqual(up_act["release_kind"], "minor")
+        self.assertEqual(tag_cmds[-1], ["gh-security-release-tag", hab_repo, "v0.7.0", sha_legacy])
+        self.assertEqual(linear_stub.issues[legacy_id]["state"]["name"], "Canceled")
+        self.assertIn("Superseded by automated security release `v0.7.0`", str(linear_stub.comments_by_issue[legacy_id][-1]["body"]))
+        sec_after_upgrade = store.read_state()["security_releases"]
+        self.assertTrue(sec_after_upgrade["notified_releases"][hab_repo]["auto_tag_attempted"])
+        self.assertEqual(sec_after_upgrade["notified_releases"][hab_repo]["auto_tag_status"], "tagged")
+
+        # Even if pending_releases clears after workflow failure, workflow_failed stays deduplicated
+        store.write_state(
+            {
+                "security_releases": {
+                    "pending_releases": {},
+                    "notified_releases": {
+                        **sec_after_upgrade["notified_releases"],
+                        hab_repo: {
+                            **sec_after_upgrade["notified_releases"][hab_repo],
+                            "pending": True,
+                            "auto_tag_attempted": True,
+                            "auto_tag_status": "workflow_failed",
+                        },
+                    },
+                }
+            },
+            now_override_ms=t_upgrade,
+        )
+        res_after_wf_fail = runner._evaluate_security_patch_releases(
+            open_prs_by_key={},
+            poll_result=clean_poll,
+            current_ms=t_upgrade + companion.SECURITY_RELEASE_CHECK_INTERVAL_MS + 60_000,
+        )
+        self.assertEqual(res_after_wf_fail, [])
+        self.assertEqual(len(tag_cmds), 3)
+
     def test_parse_haberdasher_sources_yaml_and_config_env_precedence(self) -> None:
         self.assertEqual(companion.DEFAULT_SECURITY_PATCH_RELEASE_REPOS, ())
         self.assertEqual(companion.DEFAULT_HABERDASHER_CONFIG_REPO, "wimpysworld/Haberdasher")

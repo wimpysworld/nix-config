@@ -11207,7 +11207,12 @@ class GithubCompanionRunner:
                             )
                     pending_releases.pop(repo, None)
                     if repo in notified and isinstance(notified[repo], dict):
-                        notified[repo] = {**notified[repo], "pending": True}
+                        notified[repo] = {
+                            **notified[repo],
+                            "pending": True,
+                            "auto_tag_attempted": True,
+                            "auto_tag_status": "workflow_failed",
+                        }
                     phase_a_handled_repos.add(repo)
                     state_dirty = True
                     actions.append({
@@ -11382,11 +11387,6 @@ class GithubCompanionRunner:
                 if ci_state not in ("SUCCESS", "NONE"):
                     continue
 
-                # Deduplicate per (repo, latest_tag, head_oid)
-                dedup_key = f"{repo}:{latest_tag}:{head_oid}"
-                if _as_dict(notified.get(repo)).get("dedup_key") == dedup_key:
-                    continue
-
                 commit_subjects = [
                     str(c.get("messageHeadline") or c.get("subject") or "").strip()
                     for c in (status.get("commits_since_tag") or ())
@@ -11412,6 +11412,26 @@ class GithubCompanionRunner:
                     release_kind = "patch"
                 if not next_tag:
                     continue
+
+                is_haberdasher_auto = (not has_breaking_commits) and (repo in haberdasher_set) and can_auto_tag
+
+                # Deduplicate per (repo, latest_tag, head_oid), allowing untagged legacy or manual entries
+                # to upgrade once automatic Haberdasher tagging becomes available.
+                dedup_key = f"{repo}:{latest_tag}:{head_oid}"
+                prev_notified = _as_dict(notified.get(repo))
+                if prev_notified.get("dedup_key") == dedup_key:
+                    prev_auto_attempted = bool(prev_notified.get("auto_tag_attempted"))
+                    prev_auto_status = str(prev_notified.get("auto_tag_status") or "").strip().lower()
+                    already_handled_auto = (
+                        prev_auto_attempted
+                        or prev_auto_status in ("tagged", "failed", "workflow_failed")
+                        or (
+                            prev_notified.get("pending") is False
+                            and str(prev_notified.get("next_tag") or "").strip() == next_tag
+                        )
+                    )
+                    if not (is_haberdasher_auto and not already_handled_auto):
+                        continue
 
                 pr_lines = []
                 for pr in merged_security_prs:
@@ -11443,7 +11463,6 @@ class GithubCompanionRunner:
 
                 notes_lines = [f"- {subj}" for subj in commit_subjects[:15] if subj] or pr_lines
                 release_cmd = f'git tag -a {next_tag} {head_oid} -m "Release {next_tag}" && git push origin {next_tag}'
-                is_haberdasher_auto = (not has_breaking_commits) and (repo in haberdasher_set) and can_auto_tag
 
                 if has_breaking_commits:
                     title = f"Release {repo} {next_tag} (security release blocked by breaking commits)"
@@ -11550,6 +11569,8 @@ class GithubCompanionRunner:
                         "feature_commits": feature_commits,
                         "has_non_patch_commits": has_non_patch_commits,
                         "non_patch_commits": non_patch_commits,
+                        "auto_tag_attempted": False,
+                        "auto_tag_status": "held",
                         "pending": True,
                         "notified_at_ms": current_ms,
                     }
@@ -11656,6 +11677,8 @@ class GithubCompanionRunner:
                             "feature_commits": feature_commits,
                             "has_non_patch_commits": has_non_patch_commits,
                             "non_patch_commits": non_patch_commits,
+                            "auto_tag_attempted": True,
+                            "auto_tag_status": "failed",
                             "pending": True,
                             "notified_at_ms": current_ms,
                         }
@@ -11712,6 +11735,38 @@ class GithubCompanionRunner:
                             sys.stderr.write(
                                 f"moltis-github-companion security-release-tag telegram warning ({repo} {next_tag}): {exc}\n"
                             )
+                    prev_linear_id = str(prev_notified.get("linear_issue_id") or "").strip()
+                    if (
+                        prev_notified.get("dedup_key") == dedup_key
+                        and prev_linear_id
+                        and prev_linear_id != linear_id
+                        and callable(getattr(self.linear_client, "update_issue", None))
+                        and not breaker.skip_if_tripped(scope="security-patch-release")
+                    ):
+                        try:
+                            self.linear_client.update_issue(prev_linear_id, state="Canceled")
+                            breaker.record_success()
+                        except Exception as sup_exc:
+                            breaker.record_error(sup_exc, scope="security-patch-release", item_key=repo)
+                            sys.stderr.write(
+                                f"moltis-github-companion security-release-supersede warning ({repo} {prev_linear_id}): {sup_exc}\n"
+                            )
+                        if callable(getattr(self.linear_client, "post_comment", None)) and not breaker.skip_if_tripped(
+                            scope="security-patch-release"
+                        ):
+                            sup_body = (
+                                f"Superseded by automated security release `{next_tag}` ({linear_url})."
+                                if linear_url
+                                else f"Superseded by automated security release `{next_tag}`."
+                            )
+                            try:
+                                self.linear_client.post_comment(prev_linear_id, sup_body)
+                                breaker.record_success()
+                            except Exception as sup_cmt_exc:
+                                breaker.record_error(sup_cmt_exc, scope="security-patch-release", item_key=repo)
+                                sys.stderr.write(
+                                    f"moltis-github-companion security-release-supersede-comment warning ({repo} {prev_linear_id}): {sup_cmt_exc}\n"
+                                )
                     notified[repo] = {
                         "dedup_key": dedup_key,
                         "repo": repo,
@@ -11728,6 +11783,8 @@ class GithubCompanionRunner:
                         "feature_commits": feature_commits,
                         "has_non_patch_commits": has_non_patch_commits,
                         "non_patch_commits": non_patch_commits,
+                        "auto_tag_attempted": True,
+                        "auto_tag_status": "tagged",
                         "pending": False,
                         "notified_at_ms": current_ms,
                     }
@@ -11782,6 +11839,8 @@ class GithubCompanionRunner:
                         "feature_commits": feature_commits,
                         "has_non_patch_commits": has_non_patch_commits,
                         "non_patch_commits": non_patch_commits,
+                        "auto_tag_attempted": False,
+                        "auto_tag_status": "prepared",
                         "pending": True,
                         "notified_at_ms": current_ms,
                     }
