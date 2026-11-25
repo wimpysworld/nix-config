@@ -11,8 +11,8 @@ control_center="󰙵 Control Center"
 wifi="󱚾 WiFi"
 bluetooth="󰂯 Bluetooth"
 audio="󰕾 Audio"
-virtualcam_start="󰄀 Start Virtualcam"
-virtualcam_stop="󰗟 Stop Virtualcam"
+virtualcam_off="󰗟 Virtualcam "
+virtualcam_on="󰄀 Virtualcam "
 screenshot="󱎴 Screenshot"
 picker="󰏘 Colour Picker"
 window_layout="󰹫 Window Layout"
@@ -29,9 +29,9 @@ fi
 menu="$menu$bluetooth\n$audio\n"
 if command -v virtualcam >/dev/null 2>&1; then
 	if virtualcam status >/dev/null 2>&1; then
-		menu="$menu$virtualcam_stop\n"
+		menu="$menu$virtualcam_on\n"
 	else
-		menu="$menu$virtualcam_start\n"
+		menu="$menu$virtualcam_off\n"
 	fi
 fi
 menu="$menu$screenshot"
@@ -66,7 +66,7 @@ case $selected in
 "$audio")
 	fuzzel-audio
 	;;
-"$virtualcam_start" | "$virtualcam_stop")
+"$virtualcam_off" | "$virtualcam_on")
 	virtualcam toggle
 	;;
 "$screenshot")
