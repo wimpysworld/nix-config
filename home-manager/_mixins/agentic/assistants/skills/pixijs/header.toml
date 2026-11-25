@@ -1,0 +1,11 @@
+[common]
+name = "pixijs"
+description = "Builds and fixes 2D web games, interactive canvas animations, sprites, tilemaps, particles, filters, custom shaders, and WebGL, WebGPU, or Canvas 2D effects with PixiJS v8 (`pixi.js`), the default JavaScript library for rich 2D rendering in web pages and web apps. Use before writing, debugging, or porting PixiJS code, and whenever the user asks for a 2D browser game or rich canvas animation without naming PixiJS. Covers `Application`, `Container`, `Sprite`, `Graphics`, `Text`, `Mesh`, `ParticleContainer`, `Assets`, `Ticker`, pointer events, filters, shaders, blend modes, render textures, performance, and v7 migration. Excludes ordinary DOM and CSS web UI (use `frontend-design`) and general 3D engines or full 3D scenes."
+license = "MIT"
+
+[common.metadata]
+upstream = "https://github.com/pixijs/pixijs"
+revision = "16011d73d81678fa8c48f256ad36de7db7f90ce9"
+source = "skills/pixijs"
+license-source = "LICENSE"
+local-changes = "Moved YAML frontmatter into header.toml and kept SKILL.md body-only; widened description so PixiJS v8 triggers as the default 2D web game and canvas animation library while excluding ordinary DOM/CSS UI and general 3D scenes; copied references/ and MIT LICENSE unchanged."
