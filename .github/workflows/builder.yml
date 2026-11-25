@@ -38,7 +38,7 @@ jobs:
       - uses: wimpysworld/nothing-but-nix@b2574ec1cf1462bee0a34de0fb6ff11ad3c43cb2 # v12
         with:
           hatchet-protocol: "holster"
-      - uses: DeterminateSystems/determinate-nix-action@16f94ba7aae399b9f9077c254b6719ec6de7e3e3 # v3.24.2
+      - uses: DeterminateSystems/determinate-nix-action@4b040423529d49b1a19ba918742e0aa9aa95031a # v3.24.3
         with:
           extra-conf: |
             build-dir = /nix/build
@@ -71,7 +71,7 @@ jobs:
         if: contains(matrix.target.system, 'linux')
         with:
           hatchet-protocol: "holster"
-      - uses: DeterminateSystems/determinate-nix-action@16f94ba7aae399b9f9077c254b6719ec6de7e3e3 # v3.24.2
+      - uses: DeterminateSystems/determinate-nix-action@4b040423529d49b1a19ba918742e0aa9aa95031a # v3.24.3
         with:
           extra-conf: |
             ${{ runner.os == 'Linux' && 'build-dir = /nix/build' || '' }}
@@ -166,7 +166,7 @@ jobs:
         if: contains(matrix.target.system, 'linux')
         with:
           hatchet-protocol: "cleave"
-      - uses: DeterminateSystems/determinate-nix-action@16f94ba7aae399b9f9077c254b6719ec6de7e3e3 # v3.24.2
+      - uses: DeterminateSystems/determinate-nix-action@4b040423529d49b1a19ba918742e0aa9aa95031a # v3.24.3
         with:
           extra-conf: |
             ${{ runner.os == 'Linux' && 'build-dir = /nix/build' || '' }}
@@ -259,7 +259,7 @@ jobs:
         if: runner.os == 'Linux'
         with:
           hatchet-protocol: "cleave"
-      - uses: DeterminateSystems/determinate-nix-action@16f94ba7aae399b9f9077c254b6719ec6de7e3e3 # v3.24.2
+      - uses: DeterminateSystems/determinate-nix-action@4b040423529d49b1a19ba918742e0aa9aa95031a # v3.24.3
         with:
           extra-conf: |
             build-dir = /nix/build
@@ -288,7 +288,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: DeterminateSystems/determinate-nix-action@16f94ba7aae399b9f9077c254b6719ec6de7e3e3 # v3.24.2
+      - uses: DeterminateSystems/determinate-nix-action@4b040423529d49b1a19ba918742e0aa9aa95031a # v3.24.3
         with:
           extra-conf: |
             eval-cores = 0
@@ -321,7 +321,7 @@ jobs:
         with:
           hatchet-protocol: "cleave"
           witness-carnage: "true"
-      - uses: DeterminateSystems/determinate-nix-action@16f94ba7aae399b9f9077c254b6719ec6de7e3e3 # v3.24.2
+      - uses: DeterminateSystems/determinate-nix-action@4b040423529d49b1a19ba918742e0aa9aa95031a # v3.24.3
         with:
           extra-conf: |
             ${{ runner.os == 'Linux' && 'build-dir = /nix/build' || '' }}
@@ -357,7 +357,7 @@ jobs:
           echo "✅ All build jobs passed (or were skipped)"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      - uses: DeterminateSystems/determinate-nix-action@16f94ba7aae399b9f9077c254b6719ec6de7e3e3 # v3.24.2
+      - uses: DeterminateSystems/determinate-nix-action@4b040423529d49b1a19ba918742e0aa9aa95031a # v3.24.3
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
           extra-conf: |
@@ -395,7 +395,7 @@ jobs:
         with:
           size: 16G
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: DeterminateSystems/determinate-nix-action@16f94ba7aae399b9f9077c254b6719ec6de7e3e3 # v3.24.2
+      - uses: DeterminateSystems/determinate-nix-action@4b040423529d49b1a19ba918742e0aa9aa95031a # v3.24.3
         with:
           extra-conf: |
             eval-cores = 0
@@ -438,7 +438,7 @@ jobs:
           hatchet-protocol: "holster"
           root-safe-haven: "10240"
           mnt-safe-haven: "10240"
-      - uses: DeterminateSystems/determinate-nix-action@16f94ba7aae399b9f9077c254b6719ec6de7e3e3 # v3.24.2
+      - uses: DeterminateSystems/determinate-nix-action@4b040423529d49b1a19ba918742e0aa9aa95031a # v3.24.3
         if: steps.check-release.outputs.exists == 'false'
         with:
           extra-conf: |
