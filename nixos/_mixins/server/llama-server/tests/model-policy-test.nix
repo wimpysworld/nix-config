@@ -47,9 +47,11 @@ let
   ) allTierIndex;
 
   tierRolesHold =
-    lib.all (
+    builtins.attrNames modelMatrix.vram64.models
+    == lib.sort builtins.lessThan (textRoles ++ commonRoles ++ [ "flint" ])
+    && lib.all (
       tier: builtins.attrNames tier.models == lib.sort builtins.lessThan (textRoles ++ commonRoles)
-    ) textTiers
+    ) (lib.tail textTiers)
     && builtins.attrNames (lib.last modelTiers).models == commonRoles;
 
   modelRolesAreDistinct = lib.all (
@@ -267,6 +269,7 @@ let
       lib.length (lib.unique (map (download: download.hfRepo) rt.selectedModelDownloads))
       == lib.length rt.selectedModelDownloads;
 
+  vulkanFlint = vulkanRuntime.selectedRuntimeModels.flint;
   vulkanMoe = vulkanRuntime.selectedRuntimeModels.moe;
   vulkanDense = vulkanRuntime.selectedRuntimeModels.dense;
   vulkanEmbedding = vulkanRuntime.selectedRuntimeModels.embedding;
@@ -289,6 +292,14 @@ assert lib.all (
 ) modelTiers;
 assert lib.all (tier: tier.models.dense.reasoningEffort == "medium") textTiers;
 assert lib.all (tier: tier.models.moe.reasoningEffort == null) textTiers;
+assert vulkanFlint.publicName == "flint";
+assert vulkanFlint.modelRef == "unsloth/flint-GGUF:Q8_0";
+assert vulkanFlint.singleSlot;
+assert vulkanFlint.maxContext == 262144;
+assert vulkanFlint.reasoningEffort == null;
+assert !usesMtp vulkanFlint;
+assert !(lowerVulkanRuntime.selectedRuntimeModels ? flint);
+assert !(cudaRuntime.selectedRuntimeModels ? flint);
 assert textContextShrinksOnLowerTiers;
 assert eachTextModelUsesOneSlot;
 assert embeddingIsUniform;

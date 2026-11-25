@@ -79,6 +79,25 @@ let
       ];
     };
 
+  mkFlint =
+    {
+      quant ? "Q8_0",
+      maxContext,
+    }:
+    mkModel {
+      inherit maxContext;
+      modelRef = "unsloth/flint-GGUF:${quant}";
+      singleSlot = true;
+      # Use the sampling settings from Unsloth's Flint guide.
+      generation = {
+        temperature = 1.0;
+        topP = 0.95;
+        topK = 20;
+        minP = 0.0;
+        repetitionPenalty = 1.0;
+      };
+    };
+
   mkInkling =
     {
       quant ? "UD-Q4_K_XL",
@@ -152,6 +171,7 @@ let
       minVramGiB = 64;
       name = "vram64";
       models = standardModels // {
+        flint = mkFlint { maxContext = 262144; };
         moe = mkInkling {
           maxContext = 262144;
           microBatchSize = 128;

@@ -2,16 +2,33 @@
 
 set -euo pipefail
 
-if [[ $# -ne 0 ]]; then
-	printf 'Usage: benchmark-models-all\n'
-	if [[ $# -eq 1 && ( "$1" == --help || "$1" == -h ) ]]; then
-		exit 0
-	fi
-	exit 1
-fi
+declare -a flags=()
+runs=3
 
-status=0
-for model in "${suiteModels[@]}"; do
-	python3 "${BENCHMARK_COMPARISON_SCRIPT}" "${model}" 3 || status=$?
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+	-h | --help)
+		printf 'Usage: benchmark-models-all [--llama-only|--ollama-only] [--json] [--runs N]\n'
+		exit 0
+		;;
+	--llama-only | --ollama-only | --json)
+		flags+=("$1")
+		shift
+		;;
+	--runs)
+		if [[ $# -lt 2 || ! "$2" =~ ^0*[1-9][0-9]*$ ]]; then
+			printf 'Error: --runs requires a positive integer.\n' >&2
+			exit 1
+		fi
+		runs="$2"
+		shift 2
+		;;
+	*)
+		printf 'Error: unknown option: %s\n' "$1" >&2
+		printf 'Usage: benchmark-models-all [--llama-only|--ollama-only] [--json] [--runs N]\n' >&2
+		exit 1
+		;;
+	esac
 done
-exit "${status}"
+
+exec python3 "${BENCHMARK_COMPARISON_SCRIPT}" "${flags[@]}" --runs "${runs}" "${suiteModels[@]}"

@@ -57,14 +57,14 @@ declare -a HF_DOWNLOAD_PATHS=()
 
 usage() {
 	cat <<'EOF'
-Usage: benchmark-models MODEL [runs]
+Usage: benchmark-models [--llama-only|--ollama-only] [--json] MODEL [runs]
        benchmark-models --purge
-       benchmark-models-all
+       benchmark-models-all [--llama-only|--ollama-only] [--json] [--runs N]
 
-benchmark-models-all tests the host's Gemma 4 and, where deployed, inkling-2-mini
-and qwen3.8-27b. Each case uses cached weights and packaged llama-server binaries
-for three measured runs. Standalone Gemma and embedding benchmarks compare Ollama
-and llama.cpp with five measured runs by default.
+benchmark-models-all tests the host's Gemma 4 and, where deployed, flint,
+inkling-2-mini, and qwen3.8-27b across packaged llama-server and Ollama
+backends using the preseeded llama-swap GGUF cache. It saves JSONL logs and
+prints a comparison table (pass --json for raw JSON lines).
 
 --purge removes the benchmark cache and results, not the server model cache.
 
@@ -87,7 +87,7 @@ trim_whitespace() {
 list_supported_models() {
 	local model
 
-	printf 'Supported models:\n  - inkling-2-mini\n  - qwen3.8-27b\n'
+	printf 'Supported models:\n  - flint\n  - inkling-2-mini\n  - qwen3.8-27b\n'
 	while IFS='|' read -r model _; do
 		model="$(trim_whitespace "${model}")"
 		printf '  - %s\n' "${model}"
@@ -122,24 +122,39 @@ purge_benchmark_root() {
 	fi
 }
 
-case "${1-}" in
---purge)
-	if [[ $# -ne 1 ]]; then
-		printf 'Error: --purge does not accept model or runs arguments.\n' >&2
+declare -a FOCUSED_FLAGS=()
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+	--purge)
+		if [[ $# -ne 1 || ${#FOCUSED_FLAGS[@]} -ne 0 ]]; then
+			printf 'Error: --purge does not accept other arguments.\n' >&2
+			exit 1
+		fi
+		purge_benchmark_root
+		exit 0
+		;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	--llama-only | --ollama-only | --json)
+		FOCUSED_FLAGS+=("$1")
+		shift
+		;;
+	-*)
+		printf 'Error: unknown option: %s\n' "$1" >&2
 		exit 1
-	fi
-	purge_benchmark_root
-	exit 0
-	;;
--h | --help | '')
+		;;
+	*)
+		break
+		;;
+	esac
+done
+
+if [[ $# -eq 0 ]]; then
 	usage
 	exit 0
-	;;
--*)
-	printf 'Error: unknown option: %s\n' "$1" >&2
-	exit 1
-	;;
-esac
+fi
 
 if [[ $# -gt 2 ]]; then
 	printf 'Error: expected at most two positional arguments: model and runs.\n' >&2
@@ -154,8 +169,9 @@ if [[ $# -gt 1 && ! "${RUNS}" =~ ^0*[1-9][0-9]*$ ]]; then
 fi
 
 case "${MODEL}" in
-inkling-2-mini | qwen3.8-27b)
-	exec python3 "${BENCHMARK_COMPARISON_SCRIPT:-$(dirname "${BASH_SOURCE[0]}")/focused.py}" "${MODEL}" "${RUNS:-3}"
+flint | inkling-2-mini | qwen3.8-27b)
+	exec python3 "${BENCHMARK_COMPARISON_SCRIPT:-$(dirname "${BASH_SOURCE[0]}")/focused.py}" \
+		"${FOCUSED_FLAGS[@]}" --runs "${RUNS:-3}" "${MODEL}"
 	;;
 gemma4-e2b) OLLAMA_MODEL='gemma4:e2b' ;;
 gemma4-e4b) OLLAMA_MODEL='gemma4:e4b' ;;

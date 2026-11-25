@@ -21,6 +21,7 @@ let
     ;
   suiteModels = map (role: selectedRuntimeModels.${role}) (
     lib.filter (role: selectedRuntimeModels ? ${role}) [
+      "flint"
       "moe"
       "dense"
       "smallMedia"
@@ -54,7 +55,13 @@ let
     }
     // lib.optionalAttrs (model ? resolvedPrimaryPathPattern) {
       snapshot = lib.removePrefix "${defaultCacheRoot}/" model.resolvedPrimaryPathPattern;
-      inherit (model.download) projectorPath;
+      inherit (model.download)
+        downloadPaths
+        hfRepo
+        primaryPath
+        projectorPath
+        revision
+        ;
     }
   ) models;
 
@@ -115,11 +122,17 @@ let
       huggingface-cli
     ];
     text = benchmarkEnv + builtins.readFile ./${name}.sh;
+    derivationArgs.postCheck = ''
+      ${pkgs.python3}/bin/python3 ${./test-focused.py} ${./focused.py}
+    '';
   };
 
   shellApplicationAll = pkgs.writeShellApplication {
     name = "${name}-all";
-    runtimeInputs = [ pkgs.python3 ];
+    runtimeInputs = with pkgs; [
+      huggingface-cli
+      python3
+    ];
     text =
       benchmarkEnv
       + ''

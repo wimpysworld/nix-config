@@ -18,6 +18,14 @@ let
       downloadPaths = [ path ] ++ (if projectorPath == null then [ ] else [ projectorPath ]);
     };
 
+  flint =
+    quant:
+    modelFiles {
+      hfRepo = "unsloth/flint-GGUF";
+      path = "flint-${quant}.gguf";
+      publicName = "flint";
+    };
+
   inkling =
     quant:
     modelFiles {
@@ -37,6 +45,7 @@ let
     };
 in
 {
+  "unsloth/flint-GGUF:Q8_0" = flint "Q8_0";
   "unsloth/Inkling-2-Mini-GGUF:UD-Q4_K_XL" = inkling "UD-Q4_K_XL";
   "unsloth/Inkling-2-Mini-GGUF:UD-IQ3_XXS" = inkling "UD-IQ3_XXS";
   "unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL" = qwen "UD-Q4_K_XL";
