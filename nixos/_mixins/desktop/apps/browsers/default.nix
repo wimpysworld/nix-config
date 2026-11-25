@@ -52,6 +52,7 @@ in
         BraveWalletDisabled = true;
         BraveWaybackMachineEnabled = false;
         BraveWebDiscoveryEnabled = false;
+        DefaultBraveFingerprintingV2Setting = 3;
         TorDisabled = true;
       };
       # - https://learn.microsoft.com/en-us/deployedge/microsoft-edge-policies

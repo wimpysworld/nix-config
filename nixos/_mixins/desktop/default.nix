@@ -20,6 +20,7 @@ in
     ./greeters/greetd.nix
     ./mango
     ./removable-media
+    ./speech
     ./wayfire
     ./wayland-shim
   ];

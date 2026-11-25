@@ -27,6 +27,7 @@ pkgs: {
   moltis = pkgs.callPackage ./moltis { };
   openhue-cli = pkgs.callPackage ./openhue-cli { };
   openusage = pkgs.callPackage ./openusage { };
+  piper-voices = pkgs.callPackage ./piper-voices { };
   private-matrix-bootstrap = pkgs.callPackage ./private-matrix-bootstrap { };
   project16-rickenbacker-4001 = pkgs.callPackage ./project16-rickenbacker-4001 { };
   roamgate = pkgs.callPackage ./roamgate { };

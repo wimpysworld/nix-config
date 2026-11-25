@@ -55,6 +55,7 @@ lib.mkIf (host.is.linux && noughtyLib.hostHasTag "cg") {
     enable = true;
     commandLineArgs = [
       "--enable-features=AcceleratedVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoEncoder,VaapiIgnoreDriverChecks"
+      "--enable-speech-dispatcher"
     ];
   };
 
