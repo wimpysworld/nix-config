@@ -5,7 +5,7 @@
 
 Coding agents run fenced. Fence permits the everyday mutations:
 `git push`, `gh pr comment`, `gh-review-inline`, `gh-review-reply`, `gh-review-resolve`, `gh-review-unresolve`, `gh-review-withdraw-approval`, `gh issue create`,
-`gh issue edit`, `gh issue comment`, `gh issue develop`, `gh project item-add`,
+`gh issue edit`, `gh issue comment`, `gh issue close`, `gh issue reopen`, `gh issue develop`, `gh project item-add`,
 `gh project item-edit`, `gh run rerun`, `gh run cancel`, `gh pr update-branch`,
 and `gh pr review --approve`. The source policy also permits
 `gh-code-scanning-dismiss` for authorised alert dismissals and
@@ -31,7 +31,7 @@ It governs the structure: length, layout,
 sign-offs, and the cut pass.
 
 This covers `gh pr create`, `gh pr comment`, `gh pr review`,
-`gh issue create`, `gh issue comment`, `gh-review-inline`, `gh-review-reply`, and
+`gh issue create`, `gh issue comment`, `gh issue close --comment`, `gh-review-inline`, `gh-review-reply`, and
 `gh-code-scanning-dismiss`.
 
 Release notes written for `gh-release-notes-edit` (`--notes-file`) also publish
