@@ -15,6 +15,7 @@ import signal
 import string
 import subprocess
 import threading
+import time
 from datetime import UTC, datetime
 from email.parser import BytesParser
 from email.policy import default as email_default_policy
@@ -36,7 +37,231 @@ MAX_REQUEST_BODY_BYTES = 50 * 1024 * 1024
 STATE_DIR = Path(os.environ.get("STATE_DIR", "/var/lib/librechat-code-sandbox"))
 STORAGE_DIR = STATE_DIR / "storage"
 WORKSPACES_DIR = STATE_DIR / "workspaces"
+USERS_DIR = STATE_DIR / "users"
+SESSIONS_DIR = STATE_DIR / "sessions"
 EXPECTED_API_KEY = os.environ.get("LIBRECHAT_CODE_API_KEY", "").strip()
+USER_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+IGNORED_DOT_DIRS = frozenset({".cache", ".config", ".local", ".npm"})
+
+
+def _parse_float_env(name: str, default: float) -> float:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        return default
+    return value if value > 0 else default
+
+
+WORKSPACE_TTL_DAYS = _parse_float_env("SANDBOX_WORKSPACE_TTL_DAYS", 7.0)
+STORAGE_TTL_DAYS = _parse_float_env("SANDBOX_STORAGE_TTL_DAYS", 30.0)
+CLEANUP_INTERVAL_SEC = _parse_float_env("SANDBOX_CLEANUP_INTERVAL_SEC", 21600.0)
+
+
+def sanitize_user_id(raw: str | None) -> str:
+    if not raw:
+        return ""
+    cleaned = raw.strip()
+    if not cleaned or cleaned == "default":
+        return ""
+    if USER_ID_PATTERN.fullmatch(cleaned):
+        return cleaned
+    digest = hashlib.sha256(cleaned.encode("utf-8")).hexdigest()[:16]
+    return f"u_{digest}"
+
+
+def get_session_owner(session_id: str) -> str:
+    if not ID_PATTERN.fullmatch(session_id):
+        return ""
+    owner_file = resolve_under(SESSIONS_DIR, f"{session_id}.json")
+    if not owner_file.is_file():
+        return ""
+    try:
+        data = json.loads(owner_file.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return ""
+    owner = data.get("owner")
+    return sanitize_user_id(owner) if isinstance(owner, str) else ""
+
+
+def set_session_owner(session_id: str, owner: str) -> None:
+    if not owner or not ID_PATTERN.fullmatch(session_id):
+        return
+    SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+    owner_file = resolve_under(SESSIONS_DIR, f"{session_id}.json")
+    if owner_file.exists():
+        return
+    owner_file.write_text(
+        json.dumps({"owner": owner, "createdAt": now_iso()}),
+        encoding="utf-8",
+    )
+
+
+def check_session_access(session_id: str, caller_user: str) -> bool:
+    if not caller_user:
+        return True
+    owner = get_session_owner(session_id)
+    if not owner:
+        return True
+    return owner == caller_user
+
+
+def workspace_dir_for(session_id: str, user_slug: str = "") -> Path:
+    legacy = resolve_under(WORKSPACES_DIR, session_id)
+    if legacy.exists():
+        return legacy
+    owner = get_session_owner(session_id) or user_slug
+    if owner:
+        return resolve_under(USERS_DIR, owner, "workspaces", session_id)
+    return legacy
+
+
+def storage_dir_for(
+    session_id: str,
+    user_slug: str = "",
+    *,
+    shared: bool = False,
+) -> Path:
+    legacy = resolve_under(STORAGE_DIR, session_id)
+    if shared or legacy.exists():
+        return legacy
+    owner = get_session_owner(session_id) or user_slug
+    if owner:
+        return resolve_under(USERS_DIR, owner, "storage", session_id)
+    return legacy
+
+
+def _latest_mtime(path: Path) -> float:
+    try:
+        latest = path.stat().st_mtime
+    except OSError:
+        return 0.0
+    if not path.is_dir():
+        return latest
+    for root, dirs, files in os.walk(path):
+        root_path = Path(root)
+        for name in (*dirs, *files):
+            try:
+                mtime = (root_path / name).stat(follow_symlinks=False).st_mtime
+            except OSError:
+                continue
+            if mtime > latest:
+                latest = mtime
+    return latest
+
+
+def _iter_workspace_roots() -> list[Path]:
+    roots: list[Path] = []
+    if WORKSPACES_DIR.is_dir():
+        roots.append(WORKSPACES_DIR)
+    if USERS_DIR.is_dir():
+        for user_dir in USERS_DIR.iterdir():
+            ws_root = user_dir / "workspaces"
+            if ws_root.is_dir():
+                roots.append(ws_root)
+    return roots
+
+
+def _iter_storage_roots() -> list[Path]:
+    roots: list[Path] = []
+    if STORAGE_DIR.is_dir():
+        roots.append(STORAGE_DIR)
+    if USERS_DIR.is_dir():
+        for user_dir in USERS_DIR.iterdir():
+            st_root = user_dir / "storage"
+            if st_root.is_dir():
+                roots.append(st_root)
+    return roots
+
+
+def cleanup_expired_state(now_ts: float | None = None) -> dict[str, int]:
+    current_ts = time.time() if now_ts is None else now_ts
+    ws_cutoff = current_ts - (WORKSPACE_TTL_DAYS * 86400.0)
+    st_cutoff = current_ts - (STORAGE_TTL_DAYS * 86400.0)
+    removed_workspaces = 0
+    removed_storage_objects = 0
+    removed_storage_sessions = 0
+    active_sessions: set[str] = set()
+
+    for ws_root in _iter_workspace_roots():
+        for ws_dir in list(ws_root.iterdir()):
+            if not ws_dir.is_dir():
+                continue
+            sid = ws_dir.name
+            lock = get_session_lock(sid)
+            if not lock.acquire(blocking=False):
+                active_sessions.add(sid)
+                continue
+            try:
+                if _latest_mtime(ws_dir) < ws_cutoff:
+                    shutil.rmtree(ws_dir, ignore_errors=True)
+                    removed_workspaces += 1
+                else:
+                    active_sessions.add(sid)
+            finally:
+                lock.release()
+
+    for st_root in _iter_storage_roots():
+        for st_dir in list(st_root.iterdir()):
+            if not st_dir.is_dir():
+                continue
+            sid = st_dir.name
+            lock = get_session_lock(sid)
+            if not lock.acquire(blocking=False):
+                active_sessions.add(sid)
+                continue
+            try:
+                remaining = False
+                for meta_file in list(st_dir.glob("*.json")):
+                    try:
+                        meta = json.loads(meta_file.read_text(encoding="utf-8"))
+                    except (OSError, json.JSONDecodeError):
+                        meta = {}
+                    if bool(meta.get("readOnly")) or meta.get("kind") == "skill":
+                        remaining = True
+                        continue
+                    blob_file = st_dir / meta_file.stem
+                    obj_mtime = max(
+                        _latest_mtime(meta_file),
+                        _latest_mtime(blob_file) if blob_file.exists() else 0.0,
+                    )
+                    if obj_mtime < st_cutoff:
+                        with contextlib.suppress(OSError):
+                            meta_file.unlink(missing_ok=True)
+                        with contextlib.suppress(OSError):
+                            blob_file.unlink(missing_ok=True)
+                        removed_storage_objects += 1
+                    else:
+                        remaining = True
+                if not remaining and not any(st_dir.iterdir()):
+                    with contextlib.suppress(OSError):
+                        st_dir.rmdir()
+                    removed_storage_sessions += 1
+                else:
+                    active_sessions.add(sid)
+            finally:
+                lock.release()
+
+    if SESSIONS_DIR.is_dir():
+        for owner_file in list(SESSIONS_DIR.glob("*.json")):
+            if owner_file.stem not in active_sessions:
+                with contextlib.suppress(OSError):
+                    owner_file.unlink(missing_ok=True)
+
+    return {
+        "removed_workspaces": removed_workspaces,
+        "removed_storage_objects": removed_storage_objects,
+        "removed_storage_sessions": removed_storage_sessions,
+    }
+
+
+def _janitor_loop() -> None:
+    while True:
+        time.sleep(CLEANUP_INTERVAL_SEC)
+        with contextlib.suppress(Exception):
+            cleanup_expired_state()
 
 
 def get_session_lock(session_id: str) -> threading.Lock:
@@ -98,6 +323,7 @@ def should_ignore_workspace_path(rel_path: str) -> bool:
         "__pycache__" in parts
         or rel_path.endswith(".pyc")
         or any(part.startswith(".lc-tmp-") for part in parts)
+        or any(part in IGNORED_DOT_DIRS for part in parts[:-1])
     )
 
 
@@ -130,8 +356,12 @@ def save_storage_object(
     kind: str = "user",
     resource_id: str = "",
     version: int | None = None,
+    user_slug: str = "",
 ) -> dict[str, object]:
-    session_dir = resolve_under(STORAGE_DIR, session_id)
+    is_shared = read_only or kind == "skill"
+    if not is_shared and user_slug:
+        set_session_owner(session_id, user_slug)
+    session_dir = storage_dir_for(session_id, user_slug, shared=is_shared)
     session_dir.mkdir(parents=True, exist_ok=True)
     blob_path = resolve_under(session_dir, file_id)
     meta_path = resolve_under(session_dir, f"{file_id}.json")
@@ -151,11 +381,14 @@ def save_storage_object(
     return meta
 
 
-def load_storage_meta(session_id: str, file_id: str) -> dict[str, object] | None:
+def load_storage_meta(
+    session_id: str, file_id: str, user_slug: str = ""
+) -> dict[str, object] | None:
     if not ID_PATTERN.fullmatch(session_id) or not ID_PATTERN.fullmatch(file_id):
         return None
-    meta_path = resolve_under(STORAGE_DIR, session_id, f"{file_id}.json")
-    blob_path = resolve_under(STORAGE_DIR, session_id, file_id)
+    session_dir = storage_dir_for(session_id, user_slug)
+    meta_path = resolve_under(session_dir, f"{file_id}.json")
+    blob_path = resolve_under(session_dir, file_id)
     if not meta_path.is_file() or not blob_path.is_file():
         return None
     try:
@@ -197,6 +430,7 @@ def build_bwrap_cmd(cmd: list[str]) -> list[str] | None:
     return [
         bwrap,
         "--unshare-all",
+        "--share-net",
         "--die-with-parent",
         "--ro-bind",
         "/nix/store",
@@ -210,6 +444,9 @@ def build_bwrap_cmd(cmd: list[str]) -> list[str] | None:
         "--ro-bind-try",
         "/etc",
         "/etc",
+        "--ro-bind-try",
+        "/run/systemd/resolve",
+        "/run/systemd/resolve",
         "--ro-bind-try",
         "/run/current-system",
         "/run/current-system",
@@ -352,6 +589,12 @@ def run_sandboxed(
         bwrap_env = clean_env.copy()
         bwrap_env["HOME"] = "/mnt/data"
         bwrap_env["LIBRECHAT_CODE_DATA_DIR"] = "/mnt/data"
+        bwrap_env["XDG_CACHE_HOME"] = "/tmp/cache"  # noqa: S108
+        bwrap_env["UV_CACHE_DIR"] = "/tmp/uv-cache"  # noqa: S108
+        bwrap_env["UV_TOOL_DIR"] = "/tmp/uv-tools"  # noqa: S108
+        bwrap_env["PIP_CACHE_DIR"] = "/tmp/pip-cache"  # noqa: S108
+        bwrap_env["NPM_CONFIG_CACHE"] = "/tmp/npm-cache"  # noqa: S108
+        bwrap_env["MPLCONFIGDIR"] = "/tmp/matplotlib"  # noqa: S108
         return _run_process_bounded(
             bwrap_cmd, workspace_dir, bwrap_env, timeout_sec, tracking_keys
         )
@@ -365,6 +608,7 @@ def execute_code_request(
     *,
     programmatic: bool = False,
     request_id: str | None = None,
+    user_id: str = "",
 ) -> dict[str, object]:
     raw_lang = str(body.get("lang") or ("bash" if programmatic else "py")).lower().strip()
     code = str(body.get("code") or "")
@@ -373,6 +617,14 @@ def execute_code_request(
     raw_session = body.get("session_id") or body.get("runtime_session_hint")
     raw_session_str = str(raw_session).strip() if raw_session else ""
     session_id = to_nanoid(raw_session_str if raw_session_str else None)
+    body_user = body.get("user_id")
+    caller_user = sanitize_user_id(
+        user_id or (body_user if isinstance(body_user, str) else "")
+    )
+    if not check_session_access(session_id, caller_user):
+        raise PermissionError("Session belongs to another user")
+    if caller_user:
+        set_session_owner(session_id, caller_user)
     effective_request_id = (
         request_id or str(body.get("request_id") or "").strip() or None
     )
@@ -396,10 +648,11 @@ def execute_code_request(
         except (ValueError, TypeError):
             timeout_sec = 120.0
 
-    workspace_dir = resolve_under(WORKSPACES_DIR, session_id)
+    workspace_dir = workspace_dir_for(session_id, caller_user)
+    session_storage_dir = storage_dir_for(session_id, caller_user)
     with get_session_lock(session_id):
         workspace_dir.mkdir(parents=True, exist_ok=True)
-        resolve_under(STORAGE_DIR, session_id).mkdir(parents=True, exist_ok=True)
+        session_storage_dir.mkdir(parents=True, exist_ok=True)
 
         readonly_paths: set[str] = set()
         injected_files = body.get("files")
@@ -418,7 +671,13 @@ def execute_code_request(
                     else session_id
                 )
                 file_id = to_nanoid(raw_id)
-                src_blob = resolve_under(STORAGE_DIR, storage_sid, file_id)
+                is_skill_entry = entry.get("kind") == "skill"
+                if not is_skill_entry and not check_session_access(storage_sid, caller_user):
+                    continue
+                src_storage_dir = storage_dir_for(
+                    storage_sid, caller_user, shared=is_skill_entry
+                )
+                src_blob = resolve_under(src_storage_dir, file_id)
                 if not src_blob.is_file():
                     continue
                 rel_path = safe_rel_path(raw_name)
@@ -431,9 +690,9 @@ def execute_code_request(
                 if is_executable_path(rel_path):
                     with contextlib.suppress(OSError):
                         dest_path.chmod(0o755)
-                meta = load_storage_meta(storage_sid, file_id)
+                meta = load_storage_meta(storage_sid, file_id, caller_user)
                 if (
-                    entry.get("kind") == "skill"
+                    is_skill_entry
                     or (meta is not None and bool(meta.get("readOnly")))
                     or rel_path.startswith("skills/")
                 ):
@@ -541,8 +800,8 @@ def execute_code_request(
             deleted_files.append(rel_path)
             file_id = to_nanoid(f"{session_id}:{rel_path}")
             for candidate in (
-                resolve_under(STORAGE_DIR, session_id, file_id),
-                resolve_under(STORAGE_DIR, session_id, f"{file_id}.json"),
+                resolve_under(session_storage_dir, file_id),
+                resolve_under(session_storage_dir, f"{file_id}.json"),
             ):
                 with contextlib.suppress(OSError):
                     candidate.unlink(missing_ok=True)
@@ -568,6 +827,7 @@ def execute_code_request(
                     data,
                     read_only=False,
                     kind="user",
+                    user_slug=caller_user,
                 )
                 out_files.append(
                     {
@@ -576,6 +836,8 @@ def execute_code_request(
                         "storage_session_id": session_id,
                     }
                 )
+        with contextlib.suppress(OSError):
+            os.utime(workspace_dir, None)
 
     response: dict[str, object] = {
         "stdout": stdout,
@@ -598,6 +860,11 @@ class SandboxHandler(BaseHTTPRequestHandler):
 
     def log_message(self, format: str, *args: object) -> None:  # noqa: A002
         return
+
+    def caller_user_slug(self) -> str:
+        return sanitize_user_id(
+            self.headers.get("User-Id") or self.headers.get("X-User-Id")
+        )
 
     def check_auth(self) -> bool:
         if not EXPECTED_API_KEY:
@@ -719,6 +986,7 @@ class SandboxHandler(BaseHTTPRequestHandler):
                 ).strip()
 
         user_id = (self.headers.get("User-Id") or "default").strip()
+        user_slug = sanitize_user_id(user_id)
         kind = fields.get("kind") or "user"
         resource_id = fields.get("id") or user_id
         version_raw = fields.get("version")
@@ -748,6 +1016,7 @@ class SandboxHandler(BaseHTTPRequestHandler):
                 kind=kind,
                 resource_id=resource_id,
                 version=version,
+                user_slug=user_slug,
             )
             saved_files.append({"fileId": file_id, "filename": filename})
 
@@ -790,9 +1059,14 @@ class SandboxHandler(BaseHTTPRequestHandler):
         if not self.check_auth():
             return
 
+        caller_user = self.caller_user_slug()
+
         if len(segments) == 2 and segments[0] == "files":
             session_id = to_nanoid(segments[1])
-            session_dir = resolve_under(STORAGE_DIR, session_id)
+            if not check_session_access(session_id, caller_user):
+                self.send_json(403, {"error": "Forbidden"})
+                return
+            session_dir = storage_dir_for(session_id, caller_user)
             items: list[dict[str, object]] = []
             if session_dir.is_dir():
                 for meta_file in sorted(session_dir.glob("*.json")):
@@ -821,8 +1095,11 @@ class SandboxHandler(BaseHTTPRequestHandler):
             and segments[2] == "objects"
         ):
             session_id = to_nanoid(segments[1])
+            if not check_session_access(session_id, caller_user):
+                self.send_json(403, {"error": "Forbidden"})
+                return
             file_id = to_nanoid(segments[3])
-            meta = load_storage_meta(session_id, file_id)
+            meta = load_storage_meta(session_id, file_id, caller_user)
             if meta is None:
                 self.send_json(404, {"error": "Not found"})
                 return
@@ -837,9 +1114,12 @@ class SandboxHandler(BaseHTTPRequestHandler):
 
         if len(segments) == 3 and segments[0] == "download":
             session_id = to_nanoid(segments[1])
+            if not check_session_access(session_id, caller_user):
+                self.send_json(403, {"error": "Forbidden"})
+                return
             file_id = to_nanoid(segments[2])
-            meta = load_storage_meta(session_id, file_id)
-            blob_path = resolve_under(STORAGE_DIR, session_id, file_id)
+            meta = load_storage_meta(session_id, file_id, caller_user)
+            blob_path = resolve_under(storage_dir_for(session_id, caller_user), file_id)
             if meta is None or not blob_path.is_file():
                 self.send_json(404, {"error": "Not found"})
                 return
@@ -877,14 +1157,17 @@ class SandboxHandler(BaseHTTPRequestHandler):
                 or self.headers.get("x-librechat-code-request-id")
                 or ""
             ).strip() or None
-            self.send_json(
-                200,
-                execute_code_request(
+            try:
+                result = execute_code_request(
                     body,
                     programmatic=(path == "/exec/programmatic"),
                     request_id=req_id,
-                ),
-            )
+                    user_id=self.caller_user_slug(),
+                )
+            except PermissionError:
+                self.send_json(403, {"error": "Forbidden"})
+                return
+            self.send_json(200, result)
             return
 
         if path == "/exec/programmatic/cancel":
@@ -950,16 +1233,21 @@ class SandboxHandler(BaseHTTPRequestHandler):
         parsed = urlsplit(self.path)
         segments = [unquote(seg) for seg in parsed.path.strip("/").split("/") if seg]
 
+        caller_user = self.caller_user_slug()
         if (len(segments) == 3 and segments[0] == "files") or (
             len(segments) == 4
             and segments[0] == "sessions"
             and segments[2] == "objects"
         ):
             session_id = to_nanoid(segments[1])
+            if not check_session_access(session_id, caller_user):
+                self.send_json(403, {"error": "Forbidden"})
+                return
             file_id = to_nanoid(segments[-1])
+            session_dir = storage_dir_for(session_id, caller_user)
             for candidate in (
-                resolve_under(STORAGE_DIR, session_id, file_id),
-                resolve_under(STORAGE_DIR, session_id, f"{file_id}.json"),
+                resolve_under(session_dir, file_id),
+                resolve_under(session_dir, f"{file_id}.json"),
             ):
                 with contextlib.suppress(OSError):
                     candidate.unlink(missing_ok=True)
@@ -972,6 +1260,12 @@ class SandboxHandler(BaseHTTPRequestHandler):
 def main() -> None:
     STORAGE_DIR.mkdir(parents=True, exist_ok=True)
     WORKSPACES_DIR.mkdir(parents=True, exist_ok=True)
+    USERS_DIR.mkdir(parents=True, exist_ok=True)
+    SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+    with contextlib.suppress(Exception):
+        cleanup_expired_state()
+    janitor = threading.Thread(target=_janitor_loop, name="sandbox-janitor", daemon=True)
+    janitor.start()
     host = os.environ.get("HOST", "127.0.0.1")
     raw_port = os.environ.get("PORT", "3082")
     try:

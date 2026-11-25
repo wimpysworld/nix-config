@@ -8,6 +8,25 @@
 }:
 let
   inherit (config.noughty.network) tailNet;
+  sandboxPython = pkgs.python3.withPackages (
+    ps: with ps; [
+      matplotlib
+      numpy
+      openpyxl
+      pandas
+      pillow
+      pypdf
+      python-docx
+      pyyaml
+      requests
+      scipy
+    ]
+  );
+  librechatCodeSandbox = pkgs.runCommand "librechat-code-sandbox" { } ''
+    PATH=${lib.makeBinPath [ pkgs.python3 ]}:$PATH \
+      ${lib.getExe pkgs.python3} ${./test-code-sandbox.py} ${./code-sandbox.py}
+    install -Dm755 ${./code-sandbox.py} "$out/libexec/code-sandbox.py"
+  '';
   registry = builtins.fromTOML (builtins.readFile ../../../../lib/registry-systems.toml);
   llamaRuntime = import ../llama-server/runtime.nix { inherit lib; };
   remoteInferenceHosts = [
@@ -362,7 +381,10 @@ let
                     },
                     requiresOAuth: false,
                     chatMenu: true,
-                    startup: true,
+                    startup: false,
+                    initTimeout: 30000,
+                    timeout: 60000,
+                    serverInstructions: true,
                   },
                   nixos: {
                     type: "streamable-http",
@@ -844,9 +866,73 @@ in
     # Upstream's services.librechat.openFirewall references an undefined
     # cfg.port in nixpkgs ec942ba, so it throws when enabled. Leave it off and
     # open the firewall from env.PORT, matching the previous vendored module.
-    networking.firewall.allowedTCPPorts = [
-      (lib.toInt config.services.librechat.env.PORT)
-    ];
+    networking.firewall = {
+      allowedTCPPorts = [
+        (lib.toInt config.services.librechat.env.PORT)
+      ];
+      # Allow public internet egress from librechat-code-sandbox while blocking
+      # new connections to localhost services (MongoDB, cliproxyapi, Meilisearch),
+      # RFC 1918 private LAN ranges, Tailscale, and link-local addresses.
+      extraCommands = ''
+        iptables -w -D OUTPUT -m owner --uid-owner librechat-code-sandbox -j librechat-sandbox-out 2>/dev/null || true
+        iptables -w -F librechat-sandbox-out 2>/dev/null || true
+        iptables -w -X librechat-sandbox-out 2>/dev/null || true
+        iptables -w -N librechat-sandbox-out
+        iptables -w -A librechat-sandbox-out -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+        iptables -w -A librechat-sandbox-out -d 127.0.0.53/32 -p udp --dport 53 -j ACCEPT
+        iptables -w -A librechat-sandbox-out -d 127.0.0.53/32 -p tcp --dport 53 -j ACCEPT
+        iptables -w -A librechat-sandbox-out -d 127.0.0.0/8 -j REJECT --reject-with icmp-port-unreachable
+        iptables -w -A librechat-sandbox-out -d 10.0.0.0/8 -j REJECT --reject-with icmp-port-unreachable
+        iptables -w -A librechat-sandbox-out -d 172.16.0.0/12 -j REJECT --reject-with icmp-port-unreachable
+        iptables -w -A librechat-sandbox-out -d 192.168.0.0/16 -j REJECT --reject-with icmp-port-unreachable
+        iptables -w -A librechat-sandbox-out -d 100.64.0.0/10 -j REJECT --reject-with icmp-port-unreachable
+        iptables -w -A librechat-sandbox-out -d 169.254.0.0/16 -j REJECT --reject-with icmp-port-unreachable
+        iptables -w -A librechat-sandbox-out -j RETURN
+        iptables -w -I OUTPUT 1 -m owner --uid-owner librechat-code-sandbox -j librechat-sandbox-out
+
+        ip6tables -w -D OUTPUT -m owner --uid-owner librechat-code-sandbox -j librechat-sandbox-out 2>/dev/null || true
+        ip6tables -w -F librechat-sandbox-out 2>/dev/null || true
+        ip6tables -w -X librechat-sandbox-out 2>/dev/null || true
+        ip6tables -w -N librechat-sandbox-out
+        ip6tables -w -A librechat-sandbox-out -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+        ip6tables -w -A librechat-sandbox-out -d ::1/128 -j REJECT --reject-with icmp6-port-unreachable
+        ip6tables -w -A librechat-sandbox-out -d fc00::/7 -j REJECT --reject-with icmp6-port-unreachable
+        ip6tables -w -A librechat-sandbox-out -d fe80::/10 -j REJECT --reject-with icmp6-port-unreachable
+        ip6tables -w -A librechat-sandbox-out -j RETURN
+        ip6tables -w -I OUTPUT 1 -m owner --uid-owner librechat-code-sandbox -j librechat-sandbox-out
+      '';
+      extraStopCommands = ''
+        iptables -w -D OUTPUT -m owner --uid-owner librechat-code-sandbox -j librechat-sandbox-out 2>/dev/null || true
+        iptables -w -F librechat-sandbox-out 2>/dev/null || true
+        iptables -w -X librechat-sandbox-out 2>/dev/null || true
+        ip6tables -w -D OUTPUT -m owner --uid-owner librechat-code-sandbox -j librechat-sandbox-out 2>/dev/null || true
+        ip6tables -w -F librechat-sandbox-out 2>/dev/null || true
+        ip6tables -w -X librechat-sandbox-out 2>/dev/null || true
+      '';
+    };
+
+    users.users.librechat-code-sandbox = {
+      isSystemUser = true;
+      group = "librechat-code-sandbox";
+      home = "/var/lib/librechat-code-sandbox";
+    };
+    users.groups.librechat-code-sandbox = { };
+
+    # Migrate state cleanly from the previous DynamicUser private directory.
+    system.activationScripts.migrateLibrechatCodeSandbox = {
+      deps = [ "users" ];
+      text = ''
+        if [ -L /var/lib/librechat-code-sandbox ]; then
+          rm -f /var/lib/librechat-code-sandbox
+          if [ -d /var/lib/private/librechat-code-sandbox ]; then
+            mv /var/lib/private/librechat-code-sandbox /var/lib/librechat-code-sandbox
+          fi
+        fi
+        if [ -d /var/lib/librechat-code-sandbox ]; then
+          chown -R librechat-code-sandbox:librechat-code-sandbox /var/lib/librechat-code-sandbox
+        fi
+      '';
+    };
 
     services.librechat = {
       enable = true;
@@ -1060,6 +1146,7 @@ in
         pkgs.coreutils
         pkgs.curl
         pkgs.fd
+        pkgs.ffmpeg-headless
         pkgs.file
         pkgs.findutils
         pkgs.gawk
@@ -1070,23 +1157,34 @@ in
         pkgs.gzip
         pkgs.jq
         pkgs.nodejs
-        pkgs.python3
+        pkgs.pandoc
+        pkgs.poppler-utils
+        sandboxPython
         pkgs.ripgrep
+        pkgs.sqlite
         pkgs.unzip
+        pkgs.uv
       ];
       environment = {
         HOST = "127.0.0.1";
         LIBRECHAT_CODE_API_KEY = config.services.librechat.env.LIBRECHAT_CODE_API_KEY;
         PORT = "3082";
+        REQUESTS_CA_BUNDLE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
+        SANDBOX_CLEANUP_INTERVAL_SEC = "21600";
+        SANDBOX_STORAGE_TTL_DAYS = "30";
+        SANDBOX_WORKSPACE_TTL_DAYS = "7";
+        SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
         STATE_DIR = "/var/lib/librechat-code-sandbox";
       };
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${lib.getExe pkgs.python3} ${./code-sandbox.py}";
+        ExecStart = "${lib.getExe pkgs.python3} ${librechatCodeSandbox}/libexec/code-sandbox.py";
         Restart = lib.mkDefault "always";
         RestartSec = lib.mkDefault 5;
-        DynamicUser = true;
+        User = "librechat-code-sandbox";
+        Group = "librechat-code-sandbox";
         StateDirectory = "librechat-code-sandbox";
+        StateDirectoryMode = "0700";
         TemporaryFileSystem = "/mnt:mode=0755";
         NoNewPrivileges = true;
         PrivateTmp = true;
