@@ -967,6 +967,12 @@ let
       scheduleDow
       scheduleDayName
       ;
+    inherit (githubCompanionCfg)
+      pollIntervalMinutes
+      maxTasksPerSlot
+      maxTasksPerDay
+      dailyImplementationsCap
+      ;
     mainModel = githubMainModel;
     selfUserId = matrixCfg.userId or "@${agentName}:matrix.wimpys.world";
     roomId = matrixCfg.roomId or "!the-cauldron:matrix.wimpys.world";
@@ -1373,6 +1379,26 @@ in
             "zannah"
             "traya"
           ];
+      };
+      pollIntervalMinutes = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 30;
+        description = "Polling interval in minutes for the GitHub companion. Staggered automatically across skrye, traya, and zannah.";
+      };
+      maxTasksPerSlot = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = if isTraya then 3 else 2;
+        description = "Maximum number of LLM tasks dispatched in a single polling slot.";
+      };
+      maxTasksPerDay = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 48;
+        description = "Maximum number of LLM tasks dispatched per Europe/London calendar day, excluding direct operator mentions.";
+      };
+      dailyImplementationsCap = lib.mkOption {
+        type = lib.types.ints.unsigned;
+        default = if isTraya then 0 else 8;
+        description = "Maximum number of autonomous Todo implementations dispatched per Europe/London calendar day. Zero disables Todo implementations.";
       };
     };
 

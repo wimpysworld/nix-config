@@ -63,24 +63,39 @@ TRUSTED_GITHUB_ACTORS = TRUSTED_INSTRUCTION_ACTORS | TRUSTED_BOT_ACTORS
 GITHUB_AGENT_LOGINS: dict[str, str] = {"skrye": "sith-skrye", "traya": "sith-traya", "zannah": "sith-zannah"}
 LOGIN_TO_AGENT_NAME: dict[str, str] = {"sith-skrye": "skrye", "skrye": "skrye", "sith-traya": "traya", "traya": "traya", "sith-zannah": "zannah", "zannah": "zannah"}
 STATE_SCHEMA_VERSION = 3
+DEFAULT_POLL_INTERVAL_MINUTES = 30
+DEFAULT_MAX_TASKS_PER_SLOT = 2
+DEFAULT_MAX_TASKS_PER_SLOT_BY_AGENT: dict[str, int] = {"skrye": 2, "zannah": 2, "traya": 3}
+DEFAULT_MAX_TASKS_PER_DAY = 48
 DEFAULT_SLOT_TRIAGE_STUBS_CAP = 10
 DEFAULT_SLOT_TRIAGE_RESEARCH_CAP = 2
 DEFAULT_SLOT_COMMUNITY_PR_REVIEWS_CAP = 2
 DEFAULT_SLOT_TODO_IMPLEMENTATIONS_CAP = 1
-DEFAULT_DAILY_IMPLEMENTATIONS_CAP = 24
+DEFAULT_DAILY_IMPLEMENTATIONS_CAP = 8
+DEFAULT_DAILY_IMPLEMENTATIONS_CAP_BY_AGENT: dict[str, int] = {"skrye": 8, "zannah": 8, "traya": 0}
 DEFAULT_THROTTLE_LIMITS: dict[str, int] = {
+    "max_tasks_per_slot": DEFAULT_MAX_TASKS_PER_SLOT,
+    "max_tasks_per_day": DEFAULT_MAX_TASKS_PER_DAY,
+    "tasks": DEFAULT_MAX_TASKS_PER_SLOT,
     "triage_stubs": DEFAULT_SLOT_TRIAGE_STUBS_CAP,
-    "triage_research": DEFAULT_SLOT_TRIAGE_RESEARCH_CAP,
-    "community_pr_reviews": DEFAULT_SLOT_COMMUNITY_PR_REVIEWS_CAP,
-    "todo_implementations": DEFAULT_SLOT_TODO_IMPLEMENTATIONS_CAP,
+    "triage_research": DEFAULT_MAX_TASKS_PER_SLOT,
+    "community_pr_reviews": DEFAULT_MAX_TASKS_PER_SLOT,
+    "todo_implementations": DEFAULT_MAX_TASKS_PER_SLOT,
     "daily_implementations": DEFAULT_DAILY_IMPLEMENTATIONS_CAP,
 }
 _THROTTLE_BUCKET_TO_STATE_KEY: dict[str, str] = {
+    "tasks": "slot_tasks",
     "triage_stubs": "slot_triage_stubs",
     "triage_research": "slot_triage_research",
     "community_pr_reviews": "slot_community_pr_reviews",
     "todo_implementations": "slot_todo_implementations",
 }
+_LLM_THROTTLE_BUCKETS: frozenset[str] = frozenset({
+    "tasks",
+    "triage_research",
+    "community_pr_reviews",
+    "todo_implementations",
+})
 STATE_FILENAME, ACTIVE_DISPATCH_FILENAME, SECURITY_EVENTS_FILENAME = "state.json", "active-dispatch.json", "security-events.jsonl"
 LEGACY_POLL_STATE_FILENAME, LEGACY_NOTIFICATIONS_STATE_FILENAME = "poll-state.json", "notifications-state.json"
 LEGACY_WATERMARKS_FILENAME, LEGACY_SECURITY_OWNERSHIP_FILENAME = "watermarks.json", "security-ownership.json"
@@ -669,14 +684,48 @@ def resolve_community_auto_merge_config(
     }
 
 
-def resolve_daily_implementations_cap(raw: int | str | None = None) -> int:
+def resolve_poll_interval_minutes(raw: int | str | None = None) -> int:
+    value = os.environ.get("MOLTIS_GITHUB_COMPANION_POLL_INTERVAL_MINUTES") if raw is None else raw
+    if value is None or isinstance(value, bool):
+        return DEFAULT_POLL_INTERVAL_MINUTES
+    if isinstance(value, str) and not value.strip():
+        return DEFAULT_POLL_INTERVAL_MINUTES
+    parsed = _safe_int(value, 0)
+    return parsed if parsed > 0 else DEFAULT_POLL_INTERVAL_MINUTES
+
+
+def resolve_max_tasks_per_slot(raw: int | str | None = None, *, agent_name: str | None = None) -> int:
+    norm_agent = (agent_name or "").strip().lower()
+    default_val = DEFAULT_MAX_TASKS_PER_SLOT_BY_AGENT.get(norm_agent, DEFAULT_MAX_TASKS_PER_SLOT)
+    value = os.environ.get("MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_SLOT") if raw is None else raw
+    if value is None or isinstance(value, bool):
+        return default_val
+    if isinstance(value, str) and not value.strip():
+        return default_val
+    parsed = _safe_int(value, 0)
+    return parsed if parsed > 0 else default_val
+
+
+def resolve_max_tasks_per_day(raw: int | str | None = None) -> int:
+    value = os.environ.get("MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_DAY") if raw is None else raw
+    if value is None or isinstance(value, bool):
+        return DEFAULT_MAX_TASKS_PER_DAY
+    if isinstance(value, str) and not value.strip():
+        return DEFAULT_MAX_TASKS_PER_DAY
+    parsed = _safe_int(value, 0)
+    return parsed if parsed > 0 else DEFAULT_MAX_TASKS_PER_DAY
+
+
+def resolve_daily_implementations_cap(raw: int | str | None = None, *, agent_name: str | None = None) -> int:
+    norm_agent = (agent_name or "").strip().lower()
+    default_val = DEFAULT_DAILY_IMPLEMENTATIONS_CAP_BY_AGENT.get(norm_agent, DEFAULT_DAILY_IMPLEMENTATIONS_CAP)
     value = os.environ.get("MOLTIS_GITHUB_COMPANION_DAILY_IMPLEMENTATIONS_CAP") if raw is None else raw
     if value is None or isinstance(value, bool):
-        return DEFAULT_DAILY_IMPLEMENTATIONS_CAP
+        return default_val
     if isinstance(value, str) and not value.strip():
-        return DEFAULT_DAILY_IMPLEMENTATIONS_CAP
-    parsed = _safe_int(value, 0)
-    return parsed if parsed > 0 else DEFAULT_DAILY_IMPLEMENTATIONS_CAP
+        return default_val
+    parsed = _safe_int(value, -1)
+    return parsed if parsed >= 0 else default_val
 
 
 def resolve_operator_digest_enabled(enabled: bool | str | None = None) -> bool:
@@ -2655,30 +2704,41 @@ def parse_retry_after_seconds(raw_value: str | int | None, now_sec: int) -> int:
     return 0
 
 
-def compute_next_poll_slot_ms(now_ms_val: int, agent_name: str = "skrye") -> int:
-    norm_agent = normalize_agent_name(agent_name) if (agent_name or "").strip().lower() in AGENT_POLL_MINUTE_SLOTS else "skrye"
-    slots = sorted(AGENT_POLL_MINUTE_SLOTS[norm_agent])
+def _poll_stagger_offset_minutes(agent_name: str, interval_minutes: int) -> int:
+    norm_agent = normalize_agent_name(agent_name) if (agent_name or "").strip().lower() in AGENT_ORDER else "skrye"
+    if norm_agent == "traya":
+        return interval_minutes // 3
+    if norm_agent == "zannah":
+        return (2 * interval_minutes) // 3
+    return 0
+
+
+def compute_next_poll_slot_ms(now_ms_val: int, agent_name: str = "skrye", poll_interval_minutes: int | None = None) -> int:
+    norm_agent = normalize_agent_name(agent_name) if (agent_name or "").strip().lower() in AGENT_ORDER else "skrye"
+    interval_min = resolve_poll_interval_minutes(poll_interval_minutes)
+    interval_ms = interval_min * 60 * 1000
+    offset_ms = _poll_stagger_offset_minutes(norm_agent, interval_min) * 60 * 1000
     safe_now = max(0, _safe_int(now_ms_val, 0))
     dt = datetime.datetime.fromtimestamp(safe_now / 1000.0, tz=datetime.timezone.utc)
-    hour_start = dt.replace(minute=0, second=0, microsecond=0)
-    for hour_offset in (0, 1):
-        base_hour = hour_start + datetime.timedelta(hours=hour_offset)
-        for slot_min in slots:
-            cand = base_hour.replace(minute=slot_min)
-            cand_ms = math.trunc(cand.timestamp() * 1000)
-            if cand_ms > safe_now:
-                return cand_ms
-    return safe_now + POLL_SLOT_INTERVAL_MS
+    midnight_dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    midnight_ms = math.trunc(midnight_dt.timestamp() * 1000)
+    next_midnight_ms = midnight_ms + (24 * 60 * 60 * 1000)
+    elapsed_ms = safe_now - midnight_ms
+    slot_index = ((elapsed_ms - offset_ms) // interval_ms) + 1
+    cand_ms = midnight_ms + (slot_index * interval_ms) + offset_ms
+    if cand_ms >= next_midnight_ms:
+        return next_midnight_ms + offset_ms
+    return cand_ms
 
 
-def compute_throttle_slot_id(now_ms_val: int, agent_name: str = "skrye") -> str:
-    """Return a deterministic throttle slot identifier aligned to the agent's 30-minute poll slot."""
-    norm_agent = normalize_agent_name(agent_name) if (agent_name or "").strip().lower() in AGENT_POLL_MINUTE_SLOTS else "skrye"
-    return f"{norm_agent}:{compute_next_poll_slot_ms(now_ms_val, norm_agent)}"
+def compute_throttle_slot_id(now_ms_val: int, agent_name: str = "skrye", poll_interval_minutes: int | None = None) -> str:
+    """Return a deterministic throttle slot identifier aligned to the agent's poll slot."""
+    norm_agent = normalize_agent_name(agent_name) if (agent_name or "").strip().lower() in AGENT_ORDER else "skrye"
+    return f"{norm_agent}:{compute_next_poll_slot_ms(now_ms_val, norm_agent, poll_interval_minutes=poll_interval_minutes)}"
 
 
-def compute_backoff_wait_ms(headers: dict[str, str] | None, now_ms_val: int, rng: Callable[[int, int], int] | None = None, status: int | None = None, agent_name: str = "skrye") -> tuple[int, int, int]:
-    """Return (total_wait_ms, base_wait_secs, jitter_ms) aligned to the agent's 30-minute wall-clock poll slot."""
+def compute_backoff_wait_ms(headers: dict[str, str] | None, now_ms_val: int, rng: Callable[[int, int], int] | None = None, status: int | None = None, agent_name: str = "skrye", poll_interval_minutes: int | None = None) -> tuple[int, int, int]:
+    """Return (total_wait_ms, base_wait_secs, jitter_ms) aligned to the agent's wall-clock poll slot."""
     _ = rng
     lower_headers = {k.strip().lower(): str(v).strip() for k, v in (headers or {}).items() if isinstance(k, str) and v is not None}
     now_sec = max(0, now_ms_val // 1000)
@@ -2689,7 +2749,7 @@ def compute_backoff_wait_ms(headers: dict[str, str] | None, now_ms_val: int, rng
     is_rate_limited = status in (403, 429) or remaining_exhausted or retry_after_sec > 0
     reset_epoch = _safe_int(lower_headers.get("x-ratelimit-reset"), 0) if is_rate_limited else 0
     rate_reset_wait_sec = max(0, reset_epoch - now_sec) if reset_epoch > 0 else 0
-    slot_wait_ms = max(1_000, compute_next_poll_slot_ms(now_ms_val, agent_name) - now_ms_val)
+    slot_wait_ms = max(1_000, compute_next_poll_slot_ms(now_ms_val, agent_name, poll_interval_minutes=poll_interval_minutes) - now_ms_val)
     header_wait_ms = max(poll_interval_sec, retry_after_sec, rate_reset_wait_sec) * 1000
     total_wait_ms = max(slot_wait_ms, header_wait_ms)
     return total_wait_ms, total_wait_ms // 1000, 0
@@ -3128,12 +3188,18 @@ class CompanionStateStore:
         community_auto_merge_max_lines: int | str | None = None,
         community_auto_merge_max_files: int | str | None = None,
         community_auto_merge_excluded_repos: Iterable[str] | str | None = None,
+        max_tasks_per_slot: int | str | None = None,
+        max_tasks_per_day: int | str | None = None,
+        daily_implementations_cap: int | str | None = None,
     ):
         self.state_dir = Path(state_dir)
         self.agent_name = normalize_agent_name(agent_name)
         self.room_id = room_id
         self.started_at_ms = _safe_int(started_at_ms, now_ms()) if started_at_ms is not None else now_ms()
         self.followup_cooldown_ms = max(0, _safe_int(followup_cooldown_ms, PR_REVIEW_COOLDOWN_MS))
+        self._max_tasks_per_slot = max_tasks_per_slot
+        self._max_tasks_per_day = max_tasks_per_day
+        self._daily_implementations_cap = daily_implementations_cap
         cam_cfg = resolve_community_auto_merge_config(
             enabled=community_auto_merge_enabled,
             max_lines=community_auto_merge_max_lines,
@@ -3181,8 +3247,10 @@ class CompanionStateStore:
     def _default_throttles() -> dict:
         return {
             "daily_date": None,
+            "daily_tasks": 0,
             "daily_implementations": 0,
             "slot_id": None,
+            "slot_tasks": 0,
             "slot_triage_stubs": 0,
             "slot_triage_research": 0,
             "slot_community_pr_reviews": 0,
@@ -3196,8 +3264,10 @@ class CompanionStateStore:
         slot_id_raw = data.get("slot_id")
         return {
             "daily_date": daily_date_raw.strip() if isinstance(daily_date_raw, str) and daily_date_raw.strip() else None,
+            "daily_tasks": max(0, _safe_int(data.get("daily_tasks"), 0)),
             "daily_implementations": max(0, _safe_int(data.get("daily_implementations"), 0)),
             "slot_id": slot_id_raw.strip() if isinstance(slot_id_raw, str) and slot_id_raw.strip() else None,
+            "slot_tasks": max(0, _safe_int(data.get("slot_tasks"), 0)),
             "slot_triage_stubs": max(0, _safe_int(data.get("slot_triage_stubs"), 0)),
             "slot_triage_research": max(0, _safe_int(data.get("slot_triage_research"), 0)),
             "slot_community_pr_reviews": max(0, _safe_int(data.get("slot_community_pr_reviews"), 0)),
@@ -3210,10 +3280,12 @@ class CompanionStateStore:
         today_london = london_date_str(stamp_ms)
         if throttles["daily_date"] != today_london:
             throttles["daily_date"] = today_london
+            throttles["daily_tasks"] = 0
             throttles["daily_implementations"] = 0
         clean_slot_id = slot_id.strip() if isinstance(slot_id, str) and slot_id.strip() else None
         if clean_slot_id is not None and throttles["slot_id"] != clean_slot_id:
             throttles["slot_id"] = clean_slot_id
+            throttles["slot_tasks"] = 0
             throttles["slot_triage_stubs"] = 0
             throttles["slot_triage_research"] = 0
             throttles["slot_community_pr_reviews"] = 0
@@ -3228,13 +3300,44 @@ class CompanionStateStore:
         return clean, _THROTTLE_BUCKET_TO_STATE_KEY[clean]
 
     @staticmethod
-    def _resolve_throttle_limits(limits: dict | None = None) -> dict[str, int]:
-        resolved = dict(DEFAULT_THROTTLE_LIMITS)
-        resolved["daily_implementations"] = resolve_daily_implementations_cap()
+    def _resolve_throttle_limits(
+        limits: dict | None = None,
+        *,
+        agent_name: str | None = None,
+        max_tasks_per_slot: int | str | None = None,
+        max_tasks_per_day: int | str | None = None,
+        daily_implementations_cap: int | str | None = None,
+    ) -> dict[str, int]:
+        eff_slot = resolve_max_tasks_per_slot(max_tasks_per_slot, agent_name=agent_name)
+        eff_day = resolve_max_tasks_per_day(max_tasks_per_day)
+        eff_daily_impl = resolve_daily_implementations_cap(daily_implementations_cap, agent_name=agent_name)
+        resolved: dict[str, int] = {
+            "max_tasks_per_slot": eff_slot,
+            "max_tasks_per_day": eff_day,
+            "tasks": eff_slot,
+            "triage_stubs": DEFAULT_SLOT_TRIAGE_STUBS_CAP,
+            "triage_research": eff_slot,
+            "community_pr_reviews": eff_slot,
+            "todo_implementations": eff_slot,
+            "daily_implementations": eff_daily_impl,
+        }
         if isinstance(limits, dict):
-            for key, default_val in DEFAULT_THROTTLE_LIMITS.items():
+            for key in (
+                "max_tasks_per_slot",
+                "max_tasks_per_day",
+                "daily_implementations",
+                "triage_stubs",
+                "tasks",
+                "triage_research",
+                "community_pr_reviews",
+                "todo_implementations",
+            ):
                 if key in limits and limits[key] is not None and not isinstance(limits[key], bool):
-                    resolved[key] = max(0, _safe_int(limits[key], default_val))
+                    resolved[key] = max(0, _safe_int(limits[key], resolved[key]))
+            if "max_tasks_per_slot" in limits and limits["max_tasks_per_slot"] is not None and not isinstance(limits["max_tasks_per_slot"], bool):
+                for cat_key in ("tasks", "triage_research", "community_pr_reviews", "todo_implementations"):
+                    if cat_key not in limits or limits[cat_key] is None or isinstance(limits[cat_key], bool):
+                        resolved[cat_key] = resolved["max_tasks_per_slot"]
         return resolved
 
     @staticmethod
@@ -3612,38 +3715,100 @@ class CompanionStateStore:
             state = self._read_state_unlocked(dir_fd)
             return self._rollover_throttles(state.get("throttles"), stamp_ms=stamp_ms, slot_id=slot_id)
 
+    def _can_consume_throttle_locked(self, throttles: dict, clean_bucket: str, state_key: str, *, step: int, eff_limits: dict[str, int], explicit_limits: dict | None) -> bool:
+        if clean_bucket in _LLM_THROTTLE_BUCKETS:
+            if throttles["slot_tasks"] + step > eff_limits["max_tasks_per_slot"]:
+                return False
+            if throttles["daily_tasks"] + step > eff_limits["max_tasks_per_day"]:
+                return False
+            if (
+                isinstance(explicit_limits, dict)
+                and clean_bucket in explicit_limits
+                and explicit_limits[clean_bucket] is not None
+                and not isinstance(explicit_limits[clean_bucket], bool)
+                and throttles[state_key] + step > eff_limits[clean_bucket]
+            ):
+                return False
+            if clean_bucket == "todo_implementations" and throttles["daily_implementations"] + step > eff_limits["daily_implementations"]:
+                return False
+            return True
+        return throttles[state_key] + step <= eff_limits[clean_bucket]
+
     def can_consume_throttle(self, bucket: str, *, slot_id: str | None = None, limits: dict | None = None, now_override_ms: int | None = None) -> bool:
         clean_bucket, state_key = self._validate_throttle_bucket(bucket)
-        eff_limits = self._resolve_throttle_limits(limits)
+        eff_limits = self._resolve_throttle_limits(
+            limits,
+            agent_name=self.agent_name,
+            max_tasks_per_slot=self._max_tasks_per_slot,
+            max_tasks_per_day=self._max_tasks_per_day,
+            daily_implementations_cap=self._daily_implementations_cap,
+        )
         throttles = self.get_throttle_state(slot_id=slot_id, now_override_ms=now_override_ms)
-        if throttles[state_key] + 1 > eff_limits[clean_bucket]:
-            return False
-        if clean_bucket == "todo_implementations" and throttles["daily_implementations"] + 1 > eff_limits["daily_implementations"]:
-            return False
-        return True
+        return self._can_consume_throttle_locked(
+            throttles,
+            clean_bucket,
+            state_key,
+            step=1,
+            eff_limits=eff_limits,
+            explicit_limits=limits,
+        )
 
     def consume_throttle(self, bucket: str, *, count: int = 1, slot_id: str | None = None, limits: dict | None = None, now_override_ms: int | None = None) -> tuple[bool, dict]:
         clean_bucket, state_key = self._validate_throttle_bucket(bucket)
         if isinstance(count, bool) or _safe_int(count, 0) <= 0:
             raise ValueError(f"Throttle consume count must be positive: {count!r}")
         step = _safe_int(count, 1)
-        eff_limits = self._resolve_throttle_limits(limits)
+        eff_limits = self._resolve_throttle_limits(
+            limits,
+            agent_name=self.agent_name,
+            max_tasks_per_slot=self._max_tasks_per_slot,
+            max_tasks_per_day=self._max_tasks_per_day,
+            daily_implementations_cap=self._daily_implementations_cap,
+        )
         stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
         with self._locked_dir() as dir_fd:
             state = self._read_state_unlocked(dir_fd)
             throttles = self._rollover_throttles(state.get("throttles"), stamp_ms=stamp_ms, slot_id=slot_id)
-            if throttles[state_key] + step > eff_limits[clean_bucket]:
+            if not self._can_consume_throttle_locked(
+                throttles,
+                clean_bucket,
+                state_key,
+                step=step,
+                eff_limits=eff_limits,
+                explicit_limits=limits,
+            ):
                 return False, dict(throttles)
-            if clean_bucket == "todo_implementations" and throttles["daily_implementations"] + step > eff_limits["daily_implementations"]:
-                return False, dict(throttles)
-            throttles[state_key] += step
-            if clean_bucket == "todo_implementations":
-                throttles["daily_implementations"] += step
+            if clean_bucket in _LLM_THROTTLE_BUCKETS:
+                throttles["slot_tasks"] += step
+                throttles["daily_tasks"] += step
+                if state_key != "slot_tasks":
+                    throttles[state_key] += step
+                if clean_bucket == "todo_implementations":
+                    throttles["daily_implementations"] += step
+            else:
+                throttles[state_key] += step
             state["throttles"] = throttles
             state["agent_name"] = self.agent_name
             state["updated_at_ms"] = stamp_ms
             atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
             return True, dict(throttles)
+
+    def record_operator_task(self, *, count: int = 1, slot_id: str | None = None, now_override_ms: int | None = None) -> dict:
+        """Record a direct operator mention LLM task without blocking on slot or daily task limits."""
+        if isinstance(count, bool) or _safe_int(count, 0) <= 0:
+            raise ValueError(f"Operator task count must be positive: {count!r}")
+        step = _safe_int(count, 1)
+        stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
+        with self._locked_dir() as dir_fd:
+            state = self._read_state_unlocked(dir_fd)
+            throttles = self._rollover_throttles(state.get("throttles"), stamp_ms=stamp_ms, slot_id=slot_id)
+            throttles["slot_tasks"] += step
+            throttles["daily_tasks"] += step
+            state["throttles"] = throttles
+            state["agent_name"] = self.agent_name
+            state["updated_at_ms"] = stamp_ms
+            atomic_write_json_in_dir(dir_fd, STATE_FILENAME, state)
+            return dict(throttles)
 
     def record_sweep_attempt(self, kind: str, *, now_override_ms: int | None = None) -> dict:
         stamp_ms = _safe_int(now_override_ms, now_ms()) if now_override_ms is not None else now_ms()
@@ -5590,7 +5755,7 @@ class TrustFilterAndSnapshotBuilder:
 class NotificationPoller:
     """Manage provisional next_poll_at_ms crash recovery, /notifications, and 6-owner open PR polling."""
 
-    def __init__(self, state_store: CompanionStateStore, gh_client: GhApiSafeClient, read_only_trial: bool = False, clock: Callable[[], int] = now_ms, sleeper: Callable[[float], None] = time.sleep, jitter_rng: Callable[[int, int], int] | None = None, on_actionable_threads: Callable[[list[str]], None] | None = None):
+    def __init__(self, state_store: CompanionStateStore, gh_client: GhApiSafeClient, read_only_trial: bool = False, clock: Callable[[], int] = now_ms, sleeper: Callable[[float], None] = time.sleep, jitter_rng: Callable[[int, int], int] | None = None, on_actionable_threads: Callable[[list[str]], None] | None = None, poll_interval_minutes: int | None = None):
         self.state_store = state_store
         self.gh_client = gh_client
         self.read_only_trial = bool(read_only_trial)
@@ -5598,9 +5763,10 @@ class NotificationPoller:
         self.sleeper = sleeper
         self.jitter_rng = jitter_rng
         self.on_actionable_threads = on_actionable_threads
+        self.poll_interval_minutes = resolve_poll_interval_minutes(poll_interval_minutes) if poll_interval_minutes is not None else None
 
     @staticmethod
-    def _effective_next_poll_at_ms(poll_state: dict) -> int | None:
+    def _effective_next_poll_at_ms(poll_state: dict, poll_interval_minutes: int | None = None) -> int | None:
         next_poll_at_ms = poll_state.get("next_poll_at_ms")
         if not isinstance(next_poll_at_ms, int):
             return None
@@ -5609,14 +5775,14 @@ class NotificationPoller:
             agent_name = str(poll_state.get("agent_name") or "skrye")
             poll_interval_secs = max(0, _safe_int(poll_state.get("poll_interval_secs"), 0))
             header_floor_ms = (last_completed_ms + (poll_interval_secs * 1000)) if poll_interval_secs > 0 else 0
-            slot_ms = max(compute_next_poll_slot_ms(last_completed_ms, agent_name), header_floor_ms)
+            slot_ms = max(compute_next_poll_slot_ms(last_completed_ms, agent_name, poll_interval_minutes=poll_interval_minutes), header_floor_ms)
             return min(next_poll_at_ms, slot_ms)
         return next_poll_at_ms
 
     def wait_until_due(self, now_override_ms: int | None = None) -> int:
         """Sleep until persisted next_poll_at_ms when in the future, or return 0 immediately on first boot."""
         current_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
-        next_poll_at_ms = self._effective_next_poll_at_ms(self.state_store.read_state())
+        next_poll_at_ms = self._effective_next_poll_at_ms(self.state_store.read_state(), poll_interval_minutes=self.poll_interval_minutes)
         if isinstance(next_poll_at_ms, int) and next_poll_at_ms > current_ms:
             sleep_ms = next_poll_at_ms - current_ms
             self.sleeper(sleep_ms / 1000.0)
@@ -5626,7 +5792,7 @@ class NotificationPoller:
     wait_for_startup_slot = wait_until_next_poll = wait_until_due
 
     def _persist_provisional_next_poll(self, current_ms: int) -> tuple[int, int]:
-        provisional_next_ms = compute_next_poll_slot_ms(current_ms, self.state_store.agent_name)
+        provisional_next_ms = compute_next_poll_slot_ms(current_ms, self.state_store.agent_name, poll_interval_minutes=self.poll_interval_minutes)
         self.state_store.write_state({"last_poll_started_at_ms": current_ms, "next_poll_at_ms": provisional_next_ms, "last_jitter_ms": 0}, now_override_ms=current_ms)
         return provisional_next_ms, 0
 
@@ -5637,7 +5803,7 @@ class NotificationPoller:
         provisional_next_ms, provisional_jitter_ms = self._persist_provisional_next_poll(start_ms)
         status, headers, raw_items = self.gh_client.poll_notifications(last_modified=prior_last_modified if isinstance(prior_last_modified, str) else None)
         finish_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
-        wait_ms, base_wait_sec, post_jitter_ms = compute_backoff_wait_ms(headers=headers, now_ms_val=finish_ms, rng=self.jitter_rng, status=status, agent_name=self.state_store.agent_name)
+        wait_ms, base_wait_sec, post_jitter_ms = compute_backoff_wait_ms(headers=headers, now_ms_val=finish_ms, rng=self.jitter_rng, status=status, agent_name=self.state_store.agent_name, poll_interval_minutes=self.poll_interval_minutes)
         computed_next_poll_ms = finish_ms + wait_ms
 
         filtered_records, actionable_threads, queued_followups, dismissed_threads = [], [], [], []
@@ -6375,10 +6541,16 @@ class GithubCompanionRunner:
         security_release_repos: Iterable[str] | str | None = None,
         security_release_extra_repos: Iterable[str] | str | None = None,
         security_release_cooldown_secs: int | str | None = None,
+        poll_interval_minutes: int | None = None,
     ):
         self.state_store = state_store
         self.gh_client = gh_client
         self.poller = poller
+        self.poll_interval_minutes = (
+            resolve_poll_interval_minutes(poll_interval_minutes)
+            if poll_interval_minutes is not None
+            else getattr(poller, "poll_interval_minutes", None)
+        )
         self.trust_filter = trust_filter
         self.execution_coordinator = execution_coordinator
         resolved_telegram = telegram_client or self.execution_coordinator.telegram_client or self.trust_filter.telegram_client
@@ -6856,12 +7028,22 @@ class GithubCompanionRunner:
         self,
         active_linear_issues: Iterable[dict],
         *,
+        slot_id: str | None = None,
         dispatched_targets: set[str],
         current_ms: int,
         now_override_ms: int | None,
     ) -> list[dict]:
         if self.linear_client is None or self.state_store.agent_name not in AGENT_ORDER:
             return []
+        eff_slot_id = (
+            slot_id
+            if isinstance(slot_id, str) and slot_id.strip()
+            else compute_throttle_slot_id(
+                current_ms,
+                self.state_store.agent_name,
+                poll_interval_minutes=self.poll_interval_minutes,
+            )
+        )
         dispatches: list[dict] = []
         for linear_issue in active_linear_issues or ():
             if len(dispatches) >= MAX_LINEAR_OPERATOR_COMMENTS_PER_POLL:
@@ -6957,6 +7139,7 @@ class GithubCompanionRunner:
             if github_url:
                 state_updates["url"] = github_url
             self.state_store.update_thread_state(state_key, state_updates, now_override_ms=current_ms)
+            self.state_store.record_operator_task(slot_id=eff_slot_id, now_override_ms=current_ms)
             dispatched_targets.add(state_key)
             res = self.execution_coordinator.execute_dispatch(
                 kind="linear_operator_comment",
@@ -7558,6 +7741,11 @@ class GithubCompanionRunner:
         ):
             stored_entry = _as_dict(self.state_store.get_thread_state(pr_key))
             if _safe_int(stored_entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
+                return None
+            if not self.state_store.can_consume_throttle("community_pr_reviews", slot_id=slot_id, now_override_ms=current_ms):
+                return None
+            consumed, _ = self.state_store.consume_throttle("community_pr_reviews", slot_id=slot_id, now_override_ms=current_ms)
+            if not consumed:
                 return None
             comments_by_id = {
                 str(c.get("id")): str(c.get("body") or "")
@@ -8743,6 +8931,8 @@ class GithubCompanionRunner:
                             "needs_decision_notification": ping,
                         })
                         continue
+                    if not self.state_store.can_consume_throttle("community_pr_reviews", slot_id=slot_id, now_override_ms=current_ms):
+                        continue
                     applied_team_merge = False
                     if not sha_changed and not any(lbl == "team:merge" for lbl in pr_labels):
                         try:
@@ -8770,6 +8960,12 @@ class GithubCompanionRunner:
                                 "needs_decision_notification": None,
                             })
                             continue
+                    consumed, _ = self.state_store.consume_throttle("community_pr_reviews", slot_id=slot_id, now_override_ms=current_ms)
+                    if not consumed:
+                        if applied_team_merge:
+                            with contextlib.suppress(Exception):
+                                self.gh_client.remove_pull_request_label(repo, number, "team:merge")
+                        continue
                     dispatched_targets.add(pr_key)
                     processed_pr_keys.add(pr_key)
                     merge_res = self.execution_coordinator.execute_dispatch(
@@ -8933,6 +9129,11 @@ class GithubCompanionRunner:
                         "needs_decision_notification": ping,
                     })
                 else:
+                    if not self.state_store.can_consume_throttle("community_pr_reviews", slot_id=slot_id, now_override_ms=current_ms):
+                        continue
+                    consumed, _ = self.state_store.consume_throttle("community_pr_reviews", slot_id=slot_id, now_override_ms=current_ms)
+                    if not consumed:
+                        continue
                     dispatched_targets.add(pr_key)
                     processed_pr_keys.add(pr_key)
                     review_res = self.execution_coordinator.execute_dispatch(
@@ -11921,7 +12122,11 @@ class GithubCompanionRunner:
                 "security_release_actions": [],
             }
         current_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
-        slot_id = compute_throttle_slot_id(current_ms, self.state_store.agent_name)
+        slot_id = compute_throttle_slot_id(
+            current_ms,
+            self.state_store.agent_name,
+            poll_interval_minutes=self.poll_interval_minutes,
+        )
         targeted_dispatches: list[dict] = []
         dispatched_targets: set[str] = set()
         threads = _as_dict(self.state_store.read_state().get("threads"))
@@ -11940,32 +12145,7 @@ class GithubCompanionRunner:
                     return
             self.state_store.complete_thread_review(key_val, handled_updated_at=entry_val.get("updated_at"), handled_head_sha=prep_res.get("head_sha") or entry_val.get("head_sha"), handled_ci_state=entry_val.get("ci_state"), preserve_handled_head_sha=prep_res.get("skip_reason") in ("untrusted_actor", "coercion_pattern"), apply_cooldown=False, now_override_ms=now_override_ms)
 
-        candidate_thread_ids: list[str] = list(poll_result.get("actionable_threads") or [])
-        for tid, entry in threads.items():
-            if not isinstance(entry, dict) or "#" in tid or tid in candidate_thread_ids or _safe_int(entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
-                continue
-            if str(entry.get("subject_type") or "").strip().lower() in ("pullrequest", "pull_request", "pr") and _safe_int(entry.get("followup_cooldown_until_ms"), 0) > current_ms:
-                continue
-            if entry.get("pending_followup") or is_timestamp_newer(entry.get("updated_at"), entry.get("handled_updated_at")):
-                candidate_thread_ids.append(tid)
-
-        for tid in candidate_thread_ids:
-            entry = _as_dict(threads.get(tid))
-            if not entry or _safe_int(entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
-                continue
-            if str(entry.get("subject_type") or "").strip().lower() in ("pullrequest", "pull_request", "pr") and _safe_int(entry.get("followup_cooldown_until_ms"), 0) > current_ms:
-                continue
-            repo, number = str(entry.get("repo") or "").strip(), _safe_int(entry.get("number"), 0) or None
-            dedup_key = make_pr_key(repo, number) if (repo and number) else tid
-            if dedup_key in dispatched_targets:
-                continue
-            prep = self.trust_filter.fetch_and_prepare_notification(entry, now_override_ms=now_override_ms)
-            if not prep.get("should_dispatch"):
-                _complete_skipped(tid, tid, prep, entry)
-                continue
-            dispatched_targets.add(dedup_key)
-            targeted_dispatches.append(self.execution_coordinator.execute_dispatch(kind="targeted", is_automated_pr=bool(prep.get("is_automated_pr") or entry.get("is_automated_pr")), thread_id=tid, state_key=tid, repo=prep.get("repo") or repo, number=prep.get("number") or number, subject_kind=prep.get("kind") or entry.get("subject_type"), head_sha=prep.get("head_sha") or entry.get("head_sha"), ci_state=entry.get("ci_state"), updated_at=entry.get("updated_at"), trigger_reason=prep.get("trigger_reason") or entry.get("reason"), comment_id=prep.get("comment_id"), review_id=prep.get("review_id"), trusted_item_id=prep.get("trusted_item_id"), now_override_ms=now_override_ms))
-
+        # Deterministic zero-LLM housekeeping before LLM dispatches.
         for coercive in poll_result.get("coercive_items") or []:
             if not isinstance(coercive, dict):
                 continue
@@ -11992,6 +12172,7 @@ class GithubCompanionRunner:
 
         linear_breaker = _LinearWriteCircuitBreaker()
         linear_promoted_todos: list[dict] = []
+        verified_team_label_dispatches: list[dict] = []
         for cand in poll_result.get("team_label_candidates") or []:
             if not isinstance(cand, dict):
                 continue
@@ -11999,7 +12180,7 @@ class GithubCompanionRunner:
             cand_repo = str(cand.get("repo") or "").strip()
             cand_num = _safe_int(cand.get("number"), 0) or None
             cand_labels = [str(lbl) for lbl in (cand.get("team_labels") or []) if str(lbl) in TEAM_LABELS]
-            if not cand_key or not cand_repo or cand_num is None or not cand_labels or cand_key in dispatched_targets:
+            if not cand_key or not cand_repo or cand_num is None or not cand_labels:
                 continue
             cand_entry = _as_dict(self.state_store.get_thread_state(cand_key))
             if _safe_int(cand_entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
@@ -12052,28 +12233,18 @@ class GithubCompanionRunner:
                 )
             else:
                 sha_changed = False
-            dispatched_targets.add(cand_key)
-            targeted_dispatches.append(
-                self.execution_coordinator.execute_dispatch(
-                    kind=verified_label,
-                    is_automated_pr=False,
-                    thread_id=str(cand.get("thread_id") or "").strip() or None,
-                    state_key=cand_key,
-                    repo=cand_repo,
-                    number=cand_num,
-                    subject_kind=cand_kind,
-                    head_sha=cand_head_sha,
-                    ci_state=str(cand.get("ci_state") or "") or None,
-                    updated_at=str(cand.get("updated_at") or "") or None,
-                    trigger_reason=TEAM_LABEL_TRIGGER_REASONS.get(verified_label, verified_label),
-                    community_auto_merge_eligible=cand.get("community_auto_merge_eligible"),
-                    team_label=verified_label,
-                    team_label_event_key=verified_event_key,
-                    triaged_head_sha=triaged_sha,
-                    head_sha_changed=sha_changed,
-                    now_override_ms=now_override_ms,
-                )
-            )
+            verified_team_label_dispatches.append({
+                "cand": cand,
+                "cand_key": cand_key,
+                "cand_repo": cand_repo,
+                "cand_num": cand_num,
+                "cand_kind": cand_kind,
+                "verified_label": verified_label,
+                "verified_event_key": verified_event_key,
+                "cand_head_sha": cand_head_sha,
+                "triaged_sha": triaged_sha,
+                "sha_changed": sha_changed,
+            })
 
         open_prs_by_key: dict[str, dict] = {}
         open_pr_by_closing_issue_key: dict[str, list[dict]] = {}
@@ -12129,6 +12300,7 @@ class GithubCompanionRunner:
                     _apply_pull_request_mergeability_entry(open_prs_by_key[pk], entry)
 
         community_actionable_prs: list[dict] = []
+        non_community_actionable_prs: list[dict] = []
         for pr_item in poll_result.get("actionable_prs") or []:
             if not isinstance(pr_item, dict):
                 continue
@@ -12148,17 +12320,8 @@ class GithubCompanionRunner:
                         if m_state == "CONFLICTING":
                             pr_item_copy["community_auto_merge_eligible"] = False
                 community_actionable_prs.append(pr_item_copy)
-                continue
-            pr_key = str(pr_item.get("key") or "").strip()
-            pr_entry = _as_dict(self.state_store.get_thread_state(pr_key))
-            if not pr_key or pr_key in dispatched_targets or _safe_int(pr_entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
-                continue
-            trig_reason = str(pr_item.get("trigger_reason") or "open_pr_poll")
-            if trig_reason != "ci_green_after_approval" and _safe_int(pr_entry.get("followup_cooldown_until_ms"), 0) > current_ms:
-                continue
-            dispatched_targets.add(pr_key)
-            pr_dispatch_kind = str(pr_item.get("dispatch_kind") or "targeted")
-            targeted_dispatches.append(self.execution_coordinator.execute_dispatch(kind=pr_dispatch_kind, is_automated_pr=bool(pr_item.get("is_automated_pr") or pr_entry.get("is_automated_pr")), thread_id=str(pr_item.get("thread_id") or "").strip() or None, state_key=pr_key, repo=str(pr_item.get("repo") or ""), number=_safe_int(pr_item.get("number"), 0) or None, subject_kind="PullRequest", head_sha=str(pr_item.get("head_sha") or "") or None, ci_state=str(pr_item.get("ci_state") or "") or None, updated_at=str(pr_item.get("updated_at") or "") or None, trigger_reason=trig_reason, community_auto_merge_eligible=pr_item.get("community_auto_merge_eligible"), triaged_head_sha=str(pr_entry.get("triaged_head_sha") or "") or None, now_override_ms=now_override_ms))
+            else:
+                non_community_actionable_prs.append(pr_item)
 
         linear_todo_reconciliations: list[dict] = []
         if self.linear_client is not None:
@@ -12182,25 +12345,180 @@ class GithubCompanionRunner:
         linked_pr_issue_relations: list[dict] = []
         security_release_actions: list[dict] = []
         remaining_linear_issues: list[dict] = []
-        if self.linear_client is not None and self.state_store.agent_name in SWEEP_AGENT_ORDER:
+
+        if self.linear_client is not None and self.state_store.agent_name in AGENT_ORDER:
             active_linear_issues = self._poll_active_linear_issues()
             if active_linear_issues:
-                linear_synced_closed = self._sync_closed_github_items_to_linear(
-                    active_linear_issues,
+                if self.state_store.agent_name in SWEEP_AGENT_ORDER:
+                    linear_synced_closed = self._sync_closed_github_items_to_linear(
+                        active_linear_issues,
+                        poll_result=poll_result,
+                        current_ms=current_ms,
+                        linear_breaker=linear_breaker,
+                    )
+                    synced_closed_ids = {
+                        str(item.get("linear_issue_id") or "").strip()
+                        for item in linear_synced_closed
+                        if str(item.get("linear_issue_id") or "").strip()
+                    }
+                    remaining_linear_issues = [
+                        issue
+                        for issue in active_linear_issues
+                        if str(issue.get("id") or "").strip() not in synced_closed_ids
+                    ]
+                else:
+                    remaining_linear_issues = list(active_linear_issues)
+
+            if self.state_store.agent_name in SWEEP_AGENT_ORDER:
+                signoff_ready_pr_keys: set[str] = set()
+                for item in poll_result.get("signoff_ready_prs") or ():
+                    if not isinstance(item, dict):
+                        continue
+                    sk = str(item.get("key") or "").strip().lower()
+                    if not sk:
+                        s_repo = str(item.get("repo") or "").strip()
+                        s_num = _safe_int(item.get("number"), 0)
+                        if s_repo and s_num > 0:
+                            sk = make_pr_key(s_repo, s_num)
+                    if sk:
+                        signoff_ready_pr_keys.add(sk)
+                in_review_pr_actions = self._reconcile_in_review_linear_pr_status(
+                    active_linear_issues=remaining_linear_issues,
+                    open_prs_by_key=open_prs_by_key,
+                    signoff_ready_pr_keys=signoff_ready_pr_keys,
+                    poll_result=poll_result,
+                    current_ms=current_ms,
+                    linear_breaker=linear_breaker,
+                    hydrated_mergeability_node_ids=hydrated_mergeability_node_ids,
+                )
+                if in_review_pr_actions and remaining_linear_issues:
+                    updated_in_review_by_id: dict[str, dict] = {}
+                    for act in in_review_pr_actions:
+                        upd = act.get("updated_issue")
+                        if isinstance(upd, dict) and str(upd.get("id") or "").strip():
+                            updated_in_review_by_id[str(upd["id"]).strip()] = upd
+                    if updated_in_review_by_id:
+                        remaining_linear_issues = [
+                            updated_in_review_by_id.get(str(issue.get("id") or "").strip(), issue)
+                            for issue in remaining_linear_issues
+                        ]
+                stale_issue_actions = self._process_stale_issues(
+                    open_issues=poll_result.get("open_issues") or [],
+                    active_linear_issues=remaining_linear_issues,
                     poll_result=poll_result,
                     current_ms=current_ms,
                     linear_breaker=linear_breaker,
                 )
-                synced_closed_ids = {
-                    str(item.get("linear_issue_id") or "").strip()
-                    for item in linear_synced_closed
-                    if str(item.get("linear_issue_id") or "").strip()
-                }
-                remaining_linear_issues = [
-                    issue
-                    for issue in active_linear_issues
-                    if str(issue.get("id") or "").strip() not in synced_closed_ids
-                ]
+                if stale_issue_actions and remaining_linear_issues:
+                    stale_closed_ids = {
+                        str(item.get("linear_issue_id") or "").strip()
+                        for item in stale_issue_actions
+                        if item.get("action") == "stale_issue_closed"
+                        and str(item.get("linear_issue_id") or "").strip()
+                    }
+                    if stale_closed_ids:
+                        remaining_linear_issues = [
+                            issue
+                            for issue in remaining_linear_issues
+                            if str(issue.get("id") or "").strip() not in stale_closed_ids
+                        ]
+
+        # Priority 1: Direct operator @mentions on Linear (exempt from slot/daily LLM caps, bounded by MAX_LINEAR_OPERATOR_COMMENTS_PER_POLL).
+        if self.linear_client is not None and remaining_linear_issues:
+            linear_operator_comment_dispatches = self._dispatch_linear_operator_comments(
+                remaining_linear_issues,
+                slot_id=slot_id,
+                dispatched_targets=dispatched_targets,
+                current_ms=current_ms,
+                now_override_ms=now_override_ms,
+            )
+            targeted_dispatches.extend(linear_operator_comment_dispatches)
+
+        # Priority 2: Targeted GitHub notifications, verified team:* labels, and open/automated PR merges.
+        candidate_thread_ids: list[str] = list(poll_result.get("actionable_threads") or [])
+        for tid, entry in threads.items():
+            if not isinstance(entry, dict) or "#" in tid or tid in candidate_thread_ids or _safe_int(entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
+                continue
+            if str(entry.get("subject_type") or "").strip().lower() in ("pullrequest", "pull_request", "pr") and _safe_int(entry.get("followup_cooldown_until_ms"), 0) > current_ms:
+                continue
+            if entry.get("pending_followup") or is_timestamp_newer(entry.get("updated_at"), entry.get("handled_updated_at")):
+                candidate_thread_ids.append(tid)
+
+        for tid in candidate_thread_ids:
+            entry = _as_dict(threads.get(tid))
+            if not entry or _safe_int(entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
+                continue
+            if str(entry.get("subject_type") or "").strip().lower() in ("pullrequest", "pull_request", "pr") and _safe_int(entry.get("followup_cooldown_until_ms"), 0) > current_ms:
+                continue
+            repo, number = str(entry.get("repo") or "").strip(), _safe_int(entry.get("number"), 0) or None
+            dedup_key = make_pr_key(repo, number) if (repo and number) else tid
+            if dedup_key in dispatched_targets:
+                continue
+            prep = self.trust_filter.fetch_and_prepare_notification(entry, now_override_ms=now_override_ms)
+            if not prep.get("should_dispatch"):
+                _complete_skipped(tid, tid, prep, entry)
+                continue
+            if not self.state_store.can_consume_throttle("tasks", slot_id=slot_id, now_override_ms=current_ms):
+                continue
+            consumed, _ = self.state_store.consume_throttle("tasks", slot_id=slot_id, now_override_ms=current_ms)
+            if not consumed:
+                continue
+            dispatched_targets.add(dedup_key)
+            targeted_dispatches.append(self.execution_coordinator.execute_dispatch(kind="targeted", is_automated_pr=bool(prep.get("is_automated_pr") or entry.get("is_automated_pr")), thread_id=tid, state_key=tid, repo=prep.get("repo") or repo, number=prep.get("number") or number, subject_kind=prep.get("kind") or entry.get("subject_type"), head_sha=prep.get("head_sha") or entry.get("head_sha"), ci_state=entry.get("ci_state"), updated_at=entry.get("updated_at"), trigger_reason=prep.get("trigger_reason") or entry.get("reason"), comment_id=prep.get("comment_id"), review_id=prep.get("review_id"), trusted_item_id=prep.get("trusted_item_id"), now_override_ms=now_override_ms))
+
+        for item in verified_team_label_dispatches:
+            cand = item["cand"]
+            cand_key = item["cand_key"]
+            if cand_key in dispatched_targets:
+                continue
+            if not self.state_store.can_consume_throttle("tasks", slot_id=slot_id, now_override_ms=current_ms):
+                break
+            consumed, _ = self.state_store.consume_throttle("tasks", slot_id=slot_id, now_override_ms=current_ms)
+            if not consumed:
+                break
+            verified_label = item["verified_label"]
+            dispatched_targets.add(cand_key)
+            targeted_dispatches.append(
+                self.execution_coordinator.execute_dispatch(
+                    kind=verified_label,
+                    is_automated_pr=False,
+                    thread_id=str(cand.get("thread_id") or "").strip() or None,
+                    state_key=cand_key,
+                    repo=item["cand_repo"],
+                    number=item["cand_num"],
+                    subject_kind=item["cand_kind"],
+                    head_sha=item["cand_head_sha"],
+                    ci_state=str(cand.get("ci_state") or "") or None,
+                    updated_at=str(cand.get("updated_at") or "") or None,
+                    trigger_reason=TEAM_LABEL_TRIGGER_REASONS.get(verified_label, verified_label),
+                    community_auto_merge_eligible=cand.get("community_auto_merge_eligible"),
+                    team_label=verified_label,
+                    team_label_event_key=item["verified_event_key"],
+                    triaged_head_sha=item["triaged_sha"],
+                    head_sha_changed=item["sha_changed"],
+                    now_override_ms=now_override_ms,
+                )
+            )
+
+        for pr_item in non_community_actionable_prs:
+            pr_key = str(pr_item.get("key") or "").strip()
+            pr_entry = _as_dict(self.state_store.get_thread_state(pr_key))
+            if not pr_key or pr_key in dispatched_targets or _safe_int(pr_entry.get("retry_count"), 0) >= MAX_THREAD_FAILURE_RETRIES:
+                continue
+            trig_reason = str(pr_item.get("trigger_reason") or "open_pr_poll")
+            if trig_reason != "ci_green_after_approval" and _safe_int(pr_entry.get("followup_cooldown_until_ms"), 0) > current_ms:
+                continue
+            if not self.state_store.can_consume_throttle("tasks", slot_id=slot_id, now_override_ms=current_ms):
+                break
+            consumed, _ = self.state_store.consume_throttle("tasks", slot_id=slot_id, now_override_ms=current_ms)
+            if not consumed:
+                break
+            dispatched_targets.add(pr_key)
+            pr_dispatch_kind = str(pr_item.get("dispatch_kind") or "targeted")
+            targeted_dispatches.append(self.execution_coordinator.execute_dispatch(kind=pr_dispatch_kind, is_automated_pr=bool(pr_item.get("is_automated_pr") or pr_entry.get("is_automated_pr")), thread_id=str(pr_item.get("thread_id") or "").strip() or None, state_key=pr_key, repo=str(pr_item.get("repo") or ""), number=_safe_int(pr_item.get("number"), 0) or None, subject_kind="PullRequest", head_sha=str(pr_item.get("head_sha") or "") or None, ci_state=str(pr_item.get("ci_state") or "") or None, updated_at=str(pr_item.get("updated_at") or "") or None, trigger_reason=trig_reason, community_auto_merge_eligible=pr_item.get("community_auto_merge_eligible"), triaged_head_sha=str(pr_entry.get("triaged_head_sha") or "") or None, now_override_ms=now_override_ms))
+
+        # Priority 3: Community PR blind reviews and Lane A/B merges, plus deterministic PR links and conflict reconciliation.
+        if self.linear_client is not None and self.state_store.agent_name in SWEEP_AGENT_ORDER:
             pr_pipeline = self._process_linear_community_prs(
                 community_actionable_prs,
                 active_linear_issues=remaining_linear_issues,
@@ -12230,75 +12548,8 @@ class GithubCompanionRunner:
                 linear_breaker=linear_breaker,
             )
             linear_pr_actions.extend(merge_conflict_actions)
-            signoff_ready_pr_keys: set[str] = set()
-            for item in poll_result.get("signoff_ready_prs") or ():
-                if not isinstance(item, dict):
-                    continue
-                sk = str(item.get("key") or "").strip().lower()
-                if not sk:
-                    s_repo = str(item.get("repo") or "").strip()
-                    s_num = _safe_int(item.get("number"), 0)
-                    if s_repo and s_num > 0:
-                        sk = make_pr_key(s_repo, s_num)
-                if sk:
-                    signoff_ready_pr_keys.add(sk)
-            in_review_pr_actions = self._reconcile_in_review_linear_pr_status(
-                active_linear_issues=remaining_linear_issues,
-                open_prs_by_key=open_prs_by_key,
-                signoff_ready_pr_keys=signoff_ready_pr_keys,
-                poll_result=poll_result,
-                current_ms=current_ms,
-                linear_breaker=linear_breaker,
-                hydrated_mergeability_node_ids=hydrated_mergeability_node_ids,
-            )
-            if in_review_pr_actions and remaining_linear_issues:
-                updated_in_review_by_id: dict[str, dict] = {}
-                for act in in_review_pr_actions:
-                    upd = act.get("updated_issue")
-                    if isinstance(upd, dict) and str(upd.get("id") or "").strip():
-                        updated_in_review_by_id[str(upd["id"]).strip()] = upd
-                if updated_in_review_by_id:
-                    remaining_linear_issues = [
-                        updated_in_review_by_id.get(str(issue.get("id") or "").strip(), issue)
-                        for issue in remaining_linear_issues
-                    ]
-            stale_issue_actions = self._process_stale_issues(
-                open_issues=poll_result.get("open_issues") or [],
-                active_linear_issues=remaining_linear_issues,
-                poll_result=poll_result,
-                current_ms=current_ms,
-                linear_breaker=linear_breaker,
-            )
-            if stale_issue_actions and remaining_linear_issues:
-                stale_closed_ids = {
-                    str(item.get("linear_issue_id") or "").strip()
-                    for item in stale_issue_actions
-                    if item.get("action") == "stale_issue_closed"
-                    and str(item.get("linear_issue_id") or "").strip()
-                }
-                if stale_closed_ids:
-                    remaining_linear_issues = [
-                        issue
-                        for issue in remaining_linear_issues
-                        if str(issue.get("id") or "").strip() not in stale_closed_ids
-                    ]
             if remaining_linear_issues:
-                linear_operator_comment_dispatches = self._dispatch_linear_operator_comments(
-                    remaining_linear_issues,
-                    dispatched_targets=dispatched_targets,
-                    current_ms=current_ms,
-                    now_override_ms=now_override_ms,
-                )
-                targeted_dispatches.extend(linear_operator_comment_dispatches)
-                targeted_dispatches.extend(
-                    self._dispatch_linear_triage_research(
-                        remaining_linear_issues,
-                        slot_id=slot_id,
-                        dispatched_targets=dispatched_targets,
-                        current_ms=current_ms,
-                        now_override_ms=now_override_ms,
-                    )
-                )
+                # Priority 4: Todo implementations (before Triage research).
                 targeted_dispatches.extend(
                     self._dispatch_linear_todo_implementations(
                         remaining_linear_issues,
@@ -12308,6 +12559,16 @@ class GithubCompanionRunner:
                         now_override_ms=now_override_ms,
                         open_pr_by_closing_issue_key=open_pr_by_closing_issue_key,
                         linear_breaker=linear_breaker,
+                    )
+                )
+                # Priority 5: Triage research (fills any remaining slot/daily LLM task budget).
+                targeted_dispatches.extend(
+                    self._dispatch_linear_triage_research(
+                        remaining_linear_issues,
+                        slot_id=slot_id,
+                        dispatched_targets=dispatched_targets,
+                        current_ms=current_ms,
+                        now_override_ms=now_override_ms,
                     )
                 )
             security_release_actions = self._evaluate_security_patch_releases(
@@ -12328,15 +12589,6 @@ class GithubCompanionRunner:
                 for traya_item in traya_blind_reviews:
                     if isinstance(traya_item.get("dispatch"), dict):
                         targeted_dispatches.append(traya_item["dispatch"])
-            traya_active_linear_issues = self._poll_active_linear_issues()
-            if traya_active_linear_issues:
-                linear_operator_comment_dispatches = self._dispatch_linear_operator_comments(
-                    traya_active_linear_issues,
-                    dispatched_targets=dispatched_targets,
-                    current_ms=current_ms,
-                    now_override_ms=now_override_ms,
-                )
-                targeted_dispatches.extend(linear_operator_comment_dispatches)
 
         sweep_dispatch: dict | None = None
         if run_sweeps_if_due and not any(d.get("verification_deferred") for d in targeted_dispatches):
@@ -12408,6 +12660,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--community-auto-merge-max-lines", default=os.environ.get("MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_LINES", ""))
     parser.add_argument("--community-auto-merge-max-files", default=os.environ.get("MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_FILES", ""))
     parser.add_argument("--community-auto-merge-excluded-repos", default=os.environ.get("MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS", ""))
+    parser.add_argument("--poll-interval-minutes", default=os.environ.get("MOLTIS_GITHUB_COMPANION_POLL_INTERVAL_MINUTES", ""))
+    parser.add_argument("--max-tasks-per-slot", default=os.environ.get("MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_SLOT", ""))
+    parser.add_argument("--max-tasks-per-day", default=os.environ.get("MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_DAY", ""))
+    parser.add_argument("--daily-implementations-cap", default=os.environ.get("MOLTIS_GITHUB_COMPANION_DAILY_IMPLEMENTATIONS_CAP", ""))
     parser.add_argument("--read-only-trial", action="store_true", default=os.environ.get("MOLTIS_GITHUB_COMPANION_READ_ONLY_TRIAL", "").strip() in ("1", "true", "yes"))
     parser.add_argument("--reprocess-community", action="store_true")
     parser.add_argument("--once", action="store_true")
@@ -12430,6 +12686,10 @@ def resolve_runtime_config(args: argparse.Namespace) -> dict:
         max_files=getattr(args, "community_auto_merge_max_files", "") or None,
         excluded_repos=getattr(args, "community_auto_merge_excluded_repos", "") or None,
     )
+    raw_poll_interval = getattr(args, "poll_interval_minutes", "")
+    raw_max_tasks_slot = getattr(args, "max_tasks_per_slot", "")
+    raw_max_tasks_day = getattr(args, "max_tasks_per_day", "")
+    raw_daily_impl_cap = getattr(args, "daily_implementations_cap", "")
     return {
         "agent_name": agent_name, "agent_display_name": derive_display_name(agent_name, args.agent_display_name),
         "main_model": main_model,
@@ -12447,6 +12707,10 @@ def resolve_runtime_config(args: argparse.Namespace) -> dict:
         "community_auto_merge_max_lines": cam_cfg["max_lines"],
         "community_auto_merge_max_files": cam_cfg["max_files"],
         "community_auto_merge_excluded_repos": cam_cfg["excluded_repos"],
+        "poll_interval_minutes": resolve_poll_interval_minutes(raw_poll_interval if str(raw_poll_interval).strip() != "" else None),
+        "max_tasks_per_slot": resolve_max_tasks_per_slot(raw_max_tasks_slot if str(raw_max_tasks_slot).strip() != "" else None, agent_name=agent_name),
+        "max_tasks_per_day": resolve_max_tasks_per_day(raw_max_tasks_day if str(raw_max_tasks_day).strip() != "" else None),
+        "daily_implementations_cap": resolve_daily_implementations_cap(raw_daily_impl_cap if str(raw_daily_impl_cap).strip() != "" else None, agent_name=agent_name),
         "read_only_trial": bool(getattr(args, "read_only_trial", False)),
         "reprocess_community": bool(getattr(args, "reprocess_community", False)),
         "once": bool(getattr(args, "once", False)),
@@ -12463,6 +12727,9 @@ def main(argv: list[str] | None = None) -> int:
         community_auto_merge_max_lines=cfg["community_auto_merge_max_lines"],
         community_auto_merge_max_files=cfg["community_auto_merge_max_files"],
         community_auto_merge_excluded_repos=cfg["community_auto_merge_excluded_repos"],
+        max_tasks_per_slot=cfg["max_tasks_per_slot"],
+        max_tasks_per_day=cfg["max_tasks_per_day"],
+        daily_implementations_cap=cfg["daily_implementations_cap"],
     )
     if cfg["reprocess_community"]:
         reset_count = store.reprocess_community_entries()
@@ -12475,11 +12742,11 @@ def main(argv: list[str] | None = None) -> int:
     has_telegram_creds = bool(cfg["telegram_bot_token_path"] or cfg["telegram_allowed_users_path"] or os.environ.get(tok_env_key, "").strip() or os.environ.get("TELEGRAM_ALLOWED_USERS", "").strip())
     telegram_client = TelegramClient(bot_token_path=cfg["telegram_bot_token_path"], allowed_users_path=cfg["telegram_allowed_users_path"], api_url=cfg["telegram_api_url"]) if has_telegram_creds else None
     rpc_client = MoltisRpcClient(rpc_url=cfg["rpc_url"])
-    poller = NotificationPoller(state_store=store, gh_client=gh_client, read_only_trial=cfg["read_only_trial"])
+    poller = NotificationPoller(state_store=store, gh_client=gh_client, read_only_trial=cfg["read_only_trial"], poll_interval_minutes=cfg["poll_interval_minutes"])
     trust_filter = TrustFilterAndSnapshotBuilder(state_store=store, gh_client=gh_client, matrix_client=matrix_client, telegram_client=telegram_client, agent_name=cfg["agent_name"])
     linear_client = linear_sync.LinearSyncClient.from_env()
     execution_coordinator = LocalExecutionCoordinator(state_store=store, rpc_client=rpc_client, data_dir=cfg["data_dir"], agent_name=cfg["agent_name"], agent_display_name=cfg["agent_display_name"], main_model=cfg["main_model"], review_model=cfg["review_model"], matrix_client=matrix_client, telegram_client=telegram_client, room_id=cfg["room_id"], schedule_dow=cfg["schedule_dow"], schedule_day_name=cfg["schedule_day_name"], linear_client=linear_client)
-    runner = GithubCompanionRunner(state_store=store, gh_client=gh_client, poller=poller, trust_filter=trust_filter, execution_coordinator=execution_coordinator, matrix_client=matrix_client, read_only_trial=cfg["read_only_trial"], linear_client=linear_client, telegram_client=telegram_client)
+    runner = GithubCompanionRunner(state_store=store, gh_client=gh_client, poller=poller, trust_filter=trust_filter, execution_coordinator=execution_coordinator, matrix_client=matrix_client, read_only_trial=cfg["read_only_trial"], linear_client=linear_client, telegram_client=telegram_client, poll_interval_minutes=cfg["poll_interval_minutes"])
     if cfg["once"]:
         poller.wait_until_due()
         runner.run_cycle()

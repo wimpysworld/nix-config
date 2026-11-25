@@ -902,44 +902,64 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
         self.assertEqual(companion.london_date_str(slot3_bst_same_day_ms), "2026-07-15")
         self.assertEqual(companion.london_date_str(slot5_bst_next_day_ms), "2026-07-16")
 
-        # Default per-slot caps in slot-1
-        for bucket, cap in (
-            ("triage_stubs", 10),
-            ("triage_research", 2),
-            ("community_pr_reviews", 2),
-            ("todo_implementations", 1),
-        ):
-            for idx in range(cap):
-                self.assertTrue(
-                    store.can_consume_throttle(bucket, slot_id="slot-1", now_override_ms=slot1_ms),
-                    f"expected {bucket} slot-1 attempt {idx + 1}/{cap} to be allowed",
-                )
-                ok, snap = store.consume_throttle(bucket, slot_id="slot-1", now_override_ms=slot1_ms)
-                self.assertTrue(ok)
-                self.assertEqual(snap[f"slot_{bucket}"], idx + 1)
-            self.assertFalse(store.can_consume_throttle(bucket, slot_id="slot-1", now_override_ms=slot1_ms))
-            ok_over, snap_over = store.consume_throttle(bucket, slot_id="slot-1", now_override_ms=slot1_ms)
-            self.assertFalse(ok_over)
-            self.assertEqual(snap_over[f"slot_{bucket}"], cap)
+        # Shared slot_tasks (default 2 for Skrye) across LLM buckets; triage_stubs stays independent (10/slot)
+        for idx in range(10):
+            self.assertTrue(
+                store.can_consume_throttle("triage_stubs", slot_id="slot-1", now_override_ms=slot1_ms),
+                f"expected triage_stubs slot-1 attempt {idx + 1}/10 to be allowed",
+            )
+            ok, snap = store.consume_throttle("triage_stubs", slot_id="slot-1", now_override_ms=slot1_ms)
+            self.assertTrue(ok)
+            self.assertEqual(snap["slot_triage_stubs"], idx + 1)
+            self.assertEqual(snap["slot_tasks"], 0)
+            self.assertEqual(snap["daily_tasks"], 0)
+        self.assertFalse(store.can_consume_throttle("triage_stubs", slot_id="slot-1", now_override_ms=slot1_ms))
+        ok_over, snap_over = store.consume_throttle("triage_stubs", slot_id="slot-1", now_override_ms=slot1_ms)
+        self.assertFalse(ok_over)
+        self.assertEqual(snap_over["slot_triage_stubs"], 10)
+
+        # Shared slot_tasks = 2 allows 1 community_pr_reviews + 1 todo_implementations in slot-1, then blocks triage_research & tasks
+        ok_rev, snap_rev = store.consume_throttle("community_pr_reviews", slot_id="slot-1", now_override_ms=slot1_ms)
+        self.assertTrue(ok_rev)
+        self.assertEqual(snap_rev["slot_tasks"], 1)
+        self.assertEqual(snap_rev["daily_tasks"], 1)
+        self.assertEqual(snap_rev["slot_community_pr_reviews"], 1)
+
+        ok_todo, snap_todo = store.consume_throttle("todo_implementations", slot_id="slot-1", now_override_ms=slot1_ms)
+        self.assertTrue(ok_todo)
+        self.assertEqual(snap_todo["slot_tasks"], 2)
+        self.assertEqual(snap_todo["daily_tasks"], 2)
+        self.assertEqual(snap_todo["slot_todo_implementations"], 1)
+        self.assertEqual(snap_todo["daily_implementations"], 1)
+
+        for blocked_bucket in ("tasks", "triage_research", "community_pr_reviews", "todo_implementations"):
+            self.assertFalse(store.can_consume_throttle(blocked_bucket, slot_id="slot-1", now_override_ms=slot1_ms))
+            ok_blk, snap_blk = store.consume_throttle(blocked_bucket, slot_id="slot-1", now_override_ms=slot1_ms)
+            self.assertFalse(ok_blk)
+            self.assertEqual(snap_blk["slot_tasks"], 2)
 
         # Persistence across re-opened store instance
         reopened = self.make_store("skrye", state_dir=throttle_dir)
         persisted = reopened.get_throttle_state(slot_id="slot-1", now_override_ms=slot1_ms)
         self.assertEqual(persisted["daily_date"], "2026-07-15")
+        self.assertEqual(persisted["daily_tasks"], 2)
         self.assertEqual(persisted["daily_implementations"], 1)
+        self.assertEqual(persisted["slot_tasks"], 2)
         self.assertEqual(persisted["slot_triage_stubs"], 10)
-        self.assertEqual(persisted["slot_triage_research"], 2)
-        self.assertEqual(persisted["slot_community_pr_reviews"], 2)
+        self.assertEqual(persisted["slot_triage_research"], 0)
+        self.assertEqual(persisted["slot_community_pr_reviews"], 1)
         self.assertEqual(persisted["slot_todo_implementations"], 1)
 
-        # Slot rollover resets per-slot counts without resetting daily_implementations
+        # Slot rollover resets per-slot counts without resetting daily_tasks or daily_implementations
         rolled_slot2 = store.get_throttle_state(slot_id="slot-2", now_override_ms=slot2_ms)
         self.assertEqual(rolled_slot2["slot_id"], "slot-2")
+        self.assertEqual(rolled_slot2["slot_tasks"], 0)
         self.assertEqual(rolled_slot2["slot_triage_stubs"], 0)
         self.assertEqual(rolled_slot2["slot_triage_research"], 0)
         self.assertEqual(rolled_slot2["slot_community_pr_reviews"], 0)
         self.assertEqual(rolled_slot2["slot_todo_implementations"], 0)
         self.assertEqual(rolled_slot2["daily_date"], "2026-07-15")
+        self.assertEqual(rolled_slot2["daily_tasks"], 2)
         self.assertEqual(rolled_slot2["daily_implementations"], 1)
 
         # Consume 2nd and 3rd daily implementations in slot-2 and slot-3 (22:30 UTC / 23:30 BST)
@@ -1022,30 +1042,63 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
             )
         )
 
-    def test_daily_implementations_cap_default_24_and_env_override(self) -> None:
-        self.assertEqual(companion.DEFAULT_DAILY_IMPLEMENTATIONS_CAP, 24)
-        self.assertEqual(companion.DEFAULT_THROTTLE_LIMITS["daily_implementations"], 24)
+    def test_daily_implementations_cap_default_8_traya_0_and_env_override(self) -> None:
+        self.assertEqual(companion.DEFAULT_DAILY_IMPLEMENTATIONS_CAP, 8)
+        self.assertEqual(companion.DEFAULT_THROTTLE_LIMITS["daily_implementations"], 8)
+        self.assertEqual(companion.resolve_daily_implementations_cap(agent_name="skrye"), 8)
+        self.assertEqual(companion.resolve_daily_implementations_cap(agent_name="zannah"), 8)
+        self.assertEqual(companion.resolve_daily_implementations_cap(agent_name="traya"), 0)
 
         base_ms = int(datetime.datetime(2026, 7, 15, 9, 0, tzinfo=datetime.timezone.utc).timestamp() * 1000)
 
-        # Unset env var uses the default 24/day cap.
+        # Unset env var uses the default 8/day cap for Skrye and 0/day for Traya.
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("MOLTIS_GITHUB_COMPANION_DAILY_IMPLEMENTATIONS_CAP", None)
-            self.assertEqual(companion.CompanionStateStore._resolve_throttle_limits()["daily_implementations"], 24)
-            default_store = self.make_store("skrye", state_dir=self.state_dir / "throttles-default-24")
-            for idx in range(1, 25):
+            self.assertEqual(companion.CompanionStateStore._resolve_throttle_limits()["daily_implementations"], 8)
+            self.assertEqual(
+                companion.CompanionStateStore._resolve_throttle_limits(agent_name="traya")["daily_implementations"],
+                0,
+            )
+            default_store = self.make_store("skrye", state_dir=self.state_dir / "throttles-default-8")
+            for idx in range(1, 9):
                 ok, snap = default_store.consume_throttle(
                     "todo_implementations", slot_id=f"slot-{idx}", now_override_ms=base_ms + idx * 1000
                 )
-                self.assertTrue(ok, f"expected implementation {idx}/24 to succeed")
+                self.assertTrue(ok, f"expected implementation {idx}/8 to succeed")
                 self.assertEqual(snap["daily_implementations"], idx)
             self.assertFalse(
                 default_store.can_consume_throttle(
-                    "todo_implementations", slot_id="slot-25", now_override_ms=base_ms + 25_000
+                    "todo_implementations", slot_id="slot-9", now_override_ms=base_ms + 9_000
+                )
+            )
+            # Exhausting daily_implementations (8/8) does NOT block reviews or triage inside max_tasks_per_day (48).
+            self.assertTrue(
+                default_store.can_consume_throttle(
+                    "community_pr_reviews", slot_id="slot-9", now_override_ms=base_ms + 9_000
+                )
+            )
+            self.assertTrue(
+                default_store.can_consume_throttle(
+                    "triage_research", slot_id="slot-9", now_override_ms=base_ms + 9_000
                 )
             )
 
-        # Positive integer env override is honoured and explicit `limits` overrides still take precedence.
+            # Traya defaults to dailyImplementationsCap = 0 and maxTasksPerSlot = 3.
+            traya_store = self.make_store("traya", state_dir=self.state_dir / "throttles-traya-default")
+            self.assertFalse(
+                traya_store.can_consume_throttle("todo_implementations", slot_id="traya-slot-1", now_override_ms=base_ms)
+            )
+            for idx in range(1, 4):
+                ok_t, snap_t = traya_store.consume_throttle(
+                    "community_pr_reviews", slot_id="traya-slot-1", now_override_ms=base_ms
+                )
+                self.assertTrue(ok_t, f"expected Traya review {idx}/3 to succeed")
+                self.assertEqual(snap_t["slot_tasks"], idx)
+            self.assertFalse(
+                traya_store.can_consume_throttle("community_pr_reviews", slot_id="traya-slot-1", now_override_ms=base_ms)
+            )
+
+        # Positive integer and explicit zero env overrides are honoured; explicit `limits` overrides take precedence.
         with patch.dict(os.environ, {"MOLTIS_GITHUB_COMPANION_DAILY_IMPLEMENTATIONS_CAP": "5"}, clear=False):
             self.assertEqual(companion.CompanionStateStore._resolve_throttle_limits()["daily_implementations"], 5)
             self.assertEqual(
@@ -1066,13 +1119,28 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
                 )
             )
 
-        # Non-positive, empty, or non-integer env values fall back to default 24.
-        for bad_val in ("", "   ", "0", "-4", "not-a-number"):
+        with patch.dict(os.environ, {"MOLTIS_GITHUB_COMPANION_DAILY_IMPLEMENTATIONS_CAP": "0"}, clear=False):
+            self.assertEqual(companion.CompanionStateStore._resolve_throttle_limits()["daily_implementations"], 0)
+            zero_store = self.make_store("skrye", state_dir=self.state_dir / "throttles-env-0")
+            self.assertFalse(
+                zero_store.can_consume_throttle("todo_implementations", slot_id="z-slot-1", now_override_ms=base_ms)
+            )
+            self.assertTrue(
+                zero_store.can_consume_throttle("community_pr_reviews", slot_id="z-slot-1", now_override_ms=base_ms)
+            )
+
+        # Negative, empty, or non-integer env values fall back to agent default (8 for Skrye, 0 for Traya).
+        for bad_val in ("", "   ", "-4", "not-a-number"):
             with patch.dict(os.environ, {"MOLTIS_GITHUB_COMPANION_DAILY_IMPLEMENTATIONS_CAP": bad_val}, clear=False):
                 self.assertEqual(
                     companion.CompanionStateStore._resolve_throttle_limits()["daily_implementations"],
-                    24,
-                    f"expected invalid env value {bad_val!r} to fall back to 24",
+                    8,
+                    f"expected invalid env value {bad_val!r} to fall back to 8",
+                )
+                self.assertEqual(
+                    companion.CompanionStateStore._resolve_throttle_limits(agent_name="traya")["daily_implementations"],
+                    0,
+                    f"expected invalid env value {bad_val!r} to fall back to 0 for traya",
                 )
 
 
@@ -3343,7 +3411,8 @@ class PrFollowupCooldownAndSameShaPeerSuppressionTests(GithubCompanionTestBase):
 
         # 4) At 15 minutes (cooldown expired): queued follow-up on PR 150 dispatches and advances watermarks
         self.current_time_ms = expected_cooldown_until
-        cycle_after_cooldown = runner.run_cycle(run_sweeps_if_due=False)
+        with patch.dict(os.environ, {"MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_SLOT": "5"}, clear=False):
+            cycle_after_cooldown = runner.run_cycle(run_sweeps_if_due=False)
         self.assertEqual(len(cycle_after_cooldown["targeted_dispatches"]), 1)
         self.assertEqual(cycle_after_cooldown["targeted_dispatches"][0]["thread_id"], "1500")
         self.assertEqual(cycle_after_cooldown["targeted_dispatches"][0]["status"], "completed")
@@ -3898,7 +3967,8 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
         )
 
         self.httpd.send_sync_handler = make_send_sync_handler("skrye")
-        cycle_skrye = runner_skrye.run_cycle(now_override_ms=tuesday_10am_ms)
+        with patch.dict(os.environ, {"MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_SLOT": "10"}, clear=False):
+            cycle_skrye = runner_skrye.run_cycle(now_override_ms=tuesday_10am_ms)
         self.assertEqual(len(cycle_skrye["targeted_dispatches"]), 6)
         self.assertIsNotNone(cycle_skrye["sweep_dispatch"])
         self.assertEqual(cycle_skrye["sweep_dispatch"]["kind"], "weekly_sweep")
@@ -6279,7 +6349,7 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
         self.assertEqual(res_dup["linear_promoted_todos"], [])
         self.assertEqual(len(linear_stub.ensure_calls), ensure_before_dup)
 
-        # 3) Moving Backlog issue n2 to Todo + adding n3 in Todo: 1/slot cap defers both in slot 1
+        # 3) Moving Backlog issue n2 to Todo + adding n3 in Todo: shared 2/slot cap runs n2 in slot 1 and defers n3 to slot 2
         open_nodes.clear()
         linear_stub.update_issue(lin2_id, state="Todo")
         lin3 = linear_stub.seed_issue(
@@ -6291,24 +6361,23 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
         )
         lin3_id = str(lin3["id"])
         res_cap_slot1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms + 120_000)
-        self.assertEqual(res_cap_slot1["targeted_dispatches"], [])
-        self.assertEqual(linear_stub.issues[lin2_id]["state"]["name"], "Todo")  # type: ignore[index]
-
-        # Slot 2 (10:30 UTC): dispatches n2 (1/slot cap keeps n3 in Todo); daily count -> 2
-        slot2_ms = self._utc_ms(2026, 4, 1, 10, 30)
-        res2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot2_ms)
-        self.assertEqual(len(res2["targeted_dispatches"]), 1)
+        self.assertEqual(len(res_cap_slot1["targeted_dispatches"]), 1)
         self.assertEqual(rpc_calls[-1]["meta"]["linear_issue_id"], lin2_id)  # type: ignore[index]
         self.assertEqual(observed_states_at_rpc[lin2_id], "In Progress")
         self.assertEqual(linear_stub.issues[lin3_id]["state"]["name"], "Todo")  # type: ignore[index]
 
-        # Slot 3 (11:00 UTC): dispatches n3; daily count -> 3 (hits daily_implementations cap)
-        slot3_ms = self._utc_ms(2026, 4, 1, 11, 0)
-        res3 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot3_ms)
-        self.assertEqual(len(res3["targeted_dispatches"]), 1)
+        # Another poll in slot 1 is capped at 2/slot and keeps n3 in Todo
+        res_cap_slot1_full = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms + 240_000)
+        self.assertEqual(res_cap_slot1_full["targeted_dispatches"], [])
+        self.assertEqual(linear_stub.issues[lin3_id]["state"]["name"], "Todo")  # type: ignore[index]
+
+        # Slot 2 (10:30 UTC): dispatches n3; daily count -> 3 (hits explicit 3/day daily_implementations cap)
+        slot2_ms = self._utc_ms(2026, 4, 1, 10, 30)
+        res2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot2_ms)
+        self.assertEqual(len(res2["targeted_dispatches"]), 1)
         self.assertEqual(rpc_calls[-1]["meta"]["linear_issue_id"], lin3_id)  # type: ignore[index]
 
-        # Slot 4 (11:30 UTC, same Europe/London day): n4 blocked when daily cap is set to 3/day
+        # Slot 3 (11:00 UTC, same Europe/London day): n4 blocked when daily cap is set to 3/day
         lin4 = linear_stub.seed_issue(
             github_url=f"https://github.com/{repo}/issues/{n4}",
             title=f"Fourth daily feature #{n4}",
@@ -6317,7 +6386,7 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
             state="Todo",
         )
         lin4_id = str(lin4["id"])
-        slot4_ms = self._utc_ms(2026, 4, 1, 11, 30)
+        slot4_ms = self._utc_ms(2026, 4, 1, 11, 0)
         with patch.dict(os.environ, {"MOLTIS_GITHUB_COMPANION_DAILY_IMPLEMENTATIONS_CAP": "3"}, clear=False):
             res4_blocked = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot4_ms)
             self.assertEqual(res4_blocked["targeted_dispatches"], [])
@@ -8585,7 +8654,8 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
             )
 
         # 1) Cycle 1: Linear Todo promotions + external close/merge sync
-        res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 12, 0))
+        with patch.dict(os.environ, {"MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_SLOT": "5"}, clear=False):
+            res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 12, 0))
 
         # External PR merge/close synced directly to Done / Canceled
         synced_map = {item["linear_issue_id"]: item["target_state"] for item in res1["linear_synced_closed"]}
@@ -8945,7 +9015,8 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
                 now_override_ms=self.clock(),
             )
 
-        res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 10, 0))
+        with patch.dict(os.environ, {"MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_SLOT": "5"}, clear=False):
+            res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 10, 0))
         actions_by_num = {int(a["number"]): a for a in res1["linear_pr_actions"]}
         self.assertEqual(len(rpc_calls), 4)
         self.assertEqual(actions_by_num[pr_guard]["action"], "lane_a_merge_needs_decision")
@@ -9218,7 +9289,8 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
                 now_override_ms=self.clock(),
             )
 
-        res = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 12, 0))
+        with patch.dict(os.environ, {"MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_SLOT": "5"}, clear=False):
+            res = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 12, 0))
         actions_by_num = {int(a["number"]): a for a in res["linear_pr_actions"]}
 
         # Only pr_merged, pr_blocked, and pr_unconfirmed reached RPC dispatch; pr_label_fail and pr_dnm stopped before dispatch
@@ -9433,7 +9505,8 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
                 now_override_ms=self.clock(),
             )
 
-        res = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 13, 0))
+        with patch.dict(os.environ, {"MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_SLOT": "5"}, clear=False):
+            res = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 1, 13, 0))
         actions_by_num = {int(a["number"]): a for a in res["linear_pr_actions"]}
         dispatches_by_key = {str(d["state_key"]): d for d in res["targeted_dispatches"]}
 
@@ -11095,7 +11168,8 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
                 },
             )
 
-        res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 8, 12, 0))
+        with patch.dict(os.environ, {"MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_SLOT": "6"}, clear=False):
+            res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self._utc_ms(2026, 4, 8, 12, 0))
         # Only pr_pass (after Gemini PASS) and pr_todo_safe (Todo -> team:review -> In Review, non-sensitive) are approved.
         self.assertEqual(
             approved_cmds,
@@ -12438,30 +12512,31 @@ class LinearOperatorGuidanceAndMentionWakeTests(GithubCompanionTestBase):
             rpc_reply_fn=reply_fn,
         )
         slot_ms = LinearCommunityIssuesPipelineTests._utc_ms(2026, 4, 1, 10, 0)
-        runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot_ms)
+        with patch.dict(os.environ, {"MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_SLOT": "6"}, clear=False):
+            runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot_ms)
 
-        # Also invoke _evaluate_lane_a_consensus directly for community_pr_lane_a_merge
-        with patch.object(runner.gh_client, "is_pull_request_merged", return_value=True):
-            runner._evaluate_lane_a_consensus(
-                linear_id=str(lin_pr_a["id"]),
-                linear_identifier=str(lin_pr_a["identifier"]),
-                linear_url=str(lin_pr_a["url"]),
-                pr_entry={
-                    "repo": repo,
-                    "number": pr_lane_a_num,
-                    "url": f"https://github.com/{repo}/pull/{pr_lane_a_num}",
-                    "title": "Consensus PR with operator note",
-                    "labels": [],
-                    "linear_issue_url": str(lin_pr_a["url"]),
-                },
-                head_sha="sha_consensus_1",
-                ci_state="SUCCESS",
-                unresolved_thread_count=0,
-                slot_id=companion.compute_throttle_slot_id(slot_ms, "skrye"),
-                dispatched_targets=set(),
-                current_ms=slot_ms,
-                now_override_ms=slot_ms,
-            )
+            # Also invoke _evaluate_lane_a_consensus directly for community_pr_lane_a_merge
+            with patch.object(runner.gh_client, "is_pull_request_merged", return_value=True):
+                runner._evaluate_lane_a_consensus(
+                    linear_id=str(lin_pr_a["id"]),
+                    linear_identifier=str(lin_pr_a["identifier"]),
+                    linear_url=str(lin_pr_a["url"]),
+                    pr_entry={
+                        "repo": repo,
+                        "number": pr_lane_a_num,
+                        "url": f"https://github.com/{repo}/pull/{pr_lane_a_num}",
+                        "title": "Consensus PR with operator note",
+                        "labels": [],
+                        "linear_issue_url": str(lin_pr_a["url"]),
+                    },
+                    head_sha="sha_consensus_1",
+                    ci_state="SUCCESS",
+                    unresolved_thread_count=0,
+                    slot_id=companion.compute_throttle_slot_id(slot_ms, "skrye"),
+                    dispatched_targets=set(),
+                    current_ms=slot_ms,
+                    now_override_ms=slot_ms,
+                )
 
         by_kind = {str(call["meta"]["dispatch_kind"]): call for call in rpc_calls}  # type: ignore[index]
         self.assertIn("linear_triage_research", by_kind)
@@ -15688,6 +15763,567 @@ class InReviewStatusLabelsAndAllowMergeTests(GithubCompanionTestBase):
         # All four ineligible PRs still keep team:do-not-merge untouched.
         for kept_key in (key_medium, key_sensitive, key_guided, key_nix):
             self.assertEqual(open_prs[kept_key]["labels"], ["team:do-not-merge"])
+
+
+class UnifiedLlmRateControlsAndPriorityOrderTests(GithubCompanionTestBase):
+    """Unified 4-option LLM rate controls, staggered poll intervals, shared priority budget, and deterministic sync."""
+
+    MAIN_MODEL = LinearCommunityIssuesPipelineTests.MAIN_MODEL
+    REVIEW_MODEL = LinearCommunityIssuesPipelineTests.REVIEW_MODEL
+    _utc_ms = staticmethod(LinearCommunityIssuesPipelineTests._utc_ms)
+    _owned_numbers = staticmethod(LinearCommunityIssuesPipelineTests._owned_numbers)
+    _graphql_issue_node = staticmethod(LinearCommunityIssuesPipelineTests._graphql_issue_node)
+    _parse_prompt_metadata = staticmethod(LinearCommunityIssuesPipelineTests._parse_prompt_metadata)
+    _build_pipeline_runner = LinearCommunityIssuesPipelineTests._build_pipeline_runner
+
+    @staticmethod
+    def _pr_node(
+        repo: str,
+        number: int,
+        *,
+        title: str,
+        head_sha: str,
+        author: str = "community-dev",
+        author_association: str = "CONTRIBUTOR",
+        review_decision: str = "",
+        ci_state: str = "SUCCESS",
+        additions: int = 10,
+        deletions: int = 2,
+        changed_files: int = 1,
+        files: list[str] | None = None,
+        labels: list[str] | None = None,
+        review_requests: list[str] | None = None,
+        updated_at: str = "2026-04-01T10:00:00Z",
+    ) -> dict[str, object]:
+        file_list = list(files) if files is not None else ["README.md"]
+        return {
+            "__typename": "PullRequest",
+            "id": f"PR_kw_{number}",
+            "databaseId": 20_000 + number,
+            "number": number,
+            "title": title,
+            "body": "Test pull request.",
+            "url": f"https://github.com/{repo}/pull/{number}",
+            "state": "OPEN",
+            "isDraft": False,
+            "updatedAt": updated_at,
+            "headRefName": f"fix/pr-{number}",
+            "headRefOid": head_sha,
+            "reviewDecision": review_decision,
+            "authorAssociation": author_association,
+            "mergeable": "MERGEABLE",
+            "mergeStateStatus": "CLEAN",
+            "additions": additions,
+            "deletions": deletions,
+            "changedFiles": changed_files,
+            "repository": {"nameWithOwner": repo, "isArchived": False},
+            "author": {"__typename": "User", "login": author},
+            "labels": {"nodes": [{"name": lbl} for lbl in (labels or [])]},
+            "files": {"pageInfo": {"hasNextPage": False}, "nodes": [{"path": p} for p in file_list]},
+            "reviewRequests": {
+                "nodes": [{"requestedReviewer": {"__typename": "User", "login": r}} for r in (review_requests or [])]
+            },
+            "reviewThreads": {"pageInfo": {"hasNextPage": False}, "nodes": []},
+            "statusCheckRollup": None if ci_state == "NONE" else {"state": ci_state, "contexts": {"nodes": []}},
+        }
+
+    def test_poll_interval_minutes_staggered_slots_and_runtime_config(self) -> None:
+        t_10_00 = self._utc_ms(2026, 7, 15, 10, 0)
+        t_10_04 = self._utc_ms(2026, 7, 15, 10, 4)
+        t_10_05 = self._utc_ms(2026, 7, 15, 10, 5)
+        t_10_10 = self._utc_ms(2026, 7, 15, 10, 10)
+        t_10_15 = self._utc_ms(2026, 7, 15, 10, 15)
+        t_10_20 = self._utc_ms(2026, 7, 15, 10, 20)
+        t_10_30 = self._utc_ms(2026, 7, 15, 10, 30)
+        t_10_40 = self._utc_ms(2026, 7, 15, 10, 40)
+        t_11_00 = self._utc_ms(2026, 7, 15, 11, 0)
+
+        # 15-minute cadence: skrye :00/:15/:30/:45, traya :05/:20/:35/:50, zannah :10/:25/:40/:55
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_00, "skrye", poll_interval_minutes=15), t_10_15)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_04, "traya", poll_interval_minutes=15), t_10_05)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_05, "traya", poll_interval_minutes=15), t_10_20)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_00, "zannah", poll_interval_minutes=15), t_10_10)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_10, "zannah", poll_interval_minutes=15), self._utc_ms(2026, 7, 15, 10, 25))
+
+        # 30-minute default cadence: skrye :00/:30, traya :10/:40, zannah :20/:50
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_00, "skrye", poll_interval_minutes=30), t_10_30)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_00, "traya", poll_interval_minutes=30), t_10_10)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_00, "zannah", poll_interval_minutes=30), t_10_20)
+
+        # 60-minute cadence: skrye :00, traya :20, zannah :40
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_00, "skrye", poll_interval_minutes=60), t_11_00)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_00, "traya", poll_interval_minutes=60), t_10_20)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_10_00, "zannah", poll_interval_minutes=60), t_10_40)
+
+        # UTC midnight boundary wrap keeps stagger offset cleanly aligned to next day's UTC midnight
+        t_23_55 = self._utc_ms(2026, 7, 15, 23, 55)
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_23_55, "skrye", poll_interval_minutes=60), self._utc_ms(2026, 7, 16, 0, 0))
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_23_55, "traya", poll_interval_minutes=60), self._utc_ms(2026, 7, 16, 0, 20))
+        self.assertEqual(companion.compute_next_poll_slot_ms(t_23_55, "zannah", poll_interval_minutes=60), self._utc_ms(2026, 7, 16, 0, 40))
+
+        # Backoff wait and throttle slot id honour poll_interval_minutes
+        wait_ms, _, _ = companion.compute_backoff_wait_ms({}, t_10_00, agent_name="traya", poll_interval_minutes=15)
+        self.assertEqual(wait_ms, 5 * 60 * 1000)
+        self.assertEqual(
+            companion.compute_throttle_slot_id(t_10_00, "zannah", poll_interval_minutes=60),
+            f"zannah:{t_10_40}",
+        )
+
+        # NotificationPoller uses explicit poll_interval_minutes
+        store_15 = self.make_store("traya", state_dir=self.state_dir / "poller-15-traya")
+        gh_15 = companion.GhApiSafeClient(
+            runner=lambda cmd, **_: subprocess.CompletedProcess(cmd, 0, "HTTP/1.1 200 OK\r\n\r\n[]", "")
+        )
+        poller_15 = companion.NotificationPoller(
+            state_store=store_15,
+            gh_client=gh_15,
+            clock=lambda: t_10_00,
+            poll_interval_minutes=15,
+        )
+        poll_res = poller_15.poll_once(now_override_ms=t_10_00, poll_open_prs=False, poll_open_issues=False)
+        self.assertEqual(poll_res["next_poll_at_ms"], t_10_05)
+
+        # Runtime config resolves agent defaults cleanly when env vars are unset
+        clean_env = {
+            k: v
+            for k, v in os.environ.items()
+            if k not in (
+                "MOLTIS_GITHUB_COMPANION_POLL_INTERVAL_MINUTES",
+                "MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_SLOT",
+                "MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_DAY",
+                "MOLTIS_GITHUB_COMPANION_DAILY_IMPLEMENTATIONS_CAP",
+            )
+        }
+        with patch.dict(os.environ, clean_env, clear=True):
+            skrye_cfg = companion.resolve_runtime_config(companion.build_arg_parser().parse_args(["--agent-name", "skrye"]))
+            zannah_cfg = companion.resolve_runtime_config(companion.build_arg_parser().parse_args(["--agent-name", "zannah"]))
+            traya_cfg = companion.resolve_runtime_config(companion.build_arg_parser().parse_args(["--agent-name", "traya"]))
+            self.assertEqual(
+                (skrye_cfg["poll_interval_minutes"], skrye_cfg["max_tasks_per_slot"], skrye_cfg["max_tasks_per_day"], skrye_cfg["daily_implementations_cap"]),
+                (30, 2, 48, 8),
+            )
+            self.assertEqual(
+                (zannah_cfg["poll_interval_minutes"], zannah_cfg["max_tasks_per_slot"], zannah_cfg["max_tasks_per_day"], zannah_cfg["daily_implementations_cap"]),
+                (30, 2, 48, 8),
+            )
+            self.assertEqual(
+                (traya_cfg["poll_interval_minutes"], traya_cfg["max_tasks_per_slot"], traya_cfg["max_tasks_per_day"], traya_cfg["daily_implementations_cap"]),
+                (30, 3, 48, 0),
+            )
+
+    def test_priority_order_shared_slot_budget_operator_bypass_and_zero_llm_sync(self) -> None:
+        repo = "wimpysworld/tailor"
+        triage_1, triage_2, todo_1, op_issue, stub_issue, stale_issue = self._owned_numbers(
+            repo, "skrye", 6, kind="issue", start=2000
+        )
+        pr_comm, pr_in_review = self._owned_numbers(repo, "skrye", 2, kind="pr", start=2100)
+        pr_targeted = 2199
+
+        linear_stub = StubLinearSyncClient()
+        lin_triage_1 = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{triage_1}",
+            title=f"Triage issue #{triage_1}",
+            repo=repo,
+            item_kind="Issue",
+            state="Triage",
+        )
+        lin_triage_2 = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{triage_2}",
+            title=f"Triage issue #{triage_2}",
+            repo=repo,
+            item_kind="Issue",
+            state="Triage",
+        )
+
+        open_pr_nodes: list[dict[str, object]] = []
+        open_issue_nodes: list[dict[str, object]] = []
+        stale_comments_posted: list[list[str]] = []
+
+        def fake_gh(cmd: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications" or ep.startswith("notifications?"):
+                return subprocess.CompletedProcess(cmd, 0, "HTTP/1.1 200 OK\r\n\r\n[]", "")
+            if ep == "graphql":
+                joined = " ".join(str(a) for a in cmd)
+                if "mergeable" in joined and "nodes(" in joined:
+                    return subprocess.CompletedProcess(cmd, 0, json.dumps({"data": {"nodes": []}}), "")
+                if "timelineItems" in joined:
+                    stale_node = {
+                        "__typename": "Issue",
+                        "number": stale_issue,
+                        "state": "OPEN",
+                        "createdAt": "2024-01-01T00:00:00Z",
+                        "updatedAt": "2024-02-01T00:00:00Z",
+                        "author": {"login": "old-contributor"},
+                        "authorAssociation": "NONE",
+                        "labels": {"nodes": [{"name": "enhancement"}]},
+                        "comments": {"pageInfo": {"hasNextPage": False}, "nodes": []},
+                        "timelineItems": {"pageInfo": {"hasNextPage": False}, "nodes": []},
+                    }
+                    return subprocess.CompletedProcess(cmd, 0, json.dumps({"data": {"i0": {"issue": stale_node}}}), "")
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    json.dumps({"data": {"search": {"pageInfo": {"hasNextPage": False}, "nodes": [*open_pr_nodes, *open_issue_nodes]}}}),
+                    "",
+                )
+            if cmd[:2] == ["gh", "issue"] and "comment" in cmd:
+                stale_comments_posted.append(list(cmd))
+                return subprocess.CompletedProcess(cmd, 0, "", "")
+            if ep.startswith("repos/") and ("/issues/" in ep or "/pulls/" in ep):
+                return subprocess.CompletedProcess(cmd, 0, json.dumps({"state": "open"}), "")
+            return subprocess.CompletedProcess(cmd, 0, "{}", "")
+
+        def reply_fn(meta: dict[str, str], _params: dict) -> str:
+            kind = meta.get("dispatch_kind") or ""
+            lid = meta.get("linear_issue_id") or ""
+            if kind == "linear_triage_research" and lid:
+                linear_stub.update_issue(lid, state="Backlog")
+                return "HEARTBEAT_OK"
+            if kind == "linear_todo_implement" and lid:
+                linear_stub.update_issue(lid, state="In Review")
+                return "Implemented."
+            if kind == "community_pr_blind_review":
+                return "BLIND_REVIEW_VERDICT: PASS\nFINDINGS: Clean."
+            if kind == "linear_operator_comment":
+                return "Answered Martin."
+            return "Done."
+
+        store, runner, rpc_calls = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=reply_fn,
+            state_dir=self.state_dir / "unified-priority-skrye",
+        )
+
+        # 1) Quiet PRs/Todo: Triage fills the entire default slot budget (2/2).
+        slot1_ms = self._utc_ms(2026, 4, 1, 10, 0)
+        res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms)
+        self.assertEqual([d["kind"] for d in res1["targeted_dispatches"]], ["linear_triage_research", "linear_triage_research"])
+        th1 = store.get_throttle_state(slot_id=companion.compute_throttle_slot_id(slot1_ms, "skrye"), now_override_ms=slot1_ms)
+        self.assertEqual((th1["slot_tasks"], th1["daily_tasks"], th1["slot_triage_research"]), (2, 2, 2))
+
+        # 2) Contended slot: Targeted PR (Priority 2) + Community PR review (Priority 3) fill the 2-task slot;
+        # Todo (Priority 4) and Triage (Priority 5) yield cleanly.
+        lin_todo = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{todo_1}",
+            title=f"Todo feature #{todo_1}",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        lin_triage_3 = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{triage_1 + 100}",
+            title="Low-priority triage",
+            repo=repo,
+            item_kind="Issue",
+            state="Triage",
+        )
+        open_pr_nodes[:] = [
+            self._pr_node(
+                repo,
+                pr_targeted,
+                title="Peer PR awaiting review",
+                author="sith-zannah",
+                head_sha="sha_peer_1",
+                ci_state="SUCCESS",
+                review_requests=["sith-skrye"],
+            ),
+            self._pr_node(
+                repo,
+                pr_comm,
+                title="Small community fix",
+                author="helpful-dev",
+                author_association="CONTRIBUTOR",
+                head_sha="sha_comm_1",
+                ci_state="SUCCESS",
+                additions=10,
+                deletions=2,
+                changed_files=1,
+                files=["README.md"],
+            ),
+        ]
+        slot2_ms = self._utc_ms(2026, 4, 1, 10, 30)
+        res2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot2_ms)
+        self.assertEqual(
+            [d["kind"] for d in res2["targeted_dispatches"]],
+            ["targeted", "community_pr_blind_review"],
+        )
+        self.assertEqual(linear_stub.issues[str(lin_todo["id"])]["state"]["name"], "Todo")  # type: ignore[index]
+        self.assertEqual(linear_stub.issues[str(lin_triage_3["id"])]["state"]["name"], "Triage")  # type: ignore[index]
+
+        # 3) Next slot with maxTasksPerSlot=1: Todo (Priority 4) runs BEFORE Triage (Priority 5), so Triage yields.
+        open_pr_nodes.clear()
+        slot3_ms = self._utc_ms(2026, 4, 1, 11, 0)
+        with patch.dict(os.environ, {"MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_SLOT": "1"}, clear=False):
+            res3 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot3_ms)
+        self.assertEqual([d["kind"] for d in res3["targeted_dispatches"]], ["linear_todo_implement"])
+        self.assertEqual(linear_stub.issues[str(lin_todo["id"])]["state"]["name"], "In Review")  # type: ignore[index]
+        self.assertEqual(linear_stub.issues[str(lin_triage_3["id"])]["state"]["name"], "Triage")  # type: ignore[index]
+
+        # 4) Exhaust maxTasksPerDay (daily_tasks is now 5; cap daily at 5):
+        # - Triage LLM dispatch is blocked
+        # - Direct operator @skrye mention STILL runs (exempt from maxTasksPerDay & maxTasksPerSlot)
+        # - Zero-LLM triage_stubs, In Review label sync, and stale-issue check-in STILL run!
+        lin_op = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{op_issue}",
+            title="Operator question",
+            repo=repo,
+            item_kind="Issue",
+            state="Backlog",
+        )
+        linear_stub.comments_by_issue[str(lin_op["id"])] = [
+            LinearOperatorGuidanceAndMentionWakeTests._admin_comment(
+                "op-cmt-1", "@skrye please confirm the release tag."
+            )
+        ]
+        lin_in_review = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/{pr_in_review}",
+            title="Approved PR waiting for label sync",
+            repo=repo,
+            item_kind="PR",
+            state="In Review",
+            extra_labels=("ready-to-implement",),
+        )
+        open_pr_nodes[:] = [
+            self._pr_node(
+                repo,
+                pr_in_review,
+                title="Approved PR waiting for label sync",
+                author="sith-skrye",
+                head_sha="sha_ir_1",
+                ci_state="SUCCESS",
+                review_decision="APPROVED",
+                labels=["team:do-not-merge"],
+            )
+        ]
+        open_issue_nodes[:] = [
+            self._graphql_issue_node(repo, stub_issue, title="Brand-new community issue", updated_at="2026-04-01T11:20:00Z"),
+            self._graphql_issue_node(
+                repo,
+                stale_issue,
+                title="Year-old enhancement",
+                author="old-contributor",
+                labels=["enhancement"],
+                updated_at="2024-02-01T00:00:00Z",
+            ),
+        ]
+        slot4_ms = self._utc_ms(2026, 4, 1, 11, 30)
+        with patch.dict(os.environ, {"MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_DAY": "5"}, clear=False):
+            res4 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot4_ms)
+        self.assertEqual([d["kind"] for d in res4["targeted_dispatches"]], ["linear_operator_comment"])
+        self.assertEqual(len(res4["linear_operator_comment_dispatches"]), 1)
+        # Triage was blocked by daily cap
+        self.assertEqual(linear_stub.issues[str(lin_triage_3["id"])]["state"]["name"], "Triage")  # type: ignore[index]
+        # Zero-LLM housekeeping still ran!
+        self.assertEqual(len(res4["linear_triage_stubs"]), 2)
+        self.assertIn("in_review_labels_synced", [a["action"] for a in res4["in_review_pr_actions"]])
+        self.assertIn("approved", companion.extract_linear_issue_labels(linear_stub.issues[str(lin_in_review["id"])]))
+        self.assertEqual(len(res4["stale_issue_actions"]), 1)
+        self.assertEqual(res4["stale_issue_actions"][0]["action"], "stale_issue_checkin_posted")
+        self.assertEqual(len(stale_comments_posted), 1)
+        # Operator task incremented slot_tasks and daily_tasks even while bypassing the cap
+        th4 = store.get_throttle_state(slot_id=companion.compute_throttle_slot_id(slot4_ms, "skrye"), now_override_ms=slot4_ms)
+        self.assertEqual((th4["slot_tasks"], th4["daily_tasks"]), (1, 6))
+
+    def test_daily_implementations_cap_blocks_todo_without_blocking_reviews_or_triage(self) -> None:
+        repo = "wimpysworld/tailor"
+        todo_a, todo_b, triage_a, triage_b = self._owned_numbers(repo, "skrye", 4, kind="issue", start=2300)
+        linear_stub = StubLinearSyncClient()
+        lin_todo_a = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{todo_a}",
+            title=f"Todo A #{todo_a}",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        lin_todo_b = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{todo_b}",
+            title=f"Todo B #{todo_b}",
+            repo=repo,
+            item_kind="Issue",
+            state="Todo",
+        )
+        lin_triage_a = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{triage_a}",
+            title=f"Triage A #{triage_a}",
+            repo=repo,
+            item_kind="Issue",
+            state="Triage",
+        )
+        lin_triage_b = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/{triage_b}",
+            title=f"Triage B #{triage_b}",
+            repo=repo,
+            item_kind="Issue",
+            state="Triage",
+        )
+
+        def fake_gh(cmd: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+            if cmd[:2] == ["gh-api-safe", "notifications?all=false&per_page=50"]:
+                return subprocess.CompletedProcess(cmd, 0, "HTTP/1.1 200 OK\r\n\r\n[]", "")
+            if cmd[:2] == ["gh-api-safe", "graphql"]:
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    json.dumps({"data": {"search": {"pageInfo": {"hasNextPage": False}, "nodes": []}}}),
+                    "",
+                )
+            return subprocess.CompletedProcess(cmd, 0, "{}", "")
+
+        def reply_fn(meta: dict[str, str], _params: dict) -> str:
+            lid = meta.get("linear_issue_id") or ""
+            if meta.get("dispatch_kind") == "linear_todo_implement" and lid:
+                linear_stub.update_issue(lid, state="In Review")
+            elif meta.get("dispatch_kind") == "linear_triage_research" and lid:
+                linear_stub.update_issue(lid, state="Backlog")
+            return "HEARTBEAT_OK"
+
+        store, runner, _ = self._build_pipeline_runner(
+            agent_name="skrye",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=reply_fn,
+            state_dir=self.state_dir / "daily-impl-cap-skrye",
+        )
+
+        # dailyImplementationsCap = 1: Todo A runs (1/1 daily impl), Todo B is blocked by daily impl cap,
+        # and Triage A still uses the remaining slot task (2/2 slot_tasks)!
+        slot1_ms = self._utc_ms(2026, 4, 2, 10, 0)
+        with patch.dict(os.environ, {"MOLTIS_GITHUB_COMPANION_DAILY_IMPLEMENTATIONS_CAP": "1"}, clear=False):
+            res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms)
+        self.assertEqual([d["kind"] for d in res1["targeted_dispatches"]], ["linear_todo_implement", "linear_triage_research"])
+        self.assertEqual(linear_stub.issues[str(lin_todo_a["id"])]["state"]["name"], "In Review")  # type: ignore[index]
+        self.assertEqual(linear_stub.issues[str(lin_todo_b["id"])]["state"]["name"], "Todo")  # type: ignore[index]
+        self.assertEqual(linear_stub.issues[str(lin_triage_a["id"])]["state"]["name"], "Backlog")  # type: ignore[index]
+
+        # Slot 2 with dailyImplementationsCap = 0: Todo B stays untouched in Todo while Triage B runs cleanly.
+        slot2_ms = self._utc_ms(2026, 4, 2, 10, 30)
+        with patch.dict(os.environ, {"MOLTIS_GITHUB_COMPANION_DAILY_IMPLEMENTATIONS_CAP": "0"}, clear=False):
+            res2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot2_ms)
+        self.assertEqual([d["kind"] for d in res2["targeted_dispatches"]], ["linear_triage_research"])
+        self.assertEqual(linear_stub.issues[str(lin_todo_b["id"])]["state"]["name"], "Todo")  # type: ignore[index]
+        self.assertEqual(linear_stub.issues[str(lin_triage_b["id"])]["state"]["name"], "Backlog")  # type: ignore[index]
+        th2 = store.get_throttle_state(slot_id=companion.compute_throttle_slot_id(slot2_ms, "skrye"), now_override_ms=slot2_ms)
+        self.assertEqual((th2["daily_implementations"], th2["daily_tasks"]), (1, 3))
+
+    def test_traya_priority_order_and_default_3_tasks_per_slot(self) -> None:
+        repo = "wimpysworld/tailor"
+        linear_stub = StubLinearSyncClient()
+        pr_nums = [2501, 2502, 2503, 2504]
+        for num in pr_nums:
+            linear_stub.seed_issue(
+                github_url=f"https://github.com/{repo}/pull/{num}",
+                title=f"Lane A PR #{num}",
+                repo=repo,
+                item_kind="PR",
+                state="In Review",
+            )
+        open_pr_nodes = [
+            self._pr_node(
+                repo,
+                num,
+                title=f"Lane A PR #{num}",
+                author="community-user",
+                author_association="CONTRIBUTOR",
+                head_sha=f"sha_{num}",
+                ci_state="SUCCESS",
+                additions=8,
+                deletions=2,
+                changed_files=1,
+                files=["README.md"],
+            )
+            for num in pr_nums
+        ]
+
+        def fake_gh(cmd: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+            ep = cmd[1] if len(cmd) > 1 else ""
+            if ep == "notifications" or ep.startswith("notifications?"):
+                return subprocess.CompletedProcess(cmd, 0, "HTTP/1.1 200 OK\r\n\r\n[]", "")
+            if ep == "graphql":
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    json.dumps({"data": {"search": {"pageInfo": {"hasNextPage": False}, "nodes": list(open_pr_nodes)}}}),
+                    "",
+                )
+            return subprocess.CompletedProcess(cmd, 0, "{}", "")
+
+        def reply_fn(meta: dict[str, str], _params: dict) -> str:
+            if meta.get("dispatch_kind") == "community_pr_blind_review":
+                return "BLIND_REVIEW_VERDICT: PASS\nFINDINGS: Looks good."
+            return "Handled."
+
+        store, runner, _ = self._build_pipeline_runner(
+            agent_name="traya",
+            gh_runner=fake_gh,
+            linear_client=linear_stub,
+            rpc_reply_fn=reply_fn,
+            state_dir=self.state_dir / "unified-priority-traya",
+        )
+
+        # Slot 1: Traya defaults to maxTasksPerSlot = 3 -> runs 3 blind reviews and defers the 4th.
+        slot1_ms = self._utc_ms(2026, 4, 1, 10, 10)
+        res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot1_ms)
+        self.assertEqual(len(res1["traya_blind_reviews"]), 3)
+        th1 = store.get_throttle_state(slot_id=companion.compute_throttle_slot_id(slot1_ms, "traya"), now_override_ms=slot1_ms)
+        self.assertEqual((th1["slot_tasks"], th1["daily_tasks"]), (3, 3))
+
+        # Slot 2: Add an operator @traya mention + a targeted peer PR + 2 remaining blind reviews (2504 + new 2505).
+        # Priority order: 1) operator @traya, 2) targeted PR, 3) 1 blind review -> slot_tasks = 3/3; 2nd blind review yields.
+        lin_op = linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/issues/2599",
+            title="Traya question",
+            repo=repo,
+            item_kind="Issue",
+            state="Backlog",
+        )
+        linear_stub.comments_by_issue[str(lin_op["id"])] = [
+            LinearOperatorGuidanceAndMentionWakeTests._admin_comment(
+                "traya-op-1", "@traya check this design please."
+            )
+        ]
+        linear_stub.seed_issue(
+            github_url=f"https://github.com/{repo}/pull/2505",
+            title="Lane A PR #2505",
+            repo=repo,
+            item_kind="PR",
+            state="In Review",
+        )
+        open_pr_nodes.extend([
+            self._pr_node(
+                repo,
+                2505,
+                title="Lane A PR #2505",
+                author="community-user",
+                author_association="CONTRIBUTOR",
+                head_sha="sha_2505",
+                ci_state="SUCCESS",
+                additions=6,
+                deletions=1,
+                changed_files=1,
+                files=["README.md"],
+            ),
+            self._pr_node(
+                repo,
+                2590,
+                title="Agent PR requesting Traya",
+                author="sith-skrye",
+                head_sha="sha_2590",
+                ci_state="SUCCESS",
+                review_requests=["sith-traya"],
+            ),
+        ])
+        slot2_ms = self._utc_ms(2026, 4, 1, 10, 40)
+        res2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot2_ms)
+        self.assertEqual(
+            [d["kind"] for d in res2["targeted_dispatches"]],
+            ["linear_operator_comment", "targeted", "community_pr_blind_review"],
+        )
+        self.assertEqual(len(res2["traya_blind_reviews"]), 1)
+        th2 = store.get_throttle_state(slot_id=companion.compute_throttle_slot_id(slot2_ms, "traya"), now_override_ms=slot2_ms)
+        self.assertEqual((th2["slot_tasks"], th2["daily_tasks"]), (3, 6))
 
 
 if __name__ == "__main__":

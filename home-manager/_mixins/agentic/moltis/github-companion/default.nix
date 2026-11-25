@@ -43,7 +43,10 @@
   communityAutoMergeMaxLines ? 150,
   communityAutoMergeMaxFiles ? 5,
   communityAutoMergeExcludedRepos ? [ "wimpysworld/nix-config" ],
-  dailyImplementationsCap ? 24,
+  pollIntervalMinutes ? 30,
+  maxTasksPerSlot ? (if agentName == "traya" then 3 else 2),
+  maxTasksPerDay ? 48,
+  dailyImplementationsCap ? (if agentName == "traya" then 0 else 8),
   operatorDigestEnabled ? true,
   securityPatchReleaseExtraRepos ? [ ],
   securityPatchReleaseCooldownSecs ? 7200,
@@ -98,6 +101,9 @@ pkgs.writeShellApplication {
       communityAutoMergeMaxLines
       communityAutoMergeMaxFiles
       communityAutoMergeExcludedRepos
+      pollIntervalMinutes
+      maxTasksPerSlot
+      maxTasksPerDay
       dailyImplementationsCap
       operatorDigestEnabled
       securityPatchReleaseExtraRepos
@@ -131,6 +137,9 @@ pkgs.writeShellApplication {
     export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_LINES=${lib.escapeShellArg (toString communityAutoMergeMaxLines)}
     export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_MAX_FILES=${lib.escapeShellArg (toString communityAutoMergeMaxFiles)}
     export MOLTIS_GITHUB_COMPANION_COMMUNITY_AUTO_MERGE_EXCLUDED_REPOS=${lib.escapeShellArg (lib.concatStringsSep "," communityAutoMergeExcludedRepos)}
+    export MOLTIS_GITHUB_COMPANION_POLL_INTERVAL_MINUTES=${lib.escapeShellArg (toString pollIntervalMinutes)}
+    export MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_SLOT=${lib.escapeShellArg (toString maxTasksPerSlot)}
+    export MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_DAY=${lib.escapeShellArg (toString maxTasksPerDay)}
     export MOLTIS_GITHUB_COMPANION_DAILY_IMPLEMENTATIONS_CAP=${lib.escapeShellArg (toString dailyImplementationsCap)}
     export MOLTIS_GITHUB_COMPANION_DIGEST_ENABLED=${lib.escapeShellArg (lib.boolToString operatorDigestEnabled)}
     export MOLTIS_GITHUB_COMPANION_SECURITY_RELEASE_EXTRA_REPOS=${lib.escapeShellArg (lib.concatStringsSep "," securityPatchReleaseExtraRepos)}
