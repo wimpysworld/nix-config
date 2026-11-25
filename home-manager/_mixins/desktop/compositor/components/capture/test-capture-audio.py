@@ -323,6 +323,73 @@ class CaptureAudioTests(unittest.TestCase):
                 else:
                     self.assertEqual(args[args.index("--encode-resolution") + 1], expected)
 
+    def run_snippet(self, snippet, root):
+        script = root / "snippet.sh"
+        script.write_text(
+            "set -euo pipefail\n"
+            + SOURCE.replace("@wlScreenrec@", "/bin/true")
+            + "refresh_waybar() { :; }\n"
+            + snippet
+        )
+        return subprocess.run(
+            [BASH, str(script)],
+            env={
+                "PATH": os.environ["PATH"],
+                "HOME": str(root),
+                "XDG_RUNTIME_DIR": str(root),
+                "XDG_STATE_HOME": str(root),
+                "XDG_VIDEOS_DIR": str(root / "videos"),
+            },
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+
+    def test_recording_status_json_and_timer_toggle(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            # Idle state prints nothing so Waybar hides the module.
+            idle = self.run_snippet("print_recording_status\n", root)
+            self.assertEqual(idle.returncode, 0, idle.stderr)
+            self.assertEqual(idle.stdout, "")
+
+            # Active recording with default timer on shows leading space + mm:ss and tooltip.
+            active_harness = (
+                "is_expected_recorder() { return 0; }\n"
+                "date() { printf '165\\n'; }\n"
+                "printf '42 123 100\\n/tmp/clip.mp4\\n' > \"$recording_state_file\"\n"
+                "print_recording_status\n"
+            )
+            on_result = self.run_snippet(active_harness, root)
+            self.assertEqual(on_result.returncode, 0, on_result.stderr)
+            payload_on = json.loads(on_result.stdout)
+            self.assertEqual(payload_on["text"], " 01:05")
+            self.assertEqual(
+                payload_on["tooltip"],
+                "󰑊  Screen recording (01:05). Click to stop.",
+            )
+
+            # Toggling timer off leaves text empty for a centred red dot while
+            # keeping elapsed time in the hover tooltip.
+            toggle_off = self.run_snippet("toggle_timer_choice\n", root)
+            self.assertEqual(toggle_off.returncode, 0, toggle_off.stderr)
+            self.assertEqual((root / "fuzzel-capture" / "timer").read_text().strip(), "off")
+
+            off_result = self.run_snippet(active_harness, root)
+            self.assertEqual(off_result.returncode, 0, off_result.stderr)
+            payload_off = json.loads(off_result.stdout)
+            self.assertEqual(payload_off["text"], "")
+            self.assertEqual(
+                payload_off["tooltip"],
+                "󰑊  Screen recording (01:05). Click to stop.",
+            )
+
+            # Toggling again restores timer on.
+            toggle_on = self.run_snippet("toggle_timer_choice\n", root)
+            self.assertEqual(toggle_on.returncode, 0, toggle_on.stderr)
+            self.assertEqual((root / "fuzzel-capture" / "timer").read_text().strip(), "on")
+
 
 if __name__ == "__main__":
     unittest.main()

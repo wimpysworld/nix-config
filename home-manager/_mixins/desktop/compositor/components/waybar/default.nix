@@ -362,17 +362,18 @@ lib.mkIf (host.is.linux && host.is.workstation) {
               on-click = "${pkgs.swaynotificationcenter}/bin/swaync-client --toggle-panel --skip-wait";
               tooltip-format = "󰵚  {} notification(s)";
             };
-            # fuzzel-capture prints the elapsed time while a screen recording
-            # runs and sends SIGRTMIN+9 when one starts or stops. The module
-            # hides when the state file is absent or the output is empty.
+            # fuzzel-capture outputs JSON while a screen recording runs and
+            # sends SIGRTMIN+9 when one starts, stops or toggles the timer. The
+            # module hides when the state file is absent or the output is empty.
             "custom/recording" = {
-              format = "<big><span foreground='${palette.getColor "red"}'>󰑊</span></big> <small>{}</small>";
+              format = "<big><span foreground='${palette.getColor "red"}'>󰑊</span></big><small>{}</small>";
+              return-type = "json";
+              escape = true;
               exec-if = "test -e \"$XDG_RUNTIME_DIR/fuzzel-capture-recording.state\"";
               exec = "fuzzel-capture status";
               interval = 1;
               signal = 9;
               on-click = "fuzzel-capture stop";
-              tooltip-format = "󰑊  Screen recording. Click to stop.";
             };
             # virtualcam prints the elapsed time while the camera runs and
             # sends SIGRTMIN+10 when it starts or stops.

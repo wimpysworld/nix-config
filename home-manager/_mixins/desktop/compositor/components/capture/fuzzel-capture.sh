@@ -8,6 +8,7 @@ recording_lock_file="${XDG_RUNTIME_DIR:?}/$app_name-recording.lock"
 recording_log_file="${XDG_RUNTIME_DIR:?}/$app_name.log"
 countdown_state_file="${XDG_RUNTIME_DIR:?}/$app_name-countdown.state"
 audio_choice_file="${XDG_STATE_HOME:-${HOME:?}/.local/state}/$app_name/audio"
+timer_choice_file="${XDG_STATE_HOME:-${HOME:?}/.local/state}/$app_name/timer"
 wl_screenrec="$(readlink -f "@wlScreenrec@")"
 notify=(fyi "--app-name=$app_name")
 # The Waybar custom/recording module refreshes on SIGRTMIN+9.
@@ -170,15 +171,20 @@ is_recording_active() {
   return 1
 }
 
-# Print the elapsed recording time as mm:ss for the Waybar indicator, or
-# nothing when no recording is active, which hides the module.
+# Print JSON for the Waybar custom/recording module while a recording is active,
+# or nothing when idle, which hides the module. When the timer setting is off,
+# "text" stays empty so Waybar shows only the red dot while the hover tooltip
+# still reports elapsed time.
 print_recording_status() {
   local elapsed
   local extra=""
+  local formatted_elapsed
   local recording_epoch=""
   local recording_file=""
   local recording_pid=""
   local recording_start_time=""
+  local text=""
+  local tooltip
 
   if ! read_recording_state || ! is_expected_recorder "$recording_pid" "$recording_start_time"; then
     rm -f "$recording_state_file"
@@ -186,7 +192,13 @@ print_recording_status() {
   fi
   elapsed=$(($(date +%s) - recording_epoch))
   ((elapsed >= 0)) || elapsed=0
-  printf '%02d:%02d\n' "$((elapsed / 60))" "$((elapsed % 60))"
+  formatted_elapsed="$(printf '%02d:%02d' "$((elapsed / 60))" "$((elapsed % 60))")"
+  if [[ "$(get_timer_choice)" == "on" ]]; then
+    text=" $formatted_elapsed"
+  fi
+  tooltip="󰑊  Screen recording ($formatted_elapsed). Click to stop."
+  jq --null-input --compact-output --arg text "$text" --arg tooltip "$tooltip" \
+    '{text: $text, tooltip: $tooltip}'
 }
 
 # The countdown state file holds the PID and process start time of the
@@ -274,6 +286,30 @@ get_audio_choice() {
 set_audio_choice() {
   mkdir -p "${audio_choice_file%/*}"
   printf '%s\n' "$1" > "$audio_choice_file"
+}
+
+get_timer_choice() {
+  local choice=""
+
+  [[ -f "$timer_choice_file" ]] && choice="$(< "$timer_choice_file")"
+  case "$choice" in
+    off) printf 'off\n' ;;
+    *) printf 'on\n' ;;
+  esac
+}
+
+set_timer_choice() {
+  mkdir -p "${timer_choice_file%/*}"
+  printf '%s\n' "$1" > "$timer_choice_file"
+  refresh_waybar
+}
+
+toggle_timer_choice() {
+  if [[ "$(get_timer_choice)" == "on" ]]; then
+    set_timer_choice off
+  else
+    set_timer_choice on
+  fi
 }
 
 find_audio_source() {
@@ -804,6 +840,42 @@ record_output() {
   start_recording output "$output" "$output"
 }
 
+show_settings_menu() {
+  local menu=""
+  local selection
+
+  case "$(get_audio_choice)" in
+    microphone) menu="󰍬 Audio: Microphone" ;;
+    none) menu="󰖁 Audio: None" ;;
+    *) menu="󰕾 Audio: Desktop" ;;
+  esac
+  case "$(get_timer_choice)" in
+    off) menu+="\n󰔞 Timer: Off" ;;
+    *) menu+="\n󰔛 Timer: On" ;;
+  esac
+  menu+="\n󰁍 Back"
+
+  selection="$(
+    printf '%b\n' "$menu" |
+      fuzzel --dmenu --prompt="󰒓 " --lines=3 --width=24
+  )" || {
+    show_menu
+    return
+  }
+
+  case "$selection" in
+    "󰕾 Audio: Desktop" | "󰍬 Audio: Microphone" | "󰖁 Audio: None")
+      select_audio_choice
+      show_settings_menu
+      ;;
+    "󰔛 Timer: On" | "󰔞 Timer: Off")
+      toggle_timer_choice
+      show_settings_menu
+      ;;
+    "󰁍 Back") show_menu ;;
+  esac
+}
+
 show_menu() {
   local lines
   local menu
@@ -813,12 +885,7 @@ show_menu() {
   if is_recording_active || is_countdown_active; then
     menu+="\n󰾊 Stop Recording"
   else
-    menu+="\n󰩭 Record a Region\n󰖯 Record a Window\n󰹑 Record a Monitor"
-    case "$(get_audio_choice)" in
-      microphone) menu+="\n󰍬 Audio: Microphone" ;;
-      none) menu+="\n󰖁 Audio: None" ;;
-      *) menu+="\n󰕾 Audio: Desktop" ;;
-    esac
+    menu+="\n󰩭 Record a Region\n󰖯 Record a Window\n󰹑 Record a Monitor\n󰒓 Settings"
   fi
 
   lines="$(printf '%b\n' "$menu" | wc -l)"
@@ -835,10 +902,7 @@ show_menu() {
     "󰩭 Record a Region") record_region ;;
     "󰖯 Record a Window") record_window ;;
     "󰹑 Record a Monitor") record_output ;;
-    "󰕾 Audio: Desktop" | "󰍬 Audio: Microphone" | "󰖁 Audio: None")
-      select_audio_choice
-      show_menu
-      ;;
+    "󰒓 Settings") show_settings_menu ;;
   esac
 }
 
