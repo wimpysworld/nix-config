@@ -50,13 +50,17 @@ elif name == "recorder":
     sys.exit(status)
 elif name == "fyi":
     sys.exit(config.get("notify_status", 0))
+elif name == "wlr-randr":
+    if args == ["--json"]:
+        print(json.dumps(config.get("outputs", [])))
+        sys.exit(0)
+    sys.exit(92)
 else:
     sys.exit(91)
 """
 HARNESS = r"""
 sleep_until_ms() { :; }
 sleep() { :; }
-get_output_transform() { printf 'normal\n'; }
 refresh_waybar() { :; }
 is_expected_recorder() { [[ -f "$FAKE_ROOT/recorder-started" ]]; }
 is_same_process_running() { return 1; }
@@ -67,7 +71,7 @@ get_process_start_time() {
   fi
   printf '123\n'
 }
-start_recording output test-output test-output
+start_recording "${CAPTURE_MODE:-output}" "${CAPTURE_TARGET:-test-output}" test-output
 """
 
 
@@ -81,7 +85,7 @@ class CaptureAudioTests(unittest.TestCase):
             root = Path(temporary)
             binary = root / "bin"
             binary.mkdir()
-            for name in ("pactl", "swayosd-client", "recorder", "fyi"):
+            for name in ("pactl", "swayosd-client", "recorder", "fyi", "wlr-randr"):
                 command = binary / name
                 command.write_text(f"#!{sys.executable}\n" + FAKE)
                 command.chmod(0o755)
@@ -101,16 +105,21 @@ class CaptureAudioTests(unittest.TestCase):
                 + SOURCE.replace("@wlScreenrec@", str(binary / "recorder"))
                 + HARNESS
             )
+            env = {
+                "PATH": str(binary) + os.pathsep + os.environ["PATH"],
+                "HOME": str(root),
+                "XDG_RUNTIME_DIR": str(root),
+                "XDG_STATE_HOME": str(root),
+                "XDG_VIDEOS_DIR": str(root / "videos"),
+                "FAKE_ROOT": str(root),
+            }
+            if "capture_mode" in options:
+                env["CAPTURE_MODE"] = options["capture_mode"]
+            if "capture_target" in options:
+                env["CAPTURE_TARGET"] = options["capture_target"]
             result = subprocess.run(
                 [BASH, str(script)],
-                env={
-                    "PATH": str(binary) + os.pathsep + os.environ["PATH"],
-                    "HOME": str(root),
-                    "XDG_RUNTIME_DIR": str(root),
-                    "XDG_STATE_HOME": str(root),
-                    "XDG_VIDEOS_DIR": str(root / "videos"),
-                    "FAKE_ROOT": str(root),
-                },
+                env=env,
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -246,6 +255,73 @@ class CaptureAudioTests(unittest.TestCase):
     def test_unusual_name_is_one_exact_argument(self):
         name = "virtual.monitor-'quoted'\"\\$input; *"
         self.assert_started([source(name)], name)
+
+    def test_encoding_defaults_and_audio_bitrate(self):
+        result, _, args = self.launch([source("mic")])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(args[args.index("--codec") + 1], "avc")
+        self.assertEqual(args[args.index("--encode-pixfmt") + 1], "nv12")
+        self.assertEqual(
+            args[args.index("--ffmpeg-encoder-options") + 1], "rc_mode=CQP,qp=26"
+        )
+        self.assertEqual(
+            args[args.index("--ffmpeg-muxer-options") + 1], "movflags=+faststart"
+        )
+        self.assertEqual(args[args.index("--audio-bitrate") + 1], "16 kB")
+
+        result, _, args = self.launch("invalid", choice="none")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("--audio-bitrate", args)
+
+    def test_rotated_output_uses_software_crf_and_swapped_downscale(self):
+        outputs = [
+            {
+                "name": "test-output",
+                "transform": "90",
+                "scale": 1.0,
+                "modes": [{"width": 2560, "height": 1440, "current": True}],
+            }
+        ]
+        result, _, args = self.launch([], choice="none", outputs=outputs)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("--no-hw", args)
+        self.assertEqual(args[args.index("--encode-pixfmt") + 1], "yuv420p")
+        self.assertEqual(
+            args[args.index("--ffmpeg-encoder-options") + 1], "crf=26,preset=veryfast"
+        )
+        self.assertEqual(args[args.index("--encode-resolution") + 1], "1080x1920")
+
+    def test_proportional_resolution_cap_for_outputs_and_hidpi_regions(self):
+        cases = [
+            ("output", "test-output", 3440, 1440, 1.0, "2226x932"),
+            ("output", "test-output", 2560, 2880, 1.0, "1358x1528"),
+            ("output", "test-output", 2560, 1440, 1.0, "1920x1080"),
+            ("output", "test-output", 1920, 1200, 1.0, None),
+            ("geometry", "0,0 1280x800", 2560, 1600, 2.0, "1822x1138"),
+            ("geometry", "100,100 800x600", 3440, 1440, 1.0, None),
+        ]
+        for mode, target, width, height, scale, expected in cases:
+            with self.subTest(mode=mode, target=target, width=width, height=height, scale=scale):
+                outputs = [
+                    {
+                        "name": "test-output",
+                        "transform": "normal",
+                        "scale": scale,
+                        "modes": [{"width": width, "height": height, "current": True}],
+                    }
+                ]
+                result, _, args = self.launch(
+                    [],
+                    choice="none",
+                    outputs=outputs,
+                    capture_mode=mode,
+                    capture_target=target,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                if expected is None:
+                    self.assertNotIn("--encode-resolution", args)
+                else:
+                    self.assertEqual(args[args.index("--encode-resolution") + 1], expected)
 
 
 if __name__ == "__main__":

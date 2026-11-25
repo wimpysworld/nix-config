@@ -452,6 +452,64 @@ get_output_transform() {
     '
 }
 
+# Print the physical capture size as "WxH" in post-transform screen orientation.
+# Output mode reads the active display mode; geometry mode multiplies the
+# logical slurp or window dimensions by the output scale.
+get_capture_pixel_size() {
+  local mode="$1"
+  local target="$2"
+  local output="$3"
+  local logical_w
+  local logical_h
+
+  if [[ "$mode" == "output" ]]; then
+    wlr-randr --json |
+      jq --raw-output --exit-status --arg name "$output" '
+        first(.[] | select(.name == $name)) as $out
+        | ($out.modes // [] | map(select(.current == true)) | first) as $mode
+        | select($mode != null and ($mode.width | type) == "number" and ($mode.height | type) == "number")
+        | ($out.transform // "normal") as $transform
+        | if ($transform == "90" or $transform == "270" or $transform == "flipped-90" or $transform == "flipped-270") then
+            "\($mode.height)x\($mode.width)"
+          else
+            "\($mode.width)x\($mode.height)"
+          end
+      '
+  elif [[ "$mode" == "geometry" && "$target" =~ ^-?[0-9]+,-?[0-9]+\ ([0-9]+)x([0-9]+)$ ]]; then
+    logical_w="${BASH_REMATCH[1]}"
+    logical_h="${BASH_REMATCH[2]}"
+    wlr-randr --json |
+      jq --raw-output --exit-status \
+        --arg name "$output" \
+        --argjson w "$logical_w" \
+        --argjson h "$logical_h" '
+        (first(.[] | select(.name == $name) | .scale) // 1) as $scale
+        | select(($scale | type) == "number" and $scale > 0)
+        | "\(($w * $scale) | round)x\(($h * $scale) | round)"
+      '
+  else
+    return 1
+  fi
+}
+
+# Downscale captures larger than 1920x1200 (2,304,000 px) proportionally to a
+# 1080p pixel budget (2,073,600 px) with even dimensions. Prints nothing when
+# the capture already fits within the threshold.
+compute_encode_resolution() {
+  [[ "$1" =~ ^([0-9]+)x([0-9]+)$ ]] || return 1
+  jq --null-input --raw-output \
+    --argjson w "${BASH_REMATCH[1]}" \
+    --argjson h "${BASH_REMATCH[2]}" '
+    def even: ((. / 2) | round * 2) | if . < 2 then 2 else . end;
+    if ($w * $h) <= 2304000 then
+      empty
+    else
+      ((2073600 / ($w * $h)) | sqrt) as $scale
+      | "\(($w * $scale) | even)x\(($h * $scale) | even)"
+    end
+  '
+}
+
 capture_region() {
   local geometry
 
@@ -540,7 +598,9 @@ acquire_recording_lock() {
 
 start_recording() {
   local audio_source
+  local capture_size
   local checks=20
+  local encode_resolution
   local log_tail
   local mode="$1"
   local output="$3"
@@ -566,16 +626,32 @@ start_recording() {
   recorder_args=(
     "--$mode" "$target"
     --filename "$video_file"
+    --codec avc
     --low-power=off
     --max-fps 60
+    --ffmpeg-muxer-options movflags=+faststart
   )
   : > "$recording_log_file"
   # Mesa VAAPI does not support output transforms, so a rotated output
   # needs the software encoder.
   if [[ "$transform" != "normal" ]]; then
-    recorder_args+=(--no-hw)
+    recorder_args+=(
+      --no-hw
+      --encode-pixfmt yuv420p
+      --ffmpeg-encoder-options "crf=26,preset=veryfast"
+    )
     printf '%s: %s uses transform %s, so the recording uses the software encoder (--no-hw).\n' \
       "$app_name" "$output" "$transform" >> "$recording_log_file"
+  else
+    recorder_args+=(
+      --encode-pixfmt nv12
+      --ffmpeg-encoder-options "rc_mode=CQP,qp=26"
+    )
+  fi
+  if capture_size="$(get_capture_pixel_size "$mode" "$target" "$output" 2>/dev/null)" &&
+    encode_resolution="$(compute_encode_resolution "$capture_size")" &&
+    [[ -n "$encode_resolution" ]]; then
+    recorder_args+=(--encode-resolution "$encode_resolution")
   fi
 
   printf '%s %s\n' "$$" "$(get_process_start_time "$$")" > "$countdown_state_file"
@@ -592,7 +668,7 @@ start_recording() {
         "No valid default microphone is available. Check the audio input and try again."
       return 1
     fi
-    recorder_args+=(--audio --audio-device "$audio_source")
+    recorder_args+=(--audio --audio-device "$audio_source" --audio-bitrate "16 kB")
   fi
   (
     exec {recording_lock_fd}>&-
