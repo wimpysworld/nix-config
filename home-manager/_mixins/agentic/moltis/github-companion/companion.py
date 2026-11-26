@@ -5779,15 +5779,36 @@ class NotificationPoller:
             return min(next_poll_at_ms, slot_ms)
         return next_poll_at_ms
 
-    def wait_until_due(self, now_override_ms: int | None = None) -> int:
-        """Sleep until persisted next_poll_at_ms when in the future, or return 0 immediately on first boot."""
-        current_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
+    MAX_SLEEP_CHUNK_MS = 60_000
+
+    def wait_until_due(self, now_override_ms: int | None = None, max_chunk_ms: int = MAX_SLEEP_CHUNK_MS) -> int:
+        """Sleep in bounded chunks until persisted next_poll_at_ms is reached, re-checking the wall clock each chunk."""
         next_poll_at_ms = self._effective_next_poll_at_ms(self.state_store.read_state(), poll_interval_minutes=self.poll_interval_minutes)
-        if isinstance(next_poll_at_ms, int) and next_poll_at_ms > current_ms:
-            sleep_ms = next_poll_at_ms - current_ms
-            self.sleeper(sleep_ms / 1000.0)
-            return sleep_ms
-        return 0
+        if not isinstance(next_poll_at_ms, int):
+            return 0
+        chunk_limit_ms = max(1, _safe_int(max_chunk_ms, self.MAX_SLEEP_CHUNK_MS))
+        if now_override_ms is not None:
+            current_ms = _safe_int(now_override_ms, self.clock())
+            remaining_ms = next_poll_at_ms - current_ms
+            if remaining_ms <= 0:
+                return 0
+            total_slept_ms = 0
+            while remaining_ms > 0:
+                chunk_ms = min(remaining_ms, chunk_limit_ms)
+                self.sleeper(chunk_ms / 1000.0)
+                total_slept_ms += chunk_ms
+                remaining_ms -= chunk_ms
+            return total_slept_ms
+
+        total_slept_ms = 0
+        while True:
+            current_ms = self.clock()
+            remaining_ms = next_poll_at_ms - current_ms
+            if remaining_ms <= 0:
+                return total_slept_ms
+            chunk_ms = min(remaining_ms, chunk_limit_ms)
+            self.sleeper(chunk_ms / 1000.0)
+            total_slept_ms += chunk_ms
 
     wait_for_startup_slot = wait_until_next_poll = wait_until_due
 
