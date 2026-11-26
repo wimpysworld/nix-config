@@ -16,6 +16,12 @@ lib.mkIf
   {
     environment.systemPackages = with pkgs; [ transmission_4 ];
 
+    # Work around the missing Transmission 4.1.4 file-lock rule until
+    # NixOS/nixpkgs#588107 lands in release-26.05.
+    security.apparmor.includes."local/bin.transmission-daemon" = ''
+      owner ${config.services.transmission.home}/.config/transmission-daemon/lock rwk,
+    '';
+
     services.transmission = {
       credentialsFile = config.sops.secrets.transmission.path;
       downloadDirPermissions = "755";
