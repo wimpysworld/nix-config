@@ -979,11 +979,11 @@
     },
     "nixpkgs_14": {
       "locked": {
-        "lastModified": 1794644783,
-        "narHash": "sha256-3GnIGIy15bMduoS9RnWqKTmsJLWThla42UFtm0S7+us=",
+        "lastModified": 1795371335,
+        "narHash": "sha256-oa2P5WZer1A4wuhatl92JyHHEjrrOdIyuvTuI5LUi9Q=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "5d2b81a7a3be3e2f832879028e4d60abbf58e9a0",
+        "rev": "619c39f6eac5d1ed6b8f073a9414baf7034b2356",
         "type": "github"
       },
       "original": {
@@ -1408,17 +1408,17 @@
         "nixpkgs": "nixpkgs_14"
       },
       "locked": {
-        "lastModified": 1795572152,
-        "narHash": "sha256-GihIaVxV9oY0dXBPcXS+c57aJY5oYYSPkQujVm7gpLw=",
+        "lastModified": 1795701285,
+        "narHash": "sha256-LBo+vuXMCESDguhYVbS2J/zdXu8mxCH1NVp7PeGImkI=",
         "owner": "wimpysworld",
         "repo": "tailor",
-        "rev": "f5f9528164c0262c1302f3769a821c661b5641a5",
+        "rev": "7e19ef6526076c68dcf55dadb310c0a167b29ef1",
         "type": "github"
       },
       "original": {
         "owner": "wimpysworld",
-        "ref": "latest",
         "repo": "tailor",
+        "rev": "7e19ef6526076c68dcf55dadb310c0a167b29ef1",
         "type": "github"
       }
     },

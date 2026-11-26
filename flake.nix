@@ -66,7 +66,8 @@
     mac-app-util.inputs.treefmt-nix.follows = "direnv-instant/treefmt-nix";
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
-    tailor.url = "github:wimpysworld/tailor/latest";
+    # Temporary pin past the v0.7.0 vendorHash mismatch; restore /latest after the next Tailor release.
+    tailor.url = "github:wimpysworld/tailor/7e19ef6526076c68dcf55dadb310c0a167b29ef1";
     wonkey.url = "github:wimpysworld/WonKey/latest";
     xdg-override.url = "github:koiuo/xdg-override";
     xdg-override.inputs.nixpkgs.follows = "nixpkgs";
