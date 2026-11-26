@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 from contextlib import contextmanager
 import hashlib
 import http.client
@@ -11,6 +12,7 @@ import os
 from pathlib import Path
 from queue import Empty, Queue
 import re
+import secrets
 import shutil
 import signal
 import socket
@@ -24,31 +26,76 @@ import time
 
 PROMPT_TOKENS = 4096
 OUTPUT_TOKENS = 512
+CTX_SIZE = 8192
+OLLAMA_CALIBRATION_LINES = 150
+OLLAMA_PROMPT_TOLERANCE = 32
+OLLAMA_PROMPT_MAX_DRIFT = 256
 SEED = 42
 DEVICES = {"vulkan": "Vulkan0", "rocm": "ROCm0", "cuda": "CUDA0"}
-MTP_BACKENDS = {"vulkan", "rocm"}
+MTP_WIDTHS_BY_BACKEND: dict[str, tuple[int, ...]] = {
+    "vulkan": (2, 3, 4, 6, 8),
+    "rocm": (2, 3),
+}
+MTP_BACKENDS = set(MTP_WIDTHS_BY_BACKEND)
 UNSUPPORTED_OLLAMA_PATTERNS = (
     "unknown model architecture",
     "unsupported architecture",
-    "not supported",
     "unsupported model",
-    "failed to load model",
+    "not supported",
     "invalid gguf",
+    "failed to load model",
+)
+OLLAMA_ERROR_PREFIX_RE = re.compile(
+    r"^(?:"
+    r"(?:/api/[a-zA-Z0-9/_-]+:\s*)?HTTP\s+\d+:\s*"
+    r"|llama-server process has terminated:\s*exit status\s+\d+:\s*"
+    r"|llama_model_load(?:_from_file_impl)?:\s*"
+    r"|error loading model:\s*"
+    r"|Error:\s*"
+    r")+",
+    re.IGNORECASE,
 )
 
 
-def build_benchmark_prompt_text() -> str:
+def build_benchmark_prompt_text(line_count: int = 400, nonce: str | None = None) -> str:
     lines = [
         f"{i:04d} {('INFO', 'ERROR', 'WARNING', 'INFO', 'INVALID')[i % 5]} "
         f"worker={i % 17} job={i * 11} elapsed_ms={(i * 137) % 999}"
-        for i in range(400)
+        for i in range(line_count)
     ]
     task = (
         "\nWrite a Python function named summarise_log(lines) that counts INFO, WARNING "
         "and ERROR entries, ignores malformed lines and returns a dictionary. "
         "Explain the parser and provide examples and tests."
     )
-    return "Application log:\n" + "\n".join(lines) + task
+    prefix = f"{nonce}\nApplication log:\n" if nonce else "Application log:\n"
+    return prefix + "\n".join(lines) + task
+
+
+def make_ollama_nonce(run_salt: str, step: int) -> str:
+    # Vary the leading token of every request so Ollama's slot prefix KV cache
+    # cannot reuse prefill state across probes, warmup, or timed samples.
+    return f"{step:02d}-{run_salt}"
+
+
+def mtp_widths_for_backend(backend: str, draft_tokens: int | None) -> tuple[int, ...]:
+    if not draft_tokens or backend not in MTP_WIDTHS_BY_BACKEND:
+        return (0,)
+    widths = set(MTP_WIDTHS_BY_BACKEND[backend])
+    if backend == "vulkan":
+        widths.add(int(draft_tokens))
+    return (0, *sorted(widths))
+
+
+def llama_case_matrix(backends: list[str], draft_tokens: int | None) -> list[tuple[str, int]]:
+    by_backend = {backend: mtp_widths_for_backend(backend, draft_tokens) for backend in backends}
+    all_widths = sorted({width for widths in by_backend.values() for width in widths})
+    cases: list[tuple[str, int]] = []
+    for width in all_widths:
+        for backend in backends:
+            if width in by_backend[backend]:
+                cases.append((backend, width))
+    return cases
 
 
 def follow_server(pipe, log, ready):
@@ -73,6 +120,17 @@ def find_free_port() -> int:
         return int(sock.getsockname()[1])
 
 
+def format_http_error(path: str, status: int, body: bytes) -> str:
+    text = body.decode("utf-8", errors="replace").strip()
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        parsed = None
+    if isinstance(parsed, dict) and isinstance(parsed.get("error"), str) and parsed["error"].strip():
+        return f"{path}: HTTP {status}: {parsed['error'].strip()}"
+    return f"{path}: HTTP {status}: {text}"
+
+
 @contextmanager
 def post(port: int, path: str, payload: dict[str, object]):
     connection = http.client.HTTPConnection("127.0.0.1", port, timeout=600)
@@ -80,22 +138,23 @@ def post(port: int, path: str, payload: dict[str, object]):
         connection.request("POST", path, json.dumps(payload), {"Content-Type": "application/json"})
         with connection.getresponse() as response:
             if response.status != 200:
-                raise RuntimeError(f"{path}: HTTP {response.status}: {response.read(2048)!r}")
+                raise RuntimeError(format_http_error(path, response.status, response.read(2048)))
             yield response
     finally:
         connection.close()
 
 
-def make_prompt(port: int):
+def make_prompt_with_line_estimate(port: int) -> tuple[list[int], int]:
     def tokenize(text: str, add_special: bool):
         payload = {"content": text, "add_special": add_special, "parse_special": True}
         with post(port, "/tokenize", payload) as response:
             return json.load(response)["tokens"]
 
+    source_lines = 400
     lines = [
         f"{i:04d} {('INFO', 'ERROR', 'WARNING', 'INFO', 'INVALID')[i % 5]} "
         f"worker={i % 17} job={i * 11} elapsed_ms={(i * 137) % 999}"
-        for i in range(400)
+        for i in range(source_lines)
     ]
     task = (
         "\nWrite a Python function named summarise_log(lines) that counts INFO, WARNING "
@@ -119,6 +178,12 @@ def make_prompt(port: int):
     tokens = log_tokens[:log_budget] + task_tokens
     if len(tokens) != PROMPT_TOKENS:
         raise ValueError(f"expected {PROMPT_TOKENS} prompt tokens, got {len(tokens)}")
+    estimated_lines = max(1, round(source_lines * log_budget / len(log_tokens)))
+    return tokens, estimated_lines
+
+
+def make_prompt(port: int) -> list[int]:
+    tokens, _ = make_prompt_with_line_estimate(port)
     return tokens
 
 
@@ -166,11 +231,29 @@ def completion(port: int, tokens: list[int], width: int, sampling: dict[str, obj
     }
 
 
-def ollama_generate(port: int, tag: str, prompt_text: str, profile: dict[str, object]):
+def ollama_batch_size(profile: dict[str, object]) -> int:
+    # Ollama maps num_batch to both -b and -ub in its bundled llama-server, so
+    # align with llama.cpp's physical --ubatch-size (default 512) rather than
+    # its logical --batch-size 2048.
+    return int(profile.get("microBatchSize") or 512)
+
+
+def build_ollama_payload(
+    tag: str,
+    prompt_text: str,
+    profile: dict[str, object],
+    num_predict: int = OUTPUT_TOKENS,
+) -> dict[str, object]:
     sampling = profile.get("sampling") or {}
+    # Align with llama.cpp where Ollama's /api/generate supports the parameter.
+    # Parameters Ollama cannot match directly:
+    # - ignore_eos: not exposed by /api/generate, so runs may stop on EOS.
+    # - reasoning_effort: no portable GGUF control across Ollama templates.
+    # - cache_prompt=false: defeated via a unique per-call prompt prefix instead.
     options: dict[str, object] = {
-        "num_ctx": 8192,
-        "num_predict": OUTPUT_TOKENS,
+        "num_ctx": CTX_SIZE,
+        "num_batch": ollama_batch_size(profile),
+        "num_predict": num_predict,
         "seed": SEED,
     }
     for key in ("temperature", "top_k", "top_p", "min_p", "repeat_penalty", "presence_penalty"):
@@ -184,10 +267,43 @@ def ollama_generate(port: int, tag: str, prompt_text: str, profile: dict[str, ob
     }
     if profile.get("reasoning") == "on":
         payload["think"] = True
+    elif profile.get("reasoning") == "off":
+        payload["think"] = False
+    return payload
+
+
+def estimate_prompt_lines(
+    target_tokens: int,
+    base_tokens: int,
+    probe_lines: int,
+    probe_tokens: int,
+) -> int:
+    if probe_lines <= 0:
+        raise ValueError("probe_lines must be positive")
+    line_tokens = probe_tokens - base_tokens
+    if line_tokens <= 0:
+        raise ValueError(
+            f"prompt calibration failed: {probe_lines} lines produced {probe_tokens} tokens "
+            f"(base {base_tokens})"
+        )
+    desired_line_tokens = max(1, target_tokens - base_tokens)
+    return max(1, round(probe_lines * desired_line_tokens / line_tokens))
+
+
+def ollama_generate(
+    port: int,
+    tag: str,
+    prompt_text: str,
+    profile: dict[str, object],
+    num_predict: int = OUTPUT_TOKENS,
+    require_eval: bool = True,
+):
+    payload = build_ollama_payload(tag, prompt_text, profile, num_predict=num_predict)
 
     started = time.monotonic()
     first = None
     final_event = None
+    received = started
     with post(port, "/api/generate", payload) as response:
         for raw_line in response:
             line = raw_line.strip()
@@ -202,21 +318,24 @@ def ollama_generate(port: int, tag: str, prompt_text: str, profile: dict[str, ob
             if event.get("done"):
                 final_event = event
                 break
-    if final_event is None or first is None:
+    if final_event is None or (require_eval and first is None):
         raise RuntimeError("ollama generate stream ended without final timings")
 
     prompt_eval_count = int(final_event.get("prompt_eval_count") or 0)
     prompt_eval_ns = int(final_event.get("prompt_eval_duration") or 0)
     eval_count = int(final_event.get("eval_count") or 0)
     eval_ns = int(final_event.get("eval_duration") or 0)
-    if eval_count <= 0 or eval_ns <= 0 or prompt_eval_count <= 0 or prompt_eval_ns <= 0:
-        raise RuntimeError(f"ollama returned incomplete timings: {final_event}")
+    if prompt_eval_count <= 0 or prompt_eval_ns <= 0:
+        raise RuntimeError(f"ollama returned incomplete prompt timings: {final_event}")
+    if require_eval and (eval_count <= 0 or eval_ns <= 0):
+        raise RuntimeError(f"ollama returned incomplete eval timings: {final_event}")
 
+    first_ts = first if first is not None else received
     return {
-        "ttft_ms": (first - started) * 1000,
+        "ttft_ms": (first_ts - started) * 1000,
         "total_ms": (received - started) * 1000,
         "prefill_tps": prompt_eval_count / (prompt_eval_ns / 1e9),
-        "decode_tps": eval_count / (eval_ns / 1e9),
+        "decode_tps": (eval_count / (eval_ns / 1e9)) if (eval_count > 0 and eval_ns > 0) else 0.0,
         "timings": {
             "prompt_n": prompt_eval_count,
             "predicted_n": eval_count,
@@ -226,14 +345,69 @@ def ollama_generate(port: int, tag: str, prompt_text: str, profile: dict[str, ob
     }
 
 
-def classify_ollama_error(message: str) -> tuple[str, str]:
-    lowered = message.lower()
+def unwrap_ollama_error_message(message: str) -> str:
+    text = message.strip()
+    bytes_match = re.search(r"b(['\"])(.*)\1\s*$", text, re.DOTALL)
+    if bytes_match:
+        try:
+            decoded = ast.literal_eval(bytes_match.group(0))
+            if isinstance(decoded, bytes):
+                text = decoded.decode("utf-8", errors="replace").strip()
+        except (SyntaxError, ValueError):
+            pass
+
+    json_start = text.find("{")
+    if json_start != -1:
+        try:
+            parsed = json.loads(text[json_start:], strict=False)
+        except json.JSONDecodeError:
+            parsed = None
+        if isinstance(parsed, dict) and isinstance(parsed.get("error"), str) and parsed["error"].strip():
+            return parsed["error"].strip()
+        # Handle HTTP error bodies truncated mid-JSON before the closing quote/brace.
+        error_match = re.search(r'"error"\s*:\s*"((?:[^"\\]|\\.)*)', text[json_start:], re.DOTALL)
+        if error_match and error_match.group(1).strip():
+            return error_match.group(1).replace("\\n", "\n").replace('\\"', '"').strip()
+    return text
+
+
+def clean_ollama_error_line(line: str) -> str:
+    text = line.strip()
+    slog_match = re.search(r'\berror="((?:[^"\\]|\\.)*)"', text)
+    if slog_match:
+        text = slog_match.group(1).replace('\\"', '"')
+    text = text.split("\\n", 1)[0].strip()
+    text = OLLAMA_ERROR_PREFIX_RE.sub("", text).strip()
+    return text
+
+
+def classify_ollama_error(message: str, server_log: str = "") -> tuple[str, str]:
+    unwrapped = unwrap_ollama_error_message(message)
+    candidate_lines = [ln.strip() for ln in unwrapped.splitlines() if ln.strip()]
+    log_lines = [ln.strip() for ln in server_log.splitlines() if ln.strip()]
+    all_lines = candidate_lines + list(reversed(log_lines))
+
     for pattern in UNSUPPORTED_OLLAMA_PATTERNS:
-        if pattern in lowered:
-            first_line = next((ln.strip() for ln in message.splitlines() if ln.strip()), message.strip())
-            return "unsupported", first_line[:80]
-    first_line = next((ln.strip() for ln in message.splitlines() if ln.strip()), message.strip())
-    return "failed", first_line[:80]
+        for line in all_lines:
+            lowered = line.lower()
+            idx = lowered.find(pattern)
+            if idx != -1:
+                cleaned = clean_ollama_error_line(line)
+                if pattern not in cleaned.lower():
+                    cleaned = line[idx:].split("\\n", 1)[0].rstrip('"').strip()
+                return "unsupported", cleaned[:120]
+
+    primary = clean_ollama_error_line(candidate_lines[0]) if candidate_lines else ""
+    if not primary or primary.lower().startswith("llama-server process has terminated"):
+        for line in reversed(log_lines):
+            if "level=ERROR" in line or "error" in line.lower() or "failed" in line.lower():
+                cleaned = clean_ollama_error_line(line)
+                if cleaned and not cleaned.lower().startswith("llama-server process has terminated"):
+                    primary = cleaned
+                    break
+    if not primary:
+        primary = candidate_lines[0] if candidate_lines else "ollama failed"
+    return "failed", primary[:120]
 
 
 def sample_gpu_memory(stop: Event, peaks: dict[str, int]):
@@ -255,13 +429,30 @@ def sample_gpu_memory(stop: Event, peaks: dict[str, int]):
 def peak_vram_bytes(peaks: dict[str, int] | None) -> int | None:
     if not peaks:
         return None
-    vram_keys = [v for k, v in peaks.items() if "vram_used" in k]
-    if vram_keys:
-        return max(vram_keys)
+    per_card: dict[str, dict[str, int]] = {}
+    for key, value in peaks.items():
+        card, _, metric = key.rpartition("/")
+        if metric in ("mem_info_vram_used", "vram_used"):
+            per_card.setdefault(card, {})["vram"] = value
+        elif metric in ("mem_info_gtt_used", "gtt_used"):
+            per_card.setdefault(card, {})["gtt"] = value
+    if per_card:
+        return max(metrics.get("vram", 0) + metrics.get("gtt", 0) for metrics in per_card.values())
     return max(peaks.values())
 
 
-def run_llama_case(output: Path, model: str, model_path: Path, backend: str, server: str, width: int, runs: int, profile: dict[str, object], emit_json: bool) -> dict[str, object]:
+def run_llama_case(
+    output: Path,
+    model: str,
+    model_path: Path,
+    backend: str,
+    server: str,
+    width: int,
+    runs: int,
+    profile: dict[str, object],
+    emit_json: bool,
+    prompt_hints: dict[str, int] | None = None,
+) -> dict[str, object]:
     mode = f"mtp{width}" if width else "off"
     label = f"{model}-llama-{backend}-{mode}"
     microbatch = str(profile.get("microBatchSize") or 512)
@@ -278,7 +469,7 @@ def run_llama_case(output: Path, model: str, model_path: Path, backend: str, ser
         "--load-mode", "none",
         "--cache-type-k", "q8_0",
         "--cache-type-v", "q8_0",
-        "--ctx-size", "8192",
+        "--ctx-size", str(CTX_SIZE),
         "--parallel", "1",
         "--batch-size", "2048",
         "--ubatch-size", microbatch,
@@ -313,7 +504,9 @@ def run_llama_case(output: Path, model: str, model_path: Path, backend: str, ser
                 raise RuntimeError("server did not announce a port within 600 s") from None
             if not port:
                 raise RuntimeError(f"server exited before becoming ready, see {label}.log")
-            tokens = make_prompt(port)
+            tokens, estimated_lines = make_prompt_with_line_estimate(port)
+            if prompt_hints is not None:
+                prompt_hints[model] = estimated_lines
             record(kind="prompt", tokens=len(tokens), sha256=hashlib.sha256(json.dumps(tokens).encode()).hexdigest())
             record(kind="warmup", **completion(port, tokens, width, sampling))
             peaks: dict[str, int] = {}
@@ -341,6 +534,7 @@ def run_llama_case(output: Path, model: str, model_path: Path, backend: str, ser
                 "status": "ok",
                 "medians": rates,
                 "device_peak_bytes": peaks or None,
+                "peak_gpu_bytes": peak_vram_bytes(peaks),
                 "draft_n": drafted,
                 "draft_n_accepted": accepted,
             }
@@ -382,19 +576,14 @@ def wait_for_ollama(port: int, process: subprocess.Popen[bytes], timeout: float 
     raise RuntimeError("timed out waiting for temporary ollama serve")
 
 
-def run_ollama_case(output: Path, model: str, model_path: Path, backend: str, ollama_bin: str, runs: int, profile: dict[str, object], emit_json: bool) -> dict[str, object]:
-    label = f"{model}-ollama-{backend}-off"
-    port = find_free_port()
-    tmp_ollama = Path(mkdtemp(prefix=f"ollama-{backend}-", dir=output))
-    models_dir = tmp_ollama / "models"
-    home_dir = tmp_ollama / "home"
-    models_dir.mkdir(parents=True, exist_ok=True)
-    home_dir.mkdir(parents=True, exist_ok=True)
-    modelfile = tmp_ollama / "Modelfile"
-    modelfile.write_text(f"FROM {model_path}\nPARAMETER num_ctx 8192\n", encoding="utf-8")
-    tag = f"benchmark-{re.sub(r'[^a-zA-Z0-9._-]', '-', model)}"
-
-    env = os.environ.copy()
+def build_ollama_env(
+    backend: str,
+    port: int,
+    home_dir: Path,
+    models_dir: Path,
+    base_env: dict[str, str] | None = None,
+) -> dict[str, str]:
+    env = dict(os.environ if base_env is None else base_env)
     env.update(
         {
             "HOME": str(home_dir),
@@ -403,16 +592,148 @@ def run_ollama_case(output: Path, model: str, model_path: Path, backend: str, ol
             "OLLAMA_FLASH_ATTENTION": "1",
             "OLLAMA_KV_CACHE_TYPE": "q8_0",
             "OLLAMA_NOHISTORY": "1",
+            "OLLAMA_NUM_PARALLEL": "1",
+            "OLLAMA_NO_CLOUD": "1",
         }
     )
+    if backend == "vulkan":
+        # Ollama drops integrated GPUs on Vulkan unless OLLAMA_IGPU_ENABLE=1 is set.
+        env["OLLAMA_VULKAN"] = "1"
+        env["OLLAMA_IGPU_ENABLE"] = "1"
+    return env
+
+
+def read_log_tail(log_path: Path, max_bytes: int = 16384) -> str:
+    try:
+        data = log_path.read_bytes()
+    except OSError:
+        return ""
+    if len(data) > max_bytes:
+        data = data[-max_bytes:]
+    return data.decode("utf-8", errors="replace")
+
+
+def calibrate_ollama_prompt_lines(
+    port: int,
+    tag: str,
+    profile: dict[str, object],
+    run_salt: str,
+    step_counter: list[int],
+    initial_lines: int | None = None,
+) -> tuple[int, int]:
+    def next_nonce() -> str:
+        step = step_counter[0]
+        step_counter[0] += 1
+        return make_ollama_nonce(run_salt, step)
+
+    base_sample = ollama_generate(
+        port,
+        tag,
+        build_benchmark_prompt_text(0, nonce=next_nonce()),
+        profile,
+        num_predict=1,
+        require_eval=False,
+    )
+    base_tokens = int(base_sample["timings"]["prompt_n"])
+
+    probe_lines = initial_lines if initial_lines and 1 <= initial_lines <= 400 else OLLAMA_CALIBRATION_LINES
+    max_safe_prompt = CTX_SIZE - OUTPUT_TOKENS
+    probe_tokens = 0
+    for _ in range(3):
+        probe_sample = ollama_generate(
+            port,
+            tag,
+            build_benchmark_prompt_text(probe_lines, nonce=next_nonce()),
+            profile,
+            num_predict=1,
+            require_eval=False,
+        )
+        probe_tokens = int(probe_sample["timings"]["prompt_n"])
+        if base_tokens < probe_tokens < max_safe_prompt:
+            break
+        probe_lines = max(1, probe_lines // 2)
+    else:
+        raise RuntimeError(
+            f"ollama prompt calibration exceeded safe context limit ({probe_tokens} tokens for {probe_lines} lines)"
+        )
+
+    if abs(probe_tokens - PROMPT_TOKENS) <= OLLAMA_PROMPT_TOLERANCE:
+        return probe_lines, base_tokens
+    target_lines = estimate_prompt_lines(PROMPT_TOKENS, base_tokens, probe_lines, probe_tokens)
+    return target_lines, base_tokens
+
+
+def run_ollama_case(
+    output: Path,
+    model: str,
+    model_path: Path,
+    backend: str,
+    ollama_bin: str,
+    runs: int,
+    profile: dict[str, object],
+    emit_json: bool,
+    prompt_line_hint: int | None = None,
+) -> dict[str, object]:
+    label = f"{model}-ollama-{backend}-off"
+    port = find_free_port()
+    tmp_ollama = Path(mkdtemp(prefix=f"ollama-{backend}-", dir=output))
+    models_dir = tmp_ollama / "models"
+    home_dir = tmp_ollama / "home"
+    models_dir.mkdir(parents=True, exist_ok=True)
+    home_dir.mkdir(parents=True, exist_ok=True)
+    modelfile = tmp_ollama / "Modelfile"
+    num_batch = ollama_batch_size(profile)
+    modelfile.write_text(
+        f"FROM {model_path}\nPARAMETER num_ctx {CTX_SIZE}\nPARAMETER num_batch {num_batch}\n",
+        encoding="utf-8",
+    )
+    tag = f"benchmark-{re.sub(r'[^a-zA-Z0-9._-]', '-', model)}"
+    env = build_ollama_env(backend, port, home_dir, models_dir)
 
     print(f"{label}: starting", file=sys.stderr, flush=True)
-    prompt_text = build_benchmark_prompt_text()
-    with (output / f"{label}.jsonl").open("x") as records, (output / f"{label}.log").open("xb") as log:
+    log_path = output / f"{label}.log"
+    run_salt = secrets.token_hex(4)
+    step_counter = [0]
+
+    def next_prompt(line_count: int) -> str:
+        step = step_counter[0]
+        step_counter[0] += 1
+        return build_benchmark_prompt_text(line_count, nonce=make_ollama_nonce(run_salt, step))
+
+    with (output / f"{label}.jsonl").open("x") as records, log_path.open("xb") as log:
         def record(**fields):
             print(json.dumps({"case": label, **fields}), file=records, flush=True)
 
-        record(kind="config", runner="ollama", model=model, backend=backend, mode="off", ollama=ollama_bin, model_path=str(model_path), seed=SEED)
+        def fail_summary(detail: str) -> dict[str, object]:
+            log.flush()
+            status, reason = classify_ollama_error(detail, server_log=read_log_tail(log_path))
+            summary = {
+                "case": label,
+                "model": model,
+                "runner": "ollama",
+                "backend": backend,
+                "mode": "off",
+                "status": status,
+                "error": reason,
+            }
+            record(kind="summary", **{k: v for k, v in summary.items() if k != "case"})
+            if emit_json:
+                print(json.dumps(summary), flush=True)
+            return summary
+
+        record(
+            kind="config",
+            runner="ollama",
+            model=model,
+            backend=backend,
+            mode="off",
+            ollama=ollama_bin,
+            model_path=str(model_path),
+            num_ctx=CTX_SIZE,
+            num_batch=num_batch,
+            igpu_enable=env.get("OLLAMA_IGPU_ENABLE"),
+            seed=SEED,
+        )
         process = subprocess.Popen([ollama_bin, "serve"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         reader = Thread(target=follow_process_log, args=(process.stdout, log))
         reader.start()
@@ -430,38 +751,35 @@ def run_ollama_case(output: Path, model: str, model_path: Path, backend: str, ol
                 detail = (create.stderr or create.stdout or "ollama create failed").strip()
                 log.write((detail + "\n").encode("utf-8", errors="replace"))
                 log.flush()
-                status, reason = classify_ollama_error(detail)
-                summary = {
-                    "case": label,
-                    "model": model,
-                    "runner": "ollama",
-                    "backend": backend,
-                    "mode": "off",
-                    "status": status,
-                    "error": reason,
-                }
-                record(kind="summary", **{k: v for k, v in summary.items() if k != "case"})
-                if emit_json:
-                    print(json.dumps(summary), flush=True)
-                return summary
+                return fail_summary(detail)
 
             try:
-                record(kind="warmup", **ollama_generate(port, tag, prompt_text, profile))
+                target_lines, base_tokens = calibrate_ollama_prompt_lines(
+                    port,
+                    tag,
+                    profile,
+                    run_salt,
+                    step_counter,
+                    initial_lines=prompt_line_hint,
+                )
+                warmup = ollama_generate(port, tag, next_prompt(target_lines), profile)
+                record(kind="warmup", **warmup)
+                warmup_prompt_n = int(warmup["timings"]["prompt_n"])
+                max_safe_prompt = CTX_SIZE - OUTPUT_TOKENS
+                if (
+                    abs(warmup_prompt_n - PROMPT_TOKENS) > OLLAMA_PROMPT_TOLERANCE
+                    and base_tokens < warmup_prompt_n < max_safe_prompt
+                ):
+                    target_lines = estimate_prompt_lines(PROMPT_TOKENS, base_tokens, target_lines, warmup_prompt_n)
+                record(
+                    kind="prompt",
+                    line_count=target_lines,
+                    target_tokens=PROMPT_TOKENS,
+                    base_tokens=base_tokens,
+                    warmup_tokens=warmup_prompt_n,
+                )
             except (RuntimeError, ValueError, OSError, http.client.HTTPException) as exc:
-                status, reason = classify_ollama_error(str(exc))
-                summary = {
-                    "case": label,
-                    "model": model,
-                    "runner": "ollama",
-                    "backend": backend,
-                    "mode": "off",
-                    "status": status,
-                    "error": reason,
-                }
-                record(kind="summary", **{k: v for k, v in summary.items() if k != "case"})
-                if emit_json:
-                    print(json.dumps(summary), flush=True)
-                return summary
+                return fail_summary(str(exc))
 
             peaks: dict[str, int] = {}
             stop = Event()
@@ -470,9 +788,17 @@ def run_ollama_case(output: Path, model: str, model_path: Path, backend: str, ol
             samples = []
             try:
                 for number in range(1, runs + 1):
-                    sample = ollama_generate(port, tag, prompt_text, profile)
+                    sample = ollama_generate(port, tag, next_prompt(target_lines), profile)
+                    prompt_n = int(sample["timings"]["prompt_n"])
+                    if prompt_n >= CTX_SIZE - OUTPUT_TOKENS or abs(prompt_n - PROMPT_TOKENS) > OLLAMA_PROMPT_MAX_DRIFT:
+                        raise RuntimeError(
+                            f"ollama prompt token count {prompt_n} drifted from target {PROMPT_TOKENS} "
+                            f"(num_ctx {CTX_SIZE})"
+                        )
                     record(kind="sample", number=number, **sample)
                     samples.append(sample)
+            except (RuntimeError, ValueError, OSError, http.client.HTTPException) as exc:
+                return fail_summary(str(exc))
             finally:
                 stop.set()
                 sampler.join()
@@ -487,6 +813,7 @@ def run_ollama_case(output: Path, model: str, model_path: Path, backend: str, ol
                 "status": "ok",
                 "medians": rates,
                 "device_peak_bytes": peaks or None,
+                "peak_gpu_bytes": peak_vram_bytes(peaks),
             }
             record(kind="summary", **{k: v for k, v in summary.items() if k != "case"})
             if emit_json:
@@ -601,7 +928,7 @@ def format_summary_table(results: list[dict[str, object]], runs: int) -> str:
         "Prefill tok/s",
         "Decode tok/s",
         "TTFT ms",
-        "Peak VRAM",
+        "Peak GPU Mem",
         "Status",
     ]
     rows: list[list[str]] = []
@@ -612,7 +939,10 @@ def format_summary_table(results: list[dict[str, object]], runs: int) -> str:
             prefill = f"{medians['prefill_tps']:.1f}"
             decode = f"{medians['decode_tps']:.1f}"
             ttft = f"{medians['ttft_ms']:.0f}"
-            vram = format_vram(peak_vram_bytes(entry.get("device_peak_bytes")))
+            peak_bytes = entry.get("peak_gpu_bytes")
+            if peak_bytes is None:
+                peak_bytes = peak_vram_bytes(entry.get("device_peak_bytes"))
+            vram = format_vram(peak_bytes)
             status_text = "ok"
         else:
             prefill = "-"
@@ -767,34 +1097,53 @@ def main(argv: list[str] | None = None) -> int:
             continue
 
         draft_tokens = profile.get("mtpDraftTokens")
-        widths = (0, draft_tokens, draft_tokens + 1) if draft_tokens else (0,)
+        prompt_hints: dict[str, int] = {}
         if not args.ollama_only:
-            for width in widths:
-                for backend, server in servers.items():
-                    if width and backend not in MTP_BACKENDS:
-                        continue
-                    try:
-                        results.append(
-                            run_llama_case(output, model, model_path, backend, server, width, args.runs, profile, args.emit_json)
+            for backend, width in llama_case_matrix(list(servers), draft_tokens):
+                server = servers[backend]
+                try:
+                    results.append(
+                        run_llama_case(
+                            output,
+                            model,
+                            model_path,
+                            backend,
+                            server,
+                            width,
+                            args.runs,
+                            profile,
+                            args.emit_json,
+                            prompt_hints=prompt_hints,
                         )
-                    except (OSError, RuntimeError, ValueError, KeyError, http.client.HTTPException) as error:
-                        print(f"{model} llama.cpp {backend} width {width}: {error}", file=sys.stderr)
-                        results.append(
-                            {
-                                "model": model,
-                                "runner": "llama.cpp",
-                                "backend": backend,
-                                "mode": f"mtp{width}" if width else "off",
-                                "status": "failed",
-                                "error": str(error).splitlines()[0][:80],
-                            }
-                        )
-                        failed = True
+                    )
+                except (OSError, RuntimeError, ValueError, KeyError, http.client.HTTPException) as error:
+                    print(f"{model} llama.cpp {backend} width {width}: {error}", file=sys.stderr)
+                    results.append(
+                        {
+                            "model": model,
+                            "runner": "llama.cpp",
+                            "backend": backend,
+                            "mode": f"mtp{width}" if width else "off",
+                            "status": "failed",
+                            "error": str(error).splitlines()[0][:80],
+                        }
+                    )
+                    failed = True
 
         if not args.llama_only:
             for backend, ollama_bin in ollamas.items():
                 try:
-                    entry = run_ollama_case(output, model, model_path, backend, ollama_bin, args.runs, profile, args.emit_json)
+                    entry = run_ollama_case(
+                        output,
+                        model,
+                        model_path,
+                        backend,
+                        ollama_bin,
+                        args.runs,
+                        profile,
+                        args.emit_json,
+                        prompt_line_hint=prompt_hints.get(model),
+                    )
                     results.append(entry)
                     if entry.get("status") == "failed":
                         failed = True
