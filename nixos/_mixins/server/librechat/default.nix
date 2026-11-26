@@ -1259,9 +1259,13 @@ in
         ProtectSystem = "strict";
         ProtectHome = true;
         ProtectControlGroups = true;
-        ProtectKernelLogs = true;
+        # Leave /proc unmasked so bwrap --proc /proc can mount a private PID
+        # namespace without failing Linux's mount_too_revealing check. The
+        # service runs unprivileged with NoNewPrivileges, so /proc/sys and
+        # /proc/kmsg stay protected by kernel permissions.
+        ProtectKernelLogs = false;
         ProtectKernelModules = true;
-        ProtectKernelTunables = true;
+        ProtectKernelTunables = false;
         RestrictAddressFamilies = [
           "AF_INET"
           "AF_INET6"
