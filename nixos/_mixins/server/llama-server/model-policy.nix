@@ -178,7 +178,7 @@ let
         };
         dense = mkQwen {
           maxContext = 262144;
-          mtpDraftTokens = 2;
+          mtpDraftTokens = 3;
         };
       };
     };
