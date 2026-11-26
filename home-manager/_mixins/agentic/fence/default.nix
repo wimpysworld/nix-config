@@ -240,8 +240,12 @@ let
         # which needs neither the SSH key nor a GPG key inside the sandbox.
         "${homeDirectory}/.ssh/id_rsa"
         "${homeDirectory}/.ssh/id_rsa.pub"
+        "${homeDirectory}/.ssh/id_ed25519_martin"
+        "${homeDirectory}/.ssh/id_ed25519_martin.pub"
         "${config.xdg.configHome}/sops-nix/secrets/ssh_key"
         "${config.xdg.configHome}/sops-nix/secrets/ssh_pub"
+        "${config.xdg.configHome}/sops-nix/secrets/ssh_key_martin"
+        "${config.xdg.configHome}/sops-nix/secrets/ssh_pub_martin"
 
         # Keep every other SSH child and subtree unreadable.
         "~/.ssh/{a,al,all,allo,allow,allowe,allowed,allowed_,allowed_s,allowed_si,allowed_sig,allowed_sign,allowed_signe,allowed_signer,i,id,id_,id_r,id_rs,[^ai]*,a[^l]*,al[^l]*,all[^o]*,allo[^w]*,allow[^e]*,allowe[^d]*,allowed[^_]*,allowed_[^s]*,allowed_s[^i]*,allowed_si[^g]*,allowed_sig[^n]*,allowed_sign[^e]*,allowed_signe[^r]*,allowed_signer[^s]*,allowed_signers?*,i[^d]*,id[^_]*,id_[^r]*,id_r[^s]*,id_rs[^a]*,id_rsa.,id_rsa.p,id_rsa.pu,id_rsa[^.]*,id_rsa.[^p]*,id_rsa.p[^u]*,id_rsa.pu[^b]*,id_rsa.pub?*}"
