@@ -8,6 +8,7 @@
 }:
 let
   inherit (config.noughty.network) tailNet;
+  serverPython = pkgs.python3.withPackages (ps: [ ps.cryptography ]);
   sandboxPython = pkgs.python3.withPackages (
     ps: with ps; [
       matplotlib
@@ -22,9 +23,51 @@ let
       scipy
     ]
   );
+  librechatCodeApiKeygen = pkgs.writeShellApplication {
+    name = "librechat-codeapi-keygen";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.openssl
+    ];
+    text = ''
+      keyDir="/var/lib/librechat-codeapi-keys"
+      privatePem="$keyDir/private.pem"
+      privateB64="$keyDir/private.pem.b64"
+      publicPem="$keyDir/public.pem"
+
+      if [ -s "$privateB64" ] && [ -s "$publicPem" ]; then
+        exit 0
+      fi
+
+      umask 077
+      tmpDir="$(mktemp -d "$keyDir/.keygen.XXXXXX")"
+      cleanup() {
+        rm -rf "$tmpDir"
+      }
+      trap cleanup EXIT
+
+      if [ -s "$privatePem" ]; then
+        cp "$privatePem" "$tmpDir/private.pem"
+      else
+        openssl genpkey -algorithm ED25519 -out "$tmpDir/private.pem"
+      fi
+
+      openssl pkey -in "$tmpDir/private.pem" -pubout -out "$tmpDir/public.pem"
+      base64 -w 0 "$tmpDir/private.pem" > "$tmpDir/private.pem.b64"
+
+      chmod 0600 "$tmpDir/private.pem" "$tmpDir/private.pem.b64"
+      chmod 0644 "$tmpDir/public.pem"
+
+      if [ ! -s "$privatePem" ]; then
+        mv -f "$tmpDir/private.pem" "$privatePem"
+      fi
+      mv -f "$tmpDir/private.pem.b64" "$privateB64"
+      mv -f "$tmpDir/public.pem" "$publicPem"
+    '';
+  };
   librechatCodeSandbox = pkgs.runCommand "librechat-code-sandbox" { } ''
-    PATH=${lib.makeBinPath [ pkgs.python3 ]}:$PATH \
-      ${lib.getExe pkgs.python3} ${./test-code-sandbox.py} ${./code-sandbox.py}
+    PATH=${lib.makeBinPath [ serverPython ]}:$PATH \
+      ${lib.getExe serverPython} ${./test-code-sandbox.py} ${./code-sandbox.py}
     install -Dm755 ${./code-sandbox.py} "$out/libexec/code-sandbox.py"
   '';
   registry = builtins.fromTOML (builtins.readFile ../../../../lib/registry-systems.toml);
@@ -944,9 +987,9 @@ in
         ALLOW_REGISTRATION = lib.mkDefault false;
         ALLOW_SOCIAL_LOGIN = lib.mkDefault false;
         ALLOW_UNVERIFIED_EMAIL_LOGIN = lib.mkDefault true;
+        CODEAPI_AUTH_PROVIDER = lib.mkDefault "librechat-jwt";
         GOOGLE_MODELS = lib.mkDefault "gemini-4-neon,gemini-4-carbon,gemini-4-hydrogen,gemini-3.8-flash";
         HOST = lib.mkDefault "0.0.0.0";
-        LIBRECHAT_CODE_API_KEY = lib.mkDefault "local-sandbox";
         LIBRECHAT_CODE_BASEURL = lib.mkDefault "http://127.0.0.1:3082";
         LIBRECHAT_CODE_BASEURL_STATEFUL = lib.mkDefault "http://127.0.0.1:3082";
         MONGO_URI = lib.mkIf (noughtyLib.hostHasTag "mongodb") (
@@ -957,6 +1000,7 @@ in
       credentials = {
         ANTHROPIC_API_KEY = config.sops.secrets.ANTHROPIC_API_KEY.path;
         CLOUDFLARE_API_TOKEN = lib.mkIf hasCloudflareSopsFile config.sops.secrets.CLOUDFLARE_API_TOKEN.path;
+        CODEAPI_JWT_PRIVATE_KEY_BASE64 = "/var/lib/librechat-codeapi-keys/private.pem.b64";
         CONTEXT7_API_KEY = config.sops.secrets.CONTEXT7_API_KEY.path;
         CREDS_IV = config.sops.secrets.CREDS_IV.path;
         CREDS_KEY = config.sops.secrets.CREDS_KEY.path;
@@ -1136,9 +1180,31 @@ in
       };
     };
 
+    systemd.services.librechat-codeapi-keygen = {
+      description = "Generate Ed25519 JWT signing keys for LibreChat Code Interpreter";
+      wantedBy = [ "multi-user.target" ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        User = "root";
+        Group = "root";
+        StateDirectory = "librechat-codeapi-keys";
+        StateDirectoryMode = "0755";
+        ExecStart = lib.getExe librechatCodeApiKeygen;
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+      };
+    };
+
     systemd.services.librechat-code-sandbox = {
       description = "Local Code Interpreter sandbox service for LibreChat";
-      after = [ "network.target" ];
+      after = [
+        "network.target"
+        "librechat-codeapi-keygen.service"
+      ];
+      requires = [ "librechat-codeapi-keygen.service" ];
       wantedBy = [ "multi-user.target" ];
       path = [
         pkgs.bash
@@ -1166,8 +1232,10 @@ in
         pkgs.uv
       ];
       environment = {
+        CODEAPI_JWT_AUDIENCE = "codeapi";
+        CODEAPI_JWT_ISSUER = "librechat";
+        CODEAPI_JWT_PUBLIC_KEY_FILE = "/var/lib/librechat-codeapi-keys/public.pem";
         HOST = "127.0.0.1";
-        LIBRECHAT_CODE_API_KEY = config.services.librechat.env.LIBRECHAT_CODE_API_KEY;
         PORT = "3082";
         REQUESTS_CA_BUNDLE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
         SANDBOX_CLEANUP_INTERVAL_SEC = "21600";
@@ -1178,7 +1246,7 @@ in
       };
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${lib.getExe pkgs.python3} ${librechatCodeSandbox}/libexec/code-sandbox.py";
+        ExecStart = "${lib.getExe serverPython} ${librechatCodeSandbox}/libexec/code-sandbox.py";
         Restart = lib.mkDefault "always";
         RestartSec = lib.mkDefault 5;
         User = "librechat-code-sandbox";
@@ -1207,12 +1275,14 @@ in
       after = [
         "cliproxyapi.service"
         "librechat-code-sandbox.service"
+        "librechat-codeapi-keygen.service"
         "librechat-mcp-nixos.service"
       ]
       ++ lib.optionals (noughtyLib.hostHasTag "mongodb") [
         "mongodb.service"
         "librechat-provision-users.service"
       ];
+      requires = [ "librechat-codeapi-keygen.service" ];
       wants = [
         "cliproxyapi.service"
         "librechat-code-sandbox.service"

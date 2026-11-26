@@ -7,6 +7,7 @@ import base64
 import contextlib
 import hashlib
 import json
+import math
 import os
 import re
 import secrets
@@ -23,9 +24,19 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
 
+try:
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+    from cryptography.hazmat.primitives.serialization import load_pem_public_key
+except ImportError:
+    InvalidSignature = Exception  # type: ignore[assignment,misc]
+    Ed25519PublicKey = None  # type: ignore[assignment,misc]
+    load_pem_public_key = None  # type: ignore[assignment]
+
 ALPHABET = string.ascii_letters + string.digits
 VALID_ID_CHARS = {c: c for c in (ALPHABET + "_-")}
 ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{21}$")
+B64URL_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 PAYLOAD_PATTERN = re.compile(r'^(payload\s*=\s*)"([A-Za-z0-9+/=]+)"\s*$', re.MULTILINE)
 SESSION_LOCKS_GUARD = threading.Lock()
 SESSION_LOCKS: dict[str, threading.Lock] = {}
@@ -40,8 +51,173 @@ WORKSPACES_DIR = STATE_DIR / "workspaces"
 USERS_DIR = STATE_DIR / "users"
 SESSIONS_DIR = STATE_DIR / "sessions"
 EXPECTED_API_KEY = os.environ.get("LIBRECHAT_CODE_API_KEY", "").strip()
+JWT_PUBLIC_KEY_PEM = os.environ.get("CODEAPI_JWT_PUBLIC_KEY", "").strip()
+JWT_PUBLIC_KEY_FILE = os.environ.get("CODEAPI_JWT_PUBLIC_KEY_FILE", "").strip()
+EXPECTED_JWT_ISSUER = os.environ.get("CODEAPI_JWT_ISSUER", "librechat").strip() or "librechat"
+EXPECTED_JWT_AUDIENCE = os.environ.get("CODEAPI_JWT_AUDIENCE", "codeapi").strip() or "codeapi"
+JWT_CLOCK_SKEW_SEC = 30.0
+_JWT_KEY_LOCK = threading.Lock()
+_JWT_KEY_CACHE_STAT: tuple[int, int, int] | None = None
+_JWT_KEY_CACHE_VALUE: Ed25519PublicKey | None = None
+_JWT_INLINE_CACHE_RAW: str = ""
+_JWT_INLINE_CACHE_VALUE: Ed25519PublicKey | None = None
+SENSITIVE_ENV_VARS = (
+    "LIBRECHAT_CODE_API_KEY",
+    "CODEAPI_JWT_PUBLIC_KEY",
+    "CODEAPI_JWT_PUBLIC_KEY_FILE",
+    "CODEAPI_JWT_ISSUER",
+    "CODEAPI_JWT_AUDIENCE",
+    "STATE_DIR",
+)
 USER_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 IGNORED_DOT_DIRS = frozenset({".cache", ".config", ".local", ".npm"})
+
+
+def jwt_auth_configured() -> bool:
+    return bool(JWT_PUBLIC_KEY_PEM or JWT_PUBLIC_KEY_FILE)
+
+
+def _parse_ed25519_public_key(pem_bytes: bytes) -> Ed25519PublicKey | None:
+    if load_pem_public_key is None or Ed25519PublicKey is None:
+        return None
+    try:
+        key = load_pem_public_key(pem_bytes)
+    except (ValueError, TypeError):
+        return None
+    return key if isinstance(key, Ed25519PublicKey) else None
+
+
+def load_jwt_public_key() -> Ed25519PublicKey | None:
+    global _JWT_KEY_CACHE_STAT, _JWT_KEY_CACHE_VALUE
+    global _JWT_INLINE_CACHE_RAW, _JWT_INLINE_CACHE_VALUE
+
+    if JWT_PUBLIC_KEY_PEM:
+        with _JWT_KEY_LOCK:
+            if JWT_PUBLIC_KEY_PEM == _JWT_INLINE_CACHE_RAW and _JWT_INLINE_CACHE_VALUE is not None:
+                return _JWT_INLINE_CACHE_VALUE
+            normalised = JWT_PUBLIC_KEY_PEM.replace("\\n", "\n").strip().encode("utf-8")
+            parsed = _parse_ed25519_public_key(normalised)
+            _JWT_INLINE_CACHE_RAW = JWT_PUBLIC_KEY_PEM
+            _JWT_INLINE_CACHE_VALUE = parsed
+            return parsed
+
+    if not JWT_PUBLIC_KEY_FILE:
+        return None
+
+    key_path = Path(JWT_PUBLIC_KEY_FILE)
+    with _JWT_KEY_LOCK:
+        try:
+            st = key_path.stat()
+        except OSError:
+            _JWT_KEY_CACHE_STAT = None
+            _JWT_KEY_CACHE_VALUE = None
+            return None
+        stat_key = (st.st_ino, st.st_mtime_ns, st.st_size)
+        if _JWT_KEY_CACHE_STAT == stat_key and _JWT_KEY_CACHE_VALUE is not None:
+            return _JWT_KEY_CACHE_VALUE
+        try:
+            pem_bytes = key_path.read_bytes()
+        except OSError:
+            _JWT_KEY_CACHE_STAT = None
+            _JWT_KEY_CACHE_VALUE = None
+            return None
+        parsed = _parse_ed25519_public_key(pem_bytes)
+        if parsed is None:
+            _JWT_KEY_CACHE_STAT = None
+            _JWT_KEY_CACHE_VALUE = None
+            return None
+        _JWT_KEY_CACHE_STAT = stat_key
+        _JWT_KEY_CACHE_VALUE = parsed
+        return parsed
+
+
+def _b64url_decode(segment: str) -> bytes | None:
+    if not segment or not B64URL_PATTERN.fullmatch(segment):
+        return None
+    padding = "=" * (-len(segment) % 4)
+    try:
+        return base64.urlsafe_b64decode(segment + padding)
+    except (ValueError, TypeError):
+        return None
+
+
+def _is_finite_number(value: object) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(float(value))
+    )
+
+
+def verify_jwt_token(token: str, now_ts: float | None = None) -> str | None:
+    parts = token.split(".")
+    if len(parts) != 3:
+        return None
+    header_b64, payload_b64, sig_b64 = parts
+    header_bytes = _b64url_decode(header_b64)
+    payload_bytes = _b64url_decode(payload_b64)
+    sig_bytes = _b64url_decode(sig_b64)
+    if header_bytes is None or payload_bytes is None or sig_bytes is None:
+        return None
+
+    try:
+        header = json.loads(header_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(header, dict) or header.get("alg") != "EdDSA":
+        return None
+    typ = header.get("typ")
+    if typ is not None and (not isinstance(typ, str) or typ.upper() != "JWT"):
+        return None
+
+    public_key = load_jwt_public_key()
+    if public_key is None:
+        return None
+
+    signing_input = f"{header_b64}.{payload_b64}".encode("ascii")
+    try:
+        public_key.verify(sig_bytes, signing_input)
+    except (InvalidSignature, ValueError, TypeError):
+        return None
+
+    try:
+        claims = json.loads(payload_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(claims, dict):
+        return None
+
+    if claims.get("iss") != EXPECTED_JWT_ISSUER:
+        return None
+
+    aud = claims.get("aud")
+    if isinstance(aud, str):
+        aud_ok = aud == EXPECTED_JWT_AUDIENCE
+    elif isinstance(aud, list):
+        aud_ok = any(isinstance(item, str) and item == EXPECTED_JWT_AUDIENCE for item in aud)
+    else:
+        aud_ok = False
+    if not aud_ok:
+        return None
+
+    now = time.time() if now_ts is None else now_ts
+    exp = claims.get("exp")
+    if not _is_finite_number(exp) or now >= float(exp) + JWT_CLOCK_SKEW_SEC:
+        return None
+
+    nbf = claims.get("nbf")
+    if nbf is not None:
+        if not _is_finite_number(nbf) or float(nbf) > now + JWT_CLOCK_SKEW_SEC:
+            return None
+
+    iat = claims.get("iat")
+    if iat is not None and not _is_finite_number(iat):
+        return None
+
+    sub = claims.get("sub")
+    if not isinstance(sub, str) or not sub.strip():
+        return None
+    return sub.strip()
 
 
 def _parse_float_env(name: str, default: float) -> float:
@@ -582,8 +758,8 @@ def run_sandboxed(
     tracking_keys: tuple[str, ...] = (),
 ) -> tuple[subprocess.CompletedProcess[str], bool]:
     clean_env = env.copy()
-    clean_env.pop("LIBRECHAT_CODE_API_KEY", None)
-    clean_env.pop("STATE_DIR", None)
+    for var in SENSITIVE_ENV_VARS:
+        clean_env.pop(var, None)
     bwrap_cmd = build_bwrap_cmd(cmd)
     if bwrap_cmd is not None:
         bwrap_env = clean_env.copy()
@@ -609,6 +785,7 @@ def execute_code_request(
     programmatic: bool = False,
     request_id: str | None = None,
     user_id: str = "",
+    ignore_body_user: bool = False,
 ) -> dict[str, object]:
     raw_lang = str(body.get("lang") or ("bash" if programmatic else "py")).lower().strip()
     code = str(body.get("code") or "")
@@ -618,9 +795,12 @@ def execute_code_request(
     raw_session_str = str(raw_session).strip() if raw_session else ""
     session_id = to_nanoid(raw_session_str if raw_session_str else None)
     body_user = body.get("user_id")
-    caller_user = sanitize_user_id(
-        user_id or (body_user if isinstance(body_user, str) else "")
-    )
+    if ignore_body_user:
+        caller_user = sanitize_user_id(user_id)
+    else:
+        caller_user = sanitize_user_id(
+            user_id or (body_user if isinstance(body_user, str) else "")
+        )
     if not check_session_access(session_id, caller_user):
         raise PermissionError("Session belongs to another user")
     if caller_user:
@@ -736,8 +916,8 @@ def execute_code_request(
             cmd = None
 
         env = os.environ.copy()
-        env.pop("LIBRECHAT_CODE_API_KEY", None)
-        env.pop("STATE_DIR", None)
+        for var in SENSITIVE_ENV_VARS:
+            env.pop(var, None)
         env["HOME"] = str(workspace_dir)
         env["LIBRECHAT_CODE_DATA_DIR"] = str(workspace_dir)
         env["PYTHONDONTWRITEBYTECODE"] = "1"
@@ -857,27 +1037,42 @@ def execute_code_request(
 
 class SandboxHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
+    authenticated_user_id: str = ""
 
     def log_message(self, format: str, *args: object) -> None:  # noqa: A002
         return
 
     def caller_user_slug(self) -> str:
+        if self.authenticated_user_id:
+            return sanitize_user_id(self.authenticated_user_id)
         return sanitize_user_id(
             self.headers.get("User-Id") or self.headers.get("X-User-Id")
         )
 
     def check_auth(self) -> bool:
-        if not EXPECTED_API_KEY:
-            return True
-        provided = (
-            self.headers.get("X-Api-Key") or self.headers.get("x-api-key") or ""
-        ).strip()
-        if not provided:
-            auth_header = (self.headers.get("Authorization") or "").strip()
-            if auth_header.lower().startswith("bearer "):
-                provided = auth_header[7:].strip()
-        if provided and secrets.compare_digest(provided, EXPECTED_API_KEY):
-            return True
+        self.authenticated_user_id = ""
+        auth_header = (self.headers.get("Authorization") or "").strip()
+        bearer = auth_header[7:].strip() if auth_header.lower().startswith("bearer ") else ""
+
+        if jwt_auth_configured():
+            if bearer:
+                verified_sub = verify_jwt_token(bearer)
+                if verified_sub:
+                    self.authenticated_user_id = verified_sub
+                    return True
+            if not EXPECTED_API_KEY:
+                self.send_json(401, {"error": "Unauthorized"})
+                return False
+
+        if EXPECTED_API_KEY:
+            provided = (
+                self.headers.get("X-Api-Key") or self.headers.get("x-api-key") or ""
+            ).strip()
+            if not provided:
+                provided = bearer
+            if provided and secrets.compare_digest(provided, EXPECTED_API_KEY):
+                return True
+
         self.send_json(401, {"error": "Unauthorized"})
         return False
 
@@ -985,10 +1180,15 @@ class SandboxHandler(BaseHTTPRequestHandler):
                     "utf-8", errors="replace"
                 ).strip()
 
-        user_id = (self.headers.get("User-Id") or "default").strip()
-        user_slug = sanitize_user_id(user_id)
+        raw_user_id = (
+            self.authenticated_user_id
+            or self.headers.get("User-Id")
+            or self.headers.get("X-User-Id")
+            or "default"
+        ).strip()
+        user_slug = self.caller_user_slug()
         kind = fields.get("kind") or "user"
-        resource_id = fields.get("id") or user_id
+        resource_id = raw_user_id if kind == "user" else (fields.get("id") or raw_user_id)
         version_raw = fields.get("version")
         version: int | None = None
         if version_raw:
@@ -998,11 +1198,18 @@ class SandboxHandler(BaseHTTPRequestHandler):
                 version = None
         read_only = fields.get("read_only", "").lower() == "true" or kind == "skill"
 
-        if kind in ("skill", "agent") or fields.get("id"):
-            seed = f"{user_id}:{kind}:{resource_id}:{version if version is not None else ''}"
+        explicit_session = fields.get("session_id") or fields.get("storage_session_id") or ""
+        if explicit_session:
+            storage_session_id = to_nanoid(explicit_session)
+        elif kind in ("skill", "agent") or fields.get("id"):
+            seed = f"{raw_user_id}:{kind}:{resource_id}:{version if version is not None else ''}"
             storage_session_id = to_nanoid(seed)
         else:
             storage_session_id = to_nanoid()
+
+        if not read_only and kind != "skill" and not check_session_access(storage_session_id, user_slug):
+            self.send_json(403, {"error": "Forbidden"})
+            return
 
         saved_files: list[dict[str, str]] = []
         for filename, data in uploaded_parts:
@@ -1163,6 +1370,7 @@ class SandboxHandler(BaseHTTPRequestHandler):
                     programmatic=(path == "/exec/programmatic"),
                     request_id=req_id,
                     user_id=self.caller_user_slug(),
+                    ignore_body_user=bool(self.authenticated_user_id),
                 )
             except PermissionError:
                 self.send_json(403, {"error": "Forbidden"})
@@ -1193,6 +1401,11 @@ class SandboxHandler(BaseHTTPRequestHandler):
             raw_session = str(
                 body.get("session_id") or body.get("runtime_session_hint") or ""
             ).strip()
+            if raw_session and not check_session_access(
+                to_nanoid(raw_session), self.caller_user_slug()
+            ):
+                self.send_json(403, {"error": "Forbidden"})
+                return
             lookup_keys = [
                 key
                 for key in (
