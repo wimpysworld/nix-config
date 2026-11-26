@@ -891,6 +891,46 @@ else
 	pass 'reject community PR with action_required workflow run'
 fi
 
+reset_stub
+write_pr_json wimpysworld 'app/dependabot' 'dependabot/go_modules/golang.org/x/net-0.47.0' '.statusCheckRollup = []'
+cat >"${state_dir}/actions-runs.json" <<'EOF'
+{"workflow_runs":[{"name":"Test","event":"pull_request","status":"completed","conclusion":"action_required"}]}
+EOF
+assert_pr_rejected 'reject dependabot PR with held pull_request workflow run' "${url_ww}" 'Test (completed/action_required); wait for them to finish'
+
+reset_stub
+write_pr_json wimpysworld 'app/dependabot' 'dependabot/go_modules/golang.org/x/net-0.47.0'
+cat >"${state_dir}/actions-runs.json" <<'EOF'
+{"workflow_runs":[{"name":"Build","event":"pull_request","status":"completed","conclusion":"success"},{"name":"Lint","event":"pull_request","status":"in_progress","conclusion":null}]}
+EOF
+assert_pr_rejected 'reject dependabot PR with in-progress pull_request workflow run' "${url_ww}" 'Lint (in_progress/pending)'
+
+reset_stub
+write_pr_json wimpysworld 'app/dependabot' 'dependabot/go_modules/golang.org/x/net-0.47.0'
+cat >"${state_dir}/actions-runs.json" <<'EOF'
+{"workflow_runs":[{"name":"Lint","event":"pull_request","status":"queued","conclusion":null}]}
+EOF
+assert_pr_rejected 'reject dependabot PR with queued pull_request workflow run' "${url_ww}" 'Lint (queued/pending)'
+
+reset_stub
+write_pr_json wimpysworld 'app/dependabot' 'dependabot/go_modules/golang.org/x/net-0.47.0' '.statusCheckRollup = []'
+cat >"${state_dir}/actions-runs.json" <<'EOF'
+{"workflow_runs":[{"name":"Test","event":"pull_request","status":"completed","conclusion":"failure"}]}
+EOF
+assert_pr_rejected 'reject dependabot PR with empty statusCheckRollup when pull_request workflow runs exist' "${url_ww}" 'no statusCheckRollup entries but has pull_request workflow runs'
+
+reset_stub
+write_pr_json wimpysworld 'app/dependabot' 'dependabot/go_modules/golang.org/x/net-0.47.0'
+cat >"${state_dir}/actions-runs.json" <<'EOF'
+{"workflow_runs":[{"name":"Build","event":"pull_request","status":"completed","conclusion":"success"},{"name":"Publish","event":"push","status":"in_progress","conclusion":null}]}
+EOF
+run_helper --dry-run "${url_ww}"
+if [[ ${status} -ne 0 || ${stdout} != *"class=dependabot"* ]]; then
+	fail 'accept dependabot PR with finished pull_request runs and an unrelated push run' "status ${status} stdout=${stdout} stderr=${stderr}"
+else
+	pass 'accept dependabot PR with finished pull_request runs and an unrelated push run'
+fi
+
 # 10. team:do-not-merge label rejections across author classes and casing
 url_tailor='https://github.com/wimpysworld/tailor/pull/42'
 

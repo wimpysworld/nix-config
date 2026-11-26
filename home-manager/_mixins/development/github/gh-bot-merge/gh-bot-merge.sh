@@ -41,6 +41,9 @@ POLICY
         state SUCCESS (empty statusCheckRollup is permitted outside freshener,
         and completed failing checks on automated PRs are permitted when a
         trusted peer has approved headRefOid)
+      * for dependabot, no pull_request workflow run on headRefOid is held
+        (action_required), queued, or in progress, and an empty
+        statusCheckRollup is rejected when such runs exist
       * zero unresolved review threads remain on the pull request
       * the author, branch, labels, and changed files match one of the four
         permitted pull request classes:
@@ -367,7 +370,7 @@ else
     elif (($pending_checks | length) > 0) or ((($bad_checks | length) > 0) and (($pr_class == "trusted-peer") or ($pr_class == "community"))) then
       "ERR\u001fpull request #" + $pr_number + " has failing or pending status checks: " + ($bad_checks | join(", "))
     else
-      ["OK", $pr_class, (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), .headRefOid, ($bad_checks | join(", ")), (if $pr_class == "community" and (is_community_small($owner; $repo) | not) then "true" else "false" end)] | join("\u001f")
+      ["OK", $pr_class, (.author.login // ""), (.reviewDecision // ""), (.mergeStateStatus // ""), .headRefOid, ($bad_checks | join(", ")), (if $pr_class == "community" and (is_community_small($owner; $repo) | not) then "true" else "false" end), ((.statusCheckRollup // []) | length | tostring)] | join("\u001f")
     end
 end
 '
@@ -385,7 +388,7 @@ if [[ ${jq_status} -ne 0 ]]; then
 	exit "${jq_status}"
 fi
 
-IFS=$'\x1f' read -r verdict field1 field2 field3 field4 field5 field6 field7 <<<"${verify_out}"
+IFS=$'\x1f' read -r verdict field1 field2 field3 field4 field5 field6 field7 field8 <<<"${verify_out}"
 if [[ ${verdict} != "OK" ]]; then
 	die "${field1:-verification failed}"
 fi
@@ -397,6 +400,7 @@ merge_state_status="${field4}"
 head_ref_oid="${field5:-}"
 failed_checks="${field6:-}"
 community_via_label="${field7:-false}"
+rollup_count="${field8:-0}"
 if [[ -z ${head_ref_oid} ]]; then
 	die "pull request #${pr_number} has no headRefOid"
 fi
@@ -482,7 +486,7 @@ if [[ ${pr_class} == "community" && ${community_via_label} == "true" ]]; then
 	fi
 fi
 
-if [[ ${pr_class} == "community" ]]; then
+if [[ ${pr_class} == "community" || ${pr_class} == "dependabot" ]]; then
 	set +e
 	runs_json="$("${GH_BOT_MERGE_GH_BIN}" api --paginate "repos/${owner}/${repo}/actions/runs?head_sha=${head_ref_oid}&per_page=100" </dev/null)"
 	runs_status=$?
@@ -492,22 +496,43 @@ if [[ ${pr_class} == "community" ]]; then
 		exit "${runs_status}"
 	fi
 
+	# Held runs never appear in statusCheckRollup, so Dependabot pull requests
+	# must also wait for every pull_request run on headRefOid to finish.
 	# shellcheck disable=SC2016
-	readonly JQ_VERIFY_COMMUNITY_RUNS='
+	readonly JQ_VERIFY_RUNS='
+	def run_label: "\(.name // "workflow") (\(.status // "unknown")/\(.conclusion // "pending"))";
+
 	[ .[] | (.workflow_runs // [])[] ] as $runs
-	| [ $runs[] | select(
-	    (.status // "") != "completed"
-	    or (.conclusion // "") == "action_required"
-	    or ((.conclusion // "") != "success" and (.conclusion // "") != "skipped" and (.conclusion // "") != "neutral")
-	  ) | "\(.name // "workflow") (\(.status // "unknown")/\(.conclusion // "pending"))" ] as $bad
-	| if ($bad | length) > 0 then
-	    "ERR\u001fpull request #" + $pr_number + " has incomplete, action_required, or failing workflow runs: " + ($bad | join(", "))
+	| [ $runs[] | select((.event // "") == "pull_request") ] as $pr_runs
+	| if $pr_class == "community" then
+	    [ $runs[] | select(
+	        (.status // "") != "completed"
+	        or (.conclusion // "") == "action_required"
+	        or ((.conclusion // "") != "success" and (.conclusion // "") != "skipped" and (.conclusion // "") != "neutral")
+	      ) | run_label ] as $bad
+	    | if ($bad | length) > 0 then
+	        "ERR\u001fpull request #" + $pr_number + " has incomplete, action_required, or failing workflow runs: " + ($bad | join(", "))
+	      else
+	        "OK"
+	      end
 	  else
-	    "OK"
+	    [ $pr_runs[] | select((.status // "") != "completed" or (.conclusion // "") == "action_required") | run_label ] as $unfinished
+	    | if ($unfinished | length) > 0 then
+	        "ERR\u001fpull request #" + $pr_number + " has held (action_required), queued, or in-progress pull_request workflow runs on " + $head_ref_oid + ": " + ($unfinished | join(", ")) + "; wait for them to finish, then retry"
+	      elif ($rollup_count == 0) and (($pr_runs | length) > 0) then
+	        "ERR\u001fpull request #" + $pr_number + " has no statusCheckRollup entries but has pull_request workflow runs on " + $head_ref_oid + ": " + ($pr_runs | map(run_label) | join(", ")) + "; wait for CI to report, then retry"
+	      else
+	        "OK"
+	      end
 	  end
 	'
 	set +e
-	runs_verdict="$(jq -s -r --arg pr_number "${pr_number}" "${JQ_VERIFY_COMMUNITY_RUNS}" <<<"${runs_json}")"
+	runs_verdict="$(jq -s -r \
+		--arg pr_class "${pr_class}" \
+		--arg pr_number "${pr_number}" \
+		--arg head_ref_oid "${head_ref_oid}" \
+		--argjson rollup_count "${rollup_count}" \
+		"${JQ_VERIFY_RUNS}" <<<"${runs_json}")"
 	runs_jq_status=$?
 	set -e
 	if [[ ${runs_jq_status} -ne 0 ]]; then
