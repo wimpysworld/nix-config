@@ -24,6 +24,7 @@ let
       openpyxl
       pandas
       pillow
+      playwright
       pypdf
       pytest
       python-docx
@@ -48,7 +49,8 @@ let
     EOF
 
     cat > "$out/resolv.conf" <<'EOF'
-    nameserver 127.0.0.53
+    nameserver 1.1.1.1
+    nameserver 9.9.9.9
     options edns0 trust-ad
     EOF
 
@@ -101,6 +103,75 @@ let
       readonly GH_API_SAFE_GH=${lib.escapeShellArg (lib.getExe pkgs.gh)}
     ''
     + builtins.readFile ../../../../home-manager/_mixins/development/github/gh-api-safe.sh;
+  };
+  sandboxPathPackages = [
+    inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.agent-browser
+    pkgs.bash
+    pkgs.cargo
+    pkgs.chromium
+    pkgs.coreutils
+    pkgs.curl
+    pkgs.deadnix
+    pkgs.fd
+    pkgs.ffmpeg-headless
+    pkgs.file
+    pkgs.findutils
+    pkgs.fontconfig
+    pkgs.gawk
+    pkgs.gcc
+    pkgs.gh
+    ghApiSafe
+    pkgs.git
+    pkgs.gnugrep
+    pkgs.gnumake
+    pkgs.gnused
+    pkgs.gnutar
+    pkgs.go
+    pkgs.graphviz
+    pkgs.gzip
+    pkgs.hostname
+    pkgs.imagemagick
+    pkgs.jq
+    pkgs.just
+    pkgs.kuna-bin
+    pkgs.librsvg
+    pkgs.marp-cli
+    pkgs.nix
+    pkgs.nixfmt
+    pkgs.nodejs
+    pkgs.pandoc
+    pkgs.pkg-config
+    pkgs.poppler-utils
+    pkgs.procps
+    pkgs.qrencode
+    pkgs.resvg
+    pkgs.ripgrep
+    pkgs.ruff
+    pkgs.rustc
+    sandboxPython
+    pkgs.unstable.semgrep
+    pkgs.shellcheck
+    pkgs.sqlite
+    pkgs.statix
+    inputs.tailor.packages.${pkgs.stdenv.hostPlatform.system}.tailor
+    pkgs.typst
+    pkgs.unzip
+    pkgs.uv
+    pkgs.unstable.wrangler
+    pkgs.yq-go
+    pkgs.zip
+  ];
+  sandboxClosure = pkgs.closureInfo {
+    rootPaths =
+      sandboxPathPackages
+      ++ [
+        sandboxEtc
+        sandboxAdminGitConfig
+        pkgs.cacert
+        pkgs.tzdata
+        pkgs.iana-etc
+      ]
+      ++ config.fonts.packages;
   };
   librechatCodeApiKeygen = pkgs.writeShellApplication {
     name = "librechat-codeapi-keygen";
@@ -307,7 +378,17 @@ let
         );
     in
     walk "" skillDir;
-  provisionedSkillNames = lib.sort (a: b: a < b) (builtins.attrNames assistantsCompose.skillDirs);
+  excludedLibrechatSkills = [
+    "composer-reaper"
+    "herdr"
+    "slack"
+    "zk"
+  ];
+  provisionedSkillNames = lib.sort (a: b: a < b) (
+    lib.filter (name: !(lib.elem name excludedLibrechatSkills)) (
+      builtins.attrNames assistantsCompose.skillDirs
+    )
+  );
   provisionedAgentNames = lib.sort (a: b: a < b) (builtins.attrNames assistantsCompose.agentDirs);
   provisionedCommandNames = lib.sort (a: b: a < b) (
     builtins.attrNames (lib.filterAttrs (_: entry: !entry.secret) assistantsCompose.commandRegistry)
@@ -325,6 +406,7 @@ let
   ];
   librechatAssistantsManifest = pkgs.writeText "librechat-assistants-manifest.json" (
     builtins.toJSON {
+      excludedSkills = excludedLibrechatSkills;
       agents = map (
         name:
         let
@@ -753,6 +835,21 @@ let
           syncPublicViewerAcl("skill", skillDoc._id, skillViewerRole._id, Boolean(skill.shared));
         }
 
+        if (Array.isArray(manifest.excludedSkills) && manifest.excludedSkills.length > 0) {
+          const staleSkills = db.skills
+            .find({ name: { $in: manifest.excludedSkills }, author: martin._id })
+            .toArray();
+          if (staleSkills.length > 0) {
+            const staleSkillIds = staleSkills.map((doc) => doc._id);
+            db.skillfiles.deleteMany({ skillId: { $in: staleSkillIds } });
+            db.aclentries.deleteMany({
+              resourceType: "skill",
+              resourceId: { $in: staleSkillIds },
+            });
+            db.skills.deleteMany({ _id: { $in: staleSkillIds } });
+          }
+        }
+
         const allAgentIds = manifest.agents.map((a) => a.id);
 
         for (const agent of manifest.agents) {
@@ -946,6 +1043,14 @@ in
       mode = "0400";
     };
 
+    sops.secrets.CLOUDFLARE_ACCOUNT_ID = lib.mkIf hasCloudflareSopsFile {
+      sopsFile = cloudflareSopsFile;
+      path = "/run/secrets/CLOUDFLARE_ACCOUNT_ID";
+      owner = "root";
+      group = "root";
+      mode = "0400";
+    };
+
     sops.secrets.CLOUDFLARE_API_TOKEN = lib.mkIf hasCloudflareSopsFile {
       sopsFile = cloudflareSopsFile;
       path = "/run/secrets/CLOUDFLARE_API_TOKEN";
@@ -1067,8 +1172,11 @@ in
         ip6tables -w -X librechat-sandbox-out 2>/dev/null || true
         ip6tables -w -N librechat-sandbox-out
         ip6tables -w -A librechat-sandbox-out -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+        ip6tables -w -A librechat-sandbox-out -d ::1/128 -p tcp -j REJECT --reject-with tcp-reset
         ip6tables -w -A librechat-sandbox-out -d ::1/128 -j REJECT --reject-with icmp6-port-unreachable
+        ip6tables -w -A librechat-sandbox-out -d fc00::/7 -p tcp -j REJECT --reject-with tcp-reset
         ip6tables -w -A librechat-sandbox-out -d fc00::/7 -j REJECT --reject-with icmp6-port-unreachable
+        ip6tables -w -A librechat-sandbox-out -d fe80::/10 -p tcp -j REJECT --reject-with tcp-reset
         ip6tables -w -A librechat-sandbox-out -d fe80::/10 -j REJECT --reject-with icmp6-port-unreachable
         ip6tables -w -A librechat-sandbox-out -j RETURN
         ip6tables -w -I OUTPUT 1 -m owner --uid-owner librechat-code-sandbox -j librechat-sandbox-out
@@ -1360,68 +1468,23 @@ in
       ];
       requires = [ "librechat-codeapi-keygen.service" ];
       wantedBy = [ "multi-user.target" ];
-      path = [
-        pkgs.bash
-        pkgs.bubblewrap
-        pkgs.cargo
-        pkgs.coreutils
-        pkgs.curl
-        pkgs.deadnix
-        pkgs.fd
-        pkgs.ffmpeg-headless
-        pkgs.file
-        pkgs.findutils
-        pkgs.fontconfig
-        pkgs.gawk
-        pkgs.gcc
-        pkgs.gh
-        ghApiSafe
-        pkgs.git
-        pkgs.gnugrep
-        pkgs.gnumake
-        pkgs.gnused
-        pkgs.gnutar
-        pkgs.go
-        pkgs.graphviz
-        pkgs.gzip
-        pkgs.imagemagick
-        pkgs.jq
-        pkgs.just
-        pkgs.librsvg
-        pkgs.marp-cli
-        pkgs.nix
-        pkgs.nixfmt
-        pkgs.nodejs
-        pkgs.pandoc
-        pkgs.pkg-config
-        pkgs.poppler-utils
-        pkgs.qrencode
-        pkgs.resvg
-        pkgs.ripgrep
-        pkgs.ruff
-        pkgs.rustc
-        sandboxPython
-        pkgs.shellcheck
-        pkgs.sqlite
-        pkgs.statix
-        pkgs.typst
-        pkgs.unzip
-        pkgs.uv
-        pkgs.yq-go
-        pkgs.zip
-      ];
+      path = sandboxPathPackages;
       environment = {
+        BWRAP_BIN = "${lib.getExe pkgs.bubblewrap}";
         CODEAPI_JWT_AUDIENCE = "codeapi";
         CODEAPI_JWT_ISSUER = "librechat";
         CODEAPI_JWT_PUBLIC_KEY_FILE = "/var/lib/librechat-codeapi-keys/public.pem";
         HOST = "127.0.0.1";
+        PASTA_BIN = "${lib.getExe' pkgs.passt "pasta"}";
         PORT = "3082";
         REQUESTS_CA_BUNDLE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
         SANDBOX_ADMIN_GIT_CONFIG = "${sandboxAdminGitConfig}";
         SANDBOX_CACHE_TTL_DAYS = "14";
+        SANDBOX_CHROME_BIN = "${lib.getExe pkgs.chromium}";
         SANDBOX_CLEANUP_INTERVAL_SEC = "21600";
         SANDBOX_ETC_DIR = "${sandboxEtc}";
         SANDBOX_STORAGE_TTL_DAYS = "30";
+        SANDBOX_STORE_PATHS_FILE = "${sandboxClosure}/store-paths";
         SANDBOX_WORKSPACE_TTL_DAYS = "7";
         SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
         STATE_DIR = "/var/lib/librechat-code-sandbox";
@@ -1435,6 +1498,10 @@ in
         Group = "librechat-code-sandbox";
         LoadCredential = [
           "GH_TOKEN:${config.sops.secrets.GH_TOKEN.path}"
+        ]
+        ++ lib.optionals hasCloudflareSopsFile [
+          "CLOUDFLARE_ACCOUNT_ID:${config.sops.secrets.CLOUDFLARE_ACCOUNT_ID.path}"
+          "CLOUDFLARE_API_TOKEN:${config.sops.secrets.CLOUDFLARE_API_TOKEN.path}"
         ];
         StateDirectory = "librechat-code-sandbox";
         StateDirectoryMode = "0700";

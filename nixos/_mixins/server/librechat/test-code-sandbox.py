@@ -132,7 +132,12 @@ def load_sandbox(state_dir: Path, **extra_env: str):
         "CODEAPI_JWT_PUBLIC_KEY_FILE": "",
         "CODEAPI_JWT_ISSUER": "librechat",
         "CODEAPI_JWT_AUDIENCE": "codeapi",
+        "BWRAP_BIN": "",
+        "PASTA_BIN": "",
+        "SANDBOX_CHROME_BIN": "",
+        "SANDBOX_STORE_PATHS_FILE": "",
         "SANDBOX_DISABLE_BWRAP": "1",
+        "SANDBOX_DISABLE_PASTA": "0",
         "SANDBOX_WORKSPACE_TTL_DAYS": "7",
         "SANDBOX_STORAGE_TTL_DAYS": "30",
         **extra_env,
@@ -232,11 +237,158 @@ class CodeSandboxTests(unittest.TestCase):
                 gfields = group_lines[1].split(":")
                 self.assertEqual(int(gfields[2]), os.getgid())
 
+            # /run/current-system must never be mounted.
+            self.assertNotIn("/run/current-system", cmd)
+
+            # /dev/shm tmpfs must be capped at 512 MiB and mounted after /dev.
+            dev_idx = cmd.index("--dev")
+            shm_dst_idx = cmd.index("/dev/shm")
+            self.assertGreater(shm_dst_idx, dev_idx)
+            self.assertEqual(cmd[shm_dst_idx - 1], "--tmpfs")
+            self.assertEqual(cmd[shm_dst_idx - 3], "--size")
+            self.assertEqual(cmd[shm_dst_idx - 2], "536870912")
+
             # /tmp tmpfs must be capped at 4 GiB via --size 4294967296.
-            tmp_idx = cmd.index("--tmpfs")
-            self.assertEqual(cmd[tmp_idx + 1], "/tmp")
-            self.assertEqual(cmd[tmp_idx - 2], "--size")
-            self.assertEqual(cmd[tmp_idx - 1], "4294967296")
+            tmp_dst_idx = cmd.index("/tmp")
+            self.assertEqual(cmd[tmp_dst_idx - 1], "--tmpfs")
+            self.assertEqual(cmd[tmp_dst_idx - 3], "--size")
+            self.assertEqual(cmd[tmp_dst_idx - 2], "4294967296")
+
+            # --remount-ro / must follow /tmp, /dev/shm, and /mnt/data.
+            remount_idx = cmd.index("--remount-ro")
+            self.assertEqual(cmd[remount_idx + 1], "/")
+            self.assertGreater(remount_idx, tmp_dst_idx)
+            self.assertGreater(remount_idx, shm_dst_idx)
+            self.assertGreater(remount_idx, cmd.index("/mnt/data"))
+
+    def test_closure_args_file_pasta_flags_bwrap_bin_and_cleanup(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_dir = root / "state"
+            fake_etc = root / "sandbox-etc"
+            (fake_etc / "fonts").mkdir(parents=True)
+            store_paths_file = root / "store-paths"
+            store_paths_file.write_text(
+                "/nix/store/aaa-bash\n/nix/store/bbb-python\n/nix/store/aaa-bash\n\n",
+                encoding="utf-8",
+            )
+            cache_dir = root / "cache"
+            cache_dir.mkdir()
+            mod = load_sandbox(state_dir, SANDBOX_DISABLE_BWRAP="0")
+
+            env_cfg = {
+                "SANDBOX_DISABLE_BWRAP": "0",
+                "SANDBOX_DISABLE_PASTA": "0",
+                "BWRAP_BIN": "/nix/store/zzz-bwrap/bin/bwrap",
+                "PASTA_BIN": "/nix/store/yyy-passt/bin/pasta",
+                "SANDBOX_ETC_DIR": str(fake_etc),
+                "SANDBOX_STORE_PATHS_FILE": str(store_paths_file),
+            }
+            captured_cmds: list[list[str]] = []
+            captured_args_content: list[list[str]] = []
+            captured_modes: list[int] = []
+            captured_args_paths: list[Path] = []
+
+            def fake_run(bcmd, workspace_dir, env, timeout_sec, tracking_keys=()):
+                captured_cmds.append(list(bcmd))
+                args_path = Path(bcmd[-1])
+                captured_args_paths.append(args_path)
+                captured_modes.append(args_path.stat().st_mode & 0o777)
+                raw = args_path.read_bytes()
+                self.assertTrue(raw.endswith(b"\0"))
+                captured_args_content.append(raw[:-1].decode("utf-8").split("\0"))
+                return mod.subprocess.CompletedProcess(bcmd, 0, "", ""), False
+
+            def which_without_bwrap(name: str):
+                if name == "bwrap":
+                    return None
+                if name == "bash":
+                    return "/nix/store/aaa-bash/bin/bash"
+                return None
+
+            with (
+                mock.patch.dict(os.environ, env_cfg, clear=False),
+                mock.patch.object(mod.shutil, "which", side_effect=which_without_bwrap),
+                mock.patch.object(mod, "_run_process_bounded", side_effect=fake_run),
+            ):
+                self.assertEqual(mod.resolve_bwrap_bin(), "/nix/store/zzz-bwrap/bin/bwrap")
+                mod.run_sandboxed(
+                    ["python3", "-c", "print(1)"],
+                    root,
+                    {"PATH": "/nix/store/aaa-bash/bin"},
+                    10.0,
+                    cache_dir=cache_dir,
+                )
+
+            self.assertEqual(len(captured_cmds), 1)
+            full_cmd = captured_cmds[0]
+            self.assertEqual(full_cmd[0], "/nix/store/yyy-passt/bin/pasta")
+            expected_pasta_prefix = [
+                "/nix/store/yyy-passt/bin/pasta",
+                "--config-net",
+                "--no-map-gw",
+                "--map-host-loopback",
+                "none",
+                "--map-guest-addr",
+                "none",
+                "-t",
+                "none",
+                "-u",
+                "none",
+                "-T",
+                "none",
+                "-U",
+                "none",
+                "--no-splice",
+                "--quiet",
+                "--",
+                "/nix/store/aaa-bash/bin/bash",
+                "-c",
+                'exec "$1" --args 3 3<"$2"',
+                "_",
+                "/nix/store/zzz-bwrap/bin/bwrap",
+            ]
+            self.assertEqual(full_cmd[:-1], expected_pasta_prefix)
+            self.assertEqual(captured_modes[0], 0o600)
+            self.assertFalse(
+                captured_args_paths[0].exists(),
+                "temporary bwrap --args file must be unlinked in finally",
+            )
+
+            bwrap_args = captured_args_content[0]
+            self.assertNotIn("/nix/store", bwrap_args)
+            self.assertNotIn("/run/current-system", bwrap_args)
+            self.assertIn("/nix/store/aaa-bash", bwrap_args)
+            self.assertIn("/nix/store/bbb-python", bwrap_args)
+            self.assertEqual(bwrap_args.count("/nix/store/aaa-bash"), 2)
+            remount_idx = bwrap_args.index("--remount-ro")
+            self.assertEqual(bwrap_args[remount_idx + 1], "/")
+            self.assertGreater(remount_idx, bwrap_args.index("/var/cache/sandbox"))
+            self.assertGreater(remount_idx, bwrap_args.index("/mnt/data"))
+            self.assertGreater(remount_idx, bwrap_args.index("/dev/shm"))
+            self.assertGreater(remount_idx, bwrap_args.index("/tmp"))
+
+            # SANDBOX_DISABLE_PASTA=1 skips pasta while still using --args 3 and cleaning up on error.
+            errored_args_path: list[Path] = []
+
+            def failing_run(bcmd, workspace_dir, env, timeout_sec, tracking_keys=()):
+                self.assertEqual(bcmd[0], "/nix/store/aaa-bash/bin/bash")
+                errored_args_path.append(Path(bcmd[-1]))
+                raise RuntimeError("boom")
+
+            with (
+                mock.patch.dict(
+                    os.environ,
+                    {**env_cfg, "SANDBOX_DISABLE_PASTA": "1"},
+                    clear=False,
+                ),
+                mock.patch.object(mod.shutil, "which", side_effect=which_without_bwrap),
+                mock.patch.object(mod, "_run_process_bounded", side_effect=failing_run),
+                self.assertRaises(RuntimeError),
+            ):
+                mod.run_sandboxed(["true"], root, {"PATH": "/bin"}, 10.0)
+            self.assertEqual(len(errored_args_path), 1)
+            self.assertFalse(errored_args_path[0].exists())
 
     def test_bwrap_sets_tmp_cache_env_and_ignores_dot_caches(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -262,6 +414,10 @@ class CodeSandboxTests(unittest.TestCase):
                 "INVOCATION_ID": "abc123",
                 "SANDBOX_ETC_DIR": "/nix/store/fake-sandbox-etc",
                 "SANDBOX_ADMIN_GIT_CONFIG": str(admin_gitconfig),
+                "SANDBOX_CHROME_BIN": "/nix/store/fake-chromium/bin/chromium",
+                "SANDBOX_STORE_PATHS_FILE": "/nix/store/fake-closure/store-paths",
+                "BWRAP_BIN": "/nix/store/fake-bwrap/bin/bwrap",
+                "PASTA_BIN": "/nix/store/fake-passt/bin/pasta",
                 "SANDBOX_STORAGE_TTL_DAYS": "30",
                 "CODEAPI_JWT_PUBLIC_KEY_FILE": "/var/lib/librechat-codeapi-keys/public.pem",
                 "LIBRECHAT_CODE_API_KEY": "top-secret-key",
@@ -279,7 +435,26 @@ class CodeSandboxTests(unittest.TestCase):
             self.assertEqual(captured_env["TMPDIR"], "/tmp")
             self.assertEqual(captured_env["TERM"], "dumb")
             self.assertEqual(captured_env["GOMAXPROCS"], "4")
+            self.assertEqual(captured_env["GOTELEMETRY"], "off")
+            self.assertEqual(captured_env["CHROME_NO_SANDBOX"], "1")
+            self.assertEqual(
+                captured_env["AGENT_BROWSER_ARGS"],
+                "--no-sandbox,--disable-dev-shm-usage,--disable-gpu",
+            )
+            self.assertEqual(
+                captured_env["CHROME_PATH"], "/nix/store/fake-chromium/bin/chromium"
+            )
+            self.assertEqual(
+                captured_env["PUPPETEER_EXECUTABLE_PATH"],
+                "/nix/store/fake-chromium/bin/chromium",
+            )
+            self.assertEqual(
+                captured_env["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"],
+                "/nix/store/fake-chromium/bin/chromium",
+            )
+            self.assertEqual(captured_env["XDG_CONFIG_HOME"], "/tmp/xdg-config")
             self.assertEqual(captured_env["XDG_DATA_HOME"], "/tmp/xdg-data")
+            self.assertEqual(captured_env["XDG_STATE_HOME"], "/tmp/xdg-state")
             self.assertEqual(captured_env["NIX_STATE_DIR"], "/tmp/nix-state")
             self.assertEqual(captured_env["UV_CACHE_DIR"], "/tmp/uv-cache")
             self.assertEqual(captured_env["PIP_CACHE_DIR"], "/tmp/pip-cache")
@@ -300,8 +475,12 @@ class CodeSandboxTests(unittest.TestCase):
                 "STATE_DIRECTORY",
                 "SYSTEMD_EXEC_PID",
                 "INVOCATION_ID",
+                "BWRAP_BIN",
+                "PASTA_BIN",
+                "SANDBOX_CHROME_BIN",
                 "SANDBOX_ETC_DIR",
                 "SANDBOX_ADMIN_GIT_CONFIG",
+                "SANDBOX_STORE_PATHS_FILE",
                 "SANDBOX_STORAGE_TTL_DAYS",
                 "CODEAPI_JWT_PUBLIC_KEY_FILE",
                 "LIBRECHAT_CODE_API_KEY",
@@ -319,7 +498,9 @@ class CodeSandboxTests(unittest.TestCase):
                 cache_mounted=True,
             )
             self.assertEqual(admin_env["GIT_CONFIG_SYSTEM"], str(admin_gitconfig))
+            self.assertEqual(admin_env["XDG_CONFIG_HOME"], "/var/cache/sandbox/xdg-config")
             self.assertEqual(admin_env["XDG_DATA_HOME"], "/var/cache/sandbox/xdg-data")
+            self.assertEqual(admin_env["XDG_STATE_HOME"], "/var/cache/sandbox/xdg-state")
             self.assertEqual(admin_env["NIX_STATE_DIR"], "/var/cache/sandbox/nix-state")
             self.assertNotIn("SANDBOX_ETC_DIR", admin_env)
             self.assertNotIn("SANDBOX_ADMIN_GIT_CONFIG", admin_env)
@@ -709,9 +890,8 @@ class CodeSandboxTests(unittest.TestCase):
                 cmd = mod.build_bwrap_cmd(["bash", "-c", "true"], cache_dir=martin_cache)
             self.assertIsNotNone(cmd)
             assert cmd is not None
-            self.assertIn("--tmpfs", cmd)
-            tmp_idx = cmd.index("--tmpfs")
-            self.assertEqual(cmd[tmp_idx + 1], "/tmp")
+            tmp_dst_idx = cmd.index("/tmp")
+            self.assertEqual(cmd[tmp_dst_idx - 1], "--tmpfs")
             cache_idx = cmd.index("/var/cache/sandbox")
             self.assertEqual(cmd[cache_idx - 2], "--bind")
             self.assertEqual(cmd[cache_idx - 1], str(martin_cache))
@@ -735,7 +915,9 @@ class CodeSandboxTests(unittest.TestCase):
                 )
 
             self.assertEqual(captured_env["XDG_CACHE_HOME"], "/var/cache/sandbox/cache")
+            self.assertEqual(captured_env["XDG_CONFIG_HOME"], "/var/cache/sandbox/xdg-config")
             self.assertEqual(captured_env["XDG_DATA_HOME"], "/var/cache/sandbox/xdg-data")
+            self.assertEqual(captured_env["XDG_STATE_HOME"], "/var/cache/sandbox/xdg-state")
             self.assertEqual(captured_env["NIX_STATE_DIR"], "/var/cache/sandbox/nix-state")
             self.assertEqual(captured_env["GOCACHE"], "/var/cache/sandbox/go-cache")
             self.assertEqual(captured_env["GOMODCACHE"], "/var/cache/sandbox/go-mod")
@@ -773,6 +955,74 @@ class CodeSandboxTests(unittest.TestCase):
             self.assertFalse(older_file.exists())
             self.assertTrue(newer_file.is_file())
             self.assertFalse((martin_cache / "cargo").exists())
+
+
+    def test_unchanged_reinjected_file_preserves_mtime(self):
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.dict(os.environ, {"SANDBOX_DISABLE_BWRAP": "1"}),
+        ):
+            state = Path(tmp)
+            mod = load_sandbox(state)
+            upload_sid = mod.to_nanoid("mtime-upload")
+            file_id = mod.to_nanoid(f"{upload_sid}:Makefile")
+            mod.save_storage_object(
+                upload_sid, file_id, "Makefile", b"all:\n\techo hi\n", user_slug="martin_123"
+            )
+            file_ref = {
+                "id": file_id,
+                "name": "Makefile",
+                "storage_session_id": upload_sid,
+            }
+
+            res1 = mod.execute_code_request(
+                {"lang": "py", "code": "print('turn1')", "files": [file_ref]},
+                user_id="martin_123",
+            )
+            sid = str(res1["session_id"])
+            ws_file = mod.workspace_dir_for(sid, "martin_123") / "Makefile"
+            sentinel_ts = 1_700_000_000.0
+            os.utime(ws_file, (sentinel_ts, sentinel_ts))
+
+            # Turn 2: re-inject identical blob -> mtime must stay unchanged.
+            mod.execute_code_request(
+                {
+                    "lang": "py",
+                    "session_id": sid,
+                    "code": "print('turn2')",
+                    "files": [file_ref],
+                },
+                user_id="martin_123",
+            )
+            self.assertEqual(int(ws_file.stat().st_mtime), int(sentinel_ts))
+
+            # Turn 3: re-inject modified blob -> content and mtime update.
+            upload_sid_v2 = mod.to_nanoid("mtime-upload-v2")
+            file_id_v2 = mod.to_nanoid(f"{upload_sid_v2}:Makefile")
+            mod.save_storage_object(
+                upload_sid_v2,
+                file_id_v2,
+                "Makefile",
+                b"all:\n\techo updated\n",
+                user_slug="martin_123",
+            )
+            mod.execute_code_request(
+                {
+                    "lang": "py",
+                    "session_id": sid,
+                    "code": "print('turn3')",
+                    "files": [
+                        {
+                            "id": file_id_v2,
+                            "name": "Makefile",
+                            "storage_session_id": upload_sid_v2,
+                        }
+                    ],
+                },
+                user_id="martin_123",
+            )
+            self.assertEqual(ws_file.read_bytes(), b"all:\n\techo updated\n")
+            self.assertGreater(ws_file.stat().st_mtime, sentinel_ts)
 
 
 class CodeSandboxHttpJwtTests(unittest.TestCase):
@@ -1254,6 +1504,118 @@ class CodeSandboxHttpJwtTests(unittest.TestCase):
                     self.assertEqual(
                         json.loads(raw.decode("utf-8"))["stdout"],
                         "<MISSING>\n",
+                    )
+
+    def test_cloudflare_credentials_injected_only_for_admin_jwt(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            priv, _, _, pub_path = make_ed25519_keypair(root)
+            cred_dir = root / "creds"
+            cred_dir.mkdir()
+            (cred_dir / "CLOUDFLARE_ACCOUNT_ID").write_text(
+                "cf_acct_admin_123\n", encoding="utf-8"
+            )
+            (cred_dir / "CLOUDFLARE_API_TOKEN").write_text(
+                "cf_tok_admin_456\n", encoding="utf-8"
+            )
+
+            admin_token = mint_jwt(priv, sub="martin_123", extra_claims={"role": "ADMIN"})
+            user_token = mint_jwt(priv, sub="louise_456", extra_claims={"role": "USER"})
+            no_role_token = mint_jwt(priv, sub="agatha_789", omit_claims=("role",))
+            probe_body = json.dumps(
+                {
+                    "lang": "py",
+                    "code": (
+                        "import json, os; print(json.dumps({"
+                        "'acct': os.environ.get('CLOUDFLARE_ACCOUNT_ID'), "
+                        "'tok': os.environ.get('CLOUDFLARE_API_TOKEN')"
+                        "}))"
+                    ),
+                }
+            ).encode("utf-8")
+
+            with mock.patch.dict(
+                os.environ,
+                {
+                    "CREDENTIALS_DIRECTORY": str(cred_dir),
+                    "SANDBOX_CLOUDFLARE_ACCOUNT_ID_FILE": "",
+                    "SANDBOX_CLOUDFLARE_API_TOKEN_FILE": "",
+                },
+                clear=False,
+            ):
+                with running_sandbox_server(
+                    root / "state-cf-jwt",
+                    LIBRECHAT_CODE_API_KEY="",
+                    CODEAPI_JWT_PUBLIC_KEY_FILE=str(pub_path),
+                ) as (_mod, port):
+                    status, _h, raw = http_request(
+                        port,
+                        "POST",
+                        "/exec",
+                        body=probe_body,
+                        headers={
+                            "Content-Type": "application/json",
+                            "Authorization": f"Bearer {admin_token}",
+                        },
+                    )
+                    self.assertEqual(status, 200, raw)
+                    self.assertEqual(
+                        json.loads(json.loads(raw.decode("utf-8"))["stdout"]),
+                        {"acct": "cf_acct_admin_123", "tok": "cf_tok_admin_456"},
+                    )
+
+                    for tok in (user_token, no_role_token):
+                        status, _h, raw = http_request(
+                            port,
+                            "POST",
+                            "/exec",
+                            body=probe_body,
+                            headers={
+                                "Content-Type": "application/json",
+                                "Authorization": f"Bearer {tok}",
+                            },
+                        )
+                        self.assertEqual(status, 200, raw)
+                        self.assertEqual(
+                            json.loads(json.loads(raw.decode("utf-8"))["stdout"]),
+                            {"acct": None, "tok": None},
+                        )
+
+            # Static X-API-Key mode must NEVER inject Cloudflare credentials.
+            with mock.patch.dict(
+                os.environ,
+                {
+                    "CREDENTIALS_DIRECTORY": "",
+                    "SANDBOX_CLOUDFLARE_ACCOUNT_ID_FILE": str(
+                        cred_dir / "CLOUDFLARE_ACCOUNT_ID"
+                    ),
+                    "SANDBOX_CLOUDFLARE_API_TOKEN_FILE": str(
+                        cred_dir / "CLOUDFLARE_API_TOKEN"
+                    ),
+                },
+                clear=False,
+            ):
+                with running_sandbox_server(
+                    root / "state-cf-apikey",
+                    LIBRECHAT_CODE_API_KEY="static-key",
+                    CODEAPI_JWT_PUBLIC_KEY="",
+                    CODEAPI_JWT_PUBLIC_KEY_FILE="",
+                ) as (_mod, port):
+                    status, _h, raw = http_request(
+                        port,
+                        "POST",
+                        "/exec",
+                        body=probe_body,
+                        headers={
+                            "Content-Type": "application/json",
+                            "X-API-Key": "static-key",
+                            "User-Id": "martin_123",
+                        },
+                    )
+                    self.assertEqual(status, 200, raw)
+                    self.assertEqual(
+                        json.loads(json.loads(raw.decode("utf-8"))["stdout"]),
+                        {"acct": None, "tok": None},
                     )
 
 

@@ -52,6 +52,7 @@ STORAGE_DIR = STATE_DIR / "storage"
 WORKSPACES_DIR = STATE_DIR / "workspaces"
 USERS_DIR = STATE_DIR / "users"
 SESSIONS_DIR = STATE_DIR / "sessions"
+TMP_DIR = STATE_DIR / "tmp"
 EXPECTED_API_KEY = os.environ.get("LIBRECHAT_CODE_API_KEY", "").strip()
 JWT_PUBLIC_KEY_PEM = os.environ.get("CODEAPI_JWT_PUBLIC_KEY", "").strip()
 JWT_PUBLIC_KEY_FILE = os.environ.get("CODEAPI_JWT_PUBLIC_KEY_FILE", "").strip()
@@ -92,7 +93,29 @@ IGNORED_DIR_NAMES = frozenset(
 )
 SANDBOX_CACHE_MOUNT = "/var/cache/sandbox"
 SANDBOX_TMPFS_SIZE_BYTES = "4294967296"
+SANDBOX_DEV_SHM_SIZE_BYTES = "536870912"
 _RUNTIME_ETC_LOCK = threading.Lock()
+_STORE_PATHS_LOCK = threading.Lock()
+_STORE_PATHS_CACHE_KEY: tuple[str, int, int, int] | None = None
+_STORE_PATHS_CACHE_VALUE: list[str] | None = None
+PASTA_ISOLATION_FLAGS = (
+    "--config-net",
+    "--no-map-gw",
+    "--map-host-loopback",
+    "none",
+    "--map-guest-addr",
+    "none",
+    "-t",
+    "none",
+    "-u",
+    "none",
+    "-T",
+    "none",
+    "-U",
+    "none",
+    "--no-splice",
+    "--quiet",
+)
 FALLBACK_ETC_PATHS = (
     "/etc/hosts",
     "/etc/resolv.conf",
@@ -255,18 +278,37 @@ def verify_jwt_token(token: str, now_ts: float | None = None) -> tuple[str, str]
     return sub.strip(), role
 
 
-def load_gh_token() -> str:
-    token_file = os.environ.get("SANDBOX_GH_TOKEN_FILE", "").strip()
+def load_sandbox_credential(cred_name: str, env_file_var: str) -> str:
+    token_file = os.environ.get(env_file_var, "").strip()
     if not token_file:
         cred_dir = os.environ.get("CREDENTIALS_DIRECTORY", "").strip()
         if cred_dir:
-            token_file = os.path.join(cred_dir, "GH_TOKEN")
+            token_file = os.path.join(cred_dir, cred_name)
     if not token_file:
         return ""
     try:
         return Path(token_file).read_text(encoding="utf-8").strip()
     except OSError:
         return ""
+
+
+def load_gh_token() -> str:
+    return load_sandbox_credential("GH_TOKEN", "SANDBOX_GH_TOKEN_FILE")
+
+
+def load_cloudflare_credentials() -> dict[str, str]:
+    creds: dict[str, str] = {}
+    account_id = load_sandbox_credential(
+        "CLOUDFLARE_ACCOUNT_ID", "SANDBOX_CLOUDFLARE_ACCOUNT_ID_FILE"
+    )
+    if account_id:
+        creds["CLOUDFLARE_ACCOUNT_ID"] = account_id
+    api_token = load_sandbox_credential(
+        "CLOUDFLARE_API_TOKEN", "SANDBOX_CLOUDFLARE_API_TOKEN_FILE"
+    )
+    if api_token:
+        creds["CLOUDFLARE_API_TOKEN"] = api_token
+    return creds
 
 
 def _parse_float_env(name: str, default: float) -> float:
@@ -802,33 +844,81 @@ def ensure_runtime_identity_files() -> tuple[Path, Path]:
     return passwd_path, group_path
 
 
-def build_bwrap_cmd(
-    cmd: list[str], *, cache_dir: Path | None = None
-) -> list[str] | None:
+def resolve_bwrap_bin() -> str | None:
     if os.environ.get("SANDBOX_DISABLE_BWRAP") == "1":
         return None
-    bwrap = shutil.which("bwrap")
-    if not bwrap:
+    configured = os.environ.get("BWRAP_BIN", "").strip()
+    if configured:
+        return configured
+    return shutil.which("bwrap")
+
+
+def resolve_pasta_bin() -> str | None:
+    if os.environ.get("SANDBOX_DISABLE_PASTA") == "1":
         return None
+    configured = os.environ.get("PASTA_BIN", "").strip()
+    return configured or None
+
+
+def load_sandbox_store_paths() -> list[str] | None:
+    global _STORE_PATHS_CACHE_KEY, _STORE_PATHS_CACHE_VALUE
+
+    raw_path = os.environ.get("SANDBOX_STORE_PATHS_FILE", "").strip()
+    if not raw_path:
+        return None
+    path = Path(raw_path)
+    with _STORE_PATHS_LOCK:
+        try:
+            st = path.stat()
+        except OSError:
+            return None
+        cache_key = (raw_path, st.st_ino, st.st_mtime_ns, st.st_size)
+        if _STORE_PATHS_CACHE_KEY == cache_key and _STORE_PATHS_CACHE_VALUE is not None:
+            return list(_STORE_PATHS_CACHE_VALUE)
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            return None
+        store_paths = list(
+            dict.fromkeys(
+                stripped for line in lines if (stripped := line.strip()).startswith("/")
+            )
+        )
+        if not store_paths:
+            return None
+        _STORE_PATHS_CACHE_KEY = cache_key
+        _STORE_PATHS_CACHE_VALUE = store_paths
+        return list(store_paths)
+
+
+def build_bwrap_args(
+    cmd: list[str], *, cache_dir: Path | None = None
+) -> list[str]:
     passwd_path, group_path = ensure_runtime_identity_files()
     sandbox_etc_dir = os.environ.get("SANDBOX_ETC_DIR", "").strip()
     args = [
-        bwrap,
         "--unshare-all",
         "--share-net",
         "--hostname",
         "sandbox",
         "--die-with-parent",
-        "--ro-bind",
-        "/nix/store",
-        "/nix/store",
-        "--ro-bind-try",
-        "/bin",
-        "/bin",
-        "--ro-bind-try",
-        "/usr",
-        "/usr",
     ]
+    store_paths = load_sandbox_store_paths()
+    if store_paths is not None:
+        for store_path in store_paths:
+            args.extend(["--ro-bind", store_path, store_path])
+    else:
+        args.extend(["--ro-bind", "/nix/store", "/nix/store"])
+    args.extend(
+        [
+            "--ro-bind-try",
+            "/bin",
+            "/bin",
+            "--ro-bind-try",
+            "/usr",
+            "/usr",
+        ]
+    )
     if sandbox_etc_dir and Path(sandbox_etc_dir).is_dir():
         args.extend(
             [
@@ -865,11 +955,12 @@ def build_bwrap_cmd(
                     args.extend(["--ro-bind", resolved, etc_path])
     args.extend(
         [
-            "--ro-bind-try",
-            "/run/current-system",
-            "/run/current-system",
             "--dev",
             "/dev",
+            "--size",
+            SANDBOX_DEV_SHM_SIZE_BYTES,
+            "--tmpfs",
+            "/dev/shm",
             "--proc",
             "/proc",
             "--size",
@@ -887,11 +978,62 @@ def build_bwrap_cmd(
             "/mnt/data",
             "--chdir",
             "/mnt/data",
+            "--remount-ro",
+            "/",
             "--",
             *cmd,
         ]
     )
     return args
+
+
+def build_bwrap_cmd(
+    cmd: list[str], *, cache_dir: Path | None = None
+) -> list[str] | None:
+    bwrap = resolve_bwrap_bin()
+    if not bwrap:
+        return None
+    return [bwrap, *build_bwrap_args(cmd, cache_dir=cache_dir)]
+
+
+def _write_bwrap_args_file(bwrap_args: list[str]) -> Path:
+    TMP_DIR.mkdir(parents=True, exist_ok=True)
+    with contextlib.suppress(OSError):
+        TMP_DIR.chmod(0o700)
+    args_file = TMP_DIR / f"bwrap-args-{os.getpid()}-{secrets.token_hex(8)}"
+    payload = b"\0".join(arg.encode("utf-8") for arg in bwrap_args) + b"\0"
+    fd = os.open(args_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "wb") as handle:
+        handle.write(payload)
+    return args_file
+
+
+def prepare_sandbox_command(
+    cmd: list[str], *, cache_dir: Path | None = None
+) -> tuple[list[str] | None, Path | None]:
+    bwrap = resolve_bwrap_bin()
+    if not bwrap:
+        return None, None
+    bwrap_args = build_bwrap_args(cmd, cache_dir=cache_dir)
+    args_file: Path | None = None
+    if load_sandbox_store_paths() is not None:
+        args_file = _write_bwrap_args_file(bwrap_args)
+        bash_bin = shutil.which("bash") or "/bin/sh"
+        inner_cmd = [
+            bash_bin,
+            "-c",
+            'exec "$1" --args 3 3<"$2"',
+            "_",
+            bwrap,
+            str(args_file),
+        ]
+    else:
+        inner_cmd = [bwrap, *bwrap_args]
+
+    pasta = resolve_pasta_bin()
+    if pasta:
+        return [pasta, *PASTA_ISOLATION_FLAGS, "--", *inner_cmd], args_file
+    return inner_cmd, args_file
 
 
 def _terminate_process_group(proc: subprocess.Popen[bytes]) -> None:
@@ -1017,16 +1159,28 @@ def build_sandbox_env(
     }
     child_env["TERM"] = "dumb"
     child_env["GOMAXPROCS"] = "4"
+    child_env["GOTELEMETRY"] = "off"
     child_env["CARGO_BUILD_JOBS"] = "4"
     child_env["CARGO_INCREMENTAL"] = "0"
     child_env["PYTHONDONTWRITEBYTECODE"] = "1"
+    child_env["CHROME_NO_SANDBOX"] = "1"
+    child_env["AGENT_BROWSER_ARGS"] = "--no-sandbox,--disable-dev-shm-usage,--disable-gpu"
+    chrome_bin = (
+        env.get("SANDBOX_CHROME_BIN") or os.environ.get("SANDBOX_CHROME_BIN", "")
+    ).strip()
+    if chrome_bin:
+        child_env["CHROME_PATH"] = chrome_bin
+        child_env["PUPPETEER_EXECUTABLE_PATH"] = chrome_bin
+        child_env["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"] = chrome_bin
     if use_bwrap:
         cache_root = SANDBOX_CACHE_MOUNT if cache_mounted else "/tmp"  # noqa: S108
         child_env["HOME"] = "/mnt/data"
         child_env["LIBRECHAT_CODE_DATA_DIR"] = "/mnt/data"
         child_env["TMPDIR"] = "/tmp"  # noqa: S108
         child_env["XDG_CACHE_HOME"] = f"{cache_root}/cache"
+        child_env["XDG_CONFIG_HOME"] = f"{cache_root}/xdg-config"
         child_env["XDG_DATA_HOME"] = f"{cache_root}/xdg-data"
+        child_env["XDG_STATE_HOME"] = f"{cache_root}/xdg-state"
         child_env["NIX_STATE_DIR"] = f"{cache_root}/nix-state"
         child_env["UV_CACHE_DIR"] = f"{cache_root}/uv-cache"
         child_env["UV_TOOL_DIR"] = f"{cache_root}/uv-tools"
@@ -1047,6 +1201,7 @@ def build_sandbox_env(
         gh_token = load_gh_token()
         if gh_token:
             child_env["GH_TOKEN"] = gh_token
+        child_env.update(load_cloudflare_credentials())
         admin_git_config = (
             env.get("SANDBOX_ADMIN_GIT_CONFIG")
             or os.environ.get("SANDBOX_ADMIN_GIT_CONFIG", "")
@@ -1066,21 +1221,26 @@ def run_sandboxed(
     caller_role: str = "USER",
     cache_dir: Path | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], bool]:
-    bwrap_cmd = build_bwrap_cmd(cmd, cache_dir=cache_dir)
+    sandbox_cmd, args_file = prepare_sandbox_command(cmd, cache_dir=cache_dir)
     child_env = build_sandbox_env(
         env,
         workspace_dir,
-        use_bwrap=bwrap_cmd is not None,
+        use_bwrap=sandbox_cmd is not None,
         caller_role=caller_role,
-        cache_mounted=(bwrap_cmd is not None and cache_dir is not None),
+        cache_mounted=(sandbox_cmd is not None and cache_dir is not None),
     )
-    if bwrap_cmd is not None:
+    try:
+        if sandbox_cmd is not None:
+            return _run_process_bounded(
+                sandbox_cmd, workspace_dir, child_env, timeout_sec, tracking_keys
+            )
         return _run_process_bounded(
-            bwrap_cmd, workspace_dir, child_env, timeout_sec, tracking_keys
+            cmd, workspace_dir, child_env, timeout_sec, tracking_keys
         )
-    return _run_process_bounded(
-        cmd, workspace_dir, child_env, timeout_sec, tracking_keys
-    )
+    finally:
+        if args_file is not None:
+            with contextlib.suppress(OSError):
+                args_file.unlink(missing_ok=True)
 
 
 def execute_code_request(
@@ -1174,20 +1334,42 @@ def execute_code_request(
                 except ValueError:
                     continue
                 tombstone_digest = tombstones.get(rel_path)
+                src_bytes: bytes | None = None
                 if tombstone_digest is not None:
                     try:
-                        blob_digest = hashlib.sha256(src_blob.read_bytes()).hexdigest()
+                        src_bytes = src_blob.read_bytes()
                     except OSError:
                         continue
+                    blob_digest = hashlib.sha256(src_bytes).hexdigest()
                     if blob_digest == tombstone_digest:
                         continue
                     tombstones.pop(rel_path, None)
                     tombstones_dirty = True
-                dest_path.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(src_blob, dest_path)
+                skip_copy = False
+                if dest_path.is_file() and not dest_path.is_symlink():
+                    try:
+                        src_stat = src_blob.stat()
+                        dest_stat = dest_path.stat()
+                        if src_stat.st_size == dest_stat.st_size:
+                            if src_bytes is None:
+                                src_bytes = src_blob.read_bytes()
+                            if (
+                                hashlib.sha256(dest_path.read_bytes()).digest()
+                                == hashlib.sha256(src_bytes).digest()
+                            ):
+                                skip_copy = True
+                    except OSError:
+                        skip_copy = False
+                if not skip_copy:
+                    dest_path.parent.mkdir(parents=True, exist_ok=True)
+                    if src_bytes is not None:
+                        dest_path.write_bytes(src_bytes)
+                    else:
+                        shutil.copyfile(src_blob, dest_path)
                 if is_executable_path(rel_path):
                     with contextlib.suppress(OSError):
-                        dest_path.chmod(0o755)
+                        if not skip_copy or (dest_path.stat().st_mode & 0o111) == 0:
+                            dest_path.chmod(0o755)
                 meta = load_storage_meta(storage_sid, file_id, caller_user)
                 if (
                     is_skill_entry
@@ -1197,10 +1379,7 @@ def execute_code_request(
                     readonly_paths.add(rel_path)
 
         before_snap = snapshot_workspace(workspace_dir)
-        use_bwrap = (
-            os.environ.get("SANDBOX_DISABLE_BWRAP") != "1"
-            and shutil.which("bwrap") is not None
-        )
+        use_bwrap = resolve_bwrap_bin() is not None
         effective_code = (
             code
             if use_bwrap

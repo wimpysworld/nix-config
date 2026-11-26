@@ -14,6 +14,10 @@ require(path.resolve(preloadPath));
 
 const EXPECTED_NETWORK_LINE =
   '- Public internet access is available. Localhost, private LAN, link-local, and Tailscale addresses are blocked by firewall.';
+const EXPECTED_SKILLS_LINE =
+  '- Invoked skill assets and scripts are mounted under /mnt/data/skills/<skillName>/.';
+const EXPECTED_PERSISTENCE_LINE =
+  '- Files in /mnt/data (including extensionless files and dotfiles) persist across calls, while /tmp clears between calls and /var/cache/sandbox holds per-user caches.';
 
 function writeFile(filePath, content) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -183,15 +187,22 @@ Object.defineProperty(module.exports, 'loadAgent', {
   assert.strictEqual(bashMod, bashModAgain, 'WeakMap cache should return identical wrapper');
 
   assert.ok(bashMod.BashExecutionToolDescription.includes(EXPECTED_NETWORK_LINE));
+  assert.ok(bashMod.BashExecutionToolDescription.includes(EXPECTED_SKILLS_LINE));
+  assert.ok(bashMod.BashExecutionToolDescription.includes(EXPECTED_PERSISTENCE_LINE));
   assert.ok(!bashMod.BashExecutionToolDescription.includes('- No network access available.'));
   assert.ok(bashMod.StatefulBashExecutionToolDescription.includes(EXPECTED_NETWORK_LINE));
+  assert.ok(bashMod.StatefulBashExecutionToolDescription.includes(EXPECTED_SKILLS_LINE));
+  assert.ok(bashMod.StatefulBashExecutionToolDescription.includes(EXPECTED_PERSISTENCE_LINE));
   assert.strictEqual(bashMod.BashExecutionToolDefinition.name, 'execute_bash');
   assert.ok(bashMod.BashExecutionToolDefinition.description.includes(EXPECTED_NETWORK_LINE));
+  assert.ok(bashMod.BashExecutionToolDefinition.description.includes(EXPECTED_SKILLS_LINE));
   assert.ok(bashMod.buildBashExecutionToolDescription(false).includes(EXPECTED_NETWORK_LINE));
-  assert.ok(bashMod.buildBashExecutionToolDescription(true).includes(EXPECTED_NETWORK_LINE));
+  assert.ok(bashMod.buildBashExecutionToolDescription(true).includes(EXPECTED_PERSISTENCE_LINE));
 
   const bashTool = bashMod.createBashExecutionTool();
   assert.ok(bashTool.description.includes(EXPECTED_NETWORK_LINE));
+  assert.ok(bashTool.description.includes(EXPECTED_SKILLS_LINE));
+  assert.ok(bashTool.description.includes(EXPECTED_PERSISTENCE_LINE));
   assert.strictEqual(bashTool.invoke(), 'ok', 'Prototype methods must remain intact');
   assert.strictEqual(bashMod.createBashExecutionTool('missing').description, undefined);
   assert.strictEqual(bashMod.createBashExecutionTool('nonstring').description, 42);
@@ -199,13 +210,20 @@ Object.defineProperty(module.exports, 'loadAgent', {
 
   const codeMod = agentsIndex.loadCode();
   assert.ok(codeMod.CodeExecutionToolDescription.includes(EXPECTED_NETWORK_LINE));
+  assert.ok(codeMod.CodeExecutionToolDescription.includes(EXPECTED_SKILLS_LINE));
+  assert.ok(codeMod.CodeExecutionToolDescription.includes(EXPECTED_PERSISTENCE_LINE));
   assert.ok(!codeMod.CodeExecutionToolDescription.includes('- No network access available.'));
   assert.ok(codeMod.StatefulCodeExecutionToolDescription.includes(EXPECTED_NETWORK_LINE));
+  assert.ok(codeMod.StatefulCodeExecutionToolDescription.includes(EXPECTED_SKILLS_LINE));
+  assert.ok(codeMod.StatefulCodeExecutionToolDescription.includes(EXPECTED_PERSISTENCE_LINE));
   assert.strictEqual(codeMod.CodeExecutionToolDefinition.name, 'execute_code');
   assert.ok(codeMod.CodeExecutionToolDefinition.description.includes(EXPECTED_NETWORK_LINE));
+  assert.ok(codeMod.CodeExecutionToolDefinition.description.includes(EXPECTED_SKILLS_LINE));
   assert.ok(codeMod.buildCodeExecutionToolDescription(false).includes(EXPECTED_NETWORK_LINE));
-  assert.ok(codeMod.buildCodeExecutionToolDescription(true).includes(EXPECTED_NETWORK_LINE));
+  assert.ok(codeMod.buildCodeExecutionToolDescription(true).includes(EXPECTED_PERSISTENCE_LINE));
   assert.ok(codeMod.createCodeExecutionTool().description.includes(EXPECTED_NETWORK_LINE));
+  assert.ok(codeMod.createCodeExecutionTool().description.includes(EXPECTED_SKILLS_LINE));
+  assert.ok(codeMod.createCodeExecutionTool().description.includes(EXPECTED_PERSISTENCE_LINE));
   assert.strictEqual(codeMod.createCodeExecutionTool('missing').description, undefined);
   assert.strictEqual(typeof codeMod.createCodeExecutionTool('nonstring').description, 'object');
 

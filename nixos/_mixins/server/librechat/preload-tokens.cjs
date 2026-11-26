@@ -15,8 +15,11 @@ const patchedToolModules = new WeakMap();
 const patchedApiModules = new WeakMap();
 
 const NO_NETWORK_LINE = '- No network access available.';
-const NETWORK_ACCESS_LINE =
-  '- Public internet access is available. Localhost, private LAN, link-local, and Tailscale addresses are blocked by firewall.';
+const SANDBOX_ENVIRONMENT_LINES = [
+  '- Public internet access is available. Localhost, private LAN, link-local, and Tailscale addresses are blocked by firewall.',
+  '- Invoked skill assets and scripts are mounted under /mnt/data/skills/<skillName>/.',
+  '- Files in /mnt/data (including extensionless files and dotfiles) persist across calls, while /tmp clears between calls and /var/cache/sandbox holds per-user caches.',
+].join('\n');
 
 function enableStatefulCodeSessions(agent) {
   if (
@@ -147,7 +150,7 @@ function rewriteNetworkDescription(value) {
   if (typeof value !== 'string') {
     return value;
   }
-  return value.replaceAll(NO_NETWORK_LINE, NETWORK_ACCESS_LINE);
+  return value.replaceAll(NO_NETWORK_LINE, SANDBOX_ENVIRONMENT_LINES);
 }
 
 function rewriteToolDescription(tool) {
