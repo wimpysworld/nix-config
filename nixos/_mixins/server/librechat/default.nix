@@ -1116,6 +1116,9 @@ in
         ALLOW_REGISTRATION = lib.mkDefault false;
         ALLOW_SOCIAL_LOGIN = lib.mkDefault false;
         ALLOW_UNVERIFIED_EMAIL_LOGIN = lib.mkDefault true;
+        # Required by LibreChat 0.8.8 alongside LIBRECHAT_CODE_BASEURL_STATEFUL so
+        # stateful_code_sessions agents do not trip optsOutOfAttachedCodeEnvironment.
+        CODE_ENVIRONMENT_DECISION_VERSION = lib.mkDefault "1";
         CODEAPI_AUTH_PROVIDER = lib.mkDefault "librechat-jwt";
         GOOGLE_MODELS = lib.mkDefault "gemini-4-neon,gemini-4-carbon,gemini-4-hydrogen,gemini-3.8-flash";
         HOST = lib.mkDefault "0.0.0.0";
