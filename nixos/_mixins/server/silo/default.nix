@@ -135,7 +135,10 @@ lib.mkIf (noughtyLib.hostHasTag "silo") {
       ConditionPathIsMountPoint = "/srv/pool";
     };
 
-    path = lib.optional config.noughty.host.gpu.hasNvidia config.hardware.nvidia.package.bin;
+    path = [
+      config.services.postgresql.package
+    ]
+    ++ lib.optional config.noughty.host.gpu.hasNvidia config.hardware.nvidia.package.bin;
 
     environment = {
       ABS_PORT = toString siloAudiobookshelfPort;
