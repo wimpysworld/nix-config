@@ -244,17 +244,28 @@ class FocusedBenchmarkTests(unittest.TestCase):
         self.assertEqual(mod.peak_vram_bytes(multi_peaks), 21 * 1024 ** 3)
         self.assertIsNone(mod.peak_vram_bytes(None))
 
-    def test_llama_case_matrix_adds_mtp4_mtp6_mtp8_for_vulkan_only(self):
+    def test_delta_gpu_bytes_calculates_clamps_and_handles_missing(self):
+        mod = load_focused()
+        gib = 1024 ** 3
+        self.assertEqual(mod.delta_gpu_bytes(50 * gib, 6 * gib), 44 * gib)
+        self.assertEqual(mod.delta_gpu_bytes(4 * gib, 6 * gib), 0)
+        self.assertIsNone(mod.delta_gpu_bytes(None, 6 * gib))
+        self.assertIsNone(mod.delta_gpu_bytes(50 * gib, None))
+        self.assertIsNone(mod.delta_gpu_bytes(None, None))
+
+    def test_llama_case_matrix_adds_mtp4_for_vulkan_only(self):
         mod = load_focused()
         for draft_tokens in (2, 3):
+            self.assertEqual(mod.mtp_widths_for_backend("vulkan", draft_tokens), (0, 2, 3, 4))
+            self.assertEqual(mod.mtp_widths_for_backend("rocm", draft_tokens), (0, 2, 3))
             cases = mod.llama_case_matrix(["vulkan", "rocm"], draft_tokens)
             vulkan_widths = [w for b, w in cases if b == "vulkan"]
             rocm_widths = [w for b, w in cases if b == "rocm"]
-            self.assertEqual(vulkan_widths, [0, 2, 3, 4, 6, 8])
+            self.assertEqual(vulkan_widths, [0, 2, 3, 4])
             self.assertEqual(rocm_widths, [0, 2, 3])
 
         cuda_cases = mod.llama_case_matrix(["vulkan", "cuda"], 3)
-        self.assertEqual([w for b, w in cuda_cases if b == "vulkan"], [0, 2, 3, 4, 6, 8])
+        self.assertEqual([w for b, w in cuda_cases if b == "vulkan"], [0, 2, 3, 4])
         self.assertEqual([w for b, w in cuda_cases if b == "cuda"], [0])
 
         non_mtp = mod.llama_case_matrix(["vulkan", "rocm"], None)
@@ -262,6 +273,7 @@ class FocusedBenchmarkTests(unittest.TestCase):
 
     def test_format_summary_table_and_deltas(self):
         mod = load_focused()
+        gib = 1024 ** 3
         results = [
             {
                 "model": "gemma4-e4b",
@@ -271,10 +283,11 @@ class FocusedBenchmarkTests(unittest.TestCase):
                 "status": "ok",
                 "medians": {"prefill_tps": 1200.0, "decode_tps": 100.0, "ttft_ms": 3400.0, "total_ms": 8500.0},
                 "device_peak_bytes": {
-                    "card1/mem_info_vram_used": 1 * 1024 ** 3,
-                    "card1/mem_info_vis_vram_used": 1 * 1024 ** 3,
-                    "card1/mem_info_gtt_used": 9 * 1024 ** 3,
+                    "card1/mem_info_vram_used": 1 * gib,
+                    "card1/mem_info_vis_vram_used": 1 * gib,
+                    "card1/mem_info_gtt_used": 9 * gib,
                 },
+                "baseline_gpu_bytes": 2 * gib,
             },
             {
                 "model": "gemma4-e4b",
@@ -283,7 +296,21 @@ class FocusedBenchmarkTests(unittest.TestCase):
                 "mode": "off",
                 "status": "ok",
                 "medians": {"prefill_tps": 1000.0, "decode_tps": 80.0, "ttft_ms": 4100.0, "total_ms": 10500.0},
-                "device_peak_bytes": {"card1/mem_info_vram_used": 11 * 1024 ** 3},
+                "device_peak_bytes": {"card1/mem_info_vram_used": 11 * gib},
+                "baseline_gpu_bytes": 12 * gib,
+                "peak_gpu_bytes": 11 * gib,
+                "delta_gpu_bytes": 0,
+            },
+            {
+                "model": "qwen3.8-27b",
+                "runner": "llama.cpp",
+                "backend": "vulkan",
+                "mode": "mtp3",
+                "status": "ok",
+                "medians": {"prefill_tps": 500.0, "decode_tps": 28.0, "ttft_ms": 8100.0, "total_ms": 26000.0},
+                "peak_gpu_bytes": 24 * gib,
+                "baseline_gpu_bytes": None,
+                "delta_gpu_bytes": None,
             },
             {
                 "model": "flint",
@@ -297,8 +324,10 @@ class FocusedBenchmarkTests(unittest.TestCase):
         table = mod.format_summary_table(results, runs=3)
         self.assertIn("Prefill tok/s", table)
         self.assertIn("Decode tok/s", table)
-        self.assertIn("Peak GPU Mem", table)
-        self.assertIn("10.0 GiB", table)
+        self.assertIn("Peak GPU Mem  Delta GPU Mem", table)
+        self.assertIn("10.0 GiB        8.0 GiB", table)
+        self.assertIn("11.0 GiB        0.0 GiB", table)
+        self.assertIn("24.0 GiB              -", table)
         self.assertIn("unsupported: unknown model architecture: 'flint'", table)
         self.assertIn("gemma4-e4b (vulkan): llama.cpp vs ollama decode +25.0%, prefill +20.0%", table)
 

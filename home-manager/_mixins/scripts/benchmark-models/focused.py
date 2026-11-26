@@ -33,7 +33,7 @@ OLLAMA_PROMPT_MAX_DRIFT = 256
 SEED = 42
 DEVICES = {"vulkan": "Vulkan0", "rocm": "ROCm0", "cuda": "CUDA0"}
 MTP_WIDTHS_BY_BACKEND: dict[str, tuple[int, ...]] = {
-    "vulkan": (2, 3, 4, 6, 8),
+    "vulkan": (2, 3, 4),
     "rocm": (2, 3),
 }
 MTP_BACKENDS = set(MTP_WIDTHS_BY_BACKEND)
@@ -410,18 +410,30 @@ def classify_ollama_error(message: str, server_log: str = "") -> tuple[str, str]
     return "failed", primary[:120]
 
 
-def sample_gpu_memory(stop: Event, peaks: dict[str, int]):
-    counters = []
+def amdgpu_memory_counters() -> list[Path]:
+    counters: list[Path] = []
     for device in Path("/sys/class/drm").glob("card[0-9]*/device"):
         if device.parent.name[4:].isdigit() and (device / "driver").resolve().name == "amdgpu":
             counters.extend(device.glob("mem_info_*_used"))
+    return counters
+
+
+def snapshot_gpu_memory(counters: list[Path] | None = None) -> dict[str, int]:
+    values: dict[str, int] = {}
+    for counter in amdgpu_memory_counters() if counters is None else counters:
+        key = f"{counter.parent.parent.name}/{counter.name}"
+        try:
+            values[key] = int(counter.read_text())
+        except (OSError, ValueError):
+            continue
+    return values
+
+
+def sample_gpu_memory(stop: Event, peaks: dict[str, int]):
+    counters = amdgpu_memory_counters()
     while True:
-        for counter in counters:
-            key = f"{counter.parent.parent.name}/{counter.name}"
-            try:
-                peaks[key] = max(peaks.get(key, 0), int(counter.read_text()))
-            except (OSError, ValueError):
-                continue
+        for key, value in snapshot_gpu_memory(counters).items():
+            peaks[key] = max(peaks.get(key, 0), value)
         if stop.wait(0.2):
             return
 
@@ -439,6 +451,12 @@ def peak_vram_bytes(peaks: dict[str, int] | None) -> int | None:
     if per_card:
         return max(metrics.get("vram", 0) + metrics.get("gtt", 0) for metrics in per_card.values())
     return max(peaks.values())
+
+
+def delta_gpu_bytes(peak_bytes: int | None, baseline_bytes: int | None) -> int | None:
+    if peak_bytes is None or baseline_bytes is None:
+        return None
+    return max(0, peak_bytes - baseline_bytes)
 
 
 def run_llama_case(
@@ -493,6 +511,7 @@ def run_llama_case(
             print(json.dumps({"case": label, **fields}), file=records, flush=True)
 
         record(kind="config", runner="llama.cpp", model=model, backend=backend, mode=mode, command=command, sampling=sampling, seed=SEED)
+        baseline_gpu_bytes = peak_vram_bytes(snapshot_gpu_memory())
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         ready: Queue[int | None] = Queue()
         reader = Thread(target=follow_server, args=(process.stdout, log, ready))
@@ -525,6 +544,7 @@ def run_llama_case(
             rates = {key: median(s[key] for s in samples) for key in ("ttft_ms", "total_ms", "prefill_tps", "decode_tps")}
             drafted = sum(s["timings"].get("draft_n", 0) for s in samples)
             accepted = sum(s["timings"].get("draft_n_accepted", 0) for s in samples)
+            peak_bytes = peak_vram_bytes(peaks)
             summary = {
                 "case": label,
                 "model": model,
@@ -534,7 +554,9 @@ def run_llama_case(
                 "status": "ok",
                 "medians": rates,
                 "device_peak_bytes": peaks or None,
-                "peak_gpu_bytes": peak_vram_bytes(peaks),
+                "baseline_gpu_bytes": baseline_gpu_bytes,
+                "peak_gpu_bytes": peak_bytes,
+                "delta_gpu_bytes": delta_gpu_bytes(peak_bytes, baseline_gpu_bytes),
                 "draft_n": drafted,
                 "draft_n_accepted": accepted,
             }
@@ -734,6 +756,7 @@ def run_ollama_case(
             igpu_enable=env.get("OLLAMA_IGPU_ENABLE"),
             seed=SEED,
         )
+        baseline_gpu_bytes = peak_vram_bytes(snapshot_gpu_memory())
         process = subprocess.Popen([ollama_bin, "serve"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         reader = Thread(target=follow_process_log, args=(process.stdout, log))
         reader.start()
@@ -804,6 +827,7 @@ def run_ollama_case(
                 sampler.join()
 
             rates = {key: median(s[key] for s in samples) for key in ("ttft_ms", "total_ms", "prefill_tps", "decode_tps")}
+            peak_bytes = peak_vram_bytes(peaks)
             summary = {
                 "case": label,
                 "model": model,
@@ -813,7 +837,9 @@ def run_ollama_case(
                 "status": "ok",
                 "medians": rates,
                 "device_peak_bytes": peaks or None,
-                "peak_gpu_bytes": peak_vram_bytes(peaks),
+                "baseline_gpu_bytes": baseline_gpu_bytes,
+                "peak_gpu_bytes": peak_bytes,
+                "delta_gpu_bytes": delta_gpu_bytes(peak_bytes, baseline_gpu_bytes),
             }
             record(kind="summary", **{k: v for k, v in summary.items() if k != "case"})
             if emit_json:
@@ -913,8 +939,8 @@ def ensure_model_path(model: str, profile: dict[str, object], root: Path) -> Pat
     return path
 
 
-def format_vram(peak_bytes: int | None) -> str:
-    if peak_bytes is None or peak_bytes <= 0:
+def format_vram(peak_bytes: int | None, *, allow_zero: bool = False) -> str:
+    if peak_bytes is None or (peak_bytes < 0 if allow_zero else peak_bytes <= 0):
         return "-"
     return f"{peak_bytes / (1024 ** 3):.1f} GiB"
 
@@ -929,6 +955,7 @@ def format_summary_table(results: list[dict[str, object]], runs: int) -> str:
         "Decode tok/s",
         "TTFT ms",
         "Peak GPU Mem",
+        "Delta GPU Mem",
         "Status",
     ]
     rows: list[list[str]] = []
@@ -942,13 +969,18 @@ def format_summary_table(results: list[dict[str, object]], runs: int) -> str:
             peak_bytes = entry.get("peak_gpu_bytes")
             if peak_bytes is None:
                 peak_bytes = peak_vram_bytes(entry.get("device_peak_bytes"))
+            delta_bytes = entry.get("delta_gpu_bytes")
+            if delta_bytes is None and entry.get("baseline_gpu_bytes") is not None:
+                delta_bytes = delta_gpu_bytes(peak_bytes, entry.get("baseline_gpu_bytes"))
             vram = format_vram(peak_bytes)
+            delta_vram = format_vram(delta_bytes, allow_zero=True)
             status_text = "ok"
         else:
             prefill = "-"
             decode = "-"
             ttft = "-"
             vram = "-"
+            delta_vram = "-"
             err = str(entry.get("error") or "").strip()
             status_text = f"{status}: {err}" if err else status
         rows.append(
@@ -961,6 +993,7 @@ def format_summary_table(results: list[dict[str, object]], runs: int) -> str:
                 decode,
                 ttft,
                 vram,
+                delta_vram,
                 status_text,
             ]
         )
@@ -970,7 +1003,7 @@ def format_summary_table(results: list[dict[str, object]], runs: int) -> str:
         for idx, cell in enumerate(row):
             widths[idx] = max(widths[idx], len(cell))
 
-    right_align = {4, 5, 6, 7}
+    right_align = {4, 5, 6, 7, 8}
 
     def render_row(cells: list[str]) -> str:
         parts = [
