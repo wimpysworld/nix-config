@@ -16325,6 +16325,46 @@ class UnifiedLlmRateControlsAndPriorityOrderTests(GithubCompanionTestBase):
         th2 = store.get_throttle_state(slot_id=companion.compute_throttle_slot_id(slot2_ms, "traya"), now_override_ms=slot2_ms)
         self.assertEqual((th2["slot_tasks"], th2["daily_tasks"]), (3, 6))
 
+    def test_wait_until_due_chunks_sleep_and_recovers_from_forward_clock_jump(self) -> None:
+        gh_client = companion.GhApiSafeClient(runner=lambda *a, **k: subprocess.CompletedProcess(a[0], 0, "", ""))
+        store = self.make_store("skrye")
+        # Persisted next_poll_at_ms from before reboot (2026-11-25 12:30:00 UTC)
+        persisted_next_ms = self._utc_ms(2026, 11, 25, 12, 30)
+        store.write_state({"next_poll_at_ms": persisted_next_ms})
+
+        # Boot with unsynced clock at 2025-01-01 00:01:08 UTC; NTP jumps to 2026-11-25 12:29:45 UTC after 2 chunks.
+        now_holder = [self._utc_ms(2025, 1, 1, 0, 1) + 8_000]
+        chunks: list[float] = []
+
+        def fake_sleeper(seconds: float) -> None:
+            chunks.append(seconds)
+            if len(chunks) == 2:
+                now_holder[0] = persisted_next_ms - 15_000
+            else:
+                now_holder[0] += int(round(seconds * 1000))
+
+        poller = companion.NotificationPoller(
+            state_store=store,
+            gh_client=gh_client,
+            clock=lambda: now_holder[0],
+            sleeper=fake_sleeper,
+        )
+        slept_ms = poller.wait_until_due()
+        self.assertEqual(chunks, [60.0, 60.0, 15.0])
+        self.assertEqual(slept_ms, 135_000)
+
+        # Normal multi-minute wait with now_override_ms also sleeps in bounded 60s chunks.
+        override_chunks: list[float] = []
+        poller_override = companion.NotificationPoller(
+            state_store=store,
+            gh_client=gh_client,
+            clock=lambda: persisted_next_ms - 150_000,
+            sleeper=override_chunks.append,
+        )
+        override_slept_ms = poller_override.wait_until_due(now_override_ms=persisted_next_ms - 150_000)
+        self.assertEqual(override_chunks, [60.0, 60.0, 30.0])
+        self.assertEqual(override_slept_ms, 150_000)
+
 
 if __name__ == "__main__":
     unittest.main()
