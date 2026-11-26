@@ -182,8 +182,28 @@ for (const layout of ["plain", "fenced", "escaping-entrypoint"]) {
         integrationID: "openai", label: "Offline browser fixture", activate: true,
         value: { type: "oauth", methodID: "chatgpt-browser", access: "offline-test", refresh: "offline-test", expires: Date.now() + 86400000 },
       });
-      // The local catalogue endpoint waits for plugin activation without inference or downloads.
-      const models = await api("/api/model");
+      const googleModelIDs = Object.keys(delivery.googleProvider.models);
+      const openaiModelIDs = ["gpt-6.2-astra", "gpt-6.2-sol", "gpt-6.1-terra", "gpt-6-luna"];
+      // OpenCode 2.4+ removed the startup plugin-activation barrier from /api/model
+      // (anomalyco/opencode#63814, tracked in #66110), so poll until background
+      // provider and plugin activation settle.
+      async function waitForStartup(): Promise<{ models: any[]; plugins: any[] }> {
+        const deadline = Date.now() + 10000;
+        let models: any[] = [];
+        let plugins: any[] = [];
+        while (true) {
+          [models, plugins] = await Promise.all([api("/api/model"), api("/api/plugin")]);
+          const googleReady = googleModelIDs.every((id) => models.some((model: any) => model.providerID === "google" && model.id === id));
+          const openaiReady = openaiModelIDs.every((id) => models.some((model: any) => model.providerID === "openai" && model.id === id));
+          const pluginsReady = layout === "escaping-entrypoint"
+            || expected.every((id) => plugins.some((entry: any) => entry.id === id && entry.state?.status === "active"));
+          if ((googleReady && openaiReady && pluginsReady) || Date.now() >= deadline) {
+            return { models, plugins };
+          }
+          await Bun.sleep(50);
+        }
+      }
+      const { models, plugins } = await waitForStartup();
       for (const [id, configured] of Object.entries(delivery.googleProvider.models) as [string, any][]) {
         const resolved = models.find((model: any) => model.providerID === "google" && model.id === id);
         assert.ok(resolved, `The offline catalogue must retain configured model ${id}`);
@@ -207,7 +227,7 @@ for (const layout of ["plain", "fenced", "escaping-entrypoint"]) {
         assert.ok(models.some((model: any) => model.providerID === providerID && model.id === modelID
           && (!variant || model.variants.some((entry: any) => entry.id === variant))));
       }
-      for (const id of ["gpt-6.2-astra", "gpt-6.2-sol", "gpt-6.1-terra", "gpt-6-luna"]) {
+      for (const id of openaiModelIDs) {
         const resolved = models.find((model: any) => model.providerID === "openai" && model.id === id);
         assert.ok(resolved, `OpenAI OAuth must resolve built-in model ${id}`);
         assert.equal(resolved.package, "@opencode/ai/providers/openai/responses", "Built-in models must use Responses transport");
@@ -219,7 +239,6 @@ for (const layout of ["plain", "fenced", "escaping-entrypoint"]) {
           assert.ok(variants.has(effort), `${id} must expose reasoning variant ${effort}`);
         }
       }
-      const plugins = await api("/api/plugin");
       for (const id of expected) {
         const plugin = plugins.find((entry: any) => entry.id === id);
         if (layout === "escaping-entrypoint") assert.equal(plugin, undefined);
