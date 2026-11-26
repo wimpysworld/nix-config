@@ -162,7 +162,7 @@ def running_sandbox_server(state_dir: Path, **extra_env: str):
 
 
 class CodeSandboxTests(unittest.TestCase):
-    def test_bwrap_shares_network_and_binds_resolve_conf(self):
+    def test_bwrap_shares_network_sets_hostname_and_binds_resolve_conf(self):
         with tempfile.TemporaryDirectory() as tmp:
             mod = load_sandbox(Path(tmp), SANDBOX_DISABLE_BWRAP="0")
             with mock.patch.object(mod.shutil, "which", return_value="/usr/bin/bwrap"):
@@ -171,6 +171,8 @@ class CodeSandboxTests(unittest.TestCase):
             assert cmd is not None
             self.assertIn("--unshare-all", cmd)
             self.assertIn("--share-net", cmd)
+            hostname_idx = cmd.index("--hostname")
+            self.assertEqual(cmd[hostname_idx + 1], "sandbox")
             idx = cmd.index("/run/systemd/resolve")
             self.assertEqual(cmd[idx - 1], "--ro-bind-try")
             self.assertEqual(cmd[idx + 1], "/run/systemd/resolve")
@@ -184,19 +186,112 @@ class CodeSandboxTests(unittest.TestCase):
                 captured_env.update(env)
                 return mod.subprocess.CompletedProcess(cmd, 0, "", ""), False
 
+            dirty_env = {
+                "PATH": "/bin",
+                "SSL_CERT_FILE": "/etc/ssl/certs/ca-bundle.crt",
+                "REQUESTS_CA_BUNDLE": "/etc/ssl/certs/ca-bundle.crt",
+                "FONTCONFIG_FILE": "/etc/fonts/fonts.conf",
+                "PORT": "3082",
+                "HOST": "127.0.0.1",
+                "STATE_DIRECTORY": "/var/lib/librechat-code-sandbox",
+                "SYSTEMD_EXEC_PID": "9999",
+                "INVOCATION_ID": "abc123",
+                "SANDBOX_STORAGE_TTL_DAYS": "30",
+                "CODEAPI_JWT_PUBLIC_KEY_FILE": "/var/lib/librechat-codeapi-keys/public.pem",
+                "LIBRECHAT_CODE_API_KEY": "top-secret-key",
+                "STATE_DIR": "/var/lib/librechat-code-sandbox",
+                "UNEXPECTED_SECRET": "do-not-leak",
+            }
             with (
                 mock.patch.object(mod.shutil, "which", return_value="/usr/bin/bwrap"),
                 mock.patch.object(mod, "_run_process_bounded", side_effect=fake_run),
             ):
-                mod.run_sandboxed(["true"], Path(tmp), {"PATH": "/bin"}, 10.0)
+                mod.run_sandboxed(["true"], Path(tmp), dirty_env, 10.0)
 
+            self.assertEqual(captured_env["HOME"], "/mnt/data")
+            self.assertEqual(captured_env["LIBRECHAT_CODE_DATA_DIR"], "/mnt/data")
+            self.assertEqual(captured_env["TMPDIR"], "/tmp")
+            self.assertEqual(captured_env["TERM"], "dumb")
+            self.assertEqual(captured_env["GOMAXPROCS"], "4")
             self.assertEqual(captured_env["UV_CACHE_DIR"], "/tmp/uv-cache")
             self.assertEqual(captured_env["PIP_CACHE_DIR"], "/tmp/pip-cache")
             self.assertEqual(captured_env["NPM_CONFIG_CACHE"], "/tmp/npm-cache")
             self.assertEqual(captured_env["MPLCONFIGDIR"], "/tmp/matplotlib")
+            self.assertEqual(captured_env["GOCACHE"], "/tmp/go-cache")
+            self.assertEqual(captured_env["GOMODCACHE"], "/tmp/go-mod")
+            self.assertEqual(captured_env["GOPATH"], "/tmp/go")
+            self.assertEqual(captured_env["GOTMPDIR"], "/tmp")
+            self.assertEqual(captured_env["PATH"], "/bin")
+            self.assertEqual(captured_env["SSL_CERT_FILE"], "/etc/ssl/certs/ca-bundle.crt")
+            self.assertEqual(captured_env["REQUESTS_CA_BUNDLE"], "/etc/ssl/certs/ca-bundle.crt")
+            self.assertEqual(captured_env["FONTCONFIG_FILE"], "/etc/fonts/fonts.conf")
+            for stripped in (
+                "PORT",
+                "HOST",
+                "STATE_DIRECTORY",
+                "SYSTEMD_EXEC_PID",
+                "INVOCATION_ID",
+                "SANDBOX_STORAGE_TTL_DAYS",
+                "CODEAPI_JWT_PUBLIC_KEY_FILE",
+                "LIBRECHAT_CODE_API_KEY",
+                "STATE_DIR",
+                "UNEXPECTED_SECRET",
+            ):
+                self.assertNotIn(stripped, captured_env)
             self.assertTrue(mod.should_ignore_workspace_path(".cache/uv/foo"))
             self.assertTrue(mod.should_ignore_workspace_path(".config/matplotlib/fontlist"))
             self.assertFalse(mod.should_ignore_workspace_path("report.pdf"))
+
+    def test_allowlist_strips_host_env_vars_in_execute_code_request(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp)
+            dirty_host_env = {
+                "SANDBOX_DISABLE_BWRAP": "1",
+                "SSL_CERT_FILE": "/etc/ssl/certs/test-ca.pem",
+                "REQUESTS_CA_BUNDLE": "/etc/ssl/certs/test-ca.pem",
+                "PORT": "3082",
+                "HOST": "127.0.0.1",
+                "STATE_DIRECTORY": "/var/lib/librechat-code-sandbox",
+                "SYSTEMD_EXEC_PID": "4242",
+                "INVOCATION_ID": "inv-1234",
+                "SANDBOX_STORAGE_TTL_DAYS": "30",
+                "CODEAPI_JWT_PUBLIC_KEY_FILE": "/var/lib/librechat-codeapi-keys/public.pem",
+                "LIBRECHAT_CODE_API_KEY": "secret-api-key",
+                "STATE_DIR": str(state),
+                "UNEXPECTED_SECRET": "must-not-appear",
+            }
+            with mock.patch.dict(os.environ, dirty_host_env, clear=False):
+                mod = load_sandbox(state)
+                res = mod.execute_code_request(
+                    {
+                        "lang": "py",
+                        "code": "import json, os; print(json.dumps(dict(os.environ)))",
+                    },
+                    user_id="martin_123",
+                )
+            child_env = json.loads(str(res["stdout"]))
+            for stripped in (
+                "PORT",
+                "HOST",
+                "STATE_DIRECTORY",
+                "SYSTEMD_EXEC_PID",
+                "INVOCATION_ID",
+                "SANDBOX_STORAGE_TTL_DAYS",
+                "CODEAPI_JWT_PUBLIC_KEY_FILE",
+                "LIBRECHAT_CODE_API_KEY",
+                "STATE_DIR",
+                "UNEXPECTED_SECRET",
+            ):
+                self.assertNotIn(stripped, child_env)
+            self.assertEqual(child_env["TERM"], "dumb")
+            self.assertEqual(child_env["GOMAXPROCS"], "4")
+            self.assertEqual(child_env["SSL_CERT_FILE"], "/etc/ssl/certs/test-ca.pem")
+            self.assertEqual(child_env["REQUESTS_CA_BUNDLE"], "/etc/ssl/certs/test-ca.pem")
+            self.assertIn("PATH", child_env)
+            self.assertEqual(
+                child_env["HOME"],
+                str(mod.workspace_dir_for(str(res["session_id"]), "martin_123")),
+            )
 
     def test_per_user_workspace_scoping_and_cross_user_isolation(self):
         with (

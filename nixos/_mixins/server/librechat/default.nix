@@ -11,6 +11,12 @@ let
   serverPython = pkgs.python3.withPackages (ps: [ ps.cryptography ]);
   sandboxPython = pkgs.python3.withPackages (
     ps: with ps; [
+      beautifulsoup4
+      cairosvg
+      icalendar
+      jinja2
+      lxml
+      markdown
       matplotlib
       numpy
       openpyxl
@@ -18,9 +24,14 @@ let
       pillow
       pypdf
       python-docx
+      python-pptx
       pyyaml
+      qrcode
+      reportlab
       requests
       scipy
+      seaborn
+      weasyprint
     ]
   );
   librechatCodeApiKeygen = pkgs.writeShellApplication {
@@ -68,6 +79,8 @@ let
   librechatCodeSandbox = pkgs.runCommand "librechat-code-sandbox" { } ''
     PATH=${lib.makeBinPath [ serverPython ]}:$PATH \
       ${lib.getExe serverPython} ${./test-code-sandbox.py} ${./code-sandbox.py}
+    ${lib.getExe pkgs.nodejs} --check ${./preload-tokens.cjs}
+    ${lib.getExe pkgs.nodejs} ${./test-preload-tokens.cjs} ${./preload-tokens.cjs}
     install -Dm755 ${./code-sandbox.py} "$out/libexec/code-sandbox.py"
   '';
   registry = builtins.fromTOML (builtins.readFile ../../../../lib/registry-systems.toml);
@@ -781,6 +794,15 @@ in
   ];
 
   config = lib.mkIf (noughtyLib.hostHasTag "librechat") {
+    fonts.packages = [
+      pkgs.dejavu_fonts
+      pkgs.geist-font
+      pkgs.inter
+      pkgs.nerd-fonts.fira-code
+      pkgs.noto-fonts-color-emoji
+      pkgs.work-sans
+    ];
+
     environment.systemPackages = [
       config.services.cliproxyapi.package
     ];
@@ -1215,21 +1237,34 @@ in
         pkgs.ffmpeg-headless
         pkgs.file
         pkgs.findutils
+        pkgs.fontconfig
         pkgs.gawk
+        pkgs.gcc
         pkgs.git
         pkgs.gnugrep
+        pkgs.gnumake
         pkgs.gnused
         pkgs.gnutar
+        pkgs.go
+        pkgs.graphviz
         pkgs.gzip
+        pkgs.imagemagick
         pkgs.jq
+        pkgs.librsvg
+        pkgs.marp-cli
         pkgs.nodejs
         pkgs.pandoc
+        pkgs.pkg-config
         pkgs.poppler-utils
-        sandboxPython
+        pkgs.qrencode
+        pkgs.resvg
         pkgs.ripgrep
+        sandboxPython
         pkgs.sqlite
+        pkgs.typst
         pkgs.unzip
         pkgs.uv
+        pkgs.zip
       ];
       environment = {
         CODEAPI_JWT_AUDIENCE = "codeapi";
@@ -1254,6 +1289,10 @@ in
         StateDirectory = "librechat-code-sandbox";
         StateDirectoryMode = "0700";
         TemporaryFileSystem = "/mnt:mode=0755";
+        MemoryHigh = "6G";
+        MemoryMax = "8G";
+        CPUQuota = "400%";
+        TasksMax = 512;
         NoNewPrivileges = true;
         PrivateTmp = true;
         ProtectSystem = "strict";

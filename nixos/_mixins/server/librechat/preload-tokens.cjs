@@ -1,5 +1,7 @@
-// Preload hook that registers missing model context windows in LibreChat 0.8.8
-// and strips any stale 1024-token floor cached in conversation or preset payloads.
+// Preload hook that registers missing model context windows in LibreChat 0.8.8,
+// strips any stale 1024-token floor cached in conversation or preset payloads,
+// and rewrites the code-interpreter tool network-access description to match
+// the firewall-filtered internet egress policy.
 // Gemini 4 Neon defaults to high thinking, Carbon and Hydrogen to medium.
 'use strict';
 
@@ -9,9 +11,104 @@ const originalLoad = Module._load;
 let patchedDataProvider = false;
 let patchedApi = false;
 const auxiliaryInitializers = new WeakMap();
+const patchedToolModules = new WeakMap();
+
+const NO_NETWORK_LINE = '- No network access available.';
+const NETWORK_ACCESS_LINE =
+  '- Public internet access is available. Localhost, private LAN, link-local, and Tailscale addresses are blocked by firewall.';
+
+function rewriteNetworkDescription(value) {
+  if (typeof value !== 'string') {
+    return value;
+  }
+  return value.replaceAll(NO_NETWORK_LINE, NETWORK_ACCESS_LINE);
+}
+
+function rewriteToolDescription(tool) {
+  if (tool && typeof tool === 'object' && typeof tool.description === 'string') {
+    const rewritten = rewriteNetworkDescription(tool.description);
+    if (rewritten !== tool.description) {
+      try {
+        tool.description = rewritten;
+      } catch {
+        // Leave non-writable tool descriptions untouched.
+      }
+    }
+  }
+  return tool;
+}
+
+function isExecutorToolModule(request, parent) {
+  if (typeof request !== 'string') {
+    return false;
+  }
+  if (
+    (request === './tools/BashExecutor.cjs' || request === './tools/CodeExecutor.cjs') &&
+    typeof parent?.filename === 'string' &&
+    parent.filename.includes('/@librechat/agents/dist/cjs/')
+  ) {
+    return true;
+  }
+  return (
+    request.endsWith('/@librechat/agents/dist/cjs/tools/BashExecutor.cjs') ||
+    request.endsWith('/@librechat/agents/dist/cjs/tools/CodeExecutor.cjs')
+  );
+}
+
+function wrapExecutorToolModule(exported) {
+  if (patchedToolModules.has(exported)) {
+    return patchedToolModules.get(exported);
+  }
+  const wrapped = { ...exported };
+  for (const key of [
+    'BashExecutionToolDescription',
+    'StatefulBashExecutionToolDescription',
+    'CodeExecutionToolDescription',
+    'StatefulCodeExecutionToolDescription',
+  ]) {
+    if (typeof exported[key] === 'string') {
+      wrapped[key] = rewriteNetworkDescription(exported[key]);
+    }
+  }
+  for (const key of ['BashExecutionToolDefinition', 'CodeExecutionToolDefinition']) {
+    const def = exported[key];
+    if (def && typeof def === 'object' && typeof def.description === 'string') {
+      wrapped[key] = {
+        ...def,
+        description: rewriteNetworkDescription(def.description),
+      };
+    }
+  }
+  for (const key of ['buildBashExecutionToolDescription', 'buildCodeExecutionToolDescription']) {
+    if (typeof exported[key] === 'function') {
+      const originalBuilder = exported[key];
+      wrapped[key] = function wrappedBuildToolDescription() {
+        return rewriteNetworkDescription(originalBuilder.apply(this, arguments));
+      };
+    }
+  }
+  for (const key of ['createBashExecutionTool', 'createCodeExecutionTool']) {
+    if (typeof exported[key] === 'function') {
+      const originalFactory = exported[key];
+      wrapped[key] = function wrappedCreateExecutionTool() {
+        const result = originalFactory.apply(this, arguments);
+        if (result && typeof result.then === 'function') {
+          return result.then(rewriteToolDescription);
+        }
+        return rewriteToolDescription(result);
+      };
+    }
+  }
+  patchedToolModules.set(exported, wrapped);
+  return wrapped;
+}
 
 Module._load = function patchedModuleLoad(request, parent, isMain) {
   const exported = originalLoad.apply(this, arguments);
+
+  if (exported && typeof exported === 'object' && isExecutorToolModule(request, parent)) {
+    return wrapExecutorToolModule(exported);
+  }
 
   // Titles discard thinking options, while summaries inherit the main model's options.
   if (

@@ -61,13 +61,15 @@ _JWT_KEY_CACHE_STAT: tuple[int, int, int] | None = None
 _JWT_KEY_CACHE_VALUE: Ed25519PublicKey | None = None
 _JWT_INLINE_CACHE_RAW: str = ""
 _JWT_INLINE_CACHE_VALUE: Ed25519PublicKey | None = None
-SENSITIVE_ENV_VARS = (
-    "LIBRECHAT_CODE_API_KEY",
-    "CODEAPI_JWT_PUBLIC_KEY",
-    "CODEAPI_JWT_PUBLIC_KEY_FILE",
-    "CODEAPI_JWT_ISSUER",
-    "CODEAPI_JWT_AUDIENCE",
-    "STATE_DIR",
+ALLOWED_INHERITED_ENV_VARS = (
+    "PATH",
+    "LANG",
+    "LC_ALL",
+    "TZ",
+    "SSL_CERT_FILE",
+    "REQUESTS_CA_BUNDLE",
+    "FONTCONFIG_FILE",
+    "FONTCONFIG_PATH",
 )
 USER_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 IGNORED_DOT_DIRS = frozenset({".cache", ".config", ".local", ".npm"})
@@ -607,6 +609,8 @@ def build_bwrap_cmd(cmd: list[str]) -> list[str] | None:
         bwrap,
         "--unshare-all",
         "--share-net",
+        "--hostname",
+        "sandbox",
         "--die-with-parent",
         "--ro-bind",
         "/nix/store",
@@ -750,6 +754,42 @@ def _run_process_bounded(
     return completed, overflow
 
 
+def build_sandbox_env(
+    env: dict[str, str],
+    workspace_dir: Path,
+    *,
+    use_bwrap: bool,
+) -> dict[str, str]:
+    child_env = {
+        key: env[key]
+        for key in ALLOWED_INHERITED_ENV_VARS
+        if key in env
+    }
+    child_env["TERM"] = "dumb"
+    child_env["GOMAXPROCS"] = "4"
+    child_env["PYTHONDONTWRITEBYTECODE"] = "1"
+    if use_bwrap:
+        child_env["HOME"] = "/mnt/data"
+        child_env["LIBRECHAT_CODE_DATA_DIR"] = "/mnt/data"
+        child_env["TMPDIR"] = "/tmp"  # noqa: S108
+        child_env["XDG_CACHE_HOME"] = "/tmp/cache"  # noqa: S108
+        child_env["UV_CACHE_DIR"] = "/tmp/uv-cache"  # noqa: S108
+        child_env["UV_TOOL_DIR"] = "/tmp/uv-tools"  # noqa: S108
+        child_env["PIP_CACHE_DIR"] = "/tmp/pip-cache"  # noqa: S108
+        child_env["NPM_CONFIG_CACHE"] = "/tmp/npm-cache"  # noqa: S108
+        child_env["MPLCONFIGDIR"] = "/tmp/matplotlib"  # noqa: S108
+        child_env["GOCACHE"] = "/tmp/go-cache"  # noqa: S108
+        child_env["GOMODCACHE"] = "/tmp/go-mod"  # noqa: S108
+        child_env["GOPATH"] = "/tmp/go"  # noqa: S108
+        child_env["GOTMPDIR"] = "/tmp"  # noqa: S108
+    else:
+        child_env["HOME"] = str(workspace_dir)
+        child_env["LIBRECHAT_CODE_DATA_DIR"] = str(workspace_dir)
+        if "TMPDIR" in env:
+            child_env["TMPDIR"] = env["TMPDIR"]
+    return child_env
+
+
 def run_sandboxed(
     cmd: list[str],
     workspace_dir: Path,
@@ -757,25 +797,16 @@ def run_sandboxed(
     timeout_sec: float,
     tracking_keys: tuple[str, ...] = (),
 ) -> tuple[subprocess.CompletedProcess[str], bool]:
-    clean_env = env.copy()
-    for var in SENSITIVE_ENV_VARS:
-        clean_env.pop(var, None)
     bwrap_cmd = build_bwrap_cmd(cmd)
+    child_env = build_sandbox_env(
+        env, workspace_dir, use_bwrap=bwrap_cmd is not None
+    )
     if bwrap_cmd is not None:
-        bwrap_env = clean_env.copy()
-        bwrap_env["HOME"] = "/mnt/data"
-        bwrap_env["LIBRECHAT_CODE_DATA_DIR"] = "/mnt/data"
-        bwrap_env["XDG_CACHE_HOME"] = "/tmp/cache"  # noqa: S108
-        bwrap_env["UV_CACHE_DIR"] = "/tmp/uv-cache"  # noqa: S108
-        bwrap_env["UV_TOOL_DIR"] = "/tmp/uv-tools"  # noqa: S108
-        bwrap_env["PIP_CACHE_DIR"] = "/tmp/pip-cache"  # noqa: S108
-        bwrap_env["NPM_CONFIG_CACHE"] = "/tmp/npm-cache"  # noqa: S108
-        bwrap_env["MPLCONFIGDIR"] = "/tmp/matplotlib"  # noqa: S108
         return _run_process_bounded(
-            bwrap_cmd, workspace_dir, bwrap_env, timeout_sec, tracking_keys
+            bwrap_cmd, workspace_dir, child_env, timeout_sec, tracking_keys
         )
     return _run_process_bounded(
-        cmd, workspace_dir, clean_env, timeout_sec, tracking_keys
+        cmd, workspace_dir, child_env, timeout_sec, tracking_keys
     )
 
 
@@ -916,11 +947,6 @@ def execute_code_request(
             cmd = None
 
         env = os.environ.copy()
-        for var in SENSITIVE_ENV_VARS:
-            env.pop(var, None)
-        env["HOME"] = str(workspace_dir)
-        env["LIBRECHAT_CODE_DATA_DIR"] = str(workspace_dir)
-        env["PYTHONDONTWRITEBYTECODE"] = "1"
 
         stdout = ""
         stderr = ""
