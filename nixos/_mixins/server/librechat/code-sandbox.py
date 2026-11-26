@@ -72,7 +72,23 @@ ALLOWED_INHERITED_ENV_VARS = (
     "FONTCONFIG_PATH",
 )
 USER_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
-IGNORED_DOT_DIRS = frozenset({".cache", ".config", ".local", ".npm"})
+IGNORED_DIR_NAMES = frozenset(
+    {
+        ".cache",
+        ".config",
+        ".local",
+        ".npm",
+        ".git",
+        "__pycache__",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".mypy_cache",
+        ".venv",
+        "node_modules",
+        "target",
+    }
+)
+SANDBOX_CACHE_MOUNT = "/var/cache/sandbox"
 
 
 def jwt_auth_configured() -> bool:
@@ -151,7 +167,7 @@ def _is_finite_number(value: object) -> bool:
     )
 
 
-def verify_jwt_token(token: str, now_ts: float | None = None) -> str | None:
+def verify_jwt_token(token: str, now_ts: float | None = None) -> tuple[str, str] | None:
     parts = token.split(".")
     if len(parts) != 3:
         return None
@@ -219,7 +235,23 @@ def verify_jwt_token(token: str, now_ts: float | None = None) -> str | None:
     sub = claims.get("sub")
     if not isinstance(sub, str) or not sub.strip():
         return None
-    return sub.strip()
+    raw_role = claims.get("role")
+    role = raw_role.strip() if isinstance(raw_role, str) and raw_role.strip() else "USER"
+    return sub.strip(), role
+
+
+def load_gh_token() -> str:
+    token_file = os.environ.get("SANDBOX_GH_TOKEN_FILE", "").strip()
+    if not token_file:
+        cred_dir = os.environ.get("CREDENTIALS_DIRECTORY", "").strip()
+        if cred_dir:
+            token_file = os.path.join(cred_dir, "GH_TOKEN")
+    if not token_file:
+        return ""
+    try:
+        return Path(token_file).read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
 
 
 def _parse_float_env(name: str, default: float) -> float:
@@ -235,6 +267,10 @@ def _parse_float_env(name: str, default: float) -> float:
 
 WORKSPACE_TTL_DAYS = _parse_float_env("SANDBOX_WORKSPACE_TTL_DAYS", 7.0)
 STORAGE_TTL_DAYS = _parse_float_env("SANDBOX_STORAGE_TTL_DAYS", 30.0)
+CACHE_TTL_DAYS = _parse_float_env("SANDBOX_CACHE_TTL_DAYS", 14.0)
+CACHE_MAX_BYTES = int(
+    _parse_float_env("SANDBOX_CACHE_MAX_BYTES", float(2 * 1024 * 1024 * 1024))
+)
 CLEANUP_INTERVAL_SEC = _parse_float_env("SANDBOX_CLEANUP_INTERVAL_SEC", 21600.0)
 
 
@@ -275,6 +311,47 @@ def set_session_owner(session_id: str, owner: str) -> None:
         json.dumps({"owner": owner, "createdAt": now_iso()}),
         encoding="utf-8",
     )
+
+
+def load_session_tombstones(session_id: str) -> dict[str, str]:
+    if not ID_PATTERN.fullmatch(session_id):
+        return {}
+    tombstones_file = resolve_under(SESSIONS_DIR, f"{session_id}.tombstones.json")
+    if not tombstones_file.is_file():
+        return {}
+    try:
+        data = json.loads(tombstones_file.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {
+        key: value
+        for key, value in data.items()
+        if isinstance(key, str) and isinstance(value, str)
+    }
+
+
+def save_session_tombstones(session_id: str, tombstones: dict[str, str]) -> None:
+    if not ID_PATTERN.fullmatch(session_id):
+        return
+    tombstones_file = resolve_under(SESSIONS_DIR, f"{session_id}.tombstones.json")
+    if not tombstones:
+        with contextlib.suppress(OSError):
+            tombstones_file.unlink(missing_ok=True)
+        return
+    SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+    tombstones_file.write_text(json.dumps(tombstones), encoding="utf-8")
+
+
+def user_cache_dir_for(user_slug: str) -> Path | None:
+    if not user_slug:
+        return None
+    cache_dir = resolve_under(USERS_DIR, user_slug, "cache")
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    with contextlib.suppress(OSError):
+        cache_dir.chmod(0o700)
+    return cache_dir
 
 
 def check_session_access(session_id: str, caller_user: str) -> bool:
@@ -354,13 +431,58 @@ def _iter_storage_roots() -> list[Path]:
     return roots
 
 
+def _prune_cache_dir(cache_dir: Path, cutoff_ts: float, max_bytes: int) -> int:
+    removed = 0
+    surviving: list[tuple[float, int, Path]] = []
+    for root, _dirs, files in os.walk(cache_dir, followlinks=False):
+        root_path = Path(root)
+        for name in files:
+            path = root_path / name
+            try:
+                st = path.stat(follow_symlinks=False)
+            except OSError:
+                continue
+            if st.st_mtime < cutoff_ts:
+                try:
+                    path.unlink(missing_ok=True)
+                    removed += 1
+                except OSError:
+                    pass
+                continue
+            surviving.append((st.st_mtime, st.st_size, path))
+
+    total_bytes = sum(size for _mtime, size, _path in surviving)
+    if total_bytes > max_bytes:
+        surviving.sort(key=lambda item: item[0])
+        for _mtime, size, path in surviving:
+            if total_bytes <= max_bytes:
+                break
+            try:
+                path.unlink(missing_ok=True)
+                total_bytes -= size
+                removed += 1
+            except OSError:
+                continue
+
+    for root, dirs, _files in os.walk(cache_dir, topdown=False, followlinks=False):
+        root_path = Path(root)
+        for name in dirs:
+            subdir = root_path / name
+            with contextlib.suppress(OSError):
+                subdir.rmdir()
+
+    return removed
+
+
 def cleanup_expired_state(now_ts: float | None = None) -> dict[str, int]:
     current_ts = time.time() if now_ts is None else now_ts
     ws_cutoff = current_ts - (WORKSPACE_TTL_DAYS * 86400.0)
     st_cutoff = current_ts - (STORAGE_TTL_DAYS * 86400.0)
+    cache_cutoff = current_ts - (CACHE_TTL_DAYS * 86400.0)
     removed_workspaces = 0
     removed_storage_objects = 0
     removed_storage_sessions = 0
+    removed_cache_files = 0
     active_sessions: set[str] = set()
 
     for ws_root in _iter_workspace_roots():
@@ -422,16 +544,29 @@ def cleanup_expired_state(now_ts: float | None = None) -> dict[str, int]:
             finally:
                 lock.release()
 
+    if USERS_DIR.is_dir():
+        for user_dir in list(USERS_DIR.iterdir()):
+            cache_dir = user_dir / "cache"
+            if cache_dir.is_dir():
+                removed_cache_files += _prune_cache_dir(
+                    cache_dir, cache_cutoff, CACHE_MAX_BYTES
+                )
+
     if SESSIONS_DIR.is_dir():
-        for owner_file in list(SESSIONS_DIR.glob("*.json")):
-            if owner_file.stem not in active_sessions:
+        for session_file in list(SESSIONS_DIR.glob("*.json")):
+            if session_file.name.endswith(".tombstones.json"):
+                sid = session_file.name[: -len(".tombstones.json")]
+            else:
+                sid = session_file.stem
+            if sid not in active_sessions:
                 with contextlib.suppress(OSError):
-                    owner_file.unlink(missing_ok=True)
+                    session_file.unlink(missing_ok=True)
 
     return {
         "removed_workspaces": removed_workspaces,
         "removed_storage_objects": removed_storage_objects,
         "removed_storage_sessions": removed_storage_sessions,
+        "removed_cache_files": removed_cache_files,
     }
 
 
@@ -498,10 +633,9 @@ def is_executable_path(rel_path: str) -> bool:
 def should_ignore_workspace_path(rel_path: str) -> bool:
     parts = rel_path.split("/")
     return (
-        "__pycache__" in parts
-        or rel_path.endswith(".pyc")
+        rel_path.endswith(".pyc")
         or any(part.startswith(".lc-tmp-") for part in parts)
-        or any(part in IGNORED_DOT_DIRS for part in parts[:-1])
+        or any(part in IGNORED_DIR_NAMES for part in parts[:-1])
     )
 
 
@@ -509,18 +643,26 @@ def snapshot_workspace(workspace_dir: Path) -> dict[str, tuple[int, str]]:
     snap: dict[str, tuple[int, str]] = {}
     if not workspace_dir.exists():
         return snap
-    for path in workspace_dir.rglob("*"):
-        if not path.is_file() or path.is_symlink():
-            continue
-        rel_path = path.relative_to(workspace_dir).as_posix()
-        if should_ignore_workspace_path(rel_path):
-            continue
-        try:
-            data = path.read_bytes()
-        except OSError:
-            continue
-        digest = hashlib.sha256(data).hexdigest()
-        snap[rel_path] = (len(data), digest)
+    for root, dirnames, filenames in os.walk(workspace_dir, followlinks=False):
+        dirnames[:] = [
+            d
+            for d in dirnames
+            if d not in IGNORED_DIR_NAMES and not d.startswith(".lc-tmp-")
+        ]
+        root_path = Path(root)
+        for filename in filenames:
+            path = root_path / filename
+            if path.is_symlink() or not path.is_file():
+                continue
+            rel_path = path.relative_to(workspace_dir).as_posix()
+            if should_ignore_workspace_path(rel_path):
+                continue
+            try:
+                data = path.read_bytes()
+            except OSError:
+                continue
+            digest = hashlib.sha256(data).hexdigest()
+            snap[rel_path] = (len(data), digest)
     return snap
 
 
@@ -599,13 +741,15 @@ def rewrite_mnt_data_in_code(code: str, workspace_dir: Path) -> str:
     return re.sub(r"/mnt/data(?![A-Za-z0-9_.-])", ws_str, updated)
 
 
-def build_bwrap_cmd(cmd: list[str]) -> list[str] | None:
+def build_bwrap_cmd(
+    cmd: list[str], *, cache_dir: Path | None = None
+) -> list[str] | None:
     if os.environ.get("SANDBOX_DISABLE_BWRAP") == "1":
         return None
     bwrap = shutil.which("bwrap")
     if not bwrap:
         return None
-    return [
+    args = [
         bwrap,
         "--unshare-all",
         "--share-net",
@@ -636,14 +780,21 @@ def build_bwrap_cmd(cmd: list[str]) -> list[str] | None:
         "/proc",
         "--tmpfs",
         "/tmp",  # noqa: S108
-        "--bind",
-        ".",
-        "/mnt/data",
-        "--chdir",
-        "/mnt/data",
-        "--",
-        *cmd,
     ]
+    if cache_dir is not None:
+        args.extend(["--bind", str(cache_dir), SANDBOX_CACHE_MOUNT])
+    args.extend(
+        [
+            "--bind",
+            ".",
+            "/mnt/data",
+            "--chdir",
+            "/mnt/data",
+            "--",
+            *cmd,
+        ]
+    )
+    return args
 
 
 def _terminate_process_group(proc: subprocess.Popen[bytes]) -> None:
@@ -759,6 +910,8 @@ def build_sandbox_env(
     workspace_dir: Path,
     *,
     use_bwrap: bool,
+    caller_role: str = "USER",
+    cache_mounted: bool = False,
 ) -> dict[str, str]:
     child_env = {
         key: env[key]
@@ -767,26 +920,34 @@ def build_sandbox_env(
     }
     child_env["TERM"] = "dumb"
     child_env["GOMAXPROCS"] = "4"
+    child_env["CARGO_BUILD_JOBS"] = "4"
+    child_env["CARGO_INCREMENTAL"] = "0"
     child_env["PYTHONDONTWRITEBYTECODE"] = "1"
     if use_bwrap:
+        cache_root = SANDBOX_CACHE_MOUNT if cache_mounted else "/tmp"  # noqa: S108
         child_env["HOME"] = "/mnt/data"
         child_env["LIBRECHAT_CODE_DATA_DIR"] = "/mnt/data"
         child_env["TMPDIR"] = "/tmp"  # noqa: S108
-        child_env["XDG_CACHE_HOME"] = "/tmp/cache"  # noqa: S108
-        child_env["UV_CACHE_DIR"] = "/tmp/uv-cache"  # noqa: S108
-        child_env["UV_TOOL_DIR"] = "/tmp/uv-tools"  # noqa: S108
-        child_env["PIP_CACHE_DIR"] = "/tmp/pip-cache"  # noqa: S108
-        child_env["NPM_CONFIG_CACHE"] = "/tmp/npm-cache"  # noqa: S108
-        child_env["MPLCONFIGDIR"] = "/tmp/matplotlib"  # noqa: S108
-        child_env["GOCACHE"] = "/tmp/go-cache"  # noqa: S108
-        child_env["GOMODCACHE"] = "/tmp/go-mod"  # noqa: S108
-        child_env["GOPATH"] = "/tmp/go"  # noqa: S108
+        child_env["XDG_CACHE_HOME"] = f"{cache_root}/cache"
+        child_env["UV_CACHE_DIR"] = f"{cache_root}/uv-cache"
+        child_env["UV_TOOL_DIR"] = f"{cache_root}/uv-tools"
+        child_env["PIP_CACHE_DIR"] = f"{cache_root}/pip-cache"
+        child_env["NPM_CONFIG_CACHE"] = f"{cache_root}/npm-cache"
+        child_env["MPLCONFIGDIR"] = f"{cache_root}/matplotlib"
+        child_env["GOCACHE"] = f"{cache_root}/go-cache"
+        child_env["GOMODCACHE"] = f"{cache_root}/go-mod"
+        child_env["GOPATH"] = f"{cache_root}/go"
+        child_env["CARGO_HOME"] = f"{cache_root}/cargo"
         child_env["GOTMPDIR"] = "/tmp"  # noqa: S108
     else:
         child_env["HOME"] = str(workspace_dir)
         child_env["LIBRECHAT_CODE_DATA_DIR"] = str(workspace_dir)
         if "TMPDIR" in env:
             child_env["TMPDIR"] = env["TMPDIR"]
+    if caller_role == "ADMIN":
+        gh_token = load_gh_token()
+        if gh_token:
+            child_env["GH_TOKEN"] = gh_token
     return child_env
 
 
@@ -796,10 +957,17 @@ def run_sandboxed(
     env: dict[str, str],
     timeout_sec: float,
     tracking_keys: tuple[str, ...] = (),
+    *,
+    caller_role: str = "USER",
+    cache_dir: Path | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], bool]:
-    bwrap_cmd = build_bwrap_cmd(cmd)
+    bwrap_cmd = build_bwrap_cmd(cmd, cache_dir=cache_dir)
     child_env = build_sandbox_env(
-        env, workspace_dir, use_bwrap=bwrap_cmd is not None
+        env,
+        workspace_dir,
+        use_bwrap=bwrap_cmd is not None,
+        caller_role=caller_role,
+        cache_mounted=(bwrap_cmd is not None and cache_dir is not None),
     )
     if bwrap_cmd is not None:
         return _run_process_bounded(
@@ -817,6 +985,7 @@ def execute_code_request(
     request_id: str | None = None,
     user_id: str = "",
     ignore_body_user: bool = False,
+    caller_role: str = "USER",
 ) -> dict[str, object]:
     raw_lang = str(body.get("lang") or ("bash" if programmatic else "py")).lower().strip()
     code = str(body.get("code") or "")
@@ -861,10 +1030,13 @@ def execute_code_request(
 
     workspace_dir = workspace_dir_for(session_id, caller_user)
     session_storage_dir = storage_dir_for(session_id, caller_user)
+    cache_dir = user_cache_dir_for(caller_user) if caller_user else None
     with get_session_lock(session_id):
         workspace_dir.mkdir(parents=True, exist_ok=True)
         session_storage_dir.mkdir(parents=True, exist_ok=True)
 
+        tombstones = load_session_tombstones(session_id)
+        tombstones_dirty = False
         readonly_paths: set[str] = set()
         injected_files = body.get("files")
         if isinstance(injected_files, list):
@@ -896,6 +1068,16 @@ def execute_code_request(
                     dest_path = resolve_under(workspace_dir, rel_path)
                 except ValueError:
                     continue
+                tombstone_digest = tombstones.get(rel_path)
+                if tombstone_digest is not None:
+                    try:
+                        blob_digest = hashlib.sha256(src_blob.read_bytes()).hexdigest()
+                    except OSError:
+                        continue
+                    if blob_digest == tombstone_digest:
+                        continue
+                    tombstones.pop(rel_path, None)
+                    tombstones_dirty = True
                 dest_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(src_blob, dest_path)
                 if is_executable_path(rel_path):
@@ -969,6 +1151,8 @@ def execute_code_request(
                     env,
                     timeout_sec,
                     tracking_keys,
+                    caller_role=caller_role,
+                    cache_dir=cache_dir,
                 )
                 stdout = proc.stdout
                 stderr = proc.stderr
@@ -1004,6 +1188,9 @@ def execute_code_request(
             if rel_path in readonly_paths:
                 continue
             deleted_files.append(rel_path)
+            _before_size, before_digest = before_snap[rel_path]
+            tombstones[rel_path] = before_digest
+            tombstones_dirty = True
             file_id = to_nanoid(f"{session_id}:{rel_path}")
             for candidate in (
                 resolve_under(session_storage_dir, file_id),
@@ -1011,6 +1198,14 @@ def execute_code_request(
             ):
                 with contextlib.suppress(OSError):
                     candidate.unlink(missing_ok=True)
+
+        for rel_path in after_snap:
+            if rel_path in tombstones:
+                tombstones.pop(rel_path, None)
+                tombstones_dirty = True
+
+        if tombstones_dirty:
+            save_session_tombstones(session_id, tombstones)
 
         out_files: list[dict[str, object]] = []
         if returncode == 0:
@@ -1064,6 +1259,7 @@ def execute_code_request(
 class SandboxHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     authenticated_user_id: str = ""
+    authenticated_user_role: str = "USER"
 
     def log_message(self, format: str, *args: object) -> None:  # noqa: A002
         return
@@ -1077,14 +1273,15 @@ class SandboxHandler(BaseHTTPRequestHandler):
 
     def check_auth(self) -> bool:
         self.authenticated_user_id = ""
+        self.authenticated_user_role = "USER"
         auth_header = (self.headers.get("Authorization") or "").strip()
         bearer = auth_header[7:].strip() if auth_header.lower().startswith("bearer ") else ""
 
         if jwt_auth_configured():
             if bearer:
-                verified_sub = verify_jwt_token(bearer)
-                if verified_sub:
-                    self.authenticated_user_id = verified_sub
+                verified = verify_jwt_token(bearer)
+                if verified is not None:
+                    self.authenticated_user_id, self.authenticated_user_role = verified
                     return True
             if not EXPECTED_API_KEY:
                 self.send_json(401, {"error": "Unauthorized"})
@@ -1097,6 +1294,7 @@ class SandboxHandler(BaseHTTPRequestHandler):
             if not provided:
                 provided = bearer
             if provided and secrets.compare_digest(provided, EXPECTED_API_KEY):
+                self.authenticated_user_role = "USER"
                 return True
 
         self.send_json(401, {"error": "Unauthorized"})
@@ -1397,6 +1595,7 @@ class SandboxHandler(BaseHTTPRequestHandler):
                     request_id=req_id,
                     user_id=self.caller_user_slug(),
                     ignore_body_user=bool(self.authenticated_user_id),
+                    caller_role=self.authenticated_user_role,
                 )
             except PermissionError:
                 self.send_json(403, {"error": "Forbidden"})

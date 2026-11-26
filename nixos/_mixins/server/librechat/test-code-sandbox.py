@@ -407,6 +407,245 @@ class CodeSandboxTests(unittest.TestCase):
             self.assertTrue(fresh_ws.exists())
             self.assertTrue((skill_st_dir / skill_fid).is_file())
 
+    def test_ignored_repo_and_build_dirs_pruned_and_never_emitted(self):
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.dict(os.environ, {"SANDBOX_DISABLE_BWRAP": "1"}),
+        ):
+            state = Path(tmp)
+            mod = load_sandbox(state)
+
+            for ignored in (
+                ".git/HEAD",
+                ".git/objects/ab/cdef",
+                "__pycache__/mod.cpython-312.pyc",
+                "sub/node_modules/pkg/index.js",
+                "crate/target/debug/app",
+                ".pytest_cache/v/cache/lastfailed",
+                ".ruff_cache/0.5/entry",
+                ".mypy_cache/3.12/a.json",
+                ".venv/bin/python",
+            ):
+                self.assertTrue(mod.should_ignore_workspace_path(ignored), ignored)
+            self.assertFalse(mod.should_ignore_workspace_path("src/main.rs"))
+
+            code = (
+                "from pathlib import Path\n"
+                "for rel in [\n"
+                "  '.git/HEAD',\n"
+                "  '.git/objects/00/abc',\n"
+                "  '__pycache__/foo.pyc',\n"
+                "  'node_modules/pkg/index.js',\n"
+                "  'target/debug/bin',\n"
+                "  'report.txt',\n"
+                "]:\n"
+                "  p = Path('/mnt/data') / rel\n"
+                "  p.parent.mkdir(parents=True, exist_ok=True)\n"
+                "  p.write_text('data', encoding='utf-8')\n"
+            )
+            res = mod.execute_code_request({"lang": "py", "code": code}, user_id="martin_123")
+            emitted = [item["name"] for item in res["files"]]
+            self.assertEqual(emitted, ["report.txt"], res)
+
+            # Confirm os.walk prunes ignored directories without descending.
+            ws = mod.workspace_dir_for(str(res["session_id"]), "martin_123")
+            visited_roots: list[str] = []
+            real_walk = mod.os.walk
+
+            def spy_walk(top, *args, **kwargs):
+                for root, dirs, files in real_walk(top, *args, **kwargs):
+                    visited_roots.append(Path(root).name)
+                    yield root, dirs, files
+
+            with mock.patch.object(mod.os, "walk", side_effect=spy_walk):
+                snap = mod.snapshot_workspace(ws)
+            self.assertEqual(list(snap.keys()), ["report.txt"])
+            for pruned in (".git", "__pycache__", "node_modules", "target"):
+                self.assertNotIn(pruned, visited_roots)
+
+    def test_deletion_tombstones_block_stale_reinjection_and_allow_updates(self):
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.dict(os.environ, {"SANDBOX_DISABLE_BWRAP": "1"}),
+        ):
+            state = Path(tmp)
+            mod = load_sandbox(state)
+
+            upload_sid = mod.to_nanoid("upload-v1")
+            file_v1_id = mod.to_nanoid(f"{upload_sid}:draft.txt")
+            mod.save_storage_object(
+                upload_sid, file_v1_id, "draft.txt", b"version-1", user_slug="martin_123"
+            )
+            stale_ref = {
+                "id": file_v1_id,
+                "name": "draft.txt",
+                "storage_session_id": upload_sid,
+            }
+
+            # Turn 1: inject v1 and delete it inside the sandbox.
+            res1 = mod.execute_code_request(
+                {
+                    "lang": "py",
+                    "code": "import os; os.remove('/mnt/data/draft.txt')",
+                    "files": [stale_ref],
+                },
+                user_id="martin_123",
+            )
+            sid = str(res1["session_id"])
+            self.assertEqual(res1["deleted_files"], ["draft.txt"], res1)
+            tombstone_file = state / "sessions" / f"{sid}.tombstones.json"
+            self.assertTrue(tombstone_file.is_file())
+
+            # Turn 2: stale ref with identical blob must NOT be re-injected.
+            res2 = mod.execute_code_request(
+                {
+                    "lang": "py",
+                    "session_id": sid,
+                    "code": "import os; print(os.path.exists('/mnt/data/draft.txt'))",
+                    "files": [stale_ref],
+                },
+                user_id="martin_123",
+            )
+            self.assertEqual(res2["stdout"], "False\n", res2)
+
+            # Turn 3: new upload with updated content clears tombstone and writes new file.
+            upload_sid_v2 = mod.to_nanoid("upload-v2")
+            file_v2_id = mod.to_nanoid(f"{upload_sid_v2}:draft.txt")
+            mod.save_storage_object(
+                upload_sid_v2, file_v2_id, "draft.txt", b"version-2", user_slug="martin_123"
+            )
+            res3 = mod.execute_code_request(
+                {
+                    "lang": "py",
+                    "session_id": sid,
+                    "code": "print(open('/mnt/data/draft.txt').read())",
+                    "files": [
+                        {
+                            "id": file_v2_id,
+                            "name": "draft.txt",
+                            "storage_session_id": upload_sid_v2,
+                        }
+                    ],
+                },
+                user_id="martin_123",
+            )
+            self.assertEqual(res3["stdout"], "version-2\n", res3)
+            self.assertFalse(tombstone_file.exists())
+
+            # Deleting again + expiring workspace cleans up the tombstone file.
+            res4 = mod.execute_code_request(
+                {
+                    "lang": "py",
+                    "session_id": sid,
+                    "code": "import os; os.remove('/mnt/data/draft.txt')",
+                },
+                user_id="martin_123",
+            )
+            self.assertEqual(res4["deleted_files"], ["draft.txt"])
+            self.assertTrue(tombstone_file.is_file())
+
+            now = time.time()
+            # Active session preserves tombstones during cleanup.
+            mod.cleanup_expired_state(now_ts=now)
+            self.assertTrue(tombstone_file.is_file())
+
+            # Expiring the session removes the tombstone file.
+            old_ts = now - (40 * 86400)
+            ws = mod.workspace_dir_for(sid, "martin_123")
+            os.utime(ws, (old_ts, old_ts))
+            st_dir = mod.storage_dir_for(sid, "martin_123")
+            if st_dir.exists():
+                for item in st_dir.iterdir():
+                    os.utime(item, (old_ts, old_ts))
+            mod.cleanup_expired_state(now_ts=now)
+            self.assertFalse(tombstone_file.exists())
+
+    def test_per_user_persistent_cache_mount_env_isolation_and_pruning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp)
+            mod = load_sandbox(
+                state,
+                SANDBOX_DISABLE_BWRAP="0",
+                SANDBOX_CACHE_TTL_DAYS="14",
+                SANDBOX_CACHE_MAX_BYTES="100",
+            )
+
+            martin_cache = mod.user_cache_dir_for("martin_123")
+            louise_cache = mod.user_cache_dir_for("louise_456")
+            self.assertIsNotNone(martin_cache)
+            self.assertIsNotNone(louise_cache)
+            assert martin_cache is not None and louise_cache is not None
+            self.assertNotEqual(martin_cache, louise_cache)
+            self.assertEqual(martin_cache, state / "users" / "martin_123" / "cache")
+            self.assertEqual(martin_cache.stat().st_mode & 0o777, 0o700)
+
+            with mock.patch.object(mod.shutil, "which", return_value="/usr/bin/bwrap"):
+                cmd = mod.build_bwrap_cmd(["bash", "-c", "true"], cache_dir=martin_cache)
+            self.assertIsNotNone(cmd)
+            assert cmd is not None
+            self.assertIn("--tmpfs", cmd)
+            tmp_idx = cmd.index("--tmpfs")
+            self.assertEqual(cmd[tmp_idx + 1], "/tmp")
+            cache_idx = cmd.index("/var/cache/sandbox")
+            self.assertEqual(cmd[cache_idx - 2], "--bind")
+            self.assertEqual(cmd[cache_idx - 1], str(martin_cache))
+
+            captured_env: dict[str, str] = {}
+
+            def fake_run(bcmd, workspace_dir, env, timeout_sec, tracking_keys=()):
+                captured_env.update(env)
+                return mod.subprocess.CompletedProcess(bcmd, 0, "", ""), False
+
+            with (
+                mock.patch.object(mod.shutil, "which", return_value="/usr/bin/bwrap"),
+                mock.patch.object(mod, "_run_process_bounded", side_effect=fake_run),
+            ):
+                mod.run_sandboxed(
+                    ["true"],
+                    state,
+                    {"PATH": "/bin"},
+                    10.0,
+                    cache_dir=martin_cache,
+                )
+
+            self.assertEqual(captured_env["XDG_CACHE_HOME"], "/var/cache/sandbox/cache")
+            self.assertEqual(captured_env["GOCACHE"], "/var/cache/sandbox/go-cache")
+            self.assertEqual(captured_env["GOMODCACHE"], "/var/cache/sandbox/go-mod")
+            self.assertEqual(captured_env["GOPATH"], "/var/cache/sandbox/go")
+            self.assertEqual(captured_env["CARGO_HOME"], "/var/cache/sandbox/cargo")
+            self.assertEqual(captured_env["UV_CACHE_DIR"], "/var/cache/sandbox/uv-cache")
+            self.assertEqual(captured_env["UV_TOOL_DIR"], "/var/cache/sandbox/uv-tools")
+            self.assertEqual(captured_env["PIP_CACHE_DIR"], "/var/cache/sandbox/pip-cache")
+            self.assertEqual(captured_env["NPM_CONFIG_CACHE"], "/var/cache/sandbox/npm-cache")
+            self.assertEqual(captured_env["MPLCONFIGDIR"], "/var/cache/sandbox/matplotlib")
+            self.assertEqual(captured_env["CARGO_BUILD_JOBS"], "4")
+            self.assertEqual(captured_env["CARGO_INCREMENTAL"], "0")
+            self.assertEqual(captured_env["TMPDIR"], "/tmp")
+            self.assertEqual(captured_env["GOTMPDIR"], "/tmp")
+
+            # Seed cache files: one expired by TTL, two fresh totalling > 100 bytes.
+            now = time.time()
+            expired_file = martin_cache / "cargo" / "expired.bin"
+            expired_file.parent.mkdir(parents=True, exist_ok=True)
+            expired_file.write_bytes(b"a" * 30)
+            os.utime(expired_file, (now - 20 * 86400, now - 20 * 86400))
+
+            older_file = martin_cache / "go-cache" / "older.bin"
+            older_file.parent.mkdir(parents=True, exist_ok=True)
+            older_file.write_bytes(b"b" * 70)
+            os.utime(older_file, (now - 3600, now - 3600))
+
+            newer_file = martin_cache / "go-cache" / "newer.bin"
+            newer_file.write_bytes(b"c" * 60)
+            os.utime(newer_file, (now - 60, now - 60))
+
+            summary = mod.cleanup_expired_state(now_ts=now)
+            self.assertEqual(summary["removed_cache_files"], 2)
+            self.assertFalse(expired_file.exists())
+            self.assertFalse(older_file.exists())
+            self.assertTrue(newer_file.is_file())
+            self.assertFalse((martin_cache / "cargo").exists())
+
 
 class CodeSandboxHttpJwtTests(unittest.TestCase):
     def test_health_unauthenticated(self):
@@ -794,6 +1033,100 @@ class CodeSandboxHttpJwtTests(unittest.TestCase):
                 )
                 self.assertEqual(status, 200, raw)
                 self.assertEqual(json.loads(raw.decode("utf-8"))["stdout"], "ok\n")
+
+    def test_gh_token_injected_only_for_admin_jwt_and_never_for_user_or_api_key(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            priv, _, _, pub_path = make_ed25519_keypair(root)
+            cred_dir = root / "creds"
+            cred_dir.mkdir()
+            (cred_dir / "GH_TOKEN").write_text("ghp_secret_admin_token\n", encoding="utf-8")
+
+            admin_token = mint_jwt(priv, sub="martin_123", extra_claims={"role": "ADMIN"})
+            user_token = mint_jwt(priv, sub="louise_456", extra_claims={"role": "USER"})
+            no_role_token = mint_jwt(priv, sub="agatha_789", omit_claims=("role",))
+            probe_body = json.dumps(
+                {
+                    "lang": "py",
+                    "code": "import os; print(os.environ.get('GH_TOKEN', '<MISSING>'))",
+                }
+            ).encode("utf-8")
+
+            # Production path via CREDENTIALS_DIRECTORY with JWT auth.
+            with mock.patch.dict(
+                os.environ,
+                {"CREDENTIALS_DIRECTORY": str(cred_dir), "SANDBOX_GH_TOKEN_FILE": ""},
+                clear=False,
+            ):
+                with running_sandbox_server(
+                    root / "state-jwt",
+                    LIBRECHAT_CODE_API_KEY="",
+                    CODEAPI_JWT_PUBLIC_KEY_FILE=str(pub_path),
+                ) as (_mod, port):
+                    status, _h, raw = http_request(
+                        port,
+                        "POST",
+                        "/exec",
+                        body=probe_body,
+                        headers={
+                            "Content-Type": "application/json",
+                            "Authorization": f"Bearer {admin_token}",
+                        },
+                    )
+                    self.assertEqual(status, 200, raw)
+                    self.assertEqual(
+                        json.loads(raw.decode("utf-8"))["stdout"],
+                        "ghp_secret_admin_token\n",
+                    )
+
+                    for tok in (user_token, no_role_token):
+                        status, _h, raw = http_request(
+                            port,
+                            "POST",
+                            "/exec",
+                            body=probe_body,
+                            headers={
+                                "Content-Type": "application/json",
+                                "Authorization": f"Bearer {tok}",
+                            },
+                        )
+                        self.assertEqual(status, 200, raw)
+                        self.assertEqual(
+                            json.loads(raw.decode("utf-8"))["stdout"],
+                            "<MISSING>\n",
+                        )
+
+            # Static X-API-Key fallback mode with SANDBOX_GH_TOKEN_FILE must NEVER inject GH_TOKEN.
+            with mock.patch.dict(
+                os.environ,
+                {
+                    "SANDBOX_GH_TOKEN_FILE": str(cred_dir / "GH_TOKEN"),
+                    "CREDENTIALS_DIRECTORY": "",
+                },
+                clear=False,
+            ):
+                with running_sandbox_server(
+                    root / "state-apikey",
+                    LIBRECHAT_CODE_API_KEY="static-key",
+                    CODEAPI_JWT_PUBLIC_KEY="",
+                    CODEAPI_JWT_PUBLIC_KEY_FILE="",
+                ) as (_mod, port):
+                    status, _h, raw = http_request(
+                        port,
+                        "POST",
+                        "/exec",
+                        body=probe_body,
+                        headers={
+                            "Content-Type": "application/json",
+                            "X-API-Key": "static-key",
+                            "User-Id": "martin_123",
+                        },
+                    )
+                    self.assertEqual(status, 200, raw)
+                    self.assertEqual(
+                        json.loads(raw.decode("utf-8"))["stdout"],
+                        "<MISSING>\n",
+                    )
 
 
 if __name__ == "__main__":

@@ -23,6 +23,7 @@ let
       pandas
       pillow
       pypdf
+      pytest
       python-docx
       python-pptx
       pyyaml
@@ -34,6 +35,14 @@ let
       weasyprint
     ]
   );
+  ghApiSafe = pkgs.writeShellApplication {
+    name = "gh-api-safe";
+    runtimeInputs = [ pkgs.gh ];
+    text = ''
+      readonly GH_API_SAFE_GH=${lib.escapeShellArg (lib.getExe pkgs.gh)}
+    ''
+    + builtins.readFile ../../../../home-manager/_mixins/development/github/gh-api-safe.sh;
+  };
   librechatCodeApiKeygen = pkgs.writeShellApplication {
     name = "librechat-codeapi-keygen";
     runtimeInputs = [
@@ -98,7 +107,9 @@ let
           acceleration = entry.gpu.compute.acceleration or null;
           hostVramGiB = entry.gpu.compute.vram or 0;
         }).selectedRuntimeModels;
-      generationRoles = lib.filterAttrs (_role: model: !model.isEmbedding) runtimeModels;
+      generationRoles = lib.filterAttrs (
+        role: model: !model.isEmbedding && role != "smallMedia"
+      ) runtimeModels;
       generationModels = lib.mapAttrsToList (_role: model: model.publicName) generationRoles;
       tokenConfig = builtins.listToAttrs (
         lib.mapAttrsToList (_role: model: {
@@ -111,10 +122,7 @@ let
         }) generationRoles
       );
       titleModel =
-        if runtimeModels ? smallMedia then
-          runtimeModels.smallMedia.publicName
-        else
-          lib.head generationModels;
+        if lib.elem "inkling-2-mini" generationModels then "inkling-2-mini" else lib.head generationModels;
     in
     {
       name = "LlamaSwap (${node})";
@@ -122,7 +130,7 @@ let
       baseURL = "http://${node}.${tailNet}:8080/v1";
       models = {
         default = generationModels;
-        fetch = true;
+        fetch = false;
       };
       inherit tokenConfig titleModel;
       titleConvo = true;
@@ -148,10 +156,6 @@ let
     "sys__all__sys_mcp_${server}"
   ]) mcpServerNames;
   sharedMcpServerNames = [ "exa" ];
-  sharedMcpTools = lib.concatMap (server: [
-    "sys__server__sys_mcp_${server}"
-    "sys__all__sys_mcp_${server}"
-  ]) sharedMcpServerNames;
   stripFrontmatter =
     text:
     let
@@ -249,12 +253,6 @@ let
   provisionedCommandNames = lib.sort (a: b: a < b) (
     builtins.attrNames (lib.filterAttrs (_: entry: !entry.secret) assistantsCompose.commandRegistry)
   );
-  sharedAgentNames = [
-    "casper"
-    "morph"
-    "penfold"
-    "velma"
-  ];
   sharedSkillNames = [
     "communication-rules"
     "deep-research"
@@ -274,13 +272,10 @@ let
           agentDir = assistantsRoot + "/agents/${name}";
           header = assistantsCompose.readHeader agentDir;
           claudeModel = header.routing.claude.model or "";
-          isShared = lib.elem name sharedAgentNames;
         in
         {
           id = "agent_${name}";
-          inherit name;
-          mcpServerNames = if isShared then sharedMcpServerNames else mcpServerNames;
-          shared = isShared;
+          inherit name mcpServerNames;
           description = header.common.description;
           instructions =
             lib.trim (builtins.readFile (agentDir + "/prompt.md")) + "\n\n" + assistantsCompose.houseStyleBody;
@@ -290,7 +285,7 @@ let
             "execute_code"
             "memory"
           ]
-          ++ (if isShared then sharedMcpTools else mcpTools);
+          ++ mcpTools;
         }
       ) provisionedAgentNames;
       skills = map (
@@ -400,7 +395,55 @@ let
               principalModel: "Role",
               priority: 10,
               isActive: true,
+              tombstones: ["modelSpecs"],
               overrides: {
+                interface: {
+                  modelSelect: true,
+                  parameters: true,
+                  presets: true,
+                },
+                endpoints: {
+                  custom: [
+                    {
+                      name: "OpenAI (Codex)",
+                      apiKey: "cliproxyapi",
+                      baseURL: "http://127.0.0.1:8317/v1",
+                      models: {
+                        default: [
+                          "gpt-6.2-sol",
+                          "gpt-6.2-astra",
+                          "gpt-6.1-terra",
+                          "gpt-6-luna",
+                        ],
+                        fetch: true,
+                      },
+                      tokenConfig: {
+                        "gpt-6.2-sol": {
+                          prompt: 0,
+                          completion: 0,
+                          context: 1050000,
+                        },
+                        "gpt-6.2-astra": {
+                          prompt: 0,
+                          completion: 0,
+                          context: 1050000,
+                        },
+                        "gpt-6.1-terra": {
+                          prompt: 0,
+                          completion: 0,
+                          context: 1050000,
+                        },
+                        "gpt-6-luna": {
+                          prompt: 0,
+                          completion: 0,
+                          context: 1050000,
+                        },
+                      },
+                      titleConvo: true,
+                      titleModel: "gpt-6-luna",
+                    },
+                  ],
+                },
                 mcpServers: {
                   "cloudflare-docs": {
                     type: "streamable-http",
@@ -491,13 +534,6 @@ let
           15,
           "com_ui_role_owner",
           "com_ui_role_owner_desc",
-        );
-        const agentViewerRole = ensureRole(
-          "agent_viewer",
-          "agent",
-          1,
-          "com_ui_role_viewer",
-          "com_ui_role_viewer_desc",
         );
         const promptGroupOwnerRole = ensureRole(
           "promptGroup_owner",
@@ -724,7 +760,11 @@ let
 
           const agentDoc = db.agents.findOne({ id: agent.id });
           upsertOwnerAcl("agent", agentDoc._id, agentOwnerRole._id);
-          syncPublicViewerAcl("agent", agentDoc._id, agentViewerRole._id, Boolean(agent.shared));
+          db.aclentries.deleteMany({
+            principalType: "public",
+            resourceType: "agent",
+            resourceId: agentDoc._id,
+          });
         }
 
         db.conversations.updateMany(
@@ -866,6 +906,14 @@ in
     sops.secrets.CREDS_IV = {
       sopsFile = ../../../../secrets/librechat.yaml;
       path = "/run/secrets/CREDS_IV";
+      owner = "root";
+      group = "root";
+      mode = "0400";
+    };
+
+    sops.secrets.GH_TOKEN = {
+      sopsFile = ../../../../secrets/librechat.yaml;
+      path = "/run/secrets/GH_TOKEN";
       owner = "root";
       group = "root";
       mode = "0400";
@@ -1036,6 +1084,68 @@ in
         version = "1.3.6";
         interface = {
           agentSelectorLimit = 20;
+          skills = {
+            defaultActiveOnShare = true;
+          };
+        };
+        modelSpecs = {
+          enforce = true;
+          prioritize = true;
+          list = [
+            {
+              name = "opus-5-5-medium";
+              label = "Opus 5.5 (medium)";
+              default = true;
+              executeCode = true;
+              memory = true;
+              mcpServers = sharedMcpServerNames;
+              skills = sharedSkillNames;
+              preset = {
+                endpoint = "anthropic";
+                model = "claude-opus-5-5";
+                thinking = true;
+                effort = "medium";
+              };
+            }
+            {
+              name = "gemini-4-neon-high";
+              label = "Gemini 4 Neon (high)";
+              executeCode = true;
+              memory = true;
+              mcpServers = sharedMcpServerNames;
+              skills = sharedSkillNames;
+              preset = {
+                endpoint = "google";
+                model = "gemini-4-neon";
+                thinking = true;
+                thinkingLevel = "high";
+              };
+            }
+            {
+              name = "inkling-2-mini";
+              label = "Inkling 2 Mini";
+              executeCode = true;
+              memory = true;
+              mcpServers = sharedMcpServerNames;
+              skills = sharedSkillNames;
+              preset = {
+                endpoint = "LlamaSwap (skrye)";
+                model = "inkling-2-mini";
+              };
+            }
+            {
+              name = "flint";
+              label = "Flint";
+              executeCode = true;
+              memory = true;
+              mcpServers = sharedMcpServerNames;
+              skills = sharedSkillNames;
+              preset = {
+                endpoint = "LlamaSwap (skrye)";
+                model = "flint";
+              };
+            }
+          ];
         };
         memory = {
           disabled = false;
@@ -1090,47 +1200,7 @@ in
             titleConvo = true;
             titleModel = "gemini-4-hydrogen";
           };
-          custom = [
-            {
-              name = "OpenAI (Codex)";
-              apiKey = "cliproxyapi";
-              baseURL = "http://127.0.0.1:8317/v1";
-              models = {
-                default = [
-                  "gpt-6.2-sol"
-                  "gpt-6.2-astra"
-                  "gpt-6.1-terra"
-                  "gpt-6-luna"
-                ];
-                fetch = true;
-              };
-              tokenConfig = {
-                "gpt-6.2-sol" = {
-                  prompt = 0;
-                  completion = 0;
-                  context = 1050000;
-                };
-                "gpt-6.2-astra" = {
-                  prompt = 0;
-                  completion = 0;
-                  context = 1050000;
-                };
-                "gpt-6.1-terra" = {
-                  prompt = 0;
-                  completion = 0;
-                  context = 1050000;
-                };
-                "gpt-6-luna" = {
-                  prompt = 0;
-                  completion = 0;
-                  context = 1050000;
-                };
-              };
-              titleConvo = true;
-              titleModel = "gpt-6-luna";
-            }
-          ]
-          ++ map mkRemoteLlamaSwapEndpoint remoteInferenceHosts;
+          custom = map mkRemoteLlamaSwapEndpoint remoteInferenceHosts;
         };
         mcpSettings = {
           allowedAddresses = [
@@ -1231,8 +1301,10 @@ in
       path = [
         pkgs.bash
         pkgs.bubblewrap
+        pkgs.cargo
         pkgs.coreutils
         pkgs.curl
+        pkgs.deadnix
         pkgs.fd
         pkgs.ffmpeg-headless
         pkgs.file
@@ -1240,6 +1312,8 @@ in
         pkgs.fontconfig
         pkgs.gawk
         pkgs.gcc
+        pkgs.gh
+        ghApiSafe
         pkgs.git
         pkgs.gnugrep
         pkgs.gnumake
@@ -1250,8 +1324,11 @@ in
         pkgs.gzip
         pkgs.imagemagick
         pkgs.jq
+        pkgs.just
         pkgs.librsvg
         pkgs.marp-cli
+        pkgs.nix
+        pkgs.nixfmt
         pkgs.nodejs
         pkgs.pandoc
         pkgs.pkg-config
@@ -1259,11 +1336,15 @@ in
         pkgs.qrencode
         pkgs.resvg
         pkgs.ripgrep
+        pkgs.ruff
+        pkgs.rustc
         sandboxPython
         pkgs.sqlite
+        pkgs.statix
         pkgs.typst
         pkgs.unzip
         pkgs.uv
+        pkgs.yq-go
         pkgs.zip
       ];
       environment = {
@@ -1273,6 +1354,7 @@ in
         HOST = "127.0.0.1";
         PORT = "3082";
         REQUESTS_CA_BUNDLE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
+        SANDBOX_CACHE_TTL_DAYS = "14";
         SANDBOX_CLEANUP_INTERVAL_SEC = "21600";
         SANDBOX_STORAGE_TTL_DAYS = "30";
         SANDBOX_WORKSPACE_TTL_DAYS = "7";
@@ -1286,6 +1368,9 @@ in
         RestartSec = lib.mkDefault 5;
         User = "librechat-code-sandbox";
         Group = "librechat-code-sandbox";
+        LoadCredential = [
+          "GH_TOKEN:${config.sops.secrets.GH_TOKEN.path}"
+        ];
         StateDirectory = "librechat-code-sandbox";
         StateDirectoryMode = "0700";
         TemporaryFileSystem = "/mnt:mode=0755";
