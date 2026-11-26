@@ -162,10 +162,27 @@ def running_sandbox_server(state_dir: Path, **extra_env: str):
 
 
 class CodeSandboxTests(unittest.TestCase):
-    def test_bwrap_shares_network_sets_hostname_and_binds_resolve_conf(self):
+    def test_bwrap_uses_minimal_etc_runtime_identity_and_4gib_tmpfs(self):
         with tempfile.TemporaryDirectory() as tmp:
-            mod = load_sandbox(Path(tmp), SANDBOX_DISABLE_BWRAP="0")
-            with mock.patch.object(mod.shutil, "which", return_value="/usr/bin/bwrap"):
+            root = Path(tmp)
+            fake_etc = root / "sandbox-etc"
+            (fake_etc / "fonts").mkdir(parents=True)
+            (fake_etc / "passwd").write_text("", encoding="utf-8")
+            (fake_etc / "group").write_text("", encoding="utf-8")
+            state_dir = root / "state"
+            mod = load_sandbox(
+                state_dir,
+                SANDBOX_DISABLE_BWRAP="0",
+                SANDBOX_ETC_DIR=str(fake_etc),
+            )
+            with (
+                mock.patch.dict(
+                    os.environ,
+                    {"SANDBOX_DISABLE_BWRAP": "0", "SANDBOX_ETC_DIR": str(fake_etc)},
+                    clear=False,
+                ),
+                mock.patch.object(mod.shutil, "which", return_value="/usr/bin/bwrap"),
+            ):
                 cmd = mod.build_bwrap_cmd(["bash", "-c", "true"])
             self.assertIsNotNone(cmd)
             assert cmd is not None
@@ -173,13 +190,60 @@ class CodeSandboxTests(unittest.TestCase):
             self.assertIn("--share-net", cmd)
             hostname_idx = cmd.index("--hostname")
             self.assertEqual(cmd[hostname_idx + 1], "sandbox")
-            idx = cmd.index("/run/systemd/resolve")
-            self.assertEqual(cmd[idx - 1], "--ro-bind-try")
-            self.assertEqual(cmd[idx + 1], "/run/systemd/resolve")
+
+            # Must mount SANDBOX_ETC_DIR, never host /etc or /run/systemd/resolve.
+            self.assertNotIn("/run/systemd/resolve", cmd)
+            etc_idx = cmd.index(str(fake_etc))
+            self.assertEqual(cmd[etc_idx - 1], "--ro-bind")
+            self.assertEqual(cmd[etc_idx + 1], "/etc")
+            for idx, arg in enumerate(cmd):
+                if arg in ("--ro-bind", "--ro-bind-try", "--bind"):
+                    self.assertNotEqual(
+                        cmd[idx + 1],
+                        "/etc",
+                        "host /etc must never be mounted directly",
+                    )
+
+            # Runtime passwd and group must contain only root and current uid/gid.
+            passwd_dst_idx = cmd.index("/etc/passwd")
+            self.assertEqual(cmd[passwd_dst_idx - 2], "--ro-bind")
+            passwd_file = Path(cmd[passwd_dst_idx - 1])
+            self.assertEqual(passwd_file, state_dir / "etc" / "passwd")
+            passwd_lines = passwd_file.read_text(encoding="utf-8").splitlines()
+            expected_uids = {0, os.getuid()}
+            self.assertEqual(len(passwd_lines), len(expected_uids))
+            self.assertTrue(passwd_lines[0].startswith("root:x:0:0:"))
+            if os.getuid() != 0:
+                fields = passwd_lines[1].split(":")
+                self.assertEqual(int(fields[2]), os.getuid())
+                self.assertEqual(int(fields[3]), os.getgid())
+                self.assertEqual(fields[5], "/mnt/data")
+                self.assertEqual(fields[6], "/bin/sh")
+
+            group_dst_idx = cmd.index("/etc/group")
+            self.assertEqual(cmd[group_dst_idx - 2], "--ro-bind")
+            group_file = Path(cmd[group_dst_idx - 1])
+            self.assertEqual(group_file, state_dir / "etc" / "group")
+            group_lines = group_file.read_text(encoding="utf-8").splitlines()
+            expected_gids = {0, os.getgid()}
+            self.assertEqual(len(group_lines), len(expected_gids))
+            self.assertEqual(group_lines[0], "root:x:0:")
+            if os.getgid() != 0:
+                gfields = group_lines[1].split(":")
+                self.assertEqual(int(gfields[2]), os.getgid())
+
+            # /tmp tmpfs must be capped at 4 GiB via --size 4294967296.
+            tmp_idx = cmd.index("--tmpfs")
+            self.assertEqual(cmd[tmp_idx + 1], "/tmp")
+            self.assertEqual(cmd[tmp_idx - 2], "--size")
+            self.assertEqual(cmd[tmp_idx - 1], "4294967296")
 
     def test_bwrap_sets_tmp_cache_env_and_ignores_dot_caches(self):
         with tempfile.TemporaryDirectory() as tmp:
-            mod = load_sandbox(Path(tmp), SANDBOX_DISABLE_BWRAP="0")
+            root = Path(tmp)
+            admin_gitconfig = root / "admin-gitconfig"
+            admin_gitconfig.write_text("[user]\n  name = Martin Wimpress\n", encoding="utf-8")
+            mod = load_sandbox(root / "state", SANDBOX_DISABLE_BWRAP="0")
             captured_env: dict[str, str] = {}
 
             def fake_run(cmd, workspace_dir, env, timeout_sec, tracking_keys=()):
@@ -196,6 +260,8 @@ class CodeSandboxTests(unittest.TestCase):
                 "STATE_DIRECTORY": "/var/lib/librechat-code-sandbox",
                 "SYSTEMD_EXEC_PID": "9999",
                 "INVOCATION_ID": "abc123",
+                "SANDBOX_ETC_DIR": "/nix/store/fake-sandbox-etc",
+                "SANDBOX_ADMIN_GIT_CONFIG": str(admin_gitconfig),
                 "SANDBOX_STORAGE_TTL_DAYS": "30",
                 "CODEAPI_JWT_PUBLIC_KEY_FILE": "/var/lib/librechat-codeapi-keys/public.pem",
                 "LIBRECHAT_CODE_API_KEY": "top-secret-key",
@@ -206,13 +272,15 @@ class CodeSandboxTests(unittest.TestCase):
                 mock.patch.object(mod.shutil, "which", return_value="/usr/bin/bwrap"),
                 mock.patch.object(mod, "_run_process_bounded", side_effect=fake_run),
             ):
-                mod.run_sandboxed(["true"], Path(tmp), dirty_env, 10.0)
+                mod.run_sandboxed(["true"], root, dirty_env, 10.0)
 
             self.assertEqual(captured_env["HOME"], "/mnt/data")
             self.assertEqual(captured_env["LIBRECHAT_CODE_DATA_DIR"], "/mnt/data")
             self.assertEqual(captured_env["TMPDIR"], "/tmp")
             self.assertEqual(captured_env["TERM"], "dumb")
             self.assertEqual(captured_env["GOMAXPROCS"], "4")
+            self.assertEqual(captured_env["XDG_DATA_HOME"], "/tmp/xdg-data")
+            self.assertEqual(captured_env["NIX_STATE_DIR"], "/tmp/nix-state")
             self.assertEqual(captured_env["UV_CACHE_DIR"], "/tmp/uv-cache")
             self.assertEqual(captured_env["PIP_CACHE_DIR"], "/tmp/pip-cache")
             self.assertEqual(captured_env["NPM_CONFIG_CACHE"], "/tmp/npm-cache")
@@ -225,12 +293,15 @@ class CodeSandboxTests(unittest.TestCase):
             self.assertEqual(captured_env["SSL_CERT_FILE"], "/etc/ssl/certs/ca-bundle.crt")
             self.assertEqual(captured_env["REQUESTS_CA_BUNDLE"], "/etc/ssl/certs/ca-bundle.crt")
             self.assertEqual(captured_env["FONTCONFIG_FILE"], "/etc/fonts/fonts.conf")
+            self.assertNotIn("GIT_CONFIG_SYSTEM", captured_env)
             for stripped in (
                 "PORT",
                 "HOST",
                 "STATE_DIRECTORY",
                 "SYSTEMD_EXEC_PID",
                 "INVOCATION_ID",
+                "SANDBOX_ETC_DIR",
+                "SANDBOX_ADMIN_GIT_CONFIG",
                 "SANDBOX_STORAGE_TTL_DAYS",
                 "CODEAPI_JWT_PUBLIC_KEY_FILE",
                 "LIBRECHAT_CODE_API_KEY",
@@ -238,6 +309,33 @@ class CodeSandboxTests(unittest.TestCase):
                 "UNEXPECTED_SECRET",
             ):
                 self.assertNotIn(stripped, captured_env)
+
+            # ADMIN role receives GIT_CONFIG_SYSTEM while still stripping SANDBOX_* vars.
+            admin_env = mod.build_sandbox_env(
+                dirty_env,
+                root,
+                use_bwrap=True,
+                caller_role="ADMIN",
+                cache_mounted=True,
+            )
+            self.assertEqual(admin_env["GIT_CONFIG_SYSTEM"], str(admin_gitconfig))
+            self.assertEqual(admin_env["XDG_DATA_HOME"], "/var/cache/sandbox/xdg-data")
+            self.assertEqual(admin_env["NIX_STATE_DIR"], "/var/cache/sandbox/nix-state")
+            self.assertNotIn("SANDBOX_ETC_DIR", admin_env)
+            self.assertNotIn("SANDBOX_ADMIN_GIT_CONFIG", admin_env)
+
+            # USER role must never receive GIT_CONFIG_SYSTEM.
+            user_env = mod.build_sandbox_env(
+                dirty_env,
+                root,
+                use_bwrap=True,
+                caller_role="USER",
+                cache_mounted=True,
+            )
+            self.assertNotIn("GIT_CONFIG_SYSTEM", user_env)
+            self.assertNotIn("SANDBOX_ETC_DIR", user_env)
+            self.assertNotIn("SANDBOX_ADMIN_GIT_CONFIG", user_env)
+
             self.assertTrue(mod.should_ignore_workspace_path(".cache/uv/foo"))
             self.assertTrue(mod.should_ignore_workspace_path(".config/matplotlib/fontlist"))
             self.assertFalse(mod.should_ignore_workspace_path("report.pdf"))
@@ -352,6 +450,34 @@ class CodeSandboxTests(unittest.TestCase):
                 user_id="louise_456",
             )
             self.assertEqual(res["stdout"], "# Demo skill\n", res)
+
+    def test_stateless_file_entry_session_id_fallback(self):
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.dict(os.environ, {"SANDBOX_DISABLE_BWRAP": "1"}),
+        ):
+            state = Path(tmp)
+            mod = load_sandbox(state)
+            upload_sid = mod.to_nanoid("stateless-upload-session")
+            file_id = mod.to_nanoid(f"{upload_sid}:notes.txt")
+            mod.save_storage_object(
+                upload_sid, file_id, "notes.txt", b"via-session-id\n", user_slug="martin_123"
+            )
+            res = mod.execute_code_request(
+                {
+                    "lang": "py",
+                    "code": "print(open('/mnt/data/notes.txt').read().strip())",
+                    "files": [
+                        {
+                            "id": file_id,
+                            "name": "notes.txt",
+                            "session_id": upload_sid,
+                        }
+                    ],
+                },
+                user_id="martin_123",
+            )
+            self.assertEqual(res["stdout"], "via-session-id\n", res)
 
     def test_cleanup_expired_state_preserves_recent_and_readonly_skills(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -609,6 +735,8 @@ class CodeSandboxTests(unittest.TestCase):
                 )
 
             self.assertEqual(captured_env["XDG_CACHE_HOME"], "/var/cache/sandbox/cache")
+            self.assertEqual(captured_env["XDG_DATA_HOME"], "/var/cache/sandbox/xdg-data")
+            self.assertEqual(captured_env["NIX_STATE_DIR"], "/var/cache/sandbox/nix-state")
             self.assertEqual(captured_env["GOCACHE"], "/var/cache/sandbox/go-cache")
             self.assertEqual(captured_env["GOMODCACHE"], "/var/cache/sandbox/go-mod")
             self.assertEqual(captured_env["GOPATH"], "/var/cache/sandbox/go")

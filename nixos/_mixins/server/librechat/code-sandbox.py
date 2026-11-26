@@ -5,10 +5,12 @@ from __future__ import annotations
 
 import base64
 import contextlib
+import grp
 import hashlib
 import json
 import math
 import os
+import pwd
 import re
 import secrets
 import shutil
@@ -89,6 +91,19 @@ IGNORED_DIR_NAMES = frozenset(
     }
 )
 SANDBOX_CACHE_MOUNT = "/var/cache/sandbox"
+SANDBOX_TMPFS_SIZE_BYTES = "4294967296"
+_RUNTIME_ETC_LOCK = threading.Lock()
+FALLBACK_ETC_PATHS = (
+    "/etc/hosts",
+    "/etc/resolv.conf",
+    "/etc/nsswitch.conf",
+    "/etc/protocols",
+    "/etc/services",
+    "/etc/ssl",
+    "/etc/localtime",
+    "/etc/zoneinfo",
+    "/etc/fonts",
+)
 
 
 def jwt_auth_configured() -> bool:
@@ -741,6 +756,52 @@ def rewrite_mnt_data_in_code(code: str, workspace_dir: Path) -> str:
     return re.sub(r"/mnt/data(?![A-Za-z0-9_.-])", ws_str, updated)
 
 
+def ensure_runtime_identity_files() -> tuple[Path, Path]:
+    uid = os.getuid()
+    gid = os.getgid()
+    try:
+        username = pwd.getpwuid(uid).pw_name
+    except KeyError:
+        username = "sandbox"
+    try:
+        groupname = grp.getgrgid(gid).gr_name
+    except KeyError:
+        groupname = "sandbox"
+
+    passwd_lines = ["root:x:0:0:root:/root:/bin/sh\n"]
+    if uid != 0:
+        passwd_lines.append(f"{username}:x:{uid}:{gid}:sandbox:/mnt/data:/bin/sh\n")
+    passwd_content = "".join(passwd_lines)
+
+    group_lines = ["root:x:0:\n"]
+    if gid != 0:
+        group_lines.append(f"{groupname}:x:{gid}:\n")
+    group_content = "".join(group_lines)
+
+    etc_dir = STATE_DIR / "etc"
+    passwd_path = etc_dir / "passwd"
+    group_path = etc_dir / "group"
+
+    with _RUNTIME_ETC_LOCK:
+        etc_dir.mkdir(parents=True, exist_ok=True)
+        for target, content in (
+            (passwd_path, passwd_content),
+            (group_path, group_content),
+        ):
+            existing = None
+            if target.is_file():
+                with contextlib.suppress(OSError):
+                    existing = target.read_text(encoding="utf-8")
+            if existing != content:
+                tmp_path = target.with_name(f".{target.name}.{os.getpid()}.tmp")
+                tmp_path.write_text(content, encoding="utf-8")
+                with contextlib.suppress(OSError):
+                    tmp_path.chmod(0o644)
+                os.replace(tmp_path, target)
+
+    return passwd_path, group_path
+
+
 def build_bwrap_cmd(
     cmd: list[str], *, cache_dir: Path | None = None
 ) -> list[str] | None:
@@ -749,6 +810,8 @@ def build_bwrap_cmd(
     bwrap = shutil.which("bwrap")
     if not bwrap:
         return None
+    passwd_path, group_path = ensure_runtime_identity_files()
+    sandbox_etc_dir = os.environ.get("SANDBOX_ETC_DIR", "").strip()
     args = [
         bwrap,
         "--unshare-all",
@@ -765,22 +828,56 @@ def build_bwrap_cmd(
         "--ro-bind-try",
         "/usr",
         "/usr",
-        "--ro-bind-try",
-        "/etc",
-        "/etc",
-        "--ro-bind-try",
-        "/run/systemd/resolve",
-        "/run/systemd/resolve",
-        "--ro-bind-try",
-        "/run/current-system",
-        "/run/current-system",
-        "--dev",
-        "/dev",
-        "--proc",
-        "/proc",
-        "--tmpfs",
-        "/tmp",  # noqa: S108
     ]
+    if sandbox_etc_dir and Path(sandbox_etc_dir).is_dir():
+        args.extend(
+            [
+                "--ro-bind",
+                sandbox_etc_dir,
+                "/etc",
+                "--ro-bind",
+                str(passwd_path),
+                "/etc/passwd",
+                "--ro-bind",
+                str(group_path),
+                "/etc/group",
+            ]
+        )
+        if not (Path(sandbox_etc_dir) / "fonts").exists() and os.path.exists("/etc/fonts"):
+            resolved_fonts = os.path.realpath("/etc/fonts")
+            if os.path.isdir(resolved_fonts):
+                args.extend(["--ro-bind", resolved_fonts, "/etc/fonts"])
+    else:
+        args.extend(
+            [
+                "--ro-bind",
+                str(passwd_path),
+                "/etc/passwd",
+                "--ro-bind",
+                str(group_path),
+                "/etc/group",
+            ]
+        )
+        for etc_path in FALLBACK_ETC_PATHS:
+            if os.path.exists(etc_path):
+                resolved = os.path.realpath(etc_path)
+                if os.path.exists(resolved):
+                    args.extend(["--ro-bind", resolved, etc_path])
+    args.extend(
+        [
+            "--ro-bind-try",
+            "/run/current-system",
+            "/run/current-system",
+            "--dev",
+            "/dev",
+            "--proc",
+            "/proc",
+            "--size",
+            SANDBOX_TMPFS_SIZE_BYTES,
+            "--tmpfs",
+            "/tmp",  # noqa: S108
+        ]
+    )
     if cache_dir is not None:
         args.extend(["--bind", str(cache_dir), SANDBOX_CACHE_MOUNT])
     args.extend(
@@ -929,6 +1026,8 @@ def build_sandbox_env(
         child_env["LIBRECHAT_CODE_DATA_DIR"] = "/mnt/data"
         child_env["TMPDIR"] = "/tmp"  # noqa: S108
         child_env["XDG_CACHE_HOME"] = f"{cache_root}/cache"
+        child_env["XDG_DATA_HOME"] = f"{cache_root}/xdg-data"
+        child_env["NIX_STATE_DIR"] = f"{cache_root}/nix-state"
         child_env["UV_CACHE_DIR"] = f"{cache_root}/uv-cache"
         child_env["UV_TOOL_DIR"] = f"{cache_root}/uv-tools"
         child_env["PIP_CACHE_DIR"] = f"{cache_root}/pip-cache"
@@ -948,6 +1047,12 @@ def build_sandbox_env(
         gh_token = load_gh_token()
         if gh_token:
             child_env["GH_TOKEN"] = gh_token
+        admin_git_config = (
+            env.get("SANDBOX_ADMIN_GIT_CONFIG")
+            or os.environ.get("SANDBOX_ADMIN_GIT_CONFIG", "")
+        ).strip()
+        if admin_git_config and Path(admin_git_config).is_file():
+            child_env["GIT_CONFIG_SYSTEM"] = admin_git_config
     return child_env
 
 
@@ -1047,7 +1152,7 @@ def execute_code_request(
                 raw_name = entry.get("name")
                 if not isinstance(raw_id, str) or not isinstance(raw_name, str):
                     continue
-                raw_storage_sid = entry.get("storage_session_id")
+                raw_storage_sid = entry.get("storage_session_id") or entry.get("session_id")
                 storage_sid = to_nanoid(
                     str(raw_storage_sid)
                     if isinstance(raw_storage_sid, str) and raw_storage_sid

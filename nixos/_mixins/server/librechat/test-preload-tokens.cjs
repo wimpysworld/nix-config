@@ -135,6 +135,26 @@ module.exports = {
   writeFile(
     apiPackagePath,
     `
+async function loadEphemeralAgent(params) {
+  if (params && params.mode === 'null') return null;
+  if (params && params.mode === 'undefined') return undefined;
+  return {
+    id: 'anthropic__claude-opus-5-5',
+    provider: 'anthropic',
+    tools: params && Array.isArray(params.tools) ? params.tools : [],
+  };
+}
+async function loadAgent(params) {
+  if (!params || !params.agent_id) return null;
+  if (!params.agent_id.startsWith('agent_')) {
+    return loadEphemeralAgent(params);
+  }
+  return {
+    id: params.agent_id,
+    tools: params.tools || ['execute_code'],
+    stateful_code_sessions: params.stateful_code_sessions,
+  };
+}
 module.exports = {
   maxTokensMap: { openAI: {}, agents: {}, custom: {}, google: {}, azureOpenAI: {} },
   providerConfigMap: {
@@ -143,6 +163,16 @@ module.exports = {
     },
   },
 };
+Object.defineProperty(module.exports, 'loadEphemeralAgent', {
+  enumerable: true,
+  configurable: false,
+  get: () => loadEphemeralAgent,
+});
+Object.defineProperty(module.exports, 'loadAgent', {
+  enumerable: true,
+  configurable: false,
+  get: () => loadAgent,
+});
 `,
   );
 
@@ -204,6 +234,8 @@ module.exports = {
   assert.strictEqual(cleaned.conversation.title, 'kept');
 
   const apiPkg = require(path.join(tmpDir, 'packages', 'api'));
+  const apiPkgAgain = require(path.join(tmpDir, 'packages', 'api'));
+  assert.strictEqual(apiPkg, apiPkgAgain, 'Cached @librechat/api wrapper should be identical');
   assert.strictEqual(apiPkg.maxTokensMap.google['gemini-4-neon'], 1048576);
   const neonParams = apiPkg.providerConfigMap.google({
     model_parameters: { model: 'gemini-4-neon' },
@@ -213,6 +245,48 @@ module.exports = {
     model_parameters: { model: 'gemini-4-carbon' },
   });
   assert.strictEqual(carbonParams.model_parameters.thinkingLevel, 'medium');
-} finally {
+
+  // 5. Ephemeral agent hooks enable stateful_code_sessions when execute_code is present.
+  (async () => {
+    const withCode = await apiPkg.loadEphemeralAgent({ tools: ['execute_code', 'memory'] });
+    assert.strictEqual(withCode.stateful_code_sessions, true);
+
+    const withoutCode = await apiPkg.loadEphemeralAgent({ tools: ['memory'] });
+    assert.strictEqual('stateful_code_sessions' in withoutCode, false);
+
+    assert.strictEqual(await apiPkg.loadEphemeralAgent({ mode: 'null' }), null);
+    assert.strictEqual(await apiPkg.loadEphemeralAgent({ mode: 'undefined' }), undefined);
+
+    // Calling through loadAgent (internal lexical call to loadEphemeralAgent) also sets it.
+    const viaLoadAgent = await apiPkg.loadAgent({
+      agent_id: 'ephemeral',
+      tools: ['execute_code'],
+    });
+    assert.strictEqual(viaLoadAgent.stateful_code_sessions, true);
+
+    const viaLoadAgentNoCode = await apiPkg.loadAgent({
+      agent_id: 'ephemeral',
+      tools: ['memory'],
+    });
+    assert.strictEqual('stateful_code_sessions' in viaLoadAgentNoCode, false);
+
+    // Persisted agents keep their explicit database setting untouched.
+    const persistedDisabled = await apiPkg.loadAgent({
+      agent_id: 'agent_custom',
+      tools: ['execute_code'],
+      stateful_code_sessions: false,
+    });
+    assert.strictEqual(persistedDisabled.stateful_code_sessions, false);
+  })().then(
+    () => {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    },
+    (err) => {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      throw err;
+    },
+  );
+} catch (err) {
   fs.rmSync(tmpDir, { recursive: true, force: true });
+  throw err;
 }

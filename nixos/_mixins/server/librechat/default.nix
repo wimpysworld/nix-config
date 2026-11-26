@@ -13,11 +13,13 @@ let
     ps: with ps; [
       beautifulsoup4
       cairosvg
+      duckdb
       icalendar
       jinja2
       lxml
       markdown
       matplotlib
+      mypy
       numpy
       openpyxl
       pandas
@@ -35,6 +37,63 @@ let
       weasyprint
     ]
   );
+  sandboxTimeZone = if config.time.timeZone != null then config.time.timeZone else "UTC";
+  fontconfigEtc = lib.removeSuffix "/" "${config.environment.etc.fonts.source}";
+  sandboxEtc = pkgs.runCommand "librechat-sandbox-etc" { } ''
+    mkdir -p "$out/fonts/2.11" "$out/nix" "$out/ssl/certs"
+
+    cat > "$out/hosts" <<'EOF'
+    127.0.0.1 localhost sandbox
+    ::1 localhost sandbox
+    EOF
+
+    cat > "$out/resolv.conf" <<'EOF'
+    nameserver 127.0.0.53
+    options edns0 trust-ad
+    EOF
+
+    cat > "$out/nsswitch.conf" <<'EOF'
+    passwd: files
+    group: files
+    hosts: files dns
+    networks: files
+    services: files
+    protocols: files
+    EOF
+
+    ln -s ${pkgs.iana-etc}/etc/protocols "$out/protocols"
+    ln -s ${pkgs.iana-etc}/etc/services "$out/services"
+    ln -s ${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt "$out/ssl/certs/ca-bundle.crt"
+    ln -s ${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt "$out/ssl/certs/ca-certificates.crt"
+    ln -s ${pkgs.tzdata}/share/zoneinfo/${sandboxTimeZone} "$out/localtime"
+    ln -s ${pkgs.tzdata}/share/zoneinfo "$out/zoneinfo"
+
+    cat > "$out/nix/nix.conf" <<'EOF'
+    experimental-features = nix-command flakes
+    EOF
+
+    ln -s ${fontconfigEtc}/fonts.conf "$out/fonts/fonts.conf"
+    ln -s ${fontconfigEtc}/conf.d "$out/fonts/conf.d"
+    ln -s ../fonts.conf "$out/fonts/2.11/fonts.conf"
+
+    : > "$out/passwd"
+    : > "$out/group"
+  '';
+  sandboxAdminGitConfig = pkgs.writeText "librechat-sandbox-gitconfig" ''
+    [user]
+      name = Martin Wimpress
+      email = code@wimpress.io
+    [init]
+      defaultBranch = main
+    [safe]
+      directory = *
+    [credential "https://github.com"]
+      helper =
+      helper = !gh auth git-credential
+    [credential "https://gist.github.com"]
+      helper =
+      helper = !gh auth git-credential
+  '';
   ghApiSafe = pkgs.writeShellApplication {
     name = "gh-api-safe";
     runtimeInputs = [ pkgs.gh ];
@@ -1339,6 +1398,7 @@ in
         pkgs.ruff
         pkgs.rustc
         sandboxPython
+        pkgs.shellcheck
         pkgs.sqlite
         pkgs.statix
         pkgs.typst
@@ -1354,8 +1414,10 @@ in
         HOST = "127.0.0.1";
         PORT = "3082";
         REQUESTS_CA_BUNDLE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
+        SANDBOX_ADMIN_GIT_CONFIG = "${sandboxAdminGitConfig}";
         SANDBOX_CACHE_TTL_DAYS = "14";
         SANDBOX_CLEANUP_INTERVAL_SEC = "21600";
+        SANDBOX_ETC_DIR = "${sandboxEtc}";
         SANDBOX_STORAGE_TTL_DAYS = "30";
         SANDBOX_WORKSPACE_TTL_DAYS = "7";
         SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";

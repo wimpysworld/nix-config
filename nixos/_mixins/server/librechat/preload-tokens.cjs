@@ -1,5 +1,6 @@
 // Preload hook that registers missing model context windows in LibreChat 0.8.8,
 // strips any stale 1024-token floor cached in conversation or preset payloads,
+// enables stateful code sessions on ephemeral agents with execute_code,
 // and rewrites the code-interpreter tool network-access description to match
 // the firewall-filtered internet egress policy.
 // Gemini 4 Neon defaults to high thinking, Carbon and Hydrogen to medium.
@@ -9,13 +10,138 @@ const Module = require('module');
 const originalLoad = Module._load;
 
 let patchedDataProvider = false;
-let patchedApi = false;
 const auxiliaryInitializers = new WeakMap();
 const patchedToolModules = new WeakMap();
+const patchedApiModules = new WeakMap();
 
 const NO_NETWORK_LINE = '- No network access available.';
 const NETWORK_ACCESS_LINE =
   '- Public internet access is available. Localhost, private LAN, link-local, and Tailscale addresses are blocked by firewall.';
+
+function enableStatefulCodeSessions(agent) {
+  if (
+    agent &&
+    typeof agent === 'object' &&
+    Array.isArray(agent.tools) &&
+    agent.tools.includes('execute_code') &&
+    agent.stateful_code_sessions === undefined
+  ) {
+    return {
+      ...agent,
+      stateful_code_sessions: true,
+    };
+  }
+  return agent;
+}
+
+function wrapMaybeAsyncResult(result, transform) {
+  if (result && typeof result.then === 'function') {
+    return result.then(transform);
+  }
+  return transform(result);
+}
+
+function isEphemeralAgentId(agentId) {
+  return typeof agentId !== 'string' || !agentId.startsWith('agent_');
+}
+
+function patchApiModule(exported) {
+  if (patchedApiModules.has(exported)) {
+    return patchedApiModules.get(exported);
+  }
+
+  const extraModels = {
+    'gemini-4': 1048576,
+    'gemini-4-neon': 1048576,
+    'gemini-4-carbon': 1048576,
+    'gemini-4-hydrogen': 1048576,
+    'gpt-6-terra': 1050000,
+    'gpt-6.1-terra': 1050000,
+  };
+  for (const bucket of ['openAI', 'agents', 'custom', 'google', 'azureOpenAI']) {
+    if (exported.maxTokensMap[bucket] && typeof exported.maxTokensMap[bucket] === 'object') {
+      Object.assign(exported.maxTokensMap[bucket], extraModels);
+    }
+  }
+  if (typeof exported.providerConfigMap?.google === 'function') {
+    const originalInitializeGoogle = exported.providerConfigMap.google;
+    exported.providerConfigMap.google = function initializeGoogleWithDefaults(params, ...args) {
+      const modelParameters = params?.model_parameters;
+      if (
+        /^gemini-4-(neon|carbon|hydrogen)$/.test(modelParameters?.model ?? '') &&
+        modelParameters.thinking !== false &&
+        (modelParameters.thinkingLevel == null || modelParameters.thinkingLevel === '')
+      ) {
+        return originalInitializeGoogle.call(
+          this,
+          {
+            ...params,
+            model_parameters: {
+              ...modelParameters,
+              thinkingLevel: modelParameters.model === 'gemini-4-neon' ? 'high' : 'medium',
+            },
+          },
+          ...args,
+        );
+      }
+      return originalInitializeGoogle.apply(this, arguments);
+    };
+  }
+
+  const overrides = Object.create(null);
+
+  if (typeof exported.loadEphemeralAgent === 'function') {
+    const originalLoadEphemeralAgent = exported.loadEphemeralAgent;
+    overrides.loadEphemeralAgent = function wrappedLoadEphemeralAgent() {
+      return wrapMaybeAsyncResult(
+        originalLoadEphemeralAgent.apply(this, arguments),
+        enableStatefulCodeSessions,
+      );
+    };
+  }
+
+  if (typeof exported.loadAgent === 'function') {
+    const originalLoadAgent = exported.loadAgent;
+    overrides.loadAgent = function wrappedLoadAgent(params) {
+      const result = originalLoadAgent.apply(this, arguments);
+      if (params && typeof params === 'object' && isEphemeralAgentId(params.agent_id)) {
+        return wrapMaybeAsyncResult(result, enableStatefulCodeSessions);
+      }
+      return result;
+    };
+  }
+
+  let needsProxy = false;
+  for (const [key, wrappedFn] of Object.entries(overrides)) {
+    const desc = Object.getOwnPropertyDescriptor(exported, key);
+    if (desc && desc.writable) {
+      exported[key] = wrappedFn;
+    } else if (desc && desc.configurable) {
+      Object.defineProperty(exported, key, {
+        value: wrappedFn,
+        enumerable: desc.enumerable,
+        writable: true,
+        configurable: true,
+      });
+    } else {
+      needsProxy = true;
+    }
+  }
+
+  const result = needsProxy
+    ? new Proxy(exported, {
+        get(target, prop, receiver) {
+          if (typeof prop === 'string' && prop in overrides) {
+            return overrides[prop];
+          }
+          return Reflect.get(target, prop, receiver);
+        },
+      })
+    : exported;
+
+  patchedApiModules.set(exported, result);
+  return result;
+}
 
 function rewriteNetworkDescription(value) {
   if (typeof value !== 'string') {
@@ -187,51 +313,13 @@ Module._load = function patchedModuleLoad(request, parent, isMain) {
   }
 
   if (
-    !patchedApi &&
     (request === '@librechat/api' ||
       (typeof request === 'string' && request.endsWith('/packages/api'))) &&
     exported &&
     typeof exported === 'object' &&
     exported.maxTokensMap
   ) {
-    patchedApi = true;
-    const extraModels = {
-      'gemini-4': 1048576,
-      'gemini-4-neon': 1048576,
-      'gemini-4-carbon': 1048576,
-      'gemini-4-hydrogen': 1048576,
-      'gpt-6-terra': 1050000,
-      'gpt-6.1-terra': 1050000,
-    };
-    for (const bucket of ['openAI', 'agents', 'custom', 'google', 'azureOpenAI']) {
-      if (exported.maxTokensMap[bucket] && typeof exported.maxTokensMap[bucket] === 'object') {
-        Object.assign(exported.maxTokensMap[bucket], extraModels);
-      }
-    }
-    if (typeof exported.providerConfigMap?.google === 'function') {
-      const originalInitializeGoogle = exported.providerConfigMap.google;
-      exported.providerConfigMap.google = function initializeGoogleWithDefaults(params, ...args) {
-        const modelParameters = params?.model_parameters;
-        if (
-          /^gemini-4-(neon|carbon|hydrogen)$/.test(modelParameters?.model ?? '') &&
-          modelParameters.thinking !== false &&
-          (modelParameters.thinkingLevel == null || modelParameters.thinkingLevel === '')
-        ) {
-          return originalInitializeGoogle.call(
-            this,
-            {
-              ...params,
-              model_parameters: {
-                ...modelParameters,
-                thinkingLevel: modelParameters.model === 'gemini-4-neon' ? 'high' : 'medium',
-              },
-            },
-            ...args,
-          );
-        }
-        return originalInitializeGoogle.apply(this, arguments);
-      };
-    }
+    return patchApiModule(exported);
   }
 
   return exported;
