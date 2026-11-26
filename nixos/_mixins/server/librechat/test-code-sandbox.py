@@ -291,7 +291,8 @@ class CodeSandboxTests(unittest.TestCase):
 
             def fake_run(bcmd, workspace_dir, env, timeout_sec, tracking_keys=()):
                 captured_cmds.append(list(bcmd))
-                args_path = Path(bcmd[-1])
+                bwrap_idx = bcmd.index("/nix/store/zzz-bwrap/bin/bwrap")
+                args_path = Path(bcmd[bwrap_idx + 1])
                 captured_args_paths.append(args_path)
                 captured_modes.append(args_path.stat().st_mode & 0o777)
                 raw = args_path.read_bytes()
@@ -340,15 +341,21 @@ class CodeSandboxTests(unittest.TestCase):
                 "-U",
                 "none",
                 "--no-splice",
+                "--dns",
+                "none",
                 "--quiet",
                 "--",
                 "/nix/store/aaa-bash/bin/bash",
                 "-c",
-                'exec "$1" --args 3 3<"$2"',
+                'bwrap="$1"; args="$2"; shift 2; exec "$bwrap" --args 3 -- "$@" 3<"$args"',
                 "_",
                 "/nix/store/zzz-bwrap/bin/bwrap",
             ]
-            self.assertEqual(full_cmd[:-1], expected_pasta_prefix)
+            self.assertEqual(full_cmd[: len(expected_pasta_prefix)], expected_pasta_prefix)
+            self.assertEqual(
+                full_cmd[len(expected_pasta_prefix) + 1 :],
+                ["python3", "-c", "print(1)"],
+            )
             self.assertEqual(captured_modes[0], 0o600)
             self.assertFalse(
                 captured_args_paths[0].exists(),
@@ -358,6 +365,9 @@ class CodeSandboxTests(unittest.TestCase):
             bwrap_args = captured_args_content[0]
             self.assertNotIn("/nix/store", bwrap_args)
             self.assertNotIn("/run/current-system", bwrap_args)
+            self.assertNotIn("--", bwrap_args)
+            self.assertNotIn("python3", bwrap_args)
+            self.assertEqual(bwrap_args[-2:], ["--remount-ro", "/"])
             self.assertIn("/nix/store/aaa-bash", bwrap_args)
             self.assertIn("/nix/store/bbb-python", bwrap_args)
             self.assertEqual(bwrap_args.count("/nix/store/aaa-bash"), 2)
@@ -373,7 +383,8 @@ class CodeSandboxTests(unittest.TestCase):
 
             def failing_run(bcmd, workspace_dir, env, timeout_sec, tracking_keys=()):
                 self.assertEqual(bcmd[0], "/nix/store/aaa-bash/bin/bash")
-                errored_args_path.append(Path(bcmd[-1]))
+                bwrap_idx = bcmd.index("/nix/store/zzz-bwrap/bin/bwrap")
+                errored_args_path.append(Path(bcmd[bwrap_idx + 1]))
                 raise RuntimeError("boom")
 
             with (

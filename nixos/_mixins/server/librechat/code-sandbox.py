@@ -114,6 +114,8 @@ PASTA_ISOLATION_FLAGS = (
     "-U",
     "none",
     "--no-splice",
+    "--dns",
+    "none",
     "--quiet",
 )
 FALLBACK_ETC_PATHS = (
@@ -891,9 +893,7 @@ def load_sandbox_store_paths() -> list[str] | None:
         return list(store_paths)
 
 
-def build_bwrap_args(
-    cmd: list[str], *, cache_dir: Path | None = None
-) -> list[str]:
+def build_bwrap_options(*, cache_dir: Path | None = None) -> list[str]:
     passwd_path, group_path = ensure_runtime_identity_files()
     sandbox_etc_dir = os.environ.get("SANDBOX_ETC_DIR", "").strip()
     args = [
@@ -980,11 +980,15 @@ def build_bwrap_args(
             "/mnt/data",
             "--remount-ro",
             "/",
-            "--",
-            *cmd,
         ]
     )
     return args
+
+
+def build_bwrap_args(
+    cmd: list[str], *, cache_dir: Path | None = None
+) -> list[str]:
+    return [*build_bwrap_options(cache_dir=cache_dir), "--", *cmd]
 
 
 def build_bwrap_cmd(
@@ -1014,21 +1018,22 @@ def prepare_sandbox_command(
     bwrap = resolve_bwrap_bin()
     if not bwrap:
         return None, None
-    bwrap_args = build_bwrap_args(cmd, cache_dir=cache_dir)
+    bwrap_options = build_bwrap_options(cache_dir=cache_dir)
     args_file: Path | None = None
     if load_sandbox_store_paths() is not None:
-        args_file = _write_bwrap_args_file(bwrap_args)
+        args_file = _write_bwrap_args_file(bwrap_options)
         bash_bin = shutil.which("bash") or "/bin/sh"
         inner_cmd = [
             bash_bin,
             "-c",
-            'exec "$1" --args 3 3<"$2"',
+            'bwrap="$1"; args="$2"; shift 2; exec "$bwrap" --args 3 -- "$@" 3<"$args"',
             "_",
             bwrap,
             str(args_file),
+            *cmd,
         ]
     else:
-        inner_cmd = [bwrap, *bwrap_args]
+        inner_cmd = [bwrap, *bwrap_options, "--", *cmd]
 
     pasta = resolve_pasta_bin()
     if pasta:
