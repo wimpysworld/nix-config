@@ -542,6 +542,129 @@ let
     assert nix_res["local_exists"] is False, nix_res
     assert_no_pasta_processes("nix eval check")
 
+    # 9. LimitNOFILE, ephemeral XDG config/data/state, spotless /mnt/data, read-only /run/lc-exec,
+    #    and conversation-scoped skill isolation.
+    r9_bash = exec_code(
+        user_tok,
+        "bash",
+        'printf "ulimit=%s\\nentries=%s\\n" "$(ulimit -n)" "$(ls -A /mnt/data)"',
+        runtime_session_hint="v2:conversation:vm-spotless-check",
+    )
+    assert r9_bash["stderr"] == "", r9_bash
+    assert r9_bash["stdout"] == "ulimit=65536\nentries=\n", r9_bash
+
+    r9_env = exec_code(
+        user_tok,
+        "py",
+        "import json, os\n"
+        "from pathlib import Path\n"
+        "exec_ro_failed = False\n"
+        "try:\n"
+        "    Path('/run/lc-exec/probe').write_text('x')\n"
+        "except OSError:\n"
+        "    exec_ro_failed = True\n"
+        "print(json.dumps({\n"
+        "    'XDG_CONFIG_HOME': os.environ.get('XDG_CONFIG_HOME'),\n"
+        "    'XDG_DATA_HOME': os.environ.get('XDG_DATA_HOME'),\n"
+        "    'XDG_STATE_HOME': os.environ.get('XDG_STATE_HOME'),\n"
+        "    'XDG_CACHE_HOME': os.environ.get('XDG_CACHE_HOME'),\n"
+        "    'GOCACHE': os.environ.get('GOCACHE'),\n"
+        "    'CARGO_HOME': os.environ.get('CARGO_HOME'),\n"
+        "    'UV_CACHE_DIR': os.environ.get('UV_CACHE_DIR'),\n"
+        "    'entries': sorted(os.listdir('/mnt/data')),\n"
+        "    'exec_ro_failed': exec_ro_failed,\n"
+        "}))\n",
+        runtime_session_hint="v2:conversation:vm-spotless-check",
+    )
+    assert r9_env["stderr"] == "", r9_env
+    e9 = json.loads(r9_env["stdout"])
+    assert e9 == {
+        "XDG_CONFIG_HOME": "/tmp/xdg-config",
+        "XDG_DATA_HOME": "/tmp/xdg-data",
+        "XDG_STATE_HOME": "/tmp/xdg-state",
+        "XDG_CACHE_HOME": "/var/cache/sandbox/cache",
+        "GOCACHE": "/var/cache/sandbox/go-cache",
+        "CARGO_HOME": "/var/cache/sandbox/cargo",
+        "UV_CACHE_DIR": "/var/cache/sandbox/uv-cache",
+        "entries": [],
+        "exec_ro_failed": True,
+    }, e9
+    assert not list(Path("/var/lib/librechat-code-sandbox/tmp").glob("lc-exec-*")), (
+        "leaked lc-exec-* temp dir"
+    )
+
+    # Conversation-scoped workspaces isolate skills between conversations and prune stale skill files.
+    def upload_skill(token: str, filename: str, content: bytes):
+        boundary = "----VMSkillUploadBoundary"
+        parts = [
+            f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="kind"\r\n\r\n'
+            f"skill\r\n".encode("utf-8"),
+            f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="id"\r\n\r\n'
+            f"skill-demo-id\r\n".encode("utf-8"),
+            f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'
+            f"Content-Type: application/octet-stream\r\n\r\n".encode("utf-8")
+            + content
+            + b"\r\n",
+            f"--{boundary}--\r\n".encode("utf-8"),
+        ]
+        status, raw = http_call(
+            "POST",
+            "/upload",
+            body=b"".join(parts),
+            headers={
+                "Content-Type": f"multipart/form-data; boundary={boundary}",
+                "Authorization": f"Bearer {token}",
+            },
+        )
+        assert status == 200, f"skill upload HTTP {status}: {raw!r}"
+        return json.loads(raw.decode("utf-8"))
+
+    skill_md_up = upload_skill(user_tok, "skills/demo/SKILL.md", b"# Demo skill\n")
+    skill_old_up = upload_skill(user_tok, "skills/demo/scripts/old.sh", b"echo old\n")
+    skill_md_ref = {
+        "id": skill_md_up["files"][0]["fileId"],
+        "name": "skills/demo/SKILL.md",
+        "storage_session_id": skill_md_up["storage_session_id"],
+        "kind": "skill",
+    }
+    skill_old_ref = {
+        "id": skill_old_up["files"][0]["fileId"],
+        "name": "skills/demo/scripts/old.sh",
+        "storage_session_id": skill_old_up["storage_session_id"],
+        "kind": "skill",
+    }
+    conv1_t1 = exec_code(
+        user_tok,
+        "bash",
+        "test -f /mnt/data/skills/demo/SKILL.md && test -f /mnt/data/skills/demo/scripts/old.sh && echo ok",
+        runtime_session_hint="v2:conversation:vm-conv-1",
+        files=[skill_md_ref, skill_old_ref],
+    )
+    assert conv1_t1["stdout"] == "ok\n", conv1_t1
+
+    # Syncing the same skill without scripts/old.sh prunes the removed file.
+    conv1_t2 = exec_code(
+        user_tok,
+        "bash",
+        "test -f /mnt/data/skills/demo/SKILL.md && test ! -e /mnt/data/skills/demo/scripts && echo synced",
+        runtime_session_hint="v2:conversation:vm-conv-1",
+        files=[skill_md_ref],
+    )
+    assert conv1_t2["stdout"] == "synced\n", conv1_t2
+
+    # A new conversation starts completely clean without skills/demo.
+    conv2 = exec_code(
+        user_tok,
+        "bash",
+        'printf "entries=%s\\n" "$(ls -A /mnt/data)"',
+        runtime_session_hint="v2:conversation:vm-conv-2",
+    )
+    assert conv2["stdout"] == "entries=\n", conv2
+    assert_no_pasta_processes("refinements check")
+
     print("ALL_VM_SANDBOX_CHECKS_PASSED")
   '';
 in
@@ -741,6 +864,7 @@ pkgs.testers.runNixOSTest {
             MemoryMax = "8G";
             CPUQuota = "400%";
             TasksMax = 512;
+            LimitNOFILE = "65536:524288";
             NoNewPrivileges = true;
             PrivateTmp = true;
             ProtectSystem = "strict";
@@ -776,5 +900,23 @@ pkgs.testers.runNixOSTest {
 
     out = sandbox.succeed("${lib.getExe serverPython} ${sandboxVerifier}")
     assert "ALL_VM_SANDBOX_CHECKS_PASSED" in out, out
+
+    # Verify startup cleanup purges legacy xdg-config/xdg-data/xdg-state directories.
+    sandbox.succeed(
+        "install -d -o librechat-code-sandbox -g librechat-code-sandbox "
+        "/var/lib/librechat-code-sandbox/users/louise_user/cache/xdg-config "
+        "/var/lib/librechat-code-sandbox/users/louise_user/cache/xdg-data "
+        "/var/lib/librechat-code-sandbox/users/louise_user/cache/xdg-state && "
+        "touch /var/lib/librechat-code-sandbox/users/louise_user/cache/xdg-config/wrangler.log && "
+        "systemctl restart librechat-code-sandbox.service"
+    )
+    sandbox.wait_for_unit("librechat-code-sandbox.service")
+    sandbox.wait_for_open_port(3082)
+    sandbox.succeed(
+        "test ! -e /var/lib/librechat-code-sandbox/users/louise_user/cache/xdg-config && "
+        "test ! -e /var/lib/librechat-code-sandbox/users/louise_user/cache/xdg-data && "
+        "test ! -e /var/lib/librechat-code-sandbox/users/louise_user/cache/xdg-state && "
+        "test -f /var/lib/librechat-code-sandbox/users/louise_user/cache/persisted.txt"
+    )
   '';
 }

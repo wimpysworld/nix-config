@@ -278,12 +278,29 @@ class CodeSandboxTests(unittest.TestCase):
             self.assertEqual(cmd[tmp_dst_idx - 3], "--size")
             self.assertEqual(cmd[tmp_dst_idx - 2], "4294967296")
 
-            # --remount-ro / must follow /tmp, /dev/shm, and /mnt/data.
-            remount_idx = cmd.index("--remount-ro")
-            self.assertEqual(cmd[remount_idx + 1], "/")
-            self.assertGreater(remount_idx, tmp_dst_idx)
-            self.assertGreater(remount_idx, shm_dst_idx)
-            self.assertGreater(remount_idx, cmd.index("/mnt/data"))
+            # --remount-ro / must follow /tmp, /dev/shm, /run/lc-exec, and /mnt/data.
+            exec_dir = root / "lc-exec-unit"
+            exec_dir.mkdir()
+            with (
+                mock.patch.dict(
+                    os.environ,
+                    {"SANDBOX_DISABLE_BWRAP": "0", "SANDBOX_ETC_DIR": str(fake_etc)},
+                    clear=False,
+                ),
+                mock.patch.object(mod.shutil, "which", return_value="/usr/bin/bwrap"),
+            ):
+                cmd_with_exec = mod.build_bwrap_cmd(["bash", "-c", "true"], exec_dir=exec_dir)
+            self.assertIsNotNone(cmd_with_exec)
+            assert cmd_with_exec is not None
+            exec_dst_idx = cmd_with_exec.index("/run/lc-exec")
+            self.assertEqual(cmd_with_exec[exec_dst_idx - 2], "--ro-bind")
+            self.assertEqual(cmd_with_exec[exec_dst_idx - 1], str(exec_dir))
+            remount_idx = cmd_with_exec.index("--remount-ro")
+            self.assertEqual(cmd_with_exec[remount_idx + 1], "/")
+            self.assertGreater(remount_idx, cmd_with_exec.index("/tmp"))
+            self.assertGreater(remount_idx, cmd_with_exec.index("/dev/shm"))
+            self.assertGreater(remount_idx, exec_dst_idx)
+            self.assertGreater(remount_idx, cmd_with_exec.index("/mnt/data"))
 
     def test_bwrap_memfd_args_and_pasta_attach_lifecycle_and_error_handling(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -625,9 +642,10 @@ class CodeSandboxTests(unittest.TestCase):
                 cache_mounted=True,
             )
             self.assertEqual(admin_env["GIT_CONFIG_SYSTEM"], str(admin_gitconfig))
-            self.assertEqual(admin_env["XDG_CONFIG_HOME"], "/var/cache/sandbox/xdg-config")
-            self.assertEqual(admin_env["XDG_DATA_HOME"], "/var/cache/sandbox/xdg-data")
-            self.assertEqual(admin_env["XDG_STATE_HOME"], "/var/cache/sandbox/xdg-state")
+            self.assertEqual(admin_env["XDG_CACHE_HOME"], "/var/cache/sandbox/cache")
+            self.assertEqual(admin_env["XDG_CONFIG_HOME"], "/tmp/xdg-config")
+            self.assertEqual(admin_env["XDG_DATA_HOME"], "/tmp/xdg-data")
+            self.assertEqual(admin_env["XDG_STATE_HOME"], "/tmp/xdg-state")
             self.assertEqual(admin_env["NIX_STATE_DIR"], "/var/cache/sandbox/nix-state")
             self.assertNotIn("SANDBOX_ETC_DIR", admin_env)
             self.assertNotIn("SANDBOX_ADMIN_GIT_CONFIG", admin_env)
@@ -1042,9 +1060,9 @@ class CodeSandboxTests(unittest.TestCase):
                 )
 
             self.assertEqual(captured_env["XDG_CACHE_HOME"], "/var/cache/sandbox/cache")
-            self.assertEqual(captured_env["XDG_CONFIG_HOME"], "/var/cache/sandbox/xdg-config")
-            self.assertEqual(captured_env["XDG_DATA_HOME"], "/var/cache/sandbox/xdg-data")
-            self.assertEqual(captured_env["XDG_STATE_HOME"], "/var/cache/sandbox/xdg-state")
+            self.assertEqual(captured_env["XDG_CONFIG_HOME"], "/tmp/xdg-config")
+            self.assertEqual(captured_env["XDG_DATA_HOME"], "/tmp/xdg-data")
+            self.assertEqual(captured_env["XDG_STATE_HOME"], "/tmp/xdg-state")
             self.assertEqual(captured_env["NIX_STATE_DIR"], "/var/cache/sandbox/nix-state")
             self.assertEqual(captured_env["GOCACHE"], "/var/cache/sandbox/go-cache")
             self.assertEqual(captured_env["GOMODCACHE"], "/var/cache/sandbox/go-mod")
@@ -1060,8 +1078,15 @@ class CodeSandboxTests(unittest.TestCase):
             self.assertEqual(captured_env["TMPDIR"], "/tmp")
             self.assertEqual(captured_env["GOTMPDIR"], "/tmp")
 
-            # Seed cache files: one expired by TTL, two fresh totalling > 100 bytes.
+            # Seed cache files: one expired by TTL, two fresh totalling > 100 bytes,
+            # plus legacy xdg-config/xdg-data/xdg-state dirs that must be purged unconditionally.
             now = time.time()
+            for legacy_name in ("xdg-config", "xdg-data", "xdg-state"):
+                legacy_file = martin_cache / legacy_name / "nested" / "stale.log"
+                legacy_file.parent.mkdir(parents=True, exist_ok=True)
+                legacy_file.write_bytes(b"legacy-xdg-bytes")
+                os.utime(legacy_file, (now, now))
+
             expired_file = martin_cache / "cargo" / "expired.bin"
             expired_file.parent.mkdir(parents=True, exist_ok=True)
             expired_file.write_bytes(b"a" * 30)
@@ -1078,6 +1103,8 @@ class CodeSandboxTests(unittest.TestCase):
 
             summary = mod.cleanup_expired_state(now_ts=now)
             self.assertEqual(summary["removed_cache_files"], 2)
+            for legacy_name in ("xdg-config", "xdg-data", "xdg-state"):
+                self.assertFalse((martin_cache / legacy_name).exists(), legacy_name)
             self.assertFalse(expired_file.exists())
             self.assertFalse(older_file.exists())
             self.assertTrue(newer_file.is_file())
@@ -1150,6 +1177,143 @@ class CodeSandboxTests(unittest.TestCase):
             )
             self.assertEqual(ws_file.read_bytes(), b"all:\n\techo updated\n")
             self.assertGreater(ws_file.stat().st_mtime, sentinel_ts)
+
+    def test_exec_dir_keeps_workspace_spotless_and_cleans_up(self):
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.dict(os.environ, {"SANDBOX_DISABLE_BWRAP": "1"}),
+        ):
+            state = Path(tmp)
+            mod = load_sandbox(state)
+
+            bash_res = mod.execute_code_request(
+                {
+                    "lang": "bash",
+                    "code": 'printf "entries=%s\\narg1=%s\\narg2=%s\\n" "$(ls -A)" "$1" "$2"',
+                    "args": ["hello world", "a'b"],
+                },
+                user_id="martin_123",
+            )
+            self.assertEqual(bash_res["stderr"], "", bash_res)
+            self.assertEqual(
+                bash_res["stdout"],
+                "entries=\narg1=hello world\narg2=a'b\n",
+                bash_res,
+            )
+            self.assertFalse(list((state / "tmp").glob("lc-exec-*")))
+
+            py_res = mod.execute_code_request(
+                {
+                    "lang": "py",
+                    "code": "import json, os, sys; print(json.dumps({'entries': os.listdir('.'), 'argv': sys.argv[1:]}))",
+                    "args": ["one", "two words"],
+                },
+                user_id="martin_123",
+            )
+            self.assertEqual(py_res["stderr"], "", py_res)
+            self.assertEqual(
+                json.loads(str(py_res["stdout"])),
+                {"entries": [], "argv": ["one", "two words"]},
+            )
+            self.assertFalse(list((state / "tmp").glob("lc-exec-*")))
+
+            # Even on timeout, the per-call exec dir must be cleaned up.
+            timeout_res = mod.execute_code_request(
+                {"lang": "bash", "code": "sleep 5", "timeout": 1},
+                user_id="martin_123",
+            )
+            self.assertIn("Execution timed out.", str(timeout_res["stderr"]))
+            self.assertFalse(list((state / "tmp").glob("lc-exec-*")))
+
+    def test_skill_sync_prunes_stale_files_within_updated_skill(self):
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.dict(os.environ, {"SANDBOX_DISABLE_BWRAP": "1"}),
+        ):
+            state = Path(tmp)
+            mod = load_sandbox(state)
+            skill_sid = mod.to_nanoid("skill-sync-seed")
+            md_fid = mod.to_nanoid(f"{skill_sid}:skills/demo/SKILL.md")
+            old_fid = mod.to_nanoid(f"{skill_sid}:skills/demo/scripts/old.sh")
+            mod.save_storage_object(
+                skill_sid, md_fid, "skills/demo/SKILL.md", b"# Demo\n", read_only=True, kind="skill"
+            )
+            mod.save_storage_object(
+                skill_sid,
+                old_fid,
+                "skills/demo/scripts/old.sh",
+                b"echo old\n",
+                read_only=True,
+                kind="skill",
+            )
+
+            res1 = mod.execute_code_request(
+                {
+                    "lang": "py",
+                    "runtime_session_hint": "v2:conversation:conv-a",
+                    "code": "print('mounted')",
+                    "files": [
+                        {
+                            "id": md_fid,
+                            "name": "skills/demo/SKILL.md",
+                            "storage_session_id": skill_sid,
+                            "kind": "skill",
+                        },
+                        {
+                            "id": old_fid,
+                            "name": "skills/demo/scripts/old.sh",
+                            "storage_session_id": skill_sid,
+                            "kind": "skill",
+                        },
+                    ],
+                },
+                user_id="martin_123",
+            )
+            sid_a = str(res1["session_id"])
+            ws_a = mod.workspace_dir_for(sid_a, "martin_123")
+            self.assertTrue((ws_a / "skills" / "demo" / "scripts" / "old.sh").is_file())
+
+            # A call without files (such as prewarm) must leave mounted skills intact.
+            mod.execute_code_request(
+                {
+                    "lang": "bash",
+                    "runtime_session_hint": "v2:conversation:conv-a",
+                    "code": "true",
+                },
+                user_id="martin_123",
+            )
+            self.assertTrue((ws_a / "skills" / "demo" / "scripts" / "old.sh").is_file())
+
+            # Re-injecting demo without scripts/old.sh prunes the removed file and empty subdir.
+            mod.execute_code_request(
+                {
+                    "lang": "py",
+                    "runtime_session_hint": "v2:conversation:conv-a",
+                    "code": "print('synced')",
+                    "files": [
+                        {
+                            "id": md_fid,
+                            "name": "skills/demo/SKILL.md",
+                            "storage_session_id": skill_sid,
+                            "kind": "skill",
+                        }
+                    ],
+                },
+                user_id="martin_123",
+            )
+            self.assertTrue((ws_a / "skills" / "demo" / "SKILL.md").is_file())
+            self.assertFalse((ws_a / "skills" / "demo" / "scripts").exists())
+
+            # A brand-new conversation gets its own isolated workspace without skills/demo.
+            res_b = mod.execute_code_request(
+                {
+                    "lang": "py",
+                    "runtime_session_hint": "v2:conversation:conv-b",
+                    "code": "import os; print(os.listdir('.'))",
+                },
+                user_id="martin_123",
+            )
+            self.assertEqual(res_b["stdout"], "[]\n", res_b)
 
 
 class CodeSandboxHttpJwtTests(unittest.TestCase):

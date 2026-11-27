@@ -97,14 +97,6 @@ let
       helper =
       helper = !gh auth git-credential
   '';
-  ghApiSafe = pkgs.writeShellApplication {
-    name = "gh-api-safe";
-    runtimeInputs = [ pkgs.gh ];
-    text = ''
-      readonly GH_API_SAFE_GH=${lib.escapeShellArg (lib.getExe pkgs.gh)}
-    ''
-    + builtins.readFile ../../../../home-manager/_mixins/development/github/gh-api-safe.sh;
-  };
   sandboxPathPackages = [
     inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.agent-browser
     pkgs.bash
@@ -121,7 +113,6 @@ let
     pkgs.gawk
     pkgs.gcc
     pkgs.gh
-    ghApiSafe
     pkgs.git
     pkgs.gnugrep
     pkgs.gnumake
@@ -381,6 +372,7 @@ let
     walk "" skillDir;
   excludedLibrechatSkills = [
     "composer-reaper"
+    "gh"
     "herdr"
     "slack"
     "zk"
@@ -874,6 +866,7 @@ let
             skills_enabled: true,
             skills_scope: "all",
             stateful_code_sessions: true,
+            stateful_code_environment: "conversation",
             subagents: subagentsConfig,
             edges: [],
             createdAt: now,
@@ -897,6 +890,7 @@ let
                 skills_enabled: true,
                 skills_scope: "all",
                 stateful_code_sessions: true,
+                stateful_code_environment: "conversation",
                 subagents: subagentsConfig,
                 author: martin._id,
                 authorName: martin.name,
@@ -1511,6 +1505,7 @@ in
         MemoryMax = "8G";
         CPUQuota = "400%";
         TasksMax = 512;
+        LimitNOFILE = "65536:524288";
         NoNewPrivileges = true;
         PrivateTmp = true;
         ProtectSystem = "strict";

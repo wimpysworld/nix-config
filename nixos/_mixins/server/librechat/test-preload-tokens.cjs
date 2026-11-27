@@ -264,29 +264,33 @@ Object.defineProperty(module.exports, 'loadAgent', {
   });
   assert.strictEqual(carbonParams.model_parameters.thinkingLevel, 'medium');
 
-  // 5. Ephemeral agent hooks enable stateful_code_sessions when execute_code is present.
+  // 5. Ephemeral agent hooks enable conversation-scoped stateful_code_sessions when execute_code is present.
   (async () => {
     const withCode = await apiPkg.loadEphemeralAgent({ tools: ['execute_code', 'memory'] });
     assert.strictEqual(withCode.stateful_code_sessions, true);
+    assert.strictEqual(withCode.stateful_code_environment, 'conversation');
 
     const withoutCode = await apiPkg.loadEphemeralAgent({ tools: ['memory'] });
     assert.strictEqual('stateful_code_sessions' in withoutCode, false);
+    assert.strictEqual('stateful_code_environment' in withoutCode, false);
 
     assert.strictEqual(await apiPkg.loadEphemeralAgent({ mode: 'null' }), null);
     assert.strictEqual(await apiPkg.loadEphemeralAgent({ mode: 'undefined' }), undefined);
 
-    // Calling through loadAgent (internal lexical call to loadEphemeralAgent) also sets it.
+    // Calling through loadAgent (internal lexical call to loadEphemeralAgent) also sets both fields.
     const viaLoadAgent = await apiPkg.loadAgent({
       agent_id: 'ephemeral',
       tools: ['execute_code'],
     });
     assert.strictEqual(viaLoadAgent.stateful_code_sessions, true);
+    assert.strictEqual(viaLoadAgent.stateful_code_environment, 'conversation');
 
     const viaLoadAgentNoCode = await apiPkg.loadAgent({
       agent_id: 'ephemeral',
       tools: ['memory'],
     });
     assert.strictEqual('stateful_code_sessions' in viaLoadAgentNoCode, false);
+    assert.strictEqual('stateful_code_environment' in viaLoadAgentNoCode, false);
 
     // Persisted agents keep their explicit database setting untouched.
     const persistedDisabled = await apiPkg.loadAgent({
@@ -295,6 +299,7 @@ Object.defineProperty(module.exports, 'loadAgent', {
       stateful_code_sessions: false,
     });
     assert.strictEqual(persistedDisabled.stateful_code_sessions, false);
+    assert.strictEqual(persistedDisabled.stateful_code_environment, undefined);
   })().then(
     () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });

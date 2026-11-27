@@ -1,6 +1,6 @@
 // Preload hook that registers missing model context windows in LibreChat 0.8.8,
 // strips any stale 1024-token floor cached in conversation or preset payloads,
-// enables stateful code sessions on ephemeral agents with execute_code,
+// enables conversation-scoped stateful code sessions on ephemeral agents with execute_code,
 // and rewrites the code-interpreter tool network-access description to match
 // the firewall-filtered internet egress policy.
 // Gemini 4 Neon defaults to high thinking, Carbon and Hydrogen to medium.
@@ -32,6 +32,7 @@ function enableStatefulCodeSessions(agent) {
     return {
       ...agent,
       stateful_code_sessions: true,
+      stateful_code_environment: agent.stateful_code_environment ?? 'conversation',
     };
   }
   return agent;

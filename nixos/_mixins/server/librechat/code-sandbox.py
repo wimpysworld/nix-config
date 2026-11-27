@@ -14,6 +14,7 @@ import pwd
 import re
 import secrets
 import select
+import shlex
 import shutil
 import signal
 import string
@@ -95,6 +96,8 @@ IGNORED_DIR_NAMES = frozenset(
     }
 )
 SANDBOX_CACHE_MOUNT = "/var/cache/sandbox"
+SANDBOX_EXEC_MOUNT = "/run/lc-exec"
+LEGACY_CACHE_XDG_DIRS = ("xdg-config", "xdg-data", "xdg-state")
 SANDBOX_TMPFS_SIZE_BYTES = "4294967296"
 SANDBOX_DEV_SHM_SIZE_BYTES = "536870912"
 BWRAP_INFO_TIMEOUT_SEC = 15.0
@@ -621,6 +624,13 @@ def cleanup_expired_state(now_ts: float | None = None) -> dict[str, int]:
         for user_dir in list(USERS_DIR.iterdir()):
             cache_dir = user_dir / "cache"
             if cache_dir.is_dir():
+                for legacy_name in LEGACY_CACHE_XDG_DIRS:
+                    legacy_path = cache_dir / legacy_name
+                    if legacy_path.is_symlink() or legacy_path.is_file():
+                        with contextlib.suppress(OSError):
+                            legacy_path.unlink(missing_ok=True)
+                    elif legacy_path.is_dir():
+                        shutil.rmtree(legacy_path, ignore_errors=True)
                 removed_cache_files += _prune_cache_dir(
                     cache_dir, cache_cutoff, CACHE_MAX_BYTES
                 )
@@ -908,7 +918,10 @@ def load_sandbox_store_paths() -> list[str] | None:
 
 
 def build_bwrap_options(
-    *, cache_dir: Path | None = None, share_net: bool | None = None
+    *,
+    cache_dir: Path | None = None,
+    exec_dir: Path | None = None,
+    share_net: bool | None = None,
 ) -> list[str]:
     passwd_path, group_path = ensure_runtime_identity_files()
     sandbox_etc_dir = os.environ.get("SANDBOX_ETC_DIR", "").strip()
@@ -994,6 +1007,8 @@ def build_bwrap_options(
     )
     if cache_dir is not None:
         args.extend(["--bind", str(cache_dir), SANDBOX_CACHE_MOUNT])
+    if exec_dir is not None:
+        args.extend(["--ro-bind", str(exec_dir), SANDBOX_EXEC_MOUNT])
     args.extend(
         [
             "--bind",
@@ -1012,10 +1027,13 @@ def build_bwrap_args(
     cmd: list[str],
     *,
     cache_dir: Path | None = None,
+    exec_dir: Path | None = None,
     share_net: bool | None = None,
 ) -> list[str]:
     return [
-        *build_bwrap_options(cache_dir=cache_dir, share_net=share_net),
+        *build_bwrap_options(
+            cache_dir=cache_dir, exec_dir=exec_dir, share_net=share_net
+        ),
         "--",
         *cmd,
     ]
@@ -1025,12 +1043,18 @@ def build_bwrap_cmd(
     cmd: list[str],
     *,
     cache_dir: Path | None = None,
+    exec_dir: Path | None = None,
     share_net: bool | None = None,
 ) -> list[str] | None:
     bwrap = resolve_bwrap_bin()
     if not bwrap:
         return None
-    return [bwrap, *build_bwrap_args(cmd, cache_dir=cache_dir, share_net=share_net)]
+    return [
+        bwrap,
+        *build_bwrap_args(
+            cmd, cache_dir=cache_dir, exec_dir=exec_dir, share_net=share_net
+        ),
+    ]
 
 
 class _ManagedFd:
@@ -1344,9 +1368,9 @@ def build_sandbox_env(
         child_env["LIBRECHAT_CODE_DATA_DIR"] = "/mnt/data"
         child_env["TMPDIR"] = "/tmp"  # noqa: S108
         child_env["XDG_CACHE_HOME"] = f"{cache_root}/cache"
-        child_env["XDG_CONFIG_HOME"] = f"{cache_root}/xdg-config"
-        child_env["XDG_DATA_HOME"] = f"{cache_root}/xdg-data"
-        child_env["XDG_STATE_HOME"] = f"{cache_root}/xdg-state"
+        child_env["XDG_CONFIG_HOME"] = "/tmp/xdg-config"  # noqa: S108
+        child_env["XDG_DATA_HOME"] = "/tmp/xdg-data"  # noqa: S108
+        child_env["XDG_STATE_HOME"] = "/tmp/xdg-state"  # noqa: S108
         child_env["NIX_STATE_DIR"] = f"{cache_root}/nix-state"
         child_env["UV_CACHE_DIR"] = f"{cache_root}/uv-cache"
         child_env["UV_TOOL_DIR"] = f"{cache_root}/uv-tools"
@@ -1386,6 +1410,7 @@ def run_sandboxed(
     *,
     caller_role: str = "USER",
     cache_dir: Path | None = None,
+    exec_dir: Path | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], bool]:
     bwrap = resolve_bwrap_bin()
     use_bwrap = bwrap is not None
@@ -1404,7 +1429,7 @@ def run_sandboxed(
     pasta = resolve_pasta_bin()
     use_pasta = pasta is not None
     bwrap_options = build_bwrap_options(
-        cache_dir=cache_dir, share_net=not use_pasta
+        cache_dir=cache_dir, exec_dir=exec_dir, share_net=not use_pasta
     )
     use_args_fd = load_sandbox_store_paths() is not None
     managed_fds: list[_ManagedFd] = []
@@ -1635,6 +1660,7 @@ def execute_code_request(
         tombstones = load_session_tombstones(session_id)
         tombstones_dirty = False
         readonly_paths: set[str] = set()
+        injected_skill_files: dict[str, set[str]] = {}
         injected_files = body.get("files")
         if isinstance(injected_files, list):
             for entry in injected_files:
@@ -1709,6 +1735,35 @@ def execute_code_request(
                     or rel_path.startswith("skills/")
                 ):
                     readonly_paths.add(rel_path)
+                if is_skill_entry:
+                    rel_parts = rel_path.split("/")
+                    if len(rel_parts) >= 3 and rel_parts[0] == "skills":
+                        injected_skill_files.setdefault(rel_parts[1], set()).add(rel_path)
+
+        for skill_name, expected_paths in injected_skill_files.items():
+            try:
+                skill_root = resolve_under(workspace_dir, "skills", skill_name)
+            except ValueError:
+                continue
+            if not skill_root.is_dir():
+                continue
+            for walk_root, dirnames, filenames in os.walk(
+                skill_root, topdown=False, followlinks=False
+            ):
+                walk_root_path = Path(walk_root)
+                for filename in filenames:
+                    candidate = walk_root_path / filename
+                    try:
+                        rel_candidate = candidate.relative_to(workspace_dir).as_posix()
+                    except ValueError:
+                        continue
+                    if rel_candidate not in expected_paths:
+                        with contextlib.suppress(OSError):
+                            candidate.unlink(missing_ok=True)
+                for dirname in dirnames:
+                    subdir = walk_root_path / dirname
+                    with contextlib.suppress(OSError):
+                        subdir.rmdir()
 
         before_snap = snapshot_workspace(workspace_dir)
         use_bwrap = resolve_bwrap_bin() is not None
@@ -1723,44 +1778,68 @@ def execute_code_request(
             else [rewrite_mnt_data_in_code(a, workspace_dir) for a in args]
         )
 
-        if raw_lang in ("bash", "sh"):
-            cmd = [
-                "bash",
-                "-c",
-                'eval "set -- $(python3 -c \'import json, shlex; print(" ".join(shlex.quote(a) for a in json.load(open(".lc-tmp-args.json"))))\')" && source ./.lc-tmp-script',
-            ]
-        elif raw_lang in ("py", "python"):
-            cmd = [
-                "python3",
-                "-c",
-                'import json, sys; sys.argv = ["-c", *json.load(open(".lc-tmp-args.json"))]; exec(compile(open(".lc-tmp-script", "rb").read(), "<string>", "exec"), {"__name__": "__main__"})',
-            ]
-        elif raw_lang in ("js", "javascript", "ts", "typescript"):
-            cmd = [
-                "node",
-                "-e",
-                'const fs = require("fs"); process.argv = [process.execPath, ...JSON.parse(fs.readFileSync(".lc-tmp-args.json", "utf8"))]; eval(fs.readFileSync(".lc-tmp-script", "utf8"));',
-            ]
-        else:
-            cmd = None
-
         env = os.environ.copy()
 
         stdout = ""
         stderr = ""
         returncode = 0
         overflow = False
-        if cmd is None:
+        supported_langs = ("bash", "sh", "py", "python", "js", "javascript", "ts", "typescript")
+        if raw_lang not in supported_langs:
             stderr = f"Unsupported language runtime: {raw_lang}\n"
             returncode = 1
         else:
-            script_path = resolve_under(workspace_dir, ".lc-tmp-script")
-            args_path = resolve_under(workspace_dir, ".lc-tmp-args.json")
+            TMP_DIR.mkdir(parents=True, exist_ok=True)
+            with contextlib.suppress(OSError):
+                TMP_DIR.chmod(0o700)
+            exec_dir = Path(tempfile.mkdtemp(prefix="lc-exec-", dir=str(TMP_DIR)))
             try:
+                script_path = exec_dir / "script"
+                args_path = exec_dir / "args.json"
                 script_path.write_text(effective_code, encoding="utf-8")
                 args_path.write_text(
                     json.dumps(effective_args), encoding="utf-8"
                 )
+                with contextlib.suppress(OSError):
+                    script_path.chmod(0o644)
+                    args_path.chmod(0o644)
+
+                exec_root = SANDBOX_EXEC_MOUNT if use_bwrap else str(exec_dir)
+                runtime_script = f"{exec_root}/script"
+                runtime_args = f"{exec_root}/args.json"
+                if raw_lang in ("bash", "sh"):
+                    quoted_args = shlex.quote(runtime_args)
+                    quoted_script = shlex.quote(runtime_script)
+                    cmd = [
+                        "bash",
+                        "-c",
+                        (
+                            'eval "set -- $(python3 -c '
+                            "'import json, shlex, sys; print(\" \".join(shlex.quote(a) for a in json.load(open(sys.argv[1]))))' "
+                            f'{quoted_args})" && source {quoted_script}'
+                        ),
+                    ]
+                elif raw_lang in ("py", "python"):
+                    cmd = [
+                        "python3",
+                        "-c",
+                        (
+                            "import json, sys; "
+                            f"sys.argv = ['-c', *json.load(open({runtime_args!r}))]; "
+                            f"exec(compile(open({runtime_script!r}, 'rb').read(), '<string>', 'exec'), {{'__name__': '__main__'}})"
+                        ),
+                    ]
+                else:
+                    cmd = [
+                        "node",
+                        "-e",
+                        (
+                            'const fs = require("fs"); '
+                            f"process.argv = [process.execPath, ...JSON.parse(fs.readFileSync({json.dumps(runtime_args)}, 'utf8'))]; "
+                            f"eval(fs.readFileSync({json.dumps(runtime_script)}, 'utf8'));"
+                        ),
+                    ]
+
                 proc, overflow = run_sandboxed(
                     cmd,
                     workspace_dir,
@@ -1769,6 +1848,7 @@ def execute_code_request(
                     tracking_keys,
                     caller_role=caller_role,
                     cache_dir=cache_dir,
+                    exec_dir=exec_dir,
                 )
                 stdout = proc.stdout
                 stderr = proc.stderr
@@ -1792,10 +1872,7 @@ def execute_code_request(
                 stderr = f"Execution failed: {exc}\n"
                 returncode = 1
             finally:
-                with contextlib.suppress(OSError):
-                    script_path.unlink(missing_ok=True)
-                with contextlib.suppress(OSError):
-                    args_path.unlink(missing_ok=True)
+                shutil.rmtree(exec_dir, ignore_errors=True)
 
         after_snap = snapshot_workspace(workspace_dir)
 
@@ -2316,6 +2393,10 @@ def main() -> None:
     WORKSPACES_DIR.mkdir(parents=True, exist_ok=True)
     USERS_DIR.mkdir(parents=True, exist_ok=True)
     SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+    if TMP_DIR.is_dir():
+        for orphaned in list(TMP_DIR.glob("lc-exec-*")):
+            if orphaned.is_dir() and not orphaned.is_symlink():
+                shutil.rmtree(orphaned, ignore_errors=True)
     with contextlib.suppress(Exception):
         cleanup_expired_state()
     janitor = threading.Thread(target=_janitor_loop, name="sandbox-janitor", daemon=True)
