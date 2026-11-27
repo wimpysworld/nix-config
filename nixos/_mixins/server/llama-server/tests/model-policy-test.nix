@@ -158,6 +158,10 @@ let
       "1"
       "--no-context-shift"
     ]
+    ++ lib.optionals (model.batchSize != null) [
+      "--batch-size"
+      (toString model.batchSize)
+    ]
     ++ lib.optionals (model.microBatchSize != null) [
       "--ubatch-size"
       (toString model.microBatchSize)
@@ -366,8 +370,14 @@ assert publicNamesAreUsable cudaRuntime;
 assert downloadsCoverSelection vulkanRuntime;
 assert downloadsCoverSelection midCudaRuntime;
 assert downloadsCoverSelection cudaRuntime;
-# Embedding models carry no generation block, so sampler flags must stay absent.
+# Embedding models carry no generation block, so sampler flags must stay absent,
+# and their batch sizes must match maxContext to avoid 512-token clamping.
 assert vulkanEmbedding.generation == null;
+assert vulkanEmbedding.batchSize == vulkanEmbedding.maxContext;
+assert vulkanEmbedding.microBatchSize == vulkanEmbedding.maxContext;
+assert builtins.elem "--batch-size" vulkanEmbedding.runtimeArgs;
+assert builtins.elem "--ubatch-size" vulkanEmbedding.runtimeArgs;
+assert lib.all (model: model.batchSize == null) allGenerationModels;
 assert !builtins.elem "--temp" vulkanEmbedding.runtimeArgs;
 assert !builtins.elem "--reasoning" vulkanEmbedding.runtimeArgs;
 assert !builtins.elem "--reasoning-effort" vulkanEmbedding.runtimeArgs;

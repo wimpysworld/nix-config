@@ -96,6 +96,10 @@ assert lib.hasInfix "Mainline_Support/" models.inkling-2-mini.cmd;
 assert lib.all (
   model: (lib.hasInfix " --mmproj " model.cmd) == (model.metadata.role != "embedding")
 ) (lib.attrValues models);
+assert lib.hasInfix "--batch-size 8192 --ubatch-size 8192" models."qwen3-embedding-0.6b".cmd;
+assert lib.all (
+  model: (lib.hasInfix "--batch-size" model.cmd) == (model.metadata.role == "embedding")
+) (lib.attrValues models);
 assert vram22Models ? "mellum2.1-12b";
 assert vram16Models ? "mellum2.1-12b";
 assert lib.hasInfix "Mellum2.1-12B-A2.5B-Thinking-Q8_0.gguf" vram22Models."mellum2.1-12b".cmd;

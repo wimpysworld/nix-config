@@ -44,6 +44,9 @@ let
       repoCacheDirectory = mkRepoCacheDirectory cacheRoot download.hfRepo;
     in
     assert model.mtpDraftTokens == null || (download.supportsMtp && model.singleSlot);
+    assert
+      role != "embedding"
+      || (model.batchSize == model.maxContext && model.microBatchSize == model.maxContext);
     {
       inherit
         acceleration

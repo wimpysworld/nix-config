@@ -8,6 +8,7 @@ let
       reasoning ? null,
       reasoningEffort ? null,
       singleSlot ? false,
+      batchSize ? null,
       microBatchSize ? null,
       mtpDraftTokens ? null,
     }:
@@ -41,6 +42,7 @@ let
     in
     {
       inherit
+        batchSize
         generation
         kvCache
         maxContext
@@ -72,6 +74,10 @@ let
         "--parallel"
         "1"
         "--no-context-shift"
+      ]
+      ++ lib.optionals (batchSize != null) [
+        "--batch-size"
+        (toString batchSize)
       ]
       ++ lib.optionals (microBatchSize != null) [
         "--ubatch-size"
@@ -156,10 +162,18 @@ let
       };
     };
 
-  embedding = mkModel {
-    modelRef = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
-    maxContext = 8192;
-  };
+  embedding =
+    let
+      maxContext = 8192;
+    in
+    mkModel {
+      inherit maxContext;
+      modelRef = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
+      # Match batch and micro-batch sizes to the context window so llama-server
+      # does not clamp embeddings to its 512-token ubatch default.
+      batchSize = maxContext;
+      microBatchSize = maxContext;
+    };
 
   standardModels = {
     inherit embedding;

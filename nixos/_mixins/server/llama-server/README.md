@@ -32,7 +32,7 @@ Policy rules that apply across tiers:
 - **Vision and text-only models:** `inkling-2-mini`, `qwen3.8-27b`, and `qwen3.5-9b` download and load `mmproj-BF16.gguf` on GPU. `mellum2.1-12b` is text-only and loads no vision projector.
 - **Slot allocation and tuning:** `inkling-2-mini` runs with `--parallel 1 --no-context-shift --ubatch-size 128` on `vram64` and `vram32`. `mellum2.1-12b` runs with `--parallel 1 --no-context-shift` and no MTP speculative decoding (JetBrains measured 1.00x to 1.10x at `n_max=1` and slowdowns at `>=2`). `qwen3.8-27b` runs with `--parallel 1 --no-context-shift` and enables `--spec-type draft-mtp --spec-draft-n-max 3` on Vulkan (`vram64` and `vram32`). `qwen3.5-9b` (`unsloth/Qwen3.5-9B-MTP-GGUF`) keeps multi-slot unified KV and `--reasoning off` in production so LibreChat titles, activity labels, and memory extraction run concurrently.
 - **Pinned snapshots:** `inkling-2-mini` (`unsloth/Inkling-2-Mini-GGUF`, `Mainline_Support/` path) pins revision `45fd08764f2b0bf16b03a5483a80e5c7aaec8772`, and `qwen3.8-27b` (`unsloth/Qwen3.8-27B-GGUF`) pins revision `4af51b3542f775b0a8e4b310bfb3f17e01c306c9`.
-- **Embeddings:** every tier serves `Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0` at 8,192 tokens with `--embedding --pooling last` and no sampler.
+- **Embeddings:** every tier serves `Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0` at 8,192 tokens with `--batch-size 8192 --ubatch-size 8192 --embedding --pooling last` and no sampler.
 
 ### Generation sampler policy
 
