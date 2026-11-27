@@ -1,7 +1,7 @@
 # Build Moltis from the flexiondotorg/moltis fork commit that adds
-# private_instance support for Matrix accounts, while carrying forward the
-# prebuilt web and WASM runtime assets from the matching 20261023.01 release
-# archive under share/moltis.
+# private_instance support for Matrix accounts and fixes the git force push
+# approval matcher, while carrying forward the prebuilt web and WASM runtime
+# assets from the matching 20261023.01 release archive under share/moltis.
 {
   lib,
   fetchFromGitHub,
@@ -15,13 +15,13 @@
 
 let
   version = "20261023.01";
-  rev = "8d3415a6f8b1462192dc39c2ef94bee3efacb45c";
+  rev = "c846d08ec8830bcd0e3b2f6f242aa02be03dac7c";
 
   src = fetchFromGitHub {
     owner = "flexiondotorg";
     repo = "moltis";
     inherit rev;
-    hash = "sha256-5/LZtgM9mYCDY6lerA9c3Fn6aNssOpaoV7nGmCYubEs=";
+    hash = "sha256-DXFvZTB6EGTIVMXHLfgOIZU9VFrxcMNQT/39YWfCZp0=";
   };
 
   releaseArchive = fetchurl {
