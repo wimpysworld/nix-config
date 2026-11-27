@@ -287,6 +287,8 @@ peer-agent pull request must be authored by `sith-skrye`, `sith-traya`, or
 `flexiondotorg`. Pass `--dry-run` before the pull request URL to verify the
 class and required flags without mutating GitHub state.
 
+`gh-workflow-approve --dependabot-vendor-hash <pr-url>` approves the held `pull_request` workflow runs of a verified `vendorHash` fix commit by `github-actions[bot]` on a Dependabot Go pull request, and exits `0` when no run is held.
+
 `gh-review-reply`, `gh-review-resolve`, `gh-review-unresolve`, `gh-review-withdraw-approval`, `gh-code-scanning-dismiss`, and `gh-release-notes-edit` are narrow write helpers
 through the raw API surface. Raw `gh api` remains denied under Fence.
 `gh-review-reply` takes the review comment URL and a body file,

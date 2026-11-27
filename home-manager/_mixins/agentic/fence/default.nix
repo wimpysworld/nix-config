@@ -439,7 +439,12 @@ let
         # one of the six allowed repositories, reads the workflow run to
         # confirm `.event == "pull_request"` and `action_required`, then calls
         # `POST repos/<owner>/<repo>/actions/runs/<run-id>/approve` through the
-        # private gh backend. The family-wide `gh api` deny below remains
+        # private gh backend. The `--dependabot-vendor-hash <pr-url>` form
+        # verifies an open same-repository Dependabot Go pull request whose
+        # head commit by `github-actions[bot]` changes only the `vendorHash`
+        # line in `nix/package.nix`, then approves each held `pull_request`
+        # run of that commit triggered by `github-actions[bot]` through the
+        # same endpoint. The family-wide `gh api` deny below remains
         # unchanged.
         "gh-workflow-approve"
         # gh-release-notes-edit is a fixed GitHub write path under Fence.

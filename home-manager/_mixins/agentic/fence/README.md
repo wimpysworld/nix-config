@@ -365,6 +365,15 @@ different trusted-peer viewer who approves). Pass `--dry-run`
 before the pull request URL to print the verified class and required flags
 without mutating GitHub state.
 
+`gh-workflow-approve <owner>/<repo> <run-id>` approves one held fork
+`pull_request` run on an allowed owner. The
+`--dependabot-vendor-hash <pr-url>` form approves the held runs of a
+`vendorHash` fix commit on a Dependabot Go pull request. It verifies the
+pull request, its Dependabot commits, the one-line `nix/package.nix` change by
+`github-actions[bot]`, and the actor of each run before it calls
+`POST repos/{owner}/{repo}/actions/runs/{id}/approve`. An approved run can
+read the Actions secrets that its jobs reference.
+
 `gh-notification-dismiss` marks one GitHub notification thread as done
 (`DELETE notifications/threads/{id}`) or read (`--read`,
 `PATCH notifications/threads/{id}`). The thread ID must be a positive decimal

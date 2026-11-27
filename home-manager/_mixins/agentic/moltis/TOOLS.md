@@ -35,6 +35,7 @@ When a blocked `.envrc` warning appears, `direnv` did not load the directory env
 For GitHub, load the `gh` skill for exact helper arguments and workflows.
 For reads, prefer a dedicated `gh` subcommand, then `gh-api-safe` for REST and GraphQL reads. Do not use raw `gh api`.
 For review, merge, and notification writes that have no `gh` subcommand, use `gh-review-inline`, `gh-review-reply`, `gh-review-resolve`, `gh-bot-merge`, `gh-notification-dismiss`, and `gh-code-scanning-dismiss`.
+To approve held workflow runs of a `vendorHash` fix commit on a Dependabot Go pull request, use `gh-workflow-approve --dependabot-vendor-hash <pr-url>`.
 
 Do not assume that repeated `--author` flags combine authors in `gh search prs`.
 Verify search semantics before using a multi-author query, or query each author separately.
