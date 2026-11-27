@@ -6,16 +6,16 @@
 
 buildGoModule (finalAttrs: {
   pname = "tcount";
-  version = "0.3.0";
+  version = "0.7.0";
 
   src = fetchFromGitHub {
     owner = "lancekrogers";
     repo = "tcount";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-p2p/mZeWiZhWEissNqGKcvWLScspy/0YQxWaTuQppuo=";
+    hash = "sha256-mmLNyDeSsNbkBbXnSDYpzYvLGKaX2T1hxewQY4WMzvM=";
   };
 
-  vendorHash = "sha256-wdHrULL+aHUBJqab8yhJ9IZu+razp5X3N20I/lO2L84=";
+  vendorHash = "sha256-lPOzlm6Ko0GsKSSwyeRwroeOcLEyNEfzD8ObIyyec5c=";
 
   subPackages = [ "cmd/tcount" ];
 
