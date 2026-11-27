@@ -125,7 +125,9 @@ social:
       min_stars: 25
       min_days: 30
     sponsors: auto           # auto, true, or false
+    demo: true
     contributors: true
+    footer: true
   live:
     branch: social-assets
     schedule: "0 4 * * *"
@@ -135,9 +137,9 @@ social:
 
 ### Hybrid storage model
 
-- **`--static` on `main` (offline, no token)**: renders `hero`, `link-*`, `pkg-*`, static `community`, and the static `sponsors` call-to-action (CTA) banner with multi-coloured drifting hearts in `pages/social/*.svg`, plus `pages/og.png`.
+- **`--static` on `main` (offline, no token)**: renders `hero`, `link-*`, `pkg-*`, static `community`, the static `sponsors` call-to-action (CTA) banner with multi-coloured drifting hearts, `demo` (framed window-chrome `demo-{dark,light}.svg` when `demo.webp` or `demo-still.png` is `<= 512 KiB`, or a plain `<img>` fallback if larger), and `footer` (slim "Fitted by Tailor" bar `footer-{dark,light}.svg` linking to `https://tailor.wimpys.world`) in `pages/social/*.svg`, plus `pages/og.png`.
 - **`--live` on the orphan `social-assets` branch (requires a GitHub token)**: fetches changing GitHub and Discord data for `stats`, `stars`, live `community`, and `contributors` (human-only inline avatars). `.github/workflows/tailor-social.yml` runs this on schedule, pushes to `social-assets`, and updates `README.md` with commit-pinned `raw.githubusercontent.com` URLs (`[skip ci]`).
-- **Star CTA fallback**: when a repository is below `star_history.min_stars` or `min_days`, `stars-{dark,light}.svg` renders a themed "Star this repository" CTA card with drifting stars and a `STAR` pill. Once the repository meets both thresholds, `stars-{dark,light}.svg` switches automatically to the animated star-history chart.
+- **Star CTA fallback**: when a repository is below `star_history.min_stars` or `min_days`, `stars-{dark,light}.svg` renders a themed "Star this repository" CTA card with drifting stars and a `STAR` pill. Once the repository meets both thresholds, `stars-{dark,light}.svg` switches automatically to the animated star-history chart with a racing yellow star, apex burst, and rope-collapse animation.
 
 ### Generate static assets locally
 
@@ -151,7 +153,7 @@ social:
 
 ### Canonical `README.md` layout
 
-When `social.enabled: true`, replace the legacy `<h1 align="center">` + `256x256` icon header and the Markdown Haberdasher install table with standalone Tailor social marker blocks. Follow this canonical 11-part order:
+When `social.enabled: true`, replace the legacy `<h1 align="center">` + `256x256` icon header and the Markdown Haberdasher install table with standalone Tailor social marker blocks. Follow this canonical 12-part order:
 
 1. **`header`** (`<!-- tailor:social-header:start -->` / `<!-- tailor:social-header:end -->`): Hero banner with flowing waves.
 2. **`links`** (`<!-- tailor:social-links:start -->` / `<!-- tailor:social-links:end -->`): Preferred social buttons.
@@ -161,11 +163,12 @@ When `social.enabled: true`, replace the legacy `<h1 align="center">` + `256x256
 6. **`stats`** (`<!-- tailor:social-stats:start -->` / `<!-- tailor:social-stats:end -->`): 4-column project health strip (`Commits`, `Issues` open and closed, `Pull Requests` merged and open, `Established` month and year), linking to `/pulse`.
 7. **`## Install`**: Open with a sentence about the first-party, signed package repositories on `wimpys.world`. Place the `packages` button block (`<!-- tailor:social-packages:start -->` / `<!-- tailor:social-packages:end -->`) next, followed by `Any platform (bin)` and `Container (GHCR)` in collapsible `<details>` fold-downs.
 8. **`sponsors`** (`<!-- tailor:social-sponsors:start -->` / `<!-- tailor:social-sponsors:end -->`): Static GitHub Sponsors CTA banner with multi-coloured drifting hearts (`pages/social/sponsors-{dark,light}.svg`). Place it directly after the `<details>` fold-downs and above `### Authentication` (keep authentication notes visible below it when needed).
-9. **Free text sections**: `Quick start`, `Agent skill`, `Development`, `Documentation`, and `Support and contributing`.
-10. **`stars`** (`<!-- tailor:social-stars:start -->` / `<!-- tailor:social-stars:end -->`): Star history chart, or the drifting-stars CTA card below threshold.
-11. **`contributors`** (`<!-- tailor:social-contributors:start -->` / `<!-- tailor:social-contributors:end -->`): Floating-balloon human contributor avatars banner with a thank-you message, linking to `/graphs/contributors`, always at the very bottom.
+9. **Free text sections**: `Quick start`, `Agent skill`, `Development`, `Documentation`, and `Support and contributing`. Place **`demo`** (`<!-- tailor:social-demo:start -->` / `<!-- tailor:social-demo:end -->`) inside `Quick start`, after the main preview or apply example and before important callouts or upgrade steps.
+10. **`stars`** (`<!-- tailor:social-stars:start -->` / `<!-- tailor:social-stars:end -->`): Animated star-history chart with a racing yellow star, apex burst, and rope-collapse animation, or the drifting-stars CTA card below threshold.
+11. **`contributors`** (`<!-- tailor:social-contributors:start -->` / `<!-- tailor:social-contributors:end -->`): Floating-balloon human contributor avatars banner with a thank-you message, linking to `/graphs/contributors`.
+12. **`footer`** (`<!-- tailor:social-footer:start -->` / `<!-- tailor:social-footer:end -->`): Slim "Fitted by Tailor" banner linking to `https://tailor.wimpys.world`, always as the very last block at the bottom of `README.md` (below `contributors`).
 
-Supported marker names: `header`, `links`, `community`, `stats`, `packages`, `sponsors`, `stars`, `contributors`.
+Supported marker names: `header`, `links`, `community`, `stats`, `packages`, `sponsors`, `demo`, `stars`, `contributors`, `footer`.
 
 - Tailor writes centred theme-aware `<picture><source media="(prefers-color-scheme: dark)" srcset="..."><img src="..." alt="..."></picture>` markup (wrapped in `<a href="...">` when linked) between each pair, including the animated SVG hero in `header`.
 - Each opening and closing marker must sit alone on its own line, appear at most once per section, and never overlap another marker block.
