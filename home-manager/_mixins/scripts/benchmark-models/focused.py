@@ -34,6 +34,7 @@ SEED = 42
 DEVICES = {"vulkan": "Vulkan0", "rocm": "ROCm0", "cuda": "CUDA0"}
 MTP_WIDTHS_BY_BACKEND: dict[str, tuple[int, ...]] = {
     "vulkan": (2, 3, 4),
+    "cuda": (2, 3, 4),
     "rocm": (2, 3),
 }
 MTP_BACKENDS = set(MTP_WIDTHS_BY_BACKEND)
@@ -78,17 +79,28 @@ def make_ollama_nonce(run_salt: str, step: int) -> str:
     return f"{step:02d}-{run_salt}"
 
 
-def mtp_widths_for_backend(backend: str, draft_tokens: int | None) -> tuple[int, ...]:
-    if not draft_tokens or backend not in MTP_WIDTHS_BY_BACKEND:
+def mtp_widths_for_backend(
+    backend: str,
+    draft_tokens: int | None,
+    supports_mtp: bool = False,
+) -> tuple[int, ...]:
+    if not (draft_tokens or supports_mtp) or backend not in MTP_WIDTHS_BY_BACKEND:
         return (0,)
     widths = set(MTP_WIDTHS_BY_BACKEND[backend])
-    if backend == "vulkan":
+    if draft_tokens and backend in ("vulkan", "cuda"):
         widths.add(int(draft_tokens))
     return (0, *sorted(widths))
 
 
-def llama_case_matrix(backends: list[str], draft_tokens: int | None) -> list[tuple[str, int]]:
-    by_backend = {backend: mtp_widths_for_backend(backend, draft_tokens) for backend in backends}
+def llama_case_matrix(
+    backends: list[str],
+    draft_tokens: int | None,
+    supports_mtp: bool = False,
+) -> list[tuple[str, int]]:
+    by_backend = {
+        backend: mtp_widths_for_backend(backend, draft_tokens, supports_mtp=supports_mtp)
+        for backend in backends
+    }
     all_widths = sorted({width for widths in by_backend.values() for width in widths})
     cases: list[tuple[str, int]] = []
     for width in all_widths:
@@ -1130,9 +1142,10 @@ def main(argv: list[str] | None = None) -> int:
             continue
 
         draft_tokens = profile.get("mtpDraftTokens")
+        supports_mtp = bool(profile.get("supportsMtp"))
         prompt_hints: dict[str, int] = {}
         if not args.ollama_only:
-            for backend, width in llama_case_matrix(list(servers), draft_tokens):
+            for backend, width in llama_case_matrix(list(servers), draft_tokens, supports_mtp=supports_mtp):
                 server = servers[backend]
                 try:
                     results.append(

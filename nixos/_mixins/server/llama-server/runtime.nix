@@ -43,6 +43,7 @@ let
       download = modelDownloads.${model.modelRef};
       repoCacheDirectory = mkRepoCacheDirectory cacheRoot download.hfRepo;
     in
+    assert model.mtpDraftTokens == null || (download.supportsMtp && model.singleSlot);
     {
       inherit
         acceleration
@@ -57,6 +58,7 @@ let
         primaryPath
         publicName
         revision
+        supportsMtp
         ;
       isEmbedding = role == "embedding";
       inherit (model) modelRef;

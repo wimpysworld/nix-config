@@ -137,6 +137,26 @@ let
       };
     };
 
+  mkUtility =
+    {
+      quant ? "UD-Q4_K_XL",
+      maxContext,
+    }:
+    mkModel {
+      inherit maxContext;
+      modelRef = "unsloth/Qwen3.5-9B-MTP-GGUF:${quant}";
+      reasoning = "off";
+      # Use the non-thinking general instruct settings from Unsloth's Qwen3.5 guide.
+      generation = {
+        temperature = 0.7;
+        topP = 0.8;
+        topK = 20;
+        minP = 0.0;
+        presencePenalty = 1.5;
+        repetitionPenalty = 1.0;
+      };
+    };
+
   embedding = mkModel {
     modelRef = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0";
     maxContext = 8192;
@@ -192,6 +212,9 @@ let
         dense = mkQwen {
           quant = "UD-Q3_K_XL";
           maxContext = 16384;
+        };
+        utility = mkUtility {
+          maxContext = 131072;
         };
       };
     };

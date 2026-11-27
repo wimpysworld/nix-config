@@ -2,6 +2,7 @@
 let
   currentDir = ./.;
   serverScripts = [
+    "benchmark-models"
     "dl"
     "noughty"
     "purge-root-nix-profiles"

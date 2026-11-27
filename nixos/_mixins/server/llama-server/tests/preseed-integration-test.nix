@@ -19,7 +19,12 @@ let
     && vram64.${name}.revision != null
     && vram64.${name}.primaryPath != vram16.${name}.primaryPath;
 in
-assert builtins.attrNames vram64 == builtins.attrNames vram16;
+assert
+  lib.sort builtins.lessThan (builtins.attrNames vram64 ++ [ "qwen3.5-9b" ])
+  == builtins.attrNames vram16;
+assert !(vram64 ? "qwen3.5-9b");
+assert vram16 ? "qwen3.5-9b";
+assert !(vram8 ? "qwen3.5-9b");
 assert comparesQuant "inkling-2-mini";
 assert comparesQuant "qwen3.8-27b";
 assert !(vram8 ? inkling-2-mini);

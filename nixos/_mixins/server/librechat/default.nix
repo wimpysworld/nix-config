@@ -216,20 +216,32 @@ let
   '';
   registry = builtins.fromTOML (builtins.readFile ../../../../lib/registry-systems.toml);
   llamaRuntime = import ../llama-server/runtime.nix { inherit lib; };
-  remoteInferenceTargets = [
+  llamaSwapTargets = [
+    {
+      node = "revan";
+      baseURL = "http://127.0.0.1:8080/v1";
+      allowedAddress = "127.0.0.1:8080";
+      models = [ "qwen3.5-9b" ];
+    }
     {
       node = "skrye";
+      baseURL = "http://skrye.${tailNet}:8080/v1";
+      allowedAddress = "skrye.${tailNet}:8080";
       models = [ "inkling-2-mini" ];
     }
     {
       node = "zannah";
+      baseURL = "http://zannah.${tailNet}:8080/v1";
+      allowedAddress = "zannah.${tailNet}:8080";
       models = [ "qwen3.8-27b" ];
     }
   ];
-  mkRemoteLlamaSwapEndpoint =
+  mkLlamaSwapEndpoint =
     {
       node,
+      baseURL,
       models,
+      ...
     }:
     let
       entry = registry.${node};
@@ -246,7 +258,7 @@ let
         in
         assert lib.assertMsg (
           matches != { }
-        ) "LibreChat remote inference host ${node} does not serve model ${modelName}";
+        ) "LibreChat inference host ${node} does not serve model ${modelName}";
         modelName
       ) models;
       tokenConfig = builtins.listToAttrs (
@@ -259,12 +271,11 @@ let
           };
         }) exposedRoles
       );
-      titleModel = lib.head exposedModels;
     in
     {
       name = "LlamaSwap (${node})";
       apiKey = "none";
-      baseURL = "http://${node}.${tailNet}:8080/v1";
+      inherit baseURL;
       customParams = {
         # Replay reasoning_content across tool turns so reasoning models keep
         # multi-turn state and KV prefix cache hits.
@@ -274,8 +285,7 @@ let
         default = exposedModels;
         fetch = false;
       };
-      inherit tokenConfig titleModel;
-      titleConvo = true;
+      inherit tokenConfig;
     };
   cloudflareSopsFile = ../../../../secrets + "/cloudflare.yaml";
   hasCloudflareSopsFile = builtins.pathExists cloudflareSopsFile;
@@ -593,8 +603,6 @@ let
                           context: 1050000,
                         },
                       },
-                      titleConvo: true,
-                      titleModel: "gpt-6-luna",
                     },
                   ],
                 },
@@ -1336,8 +1344,8 @@ in
           charLimit = 10000;
           messageWindowSize = 5;
           agent = {
-            provider = "anthropic";
-            model = "claude-sonnet-5-5";
+            provider = "LlamaSwap (revan)";
+            model = "qwen3.5-9b";
           };
         };
         summarization = {
@@ -1350,7 +1358,17 @@ in
           allowedAddresses = [
             "127.0.0.1:8317"
           ]
-          ++ map (target: "${target.node}.${tailNet}:8080") remoteInferenceTargets;
+          ++ map (target: target.allowedAddress) llamaSwapTargets;
+          all = {
+            titleConvo = true;
+            titleEndpoint = "LlamaSwap (revan)";
+            titleModel = "qwen3.5-9b";
+            activityLabel = true;
+            activityEndpoint = "LlamaSwap (revan)";
+            activityModel = "qwen3.5-9b";
+            activityPhaseLabel = true;
+            reasoningLabel = true;
+          };
           agents = {
             maxSubagents = 12;
             capabilities = [
@@ -1376,14 +1394,8 @@ in
               "claude-sonnet-5-5"
               "claude-opus-5-5"
             ];
-            titleConvo = true;
-            titleModel = "claude-sonnet-5-5";
           };
-          google = {
-            titleConvo = true;
-            titleModel = "gemini-4-hydrogen";
-          };
-          custom = map mkRemoteLlamaSwapEndpoint remoteInferenceTargets;
+          custom = map mkLlamaSwapEndpoint llamaSwapTargets;
         };
         mcpSettings = {
           allowedAddresses = [
@@ -1552,6 +1564,7 @@ in
         "librechat-codeapi-keygen.service"
         "librechat-mcp-nixos.service"
       ]
+      ++ lib.optional (noughtyLib.hostHasTag "inference") "llama-swap.service"
       ++ lib.optionals (noughtyLib.hostHasTag "mongodb") [
         "mongodb.service"
         "librechat-provision-users.service"
@@ -1562,6 +1575,7 @@ in
         "librechat-code-sandbox.service"
         "librechat-mcp-nixos.service"
       ]
+      ++ lib.optional (noughtyLib.hostHasTag "inference") "llama-swap.service"
       ++ lib.optionals (noughtyLib.hostHasTag "mongodb") [
         "mongodb.service"
         "librechat-provision-users.service"

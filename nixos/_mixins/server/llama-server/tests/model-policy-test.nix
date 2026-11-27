@@ -48,7 +48,11 @@ let
 
   tierRolesHold =
     lib.all (
-      tier: builtins.attrNames tier.models == lib.sort builtins.lessThan (textRoles ++ commonRoles)
+      tier:
+      let
+        expectedRoles = textRoles ++ commonRoles ++ lib.optional (tier.name == "vram16") "utility";
+      in
+      builtins.attrNames tier.models == lib.sort builtins.lessThan expectedRoles
     ) textTiers
     && builtins.attrNames (lib.last modelTiers).models == commonRoles;
 
@@ -271,6 +275,7 @@ let
   vulkanDense = vulkanRuntime.selectedRuntimeModels.dense;
   vulkanEmbedding = vulkanRuntime.selectedRuntimeModels.embedding;
   cudaDense = cudaRuntime.selectedRuntimeModels.dense;
+  cudaUtility = cudaRuntime.selectedRuntimeModels.utility;
   usesMtp = model: builtins.elem "--spec-type" model.runtimeArgs;
 in
 assert tierNamesAreUnique;
@@ -320,8 +325,21 @@ assert
   ];
 assert !(builtins.elem "--flash-attn" cudaDense.runtimeArgs);
 assert !(builtins.elem "--load-mode" cudaDense.runtimeArgs);
+assert cudaUtility.publicName == "qwen3.5-9b";
+assert cudaUtility.modelRef == "unsloth/Qwen3.5-9B-MTP-GGUF:UD-Q4_K_XL";
+assert cudaUtility.maxContext == 131072;
+assert cudaUtility.reasoning == "off";
+assert !cudaUtility.singleSlot;
+assert cudaUtility.supportsMtp;
+assert cudaUtility.generation.temperature == 0.7;
+assert cudaUtility.generation.topP == 0.8;
+assert cudaUtility.generation.presencePenalty == 1.5;
+assert !(vulkanRuntime.selectedRuntimeModels ? utility);
+assert vulkanDense.supportsMtp;
+assert !vulkanMoe.supportsMtp;
 assert usesMtp vulkanDense;
 assert !usesMtp vulkanMoe;
+assert !usesMtp cudaUtility;
 assert !usesMtp lowerVulkanRuntime.selectedRuntimeModels.dense;
 assert !usesMtp highCudaRuntime.selectedRuntimeModels.dense;
 true

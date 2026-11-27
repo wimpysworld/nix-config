@@ -23,12 +23,14 @@ let
     lib.filter (role: selectedRuntimeModels ? ${role}) [
       "moe"
       "dense"
+      "utility"
       "smallMedia"
     ]
   );
   models = {
     "gemma4-e2b" = modelMatrix.vram8.models.smallMedia;
     "gemma4-e4b" = modelMatrix.vram64.models.smallMedia;
+    "qwen3.5-9b" = (mkRuntime { hostVramGiB = 16; }).selectedRuntimeModels.utility;
   }
   // builtins.listToAttrs (map (model: lib.nameValuePair model.publicName model) suiteModels);
   profiles = lib.mapAttrs (
@@ -43,6 +45,7 @@ let
         reasoning
         reasoningEffort
         ;
+      supportsMtp = model.supportsMtp or false;
       sampling = lib.filterAttrs (_: value: value != null) {
         inherit (generation) temperature;
         top_k = generation.topK;

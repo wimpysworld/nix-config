@@ -6,6 +6,7 @@ let
       projectorPath ? null,
       publicName,
       revision ? null,
+      supportsMtp ? false,
     }:
     {
       inherit
@@ -13,6 +14,7 @@ let
         projectorPath
         publicName
         revision
+        supportsMtp
         ;
       primaryPath = path;
       downloadPaths = [ path ] ++ (if projectorPath == null then [ ] else [ projectorPath ]);
@@ -34,6 +36,7 @@ let
       path = "Qwen3.8-27B-${quant}.gguf";
       publicName = "qwen3.8-27b";
       revision = "4af51b3542f775b0a8e4b310bfb3f17e01c306c9";
+      supportsMtp = true;
     };
 in
 {
@@ -41,6 +44,12 @@ in
   "unsloth/Inkling-2-Mini-GGUF:UD-IQ3_XXS" = inkling "UD-IQ3_XXS";
   "unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL" = qwen "UD-Q4_K_XL";
   "unsloth/Qwen3.8-27B-GGUF:UD-Q3_K_XL" = qwen "UD-Q3_K_XL";
+  "unsloth/Qwen3.5-9B-MTP-GGUF:UD-Q4_K_XL" = modelFiles {
+    hfRepo = "unsloth/Qwen3.5-9B-MTP-GGUF";
+    path = "Qwen3.5-9B-UD-Q4_K_XL.gguf";
+    publicName = "qwen3.5-9b";
+    supportsMtp = true;
+  };
 
   "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0" = modelFiles {
     hfRepo = "Qwen/Qwen3-Embedding-0.6B-GGUF";

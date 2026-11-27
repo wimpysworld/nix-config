@@ -19,18 +19,18 @@ On Strix Halo, `vram = 96` in the registry is the conservative inference budget 
 
 All inference hosts share [model-policy.nix](model-policy.nix) and [model-downloads.nix](model-downloads.nix).
 
-| Tier | `inkling-2-mini` | `qwen3.8-27b` | Small media | Embedding |
-|---|---|---|---|---|
-| `vram64` | `UD-Q4_K_XL`, 256K | `UD-Q4_K_XL`, 256K | `gemma4-e4b`, 128K | `qwen3-embedding-0.6b`, 8K |
-| `vram32` | `UD-Q4_K_XL`, 32K | `UD-Q4_K_XL`, 64K | `gemma4-e4b`, 128K | `qwen3-embedding-0.6b`, 8K |
-| `vram22` | `UD-Q4_K_XL`, 16K | `UD-Q4_K_XL`, 32K | `gemma4-e4b`, 128K | `qwen3-embedding-0.6b`, 8K |
-| `vram16` | `UD-IQ3_XXS`, 16K | `UD-Q3_K_XL`, 16K | `gemma4-e4b`, 128K | `qwen3-embedding-0.6b`, 8K |
-| `vram8` | Not served | Not served | `gemma4-e2b`, 128K | `qwen3-embedding-0.6b`, 8K |
+| Tier | `inkling-2-mini` | `qwen3.8-27b` | Utility | Small media | Embedding |
+|---|---|---|---|---|---|
+| `vram64` | `UD-Q4_K_XL`, 256K | `UD-Q4_K_XL`, 256K | Not served | `gemma4-e4b`, 128K | `qwen3-embedding-0.6b`, 8K |
+| `vram32` | `UD-Q4_K_XL`, 32K | `UD-Q4_K_XL`, 64K | Not served | `gemma4-e4b`, 128K | `qwen3-embedding-0.6b`, 8K |
+| `vram22` | `UD-Q4_K_XL`, 16K | `UD-Q4_K_XL`, 32K | Not served | `gemma4-e4b`, 128K | `qwen3-embedding-0.6b`, 8K |
+| `vram16` | `UD-IQ3_XXS`, 16K | `UD-Q3_K_XL`, 16K | `qwen3.5-9b` (`UD-Q4_K_XL`, 128K) | `gemma4-e4b`, 128K | `qwen3-embedding-0.6b`, 8K |
+| `vram8` | Not served | Not served | Not served | `gemma4-e2b`, 128K | `qwen3-embedding-0.6b`, 8K |
 
 Policy rules that apply across tiers:
 
 - **KV cache quantisation:** every model uses `--cache-type-k q8_0 --cache-type-v q8_0`.
-- **Slot allocation:** `inkling-2-mini` and `qwen3.8-27b` run with one slot (`--parallel 1 --no-context-shift`).
+- **Slot allocation:** `inkling-2-mini` and `qwen3.8-27b` run with one slot (`--parallel 1 --no-context-shift`). `qwen3.5-9b` on `vram16` uses `unsloth/Qwen3.5-9B-MTP-GGUF` (which ships native MTP tensors) and keeps multi-slot unified KV in production so LibreChat titles, activity labels, and memory extraction run concurrently; `llama.cpp` MTP requires `--parallel 1`, so production MTP remains off until `revan` benchmarks confirm the trade-off.
 - **Strix Halo (`vram64`) tuning:** `inkling-2-mini` sets `--ubatch-size 128`, and `qwen3.8-27b` enables multi-token prediction (MTP) on Vulkan with `--spec-type draft-mtp --spec-draft-n-max 3`. Other tiers do not enable MTP.
 - **Pinned snapshots:** `inkling-2-mini` (`unsloth/Inkling-2-Mini-GGUF`, `Mainline_Support/` path) pins revision `45fd08764f2b0bf16b03a5483a80e5c7aaec8772`, and `qwen3.8-27b` (`unsloth/Qwen3.8-27B-GGUF`) pins revision `4af51b3542f775b0a8e4b310bfb3f17e01c306c9`.
 - **Small media models:** `gemma4-e4b` and `gemma4-e2b` use `UD-Q6_K_XL` at 131,072 tokens with `mmproj-BF16.gguf` and `--reasoning on`. `UD-Q6_K_XL` meets the Q6_K floor required for reliable Gemma 4 audio beyond about 17 seconds (clips remain capped at 30 seconds by the model).
@@ -44,6 +44,7 @@ Policy rules that apply across tiers:
 |---|---:|---:|---:|---:|---:|---|
 | `inkling-2-mini` | `1.0` | `1.0` | `0` | `0.0` | `1.0` | None |
 | `qwen3.8-27b` | `1.0` | `0.95` | `20` | `0.0` | `1.0` | `--presence-penalty 0.0 --reasoning-effort medium` |
+| `qwen3.5-9b` | `0.7` | `0.8` | `20` | `0.0` | `1.0` | `--presence-penalty 1.5 --reasoning off` |
 | `gemma4-e4b` / `gemma4-e2b` | `1.0` | `0.95` | `64` | `0.0` | `1.0` | `--reasoning on` |
 
 Override `qwen3.8-27b` reasoning effort per request with `reasoning_effort` in the request body.
@@ -117,8 +118,8 @@ benchmark-models [--llama-only|--ollama-only] [--json] MODEL [runs]
 benchmark-models --purge
 ```
 
-- `benchmark-models-all` benchmarks all generation models configured for the host's VRAM tier (`inkling-2-mini`, `qwen3.8-27b`, and `gemma4-e4b` or `gemma4-e2b`) and defaults to `--runs 3`.
-- `benchmark-models` benchmarks one model. `inkling-2-mini` and `qwen3.8-27b` run the shared Python harness (`focused.py`, default 3 runs). Single-model `gemma4-e2b`, `gemma4-e4b`, and opt-in `qwen3-embedding-0.6b` use the shell runner (default 5 runs).
+- `benchmark-models-all` benchmarks all generation models configured for the host's VRAM tier (`inkling-2-mini`, `qwen3.8-27b`, `qwen3.5-9b` on `vram16`, and `gemma4-e4b` or `gemma4-e2b`) and defaults to `--runs 3`.
+- `benchmark-models` benchmarks one model. `inkling-2-mini`, `qwen3.5-9b`, and `qwen3.8-27b` run the shared Python harness (`focused.py`, default 3 runs). Single-model `gemma4-e2b`, `gemma4-e4b`, and opt-in `qwen3-embedding-0.6b` use the shell runner (default 5 runs).
 - `benchmark-models --purge` removes `~/Volatile/benchmark-models` without touching `/var/lib/llama-models/huggingface`.
 - Set `BENCHMARK_MODELS_ROOT` to move caches and logs (default `~/Volatile/benchmark-models`) or `BENCHMARK_MODELS_OLLAMA_HOST` for the shell runner's temporary Ollama port (default `127.0.0.1:11435`).
 
@@ -131,7 +132,7 @@ The Python suite in `focused.py` enforces parity between `llama.cpp` and Ollama:
 - **No prefix cache reuse:** `llama-server` disables prompt caching (`--no-cache-prompt --cache-ram 0`). Ollama prepends a unique per-sample nonce to every request so slot prefix KV caching cannot reuse prefill state across probes, warm-up, or timed runs.
 - **Vulkan iGPU enablement:** Ollama receives `OLLAMA_VULKAN=1` and `OLLAMA_IGPU_ENABLE=1` on Vulkan so it does not drop AMD integrated GPUs.
 - **Unified GPU memory reporting:** on AMD hosts, a 200 ms sampler sums `mem_info_vram_used + mem_info_gtt_used` from `amdgpu` sysfs and reports both `Peak GPU Mem` and `Delta GPU Mem` (`peak - pre-load baseline`).
-- **Default MTP matrix:** for models with `mtpDraftTokens` configured (`qwen3.8-27b` on `vram64`), the default sweep tests Vulkan `off`, `mtp2`, `mtp3`, and `mtp4`, plus ROCm `off`, `mtp2`, and `mtp3`. `mtp6` and `mtp8` are omitted from the default sweep because the November 2026 runs confirmed `mtp3` is the peak and `mtp8` drops 37%.
+- **Default MTP matrix:** for models whose GGUF carries MTP tensors (`qwen3.8-27b` and `qwen3.5-9b`), the default sweep tests `off`, `mtp2`, `mtp3`, and `mtp4` on Vulkan and CUDA, plus `off`, `mtp2`, and `mtp3` on ROCm. `mtp6` and `mtp8` are omitted from the default sweep because the November 2026 runs confirmed `mtp3` is the peak and `mtp8` drops 37%.
 
 Results, per-case JSONL streams, logs, and `summary.json` save under `~/Volatile/benchmark-models/suite-*` (or `<model>-*`).
 
@@ -167,7 +168,7 @@ Active services in this repository consume `llama-swap` directly over localhost 
 
 | Service | Host | Endpoint | Models used |
 |---|---|---|---|
-| LibreChat | `revan` | `http://skrye.<tailnet>:8080/v1`, `http://zannah.<tailnet>:8080/v1` | `inkling-2-mini` on `skrye`, `qwen3.8-27b` on `zannah` |
+| LibreChat | `revan` | `http://127.0.0.1:8080/v1`, `http://skrye.<tailnet>:8080/v1`, `http://zannah.<tailnet>:8080/v1` | `qwen3.5-9b` on `revan` (titles, activity labels, memory), `inkling-2-mini` on `skrye`, `qwen3.8-27b` on `zannah` |
 | Silo | `revan` | `http://127.0.0.1:8080/v1` | `qwen3-embedding-0.6b` (media recommendations) |
 | Moltis | `skrye`, `zannah`, `traya` | `http://127.0.0.1:8080/v1` | `qwen3-embedding-0.6b` (agent memory) |
 | Gatus and Homepage | `revan` | `http://127.0.0.1:8080/health`, `/running`, Tailscale `8080` links | Health and loaded-model monitoring across `revan`, `skrye`, and `zannah` |
