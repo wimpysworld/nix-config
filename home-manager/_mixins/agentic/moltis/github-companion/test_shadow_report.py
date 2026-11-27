@@ -640,10 +640,22 @@ class TestRemoteFetchAndOpen(unittest.TestCase):
             jsonl_path = target_dir / shadow_eval.SHADOW_EVAL_JSONL_FILENAME
             jsonl_path.write_text(sample_line, encoding="utf-8")
 
-            env = dict(os.environ, HOME=tmp, XDG_STATE_HOME=str(xdg_state))
+            env = dict(
+                os.environ,
+                HOME=tmp,
+                XDG_STATE_HOME=str(xdg_state),
+                XDG_CONFIG_HOME=str(Path(tmp) / "config"),
+                XDG_DATA_HOME=str(Path(tmp) / "data"),
+                XDG_CACHE_HOME=str(Path(tmp) / "cache"),
+            )
             for shell_bin in shells:
+                shell_cmd = (
+                    [shell_bin, "--no-config", "-c", remote_script]
+                    if shell_bin == fish_bin
+                    else [shell_bin, "-c", remote_script]
+                )
                 proc = subprocess.run(
-                    [shell_bin, "-c", remote_script],
+                    shell_cmd,
                     env=env,
                     capture_output=True,
                     text=True,
@@ -654,8 +666,13 @@ class TestRemoteFetchAndOpen(unittest.TestCase):
 
             jsonl_path.unlink()
             for shell_bin in shells:
+                shell_cmd = (
+                    [shell_bin, "--no-config", "-c", remote_script]
+                    if shell_bin == fish_bin
+                    else [shell_bin, "-c", remote_script]
+                )
                 proc = subprocess.run(
-                    [shell_bin, "-c", remote_script],
+                    shell_cmd,
                     env=env,
                     capture_output=True,
                     text=True,
