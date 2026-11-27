@@ -422,6 +422,15 @@ class CodeSandboxTests(unittest.TestCase):
                 pasta_argv[: len(mod.PASTA_ISOLATION_FLAGS)],
                 list(mod.PASTA_ISOLATION_FLAGS),
             )
+            self.assertIn("-4", pasta_argv)
+            for flag, expected in (
+                ("-I", "eth0"),
+                ("-a", "192.0.2.2"),
+                ("-n", "24"),
+                ("-g", "192.0.2.1"),
+            ):
+                flag_idx = pasta_argv.index(flag)
+                self.assertEqual(pasta_argv[flag_idx + 1], expected)
             self.assertEqual(pasta_argv[len(mod.PASTA_ISOLATION_FLAGS)], "-P")
             pasta_pid_path = Path(pasta_argv[len(mod.PASTA_ISOLATION_FLAGS) + 1])
             self.assertFalse(pasta_pid_path.exists(), "pasta PID file must be unlinked")

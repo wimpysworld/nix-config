@@ -72,6 +72,7 @@ let
 
     cat > "$out/nix/nix.conf" <<'EOF'
     experimental-features = nix-command flakes
+    store = dummy://
     EOF
 
     ln -s ${fontconfigEtc}/fonts.conf "$out/fonts/fonts.conf"

@@ -105,6 +105,15 @@ _STORE_PATHS_CACHE_KEY: tuple[str, int, int, int] | None = None
 _STORE_PATHS_CACHE_VALUE: list[str] | None = None
 PASTA_ISOLATION_FLAGS = (
     "--config-net",
+    "-4",
+    "-I",
+    "eth0",
+    "-a",
+    "192.0.2.2",
+    "-n",
+    "24",
+    "-g",
+    "192.0.2.1",
     "--no-map-gw",
     "--map-host-loopback",
     "none",

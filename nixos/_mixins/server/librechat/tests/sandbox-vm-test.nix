@@ -38,6 +38,11 @@ let
     ln -s ${pkgs.tzdata}/share/zoneinfo/UTC "$out/localtime"
     ln -s ${pkgs.tzdata}/share/zoneinfo "$out/zoneinfo"
 
+    cat > "$out/nix/nix.conf" <<'EOF'
+    experimental-features = nix-command flakes
+    store = dummy://
+    EOF
+
     : > "$out/passwd"
     : > "$out/group"
   '';
@@ -60,6 +65,8 @@ let
     pkgs.curl
     pkgs.git
     pkgs.hostname
+    pkgs.iproute2
+    pkgs.nix
     pkgs.procps
     pkgs.python3
     pkgs.util-linux
@@ -321,9 +328,19 @@ let
     assert "1.1.1.1" in h["resolv_conf"], h
     assert h["host_marker_exists"] is False, h
 
-    # 3. Real pasta network isolation + working egress.
+    # 3. Real pasta network isolation, synthetic addressing, and working egress.
+    host_global_addrs = [
+        line.split()[3].split("/")[0]
+        for line in subprocess.check_output(
+            ["ip", "-o", "addr", "show", "scope", "global"], text=True
+        ).splitlines()
+        if len(line.split()) >= 4
+    ]
+    assert "198.51.100.1" in host_global_addrs, host_global_addrs
+    assert "2001:db8::1" in host_global_addrs, host_global_addrs
+
     probe_net = (
-        "import json, socket, time, urllib.request\n"
+        "import json, socket, subprocess, time, urllib.request\n"
         "from pathlib import Path\n"
         "proc_tcp = Path('/proc/net/tcp').read_text()\n"
         "def try_tcp(family, addr, port, timeout=3.0):\n"
@@ -351,6 +368,10 @@ let
         "    remote_status = resp.status\n"
         "    remote_body = resp.read().decode('utf-8')\n"
         "print(json.dumps({\n"
+        "    'ip_addr': subprocess.check_output(['ip', '-o', 'addr', 'show'], text=True),\n"
+        "    'eth0_addr': subprocess.check_output(['ip', '-o', 'addr', 'show', 'dev', 'eth0'], text=True),\n"
+        "    'ip_route': subprocess.check_output(['ip', '-o', 'route', 'show'], text=True),\n"
+        "    'ip6_route': subprocess.check_output(['ip', '-6', '-o', 'route', 'show'], text=True),\n"
         "    'has_18080': ':46A0' in proc_tcp,\n"
         "    'has_3082': ':0C0A' in proc_tcp,\n"
         "    'loopback_v4': try_tcp(socket.AF_INET, '127.0.0.1', 18080),\n"
@@ -365,6 +386,15 @@ let
     r3 = exec_code(user_tok, "py", probe_net)
     assert r3["stderr"] == "", f"network probe stderr: {r3}"
     net = json.loads(r3["stdout"])
+    assert "inet 192.0.2.2/24" in net["eth0_addr"], net
+    assert "default via 192.0.2.1 dev eth0" in net["ip_route"], net
+    assert "scope global" not in "\n".join(
+        line for line in net["eth0_addr"].splitlines() if "inet6 " in line
+    ), net
+    for forbidden_addr in (*host_global_addrs, "198.51.100.254", "2001:db8::fe"):
+        assert forbidden_addr not in net["ip_addr"], (forbidden_addr, net["ip_addr"])
+        assert forbidden_addr not in net["ip_route"], (forbidden_addr, net["ip_route"])
+        assert forbidden_addr not in net["ip6_route"], (forbidden_addr, net["ip6_route"])
     assert net["has_18080"] is False, net
     assert net["has_3082"] is False, net
     assert net["loopback_v4"]["ok"] is False, net
@@ -479,6 +509,38 @@ let
     rt = exec_code(user_tok, "bash", "sleep 30", timeout=2)
     assert "Execution timed out." in rt["stderr"], rt
     assert_no_pasta_processes("2-second timeout")
+
+    # 8. nix eval inside the closure-scoped read-only /nix/store.
+    nix_probe = (
+        "import json, subprocess\n"
+        "from pathlib import Path\n"
+        "ev1 = subprocess.run(['nix', 'eval', '--expr', '1 + 1'], capture_output=True, text=True)\n"
+        "ev2 = subprocess.run(\n"
+        "    ['nix', 'eval', '--impure', '--expr', 'builtins.readFile /etc/hosts'],\n"
+        "    capture_output=True,\n"
+        "    text=True,\n"
+        ")\n"
+        "print(json.dumps({\n"
+        "    'ev1_rc': ev1.returncode,\n"
+        "    'ev1_out': ev1.stdout,\n"
+        "    'ev1_err': ev1.stderr,\n"
+        "    'ev2_rc': ev2.returncode,\n"
+        "    'ev2_out': ev2.stdout,\n"
+        "    'ev2_err': ev2.stderr,\n"
+        "    'local_exists': Path('/mnt/data/.local').exists(),\n"
+        "}))\n"
+    )
+    r8 = exec_code(user_tok, "py", nix_probe)
+    assert r8["stderr"] == "", f"nix probe stderr: {r8}"
+    nix_res = json.loads(r8["stdout"])
+    assert nix_res["ev1_rc"] == 0, nix_res
+    assert nix_res["ev1_out"] == "2\n", nix_res
+    assert nix_res["ev1_err"] == "", nix_res
+    assert nix_res["ev2_rc"] == 0, nix_res
+    assert "sandbox" in nix_res["ev2_out"], nix_res
+    assert nix_res["ev2_err"] == "", nix_res
+    assert nix_res["local_exists"] is False, nix_res
+    assert_no_pasta_processes("nix eval check")
 
     print("ALL_VM_SANDBOX_CHECKS_PASSED")
   '';
