@@ -108,8 +108,11 @@ benchmark-models [--llama-only|--ollama-only] [--json] MODEL [runs]
 benchmark-models --purge
 ```
 
-- `benchmark-models-all` benchmarks all generation models configured for the host's VRAM tier plus `qwen3.5-9b` (`inkling-2-mini`, `qwen3.8-27b`, and `qwen3.5-9b` on `vram64` and `vram32`, or `mellum2.1-12b` and `qwen3.5-9b` on `vram22` and `vram16`) and defaults to `--runs 3`.
-- `benchmark-models` benchmarks one model. `inkling-2-mini`, `mellum2.1-12b`, `qwen3.5-9b`, and `qwen3.8-27b` run the shared Python harness (`focused.py`, default 3 runs). Opt-in `qwen3-embedding-0.6b` uses the shell runner (default 5 runs).
+- `benchmark-models-all` benchmarks every generation model from tiers up to the host's VRAM tier at the highest fitting quantisation, and defaults to `--runs 3`.
+  - `vram64` and `vram32`: `inkling-2-mini` (`UD-Q4_K_XL`), `qwen3.8-27b` (`UD-Q4_K_XL`), `mellum2.1-12b` (`Q8_0`), and `qwen3.5-9b` (`UD-Q4_K_XL`).
+  - `vram22`: `mellum2.1-12b` (`Q8_0`) and `qwen3.5-9b` (`UD-Q4_K_XL`).
+  - `vram16`: `mellum2.1-12b` (`Q6_K`) and `qwen3.5-9b` (`UD-Q4_K_XL`).
+- `benchmark-models` benchmarks one model from the host's supported list. Generation models in the host's tier suite run the shared Python harness (`focused.py`, default 3 runs), and requests for models above the host's VRAM tier exit with an unsupported-model error. Opt-in `qwen3-embedding-0.6b` uses the shell runner (default 5 runs).
 - `benchmark-models --purge` removes `~/Volatile/benchmark-models` without touching `/var/lib/llama-models/huggingface`.
 - Set `BENCHMARK_MODELS_ROOT` to move caches and logs (default `~/Volatile/benchmark-models`) or `BENCHMARK_MODELS_OLLAMA_HOST` for the shell runner's temporary Ollama port (default `127.0.0.1:11435`).
 

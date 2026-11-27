@@ -52,6 +52,8 @@ declare -a RUNNER_SECONDARY_MAX=()
 declare -a RUNNER_SECONDARY_SPREAD=()
 declare -a RUNNER_SKIPPED=()
 declare -a HF_DOWNLOAD_PATHS=()
+declare -a SUITE_MODELS=()
+read -r -a SUITE_MODELS <<<"${BENCHMARK_MODELS_SUITE:-}"
 
 usage() {
 	cat <<'EOF'
@@ -59,10 +61,10 @@ Usage: benchmark-models [--llama-only|--ollama-only] [--json] MODEL [runs]
        benchmark-models --purge
        benchmark-models-all [--llama-only|--ollama-only] [--json] [--runs N]
 
-benchmark-models-all tests the host's configured generation models plus
-qwen3.5-9b across packaged llama-server and Ollama backends using the preseeded
-llama-swap GGUF cache. It saves JSONL logs and prints a comparison table
-(pass --json for raw JSON lines).
+benchmark-models-all tests every generation model from tiers up to the host's
+VRAM tier (at the highest fitting quantisation) across packaged llama-server
+and Ollama backends using the preseeded llama-swap GGUF cache. It saves JSONL
+logs and prints a comparison table (pass --json for raw JSON lines).
 
 --purge removes the benchmark cache and results, not the server model cache.
 
@@ -85,11 +87,27 @@ trim_whitespace() {
 list_supported_models() {
 	local model
 
-	printf 'Supported models:\n  - inkling-2-mini\n  - mellum2.1-12b\n  - qwen3.5-9b\n  - qwen3.8-27b\n'
+	printf 'Supported models:\n'
+	for model in "${SUITE_MODELS[@]}"; do
+		printf '  - %s\n' "${model}"
+	done
 	while IFS='|' read -r model _; do
 		model="$(trim_whitespace "${model}")"
 		printf '  - %s\n' "${model}"
 	done <<<"${MODEL_SPECS}"
+}
+
+is_suite_model() {
+	local requested_model="$1"
+	local suite_model
+
+	for suite_model in "${SUITE_MODELS[@]}"; do
+		if [[ "${suite_model}" == "${requested_model}" ]]; then
+			return 0
+		fi
+	done
+
+	return 1
 }
 
 purge_benchmark_root() {
@@ -166,11 +184,12 @@ if [[ $# -gt 1 && ! "${RUNS}" =~ ^0*[1-9][0-9]*$ ]]; then
 	exit 1
 fi
 
-case "${MODEL}" in
-inkling-2-mini | mellum2.1-12b | qwen3.5-9b | qwen3.8-27b)
+if is_suite_model "${MODEL}"; then
 	exec python3 "${BENCHMARK_COMPARISON_SCRIPT:-$(dirname "${BASH_SOURCE[0]}")/focused.py}" \
 		"${FOCUSED_FLAGS[@]}" --runs "${RUNS:-3}" "${MODEL}"
-	;;
+fi
+
+case "${MODEL}" in
 qwen3-embedding-0.6b) OLLAMA_MODEL='qwen3-embedding:0.6b' ;;
 esac
 RUNS="${RUNS:-5}"

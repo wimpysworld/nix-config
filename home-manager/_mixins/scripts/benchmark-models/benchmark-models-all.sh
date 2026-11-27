@@ -3,6 +3,8 @@
 set -euo pipefail
 
 declare -a flags=()
+declare -a suite_models=()
+read -r -a suite_models <<<"${BENCHMARK_MODELS_SUITE:-}"
 runs=3
 
 while [[ $# -gt 0 ]]; do
@@ -31,4 +33,10 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
-exec python3 "${BENCHMARK_COMPARISON_SCRIPT}" "${flags[@]}" --runs "${runs}" "${suiteModels[@]}"
+if [[ ${#suite_models[@]} -eq 0 ]]; then
+	printf 'Error: no benchmark models are configured for this host.\n' >&2
+	exit 1
+fi
+
+exec python3 "${BENCHMARK_COMPARISON_SCRIPT:-$(dirname "${BASH_SOURCE[0]}")/focused.py}" \
+	"${flags[@]}" --runs "${runs}" "${suite_models[@]}"

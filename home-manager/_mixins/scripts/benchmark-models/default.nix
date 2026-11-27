@@ -15,18 +15,28 @@ let
     defaultCacheRoot
     mkRuntime
     ;
-  inherit (mkRuntime { hostVramGiB = host.gpu.compute.vram or 0; })
-    selectedRuntimeModels
-    ;
-  qwenSmall = (mkRuntime { hostVramGiB = 16; }).selectedRuntimeModels.dense;
-  tierModels = map (role: selectedRuntimeModels.${role}) (
-    lib.filter (role: selectedRuntimeModels ? ${role}) [
-      "moe"
-      "dense"
-    ]
-  );
-  hasQwenSmall = lib.any (model: model.publicName == qwenSmall.publicName) tierModels;
-  suiteModels = tierModels ++ lib.optional (!hasQwenSmall) qwenSmall;
+  hostVramGiB = host.gpu.compute.vram or 0;
+  hostRuntime = mkRuntime { inherit hostVramGiB; };
+  matchingTiers = lib.filter (tier: tier.minVramGiB <= hostVramGiB) hostRuntime.modelTiers;
+  benchmarkTiers = if matchingTiers != [ ] then matchingTiers else [ hostRuntime.selectedModelTier ];
+  tierRuntimeModels =
+    tier:
+    let
+      inherit (mkRuntime { hostVramGiB = tier.minVramGiB; }) selectedRuntimeModels;
+    in
+    map (role: selectedRuntimeModels.${role}) (
+      lib.filter (role: selectedRuntimeModels ? ${role}) [
+        "moe"
+        "dense"
+      ]
+    );
+  # Walk tiers descending and keep the first entry per publicName so each host
+  # benchmarks all lower-tier models at the highest fitting quantisation.
+  suiteModels = lib.foldl' (
+    acc: model:
+    if lib.any (existing: existing.publicName == model.publicName) acc then acc else acc ++ [ model ]
+  ) [ ] (lib.concatMap tierRuntimeModels benchmarkTiers);
+  suiteModelNames = map (model: model.publicName) suiteModels;
   models = builtins.listToAttrs (map (model: lib.nameValuePair model.publicName model) suiteModels);
   profiles = lib.mapAttrs (
     _: model:
@@ -105,6 +115,7 @@ let
     export BENCHMARK_MODELS_BACKENDS=${lib.escapeShellArg (lib.concatStringsSep " " backends)}
     export BENCHMARK_MODELS_PRESEED_CACHE=${lib.escapeShellArg defaultCacheRoot}
     export BENCHMARK_MODELS_PROFILES=${lib.escapeShellArg (builtins.toJSON profiles)}
+    export BENCHMARK_MODELS_SUITE=${lib.escapeShellArg (lib.concatStringsSep " " suiteModelNames)}
   ''
   + backendEnv;
 
@@ -130,12 +141,7 @@ let
       huggingface-cli
       python3
     ];
-    text =
-      benchmarkEnv
-      + ''
-        suiteModels=(${lib.escapeShellArgs (map (model: model.publicName) suiteModels)})
-      ''
-      + builtins.readFile ./benchmark-models-all.sh;
+    text = benchmarkEnv + builtins.readFile ./benchmark-models-all.sh;
   };
 in
 lib.mkIf (host.is.linux && isInference) {
