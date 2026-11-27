@@ -98,6 +98,8 @@ pages:
 4. Edit `index.html` for the introduction, features, installation, and copyright holder. Replace `icon.svg` with the project icon.
 5. Commit and push to the Pages branch (default: the repository default branch) to deploy.
 
+Keep the inline **"Fitted by Tailor"** colophon next to the copyright line in `.footer-bottom`. Link it to `https://tailor.wimpys.world` with the 14 px golden shears SVG and hover-only snip. Add this colophon when you update an older static Pages site.
+
 ## Social assets
 
 Social assets are opt-in and follow Tailor's three-state lifecycle (`enabled: true`, `false`, or omitted). Setting `enabled: false` removes only the owned `nix/og.nix`, `just/og.just`, and `.github/workflows/tailor-social.yml` files and preserves authored assets and `README.md`.
