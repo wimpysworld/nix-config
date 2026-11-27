@@ -74,10 +74,7 @@ let
 
   backends =
     if vendor == "nvidia" then
-      [
-        "vulkan"
-        "cuda"
-      ]
+      [ "cuda" ]
     else if vendor == "amd" then
       [
         "vulkan"

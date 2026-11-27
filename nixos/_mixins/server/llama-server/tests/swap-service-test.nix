@@ -60,6 +60,9 @@ let
   inherit (swapConfig.settings) models;
   vram22Models = vram22Eval.config.services.llama-swap.settings.models;
   vram16Models = vram16Eval.config.services.llama-swap.settings.models;
+  revanModels = flake.nixosConfigurations.revan.config.services.llama-swap.settings.models;
+  maulModels = flake.nixosConfigurations.maul.config.services.llama-swap.settings.models;
+  zannahModels = flake.nixosConfigurations.zannah.config.services.llama-swap.settings.models;
   package = inferenceEval.pkgs.llama-cpp.override { vulkanSupport = true; };
   server = builtins.unsafeDiscardStringContext (lib.getExe' package "llama-server");
   groupNames = builtins.attrNames swapConfig.settings.groups;
@@ -110,6 +113,22 @@ assert !(lib.hasInfix "--spec-type" vram22Models."mellum2.1-12b".cmd);
 assert !(lib.hasInfix "--spec-type" vram16Models."mellum2.1-12b".cmd);
 assert lib.hasInfix " --mmproj " vram22Models."qwen3.5-9b".cmd;
 assert lib.hasInfix " --mmproj " vram16Models."qwen3.5-9b".cmd;
+assert lib.hasInfix "--parallel 1 --no-context-shift --spec-type draft-mtp --spec-draft-n-max 4"
+  vram22Models."qwen3.5-9b".cmd;
+assert lib.hasInfix "--parallel 1 --no-context-shift --spec-type draft-mtp --spec-draft-n-max 4"
+  vram16Models."qwen3.5-9b".cmd;
+assert lib.hasInfix "--parallel 1 --no-context-shift" models."qwen3.8-27b".cmd;
+assert lib.hasInfix "--spec-type draft-mtp --spec-draft-n-max 3" models."qwen3.8-27b".cmd;
+assert !(lib.hasInfix "--spec-type" models.inkling-2-mini.cmd);
+assert lib.hasInfix "--parallel 1 --no-context-shift --spec-type draft-mtp --spec-draft-n-max 4"
+  revanModels."qwen3.5-9b".cmd;
+assert lib.hasInfix "--parallel 1 --no-context-shift --spec-type draft-mtp --spec-draft-n-max 4"
+  maulModels."qwen3.5-9b".cmd;
+assert !(lib.hasInfix "--spec-type" revanModels."mellum2.1-12b".cmd);
+assert !(lib.hasInfix "--spec-type" maulModels."mellum2.1-12b".cmd);
+assert lib.hasInfix "--parallel 1 --no-context-shift" zannahModels."qwen3.8-27b".cmd;
+assert lib.hasInfix "--spec-type draft-mtp --spec-draft-n-max 3" zannahModels."qwen3.8-27b".cmd;
+assert !(lib.hasInfix "--spec-type" zannahModels.inkling-2-mini.cmd);
 assert builtins.elem "embedding" groupNames;
 assert builtins.elem "generation" groupNames;
 assert builtins.elem "llama-models-preseed.service" service.requires;

@@ -261,6 +261,85 @@ class FocusedBenchmarkTests(unittest.TestCase):
         self.assertIsNone(mod.delta_gpu_bytes(50 * gib, None))
         self.assertIsNone(mod.delta_gpu_bytes(None, None))
 
+    def test_nvidia_gpu_memory_parses_selects_max_and_handles_errors(self):
+        mod = load_focused()
+        mib = 1024 * 1024
+
+        completed = mock.Mock(returncode=0, stdout="0, 1024\n1, 11456\n")
+        with (
+            mock.patch.object(mod.shutil, "which", return_value="/run/current-system/sw/bin/nvidia-smi"),
+            mock.patch.object(mod.subprocess, "run", return_value=completed) as run_mock,
+        ):
+            reading = mod.nvidia_gpu_memory()
+        self.assertEqual(reading, {"nvidia0/vram_used": 1024 * mib, "nvidia1/vram_used": 11456 * mib})
+        self.assertEqual(mod.peak_vram_bytes(reading), 11456 * mib)
+        self.assertEqual(mod.delta_gpu_bytes(mod.peak_vram_bytes(reading), 512 * mib), (11456 - 512) * mib)
+        run_mock.assert_called_once()
+
+        # Invalid, negative, malformed, and empty lines are ignored while valid lines survive.
+        mixed = mock.Mock(returncode=0, stdout="\n0, [N/A]\nbad, 500\n1, -10\n2, 2048\nonlyone\n")
+        with mock.patch.object(mod.subprocess, "run", return_value=mixed):
+            self.assertEqual(mod.nvidia_gpu_memory("/bin/nvidia-smi"), {"nvidia2/vram_used": 2048 * mib})
+
+        # Empty output, non-zero exit code, subprocess timeout, OSError, or missing binary return {}.
+        with mock.patch.object(mod.subprocess, "run", return_value=mock.Mock(returncode=0, stdout="")):
+            self.assertEqual(mod.nvidia_gpu_memory("/bin/nvidia-smi"), {})
+        with mock.patch.object(mod.subprocess, "run", return_value=mock.Mock(returncode=1, stdout="0, 1024\n")):
+            self.assertEqual(mod.nvidia_gpu_memory("/bin/nvidia-smi"), {})
+        with mock.patch.object(mod.subprocess, "run", side_effect=mod.subprocess.TimeoutExpired("nvidia-smi", 2)):
+            self.assertEqual(mod.nvidia_gpu_memory("/bin/nvidia-smi"), {})
+        with mock.patch.object(mod.subprocess, "run", side_effect=OSError("not found")):
+            self.assertEqual(mod.nvidia_gpu_memory("/bin/nvidia-smi"), {})
+        with mock.patch.object(mod.shutil, "which", return_value=None):
+            self.assertEqual(mod.nvidia_gpu_memory(), {})
+
+    def test_snapshot_and_sample_gpu_memory_fall_back_to_nvidia(self):
+        mod = load_focused()
+        mib = 1024 * 1024
+
+        with (
+            mock.patch.object(mod, "amdgpu_memory_counters", return_value=[]),
+            mock.patch.object(mod, "nvidia_gpu_memory", return_value={"nvidia0/vram_used": 4096 * mib}) as nv_mock,
+        ):
+            snap = mod.snapshot_gpu_memory()
+            self.assertEqual(snap, {"nvidia0/vram_used": 4096 * mib})
+            self.assertEqual(mod.snapshot_gpu_memory([]), {})
+            nv_mock.assert_called_once()
+
+        # When neither amdgpu counters nor nvidia-smi exist, sample_gpu_memory returns immediately.
+        stop = mod.Event()
+        peaks: dict[str, int] = {}
+        with (
+            mock.patch.object(mod, "amdgpu_memory_counters", return_value=[]),
+            mock.patch.object(mod.shutil, "which", return_value=None),
+        ):
+            mod.sample_gpu_memory(stop, peaks)
+        self.assertEqual(peaks, {})
+
+        # When amdgpu counters are absent and nvidia-smi is present, sample_gpu_memory tracks the peak.
+        stop2 = mod.Event()
+        peaks2: dict[str, int] = {}
+        samples = iter([{"nvidia0/vram_used": 2048 * mib}, {"nvidia0/vram_used": 8192 * mib}])
+
+        def fake_nvidia(binary=None):
+            try:
+                reading = next(samples)
+            except StopIteration:
+                stop2.set()
+                return {}
+            if reading["nvidia0/vram_used"] == 8192 * mib:
+                stop2.set()
+            return reading
+
+        with (
+            mock.patch.object(mod, "amdgpu_memory_counters", return_value=[]),
+            mock.patch.object(mod.shutil, "which", return_value="/bin/nvidia-smi"),
+            mock.patch.object(mod, "nvidia_gpu_memory", side_effect=fake_nvidia),
+        ):
+            mod.sample_gpu_memory(stop2, peaks2)
+        self.assertEqual(peaks2, {"nvidia0/vram_used": 8192 * mib})
+        self.assertEqual(mod.peak_vram_bytes(peaks2), 8192 * mib)
+
     def test_llama_case_matrix_sweeps_mtp_for_supported_backends_and_models(self):
         mod = load_focused()
         for draft_tokens in (2, 3):

@@ -72,12 +72,21 @@ let
         model.llamaServerArgs
         ++ roleArgs role
         ++ acceleratorArgs acceleration
-        ++ lib.optionals (acceleration == "vulkan" && model.mtpDraftTokens != null) [
-          "--spec-type"
-          "draft-mtp"
-          "--spec-draft-n-max"
-          (toString model.mtpDraftTokens)
-        ];
+        ++
+          lib.optionals
+            (
+              builtins.elem acceleration [
+                "vulkan"
+                "cuda"
+              ]
+              && model.mtpDraftTokens != null
+            )
+            [
+              "--spec-type"
+              "draft-mtp"
+              "--spec-draft-n-max"
+              (toString model.mtpDraftTokens)
+            ];
     }
     // model;
 in

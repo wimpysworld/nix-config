@@ -150,7 +150,9 @@ let
     mkModel {
       inherit maxContext;
       modelRef = "unsloth/Qwen3.5-9B-MTP-GGUF:UD-Q4_K_XL";
+      mtpDraftTokens = 4;
       reasoning = "off";
+      singleSlot = true;
       # Use the non-thinking general instruct settings from Unsloth's Qwen3.5 guide.
       generation = {
         temperature = 0.7;

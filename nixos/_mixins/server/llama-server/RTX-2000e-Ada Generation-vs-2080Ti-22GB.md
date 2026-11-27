@@ -49,10 +49,10 @@ Revan's 16 GB RTX 2000e Ada selects the `vram16` policy tier, while a 22 GB card
 | Role | `vram16` (RTX 2000e Ada) | `vram22` (RTX 2080 Ti 22GB) |
 |---|---|---|
 | `moe` | `mellum2.1-12b` (text-only), `Q6_K`, 128K (~13.0 GiB) | `mellum2.1-12b` (text-only), `Q8_0`, 128K (~14.9 GiB) |
-| `dense` (vision) | `qwen3.5-9b`, `UD-Q4_K_XL`, 128K, `reasoning off` (~10.7 GiB, `mmproj-BF16.gguf`) | `qwen3.5-9b`, `UD-Q4_K_XL`, 256K, `reasoning off` (~12.8 GiB, `mmproj-BF16.gguf`) |
+| `dense` (vision) | `qwen3.5-9b`, `UD-Q4_K_XL`, 128K, `mtp 4`, `reasoning off` (~11.4 GiB, `mmproj-BF16.gguf`) | `qwen3.5-9b`, `UD-Q4_K_XL`, 256K, `mtp 4`, `reasoning off` (~13.5 GiB, `mmproj-BF16.gguf`) |
 | `embedding` | `qwen3-embedding-0.6b`, `Q8_0`, 8K (~0.9 GiB) | `qwen3-embedding-0.6b`, `Q8_0`, 8K (~0.9 GiB) |
 
-`llama-swap` keeps `qwen3-embedding-0.6b` resident and loads one generation model at a time on demand. Upgrading to `vram22` raises `mellum2.1-12b` from `Q6_K` to `Q8_0` at its native 128K context ceiling, doubles `qwen3.5-9b` context from 128K to 256K, and uses the 2080 Ti's 2.75x wider memory bus for faster CUDA token generation. No benchmark covers the current `mellum2.1-12b` or `qwen3.5-9b` weights on either card, so the Llama 2 7B scoreboard above remains the measured hardware baseline.
+`llama-swap` keeps `qwen3-embedding-0.6b` resident and loads one generation model at a time on demand with single-slot serving. Both `qwen3.5-9b` tiers enable CUDA MTP (`--spec-type draft-mtp --spec-draft-n-max 4`), which lifts decode on Revan's RTX 2000e Ada from 29.6 to 48.1 tok/s (+62.5%) for roughly 0.6 to 0.7 GiB extra VRAM (prefill 1,413.0 versus 1,471.4 tok/s). Upgrading to `vram22` raises `mellum2.1-12b` from `Q6_K` to `Q8_0` at its native 128K context ceiling, doubles `qwen3.5-9b` context from 128K to 256K, and uses the 2080 Ti's 2.75x wider memory bus for faster CUDA token generation. No cross-card benchmark covers `mellum2.1-12b` or the 2080 Ti 22GB with these weights, so the Llama 2 7B scoreboard above remains the cross-card hardware baseline.
 
 ### Hardware media transcoding
 

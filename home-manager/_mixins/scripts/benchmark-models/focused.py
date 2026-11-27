@@ -430,9 +430,49 @@ def amdgpu_memory_counters() -> list[Path]:
     return counters
 
 
-def snapshot_gpu_memory(counters: list[Path] | None = None) -> dict[str, int]:
+def nvidia_gpu_memory(nvidia_smi: str | None = None) -> dict[str, int]:
+    binary = shutil.which("nvidia-smi") if nvidia_smi is None else nvidia_smi
+    if not binary:
+        return {}
+    try:
+        result = subprocess.run(
+            [binary, "--query-gpu=index,memory.used", "--format=csv,noheader,nounits"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return {}
+    if result.returncode != 0:
+        return {}
     values: dict[str, int] = {}
-    for counter in amdgpu_memory_counters() if counters is None else counters:
+    for raw_line in result.stdout.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        parts = [part.strip() for part in line.split(",")]
+        if len(parts) != 2:
+            continue
+        index, used_mib = parts
+        if not index.isdigit():
+            continue
+        try:
+            mib = int(used_mib)
+        except ValueError:
+            continue
+        if mib < 0:
+            continue
+        values[f"nvidia{index}/vram_used"] = mib * 1024 * 1024
+    return values
+
+
+def snapshot_gpu_memory(counters: list[Path] | None = None) -> dict[str, int]:
+    active_counters = amdgpu_memory_counters() if counters is None else counters
+    if not active_counters:
+        return nvidia_gpu_memory() if counters is None else {}
+    values: dict[str, int] = {}
+    for counter in active_counters:
         key = f"{counter.parent.parent.name}/{counter.name}"
         try:
             values[key] = int(counter.read_text())
@@ -443,8 +483,12 @@ def snapshot_gpu_memory(counters: list[Path] | None = None) -> dict[str, int]:
 
 def sample_gpu_memory(stop: Event, peaks: dict[str, int]):
     counters = amdgpu_memory_counters()
+    nvidia_smi = None if counters else shutil.which("nvidia-smi")
+    if not counters and not nvidia_smi:
+        return
     while True:
-        for key, value in snapshot_gpu_memory(counters).items():
+        snapshot = snapshot_gpu_memory(counters) if counters else nvidia_gpu_memory(nvidia_smi)
+        for key, value in snapshot.items():
             peaks[key] = max(peaks.get(key, 0), value)
         if stop.wait(0.2):
             return

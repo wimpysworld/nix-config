@@ -208,6 +208,10 @@ let
     acceleration = "vulkan";
     hostVramGiB = 32;
   };
+  lowVulkanRuntime = runtime.mkRuntime {
+    acceleration = "vulkan";
+    hostVramGiB = 16;
+  };
   highCudaRuntime = runtime.mkRuntime {
     acceleration = "cuda";
     hostVramGiB = 64;
@@ -218,6 +222,22 @@ let
   };
   cudaRuntime = runtime.mkRuntime {
     acceleration = "cuda";
+    hostVramGiB = 16;
+  };
+  highRocmRuntime = runtime.mkRuntime {
+    acceleration = "rocm";
+    hostVramGiB = 64;
+  };
+  rocmRuntime = runtime.mkRuntime {
+    acceleration = "rocm";
+    hostVramGiB = 16;
+  };
+  highNullAccelRuntime = runtime.mkRuntime {
+    acceleration = null;
+    hostVramGiB = 64;
+  };
+  nullAccelRuntime = runtime.mkRuntime {
+    acceleration = null;
     hostVramGiB = 16;
   };
 
@@ -250,12 +270,20 @@ let
 
   mtpArgsFor =
     rt: model:
-    lib.optionals (rt.acceleration == "vulkan" && model.mtpDraftTokens != null) [
-      "--spec-type"
-      "draft-mtp"
-      "--spec-draft-n-max"
-      (toString model.mtpDraftTokens)
-    ];
+    lib.optionals
+      (
+        builtins.elem rt.acceleration [
+          "vulkan"
+          "cuda"
+        ]
+        && model.mtpDraftTokens != null
+      )
+      [
+        "--spec-type"
+        "draft-mtp"
+        "--spec-draft-n-max"
+        (toString model.mtpDraftTokens)
+      ];
 
   # Keep the runtime argument order stable.
   runtimeArgsCompose =
@@ -302,10 +330,20 @@ let
   vulkanMoe = vulkanRuntime.selectedRuntimeModels.moe;
   vulkanDense = vulkanRuntime.selectedRuntimeModels.dense;
   vulkanEmbedding = vulkanRuntime.selectedRuntimeModels.embedding;
+  lowVulkanDense = lowVulkanRuntime.selectedRuntimeModels.dense;
   midCudaMoe = midCudaRuntime.selectedRuntimeModels.moe;
+  midCudaDense = midCudaRuntime.selectedRuntimeModels.dense;
   cudaMoe = cudaRuntime.selectedRuntimeModels.moe;
   cudaDense = cudaRuntime.selectedRuntimeModels.dense;
   usesMtp = model: builtins.elem "--spec-type" model.runtimeArgs;
+  hasMtpArgs =
+    width: model:
+    lib.take 4 (lib.reverseList model.runtimeArgs) == [
+      (toString width)
+      "--spec-draft-n-max"
+      "draft-mtp"
+      "--spec-type"
+    ];
 in
 assert tierNamesAreUnique;
 assert tierMinimumsDecrease;
@@ -343,9 +381,9 @@ assert lib.all (
 ) qwen38Tiers;
 assert lib.all (
   tier:
-  !tier.models.dense.singleSlot
+  tier.models.dense.singleSlot
   && tier.models.dense.reasoning == "off"
-  && tier.models.dense.mtpDraftTokens == null
+  && tier.models.dense.mtpDraftTokens == 4
 ) qwen35Tiers;
 assert moeContextNonIncreasing;
 assert qwen35ContextNonIncreasing;
@@ -354,9 +392,14 @@ assert embeddingIsUniform;
 assert lib.all runtimeArgsCompose [
   vulkanRuntime
   lowerVulkanRuntime
+  lowVulkanRuntime
   highCudaRuntime
   midCudaRuntime
   cudaRuntime
+  highRocmRuntime
+  rocmRuntime
+  highNullAccelRuntime
+  nullAccelRuntime
 ];
 assert lib.all cachePathsResolve (lib.attrValues vulkanRuntime.selectedRuntimeModels);
 assert lib.all cachePathsResolve (lib.attrValues midCudaRuntime.selectedRuntimeModels);
@@ -412,18 +455,27 @@ assert cudaDense.publicName == "qwen3.5-9b";
 assert cudaDense.modelRef == "unsloth/Qwen3.5-9B-MTP-GGUF:UD-Q4_K_XL";
 assert cudaDense.maxContext == 131072;
 assert cudaDense.reasoning == "off";
-assert !cudaDense.singleSlot;
+assert cudaDense.singleSlot;
+assert cudaDense.mtpDraftTokens == 4;
 assert cudaDense.supportsMtp;
+assert midCudaDense.singleSlot;
+assert midCudaDense.mtpDraftTokens == 4;
 assert cudaDense.generation.temperature == 0.7;
 assert cudaDense.generation.topP == 0.8;
 assert cudaDense.generation.presencePenalty == 1.5;
 assert vulkanDense.supportsMtp;
 assert !vulkanMoe.supportsMtp;
-assert usesMtp vulkanDense;
-assert usesMtp lowerVulkanRuntime.selectedRuntimeModels.dense;
+assert hasMtpArgs 3 vulkanDense;
+assert hasMtpArgs 3 lowerVulkanRuntime.selectedRuntimeModels.dense;
+assert hasMtpArgs 3 highCudaRuntime.selectedRuntimeModels.dense;
+assert hasMtpArgs 4 midCudaDense;
+assert hasMtpArgs 4 cudaDense;
+assert hasMtpArgs 4 lowVulkanDense;
 assert !usesMtp vulkanMoe;
 assert !usesMtp midCudaMoe;
 assert !usesMtp cudaMoe;
-assert !usesMtp cudaDense;
-assert !usesMtp highCudaRuntime.selectedRuntimeModels.dense;
+assert !usesMtp rocmRuntime.selectedRuntimeModels.dense;
+assert !usesMtp highRocmRuntime.selectedRuntimeModels.dense;
+assert !usesMtp nullAccelRuntime.selectedRuntimeModels.dense;
+assert !usesMtp highNullAccelRuntime.selectedRuntimeModels.dense;
 true
