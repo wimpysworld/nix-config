@@ -98,6 +98,11 @@ _LLM_THROTTLE_BUCKETS: frozenset[str] = frozenset({
     "community_pr_reviews",
     "todo_implementations",
 })
+_DAILY_CAPPED_BUCKETS: frozenset[str] = frozenset({
+    "triage_research",
+    "community_pr_reviews",
+    "todo_implementations",
+})
 STATE_FILENAME, ACTIVE_DISPATCH_FILENAME, SECURITY_EVENTS_FILENAME = "state.json", "active-dispatch.json", "security-events.jsonl"
 LEGACY_POLL_STATE_FILENAME, LEGACY_NOTIFICATIONS_STATE_FILENAME = "poll-state.json", "notifications-state.json"
 LEGACY_WATERMARKS_FILENAME, LEGACY_SECURITY_OWNERSHIP_FILENAME = "watermarks.json", "security-ownership.json"
@@ -3737,7 +3742,7 @@ class CompanionStateStore:
         if clean_bucket in _LLM_THROTTLE_BUCKETS:
             if throttles["slot_tasks"] + step > eff_limits["max_tasks_per_slot"]:
                 return False
-            if throttles["daily_tasks"] + step > eff_limits["max_tasks_per_day"]:
+            if clean_bucket in _DAILY_CAPPED_BUCKETS and throttles["daily_tasks"] + step > eff_limits["max_tasks_per_day"]:
                 return False
             if (
                 isinstance(explicit_limits, dict)
@@ -3798,7 +3803,8 @@ class CompanionStateStore:
                 return False, dict(throttles)
             if clean_bucket in _LLM_THROTTLE_BUCKETS:
                 throttles["slot_tasks"] += step
-                throttles["daily_tasks"] += step
+                if clean_bucket in _DAILY_CAPPED_BUCKETS:
+                    throttles["daily_tasks"] += step
                 if state_key != "slot_tasks":
                     throttles[state_key] += step
                 if clean_bucket == "todo_implementations":
@@ -3812,7 +3818,7 @@ class CompanionStateStore:
             return True, dict(throttles)
 
     def record_operator_task(self, *, count: int = 1, slot_id: str | None = None, now_override_ms: int | None = None) -> dict:
-        """Record a direct operator mention LLM task without blocking on slot or daily task limits."""
+        """Record a direct operator mention LLM task in slot_tasks without blocking on limits or consuming daily_tasks."""
         if isinstance(count, bool) or _safe_int(count, 0) <= 0:
             raise ValueError(f"Operator task count must be positive: {count!r}")
         step = _safe_int(count, 1)
@@ -3821,7 +3827,6 @@ class CompanionStateStore:
             state = self._read_state_unlocked(dir_fd)
             throttles = self._rollover_throttles(state.get("throttles"), stamp_ms=stamp_ms, slot_id=slot_id)
             throttles["slot_tasks"] += step
-            throttles["daily_tasks"] += step
             state["throttles"] = throttles
             state["agent_name"] = self.agent_name
             state["updated_at_ms"] = stamp_ms

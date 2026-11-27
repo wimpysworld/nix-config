@@ -1421,7 +1421,7 @@ in
       maxTasksPerDay = lib.mkOption {
         type = lib.types.ints.positive;
         default = 48;
-        description = "Maximum number of LLM tasks dispatched per Europe/London calendar day, excluding direct operator mentions.";
+        description = "Maximum number of proactive Linear LLM tasks (triage_research, community_pr_reviews, todo_implementations) dispatched per Europe/London calendar day. Reactive GitHub notification dispatches (tasks) and direct operator replies do not check or increment daily_tasks.";
       };
       dailyImplementationsCap = lib.mkOption {
         type = lib.types.ints.unsigned;

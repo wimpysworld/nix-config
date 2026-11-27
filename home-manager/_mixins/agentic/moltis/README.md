@@ -260,15 +260,14 @@ For eligible `XS` and `S` agent-authored pull requests (`<= 150` changed lines, 
 
 Per-agent counters in `state.json` (`throttles`) enforce these defaults:
 
-| Throttle bucket | Default cap | Window |
-| --- | --- | --- |
-| `Triage` intake stubs (`triage_stubs`) | `10` | Per 30-minute slot |
-| `Triage` research turns (`triage_research`) | `2` | Per 30-minute slot |
-| Community pull-request reviews (`community_pr_reviews`) | `2` | Per 30-minute slot |
-| `Todo` implementations (`todo_implementations`) | `1` | Per 30-minute slot |
-| Autonomous implementations (`daily_implementations`) | `24` | Per agent per `Europe/London` day |
+| Throttle counter | Default cap | Window | Scope |
+| --- | --- | --- | --- |
+| `Triage` intake stubs (`triage_stubs`) | `10` | Per 30-minute slot | Independent zero-LLM intake counter |
+| Shared per-slot tasks (`slot_tasks`) | `2` (`3` for `traya`) | Per 30-minute slot | Shared across `tasks`, `triage_research`, `community_pr_reviews`, and `todo_implementations` (direct operator replies record against `slot_tasks` without blocking) |
+| Daily proactive Linear tasks (`daily_tasks`) | `48` | Per agent per `Europe/London` day | Proactive Linear LLM buckets only (`triage_research`, `community_pr_reviews`, `todo_implementations`). Reactive GitHub notification dispatches (`tasks`) and direct operator replies do not check or increment `daily_tasks`. |
+| Autonomous implementations (`daily_implementations`) | `8` (`0` for `traya`) | Per agent per `Europe/London` day | `todo_implementations` only |
 
-`MOLTIS_GITHUB_COMPANION_DAILY_IMPLEMENTATIONS_CAP` (Nix wrapper parameter `dailyImplementationsCap`, default `24`) configures `daily_implementations`.
+Configure these caps through `MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_SLOT` (`maxTasksPerSlot`), `MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_DAY` (`maxTasksPerDay`), and `MOLTIS_GITHUB_COMPANION_DAILY_IMPLEMENTATIONS_CAP` (`dailyImplementationsCap`).
 
 ### Automated security release pipeline
 

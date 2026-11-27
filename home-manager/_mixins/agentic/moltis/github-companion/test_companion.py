@@ -1146,6 +1146,51 @@ class StateStoreMigrationAndOrderingTests(GithubCompanionTestBase):
                     f"expected invalid env value {bad_val!r} to fall back to 0 for traya",
                 )
 
+    def test_daily_tasks_cap_scoped_to_proactive_linear_buckets_not_tasks_or_operator(self) -> None:
+        base_ms = int(datetime.datetime(2026, 7, 15, 10, 0, tzinfo=datetime.timezone.utc).timestamp() * 1000)
+        store = self.make_store("skrye", state_dir=self.state_dir / "throttles-daily-scope")
+        limits = {"max_tasks_per_slot": 2, "max_tasks_per_day": 2}
+
+        # Exhaust daily_tasks (2/2) using proactive Linear buckets in slot-1.
+        ok1, snap1 = store.consume_throttle("triage_research", slot_id="slot-1", limits=limits, now_override_ms=base_ms)
+        self.assertTrue(ok1)
+        self.assertEqual((snap1["slot_tasks"], snap1["daily_tasks"]), (1, 1))
+        ok2, snap2 = store.consume_throttle("community_pr_reviews", slot_id="slot-1", limits=limits, now_override_ms=base_ms)
+        self.assertTrue(ok2)
+        self.assertEqual((snap2["slot_tasks"], snap2["daily_tasks"]), (2, 2))
+
+        # In slot-2 (fresh slot_tasks=0, daily_tasks=2/2): proactive Linear buckets are blocked,
+        # while reactive GitHub notification dispatches ("tasks") remain allowed up to max_tasks_per_slot.
+        slot2_ms = base_ms + 30 * 60 * 1000
+        for linear_bucket in ("triage_research", "community_pr_reviews", "todo_implementations"):
+            self.assertFalse(
+                store.can_consume_throttle(linear_bucket, slot_id="slot-2", limits=limits, now_override_ms=slot2_ms),
+                f"expected {linear_bucket} to be blocked at daily_tasks == max_tasks_per_day",
+            )
+            ok_lin, snap_lin = store.consume_throttle(
+                linear_bucket, slot_id="slot-2", limits=limits, now_override_ms=slot2_ms
+            )
+            self.assertFalse(ok_lin)
+            self.assertEqual((snap_lin["slot_tasks"], snap_lin["daily_tasks"]), (0, 2))
+
+        # Consuming "tasks" increments slot_tasks without incrementing daily_tasks, and respects max_tasks_per_slot.
+        for expected_slot in (1, 2):
+            self.assertTrue(store.can_consume_throttle("tasks", slot_id="slot-2", limits=limits, now_override_ms=slot2_ms))
+            ok_task, snap_task = store.consume_throttle("tasks", slot_id="slot-2", limits=limits, now_override_ms=slot2_ms)
+            self.assertTrue(ok_task)
+            self.assertEqual((snap_task["slot_tasks"], snap_task["daily_tasks"]), (expected_slot, 2))
+        self.assertFalse(store.can_consume_throttle("tasks", slot_id="slot-2", limits=limits, now_override_ms=slot2_ms))
+        ok_task_over, snap_task_over = store.consume_throttle(
+            "tasks", slot_id="slot-2", limits=limits, now_override_ms=slot2_ms
+        )
+        self.assertFalse(ok_task_over)
+        self.assertEqual((snap_task_over["slot_tasks"], snap_task_over["daily_tasks"]), (2, 2))
+
+        # record_operator_task increments slot_tasks without incrementing daily_tasks.
+        slot3_ms = base_ms + 60 * 60 * 1000
+        snap_op = store.record_operator_task(slot_id="slot-3", now_override_ms=slot3_ms)
+        self.assertEqual((snap_op["slot_tasks"], snap_op["daily_tasks"]), (1, 2))
+
 
 class OpenPullRequestPollingAndFilteringTests(GithubCompanionTestBase):
     """Actions 2, 3, and 4: 60s PR detection across 6 owners, self/peer filtering, and null-URL CheckSuite/WorkflowRun dismissal."""
@@ -16289,7 +16334,8 @@ class UnifiedLlmRateControlsAndPriorityOrderTests(GithubCompanionTestBase):
         self.assertEqual(linear_stub.issues[str(lin_todo["id"])]["state"]["name"], "In Review")  # type: ignore[index]
         self.assertEqual(linear_stub.issues[str(lin_triage_3["id"])]["state"]["name"], "Triage")  # type: ignore[index]
 
-        # 4) Exhaust maxTasksPerDay (daily_tasks is now 5; cap daily at 5):
+        # 4) Exhaust maxTasksPerDay (daily_tasks is now 4: 2 triage + 1 community review + 1 todo;
+        #    the targeted PR in slot 2 did not increment daily_tasks. Cap daily at 4):
         # - Triage LLM dispatch is blocked
         # - Direct operator @skrye mention STILL runs (exempt from maxTasksPerDay & maxTasksPerSlot)
         # - Zero-LLM triage_stubs, In Review label sync, and stale-issue check-in STILL run!
@@ -16337,7 +16383,7 @@ class UnifiedLlmRateControlsAndPriorityOrderTests(GithubCompanionTestBase):
             ),
         ]
         slot4_ms = self._utc_ms(2026, 4, 1, 11, 30)
-        with patch.dict(os.environ, {"MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_DAY": "5"}, clear=False):
+        with patch.dict(os.environ, {"MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_DAY": "4"}, clear=False):
             res4 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot4_ms)
         self.assertEqual([d["kind"] for d in res4["targeted_dispatches"]], ["linear_operator_comment"])
         self.assertEqual(len(res4["linear_operator_comment_dispatches"]), 1)
@@ -16350,9 +16396,9 @@ class UnifiedLlmRateControlsAndPriorityOrderTests(GithubCompanionTestBase):
         self.assertEqual(len(res4["stale_issue_actions"]), 1)
         self.assertEqual(res4["stale_issue_actions"][0]["action"], "stale_issue_checkin_posted")
         self.assertEqual(len(stale_comments_posted), 1)
-        # Operator task incremented slot_tasks and daily_tasks even while bypassing the cap
+        # Operator task incremented slot_tasks without incrementing daily_tasks
         th4 = store.get_throttle_state(slot_id=companion.compute_throttle_slot_id(slot4_ms, "skrye"), now_override_ms=slot4_ms)
-        self.assertEqual((th4["slot_tasks"], th4["daily_tasks"]), (1, 6))
+        self.assertEqual((th4["slot_tasks"], th4["daily_tasks"]), (1, 4))
 
     def test_daily_implementations_cap_blocks_todo_without_blocking_reviews_or_triage(self) -> None:
         repo = "wimpysworld/tailor"
@@ -16550,7 +16596,7 @@ class UnifiedLlmRateControlsAndPriorityOrderTests(GithubCompanionTestBase):
         )
         self.assertEqual(len(res2["traya_blind_reviews"]), 1)
         th2 = store.get_throttle_state(slot_id=companion.compute_throttle_slot_id(slot2_ms, "traya"), now_override_ms=slot2_ms)
-        self.assertEqual((th2["slot_tasks"], th2["daily_tasks"]), (3, 6))
+        self.assertEqual((th2["slot_tasks"], th2["daily_tasks"]), (3, 4))
 
     def test_wait_until_due_chunks_sleep_and_recovers_from_forward_clock_jump(self) -> None:
         gh_client = companion.GhApiSafeClient(runner=lambda *a, **k: subprocess.CompletedProcess(a[0], 0, "", ""))
