@@ -28,8 +28,8 @@ let
     if isTraya then
       "openai-codex::gpt-6.2-astra@reasoning-medium"
     else
-      "gemini::gemini-4-carbon@reasoning-medium";
-  reviewReasoningEffort = "medium";
+      "gemini::gemini-4-neon@reasoning-high";
+  reviewReasoningEffort = if isTraya then "medium" else "high";
   auxiliaryModel =
     if isTraya then
       "openai-codex::gpt-6-luna@reasoning-high"
@@ -1733,26 +1733,12 @@ in
               )
               (
                 (lib.mapAttrs (
-                  name: preset:
+                  _: preset:
                   preset
-                  // lib.optionalAttrs (!isTraya) (
-                    if
-                      lib.elem name [
-                        "research"
-                        "coder"
-                        "reviewer"
-                      ]
-                    then
-                      {
-                        model = "gemini::gemini-4-carbon@reasoning-medium";
-                        reasoning_effort = "medium";
-                      }
-                    else
-                      {
-                        model = "gemini::gemini-4-neon@reasoning-high";
-                        reasoning_effort = "high";
-                      }
-                  )
+                  // lib.optionalAttrs (!isTraya) {
+                    model = reviewModel;
+                    reasoning_effort = reviewReasoningEffort;
+                  }
                 ) (import ./builtin-presets.nix))
                 // {
                   coordinator = {

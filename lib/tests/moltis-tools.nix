@@ -254,8 +254,8 @@ let
         if host == "traya" then
           "openai-codex::gpt-6.2-astra@reasoning-medium"
         else
-          "gemini::gemini-4-carbon@reasoning-medium";
-      expectedReviewReasoningEffort = "medium";
+          "gemini::gemini-4-neon@reasoning-high";
+      expectedReviewReasoningEffort = if host == "traya" then "medium" else "high";
       expectedGithubMainModel =
         if host == "traya" then expectedMainModel else "gemini::gemini-4-hydrogen@reasoning-medium";
       expectedAssessmentModel =
@@ -582,16 +582,7 @@ let
       && preset.delegate_only == original.delegate_only
       && (
         if gemini then
-          if
-            lib.elem name [
-              "research"
-              "coder"
-              "reviewer"
-            ]
-          then
-            preset.model == expectedReviewModel && preset.reasoning_effort == expectedReviewReasoningEffort
-          else
-            preset.model == expectedAssessmentModel && preset.reasoning_effort == "high"
+          preset.model == expectedReviewModel && preset.reasoning_effort == expectedReviewReasoningEffort
         else
           !(preset ? model) && !(preset ? reasoning_effort)
       )

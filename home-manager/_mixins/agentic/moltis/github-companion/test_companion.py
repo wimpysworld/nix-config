@@ -3776,7 +3776,7 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
 
             return _handler
 
-        # 1) Skrye: main_model = gemini::gemini-4-neon@reasoning-medium, review_model = gemini::gemini-4-carbon@reasoning-medium
+        # 1) Skrye: main_model = gemini::gemini-4-neon@reasoning-medium, review_model = gemini::gemini-4-neon@reasoning-high
         notif_batches: list[str] = [
             # Cycle 1 notifications:
             # - Issue mention (flexiondotorg) -> review_model
@@ -3953,7 +3953,7 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             data_dir=self.data_dir,
             agent_name="skrye",
             main_model="gemini::gemini-4-neon@reasoning-medium",
-            review_model="gemini::gemini-4-carbon@reasoning-medium",
+            review_model="gemini::gemini-4-neon@reasoning-high",
             clock=self.clock,
             sleeper=self.sleeper,
         )
@@ -3984,15 +3984,15 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             sent_models,
             [
                 # Issue mention (flexiondotorg) -> review_model
-                ("skrye:targeted", "gemini::gemini-4-carbon@reasoning-medium"),
+                ("skrye:targeted", "gemini::gemini-4-neon@reasoning-high"),
                 # github-actions[bot] PR notification -> main_model
                 ("skrye:targeted", "gemini::gemini-4-neon@reasoning-medium"),
                 # Freshener PR notification -> main_model
                 ("skrye:targeted", "gemini::gemini-4-neon@reasoning-medium"),
                 # Human PR (flexiondotorg) -> review_model
-                ("skrye:targeted", "gemini::gemini-4-carbon@reasoning-medium"),
+                ("skrye:targeted", "gemini::gemini-4-neon@reasoning-high"),
                 # Peer PR (sith-zannah) -> review_model
-                ("skrye:targeted", "gemini::gemini-4-carbon@reasoning-medium"),
+                ("skrye:targeted", "gemini::gemini-4-neon@reasoning-high"),
                 # Dependabot PR -> main_model
                 ("skrye:targeted", "gemini::gemini-4-neon@reasoning-medium"),
                 # Weekly sweep -> main_model
@@ -4381,7 +4381,7 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             agent_name="skrye",
             agent_display_name="Skrye",
             main_model="gemini::gemini-4-hydrogen@reasoning-medium",
-            review_model="gemini::gemini-4-carbon@reasoning-medium",
+            review_model="gemini::gemini-4-neon@reasoning-high",
             clock=self.clock,
             sleeper=lambda _: None,
         )
@@ -4396,7 +4396,7 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
         # First cycle dispatches team:merge with runner-computed head_sha_changed: true
         res1 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self.clock())
         self.assertEqual(len(res1["targeted_dispatches"]), 1)
-        self.assertEqual(sent_calls[0][0], "gemini::gemini-4-carbon@reasoning-medium")
+        self.assertEqual(sent_calls[0][0], "gemini::gemini-4-neon@reasoning-high")
         self.assertIn("head_sha_changed: true", sent_calls[0][1])
         self.assertIn("triaged_head_sha: oldsha111", sent_calls[0][1])
         self.assertIn("team_label: team:merge", sent_calls[0][1])
@@ -4607,7 +4607,7 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
                 agent_name="skrye",
                 agent_display_name="Skrye",
                 main_model="gemini::gemini-4-hydrogen@reasoning-medium",
-                review_model="gemini::gemini-4-carbon@reasoning-medium",
+                review_model="gemini::gemini-4-neon@reasoning-high",
                 clock=self.clock,
                 sleeper=lambda _: None,
             )
@@ -5818,7 +5818,7 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
     """End-to-end tests for WW-397 Linear-backed Community Issues intake, research, implementation, sign-off pings, and close/merge sync."""
 
     MAIN_MODEL = "gemini::gemini-4-hydrogen@reasoning-medium"
-    REVIEW_MODEL = "gemini::gemini-4-carbon@reasoning-medium"
+    REVIEW_MODEL = "gemini::gemini-4-neon@reasoning-high"
 
     @staticmethod
     def _utc_ms(year: int, month: int, day: int, hour: int, minute: int = 0) -> int:
@@ -7596,7 +7596,7 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
     """End-to-end tests for WW-398 Lane A blind two-family PR review, Lane B briefs, needs-decision pings, and traya isolation."""
 
     MAIN_MODEL = "gemini::gemini-4-hydrogen@reasoning-medium"
-    REVIEW_MODEL = "gemini::gemini-4-carbon@reasoning-medium"
+    REVIEW_MODEL = "gemini::gemini-4-neon@reasoning-high"
 
     def setUp(self) -> None:
         super().setUp()
@@ -12242,7 +12242,7 @@ class LinearOperatorGuidanceAndMentionWakeTests(GithubCompanionTestBase):
     """Tests for two-mode Linear operator guidance (Mode A passive + Lane A bypass) and @mention wake (Mode B)."""
 
     MAIN_MODEL = "gemini::gemini-4-hydrogen@reasoning-medium"
-    REVIEW_MODEL = "gemini::gemini-4-carbon@reasoning-medium"
+    REVIEW_MODEL = "gemini::gemini-4-neon@reasoning-high"
 
     @staticmethod
     def _admin_comment(
