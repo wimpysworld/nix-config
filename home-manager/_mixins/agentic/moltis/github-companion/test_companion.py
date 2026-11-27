@@ -7,6 +7,7 @@ import base64
 import concurrent.futures
 import contextlib
 import datetime
+import fcntl
 import http.server
 import io
 import json
@@ -25,6 +26,8 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import companion
+import shadow_eval
+import shadow_report
 
 
 class MockMatrixAndRpcHandler(http.server.BaseHTTPRequestHandler):
@@ -2316,7 +2319,7 @@ class InterruptedTurnRecoveryDecoupledPollingAndStartNoticeTests(GithubCompanion
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name="traya",
-            main_model="gemini::gemini-4-neon",
+            code_model="gemini::gemini-4-neon",
             matrix_client=mclient,
             completion_timeout_ms=300,
             recovery_deadline_ms=300,
@@ -2547,7 +2550,7 @@ class InterruptedTurnRecoveryDecoupledPollingAndStartNoticeTests(GithubCompanion
             data_dir=self.data_dir,
             agent_name="skrye",
             agent_display_name="Skrye",
-            main_model="gemini::gemini-4-neon",
+            code_model="gemini::gemini-4-neon",
             telegram_bot_token_path=self.bot_token_file,
             telegram_allowed_users_path=self.allowed_users_file,
             telegram_api_url=self.httpd.base_url,
@@ -3730,30 +3733,99 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
         self.assertEqual(runner_skrye.is_weekly_sweep_due(now_override_ms=thursday_10am_ms), (False, "2023-11-16"))
         self.assertEqual(runner_zannah.is_weekly_sweep_due(now_override_ms=thursday_10am_ms), (True, "2023-11-16"))
 
-    def test_main_and_review_model_selection_for_code_review_vs_automated_pr_and_sweeps(self) -> None:
+    def test_three_tier_model_selection_for_updates_sweeps_and_code_turns(self) -> None:
         self.httpd.peek_active = False
 
-        # Runtime config resolves --review-model / MOLTIS_GITHUB_COMPANION_REVIEW_MODEL and defaults to main_model
-        parsed_default = companion.build_arg_parser().parse_args(
-            ["--agent-name", "skrye", "--main-model", "gemini::gemini-4-neon@reasoning-medium"]
-        )
-        cfg_default = companion.resolve_runtime_config(parsed_default)
-        self.assertEqual(cfg_default["main_model"], "gemini::gemini-4-neon@reasoning-medium")
-        self.assertEqual(cfg_default["review_model"], "gemini::gemini-4-neon@reasoning-medium")
+        self.assertEqual(companion.SWEEP_DISPATCH_KINDS, frozenset({"reconcile_sweep", "weekly_sweep"}))
 
-        parsed_explicit = companion.build_arg_parser().parse_args(
-            [
-                "--agent-name",
-                "traya",
-                "--main-model",
-                "openai-codex::gpt-6.2-sol@reasoning-medium",
-                "--review-model",
-                "openai-codex::gpt-6.2-astra@reasoning-medium",
-            ]
+        # resolve_model_tiers fallback boundaries
+        self.assertEqual(
+            companion.resolve_model_tiers(code_model="gemini::gemini-4-neon@reasoning-high"),
+            (
+                "gemini::gemini-4-neon@reasoning-high",
+                "gemini::gemini-4-neon@reasoning-high",
+                "gemini::gemini-4-neon@reasoning-high",
+            ),
         )
-        cfg_explicit = companion.resolve_runtime_config(parsed_explicit)
-        self.assertEqual(cfg_explicit["main_model"], "openai-codex::gpt-6.2-sol@reasoning-medium")
-        self.assertEqual(cfg_explicit["review_model"], "openai-codex::gpt-6.2-astra@reasoning-medium")
+        self.assertEqual(
+            companion.resolve_model_tiers(
+                update_model="gemini::gemini-4-hydrogen@reasoning-medium",
+                code_model="gemini::gemini-4-neon@reasoning-high",
+            ),
+            (
+                "gemini::gemini-4-hydrogen@reasoning-medium",
+                "gemini::gemini-4-neon@reasoning-high",
+                "gemini::gemini-4-neon@reasoning-high",
+            ),
+        )
+        self.assertEqual(
+            companion.resolve_model_tiers(update_model="gemini::gemini-4-hydrogen@reasoning-medium"),
+            (
+                "gemini::gemini-4-hydrogen@reasoning-medium",
+                "gemini::gemini-4-hydrogen@reasoning-medium",
+                "gemini::gemini-4-hydrogen@reasoning-medium",
+            ),
+        )
+        self.assertEqual(
+            companion.resolve_model_tiers(
+                update_model="gemini::gemini-4-hydrogen@reasoning-medium",
+                sweep_model="gemini::gemini-4-neon@reasoning-medium",
+                code_model="gemini::gemini-4-neon@reasoning-high",
+            ),
+            (
+                "gemini::gemini-4-hydrogen@reasoning-medium",
+                "gemini::gemini-4-neon@reasoning-medium",
+                "gemini::gemini-4-neon@reasoning-high",
+            ),
+        )
+
+        # Runtime config resolves CLI flags (--update-model, --sweep-model, --code-model)
+        # and env vars (MOLTIS_GITHUB_COMPANION_{UPDATE,SWEEP,CODE}_MODEL).
+        cleared_model_env = {
+            "MOLTIS_GITHUB_COMPANION_UPDATE_MODEL": "",
+            "MOLTIS_GITHUB_COMPANION_SWEEP_MODEL": "",
+            "MOLTIS_GITHUB_COMPANION_CODE_MODEL": "",
+        }
+        with patch.dict(os.environ, cleared_model_env, clear=False):
+            parsed_default = companion.build_arg_parser().parse_args(
+                ["--agent-name", "skrye", "--code-model", "gemini::gemini-4-neon@reasoning-high"]
+            )
+            cfg_default = companion.resolve_runtime_config(parsed_default)
+            self.assertEqual(cfg_default["update_model"], "gemini::gemini-4-neon@reasoning-high")
+            self.assertEqual(cfg_default["sweep_model"], "gemini::gemini-4-neon@reasoning-high")
+            self.assertEqual(cfg_default["code_model"], "gemini::gemini-4-neon@reasoning-high")
+
+            parsed_explicit = companion.build_arg_parser().parse_args(
+                [
+                    "--agent-name",
+                    "skrye",
+                    "--update-model",
+                    "gemini::gemini-4-hydrogen@reasoning-medium",
+                    "--sweep-model",
+                    "gemini::gemini-4-neon@reasoning-medium",
+                    "--code-model",
+                    "gemini::gemini-4-neon@reasoning-high",
+                ]
+            )
+            cfg_explicit = companion.resolve_runtime_config(parsed_explicit)
+            self.assertEqual(cfg_explicit["update_model"], "gemini::gemini-4-hydrogen@reasoning-medium")
+            self.assertEqual(cfg_explicit["sweep_model"], "gemini::gemini-4-neon@reasoning-medium")
+            self.assertEqual(cfg_explicit["code_model"], "gemini::gemini-4-neon@reasoning-high")
+
+        with patch.dict(
+            os.environ,
+            {
+                "MOLTIS_GITHUB_COMPANION_UPDATE_MODEL": "openai-codex::gpt-6.2-sol@reasoning-medium",
+                "MOLTIS_GITHUB_COMPANION_SWEEP_MODEL": "openai-codex::gpt-6.2-sol@reasoning-medium",
+                "MOLTIS_GITHUB_COMPANION_CODE_MODEL": "openai-codex::gpt-6.2-astra@reasoning-medium",
+            },
+            clear=False,
+        ):
+            parsed_env = companion.build_arg_parser().parse_args(["--agent-name", "traya"])
+            cfg_env = companion.resolve_runtime_config(parsed_env)
+            self.assertEqual(cfg_env["update_model"], "openai-codex::gpt-6.2-sol@reasoning-medium")
+            self.assertEqual(cfg_env["sweep_model"], "openai-codex::gpt-6.2-sol@reasoning-medium")
+            self.assertEqual(cfg_env["code_model"], "openai-codex::gpt-6.2-astra@reasoning-medium")
 
         sent_models: list[tuple[str, str]] = []
 
@@ -3776,12 +3848,14 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
 
             return _handler
 
-        # 1) Skrye: main_model = gemini::gemini-4-neon@reasoning-medium, review_model = gemini::gemini-4-neon@reasoning-high
+        # 1) Skrye: update_model = gemini::gemini-4-hydrogen@reasoning-medium,
+        #    sweep_model = gemini::gemini-4-neon@reasoning-medium,
+        #    code_model = gemini::gemini-4-neon@reasoning-high
         notif_batches: list[str] = [
             # Cycle 1 notifications:
-            # - Issue mention (flexiondotorg) -> review_model
-            # - github-actions[bot] automated PR notification (owned by skrye: wimpysworld/WonKey#27) -> main_model
-            # - Freshener automated PR notification on wimpysworld/nix-config#25 (owned by skrye) -> main_model
+            # - Issue mention (flexiondotorg) -> code_model
+            # - github-actions[bot] automated PR notification (owned by skrye: wimpysworld/WonKey#27) -> update_model
+            # - Freshener automated PR notification on wimpysworld/nix-config#25 (owned by skrye) -> update_model
             "HTTP/2.0 200 OK\r\n"
             "Last-Modified: Tue, 14 Nov 2023 10:00:00 GMT\r\n"
             "\r\n"
@@ -3826,9 +3900,9 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
         ]
         pr_batches: list[list[dict]] = [
             # Cycle 1 open PRs:
-            # - Human PR flexiondotorg (wimpysworld/nix-config#101) -> review_model
-            # - Peer PR sith-zannah (wimpysworld/nix-config#102) -> review_model
-            # - Dependabot PR linuxmatters/website#27 owned by skrye -> main_model
+            # - Human PR flexiondotorg (wimpysworld/nix-config#101) -> code_model
+            # - Peer PR sith-zannah (wimpysworld/nix-config#102) -> code_model
+            # - Dependabot PR linuxmatters/website#27 owned by skrye -> update_model
             [
                 {
                     "number": 101,
@@ -3952,8 +4026,9 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name="skrye",
-            main_model="gemini::gemini-4-neon@reasoning-medium",
-            review_model="gemini::gemini-4-neon@reasoning-high",
+            update_model="gemini::gemini-4-hydrogen@reasoning-medium",
+            sweep_model="gemini::gemini-4-neon@reasoning-medium",
+            code_model="gemini::gemini-4-neon@reasoning-high",
             clock=self.clock,
             sleeper=self.sleeper,
         )
@@ -3973,7 +4048,7 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
         self.assertIsNotNone(cycle_skrye["sweep_dispatch"])
         self.assertEqual(cycle_skrye["sweep_dispatch"]["kind"], "weekly_sweep")
 
-        # Also run a reconcile_sweep 6 hours later on Skrye -> main_model
+        # Also run a reconcile_sweep 6 hours later on Skrye -> sweep_model
         six_hours_later_ms = tuesday_10am_ms + (6 * 3600 * 1000)
         self.current_time_ms = six_hours_later_ms
         cycle_skrye_reconcile = runner_skrye.run_cycle(now_override_ms=six_hours_later_ms)
@@ -3983,26 +4058,27 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
         self.assertEqual(
             sent_models,
             [
-                # Issue mention (flexiondotorg) -> review_model
+                # Issue mention (flexiondotorg) -> code_model
                 ("skrye:targeted", "gemini::gemini-4-neon@reasoning-high"),
-                # github-actions[bot] PR notification -> main_model
-                ("skrye:targeted", "gemini::gemini-4-neon@reasoning-medium"),
-                # Freshener PR notification -> main_model
-                ("skrye:targeted", "gemini::gemini-4-neon@reasoning-medium"),
-                # Human PR (flexiondotorg) -> review_model
+                # github-actions[bot] PR notification -> update_model
+                ("skrye:targeted", "gemini::gemini-4-hydrogen@reasoning-medium"),
+                # Freshener PR notification -> update_model
+                ("skrye:targeted", "gemini::gemini-4-hydrogen@reasoning-medium"),
+                # Human PR (flexiondotorg) -> code_model
                 ("skrye:targeted", "gemini::gemini-4-neon@reasoning-high"),
-                # Peer PR (sith-zannah) -> review_model
+                # Peer PR (sith-zannah) -> code_model
                 ("skrye:targeted", "gemini::gemini-4-neon@reasoning-high"),
-                # Dependabot PR -> main_model
-                ("skrye:targeted", "gemini::gemini-4-neon@reasoning-medium"),
-                # Weekly sweep -> main_model
+                # Dependabot PR -> update_model
+                ("skrye:targeted", "gemini::gemini-4-hydrogen@reasoning-medium"),
+                # Weekly sweep -> sweep_model
                 ("skrye:weekly_sweep", "gemini::gemini-4-neon@reasoning-medium"),
-                # 6-hour reconciliation sweep -> main_model
+                # 6-hour reconciliation sweep -> sweep_model
                 ("skrye:reconcile_sweep", "gemini::gemini-4-neon@reasoning-medium"),
             ],
         )
 
-        # 2) Traya: main_model = openai-codex::gpt-6.2-sol@reasoning-medium, review_model = openai-codex::gpt-6.2-astra@reasoning-medium
+        # 2) Traya: update_model & sweep_model = openai-codex::gpt-6.2-sol@reasoning-medium,
+        #    code_model = openai-codex::gpt-6.2-astra@reasoning-medium
         sent_models.clear()
         store_traya = self.make_store("traya")
         coord_traya = companion.LocalExecutionCoordinator(
@@ -4010,14 +4086,15 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name="traya",
-            main_model="openai-codex::gpt-6.2-sol@reasoning-medium",
-            review_model="openai-codex::gpt-6.2-astra@reasoning-medium",
+            update_model="openai-codex::gpt-6.2-sol@reasoning-medium",
+            sweep_model="openai-codex::gpt-6.2-sol@reasoning-medium",
+            code_model="openai-codex::gpt-6.2-astra@reasoning-medium",
             clock=self.clock,
             sleeper=self.sleeper,
         )
         self.httpd.send_sync_handler = make_send_sync_handler("traya")
 
-        # Human/peer PR and issue mention turns use review_model (gpt-6.2-astra@reasoning-medium)
+        # Targeted non-automated turns and community_pr_blind_review use code_model (gpt-6.2-astra@reasoning-medium)
         coord_traya.execute_dispatch(
             kind="targeted",
             is_automated_pr=False,
@@ -4034,7 +4111,16 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             subject_kind="Issue",
             trigger_reason="mention",
         )
-        # Automated PR turn (if explicitly invoked) and sweep turns use main_model (gpt-6.2-sol@reasoning-medium)
+        coord_traya.execute_dispatch(
+            kind="community_pr_blind_review",
+            is_automated_pr=False,
+            repo="wimpysworld/tailor",
+            number=404,
+            subject_kind="PullRequest",
+            head_sha="sha_404",
+            trigger_reason="community_pr_blind_review",
+        )
+        # Automated PR turn and sweep turns use gpt-6.2-sol@reasoning-medium
         coord_traya.execute_dispatch(
             kind="targeted",
             is_automated_pr=True,
@@ -4051,9 +4137,53 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             [
                 ("traya:targeted", "openai-codex::gpt-6.2-astra@reasoning-medium"),
                 ("traya:targeted", "openai-codex::gpt-6.2-astra@reasoning-medium"),
+                ("traya:community_pr_blind_review", "openai-codex::gpt-6.2-astra@reasoning-medium"),
                 ("traya:targeted", "openai-codex::gpt-6.2-sol@reasoning-medium"),
                 ("traya:reconcile_sweep", "openai-codex::gpt-6.2-sol@reasoning-medium"),
                 ("traya:weekly_sweep", "openai-codex::gpt-6.2-sol@reasoning-medium"),
+            ],
+        )
+
+        # 3) Explicit model= override overrides all three tiers
+        override_model = "custom::override-model@reasoning-high"
+        for kind, is_auto in (
+            ("targeted", True),
+            ("reconcile_sweep", False),
+            ("weekly_sweep", False),
+            ("targeted", False),
+            ("community_pr_blind_review", False),
+        ):
+            self.assertEqual(
+                coord_skrye.select_dispatch_model(kind=kind, is_automated_pr=is_auto, model=override_model),
+                override_model,
+            )
+
+        sent_models.clear()
+        coord_traya.execute_dispatch(
+            kind="targeted",
+            is_automated_pr=True,
+            model=override_model,
+            repo="wimpysworld/WonKey",
+            number=28,
+            subject_kind="PullRequest",
+            trigger_reason="mention",
+        )
+        coord_traya.execute_dispatch(kind="reconcile_sweep", model=override_model)
+        coord_traya.execute_dispatch(
+            kind="targeted",
+            is_automated_pr=False,
+            model=override_model,
+            repo="wimpysworld/nix-config",
+            number=105,
+            subject_kind="PullRequest",
+            trigger_reason="mention",
+        )
+        self.assertEqual(
+            sent_models,
+            [
+                ("traya:targeted", override_model),
+                ("traya:reconcile_sweep", override_model),
+                ("traya:targeted", override_model),
             ],
         )
 
@@ -4380,8 +4510,9 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             data_dir=self.root / "mode1b-data",
             agent_name="skrye",
             agent_display_name="Skrye",
-            main_model="gemini::gemini-4-hydrogen@reasoning-medium",
-            review_model="gemini::gemini-4-neon@reasoning-high",
+            update_model="gemini::gemini-4-hydrogen@reasoning-medium",
+            sweep_model="gemini::gemini-4-neon@reasoning-medium",
+            code_model="gemini::gemini-4-neon@reasoning-high",
             clock=self.clock,
             sleeper=lambda _: None,
         )
@@ -4407,7 +4538,7 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
         res2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self.clock() + 1_000_000)
         self.assertEqual(res2["targeted_dispatches"], [])
 
-        # Lightweight issue triage routes to mainModel
+        # Issue community_triage routes to code_model
         coord.execute_dispatch(
             kind="community_triage",
             repo="wimpysworld/tailor",
@@ -4415,7 +4546,7 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             subject_kind="Issue",
             trigger_reason="community_triage",
         )
-        self.assertEqual(sent_calls[1][0], "gemini::gemini-4-hydrogen@reasoning-medium")
+        self.assertEqual(sent_calls[1][0], "gemini::gemini-4-neon@reasoning-high")
 
     def test_team_merge_timeline_verification_and_fail_closed_guards(self) -> None:
         # 1) Pure helper verify_team_merge_timeline checks
@@ -4606,8 +4737,9 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
                 data_dir=data_dir,
                 agent_name="skrye",
                 agent_display_name="Skrye",
-                main_model="gemini::gemini-4-hydrogen@reasoning-medium",
-                review_model="gemini::gemini-4-neon@reasoning-high",
+                update_model="gemini::gemini-4-hydrogen@reasoning-medium",
+                sweep_model="gemini::gemini-4-neon@reasoning-medium",
+                code_model="gemini::gemini-4-neon@reasoning-high",
                 clock=self.clock,
                 sleeper=lambda _: None,
             )
@@ -5096,7 +5228,7 @@ class TerminalReplyNormalizationAndHtmlCommentFilterTests(GithubCompanionTestBas
             data_dir=self.data_dir,
             agent_name="skrye",
             agent_display_name="Skrye",
-            main_model="gemini::gemini-4-hydrogen@reasoning-medium",
+            code_model="gemini::gemini-4-hydrogen@reasoning-medium",
             telegram_bot_token_path=self.bot_token_file,
             telegram_allowed_users_path=self.allowed_users_file,
             telegram_api_url=self.httpd.base_url,
@@ -5817,8 +5949,9 @@ class StubLinearSyncClient:
 class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
     """End-to-end tests for WW-397 Linear-backed Community Issues intake, research, implementation, sign-off pings, and close/merge sync."""
 
-    MAIN_MODEL = "gemini::gemini-4-hydrogen@reasoning-medium"
-    REVIEW_MODEL = "gemini::gemini-4-neon@reasoning-high"
+    UPDATE_MODEL = "gemini::gemini-4-hydrogen@reasoning-medium"
+    SWEEP_MODEL = "gemini::gemini-4-neon@reasoning-medium"
+    CODE_MODEL = "gemini::gemini-4-neon@reasoning-high"
 
     @staticmethod
     def _utc_ms(year: int, month: int, day: int, hour: int, minute: int = 0) -> int:
@@ -5983,8 +6116,9 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name=agent_name,
-            main_model=self.MAIN_MODEL,
-            review_model=self.REVIEW_MODEL,
+            update_model=self.UPDATE_MODEL,
+            sweep_model=self.SWEEP_MODEL,
+            code_model=self.CODE_MODEL,
             telegram_client=tg_client,
             completion_timeout_ms=1_000,
             poll_interval_ms=20,
@@ -6180,7 +6314,7 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
             self.assertEqual(dispatch["kind"], "linear_triage_research")
             self.assertTrue(dispatch["task_succeeded"])
             self.assertFalse(dispatch["telegram_forwarded"])
-            self.assertEqual(rpc_call["model"], self.REVIEW_MODEL)
+            self.assertEqual(rpc_call["model"], self.CODE_MODEL)
             meta = rpc_call["meta"]
             assert isinstance(meta, dict)
             self.assertEqual(meta["dispatch_kind"], "linear_triage_research")
@@ -6195,7 +6329,7 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
         res2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot2_ms)
         self.assertEqual(len(res2["targeted_dispatches"]), 1)
         self.assertEqual(rpc_calls[2]["meta"]["linear_issue_id"], seeded_eligible[2]["id"])  # type: ignore[index]
-        self.assertEqual(rpc_calls[2]["model"], self.REVIEW_MODEL)
+        self.assertEqual(rpc_calls[2]["model"], self.CODE_MODEL)
         self.assertFalse(res2["targeted_dispatches"][0]["telegram_forwarded"])
         self.assertEqual(self.httpd.telegram_requests, [])
 
@@ -6336,7 +6470,7 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
         self.assertEqual(len(res1["targeted_dispatches"]), 1)
         self.assertEqual(res1["targeted_dispatches"][0]["kind"], "linear_todo_implement")
         self.assertTrue(res1["targeted_dispatches"][0]["task_succeeded"])
-        self.assertEqual(rpc_calls[0]["model"], self.REVIEW_MODEL)
+        self.assertEqual(rpc_calls[0]["model"], self.CODE_MODEL)
         # Linear moved to In Progress strictly before RPC dispatch
         self.assertEqual(observed_states_at_rpc[lin1_id], "In Progress")
         idx_claim = event_log.index(("linear_update", lin1_id, "In Progress"))
@@ -7595,8 +7729,9 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
 class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
     """End-to-end tests for WW-398 Lane A blind two-family PR review, Lane B briefs, needs-decision pings, and traya isolation."""
 
-    MAIN_MODEL = "gemini::gemini-4-hydrogen@reasoning-medium"
-    REVIEW_MODEL = "gemini::gemini-4-neon@reasoning-high"
+    UPDATE_MODEL = "gemini::gemini-4-hydrogen@reasoning-medium"
+    SWEEP_MODEL = "gemini::gemini-4-neon@reasoning-medium"
+    CODE_MODEL = "gemini::gemini-4-neon@reasoning-high"
 
     def setUp(self) -> None:
         super().setUp()
@@ -7806,8 +7941,9 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name=norm_agent,
-            main_model=self.MAIN_MODEL,
-            review_model=self.REVIEW_MODEL,
+            update_model=self.UPDATE_MODEL,
+            sweep_model=self.SWEEP_MODEL,
+            code_model=self.CODE_MODEL,
             telegram_client=tg_client,
             completion_timeout_ms=1_000,
             poll_interval_ms=20,
@@ -7919,7 +8055,7 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
         res_s1 = skrye_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0)
         self.assertEqual(len(skrye_rpc), 2)
         self.assertEqual([c["meta"]["dispatch_kind"] for c in skrye_rpc], ["community_pr_blind_review", "community_pr_blind_review"])  # type: ignore[index]
-        self.assertEqual([c["model"] for c in skrye_rpc], [self.REVIEW_MODEL, self.REVIEW_MODEL])
+        self.assertEqual([c["model"] for c in skrye_rpc], [self.CODE_MODEL, self.CODE_MODEL])
         self.assertEqual(self.httpd.telegram_requests, [])
         self.assertEqual(res_s1["needs_decision_notifications"], [])
 
@@ -12241,8 +12377,9 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
 class LinearOperatorGuidanceAndMentionWakeTests(GithubCompanionTestBase):
     """Tests for two-mode Linear operator guidance (Mode A passive + Lane A bypass) and @mention wake (Mode B)."""
 
-    MAIN_MODEL = "gemini::gemini-4-hydrogen@reasoning-medium"
-    REVIEW_MODEL = "gemini::gemini-4-neon@reasoning-high"
+    UPDATE_MODEL = "gemini::gemini-4-hydrogen@reasoning-medium"
+    SWEEP_MODEL = "gemini::gemini-4-neon@reasoning-medium"
+    CODE_MODEL = "gemini::gemini-4-neon@reasoning-high"
 
     @staticmethod
     def _admin_comment(
@@ -12357,8 +12494,9 @@ class LinearOperatorGuidanceAndMentionWakeTests(GithubCompanionTestBase):
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name=agent_name,
-            main_model=self.MAIN_MODEL,
-            review_model=self.REVIEW_MODEL,
+            update_model=self.UPDATE_MODEL,
+            sweep_model=self.SWEEP_MODEL,
+            code_model=self.CODE_MODEL,
             telegram_client=tg_client,
             linear_client=linear_client,
             completion_timeout_ms=1_000,
@@ -12821,7 +12959,7 @@ class HealthAlertsTests(GithubCompanionTestBase):
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name=agent_name,
-            main_model="gemini::gemini-4-hydrogen",
+            code_model="gemini::gemini-4-hydrogen",
             telegram_client=tg_client,
             clock=self.clock,
             sleeper=self.sleeper,
@@ -13033,7 +13171,7 @@ class OperatorDigestTests(GithubCompanionTestBase):
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name=agent_name,
-            main_model="gemini::gemini-4-hydrogen",
+            code_model="gemini::gemini-4-hydrogen",
             telegram_client=tg_client,
             linear_client=linear_client,
             clock=self.clock,
@@ -13410,7 +13548,7 @@ class PrIssueLinkingAndPauseTests(GithubCompanionTestBase):
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name="skrye",
-            main_model="gemini::gemini-4-hydrogen",
+            code_model="gemini::gemini-4-hydrogen",
             telegram_client=tg_client,
             linear_client=linear_stub,
             completion_timeout_ms=1_000,
@@ -13835,7 +13973,7 @@ class SecurityPatchReleaseGateTests(GithubCompanionTestBase):
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name=owner_agent,
-            main_model="gemini::gemini-4-hydrogen",
+            code_model="gemini::gemini-4-hydrogen",
             telegram_client=tg_client,
             linear_client=linear_stub,
             clock=self.clock,
@@ -14124,7 +14262,7 @@ class SecurityPatchReleaseGateTests(GithubCompanionTestBase):
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name=owner_agent,
-            main_model="gemini::gemini-4-hydrogen",
+            code_model="gemini::gemini-4-hydrogen",
             telegram_client=tg_client,
             linear_client=linear_stub,
             clock=self.clock,
@@ -14517,7 +14655,7 @@ class SecurityPatchReleaseGateTests(GithubCompanionTestBase):
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name="skrye",
-            main_model="gemini::gemini-4-hydrogen",
+            code_model="gemini::gemini-4-hydrogen",
             telegram_client=tg_client,
             clock=self.clock,
             sleeper=self.sleeper,
@@ -14655,7 +14793,7 @@ class InReviewStatusLabelsAndAllowMergeTests(GithubCompanionTestBase):
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name=agent_name,
-            main_model="gemini::gemini-4-hydrogen",
+            code_model="gemini::gemini-4-hydrogen",
             telegram_client=tg_client,
             clock=self.clock,
             sleeper=self.sleeper,
@@ -15768,8 +15906,9 @@ class InReviewStatusLabelsAndAllowMergeTests(GithubCompanionTestBase):
 class UnifiedLlmRateControlsAndPriorityOrderTests(GithubCompanionTestBase):
     """Unified 4-option LLM rate controls, staggered poll intervals, shared priority budget, and deterministic sync."""
 
-    MAIN_MODEL = LinearCommunityIssuesPipelineTests.MAIN_MODEL
-    REVIEW_MODEL = LinearCommunityIssuesPipelineTests.REVIEW_MODEL
+    UPDATE_MODEL = LinearCommunityIssuesPipelineTests.UPDATE_MODEL
+    SWEEP_MODEL = LinearCommunityIssuesPipelineTests.SWEEP_MODEL
+    CODE_MODEL = LinearCommunityIssuesPipelineTests.CODE_MODEL
     _utc_ms = staticmethod(LinearCommunityIssuesPipelineTests._utc_ms)
     _owned_numbers = staticmethod(LinearCommunityIssuesPipelineTests._owned_numbers)
     _graphql_issue_node = staticmethod(LinearCommunityIssuesPipelineTests._graphql_issue_node)
@@ -16364,6 +16503,1004 @@ class UnifiedLlmRateControlsAndPriorityOrderTests(GithubCompanionTestBase):
         override_slept_ms = poller_override.wait_until_due(now_override_ms=persisted_next_ms - 150_000)
         self.assertEqual(override_chunks, [60.0, 60.0, 30.0])
         self.assertEqual(override_slept_ms, 150_000)
+
+
+class ShadowEvalIntegrationTests(GithubCompanionTestBase):
+    """Integration tests for shadow LLM snapshot capture, lock-free enqueue, fault isolation, and config/CLI wiring."""
+
+    def _make_snapshot_gh_client(
+        self,
+        *,
+        on_call: Callable[[list[str]], None] | None = None,
+    ) -> companion.GhApiSafeClient:
+        def fake_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            self.gh_commands.append(list(cmd))
+            if on_call is not None:
+                on_call(list(cmd))
+            if cmd[0] == "gh-api-safe" and len(cmd) > 1 and cmd[1] == "graphql":
+                payload = {
+                    "data": {
+                        "repository": {
+                            "isArchived": False,
+                            "pullRequest": {
+                                "title": "build(deps): bump actions/checkout from 4 to 5",
+                                "url": "https://github.com/wimpysworld/wonkey/pull/99",
+                                "state": "OPEN",
+                                "isDraft": False,
+                                "author": {"__typename": "Bot", "login": "dependabot"},
+                                "headRefName": "dependabot/github_actions/actions/checkout-5",
+                                "headRefOid": "abcdef123456",
+                                "baseRefName": "main",
+                                "mergeable": "MERGEABLE",
+                                "mergeStateStatus": "CLEAN",
+                                "reviewDecision": "REVIEW_REQUIRED",
+                                "additions": 2,
+                                "deletions": 2,
+                                "changedFiles": 1,
+                                "labels": {"nodes": [{"name": "dependencies"}]},
+                                "commits": {
+                                    "nodes": [
+                                        {
+                                            "commit": {
+                                                "statusCheckRollup": {
+                                                    "state": "SUCCESS",
+                                                    "contexts": {
+                                                        "nodes": [
+                                                            {
+                                                                "__typename": "CheckRun",
+                                                                "name": "build",
+                                                                "status": "COMPLETED",
+                                                                "conclusion": "SUCCESS",
+                                                            }
+                                                        ]
+                                                    },
+                                                }
+                                            }
+                                        }
+                                    ]
+                                },
+                                "reviews": {"nodes": []},
+                                "reviewThreads": {"nodes": []},
+                            },
+                        }
+                    }
+                }
+                return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(payload), stderr="")
+            if cmd[0] == "gh" and len(cmd) > 2 and cmd[1] == "pr" and cmd[2] == "diff":
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout="diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml\n-uses: actions/checkout@v4\n+uses: actions/checkout@v5\n",
+                    stderr="",
+                )
+            if cmd[0] == "gh-api-safe" and len(cmd) > 1 and "tailor-vendor-hash.yml" in cmd[1]:
+                return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="HTTP 404 Not Found")
+            if cmd[0] == "gh-api-safe" and len(cmd) > 1 and "/dependabot/alerts" in cmd[1]:
+                return subprocess.CompletedProcess(cmd, 0, stdout="[]", stderr="")
+            if cmd[0] == "gh-api-safe" and len(cmd) > 1 and "/actions/runs" in cmd[1]:
+                return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"workflow_runs": []}), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout="{}", stderr="")
+
+        return companion.GhApiSafeClient(runner=fake_runner)
+
+    def _install_merge_send_sync(
+        self,
+        *,
+        agent_name: str = "skrye",
+        timeline: list[str] | None = None,
+        reply_text: str = "🏁 https://github.com/wimpysworld/wonkey/pull/99 - Merged Dependabot update",
+        command: str = "gh-bot-merge https://github.com/wimpysworld/wonkey/pull/99",
+    ) -> None:
+        def handler(params: dict) -> dict:
+            if timeline is not None:
+                timeline.append("chat_send_sync")
+            msg = str(params.get("message") or "")
+            disp_id = [line.split(": ", 1)[1] for line in msg.splitlines() if line.startswith("dispatch_id: ")][0]
+            self.write_history(
+                companion.DEFAULT_GH_SESSION_KEY,
+                [
+                    {"role": "user", "dispatch_id": disp_id, "content": msg},
+                    {
+                        "role": "assistant",
+                        "tool_calls": [
+                            {
+                                "id": f"call-{disp_id}",
+                                "function": {
+                                    "name": "exec",
+                                    "arguments": json.dumps({"command": command}),
+                                },
+                            }
+                        ],
+                    },
+                    {"role": "assistant", "content": reply_text, "stop_reason": "end_turn"},
+                ],
+                agent_name=agent_name,
+            )
+            return {"ok": True, "result": {"text": reply_text}}
+
+        self.httpd.send_sync_handler = handler
+
+    def test_shadow_capture_and_enqueue_scoped_to_targeted_automated_prs(self) -> None:
+        store = self.make_store("skrye")
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        summary_path = self.root / "reports" / "summary.json"
+        timeline: list[str] = []
+        llm_calls: list[dict[str, object]] = []
+
+        def fake_llm_caller(**kwargs: object) -> dict[str, object]:
+            timeline.append("shadow_llm")
+            llm_calls.append(dict(kwargs))
+            return {
+                "raw_content": json.dumps({
+                    "action": "approve_and_merge",
+                    "advisory_safe": True,
+                    "ci_cause": "none",
+                    "escalate": False,
+                    "reason": "Clean automated dependency update with green CI.",
+                }),
+                "ttft_ms": 120,
+                "total_ms": 480,
+                "prompt_tokens": 350,
+                "completion_tokens": 45,
+            }
+
+        gh_client = self._make_snapshot_gh_client(
+            on_call=lambda cmd: timeline.append("capture_gh") if "capture_gh" not in timeline else None
+        )
+        worker = shadow_eval.ShadowEvalWorker(
+            state_dir=store.state_dir,
+            shadow_model="inkling-2-mini",
+            summary_path=summary_path,
+            synchronous=True,
+            llm_caller=fake_llm_caller,
+            now_ms_fn=self.clock,
+        )
+        self.addCleanup(worker.close)
+        self._install_merge_send_sync(agent_name="skrye", timeline=timeline)
+
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="skrye",
+            update_model="gemini::flash",
+            sweep_model="gemini::pro",
+            code_model="gemini::pro",
+            gh_client=gh_client,
+            shadow_worker=worker,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+
+        # 1) Targeted automated PR on default update_model -> MUST capture BEFORE chat_send_sync and enqueue AFTER
+        res_auto = coord.execute_dispatch(
+            kind="targeted",
+            is_automated_pr=True,
+            repo="wimpysworld/wonkey",
+            number=99,
+            head_sha="abcdef123456",
+            updated_at="2026-11-27T01:00:00Z",
+            trigger_reason="unrequested_pr",
+        )
+        self.assertTrue(res_auto["task_succeeded"])
+        self.assertEqual(timeline, ["capture_gh", "chat_send_sync", "shadow_llm"])
+        self.assertEqual(len(llm_calls), 1)
+        self.assertEqual(llm_calls[0]["model"], "inkling-2-mini")
+        self.assertEqual(worker.processed_count, 1)
+
+        # 2) Non-automated targeted PR, explicit model override, sweeps, and community_triage -> MUST NOT shadow
+        gh_calls_before = len(self.gh_commands)
+        for dispatch_kwargs in (
+            {
+                "kind": "targeted",
+                "is_automated_pr": False,
+                "repo": "wimpysworld/wonkey",
+                "number": 100,
+                "head_sha": "111111111111",
+                "trigger_reason": "review_requested",
+            },
+            {
+                "kind": "targeted",
+                "is_automated_pr": True,
+                "model": "gemini::manual-override",
+                "repo": "wimpysworld/wonkey",
+                "number": 101,
+                "head_sha": "222222222222",
+                "trigger_reason": "unrequested_pr",
+            },
+            {"kind": "reconcile_sweep"},
+            {"kind": "weekly_sweep", "sweep_date": "2026-11-24"},
+            {
+                "kind": "community_triage",
+                "repo": "wimpysworld/wonkey",
+                "number": 102,
+                "head_sha": "333333333333",
+                "trigger_reason": "community_triage",
+            },
+        ):
+            res = coord.execute_dispatch(**dispatch_kwargs)
+            self.assertTrue(res["task_succeeded"])
+
+        self.assertEqual(len(self.gh_commands), gh_calls_before)
+        self.assertEqual(len(llm_calls), 1)
+        self.assertEqual(worker.processed_count, 1)
+
+    def test_shadow_worker_runs_after_coordinator_lock_released(self) -> None:
+        store = self.make_store("zannah")
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        summary_path = self.root / "reports" / "zannah-summary.json"
+        lock_file = store.state_dir / companion.COORDINATOR_LOCK_FILENAME
+
+        lock_held_during_capture: list[bool] = []
+        lock_unlocked_during_shadow: list[bool] = []
+
+        def probe_coordinator_lock_held() -> bool:
+            fd = os.open(str(lock_file), os.O_RDWR | os.O_NOFOLLOW)
+            try:
+                try:
+                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    return True
+                else:
+                    fcntl.flock(fd, fcntl.LOCK_UN)
+                    return False
+            finally:
+                os.close(fd)
+
+        def on_gh_call(_cmd: list[str]) -> None:
+            if not lock_held_during_capture:
+                lock_held_during_capture.append(probe_coordinator_lock_held())
+
+        def fake_llm_caller(**_kwargs: object) -> dict[str, object]:
+            # Non-blocking flock MUST succeed because coordinator.lock was released before enqueue.
+            lock_unlocked_during_shadow.append(not probe_coordinator_lock_held())
+            return {
+                "raw_content": json.dumps({
+                    "action": "approve_and_merge",
+                    "advisory_safe": True,
+                    "ci_cause": "none",
+                    "escalate": False,
+                    "reason": "Automated update verified clean.",
+                }),
+                "ttft_ms": 95,
+                "total_ms": 320,
+                "prompt_tokens": 300,
+                "completion_tokens": 40,
+            }
+
+        gh_client = self._make_snapshot_gh_client(on_call=on_gh_call)
+        worker = shadow_eval.ShadowEvalWorker(
+            state_dir=store.state_dir,
+            shadow_model="qwen3.8-27b",
+            summary_path=summary_path,
+            synchronous=False,
+            llm_caller=fake_llm_caller,
+            now_ms_fn=self.clock,
+        )
+        self.addCleanup(worker.close)
+        self._install_merge_send_sync(agent_name="zannah")
+
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="zannah",
+            update_model="gemini::flash",
+            sweep_model="gemini::pro",
+            code_model="gemini::pro",
+            gh_client=gh_client,
+            shadow_worker=worker,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+
+        res = coord.execute_dispatch(
+            kind="targeted",
+            is_automated_pr=True,
+            repo="wimpysworld/wonkey",
+            number=99,
+            head_sha="abcdef123456",
+            updated_at="2026-11-27T01:05:00Z",
+            trigger_reason="unrequested_pr",
+        )
+        self.assertTrue(res["task_succeeded"])
+        self.assertTrue(worker.drain(timeout=5.0))
+        self.assertEqual(lock_held_during_capture, [True])
+        self.assertEqual(lock_unlocked_during_shadow, [True])
+
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        self.assertEqual(summary["agent"], "zannah")
+        self.assertEqual(summary["shadow_model"], "qwen3.8-27b")
+        self.assertEqual(summary["totals"]["total"], 1)
+        self.assertEqual(summary["totals"]["match"], 1)
+
+    def test_shadow_llm_failure_and_timeout_never_affect_dispatch_telegram_or_watermark(self) -> None:
+        store = self.make_store("skrye")
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        telegram = self.make_telegram_client()
+        summary_path = self.root / "reports" / "failure-summary.json"
+        gh_client = self._make_snapshot_gh_client()
+        self._install_merge_send_sync(agent_name="skrye")
+
+        errors_to_raise: list[Exception] = [
+            TimeoutError("llama-swap request timed out"),
+            RuntimeError("llama-swap connection refused"),
+        ]
+
+        def failing_llm_caller(**_kwargs: object) -> dict[str, object]:
+            raise errors_to_raise.pop(0)
+
+        worker = shadow_eval.ShadowEvalWorker(
+            state_dir=store.state_dir,
+            shadow_model="inkling-2-mini",
+            summary_path=summary_path,
+            synchronous=False,
+            llm_caller=failing_llm_caller,
+            now_ms_fn=self.clock,
+            logger=lambda _msg: None,
+        )
+        self.addCleanup(worker.close)
+
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="skrye",
+            update_model="gemini::flash",
+            sweep_model="gemini::pro",
+            code_model="gemini::pro",
+            telegram_client=telegram,
+            gh_client=gh_client,
+            shadow_worker=worker,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+
+        for idx, sha in enumerate(("sha_timeout_01", "sha_refused_02"), start=1):
+            pr_num = 190 + idx
+            res = coord.execute_dispatch(
+                kind="targeted",
+                is_automated_pr=True,
+                repo="wimpysworld/wonkey",
+                number=pr_num,
+                head_sha=sha,
+                updated_at=f"2026-11-27T02:0{idx}:00Z",
+                trigger_reason="unrequested_pr",
+            )
+            self.assertEqual(res["status"], "completed")
+            self.assertTrue(res["task_succeeded"])
+            self.assertTrue(res["telegram_forwarded"])
+            wm = store.get_thread_state(f"wimpysworld/wonkey#{pr_num}")
+            assert wm is not None
+            self.assertEqual(wm["handled_head_sha"], sha)
+            self.assertEqual(wm["handled_updated_at"], f"2026-11-27T02:0{idx}:00Z")
+
+        self.assertTrue(worker.drain(timeout=5.0))
+        self.assertGreaterEqual(len(self.httpd.telegram_requests), 2)
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        self.assertEqual(summary["totals"]["total"], 2)
+        self.assertEqual(summary["totals"]["error"], 2)
+
+        # Even if capture_pr_snapshot or worker.enqueue raises unexpectedly, live dispatch still succeeds.
+        stderr_buf = io.StringIO()
+        with (
+            patch.object(shadow_eval, "capture_pr_snapshot", side_effect=RuntimeError("boom capture")),
+            contextlib.redirect_stderr(stderr_buf),
+        ):
+            res_cap_err = coord.execute_dispatch(
+                kind="targeted",
+                is_automated_pr=True,
+                repo="wimpysworld/wonkey",
+                number=193,
+                head_sha="sha_capture_err_03",
+                updated_at="2026-11-27T02:03:00Z",
+                trigger_reason="unrequested_pr",
+            )
+        self.assertTrue(res_cap_err["task_succeeded"])
+        self.assertTrue(res_cap_err["telegram_forwarded"])
+        wm_cap = store.get_thread_state("wimpysworld/wonkey#193")
+        assert wm_cap is not None
+        self.assertEqual(wm_cap["handled_head_sha"], "sha_capture_err_03")
+        self.assertIn("capture warning", stderr_buf.getvalue())
+
+    def test_resolve_runtime_config_shadow_defaults_and_overrides(self) -> None:
+        shadow_env_keys = (
+            "MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_ENABLED",
+            "MOLTIS_GITHUB_COMPANION_SHADOW_MODEL",
+            "MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_MODEL",
+            "MOLTIS_GITHUB_COMPANION_SHADOW_API_URL",
+            "MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_API_URL",
+            "MOLTIS_GITHUB_COMPANION_SHADOW_SUMMARY_PATH",
+            "MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_SUMMARY_PATH",
+            "MOLTIS_GITHUB_COMPANION_SHADOW_TIMEOUT_SECS",
+            "MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_TIMEOUT_SECS",
+        )
+        clean_env = {k: v for k, v in os.environ.items() if k not in shadow_env_keys}
+
+        with patch.dict(os.environ, clean_env, clear=True):
+            skrye_cfg = companion.resolve_runtime_config(companion.build_arg_parser().parse_args(["--agent-name", "skrye"]))
+            zannah_cfg = companion.resolve_runtime_config(companion.build_arg_parser().parse_args(["--agent-name", "zannah"]))
+            traya_cfg = companion.resolve_runtime_config(companion.build_arg_parser().parse_args(["--agent-name", "traya"]))
+
+            self.assertTrue(skrye_cfg["shadow_eval_enabled"])
+            self.assertEqual(skrye_cfg["shadow_model"], "inkling-2-mini")
+            self.assertEqual(skrye_cfg["shadow_api_url"], shadow_eval.DEFAULT_SHADOW_API_URL)
+            self.assertEqual(skrye_cfg["shadow_timeout_secs"], shadow_eval.DEFAULT_SHADOW_TIMEOUT_SECS)
+
+            self.assertTrue(zannah_cfg["shadow_eval_enabled"])
+            self.assertEqual(zannah_cfg["shadow_model"], "qwen3.8-27b")
+
+            self.assertFalse(traya_cfg["shadow_eval_enabled"])
+            self.assertEqual(traya_cfg["shadow_model"], "")
+
+            # CLI overrides work cleanly
+            cli_cfg = companion.resolve_runtime_config(
+                companion.build_arg_parser().parse_args([
+                    "--agent-name", "skrye",
+                    "--shadow-eval-enabled", "false",
+                    "--shadow-model", "custom-local-model",
+                    "--shadow-api-url", "http://127.0.0.1:9090/v1/chat/completions",
+                    "--shadow-summary-path", str(self.root / "custom-summary.json"),
+                    "--shadow-timeout-secs", "45",
+                    "--replay-shadow", str(self.root / "in.jsonl"),
+                    "--shadow-output", str(self.root / "out.jsonl"),
+                ])
+            )
+            self.assertFalse(cli_cfg["shadow_eval_enabled"])
+            self.assertEqual(cli_cfg["shadow_model"], "custom-local-model")
+            self.assertEqual(cli_cfg["shadow_api_url"], "http://127.0.0.1:9090/v1/chat/completions")
+            self.assertEqual(cli_cfg["shadow_summary_path"], self.root / "custom-summary.json")
+            self.assertEqual(cli_cfg["shadow_timeout_secs"], 45.0)
+            self.assertEqual(cli_cfg["replay_shadow"], str(self.root / "in.jsonl"))
+            self.assertEqual(cli_cfg["shadow_output"], str(self.root / "out.jsonl"))
+
+        # Companion env var names override defaults
+        with patch.dict(
+            os.environ,
+            {
+                **clean_env,
+                "MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_ENABLED": "true",
+                "MOLTIS_GITHUB_COMPANION_SHADOW_MODEL": "qwen3.8-27b",
+                "MOLTIS_GITHUB_COMPANION_SHADOW_API_URL": "http://localhost:8081/v1/chat/completions",
+                "MOLTIS_GITHUB_COMPANION_SHADOW_SUMMARY_PATH": str(self.root / "env-summary.json"),
+                "MOLTIS_GITHUB_COMPANION_SHADOW_TIMEOUT_SECS": "75",
+            },
+            clear=True,
+        ):
+            traya_env_cfg = companion.resolve_runtime_config(
+                companion.build_arg_parser().parse_args(["--agent-name", "traya"])
+            )
+            self.assertTrue(traya_env_cfg["shadow_eval_enabled"])
+            self.assertEqual(traya_env_cfg["shadow_model"], "qwen3.8-27b")
+            self.assertEqual(traya_env_cfg["shadow_api_url"], "http://localhost:8081/v1/chat/completions")
+            self.assertEqual(traya_env_cfg["shadow_summary_path"], self.root / "env-summary.json")
+            self.assertEqual(traya_env_cfg["shadow_timeout_secs"], 75.0)
+
+    def test_cli_replay_shadow_mode_runs_without_agent_or_credentials(self) -> None:
+        in_dir = self.root / "replay-in"
+        in_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        in_jsonl = in_dir / "shadow-eval.jsonl"
+        out_jsonl = in_dir / "replayed.jsonl"
+        summary_path = self.root / "replay-summary.json"
+
+        source_rec = {
+            "schema_version": shadow_eval.SHADOW_SCHEMA_VERSION,
+            "timestamp_ms": 1_700_000_000_000,
+            "dispatch_id": "ghd-skrye-replay1",
+            "agent": "skrye",
+            "gemini_model": "gemini::flash",
+            "gemini_action": "approve_and_merge",
+            "gemini_commands": ["gh-bot-merge https://github.com/wimpysworld/wonkey/pull/99"],
+            "gemini_reply_excerpt": "Merged",
+            "snapshot": {
+                "schema_version": shadow_eval.SHADOW_SCHEMA_VERSION,
+                "agent": "skrye",
+                "repo": "wimpysworld/wonkey",
+                "number": 99,
+                "pr_url": "https://github.com/wimpysworld/wonkey/pull/99",
+                "head_sha": "abcdef123456",
+                "trigger_reason": "unrequested_pr",
+                "is_archived": False,
+                "pr": {
+                    "title": "build(deps): bump actions/checkout from 4 to 5",
+                    "url": "https://github.com/wimpysworld/wonkey/pull/99",
+                    "state": "OPEN",
+                    "is_draft": False,
+                    "author": "dependabot[bot]",
+                    "head_ref": "dependabot/github_actions/actions/checkout-5",
+                    "head_sha": "abcdef123456",
+                    "base_ref": "main",
+                    "mergeable": "MERGEABLE",
+                    "merge_state_status": "CLEAN",
+                    "review_decision": "REVIEW_REQUIRED",
+                    "additions": 2,
+                    "deletions": 2,
+                    "changed_files": 1,
+                    "labels": ["dependencies"],
+                    "ci_state": "SUCCESS",
+                    "status_checks": [],
+                    "reviews": [],
+                    "review_threads": [],
+                    "unresolved_thread_count": 0,
+                },
+                "diff": "",
+                "diff_truncated": False,
+                "diff_total_chars": 0,
+                "has_tailor_vendor_hash_workflow": False,
+                "dependabot_alerts": [],
+                "alerts_skipped_reason": None,
+                "workflow_runs": [],
+                "failed_run_logs": [],
+                "capture_errors": [],
+            },
+        }
+        in_jsonl.write_text(json.dumps(source_rec) + "\n", encoding="utf-8")
+        in_jsonl.chmod(0o600)
+
+        def fake_call_shadow_llm(**_kwargs: object) -> dict[str, object]:
+            return {
+                "raw_content": json.dumps({
+                    "action": "approve_and_merge",
+                    "advisory_safe": True,
+                    "ci_cause": "none",
+                    "escalate": False,
+                    "reason": "Replay verified clean.",
+                }),
+                "ttft_ms": 80,
+                "total_ms": 210,
+                "prompt_tokens": 250,
+                "completion_tokens": 35,
+            }
+
+        stdout_buf = io.StringIO()
+        with (
+            patch.object(shadow_eval, "call_shadow_llm", side_effect=fake_call_shadow_llm),
+            contextlib.redirect_stdout(stdout_buf),
+        ):
+            rc = companion.main([
+                "--replay-shadow", str(in_jsonl),
+                "--shadow-model", "qwen3.8-27b",
+                "--shadow-output", str(out_jsonl),
+                "--shadow-summary-path", str(summary_path),
+            ])
+
+        self.assertEqual(rc, 0)
+        printed = json.loads(stdout_buf.getvalue().strip())
+        self.assertEqual(printed["shadow_model"], "qwen3.8-27b")
+        self.assertEqual(printed["totals"]["total"], 1)
+        self.assertEqual(printed["totals"]["match"], 1)
+        self.assertTrue(out_jsonl.exists())
+        self.assertTrue(summary_path.exists())
+
+    def test_shadow_startup_ensures_empty_index_html_only_when_enabled(self) -> None:
+        enabled_reports = self.root / "startup-enabled-reports"
+        enabled_summary = enabled_reports / "summary.json"
+        enabled_index = enabled_reports / "index.html"
+        enabled_state = self.state_dir / "startup-skrye"
+        seen_callbacks: list[object] = []
+
+        def fake_run_cycle(runner_self: companion.GithubCompanionRunner) -> dict[str, str]:
+            worker = runner_self.execution_coordinator.shadow_worker
+            seen_callbacks.append(getattr(worker, "_on_record_written", None))
+            return {"status": "ok"}
+
+        with (
+            patch.object(companion.linear_sync.LinearSyncClient, "from_env", return_value=None),
+            patch.object(companion.NotificationPoller, "wait_until_due", return_value=0),
+            patch.object(companion.GithubCompanionRunner, "run_cycle", fake_run_cycle),
+        ):
+            rc_enabled = companion.main([
+                "--agent-name", "skrye",
+                "--update-model", "gemini::gemini-4-hydrogen@reasoning-medium",
+                "--data-dir", str(self.data_dir),
+                "--state-dir", str(enabled_state),
+                "--shadow-eval-enabled", "true",
+                "--shadow-model", "inkling-2-mini",
+                "--shadow-summary-path", str(enabled_summary),
+                "--once",
+            ])
+
+        self.assertEqual(rc_enabled, 0)
+        self.assertTrue(enabled_index.is_file())
+        self.assertEqual(stat.S_IMODE(enabled_index.stat().st_mode), 0o644)
+        html_text = enabled_index.read_text(encoding="utf-8")
+        self.assertIn("<!DOCTYPE html>", html_text)
+        self.assertIn("skrye", html_text)
+        self.assertIn("inkling-2-mini", html_text)
+        self.assertIn("0 runs", html_text)
+        self.assertEqual(len(seen_callbacks), 1)
+        self.assertTrue(callable(seen_callbacks[0]))
+
+        # Existing regular index.html must not be clobbered on restart.
+        sentinel_html = "<!DOCTYPE html><html><body>keep-existing-index</body></html>\n"
+        enabled_index.write_text(sentinel_html, encoding="utf-8")
+        with (
+            patch.object(companion.linear_sync.LinearSyncClient, "from_env", return_value=None),
+            patch.object(companion.NotificationPoller, "wait_until_due", return_value=0),
+            patch.object(companion.GithubCompanionRunner, "run_cycle", return_value={"status": "ok"}),
+        ):
+            rc_restart = companion.main([
+                "--agent-name", "skrye",
+                "--update-model", "gemini::gemini-4-hydrogen@reasoning-medium",
+                "--data-dir", str(self.data_dir),
+                "--state-dir", str(enabled_state),
+                "--shadow-eval-enabled", "true",
+                "--shadow-model", "inkling-2-mini",
+                "--shadow-summary-path", str(enabled_summary),
+                "--once",
+            ])
+        self.assertEqual(rc_restart, 0)
+        self.assertEqual(enabled_index.read_text(encoding="utf-8"), sentinel_html)
+
+        # Disabled hosts (traya default and explicit --shadow-eval-enabled false) must omit index.html.
+        for label, extra_args in (
+            ("traya-default", ["--agent-name", "traya"]),
+            ("skrye-disabled", ["--agent-name", "skrye", "--shadow-eval-enabled", "false"]),
+        ):
+            disabled_reports = self.root / f"startup-disabled-{label}"
+            disabled_summary = disabled_reports / "summary.json"
+            disabled_index = disabled_reports / "index.html"
+            with (
+                patch.object(companion.linear_sync.LinearSyncClient, "from_env", return_value=None),
+                patch.object(companion.NotificationPoller, "wait_until_due", return_value=0),
+                patch.object(companion.GithubCompanionRunner, "run_cycle", return_value={"status": "ok"}),
+            ):
+                rc_disabled = companion.main([
+                    *extra_args,
+                    "--data-dir", str(self.data_dir),
+                    "--state-dir", str(self.state_dir / f"startup-{label}"),
+                    "--shadow-summary-path", str(disabled_summary),
+                    "--once",
+                ])
+            self.assertEqual(rc_disabled, 0)
+            self.assertFalse(disabled_index.exists(), f"index.html should not exist for {label}")
+
+    def test_shadow_worker_on_record_written_atomically_updates_index_html(self) -> None:
+        store = self.make_store("skrye")
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        report_dir = self.root / "live-html-reports"
+        summary_path = report_dir / "summary.json"
+        index_path = report_dir / "index.html"
+
+        cfg = {
+            "agent_name": "skrye",
+            "shadow_model": "inkling-2-mini",
+            "update_model": "gemini::gemini-4-hydrogen@reasoning-medium",
+            "state_dir": store.state_dir,
+            "shadow_summary_path": summary_path,
+        }
+        companion._ensure_shadow_report_index(cfg)
+        self.assertTrue(index_path.is_file())
+        self.assertIn("0 runs", index_path.read_text(encoding="utf-8"))
+
+        hook_invocations: list[tuple[str, int]] = []
+
+        def on_written(record: dict[str, object], summary: dict[str, object] | None) -> None:
+            total = int((summary or {}).get("totals", {}).get("total", 0))  # type: ignore[union-attr]
+            hook_invocations.append((str(record.get("classification") or ""), total))
+            companion._regenerate_shadow_report_html(cfg)
+
+        def fake_llm_caller(**_kwargs: object) -> dict[str, object]:
+            return {
+                "raw_content": json.dumps({
+                    "action": "comment_or_hold",
+                    "advisory_safe": True,
+                    "ci_cause": "none",
+                    "escalate": True,
+                    "reason": "Escalate for maintainer review.",
+                }),
+                "ttft_ms": 110,
+                "total_ms": 340,
+                "prompt_tokens": 310,
+                "completion_tokens": 42,
+            }
+
+        gh_client = self._make_snapshot_gh_client()
+        worker = shadow_eval.ShadowEvalWorker(
+            state_dir=store.state_dir,
+            shadow_model="inkling-2-mini",
+            summary_path=summary_path,
+            synchronous=False,
+            llm_caller=fake_llm_caller,
+            on_record_written=on_written,
+            now_ms_fn=self.clock,
+        )
+        self.addCleanup(worker.close)
+        self._install_merge_send_sync(agent_name="skrye")
+
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="skrye",
+            update_model="gemini::gemini-4-hydrogen@reasoning-medium",
+            sweep_model="gemini::pro",
+            code_model="gemini::pro",
+            gh_client=gh_client,
+            shadow_worker=worker,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+
+        res = coord.execute_dispatch(
+            kind="targeted",
+            is_automated_pr=True,
+            repo="wimpysworld/wonkey",
+            number=99,
+            head_sha="abcdef123456",
+            updated_at="2026-11-27T03:00:00Z",
+            trigger_reason="unrequested_pr",
+        )
+        self.assertTrue(res["task_succeeded"])
+        self.assertTrue(worker.drain(timeout=5.0))
+
+        self.assertEqual(hook_invocations, [("safe_escalation", 1)])
+        self.assertTrue(index_path.is_file())
+        self.assertEqual(stat.S_IMODE(index_path.stat().st_mode), 0o644)
+        self.assertEqual([p.name for p in report_dir.glob("*.tmp")], [])
+        updated_html = index_path.read_text(encoding="utf-8")
+        self.assertIn("1 runs", updated_html)
+        self.assertIn("wimpysworld/wonkey", updated_html)
+        self.assertIn("inkling-2-mini", updated_html)
+        self.assertIn("gemini::gemini-4-hydrogen@reasoning-medium", updated_html)
+        self.assertIn("Escalate for maintainer review.", updated_html)
+
+    def test_shadow_report_html_errors_logged_without_aborting_startup_or_processing(self) -> None:
+        # 1) Startup index failure logs a redacted warning and never aborts companion startup.
+        startup_reports = self.root / "err-startup-reports"
+        startup_summary = startup_reports / "summary.json"
+        cycle_calls: list[str] = []
+        startup_stderr = io.StringIO()
+
+        def fake_run_cycle(_self: companion.GithubCompanionRunner) -> dict[str, str]:
+            cycle_calls.append("ran")
+            return {"status": "ok"}
+
+        with (
+            patch.object(companion.linear_sync.LinearSyncClient, "from_env", return_value=None),
+            patch.object(companion.NotificationPoller, "wait_until_due", return_value=0),
+            patch.object(companion.GithubCompanionRunner, "run_cycle", fake_run_cycle),
+            patch.object(
+                shadow_report,
+                "ensure_host_report_index",
+                side_effect=RuntimeError("disk full ghp_secretStartupToken123"),
+            ),
+            contextlib.redirect_stderr(startup_stderr),
+        ):
+            rc = companion.main([
+                "--agent-name", "skrye",
+                "--update-model", "gemini::gemini-4-hydrogen@reasoning-medium",
+                "--data-dir", str(self.data_dir),
+                "--state-dir", str(self.state_dir / "err-startup-skrye"),
+                "--shadow-eval-enabled", "true",
+                "--shadow-model", "inkling-2-mini",
+                "--shadow-summary-path", str(startup_summary),
+                "--once",
+            ])
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(cycle_calls, ["ran"])
+        self.assertIn("shadow report index warning", startup_stderr.getvalue())
+        self.assertNotIn("ghp_secretStartupToken123", startup_stderr.getvalue())
+
+        # 2) Post-record HTML render failure logs a redacted warning without failing shadow processing.
+        store = self.make_store("zannah")
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        summary_path = self.root / "err-render-reports" / "summary.json"
+        cfg = {
+            "agent_name": "zannah",
+            "shadow_model": "qwen3.8-27b",
+            "update_model": "gemini::gemini-4-hydrogen@reasoning-medium",
+            "state_dir": store.state_dir,
+            "shadow_summary_path": summary_path,
+        }
+
+        def fake_llm_caller(**_kwargs: object) -> dict[str, object]:
+            return {
+                "raw_content": json.dumps({
+                    "action": "approve_and_merge",
+                    "advisory_safe": True,
+                    "ci_cause": "none",
+                    "escalate": False,
+                    "reason": "Clean update.",
+                }),
+                "ttft_ms": 90,
+                "total_ms": 250,
+                "prompt_tokens": 280,
+                "completion_tokens": 30,
+            }
+
+        gh_client = self._make_snapshot_gh_client()
+        worker = shadow_eval.ShadowEvalWorker(
+            state_dir=store.state_dir,
+            shadow_model="qwen3.8-27b",
+            summary_path=summary_path,
+            synchronous=True,
+            llm_caller=fake_llm_caller,
+            on_record_written=lambda _record, _summary: companion._regenerate_shadow_report_html(cfg),
+            now_ms_fn=self.clock,
+        )
+        self.addCleanup(worker.close)
+        self._install_merge_send_sync(agent_name="zannah")
+
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="zannah",
+            update_model="gemini::gemini-4-hydrogen@reasoning-medium",
+            sweep_model="gemini::pro",
+            code_model="gemini::pro",
+            gh_client=gh_client,
+            shadow_worker=worker,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+
+        render_stderr = io.StringIO()
+        with (
+            patch.object(
+                shadow_report,
+                "render_host_report_from_jsonl",
+                side_effect=OSError("read-only fs Bearer secretRenderToken999"),
+            ),
+            contextlib.redirect_stderr(render_stderr),
+        ):
+            res = coord.execute_dispatch(
+                kind="targeted",
+                is_automated_pr=True,
+                repo="wimpysworld/wonkey",
+                number=99,
+                head_sha="abcdef123456",
+                updated_at="2026-11-27T03:10:00Z",
+                trigger_reason="unrequested_pr",
+            )
+
+        self.assertTrue(res["task_succeeded"])
+        self.assertEqual(worker.processed_count, 1)
+        self.assertEqual(worker.error_count, 0)
+        self.assertTrue(summary_path.is_file())
+        self.assertTrue((store.state_dir / shadow_eval.SHADOW_EVAL_JSONL_FILENAME).is_file())
+        self.assertIn("shadow report HTML warning", render_stderr.getvalue())
+        self.assertNotIn("secretRenderToken999", render_stderr.getvalue())
+
+    def test_cli_replay_shadow_preserves_env_live_summary_unless_flag_explicit(self) -> None:
+        in_dir = self.root / "replay-env-guard"
+        in_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        in_jsonl = in_dir / "shadow-eval.jsonl"
+        live_summary = self.root / "live-shadow-reports" / "summary.json"
+        live_summary.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
+        sentinel_payload = json.dumps({"live": True, "totals": {"total": 42}}, sort_keys=True) + "\n"
+        live_summary.write_text(sentinel_payload, encoding="utf-8")
+        explicit_summary = self.root / "explicit-replay-summary.json"
+
+        source_rec = {
+            "schema_version": shadow_eval.SHADOW_SCHEMA_VERSION,
+            "timestamp_ms": 1_700_000_000_000,
+            "dispatch_id": "ghd-skrye-replay-guard",
+            "agent": "skrye",
+            "gemini_model": "gemini::flash",
+            "gemini_action": "approve_and_merge",
+            "gemini_commands": ["gh-bot-merge https://github.com/wimpysworld/wonkey/pull/99"],
+            "gemini_reply_excerpt": "Merged",
+            "snapshot": {
+                "schema_version": shadow_eval.SHADOW_SCHEMA_VERSION,
+                "agent": "skrye",
+                "repo": "wimpysworld/wonkey",
+                "number": 99,
+                "pr_url": "https://github.com/wimpysworld/wonkey/pull/99",
+                "head_sha": "abcdef123456",
+                "trigger_reason": "unrequested_pr",
+                "is_archived": False,
+                "pr": {
+                    "title": "build(deps): bump actions/checkout from 4 to 5",
+                    "url": "https://github.com/wimpysworld/wonkey/pull/99",
+                    "state": "OPEN",
+                    "is_draft": False,
+                    "author": "dependabot[bot]",
+                    "head_ref": "dependabot/github_actions/actions/checkout-5",
+                    "head_sha": "abcdef123456",
+                    "base_ref": "main",
+                    "mergeable": "MERGEABLE",
+                    "merge_state_status": "CLEAN",
+                    "review_decision": "REVIEW_REQUIRED",
+                    "additions": 2,
+                    "deletions": 2,
+                    "changed_files": 1,
+                    "labels": ["dependencies"],
+                    "ci_state": "SUCCESS",
+                    "status_checks": [],
+                    "reviews": [],
+                    "review_threads": [],
+                    "unresolved_thread_count": 0,
+                },
+                "diff": "",
+                "diff_truncated": False,
+                "diff_total_chars": 0,
+                "has_tailor_vendor_hash_workflow": False,
+                "dependabot_alerts": [],
+                "alerts_skipped_reason": None,
+                "workflow_runs": [],
+                "failed_run_logs": [],
+                "capture_errors": [],
+            },
+        }
+        in_jsonl.write_text(json.dumps(source_rec) + "\n", encoding="utf-8")
+        in_jsonl.chmod(0o600)
+
+        def fake_call_shadow_llm(**_kwargs: object) -> dict[str, object]:
+            return {
+                "raw_content": json.dumps({
+                    "action": "approve_and_merge",
+                    "advisory_safe": True,
+                    "ci_cause": "none",
+                    "escalate": False,
+                    "reason": "Replay clean.",
+                }),
+                "ttft_ms": 50,
+                "total_ms": 120,
+                "prompt_tokens": 200,
+                "completion_tokens": 25,
+            }
+
+        env_with_live_summary = {
+            "MOLTIS_GITHUB_COMPANION_SHADOW_SUMMARY_PATH": str(live_summary),
+            "MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_SUMMARY_PATH": "",
+        }
+        with patch.dict(os.environ, env_with_live_summary):
+            # Parser defaults --shadow-summary-path to None even when env var is exported.
+            parsed_no_flag = companion.build_arg_parser().parse_args(["--replay-shadow", str(in_jsonl)])
+            self.assertIsNone(parsed_no_flag.shadow_summary_path)
+
+            # a) Replay without --shadow-summary-path must NOT touch or overwrite live summary.json.
+            stdout_no_flag = io.StringIO()
+            with (
+                patch.object(shadow_eval, "call_shadow_llm", side_effect=fake_call_shadow_llm),
+                contextlib.redirect_stdout(stdout_no_flag),
+            ):
+                rc_no_flag = companion.main([
+                    "--replay-shadow", str(in_jsonl),
+                    "--shadow-model", "qwen3.8-27b",
+                ])
+            self.assertEqual(rc_no_flag, 0)
+            self.assertEqual(json.loads(stdout_no_flag.getvalue().strip())["totals"]["total"], 1)
+            self.assertEqual(live_summary.read_text(encoding="utf-8"), sentinel_payload)
+
+            # b) Replay with explicit --shadow-summary-path writes only the explicit file.
+            stdout_explicit = io.StringIO()
+            with (
+                patch.object(shadow_eval, "call_shadow_llm", side_effect=fake_call_shadow_llm),
+                contextlib.redirect_stdout(stdout_explicit),
+            ):
+                rc_explicit = companion.main([
+                    "--replay-shadow", str(in_jsonl),
+                    "--shadow-model", "qwen3.8-27b",
+                    "--shadow-summary-path", str(explicit_summary),
+                ])
+            self.assertEqual(rc_explicit, 0)
+            self.assertTrue(explicit_summary.is_file())
+            self.assertEqual(json.loads(explicit_summary.read_text(encoding="utf-8"))["totals"]["total"], 1)
+            self.assertEqual(live_summary.read_text(encoding="utf-8"), sentinel_payload)
+
+            # c) Normal non-replay resolve_runtime_config still picks up the exported env var.
+            live_cfg = companion.resolve_runtime_config(
+                companion.build_arg_parser().parse_args(["--agent-name", "skrye"])
+            )
+            self.assertEqual(live_cfg["shadow_summary_path"], live_summary)
+
+        # Legacy env var fallback still works in resolve_runtime_config when primary is unset.
+        legacy_summary = self.root / "legacy-shadow-summary.json"
+        with patch.dict(
+            os.environ,
+            {
+                "MOLTIS_GITHUB_COMPANION_SHADOW_SUMMARY_PATH": "",
+                "MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_SUMMARY_PATH": str(legacy_summary),
+            },
+        ):
+            legacy_cfg = companion.resolve_runtime_config(
+                companion.build_arg_parser().parse_args(["--agent-name", "skrye"])
+            )
+            self.assertEqual(legacy_cfg["shadow_summary_path"], legacy_summary)
 
 
 if __name__ == "__main__":

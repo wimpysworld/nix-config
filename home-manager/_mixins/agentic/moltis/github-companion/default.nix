@@ -10,8 +10,9 @@
     else
       "Skrye"
   ),
-  mainModel,
-  reviewModel ? mainModel,
+  updateModel ? sweepModel,
+  sweepModel ? codeModel,
+  codeModel,
   scheduleDow ? (
     if agentName == "zannah" then
       4
@@ -56,6 +57,18 @@
   linearTokenCacheDir ? "",
   linearTeamKey ? "WW",
   ghApiSafe ? null,
+  shadowEvalEnabled ? (agentName == "skrye" || agentName == "zannah"),
+  shadowModel ? (
+    if agentName == "skrye" then
+      "inkling-2-mini"
+    else if agentName == "zannah" then
+      "qwen3.8-27b"
+    else
+      ""
+  ),
+  shadowApiUrl ? "http://127.0.0.1:8080/v1/chat/completions",
+  shadowSummaryPath ? "",
+  shadowTimeoutSecs ? 120,
 }:
 let
   companionSrc = lib.fileset.toSource {
@@ -63,6 +76,8 @@ let
     fileset = lib.fileset.unions [
       ./companion.py
       ./linear_sync.py
+      ./shadow_eval.py
+      ./shadow_report.py
       ../linear-token/linear_token.py
     ];
   };
@@ -78,12 +93,15 @@ pkgs.writeShellApplication {
   derivationArgs.passthru = {
     script = ./companion.py;
     linearSyncScript = ./linear_sync.py;
+    shadowEvalScript = ./shadow_eval.py;
+    shadowReportScript = ./shadow_report.py;
     inherit
       companionSrc
       agentName
       agentDisplayName
-      mainModel
-      reviewModel
+      updateModel
+      sweepModel
+      codeModel
       scheduleDow
       scheduleDayName
       selfUserId
@@ -114,13 +132,19 @@ pkgs.writeShellApplication {
       linearTokenCacheDir
       linearTeamKey
       ghApiSafe
+      shadowEvalEnabled
+      shadowModel
+      shadowApiUrl
+      shadowSummaryPath
+      shadowTimeoutSecs
       ;
   };
   text = ''
     export MOLTIS_GITHUB_COMPANION_AGENT_NAME=${lib.escapeShellArg agentName}
     export MOLTIS_GITHUB_COMPANION_AGENT_DISPLAY_NAME=${lib.escapeShellArg agentDisplayName}
-    export MOLTIS_GITHUB_COMPANION_MAIN_MODEL=${lib.escapeShellArg mainModel}
-    export MOLTIS_GITHUB_COMPANION_REVIEW_MODEL=${lib.escapeShellArg reviewModel}
+    export MOLTIS_GITHUB_COMPANION_UPDATE_MODEL=${lib.escapeShellArg updateModel}
+    export MOLTIS_GITHUB_COMPANION_SWEEP_MODEL=${lib.escapeShellArg sweepModel}
+    export MOLTIS_GITHUB_COMPANION_CODE_MODEL=${lib.escapeShellArg codeModel}
     export MOLTIS_GITHUB_COMPANION_SCHEDULE_DOW=${lib.escapeShellArg (toString scheduleDow)}
     export MOLTIS_GITHUB_COMPANION_SCHEDULE_DAY_NAME=${lib.escapeShellArg scheduleDayName}
     export MOLTIS_GITHUB_COMPANION_MATRIX_SELF_USER_ID=${lib.escapeShellArg selfUserId}
@@ -149,6 +173,11 @@ pkgs.writeShellApplication {
     export MOLTIS_GITHUB_COMPANION_LINEAR_LABEL_API_KEY_PATH=${lib.escapeShellArg linearLabelApiKeyPath}
     export MOLTIS_GITHUB_COMPANION_LINEAR_TOKEN_CACHE_DIR=${lib.escapeShellArg linearTokenCacheDir}
     export MOLTIS_GITHUB_COMPANION_LINEAR_TEAM_KEY=${lib.escapeShellArg linearTeamKey}
+    export MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_ENABLED=${lib.escapeShellArg (lib.boolToString shadowEvalEnabled)}
+    export MOLTIS_GITHUB_COMPANION_SHADOW_MODEL=${lib.escapeShellArg shadowModel}
+    export MOLTIS_GITHUB_COMPANION_SHADOW_API_URL=${lib.escapeShellArg shadowApiUrl}
+    export MOLTIS_GITHUB_COMPANION_SHADOW_SUMMARY_PATH=${lib.escapeShellArg shadowSummaryPath}
+    export MOLTIS_GITHUB_COMPANION_SHADOW_TIMEOUT_SECS=${lib.escapeShellArg (toString shadowTimeoutSecs)}
     exec python3 ${companionSrc}/github-companion/companion.py "$@"
   '';
 }

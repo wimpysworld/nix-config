@@ -142,7 +142,7 @@
           moltis-tools = import ./lib/tests/moltis-tools.nix {
             inherit (nixpkgs) lib;
             inherit pkgs;
-            inherit (self) homeConfigurations;
+            inherit (self) nixosConfigurations homeConfigurations;
           };
           private-matrix = import ./lib/tests/private-matrix.nix {
             inherit (nixpkgs) lib;

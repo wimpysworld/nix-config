@@ -37,6 +37,11 @@ let
   };
   reframeHosts = hostsWithTag "reframe";
   remoteInferenceHosts = lib.filter (name: name != host.name) (hostsWithTag "inference");
+  shadowEvalModels = {
+    skrye = "inkling-2-mini";
+    zannah = "qwen3.8-27b";
+  };
+  shadowEvalHosts = lib.filter (node: builtins.hasAttr node shadowEvalModels) (hostsWithTag "moltis");
 in
 lib.mkIf (noughtyLib.hostHasTag "homepage") {
   environment.shellAliases = {
@@ -367,7 +372,15 @@ lib.mkIf (noughtyLib.hostHasTag "homepage") {
                 key = "{{HOMEPAGE_VAR_CLOUDFLARE_API_TOKEN}}";
               };
             };
-          }) roamgateHosts);
+          }) roamgateHosts)
+          ++ (map (node: {
+            "Shadow Eval (${node})" = {
+              icon = "mdi-chart-box-outline";
+              href = "https://${node}.${tailNet}/shadow-eval/";
+              description = "Moltis shadow eval (${shadowEvalModels.${node}}) on ${node}";
+              ping = "${node}.${tailNet}";
+            };
+          }) shadowEvalHosts);
         }
         {
           "Monitoring & Infrastructure" = [
