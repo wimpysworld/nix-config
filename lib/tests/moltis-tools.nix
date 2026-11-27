@@ -2,6 +2,7 @@
 {
   lib,
   pkgs,
+  nixosConfigurations,
   homeConfigurations,
 }:
 let
@@ -215,6 +216,11 @@ let
         (home.extendModules {
           modules = [ { noughty.host.tags = lib.mkForce (lib.remove "moltis" c.noughty.host.tags); } ];
         }).config;
+      shadowEvalDisabled =
+        (home.extendModules {
+          modules = [ { agentic.moltis.githubCompanion.shadowEval.enable = lib.mkForce false; } ];
+        }).config;
+      expectShadowReportsService = host == "skrye" || host == "zannah";
       scripts = launcherScripts host;
       context = c.agentic.moltis.toolsContext;
       files = c.agentic.assistants.ownedSpec.files;
@@ -321,6 +327,37 @@ let
     assert !(disabled.xdg.configFile ? "moltis/mcporter.json");
     assert !(disabled.launchd.agents ? llama-swap);
     assert !(lib.any (package: (package.name or "") == "moltis-fenced") disabled.home.packages);
+    assert lib.any (package: (package.name or "") == "moltis-shadow-report") c.home.packages;
+    assert !(lib.any (package: (package.name or "") == "moltis-shadow-report") disabled.home.packages);
+    assert (c.systemd.user.services ? moltis-shadow-reports) == expectShadowReportsService;
+    assert !(disabled.systemd.user.services ? moltis-shadow-reports);
+    assert !(shadowEvalDisabled.systemd.user.services ? moltis-shadow-reports);
+    assert
+      !expectShadowReportsService
+      || (
+        let
+          shadowReportsService = c.systemd.user.services.moltis-shadow-reports.Service;
+          toCommandText = value: if builtins.isList value then lib.concatStringsSep "\n" value else value;
+          execStart = toCommandText shadowReportsService.ExecStart;
+          execStartPre = toCommandText shadowReportsService.ExecStartPre;
+        in
+        builtins.all (flag: lib.hasInfix flag execStart) [
+          "--interfaces 127.0.0.1"
+          "--port 8085"
+          "--index index.html"
+          "--disable-indexing"
+          "--hide-version-footer"
+          "${c.home.homeDirectory}/Volatile/moltis-shadow-reports"
+        ]
+        && builtins.all (flag: !(lib.hasInfix flag execStart)) [
+          "--upload-files"
+          "--rm-files"
+          "--mkdir"
+          "--route-prefix"
+        ]
+        && lib.hasInfix "/bin/moltis-shadow-report" execStartPre
+        && lib.hasInfix "--ensure-index" execStartPre
+      );
     assert (c.launchd.agents ? llama-swap) == darwin;
     assert !darwin || c.launchd.agents.llama-swap.config.Label == "org.moltis.llama-swap";
     assert
@@ -698,9 +735,66 @@ let
       lib.hasInfix "`.git/config` and `.git/hooks` read-only, including in maintenance checkouts" body
       == !darwin;
     true;
+  shadowEvalNixosHosts = [
+    "skrye"
+    "zannah"
+  ];
+  nonShadowEvalNixosHosts = [
+    "bane"
+    "revan"
+  ];
+  checkShadowEvalCaddy =
+    host:
+    let
+      c = nixosConfigurations.${host}.config;
+      tailnetHost = "${host}.${c.noughty.network.tailNet}";
+      extraConfig = c.services.caddy.virtualHosts.${tailnetHost}.extraConfig;
+      guardParts = lib.splitString "respond @notTailscale 403" extraConfig;
+    in
+    assert lib.hasInfix "respond @notTailscale 403" extraConfig;
+    assert lib.hasInfix "redir /shadow-eval /shadow-eval/ 301" extraConfig;
+    assert lib.hasInfix "handle_path /shadow-eval/*" extraConfig;
+    assert lib.hasInfix "reverse_proxy 127.0.0.1:8085" extraConfig;
+    assert builtins.length guardParts >= 2;
+    assert !(lib.hasInfix "redir /shadow-eval " (builtins.head guardParts));
+    assert lib.hasInfix "redir /shadow-eval " (lib.concatStringsSep "" (builtins.tail guardParts));
+    true;
+  checkNoShadowEvalCaddy =
+    host:
+    let
+      c = nixosConfigurations.${host}.config;
+      allExtraConfig = lib.concatStringsSep "\n" (
+        map (vhost: vhost.extraConfig) (builtins.attrValues c.services.caddy.virtualHosts)
+      );
+    in
+    assert !(lib.hasInfix "/shadow-eval" allExtraConfig);
+    true;
+  checkRevanHomepageShadowEval =
+    let
+      aiAgentsSection =
+        (lib.findFirst (group: group ? "AI & Agents") (throw "Missing Homepage AI & Agents section")
+          nixosConfigurations.revan.config.services.homepage-dashboard.services
+        )."AI & Agents";
+      aiAgentsEntries = lib.foldl' (acc: item: acc // item) { } aiAgentsSection;
+      skryeEntry = aiAgentsEntries."Shadow Eval (skrye)";
+      zannahEntry = aiAgentsEntries."Shadow Eval (zannah)";
+    in
+    assert aiAgentsEntries ? "Shadow Eval (skrye)";
+    assert skryeEntry.href == "https://skrye.drongo-gamma.ts.net/shadow-eval/";
+    assert lib.hasInfix "inkling-2-mini" skryeEntry.description;
+    assert aiAgentsEntries ? "Shadow Eval (zannah)";
+    assert zannahEntry.href == "https://zannah.drongo-gamma.ts.net/shadow-eval/";
+    assert lib.hasInfix "qwen3.8-27b" zannahEntry.description;
+    assert !(aiAgentsEntries ? "Shadow Eval (traya)");
+    assert
+      !(lib.any (name: lib.hasInfix "traya" (lib.toLower name)) (builtins.attrNames aiAgentsEntries));
+    true;
 in
 assert builtins.all checkRestartInputs hosts;
 assert builtins.all checkHost hosts;
+assert builtins.all checkShadowEvalCaddy shadowEvalNixosHosts;
+assert builtins.all checkNoShadowEvalCaddy nonShadowEvalNixosHosts;
+assert checkRevanHomepageShadowEval;
 pkgs.runCommand "moltis-tools" { } ''
   test -x ${linearWrapper}/bin/mcporter
   test -x ${lib.getExe linearWrapper.linearServer}
@@ -849,6 +943,13 @@ pkgs.runCommand "moltis-tools" { } ''
   test -f ${githubCompanionWrapper.shadowEvalScript}
   PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 -c 'import sys; sys.path.insert(0, "${githubCompanionWrapper.companionSrc}/github-companion"); import shadow_eval'
   PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis}/github-companion/test_shadow_eval.py
+  test -f ${githubCompanionWrapper.shadowReportScript}
+  PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 -c 'import sys; sys.path.insert(0, "${githubCompanionWrapper.companionSrc}/github-companion"); import shadow_report'
+  PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis}/github-companion/test_shadow_report.py
+  ${lib.getExe nixosConfigurations.skrye.config.services.caddy.package} adapt --adapter caddyfile \
+    --config ${nixosConfigurations.skrye.config.services.caddy.configFile} > /dev/null
+  ${lib.getExe nixosConfigurations.zannah.config.services.caddy.package} adapt --adapter caddyfile \
+    --config ${nixosConfigurations.zannah.config.services.caddy.configFile} > /dev/null
   PATH=${
     lib.makeBinPath [
       pkgs.coreutils

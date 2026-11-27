@@ -32,6 +32,7 @@ if _SCRIPT_DIR not in sys.path:
 
 import linear_sync
 import shadow_eval
+import shadow_report
 
 SERVER_DOMAIN = "matrix.wimpys.world"
 DEFAULT_ROOM_ID, DEFAULT_HOMESERVER_URL = f"!the-cauldron:{SERVER_DOMAIN}", f"https://{SERVER_DOMAIN}"
@@ -12858,6 +12859,56 @@ def resolve_runtime_config(args: argparse.Namespace) -> dict:
     }
 
 
+def _regenerate_shadow_report_html(cfg: dict) -> Path | None:
+    raw_summary = cfg.get("shadow_summary_path")
+    if raw_summary is None or not str(raw_summary).strip():
+        return None
+    summary_path = Path(raw_summary).expanduser()
+    html_path = summary_path.parent / "index.html"
+    jsonl_path = Path(cfg["state_dir"]).expanduser() / shadow_eval.SHADOW_EVAL_JSONL_FILENAME
+    try:
+        shadow_report.render_host_report_from_jsonl(
+            jsonl_path,
+            html_path,
+            agent=str(cfg.get("agent_name") or ""),
+            shadow_model=str(cfg.get("shadow_model") or ""),
+            gemini_model=str(cfg.get("update_model") or ""),
+        )
+        return html_path
+    except Exception as exc:
+        safe_err = shadow_eval.redact_secrets(str(exc))
+        sys.stderr.write(
+            f"moltis-github-companion shadow report HTML warning ({cfg.get('agent_name', '')}): {safe_err}\n"
+        )
+        return None
+
+
+def _ensure_shadow_report_index(cfg: dict) -> Path | None:
+    raw_summary = cfg.get("shadow_summary_path")
+    if raw_summary is None or not str(raw_summary).strip():
+        return None
+    summary_path = Path(raw_summary).expanduser()
+    html_path = summary_path.parent / "index.html"
+    state_dir = Path(cfg["state_dir"]).expanduser()
+    jsonl_path = state_dir / shadow_eval.SHADOW_EVAL_JSONL_FILENAME
+    try:
+        return shadow_report.ensure_host_report_index(
+            output_path=html_path,
+            summary_path=summary_path,
+            state_dir=state_dir,
+            jsonl_path=jsonl_path,
+            agent=str(cfg.get("agent_name") or ""),
+            shadow_model=str(cfg.get("shadow_model") or ""),
+            gemini_model=str(cfg.get("update_model") or ""),
+        )
+    except Exception as exc:
+        safe_err = shadow_eval.redact_secrets(str(exc))
+        sys.stderr.write(
+            f"moltis-github-companion shadow report index warning ({cfg.get('agent_name', '')}): {safe_err}\n"
+        )
+        return None
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
     replay_path = str(getattr(args, "replay_shadow", "") or "").strip()
@@ -12917,7 +12968,9 @@ def main(argv: list[str] | None = None) -> int:
             shadow_api_url=cfg["shadow_api_url"],
             summary_path=cfg["shadow_summary_path"],
             timeout_secs=cfg["shadow_timeout_secs"],
+            on_record_written=lambda _record, _summary: _regenerate_shadow_report_html(cfg),
         )
+        _ensure_shadow_report_index(cfg)
     execution_coordinator = LocalExecutionCoordinator(state_store=store, rpc_client=rpc_client, data_dir=cfg["data_dir"], agent_name=cfg["agent_name"], agent_display_name=cfg["agent_display_name"], update_model=cfg["update_model"], sweep_model=cfg["sweep_model"], code_model=cfg["code_model"], matrix_client=matrix_client, telegram_client=telegram_client, room_id=cfg["room_id"], schedule_dow=cfg["schedule_dow"], schedule_day_name=cfg["schedule_day_name"], linear_client=linear_client, gh_client=gh_client, shadow_worker=shadow_worker)
     runner = GithubCompanionRunner(state_store=store, gh_client=gh_client, poller=poller, trust_filter=trust_filter, execution_coordinator=execution_coordinator, matrix_client=matrix_client, read_only_trial=cfg["read_only_trial"], linear_client=linear_client, telegram_client=telegram_client, poll_interval_minutes=cfg["poll_interval_minutes"])
     try:

@@ -1002,6 +1002,26 @@ let
     shadowTimeoutSecs = githubCompanionCfg.shadowEval.timeoutSecs;
   };
 
+  shadowReportDir = builtins.dirOf githubCompanionCfg.shadowEval.summaryPath;
+
+  moltisShadowReport = pkgs.writeShellApplication {
+    name = "moltis-shadow-report";
+    runtimeInputs = [
+      pkgs.python3
+      pkgs.openssh
+    ]
+    ++ lib.optional host.is.linux pkgs.xdg-utils;
+    text = ''
+      export MOLTIS_SHADOW_REPORT_AGENT=${lib.escapeShellArg agentName}
+      export MOLTIS_SHADOW_REPORT_MODEL=${lib.escapeShellArg githubCompanionCfg.shadowEval.model}
+      export MOLTIS_SHADOW_REPORT_GEMINI_MODEL=${lib.escapeShellArg githubUpdateModel}
+      export MOLTIS_SHADOW_REPORT_STATE_DIR=${lib.escapeShellArg "${stateDir}/github-companion-${agentName}"}
+      export MOLTIS_SHADOW_REPORT_SUMMARY_PATH=${lib.escapeShellArg githubCompanionCfg.shadowEval.summaryPath}
+      export MOLTIS_SHADOW_REPORT_TAILNET=${lib.escapeShellArg "drongo-gamma.ts.net"}
+      exec python3 ${moltisGithubCompanion.companionSrc}/github-companion/shadow_report.py "$@"
+    '';
+  };
+
   moltisMatrixCouncilHook = pkgs.writeScript "moltis-matrix-council-hook" ''
     #!${lib.getExe pkgs.python3}
     import os
@@ -1438,6 +1458,11 @@ in
           default = 120;
           description = "HTTP timeout in seconds for each local shadow evaluation inference request.";
         };
+        reportPort = lib.mkOption {
+          type = lib.types.port;
+          default = 8085;
+          description = "Loopback TCP port for the read-only miniserve shadow evaluation report server.";
+        };
       };
     };
 
@@ -1536,6 +1561,7 @@ in
         pkgs.moltis
         moltisFencedPackage
         moltisTelegramVoice
+        moltisShadowReport
       ];
 
       home.shellAliases.moltis-log =
@@ -1639,6 +1665,22 @@ in
         };
         Install.WantedBy = [ "default.target" ];
       };
+
+      systemd.user.services.moltis-shadow-reports =
+        lib.mkIf (host.is.linux && githubCompanionCfg.shadowEval.enable)
+          {
+            Unit = {
+              Description = "Moltis shadow LLM evaluation report server (read-only loopback)";
+            };
+            Service = {
+              Type = "simple";
+              ExecStartPre = "${lib.getExe moltisShadowReport} --ensure-index --agent ${lib.escapeShellArg agentName} --shadow-model ${lib.escapeShellArg githubCompanionCfg.shadowEval.model} --gemini-model ${lib.escapeShellArg githubUpdateModel} --state-dir ${lib.escapeShellArg "${stateDir}/github-companion-${agentName}"} --summary-path ${lib.escapeShellArg githubCompanionCfg.shadowEval.summaryPath}";
+              ExecStart = "${lib.getExe pkgs.miniserve} --interfaces 127.0.0.1 --port ${toString githubCompanionCfg.shadowEval.reportPort} --workers 2 --index index.html --disable-indexing --hide-version-footer --hide-theme-selector --quiet ${lib.escapeShellArg shadowReportDir}";
+              Restart = "on-failure";
+              RestartSec = 5;
+            };
+            Install.WantedBy = [ "default.target" ];
+          };
 
       sops.secrets = lib.genAttrs (lib.attrNames moltisSecretSopsFiles ++ linearSecrets) secretConfig;
       xdg.configFile."moltis/mcporter.json".text = builtins.toJSON {

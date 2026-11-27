@@ -27,6 +27,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import companion
 import shadow_eval
+import shadow_report
 
 
 class MockMatrixAndRpcHandler(http.server.BaseHTTPRequestHandler):
@@ -17070,6 +17071,298 @@ class ShadowEvalIntegrationTests(GithubCompanionTestBase):
         self.assertEqual(printed["totals"]["match"], 1)
         self.assertTrue(out_jsonl.exists())
         self.assertTrue(summary_path.exists())
+
+    def test_shadow_startup_ensures_empty_index_html_only_when_enabled(self) -> None:
+        enabled_reports = self.root / "startup-enabled-reports"
+        enabled_summary = enabled_reports / "summary.json"
+        enabled_index = enabled_reports / "index.html"
+        enabled_state = self.state_dir / "startup-skrye"
+        seen_callbacks: list[object] = []
+
+        def fake_run_cycle(runner_self: companion.GithubCompanionRunner) -> dict[str, str]:
+            worker = runner_self.execution_coordinator.shadow_worker
+            seen_callbacks.append(getattr(worker, "_on_record_written", None))
+            return {"status": "ok"}
+
+        with (
+            patch.object(companion.linear_sync.LinearSyncClient, "from_env", return_value=None),
+            patch.object(companion.NotificationPoller, "wait_until_due", return_value=0),
+            patch.object(companion.GithubCompanionRunner, "run_cycle", fake_run_cycle),
+        ):
+            rc_enabled = companion.main([
+                "--agent-name", "skrye",
+                "--update-model", "gemini::gemini-4-hydrogen@reasoning-medium",
+                "--data-dir", str(self.data_dir),
+                "--state-dir", str(enabled_state),
+                "--shadow-eval-enabled", "true",
+                "--shadow-model", "inkling-2-mini",
+                "--shadow-summary-path", str(enabled_summary),
+                "--once",
+            ])
+
+        self.assertEqual(rc_enabled, 0)
+        self.assertTrue(enabled_index.is_file())
+        self.assertEqual(stat.S_IMODE(enabled_index.stat().st_mode), 0o644)
+        html_text = enabled_index.read_text(encoding="utf-8")
+        self.assertIn("<!DOCTYPE html>", html_text)
+        self.assertIn("skrye", html_text)
+        self.assertIn("inkling-2-mini", html_text)
+        self.assertIn("0 runs", html_text)
+        self.assertEqual(len(seen_callbacks), 1)
+        self.assertTrue(callable(seen_callbacks[0]))
+
+        # Existing regular index.html must not be clobbered on restart.
+        sentinel_html = "<!DOCTYPE html><html><body>keep-existing-index</body></html>\n"
+        enabled_index.write_text(sentinel_html, encoding="utf-8")
+        with (
+            patch.object(companion.linear_sync.LinearSyncClient, "from_env", return_value=None),
+            patch.object(companion.NotificationPoller, "wait_until_due", return_value=0),
+            patch.object(companion.GithubCompanionRunner, "run_cycle", return_value={"status": "ok"}),
+        ):
+            rc_restart = companion.main([
+                "--agent-name", "skrye",
+                "--update-model", "gemini::gemini-4-hydrogen@reasoning-medium",
+                "--data-dir", str(self.data_dir),
+                "--state-dir", str(enabled_state),
+                "--shadow-eval-enabled", "true",
+                "--shadow-model", "inkling-2-mini",
+                "--shadow-summary-path", str(enabled_summary),
+                "--once",
+            ])
+        self.assertEqual(rc_restart, 0)
+        self.assertEqual(enabled_index.read_text(encoding="utf-8"), sentinel_html)
+
+        # Disabled hosts (traya default and explicit --shadow-eval-enabled false) must omit index.html.
+        for label, extra_args in (
+            ("traya-default", ["--agent-name", "traya"]),
+            ("skrye-disabled", ["--agent-name", "skrye", "--shadow-eval-enabled", "false"]),
+        ):
+            disabled_reports = self.root / f"startup-disabled-{label}"
+            disabled_summary = disabled_reports / "summary.json"
+            disabled_index = disabled_reports / "index.html"
+            with (
+                patch.object(companion.linear_sync.LinearSyncClient, "from_env", return_value=None),
+                patch.object(companion.NotificationPoller, "wait_until_due", return_value=0),
+                patch.object(companion.GithubCompanionRunner, "run_cycle", return_value={"status": "ok"}),
+            ):
+                rc_disabled = companion.main([
+                    *extra_args,
+                    "--data-dir", str(self.data_dir),
+                    "--state-dir", str(self.state_dir / f"startup-{label}"),
+                    "--shadow-summary-path", str(disabled_summary),
+                    "--once",
+                ])
+            self.assertEqual(rc_disabled, 0)
+            self.assertFalse(disabled_index.exists(), f"index.html should not exist for {label}")
+
+    def test_shadow_worker_on_record_written_atomically_updates_index_html(self) -> None:
+        store = self.make_store("skrye")
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        report_dir = self.root / "live-html-reports"
+        summary_path = report_dir / "summary.json"
+        index_path = report_dir / "index.html"
+
+        cfg = {
+            "agent_name": "skrye",
+            "shadow_model": "inkling-2-mini",
+            "update_model": "gemini::gemini-4-hydrogen@reasoning-medium",
+            "state_dir": store.state_dir,
+            "shadow_summary_path": summary_path,
+        }
+        companion._ensure_shadow_report_index(cfg)
+        self.assertTrue(index_path.is_file())
+        self.assertIn("0 runs", index_path.read_text(encoding="utf-8"))
+
+        hook_invocations: list[tuple[str, int]] = []
+
+        def on_written(record: dict[str, object], summary: dict[str, object] | None) -> None:
+            total = int((summary or {}).get("totals", {}).get("total", 0))  # type: ignore[union-attr]
+            hook_invocations.append((str(record.get("classification") or ""), total))
+            companion._regenerate_shadow_report_html(cfg)
+
+        def fake_llm_caller(**_kwargs: object) -> dict[str, object]:
+            return {
+                "raw_content": json.dumps({
+                    "action": "comment_or_hold",
+                    "advisory_safe": True,
+                    "ci_cause": "none",
+                    "escalate": True,
+                    "reason": "Escalate for maintainer review.",
+                }),
+                "ttft_ms": 110,
+                "total_ms": 340,
+                "prompt_tokens": 310,
+                "completion_tokens": 42,
+            }
+
+        gh_client = self._make_snapshot_gh_client()
+        worker = shadow_eval.ShadowEvalWorker(
+            state_dir=store.state_dir,
+            shadow_model="inkling-2-mini",
+            summary_path=summary_path,
+            synchronous=False,
+            llm_caller=fake_llm_caller,
+            on_record_written=on_written,
+            now_ms_fn=self.clock,
+        )
+        self.addCleanup(worker.close)
+        self._install_merge_send_sync(agent_name="skrye")
+
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="skrye",
+            update_model="gemini::gemini-4-hydrogen@reasoning-medium",
+            sweep_model="gemini::pro",
+            code_model="gemini::pro",
+            gh_client=gh_client,
+            shadow_worker=worker,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+
+        res = coord.execute_dispatch(
+            kind="targeted",
+            is_automated_pr=True,
+            repo="wimpysworld/wonkey",
+            number=99,
+            head_sha="abcdef123456",
+            updated_at="2026-11-27T03:00:00Z",
+            trigger_reason="unrequested_pr",
+        )
+        self.assertTrue(res["task_succeeded"])
+        self.assertTrue(worker.drain(timeout=5.0))
+
+        self.assertEqual(hook_invocations, [("safe_escalation", 1)])
+        self.assertTrue(index_path.is_file())
+        self.assertEqual(stat.S_IMODE(index_path.stat().st_mode), 0o644)
+        self.assertEqual([p.name for p in report_dir.glob("*.tmp")], [])
+        updated_html = index_path.read_text(encoding="utf-8")
+        self.assertIn("1 runs", updated_html)
+        self.assertIn("wimpysworld/wonkey", updated_html)
+        self.assertIn("inkling-2-mini", updated_html)
+        self.assertIn("gemini::gemini-4-hydrogen@reasoning-medium", updated_html)
+        self.assertIn("Escalate for maintainer review.", updated_html)
+
+    def test_shadow_report_html_errors_logged_without_aborting_startup_or_processing(self) -> None:
+        # 1) Startup index failure logs a redacted warning and never aborts companion startup.
+        startup_reports = self.root / "err-startup-reports"
+        startup_summary = startup_reports / "summary.json"
+        cycle_calls: list[str] = []
+        startup_stderr = io.StringIO()
+
+        def fake_run_cycle(_self: companion.GithubCompanionRunner) -> dict[str, str]:
+            cycle_calls.append("ran")
+            return {"status": "ok"}
+
+        with (
+            patch.object(companion.linear_sync.LinearSyncClient, "from_env", return_value=None),
+            patch.object(companion.NotificationPoller, "wait_until_due", return_value=0),
+            patch.object(companion.GithubCompanionRunner, "run_cycle", fake_run_cycle),
+            patch.object(
+                shadow_report,
+                "ensure_host_report_index",
+                side_effect=RuntimeError("disk full ghp_secretStartupToken123"),
+            ),
+            contextlib.redirect_stderr(startup_stderr),
+        ):
+            rc = companion.main([
+                "--agent-name", "skrye",
+                "--update-model", "gemini::gemini-4-hydrogen@reasoning-medium",
+                "--data-dir", str(self.data_dir),
+                "--state-dir", str(self.state_dir / "err-startup-skrye"),
+                "--shadow-eval-enabled", "true",
+                "--shadow-model", "inkling-2-mini",
+                "--shadow-summary-path", str(startup_summary),
+                "--once",
+            ])
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(cycle_calls, ["ran"])
+        self.assertIn("shadow report index warning", startup_stderr.getvalue())
+        self.assertNotIn("ghp_secretStartupToken123", startup_stderr.getvalue())
+
+        # 2) Post-record HTML render failure logs a redacted warning without failing shadow processing.
+        store = self.make_store("zannah")
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        summary_path = self.root / "err-render-reports" / "summary.json"
+        cfg = {
+            "agent_name": "zannah",
+            "shadow_model": "qwen3.8-27b",
+            "update_model": "gemini::gemini-4-hydrogen@reasoning-medium",
+            "state_dir": store.state_dir,
+            "shadow_summary_path": summary_path,
+        }
+
+        def fake_llm_caller(**_kwargs: object) -> dict[str, object]:
+            return {
+                "raw_content": json.dumps({
+                    "action": "approve_and_merge",
+                    "advisory_safe": True,
+                    "ci_cause": "none",
+                    "escalate": False,
+                    "reason": "Clean update.",
+                }),
+                "ttft_ms": 90,
+                "total_ms": 250,
+                "prompt_tokens": 280,
+                "completion_tokens": 30,
+            }
+
+        gh_client = self._make_snapshot_gh_client()
+        worker = shadow_eval.ShadowEvalWorker(
+            state_dir=store.state_dir,
+            shadow_model="qwen3.8-27b",
+            summary_path=summary_path,
+            synchronous=True,
+            llm_caller=fake_llm_caller,
+            on_record_written=lambda _record, _summary: companion._regenerate_shadow_report_html(cfg),
+            now_ms_fn=self.clock,
+        )
+        self.addCleanup(worker.close)
+        self._install_merge_send_sync(agent_name="zannah")
+
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="zannah",
+            update_model="gemini::gemini-4-hydrogen@reasoning-medium",
+            sweep_model="gemini::pro",
+            code_model="gemini::pro",
+            gh_client=gh_client,
+            shadow_worker=worker,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+
+        render_stderr = io.StringIO()
+        with (
+            patch.object(
+                shadow_report,
+                "render_host_report_from_jsonl",
+                side_effect=OSError("read-only fs Bearer secretRenderToken999"),
+            ),
+            contextlib.redirect_stderr(render_stderr),
+        ):
+            res = coord.execute_dispatch(
+                kind="targeted",
+                is_automated_pr=True,
+                repo="wimpysworld/wonkey",
+                number=99,
+                head_sha="abcdef123456",
+                updated_at="2026-11-27T03:10:00Z",
+                trigger_reason="unrequested_pr",
+            )
+
+        self.assertTrue(res["task_succeeded"])
+        self.assertEqual(worker.processed_count, 1)
+        self.assertEqual(worker.error_count, 0)
+        self.assertTrue(summary_path.is_file())
+        self.assertTrue((store.state_dir / shadow_eval.SHADOW_EVAL_JSONL_FILENAME).is_file())
+        self.assertIn("shadow report HTML warning", render_stderr.getvalue())
+        self.assertNotIn("secretRenderToken999", render_stderr.getvalue())
 
 
 if __name__ == "__main__":

@@ -316,7 +316,17 @@ When `agentic.moltis.githubCompanion.shadowEval.enable` is true, `moltis-github-
 
 Before the live Gemini turn starts, the companion captures a read-only, secret-redacted snapshot of the pull request. After the live turn finishes and releases `coordinator.lock`, a background worker calls `http://127.0.0.1:8080/v1/chat/completions` with zero tools and a `120` second timeout. The worker compares the local decision against Gemini's recorded actions. Shadow evaluation never blocks polling or live turns, and it never changes GitHub or Linear state.
 
-The worker appends full evaluation records to private `shadow-eval.jsonl` (mode `0600`) in the companion state directory. It writes a sanitised summary to `~/Volatile/moltis-shadow-reports/summary.json`, which `moltis-fenced` can write under `~/Volatile/**`. Run `moltis-github-companion --replay-shadow <jsonl>` to replay recorded snapshots offline against a local model.
+The worker appends full records to private `shadow-eval.jsonl` (mode `0600`) in the companion state directory. It writes a sanitised summary to `~/Volatile/moltis-shadow-reports/summary.json`, which `moltis-fenced` can write under `~/Volatile/**`. On startup, `companion.py` ensures that an empty-state `~/Volatile/moltis-shadow-reports/index.html` exists, and it regenerates that file atomically after each shadow run. `shadow_report.py` renders self-contained Catppuccin Mocha HTML dashboards and terminal scorecards. Each dashboard shows an inline SVG confusion matrix, cumulative accuracy and latency charts, an unsafe-merge hard gate, peer links, and filterable disagreement diffs. Run `moltis-github-companion --replay-shadow <jsonl>` to replay recorded snapshots offline against a local model.
+
+`home.packages` installs the `moltis-shadow-report` CLI on Moltis hosts. Without flags, it prints a terminal scorecard, and `--html <path>` writes a static HTML dashboard. With `--fetch --open`, it pulls `shadow-eval.jsonl` read-only over Tailscale SSH from `skrye` and `zannah`. It then renders and opens a merged `qwen3.8-27b` versus `inkling-2-mini` comparison dashboard at `~/Volatile/moltis-shadow-reports/comparison.html`:
+
+```sh
+moltis-shadow-report
+moltis-shadow-report --html ~/Volatile/moltis-shadow-reports/index.html
+moltis-shadow-report --fetch --open
+```
+
+On `skrye` and `zannah`, `moltis-shadow-reports.service` (`systemd.user.services.moltis-shadow-reports`) runs read-only `pkgs.miniserve` on `127.0.0.1:8085` (`agentic.moltis.githubCompanion.shadowEval.reportPort`) and serves `~/Volatile/moltis-shadow-reports/`. Its `ExecStartPre` command runs `moltis-shadow-report --ensure-index`, and the unit is absent on `traya`. Caddy on `skrye` and `zannah` proxies `/shadow-eval/` to `127.0.0.1:8085` inside the `@notTailscale` `route` block. This route serves `https://skrye.drongo-gamma.ts.net/shadow-eval/` for `inkling-2-mini` and `https://zannah.drongo-gamma.ts.net/shadow-eval/` for `qwen3.8-27b`. Homepage on `revan` links both dashboards under `"AI & Agents"`.
 
 ## Projection surfaces
 

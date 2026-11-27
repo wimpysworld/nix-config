@@ -77,6 +77,7 @@ let
       ./companion.py
       ./linear_sync.py
       ./shadow_eval.py
+      ./shadow_report.py
       ../linear-token/linear_token.py
     ];
   };
@@ -93,6 +94,7 @@ pkgs.writeShellApplication {
     script = ./companion.py;
     linearSyncScript = ./linear_sync.py;
     shadowEvalScript = ./shadow_eval.py;
+    shadowReportScript = ./shadow_report.py;
     inherit
       companionSrc
       agentName
