@@ -136,6 +136,9 @@
             homeFlake = self;
             inherit (nixpkgs) lib;
           };
+          librechat-code-sandbox-vm = import ./nixos/_mixins/server/librechat/tests/sandbox-vm-test.nix {
+            inherit pkgs;
+          };
           moltis-tools = import ./lib/tests/moltis-tools.nix {
             inherit (nixpkgs) lib;
             inherit pkgs;

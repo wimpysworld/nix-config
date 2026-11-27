@@ -13,12 +13,15 @@ import os
 import pwd
 import re
 import secrets
+import select
 import shutil
 import signal
 import string
 import subprocess
+import tempfile
 import threading
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime
 from email.parser import BytesParser
 from email.policy import default as email_default_policy
@@ -94,6 +97,8 @@ IGNORED_DIR_NAMES = frozenset(
 SANDBOX_CACHE_MOUNT = "/var/cache/sandbox"
 SANDBOX_TMPFS_SIZE_BYTES = "4294967296"
 SANDBOX_DEV_SHM_SIZE_BYTES = "536870912"
+BWRAP_INFO_TIMEOUT_SEC = 15.0
+PASTA_ATTACH_TIMEOUT_SEC = 15.0
 _RUNTIME_ETC_LOCK = threading.Lock()
 _STORE_PATHS_LOCK = threading.Lock()
 _STORE_PATHS_CACHE_KEY: tuple[str, int, int, int] | None = None
@@ -893,16 +898,25 @@ def load_sandbox_store_paths() -> list[str] | None:
         return list(store_paths)
 
 
-def build_bwrap_options(*, cache_dir: Path | None = None) -> list[str]:
+def build_bwrap_options(
+    *, cache_dir: Path | None = None, share_net: bool | None = None
+) -> list[str]:
     passwd_path, group_path = ensure_runtime_identity_files()
     sandbox_etc_dir = os.environ.get("SANDBOX_ETC_DIR", "").strip()
-    args = [
-        "--unshare-all",
-        "--share-net",
-        "--hostname",
-        "sandbox",
-        "--die-with-parent",
-    ]
+    effective_share_net = (
+        resolve_pasta_bin() is None if share_net is None else share_net
+    )
+    args = ["--unshare-all", "--unshare-user"]
+    if effective_share_net:
+        args.append("--share-net")
+    args.extend(
+        [
+            "--disable-userns",
+            "--hostname",
+            "sandbox",
+            "--die-with-parent",
+        ]
+    )
     store_paths = load_sandbox_store_paths()
     if store_paths is not None:
         for store_path in store_paths:
@@ -986,59 +1000,140 @@ def build_bwrap_options(*, cache_dir: Path | None = None) -> list[str]:
 
 
 def build_bwrap_args(
-    cmd: list[str], *, cache_dir: Path | None = None
+    cmd: list[str],
+    *,
+    cache_dir: Path | None = None,
+    share_net: bool | None = None,
 ) -> list[str]:
-    return [*build_bwrap_options(cache_dir=cache_dir), "--", *cmd]
+    return [
+        *build_bwrap_options(cache_dir=cache_dir, share_net=share_net),
+        "--",
+        *cmd,
+    ]
 
 
 def build_bwrap_cmd(
-    cmd: list[str], *, cache_dir: Path | None = None
+    cmd: list[str],
+    *,
+    cache_dir: Path | None = None,
+    share_net: bool | None = None,
 ) -> list[str] | None:
     bwrap = resolve_bwrap_bin()
     if not bwrap:
         return None
-    return [bwrap, *build_bwrap_args(cmd, cache_dir=cache_dir)]
+    return [bwrap, *build_bwrap_args(cmd, cache_dir=cache_dir, share_net=share_net)]
 
 
-def _write_bwrap_args_file(bwrap_args: list[str]) -> Path:
-    TMP_DIR.mkdir(parents=True, exist_ok=True)
-    with contextlib.suppress(OSError):
-        TMP_DIR.chmod(0o700)
-    args_file = TMP_DIR / f"bwrap-args-{os.getpid()}-{secrets.token_hex(8)}"
+class _ManagedFd:
+    def __init__(self, fd: int) -> None:
+        self.fd: int | None = fd
+
+    def close(self) -> None:
+        fd = self.fd
+        if fd is not None:
+            self.fd = None
+            with contextlib.suppress(OSError):
+                os.close(fd)
+
+
+def _create_bwrap_args_fd(bwrap_args: list[str]) -> _ManagedFd:
     payload = b"\0".join(arg.encode("utf-8") for arg in bwrap_args) + b"\0"
-    fd = os.open(args_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    with os.fdopen(fd, "wb") as handle:
-        handle.write(payload)
-    return args_file
+    fd: int | None = None
+    memfd_create = getattr(os, "memfd_create", None)
+    if memfd_create is not None:
+        try:
+            fd = memfd_create("bwrap-args", 0)
+        except OSError:
+            fd = None
+    if fd is None:
+        with tempfile.TemporaryFile() as tmp:
+            fd = os.dup(tmp.fileno())
+    managed = _ManagedFd(fd)
+    try:
+        view = memoryview(payload)
+        written = 0
+        while written < len(view):
+            written += os.write(fd, view[written:])
+        os.lseek(fd, 0, os.SEEK_SET)
+        os.set_inheritable(fd, True)
+    except Exception:
+        managed.close()
+        raise
+    return managed
 
 
-def prepare_sandbox_command(
-    cmd: list[str], *, cache_dir: Path | None = None
-) -> tuple[list[str] | None, Path | None]:
-    bwrap = resolve_bwrap_bin()
-    if not bwrap:
-        return None, None
-    bwrap_options = build_bwrap_options(cache_dir=cache_dir)
-    args_file: Path | None = None
-    if load_sandbox_store_paths() is not None:
-        args_file = _write_bwrap_args_file(bwrap_options)
-        bash_bin = shutil.which("bash") or "/bin/sh"
-        inner_cmd = [
-            bash_bin,
-            "-c",
-            'bwrap="$1"; args="$2"; shift 2; exec "$bwrap" --args 3 -- "$@" 3<"$args"',
-            "_",
-            bwrap,
-            str(args_file),
-            *cmd,
-        ]
-    else:
-        inner_cmd = [bwrap, *bwrap_options, "--", *cmd]
+def _read_fd_until_eof(fd: int, timeout_sec: float) -> bytes | None:
+    deadline = time.monotonic() + max(0.0, timeout_sec)
+    chunks: list[bytes] = []
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return None
+        ready, _, _ = select.select([fd], [], [], remaining)
+        if not ready:
+            return None
+        chunk = os.read(fd, 4096)
+        if not chunk:
+            return b"".join(chunks)
+        chunks.append(chunk)
 
-    pasta = resolve_pasta_bin()
-    if pasta:
-        return [pasta, *PASTA_ISOLATION_FLAGS, "--", *inner_cmd], args_file
-    return inner_cmd, args_file
+
+def _build_pasta_attach_cmd(
+    pasta_bin: str, pasta_pid_file: Path, child_pid: int
+) -> list[str]:
+    return [pasta_bin, *PASTA_ISOLATION_FLAGS, "-P", str(pasta_pid_file), str(child_pid)]
+
+
+def _pid_is_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    try:
+        stat_text = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8")
+        rparen = stat_text.rfind(")")
+        if rparen != -1:
+            fields = stat_text[rparen + 2 :].split()
+            if fields and fields[0] == "Z":
+                return False
+    except OSError:
+        pass
+    return True
+
+
+def _cleanup_pasta_process(pasta_pid_file: Path) -> None:
+    pasta_pid: int | None = None
+    try:
+        raw = pasta_pid_file.read_text(encoding="utf-8").strip()
+        if raw:
+            parsed = int(raw)
+            if parsed > 1 and parsed != os.getpid():
+                pasta_pid = parsed
+    except (OSError, ValueError):
+        pasta_pid = None
+    finally:
+        with contextlib.suppress(OSError):
+            pasta_pid_file.unlink(missing_ok=True)
+
+    if pasta_pid is None or not _pid_is_alive(pasta_pid):
+        return
+
+    with contextlib.suppress(ProcessLookupError, PermissionError):
+        os.kill(pasta_pid, signal.SIGTERM)
+    deadline = time.monotonic() + 1.0
+    while time.monotonic() < deadline:
+        if not _pid_is_alive(pasta_pid):
+            return
+        time.sleep(0.02)
+
+    if _pid_is_alive(pasta_pid):
+        with contextlib.suppress(ProcessLookupError, PermissionError):
+            os.kill(pasta_pid, signal.SIGKILL)
+        kill_deadline = time.monotonic() + 0.5
+        while time.monotonic() < kill_deadline and _pid_is_alive(pasta_pid):
+            time.sleep(0.02)
 
 
 def _terminate_process_group(proc: subprocess.Popen[bytes]) -> None:
@@ -1055,6 +1150,12 @@ def _run_process_bounded(
     env: dict[str, str],
     timeout_sec: float,
     tracking_keys: tuple[str, ...] = (),
+    *,
+    pass_fds: tuple[int, ...] = (),
+    close_in_parent: tuple[_ManagedFd, ...] = (),
+    on_spawn: Callable[[subprocess.Popen[bytes], float], tuple[int | None, str] | None]
+    | None = None,
+    on_cleanup: Callable[[], None] | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], bool]:
     stdout_chunks: list[bytes] = []
     stderr_chunks: list[bytes] = []
@@ -1090,14 +1191,28 @@ def _run_process_bounded(
             else:
                 overflow = True
 
-    proc = subprocess.Popen(  # codeql[py/command-line-injection] # lgtm[py/command-line-injection]
-        cmd,
-        cwd=str(workspace_dir),
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        start_new_session=True,
-    )
+    deadline = time.monotonic() + timeout_sec
+    try:
+        proc = subprocess.Popen(  # codeql[py/command-line-injection] # lgtm[py/command-line-injection]
+            cmd,
+            cwd=str(workspace_dir),
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=True,
+            pass_fds=pass_fds,
+        )
+    except Exception:
+        for managed_fd in close_in_parent:
+            managed_fd.close()
+        if on_cleanup is not None:
+            with contextlib.suppress(Exception):
+                on_cleanup()
+        raise
+
+    for managed_fd in close_in_parent:
+        managed_fd.close()
+
     if tracking_keys:
         with ACTIVE_PROCESSES_LOCK:
             for key in tracking_keys:
@@ -1111,8 +1226,29 @@ def _run_process_bounded(
     )
     t_out.start()
     t_err.start()
+    extra_stderr = ""
     try:
-        returncode = proc.wait(timeout=timeout_sec)
+        if on_spawn is not None:
+            spawn_failure = on_spawn(proc, deadline)
+            if spawn_failure is not None:
+                rc_override, extra_stderr = spawn_failure
+                try:
+                    proc_rc = proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    _terminate_process_group(proc)
+                    with contextlib.suppress(Exception):
+                        proc.wait(timeout=5)
+                    proc_rc = proc.returncode if proc.returncode is not None else 1
+                returncode = (
+                    proc_rc
+                    if proc_rc != 0 and rc_override is None
+                    else (rc_override if rc_override is not None else (proc_rc or 1))
+                )
+            else:
+                remaining = max(0.1, deadline - time.monotonic())
+                returncode = proc.wait(timeout=remaining)
+        else:
+            returncode = proc.wait(timeout=timeout_sec)
     except subprocess.TimeoutExpired:
         _terminate_process_group(proc)
         with contextlib.suppress(Exception):
@@ -1131,6 +1267,15 @@ def _run_process_bounded(
                 for key in tracking_keys:
                     if ACTIVE_PROCESSES.get(key) is proc:
                         ACTIVE_PROCESSES.pop(key, None)
+        if proc.poll() is None:
+            _terminate_process_group(proc)
+            with contextlib.suppress(Exception):
+                proc.wait(timeout=5)
+        else:
+            _terminate_process_group(proc)
+        if on_cleanup is not None:
+            with contextlib.suppress(Exception):
+                on_cleanup()
         t_out.join(timeout=2)
         t_err.join(timeout=2)
         if proc.stdout is not None:
@@ -1140,11 +1285,18 @@ def _run_process_bounded(
             with contextlib.suppress(OSError):
                 proc.stderr.close()
 
+    stderr_text = b"".join(stderr_chunks).decode("utf-8", errors="replace")
+    if extra_stderr:
+        stderr_text = (
+            f"{stderr_text.rstrip()}\n{extra_stderr}"
+            if stderr_text.strip()
+            else extra_stderr
+        )
     completed = subprocess.CompletedProcess(
         args=cmd,
         returncode=returncode,
         stdout=b"".join(stdout_chunks).decode("utf-8", errors="replace"),
-        stderr=b"".join(stderr_chunks).decode("utf-8", errors="replace"),
+        stderr=stderr_text,
     )
     return completed, overflow
 
@@ -1226,26 +1378,192 @@ def run_sandboxed(
     caller_role: str = "USER",
     cache_dir: Path | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], bool]:
-    sandbox_cmd, args_file = prepare_sandbox_command(cmd, cache_dir=cache_dir)
+    bwrap = resolve_bwrap_bin()
+    use_bwrap = bwrap is not None
     child_env = build_sandbox_env(
         env,
         workspace_dir,
-        use_bwrap=sandbox_cmd is not None,
+        use_bwrap=use_bwrap,
         caller_role=caller_role,
-        cache_mounted=(sandbox_cmd is not None and cache_dir is not None),
+        cache_mounted=(use_bwrap and cache_dir is not None),
     )
-    try:
-        if sandbox_cmd is not None:
-            return _run_process_bounded(
-                sandbox_cmd, workspace_dir, child_env, timeout_sec, tracking_keys
-            )
+    if bwrap is None:
         return _run_process_bounded(
             cmd, workspace_dir, child_env, timeout_sec, tracking_keys
         )
+
+    pasta = resolve_pasta_bin()
+    use_pasta = pasta is not None
+    bwrap_options = build_bwrap_options(
+        cache_dir=cache_dir, share_net=not use_pasta
+    )
+    use_args_fd = load_sandbox_store_paths() is not None
+    managed_fds: list[_ManagedFd] = []
+    pasta_pid_file: Path | None = None
+    try:
+        args_fd: _ManagedFd | None = None
+        if use_args_fd:
+            args_fd = _create_bwrap_args_fd(bwrap_options)
+            managed_fds.append(args_fd)
+            assert args_fd.fd is not None
+            bwrap_cmd = [bwrap, "--args", str(args_fd.fd)]
+        else:
+            bwrap_cmd = [bwrap, *bwrap_options]
+
+        if not use_pasta:
+            bwrap_cmd.extend(["--", *cmd])
+            if args_fd is not None:
+                assert args_fd.fd is not None
+                return _run_process_bounded(
+                    bwrap_cmd,
+                    workspace_dir,
+                    child_env,
+                    timeout_sec,
+                    tracking_keys,
+                    pass_fds=(args_fd.fd,),
+                    close_in_parent=(args_fd,),
+                )
+            return _run_process_bounded(
+                bwrap_cmd, workspace_dir, child_env, timeout_sec, tracking_keys
+            )
+
+        assert pasta is not None
+        raw_info_r, raw_info_w = os.pipe()
+        info_r = _ManagedFd(raw_info_r)
+        info_w = _ManagedFd(raw_info_w)
+        managed_fds.extend([info_r, info_w])
+
+        raw_block_r, raw_block_w = os.pipe()
+        block_r = _ManagedFd(raw_block_r)
+        block_w = _ManagedFd(raw_block_w)
+        managed_fds.extend([block_r, block_w])
+
+        os.set_inheritable(raw_info_w, True)
+        os.set_inheritable(raw_block_r, True)
+
+        bwrap_cmd.extend(
+            [
+                "--info-fd",
+                str(raw_info_w),
+                "--block-fd",
+                str(raw_block_r),
+                "--",
+                *cmd,
+            ]
+        )
+
+        TMP_DIR.mkdir(parents=True, exist_ok=True)
+        with contextlib.suppress(OSError):
+            TMP_DIR.chmod(0o700)
+        pasta_pid_file = TMP_DIR / f"pasta-{os.getpid()}-{secrets.token_hex(8)}.pid"
+        pasta_env = {"PATH": env.get("PATH") or os.environ.get("PATH", "")}
+
+        pass_fd_objects: tuple[_ManagedFd, ...] = (
+            (args_fd, info_w, block_r)
+            if args_fd is not None
+            else (info_w, block_r)
+        )
+        pass_fd_ints = tuple(
+            fd_obj.fd for fd_obj in pass_fd_objects if fd_obj.fd is not None
+        )
+
+        def on_spawn(
+            proc: subprocess.Popen[bytes], deadline: float
+        ) -> tuple[int | None, str] | None:
+            info_fd = info_r.fd
+            if info_fd is None:
+                block_w.close()
+                return 1, "bwrap info pipe unavailable\n"
+            info_timeout = min(
+                max(0.1, deadline - time.monotonic()), BWRAP_INFO_TIMEOUT_SEC
+            )
+            info_bytes = _read_fd_until_eof(info_fd, info_timeout)
+            info_r.close()
+            if info_bytes is None:
+                block_w.close()
+                raise subprocess.TimeoutExpired(cmd=bwrap_cmd, timeout=info_timeout)
+            if not info_bytes.strip():
+                block_w.close()
+                return None, ""
+            try:
+                info = json.loads(info_bytes.decode("utf-8", errors="replace"))
+                child_pid = int(info["child-pid"])
+                if child_pid <= 0:
+                    raise ValueError("non-positive child-pid")
+            except (ValueError, KeyError, TypeError):
+                _terminate_process_group(proc)
+                block_w.close()
+                return 1, "bwrap did not report a valid child-pid\n"
+
+            assert pasta_pid_file is not None
+            pasta_cmd = _build_pasta_attach_cmd(pasta, pasta_pid_file, child_pid)
+            attach_timeout = min(
+                max(0.1, deadline - time.monotonic()), PASTA_ATTACH_TIMEOUT_SEC
+            )
+            try:
+                pasta_res = subprocess.run(  # codeql[py/command-line-injection] # lgtm[py/command-line-injection]
+                    pasta_cmd,
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    env=pasta_env,
+                    timeout=attach_timeout,
+                    check=False,
+                )
+            except subprocess.TimeoutExpired:
+                _terminate_process_group(proc)
+                block_w.close()
+                raise
+            except OSError as exc:
+                _terminate_process_group(proc)
+                block_w.close()
+                return 1, f"pasta failed to start: {exc}\n"
+
+            if pasta_res.returncode != 0:
+                _terminate_process_group(proc)
+                block_w.close()
+                detail = (
+                    pasta_res.stderr.decode("utf-8", errors="replace").strip()
+                    or pasta_res.stdout.decode("utf-8", errors="replace").strip()
+                    or "unknown error"
+                )
+                return (
+                    pasta_res.returncode,
+                    f"pasta failed (exit {pasta_res.returncode}): {detail}\n",
+                )
+
+            bw_fd = block_w.fd
+            if bw_fd is not None:
+                try:
+                    os.write(bw_fd, b"1")
+                except OSError:
+                    block_w.close()
+                    return None, ""
+            block_w.close()
+            return None
+
+        def on_cleanup() -> None:
+            info_r.close()
+            block_w.close()
+            if pasta_pid_file is not None:
+                _cleanup_pasta_process(pasta_pid_file)
+
+        return _run_process_bounded(
+            bwrap_cmd,
+            workspace_dir,
+            child_env,
+            timeout_sec,
+            tracking_keys,
+            pass_fds=pass_fd_ints,
+            close_in_parent=pass_fd_objects,
+            on_spawn=on_spawn,
+            on_cleanup=on_cleanup,
+        )
     finally:
-        if args_file is not None:
-            with contextlib.suppress(OSError):
-                args_file.unlink(missing_ok=True)
+        for managed_fd in managed_fds:
+            managed_fd.close()
+        if pasta_pid_file is not None:
+            _cleanup_pasta_process(pasta_pid_file)
 
 
 def execute_code_request(

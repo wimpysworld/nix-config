@@ -192,9 +192,33 @@ class CodeSandboxTests(unittest.TestCase):
             self.assertIsNotNone(cmd)
             assert cmd is not None
             self.assertIn("--unshare-all", cmd)
+            self.assertIn("--unshare-user", cmd)
             self.assertIn("--share-net", cmd)
+            self.assertIn("--disable-userns", cmd)
             hostname_idx = cmd.index("--hostname")
             self.assertEqual(cmd[hostname_idx + 1], "sandbox")
+
+            # When pasta is active (share_net=False), --share-net must be omitted.
+            with (
+                mock.patch.dict(
+                    os.environ,
+                    {
+                        "SANDBOX_DISABLE_BWRAP": "0",
+                        "SANDBOX_DISABLE_PASTA": "0",
+                        "PASTA_BIN": "/nix/store/yyy-passt/bin/pasta",
+                        "SANDBOX_ETC_DIR": str(fake_etc),
+                    },
+                    clear=False,
+                ),
+                mock.patch.object(mod.shutil, "which", return_value="/usr/bin/bwrap"),
+            ):
+                pasta_bwrap_cmd = mod.build_bwrap_cmd(["bash", "-c", "true"])
+            self.assertIsNotNone(pasta_bwrap_cmd)
+            assert pasta_bwrap_cmd is not None
+            self.assertIn("--unshare-all", pasta_bwrap_cmd)
+            self.assertIn("--unshare-user", pasta_bwrap_cmd)
+            self.assertIn("--disable-userns", pasta_bwrap_cmd)
+            self.assertNotIn("--share-net", pasta_bwrap_cmd)
 
             # Must mount SANDBOX_ETC_DIR, never host /etc or /run/systemd/resolve.
             self.assertNotIn("/run/systemd/resolve", cmd)
@@ -261,7 +285,7 @@ class CodeSandboxTests(unittest.TestCase):
             self.assertGreater(remount_idx, shm_dst_idx)
             self.assertGreater(remount_idx, cmd.index("/mnt/data"))
 
-    def test_closure_args_file_pasta_flags_bwrap_bin_and_cleanup(self):
+    def test_bwrap_memfd_args_and_pasta_attach_lifecycle_and_error_handling(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             state_dir = root / "state"
@@ -274,132 +298,215 @@ class CodeSandboxTests(unittest.TestCase):
             )
             cache_dir = root / "cache"
             cache_dir.mkdir()
-            mod = load_sandbox(state_dir, SANDBOX_DISABLE_BWRAP="0")
+            record_file = root / "recorded.json"
+            pasta_record_file = root / "pasta-recorded.json"
+            pasta_bg_pid_record = root / "pasta-bg.pid"
 
+            fake_bwrap = root / "fake-bwrap"
+            fake_bwrap.write_text(
+                f"#!{sys.executable}\n"
+                "import json, os, sys, time\n"
+                "argv = sys.argv[1:]\n"
+                "args_fd = info_fd = block_fd = None\n"
+                "cmd = []\n"
+                "i = 0\n"
+                "while i < len(argv):\n"
+                "    if argv[i] == '--args':\n"
+                "        args_fd = int(argv[i + 1]); i += 2\n"
+                "    elif argv[i] == '--info-fd':\n"
+                "        info_fd = int(argv[i + 1]); i += 2\n"
+                "    elif argv[i] == '--block-fd':\n"
+                "        block_fd = int(argv[i + 1]); i += 2\n"
+                "    elif argv[i] == '--':\n"
+                "        cmd = argv[i + 1:]; break\n"
+                "    else:\n"
+                "        i += 1\n"
+                "raw_args = b''\n"
+                "if args_fd is not None:\n"
+                "    while True:\n"
+                "        chunk = os.read(args_fd, 65536)\n"
+                "        if not chunk:\n"
+                "            break\n"
+                "        raw_args += chunk\n"
+                "    os.close(args_fd)\n"
+                f"open({str(record_file)!r}, 'w').write(json.dumps({{'argv': argv, 'args': raw_args[:-1].decode('utf-8').split('\\0') if raw_args.endswith(b'\\0') else [], 'cmd': cmd}}))\n"
+                "if cmd == ['early-fail']:\n"
+                "    sys.stderr.write('bwrap: early startup failure\\n')\n"
+                "    sys.exit(42)\n"
+                "if info_fd is not None:\n"
+                "    os.write(info_fd, json.dumps({'child-pid': os.getpid()}).encode('utf-8') + b'\\n')\n"
+                "    os.close(info_fd)\n"
+                "if block_fd is not None:\n"
+                "    data = os.read(block_fd, 16)\n"
+                "    os.close(block_fd)\n"
+                "    if data != b'1':\n"
+                "        sys.stderr.write('unexpected block-fd close\\n')\n"
+                "        sys.exit(99)\n"
+                "if cmd == ['sleep-forever']:\n"
+                "    time.sleep(30)\n"
+                "print('ran:' + ' '.join(cmd))\n",
+                encoding="utf-8",
+            )
+            fake_bwrap.chmod(0o755)
+
+            fake_pasta = root / "fake-pasta"
+            fake_pasta.write_text(
+                f"#!{sys.executable}\n"
+                "import json, os, subprocess, sys\n"
+                "argv = sys.argv[1:]\n"
+                f"open({str(pasta_record_file)!r}, 'w').write(json.dumps({{'argv': argv}}))\n"
+                "pid_file = None\n"
+                "for idx, tok in enumerate(argv):\n"
+                "    if tok == '-P' and idx + 1 < len(argv):\n"
+                "        pid_file = argv[idx + 1]\n"
+                "if os.environ.get('FAKE_PASTA_FAIL') == '1':\n"
+                "    sys.stderr.write('pasta: simulated attach failure\\n')\n"
+                "    sys.exit(7)\n"
+                "bg = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)\n"
+                "if pid_file:\n"
+                "    open(pid_file, 'w').write(f'{bg.pid}\\n')\n"
+                f"open({str(pasta_bg_pid_record)!r}, 'w').write(str(bg.pid))\n",
+                encoding="utf-8",
+            )
+            fake_pasta.chmod(0o755)
+
+            mod = load_sandbox(state_dir, SANDBOX_DISABLE_BWRAP="0")
             env_cfg = {
                 "SANDBOX_DISABLE_BWRAP": "0",
                 "SANDBOX_DISABLE_PASTA": "0",
-                "BWRAP_BIN": "/nix/store/zzz-bwrap/bin/bwrap",
-                "PASTA_BIN": "/nix/store/yyy-passt/bin/pasta",
+                "BWRAP_BIN": str(fake_bwrap),
+                "PASTA_BIN": str(fake_pasta),
                 "SANDBOX_ETC_DIR": str(fake_etc),
                 "SANDBOX_STORE_PATHS_FILE": str(store_paths_file),
             }
-            captured_cmds: list[list[str]] = []
-            captured_args_content: list[list[str]] = []
-            captured_modes: list[int] = []
-            captured_args_paths: list[Path] = []
 
-            def fake_run(bcmd, workspace_dir, env, timeout_sec, tracking_keys=()):
-                captured_cmds.append(list(bcmd))
-                bwrap_idx = bcmd.index("/nix/store/zzz-bwrap/bin/bwrap")
-                args_path = Path(bcmd[bwrap_idx + 1])
-                captured_args_paths.append(args_path)
-                captured_modes.append(args_path.stat().st_mode & 0o777)
-                raw = args_path.read_bytes()
-                self.assertTrue(raw.endswith(b"\0"))
-                captured_args_content.append(raw[:-1].decode("utf-8").split("\0"))
-                return mod.subprocess.CompletedProcess(bcmd, 0, "", ""), False
-
-            def which_without_bwrap(name: str):
-                if name == "bwrap":
-                    return None
-                if name == "bash":
-                    return "/nix/store/aaa-bash/bin/bash"
-                return None
-
-            with (
-                mock.patch.dict(os.environ, env_cfg, clear=False),
-                mock.patch.object(mod.shutil, "which", side_effect=which_without_bwrap),
-                mock.patch.object(mod, "_run_process_bounded", side_effect=fake_run),
-            ):
-                self.assertEqual(mod.resolve_bwrap_bin(), "/nix/store/zzz-bwrap/bin/bwrap")
-                mod.run_sandboxed(
+            # 1. Normal execution with pasta enabled: bwrap outer (--args memfd, --info-fd,
+            # --block-fd, --disable-userns, NO --share-net) + pasta attached via -P <pidfile> <child_pid>.
+            with mock.patch.dict(os.environ, env_cfg, clear=False):
+                self.assertEqual(mod.resolve_bwrap_bin(), str(fake_bwrap))
+                res, overflow = mod.run_sandboxed(
                     ["python3", "-c", "print(1)"],
                     root,
-                    {"PATH": "/nix/store/aaa-bash/bin"},
+                    {"PATH": os.environ.get("PATH", "")},
                     10.0,
                     cache_dir=cache_dir,
                 )
+            self.assertFalse(overflow)
+            self.assertEqual(res.returncode, 0, res.stderr)
+            self.assertEqual(res.stdout, "ran:python3 -c print(1)\n")
 
-            self.assertEqual(len(captured_cmds), 1)
-            full_cmd = captured_cmds[0]
-            self.assertEqual(full_cmd[0], "/nix/store/yyy-passt/bin/pasta")
-            expected_pasta_prefix = [
-                "/nix/store/yyy-passt/bin/pasta",
-                "--config-net",
-                "--no-map-gw",
-                "--map-host-loopback",
-                "none",
-                "--map-guest-addr",
-                "none",
-                "-t",
-                "none",
-                "-u",
-                "none",
-                "-T",
-                "none",
-                "-U",
-                "none",
-                "--no-splice",
-                "--dns",
-                "none",
-                "--quiet",
-                "--",
-                "/nix/store/aaa-bash/bin/bash",
-                "-c",
-                'bwrap="$1"; args="$2"; shift 2; exec "$bwrap" --args 3 -- "$@" 3<"$args"',
-                "_",
-                "/nix/store/zzz-bwrap/bin/bwrap",
-            ]
-            self.assertEqual(full_cmd[: len(expected_pasta_prefix)], expected_pasta_prefix)
-            self.assertEqual(
-                full_cmd[len(expected_pasta_prefix) + 1 :],
-                ["python3", "-c", "print(1)"],
-            )
-            self.assertEqual(captured_modes[0], 0o600)
-            self.assertFalse(
-                captured_args_paths[0].exists(),
-                "temporary bwrap --args file must be unlinked in finally",
-            )
-
-            bwrap_args = captured_args_content[0]
+            recorded = json.loads(record_file.read_text(encoding="utf-8"))
+            self.assertIn("--args", recorded["argv"])
+            self.assertIn("--info-fd", recorded["argv"])
+            self.assertIn("--block-fd", recorded["argv"])
+            bwrap_args = recorded["args"]
+            self.assertIn("--unshare-all", bwrap_args)
+            self.assertIn("--disable-userns", bwrap_args)
+            self.assertNotIn("--share-net", bwrap_args)
             self.assertNotIn("/nix/store", bwrap_args)
             self.assertNotIn("/run/current-system", bwrap_args)
             self.assertNotIn("--", bwrap_args)
-            self.assertNotIn("python3", bwrap_args)
             self.assertEqual(bwrap_args[-2:], ["--remount-ro", "/"])
             self.assertIn("/nix/store/aaa-bash", bwrap_args)
             self.assertIn("/nix/store/bbb-python", bwrap_args)
             self.assertEqual(bwrap_args.count("/nix/store/aaa-bash"), 2)
             remount_idx = bwrap_args.index("--remount-ro")
-            self.assertEqual(bwrap_args[remount_idx + 1], "/")
             self.assertGreater(remount_idx, bwrap_args.index("/var/cache/sandbox"))
             self.assertGreater(remount_idx, bwrap_args.index("/mnt/data"))
             self.assertGreater(remount_idx, bwrap_args.index("/dev/shm"))
             self.assertGreater(remount_idx, bwrap_args.index("/tmp"))
 
-            # SANDBOX_DISABLE_PASTA=1 skips pasta while still using --args 3 and cleaning up on error.
-            errored_args_path: list[Path] = []
+            pasta_rec = json.loads(pasta_record_file.read_text(encoding="utf-8"))
+            pasta_argv = pasta_rec["argv"]
+            self.assertEqual(
+                pasta_argv[: len(mod.PASTA_ISOLATION_FLAGS)],
+                list(mod.PASTA_ISOLATION_FLAGS),
+            )
+            self.assertEqual(pasta_argv[len(mod.PASTA_ISOLATION_FLAGS)], "-P")
+            pasta_pid_path = Path(pasta_argv[len(mod.PASTA_ISOLATION_FLAGS) + 1])
+            self.assertFalse(pasta_pid_path.exists(), "pasta PID file must be unlinked")
+            self.assertTrue(pasta_argv[-1].isdigit())
+            bg_pid = int(pasta_bg_pid_record.read_text(encoding="utf-8").strip())
+            self.assertFalse(
+                mod._pid_is_alive(bg_pid),
+                "pasta daemon must be cleaned up when bwrap finishes",
+            )
+            self.assertFalse(
+                list((state_dir / "tmp").glob("bwrap-args-*")),
+                "bwrap --args must use anonymous memfd, never on-disk files",
+            )
 
-            def failing_run(bcmd, workspace_dir, env, timeout_sec, tracking_keys=()):
-                self.assertEqual(bcmd[0], "/nix/store/aaa-bash/bin/bash")
-                bwrap_idx = bcmd.index("/nix/store/zzz-bwrap/bin/bwrap")
-                errored_args_path.append(Path(bcmd[bwrap_idx + 1]))
-                raise RuntimeError("boom")
+            # 2. bwrap early-exit before writing child-pid returns bwrap's stderr without hanging.
+            with mock.patch.dict(os.environ, env_cfg, clear=False):
+                early_res, _ = mod.run_sandboxed(
+                    ["early-fail"],
+                    root,
+                    {"PATH": os.environ.get("PATH", "")},
+                    10.0,
+                )
+            self.assertEqual(early_res.returncode, 42)
+            self.assertIn("early startup failure", early_res.stderr)
 
-            with (
-                mock.patch.dict(
-                    os.environ,
-                    {**env_cfg, "SANDBOX_DISABLE_PASTA": "1"},
-                    clear=False,
-                ),
-                mock.patch.object(mod.shutil, "which", side_effect=which_without_bwrap),
-                mock.patch.object(mod, "_run_process_bounded", side_effect=failing_run),
-                self.assertRaises(RuntimeError),
+            # 3. pasta attach failure kills bwrap, surfaces pasta stderr, and leaves no PID file.
+            with mock.patch.dict(
+                os.environ, {**env_cfg, "FAKE_PASTA_FAIL": "1"}, clear=False
             ):
-                mod.run_sandboxed(["true"], root, {"PATH": "/bin"}, 10.0)
-            self.assertEqual(len(errored_args_path), 1)
-            self.assertFalse(errored_args_path[0].exists())
+                # Force pasta subprocess to see FAKE_PASTA_FAIL via a wrapper env patch.
+                real_sub_run = mod.subprocess.run
+
+                def run_with_fail_env(cmd_arg, *args, **kwargs):
+                    kwargs["env"] = {**(kwargs.get("env") or {}), "FAKE_PASTA_FAIL": "1"}
+                    return real_sub_run(cmd_arg, *args, **kwargs)
+
+                with mock.patch.object(mod.subprocess, "run", side_effect=run_with_fail_env):
+                    pasta_fail_res, _ = mod.run_sandboxed(
+                        ["sleep-forever"],
+                        root,
+                        {"PATH": os.environ.get("PATH", "")},
+                        10.0,
+                    )
+            self.assertEqual(pasta_fail_res.returncode, 7)
+            self.assertIn("pasta failed (exit 7)", pasta_fail_res.stderr)
+            self.assertIn("simulated attach failure", pasta_fail_res.stderr)
+            self.assertFalse(list((state_dir / "tmp").glob("pasta-*.pid")))
+
+            # 4. Timeout terminates both bwrap and the attached pasta daemon.
+            with (
+                mock.patch.dict(os.environ, env_cfg, clear=False),
+                self.assertRaises(mod.subprocess.TimeoutExpired),
+            ):
+                mod.run_sandboxed(
+                    ["sleep-forever"],
+                    root,
+                    {"PATH": os.environ.get("PATH", "")},
+                    0.5,
+                )
+            timeout_bg_pid = int(pasta_bg_pid_record.read_text(encoding="utf-8").strip())
+            self.assertFalse(
+                mod._pid_is_alive(timeout_bg_pid),
+                "pasta daemon must be terminated on command timeout",
+            )
+            self.assertFalse(list((state_dir / "tmp").glob("pasta-*.pid")))
+
+            # 5. SANDBOX_DISABLE_PASTA=1 skips pasta, keeps --share-net + --disable-userns + --args memfd.
+            with mock.patch.dict(
+                os.environ, {**env_cfg, "SANDBOX_DISABLE_PASTA": "1"}, clear=False
+            ):
+                no_pasta_res, _ = mod.run_sandboxed(
+                    ["echo", "direct"],
+                    root,
+                    {"PATH": os.environ.get("PATH", "")},
+                    10.0,
+                )
+            self.assertEqual(no_pasta_res.returncode, 0, no_pasta_res.stderr)
+            self.assertEqual(no_pasta_res.stdout, "ran:echo direct\n")
+            recorded_no_pasta = json.loads(record_file.read_text(encoding="utf-8"))
+            self.assertIn("--args", recorded_no_pasta["argv"])
+            self.assertNotIn("--info-fd", recorded_no_pasta["argv"])
+            self.assertNotIn("--block-fd", recorded_no_pasta["argv"])
+            self.assertIn("--unshare-all", recorded_no_pasta["args"])
+            self.assertIn("--share-net", recorded_no_pasta["args"])
+            self.assertIn("--disable-userns", recorded_no_pasta["args"])
 
     def test_bwrap_sets_tmp_cache_env_and_ignores_dot_caches(self):
         with tempfile.TemporaryDirectory() as tmp:
