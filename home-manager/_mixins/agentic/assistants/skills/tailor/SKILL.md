@@ -135,8 +135,8 @@ social:
 
 ### Hybrid storage model
 
-- **`--static` on `main` (offline, no token)**: renders `hero`, `link-*`, `pkg-*`, static `community`, and the static `sponsors` call-to-action (CTA) in `pages/social/*.svg`, plus `pages/og.png`.
-- **`--live` on the orphan `social-assets` branch (requires a GitHub token)**: fetches changing GitHub and Discord data for `stats`, `stars`, live `sponsors` (`@handles`), live `community`, and `contributors` (human-only inline avatars). `.github/workflows/tailor-social.yml` runs this on schedule, pushes to `social-assets`, and updates `README.md` with commit-pinned `raw.githubusercontent.com` URLs (`[skip ci]`).
+- **`--static` on `main` (offline, no token)**: renders `hero`, `link-*`, `pkg-*`, static `community`, and the static `sponsors` call-to-action (CTA) banner with multi-coloured drifting hearts in `pages/social/*.svg`, plus `pages/og.png`.
+- **`--live` on the orphan `social-assets` branch (requires a GitHub token)**: fetches changing GitHub and Discord data for `stats`, `stars`, live `community`, and `contributors` (human-only inline avatars). `.github/workflows/tailor-social.yml` runs this on schedule, pushes to `social-assets`, and updates `README.md` with commit-pinned `raw.githubusercontent.com` URLs (`[skip ci]`).
 - **Star CTA fallback**: when a repository is below `star_history.min_stars` or `min_days`, `stars-{dark,light}.svg` renders a themed "Star this repository" CTA card with drifting stars and a `STAR` pill. Once the repository meets both thresholds, `stars-{dark,light}.svg` switches automatically to the animated star-history chart.
 
 ### Generate static assets locally
@@ -147,7 +147,7 @@ social:
 4. Run `just og` to render `pages/og.png` (`1280 x 640`, `< 1 MB`). `just og` refuses to overwrite existing artwork; pass `just og --force` to regenerate. `tailor measure` accepts both `1280 x 640` and bespoke `1200 x 630` PNGs under 1 MB.
 5. Update existing `pages/index.html` landing pages manually: new static Pages starters include Open Graph and Twitter Card tags automatically, but existing `first-fit` `pages/index.html` files stay untouched. Set `og:image` to `https://<domain>/og.png` (from `pages.cname` or `https://<owner>.github.io/<repo>/og.png`), `og:image:width="1280"`, `og:image:height="640"`, `og:image:alt`, and `twitter:card="summary_large_image"` (replacing older `icon.png` or `summary` tags).
 6. Remind the user to upload `pages/og.png` manually in GitHub under **Settings > General > Social preview**.
-7. Commit and push the generated assets, `README.md`, and `.github/workflows/tailor-social.yml`. When using live README markers (`stats`, `sponsors`, `stars`, `contributors`), tell the user they can trigger **Actions > Tailor Social > Run workflow** once to create the orphan `social-assets` branch and populate the commit-pinned live URLs immediately instead of waiting for the daily schedule.
+7. Commit and push the generated assets, `README.md`, and `.github/workflows/tailor-social.yml`. When using live README markers (`stats`, `stars`, `contributors`), tell the user they can trigger **Actions > Tailor Social > Run workflow** once to create the orphan `social-assets` branch and populate the commit-pinned live URLs immediately instead of waiting for the daily schedule.
 
 ### Canonical `README.md` layout
 
@@ -159,8 +159,8 @@ When `social.enabled: true`, replace the legacy `<h1 align="center">` + `256x256
 4. **Introduction prose**: Short project overview.
 5. **`## Features`**: Key project capabilities.
 6. **`stats`** (`<!-- tailor:social-stats:start -->` / `<!-- tailor:social-stats:end -->`): 4-column project health strip (`Commits`, `Issues` open and closed, `Pull Requests` merged and open, `Established` month and year), linking to `/pulse`.
-7. **`## Install`**: Open with a sentence about the first-party, signed package repositories on `wimpys.world`. Place the `packages` button block (`<!-- tailor:social-packages:start -->` / `<!-- tailor:social-packages:end -->`) next. Put `Any platform (bin)` and `Container (GHCR)` in collapsible `<details>` fold-downs, and keep authentication notes visible when needed.
-8. **`sponsors`** (`<!-- tailor:social-sponsors:start -->` / `<!-- tailor:social-sponsors:end -->`): GitHub Sponsors banner.
+7. **`## Install`**: Open with a sentence about the first-party, signed package repositories on `wimpys.world`. Place the `packages` button block (`<!-- tailor:social-packages:start -->` / `<!-- tailor:social-packages:end -->`) next, followed by `Any platform (bin)` and `Container (GHCR)` in collapsible `<details>` fold-downs.
+8. **`sponsors`** (`<!-- tailor:social-sponsors:start -->` / `<!-- tailor:social-sponsors:end -->`): Static GitHub Sponsors CTA banner with multi-coloured drifting hearts (`pages/social/sponsors-{dark,light}.svg`). Place it directly after the `<details>` fold-downs and above `### Authentication` (keep authentication notes visible below it when needed).
 9. **Free text sections**: `Quick start`, `Agent skill`, `Development`, `Documentation`, and `Support and contributing`.
 10. **`stars`** (`<!-- tailor:social-stars:start -->` / `<!-- tailor:social-stars:end -->`): Star history chart, or the drifting-stars CTA card below threshold.
 11. **`contributors`** (`<!-- tailor:social-contributors:start -->` / `<!-- tailor:social-contributors:end -->`): Floating-balloon human contributor avatars banner with a thank-you message, linking to `/graphs/contributors`, always at the very bottom.
