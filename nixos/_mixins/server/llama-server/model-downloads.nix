@@ -28,6 +28,14 @@ let
     revision = "45fd08764f2b0bf16b03a5483a80e5c7aaec8772";
   };
 
+  mellum =
+    quant:
+    modelFiles {
+      hfRepo = "JetBrains/Mellum2.1-12B-A2.5B-Thinking-GGUF";
+      path = "Mellum2.1-12B-A2.5B-Thinking-${quant}.gguf";
+      publicName = "mellum2.1-12b";
+    };
+
   qwen = modelFiles {
     hfRepo = "unsloth/Qwen3.8-27B-GGUF";
     path = "Qwen3.8-27B-UD-Q4_K_XL.gguf";
@@ -39,6 +47,8 @@ let
 in
 {
   "unsloth/Inkling-2-Mini-GGUF:UD-Q4_K_XL" = inkling;
+  "JetBrains/Mellum2.1-12B-A2.5B-Thinking-GGUF:Q8_0" = mellum "Q8_0";
+  "JetBrains/Mellum2.1-12B-A2.5B-Thinking-GGUF:Q6_K" = mellum "Q6_K";
   "unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL" = qwen;
   "unsloth/Qwen3.5-9B-MTP-GGUF:UD-Q4_K_XL" = modelFiles {
     hfRepo = "unsloth/Qwen3.5-9B-MTP-GGUF";

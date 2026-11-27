@@ -85,7 +85,7 @@ trim_whitespace() {
 list_supported_models() {
 	local model
 
-	printf 'Supported models:\n  - inkling-2-mini\n  - qwen3.5-9b\n  - qwen3.8-27b\n'
+	printf 'Supported models:\n  - inkling-2-mini\n  - mellum2.1-12b\n  - qwen3.5-9b\n  - qwen3.8-27b\n'
 	while IFS='|' read -r model _; do
 		model="$(trim_whitespace "${model}")"
 		printf '  - %s\n' "${model}"
@@ -167,7 +167,7 @@ if [[ $# -gt 1 && ! "${RUNS}" =~ ^0*[1-9][0-9]*$ ]]; then
 fi
 
 case "${MODEL}" in
-inkling-2-mini | qwen3.5-9b | qwen3.8-27b)
+inkling-2-mini | mellum2.1-12b | qwen3.5-9b | qwen3.8-27b)
 	exec python3 "${BENCHMARK_COMPARISON_SCRIPT:-$(dirname "${BASH_SOURCE[0]}")/focused.py}" \
 		"${FOCUSED_FLAGS[@]}" --runs "${RUNS:-3}" "${MODEL}"
 	;;

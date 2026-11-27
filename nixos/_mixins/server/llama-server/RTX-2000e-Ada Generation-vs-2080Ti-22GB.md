@@ -40,7 +40,7 @@ The mod replaces the eleven 1GB (8 Gbit) GDDR6 chips on the PCB with 2GB (16 Gbi
 
 ### Embeddings
 
-Both GPUs handle local embeddings easily. [model-policy.nix](model-policy.nix) serves `qwen3-embedding-0.6b` (`Q8_0`, 8K context, ~1.2 GB) on every tier with no reranker configured, and `llama-swap` keeps it resident on Revan for Silo recommendations and local API requests. Higher memory bandwidth processes embedding batches faster, but embedding throughput is not a bottleneck on Revan.
+Both GPUs handle local embeddings easily. [model-policy.nix](model-policy.nix) serves `qwen3-embedding-0.6b` (`Q8_0`, 8K context, ~0.9 GiB) on every tier with no reranker configured, and `llama-swap` keeps it resident on Revan for Silo recommendations and local API requests. Higher memory bandwidth processes embedding batches faster, but embedding throughput is not a bottleneck on Revan.
 
 ### Local generation models (`vram16` versus `vram22`)
 
@@ -48,11 +48,11 @@ Revan's 16 GB RTX 2000e Ada selects the `vram16` policy tier, while a 22 GB card
 
 | Role | `vram16` (RTX 2000e Ada) | `vram22` (RTX 2080 Ti 22GB) |
 |---|---|---|
-| `moe` | None | `inkling-2-mini`, `UD-Q4_K_XL`, 128K context (`mmproj-BF16.gguf`) |
-| `dense` | `qwen3.5-9b`, `UD-Q4_K_XL`, 128K context (`mmproj-BF16.gguf`) | `qwen3.5-9b`, `UD-Q4_K_XL`, 256K context (`mmproj-BF16.gguf`) |
-| `embedding` | `qwen3-embedding-0.6b`, `Q8_0`, 8K context | `qwen3-embedding-0.6b`, `Q8_0`, 8K context |
+| `moe` | `mellum2.1-12b` (text-only), `Q6_K`, 128K (~13.0 GiB) | `mellum2.1-12b` (text-only), `Q8_0`, 128K (~14.9 GiB) |
+| `dense` (vision) | `qwen3.5-9b`, `UD-Q4_K_XL`, 128K, `reasoning off` (~10.7 GiB, `mmproj-BF16.gguf`) | `qwen3.5-9b`, `UD-Q4_K_XL`, 256K, `reasoning off` (~12.8 GiB, `mmproj-BF16.gguf`) |
+| `embedding` | `qwen3-embedding-0.6b`, `Q8_0`, 8K (~0.9 GiB) | `qwen3-embedding-0.6b`, `Q8_0`, 8K (~0.9 GiB) |
 
-`llama-swap` keeps `qwen3-embedding-0.6b` resident and loads one generation model at a time on demand. Upgrading to `vram22` removes the 3-bit quantisation compromise on `inkling-2-mini` and `qwen3.8-27b`, doubles `qwen3.8-27b` context from 16K to 32K, and benefits from the 2080 Ti's 2.75x wider memory bus for faster CUDA token generation. No benchmark covers the current `inkling-2-mini` or `qwen3.8-27b` weights on either card, so the Llama 2 7B scoreboard above remains the measured hardware baseline.
+`llama-swap` keeps `qwen3-embedding-0.6b` resident and loads one generation model at a time on demand. Upgrading to `vram22` raises `mellum2.1-12b` from `Q6_K` to `Q8_0` at its native 128K context ceiling, doubles `qwen3.5-9b` context from 128K to 256K, and uses the 2080 Ti's 2.75x wider memory bus for faster CUDA token generation. No benchmark covers the current `mellum2.1-12b` or `qwen3.5-9b` weights on either card, so the Llama 2 7B scoreboard above remains the measured hardware baseline.
 
 ### Hardware media transcoding
 
@@ -76,18 +76,18 @@ At UK electricity rates (~28p/kWh), that is roughly GBP 42/year versus GBP 133/y
 | Pros | Cons |
 |---|---|
 | 50W bus-powered, no PSU cables, quiet operation | 128-bit bus limits bandwidth-bound token generation (50.71 tok/s on Llama 2 7B) |
-| 7th-gen NVENC and 5th-gen NVDEC with AV1 support | 16 GB VRAM limits Revan to the `vram16` tier (`UD-IQ3_XXS` / `UD-Q3_K_XL` at 16K context) |
+| 7th-gen NVENC and 5th-gen NVDEC with AV1 support | 16 GB VRAM limits Revan to the `vram16` tier (`mellum2.1-12b` `Q6_K` at 128K and `qwen3.5-9b` at 128K) |
 | ECC video memory | Fewer CUDA cores (2,816) |
 | Gen 4 Tensor cores with FP8 and BF16 support | Slower local generation than the Strix Halo hosts or `maul` |
 | Single-slot, low-profile form factor | |
-| Fits Revan's current local workload (`qwen3-embedding-0.6b`, `qwen3.5-9b`, and on-demand `vram16` models) | |
+| Fits Revan's current local workload (`qwen3-embedding-0.6b`, `qwen3.5-9b`, and on-demand `mellum2.1-12b`) | |
 
 ### RTX 2080 Ti 22GB (potential swap)
 
 | Pros | Cons |
 |---|---|
 | 2.15x faster token generation on the CUDA reference benchmark (109.17 versus 50.71 tok/s) | 250W TDP, requires 2x 8-pin PSU connectors, adds heat and noise |
-| 22 GB VRAM unlocks the `vram22` tier (`UD-Q4_K_XL` for `inkling-2-mini` and `qwen3.8-27b` at 32K context) | No AV1 encode or decode (6th-gen NVENC, 3rd-gen NVDEC) |
+| 22 GB VRAM unlocks the `vram22` tier (`mellum2.1-12b` `Q8_0` at 128K and `qwen3.5-9b` at 256K) | No AV1 encode or decode (6th-gen NVENC, 3rd-gen NVDEC) |
 | 616 GB/s memory bandwidth | 5x peak power draw for an always-on server |
 | 4,352 CUDA cores | Gen 2 Tensor cores (no FP8) and compute capability 7.5 |
 | Faster local CUDA fallback when remote hosts are offline | Modified hardware with no warranty and an irreversible mod |
@@ -96,7 +96,7 @@ At UK electricity rates (~28p/kWh), that is roughly GBP 42/year versus GBP 133/y
 
 Keep the RTX 2000e Ada for now. Upgrade to the 2080 Ti 22GB only if Revan must serve interactive generation models locally rather than routing heavy requests to the Strix Halo hosts (`skrye` and `zannah`, `vram64`).
 
-Revan's primary local GPU tasks are `qwen3-embedding-0.6b` embeddings, `qwen3.5-9b`, occasional `vram16` generation models, and NVENC media transcoding. The RTX 2000e handles all four at 50W with AV1 hardware support. Swap to the 2080 Ti 22GB only if you want `vram22` `UD-Q4_K_XL` weights and faster local CUDA decode on Revan directly, and you are willing to accept higher power draw, extra heat, and the loss of AV1 transcoding.
+Revan's primary local GPU tasks are `qwen3-embedding-0.6b` embeddings, `qwen3.5-9b`, occasional `mellum2.1-12b` generation, and NVENC media transcoding. The RTX 2000e handles all four at 50W with AV1 hardware support. Swap to the 2080 Ti 22GB only if you want `vram22` (`mellum2.1-12b` `Q8_0` and 256K context on `qwen3.5-9b`) and faster local CUDA decode on Revan directly, and you accept higher power draw, extra heat, and the loss of AV1 transcoding.
 
 ## Hardware notes
 

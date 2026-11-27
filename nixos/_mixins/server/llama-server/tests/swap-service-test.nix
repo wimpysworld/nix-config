@@ -43,9 +43,23 @@ let
     hostVramGiB = 96;
   };
 
+  vram22Eval = evalFor {
+    acceleration = "cuda";
+    hostTags = [ "inference" ];
+    hostVramGiB = 22;
+  };
+
+  vram16Eval = evalFor {
+    acceleration = "cuda";
+    hostTags = [ "inference" ];
+    hostVramGiB = 16;
+  };
+
   service = inferenceEval.config.systemd.services.llama-swap;
   swapConfig = inferenceEval.config.services.llama-swap;
   inherit (swapConfig.settings) models;
+  vram22Models = vram22Eval.config.services.llama-swap.settings.models;
+  vram16Models = vram16Eval.config.services.llama-swap.settings.models;
   package = inferenceEval.pkgs.llama-cpp.override { vulkanSupport = true; };
   server = builtins.unsafeDiscardStringContext (lib.getExe' package "llama-server");
   groupNames = builtins.attrNames swapConfig.settings.groups;
@@ -82,6 +96,16 @@ assert lib.hasInfix "Mainline_Support/" models.inkling-2-mini.cmd;
 assert lib.all (
   model: (lib.hasInfix " --mmproj " model.cmd) == (model.metadata.role != "embedding")
 ) (lib.attrValues models);
+assert vram22Models ? "mellum2.1-12b";
+assert vram16Models ? "mellum2.1-12b";
+assert lib.hasInfix "Mellum2.1-12B-A2.5B-Thinking-Q8_0.gguf" vram22Models."mellum2.1-12b".cmd;
+assert lib.hasInfix "Mellum2.1-12B-A2.5B-Thinking-Q6_K.gguf" vram16Models."mellum2.1-12b".cmd;
+assert !(lib.hasInfix " --mmproj " vram22Models."mellum2.1-12b".cmd);
+assert !(lib.hasInfix " --mmproj " vram16Models."mellum2.1-12b".cmd);
+assert !(lib.hasInfix "--spec-type" vram22Models."mellum2.1-12b".cmd);
+assert !(lib.hasInfix "--spec-type" vram16Models."mellum2.1-12b".cmd);
+assert lib.hasInfix " --mmproj " vram22Models."qwen3.5-9b".cmd;
+assert lib.hasInfix " --mmproj " vram16Models."qwen3.5-9b".cmd;
 assert builtins.elem "embedding" groupNames;
 assert builtins.elem "generation" groupNames;
 assert builtins.elem "llama-models-preseed.service" service.requires;

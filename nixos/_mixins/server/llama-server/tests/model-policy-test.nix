@@ -7,7 +7,14 @@ let
   runtime = import ../runtime.nix { inherit lib; };
 
   inherit (modelPolicy) modelMatrix modelTiers;
-  moeTiers = lib.init modelTiers;
+  inklingTiers = [
+    modelMatrix.vram64
+    modelMatrix.vram32
+  ];
+  mellumTiers = [
+    modelMatrix.vram22
+    modelMatrix.vram16
+  ];
   qwen38Tiers = [
     modelMatrix.vram64
     modelMatrix.vram32
@@ -47,20 +54,14 @@ let
     atMinimum.name == tier.name && oneGiBShort.name == nextTierDown.name
   ) allTierIndex;
 
-  tierRolesHold =
-    lib.all (
-      tier:
-      builtins.attrNames tier.models == [
-        "dense"
-        "embedding"
-        "moe"
-      ]
-    ) moeTiers
-    &&
-      builtins.attrNames (lib.last modelTiers).models == [
-        "dense"
-        "embedding"
-      ];
+  tierRolesHold = lib.all (
+    tier:
+    builtins.attrNames tier.models == [
+      "dense"
+      "embedding"
+      "moe"
+    ]
+  ) modelTiers;
 
   modelRolesAreDistinct = lib.all (
     tier:
@@ -168,7 +169,7 @@ let
 
   moeContextNonIncreasing =
     let
-      contexts = map (tier: tier.models.moe.maxContext) moeTiers;
+      contexts = map (tier: tier.models.moe.maxContext) modelTiers;
     in
     lib.head contexts > lib.last contexts && contexts == lib.sort (a: b: a > b) contexts;
 
@@ -178,8 +179,17 @@ let
     in
     lib.head contexts > lib.last contexts && contexts == lib.sort (a: b: a > b) contexts;
 
+  allowedGenerationQuants = [
+    "UD-Q4_K_XL"
+    "Q6_K"
+    "Q8_0"
+  ];
+
+  modelRefQuant = ref: builtins.elemAt (lib.splitString ":" ref) 1;
+
   generationModelsMeetFloor = lib.all (
-    model: model.maxContext >= 131072 && lib.hasSuffix ":UD-Q4_K_XL" model.modelRef
+    model:
+    model.maxContext >= 131072 && builtins.elem (modelRefQuant model.modelRef) allowedGenerationQuants
   ) allGenerationModels;
 
   embeddingIsUniform = lib.all (
@@ -197,6 +207,10 @@ let
   highCudaRuntime = runtime.mkRuntime {
     acceleration = "cuda";
     hostVramGiB = 64;
+  };
+  midCudaRuntime = runtime.mkRuntime {
+    acceleration = "cuda";
+    hostVramGiB = 22;
   };
   cudaRuntime = runtime.mkRuntime {
     acceleration = "cuda";
@@ -284,6 +298,8 @@ let
   vulkanMoe = vulkanRuntime.selectedRuntimeModels.moe;
   vulkanDense = vulkanRuntime.selectedRuntimeModels.dense;
   vulkanEmbedding = vulkanRuntime.selectedRuntimeModels.embedding;
+  midCudaMoe = midCudaRuntime.selectedRuntimeModels.moe;
+  cudaMoe = cudaRuntime.selectedRuntimeModels.moe;
   cudaDense = cudaRuntime.selectedRuntimeModels.dense;
   usesMtp = model: builtins.elem "--spec-type" model.runtimeArgs;
 in
@@ -302,8 +318,19 @@ assert lib.all (
   tier:
   tier.models.moe.singleSlot
   && tier.models.moe.microBatchSize == 128
+  && tier.models.moe.reasoning == null
   && tier.models.moe.reasoningEffort == null
-) moeTiers;
+  && tier.models.moe.mtpDraftTokens == null
+) inklingTiers;
+assert lib.all (
+  tier:
+  tier.models.moe.singleSlot
+  && tier.models.moe.maxContext == 131072
+  && tier.models.moe.microBatchSize == null
+  && tier.models.moe.reasoning == null
+  && tier.models.moe.reasoningEffort == null
+  && tier.models.moe.mtpDraftTokens == null
+) mellumTiers;
 assert lib.all (
   tier:
   tier.models.dense.singleSlot
@@ -324,15 +351,20 @@ assert lib.all runtimeArgsCompose [
   vulkanRuntime
   lowerVulkanRuntime
   highCudaRuntime
+  midCudaRuntime
   cudaRuntime
 ];
 assert lib.all cachePathsResolve (lib.attrValues vulkanRuntime.selectedRuntimeModels);
+assert lib.all cachePathsResolve (lib.attrValues midCudaRuntime.selectedRuntimeModels);
 assert lib.all cachePathsResolve (lib.attrValues cudaRuntime.selectedRuntimeModels);
 assert lib.all downloadMetadataConsistent (lib.attrValues vulkanRuntime.selectedRuntimeModels);
+assert lib.all downloadMetadataConsistent (lib.attrValues midCudaRuntime.selectedRuntimeModels);
 assert lib.all downloadMetadataConsistent (lib.attrValues cudaRuntime.selectedRuntimeModels);
 assert publicNamesAreUsable vulkanRuntime;
+assert publicNamesAreUsable midCudaRuntime;
 assert publicNamesAreUsable cudaRuntime;
 assert downloadsCoverSelection vulkanRuntime;
+assert downloadsCoverSelection midCudaRuntime;
 assert downloadsCoverSelection cudaRuntime;
 # Embedding models carry no generation block, so sampler flags must stay absent.
 assert vulkanEmbedding.generation == null;
@@ -348,7 +380,24 @@ assert
   ];
 assert !(builtins.elem "--flash-attn" cudaDense.runtimeArgs);
 assert !(builtins.elem "--load-mode" cudaDense.runtimeArgs);
-assert !(cudaRuntime.selectedRuntimeModels ? moe);
+assert midCudaMoe.publicName == "mellum2.1-12b";
+assert midCudaMoe.modelRef == "JetBrains/Mellum2.1-12B-A2.5B-Thinking-GGUF:Q8_0";
+assert midCudaMoe.maxContext == 131072;
+assert midCudaMoe.download.projectorPath == null;
+assert midCudaMoe.singleSlot;
+assert !midCudaMoe.supportsMtp;
+assert cudaMoe.publicName == "mellum2.1-12b";
+assert cudaMoe.modelRef == "JetBrains/Mellum2.1-12B-A2.5B-Thinking-GGUF:Q6_K";
+assert cudaMoe.maxContext == 131072;
+assert cudaMoe.download.projectorPath == null;
+assert cudaMoe.singleSlot;
+assert !cudaMoe.supportsMtp;
+assert midCudaMoe.generation == cudaMoe.generation;
+assert cudaMoe.generation.temperature == 0.6;
+assert cudaMoe.generation.topP == 0.95;
+assert cudaMoe.generation.topK == 20;
+assert cudaMoe.generation.minP == 0.0;
+assert cudaMoe.generation.repetitionPenalty == 1.0;
 assert cudaDense.publicName == "qwen3.5-9b";
 assert cudaDense.modelRef == "unsloth/Qwen3.5-9B-MTP-GGUF:UD-Q4_K_XL";
 assert cudaDense.maxContext == 131072;
@@ -363,6 +412,8 @@ assert !vulkanMoe.supportsMtp;
 assert usesMtp vulkanDense;
 assert usesMtp lowerVulkanRuntime.selectedRuntimeModels.dense;
 assert !usesMtp vulkanMoe;
+assert !usesMtp midCudaMoe;
+assert !usesMtp cudaMoe;
 assert !usesMtp cudaDense;
 assert !usesMtp highCudaRuntime.selectedRuntimeModels.dense;
 true

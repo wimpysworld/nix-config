@@ -19,18 +19,18 @@ On Strix Halo, `vram = 96` in the registry is the conservative inference budget 
 
 All inference hosts share [model-policy.nix](model-policy.nix) and [model-downloads.nix](model-downloads.nix).
 
-| Tier | `moe` (vision) | `dense` (vision) | `embedding` (`qwen3-embedding-0.6b`) |
-|---|---|---|---|
-| `vram64` (`skrye`, `zannah`) | `inkling-2-mini`, `UD-Q4_K_XL`, 256K (~23.3 GiB) | `qwen3.8-27b`, `UD-Q4_K_XL`, 256K, `mtp3` (~28.8 GiB) | `Q8_0`, 8K (~0.9 GiB) |
-| `vram32` (`bane`, `ravi`, `traya`) | `inkling-2-mini`, `UD-Q4_K_XL`, 256K (~23.3 GiB) | `qwen3.8-27b`, `UD-Q4_K_XL`, 256K, `mtp3` (~28.8 GiB) | `Q8_0`, 8K (~0.9 GiB) |
-| `vram22` (`maul`) | `inkling-2-mini`, `UD-Q4_K_XL`, 128K (~21.1 GiB) | `qwen3.5-9b`, `UD-Q4_K_XL`, 256K (~12.8 GiB) | `Q8_0`, 8K (~0.9 GiB) |
-| `vram16` (`revan`) | None | `qwen3.5-9b`, `UD-Q4_K_XL`, 128K (~10.7 GiB) | `Q8_0`, 8K (~0.9 GiB) |
+| Tier | moe | dense (vision) | embedding (qwen3-embedding-0.6b) |
+| --- | --- | --- | --- |
+| `vram64` (`skrye`, `zannah`) | `inkling-2-mini` (vision), `UD-Q4_K_XL`, 256K, `ubatch 128` (~23.3 GiB) | `qwen3.8-27b`, `UD-Q4_K_XL`, 256K, `mtp 3`, `reasoning medium` (~28.8 GiB) | `Q8_0`, 8K (~0.9 GiB) |
+| `vram32` (`bane`, `ravi`, `traya`) | `inkling-2-mini` (vision), `UD-Q4_K_XL`, 256K, `ubatch 128` (~23.3 GiB) | `qwen3.8-27b`, `UD-Q4_K_XL`, 256K, `mtp 3`, `reasoning medium` (~28.8 GiB) | `Q8_0`, 8K (~0.9 GiB) |
+| `vram22` (`maul`) | `mellum2.1-12b` (text-only), `Q8_0`, 128K (~14.9 GiB) | `qwen3.5-9b`, `UD-Q4_K_XL`, 256K, `reasoning off` (~12.8 GiB) | `Q8_0`, 8K (~0.9 GiB) |
+| `vram16` (`revan`) | `mellum2.1-12b` (text-only), `Q6_K`, 128K (~13.0 GiB) | `qwen3.5-9b`, `UD-Q4_K_XL`, 128K, `reasoning off` (~10.7 GiB) | `Q8_0`, 8K (~0.9 GiB) |
 
 Policy rules that apply across tiers:
 
-- **Quantisation and context floor:** every generation model uses `UD-Q4_K_XL` and at least 128K context (`q8_0` KV cache on every model).
-- **Native vision (`mmproj-BF16.gguf`):** all three generation models (`inkling-2-mini`, `qwen3.8-27b`, and `qwen3.5-9b`) download and load `mmproj-BF16.gguf` on GPU.
-- **Slot allocation and tuning:** `inkling-2-mini` runs with `--parallel 1 --no-context-shift --ubatch-size 128` across tiers. `qwen3.8-27b` runs with `--parallel 1 --no-context-shift` and enables `--spec-type draft-mtp --spec-draft-n-max 3` on Vulkan (`vram64` and `vram32`). `qwen3.5-9b` (`unsloth/Qwen3.5-9B-MTP-GGUF`) keeps multi-slot unified KV and `--reasoning off` in production so LibreChat titles, activity labels, and memory extraction run concurrently.
+- **Quantisation and context floor:** every generation model runs with at least 128K context and `q8_0` KV cache. `inkling-2-mini`, `qwen3.8-27b`, and `qwen3.5-9b` use `UD-Q4_K_XL`. `mellum2.1-12b` (`JetBrains/Mellum2.1-12B-A2.5B-Thinking-GGUF`, Apache 2.0, 12B total and 2.5B active MoE) uses `Q8_0` (12.04 GiB) on `vram22` and `Q6_K` (10.13 GiB) on `vram16`. Its 128K (`131072`) context is its native 16x layer-selective YaRN ceiling (7 full-attention GQA layers and 21 sliding-window 1,024 layers). Do not push it to 256K.
+- **Vision and text-only models:** `inkling-2-mini`, `qwen3.8-27b`, and `qwen3.5-9b` download and load `mmproj-BF16.gguf` on GPU. `mellum2.1-12b` is text-only and loads no vision projector.
+- **Slot allocation and tuning:** `inkling-2-mini` runs with `--parallel 1 --no-context-shift --ubatch-size 128` on `vram64` and `vram32`. `mellum2.1-12b` runs with `--parallel 1 --no-context-shift` and no MTP speculative decoding (JetBrains measured 1.00x to 1.10x at `n_max=1` and slowdowns at `>=2`). `qwen3.8-27b` runs with `--parallel 1 --no-context-shift` and enables `--spec-type draft-mtp --spec-draft-n-max 3` on Vulkan (`vram64` and `vram32`). `qwen3.5-9b` (`unsloth/Qwen3.5-9B-MTP-GGUF`) keeps multi-slot unified KV and `--reasoning off` in production so LibreChat titles, activity labels, and memory extraction run concurrently.
 - **Pinned snapshots:** `inkling-2-mini` (`unsloth/Inkling-2-Mini-GGUF`, `Mainline_Support/` path) pins revision `45fd08764f2b0bf16b03a5483a80e5c7aaec8772`, and `qwen3.8-27b` (`unsloth/Qwen3.8-27B-GGUF`) pins revision `4af51b3542f775b0a8e4b310bfb3f17e01c306c9`.
 - **Embeddings:** every tier serves `Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0` at 8,192 tokens with `--embedding --pooling last` and no sampler.
 
@@ -41,6 +41,7 @@ Policy rules that apply across tiers:
 | Model | Temp | Top-p | Top-k | Min-p | Repeat penalty | Extra flags |
 |---|---:|---:|---:|---:|---:|---|
 | `inkling-2-mini` | `1.0` | `1.0` | `0` | `0.0` | `1.0` | None |
+| `mellum2.1-12b` | `0.6` | `0.95` | `20` | `0.0` | `1.0` | None |
 | `qwen3.8-27b` | `1.0` | `0.95` | `20` | `0.0` | `1.0` | `--presence-penalty 0.0 --reasoning-effort medium` |
 | `qwen3.5-9b` | `0.7` | `0.8` | `20` | `0.0` | `1.0` | `--presence-penalty 1.5 --reasoning off` |
 
@@ -107,8 +108,8 @@ benchmark-models [--llama-only|--ollama-only] [--json] MODEL [runs]
 benchmark-models --purge
 ```
 
-- `benchmark-models-all` benchmarks all generation models configured for the host's VRAM tier plus `qwen3.5-9b` (`inkling-2-mini`, `qwen3.8-27b`, and `qwen3.5-9b` on `vram64`/`vram32`; `inkling-2-mini` and `qwen3.5-9b` on `vram22`; `qwen3.5-9b` on `vram16`) and defaults to `--runs 3`.
-- `benchmark-models` benchmarks one model. `inkling-2-mini`, `qwen3.5-9b`, and `qwen3.8-27b` run the shared Python harness (`focused.py`, default 3 runs). Opt-in `qwen3-embedding-0.6b` uses the shell runner (default 5 runs).
+- `benchmark-models-all` benchmarks all generation models configured for the host's VRAM tier plus `qwen3.5-9b` (`inkling-2-mini`, `qwen3.8-27b`, and `qwen3.5-9b` on `vram64` and `vram32`, or `mellum2.1-12b` and `qwen3.5-9b` on `vram22` and `vram16`) and defaults to `--runs 3`.
+- `benchmark-models` benchmarks one model. `inkling-2-mini`, `mellum2.1-12b`, `qwen3.5-9b`, and `qwen3.8-27b` run the shared Python harness (`focused.py`, default 3 runs). Opt-in `qwen3-embedding-0.6b` uses the shell runner (default 5 runs).
 - `benchmark-models --purge` removes `~/Volatile/benchmark-models` without touching `/var/lib/llama-models/huggingface`.
 - Set `BENCHMARK_MODELS_ROOT` to move caches and logs (default `~/Volatile/benchmark-models`) or `BENCHMARK_MODELS_OLLAMA_HOST` for the shell runner's temporary Ollama port (default `127.0.0.1:11435`).
 

@@ -47,6 +47,9 @@ let
   inklingDownloads = lib.filterAttrs (
     _: download: download.publicName == "inkling-2-mini"
   ) modelDownloads;
+  mellumDownloads = lib.filterAttrs (
+    _: download: download.publicName == "mellum2.1-12b"
+  ) modelDownloads;
   pinnedDownloads = lib.filterAttrs (
     _: download:
     builtins.elem download.publicName [
@@ -54,11 +57,20 @@ let
       "qwen3.8-27b"
     ]
   ) modelDownloads;
-  generationDownloads = lib.filterAttrs (
-    _: download: download.publicName != "qwen3-embedding-0.6b"
+  visionDownloads = lib.filterAttrs (
+    _: download:
+    builtins.elem download.publicName [
+      "inkling-2-mini"
+      "qwen3.5-9b"
+      "qwen3.8-27b"
+    ]
   ) modelDownloads;
-  embeddingDownloads = lib.filterAttrs (
-    _: download: download.publicName == "qwen3-embedding-0.6b"
+  textOnlyDownloads = lib.filterAttrs (
+    _: download:
+    builtins.elem download.publicName [
+      "mellum2.1-12b"
+      "qwen3-embedding-0.6b"
+    ]
   ) modelDownloads;
   unmappedValidation = validateModelDownloads [ "broken:model" ] modelDownloads;
   invalidMetadataValidation = validateModelDownloads [ "broken:model" ] {
@@ -77,13 +89,26 @@ assert lib.all (
   lib.hasPrefix "Mainline_Support/" download.primaryPath
   && lib.hasSuffix ".gguf_file" download.primaryPath
 ) (lib.attrValues inklingDownloads);
+assert builtins.length (lib.attrValues mellumDownloads) == 2;
+assert lib.all (
+  download:
+  lib.hasPrefix "Mellum2.1-12B-A2.5B-Thinking-" download.primaryPath
+  && lib.hasSuffix ".gguf" download.primaryPath
+  && download.projectorPath == null
+  && download.downloadPaths == [ download.primaryPath ]
+  && !download.supportsMtp
+) (lib.attrValues mellumDownloads);
 assert lib.all (download: builtins.match "[a-f0-9]{40}" download.revision != null) (
   lib.attrValues pinnedDownloads
 );
+assert
+  builtins.length (lib.attrValues visionDownloads)
+  + builtins.length (lib.attrValues textOnlyDownloads)
+  == builtins.length (lib.attrValues modelDownloads);
 assert lib.all (download: download.projectorPath == "mmproj-BF16.gguf") (
-  lib.attrValues generationDownloads
+  lib.attrValues visionDownloads
 );
-assert lib.all (download: download.projectorPath == null) (lib.attrValues embeddingDownloads);
+assert lib.all (download: download.projectorPath == null) (lib.attrValues textOnlyDownloads);
 assert unmappedValidation.missingRefs == [ "broken:model" ];
 assert invalidMetadataValidation.invalidRefs == [ "broken:model" ];
 true

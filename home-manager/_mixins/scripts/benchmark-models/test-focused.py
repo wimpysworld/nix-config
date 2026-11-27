@@ -183,6 +183,14 @@ class FocusedBenchmarkTests(unittest.TestCase):
         self.assertEqual(payload_micro["options"]["num_predict"], 1)
         self.assertFalse(payload_micro["think"])
 
+        payload_default_reasoning = mod.build_ollama_payload(
+            "benchmark-mellum",
+            prompts[2],
+            {"microBatchSize": None, "sampling": {"temperature": 0.6, "top_p": 0.95, "top_k": 20}, "reasoning": None},
+        )
+        self.assertEqual(payload_default_reasoning["options"]["num_batch"], 512)
+        self.assertNotIn("think", payload_default_reasoning)
+
     def test_ollama_prompt_calibration_targets_prompt_tokens(self):
         mod = load_focused()
         # Simulate Qwen3.8 (~21 tokens/line, 60 base tokens).

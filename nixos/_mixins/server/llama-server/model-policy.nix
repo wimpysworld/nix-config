@@ -98,6 +98,24 @@ let
       };
     };
 
+  mkMellum =
+    {
+      quant,
+    }:
+    mkModel {
+      maxContext = 131072;
+      modelRef = "JetBrains/Mellum2.1-12B-A2.5B-Thinking-GGUF:${quant}";
+      singleSlot = true;
+      # Use the sampling settings from JetBrains's Mellum2.1 GGUF README.
+      generation = {
+        temperature = 0.6;
+        topP = 0.95;
+        topK = 20;
+        minP = 0.0;
+        repetitionPenalty = 1.0;
+      };
+    };
+
   mkQwen =
     {
       maxContext,
@@ -170,7 +188,7 @@ let
       minVramGiB = 22;
       name = "vram22";
       models = standardModels // {
-        moe = mkInkling { maxContext = 131072; };
+        moe = mkMellum { quant = "Q8_0"; };
         dense = mkQwen35 { maxContext = 262144; };
       };
     };
@@ -179,6 +197,7 @@ let
       minVramGiB = 16;
       name = "vram16";
       models = standardModels // {
+        moe = mkMellum { quant = "Q6_K"; };
         dense = mkQwen35 { maxContext = 131072; };
       };
     };
