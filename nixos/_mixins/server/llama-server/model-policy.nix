@@ -7,6 +7,7 @@ let
       generation ? null,
       reasoning ? null,
       reasoningEffort ? null,
+      reasoningBudget ? null,
       singleSlot ? false,
       microBatchSize ? null,
       mtpDraftTokens ? null,
@@ -48,6 +49,7 @@ let
         modelRef
         mtpDraftTokens
         reasoning
+        reasoningBudget
         reasoningEffort
         singleSlot
         ;
@@ -68,6 +70,10 @@ let
         "--reasoning-effort"
         reasoningEffort
       ]
+      ++ lib.optionals (reasoningBudget != null) [
+        "--reasoning-budget"
+        (toString reasoningBudget)
+      ]
       ++ lib.optionals singleSlot [
         "--parallel"
         "1"
@@ -87,13 +93,17 @@ let
     mkModel {
       inherit maxContext;
       modelRef = "unsloth/flint-GGUF:${quant}";
+      # Cap reasoning tokens and apply a mild presence penalty so Flint cannot
+      # get stuck in endless thinking loops.
+      reasoningBudget = 8192;
       singleSlot = true;
-      # Use the sampling settings from Unsloth's Flint guide.
+      # Start from Unsloth's Flint sampling settings with presencePenalty guard.
       generation = {
         temperature = 1.0;
         topP = 0.95;
         topK = 20;
         minP = 0.0;
+        presencePenalty = 0.5;
         repetitionPenalty = 1.0;
       };
     };

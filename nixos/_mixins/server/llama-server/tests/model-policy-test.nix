@@ -144,6 +144,10 @@ let
       "--reasoning-effort"
       model.reasoningEffort
     ]
+    ++ lib.optionals (model.reasoningBudget != null) [
+      "--reasoning-budget"
+      (toString model.reasoningBudget)
+    ]
     ++ lib.optionals model.singleSlot [
       "--parallel"
       "1"
@@ -297,6 +301,8 @@ assert vulkanFlint.modelRef == "unsloth/flint-GGUF:Q8_0";
 assert vulkanFlint.singleSlot;
 assert vulkanFlint.maxContext == 262144;
 assert vulkanFlint.reasoningEffort == null;
+assert vulkanFlint.reasoningBudget == 8192;
+assert vulkanFlint.generation.presencePenalty == 0.5;
 assert !usesMtp vulkanFlint;
 assert !(lowerVulkanRuntime.selectedRuntimeModels ? flint);
 assert !(cudaRuntime.selectedRuntimeModels ? flint);
@@ -322,6 +328,7 @@ assert vulkanEmbedding.generation == null;
 assert !builtins.elem "--temp" vulkanEmbedding.runtimeArgs;
 assert !builtins.elem "--reasoning" vulkanEmbedding.runtimeArgs;
 assert !builtins.elem "--reasoning-effort" vulkanEmbedding.runtimeArgs;
+assert !builtins.elem "--reasoning-budget" vulkanEmbedding.runtimeArgs;
 assert
   lib.take 4 (lib.reverseList vulkanMoe.runtimeArgs) == [
     "none"

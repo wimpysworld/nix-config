@@ -216,12 +216,21 @@ let
   '';
   registry = builtins.fromTOML (builtins.readFile ../../../../lib/registry-systems.toml);
   llamaRuntime = import ../llama-server/runtime.nix { inherit lib; };
-  remoteInferenceHosts = [
-    "skrye"
-    "zannah"
+  remoteInferenceTargets = [
+    {
+      node = "skrye";
+      models = [ "inkling-2-mini" ];
+    }
+    {
+      node = "zannah";
+      models = [ "flint" ];
+    }
   ];
   mkRemoteLlamaSwapEndpoint =
-    node:
+    {
+      node,
+      models,
+    }:
     let
       entry = registry.${node};
       runtimeModels =
@@ -229,10 +238,17 @@ let
           acceleration = entry.gpu.compute.acceleration or null;
           hostVramGiB = entry.gpu.compute.vram or 0;
         }).selectedRuntimeModels;
-      generationRoles = lib.filterAttrs (
-        role: model: !model.isEmbedding && role != "smallMedia"
-      ) runtimeModels;
-      generationModels = lib.mapAttrsToList (_role: model: model.publicName) generationRoles;
+      exposedRoles = lib.filterAttrs (_role: model: lib.elem model.publicName models) runtimeModels;
+      exposedModels = map (
+        modelName:
+        let
+          matches = lib.filterAttrs (_role: model: model.publicName == modelName) exposedRoles;
+        in
+        assert lib.assertMsg (
+          matches != { }
+        ) "LibreChat remote inference host ${node} does not serve model ${modelName}";
+        modelName
+      ) models;
       tokenConfig = builtins.listToAttrs (
         lib.mapAttrsToList (_role: model: {
           name = model.publicName;
@@ -241,17 +257,21 @@ let
             completion = 0;
             context = model.maxContext;
           };
-        }) generationRoles
+        }) exposedRoles
       );
-      titleModel =
-        if lib.elem "inkling-2-mini" generationModels then "inkling-2-mini" else lib.head generationModels;
+      titleModel = lib.head exposedModels;
     in
     {
       name = "LlamaSwap (${node})";
       apiKey = "none";
       baseURL = "http://${node}.${tailNet}:8080/v1";
+      customParams = {
+        # Replay reasoning_content across tool turns so reasoning models keep
+        # multi-turn state and KV prefix cache hits.
+        includeReasoningContent = true;
+      };
       models = {
-        default = generationModels;
+        default = exposedModels;
         fetch = false;
       };
       inherit tokenConfig titleModel;
@@ -1292,7 +1312,6 @@ in
               executeCode = true;
               memory = true;
               mcpServers = sharedMcpServerNames;
-              skills = sharedSkillNames;
               preset = {
                 endpoint = "LlamaSwap (skrye)";
                 model = "inkling-2-mini";
@@ -1304,9 +1323,8 @@ in
               executeCode = true;
               memory = true;
               mcpServers = sharedMcpServerNames;
-              skills = sharedSkillNames;
               preset = {
-                endpoint = "LlamaSwap (skrye)";
+                endpoint = "LlamaSwap (zannah)";
                 model = "flint";
               };
             }
@@ -1332,7 +1350,7 @@ in
           allowedAddresses = [
             "127.0.0.1:8317"
           ]
-          ++ map (node: "${node}.${tailNet}:8080") remoteInferenceHosts;
+          ++ map (target: "${target.node}.${tailNet}:8080") remoteInferenceTargets;
           agents = {
             maxSubagents = 12;
             capabilities = [
@@ -1365,7 +1383,7 @@ in
             titleConvo = true;
             titleModel = "gemini-4-hydrogen";
           };
-          custom = map mkRemoteLlamaSwapEndpoint remoteInferenceHosts;
+          custom = map mkRemoteLlamaSwapEndpoint remoteInferenceTargets;
         };
         mcpSettings = {
           allowedAddresses = [
