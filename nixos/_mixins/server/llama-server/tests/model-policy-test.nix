@@ -47,11 +47,9 @@ let
   ) allTierIndex;
 
   tierRolesHold =
-    builtins.attrNames modelMatrix.vram64.models
-    == lib.sort builtins.lessThan (textRoles ++ commonRoles ++ [ "flint" ])
-    && lib.all (
+    lib.all (
       tier: builtins.attrNames tier.models == lib.sort builtins.lessThan (textRoles ++ commonRoles)
-    ) (lib.tail textTiers)
+    ) textTiers
     && builtins.attrNames (lib.last modelTiers).models == commonRoles;
 
   modelRolesAreDistinct = lib.all (
@@ -143,10 +141,6 @@ let
     ++ lib.optionals (model.reasoningEffort != null) [
       "--reasoning-effort"
       model.reasoningEffort
-    ]
-    ++ lib.optionals (model.reasoningBudget != null) [
-      "--reasoning-budget"
-      (toString model.reasoningBudget)
     ]
     ++ lib.optionals model.singleSlot [
       "--parallel"
@@ -273,7 +267,6 @@ let
       lib.length (lib.unique (map (download: download.hfRepo) rt.selectedModelDownloads))
       == lib.length rt.selectedModelDownloads;
 
-  vulkanFlint = vulkanRuntime.selectedRuntimeModels.flint;
   vulkanMoe = vulkanRuntime.selectedRuntimeModels.moe;
   vulkanDense = vulkanRuntime.selectedRuntimeModels.dense;
   vulkanEmbedding = vulkanRuntime.selectedRuntimeModels.embedding;
@@ -296,16 +289,6 @@ assert lib.all (
 ) modelTiers;
 assert lib.all (tier: tier.models.dense.reasoningEffort == "medium") textTiers;
 assert lib.all (tier: tier.models.moe.reasoningEffort == null) textTiers;
-assert vulkanFlint.publicName == "flint";
-assert vulkanFlint.modelRef == "unsloth/flint-GGUF:Q8_0";
-assert vulkanFlint.singleSlot;
-assert vulkanFlint.maxContext == 262144;
-assert vulkanFlint.reasoningEffort == null;
-assert vulkanFlint.reasoningBudget == 8192;
-assert vulkanFlint.generation.presencePenalty == 0.5;
-assert !usesMtp vulkanFlint;
-assert !(lowerVulkanRuntime.selectedRuntimeModels ? flint);
-assert !(cudaRuntime.selectedRuntimeModels ? flint);
 assert textContextShrinksOnLowerTiers;
 assert eachTextModelUsesOneSlot;
 assert embeddingIsUniform;
@@ -328,7 +311,6 @@ assert vulkanEmbedding.generation == null;
 assert !builtins.elem "--temp" vulkanEmbedding.runtimeArgs;
 assert !builtins.elem "--reasoning" vulkanEmbedding.runtimeArgs;
 assert !builtins.elem "--reasoning-effort" vulkanEmbedding.runtimeArgs;
-assert !builtins.elem "--reasoning-budget" vulkanEmbedding.runtimeArgs;
 assert
   lib.take 4 (lib.reverseList vulkanMoe.runtimeArgs) == [
     "none"

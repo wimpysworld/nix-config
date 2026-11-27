@@ -22,13 +22,13 @@ def load_focused():
 class FocusedBenchmarkTests(unittest.TestCase):
     def test_parse_args_legacy_and_suite(self):
         mod = load_focused()
-        legacy = mod.parse_args(["flint", "5"])
-        self.assertEqual(legacy.models, ["flint"])
+        legacy = mod.parse_args(["qwen3.8-27b", "5"])
+        self.assertEqual(legacy.models, ["qwen3.8-27b"])
         self.assertEqual(legacy.runs, 5)
         self.assertFalse(legacy.emit_json)
 
-        suite = mod.parse_args(["--llama-only", "--json", "--runs", "2", "flint", "inkling-2-mini"])
-        self.assertEqual(suite.models, ["flint", "inkling-2-mini"])
+        suite = mod.parse_args(["--llama-only", "--json", "--runs", "2", "qwen3.8-27b", "inkling-2-mini"])
+        self.assertEqual(suite.models, ["qwen3.8-27b", "inkling-2-mini"])
         self.assertEqual(suite.runs, 2)
         self.assertTrue(suite.llama_only)
         self.assertTrue(suite.emit_json)
@@ -39,26 +39,26 @@ class FocusedBenchmarkTests(unittest.TestCase):
             root = Path(tmp) / "volatile"
             preseed = Path(tmp) / "preseed"
             preseed_file = (
-                preseed / "hub" / "models--unsloth--flint-GGUF" / "snapshots" / "abc123" / "flint-Q8_0.gguf"
+                preseed / "hub" / "models--unsloth--Qwen3.8-27B-GGUF" / "snapshots" / "abc123" / "Qwen3.8-27B-UD-Q4_K_XL.gguf"
             )
             preseed_file.parent.mkdir(parents=True, exist_ok=True)
             preseed_file.write_bytes(b"gguf")
 
             vol_file = (
-                root / "huggingface" / "hub" / "models--unsloth--flint-GGUF" / "snapshots" / "def456" / "flint-Q8_0.gguf"
+                root / "huggingface" / "hub" / "models--unsloth--Qwen3.8-27B-GGUF" / "snapshots" / "def456" / "Qwen3.8-27B-UD-Q4_K_XL.gguf"
             )
             vol_file.parent.mkdir(parents=True, exist_ok=True)
             vol_file.write_bytes(b"gguf")
 
             profile = {
-                "snapshot": "hub/models--unsloth--flint-GGUF/snapshots/*/flint-Q8_0.gguf",
-                "hfRepo": "unsloth/flint-GGUF",
-                "downloadPaths": ["flint-Q8_0.gguf"],
+                "snapshot": "hub/models--unsloth--Qwen3.8-27B-GGUF/snapshots/*/Qwen3.8-27B-UD-Q4_K_XL.gguf",
+                "hfRepo": "unsloth/Qwen3.8-27B-GGUF",
+                "downloadPaths": ["Qwen3.8-27B-UD-Q4_K_XL.gguf"],
                 "projectorPath": None,
                 "revision": None,
             }
             with mock.patch.dict(os.environ, {"BENCHMARK_MODELS_PRESEED_CACHE": str(preseed)}):
-                resolved = mod.ensure_model_path("flint", profile, root)
+                resolved = mod.ensure_model_path("qwen3.8-27b", profile, root)
                 self.assertEqual(resolved, preseed_file.resolve())
 
                 # Remove preseed and volatile copies to verify hf download fallback.
@@ -73,16 +73,16 @@ class FocusedBenchmarkTests(unittest.TestCase):
                     mock.patch.object(mod.shutil, "which", return_value="/bin/hf"),
                     mock.patch.object(mod.subprocess, "run", side_effect=fake_download) as run_mock,
                 ):
-                    resolved_after = mod.ensure_model_path("flint", profile, root)
+                    resolved_after = mod.ensure_model_path("qwen3.8-27b", profile, root)
                     self.assertEqual(resolved_after, vol_file.resolve())
                     run_mock.assert_called_once()
-                    self.assertIn("unsloth/flint-GGUF", run_mock.call_args.args[0])
+                    self.assertIn("unsloth/Qwen3.8-27B-GGUF", run_mock.call_args.args[0])
 
     def test_classify_ollama_error_marks_unknown_arch_unsupported(self):
         mod = load_focused()
-        status, reason = mod.classify_ollama_error("Error: unknown model architecture: 'flint'")
+        status, reason = mod.classify_ollama_error("Error: unknown model architecture: 'inkling2_loop'")
         self.assertEqual(status, "unsupported")
-        self.assertEqual(reason, "unknown model architecture: 'flint'")
+        self.assertEqual(reason, "unknown model architecture: 'inkling2_loop'")
 
         status2, reason2 = mod.classify_ollama_error("connection reset by peer")
         self.assertEqual(status2, "failed")
@@ -313,12 +313,12 @@ class FocusedBenchmarkTests(unittest.TestCase):
                 "delta_gpu_bytes": None,
             },
             {
-                "model": "flint",
+                "model": "inkling-2-mini",
                 "runner": "ollama",
                 "backend": "vulkan",
                 "mode": "off",
                 "status": "unsupported",
-                "error": "unknown model architecture: 'flint'",
+                "error": "unknown model architecture: 'inkling2_loop'",
             },
         ]
         table = mod.format_summary_table(results, runs=3)
@@ -328,7 +328,7 @@ class FocusedBenchmarkTests(unittest.TestCase):
         self.assertIn("10.0 GiB        8.0 GiB", table)
         self.assertIn("11.0 GiB        0.0 GiB", table)
         self.assertIn("24.0 GiB              -", table)
-        self.assertIn("unsupported: unknown model architecture: 'flint'", table)
+        self.assertIn("unsupported: unknown model architecture: 'inkling2_loop'", table)
         self.assertIn("gemma4-e4b (vulkan): llama.cpp vs ollama decode +25.0%, prefill +20.0%", table)
 
 

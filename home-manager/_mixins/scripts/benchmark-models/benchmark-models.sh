@@ -61,8 +61,8 @@ Usage: benchmark-models [--llama-only|--ollama-only] [--json] MODEL [runs]
        benchmark-models --purge
        benchmark-models-all [--llama-only|--ollama-only] [--json] [--runs N]
 
-benchmark-models-all tests the host's Gemma 4 and, where deployed, flint,
-inkling-2-mini, and qwen3.8-27b across packaged llama-server and Ollama
+benchmark-models-all tests the host's Gemma 4 and, where deployed,
+inkling-2-mini and qwen3.8-27b across packaged llama-server and Ollama
 backends using the preseeded llama-swap GGUF cache. It saves JSONL logs and
 prints a comparison table (pass --json for raw JSON lines).
 
@@ -87,7 +87,7 @@ trim_whitespace() {
 list_supported_models() {
 	local model
 
-	printf 'Supported models:\n  - flint\n  - inkling-2-mini\n  - qwen3.8-27b\n'
+	printf 'Supported models:\n  - inkling-2-mini\n  - qwen3.8-27b\n'
 	while IFS='|' read -r model _; do
 		model="$(trim_whitespace "${model}")"
 		printf '  - %s\n' "${model}"
@@ -169,7 +169,7 @@ if [[ $# -gt 1 && ! "${RUNS}" =~ ^0*[1-9][0-9]*$ ]]; then
 fi
 
 case "${MODEL}" in
-flint | inkling-2-mini | qwen3.8-27b)
+inkling-2-mini | qwen3.8-27b)
 	exec python3 "${BENCHMARK_COMPARISON_SCRIPT:-$(dirname "${BASH_SOURCE[0]}")/focused.py}" \
 		"${FOCUSED_FLAGS[@]}" --runs "${RUNS:-3}" "${MODEL}"
 	;;

@@ -21,7 +21,6 @@ let
     ;
   suiteModels = map (role: selectedRuntimeModels.${role}) (
     lib.filter (role: selectedRuntimeModels ? ${role}) [
-      "flint"
       "moe"
       "dense"
       "smallMedia"

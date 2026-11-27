@@ -223,7 +223,7 @@ let
     }
     {
       node = "zannah";
-      models = [ "flint" ];
+      models = [ "qwen3.8-27b" ];
     }
   ];
   mkRemoteLlamaSwapEndpoint =
@@ -1318,14 +1318,14 @@ in
               };
             }
             {
-              name = "flint";
-              label = "Flint";
+              name = "qwen3-8-27b";
+              label = "Qwen 3.8 27B";
               executeCode = true;
               memory = true;
               mcpServers = sharedMcpServerNames;
               preset = {
                 endpoint = "LlamaSwap (zannah)";
-                model = "flint";
+                model = "qwen3.8-27b";
               };
             }
           ];
