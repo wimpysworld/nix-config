@@ -555,6 +555,83 @@ class TestAtomicWriteAndIndex(unittest.TestCase):
             self.assertEqual(model["totals"]["total"], 1)  # type: ignore[index]
             self.assertTrue(direct_html.is_file())
 
+    def test_ensure_index_seeds_empty_summary_and_preserves_existing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_dir = Path(tmp)
+            state_dir = tmp_dir / "state"
+            state_dir.mkdir(mode=0o700)
+            reports_dir = tmp_dir / "reports"
+            summary_path = reports_dir / "summary.json"
+            index_path = reports_dir / "index.html"
+
+            # Startup with neither file present: seeds valid empty summary.json (0644) and index.html.
+            written = shadow_report.ensure_host_report_index(
+                output_path=index_path,
+                summary_path=summary_path,
+                state_dir=state_dir,
+                agent="skrye",
+                shadow_model="inkling-2-mini",
+                gemini_model="gemini::gemini-4-hydrogen@reasoning-medium",
+                now_ms_fn=lambda: 1_760_000_000_000,
+            )
+            self.assertEqual(written, index_path)
+            self.assertTrue(summary_path.is_file())
+            self.assertEqual(stat.S_IMODE(summary_path.stat().st_mode), 0o644)
+            seeded = json.loads(summary_path.read_text(encoding="utf-8"))
+            self.assertEqual(seeded["schema_version"], shadow_eval.SHADOW_SCHEMA_VERSION)
+            self.assertEqual(seeded["agent"], "skrye")
+            self.assertEqual(seeded["shadow_model"], "inkling-2-mini")
+            self.assertEqual(seeded["totals"]["total"], 0)
+            self.assertEqual(seeded["recent_runs"], [])
+
+            # Empty summary.json parses and renders cleanly via index.html.
+            self.assertEqual(shadow_report.parse_shadow_input(summary_path), [])
+            rendered_html = index_path.read_text(encoding="utf-8")
+            self.assertIn("No shadow evaluation runs recorded yet", rendered_html)
+            self.assertIn('href="./summary.json"', rendered_html)
+
+            # Existing index.html with missing summary.json still seeds summary.json while preserving index.html.
+            summary_path.unlink()
+            index_path.write_text("<!-- keep-index -->\n", encoding="utf-8")
+            shadow_report.ensure_host_report_index(
+                output_path=index_path,
+                summary_path=summary_path,
+                state_dir=state_dir,
+                agent="skrye",
+                shadow_model="inkling-2-mini",
+                force=False,
+            )
+            self.assertTrue(summary_path.is_file())
+            self.assertEqual(index_path.read_text(encoding="utf-8"), "<!-- keep-index -->\n")
+
+            # Existing summary.json is never overwritten, even with force=True.
+            sentinel_summary = json.dumps({"schema_version": 1, "agent": "skrye", "recent_runs": [], "sentinel": True}) + "\n"
+            summary_path.write_text(sentinel_summary, encoding="utf-8")
+            shadow_report.ensure_host_report_index(
+                output_path=index_path,
+                summary_path=summary_path,
+                state_dir=state_dir,
+                agent="skrye",
+                shadow_model="inkling-2-mini",
+                force=True,
+            )
+            self.assertEqual(summary_path.read_text(encoding="utf-8"), sentinel_summary)
+
+            # Symlink summary target is refused without touching the target.
+            victim = tmp_dir / "victim.json"
+            victim.write_text('{"keep": true}\n', encoding="utf-8")
+            link_summary = reports_dir / "link-summary.json"
+            link_summary.symlink_to(victim)
+            with self.assertRaises(ValueError):
+                shadow_report.ensure_host_report_index(
+                    output_path=reports_dir / "link-index.html",
+                    summary_path=link_summary,
+                    state_dir=state_dir,
+                    agent="skrye",
+                    shadow_model="inkling-2-mini",
+                )
+            self.assertEqual(victim.read_text(encoding="utf-8"), '{"keep": true}\n')
+
 
 class TestRemoteFetchAndOpen(unittest.TestCase):
     """Verify read-only Tailscale SSH fetch, local host shortcut, and --fetch --open CLI."""

@@ -2142,6 +2142,34 @@ class InlinePromptSecurityDeduplicationAndAlertTests(GithubCompanionTestBase):
         )
         self.assertNotIn("snapshot_path", prompt)
         self.assertFalse((store.state_dir / "snapshots").exists())
+        self.assertIn(f"Read and follow `{hb_path}` for the active mode procedure.", prompt)
+        self.assertNotIn("Read inline trigger metadata.", prompt)
+
+    def test_build_dispatch_prompt_keeps_large_heartbeat_out_of_user_message(self) -> None:
+        store = self.make_store("skrye")
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="skrye",
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+
+        marker = "UNIQUE_HEARTBEAT_SENTINEL_DO_NOT_INLINE"
+        hb_path = self.data_dir / "HEARTBEAT.md"
+        hb_path.write_text(f"# Skrye Scheduled Maintenance Heartbeat\n{marker}\n" + ("x" * 50_000), encoding="utf-8")
+
+        prompt = coord.build_dispatch_prompt(
+            dispatch_id="ghd-skrye-compact1",
+            kind="reconcile_sweep",
+        )
+        self.assertIn("# Skrye Scheduled Maintenance Heartbeat", prompt)
+        self.assertIn("dispatch_kind: reconcile_sweep", prompt)
+        self.assertIn(f"Read and follow `{hb_path}` for the active mode procedure.", prompt)
+        self.assertNotIn(marker, prompt)
+        self.assertLess(len(prompt), 2000)
 
     def test_security_events_deduplication_and_primary_poller_matrix_and_telegram_alerts(self) -> None:
         gh_client = companion.GhApiSafeClient(runner=lambda *a, **k: subprocess.CompletedProcess(a[0], 0, "{}", ""))
@@ -13396,6 +13424,66 @@ class OperatorDigestTests(GithubCompanionTestBase):
         assert quiet_mon is not None
         self.assertIn("All clear", quiet_mon["message"])
         self.assertEqual(store.read_state()["digest"]["last_digest_date"], "2026-01-12")
+
+    def test_telegram_send_message_splits_long_messages_and_surfaces_http_400_description(self) -> None:
+        tg = self.make_telegram_client()
+
+        # Build a realistic > 5,000-character operator digest across sections.
+        def _items(prefix: str, count: int) -> list[dict]:
+            return [
+                {
+                    "identifier": f"WW-{prefix}-{idx}",
+                    "title": f"{prefix} item {idx} " + ("detail " * 14),
+                    "url": f"https://linear.app/wimpysworld/issue/WW-{prefix}-{idx}",
+                    "estimate": 2,
+                }
+                for idx in range(1, count + 1)
+            ]
+
+        long_digest = companion.format_operator_digest(
+            date_str="2026-04-20",
+            approved=_items("APP", 10),
+            ready_to_merge=_items("RTM", 10),
+            needs_decision=_items("ND", 10),
+            first_time_prs=_items("FT", 10),
+            signoff_issues=_items("SO", 10),
+            security_releases=[],
+            dead_letter_keys=[],
+        )
+        self.assertGreater(len(long_digest), 4096)
+
+        before_count = len(self.httpd.telegram_requests)
+        tg.send_message(long_digest)
+        sent_chunks = [req["body"]["text"] for req in self.httpd.telegram_requests[before_count:]]
+        self.assertGreaterEqual(len(sent_chunks), 2)
+        for chunk in sent_chunks:
+            self.assertLessEqual(len(chunk), companion.TELEGRAM_MAX_MESSAGE_CHARS)
+            self.assertLess(len(chunk), 4096)
+            self.assertEqual(chunk, chunk.strip())
+        expected_lines = [line for line in long_digest.splitlines() if line.strip()]
+        delivered_lines = [line for chunk in sent_chunks for line in chunk.splitlines() if line.strip()]
+        self.assertEqual(delivered_lines, expected_lines)
+
+        # Single oversized line without newlines falls back to hard splits under the limit.
+        hard_line = "A" * 4000 + "B" * 1234
+        hard_chunks = companion.split_telegram_message(hard_line)
+        self.assertEqual(hard_chunks, ["A" * 4000, "B" * 1234])
+
+        # HTTP 400 JSON description is parsed and surfaced in the raised error.
+        err_body = json.dumps(
+            {"ok": False, "error_code": 400, "description": "Bad Request: message is too long"}
+        ).encode("utf-8")
+        with patch.object(companion, "_http_json_request", return_value=(400, err_body)):
+            with self.assertRaises(RuntimeError) as ctx:
+                tg.send_message("hello")
+        self.assertIn("Telegram sendMessage HTTP 400", str(ctx.exception))
+        self.assertIn("Bad Request: message is too long", str(ctx.exception))
+
+        # Non-JSON HTTP 400 falls back cleanly without hiding the HTTP status.
+        with patch.object(companion, "_http_json_request", return_value=(400, b"<html>bad request</html>")):
+            with self.assertRaises(RuntimeError) as ctx_raw:
+                tg.send_message("hello")
+        self.assertEqual(str(ctx_raw.exception), "Telegram sendMessage HTTP 400")
 
 
 class PrIssueLinkingAndPauseTests(GithubCompanionTestBase):

@@ -4571,6 +4571,67 @@ class MatrixClient:
         return self.send_event_with_txn(path, body, txn_id, kind="notice", metadata={"scope_id": scope_id})
 
 
+TELEGRAM_MAX_MESSAGE_CHARS = 4000
+
+
+def split_telegram_message(text: str, max_chars: int = TELEGRAM_MAX_MESSAGE_CHARS) -> list[str]:
+    """Split a Telegram message on newline boundaries under Telegram's 4,096-character limit."""
+    clean_text = (text or "").strip()
+    if not clean_text:
+        return []
+    limit = max(1, int(max_chars))
+    if len(clean_text) <= limit:
+        return [clean_text]
+
+    chunks: list[str] = []
+    current_lines: list[str] = []
+    current_len = 0
+
+    def _flush() -> None:
+        nonlocal current_lines, current_len
+        if current_lines:
+            chunk = "\n".join(current_lines).strip()
+            if chunk:
+                chunks.append(chunk)
+            current_lines = []
+            current_len = 0
+
+    for line in clean_text.split("\n"):
+        if len(line) > limit:
+            _flush()
+            for start in range(0, len(line), limit):
+                part = line[start : start + limit]
+                if part.strip():
+                    chunks.append(part)
+            continue
+        if not current_lines:
+            if not line.strip():
+                continue
+            current_lines = [line]
+            current_len = len(line)
+        elif current_len + 1 + len(line) <= limit:
+            current_lines.append(line)
+            current_len += 1 + len(line)
+        else:
+            _flush()
+            if line.strip():
+                current_lines = [line]
+                current_len = len(line)
+
+    _flush()
+    return chunks
+
+
+def _extract_telegram_error_description(raw: bytes) -> str:
+    if not raw or not raw.strip():
+        return ""
+    with contextlib.suppress(UnicodeDecodeError, ValueError):
+        data = json.loads(raw.decode("utf-8"))
+        if isinstance(data, dict):
+            return str(data.get("description") or "").strip()
+    return ""
+
+
 class TelegramClient:
     """Telegram Bot API HTTP client for start-of-work notices, alerts, and terminal replies."""
 
@@ -4585,19 +4646,28 @@ class TelegramClient:
         clean_text = (text or "").strip()
         if not clean_text or is_heartbeat_ok_reply(clean_text):
             return {"ok": True, "skipped": True}
+        chunks = split_telegram_message(clean_text)
+        if not chunks:
+            return {"ok": True, "skipped": True}
         bot_cred, chat_id = read_telegram_bot_token(self.bot_token_path), read_telegram_allowed_chat_id(self.allowed_users_path)
-        status, raw = _http_json_request(url=f"{self.api_url}/bot{bot_cred}/sendMessage", method="POST", headers={"Content-Type": "application/json", "Accept": "application/json"}, raw_body=json.dumps({"chat_id": chat_id, "text": clean_text, "link_preview_options": {"is_disabled": True}}, ensure_ascii=False).encode("utf-8"), timeout=self.timeout, allow_loopback_self_signed=False)
-        if status >= 400:
-            raise RuntimeError(f"Telegram sendMessage HTTP {status}")
-        if not raw.strip():
-            return {"ok": True}
-        try:
-            data = json.loads(raw.decode("utf-8"))
-        except (UnicodeDecodeError, ValueError) as exc:
-            raise ValueError("Invalid JSON in Telegram API response") from exc
-        if isinstance(data, dict) and data.get("ok") is False:
-            raise RuntimeError(str(data.get("description") or f"Telegram API error {data.get('error_code') or ''}").strip() or "Telegram sendMessage returned ok=false")
-        return data if isinstance(data, dict) else {"ok": True}
+        last_result: dict = {"ok": True}
+        for chunk in chunks:
+            status, raw = _http_json_request(url=f"{self.api_url}/bot{bot_cred}/sendMessage", method="POST", headers={"Content-Type": "application/json", "Accept": "application/json"}, raw_body=json.dumps({"chat_id": chat_id, "text": chunk, "link_preview_options": {"is_disabled": True}}, ensure_ascii=False).encode("utf-8"), timeout=self.timeout, allow_loopback_self_signed=False)
+            if status >= 400:
+                description = _extract_telegram_error_description(raw)
+                detail = f": {description}" if description else ""
+                raise RuntimeError(f"Telegram sendMessage HTTP {status}{detail}")
+            if not raw.strip():
+                last_result = {"ok": True}
+                continue
+            try:
+                data = json.loads(raw.decode("utf-8"))
+            except (UnicodeDecodeError, ValueError) as exc:
+                raise ValueError("Invalid JSON in Telegram API response") from exc
+            if isinstance(data, dict) and data.get("ok") is False:
+                raise RuntimeError(str(data.get("description") or f"Telegram API error {data.get('error_code') or ''}").strip() or "Telegram sendMessage returned ok=false")
+            last_result = data if isinstance(data, dict) else {"ok": True}
+        return last_result
 
 
 class MoltisRpcClient:
@@ -6025,12 +6095,8 @@ class LocalExecutionCoordinator:
             *([guidance_block] if guidance_block else []),
             *([extra_instructions.strip()] if extra_instructions.strip() else []),
         ]
-        heartbeat_md = ""
-        heartbeat_path = self.data_dir / "HEARTBEAT.md"
-        if heartbeat_path.is_file():
-            with contextlib.suppress(OSError):
-                heartbeat_md = heartbeat_path.read_text(encoding="utf-8", errors="replace").strip()
-        blocks.append(f"Follow the `HEARTBEAT.md` procedure appended below for the active mode.\n\n{heartbeat_md}" if heartbeat_md else "Read and follow `~/.moltis/HEARTBEAT.md` for the active mode procedure.")
+        heartbeat_path = self.data_dir.expanduser() / "HEARTBEAT.md"
+        blocks.append(f"Read and follow `{heartbeat_path}` for the active mode procedure.")
         return "\n\n".join(blocks) + "\n"
 
     def _check_completion_once(self, session_key: str, dispatch_id: str) -> dict:

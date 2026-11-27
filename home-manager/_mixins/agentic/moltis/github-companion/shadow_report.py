@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import datetime
+import errno
 import html
 import json
 import math
@@ -2214,6 +2215,54 @@ def _default_summary_path() -> Path:
     return Path("~/Volatile/moltis-shadow-reports/summary.json").expanduser()
 
 
+def _seed_shadow_summary_if_missing(summary_path: Path, summary: dict[str, object]) -> bool:
+    """Atomically create `summary.json` with mode 0644 only when absent, refusing symlinks."""
+    filename = summary_path.name
+    if not filename or filename in (".", ".."):
+        raise ValueError(f"Invalid summary filename: {summary_path!r}")
+    parent = summary_path.parent
+    parent.mkdir(mode=0o755, parents=True, exist_ok=True)
+    dir_fd = os.open(str(parent), os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    temp_name = f".{filename}.{uuid.uuid4().hex}.tmp"
+    try:
+        try:
+            existing = os.lstat(filename, dir_fd=dir_fd)
+        except FileNotFoundError:
+            existing = None
+        if existing is not None:
+            if stat.S_ISLNK(existing.st_mode) or not stat.S_ISREG(existing.st_mode):
+                raise ValueError(f"Refusing to use symlink or non-regular summary target: {summary_path}")
+            return False
+        payload = (json.dumps(summary, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode("utf-8")
+        fd = os.open(temp_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644, dir_fd=dir_fd)
+        try:
+            with os.fdopen(fd, "wb") as stream:
+                os.fchmod(stream.fileno(), 0o644)
+                stream.write(payload)
+                stream.flush()
+                os.fsync(stream.fileno())
+            try:
+                os.link(temp_name, filename, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+            except FileExistsError:
+                return False
+            except OSError as exc:
+                if exc.errno not in (errno.EPERM, errno.EOPNOTSUPP):
+                    raise
+                try:
+                    os.lstat(filename, dir_fd=dir_fd)
+                    return False
+                except FileNotFoundError:
+                    os.replace(temp_name, filename, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+            with contextlib.suppress(OSError):
+                os.fsync(dir_fd)
+            return True
+        finally:
+            with contextlib.suppress(FileNotFoundError):
+                os.unlink(temp_name, dir_fd=dir_fd)
+    finally:
+        os.close(dir_fd)
+
+
 def ensure_host_report_index(
     *,
     output_path: Path | str | None = None,
@@ -2229,7 +2278,7 @@ def ensure_host_report_index(
     force: bool = False,
     now_ms_fn: Callable[[], int] = shadow_eval.now_ms,
 ) -> Path:
-    """Ensure a host's `index.html` exists without overwriting an existing regular file unless `force=True`."""
+    """Ensure a host's `index.html` and `summary.json` exist without overwriting existing regular files unless `force=True`."""
     resolved_summary = (
         Path(summary_path).expanduser()
         if summary_path is not None and str(summary_path).strip()
@@ -2243,14 +2292,20 @@ def ensure_host_report_index(
 
     # Refuse symlink or non-regular targets even when force=False.
     try:
+        existing_summary = os.lstat(resolved_summary)
+    except FileNotFoundError:
+        existing_summary = None
+    if existing_summary is not None:
+        if stat.S_ISLNK(existing_summary.st_mode) or not stat.S_ISREG(existing_summary.st_mode):
+            raise ValueError(f"Refusing to use symlink or non-regular summary target: {resolved_summary}")
+
+    try:
         existing = os.lstat(target)
     except FileNotFoundError:
         existing = None
     if existing is not None:
         if stat.S_ISLNK(existing.st_mode) or not stat.S_ISREG(existing.st_mode):
             raise ValueError(f"Refusing to use symlink or non-regular HTML index target: {target}")
-        if not force:
-            return target
 
     source_path: Path | None = None
     if jsonl_path is not None and str(jsonl_path).strip():
@@ -2259,6 +2314,28 @@ def ensure_host_report_index(
         source_path = Path(state_dir).expanduser() / shadow_eval.SHADOW_EVAL_JSONL_FILENAME
     elif agent and agent.strip():
         source_path = _default_state_dir_for_agent(agent) / shadow_eval.SHADOW_EVAL_JSONL_FILENAME
+
+    if existing_summary is None:
+        if source_path is not None and source_path.exists():
+            seed_summary = shadow_eval.build_shadow_summary(
+                source_path,
+                agent=agent,
+                shadow_model=shadow_model,
+                gemini_model=gemini_model,
+                now_ms_fn=now_ms_fn,
+            )
+        else:
+            seed_summary = shadow_eval._build_shadow_summary_from_records(
+                (),
+                agent=agent,
+                shadow_model=shadow_model,
+                gemini_model=gemini_model,
+                now_ms_fn=now_ms_fn,
+            )
+        _seed_shadow_summary_if_missing(resolved_summary, seed_summary)
+
+    if existing is not None and not force:
+        return target
 
     records: list[dict[str, object]] = []
     if source_path is not None and source_path.exists():
