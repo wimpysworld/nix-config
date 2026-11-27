@@ -31,6 +31,7 @@ if _SCRIPT_DIR not in sys.path:
     sys.path.insert(0, _SCRIPT_DIR)
 
 import linear_sync
+import shadow_eval
 
 SERVER_DOMAIN = "matrix.wimpys.world"
 DEFAULT_ROOM_ID, DEFAULT_HOMESERVER_URL = f"!the-cauldron:{SERVER_DOMAIN}", f"https://{SERVER_DOMAIN}"
@@ -5905,7 +5906,7 @@ class NotificationPoller:
 class LocalExecutionCoordinator:
     """Serialise all targeted turns, 6-hour reconciliation sweeps, and weekly sweeps under coordinator.lock and active-dispatch.json."""
 
-    def __init__(self, state_store: CompanionStateStore, rpc_client: MoltisRpcClient, data_dir: Path | str, agent_name: str, agent_display_name: str = "", update_model: str = "", sweep_model: str = "", code_model: str = "", matrix_client: MatrixClient | None = None, telegram_client: TelegramClient | None = None, telegram_bot_token_path: Path | str | None = None, telegram_allowed_users_path: Path | str | None = None, telegram_api_url: str = DEFAULT_TELEGRAM_API_URL, session_key: str = DEFAULT_GH_SESSION_KEY, room_id: str = DEFAULT_ROOM_ID, schedule_dow: int | None = None, schedule_day_name: str = "", completion_timeout_ms: int | None = None, recovery_deadline_ms: int | None = None, completion_wait_timeout_secs: float | None = None, recovery_wait_timeout_secs: float | None = None, rpc_timeout_secs: float = DEFAULT_RPC_TIMEOUT_SECS, poll_interval_ms: int = DEFAULT_COMPLETION_POLL_INTERVAL_MS, clock: Callable[[], int] = now_ms, sleeper: Callable[[float], None] = time.sleep, linear_client: linear_sync.LinearSyncClient | None = None):
+    def __init__(self, state_store: CompanionStateStore, rpc_client: MoltisRpcClient, data_dir: Path | str, agent_name: str, agent_display_name: str = "", update_model: str = "", sweep_model: str = "", code_model: str = "", matrix_client: MatrixClient | None = None, telegram_client: TelegramClient | None = None, telegram_bot_token_path: Path | str | None = None, telegram_allowed_users_path: Path | str | None = None, telegram_api_url: str = DEFAULT_TELEGRAM_API_URL, session_key: str = DEFAULT_GH_SESSION_KEY, room_id: str = DEFAULT_ROOM_ID, schedule_dow: int | None = None, schedule_day_name: str = "", completion_timeout_ms: int | None = None, recovery_deadline_ms: int | None = None, completion_wait_timeout_secs: float | None = None, recovery_wait_timeout_secs: float | None = None, rpc_timeout_secs: float = DEFAULT_RPC_TIMEOUT_SECS, poll_interval_ms: int = DEFAULT_COMPLETION_POLL_INTERVAL_MS, clock: Callable[[], int] = now_ms, sleeper: Callable[[float], None] = time.sleep, linear_client: linear_sync.LinearSyncClient | None = None, gh_client: GhApiSafeClient | None = None, shadow_worker: shadow_eval.ShadowEvalWorker | None = None):
         self.state_store = state_store
         self.rpc_client = rpc_client
         self.data_dir = Path(data_dir)
@@ -5919,6 +5920,8 @@ class LocalExecutionCoordinator:
         self.matrix_client = matrix_client
         self.telegram_client = telegram_client or (TelegramClient(bot_token_path=telegram_bot_token_path, allowed_users_path=telegram_allowed_users_path, api_url=telegram_api_url) if (telegram_bot_token_path or telegram_allowed_users_path) else None)
         self.linear_client = linear_client
+        self.gh_client = gh_client
+        self.shadow_worker = shadow_worker
         self.session_key = (session_key or DEFAULT_GH_SESSION_KEY).strip()
         self.room_id = room_id
         default_dow, default_day_name = AGENT_DEFAULT_SCHEDULES[self.agent_name]
@@ -6495,6 +6498,35 @@ class LocalExecutionCoordinator:
             start_notice_sent, start_notice_error = False, None
             prompt_message = self.build_dispatch_prompt(dispatch_id=resolved_dispatch_id, kind=kind, thread_id=thread_id, repo=repo, number=number, subject_kind=subject_kind, head_sha=head_sha, trigger_reason=trigger_reason, comment_id=comment_id, review_id=review_id, trusted_item_id=trusted_item_id, community_auto_merge_eligible=community_auto_merge_eligible, team_label=team_label, triaged_head_sha=triaged_head_sha, head_sha_changed=head_sha_changed, linear_issue_id=linear_issue_id, linear_issue_identifier=linear_issue_identifier, linear_issue_url=linear_issue_url, linear_issue_estimate=linear_issue_estimate, linear_comment_id=linear_comment_id, linear_comment_parent_id=linear_comment_parent_id, linear_comment_author=linear_comment_author, operator_guidance=operator_guidance, github_url=github_url, bypass_reasons=bypass_reasons, lane_a_polish_notes=lane_a_polish_notes, extra_instructions=extra_instructions)
 
+            shadow_worker_enabled = bool(
+                self.shadow_worker is not None
+                and getattr(self.shadow_worker, "enabled", bool(getattr(self.shadow_worker, "shadow_model", "")))
+            )
+            should_shadow = bool(
+                shadow_worker_enabled
+                and kind == "targeted"
+                and is_automated_pr
+                and not (model or "").strip()
+                and resolved_model == self.update_model
+                and repo
+                and number
+            )
+            pre_action_snapshot: dict[str, object] | None = None
+            if should_shadow and self.gh_client is not None:
+                try:
+                    pre_action_snapshot = shadow_eval.capture_pr_snapshot(
+                        self.gh_client,
+                        agent=self.agent_name,
+                        repo=str(repo),
+                        number=_safe_int(number, 0),
+                        head_sha=str(head_sha or ""),
+                        trigger_reason=str(trigger_reason or ""),
+                        now_ms_fn=self.clock,
+                    )
+                except Exception as exc:
+                    sys.stderr.write(f"moltis-shadow-eval capture warning ({self.agent_name}): {exc}\n")
+                    pre_action_snapshot = None
+
             rpc_error: Exception | None = None
             rpc_response: dict | None = None
             try:
@@ -6506,7 +6538,29 @@ class LocalExecutionCoordinator:
             deadline_ms = poll_base_ms + (self.recovery_deadline_ms if rpc_error is not None else self.completion_timeout_ms)
             check = self._poll_until_completed(resolved_session_key, resolved_dispatch_id, deadline_ms=deadline_ms)
             finish_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
-            return self._resolve_turn_outcome(active_record, check, rpc_response=rpc_response, rpc_error=rpc_error, recovery=recovery, start_notice=(start_notice_sent, start_notice_text, start_notice_error), is_recovery=False, defer_watermark_commit=defer_watermark_commit, now_override_ms=finish_ms)
+            result = self._resolve_turn_outcome(active_record, check, rpc_response=rpc_response, rpc_error=rpc_error, recovery=recovery, start_notice=(start_notice_sent, start_notice_text, start_notice_error), is_recovery=False, defer_watermark_commit=defer_watermark_commit, now_override_ms=finish_ms)
+
+        if should_shadow and pre_action_snapshot is not None and self.shadow_worker is not None:
+            try:
+                history_records = load_session_history_records(
+                    self.data_dir,
+                    resolved_session_key,
+                    agent_name=self.agent_name,
+                    room_id=self.room_id,
+                )
+                self.shadow_worker.enqueue({
+                    "snapshot": pre_action_snapshot,
+                    "dispatch_id": resolved_dispatch_id,
+                    "agent": self.agent_name,
+                    "gemini_model": resolved_model,
+                    "history_records": history_records,
+                    "reply_text": str(result.get("reply_text") or ""),
+                    "task_succeeded": bool(result.get("task_succeeded", False)),
+                })
+            except Exception as exc:
+                sys.stderr.write(f"moltis-shadow-eval enqueue warning ({self.agent_name}): {exc}\n")
+
+        return result
 
 
 LINEAR_WRITE_CONSECUTIVE_FAILURE_LIMIT = 3
@@ -6611,6 +6665,8 @@ class GithubCompanionRunner:
         self.linear_client = linear_client
         if self.execution_coordinator.linear_client is None and self.linear_client is not None:
             self.execution_coordinator.linear_client = self.linear_client
+        if self.execution_coordinator.gh_client is None and self.gh_client is not None:
+            self.execution_coordinator.gh_client = self.gh_client
         self.read_only_trial = bool(read_only_trial)
         self.reconcile_interval_ms = max(60_000, _safe_int(reconcile_interval_ms, RECONCILE_SWEEP_INTERVAL_MS))
         self.clock = clock
@@ -12713,10 +12769,33 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-tasks-per-slot", default=os.environ.get("MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_SLOT", ""))
     parser.add_argument("--max-tasks-per-day", default=os.environ.get("MOLTIS_GITHUB_COMPANION_MAX_TASKS_PER_DAY", ""))
     parser.add_argument("--daily-implementations-cap", default=os.environ.get("MOLTIS_GITHUB_COMPANION_DAILY_IMPLEMENTATIONS_CAP", ""))
+    parser.add_argument("--shadow-eval-enabled", default=os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_ENABLED", ""))
+    parser.add_argument("--shadow-model", default=os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_MODEL") or os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_MODEL", ""))
+    parser.add_argument("--shadow-api-url", default=os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_API_URL") or os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_API_URL", ""))
+    parser.add_argument("--shadow-summary-path", default=os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_SUMMARY_PATH") or os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_SUMMARY_PATH", ""))
+    parser.add_argument("--shadow-timeout-secs", default=os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_TIMEOUT_SECS") or os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_TIMEOUT_SECS", ""))
+    parser.add_argument("--replay-shadow", default="")
+    parser.add_argument("--shadow-output", default="")
     parser.add_argument("--read-only-trial", action="store_true", default=os.environ.get("MOLTIS_GITHUB_COMPANION_READ_ONLY_TRIAL", "").strip() in ("1", "true", "yes"))
     parser.add_argument("--reprocess-community", action="store_true")
     parser.add_argument("--once", action="store_true")
     return parser
+
+
+def _resolve_shadow_config_from_args(args: argparse.Namespace, *, agent_name: str = "") -> dict[str, object]:
+    raw_enabled = getattr(args, "shadow_eval_enabled", "")
+    raw_model = getattr(args, "shadow_model", "") or os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_MODEL", "")
+    raw_api_url = getattr(args, "shadow_api_url", "") or os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_API_URL", "")
+    raw_summary_path = getattr(args, "shadow_summary_path", "") or os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_SUMMARY_PATH", "")
+    raw_timeout_secs = getattr(args, "shadow_timeout_secs", "") or os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_TIMEOUT_SECS", "")
+    return shadow_eval.resolve_shadow_eval_config(
+        agent_name=agent_name,
+        enabled=raw_enabled if str(raw_enabled).strip() != "" else None,
+        model=raw_model if str(raw_model).strip() != "" else None,
+        api_url=raw_api_url if str(raw_api_url).strip() != "" else None,
+        summary_path=raw_summary_path if str(raw_summary_path).strip() != "" else None,
+        timeout_secs=raw_timeout_secs if str(raw_timeout_secs).strip() != "" else None,
+    )
 
 
 def resolve_runtime_config(args: argparse.Namespace) -> dict:
@@ -12739,6 +12818,7 @@ def resolve_runtime_config(args: argparse.Namespace) -> dict:
         max_files=getattr(args, "community_auto_merge_max_files", "") or None,
         excluded_repos=getattr(args, "community_auto_merge_excluded_repos", "") or None,
     )
+    shadow_cfg = _resolve_shadow_config_from_args(args, agent_name=agent_name)
     raw_poll_interval = getattr(args, "poll_interval_minutes", "")
     raw_max_tasks_slot = getattr(args, "max_tasks_per_slot", "")
     raw_max_tasks_day = getattr(args, "max_tasks_per_day", "")
@@ -12765,6 +12845,13 @@ def resolve_runtime_config(args: argparse.Namespace) -> dict:
         "max_tasks_per_slot": resolve_max_tasks_per_slot(raw_max_tasks_slot if str(raw_max_tasks_slot).strip() != "" else None, agent_name=agent_name),
         "max_tasks_per_day": resolve_max_tasks_per_day(raw_max_tasks_day if str(raw_max_tasks_day).strip() != "" else None),
         "daily_implementations_cap": resolve_daily_implementations_cap(raw_daily_impl_cap if str(raw_daily_impl_cap).strip() != "" else None, agent_name=agent_name),
+        "shadow_eval_enabled": bool(shadow_cfg["enabled"]),
+        "shadow_model": str(shadow_cfg["model"]),
+        "shadow_api_url": str(shadow_cfg["api_url"]),
+        "shadow_summary_path": shadow_cfg["summary_path"],
+        "shadow_timeout_secs": float(shadow_cfg["timeout_secs"]),
+        "replay_shadow": str(getattr(args, "replay_shadow", "") or "").strip() or None,
+        "shadow_output": str(getattr(args, "shadow_output", "") or "").strip() or None,
         "read_only_trial": bool(getattr(args, "read_only_trial", False)),
         "reprocess_community": bool(getattr(args, "reprocess_community", False)),
         "once": bool(getattr(args, "once", False)),
@@ -12772,7 +12859,30 @@ def resolve_runtime_config(args: argparse.Namespace) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    cfg = resolve_runtime_config(build_arg_parser().parse_args(argv))
+    args = build_arg_parser().parse_args(argv)
+    replay_path = str(getattr(args, "replay_shadow", "") or "").strip()
+    if replay_path:
+        raw_agent = str(getattr(args, "agent_name", "") or "").strip()
+        replay_agent = normalize_agent_name(raw_agent) if raw_agent else ""
+        shadow_cfg = _resolve_shadow_config_from_args(args, agent_name=replay_agent)
+        raw_summary_arg = str(
+            getattr(args, "shadow_summary_path", "")
+            or os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_SUMMARY_PATH", "")
+            or os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_SUMMARY_PATH", "")
+        ).strip()
+        replay_summary_path = shadow_cfg["summary_path"] if raw_summary_arg else None
+        replay_output_path = str(getattr(args, "shadow_output", "") or "").strip() or None
+        summary = shadow_eval.replay_shadow_jsonl(
+            replay_path,
+            shadow_model=str(shadow_cfg["model"]),
+            shadow_api_url=str(shadow_cfg["api_url"]),
+            output_path=replay_output_path,
+            summary_path=replay_summary_path,
+            timeout_secs=float(shadow_cfg["timeout_secs"]),
+        )
+        print(json.dumps(summary, sort_keys=True, ensure_ascii=False))
+        return 0
+    cfg = resolve_runtime_config(args)
     store = CompanionStateStore(
         state_dir=cfg["state_dir"],
         agent_name=cfg["agent_name"],
@@ -12799,24 +12909,42 @@ def main(argv: list[str] | None = None) -> int:
     poller = NotificationPoller(state_store=store, gh_client=gh_client, read_only_trial=cfg["read_only_trial"], poll_interval_minutes=cfg["poll_interval_minutes"])
     trust_filter = TrustFilterAndSnapshotBuilder(state_store=store, gh_client=gh_client, matrix_client=matrix_client, telegram_client=telegram_client, agent_name=cfg["agent_name"])
     linear_client = linear_sync.LinearSyncClient.from_env()
-    execution_coordinator = LocalExecutionCoordinator(state_store=store, rpc_client=rpc_client, data_dir=cfg["data_dir"], agent_name=cfg["agent_name"], agent_display_name=cfg["agent_display_name"], update_model=cfg["update_model"], sweep_model=cfg["sweep_model"], code_model=cfg["code_model"], matrix_client=matrix_client, telegram_client=telegram_client, room_id=cfg["room_id"], schedule_dow=cfg["schedule_dow"], schedule_day_name=cfg["schedule_day_name"], linear_client=linear_client)
+    shadow_worker: shadow_eval.ShadowEvalWorker | None = None
+    if cfg["shadow_eval_enabled"]:
+        shadow_worker = shadow_eval.ShadowEvalWorker(
+            state_dir=cfg["state_dir"],
+            shadow_model=cfg["shadow_model"],
+            shadow_api_url=cfg["shadow_api_url"],
+            summary_path=cfg["shadow_summary_path"],
+            timeout_secs=cfg["shadow_timeout_secs"],
+        )
+    execution_coordinator = LocalExecutionCoordinator(state_store=store, rpc_client=rpc_client, data_dir=cfg["data_dir"], agent_name=cfg["agent_name"], agent_display_name=cfg["agent_display_name"], update_model=cfg["update_model"], sweep_model=cfg["sweep_model"], code_model=cfg["code_model"], matrix_client=matrix_client, telegram_client=telegram_client, room_id=cfg["room_id"], schedule_dow=cfg["schedule_dow"], schedule_day_name=cfg["schedule_day_name"], linear_client=linear_client, gh_client=gh_client, shadow_worker=shadow_worker)
     runner = GithubCompanionRunner(state_store=store, gh_client=gh_client, poller=poller, trust_filter=trust_filter, execution_coordinator=execution_coordinator, matrix_client=matrix_client, read_only_trial=cfg["read_only_trial"], linear_client=linear_client, telegram_client=telegram_client, poll_interval_minutes=cfg["poll_interval_minutes"])
-    if cfg["once"]:
-        poller.wait_until_due()
-        runner.run_cycle()
-        return 0
-    backoff = 5.0
-    while True:
-        try:
+    try:
+        if cfg["once"]:
             poller.wait_until_due()
             runner.run_cycle()
-            backoff = 5.0
-        except KeyboardInterrupt:
+            if shadow_worker is not None:
+                shadow_worker.drain(timeout=float(cfg["shadow_timeout_secs"]) + 5.0)
             return 0
-        except Exception as exc:
-            sys.stderr.write(f"moltis-github-companion loop warning ({cfg['agent_name']}): {exc}\n")
-            time.sleep(backoff)
-            backoff = min(backoff * 2.0, 60.0)
+        backoff = 5.0
+        while True:
+            try:
+                poller.wait_until_due()
+                runner.run_cycle()
+                backoff = 5.0
+            except KeyboardInterrupt:
+                return 0
+            except Exception as exc:
+                sys.stderr.write(f"moltis-github-companion loop warning ({cfg['agent_name']}): {exc}\n")
+                time.sleep(backoff)
+                backoff = min(backoff * 2.0, 60.0)
+    finally:
+        if shadow_worker is not None:
+            with contextlib.suppress(Exception):
+                shadow_worker.drain(timeout=5.0)
+            with contextlib.suppress(Exception):
+                shadow_worker.close(timeout=5.0)
 
 
 if __name__ == "__main__":

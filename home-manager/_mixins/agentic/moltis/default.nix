@@ -995,6 +995,11 @@ let
     linearLabelApiKeyPath = lib.optionalString githubCompanionCfg.enable config.sops.secrets.MOLTIS_LINEAR_LABEL_API_KEY.path;
     linearTokenCacheDir = "${stateDir}/linear-${agentName}";
     linearTeamKey = "WW";
+    shadowEvalEnabled = githubCompanionCfg.shadowEval.enable;
+    shadowModel = githubCompanionCfg.shadowEval.model;
+    shadowApiUrl = githubCompanionCfg.shadowEval.apiUrl;
+    shadowSummaryPath = githubCompanionCfg.shadowEval.summaryPath;
+    shadowTimeoutSecs = githubCompanionCfg.shadowEval.timeoutSecs;
   };
 
   moltisMatrixCouncilHook = pkgs.writeScript "moltis-matrix-council-hook" ''
@@ -1402,6 +1407,37 @@ in
         type = lib.types.ints.unsigned;
         default = if isTraya then 0 else 8;
         description = "Maximum number of autonomous Todo implementations dispatched per Europe/London calendar day. Zero disables Todo implementations.";
+      };
+      shadowEval = {
+        enable = lib.mkEnableOption "shadow LLM evaluation for automated GitHub update turns" // {
+          default = moltisEnabled && (agentName == "skrye" || agentName == "zannah");
+        };
+        model = lib.mkOption {
+          type = lib.types.str;
+          default =
+            if agentName == "skrye" then
+              "inkling-2-mini"
+            else if agentName == "zannah" then
+              "qwen3.8-27b"
+            else
+              "";
+          description = "Local llama-swap model name used for shadow evaluation on automated update turns. An empty string disables shadow evaluation.";
+        };
+        apiUrl = lib.mkOption {
+          type = lib.types.str;
+          default = "http://127.0.0.1:${toString llamaSwapPort}/v1/chat/completions";
+          description = "Loopback OpenAI-compatible chat completions endpoint for shadow evaluation.";
+        };
+        summaryPath = lib.mkOption {
+          type = lib.types.str;
+          default = "${homeDir}/Volatile/moltis-shadow-reports/summary.json";
+          description = "Path where the GitHub companion writes the sanitised shadow evaluation summary JSON.";
+        };
+        timeoutSecs = lib.mkOption {
+          type = lib.types.ints.positive;
+          default = 120;
+          description = "HTTP timeout in seconds for each local shadow evaluation inference request.";
+        };
       };
     };
 

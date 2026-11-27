@@ -7,6 +7,7 @@ import base64
 import concurrent.futures
 import contextlib
 import datetime
+import fcntl
 import http.server
 import io
 import json
@@ -25,6 +26,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import companion
+import shadow_eval
 
 
 class MockMatrixAndRpcHandler(http.server.BaseHTTPRequestHandler):
@@ -16500,6 +16502,574 @@ class UnifiedLlmRateControlsAndPriorityOrderTests(GithubCompanionTestBase):
         override_slept_ms = poller_override.wait_until_due(now_override_ms=persisted_next_ms - 150_000)
         self.assertEqual(override_chunks, [60.0, 60.0, 30.0])
         self.assertEqual(override_slept_ms, 150_000)
+
+
+class ShadowEvalIntegrationTests(GithubCompanionTestBase):
+    """Integration tests for shadow LLM snapshot capture, lock-free enqueue, fault isolation, and config/CLI wiring."""
+
+    def _make_snapshot_gh_client(
+        self,
+        *,
+        on_call: Callable[[list[str]], None] | None = None,
+    ) -> companion.GhApiSafeClient:
+        def fake_runner(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess:
+            self.gh_commands.append(list(cmd))
+            if on_call is not None:
+                on_call(list(cmd))
+            if cmd[0] == "gh-api-safe" and len(cmd) > 1 and cmd[1] == "graphql":
+                payload = {
+                    "data": {
+                        "repository": {
+                            "isArchived": False,
+                            "pullRequest": {
+                                "title": "build(deps): bump actions/checkout from 4 to 5",
+                                "url": "https://github.com/wimpysworld/wonkey/pull/99",
+                                "state": "OPEN",
+                                "isDraft": False,
+                                "author": {"__typename": "Bot", "login": "dependabot"},
+                                "headRefName": "dependabot/github_actions/actions/checkout-5",
+                                "headRefOid": "abcdef123456",
+                                "baseRefName": "main",
+                                "mergeable": "MERGEABLE",
+                                "mergeStateStatus": "CLEAN",
+                                "reviewDecision": "REVIEW_REQUIRED",
+                                "additions": 2,
+                                "deletions": 2,
+                                "changedFiles": 1,
+                                "labels": {"nodes": [{"name": "dependencies"}]},
+                                "commits": {
+                                    "nodes": [
+                                        {
+                                            "commit": {
+                                                "statusCheckRollup": {
+                                                    "state": "SUCCESS",
+                                                    "contexts": {
+                                                        "nodes": [
+                                                            {
+                                                                "__typename": "CheckRun",
+                                                                "name": "build",
+                                                                "status": "COMPLETED",
+                                                                "conclusion": "SUCCESS",
+                                                            }
+                                                        ]
+                                                    },
+                                                }
+                                            }
+                                        }
+                                    ]
+                                },
+                                "reviews": {"nodes": []},
+                                "reviewThreads": {"nodes": []},
+                            },
+                        }
+                    }
+                }
+                return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(payload), stderr="")
+            if cmd[0] == "gh" and len(cmd) > 2 and cmd[1] == "pr" and cmd[2] == "diff":
+                return subprocess.CompletedProcess(
+                    cmd,
+                    0,
+                    stdout="diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml\n-uses: actions/checkout@v4\n+uses: actions/checkout@v5\n",
+                    stderr="",
+                )
+            if cmd[0] == "gh-api-safe" and len(cmd) > 1 and "tailor-vendor-hash.yml" in cmd[1]:
+                return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="HTTP 404 Not Found")
+            if cmd[0] == "gh-api-safe" and len(cmd) > 1 and "/dependabot/alerts" in cmd[1]:
+                return subprocess.CompletedProcess(cmd, 0, stdout="[]", stderr="")
+            if cmd[0] == "gh-api-safe" and len(cmd) > 1 and "/actions/runs" in cmd[1]:
+                return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps({"workflow_runs": []}), stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout="{}", stderr="")
+
+        return companion.GhApiSafeClient(runner=fake_runner)
+
+    def _install_merge_send_sync(
+        self,
+        *,
+        agent_name: str = "skrye",
+        timeline: list[str] | None = None,
+        reply_text: str = "🏁 https://github.com/wimpysworld/wonkey/pull/99 - Merged Dependabot update",
+        command: str = "gh-bot-merge https://github.com/wimpysworld/wonkey/pull/99",
+    ) -> None:
+        def handler(params: dict) -> dict:
+            if timeline is not None:
+                timeline.append("chat_send_sync")
+            msg = str(params.get("message") or "")
+            disp_id = [line.split(": ", 1)[1] for line in msg.splitlines() if line.startswith("dispatch_id: ")][0]
+            self.write_history(
+                companion.DEFAULT_GH_SESSION_KEY,
+                [
+                    {"role": "user", "dispatch_id": disp_id, "content": msg},
+                    {
+                        "role": "assistant",
+                        "tool_calls": [
+                            {
+                                "id": f"call-{disp_id}",
+                                "function": {
+                                    "name": "exec",
+                                    "arguments": json.dumps({"command": command}),
+                                },
+                            }
+                        ],
+                    },
+                    {"role": "assistant", "content": reply_text, "stop_reason": "end_turn"},
+                ],
+                agent_name=agent_name,
+            )
+            return {"ok": True, "result": {"text": reply_text}}
+
+        self.httpd.send_sync_handler = handler
+
+    def test_shadow_capture_and_enqueue_scoped_to_targeted_automated_prs(self) -> None:
+        store = self.make_store("skrye")
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        summary_path = self.root / "reports" / "summary.json"
+        timeline: list[str] = []
+        llm_calls: list[dict[str, object]] = []
+
+        def fake_llm_caller(**kwargs: object) -> dict[str, object]:
+            timeline.append("shadow_llm")
+            llm_calls.append(dict(kwargs))
+            return {
+                "raw_content": json.dumps({
+                    "action": "approve_and_merge",
+                    "advisory_safe": True,
+                    "ci_cause": "none",
+                    "escalate": False,
+                    "reason": "Clean automated dependency update with green CI.",
+                }),
+                "ttft_ms": 120,
+                "total_ms": 480,
+                "prompt_tokens": 350,
+                "completion_tokens": 45,
+            }
+
+        gh_client = self._make_snapshot_gh_client(
+            on_call=lambda cmd: timeline.append("capture_gh") if "capture_gh" not in timeline else None
+        )
+        worker = shadow_eval.ShadowEvalWorker(
+            state_dir=store.state_dir,
+            shadow_model="inkling-2-mini",
+            summary_path=summary_path,
+            synchronous=True,
+            llm_caller=fake_llm_caller,
+            now_ms_fn=self.clock,
+        )
+        self.addCleanup(worker.close)
+        self._install_merge_send_sync(agent_name="skrye", timeline=timeline)
+
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="skrye",
+            update_model="gemini::flash",
+            sweep_model="gemini::pro",
+            code_model="gemini::pro",
+            gh_client=gh_client,
+            shadow_worker=worker,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+
+        # 1) Targeted automated PR on default update_model -> MUST capture BEFORE chat_send_sync and enqueue AFTER
+        res_auto = coord.execute_dispatch(
+            kind="targeted",
+            is_automated_pr=True,
+            repo="wimpysworld/wonkey",
+            number=99,
+            head_sha="abcdef123456",
+            updated_at="2026-11-27T01:00:00Z",
+            trigger_reason="unrequested_pr",
+        )
+        self.assertTrue(res_auto["task_succeeded"])
+        self.assertEqual(timeline, ["capture_gh", "chat_send_sync", "shadow_llm"])
+        self.assertEqual(len(llm_calls), 1)
+        self.assertEqual(llm_calls[0]["model"], "inkling-2-mini")
+        self.assertEqual(worker.processed_count, 1)
+
+        # 2) Non-automated targeted PR, explicit model override, sweeps, and community_triage -> MUST NOT shadow
+        gh_calls_before = len(self.gh_commands)
+        for dispatch_kwargs in (
+            {
+                "kind": "targeted",
+                "is_automated_pr": False,
+                "repo": "wimpysworld/wonkey",
+                "number": 100,
+                "head_sha": "111111111111",
+                "trigger_reason": "review_requested",
+            },
+            {
+                "kind": "targeted",
+                "is_automated_pr": True,
+                "model": "gemini::manual-override",
+                "repo": "wimpysworld/wonkey",
+                "number": 101,
+                "head_sha": "222222222222",
+                "trigger_reason": "unrequested_pr",
+            },
+            {"kind": "reconcile_sweep"},
+            {"kind": "weekly_sweep", "sweep_date": "2026-11-24"},
+            {
+                "kind": "community_triage",
+                "repo": "wimpysworld/wonkey",
+                "number": 102,
+                "head_sha": "333333333333",
+                "trigger_reason": "community_triage",
+            },
+        ):
+            res = coord.execute_dispatch(**dispatch_kwargs)
+            self.assertTrue(res["task_succeeded"])
+
+        self.assertEqual(len(self.gh_commands), gh_calls_before)
+        self.assertEqual(len(llm_calls), 1)
+        self.assertEqual(worker.processed_count, 1)
+
+    def test_shadow_worker_runs_after_coordinator_lock_released(self) -> None:
+        store = self.make_store("zannah")
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        summary_path = self.root / "reports" / "zannah-summary.json"
+        lock_file = store.state_dir / companion.COORDINATOR_LOCK_FILENAME
+
+        lock_held_during_capture: list[bool] = []
+        lock_unlocked_during_shadow: list[bool] = []
+
+        def probe_coordinator_lock_held() -> bool:
+            fd = os.open(str(lock_file), os.O_RDWR | os.O_NOFOLLOW)
+            try:
+                try:
+                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    return True
+                else:
+                    fcntl.flock(fd, fcntl.LOCK_UN)
+                    return False
+            finally:
+                os.close(fd)
+
+        def on_gh_call(_cmd: list[str]) -> None:
+            if not lock_held_during_capture:
+                lock_held_during_capture.append(probe_coordinator_lock_held())
+
+        def fake_llm_caller(**_kwargs: object) -> dict[str, object]:
+            # Non-blocking flock MUST succeed because coordinator.lock was released before enqueue.
+            lock_unlocked_during_shadow.append(not probe_coordinator_lock_held())
+            return {
+                "raw_content": json.dumps({
+                    "action": "approve_and_merge",
+                    "advisory_safe": True,
+                    "ci_cause": "none",
+                    "escalate": False,
+                    "reason": "Automated update verified clean.",
+                }),
+                "ttft_ms": 95,
+                "total_ms": 320,
+                "prompt_tokens": 300,
+                "completion_tokens": 40,
+            }
+
+        gh_client = self._make_snapshot_gh_client(on_call=on_gh_call)
+        worker = shadow_eval.ShadowEvalWorker(
+            state_dir=store.state_dir,
+            shadow_model="qwen3.8-27b",
+            summary_path=summary_path,
+            synchronous=False,
+            llm_caller=fake_llm_caller,
+            now_ms_fn=self.clock,
+        )
+        self.addCleanup(worker.close)
+        self._install_merge_send_sync(agent_name="zannah")
+
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="zannah",
+            update_model="gemini::flash",
+            sweep_model="gemini::pro",
+            code_model="gemini::pro",
+            gh_client=gh_client,
+            shadow_worker=worker,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+
+        res = coord.execute_dispatch(
+            kind="targeted",
+            is_automated_pr=True,
+            repo="wimpysworld/wonkey",
+            number=99,
+            head_sha="abcdef123456",
+            updated_at="2026-11-27T01:05:00Z",
+            trigger_reason="unrequested_pr",
+        )
+        self.assertTrue(res["task_succeeded"])
+        self.assertTrue(worker.drain(timeout=5.0))
+        self.assertEqual(lock_held_during_capture, [True])
+        self.assertEqual(lock_unlocked_during_shadow, [True])
+
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        self.assertEqual(summary["agent"], "zannah")
+        self.assertEqual(summary["shadow_model"], "qwen3.8-27b")
+        self.assertEqual(summary["totals"]["total"], 1)
+        self.assertEqual(summary["totals"]["match"], 1)
+
+    def test_shadow_llm_failure_and_timeout_never_affect_dispatch_telegram_or_watermark(self) -> None:
+        store = self.make_store("skrye")
+        rpc = companion.MoltisRpcClient(rpc_url=self.httpd.rpc_url)
+        telegram = self.make_telegram_client()
+        summary_path = self.root / "reports" / "failure-summary.json"
+        gh_client = self._make_snapshot_gh_client()
+        self._install_merge_send_sync(agent_name="skrye")
+
+        errors_to_raise: list[Exception] = [
+            TimeoutError("llama-swap request timed out"),
+            RuntimeError("llama-swap connection refused"),
+        ]
+
+        def failing_llm_caller(**_kwargs: object) -> dict[str, object]:
+            raise errors_to_raise.pop(0)
+
+        worker = shadow_eval.ShadowEvalWorker(
+            state_dir=store.state_dir,
+            shadow_model="inkling-2-mini",
+            summary_path=summary_path,
+            synchronous=False,
+            llm_caller=failing_llm_caller,
+            now_ms_fn=self.clock,
+            logger=lambda _msg: None,
+        )
+        self.addCleanup(worker.close)
+
+        coord = companion.LocalExecutionCoordinator(
+            state_store=store,
+            rpc_client=rpc,
+            data_dir=self.data_dir,
+            agent_name="skrye",
+            update_model="gemini::flash",
+            sweep_model="gemini::pro",
+            code_model="gemini::pro",
+            telegram_client=telegram,
+            gh_client=gh_client,
+            shadow_worker=worker,
+            clock=self.clock,
+            sleeper=self.sleeper,
+        )
+
+        for idx, sha in enumerate(("sha_timeout_01", "sha_refused_02"), start=1):
+            pr_num = 190 + idx
+            res = coord.execute_dispatch(
+                kind="targeted",
+                is_automated_pr=True,
+                repo="wimpysworld/wonkey",
+                number=pr_num,
+                head_sha=sha,
+                updated_at=f"2026-11-27T02:0{idx}:00Z",
+                trigger_reason="unrequested_pr",
+            )
+            self.assertEqual(res["status"], "completed")
+            self.assertTrue(res["task_succeeded"])
+            self.assertTrue(res["telegram_forwarded"])
+            wm = store.get_thread_state(f"wimpysworld/wonkey#{pr_num}")
+            assert wm is not None
+            self.assertEqual(wm["handled_head_sha"], sha)
+            self.assertEqual(wm["handled_updated_at"], f"2026-11-27T02:0{idx}:00Z")
+
+        self.assertTrue(worker.drain(timeout=5.0))
+        self.assertGreaterEqual(len(self.httpd.telegram_requests), 2)
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        self.assertEqual(summary["totals"]["total"], 2)
+        self.assertEqual(summary["totals"]["error"], 2)
+
+        # Even if capture_pr_snapshot or worker.enqueue raises unexpectedly, live dispatch still succeeds.
+        stderr_buf = io.StringIO()
+        with (
+            patch.object(shadow_eval, "capture_pr_snapshot", side_effect=RuntimeError("boom capture")),
+            contextlib.redirect_stderr(stderr_buf),
+        ):
+            res_cap_err = coord.execute_dispatch(
+                kind="targeted",
+                is_automated_pr=True,
+                repo="wimpysworld/wonkey",
+                number=193,
+                head_sha="sha_capture_err_03",
+                updated_at="2026-11-27T02:03:00Z",
+                trigger_reason="unrequested_pr",
+            )
+        self.assertTrue(res_cap_err["task_succeeded"])
+        self.assertTrue(res_cap_err["telegram_forwarded"])
+        wm_cap = store.get_thread_state("wimpysworld/wonkey#193")
+        assert wm_cap is not None
+        self.assertEqual(wm_cap["handled_head_sha"], "sha_capture_err_03")
+        self.assertIn("capture warning", stderr_buf.getvalue())
+
+    def test_resolve_runtime_config_shadow_defaults_and_overrides(self) -> None:
+        shadow_env_keys = (
+            "MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_ENABLED",
+            "MOLTIS_GITHUB_COMPANION_SHADOW_MODEL",
+            "MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_MODEL",
+            "MOLTIS_GITHUB_COMPANION_SHADOW_API_URL",
+            "MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_API_URL",
+            "MOLTIS_GITHUB_COMPANION_SHADOW_SUMMARY_PATH",
+            "MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_SUMMARY_PATH",
+            "MOLTIS_GITHUB_COMPANION_SHADOW_TIMEOUT_SECS",
+            "MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_TIMEOUT_SECS",
+        )
+        clean_env = {k: v for k, v in os.environ.items() if k not in shadow_env_keys}
+
+        with patch.dict(os.environ, clean_env, clear=True):
+            skrye_cfg = companion.resolve_runtime_config(companion.build_arg_parser().parse_args(["--agent-name", "skrye"]))
+            zannah_cfg = companion.resolve_runtime_config(companion.build_arg_parser().parse_args(["--agent-name", "zannah"]))
+            traya_cfg = companion.resolve_runtime_config(companion.build_arg_parser().parse_args(["--agent-name", "traya"]))
+
+            self.assertTrue(skrye_cfg["shadow_eval_enabled"])
+            self.assertEqual(skrye_cfg["shadow_model"], "inkling-2-mini")
+            self.assertEqual(skrye_cfg["shadow_api_url"], shadow_eval.DEFAULT_SHADOW_API_URL)
+            self.assertEqual(skrye_cfg["shadow_timeout_secs"], shadow_eval.DEFAULT_SHADOW_TIMEOUT_SECS)
+
+            self.assertTrue(zannah_cfg["shadow_eval_enabled"])
+            self.assertEqual(zannah_cfg["shadow_model"], "qwen3.8-27b")
+
+            self.assertFalse(traya_cfg["shadow_eval_enabled"])
+            self.assertEqual(traya_cfg["shadow_model"], "")
+
+            # CLI overrides work cleanly
+            cli_cfg = companion.resolve_runtime_config(
+                companion.build_arg_parser().parse_args([
+                    "--agent-name", "skrye",
+                    "--shadow-eval-enabled", "false",
+                    "--shadow-model", "custom-local-model",
+                    "--shadow-api-url", "http://127.0.0.1:9090/v1/chat/completions",
+                    "--shadow-summary-path", str(self.root / "custom-summary.json"),
+                    "--shadow-timeout-secs", "45",
+                    "--replay-shadow", str(self.root / "in.jsonl"),
+                    "--shadow-output", str(self.root / "out.jsonl"),
+                ])
+            )
+            self.assertFalse(cli_cfg["shadow_eval_enabled"])
+            self.assertEqual(cli_cfg["shadow_model"], "custom-local-model")
+            self.assertEqual(cli_cfg["shadow_api_url"], "http://127.0.0.1:9090/v1/chat/completions")
+            self.assertEqual(cli_cfg["shadow_summary_path"], self.root / "custom-summary.json")
+            self.assertEqual(cli_cfg["shadow_timeout_secs"], 45.0)
+            self.assertEqual(cli_cfg["replay_shadow"], str(self.root / "in.jsonl"))
+            self.assertEqual(cli_cfg["shadow_output"], str(self.root / "out.jsonl"))
+
+        # Companion env var names override defaults
+        with patch.dict(
+            os.environ,
+            {
+                **clean_env,
+                "MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_ENABLED": "true",
+                "MOLTIS_GITHUB_COMPANION_SHADOW_MODEL": "qwen3.8-27b",
+                "MOLTIS_GITHUB_COMPANION_SHADOW_API_URL": "http://localhost:8081/v1/chat/completions",
+                "MOLTIS_GITHUB_COMPANION_SHADOW_SUMMARY_PATH": str(self.root / "env-summary.json"),
+                "MOLTIS_GITHUB_COMPANION_SHADOW_TIMEOUT_SECS": "75",
+            },
+            clear=True,
+        ):
+            traya_env_cfg = companion.resolve_runtime_config(
+                companion.build_arg_parser().parse_args(["--agent-name", "traya"])
+            )
+            self.assertTrue(traya_env_cfg["shadow_eval_enabled"])
+            self.assertEqual(traya_env_cfg["shadow_model"], "qwen3.8-27b")
+            self.assertEqual(traya_env_cfg["shadow_api_url"], "http://localhost:8081/v1/chat/completions")
+            self.assertEqual(traya_env_cfg["shadow_summary_path"], self.root / "env-summary.json")
+            self.assertEqual(traya_env_cfg["shadow_timeout_secs"], 75.0)
+
+    def test_cli_replay_shadow_mode_runs_without_agent_or_credentials(self) -> None:
+        in_dir = self.root / "replay-in"
+        in_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        in_jsonl = in_dir / "shadow-eval.jsonl"
+        out_jsonl = in_dir / "replayed.jsonl"
+        summary_path = self.root / "replay-summary.json"
+
+        source_rec = {
+            "schema_version": shadow_eval.SHADOW_SCHEMA_VERSION,
+            "timestamp_ms": 1_700_000_000_000,
+            "dispatch_id": "ghd-skrye-replay1",
+            "agent": "skrye",
+            "gemini_model": "gemini::flash",
+            "gemini_action": "approve_and_merge",
+            "gemini_commands": ["gh-bot-merge https://github.com/wimpysworld/wonkey/pull/99"],
+            "gemini_reply_excerpt": "Merged",
+            "snapshot": {
+                "schema_version": shadow_eval.SHADOW_SCHEMA_VERSION,
+                "agent": "skrye",
+                "repo": "wimpysworld/wonkey",
+                "number": 99,
+                "pr_url": "https://github.com/wimpysworld/wonkey/pull/99",
+                "head_sha": "abcdef123456",
+                "trigger_reason": "unrequested_pr",
+                "is_archived": False,
+                "pr": {
+                    "title": "build(deps): bump actions/checkout from 4 to 5",
+                    "url": "https://github.com/wimpysworld/wonkey/pull/99",
+                    "state": "OPEN",
+                    "is_draft": False,
+                    "author": "dependabot[bot]",
+                    "head_ref": "dependabot/github_actions/actions/checkout-5",
+                    "head_sha": "abcdef123456",
+                    "base_ref": "main",
+                    "mergeable": "MERGEABLE",
+                    "merge_state_status": "CLEAN",
+                    "review_decision": "REVIEW_REQUIRED",
+                    "additions": 2,
+                    "deletions": 2,
+                    "changed_files": 1,
+                    "labels": ["dependencies"],
+                    "ci_state": "SUCCESS",
+                    "status_checks": [],
+                    "reviews": [],
+                    "review_threads": [],
+                    "unresolved_thread_count": 0,
+                },
+                "diff": "",
+                "diff_truncated": False,
+                "diff_total_chars": 0,
+                "has_tailor_vendor_hash_workflow": False,
+                "dependabot_alerts": [],
+                "alerts_skipped_reason": None,
+                "workflow_runs": [],
+                "failed_run_logs": [],
+                "capture_errors": [],
+            },
+        }
+        in_jsonl.write_text(json.dumps(source_rec) + "\n", encoding="utf-8")
+        in_jsonl.chmod(0o600)
+
+        def fake_call_shadow_llm(**_kwargs: object) -> dict[str, object]:
+            return {
+                "raw_content": json.dumps({
+                    "action": "approve_and_merge",
+                    "advisory_safe": True,
+                    "ci_cause": "none",
+                    "escalate": False,
+                    "reason": "Replay verified clean.",
+                }),
+                "ttft_ms": 80,
+                "total_ms": 210,
+                "prompt_tokens": 250,
+                "completion_tokens": 35,
+            }
+
+        stdout_buf = io.StringIO()
+        with (
+            patch.object(shadow_eval, "call_shadow_llm", side_effect=fake_call_shadow_llm),
+            contextlib.redirect_stdout(stdout_buf),
+        ):
+            rc = companion.main([
+                "--replay-shadow", str(in_jsonl),
+                "--shadow-model", "qwen3.8-27b",
+                "--shadow-output", str(out_jsonl),
+                "--shadow-summary-path", str(summary_path),
+            ])
+
+        self.assertEqual(rc, 0)
+        printed = json.loads(stdout_buf.getvalue().strip())
+        self.assertEqual(printed["shadow_model"], "qwen3.8-27b")
+        self.assertEqual(printed["totals"]["total"], 1)
+        self.assertEqual(printed["totals"]["match"], 1)
+        self.assertTrue(out_jsonl.exists())
+        self.assertTrue(summary_path.exists())
 
 
 if __name__ == "__main__":

@@ -310,6 +310,14 @@ Quiet Tuesday to Friday mornings with zero waiting items stay silent. `skrye` al
 
 `gh-bot-merge` reads `headRefOid` on every pull request and requires commit-pinned approvals (`commit.oid == headRefOid`) in `latestOpinionatedReviews`. Stale peer approvals fail verification with exit code `64`. Any pull request that carries the `team:do-not-merge` label (case-insensitive, across every author class) fails with exit code `64`. Community auto-merge enforces the tightened cap of at most 150 changed lines (`additions + deletions`) across at most 5 files and rejects excluded repositories (`wimpysworld/nix-config`) and sensitive paths. Community pull requests outside that cap merge only when a verified maintainer applies `team:merge` to the current head commit. Every `gh pr merge` call passes `--match-head-commit <headRefOid>` so that GitHub rejects the merge if the branch head changes after verification.
 
+### Shadow evaluation on `update_model` turns
+
+When `agentic.moltis.githubCompanion.shadowEval.enable` is true, `moltis-github-companion` runs `shadow_eval.py` in shadow mode on `update_model` turns for automated dependency pull requests. `skrye` evaluates `inkling-2-mini`, `zannah` evaluates `qwen3.8-27b`, and `traya` disables shadow evaluation (`model = ""`). Moltis `settings.providers` stays unchanged, so `llama-swap` is never a live Moltis provider.
+
+Before the live Gemini turn starts, the companion captures a read-only, secret-redacted snapshot of the pull request. After the live turn finishes and releases `coordinator.lock`, a background worker calls `http://127.0.0.1:8080/v1/chat/completions` with zero tools and a `120` second timeout. The worker compares the local decision against Gemini's recorded actions. Shadow evaluation never blocks polling or live turns, and it never changes GitHub or Linear state.
+
+The worker appends full evaluation records to private `shadow-eval.jsonl` (mode `0600`) in the companion state directory. It writes a sanitised summary to `~/Volatile/moltis-shadow-reports/summary.json`, which `moltis-fenced` can write under `~/Volatile/**`. Run `moltis-github-companion --replay-shadow <jsonl>` to replay recorded snapshots offline against a local model.
+
 ## Projection surfaces
 
 | Destination                          | Source                                                                  | Notes                                                                                                                           |

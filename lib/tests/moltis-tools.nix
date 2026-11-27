@@ -519,6 +519,27 @@ let
       scripts.githubCompanion;
     assert lib.hasInfix "export MOLTIS_GITHUB_COMPANION_LINEAR_TEAM_KEY=${lib.escapeShellArg "WW"}"
       scripts.githubCompanion;
+    assert lib.hasInfix "export MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_ENABLED=${
+      lib.escapeShellArg (if host == "skrye" || host == "zannah" then "true" else "false")
+    }" scripts.githubCompanion;
+    assert lib.hasInfix "export MOLTIS_GITHUB_COMPANION_SHADOW_MODEL=${
+      lib.escapeShellArg (
+        if host == "skrye" then
+          "inkling-2-mini"
+        else if host == "zannah" then
+          "qwen3.8-27b"
+        else
+          ""
+      )
+    }" scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_SHADOW_API_URL=${lib.escapeShellArg "http://127.0.0.1:8080/v1/chat/completions"}"
+      scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_SHADOW_SUMMARY_PATH=${lib.escapeShellArg "${c.home.homeDirectory}/Volatile/moltis-shadow-reports/summary.json"}"
+      scripts.githubCompanion;
+    assert lib.hasInfix "export MOLTIS_GITHUB_COMPANION_SHADOW_TIMEOUT_SECS=${lib.escapeShellArg "120"}"
+      scripts.githubCompanion;
     assert !(lib.hasInfix "CLOUDFLARE_API_TOKEN" scripts.inner);
     assert !(lib.hasInfix "export CLOUDFLARE_API_TOKEN" scripts.outer);
     assert !(lib.hasInfix "export LINEAR_API_KEY" scripts.inner);
@@ -825,6 +846,9 @@ pkgs.runCommand "moltis-tools" { } ''
   test -f ${githubCompanionWrapper.linearSyncScript}
   PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 -c 'import sys; sys.path.insert(0, "${githubCompanionWrapper.companionSrc}/github-companion"); import linear_sync; assert linear_sync.load_linear_token_module() is not None'
   PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis}/github-companion/test_linear_sync.py
+  test -f ${githubCompanionWrapper.shadowEvalScript}
+  PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 -c 'import sys; sys.path.insert(0, "${githubCompanionWrapper.companionSrc}/github-companion"); import shadow_eval'
+  PYTHONDONTWRITEBYTECODE=1 ${pkgs.python3}/bin/python3 ${../../home-manager/_mixins/agentic/moltis}/github-companion/test_shadow_eval.py
   PATH=${
     lib.makeBinPath [
       pkgs.coreutils
