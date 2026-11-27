@@ -12,13 +12,13 @@ Preserve runnable commands, Nix module patterns, registry semantics, and tool-sp
 
 Use the NixOS MCP server as the primary reference for NixOS, Home Manager, nix-darwin options, packages, modules, versions, and flakes. Do not rely on training data when an MCP lookup can answer the question.
 
-| Purpose                | Tools                                                                                                                    |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| NixOS options/packages | `mcp__nixos__nixos_search`, `mcp__nixos__nixos_info`                                                                     |
-| Home Manager options   | `mcp__nixos__home_manager_search`, `mcp__nixos__home_manager_options_by_prefix`, `mcp__nixos__home_manager_list_options` |
-| nix-darwin options     | `mcp__nixos__darwin_search`, `mcp__nixos__darwin_options_by_prefix`, `mcp__nixos__darwin_list_options`                   |
-| Package versions       | `mcp__nixos__nixhub_package_versions`, `mcp__nixos__nixhub_find_version`                                                 |
-| Flake search           | `mcp__nixos__nixos_flakes_search`                                                                                        |
+| Purpose                | Tools (`nixos` MCP server)                                                                              |
+| ---------------------- | ------------------------------------------------------------------------------------------------------- |
+| NixOS options/packages | `nix` (`action`: `search`/`info`, `source`: `nixos`, `type`: `packages`/`options`/`programs`)           |
+| Home Manager options   | `nix` (`action`: `search`/`info`/`browse`, `source`: `home-manager`)                                    |
+| nix-darwin options     | `nix` (`action`: `search`/`info`/`browse`, `source`: `darwin`)                                          |
+| Flakes, cache, store   | `nix` (`action`: `search`/`flake-inputs`/`cache`/`channels`/`store`, `source`: `flakes`/`flakehub`)     |
+| Package versions       | `nix_versions` (`package`, optional `version`)                                                          |
 
 ## Commands
 

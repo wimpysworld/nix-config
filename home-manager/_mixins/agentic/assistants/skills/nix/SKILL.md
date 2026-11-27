@@ -9,13 +9,14 @@ Use expert Nix judgement across the Nix language, nixpkgs, NixOS, Home Manager, 
 
 Verify names, option paths, versions, and syntax with authoritative current references when tools are available. Do not rely on memory for package names or module options.
 
-| Need                   | Tools                                                                        |
-| ---------------------- | ---------------------------------------------------------------------------- |
-| NixOS packages/options | `nixos_search`, `nixos_info`                                                 |
-| Home Manager options   | `home_manager_search`, `home_manager_info`, `home_manager_options_by_prefix` |
-| nix-darwin options     | `darwin_search`, `darwin_info`, `darwin_options_by_prefix`                   |
-| Package versions       | `nixhub_package_versions`, `nixhub_find_version`                             |
-| Flakes                 | `nixos_flakes_search`                                                        |
+| Need                   | Tool and key parameters                                                                                 |
+| ---------------------- | ------------------------------------------------------------------------------------------------------- |
+| NixOS packages/options | `nix` (`action`: `search`/`info`, `source`: `nixos`, `type`: `packages`/`options`/`programs`)           |
+| Home Manager options   | `nix` (`action`: `search`/`info`/`browse`, `source`: `home-manager`)                                    |
+| nix-darwin options     | `nix` (`action`: `search`/`info`/`browse`, `source`: `darwin`)                                          |
+| Flakes and inputs      | `nix` (`action`: `search`/`info`, `source`: `flakes`/`flakehub`, or `action`: `flake-inputs`)           |
+| Cache, channels, store | `nix` (`action`: `cache`, `channels`, or `store` with `type`: `ls`/`read`)                              |
+| Package versions       | `nix_versions` (`package`, optional `version`)                                                          |
 
 ## Guidance
 
