@@ -155,6 +155,8 @@ _SHELL_SEGMENT_SPLIT_RE = re.compile(r"(?:&&|\|\||;|\n)")
 _GH_BOT_MERGE_RE = re.compile(r"(?:^|[\s/])gh-bot-merge(?:\s|$)")
 _DRY_RUN_FLAG_RE = re.compile(r"(?:^|\s)--dry-run(?:\s|$)")
 _GH_WORKFLOW_APPROVE_RE = re.compile(r"(?:^|[\s/])gh-workflow-approve(?:\s|$)")
+_WORKFLOW_APPROVE_APPROVED_RE = re.compile(r"\bapproved\s+workflow\s+run\b", re.IGNORECASE)
+_WORKFLOW_APPROVE_NOOP_RE = re.compile(r"\bno\s+held\s+pull_request\s+workflow\s+runs\b", re.IGNORECASE)
 _GIT_PUSH_RE = re.compile(
     r"(?:^|[\s/])git(?:\s+(?:-[Cc]\s+\S+|--git-dir(?:=\S+|\s+\S+)|--work-tree(?:=\S+|\s+\S+)))*\s+push(?:\s|$)"
 )
@@ -975,16 +977,51 @@ def _parse_tool_arguments(raw_args: object) -> dict:
     return {}
 
 
+def _is_workflow_approve_noop_result(rec: dict) -> bool:
+    """Return True when a `tool_result` explicitly shows a no-op or failed `gh-workflow-approve` call."""
+    parts: list[str] = []
+    for key in ("content", "output", "stdout", "stderr", "error"):
+        text = _extract_text_content(rec.get(key))
+        if text:
+            parts.append(text)
+    raw_result = rec.get("result")
+    result_dict = _as_dict(raw_result)
+    if isinstance(raw_result, str) and raw_result:
+        parts.append(raw_result)
+    elif result_dict:
+        for key in ("stdout", "stderr", "output", "text", "content", "error"):
+            text = _extract_text_content(result_dict.get(key))
+            if text:
+                parts.append(text)
+
+    combined = "\n".join(parts)
+    if _WORKFLOW_APPROVE_APPROVED_RE.search(combined):
+        return False
+    if _WORKFLOW_APPROVE_NOOP_RE.search(combined):
+        return True
+
+    for container in (rec, result_dict):
+        if container.get("is_error") is True or container.get("success") is False:
+            return True
+        for code_key in ("exit_code", "returncode"):
+            code = container.get(code_key)
+            if isinstance(code, int) and not isinstance(code, bool) and code != 0:
+                return True
+    return False
+
+
 def _classify_gemini_commands(
     commands: list[str],
     reply_text: str,
     *,
     task_succeeded: bool = True,
+    noop_workflow_approve_indices: set[int] | frozenset[int] | None = None,
 ) -> str:
     stripped_reply = (reply_text or "").strip()
     if not task_succeeded or stripped_reply.startswith("HEARTBEAT_ERROR:"):
         return "error"
 
+    noop_indices = noop_workflow_approve_indices or frozenset()
     has_bot_merge = False
     has_workflow_approve = False
     has_repair_or_supersede = False
@@ -993,14 +1030,14 @@ def _classify_gemini_commands(
     has_rerun_ci = False
     has_comment_or_hold = False
 
-    for cmd in commands:
+    for cmd_idx, cmd in enumerate(commands):
         if not cmd:
             continue
         segments = [seg.strip() for seg in _SHELL_SEGMENT_SPLIT_RE.split(cmd) if seg.strip()]
         for seg in segments:
             if _GH_BOT_MERGE_RE.search(seg) and not _DRY_RUN_FLAG_RE.search(seg):
                 has_bot_merge = True
-            if _GH_WORKFLOW_APPROVE_RE.search(seg):
+            if _GH_WORKFLOW_APPROVE_RE.search(seg) and cmd_idx not in noop_indices:
                 has_workflow_approve = True
             if _GIT_PUSH_RE.search(seg) or _GH_PR_CREATE_RE.search(seg):
                 has_repair_or_supersede = True
@@ -1019,11 +1056,12 @@ def _classify_gemini_commands(
             if _GH_REVIEW_INLINE_RE.search(seg):
                 has_comment_or_hold = True
 
-    # Deterministic priority mapping to CANONICAL_ACTIONS:
+    # Deterministic priority mapping to CANONICAL_ACTIONS.
+    # Downstream Case B actions take precedence over `gh-workflow-approve` because
+    # Case A2 always invokes `gh-workflow-approve --dependabot-vendor-hash` before
+    # continuing with Case B (exiting 0 as a no-op when zero runs are held).
     if has_bot_merge or "🏁" in stripped_reply:
         return "approve_and_merge"
-    if has_workflow_approve and not has_bot_merge and not has_repair_or_supersede:
-        return "approve_vendor_hash"
     if has_repair_or_supersede or "👆🏻" in stripped_reply or "🤲🏻" in stripped_reply:
         return "repair_or_supersede"
     if (has_approve_review and not has_bot_merge) or "👍🏻" in stripped_reply:
@@ -1034,6 +1072,8 @@ def _classify_gemini_commands(
         return "rerun_ci"
     if has_comment_or_hold or "👎🏻" in stripped_reply or "✋🏻" in stripped_reply:
         return "comment_or_hold"
+    if has_workflow_approve:
+        return "approve_vendor_hash"
     return "skip_or_wait"
 
 
@@ -1068,6 +1108,8 @@ def extract_gemini_actions_from_history(
 
     commands: list[str] = []
     seen_call_ids: set[str] = set()
+    call_id_to_cmd_index: dict[str, int] = {}
+    noop_workflow_approve_indices: set[int] = set()
     terminal_reply = ""
 
     for rec in turn_records:
@@ -1090,16 +1132,23 @@ def extract_gemini_actions_from_history(
                     args = _parse_tool_arguments(fn.get("arguments") if "arguments" in fn else call.get("arguments"))
                     cmd = str(args.get("command") or "").strip()
                     if cmd:
+                        cmd_idx = len(commands)
                         commands.append(cmd)
+                        if call_id:
+                            call_id_to_cmd_index[call_id] = cmd_idx
             else:
                 text = _extract_text_content(rec.get("content")).strip()
                 if text:
                     terminal_reply = text
         elif role == "tool_result":
+            call_id = str(rec.get("tool_call_id") or "").strip()
+            if call_id and call_id in call_id_to_cmd_index:
+                if _is_workflow_approve_noop_result(rec):
+                    noop_workflow_approve_indices.add(call_id_to_cmd_index[call_id])
+                continue
             tool_name = str(rec.get("tool_name") or "").strip().lower()
             if tool_name != "exec":
                 continue
-            call_id = str(rec.get("tool_call_id") or "").strip()
             if call_id:
                 if call_id in seen_call_ids:
                     continue
@@ -1107,10 +1156,20 @@ def extract_gemini_actions_from_history(
             args = _parse_tool_arguments(rec.get("arguments"))
             cmd = str(args.get("command") or "").strip()
             if cmd:
+                cmd_idx = len(commands)
                 commands.append(cmd)
+                if call_id:
+                    call_id_to_cmd_index[call_id] = cmd_idx
+                if _is_workflow_approve_noop_result(rec):
+                    noop_workflow_approve_indices.add(cmd_idx)
 
     effective_reply = (reply_text or "").strip() or terminal_reply
-    action = _classify_gemini_commands(commands, effective_reply, task_succeeded=task_succeeded)
+    action = _classify_gemini_commands(
+        commands,
+        effective_reply,
+        task_succeeded=task_succeeded,
+        noop_workflow_approve_indices=noop_workflow_approve_indices,
+    )
     redacted_commands = [redact_secrets(cmd) for cmd in commands]
     redacted_reply = redact_secrets(effective_reply).strip()
     if len(redacted_reply) > MAX_REPLY_EXCERPT_CHARS:

@@ -871,6 +871,146 @@ class TestExtractGeminiActionsFromHistory(unittest.TestCase):
         self.assertNotIn(secret, str(extracted["gemini_reply_excerpt"]))
         self.assertIn("[redacted]", str(extracted["gemini_reply_excerpt"]))
 
+    def test_workflow_approve_yields_to_downstream_case_b_actions(self) -> None:
+        pr_url = "https://github.com/wimpysworld/demo-go/pull/42"
+        workflow_approve_cmd = f"gh-workflow-approve --dependabot-vendor-hash {pr_url}"
+        cases: list[tuple[str, str, str]] = [
+            ("approve_only", f"gh pr review {pr_url} --approve --body-file /tmp/review.md", "approve_only"),
+            ("rerun_ci", "gh run rerun 555 --failed", "rerun_ci"),
+            ("rebase_or_recreate", f'gh pr comment {pr_url} --body "@dependabot rebase"', "rebase_or_recreate"),
+            ("comment_or_hold", f"gh pr review {pr_url} --comment --body-file /tmp/review.md", "comment_or_hold"),
+            ("repair_or_supersede", "git -C /tmp/work push origin HEAD:fix-dep", "repair_or_supersede"),
+        ]
+
+        for label, case_b_cmd, expected_action in cases:
+            with self.subTest(case=label):
+                history = [
+                    {"role": "user", "dispatch_id": f"disp-wf-{label}", "content": "Handle Dependabot Go PR"},
+                    {
+                        "role": "assistant",
+                        "tool_calls": [
+                            {"id": "wf-1", "name": "exec", "arguments": {"command": workflow_approve_cmd}},
+                            {"id": "b-1", "name": "exec", "arguments": {"command": case_b_cmd}},
+                        ],
+                    },
+                ]
+                extracted = shadow_eval.extract_gemini_actions_from_history(history, f"disp-wf-{label}")
+                self.assertEqual(extracted["gemini_action"], expected_action)
+
+        # Pending CI with zero held runs: shadow predicting approve_only must score match, not unsafe_merge.
+        approve_history = [
+            {"role": "user", "dispatch_id": "disp-wf-pending-approve", "content": "Handle Dependabot Go PR"},
+            {
+                "role": "assistant",
+                "tool_calls": [
+                    {"id": "wf-1", "name": "exec", "arguments": {"command": workflow_approve_cmd}},
+                ],
+            },
+            {
+                "role": "tool_result",
+                "tool_name": "exec",
+                "tool_call_id": "wf-1",
+                "content": f"gh-workflow-approve: no held pull_request workflow runs on abc1234 for {pr_url}.\n",
+            },
+            {
+                "role": "assistant",
+                "tool_calls": [
+                    {"id": "b-1", "name": "exec", "arguments": {"command": f"gh pr review {pr_url} --approve"}},
+                ],
+            },
+        ]
+        extracted = shadow_eval.extract_gemini_actions_from_history(approve_history, "disp-wf-pending-approve")
+        self.assertEqual(extracted["gemini_action"], "approve_only")
+        self.assertEqual(
+            shadow_eval.classify_shadow_result(
+                str(extracted["gemini_action"]),
+                {"schema_valid": True, "action": "approve_only", "escalate": False},
+            ),
+            "match",
+        )
+
+    def test_workflow_approve_standalone_approved_vs_noop_tool_result(self) -> None:
+        pr_url = "https://github.com/wimpysworld/demo-go/pull/42"
+        workflow_approve_cmd = f"gh-workflow-approve --dependabot-vendor-hash {pr_url}"
+
+        # 1) Held run actually approved with no downstream Case B action -> approve_vendor_hash.
+        approved_history = [
+            {"role": "user", "dispatch_id": "disp-wf-approved", "content": "Handle Dependabot Go PR"},
+            {
+                "role": "assistant",
+                "tool_calls": [{"id": "wf-1", "name": "exec", "arguments": {"command": workflow_approve_cmd}}],
+            },
+            {
+                "role": "tool_result",
+                "tool_name": "exec",
+                "tool_call_id": "wf-1",
+                "content": "gh-workflow-approve: approved workflow run 123456 in wimpysworld/demo-go.\n",
+            },
+            {"role": "assistant", "content": "Approved held vendorHash run and waiting on CI."},
+        ]
+        self.assertEqual(
+            shadow_eval.extract_gemini_actions_from_history(approved_history, "disp-wf-approved")["gemini_action"],
+            "approve_vendor_hash",
+        )
+
+        # 2) Standalone call with no tool_result stdout still classifies as approve_vendor_hash.
+        no_result_history = [
+            {"role": "user", "dispatch_id": "disp-wf-no-result", "content": "Handle Dependabot Go PR"},
+            {
+                "role": "assistant",
+                "tool_calls": [{"id": "wf-1", "name": "exec", "arguments": {"command": workflow_approve_cmd}}],
+            },
+        ]
+        self.assertEqual(
+            shadow_eval.extract_gemini_actions_from_history(no_result_history, "disp-wf-no-result")["gemini_action"],
+            "approve_vendor_hash",
+        )
+
+        # 3) Explicit no-op exit 0 with no downstream Case B action -> skip_or_wait.
+        noop_history = [
+            {"role": "user", "dispatch_id": "disp-wf-noop", "content": "Handle Dependabot Go PR"},
+            {
+                "role": "assistant",
+                "tool_calls": [{"id": "wf-1", "name": "exec", "arguments": {"command": workflow_approve_cmd}}],
+            },
+            {
+                "role": "tool_result",
+                "tool_name": "exec",
+                "tool_call_id": "wf-1",
+                "result": {
+                    "exit_code": 0,
+                    "stdout": f"gh-workflow-approve: no held pull_request workflow runs on deadbeef for {pr_url}.\n",
+                },
+            },
+            {"role": "assistant", "content": "Already approved; waiting for pending CI."},
+        ]
+        self.assertEqual(
+            shadow_eval.extract_gemini_actions_from_history(noop_history, "disp-wf-noop")["gemini_action"],
+            "skip_or_wait",
+        )
+
+        # 4) Failed policy check (exit 64) with no downstream Case B action -> skip_or_wait.
+        failed_history = [
+            {"role": "user", "dispatch_id": "disp-wf-failed", "content": "Handle Dependabot Go PR"},
+            {
+                "role": "assistant",
+                "tool_calls": [{"id": "wf-1", "name": "exec", "arguments": {"command": workflow_approve_cmd}}],
+            },
+            {
+                "role": "tool_result",
+                "tool_name": "exec",
+                "tool_call_id": "wf-1",
+                "result": {
+                    "exit_code": 64,
+                    "stderr": f"gh-workflow-approve: {pr_url}: pull request needs Dependabot commits and one fix commit\n",
+                },
+            },
+        ]
+        self.assertEqual(
+            shadow_eval.extract_gemini_actions_from_history(failed_history, "disp-wf-failed")["gemini_action"],
+            "skip_or_wait",
+        )
+
 
 class TestCallShadowLlmAndParsing(unittest.TestCase):
     """Verify loopback HTTP streaming, fallback, error paths, and strict response schema validation."""
