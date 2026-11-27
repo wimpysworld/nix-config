@@ -10,8 +10,6 @@ EMBEDDING_BENCH_TEXT="Optical fibre uses pulses of light to carry data through t
 EMBEDDING_BENCH_BATCH="16"
 MODEL_SPECS=$(
 	cat <<'EOF'
-	gemma4-e2b|unsloth/gemma-4-E2B-it-GGUF|gemma-4-E2B-it-UD-Q6_K_XL.gguf|gemma-4-E2B-it-UD-Q6_K_XL.gguf
-	gemma4-e4b|unsloth/gemma-4-E4B-it-GGUF|gemma-4-E4B-it-UD-Q6_K_XL.gguf|gemma-4-E4B-it-UD-Q6_K_XL.gguf
 	qwen3-embedding-0.6b|Qwen/Qwen3-Embedding-0.6B-GGUF|Qwen3-Embedding-0.6B-Q8_0.gguf|Qwen3-Embedding-0.6B-Q8_0.gguf
 EOF
 )
@@ -61,10 +59,10 @@ Usage: benchmark-models [--llama-only|--ollama-only] [--json] MODEL [runs]
        benchmark-models --purge
        benchmark-models-all [--llama-only|--ollama-only] [--json] [--runs N]
 
-benchmark-models-all tests the host's Gemma 4 and, where deployed,
-inkling-2-mini, qwen3.5-9b, and qwen3.8-27b across packaged llama-server and
-Ollama backends using the preseeded llama-swap GGUF cache. It saves JSONL logs
-and prints a comparison table (pass --json for raw JSON lines).
+benchmark-models-all tests the host's configured generation models plus
+qwen3.5-9b across packaged llama-server and Ollama backends using the preseeded
+llama-swap GGUF cache. It saves JSONL logs and prints a comparison table
+(pass --json for raw JSON lines).
 
 --purge removes the benchmark cache and results, not the server model cache.
 
@@ -173,8 +171,6 @@ inkling-2-mini | qwen3.5-9b | qwen3.8-27b)
 	exec python3 "${BENCHMARK_COMPARISON_SCRIPT:-$(dirname "${BASH_SOURCE[0]}")/focused.py}" \
 		"${FOCUSED_FLAGS[@]}" --runs "${RUNS:-3}" "${MODEL}"
 	;;
-gemma4-e2b) OLLAMA_MODEL='gemma4:e2b' ;;
-gemma4-e4b) OLLAMA_MODEL='gemma4:e4b' ;;
 qwen3-embedding-0.6b) OLLAMA_MODEL='qwen3-embedding:0.6b' ;;
 esac
 RUNS="${RUNS:-5}"

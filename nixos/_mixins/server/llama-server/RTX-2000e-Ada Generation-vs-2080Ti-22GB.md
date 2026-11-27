@@ -48,10 +48,9 @@ Revan's 16 GB RTX 2000e Ada selects the `vram16` policy tier, while a 22 GB card
 
 | Role | `vram16` (RTX 2000e Ada) | `vram22` (RTX 2080 Ti 22GB) |
 |---|---|---|
-| `inkling-2-mini` | `UD-IQ3_XXS`, 16K context | `UD-Q4_K_XL`, 16K context |
-| `qwen3.8-27b` | `UD-Q3_K_XL`, 16K context | `UD-Q4_K_XL`, 32K context |
-| `gemma4-e4b` | `UD-Q6_K_XL`, 128K context (`mmproj-BF16.gguf`) | `UD-Q6_K_XL`, 128K context (`mmproj-BF16.gguf`) |
-| `qwen3-embedding-0.6b` | `Q8_0`, 8K context | `Q8_0`, 8K context |
+| `moe` | None | `inkling-2-mini`, `UD-Q4_K_XL`, 128K context (`mmproj-BF16.gguf`) |
+| `dense` | `qwen3.5-9b`, `UD-Q4_K_XL`, 128K context (`mmproj-BF16.gguf`) | `qwen3.5-9b`, `UD-Q4_K_XL`, 256K context (`mmproj-BF16.gguf`) |
+| `embedding` | `qwen3-embedding-0.6b`, `Q8_0`, 8K context | `qwen3-embedding-0.6b`, `Q8_0`, 8K context |
 
 `llama-swap` keeps `qwen3-embedding-0.6b` resident and loads one generation model at a time on demand. Upgrading to `vram22` removes the 3-bit quantisation compromise on `inkling-2-mini` and `qwen3.8-27b`, doubles `qwen3.8-27b` context from 16K to 32K, and benefits from the 2080 Ti's 2.75x wider memory bus for faster CUDA token generation. No benchmark covers the current `inkling-2-mini` or `qwen3.8-27b` weights on either card, so the Llama 2 7B scoreboard above remains the measured hardware baseline.
 
@@ -81,7 +80,7 @@ At UK electricity rates (~28p/kWh), that is roughly GBP 42/year versus GBP 133/y
 | ECC video memory | Fewer CUDA cores (2,816) |
 | Gen 4 Tensor cores with FP8 and BF16 support | Slower local generation than the Strix Halo hosts or `maul` |
 | Single-slot, low-profile form factor | |
-| Fits Revan's current local workload (`qwen3-embedding-0.6b`, `gemma4-e4b`, and on-demand `vram16` models) | |
+| Fits Revan's current local workload (`qwen3-embedding-0.6b`, `qwen3.5-9b`, and on-demand `vram16` models) | |
 
 ### RTX 2080 Ti 22GB (potential swap)
 
@@ -97,7 +96,7 @@ At UK electricity rates (~28p/kWh), that is roughly GBP 42/year versus GBP 133/y
 
 Keep the RTX 2000e Ada for now. Upgrade to the 2080 Ti 22GB only if Revan must serve interactive generation models locally rather than routing heavy requests to the Strix Halo hosts (`skrye` and `zannah`, `vram64`).
 
-Revan's primary local GPU tasks are `qwen3-embedding-0.6b` embeddings, `gemma4-e4b`, occasional `vram16` generation models, and NVENC media transcoding. The RTX 2000e handles all four at 50W with AV1 hardware support. Swap to the 2080 Ti 22GB only if you want `vram22` `UD-Q4_K_XL` weights and faster local CUDA decode on Revan directly, and you are willing to accept higher power draw, extra heat, and the loss of AV1 transcoding.
+Revan's primary local GPU tasks are `qwen3-embedding-0.6b` embeddings, `qwen3.5-9b`, occasional `vram16` generation models, and NVENC media transcoding. The RTX 2000e handles all four at 50W with AV1 hardware support. Swap to the 2080 Ti 22GB only if you want `vram22` `UD-Q4_K_XL` weights and faster local CUDA decode on Revan directly, and you are willing to accept higher power draw, extra heat, and the loss of AV1 transcoding.
 
 ## Hardware notes
 

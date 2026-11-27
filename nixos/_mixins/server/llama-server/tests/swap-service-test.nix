@@ -80,7 +80,7 @@ assert builtins.elem package inferenceEval.config.environment.systemPackages;
 assert lib.all (model: lib.hasInfix server model.cmd) (lib.attrValues models);
 assert lib.hasInfix "Mainline_Support/" models.inkling-2-mini.cmd;
 assert lib.all (
-  model: (lib.hasInfix " --mmproj " model.cmd) == (model.metadata.role == "smallMedia")
+  model: (lib.hasInfix " --mmproj " model.cmd) == (model.metadata.role != "embedding")
 ) (lib.attrValues models);
 assert builtins.elem "embedding" groupNames;
 assert builtins.elem "generation" groupNames;

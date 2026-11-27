@@ -81,13 +81,12 @@ let
 
   mkInkling =
     {
-      quant ? "UD-Q4_K_XL",
       maxContext,
-      microBatchSize ? null,
     }:
     mkModel {
-      inherit maxContext microBatchSize;
-      modelRef = "unsloth/Inkling-2-Mini-GGUF:${quant}";
+      inherit maxContext;
+      modelRef = "unsloth/Inkling-2-Mini-GGUF:UD-Q4_K_XL";
+      microBatchSize = 128;
       singleSlot = true;
       # Use the sampling settings from Unsloth's Inkling 2 Mini guide.
       generation = {
@@ -101,13 +100,12 @@ let
 
   mkQwen =
     {
-      quant ? "UD-Q4_K_XL",
       maxContext,
-      mtpDraftTokens ? null,
     }:
     mkModel {
-      inherit maxContext mtpDraftTokens;
-      modelRef = "unsloth/Qwen3.8-27B-GGUF:${quant}";
+      inherit maxContext;
+      modelRef = "unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL";
+      mtpDraftTokens = 3;
       reasoningEffort = "medium";
       singleSlot = true;
       # Use the thinking-mode sampling settings from Unsloth's Qwen3.8 guide.
@@ -121,30 +119,13 @@ let
       };
     };
 
-  mkSmallMedia =
-    size:
-    mkModel {
-      modelRef = "unsloth/gemma-4-E${size}B-it-GGUF:UD-Q6_K_XL";
-      maxContext = 131072;
-      reasoning = "on";
-      generation = {
-        temperature = 1.0;
-        topP = 0.95;
-        topK = 64;
-        # Disable llama.cpp's extra sampler to match Google's generation config.
-        minP = 0.0;
-        repetitionPenalty = 1.0;
-      };
-    };
-
-  mkUtility =
+  mkQwen35 =
     {
-      quant ? "UD-Q4_K_XL",
       maxContext,
     }:
     mkModel {
       inherit maxContext;
-      modelRef = "unsloth/Qwen3.5-9B-MTP-GGUF:${quant}";
+      modelRef = "unsloth/Qwen3.5-9B-MTP-GGUF:UD-Q4_K_XL";
       reasoning = "off";
       # Use the non-thinking general instruct settings from Unsloth's Qwen3.5 guide.
       generation = {
@@ -164,7 +145,6 @@ let
 
   standardModels = {
     inherit embedding;
-    smallMedia = mkSmallMedia "4";
   };
 
   modelMatrix = {
@@ -172,14 +152,8 @@ let
       minVramGiB = 64;
       name = "vram64";
       models = standardModels // {
-        moe = mkInkling {
-          maxContext = 262144;
-          microBatchSize = 128;
-        };
-        dense = mkQwen {
-          maxContext = 262144;
-          mtpDraftTokens = 3;
-        };
+        moe = mkInkling { maxContext = 262144; };
+        dense = mkQwen { maxContext = 262144; };
       };
     };
 
@@ -187,8 +161,8 @@ let
       minVramGiB = 32;
       name = "vram32";
       models = standardModels // {
-        moe = mkInkling { maxContext = 32768; };
-        dense = mkQwen { maxContext = 65536; };
+        moe = mkInkling { maxContext = 262144; };
+        dense = mkQwen { maxContext = 262144; };
       };
     };
 
@@ -196,8 +170,8 @@ let
       minVramGiB = 22;
       name = "vram22";
       models = standardModels // {
-        moe = mkInkling { maxContext = 16384; };
-        dense = mkQwen { maxContext = 32768; };
+        moe = mkInkling { maxContext = 131072; };
+        dense = mkQwen35 { maxContext = 262144; };
       };
     };
 
@@ -205,26 +179,7 @@ let
       minVramGiB = 16;
       name = "vram16";
       models = standardModels // {
-        moe = mkInkling {
-          quant = "UD-IQ3_XXS";
-          maxContext = 16384;
-        };
-        dense = mkQwen {
-          quant = "UD-Q3_K_XL";
-          maxContext = 16384;
-        };
-        utility = mkUtility {
-          maxContext = 131072;
-        };
-      };
-    };
-
-    vram8 = {
-      minVramGiB = 8;
-      name = "vram8";
-      models = {
-        inherit embedding;
-        smallMedia = mkSmallMedia "2";
+        dense = mkQwen35 { maxContext = 131072; };
       };
     };
   };
@@ -234,10 +189,9 @@ let
     modelMatrix.vram32
     modelMatrix.vram22
     modelMatrix.vram16
-    modelMatrix.vram8
   ];
 
-  fallbackTier = modelMatrix.vram8;
+  fallbackTier = modelMatrix.vram16;
 in
 {
   inherit modelMatrix modelTiers;

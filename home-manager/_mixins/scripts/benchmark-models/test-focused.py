@@ -282,7 +282,7 @@ class FocusedBenchmarkTests(unittest.TestCase):
         gib = 1024 ** 3
         results = [
             {
-                "model": "gemma4-e4b",
+                "model": "qwen3.5-9b",
                 "runner": "llama.cpp",
                 "backend": "vulkan",
                 "mode": "off",
@@ -296,7 +296,7 @@ class FocusedBenchmarkTests(unittest.TestCase):
                 "baseline_gpu_bytes": 2 * gib,
             },
             {
-                "model": "gemma4-e4b",
+                "model": "qwen3.5-9b",
                 "runner": "ollama",
                 "backend": "vulkan",
                 "mode": "off",
@@ -335,7 +335,7 @@ class FocusedBenchmarkTests(unittest.TestCase):
         self.assertIn("11.0 GiB        0.0 GiB", table)
         self.assertIn("24.0 GiB              -", table)
         self.assertIn("unsupported: unknown model architecture: 'inkling2_loop'", table)
-        self.assertIn("gemma4-e4b (vulkan): llama.cpp vs ollama decode +25.0%, prefill +20.0%", table)
+        self.assertIn("qwen3.5-9b (vulkan): llama.cpp vs ollama decode +25.0%, prefill +20.0%", table)
 
 
 if __name__ == "__main__":

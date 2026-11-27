@@ -1,4 +1,4 @@
-{ lib }:
+{ ... }:
 let
   flake = builtins.getFlake (toString ../../../../../.);
   inherit (flake.inputs) nixpkgs;
@@ -47,5 +47,8 @@ assert service.environment.LLAMA_PRESEED_CACHE_ROOT == "/var/lib/llama-models/hu
 assert service.environment.HF_HOME == "/var/lib/llama-models/huggingface";
 assert service.environment.HF_HUB_CACHE == "/var/lib/llama-models/huggingface/hub";
 assert builtins.elem "llama-server preseed requires a non-empty selected model set."
+  assertionMessages;
+assert builtins.elem
+  "llama-server inference hosts require at least 16 GiB of configured compute VRAM."
   assertionMessages;
 true

@@ -16,23 +16,18 @@ let
     mkRuntime
     ;
   inherit (mkRuntime { hostVramGiB = host.gpu.compute.vram or 0; })
-    modelMatrix
     selectedRuntimeModels
     ;
-  suiteModels = map (role: selectedRuntimeModels.${role}) (
+  qwenSmall = (mkRuntime { hostVramGiB = 16; }).selectedRuntimeModels.dense;
+  tierModels = map (role: selectedRuntimeModels.${role}) (
     lib.filter (role: selectedRuntimeModels ? ${role}) [
       "moe"
       "dense"
-      "utility"
-      "smallMedia"
     ]
   );
-  models = {
-    "gemma4-e2b" = modelMatrix.vram8.models.smallMedia;
-    "gemma4-e4b" = modelMatrix.vram64.models.smallMedia;
-    "qwen3.5-9b" = (mkRuntime { hostVramGiB = 16; }).selectedRuntimeModels.utility;
-  }
-  // builtins.listToAttrs (map (model: lib.nameValuePair model.publicName model) suiteModels);
+  hasQwenSmall = lib.any (model: model.publicName == qwenSmall.publicName) tierModels;
+  suiteModels = tierModels ++ lib.optional (!hasQwenSmall) qwenSmall;
+  models = builtins.listToAttrs (map (model: lib.nameValuePair model.publicName model) suiteModels);
   profiles = lib.mapAttrs (
     _: model:
     let

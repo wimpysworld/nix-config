@@ -34,6 +34,10 @@ in
   config = lib.mkIf isInference {
     assertions = [
       {
+        assertion = (host.gpu.compute.vram or 0) >= 16;
+        message = "llama-server inference hosts require at least 16 GiB of configured compute VRAM.";
+      }
+      {
         assertion = selectedRuntime.selectedModels != { };
         message = "llama-server preseed requires a non-empty selected model set.";
       }

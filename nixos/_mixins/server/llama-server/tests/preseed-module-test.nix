@@ -33,9 +33,11 @@ let
   inferenceEval = evalFor [ "inference" ];
   nonInferenceEval = evalFor [ ];
   preseedMessage = "llama-server preseed requires a non-empty selected model set.";
-  hasPreseedAssertion =
-    assertions: lib.any (assertion: assertion.message == preseedMessage) assertions;
+  minVramMessage = "llama-server inference hosts require at least 16 GiB of configured compute VRAM.";
+  hasAssertion = message: assertions: lib.any (assertion: assertion.message == message) assertions;
 in
-assert hasPreseedAssertion inferenceEval.config.assertions;
-assert !(hasPreseedAssertion nonInferenceEval.config.assertions);
+assert hasAssertion preseedMessage inferenceEval.config.assertions;
+assert hasAssertion minVramMessage inferenceEval.config.assertions;
+assert !(hasAssertion preseedMessage nonInferenceEval.config.assertions);
+assert !(hasAssertion minVramMessage nonInferenceEval.config.assertions);
 true

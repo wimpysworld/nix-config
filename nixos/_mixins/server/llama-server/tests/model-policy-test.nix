@@ -7,18 +7,19 @@ let
   runtime = import ../runtime.nix { inherit lib; };
 
   inherit (modelPolicy) modelMatrix modelTiers;
-  textRoles = [
-    "dense"
-    "moe"
+  moeTiers = lib.init modelTiers;
+  qwen38Tiers = [
+    modelMatrix.vram64
+    modelMatrix.vram32
   ];
-  commonRoles = [
-    "embedding"
-    "smallMedia"
+  qwen35Tiers = [
+    modelMatrix.vram22
+    modelMatrix.vram16
   ];
-  textTiers = lib.init modelTiers;
 
   isNumber = value: builtins.isInt value || builtins.isFloat value;
   allModels = lib.flatten (map (tier: lib.attrValues tier.models) modelTiers);
+  allGenerationModels = lib.filter (model: model.generation != null) allModels;
   allButLastTierIndex = lib.range 0 (lib.length modelTiers - 2);
   allTierIndex = lib.range 0 (lib.length modelTiers - 1);
 
@@ -49,12 +50,17 @@ let
   tierRolesHold =
     lib.all (
       tier:
-      let
-        expectedRoles = textRoles ++ commonRoles ++ lib.optional (tier.name == "vram16") "utility";
-      in
-      builtins.attrNames tier.models == lib.sort builtins.lessThan expectedRoles
-    ) textTiers
-    && builtins.attrNames (lib.last modelTiers).models == commonRoles;
+      builtins.attrNames tier.models == [
+        "dense"
+        "embedding"
+        "moe"
+      ]
+    ) moeTiers
+    &&
+      builtins.attrNames (lib.last modelTiers).models == [
+        "dense"
+        "embedding"
+      ];
 
   modelRolesAreDistinct = lib.all (
     tier:
@@ -160,20 +166,24 @@ let
 
   argsAreAllStrings = lib.all (model: lib.all builtins.isString model.llamaServerArgs) allModels;
 
-  textContextShrinksOnLowerTiers = lib.all (
-    role:
+  moeContextNonIncreasing =
     let
-      contexts = map (tier: tier.models.${role}.maxContext) textTiers;
+      contexts = map (tier: tier.models.moe.maxContext) moeTiers;
     in
-    lib.head contexts > lib.last contexts && contexts == lib.sort (a: b: a > b) contexts
-  ) textRoles;
+    lib.head contexts > lib.last contexts && contexts == lib.sort (a: b: a > b) contexts;
 
-  eachTextModelUsesOneSlot = lib.all (
-    tier: lib.all (role: tier.models.${role}.singleSlot) textRoles
-  ) textTiers;
+  qwen35ContextNonIncreasing =
+    let
+      contexts = map (tier: tier.models.dense.maxContext) qwen35Tiers;
+    in
+    lib.head contexts > lib.last contexts && contexts == lib.sort (a: b: a > b) contexts;
+
+  generationModelsMeetFloor = lib.all (
+    model: model.maxContext >= 131072 && lib.hasSuffix ":UD-Q4_K_XL" model.modelRef
+  ) allGenerationModels;
 
   embeddingIsUniform = lib.all (
-    tier: tier.models.embedding == modelMatrix.vram8.models.embedding
+    tier: tier.models.embedding == modelMatrix.vram16.models.embedding
   ) modelTiers;
 
   vulkanRuntime = runtime.mkRuntime {
@@ -275,7 +285,6 @@ let
   vulkanDense = vulkanRuntime.selectedRuntimeModels.dense;
   vulkanEmbedding = vulkanRuntime.selectedRuntimeModels.embedding;
   cudaDense = cudaRuntime.selectedRuntimeModels.dense;
-  cudaUtility = cudaRuntime.selectedRuntimeModels.utility;
   usesMtp = model: builtins.elem "--spec-type" model.runtimeArgs;
 in
 assert tierNamesAreUnique;
@@ -290,12 +299,26 @@ assert lib.all (model: generationShape model.generation) allModels;
 assert argsComposeCorrectly;
 assert argsAreAllStrings;
 assert lib.all (
-  tier: tier.models.smallMedia.reasoning == "on" && tier.models.smallMedia.generation.minP == 0.0
-) modelTiers;
-assert lib.all (tier: tier.models.dense.reasoningEffort == "medium") textTiers;
-assert lib.all (tier: tier.models.moe.reasoningEffort == null) textTiers;
-assert textContextShrinksOnLowerTiers;
-assert eachTextModelUsesOneSlot;
+  tier:
+  tier.models.moe.singleSlot
+  && tier.models.moe.microBatchSize == 128
+  && tier.models.moe.reasoningEffort == null
+) moeTiers;
+assert lib.all (
+  tier:
+  tier.models.dense.singleSlot
+  && tier.models.dense.reasoningEffort == "medium"
+  && tier.models.dense.mtpDraftTokens == 3
+) qwen38Tiers;
+assert lib.all (
+  tier:
+  !tier.models.dense.singleSlot
+  && tier.models.dense.reasoning == "off"
+  && tier.models.dense.mtpDraftTokens == null
+) qwen35Tiers;
+assert moeContextNonIncreasing;
+assert qwen35ContextNonIncreasing;
+assert generationModelsMeetFloor;
 assert embeddingIsUniform;
 assert lib.all runtimeArgsCompose [
   vulkanRuntime
@@ -325,21 +348,21 @@ assert
   ];
 assert !(builtins.elem "--flash-attn" cudaDense.runtimeArgs);
 assert !(builtins.elem "--load-mode" cudaDense.runtimeArgs);
-assert cudaUtility.publicName == "qwen3.5-9b";
-assert cudaUtility.modelRef == "unsloth/Qwen3.5-9B-MTP-GGUF:UD-Q4_K_XL";
-assert cudaUtility.maxContext == 131072;
-assert cudaUtility.reasoning == "off";
-assert !cudaUtility.singleSlot;
-assert cudaUtility.supportsMtp;
-assert cudaUtility.generation.temperature == 0.7;
-assert cudaUtility.generation.topP == 0.8;
-assert cudaUtility.generation.presencePenalty == 1.5;
-assert !(vulkanRuntime.selectedRuntimeModels ? utility);
+assert !(cudaRuntime.selectedRuntimeModels ? moe);
+assert cudaDense.publicName == "qwen3.5-9b";
+assert cudaDense.modelRef == "unsloth/Qwen3.5-9B-MTP-GGUF:UD-Q4_K_XL";
+assert cudaDense.maxContext == 131072;
+assert cudaDense.reasoning == "off";
+assert !cudaDense.singleSlot;
+assert cudaDense.supportsMtp;
+assert cudaDense.generation.temperature == 0.7;
+assert cudaDense.generation.topP == 0.8;
+assert cudaDense.generation.presencePenalty == 1.5;
 assert vulkanDense.supportsMtp;
 assert !vulkanMoe.supportsMtp;
 assert usesMtp vulkanDense;
+assert usesMtp lowerVulkanRuntime.selectedRuntimeModels.dense;
 assert !usesMtp vulkanMoe;
-assert !usesMtp cudaUtility;
-assert !usesMtp lowerVulkanRuntime.selectedRuntimeModels.dense;
+assert !usesMtp cudaDense;
 assert !usesMtp highCudaRuntime.selectedRuntimeModels.dense;
 true

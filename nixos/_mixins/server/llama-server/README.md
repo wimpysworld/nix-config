@@ -13,27 +13,25 @@ Hosts with the `inference` tag in [registry-systems.toml](../../../../lib/regist
 | `maul` | NVIDIA GPU server | 24 GiB | `cuda` | `vram22` |
 | `revan` | Intel i9-9900K + NVIDIA RTX 2000e Ada Generation | 16 GiB | `cuda` | `vram16` |
 
-On Strix Halo, `vram = 96` in the registry is the conservative inference budget rather than physical capacity. The `traya` macOS workstation does not carry the `inference` tag, but its Moltis module runs a user `launchd` `llama-swap` agent on `127.0.0.1:8080` that serves `qwen3-embedding-0.6b` only. Other workstations (`bane`, `ravi`, `tanis`, `sidious`) define compute GPU metadata and inherit the matching tier if tagged `inference`.
+On Strix Halo, `vram = 96` in the registry is the conservative inference budget rather than physical capacity. The `traya` macOS workstation does not carry the `inference` tag, but its Moltis module runs a user `launchd` `llama-swap` agent on `127.0.0.1:8080` that serves `qwen3-embedding-0.6b` only. Other workstations (`bane`, `ravi`) define compute GPU metadata and inherit the matching tier if tagged `inference`. Active `inference` hosts require at least 16 GiB of configured compute VRAM.
 
 ## Model policy
 
 All inference hosts share [model-policy.nix](model-policy.nix) and [model-downloads.nix](model-downloads.nix).
 
-| Tier | `inkling-2-mini` | `qwen3.8-27b` | Utility | Small media | Embedding |
-|---|---|---|---|---|---|
-| `vram64` | `UD-Q4_K_XL`, 256K | `UD-Q4_K_XL`, 256K | Not served | `gemma4-e4b`, 128K | `qwen3-embedding-0.6b`, 8K |
-| `vram32` | `UD-Q4_K_XL`, 32K | `UD-Q4_K_XL`, 64K | Not served | `gemma4-e4b`, 128K | `qwen3-embedding-0.6b`, 8K |
-| `vram22` | `UD-Q4_K_XL`, 16K | `UD-Q4_K_XL`, 32K | Not served | `gemma4-e4b`, 128K | `qwen3-embedding-0.6b`, 8K |
-| `vram16` | `UD-IQ3_XXS`, 16K | `UD-Q3_K_XL`, 16K | `qwen3.5-9b` (`UD-Q4_K_XL`, 128K) | `gemma4-e4b`, 128K | `qwen3-embedding-0.6b`, 8K |
-| `vram8` | Not served | Not served | Not served | `gemma4-e2b`, 128K | `qwen3-embedding-0.6b`, 8K |
+| Tier | `moe` (vision) | `dense` (vision) | `embedding` (`qwen3-embedding-0.6b`) |
+|---|---|---|---|
+| `vram64` (`skrye`, `zannah`) | `inkling-2-mini`, `UD-Q4_K_XL`, 256K (~23.3 GiB) | `qwen3.8-27b`, `UD-Q4_K_XL`, 256K, `mtp3` (~28.8 GiB) | `Q8_0`, 8K (~0.9 GiB) |
+| `vram32` (`bane`, `ravi`, `traya`) | `inkling-2-mini`, `UD-Q4_K_XL`, 256K (~23.3 GiB) | `qwen3.8-27b`, `UD-Q4_K_XL`, 256K, `mtp3` (~28.8 GiB) | `Q8_0`, 8K (~0.9 GiB) |
+| `vram22` (`maul`) | `inkling-2-mini`, `UD-Q4_K_XL`, 128K (~21.1 GiB) | `qwen3.5-9b`, `UD-Q4_K_XL`, 256K (~12.8 GiB) | `Q8_0`, 8K (~0.9 GiB) |
+| `vram16` (`revan`) | None | `qwen3.5-9b`, `UD-Q4_K_XL`, 128K (~10.7 GiB) | `Q8_0`, 8K (~0.9 GiB) |
 
 Policy rules that apply across tiers:
 
-- **KV cache quantisation:** every model uses `--cache-type-k q8_0 --cache-type-v q8_0`.
-- **Slot allocation:** `inkling-2-mini` and `qwen3.8-27b` run with one slot (`--parallel 1 --no-context-shift`). `qwen3.5-9b` on `vram16` uses `unsloth/Qwen3.5-9B-MTP-GGUF` (which ships native MTP tensors) and keeps multi-slot unified KV in production so LibreChat titles, activity labels, and memory extraction run concurrently; `llama.cpp` MTP requires `--parallel 1`, so production MTP remains off until `revan` benchmarks confirm the trade-off.
-- **Strix Halo (`vram64`) tuning:** `inkling-2-mini` sets `--ubatch-size 128`, and `qwen3.8-27b` enables multi-token prediction (MTP) on Vulkan with `--spec-type draft-mtp --spec-draft-n-max 3`. Other tiers do not enable MTP.
+- **Quantisation and context floor:** every generation model uses `UD-Q4_K_XL` and at least 128K context (`q8_0` KV cache on every model).
+- **Native vision (`mmproj-BF16.gguf`):** all three generation models (`inkling-2-mini`, `qwen3.8-27b`, and `qwen3.5-9b`) download and load `mmproj-BF16.gguf` on GPU.
+- **Slot allocation and tuning:** `inkling-2-mini` runs with `--parallel 1 --no-context-shift --ubatch-size 128` across tiers. `qwen3.8-27b` runs with `--parallel 1 --no-context-shift` and enables `--spec-type draft-mtp --spec-draft-n-max 3` on Vulkan (`vram64` and `vram32`). `qwen3.5-9b` (`unsloth/Qwen3.5-9B-MTP-GGUF`) keeps multi-slot unified KV and `--reasoning off` in production so LibreChat titles, activity labels, and memory extraction run concurrently.
 - **Pinned snapshots:** `inkling-2-mini` (`unsloth/Inkling-2-Mini-GGUF`, `Mainline_Support/` path) pins revision `45fd08764f2b0bf16b03a5483a80e5c7aaec8772`, and `qwen3.8-27b` (`unsloth/Qwen3.8-27B-GGUF`) pins revision `4af51b3542f775b0a8e4b310bfb3f17e01c306c9`.
-- **Small media models:** `gemma4-e4b` and `gemma4-e2b` use `UD-Q6_K_XL` at 131,072 tokens with `mmproj-BF16.gguf` and `--reasoning on`. `UD-Q6_K_XL` meets the Q6_K floor required for reliable Gemma 4 audio beyond about 17 seconds (clips remain capped at 30 seconds by the model).
 - **Embeddings:** every tier serves `Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0` at 8,192 tokens with `--embedding --pooling last` and no sampler.
 
 ### Generation sampler policy
@@ -45,7 +43,6 @@ Policy rules that apply across tiers:
 | `inkling-2-mini` | `1.0` | `1.0` | `0` | `0.0` | `1.0` | None |
 | `qwen3.8-27b` | `1.0` | `0.95` | `20` | `0.0` | `1.0` | `--presence-penalty 0.0 --reasoning-effort medium` |
 | `qwen3.5-9b` | `0.7` | `0.8` | `20` | `0.0` | `1.0` | `--presence-penalty 1.5 --reasoning off` |
-| `gemma4-e4b` / `gemma4-e2b` | `1.0` | `0.95` | `64` | `0.0` | `1.0` | `--reasoning on` |
 
 Override `qwen3.8-27b` reasoning effort per request with `reasoning_effort` in the request body.
 
@@ -72,10 +69,6 @@ Both Strix Halo workstations ran the full suite with `llama.cpp` `b12628` and `o
 | `qwen3.8-27b` | `llama.cpp` | `vulkan` | `mtp8` | 357.1 | 17.4 | 11472 | 26.5 GiB | ok |
 | `qwen3.8-27b` | `ollama` | `vulkan` | `off` | 360.5 | 11.6 | 11425 | 24.8 GiB | ok |
 | `qwen3.8-27b` | `ollama` | `rocm` | `off` | 377.6 | 11.6 | 10873 | 24.1 GiB | ok |
-| `gemma4-e4b` | `llama.cpp` | `vulkan` | `off` | 3119.7 | 41.5 | 1315 | 15.2 GiB | ok |
-| `gemma4-e4b` | `llama.cpp` | `rocm` | `off` | 2483.2 | 38.0 | 1651 | 11.8 GiB | ok |
-| `gemma4-e4b` | `ollama` | `vulkan` | `off` | 2982.4 | 40.8 | 1472 | 15.1 GiB | ok |
-| `gemma4-e4b` | `ollama` | `rocm` | `off` | 2439.5 | 36.1 | 1772 | 12.0 GiB | ok |
 
 ### `zannah` (`suite-es116ulj`)
 
@@ -96,16 +89,12 @@ Both Strix Halo workstations ran the full suite with `llama.cpp` `b12628` and `o
 | `qwen3.8-27b` | `llama.cpp` | `vulkan` | `mtp8` | 368.6 | 18.3 | 11117 | 19.7 GiB | ok |
 | `qwen3.8-27b` | `ollama` | `vulkan` | `off` | 374.8 | 12.0 | 10969 | 17.7 GiB | ok |
 | `qwen3.8-27b` | `ollama` | `rocm` | `off` | 368.4 | 11.4 | 11148 | 17.5 GiB | ok |
-| `gemma4-e4b` | `llama.cpp` | `vulkan` | `off` | 2905.4 | 40.4 | 1413 | 8.8 GiB | ok |
-| `gemma4-e4b` | `llama.cpp` | `rocm` | `off` | 2418.2 | 38.0 | 1697 | 5.6 GiB | ok |
-| `gemma4-e4b` | `ollama` | `vulkan` | `off` | 2877.0 | 39.9 | 1523 | 8.8 GiB | ok |
-| `gemma4-e4b` | `ollama` | `rocm` | `off` | 2404.6 | 36.0 | 1802 | 5.6 GiB | ok |
 
 ### Key conclusions
 
-- **Vulkan beats ROCm for production serving:** on `llama.cpp`, Vulkan leads ROCm decode by 18.3% to 19.3% on `inkling-2-mini` and 6.3% to 9.2% on `gemma4-e4b`. Vulkan also speeds up prefill by 22.4% to 24.8% on `inkling-2-mini` and 20.1% to 25.6% on `gemma4-e4b`. On `qwen3.8-27b`, both backends hit the LPDDR5X memory bandwidth ceiling at `mode=off`, and Vulkan stays 2.8% to 4.9% ahead at `mtp3`. ROCm uses 3.2 to 3.4 GiB less GPU memory on `gemma4-e4b`, which does not outweigh Vulkan's decode lead.
+- **Vulkan beats ROCm for production serving:** on `llama.cpp`, Vulkan leads ROCm decode by 18.3% to 19.3% on `inkling-2-mini` and speeds up prefill by 22.4% to 24.8%. On `qwen3.8-27b`, both backends hit the LPDDR5X memory bandwidth ceiling at `mode=off`, and Vulkan stays 2.8% to 4.9% ahead at `mtp3`.
 - **`qwen3.8-27b` peaks at `mtp3`:** multi-token prediction lifts Vulkan decode from 10.6 to 27.7 tok/s on `skrye` (2.6x) and from 11.9 to 29.4 tok/s on `zannah` (2.5x). Draft limits of `mtp4` and `mtp6` plateau just below `mtp3` while using more memory, and `mtp8` drops decode by 37% (`17.4` tok/s on `skrye`, `18.3` tok/s on `zannah`). Production policy therefore pins `mtpDraftTokens = 3` on `vram64` Vulkan hosts.
-- **`llama.cpp` stays ahead of Ollama:** setting `OLLAMA_IGPU_ENABLE=1` on Vulkan closes Ollama's `mode=off` decode gap to 1% to 2% on `gemma4-e4b` and places it slightly ahead of `llama.cpp` `mode=off` on `qwen3.8-27b`. Production still requires `llama.cpp` for three reasons: `qwen3.8-27b` with `mtp3` runs 2.4x faster than Ollama (`27.7` to `29.4` tok/s versus `11.6` to `12.0` tok/s), Ollama rejects `inkling-2-mini` with `unknown model architecture: 'inkling2_loop'`, and `llama.cpp` serves Gemma 4 `UD-Q6_K_XL` with `mmproj-BF16.gguf` for reliable vision and audio input.
+- **`llama.cpp` stays ahead of Ollama:** setting `OLLAMA_IGPU_ENABLE=1` on Vulkan places Ollama slightly ahead of `llama.cpp` `mode=off` on `qwen3.8-27b`, but production requires `llama.cpp` because `qwen3.8-27b` with `mtp3` runs 2.4x faster than Ollama (`27.7` to `29.4` tok/s versus `11.6` to `12.0` tok/s), Ollama rejects `inkling-2-mini` with `unknown model architecture: 'inkling2_loop'`, and `llama.cpp` serves `mmproj-BF16.gguf` vision projectors directly for `inkling-2-mini`, `qwen3.8-27b`, and `qwen3.5-9b`.
 - **Hardware variance and desktop GPU baseline:** `zannah` runs roughly 5% to 7% faster than `skrye` on `qwen3.8-27b`. Across every case, `skrye` records 5.4 to 6.4 GiB higher `Peak GPU Mem` than `zannah` because of its active dual-display desktop GPU baseline (two 2560x2880 displays), not higher model allocation.
 
 ## Benchmarking with `benchmark-models`
@@ -118,8 +107,8 @@ benchmark-models [--llama-only|--ollama-only] [--json] MODEL [runs]
 benchmark-models --purge
 ```
 
-- `benchmark-models-all` benchmarks all generation models configured for the host's VRAM tier (`inkling-2-mini`, `qwen3.8-27b`, `qwen3.5-9b` on `vram16`, and `gemma4-e4b` or `gemma4-e2b`) and defaults to `--runs 3`.
-- `benchmark-models` benchmarks one model. `inkling-2-mini`, `qwen3.5-9b`, and `qwen3.8-27b` run the shared Python harness (`focused.py`, default 3 runs). Single-model `gemma4-e2b`, `gemma4-e4b`, and opt-in `qwen3-embedding-0.6b` use the shell runner (default 5 runs).
+- `benchmark-models-all` benchmarks all generation models configured for the host's VRAM tier plus `qwen3.5-9b` (`inkling-2-mini`, `qwen3.8-27b`, and `qwen3.5-9b` on `vram64`/`vram32`; `inkling-2-mini` and `qwen3.5-9b` on `vram22`; `qwen3.5-9b` on `vram16`) and defaults to `--runs 3`.
+- `benchmark-models` benchmarks one model. `inkling-2-mini`, `qwen3.5-9b`, and `qwen3.8-27b` run the shared Python harness (`focused.py`, default 3 runs). Opt-in `qwen3-embedding-0.6b` uses the shell runner (default 5 runs).
 - `benchmark-models --purge` removes `~/Volatile/benchmark-models` without touching `/var/lib/llama-models/huggingface`.
 - Set `BENCHMARK_MODELS_ROOT` to move caches and logs (default `~/Volatile/benchmark-models`) or `BENCHMARK_MODELS_OLLAMA_HOST` for the shell runner's temporary Ollama port (default `127.0.0.1:11435`).
 
