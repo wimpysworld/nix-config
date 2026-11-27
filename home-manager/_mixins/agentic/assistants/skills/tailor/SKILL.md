@@ -8,7 +8,7 @@ Help the user run the installed `tailor` binary on their project. Teach the cycl
 - Use `tailor alter --recut` only when the user asks for it. It overwrites customised `first-fit` files.
 - Tailor never commits or pushes. Add new Nix files to Git, because flakes ignore untracked files. The user must approve a changed `.envrc` with direnv.
 - `tailor alter` imports an existing wiki automatically, without a prompt. Include the wiki import plan from `tailor baste --verbose` when you ask for approval. Do not pass `--adopt-wiki`, because it has no effect.
-- `fit`, `alter`, and `baste` need a GitHub token (`GH_TOKEN`, `GITHUB_TOKEN`, or `gh auth login`). `measure` and `docket` do not.
+- `fit`, `alter`, `baste`, and `social --live` need a GitHub token (`GH_TOKEN`, `GITHUB_TOKEN`, or `gh auth login`). `measure`, `docket`, and `social --static` do not.
 
 ## Commands
 
@@ -19,6 +19,7 @@ Help the user run the installed `tailor` binary on their project. Teach the cycl
 | `tailor fit <path>` | Create `.tailor.yml` with defaults. Copies no swatches. |
 | `tailor baste` | Preview what `alter` will do. Writes nothing. |
 | `tailor alter` | Apply files and repository settings. |
+| `tailor social` | Generate themed static or live social SVGs and update README markers. |
 
 Add `--verbose` to see every result and the full adoption steps. Run commands from the project root, because Tailor does not search parent directories for `.tailor.yml`.
 
@@ -43,7 +44,7 @@ Repository settings, labels, and variables need a GitHub remote. Without one, Ta
 4. Explain default merging to the user:
    - It runs only when the `.tailor.yml` swatch entry has `alteration: always`, or `first-fit` with `--recut`.
    - It is append-only. It adds missing swatches and settings and never changes an existing value.
-   - It never turns on `languages`, `pages`, `mcp`, or the wiki. Declare new features by hand.
+   - It never turns on `languages`, `pages`, `social`, `mcp`, or the wiki. Declare new features by hand.
 5. Declare languages as needed. Each one selects its bodies for `just build`, `just test`, and `just lint`:
 
    ```yaml
@@ -97,9 +98,79 @@ pages:
 4. Edit `index.html` for the introduction, features, installation, and copyright holder. Replace `icon.svg` with the project icon.
 5. Commit and push to the Pages branch (default: the repository default branch) to deploy.
 
+## Social assets
+
+Social assets are opt-in and follow Tailor's three-state lifecycle (`enabled: true`, `false`, or omitted). Setting `enabled: false` removes only the owned `nix/og.nix`, `just/og.just`, and `.github/workflows/tailor-social.yml` files and preserves authored assets and `README.md`.
+
+### Configure `.tailor.yml`
+
+```yaml
+social:
+  enabled: true
+  theme: dark
+  # accent: "#F2C96B"        # optional hex override when no pages/style.css exists
+  # background: "#1A1410"    # optional hex override when no pages/style.css exists
+  # platforms: "Linux · macOS · Windows"
+  og:
+    output: pages/og.png
+    include_preview: false   # default: split borderless icon card; true: framed og.image, pages/demo-still.png, or up to 8 og.terminal lines
+  readme:
+    header: true
+    preferred_links: []      # up to 4 unique keys from pages.links
+    community: auto          # auto, none, discord, matrix, slack, irc, forum, or discussions
+    packages: []             # apt, rpm, pkg, apk, flatpak, brew, scoop, nix
+    stats: true
+    star_history:
+      enabled: true
+      min_stars: 25
+      min_days: 30
+    sponsors: auto           # auto, true, or false
+  live:
+    branch: social-assets
+    schedule: "0 4 * * *"
+```
+
+`social:` works with or without `pages.enabled: true`. Repositories without `pages/style.css` fall back to µCSS defaults and can set optional `accent`, `background`, and `platforms` values. Tailor inherits the display title from the repository name using the Haberdasher and Vitrine rule (splitting on `-` and capitalising segments when every segment has more than 2 characters, preserving names such as `ia-get` and `WonKey`), the tagline from `repository.description` (trailing emoji removed), and the icon from `pages/icon.svg` or `pages/icon.png`. `.tailor.yml` has no `title`, `tagline`, or `icon` override keys.
+
+### Hybrid storage model
+
+- **Static assets on `main`**: the Open Graph card (`pages/og.png`) and static dark/light README SVGs (`pages/social/*.svg`).
+- **Live daily SVGs on an orphan branch**: `.github/workflows/tailor-social.yml` renders `stats`, `stars`, `sponsors`, and live `community` SVGs on schedule, pushes them to the orphan `social-assets` branch, and updates `README.md` with commit-pinned `raw.githubusercontent.com` URLs (`[skip ci]`).
+
+### Generate static assets locally
+
+1. Run `tailor baste`, get approval, then run `tailor alter` to create `nix/og.nix`, `just/og.just`, and `.github/workflows/tailor-social.yml`. Add `nix/og.nix` to Git so the Nix flake sees it. `tailor alter` and `tailor alter --recut` never overwrite `pages/og.png`.
+2. Add the desired `<!-- tailor:social-<name>:start -->` / `<!-- tailor:social-<name>:end -->` markers to `README.md`.
+3. Run `tailor social --static --update-readme` to render `pages/social/*.svg` and populate the static README blocks. Add `--dry-run` to preview. `--static` is the default when `--live` is omitted.
+4. Run `just og` to render `pages/og.png` (`1280 x 640`, `< 1 MB`). `just og` refuses to overwrite existing artwork; pass `just og --force` to regenerate. `tailor measure` accepts both `1280 x 640` and bespoke `1200 x 630` PNGs under 1 MB.
+5. Update existing `pages/index.html` landing pages manually: new static Pages starters include Open Graph and Twitter Card tags automatically, but existing `first-fit` `pages/index.html` files stay untouched. Set `og:image` to `https://<domain>/og.png` (from `pages.cname` or `https://<owner>.github.io/<repo>/og.png`), `og:image:width="1280"`, `og:image:height="640"`, `og:image:alt`, and `twitter:card="summary_large_image"` (replacing older `icon.png` or `summary` tags).
+6. Remind the user to upload `pages/og.png` manually in GitHub under **Settings > General > Social preview**.
+7. Commit and push the generated assets, `README.md`, and `.github/workflows/tailor-social.yml`. When using live README markers (`stats`, `stars`, `sponsors`), tell the user they can trigger **Actions > Tailor Social > Run workflow** once to create the orphan `social-assets` branch and populate the commit-pinned live URLs immediately instead of waiting for the daily schedule.
+
+### Canonical `README.md` header and marker blocks
+
+When `social.enabled: true`, replace the legacy `<h1 align="center">` + `256x256` icon header and the Markdown Haberdasher install table with standalone Tailor social marker blocks:
+
+```markdown
+<!-- tailor:social-header:start -->
+<!-- tailor:social-header:end -->
+
+<!-- tailor:social-links:start -->
+<!-- tailor:social-links:end -->
+
+<!-- tailor:social-community:start -->
+<!-- tailor:social-community:end -->
+```
+
+Supported marker names in canonical order: `header`, `links`, `community`, `packages`, `stats`, `stars`, `sponsors`. Place `packages` in the Install section and `stats`, `stars`, and `sponsors` where appropriate in `README.md`.
+
+- Tailor writes centred theme-aware `<picture><source media="(prefers-color-scheme: dark)" srcset="..."><img src="..." alt="..."></picture>` markup (wrapped in `<a href="...">` when linked) between each pair, including the animated SVG hero in `header`.
+- Each opening and closing marker must sit alone on its own line, appear at most once per section, and never overlap another marker block.
+- Tailor skips absent markers and leaves all surrounding prose untouched.
+
 ## Project icon
 
-Store every project's canonical icon as a real file at `pages/icon.svg`, even when GitHub Pages is disabled. When a project uses a photographic or raster mark, store a square `pages/icon.png` instead as a fallback. One icon supplies the static Pages header, footer, and favicon, the repository `README.md`, and Haberdasher package pages (which check `pages/icon.svg` first and `pages/icon.png` second).
+Store every project's canonical icon as a real file at `pages/icon.svg`, even when GitHub Pages is disabled. When a project uses a photographic or raster mark, store a square `pages/icon.png` instead as a fallback. One icon supplies the static Pages header, footer, and favicon, the social hero SVG and `og.png`, the repository `README.md`, and Haberdasher package pages (which check `pages/icon.svg` first and `pages/icon.png` second).
 
 - **Use a real file, never a symlink**: commit the file directly at `pages/icon.svg` or `pages/icon.png` (or copy it there when packaging needs a second path). GitHub's Contents API returns symlink target text instead of image bytes, and Windows checkouts break symlinks.
 - **Keep it square and self-contained**: prefer a `1:1` SVG with an explicit `viewBox` (no external fonts, images, or scripts) or a square PNG when a photograph is required. Keep it readable on both light and dark surfaces, with no wide horizontal wordmark.
