@@ -54,6 +54,8 @@ assert inferenceEval.config.systemd.services ? llama-swap;
 assert inferenceEval.config.systemd.services ? llama-models-preseed;
 assert !(nonInferenceEval.config.systemd.services ? llama-swap);
 assert swapConfig.enable;
+assert swapConfig.listenAddress == "0.0.0.0";
+assert !swapConfig.openFirewall;
 assert swapConfig.package == inferenceEval.pkgs.llama-swap;
 assert swapConfig.port == 8080;
 assert service.serviceConfig.Type == "exec";

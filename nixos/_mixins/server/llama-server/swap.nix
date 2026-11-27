@@ -178,6 +178,10 @@ in
 
     services.llama-swap = {
       enable = true;
+      # Bind all interfaces while keeping openFirewall = false so Tailscale
+      # peers (trustedInterfaces) can reach llama-swap and LAN stays blocked.
+      listenAddress = "0.0.0.0";
+      openFirewall = false;
       package = pkgs.llama-swap;
       port = listenPort;
       settings = llamaSwapSettings;
