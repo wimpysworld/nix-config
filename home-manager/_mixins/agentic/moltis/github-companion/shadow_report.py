@@ -16,6 +16,7 @@ import json
 import math
 import os
 import re
+import shlex
 import socket
 import stat
 import subprocess
@@ -2328,11 +2329,14 @@ def fetch_remote_shadow_records(
             continue
 
         ssh_target = f"{host}.{clean_tailnet}" if clean_tailnet else host
-        remote_script = (
+        # OpenSSH runs remote commands via the target account's login shell
+        # (fish on skrye and zannah), so wrap the POSIX script in `sh -c`.
+        inner_script = (
             'f="${XDG_STATE_HOME:-$HOME/.local/state}/moltis/'
             f'github-companion-{host}/{shadow_eval.SHADOW_EVAL_JSONL_FILENAME}"; '
             'if [ -f "$f" ]; then cat -- "$f"; fi'
         )
+        remote_script = f"sh -c {shlex.quote(inner_script)}"
         cmd = [
             ssh_bin,
             "-o",

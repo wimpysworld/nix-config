@@ -7,6 +7,7 @@ import io
 import json
 import os
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -594,12 +595,74 @@ class TestRemoteFetchAndOpen(unittest.TestCase):
                 ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "--"],
             )
             self.assertEqual(seen_cmds[0][6], "zannah.drongo-gamma.ts.net")
+            self.assertTrue(seen_cmds[0][7].startswith("sh -c '"))
+            self.assertTrue(seen_cmds[0][7].endswith("'"))
             self.assertIn("github-companion-zannah/shadow-eval.jsonl", seen_cmds[0][7])
             self.assertEqual([r["dispatch_id"] for r in records], ["local-1", "remote-1"])
 
             # Invalid host name rejected to prevent option injection.
             with self.assertRaises(ValueError):
                 shadow_report.fetch_remote_shadow_records(["-oProxyCommand=id"], runner=fake_runner)
+
+    def test_remote_ssh_script_executes_under_posix_sh_and_fish(self) -> None:
+        seen_cmds: list[list[str]] = []
+
+        def capture_runner(cmd: list[str], **_kwargs: object) -> subprocess.CompletedProcess:
+            seen_cmds.append(list(cmd))
+            return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+        shadow_report.fetch_remote_shadow_records(
+            ["zannah"],
+            tailnet="drongo-gamma.ts.net",
+            runner=capture_runner,
+            local_hostname="vader",
+        )
+        self.assertEqual(len(seen_cmds), 1)
+        remote_script = seen_cmds[0][7]
+        self.assertTrue(remote_script.startswith("sh -c '"))
+        self.assertTrue(remote_script.endswith("'"))
+        # Single-quoted body must stay free of single quotes and backslashes so
+        # Fish and POSIX sh interpret the wrapper identically.
+        inner_body = remote_script[len("sh -c '") : -1]
+        self.assertNotIn("'", inner_body)
+        self.assertNotIn("\\", inner_body)
+
+        shells: list[str] = [shutil.which("sh") or "/bin/sh"]
+        fish_bin = shutil.which("fish")
+        if fish_bin:
+            shells.append(fish_bin)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            xdg_state = Path(tmp) / "state"
+            target_dir = xdg_state / "moltis" / "github-companion-zannah"
+            target_dir.mkdir(parents=True)
+            sample_line = json.dumps(_make_jsonl_record(agent="zannah", dispatch_id="shell-1")) + "\n"
+            jsonl_path = target_dir / shadow_eval.SHADOW_EVAL_JSONL_FILENAME
+            jsonl_path.write_text(sample_line, encoding="utf-8")
+
+            env = dict(os.environ, HOME=tmp, XDG_STATE_HOME=str(xdg_state))
+            for shell_bin in shells:
+                proc = subprocess.run(
+                    [shell_bin, "-c", remote_script],
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertEqual(proc.returncode, 0, msg=f"{shell_bin} stderr: {proc.stderr}")
+                self.assertEqual(proc.stdout, sample_line)
+
+            jsonl_path.unlink()
+            for shell_bin in shells:
+                proc = subprocess.run(
+                    [shell_bin, "-c", remote_script],
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertEqual(proc.returncode, 0, msg=f"{shell_bin} stderr: {proc.stderr}")
+                self.assertEqual(proc.stdout, "")
 
     def test_cli_fetch_and_open_defaults_to_comparison_html(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
