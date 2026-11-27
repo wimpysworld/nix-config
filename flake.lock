@@ -1408,17 +1408,17 @@
         "nixpkgs": "nixpkgs_14"
       },
       "locked": {
-        "lastModified": 1795701285,
-        "narHash": "sha256-LBo+vuXMCESDguhYVbS2J/zdXu8mxCH1NVp7PeGImkI=",
+        "lastModified": 1795738075,
+        "narHash": "sha256-bfQAgoy++Exct299/zF5FskNH6q8KDc1cBB7YMQbql0=",
         "owner": "wimpysworld",
         "repo": "tailor",
-        "rev": "7e19ef6526076c68dcf55dadb310c0a167b29ef1",
+        "rev": "bb4ced86ab430340b31f32f8785f6a246187a3fa",
         "type": "github"
       },
       "original": {
         "owner": "wimpysworld",
+        "ref": "latest",
         "repo": "tailor",
-        "rev": "7e19ef6526076c68dcf55dadb310c0a167b29ef1",
         "type": "github"
       }
     },
