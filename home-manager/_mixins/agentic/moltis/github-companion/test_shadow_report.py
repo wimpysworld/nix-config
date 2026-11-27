@@ -574,7 +574,7 @@ class TestRemoteFetchAndOpen(unittest.TestCase):
 
             def fake_runner(cmd: list[str], **_kwargs: object) -> subprocess.CompletedProcess:
                 seen_cmds.append(list(cmd))
-                if "zannah.drongo-gamma.ts.net" in cmd:
+                if len(cmd) > 6 and cmd[6] == "zannah.drongo-gamma.ts.net":
                     return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(zannah_rec) + "\n", stderr="")
                 # Missing remote JSONL tolerated as empty output.
                 return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
