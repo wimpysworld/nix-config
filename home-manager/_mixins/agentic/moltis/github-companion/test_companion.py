@@ -17364,6 +17364,144 @@ class ShadowEvalIntegrationTests(GithubCompanionTestBase):
         self.assertIn("shadow report HTML warning", render_stderr.getvalue())
         self.assertNotIn("secretRenderToken999", render_stderr.getvalue())
 
+    def test_cli_replay_shadow_preserves_env_live_summary_unless_flag_explicit(self) -> None:
+        in_dir = self.root / "replay-env-guard"
+        in_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        in_jsonl = in_dir / "shadow-eval.jsonl"
+        live_summary = self.root / "live-shadow-reports" / "summary.json"
+        live_summary.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
+        sentinel_payload = json.dumps({"live": True, "totals": {"total": 42}}, sort_keys=True) + "\n"
+        live_summary.write_text(sentinel_payload, encoding="utf-8")
+        explicit_summary = self.root / "explicit-replay-summary.json"
+
+        source_rec = {
+            "schema_version": shadow_eval.SHADOW_SCHEMA_VERSION,
+            "timestamp_ms": 1_700_000_000_000,
+            "dispatch_id": "ghd-skrye-replay-guard",
+            "agent": "skrye",
+            "gemini_model": "gemini::flash",
+            "gemini_action": "approve_and_merge",
+            "gemini_commands": ["gh-bot-merge https://github.com/wimpysworld/wonkey/pull/99"],
+            "gemini_reply_excerpt": "Merged",
+            "snapshot": {
+                "schema_version": shadow_eval.SHADOW_SCHEMA_VERSION,
+                "agent": "skrye",
+                "repo": "wimpysworld/wonkey",
+                "number": 99,
+                "pr_url": "https://github.com/wimpysworld/wonkey/pull/99",
+                "head_sha": "abcdef123456",
+                "trigger_reason": "unrequested_pr",
+                "is_archived": False,
+                "pr": {
+                    "title": "build(deps): bump actions/checkout from 4 to 5",
+                    "url": "https://github.com/wimpysworld/wonkey/pull/99",
+                    "state": "OPEN",
+                    "is_draft": False,
+                    "author": "dependabot[bot]",
+                    "head_ref": "dependabot/github_actions/actions/checkout-5",
+                    "head_sha": "abcdef123456",
+                    "base_ref": "main",
+                    "mergeable": "MERGEABLE",
+                    "merge_state_status": "CLEAN",
+                    "review_decision": "REVIEW_REQUIRED",
+                    "additions": 2,
+                    "deletions": 2,
+                    "changed_files": 1,
+                    "labels": ["dependencies"],
+                    "ci_state": "SUCCESS",
+                    "status_checks": [],
+                    "reviews": [],
+                    "review_threads": [],
+                    "unresolved_thread_count": 0,
+                },
+                "diff": "",
+                "diff_truncated": False,
+                "diff_total_chars": 0,
+                "has_tailor_vendor_hash_workflow": False,
+                "dependabot_alerts": [],
+                "alerts_skipped_reason": None,
+                "workflow_runs": [],
+                "failed_run_logs": [],
+                "capture_errors": [],
+            },
+        }
+        in_jsonl.write_text(json.dumps(source_rec) + "\n", encoding="utf-8")
+        in_jsonl.chmod(0o600)
+
+        def fake_call_shadow_llm(**_kwargs: object) -> dict[str, object]:
+            return {
+                "raw_content": json.dumps({
+                    "action": "approve_and_merge",
+                    "advisory_safe": True,
+                    "ci_cause": "none",
+                    "escalate": False,
+                    "reason": "Replay clean.",
+                }),
+                "ttft_ms": 50,
+                "total_ms": 120,
+                "prompt_tokens": 200,
+                "completion_tokens": 25,
+            }
+
+        env_with_live_summary = {
+            "MOLTIS_GITHUB_COMPANION_SHADOW_SUMMARY_PATH": str(live_summary),
+            "MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_SUMMARY_PATH": "",
+        }
+        with patch.dict(os.environ, env_with_live_summary):
+            # Parser defaults --shadow-summary-path to None even when env var is exported.
+            parsed_no_flag = companion.build_arg_parser().parse_args(["--replay-shadow", str(in_jsonl)])
+            self.assertIsNone(parsed_no_flag.shadow_summary_path)
+
+            # a) Replay without --shadow-summary-path must NOT touch or overwrite live summary.json.
+            stdout_no_flag = io.StringIO()
+            with (
+                patch.object(shadow_eval, "call_shadow_llm", side_effect=fake_call_shadow_llm),
+                contextlib.redirect_stdout(stdout_no_flag),
+            ):
+                rc_no_flag = companion.main([
+                    "--replay-shadow", str(in_jsonl),
+                    "--shadow-model", "qwen3.8-27b",
+                ])
+            self.assertEqual(rc_no_flag, 0)
+            self.assertEqual(json.loads(stdout_no_flag.getvalue().strip())["totals"]["total"], 1)
+            self.assertEqual(live_summary.read_text(encoding="utf-8"), sentinel_payload)
+
+            # b) Replay with explicit --shadow-summary-path writes only the explicit file.
+            stdout_explicit = io.StringIO()
+            with (
+                patch.object(shadow_eval, "call_shadow_llm", side_effect=fake_call_shadow_llm),
+                contextlib.redirect_stdout(stdout_explicit),
+            ):
+                rc_explicit = companion.main([
+                    "--replay-shadow", str(in_jsonl),
+                    "--shadow-model", "qwen3.8-27b",
+                    "--shadow-summary-path", str(explicit_summary),
+                ])
+            self.assertEqual(rc_explicit, 0)
+            self.assertTrue(explicit_summary.is_file())
+            self.assertEqual(json.loads(explicit_summary.read_text(encoding="utf-8"))["totals"]["total"], 1)
+            self.assertEqual(live_summary.read_text(encoding="utf-8"), sentinel_payload)
+
+            # c) Normal non-replay resolve_runtime_config still picks up the exported env var.
+            live_cfg = companion.resolve_runtime_config(
+                companion.build_arg_parser().parse_args(["--agent-name", "skrye"])
+            )
+            self.assertEqual(live_cfg["shadow_summary_path"], live_summary)
+
+        # Legacy env var fallback still works in resolve_runtime_config when primary is unset.
+        legacy_summary = self.root / "legacy-shadow-summary.json"
+        with patch.dict(
+            os.environ,
+            {
+                "MOLTIS_GITHUB_COMPANION_SHADOW_SUMMARY_PATH": "",
+                "MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_SUMMARY_PATH": str(legacy_summary),
+            },
+        ):
+            legacy_cfg = companion.resolve_runtime_config(
+                companion.build_arg_parser().parse_args(["--agent-name", "skrye"])
+            )
+            self.assertEqual(legacy_cfg["shadow_summary_path"], legacy_summary)
+
 
 if __name__ == "__main__":
     unittest.main()

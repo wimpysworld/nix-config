@@ -12773,7 +12773,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--shadow-eval-enabled", default=os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_ENABLED", ""))
     parser.add_argument("--shadow-model", default=os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_MODEL") or os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_MODEL", ""))
     parser.add_argument("--shadow-api-url", default=os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_API_URL") or os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_API_URL", ""))
-    parser.add_argument("--shadow-summary-path", default=os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_SUMMARY_PATH") or os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_SUMMARY_PATH", ""))
+    parser.add_argument("--shadow-summary-path", default=None)
     parser.add_argument("--shadow-timeout-secs", default=os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_TIMEOUT_SECS") or os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_TIMEOUT_SECS", ""))
     parser.add_argument("--replay-shadow", default="")
     parser.add_argument("--shadow-output", default="")
@@ -12787,7 +12787,14 @@ def _resolve_shadow_config_from_args(args: argparse.Namespace, *, agent_name: st
     raw_enabled = getattr(args, "shadow_eval_enabled", "")
     raw_model = getattr(args, "shadow_model", "") or os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_MODEL", "")
     raw_api_url = getattr(args, "shadow_api_url", "") or os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_API_URL", "")
-    raw_summary_path = getattr(args, "shadow_summary_path", "") or os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_SUMMARY_PATH", "")
+    arg_summary_path = getattr(args, "shadow_summary_path", None)
+    if arg_summary_path is None or not str(arg_summary_path).strip():
+        raw_summary_path = (
+            os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_SUMMARY_PATH")
+            or os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_SUMMARY_PATH", "")
+        )
+    else:
+        raw_summary_path = str(arg_summary_path)
     raw_timeout_secs = getattr(args, "shadow_timeout_secs", "") or os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_TIMEOUT_SECS", "")
     return shadow_eval.resolve_shadow_eval_config(
         agent_name=agent_name,
@@ -12916,12 +12923,8 @@ def main(argv: list[str] | None = None) -> int:
         raw_agent = str(getattr(args, "agent_name", "") or "").strip()
         replay_agent = normalize_agent_name(raw_agent) if raw_agent else ""
         shadow_cfg = _resolve_shadow_config_from_args(args, agent_name=replay_agent)
-        raw_summary_arg = str(
-            getattr(args, "shadow_summary_path", "")
-            or os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_SUMMARY_PATH", "")
-            or os.environ.get("MOLTIS_GITHUB_COMPANION_SHADOW_EVAL_SUMMARY_PATH", "")
-        ).strip()
-        replay_summary_path = shadow_cfg["summary_path"] if raw_summary_arg else None
+        explicit_summary_arg = str(getattr(args, "shadow_summary_path", None) or "").strip()
+        replay_summary_path = Path(explicit_summary_arg).expanduser() if explicit_summary_arg else None
         replay_output_path = str(getattr(args, "shadow_output", "") or "").strip() or None
         summary = shadow_eval.replay_shadow_jsonl(
             replay_path,
