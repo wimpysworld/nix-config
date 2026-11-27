@@ -2316,7 +2316,7 @@ class InterruptedTurnRecoveryDecoupledPollingAndStartNoticeTests(GithubCompanion
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name="traya",
-            main_model="gemini::gemini-4-neon",
+            code_model="gemini::gemini-4-neon",
             matrix_client=mclient,
             completion_timeout_ms=300,
             recovery_deadline_ms=300,
@@ -2547,7 +2547,7 @@ class InterruptedTurnRecoveryDecoupledPollingAndStartNoticeTests(GithubCompanion
             data_dir=self.data_dir,
             agent_name="skrye",
             agent_display_name="Skrye",
-            main_model="gemini::gemini-4-neon",
+            code_model="gemini::gemini-4-neon",
             telegram_bot_token_path=self.bot_token_file,
             telegram_allowed_users_path=self.allowed_users_file,
             telegram_api_url=self.httpd.base_url,
@@ -3730,30 +3730,99 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
         self.assertEqual(runner_skrye.is_weekly_sweep_due(now_override_ms=thursday_10am_ms), (False, "2023-11-16"))
         self.assertEqual(runner_zannah.is_weekly_sweep_due(now_override_ms=thursday_10am_ms), (True, "2023-11-16"))
 
-    def test_main_and_review_model_selection_for_code_review_vs_automated_pr_and_sweeps(self) -> None:
+    def test_three_tier_model_selection_for_updates_sweeps_and_code_turns(self) -> None:
         self.httpd.peek_active = False
 
-        # Runtime config resolves --review-model / MOLTIS_GITHUB_COMPANION_REVIEW_MODEL and defaults to main_model
-        parsed_default = companion.build_arg_parser().parse_args(
-            ["--agent-name", "skrye", "--main-model", "gemini::gemini-4-neon@reasoning-medium"]
-        )
-        cfg_default = companion.resolve_runtime_config(parsed_default)
-        self.assertEqual(cfg_default["main_model"], "gemini::gemini-4-neon@reasoning-medium")
-        self.assertEqual(cfg_default["review_model"], "gemini::gemini-4-neon@reasoning-medium")
+        self.assertEqual(companion.SWEEP_DISPATCH_KINDS, frozenset({"reconcile_sweep", "weekly_sweep"}))
 
-        parsed_explicit = companion.build_arg_parser().parse_args(
-            [
-                "--agent-name",
-                "traya",
-                "--main-model",
-                "openai-codex::gpt-6.2-sol@reasoning-medium",
-                "--review-model",
-                "openai-codex::gpt-6.2-astra@reasoning-medium",
-            ]
+        # resolve_model_tiers fallback boundaries
+        self.assertEqual(
+            companion.resolve_model_tiers(code_model="gemini::gemini-4-neon@reasoning-high"),
+            (
+                "gemini::gemini-4-neon@reasoning-high",
+                "gemini::gemini-4-neon@reasoning-high",
+                "gemini::gemini-4-neon@reasoning-high",
+            ),
         )
-        cfg_explicit = companion.resolve_runtime_config(parsed_explicit)
-        self.assertEqual(cfg_explicit["main_model"], "openai-codex::gpt-6.2-sol@reasoning-medium")
-        self.assertEqual(cfg_explicit["review_model"], "openai-codex::gpt-6.2-astra@reasoning-medium")
+        self.assertEqual(
+            companion.resolve_model_tiers(
+                update_model="gemini::gemini-4-hydrogen@reasoning-medium",
+                code_model="gemini::gemini-4-neon@reasoning-high",
+            ),
+            (
+                "gemini::gemini-4-hydrogen@reasoning-medium",
+                "gemini::gemini-4-neon@reasoning-high",
+                "gemini::gemini-4-neon@reasoning-high",
+            ),
+        )
+        self.assertEqual(
+            companion.resolve_model_tiers(update_model="gemini::gemini-4-hydrogen@reasoning-medium"),
+            (
+                "gemini::gemini-4-hydrogen@reasoning-medium",
+                "gemini::gemini-4-hydrogen@reasoning-medium",
+                "gemini::gemini-4-hydrogen@reasoning-medium",
+            ),
+        )
+        self.assertEqual(
+            companion.resolve_model_tiers(
+                update_model="gemini::gemini-4-hydrogen@reasoning-medium",
+                sweep_model="gemini::gemini-4-neon@reasoning-medium",
+                code_model="gemini::gemini-4-neon@reasoning-high",
+            ),
+            (
+                "gemini::gemini-4-hydrogen@reasoning-medium",
+                "gemini::gemini-4-neon@reasoning-medium",
+                "gemini::gemini-4-neon@reasoning-high",
+            ),
+        )
+
+        # Runtime config resolves CLI flags (--update-model, --sweep-model, --code-model)
+        # and env vars (MOLTIS_GITHUB_COMPANION_{UPDATE,SWEEP,CODE}_MODEL).
+        cleared_model_env = {
+            "MOLTIS_GITHUB_COMPANION_UPDATE_MODEL": "",
+            "MOLTIS_GITHUB_COMPANION_SWEEP_MODEL": "",
+            "MOLTIS_GITHUB_COMPANION_CODE_MODEL": "",
+        }
+        with patch.dict(os.environ, cleared_model_env, clear=False):
+            parsed_default = companion.build_arg_parser().parse_args(
+                ["--agent-name", "skrye", "--code-model", "gemini::gemini-4-neon@reasoning-high"]
+            )
+            cfg_default = companion.resolve_runtime_config(parsed_default)
+            self.assertEqual(cfg_default["update_model"], "gemini::gemini-4-neon@reasoning-high")
+            self.assertEqual(cfg_default["sweep_model"], "gemini::gemini-4-neon@reasoning-high")
+            self.assertEqual(cfg_default["code_model"], "gemini::gemini-4-neon@reasoning-high")
+
+            parsed_explicit = companion.build_arg_parser().parse_args(
+                [
+                    "--agent-name",
+                    "skrye",
+                    "--update-model",
+                    "gemini::gemini-4-hydrogen@reasoning-medium",
+                    "--sweep-model",
+                    "gemini::gemini-4-neon@reasoning-medium",
+                    "--code-model",
+                    "gemini::gemini-4-neon@reasoning-high",
+                ]
+            )
+            cfg_explicit = companion.resolve_runtime_config(parsed_explicit)
+            self.assertEqual(cfg_explicit["update_model"], "gemini::gemini-4-hydrogen@reasoning-medium")
+            self.assertEqual(cfg_explicit["sweep_model"], "gemini::gemini-4-neon@reasoning-medium")
+            self.assertEqual(cfg_explicit["code_model"], "gemini::gemini-4-neon@reasoning-high")
+
+        with patch.dict(
+            os.environ,
+            {
+                "MOLTIS_GITHUB_COMPANION_UPDATE_MODEL": "openai-codex::gpt-6.2-sol@reasoning-medium",
+                "MOLTIS_GITHUB_COMPANION_SWEEP_MODEL": "openai-codex::gpt-6.2-sol@reasoning-medium",
+                "MOLTIS_GITHUB_COMPANION_CODE_MODEL": "openai-codex::gpt-6.2-astra@reasoning-medium",
+            },
+            clear=False,
+        ):
+            parsed_env = companion.build_arg_parser().parse_args(["--agent-name", "traya"])
+            cfg_env = companion.resolve_runtime_config(parsed_env)
+            self.assertEqual(cfg_env["update_model"], "openai-codex::gpt-6.2-sol@reasoning-medium")
+            self.assertEqual(cfg_env["sweep_model"], "openai-codex::gpt-6.2-sol@reasoning-medium")
+            self.assertEqual(cfg_env["code_model"], "openai-codex::gpt-6.2-astra@reasoning-medium")
 
         sent_models: list[tuple[str, str]] = []
 
@@ -3776,12 +3845,14 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
 
             return _handler
 
-        # 1) Skrye: main_model = gemini::gemini-4-neon@reasoning-medium, review_model = gemini::gemini-4-neon@reasoning-high
+        # 1) Skrye: update_model = gemini::gemini-4-hydrogen@reasoning-medium,
+        #    sweep_model = gemini::gemini-4-neon@reasoning-medium,
+        #    code_model = gemini::gemini-4-neon@reasoning-high
         notif_batches: list[str] = [
             # Cycle 1 notifications:
-            # - Issue mention (flexiondotorg) -> review_model
-            # - github-actions[bot] automated PR notification (owned by skrye: wimpysworld/WonKey#27) -> main_model
-            # - Freshener automated PR notification on wimpysworld/nix-config#25 (owned by skrye) -> main_model
+            # - Issue mention (flexiondotorg) -> code_model
+            # - github-actions[bot] automated PR notification (owned by skrye: wimpysworld/WonKey#27) -> update_model
+            # - Freshener automated PR notification on wimpysworld/nix-config#25 (owned by skrye) -> update_model
             "HTTP/2.0 200 OK\r\n"
             "Last-Modified: Tue, 14 Nov 2023 10:00:00 GMT\r\n"
             "\r\n"
@@ -3826,9 +3897,9 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
         ]
         pr_batches: list[list[dict]] = [
             # Cycle 1 open PRs:
-            # - Human PR flexiondotorg (wimpysworld/nix-config#101) -> review_model
-            # - Peer PR sith-zannah (wimpysworld/nix-config#102) -> review_model
-            # - Dependabot PR linuxmatters/website#27 owned by skrye -> main_model
+            # - Human PR flexiondotorg (wimpysworld/nix-config#101) -> code_model
+            # - Peer PR sith-zannah (wimpysworld/nix-config#102) -> code_model
+            # - Dependabot PR linuxmatters/website#27 owned by skrye -> update_model
             [
                 {
                     "number": 101,
@@ -3952,8 +4023,9 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name="skrye",
-            main_model="gemini::gemini-4-neon@reasoning-medium",
-            review_model="gemini::gemini-4-neon@reasoning-high",
+            update_model="gemini::gemini-4-hydrogen@reasoning-medium",
+            sweep_model="gemini::gemini-4-neon@reasoning-medium",
+            code_model="gemini::gemini-4-neon@reasoning-high",
             clock=self.clock,
             sleeper=self.sleeper,
         )
@@ -3973,7 +4045,7 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
         self.assertIsNotNone(cycle_skrye["sweep_dispatch"])
         self.assertEqual(cycle_skrye["sweep_dispatch"]["kind"], "weekly_sweep")
 
-        # Also run a reconcile_sweep 6 hours later on Skrye -> main_model
+        # Also run a reconcile_sweep 6 hours later on Skrye -> sweep_model
         six_hours_later_ms = tuesday_10am_ms + (6 * 3600 * 1000)
         self.current_time_ms = six_hours_later_ms
         cycle_skrye_reconcile = runner_skrye.run_cycle(now_override_ms=six_hours_later_ms)
@@ -3983,26 +4055,27 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
         self.assertEqual(
             sent_models,
             [
-                # Issue mention (flexiondotorg) -> review_model
+                # Issue mention (flexiondotorg) -> code_model
                 ("skrye:targeted", "gemini::gemini-4-neon@reasoning-high"),
-                # github-actions[bot] PR notification -> main_model
-                ("skrye:targeted", "gemini::gemini-4-neon@reasoning-medium"),
-                # Freshener PR notification -> main_model
-                ("skrye:targeted", "gemini::gemini-4-neon@reasoning-medium"),
-                # Human PR (flexiondotorg) -> review_model
+                # github-actions[bot] PR notification -> update_model
+                ("skrye:targeted", "gemini::gemini-4-hydrogen@reasoning-medium"),
+                # Freshener PR notification -> update_model
+                ("skrye:targeted", "gemini::gemini-4-hydrogen@reasoning-medium"),
+                # Human PR (flexiondotorg) -> code_model
                 ("skrye:targeted", "gemini::gemini-4-neon@reasoning-high"),
-                # Peer PR (sith-zannah) -> review_model
+                # Peer PR (sith-zannah) -> code_model
                 ("skrye:targeted", "gemini::gemini-4-neon@reasoning-high"),
-                # Dependabot PR -> main_model
-                ("skrye:targeted", "gemini::gemini-4-neon@reasoning-medium"),
-                # Weekly sweep -> main_model
+                # Dependabot PR -> update_model
+                ("skrye:targeted", "gemini::gemini-4-hydrogen@reasoning-medium"),
+                # Weekly sweep -> sweep_model
                 ("skrye:weekly_sweep", "gemini::gemini-4-neon@reasoning-medium"),
-                # 6-hour reconciliation sweep -> main_model
+                # 6-hour reconciliation sweep -> sweep_model
                 ("skrye:reconcile_sweep", "gemini::gemini-4-neon@reasoning-medium"),
             ],
         )
 
-        # 2) Traya: main_model = openai-codex::gpt-6.2-sol@reasoning-medium, review_model = openai-codex::gpt-6.2-astra@reasoning-medium
+        # 2) Traya: update_model & sweep_model = openai-codex::gpt-6.2-sol@reasoning-medium,
+        #    code_model = openai-codex::gpt-6.2-astra@reasoning-medium
         sent_models.clear()
         store_traya = self.make_store("traya")
         coord_traya = companion.LocalExecutionCoordinator(
@@ -4010,14 +4083,15 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name="traya",
-            main_model="openai-codex::gpt-6.2-sol@reasoning-medium",
-            review_model="openai-codex::gpt-6.2-astra@reasoning-medium",
+            update_model="openai-codex::gpt-6.2-sol@reasoning-medium",
+            sweep_model="openai-codex::gpt-6.2-sol@reasoning-medium",
+            code_model="openai-codex::gpt-6.2-astra@reasoning-medium",
             clock=self.clock,
             sleeper=self.sleeper,
         )
         self.httpd.send_sync_handler = make_send_sync_handler("traya")
 
-        # Human/peer PR and issue mention turns use review_model (gpt-6.2-astra@reasoning-medium)
+        # Targeted non-automated turns and community_pr_blind_review use code_model (gpt-6.2-astra@reasoning-medium)
         coord_traya.execute_dispatch(
             kind="targeted",
             is_automated_pr=False,
@@ -4034,7 +4108,16 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             subject_kind="Issue",
             trigger_reason="mention",
         )
-        # Automated PR turn (if explicitly invoked) and sweep turns use main_model (gpt-6.2-sol@reasoning-medium)
+        coord_traya.execute_dispatch(
+            kind="community_pr_blind_review",
+            is_automated_pr=False,
+            repo="wimpysworld/tailor",
+            number=404,
+            subject_kind="PullRequest",
+            head_sha="sha_404",
+            trigger_reason="community_pr_blind_review",
+        )
+        # Automated PR turn and sweep turns use gpt-6.2-sol@reasoning-medium
         coord_traya.execute_dispatch(
             kind="targeted",
             is_automated_pr=True,
@@ -4051,9 +4134,53 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             [
                 ("traya:targeted", "openai-codex::gpt-6.2-astra@reasoning-medium"),
                 ("traya:targeted", "openai-codex::gpt-6.2-astra@reasoning-medium"),
+                ("traya:community_pr_blind_review", "openai-codex::gpt-6.2-astra@reasoning-medium"),
                 ("traya:targeted", "openai-codex::gpt-6.2-sol@reasoning-medium"),
                 ("traya:reconcile_sweep", "openai-codex::gpt-6.2-sol@reasoning-medium"),
                 ("traya:weekly_sweep", "openai-codex::gpt-6.2-sol@reasoning-medium"),
+            ],
+        )
+
+        # 3) Explicit model= override overrides all three tiers
+        override_model = "custom::override-model@reasoning-high"
+        for kind, is_auto in (
+            ("targeted", True),
+            ("reconcile_sweep", False),
+            ("weekly_sweep", False),
+            ("targeted", False),
+            ("community_pr_blind_review", False),
+        ):
+            self.assertEqual(
+                coord_skrye.select_dispatch_model(kind=kind, is_automated_pr=is_auto, model=override_model),
+                override_model,
+            )
+
+        sent_models.clear()
+        coord_traya.execute_dispatch(
+            kind="targeted",
+            is_automated_pr=True,
+            model=override_model,
+            repo="wimpysworld/WonKey",
+            number=28,
+            subject_kind="PullRequest",
+            trigger_reason="mention",
+        )
+        coord_traya.execute_dispatch(kind="reconcile_sweep", model=override_model)
+        coord_traya.execute_dispatch(
+            kind="targeted",
+            is_automated_pr=False,
+            model=override_model,
+            repo="wimpysworld/nix-config",
+            number=105,
+            subject_kind="PullRequest",
+            trigger_reason="mention",
+        )
+        self.assertEqual(
+            sent_models,
+            [
+                ("traya:targeted", override_model),
+                ("traya:reconcile_sweep", override_model),
+                ("traya:targeted", override_model),
             ],
         )
 
@@ -4380,8 +4507,9 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             data_dir=self.root / "mode1b-data",
             agent_name="skrye",
             agent_display_name="Skrye",
-            main_model="gemini::gemini-4-hydrogen@reasoning-medium",
-            review_model="gemini::gemini-4-neon@reasoning-high",
+            update_model="gemini::gemini-4-hydrogen@reasoning-medium",
+            sweep_model="gemini::gemini-4-neon@reasoning-medium",
+            code_model="gemini::gemini-4-neon@reasoning-high",
             clock=self.clock,
             sleeper=lambda _: None,
         )
@@ -4407,7 +4535,7 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
         res2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=self.clock() + 1_000_000)
         self.assertEqual(res2["targeted_dispatches"], [])
 
-        # Lightweight issue triage routes to mainModel
+        # Issue community_triage routes to code_model
         coord.execute_dispatch(
             kind="community_triage",
             repo="wimpysworld/tailor",
@@ -4415,7 +4543,7 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
             subject_kind="Issue",
             trigger_reason="community_triage",
         )
-        self.assertEqual(sent_calls[1][0], "gemini::gemini-4-hydrogen@reasoning-medium")
+        self.assertEqual(sent_calls[1][0], "gemini::gemini-4-neon@reasoning-high")
 
     def test_team_merge_timeline_verification_and_fail_closed_guards(self) -> None:
         # 1) Pure helper verify_team_merge_timeline checks
@@ -4606,8 +4734,9 @@ class StaggeredSlotsTrayaScopeAndAutomatedPrOwnershipTests(GithubCompanionTestBa
                 data_dir=data_dir,
                 agent_name="skrye",
                 agent_display_name="Skrye",
-                main_model="gemini::gemini-4-hydrogen@reasoning-medium",
-                review_model="gemini::gemini-4-neon@reasoning-high",
+                update_model="gemini::gemini-4-hydrogen@reasoning-medium",
+                sweep_model="gemini::gemini-4-neon@reasoning-medium",
+                code_model="gemini::gemini-4-neon@reasoning-high",
                 clock=self.clock,
                 sleeper=lambda _: None,
             )
@@ -5096,7 +5225,7 @@ class TerminalReplyNormalizationAndHtmlCommentFilterTests(GithubCompanionTestBas
             data_dir=self.data_dir,
             agent_name="skrye",
             agent_display_name="Skrye",
-            main_model="gemini::gemini-4-hydrogen@reasoning-medium",
+            code_model="gemini::gemini-4-hydrogen@reasoning-medium",
             telegram_bot_token_path=self.bot_token_file,
             telegram_allowed_users_path=self.allowed_users_file,
             telegram_api_url=self.httpd.base_url,
@@ -5817,8 +5946,9 @@ class StubLinearSyncClient:
 class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
     """End-to-end tests for WW-397 Linear-backed Community Issues intake, research, implementation, sign-off pings, and close/merge sync."""
 
-    MAIN_MODEL = "gemini::gemini-4-hydrogen@reasoning-medium"
-    REVIEW_MODEL = "gemini::gemini-4-neon@reasoning-high"
+    UPDATE_MODEL = "gemini::gemini-4-hydrogen@reasoning-medium"
+    SWEEP_MODEL = "gemini::gemini-4-neon@reasoning-medium"
+    CODE_MODEL = "gemini::gemini-4-neon@reasoning-high"
 
     @staticmethod
     def _utc_ms(year: int, month: int, day: int, hour: int, minute: int = 0) -> int:
@@ -5983,8 +6113,9 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name=agent_name,
-            main_model=self.MAIN_MODEL,
-            review_model=self.REVIEW_MODEL,
+            update_model=self.UPDATE_MODEL,
+            sweep_model=self.SWEEP_MODEL,
+            code_model=self.CODE_MODEL,
             telegram_client=tg_client,
             completion_timeout_ms=1_000,
             poll_interval_ms=20,
@@ -6180,7 +6311,7 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
             self.assertEqual(dispatch["kind"], "linear_triage_research")
             self.assertTrue(dispatch["task_succeeded"])
             self.assertFalse(dispatch["telegram_forwarded"])
-            self.assertEqual(rpc_call["model"], self.REVIEW_MODEL)
+            self.assertEqual(rpc_call["model"], self.CODE_MODEL)
             meta = rpc_call["meta"]
             assert isinstance(meta, dict)
             self.assertEqual(meta["dispatch_kind"], "linear_triage_research")
@@ -6195,7 +6326,7 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
         res2 = runner.run_cycle(run_sweeps_if_due=False, now_override_ms=slot2_ms)
         self.assertEqual(len(res2["targeted_dispatches"]), 1)
         self.assertEqual(rpc_calls[2]["meta"]["linear_issue_id"], seeded_eligible[2]["id"])  # type: ignore[index]
-        self.assertEqual(rpc_calls[2]["model"], self.REVIEW_MODEL)
+        self.assertEqual(rpc_calls[2]["model"], self.CODE_MODEL)
         self.assertFalse(res2["targeted_dispatches"][0]["telegram_forwarded"])
         self.assertEqual(self.httpd.telegram_requests, [])
 
@@ -6336,7 +6467,7 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
         self.assertEqual(len(res1["targeted_dispatches"]), 1)
         self.assertEqual(res1["targeted_dispatches"][0]["kind"], "linear_todo_implement")
         self.assertTrue(res1["targeted_dispatches"][0]["task_succeeded"])
-        self.assertEqual(rpc_calls[0]["model"], self.REVIEW_MODEL)
+        self.assertEqual(rpc_calls[0]["model"], self.CODE_MODEL)
         # Linear moved to In Progress strictly before RPC dispatch
         self.assertEqual(observed_states_at_rpc[lin1_id], "In Progress")
         idx_claim = event_log.index(("linear_update", lin1_id, "In Progress"))
@@ -7595,8 +7726,9 @@ class LinearCommunityIssuesPipelineTests(GithubCompanionTestBase):
 class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
     """End-to-end tests for WW-398 Lane A blind two-family PR review, Lane B briefs, needs-decision pings, and traya isolation."""
 
-    MAIN_MODEL = "gemini::gemini-4-hydrogen@reasoning-medium"
-    REVIEW_MODEL = "gemini::gemini-4-neon@reasoning-high"
+    UPDATE_MODEL = "gemini::gemini-4-hydrogen@reasoning-medium"
+    SWEEP_MODEL = "gemini::gemini-4-neon@reasoning-medium"
+    CODE_MODEL = "gemini::gemini-4-neon@reasoning-high"
 
     def setUp(self) -> None:
         super().setUp()
@@ -7806,8 +7938,9 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name=norm_agent,
-            main_model=self.MAIN_MODEL,
-            review_model=self.REVIEW_MODEL,
+            update_model=self.UPDATE_MODEL,
+            sweep_model=self.SWEEP_MODEL,
+            code_model=self.CODE_MODEL,
             telegram_client=tg_client,
             completion_timeout_ms=1_000,
             poll_interval_ms=20,
@@ -7919,7 +8052,7 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
         res_s1 = skrye_runner.run_cycle(run_sweeps_if_due=False, now_override_ms=t0)
         self.assertEqual(len(skrye_rpc), 2)
         self.assertEqual([c["meta"]["dispatch_kind"] for c in skrye_rpc], ["community_pr_blind_review", "community_pr_blind_review"])  # type: ignore[index]
-        self.assertEqual([c["model"] for c in skrye_rpc], [self.REVIEW_MODEL, self.REVIEW_MODEL])
+        self.assertEqual([c["model"] for c in skrye_rpc], [self.CODE_MODEL, self.CODE_MODEL])
         self.assertEqual(self.httpd.telegram_requests, [])
         self.assertEqual(res_s1["needs_decision_notifications"], [])
 
@@ -12241,8 +12374,9 @@ class LinearCommunityPullRequestsPipelineTests(GithubCompanionTestBase):
 class LinearOperatorGuidanceAndMentionWakeTests(GithubCompanionTestBase):
     """Tests for two-mode Linear operator guidance (Mode A passive + Lane A bypass) and @mention wake (Mode B)."""
 
-    MAIN_MODEL = "gemini::gemini-4-hydrogen@reasoning-medium"
-    REVIEW_MODEL = "gemini::gemini-4-neon@reasoning-high"
+    UPDATE_MODEL = "gemini::gemini-4-hydrogen@reasoning-medium"
+    SWEEP_MODEL = "gemini::gemini-4-neon@reasoning-medium"
+    CODE_MODEL = "gemini::gemini-4-neon@reasoning-high"
 
     @staticmethod
     def _admin_comment(
@@ -12357,8 +12491,9 @@ class LinearOperatorGuidanceAndMentionWakeTests(GithubCompanionTestBase):
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name=agent_name,
-            main_model=self.MAIN_MODEL,
-            review_model=self.REVIEW_MODEL,
+            update_model=self.UPDATE_MODEL,
+            sweep_model=self.SWEEP_MODEL,
+            code_model=self.CODE_MODEL,
             telegram_client=tg_client,
             linear_client=linear_client,
             completion_timeout_ms=1_000,
@@ -12821,7 +12956,7 @@ class HealthAlertsTests(GithubCompanionTestBase):
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name=agent_name,
-            main_model="gemini::gemini-4-hydrogen",
+            code_model="gemini::gemini-4-hydrogen",
             telegram_client=tg_client,
             clock=self.clock,
             sleeper=self.sleeper,
@@ -13033,7 +13168,7 @@ class OperatorDigestTests(GithubCompanionTestBase):
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name=agent_name,
-            main_model="gemini::gemini-4-hydrogen",
+            code_model="gemini::gemini-4-hydrogen",
             telegram_client=tg_client,
             linear_client=linear_client,
             clock=self.clock,
@@ -13410,7 +13545,7 @@ class PrIssueLinkingAndPauseTests(GithubCompanionTestBase):
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name="skrye",
-            main_model="gemini::gemini-4-hydrogen",
+            code_model="gemini::gemini-4-hydrogen",
             telegram_client=tg_client,
             linear_client=linear_stub,
             completion_timeout_ms=1_000,
@@ -13835,7 +13970,7 @@ class SecurityPatchReleaseGateTests(GithubCompanionTestBase):
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name=owner_agent,
-            main_model="gemini::gemini-4-hydrogen",
+            code_model="gemini::gemini-4-hydrogen",
             telegram_client=tg_client,
             linear_client=linear_stub,
             clock=self.clock,
@@ -14124,7 +14259,7 @@ class SecurityPatchReleaseGateTests(GithubCompanionTestBase):
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name=owner_agent,
-            main_model="gemini::gemini-4-hydrogen",
+            code_model="gemini::gemini-4-hydrogen",
             telegram_client=tg_client,
             linear_client=linear_stub,
             clock=self.clock,
@@ -14517,7 +14652,7 @@ class SecurityPatchReleaseGateTests(GithubCompanionTestBase):
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name="skrye",
-            main_model="gemini::gemini-4-hydrogen",
+            code_model="gemini::gemini-4-hydrogen",
             telegram_client=tg_client,
             clock=self.clock,
             sleeper=self.sleeper,
@@ -14655,7 +14790,7 @@ class InReviewStatusLabelsAndAllowMergeTests(GithubCompanionTestBase):
             rpc_client=rpc,
             data_dir=self.data_dir,
             agent_name=agent_name,
-            main_model="gemini::gemini-4-hydrogen",
+            code_model="gemini::gemini-4-hydrogen",
             telegram_client=tg_client,
             clock=self.clock,
             sleeper=self.sleeper,
@@ -15768,8 +15903,9 @@ class InReviewStatusLabelsAndAllowMergeTests(GithubCompanionTestBase):
 class UnifiedLlmRateControlsAndPriorityOrderTests(GithubCompanionTestBase):
     """Unified 4-option LLM rate controls, staggered poll intervals, shared priority budget, and deterministic sync."""
 
-    MAIN_MODEL = LinearCommunityIssuesPipelineTests.MAIN_MODEL
-    REVIEW_MODEL = LinearCommunityIssuesPipelineTests.REVIEW_MODEL
+    UPDATE_MODEL = LinearCommunityIssuesPipelineTests.UPDATE_MODEL
+    SWEEP_MODEL = LinearCommunityIssuesPipelineTests.SWEEP_MODEL
+    CODE_MODEL = LinearCommunityIssuesPipelineTests.CODE_MODEL
     _utc_ms = staticmethod(LinearCommunityIssuesPipelineTests._utc_ms)
     _owned_numbers = staticmethod(LinearCommunityIssuesPipelineTests._owned_numbers)
     _graphql_issue_node = staticmethod(LinearCommunityIssuesPipelineTests._graphql_issue_node)

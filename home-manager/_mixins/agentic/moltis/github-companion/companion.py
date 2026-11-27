@@ -134,6 +134,7 @@ TEAM_LABEL_TRIGGER_REASONS: dict[str, str] = {
 MODEL_FAMILY_BY_AGENT: dict[str, str] = {"skrye": "gemini", "zannah": "gemini", "traya": "gpt"}
 LINEAR_ISSUE_DISPATCH_KINDS = frozenset({"linear_triage_research", "linear_todo_implement", "linear_operator_comment"})
 LINEAR_PR_DISPATCH_KINDS = frozenset({"community_pr_blind_review", "community_pr_lane_a_merge", "community_pr_lane_b_review"})
+SWEEP_DISPATCH_KINDS = frozenset({"reconcile_sweep", "weekly_sweep"})
 MODE_1B_DISPATCH_KINDS = frozenset({"community_triage", "community_auto_review", *TEAM_LABELS, *LINEAR_ISSUE_DISPATCH_KINDS, *LINEAR_PR_DISPATCH_KINDS})
 SILENT_TELEGRAM_DISPATCH_KINDS = frozenset({"linear_triage_research", "community_pr_blind_review", "community_pr_lane_b_review"})
 MAX_LINEAR_OPERATOR_COMMENTS_PER_POLL = 3
@@ -663,6 +664,21 @@ def is_sensitive_community_pr_path(file_path: str) -> bool:
         or fnmatch.fnmatchcase(basename, "gemfile*")
         or fnmatch.fnmatchcase(basename, "*.gemspec")
     )
+
+
+def resolve_model_tiers(
+    *,
+    update_model: str = "",
+    sweep_model: str = "",
+    code_model: str = "",
+) -> tuple[str, str, str]:
+    raw_update = (update_model or "").strip()
+    raw_sweep = (sweep_model or "").strip()
+    raw_code = (code_model or "").strip()
+    resolved_code = raw_code or raw_sweep or raw_update
+    resolved_sweep = raw_sweep or resolved_code
+    resolved_update = raw_update or resolved_sweep
+    return (resolved_update, resolved_sweep, resolved_code)
 
 
 def resolve_community_auto_merge_config(
@@ -5889,14 +5905,17 @@ class NotificationPoller:
 class LocalExecutionCoordinator:
     """Serialise all targeted turns, 6-hour reconciliation sweeps, and weekly sweeps under coordinator.lock and active-dispatch.json."""
 
-    def __init__(self, state_store: CompanionStateStore, rpc_client: MoltisRpcClient, data_dir: Path | str, agent_name: str, agent_display_name: str = "", main_model: str = "", review_model: str = "", matrix_client: MatrixClient | None = None, telegram_client: TelegramClient | None = None, telegram_bot_token_path: Path | str | None = None, telegram_allowed_users_path: Path | str | None = None, telegram_api_url: str = DEFAULT_TELEGRAM_API_URL, session_key: str = DEFAULT_GH_SESSION_KEY, room_id: str = DEFAULT_ROOM_ID, schedule_dow: int | None = None, schedule_day_name: str = "", completion_timeout_ms: int | None = None, recovery_deadline_ms: int | None = None, completion_wait_timeout_secs: float | None = None, recovery_wait_timeout_secs: float | None = None, rpc_timeout_secs: float = DEFAULT_RPC_TIMEOUT_SECS, poll_interval_ms: int = DEFAULT_COMPLETION_POLL_INTERVAL_MS, clock: Callable[[], int] = now_ms, sleeper: Callable[[float], None] = time.sleep, linear_client: linear_sync.LinearSyncClient | None = None):
+    def __init__(self, state_store: CompanionStateStore, rpc_client: MoltisRpcClient, data_dir: Path | str, agent_name: str, agent_display_name: str = "", update_model: str = "", sweep_model: str = "", code_model: str = "", matrix_client: MatrixClient | None = None, telegram_client: TelegramClient | None = None, telegram_bot_token_path: Path | str | None = None, telegram_allowed_users_path: Path | str | None = None, telegram_api_url: str = DEFAULT_TELEGRAM_API_URL, session_key: str = DEFAULT_GH_SESSION_KEY, room_id: str = DEFAULT_ROOM_ID, schedule_dow: int | None = None, schedule_day_name: str = "", completion_timeout_ms: int | None = None, recovery_deadline_ms: int | None = None, completion_wait_timeout_secs: float | None = None, recovery_wait_timeout_secs: float | None = None, rpc_timeout_secs: float = DEFAULT_RPC_TIMEOUT_SECS, poll_interval_ms: int = DEFAULT_COMPLETION_POLL_INTERVAL_MS, clock: Callable[[], int] = now_ms, sleeper: Callable[[float], None] = time.sleep, linear_client: linear_sync.LinearSyncClient | None = None):
         self.state_store = state_store
         self.rpc_client = rpc_client
         self.data_dir = Path(data_dir)
         self.agent_name = normalize_agent_name(agent_name)
         self.agent_display_name = derive_display_name(self.agent_name, agent_display_name)
-        self.main_model = (main_model or "").strip()
-        self.review_model = (review_model or self.main_model).strip()
+        self.update_model, self.sweep_model, self.code_model = resolve_model_tiers(
+            update_model=update_model,
+            sweep_model=sweep_model,
+            code_model=code_model,
+        )
         self.matrix_client = matrix_client
         self.telegram_client = telegram_client or (TelegramClient(bot_token_path=telegram_bot_token_path, allowed_users_path=telegram_allowed_users_path, api_url=telegram_api_url) if (telegram_bot_token_path or telegram_allowed_users_path) else None)
         self.linear_client = linear_client
@@ -6082,7 +6101,7 @@ class LocalExecutionCoordinator:
             if state_key
             else None
         )
-        if kind in ("reconcile_sweep", "weekly_sweep"):
+        if kind in SWEEP_DISPATCH_KINDS:
             self.state_store.complete_sweep(kind, sweep_date=str(active_record["sweep_date"]).strip() if active_record.get("sweep_date") else None, now_override_ms=stamp_ms)
         return {"watermark": watermark_result, "queued_followup": bool(_as_dict(watermark_result).get("pending_followup"))}
 
@@ -6259,7 +6278,7 @@ class LocalExecutionCoordinator:
             state_key = str(active_record.get("state_key") or active_record.get("thread_id") or "").strip()
             reason = (failure_reason or "post_turn_write_failed").strip()
             watermark_result = self.state_store.fail_thread_review(state_key, failure_reason=reason, now_override_ms=stamp_ms) if state_key else None
-            if kind in ("reconcile_sweep", "weekly_sweep"):
+            if kind in SWEEP_DISPATCH_KINDS:
                 self.state_store.fail_sweep(kind, failure_reason=reason, attempt_at_ms=_safe_int(active_record.get("started_at_ms"), 0) or None, now_override_ms=stamp_ms)
             self._clear_active_dispatch_if_matching(active_record, now_override_ms=stamp_ms)
         dispatch_result.pop("_deferred_active_record", None)
@@ -6278,7 +6297,7 @@ class LocalExecutionCoordinator:
         kind = str(active_record.get("kind") or "")
         state_key = str(active_record.get("state_key") or active_record.get("thread_id") or "").strip()
         watermark_result = self.state_store.fail_thread_review(state_key, failure_reason=failure_reason, now_override_ms=stamp_ms) if state_key else None
-        if kind in ("reconcile_sweep", "weekly_sweep"):
+        if kind in SWEEP_DISPATCH_KINDS:
             self.state_store.fail_sweep(kind, failure_reason=failure_reason, attempt_at_ms=_safe_int(active_record.get("started_at_ms"), 0) or None, now_override_ms=stamp_ms)
         self.state_store.write_active_dispatch(None, now_override_ms=stamp_ms)
         return {"watermark": watermark_result, "queued_followup": bool(_as_dict(watermark_result).get("pending_followup"))}
@@ -6401,6 +6420,16 @@ class LocalExecutionCoordinator:
         with self.state_store.coordinator_lock():
             return self._recover_unlocked(now_override_ms=now_override_ms)
 
+    def select_dispatch_model(self, *, kind: str, is_automated_pr: bool = False, model: str | None = None) -> str:
+        override = (model or "").strip()
+        if override:
+            return override
+        if kind == "targeted" and is_automated_pr:
+            return (self.update_model or self.sweep_model or self.code_model).strip()
+        if kind in SWEEP_DISPATCH_KINDS:
+            return (self.sweep_model or self.code_model or self.update_model).strip()
+        return (self.code_model or self.sweep_model or self.update_model).strip()
+
     def execute_dispatch(self, *, kind: str, model: str | None = None, is_automated_pr: bool = False, session_key: str | None = None, thread_id: str | None = None, state_key: str | None = None, repo: str | None = None, number: int | None = None, subject_kind: str | None = None, head_sha: str | None = None, ci_state: str | None = None, updated_at: str | None = None, trigger_reason: str | None = None, comment_id: int | str | None = None, review_id: int | str | None = None, trusted_item_id: int | str | None = None, community_auto_merge_eligible: bool | None = None, team_label: str | None = None, team_label_event_key: str | None = None, triaged_head_sha: str | None = None, head_sha_changed: bool = False, linear_issue_id: str | None = None, linear_issue_identifier: str | None = None, linear_issue_url: str | None = None, linear_issue_estimate: int | None = None, linear_comment_id: str | None = None, linear_comment_parent_id: str | None = None, linear_comment_author: str | None = None, operator_guidance: Iterable[dict[str, str]] | None = None, github_url: str | None = None, bypass_reasons: Iterable[str] | None = None, lane_a_polish_notes: str | None = None, revision: str | None = None, sweep_date: str | None = None, extra_instructions: str = "", dispatch_id: str | None = None, defer_watermark_commit: bool = False, now_override_ms: int | None = None, **_ignored: object) -> dict:
         """Serialise a model turn under coordinator.lock while allowing state.json updates under companion.lock."""
         with self.state_store.coordinator_lock():
@@ -6420,16 +6449,14 @@ class LocalExecutionCoordinator:
                 }
             start_ms = _safe_int(now_override_ms, self.clock()) if now_override_ms is not None else self.clock()
             resolved_session_key = (session_key or self.session_key or DEFAULT_GH_SESSION_KEY).strip()
-            is_issue_triage = kind == "community_triage" and str(subject_kind or "").strip().lower() == "issue"
-            use_review_model = (kind == "targeted" and not is_automated_pr) or (kind in MODE_1B_DISPATCH_KINDS and not is_issue_triage) or (kind in LINEAR_PR_DISPATCH_KINDS)
-            resolved_model = (model or ((self.review_model or self.main_model) if use_review_model else self.main_model)).strip()
+            resolved_model = self.select_dispatch_model(kind=kind, is_automated_pr=is_automated_pr, model=model)
             resolved_dispatch_id = (dispatch_id or f"ghd-{self.agent_name}-{uuid.uuid4().hex}").strip()
             eff_state_key = (state_key or thread_id or (make_pr_key(repo, number) if repo and number else "")).strip()
 
             if eff_state_key:
                 wm_entry = self.state_store.mark_thread_in_flight(eff_state_key, updated_at=updated_at, head_sha=head_sha, ci_state=ci_state, now_override_ms=start_ms)
                 updated_at, head_sha, ci_state = updated_at or wm_entry.get("in_flight_updated_at"), head_sha or wm_entry.get("in_flight_head_sha"), ci_state or wm_entry.get("in_flight_ci_state")
-            if kind in ("reconcile_sweep", "weekly_sweep"):
+            if kind in SWEEP_DISPATCH_KINDS:
                 self.state_store.record_sweep_attempt(kind, now_override_ms=start_ms)
 
             active_record: dict[str, object] = {"dispatch_id": resolved_dispatch_id, "session_key": resolved_session_key, "kind": kind, "started_at_ms": start_ms, "status": "in_flight"}
@@ -12661,8 +12688,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Moltis GitHub notification and pull-request companion")
     parser.add_argument("--agent-name", default=os.environ.get("MOLTIS_GITHUB_COMPANION_AGENT_NAME") or os.environ.get("MOLTIS_COMPANION_AGENT_NAME", ""))
     parser.add_argument("--agent-display-name", default=os.environ.get("MOLTIS_GITHUB_COMPANION_AGENT_DISPLAY_NAME") or os.environ.get("MOLTIS_COMPANION_AGENT_DISPLAY_NAME", ""))
-    parser.add_argument("--main-model", default=os.environ.get("MOLTIS_GITHUB_COMPANION_MAIN_MODEL") or os.environ.get("MOLTIS_COMPANION_MAIN_MODEL", ""))
-    parser.add_argument("--review-model", default=os.environ.get("MOLTIS_GITHUB_COMPANION_REVIEW_MODEL") or os.environ.get("MOLTIS_COMPANION_REVIEW_MODEL", ""))
+    parser.add_argument("--update-model", default=os.environ.get("MOLTIS_GITHUB_COMPANION_UPDATE_MODEL", ""))
+    parser.add_argument("--sweep-model", default=os.environ.get("MOLTIS_GITHUB_COMPANION_SWEEP_MODEL", ""))
+    parser.add_argument("--code-model", default=os.environ.get("MOLTIS_GITHUB_COMPANION_CODE_MODEL", ""))
     parser.add_argument("--self-user-id", default=os.environ.get("MOLTIS_GITHUB_COMPANION_MATRIX_SELF_USER_ID") or os.environ.get("MOLTIS_COMPANION_SELF_USER_ID", ""))
     parser.add_argument("--room-id", default=os.environ.get("MOLTIS_GITHUB_COMPANION_MATRIX_ROOM_ID") or os.environ.get("MOLTIS_COMPANION_ROOM_ID", DEFAULT_ROOM_ID))
     parser.add_argument("--homeserver-url", default=os.environ.get("MOLTIS_GITHUB_COMPANION_MATRIX_HOMESERVER_URL") or os.environ.get("MOLTIS_COMPANION_HOMESERVER_URL", DEFAULT_HOMESERVER_URL))
@@ -12700,7 +12728,11 @@ def resolve_runtime_config(args: argparse.Namespace) -> dict:
         explicit_dow = _safe_int(env_dow, default_dow)
     state_dir_raw = (args.state_dir or "").strip()
     xdg_state = os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state")
-    main_model = (args.main_model or "").strip()
+    update_model, sweep_model, code_model = resolve_model_tiers(
+        update_model=getattr(args, "update_model", "") or os.environ.get("MOLTIS_GITHUB_COMPANION_UPDATE_MODEL", ""),
+        sweep_model=getattr(args, "sweep_model", "") or os.environ.get("MOLTIS_GITHUB_COMPANION_SWEEP_MODEL", ""),
+        code_model=getattr(args, "code_model", "") or os.environ.get("MOLTIS_GITHUB_COMPANION_CODE_MODEL", ""),
+    )
     cam_cfg = resolve_community_auto_merge_config(
         enabled=getattr(args, "community_auto_merge_enabled", "") or None,
         max_lines=getattr(args, "community_auto_merge_max_lines", "") or None,
@@ -12713,8 +12745,9 @@ def resolve_runtime_config(args: argparse.Namespace) -> dict:
     raw_daily_impl_cap = getattr(args, "daily_implementations_cap", "")
     return {
         "agent_name": agent_name, "agent_display_name": derive_display_name(agent_name, args.agent_display_name),
-        "main_model": main_model,
-        "review_model": (getattr(args, "review_model", "") or os.environ.get("MOLTIS_GITHUB_COMPANION_REVIEW_MODEL", "") or main_model).strip(),
+        "update_model": update_model,
+        "sweep_model": sweep_model,
+        "code_model": code_model,
         "schedule_dow": _safe_int(explicit_dow, default_dow) if explicit_dow is not None else default_dow,
         "schedule_day_name": (getattr(args, "schedule_day_name", "") or os.environ.get("MOLTIS_GITHUB_COMPANION_SCHEDULE_DAY_NAME", "") or default_day_name).strip(),
         "self_user_id": (args.self_user_id or f"@{agent_name}:{SERVER_DOMAIN}").strip(), "room_id": (args.room_id or DEFAULT_ROOM_ID).strip(),
@@ -12766,7 +12799,7 @@ def main(argv: list[str] | None = None) -> int:
     poller = NotificationPoller(state_store=store, gh_client=gh_client, read_only_trial=cfg["read_only_trial"], poll_interval_minutes=cfg["poll_interval_minutes"])
     trust_filter = TrustFilterAndSnapshotBuilder(state_store=store, gh_client=gh_client, matrix_client=matrix_client, telegram_client=telegram_client, agent_name=cfg["agent_name"])
     linear_client = linear_sync.LinearSyncClient.from_env()
-    execution_coordinator = LocalExecutionCoordinator(state_store=store, rpc_client=rpc_client, data_dir=cfg["data_dir"], agent_name=cfg["agent_name"], agent_display_name=cfg["agent_display_name"], main_model=cfg["main_model"], review_model=cfg["review_model"], matrix_client=matrix_client, telegram_client=telegram_client, room_id=cfg["room_id"], schedule_dow=cfg["schedule_dow"], schedule_day_name=cfg["schedule_day_name"], linear_client=linear_client)
+    execution_coordinator = LocalExecutionCoordinator(state_store=store, rpc_client=rpc_client, data_dir=cfg["data_dir"], agent_name=cfg["agent_name"], agent_display_name=cfg["agent_display_name"], update_model=cfg["update_model"], sweep_model=cfg["sweep_model"], code_model=cfg["code_model"], matrix_client=matrix_client, telegram_client=telegram_client, room_id=cfg["room_id"], schedule_dow=cfg["schedule_dow"], schedule_day_name=cfg["schedule_day_name"], linear_client=linear_client)
     runner = GithubCompanionRunner(state_store=store, gh_client=gh_client, poller=poller, trust_filter=trust_filter, execution_coordinator=execution_coordinator, matrix_client=matrix_client, read_only_trial=cfg["read_only_trial"], linear_client=linear_client, telegram_client=telegram_client, poll_interval_minutes=cfg["poll_interval_minutes"])
     if cfg["once"]:
         poller.wait_until_due()

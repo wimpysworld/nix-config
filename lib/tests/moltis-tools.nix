@@ -117,7 +117,9 @@ let
     pkgs.callPackage ../../home-manager/_mixins/agentic/moltis/github-companion
       {
         agentName = "skrye";
-        mainModel = "gemini::gemini-4-neon";
+        updateModel = "gemini::gemini-4-hydrogen@reasoning-medium";
+        sweepModel = "gemini::gemini-4-neon@reasoning-medium";
+        codeModel = "gemini::gemini-4-neon@reasoning-high";
         passwordPath = "/synthetic/matrix-password";
         telegramBotTokenPath = "/synthetic/telegram-bot-token";
         telegramAllowedUsersPath = "/synthetic/telegram-allowed-users";
@@ -256,12 +258,14 @@ let
         else
           "gemini::gemini-4-neon@reasoning-high";
       expectedReviewReasoningEffort = if host == "traya" then "medium" else "high";
-      expectedGithubMainModel =
+      expectedGithubUpdateModel =
         if host == "traya" then expectedMainModel else "gemini::gemini-4-hydrogen@reasoning-medium";
+      expectedGithubSweepModel = expectedMainModel;
+      expectedGithubCodeModel = expectedReviewModel;
       expectedAssessmentModel =
         if host == "traya" then expectedMainModel else "gemini::gemini-4-neon@reasoning-high";
       expectedAuxiliaryModel =
-        if host == "traya" then "openai-codex::gpt-6-luna@reasoning-high" else expectedGithubMainModel;
+        if host == "traya" then "openai-codex::gpt-6-luna@reasoning-high" else expectedGithubUpdateModel;
       settings = c.agentic.moltis.settings;
       cli = builtins.fromJSON (
         builtins.unsafeDiscardStringContext c.xdg.configFile."moltis/mcporter.json".text
@@ -431,11 +435,16 @@ let
     assert lib.hasInfix "export MOLTIS_GITHUB_COMPANION_AGENT_NAME=${lib.escapeShellArg agentName}"
       scripts.githubCompanion;
     assert lib.hasInfix
-      "export MOLTIS_GITHUB_COMPANION_MAIN_MODEL=${lib.escapeShellArg expectedGithubMainModel}"
+      "export MOLTIS_GITHUB_COMPANION_UPDATE_MODEL=${lib.escapeShellArg expectedGithubUpdateModel}"
       scripts.githubCompanion;
     assert lib.hasInfix
-      "export MOLTIS_GITHUB_COMPANION_REVIEW_MODEL=${lib.escapeShellArg expectedReviewModel}"
+      "export MOLTIS_GITHUB_COMPANION_SWEEP_MODEL=${lib.escapeShellArg expectedGithubSweepModel}"
       scripts.githubCompanion;
+    assert lib.hasInfix
+      "export MOLTIS_GITHUB_COMPANION_CODE_MODEL=${lib.escapeShellArg expectedGithubCodeModel}"
+      scripts.githubCompanion;
+    assert !(lib.hasInfix "MOLTIS_GITHUB_COMPANION_MAIN_MODEL" scripts.githubCompanion);
+    assert !(lib.hasInfix "MOLTIS_GITHUB_COMPANION_REVIEW_MODEL" scripts.githubCompanion);
     assert lib.hasInfix "export MOLTIS_GITHUB_COMPANION_SCHEDULE_DOW=${
       lib.escapeShellArg (
         if host == "skrye" then
@@ -609,7 +618,7 @@ let
     assert settings.agents.presets.coordinator.reasoning_effort == "medium";
     assert settings.agents.presets.review.model == expectedReviewModel;
     assert settings.agents.presets.review.reasoning_effort == expectedReviewReasoningEffort;
-    assert settings.heartbeat.model == expectedGithubMainModel;
+    assert settings.heartbeat.model == expectedGithubUpdateModel;
     assert !gemini || builtins.elem "gemini-4-hydrogen" settings.providers.gemini.models;
     assert context.auxiliaryModel == expectedAuxiliaryModel;
     assert settings.auxiliary.compaction == context.auxiliaryModel;

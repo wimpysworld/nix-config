@@ -23,7 +23,9 @@ let
     if isTraya then "gpt-6.2-sol@reasoning-medium" else "gemini-4-neon@reasoning-medium";
   mainModel = "${mainProvider}::${mainModelName}";
   assessmentModel = if isTraya then mainModel else "gemini::gemini-4-neon@reasoning-high";
-  githubMainModel = if isTraya then mainModel else "gemini::gemini-4-hydrogen@reasoning-medium";
+  githubUpdateModel = if isTraya then mainModel else "gemini::gemini-4-hydrogen@reasoning-medium";
+  githubSweepModel = mainModel;
+  githubCodeModel = reviewModel;
   reviewModel =
     if isTraya then
       "openai-codex::gpt-6.2-astra@reasoning-medium"
@@ -963,7 +965,6 @@ let
     inherit
       agentName
       agentDisplayName
-      reviewModel
       scheduleDow
       scheduleDayName
       ;
@@ -973,7 +974,9 @@ let
       maxTasksPerDay
       dailyImplementationsCap
       ;
-    mainModel = githubMainModel;
+    updateModel = githubUpdateModel;
+    sweepModel = githubSweepModel;
+    codeModel = githubCodeModel;
     selfUserId = matrixCfg.userId or "@${agentName}:matrix.wimpys.world";
     roomId = matrixCfg.roomId or "!the-cauldron:matrix.wimpys.world";
     homeserverUrl = "https://matrix.wimpys.world";
@@ -1692,7 +1695,7 @@ in
         heartbeat = {
           enabled = !config.agentic.moltis.githubCompanion.enable;
           every = "360m";
-          model = githubMainModel;
+          model = githubUpdateModel;
           sandbox_enabled = false;
           deliver = true;
           channel = "moltis";
