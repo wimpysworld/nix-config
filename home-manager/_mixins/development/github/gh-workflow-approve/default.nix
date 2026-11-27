@@ -23,6 +23,7 @@ writeShellApplication {
   ''
   + builtins.readFile ./gh-workflow-approve.sh;
   derivationArgs = {
+    nativeBuildInputs = [ jq ];
     postCheck =
       lib.optionalString shellcheck-minimal.compiler.bootstrapAvailable ''
         ${lib.getExe shellcheck-minimal} ${./gh-workflow-approve-tests.sh}
