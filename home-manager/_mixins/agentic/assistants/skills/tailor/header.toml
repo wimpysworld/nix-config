@@ -5,6 +5,6 @@ license = "BlueOak-1.0.0"
 
 [common.metadata]
 upstream = "https://github.com/wimpysworld/tailor"
-revision = "60511d95ae08b33b6e5851c5609b3c39e9460428"
+revision = "2ecee9a8bc824a771aee38e820aa318234b15f28"
 source = "skills/tailor"
 local-changes = "Moved upstream frontmatter to common metadata. The body is unchanged."

@@ -134,8 +134,9 @@ social:
 
 ### Hybrid storage model
 
-- **Static assets on `main`**: the Open Graph card (`pages/og.png`) and static dark/light README SVGs (`pages/social/*.svg`).
-- **Live daily SVGs on an orphan branch**: `.github/workflows/tailor-social.yml` renders `stats`, `stars`, `sponsors`, and live `community` SVGs on schedule, pushes them to the orphan `social-assets` branch, and updates `README.md` with commit-pinned `raw.githubusercontent.com` URLs (`[skip ci]`).
+- **`--static` on `main` (offline, no token)**: renders `hero`, `link-*`, `pkg-*`, static `community`, and the static `sponsors` call-to-action (CTA) in `pages/social/*.svg`, plus `pages/og.png`.
+- **`--live` on the orphan `social-assets` branch (requires a GitHub token)**: fetches changing GitHub and Discord counts for `stats`, `stars`, live `sponsors` (`@handles`), and live `community`. `.github/workflows/tailor-social.yml` runs this on schedule, pushes to `social-assets`, and updates `README.md` with commit-pinned `raw.githubusercontent.com` URLs (`[skip ci]`).
+- **Star CTA fallback**: when a repository is below `star_history.min_stars` or `min_days`, `stars-{dark,light}.svg` renders a themed "Star this repository" CTA card with drifting stars and a `STAR` pill. Once the repository meets both thresholds, `stars-{dark,light}.svg` switches automatically to the animated star-history chart.
 
 ### Generate static assets locally
 
@@ -147,22 +148,30 @@ social:
 6. Remind the user to upload `pages/og.png` manually in GitHub under **Settings > General > Social preview**.
 7. Commit and push the generated assets, `README.md`, and `.github/workflows/tailor-social.yml`. When using live README markers (`stats`, `stars`, `sponsors`), tell the user they can trigger **Actions > Tailor Social > Run workflow** once to create the orphan `social-assets` branch and populate the commit-pinned live URLs immediately instead of waiting for the daily schedule.
 
-### Canonical `README.md` header and marker blocks
+### Canonical `README.md` layout
 
-When `social.enabled: true`, replace the legacy `<h1 align="center">` + `256x256` icon header and the Markdown Haberdasher install table with standalone Tailor social marker blocks:
+When `social.enabled: true`, replace the legacy `<h1 align="center">` + `256x256` icon header and the Markdown Haberdasher install table with standalone Tailor social marker blocks.
 
-```markdown
-<!-- tailor:social-header:start -->
-<!-- tailor:social-header:end -->
+- **Top of `README.md`**: place `header`, `links` (preferred social pills), `community`, and `stats` in that order, then a short introduction for the project and `## Features`:
 
-<!-- tailor:social-links:start -->
-<!-- tailor:social-links:end -->
+  ```markdown
+  <!-- tailor:social-header:start -->
+  <!-- tailor:social-header:end -->
 
-<!-- tailor:social-community:start -->
-<!-- tailor:social-community:end -->
-```
+  <!-- tailor:social-links:start -->
+  <!-- tailor:social-links:end -->
 
-Supported marker names in canonical order: `header`, `links`, `community`, `packages`, `stats`, `stars`, `sponsors`. Place `packages` in the Install section and `stats`, `stars`, and `sponsors` where appropriate in `README.md`.
+  <!-- tailor:social-community:start -->
+  <!-- tailor:social-community:end -->
+
+  <!-- tailor:social-stats:start -->
+  <!-- tailor:social-stats:end -->
+  ```
+
+- **`## Install` section**: open with a concise sentence that introduces the first-party, signed package repositories on `wimpys.world`. Place the `<!-- tailor:social-packages:start -->` and `<!-- tailor:social-packages:end -->` Haberdasher button block right after that sentence. Put secondary install methods (`Any platform (bin)` and `Container (GHCR)`) in collapsible `<details>` disclosures below the block. Keep authentication notes visible when needed.
+- **Bottom of `README.md`**: place `stars` and `sponsors` after `## Support and contributing` (or the equivalent closing section).
+
+Supported marker names: `header`, `links`, `community`, `stats`, `packages`, `stars`, `sponsors`.
 
 - Tailor writes centred theme-aware `<picture><source media="(prefers-color-scheme: dark)" srcset="..."><img src="..." alt="..."></picture>` markup (wrapped in `<a href="...">` when linked) between each pair, including the animated SVG hero in `header`.
 - Each opening and closing marker must sit alone on its own line, appear at most once per section, and never overlap another marker block.
@@ -176,6 +185,14 @@ Store every project's canonical icon as a real file at `pages/icon.svg`, even wh
 - **Keep it square and self-contained**: prefer a `1:1` SVG with an explicit `viewBox` (no external fonts, images, or scripts) or a square PNG when a photograph is required. Keep it readable on both light and dark surfaces, with no wide horizontal wordmark.
 - **Replace the starter placeholder**: replace Tailor's default blue `pages/icon.svg` with the project's own mark. Haberdasher ignores the placeholder bytes.
 - **Enable static Pages later**: Tailor only creates the static starter in a missing or empty `pages/` directory. When `pages/icon.svg` or `pages/icon.png` already exists before you enable static Pages, preserve it alongside `pages/index.html`.
+
+## House typography
+
+Use **Work Sans** for regular, UI, and heading text, and **Fira Code** for monospace, code, and terminal text.
+
+- **Landing pages and SVG font stacks**: put `"Work Sans"` first in sans-serif stacks and `"Fira Code"` first in monospace stacks.
+- **Open Graph cards**: `nix/og.nix` bundles Work Sans and static Fira Code.
+- **Terminal demos**: `nix/ntrecord.nix` bundles static Fira Code for `ntrecord`.
 
 ## Version numbering
 
