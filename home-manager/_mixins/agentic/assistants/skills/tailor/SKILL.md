@@ -125,6 +125,7 @@ social:
       min_stars: 25
       min_days: 30
     sponsors: auto           # auto, true, or false
+    contributors: true
   live:
     branch: social-assets
     schedule: "0 4 * * *"
@@ -135,7 +136,7 @@ social:
 ### Hybrid storage model
 
 - **`--static` on `main` (offline, no token)**: renders `hero`, `link-*`, `pkg-*`, static `community`, and the static `sponsors` call-to-action (CTA) in `pages/social/*.svg`, plus `pages/og.png`.
-- **`--live` on the orphan `social-assets` branch (requires a GitHub token)**: fetches changing GitHub and Discord counts for `stats`, `stars`, live `sponsors` (`@handles`), and live `community`. `.github/workflows/tailor-social.yml` runs this on schedule, pushes to `social-assets`, and updates `README.md` with commit-pinned `raw.githubusercontent.com` URLs (`[skip ci]`).
+- **`--live` on the orphan `social-assets` branch (requires a GitHub token)**: fetches changing GitHub and Discord data for `stats`, `stars`, live `sponsors` (`@handles`), live `community`, and `contributors` (human-only inline avatars). `.github/workflows/tailor-social.yml` runs this on schedule, pushes to `social-assets`, and updates `README.md` with commit-pinned `raw.githubusercontent.com` URLs (`[skip ci]`).
 - **Star CTA fallback**: when a repository is below `star_history.min_stars` or `min_days`, `stars-{dark,light}.svg` renders a themed "Star this repository" CTA card with drifting stars and a `STAR` pill. Once the repository meets both thresholds, `stars-{dark,light}.svg` switches automatically to the animated star-history chart.
 
 ### Generate static assets locally
@@ -146,32 +147,25 @@ social:
 4. Run `just og` to render `pages/og.png` (`1280 x 640`, `< 1 MB`). `just og` refuses to overwrite existing artwork; pass `just og --force` to regenerate. `tailor measure` accepts both `1280 x 640` and bespoke `1200 x 630` PNGs under 1 MB.
 5. Update existing `pages/index.html` landing pages manually: new static Pages starters include Open Graph and Twitter Card tags automatically, but existing `first-fit` `pages/index.html` files stay untouched. Set `og:image` to `https://<domain>/og.png` (from `pages.cname` or `https://<owner>.github.io/<repo>/og.png`), `og:image:width="1280"`, `og:image:height="640"`, `og:image:alt`, and `twitter:card="summary_large_image"` (replacing older `icon.png` or `summary` tags).
 6. Remind the user to upload `pages/og.png` manually in GitHub under **Settings > General > Social preview**.
-7. Commit and push the generated assets, `README.md`, and `.github/workflows/tailor-social.yml`. When using live README markers (`stats`, `stars`, `sponsors`), tell the user they can trigger **Actions > Tailor Social > Run workflow** once to create the orphan `social-assets` branch and populate the commit-pinned live URLs immediately instead of waiting for the daily schedule.
+7. Commit and push the generated assets, `README.md`, and `.github/workflows/tailor-social.yml`. When using live README markers (`stats`, `sponsors`, `stars`, `contributors`), tell the user they can trigger **Actions > Tailor Social > Run workflow** once to create the orphan `social-assets` branch and populate the commit-pinned live URLs immediately instead of waiting for the daily schedule.
 
 ### Canonical `README.md` layout
 
-When `social.enabled: true`, replace the legacy `<h1 align="center">` + `256x256` icon header and the Markdown Haberdasher install table with standalone Tailor social marker blocks.
+When `social.enabled: true`, replace the legacy `<h1 align="center">` + `256x256` icon header and the Markdown Haberdasher install table with standalone Tailor social marker blocks. Follow this canonical 11-part order:
 
-- **Top of `README.md`**: place `header`, `links` (preferred social pills), `community`, and `stats` in that order, then a short introduction for the project and `## Features`:
+1. **`header`** (`<!-- tailor:social-header:start -->` / `<!-- tailor:social-header:end -->`): Hero banner with flowing waves.
+2. **`links`** (`<!-- tailor:social-links:start -->` / `<!-- tailor:social-links:end -->`): Preferred social buttons.
+3. **`community`** (`<!-- tailor:social-community:start -->` / `<!-- tailor:social-community:end -->`): Community chat or forum banner.
+4. **Introduction prose**: Short project overview.
+5. **`## Features`**: Key project capabilities.
+6. **`stats`** (`<!-- tailor:social-stats:start -->` / `<!-- tailor:social-stats:end -->`): 4-column project health strip (`Commits`, `Issues` open and closed, `Pull Requests` merged and open, `Established` month and year), linking to `/pulse`.
+7. **`## Install`**: Open with a sentence about the first-party, signed package repositories on `wimpys.world`. Place the `packages` button block (`<!-- tailor:social-packages:start -->` / `<!-- tailor:social-packages:end -->`) next. Put `Any platform (bin)` and `Container (GHCR)` in collapsible `<details>` fold-downs, and keep authentication notes visible when needed.
+8. **`sponsors`** (`<!-- tailor:social-sponsors:start -->` / `<!-- tailor:social-sponsors:end -->`): GitHub Sponsors banner.
+9. **Free text sections**: `Quick start`, `Agent skill`, `Development`, `Documentation`, and `Support and contributing`.
+10. **`stars`** (`<!-- tailor:social-stars:start -->` / `<!-- tailor:social-stars:end -->`): Star history chart, or the drifting-stars CTA card below threshold.
+11. **`contributors`** (`<!-- tailor:social-contributors:start -->` / `<!-- tailor:social-contributors:end -->`): Floating-balloon human contributor avatars banner with a thank-you message, linking to `/graphs/contributors`, always at the very bottom.
 
-  ```markdown
-  <!-- tailor:social-header:start -->
-  <!-- tailor:social-header:end -->
-
-  <!-- tailor:social-links:start -->
-  <!-- tailor:social-links:end -->
-
-  <!-- tailor:social-community:start -->
-  <!-- tailor:social-community:end -->
-
-  <!-- tailor:social-stats:start -->
-  <!-- tailor:social-stats:end -->
-  ```
-
-- **`## Install` section**: open with a concise sentence that introduces the first-party, signed package repositories on `wimpys.world`. Place the `<!-- tailor:social-packages:start -->` and `<!-- tailor:social-packages:end -->` Haberdasher button block right after that sentence. Put secondary install methods (`Any platform (bin)` and `Container (GHCR)`) in collapsible `<details>` disclosures below the block. Keep authentication notes visible when needed.
-- **Bottom of `README.md`**: place `stars` and `sponsors` after `## Support and contributing` (or the equivalent closing section).
-
-Supported marker names: `header`, `links`, `community`, `stats`, `packages`, `stars`, `sponsors`.
+Supported marker names: `header`, `links`, `community`, `stats`, `packages`, `sponsors`, `stars`, `contributors`.
 
 - Tailor writes centred theme-aware `<picture><source media="(prefers-color-scheme: dark)" srcset="..."><img src="..." alt="..."></picture>` markup (wrapped in `<a href="...">` when linked) between each pair, including the animated SVG hero in `header`.
 - Each opening and closing marker must sit alone on its own line, appear at most once per section, and never overlap another marker block.
