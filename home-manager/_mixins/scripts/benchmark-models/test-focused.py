@@ -344,7 +344,7 @@ class FocusedBenchmarkTests(unittest.TestCase):
         mod = load_focused()
         for draft_tokens in (2, 3):
             self.assertEqual(mod.mtp_widths_for_backend("vulkan", draft_tokens), (0, 2, 3, 4))
-            self.assertEqual(mod.mtp_widths_for_backend("cuda", draft_tokens), (0, 2, 3, 4))
+            self.assertEqual(mod.mtp_widths_for_backend("cuda", draft_tokens), (0, 2, 3, 4, 5, 6))
             self.assertEqual(mod.mtp_widths_for_backend("rocm", draft_tokens), (0, 2, 3))
             cases = mod.llama_case_matrix(["vulkan", "rocm"], draft_tokens)
             vulkan_widths = [w for b, w in cases if b == "vulkan"]
@@ -354,12 +354,12 @@ class FocusedBenchmarkTests(unittest.TestCase):
 
         cuda_cases = mod.llama_case_matrix(["vulkan", "cuda"], 3)
         self.assertEqual([w for b, w in cuda_cases if b == "vulkan"], [0, 2, 3, 4])
-        self.assertEqual([w for b, w in cuda_cases if b == "cuda"], [0, 2, 3, 4])
+        self.assertEqual([w for b, w in cuda_cases if b == "cuda"], [0, 2, 3, 4, 5, 6])
 
         # Models with MTP tensors sweep MTP even when production leaves mtpDraftTokens unset.
         utility_cases = mod.llama_case_matrix(["vulkan", "cuda"], None, supports_mtp=True)
         self.assertEqual([w for b, w in utility_cases if b == "vulkan"], [0, 2, 3, 4])
-        self.assertEqual([w for b, w in utility_cases if b == "cuda"], [0, 2, 3, 4])
+        self.assertEqual([w for b, w in utility_cases if b == "cuda"], [0, 2, 3, 4, 5, 6])
 
         non_mtp = mod.llama_case_matrix(["vulkan", "rocm"], None)
         self.assertEqual(non_mtp, [("vulkan", 0), ("rocm", 0)])

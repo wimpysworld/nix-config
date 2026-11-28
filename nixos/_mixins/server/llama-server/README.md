@@ -126,7 +126,7 @@ The Python suite in `focused.py` enforces parity between `llama.cpp` and Ollama:
 - **Backend selection:** NVIDIA hosts benchmark `cuda` only (avoiding Vulkan binding to an Intel integrated GPU on hybrid hosts such as `revan`), while AMD hosts benchmark `vulkan` and `rocm`.
 - **Vulkan iGPU enablement:** Ollama receives `OLLAMA_VULKAN=1` and `OLLAMA_IGPU_ENABLE=1` on Vulkan so it does not drop AMD integrated GPUs.
 - **Unified GPU memory reporting:** on AMD hosts, a 200 ms sampler sums `mem_info_vram_used + mem_info_gtt_used` from `amdgpu` sysfs. On NVIDIA hosts without `amdgpu` counters, the sampler polls `nvidia-smi` (`memory.used`) every 200 ms. Both paths report `Peak GPU Mem` and `Delta GPU Mem` (`peak - pre-load baseline`).
-- **Default MTP matrix:** for models whose GGUF carries MTP tensors (`qwen3.8-27b` and `qwen3.5-9b`), the default sweep tests `off`, `mtp2`, `mtp3`, and `mtp4` on Vulkan and CUDA, plus `off`, `mtp2`, and `mtp3` on ROCm. `mtp6` and `mtp8` are omitted from the default sweep because the November 2026 runs confirmed `mtp3` is the peak and `mtp8` drops 37%.
+- **Default MTP matrix:** for models whose GGUF carries MTP tensors (`qwen3.8-27b` and `qwen3.5-9b`), the default sweep tests `off`, `mtp2`, `mtp3`, and `mtp4` on Vulkan, `off`, `mtp2`, `mtp3`, `mtp4`, `mtp5`, and `mtp6` on CUDA, and `off`, `mtp2`, and `mtp3` on ROCm.
 
 Results, per-case JSONL streams, logs, and `summary.json` save under `~/Volatile/benchmark-models/suite-*` (or `<model>-*`).
 

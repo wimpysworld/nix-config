@@ -34,7 +34,7 @@ SEED = 42
 DEVICES = {"vulkan": "Vulkan0", "rocm": "ROCm0", "cuda": "CUDA0"}
 MTP_WIDTHS_BY_BACKEND: dict[str, tuple[int, ...]] = {
     "vulkan": (2, 3, 4),
-    "cuda": (2, 3, 4),
+    "cuda": (2, 3, 4, 5, 6),
     "rocm": (2, 3),
 }
 MTP_BACKENDS = set(MTP_WIDTHS_BY_BACKEND)
