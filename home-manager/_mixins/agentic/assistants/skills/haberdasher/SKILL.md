@@ -118,3 +118,12 @@ nix path-info --store https://nix.wimpys.world <store-path>
 - Shipping macOS tarballs or OS-named Linux tarballs beside bare binaries. bin then prompts on a tie.
 - Letting a portable Electron build update itself.
 - Consumer flake inputs with `follows`.
+
+## Portfolio discovery
+
+`haberdasher.yaml` lists only repositories that publish packages to `wimpys.world`. To find Martin's full Tailor-managed portfolio, check both sources:
+
+- **Haberdasher** (`wimpysworld/Haberdasher` `haberdasher.yaml`): packaged repositories published to `<host>.wimpys.world` and exported as `haberdasher.json`.
+- **Vitrine** ([`vitrine.yaml` in `flexiondotorg/flexiondotorg`](https://github.com/flexiondotorg/flexiondotorg/blob/main/vitrine.yaml)): merges Haberdasher packages with non-Haberdasher projects (such as `wimpysworld/glyph-party`, `wimpysworld/nix-config`, `wimpysworld/nothing-but-nix`, `wimpysworld/deb-get`, `wimpysworld/extra-life`, and `quickemu-project/quickemu`) to build Martin's GitHub profile (`flexiondotorg/flexiondotorg` `README.md`) and `wimpys.world`.
+
+See the `tailor` skill's [personal fleet reference](../tailor/references/personal.md) for Tailor, Haberdasher, and Vitrine connecting tissue and repository-specific exceptions.

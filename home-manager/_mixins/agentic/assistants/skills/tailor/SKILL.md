@@ -148,10 +148,12 @@ social:
 1. Run `tailor baste`, get approval, then run `tailor alter` to create `nix/og.nix`, `just/og.just`, and `.github/workflows/tailor-social.yml`. Add `nix/og.nix` to Git so the Nix flake sees it. `tailor alter` and `tailor alter --recut` never overwrite `pages/og.png`.
 2. Add the desired `<!-- tailor:social-<name>:start -->` / `<!-- tailor:social-<name>:end -->` markers to `README.md`.
 3. Run `tailor social --static --update-readme` to render `pages/social/*.svg`, populate the static README blocks, and link enabled live markers (`stats`, `stars`, `contributors`, and live `community`) to `https://raw.githubusercontent.com/<owner>/<repo>/<branch>/...`. Add `--dry-run` to preview. `--static` is the default when `--live` is omitted.
-4. Run `just og` to render `pages/og.png` (`1280 x 640`, `< 1 MB`). `just og` refuses to overwrite existing artwork; pass `just og --force` to regenerate. `tailor measure` accepts both `1280 x 640` and bespoke `1200 x 630` PNGs under 1 MB.
+4. Run `just og` to render `pages/og.png` (`1280 x 640`, `< 1 MB`). `nix/og.nix` bundles Work Sans and static Fira Code. `just og` refuses to overwrite existing artwork; pass `just og --force` to regenerate. `tailor measure` accepts both `1280 x 640` and bespoke `1200 x 630` PNGs under 1 MB.
 5. Update existing `pages/index.html` landing pages manually: new static Pages starters include Open Graph and Twitter Card tags automatically, but existing `first-fit` `pages/index.html` files stay untouched. Set `og:image` to `https://<domain>/og.png` (from `pages.cname` or `https://<owner>.github.io/<repo>/og.png`), `og:image:width="1280"`, `og:image:height="640"`, `og:image:alt`, and `twitter:card="summary_large_image"` (replacing older `icon.png` or `summary` tags).
 6. Remind the user to upload `pages/og.png` manually in GitHub under **Settings > General > Social preview**.
 7. Commit and push the generated assets, `README.md`, and `.github/workflows/tailor-social.yml`. When using live README markers (`stats`, `stars`, `contributors`), tell the user they can trigger **Actions > Social assets > Run workflow** once to create the orphan `social-assets` branch immediately instead of waiting for the daily schedule.
+
+For terminal demos, the core `nix/ntrecord.nix` fragment wraps `ntrecord` with static Fira Code and Nerd Font symbol fallback.
 
 ### Canonical `README.md` layout
 
@@ -185,14 +187,6 @@ Store every project's canonical icon as a real file at `pages/icon.svg`, even wh
 - **Replace the starter placeholder**: replace Tailor's default blue `pages/icon.svg` with the project's own mark. Haberdasher ignores the placeholder bytes.
 - **Enable static Pages later**: Tailor only creates the static starter in a missing or empty `pages/` directory. When `pages/icon.svg` or `pages/icon.png` already exists before you enable static Pages, preserve it alongside `pages/index.html`.
 
-## House typography
-
-Use **Work Sans** for regular, UI, and heading text, and **Fira Code** for monospace, code, and terminal text.
-
-- **Landing pages and SVG font stacks**: put `"Work Sans"` first in sans-serif stacks and `"Fira Code"` first in monospace stacks.
-- **Open Graph cards**: `nix/og.nix` bundles Work Sans and static Fira Code.
-- **Terminal demos**: `nix/ntrecord.nix` bundles static Fira Code for `ntrecord`.
-
 ## Version numbering
 
 Keep the `v` prefix on Git tags only. Omit the `v` prefix from every etched binary version and package version.
@@ -216,3 +210,4 @@ Hugo, Jekyll, MCP integrations, Ebitengine, Android, ffmpeg-statigo, and per-set
 - [GitHub Pages](https://github.com/wimpysworld/tailor/wiki/GitHub-Pages)
 - [Repository settings](https://github.com/wimpysworld/tailor/wiki/Repository-settings)
 - [Ruleset](https://github.com/wimpysworld/tailor/wiki/Ruleset)
+- [Personal fleet reference](references/personal.md) - Martin's typography, link preferences, DNS and bootstrap rules, special-case repositories, and Tailor, Haberdasher, and Vitrine glue.
