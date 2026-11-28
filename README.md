@@ -1,14 +1,24 @@
-<div align="center">
-<img src="assets/logo.png" alt="Sith Happens" width="256" />
+<!-- tailor:social-header:start -->
+<p align="center">
+  <a href="https://nix-config.wimpys.world"><picture><source media="(prefers-color-scheme: dark)" srcset="pages/social/hero-dark.svg"><img src="pages/social/hero-light.svg" alt="Nix Config"></picture></a>
+</p>
+<!-- tailor:social-header:end -->
 
-# Wimpy's [NixOS], [nix-darwin] & [Home Manager] Configurations
+<!-- tailor:social-links:start -->
+<p align="center">
+  <a href="https://bsky.app/profile/wimpys.world"><picture><source media="(prefers-color-scheme: dark)" srcset="pages/social/link-bluesky-dark.svg"><img src="pages/social/link-bluesky-light.svg" alt="Bluesky"></picture></a>
+  <a href="https://wimpysworld.social/@martin"><picture><source media="(prefers-color-scheme: dark)" srcset="pages/social/link-mastodon-dark.svg"><img src="pages/social/link-mastodon-light.svg" alt="Mastodon"></picture></a>
+  <a href="https://linkedin.com/in/martinwimpress"><picture><source media="(prefers-color-scheme: dark)" srcset="pages/social/link-linkedin-dark.svg"><img src="pages/social/link-linkedin-light.svg" alt="LinkedIn"></picture></a>
+</p>
+<!-- tailor:social-links:end -->
 
-<b>Made with 💝 for <img src="assets/nixos.png" align="center" width="18" alt="NixOS"/> & <img src="assets/apple.png" align="center" width="16" alt="macOS"/></b>
-<br />
+<!-- tailor:social-community:start -->
+<p align="center">
+  <a href="https://discord.com/invite/vUsydfP"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/wimpysworld/nix-config/social-assets/community-dark.svg"><img src="https://raw.githubusercontent.com/wimpysworld/nix-config/social-assets/community-light.svg" alt="Discord community"></picture></a>
+</p>
+<!-- tailor:social-community:end -->
 
-</div>
-
-A [Nix Flake](https://zero-to-nix.com/concepts/flakes) managing NixOS, macOS, and Home Manager across all my systems from a single repo.
+A [Nix Flake](https://zero-to-nix.com/concepts/flakes) managing [NixOS], [nix-darwin] (macOS), and [Home Manager] across all my systems from a single repo.
 The interesting bit is the architecture: every module is imported everywhere, and each module decides for itself whether to activate based on host metadata.
 No import lists to maintain, no per-host module selections - just drop a self-gating module in a directory and every relevant host picks it up automatically.
 If you're starting your own Nix configuration, I'd recommend <https://github.com/Misterio77/nix-starter-configs> as a foundation. 👍️
@@ -89,6 +99,18 @@ Every host is registered in the system registry (`lib/registry-systems.toml`, re
 **Host-specific directories** (`nixos/skrye/`, `nixos/malak/`, etc.) contain _only_ hardware: disk layouts and kernel modules. All behaviour lives in the self-gating modules reacting to host properties.
 
 The full noughty option reference, helper functions, and usage patterns are documented in [`lib/noughty/README.md`](./lib/noughty/README.md).
+
+<!-- tailor:social-stats:start -->
+<p align="center">
+  <a href="https://github.com/wimpysworld/nix-config/pulse"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/wimpysworld/nix-config/social-assets/stats-dark.svg"><img src="https://raw.githubusercontent.com/wimpysworld/nix-config/social-assets/stats-light.svg" alt="Nix Config statistics"></picture></a>
+</p>
+<!-- tailor:social-stats:end -->
+
+<!-- tailor:social-sponsors:start -->
+<p align="center">
+  <a href="https://github.com/sponsors/flexiondotorg"><picture><source media="(prefers-color-scheme: dark)" srcset="pages/social/sponsors-dark.svg"><img src="pages/social/sponsors-light.svg" alt="Nix Config sponsors"></picture></a>
+</p>
+<!-- tailor:social-sponsors:end -->
 
 ## Structure 📦
 
@@ -419,3 +441,21 @@ Some applications require manual configuration to apply the correct theme.
 [Mango NixOS]: ./nixos/_mixins/desktop/mango/default.nix
 [Wayfire Home Manager]: ./home-manager/_mixins/desktop/compositor/wayfire/default.nix
 [Mango Home Manager]: ./home-manager/_mixins/desktop/compositor/mango/default.nix
+
+<!-- tailor:social-stars:start -->
+<p align="center">
+  <a href="https://github.com/wimpysworld/nix-config/stargazers"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/wimpysworld/nix-config/social-assets/stars-dark.svg"><img src="https://raw.githubusercontent.com/wimpysworld/nix-config/social-assets/stars-light.svg" alt="Nix Config star history"></picture></a>
+</p>
+<!-- tailor:social-stars:end -->
+
+<!-- tailor:social-contributors:start -->
+<p align="center">
+  <a href="https://github.com/wimpysworld/nix-config/graphs/contributors"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/wimpysworld/nix-config/social-assets/contributors-dark.svg"><img src="https://raw.githubusercontent.com/wimpysworld/nix-config/social-assets/contributors-light.svg" alt="Nix Config contributors"></picture></a>
+</p>
+<!-- tailor:social-contributors:end -->
+
+<!-- tailor:social-footer:start -->
+<p align="center">
+  <a href="https://tailor.wimpys.world"><picture><source media="(prefers-color-scheme: dark)" srcset="pages/social/footer-dark.svg"><img src="pages/social/footer-light.svg" alt="Fitted by Tailor"></picture></a>
+</p>
+<!-- tailor:social-footer:end -->

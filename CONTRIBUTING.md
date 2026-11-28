@@ -1,14 +1,34 @@
 # Contributing
 
-Contributions are welcome and appreciated.
+Contributions are welcome. Read the [issue and pull request rules](#issue-and-pull-request-rules) before you write code.
 
 - **Report bugs and request features** in [Issues](../../issues)
-- **Submit pull requests** to fix bugs or add new features
 - Commit messages must conform to the [Conventional Commits](https://www.conventionalcommits.org/) specification
-- **Improve documentation** directly via pull requests
 - All contributors are expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md)
 - Security issues must be reported privately; see [SECURITY.md](SECURITY.md)
 - By contributing, you confirm that you have the right to license your contribution under the project [licence](LICENSE)
+
+## Issue and pull request rules
+
+Maintainers close issues and pull requests that break these rules without review. To try again, fix the cause and open a new one.
+
+### 1. Complete the template
+
+Every issue and pull request must use its template, with every section completed. Do not delete sections or leave placeholder text.
+
+### 2. Open an issue before a new feature
+
+A pull request that adds a feature or enhancement must resolve an issue that a maintainer accepted before you started work. Link it in the description, for example `Closes #123`. Bug fixes and documentation changes do not need an issue. Maintainers decide whether a change is a feature.
+
+### 3. One change per pull request
+
+A pull request must contain one bug fix, one documentation change, or one feature. Do not bundle several changes. Send each one as a separate pull request.
+
+### 4. No unsolicited rewrites
+
+Do not rewrite, restructure, or reformat existing code unless a maintainer agreed to it in an issue.
+
+Maintainers and automated dependency updates are exempt from these rules.
 
 ## AI-assisted contributions
 

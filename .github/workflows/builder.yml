@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - "pages/**"
+      - "README.md"
+      - ".github/workflows/tailor-social.yml"
   workflow_dispatch:
 
 concurrency:

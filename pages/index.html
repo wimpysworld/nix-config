@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#fff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="rgb(19, 22.5, 30.5)" media="(prefers-color-scheme: dark)">
+    <meta name="description" content="Martin Wimpress&#39;s NixOS, nix-darwin, and Home Manager configurations in a single Nix Flake.">
+    <link rel="canonical" href="https://nix-config.wimpys.world/">
+    <meta property="og:site_name" content="Nix Config">
+    <meta property="og:title" content="Nix Config">
+    <meta property="og:description" content="Martin Wimpress&#39;s NixOS, nix-darwin, and Home Manager configurations in a single Nix Flake.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://nix-config.wimpys.world/">
+    <meta property="og:image" content="https://nix-config.wimpys.world/og.png">
+    <meta property="og:image:width" content="1280">
+    <meta property="og:image:height" content="640">
+    <meta property="og:image:alt" content="Nix Config - Martin Wimpress&#39;s NixOS, nix-darwin, and Home Manager configurations">
+    <meta name="twitter:card" content="summary_large_image">
+    <title>Nix Config · NixOS, nix-darwin, and Home Manager</title>
+    <link rel="icon" href="icon.png" type="image/png">
+    <script src="theme.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@digicreon/mucss@1.4.9/dist/mu.css">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="container site-header">
+      <a class="brand" href="./" aria-label="Nix Config home">
+        <img class="brand-mark" src="icon.png" alt="" width="40" height="40">
+        <span class="brand-name">Nix Config</span>
+      </a>
+      <nav aria-label="Main navigation">
+        <ul>
+          <!-- tailor:navigation:start -->
+          <li><a target="_blank" rel="noopener noreferrer" href="https://github.com/wimpysworld/nix-config?tab=readme-ov-file">Documentation</a></li>
+          <li><a target="_blank" rel="noopener noreferrer" href="https://github.com/wimpysworld/nix-config/releases">Download</a></li>
+          <!-- tailor:navigation:end -->
+        </ul>
+      </nav>
+      <div class="header-tools">
+        <a class="icon-button" target="_blank" rel="noopener noreferrer" href="https://github.com/wimpysworld/nix-config" aria-label="Nix Config on GitHub" title="Nix Config on GitHub">
+          <span class="octicon github-icon" aria-hidden="true"></span>
+        </a>
+        <label id="theme-picker" class="theme-picker" hidden>
+          <span id="theme-sun" class="octicon" aria-hidden="true"></span>
+          <span id="theme-moon" class="octicon" aria-hidden="true" hidden></span>
+          <span class="visually-hidden">Theme</span>
+          <select id="theme-select" title="Theme">
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <main id="main" class="container" tabindex="-1">
+      <section class="site-hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">NixOS, nix-darwin, and Home Manager</p>
+          <h1 id="hero-title">Nix Config</h1>
+          <p class="lead">Martin Wimpress&#39;s Nix Flake for managing Linux workstations, servers, virtual machines, live ISO images, and macOS from one repository.</p>
+          <div class="site-hero-actions">
+            <a class="primary-action" href="https://github.com/wimpysworld/nix-config?tab=readme-ov-file">Read the overview <span class="octicon inline-icon link-external" aria-hidden="true"></span></a>
+            <a class="text-link" href="https://github.com/wimpysworld/nix-config/releases">Daily ISO builds <span class="octicon inline-icon arrow-down" aria-hidden="true"></span></a>
+          </div>
+        </div>
+        <div>
+          <h2>Broadcast-and-gate architecture</h2>
+          <p>Every host imports every module, and each self-gating module activates from typed host metadata in the <a href="https://github.com/wimpysworld/nix-config/blob/main/lib/noughty/README.md">noughty module system</a>. Starting your own Nix configuration? Try <a href="https://github.com/Misterio77/nix-starter-configs">nix-starter-configs</a> first.</p>
+        </div>
+      </section>
+
+      <section id="features" class="features section-rule" aria-labelledby="features-title">
+        <div>
+          <p class="eyebrow">Architecture</p>
+          <h2 id="features-title">One flake, every system</h2>
+          <p>Host directories hold only hardware layouts and kernel modules. Shared behaviour activates from host properties in the system registry.</p>
+        </div>
+        <dl class="feature-list">
+          <div>
+            <dt><span class="feature-number" aria-hidden="true">01</span> Self-gating modules</dt>
+            <dd>Drop a module under <code>_mixins</code> and gate it with <code>config.noughty.*</code> metadata. No per-host import lists to maintain.</dd>
+          </div>
+          <div>
+            <dt><span class="feature-number" aria-hidden="true">02</span> Cross-platform fleet</dt>
+            <dd>Manages NixOS desktops with Wayfire and Mango, laptops, servers, virtual machines, a live installer ISO, macOS via nix-darwin, and Home Manager.</dd>
+          </div>
+          <div>
+            <dt><span class="feature-number" aria-hidden="true">03</span> FlakeHub Cache fast path</dt>
+            <dd>CI builds every configuration on push to <code>main</code> and publishes closures to FlakeHub Cache for direct fetch and activation.</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section id="install" class="install section-rule" aria-labelledby="install-title">
+        <div>
+          <p class="eyebrow">Get started</p>
+          <h2 id="install-title">Explore or deploy</h2>
+          <p>Clone the repository to inspect the modules, download a daily live ISO, or apply configurations with <code>just</code>.</p>
+          <div class="install-links">
+            <a class="text-link" href="https://github.com/wimpysworld/nix-config?tab=readme-ov-file">Read the full README <span class="octicon inline-icon link-external" aria-hidden="true"></span></a>
+            <a class="text-link" href="https://github.com/wimpysworld/nix-config/releases">Download daily ISOs <span class="octicon inline-icon link-external" aria-hidden="true"></span></a>
+          </div>
+        </div>
+        <div class="accordion install-options">
+          <details open>
+            <summary>Clone and apply locally</summary>
+            <pre><code>gh repo clone wimpysworld/nix-config "$HOME/Zero/nix-config"
+cd "$HOME/Zero/nix-config"
+just host
+just home</code></pre>
+          </details>
+          <details>
+            <summary>Apply from FlakeHub Cache</summary>
+            <p>Pull pre-built closures from CI without local evaluation or compilation:</p>
+            <pre><code>just apply</code></pre>
+          </details>
+          <details>
+            <summary>Download a daily ISO</summary>
+            <p>Automated live images for <code>nihilus</code> are published daily on <a href="https://github.com/wimpysworld/nix-config/releases">GitHub Releases</a>, including the <code>install-system</code> installer.</p>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <footer class="container site-footer">
+      <div class="footer-main">
+        <div class="footer-brand">
+          <a class="brand" href="./" aria-label="Nix Config home">
+            <img class="brand-mark" src="icon.png" alt="" width="40" height="40">
+            <span class="brand-name">Nix Config</span>
+          </a>
+          <p>Martin Wimpress&#39;s NixOS, nix-darwin, and Home Manager configurations.</p>
+        </div>
+        <nav class="footer-links" aria-label="Footer navigation">
+          <div><h3>Resources</h3><ul>
+            <!-- tailor:footer-navigation:start -->
+            <li><a href="https://github.com/wimpysworld/nix-config?tab=readme-ov-file">Documentation</a></li>
+            <li><a href="https://github.com/wimpysworld/nix-config/blob/HEAD/SUPPORT.md">Support</a></li>
+            <!-- tailor:footer-navigation:end -->
+          </ul></div>
+          <div><h3>Project</h3><ul>
+            <li><a href="https://github.com/wimpysworld/nix-config">Source code</a></li>
+            <li><a href="https://github.com/wimpysworld/nix-config/releases">Releases</a></li>
+            <!-- tailor:license:start -->
+            <li><a href="https://github.com/wimpysworld/nix-config?tab=BlueOak-1.0.0-1-ov-file">License</a></li>
+            <!-- tailor:license:end -->
+          </ul></div>
+          <div><h3>Community</h3><ul>
+            <li><a href="https://github.com/wimpysworld/nix-config?tab=coc-ov-file">Code of Conduct</a></li>
+            <li><a href="https://github.com/wimpysworld/nix-config?tab=contributing-ov-file">Contributing</a></li>
+            <li><a href="https://github.com/wimpysworld/nix-config?tab=security-ov-file">Security</a></li>
+          </ul></div>
+        </nav>
+      </div>
+      <div class="footer-bottom">
+        <p><small>© <span id="copyright-year">2026</span> <a href="https://wimpys.world/">Martin Wimpress</a></small><span class="colophon-sep" aria-hidden="true">·</span><a class="tailor-colophon" href="https://tailor.wimpys.world" target="_blank" rel="noopener noreferrer"><svg class="tailor-colophon-shears" width="14" height="14" viewBox="0 0 40 40" aria-hidden="true"><path d="M14 27 17.5 19.5 31 3 25 19.5 20 29Z" fill="#b88a44"/><path d="M17.5 19.5 31 3 23 18.5Z" fill="#f0cb78"/><path fill="#f0cb78" fill-rule="evenodd" d="M22 31a8 5.6 0 1 0-16 0 8 5.6 0 1 0 16 0Zm-3 0a5 2.8 0 1 1-10 0 5 2.8 0 1 1 10 0Z" transform="rotate(-40 14 31)"/><path d="M11 18.5 19 19 37 9 25 21.5Q20 25 12 23Z" fill="#b88a44"/><path d="M11 18.5 19 19 37 9 22 19.5Z" fill="#f0cb78"/><path fill="#b88a44" fill-rule="evenodd" d="M14 20a6 5.5 0 1 0-12 0 6 5.5 0 1 0 12 0Zm-3 0a3 2.7 0 1 1-6 0 3 2.7 0 1 1 6 0Z" transform="rotate(-20 8 20)"/><circle cx="20.5" cy="21" r="2.1" fill="#594020"/><circle cx="20.5" cy="21" r="0.9" fill="#f5efe6"/></svg><span>Fitted by Tailor</span></a></p>
+        <!-- tailor:links:start -->
+        <nav class="connection-links" aria-label="Connect" style="display:flex;flex-wrap:wrap;gap:0.4rem">
+          <a class="icon-button" href="https://wimpys.world/" aria-label="Website" title="Website" style="display:inline-flex;padding:10px;color:inherit"><span aria-hidden="true" style="display:block;width:24px;height:24px;background-color:currentColor;-webkit-mask:url('https://cdn.jsdelivr.net/npm/@primer/octicons@19.36.0/build/svg/globe-24.svg') center/contain no-repeat;mask:url('https://cdn.jsdelivr.net/npm/@primer/octicons@19.36.0/build/svg/globe-24.svg') center/contain no-repeat"></span></a>
+          <a class="icon-button" href="https://bsky.app/profile/wimpys.world" aria-label="Bluesky" title="Bluesky" style="display:inline-flex;padding:10px;color:inherit"><span aria-hidden="true" style="display:block;width:24px;height:24px;background-color:currentColor;-webkit-mask:url('https://cdn.jsdelivr.net/npm/simple-icons@16.30.0/icons/bluesky.svg') center/contain no-repeat;mask:url('https://cdn.jsdelivr.net/npm/simple-icons@16.30.0/icons/bluesky.svg') center/contain no-repeat"></span></a>
+          <a class="icon-button" href="https://wimpysworld.social/@martin" aria-label="Mastodon" title="Mastodon" style="display:inline-flex;padding:10px;color:inherit"><span aria-hidden="true" style="display:block;width:24px;height:24px;background-color:currentColor;-webkit-mask:url('https://cdn.jsdelivr.net/npm/simple-icons@16.30.0/icons/mastodon.svg') center/contain no-repeat;mask:url('https://cdn.jsdelivr.net/npm/simple-icons@16.30.0/icons/mastodon.svg') center/contain no-repeat"></span></a>
+          <a class="icon-button" href="https://linkedin.com/in/martinwimpress" aria-label="LinkedIn" title="LinkedIn" style="display:inline-flex;padding:10px;color:inherit"><span aria-hidden="true" style="display:block;width:24px;height:24px;background-color:currentColor;-webkit-mask:url('https://cdn.jsdelivr.net/npm/@primer/octicons@19.36.0/build/svg/briefcase-24.svg') center/contain no-repeat;mask:url('https://cdn.jsdelivr.net/npm/@primer/octicons@19.36.0/build/svg/briefcase-24.svg') center/contain no-repeat"></span></a>
+          <a class="icon-button" href="https://discord.com/invite/vUsydfP" aria-label="Discord" title="Discord" style="display:inline-flex;padding:10px;color:inherit"><span aria-hidden="true" style="display:block;width:24px;height:24px;background-color:currentColor;-webkit-mask:url('https://cdn.jsdelivr.net/npm/simple-icons@16.30.0/icons/discord.svg') center/contain no-repeat;mask:url('https://cdn.jsdelivr.net/npm/simple-icons@16.30.0/icons/discord.svg') center/contain no-repeat"></span></a>
+          <a class="icon-button" href="https://linuxmatters.sh" aria-label="Podcast" title="Podcast" style="display:inline-flex;padding:10px;color:inherit"><span aria-hidden="true" style="display:block;width:24px;height:24px;background-color:currentColor;-webkit-mask:url('https://cdn.jsdelivr.net/npm/@primer/octicons@19.36.0/build/svg/broadcast-24.svg') center/contain no-repeat;mask:url('https://cdn.jsdelivr.net/npm/@primer/octicons@19.36.0/build/svg/broadcast-24.svg') center/contain no-repeat"></span></a>
+          <a class="icon-button" href="https://github.com/sponsors/flexiondotorg" aria-label="GitHub Sponsors" title="GitHub Sponsors" style="display:inline-flex;padding:10px;color:inherit"><span aria-hidden="true" style="display:block;width:24px;height:24px;background-color:currentColor;-webkit-mask:url('https://cdn.jsdelivr.net/npm/simple-icons@16.30.0/icons/githubsponsors.svg') center/contain no-repeat;mask:url('https://cdn.jsdelivr.net/npm/simple-icons@16.30.0/icons/githubsponsors.svg') center/contain no-repeat"></span></a>
+        </nav>
+        <!-- tailor:links:end -->
+      </div>
+    </footer>
+  </body>
+</html>

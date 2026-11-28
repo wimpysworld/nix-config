@@ -1,4 +1,4 @@
-# Refitted by tailor on 2026-09-05
+# Refitted by tailor on 2026-11-28
 license: BlueOak-1.0.0
 
 repository:
@@ -48,6 +48,8 @@ repository:
     - sops-nix
 
 actions:
+  # Options: all, local_only, selected. SHA pinning applies separately.
+  # selected requires github_owned_allowed, verified_allowed, and patterns_allowed.
   enabled: true
   allowed_actions: selected
   sha_pinning_required: false
@@ -68,6 +70,8 @@ actions:
     - "softprops/action-gh-release@*"
     - "srz-zumix/post-run-action@*"
     - "wimpysworld/nothing-but-nix@*"
+  fork_pr_contributor_approval:
+    approval_policy: first_time_contributors
 
 code_scanning:
   state: configured
@@ -144,6 +148,77 @@ ruleset:
             alerts_threshold: errors
             security_alerts_threshold: high_or_higher
 
+# Pages is opt-in. Omission or enabled: false leaves Pages unmanaged.
+# generator: static (default) creates a starter in an empty path. Hugo and Jekyll need an existing site.
+# path: project-relative source directory, default pages.
+# branch: omit to use the current repository default branch.
+# cname: omit to preserve the domain, use "" to clear it, or set a domain.
+pages:
+  enabled: true
+  generator: static
+  path: pages
+  cname: nix-config.wimpys.world
+  links:
+    website: https://wimpys.world/
+    forum: ""
+    x: ""
+    bluesky: https://bsky.app/profile/wimpys.world
+    mastodon: "https://wimpysworld.social/@martin"
+    linkedin: https://linkedin.com/in/martinwimpress
+    slack: ""
+    discord: https://discord.com/invite/vUsydfP
+    matrix: ""
+    irc: ""
+    youtube: ""
+    twitch: ""
+    peertube: ""
+    tiktok: ""
+    podcast: https://linuxmatters.sh
+    instagram: ""
+    pixelfed: ""
+    steam: ""
+    itchio: ""
+    patreon: ""
+    kofi: ""
+    github_sponsors: https://github.com/sponsors/flexiondotorg
+    email: ""
+    feed: ""
+  # branch: main
+  # cname: www.example.com
+  # Static only. Omit links to leave the page unchanged; {} clears its marked links.
+  # Use full HTTPS URLs, or a bare address for email. Empty values add no icon.
+  # links:
+  #   website: https://example.com
+  #   email: hello@example.com
+
+# Social assets are opt-in. Omission or enabled: false leaves social assets unmanaged.
+social:
+  enabled: true
+  theme: dark
+  og:
+    output: pages/og.png
+    include_preview: false
+  readme:
+    header: true
+    preferred_links:
+      - bluesky
+      - mastodon
+      - linkedin
+    community: auto
+    packages: []
+    demo: false
+    stats: true
+    star_history:
+      enabled: true
+      min_stars: 25
+      min_days: 30
+    sponsors: auto
+    contributors: true
+    footer: true
+  live:
+    branch: social-assets
+    schedule: "0 4 * * *"
+
 labels:
   - name: bug
     color: d20f39
@@ -193,6 +268,14 @@ labels:
     color: df8e1d
     description: Hacktoberfest contribution
 
+# Repository Actions variables are non-secret values.
+# Tailor creates or updates only declared variables and leaves others unchanged.
+# variables:
+#   - name: DEPLOY_REGION
+#     value: "eu-west-2"
+#   - name: RELEASE_SUFFIX
+#     value: ""
+
 swatches:
   - path: .github/dependabot.yml
     alteration: first-fit
@@ -240,4 +323,31 @@ swatches:
     alteration: first-fit
 
   - path: .tailor.yml
+    alteration: always
+
+  - path: .github/workflows/tailor-pages.yml
+    alteration: always
+
+  - path: pages/index.html
+    alteration: first-fit
+
+  - path: pages/style.css
+    alteration: first-fit
+
+  - path: pages/theme.js
+    alteration: first-fit
+
+  - path: pages/icon.svg
+    alteration: first-fit
+
+  - path: wiki/Home.md
+    alteration: first-fit
+
+  - path: wiki/_Sidebar.md
+    alteration: first-fit
+
+  - path: wiki/_Footer.md
+    alteration: first-fit
+
+  - path: .github/workflows/tailor-wiki.yml
     alteration: always

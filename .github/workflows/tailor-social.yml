@@ -1,0 +1,140 @@
+# Managed by Tailor: social
+name: Social assets
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: social-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    if: >-
+      github.ref == format(
+        'refs/heads/{0}',
+        github.event.repository.default_branch
+      )
+    runs-on: ubuntu-slim
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Install tailor
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="$(
+            curl --fail --silent --show-error --location \
+              -H 'Accept: application/vnd.github+json' \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              https://api.github.com/repos/wimpysworld/tailor/releases/latest \
+              | python3 -c \
+                'import json, sys; print(json.load(sys.stdin)["tag_name"])'
+          )"
+          version="${tag#v}"
+          case "$(uname -m)" in
+            x86_64|amd64) arch='amd64' ;;
+            aarch64|arm64) arch='arm64' ;;
+            *)
+              echo "Unsupported architecture: $(uname -m)" >&2
+              exit 1
+              ;;
+          esac
+          archive="tailor_${version}_${arch}.tar.gz"
+          checksums="tailor_${version}_checksums.txt"
+          base_url="https://github.com/wimpysworld/tailor/releases/download/${tag}"
+          tmp_dir="$(mktemp -d)"
+          trap 'rm -rf "${tmp_dir}"' EXIT
+          curl --fail --silent --show-error --location --retry 5 \
+            --output "${tmp_dir}/${archive}" "${base_url}/${archive}"
+          curl --fail --silent --show-error --location --retry 5 \
+            --output "${tmp_dir}/${checksums}" "${base_url}/${checksums}"
+          (
+            cd "${tmp_dir}"
+            grep -F "  ${archive}" "${checksums}" | sha256sum --check -
+            tar -xzf "${archive}" tailor
+          )
+          install -Dm755 "${tmp_dir}/tailor" "${RUNNER_TEMP}/bin/tailor"
+          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+
+      - name: Generate and publish live social assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch='social-assets'
+          output_dir='/tmp/social-assets'
+          rm -rf "${output_dir}"
+
+          tailor social --live --output-dir "${output_dir}"
+
+          if [[ ! -d "${output_dir}" ]]; then
+            echo "No live social assets generated."
+            exit 0
+          fi
+          first_file="$(
+            find "${output_dir}" -maxdepth 1 -type f -print -quit
+          )"
+          if [[ -z "${first_file}" ]]; then
+            echo "No live social assets generated."
+            exit 0
+          fi
+
+          work_dir="$(mktemp -d)"
+          trap 'rm -rf "${work_dir}"' EXIT
+          compare_dir="${work_dir}/remote"
+          stage_dir="${work_dir}/stage"
+          mkdir -p "${compare_dir}" "${stage_dir}"
+
+          basic_auth="$(
+            printf 'x-access-token:%s' "${GH_TOKEN}" | base64 -w0
+          )"
+          auth_header="Authorization: basic ${basic_auth}"
+          remote_ref="refs/remotes/origin/${branch}"
+          branch_ref="refs/heads/${branch}"
+          changed=false
+          if git -c "http.https://github.com/.extraheader=${auth_header}" \
+            fetch --no-tags --depth=1 \
+            origin "${branch_ref}:${remote_ref}" 2>/dev/null; then
+            git archive "${remote_ref}" | tar -x -C "${compare_dir}"
+            if ! diff -ruN --exclude='.git' \
+              "${compare_dir}" "${output_dir}" >/dev/null 2>&1; then
+              changed=true
+            fi
+          else
+            changed=true
+          fi
+
+          if [[ "${changed}" != 'true' ]]; then
+            echo "Live social assets are unchanged."
+            exit 0
+          fi
+
+          bot_name='github-actions[bot]'
+          bot_email='41898282+github-actions[bot]@users.noreply.github.com'
+
+          cp -R "${output_dir}/." "${stage_dir}/"
+          git -C "${stage_dir}" init --quiet --initial-branch="${branch}"
+          git -C "${stage_dir}" add --all
+          git -C "${stage_dir}" \
+            -c user.name="${bot_name}" \
+            -c user.email="${bot_email}" \
+            commit --quiet --message 'chore(social): update live social assets'
+
+          git fetch --quiet "${stage_dir}" "${branch_ref}:${branch_ref}"
+          git -c "http.https://github.com/.extraheader=${auth_header}" \
+            push --force origin "${branch_ref}:${branch_ref}"
