@@ -40,23 +40,24 @@ for org in wimpysworld oval-tutu linuxmatters quickemu-project noughtylinux; do
             and . != "." and . != ".." and (startswith("-") | not);
         if length > 0 and all(.[]; type == "array") and
             all(.[][]; type == "object" and
+                (.id | type == "number" and . == floor and . > 0) and
                 (.name | component) and (.owner.login | component) and
                 ((.owner.login | ascii_downcase) == $org) and
                 (.full_name == (.owner.login + "/" + .name)) and
                 (.archived | type == "boolean"))
         then [ .[][] | select(.archived == false) |
-            {owner: .owner.login, name: .name,
+            {owner: .owner.login, name: .name, id: .id,
              dest: (if (.name | startswith(".")) then ("_" + .name[1:]) else .name end)} ] |
             group_by((.owner + "/" + .dest) | ascii_downcase) |
             map(.[] + {collision: (length > 1)}) |
-            .[] | [.owner, .name, .dest, .collision] | @tsv
+            .[] | [.owner, .name, .dest, .collision, .id] | @tsv
         else error("invalid repository enumeration") end
     ' <<< "$pages" 2>/dev/null); then
         fail "$org" 'invalid repository enumeration'
         continue
     fi
     [[ -n $repos ]] || { printf 'EMPTY %s: no nonarchived repositories\n' "$org"; continue; }
-    while IFS=$'\t' read -r owner name basename collision; do
+    while IFS=$'\t' read -r owner name basename collision repo_id; do
         identity=$owner/$name
         dest=$root/$owner/$basename
         if [[ $collision == true || $name == .git || $basename == .git || $basename == _worktrees ]]; then
@@ -100,35 +101,87 @@ for org in wimpysworld oval-tutu linuxmatters quickemu-project noughtylinux; do
             continue
         fi
         # Accept only standard GitHub HTTPS and SSH identities, never print URLs.
-        ssh_origin=false
+        repoint_origin=false
         case "$url" in
             https://github.com/*) remote=${url#https://github.com/} ;;
-            git@github.com:*) remote=${url#git@github.com:}; ssh_origin=true ;;
-            ssh://git@github.com/*) remote=${url#ssh://git@github.com/}; ssh_origin=true ;;
+            git@github.com:*) remote=${url#git@github.com:}; repoint_origin=true ;;
+            ssh://git@github.com/*) remote=${url#ssh://git@github.com/}; repoint_origin=true ;;
             *) remote= ;;
         esac
         remote=${remote%.git}
         if [[ $remote != "$identity" ]]; then
-            fail "$identity" 'origin identity mismatch or unsupported URL'
-            continue
+            valid_remote=false
+            if [[ $remote =~ ^([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)$ ]]; then
+                remote_owner=${BASH_REMATCH[1]}
+                remote_repo=${BASH_REMATCH[2]}
+                if [[ $remote_owner != . && $remote_owner != .. && $remote_owner != -* &&
+                    $remote_repo != . && $remote_repo != .. && $remote_repo != -* ]]; then
+                    valid_remote=true
+                fi
+            fi
+            if $valid_remote &&
+                repo_info=$(gh-api-safe "repos/$remote" 2>/dev/null) &&
+                jq -es --argjson id "$repo_id" --arg identity "$identity" '
+                    length == 1 and (.[0] |
+                        type == "object" and
+                        .id == $id and
+                        (.full_name | type == "string") and
+                        ((.full_name | ascii_downcase) == ($identity | ascii_downcase)))
+                ' <<< "$repo_info" >/dev/null 2>&1; then
+                repoint_origin=true
+            else
+                fail "$identity" 'origin identity mismatch or unsupported URL'
+                continue
+            fi
         fi
-        if $ssh_origin; then
+        if $repoint_origin; then
             if ! git -C "$dest" remote set-url origin "https://github.com/$identity.git" >/dev/null 2>&1; then
-                fail "$identity" 'origin HTTPS migration failed'
+                fail "$identity" 'origin URL update failed'
                 continue
             fi
         fi
         # Empty refmap ignores configured fetch destinations. Explicit refs only
         # update origin tracking branches, not local branches or tags.
-        if git -C "$dest" -c maintenance.auto=false \
+        if ! git -C "$dest" -c maintenance.auto=false \
             -c credential.https://github.com.helper= \
             -c 'credential.https://github.com.helper=!gh auth git-credential' \
             fetch --no-prune --no-prune-tags \
             --no-tags --no-recurse-submodules --refmap= origin \
             '+refs/heads/*:refs/remotes/origin/*' >/dev/null 2>&1; then
-            printf 'FETCHED %s\n' "$identity"
-        else
             fail "$identity" 'fetch failed'
+            continue
+        fi
+        if ! git -C "$dest" symbolic-ref -q --short HEAD >/dev/null 2>&1; then
+            printf 'FETCHED %s (detached HEAD)\n' "$identity"
+            continue
+        fi
+        if ! upstream=$(git -C "$dest" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null); then
+            printf 'FETCHED %s (no upstream)\n' "$identity"
+            continue
+        fi
+        if ! head_sha=$(git -C "$dest" rev-parse HEAD 2>/dev/null) ||
+            ! upstream_sha=$(git -C "$dest" rev-parse "$upstream" 2>/dev/null); then
+            fail "$identity" 'cannot resolve HEAD or upstream'
+            continue
+        fi
+        if [[ $head_sha == "$upstream_sha" ]]; then
+            printf 'UP-TO-DATE %s\n' "$identity"
+            continue
+        fi
+        if ! git -C "$dest" diff --quiet 2>/dev/null ||
+            ! git -C "$dest" diff --cached --quiet 2>/dev/null; then
+            printf 'FETCHED %s (dirty working tree)\n' "$identity"
+            continue
+        fi
+        if ! git -C "$dest" merge-base --is-ancestor HEAD "$upstream" 2>/dev/null; then
+            printf 'FETCHED %s (diverged)\n' "$identity"
+            continue
+        fi
+        if git -C "$dest" -c maintenance.auto=false \
+            merge --ff-only --quiet "$upstream" >/dev/null 2>&1; then
+            printf 'UPDATED %s\n' "$identity"
+        else
+            fail "$identity" 'fast-forward failed'
         fi
     done <<< "$repos"
 done
